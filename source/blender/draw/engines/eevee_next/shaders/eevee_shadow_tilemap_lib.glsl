@@ -5,6 +5,79 @@
 #pragma BLENDER_REQUIRE(common_shape_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 
+/**
+ * Decoded tile data structure.
+ * Similar to ShadowTileData, this one is only used for rendering and packed into `tilemap_tx`.
+ * This allow to reuse to bits for other purpose.
+ */
+struct ShadowSamplingTile {
+  /** Page inside the virtual shadow map atlas. */
+  uint3 page;
+  /** LOD pointed to LOD 0 tile page. (punctual only). */
+  uint lod;
+  /** Offset to apply to the texel position to align with the LOD start. (directional only). */
+  uint2 lod_offset;
+  /** If the tile is needed for rendering. */
+  bool is_valid;
+};
+/** \note Stored packed as a uint. */
+#define ShadowSamplingTilePacked uint
+
+#define SHADOW_TILE_IS_VALID (1u << 31u)
+
+/* NOTE: Trust the input to be in valid range (max is [128,128]).
+ * Maximum LOD level index we can store is 7, so we need 7 bits to store the offset in each
+ * dimension. Result fits into 14 bits. */
+static inline uint shadow_lod_offset_pack(uint2 ofs)
+{
+#if SHADOW_TILEMAP_LOD >= 8
+#  error
+#endif
+  return (ofs.x << 0u) | (ofs.y << 7u);
+}
+static inline uint2 shadow_lod_offset_unpack(uint data)
+{
+  return (uint2(data) >> uint2(0u, 7u)) & uint2(7u);
+}
+
+ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
+{
+  ShadowSamplingTile tile;
+  tile.page = shadow_page_unpack(data);
+  /* -- 12 bits -- */
+  tile.lod = (data >> 12u) & 7u;
+  /* -- 15 bits -- */
+  tile.lod_offset = shadow_lod_offset_unpack((data >> 15u) & 14u);
+  /* -- 29 bits -- */
+  /* Only 3 padding bits left. */
+  tile.is_valid = (data & SHADOW_TILE_IS_VALID) != 0;
+  return tile;
+}
+
+ShadowSamplingTilePacked shadow_sampling_tile_pack(ShadowSamplingTile tile)
+{
+  uint data;
+  /* NOTE: Page might be set to invalid values for tracking invalid usages.
+   * So we have to mask the result. */
+  data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
+  data |= (tile.lod & 7u) << 12u;
+  data |= shadow_lod_offset_pack(tile.lod_offset) << 15u;
+  data |= (tile.is_valid ? uint(SHADOW_TILE_IS_VALID) : 0);
+  return data;
+}
+
+ShadowSamplingTile shadow_sampling_tile_create(ShadowTileData tile_data, uint lod)
+{
+  ShadowSamplingTile tile;
+  tile.page = tile_data.page;
+  tile.lod = lod;
+  tile.lod_offset = uint2(0, 0); /* TODO */
+  /* At this point, it should be the case that all given tiles that have been tagged as used are
+   * ready for sampling. Otherwise tile_data should be SHADOW_NO_DATA. */
+  tile.is_valid = tile_data.is_used;
+  return tile;
+}
+
 /* ---------------------------------------------------------------------- */
 /** \name Tile-map data
  * \{ */
@@ -91,14 +164,14 @@ int shadow_tile_offset(ivec2 tile, int tiles_index, int lod)
  * \{ */
 
 /** \note: Will clamp if out of bounds. */
-ShadowTileData shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilemap_index)
+ShadowSamplingTile shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilemap_index)
 {
   /* NOTE(@fclem): This clamp can hide some small imprecision at clip-map transition.
    * Can be disabled to check if the clip-map is well centered. */
   tile_co = clamp(tile_co, ivec2(0), ivec2(SHADOW_TILEMAP_RES - 1));
-  uint tile_data =
-      texelFetch(tilemaps_tx, shadow_tile_coord_in_atlas(tile_co, tilemap_index), 0).x;
-  return shadow_tile_unpack(tile_data);
+  ivec2 texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
+  uint tile_data = texelFetch(tilemaps_tx, texel, 0).x;
+  return shadow_sampling_tile_unpack(tile_data);
 }
 
 /**

@@ -1231,8 +1231,6 @@ struct ShadowTileData {
   uint3 page;
   /** Page index inside pages_cached_buf. Only valid if `is_cached` is true. */
   uint cache_index;
-  /** LOD pointed to LOD 0 tile page. (cube-map only). */
-  uint lod;
   /** If the tile is needed for rendering. */
   bool is_used;
   /** True if an update is needed. This persists even if the tile gets unused. */
@@ -1279,8 +1277,7 @@ static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
   ShadowTileData tile;
   tile.page = shadow_page_unpack(data);
   /* -- 12 bits -- */
-  BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
-  tile.lod = (data >> 12u) & 7u;
+  /* Unused bits. */
   /* -- 15 bits -- */
   BLI_STATIC_ASSERT(SHADOW_MAX_PAGE <= 4096, "Update page packing")
   tile.cache_index = (data >> 15u) & 4095u;
@@ -1299,7 +1296,6 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   /* NOTE: Page might be set to invalid values for tracking invalid usages.
    * So we have to mask the result. */
   data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
-  data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
   data |= (tile.is_allocated ? uint(SHADOW_IS_ALLOCATED) : 0);

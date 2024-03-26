@@ -25,9 +25,9 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
   const int page_shift = SHADOW_PAGE_LOD;
 
   ivec2 tile_coord = texel_coord >> page_shift;
-  ShadowTileData tile = shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
+  ShadowSamplingTile tile = shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
 
-  if (!tile.is_allocated) {
+  if (!tile.is_valid) {
     return -1.0;
   }
 
@@ -436,8 +436,8 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   else {
     params = shadow_punctual_sample_params_get(light, P);
   }
-  ShadowTileData tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
-  if (!tile.is_allocated) {
+  ShadowSamplingTile tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
+  if (!tile.is_valid) {
     return vec3(0.0);
   }
 

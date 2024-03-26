@@ -33,7 +33,6 @@ void debug_tile_print(ShadowTileData tile, ivec4 tile_coord)
 {
 #ifdef DRW_DEBUG_PRINT
   drw_print("Tile (", tile_coord.x, ",", tile_coord.y, ") in Tilemap ", tile_coord.z, " : ");
-  drw_print(tile.lod);
   drw_print(tile.page);
   drw_print(tile.cache_index);
 #endif
@@ -41,10 +40,6 @@ void debug_tile_print(ShadowTileData tile, ivec4 tile_coord)
 
 vec3 debug_tile_state_color(ShadowTileData tile)
 {
-  if (tile.lod > 0) {
-    /* Uses data from another LOD. */
-    return neon_gradient(float(tile.lod) / float(SHADOW_TILEMAP_LOD));
-  }
   if (tile.do_update && tile.is_used) {
     /* Updated. */
     return vec3(0.5, 1, 0);
@@ -63,6 +58,15 @@ vec3 debug_tile_state_color(ShadowTileData tile)
   return col;
 }
 
+vec3 debug_tile_state_color(ShadowSamplingData tile)
+{
+  if (!tile.is_valid) {
+    return vec3(1, 0, 0);
+  }
+  /* Uses data from another LOD. */
+  return neon_gradient(float(tile.lod) / float(SHADOW_TILEMAP_LOD));
+}
+
 ShadowSampleParams debug_shadow_sample_get(vec3 P, LightData light)
 {
   if (is_sun_light(light.type)) {
@@ -73,7 +77,7 @@ ShadowSampleParams debug_shadow_sample_get(vec3 P, LightData light)
   }
 }
 
-ShadowTileData debug_tile_get(vec3 P, LightData light)
+ShadowSamplingTile debug_tile_get(vec3 P, LightData light)
 {
   return shadow_tile_data_get(shadow_tilemaps_tx, debug_shadow_sample_get(P, light));
 }
@@ -131,7 +135,7 @@ bool debug_tilemaps(vec3 P, LightData light)
 
 void debug_tile_state(vec3 P, LightData light)
 {
-  ShadowTileData tile = debug_tile_get(P, light);
+  ShadowSamplingTile tile = debug_tile_get(P, light);
   out_color_add = vec4(debug_tile_state_color(tile), 0) * 0.5;
   out_color_mul = vec4(0.5);
 }
@@ -146,7 +150,7 @@ void debug_atlas_values(vec3 P, LightData light)
 
 void debug_random_tile_color(vec3 P, LightData light)
 {
-  ShadowTileData tile = debug_tile_get(P, light);
+  ShadowSamplingTile tile = debug_tile_get(P, light);
   out_color_add = vec4(debug_random_color(ivec2(tile.page.xy)), 0) * 0.5;
   out_color_mul = vec4(0.5);
 }
