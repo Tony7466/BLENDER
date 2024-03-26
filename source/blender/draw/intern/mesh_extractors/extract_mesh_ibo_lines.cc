@@ -49,18 +49,13 @@ static IndexMask calc_edge_visibility(const MeshRenderData &mr, IndexMaskMemory 
   return calc_edge_visibility(mr, IndexMask(mr.edges_num), memory);
 }
 
-// Array<bool> show_edge(mr.edges_num);
-// if (!mr.hide_edge.is_empty()) {
-//   const Span<bool> hide_edge = mr.hide_edge;
-//   threading::parallel_for(show_edge.index_range(), 4096, [&](const IndexRange range) {
-//     for (const int i : range) {
-//       show_edge[i] = !hide_edge[i];
-//     }
-//   });
-// }
-// else {
-//   show_edge.fill(true);
-// }
+/* In the GPU vertex buffers, the value for each vertex is duplicated to each of its vertex
+ * corners. So the edges on the GPU connect face corners rather than vertices. */
+static uint2 edge_from_corners(const IndexRange face, const int corner)
+{
+  const int corner_next = bke::mesh::face_corner_next(face, corner);
+  return uint2(corner, corner_next);
+}
 
 void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::IndexBuf *lines_loose)
 {
@@ -114,8 +109,7 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
                   if (used[edge]) {
                     continue;
                   }
-                  const int corner_next = bke::mesh::face_corner_next(face, corner);
-                  data[edge] = uint2(corner, corner_next);
+                  data[edge] = edge_from_corners(face, corner);
                   used[edge] = true;
                 }
               }
@@ -136,8 +130,7 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
                   if (map[edge] == -1) {
                     continue;
                   }
-                  const int corner_next = bke::mesh::face_corner_next(face, corner);
-                  data[map[edge]] = uint2(corner, corner_next);
+                  data[map[edge]] = edge_from_corners(face, corner);
                   map[edge] = -1;
                 }
               }
@@ -215,37 +208,6 @@ static void extract_lines_iter_face_bm(const MeshRenderData & /*mr*/,
       GPU_indexbuf_set_line_restart(elb, BM_elem_index_get(l_iter->e));
     }
   } while ((l_iter = l_iter->next) != l_first);
-}
-
-static void extract_lines_iter_face_mesh(const MeshRenderData &mr,
-                                         const int face_index,
-                                         void *tls_data)
-{
-  MeshExtract_LinesData *data = static_cast<MeshExtract_LinesData *>(tls_data);
-  GPUIndexBufBuilder *elb = &data->elb;
-
-  const IndexRange face = mr.faces[face_index];
-
-  /* Using face & loop iterator would complicate accessing the adjacent loop. */
-  if (data->test_visibility) {
-    for (const int corner : face) {
-      const int edge = mr.corner_edges[corner];
-      const int corner_next = bke::mesh::face_corner_next(face, corner);
-      if (is_edge_visible(data, edge)) {
-        GPU_indexbuf_set_line_verts(elb, edge, corner, corner_next);
-      }
-      else {
-        GPU_indexbuf_set_line_restart(elb, edge);
-      }
-    }
-  }
-  else {
-    for (const int corner : face) {
-      const int edge = mr.corner_edges[corner];
-      const int corner_next = bke::mesh::face_corner_next(face, corner);
-      GPU_indexbuf_set_line_verts(elb, edge, corner, corner_next);
-    }
-  }
 }
 
 static void extract_lines_iter_loose_edge_bm(const MeshRenderData &mr,
@@ -390,7 +352,6 @@ constexpr MeshExtract create_extractor_lines()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
   extractor.iter_face_bm = extract_lines_iter_face_bm;
-  extractor.iter_face_mesh = extract_lines_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_lines_iter_loose_edge_bm;
   extractor.init_subdiv = extract_lines_init_subdiv;
   extractor.iter_loose_geom_subdiv = extract_lines_loose_geom_subdiv;
@@ -451,7 +412,6 @@ constexpr MeshExtract create_extractor_lines_with_lines_loose()
   MeshExtract extractor = {nullptr};
   extractor.init = extract_lines_init;
   extractor.iter_face_bm = extract_lines_iter_face_bm;
-  extractor.iter_face_mesh = extract_lines_iter_face_mesh;
   extractor.iter_loose_edge_bm = extract_lines_iter_loose_edge_bm;
   extractor.task_reduce = extract_lines_task_reduce;
   extractor.finish = extract_lines_with_lines_loose_finish;
