@@ -245,6 +245,31 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
+static bool is_keyable_type(IDProperty *prop)
+{
+  if (ELEM(prop->type,
+           eIDPropertyType::IDP_BOOLEAN,
+           eIDPropertyType::IDP_INT,
+           eIDPropertyType::IDP_FLOAT,
+           eIDPropertyType::IDP_DOUBLE))
+  {
+    return true;
+  }
+
+  if (prop->type == eIDPropertyType::IDP_ARRAY) {
+    if (ELEM(prop->subtype,
+             eIDPropertyType::IDP_BOOLEAN,
+             eIDPropertyType::IDP_INT,
+             eIDPropertyType::IDP_FLOAT,
+             eIDPropertyType::IDP_DOUBLE))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
 {
   eRotationModes rotation_mode;
@@ -298,14 +323,7 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     if (properties) {
       LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
-        if (!ELEM(prop->type,
-                  eIDPropertyType::IDP_BOOLEAN,
-                  eIDPropertyType::IDP_INT,
-                  eIDPropertyType::IDP_FLOAT,
-                  eIDPropertyType::IDP_DOUBLE,
-                  eIDPropertyType::IDP_ARRAY))
-        {
-          /* Ignore unkeyable properties. */
+        if (!is_keyable_type(prop)) {
           continue;
         }
         std::string name = prop->name;
