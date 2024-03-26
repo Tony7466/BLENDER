@@ -1190,12 +1190,7 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
         return CTX_MODE_POSE;
       }
       if (object_mode & OB_MODE_SCULPT) {
-        if (ob->type == OB_MESH) {
-          return CTX_MODE_SCULPT;
-        }
-        if (ob->type == OB_GREASE_PENCIL) {
-          return CTX_MODE_SCULPT_GREASE_PENCIL;
-        }
+        return CTX_MODE_SCULPT;
       }
       if (object_mode & OB_MODE_WEIGHT_PAINT) {
         return CTX_MODE_PAINT_WEIGHT;
@@ -1216,7 +1211,12 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
         return CTX_MODE_EDIT_GPENCIL_LEGACY;
       }
       if (object_mode & OB_MODE_SCULPT_GPENCIL_LEGACY) {
-        return CTX_MODE_SCULPT_GPENCIL_LEGACY;
+        if (ob->type == OB_GPENCIL_LEGACY) {
+          return CTX_MODE_SCULPT_GPENCIL_LEGACY;
+        }
+        if (ob->type == OB_GREASE_PENCIL) {
+          return CTX_MODE_SCULPT_GREASE_PENCIL;
+        }
       }
       if (object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) {
         return CTX_MODE_WEIGHT_GPENCIL_LEGACY;

@@ -57,7 +57,7 @@
 #include "ED_transform.hh"
 #include "ED_undo.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "DRW_engine.hh"
 
@@ -1604,7 +1604,7 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
       ED_region_tag_redraw(region);
       break;
     case NC_GEOM:
-      if (wmn->data == ND_VERTEX_GROUP || wmn->data == ND_DATA) {
+      if (ELEM(wmn->data, ND_VERTEX_GROUP, ND_DATA)) {
         ED_region_tag_redraw(region);
       }
       break;

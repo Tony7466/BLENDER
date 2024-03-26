@@ -182,7 +182,7 @@ def generate(context, space_type, *, use_fallback_keys=True, use_reset=True):
                             attr = None
                     elif space_type == 'VIEW_3D':
                         attr = {
-                            'SCULPT': "sculpt_tool" if ob.type == 'MESH' else "gpencil_sculpt_tool",
+                            'SCULPT': "sculpt_tool",
                             'VERTEX_PAINT': "vertex_tool",
                             'WEIGHT_PAINT': "weight_tool",
                             'TEXTURE_PAINT': "image_tool",

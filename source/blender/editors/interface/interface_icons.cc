@@ -13,13 +13,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_batch.hh"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops_types.h"
@@ -1633,7 +1633,7 @@ static void icon_draw_cache_texture_flush_ex(GPUTexture *texture,
   const int img_binding = GPU_shader_get_sampler_binding(shader, "image");
   GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
-  GPUBatch *quad = GPU_batch_preset_quad();
+  blender::gpu::Batch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
   GPU_batch_draw_instance_range(quad, 0, texture_draw_calls->calls);
 
@@ -1825,7 +1825,7 @@ static void icon_draw_texture(float x,
 
   GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
-  GPUBatch *quad = GPU_batch_preset_quad();
+  blender::gpu::Batch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
   GPU_batch_draw(quad);
 
@@ -2119,15 +2119,7 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
 
     if ((space_type == SPACE_VIEW3D) && ob) {
       if (ob->mode & OB_MODE_SCULPT) {
-        if (ob->type == OB_MESH) {
-          paint_mode = PaintMode::Sculpt;
-        }
-        else if (ob->type == OB_GREASE_PENCIL) {
-          paint_mode = PaintMode::SculptGreasePencil;
-        }
-        else {
-          paint_mode = PaintMode::Invalid;
-        }
+        paint_mode = PaintMode::Sculpt;
       }
       else if (ob->mode & OB_MODE_VERTEX_PAINT) {
         paint_mode = PaintMode::Vertex;

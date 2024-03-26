@@ -1894,10 +1894,8 @@ bool BKE_object_has_mode_data(const Object *ob, eObjectMode object_mode)
     }
   }
   else if (object_mode & OB_MODE_SCULPT) {
-    if (ob->type == OB_MESH) {
-      if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
-        return true;
-      }
+    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
+      return true;
     }
   }
   else if (object_mode & OB_MODE_POSE) {

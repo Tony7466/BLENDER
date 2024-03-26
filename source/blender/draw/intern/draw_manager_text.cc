@@ -31,8 +31,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -458,7 +458,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
         n = 0;
         area = 0;
         zero_v3(vmid);
-        BMLoop *(*l)[3] = &em->looptris[tri_index];
+        const std::array<BMLoop *, 3> *l = &em->looptris[tri_index];
         for (int j = 0; j < f_corner_tris_len; j++) {
 
           if (use_coords) {
