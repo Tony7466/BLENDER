@@ -1881,7 +1881,7 @@ static int linehit_compare(const KnifeLineHit &lh1, const KnifeLineHit &lh2)
   if (lh1.v > lh2.v) {
     return false;
   }
-  return true;
+  return false;
 }
 
 /*
