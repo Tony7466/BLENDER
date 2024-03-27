@@ -567,12 +567,12 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     blender::Span<Layer *> layers = grease_pencil->layers_for_write();
     bool change = false;
 
-    for (Layer *layer : layers) {
-      std::string layer_name = layer->name();
-      if (!copy_buffer.contains(layer_name)) {
+    for (auto [layer_name, layer_buffer] : copy_buffer.items()) {
+      TreeNode *node = grease_pencil->find_node_by_name(layer_name);
+      if (!node || !node->is_layer()) {
         continue;
       }
-      LayerBufferItem layer_buffer = copy_buffer.lookup(layer_name);
+      Layer &layer = node->as_layer();
       /* Mix mode with existing data. */
       switch (merge_mode) {
         case KEYFRAME_PASTE_MERGE_MIX:
@@ -581,7 +581,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
 
         case KEYFRAME_PASTE_MERGE_OVER:
           /* remove all keys */
-          grease_pencil->remove_frames(*layer, layer->sorted_keys());
+          grease_pencil->remove_frames(layer, layer.sorted_keys());
           change = true;
           break;
 
@@ -603,12 +603,12 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
           /* Remove keys in range. */
           if (frame_min < frame_max) {
             Vector<int> frames_to_remove;
-            for (auto frame_number : layer->sorted_keys()) {
+            for (auto frame_number : layer.sorted_keys()) {
               if (frame_min < frame_number && frame_number < frame_max) {
                 frames_to_remove.append(frame_number);
               }
             }
-            grease_pencil->remove_frames(*layer, frames_to_remove);
+            grease_pencil->remove_frames(layer, frames_to_remove);
             change = true;
           }
           break;
@@ -616,10 +616,10 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       }
       for (auto drawing_buffer : layer_buffer.drawing_buffers) {
         int target_frame_number = drawing_buffer.frame_number + offset;
-        if (layer->frames().contains(target_frame_number)) {
-          layer->remove_frame(target_frame_number);
+        if (layer.frames().contains(target_frame_number)) {
+          layer.remove_frame(target_frame_number);
         }
-        layer->add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
+        layer.add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
         grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
         change = true;
       }
