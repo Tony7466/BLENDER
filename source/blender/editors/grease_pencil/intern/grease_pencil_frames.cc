@@ -438,13 +438,8 @@ struct DrawingBufferItem {
   bke::greasepencil::Drawing drawing;
 };
 
-struct BufferItem {
-  Vector<DrawingBufferItem> drawing_buffer_items;
-  std::string layer_name;
-};
-
 /* Globals for copy/paste data (like for other copy/paste buffers) */
-static Vector<BufferItem> copy_buffer = {};
+static Map<std::string, Vector<DrawingBufferItem>> copy_buffer;
 static int copy_buffer_first_frame = INT_MAX;
 static int copy_buffer_last_frame = INT_MIN;
 static int copy_buffer_cfra = 0.0;
@@ -477,12 +472,12 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
-    BufferItem buf = {{}, layer->name()};
+    Vector<DrawingBufferItem> buf;
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
 
-        buf.drawing_buffer_items.append({frame_number, Drawing(*drawing)});
+        buf.append({frame_number, Drawing(*drawing)});
 
         /* Check if this is the earliest frame encountered so far */
         if (frame_number < copy_buffer_first_frame) {
@@ -493,8 +488,9 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
         }
       }
     }
-    if (!buf.drawing_buffer_items.is_empty()) {
-      copy_buffer.append(buf);
+    if (!buf.is_empty()) {
+      BLI_assert(!copy_buffer.contains(layer->name()));
+      copy_buffer.add_new(layer->name(), buf);
     }
   }
 
@@ -555,63 +551,65 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     blender::Span<Layer *> layers = grease_pencil->layers_for_write();
     bool change = false;
-    for (const BufferItem buffer : copy_buffer) {
-      for (Layer *layer : layers) {
-        if (layer->name() != buffer.layer_name) {
-          continue;
-        }
-        /* Mix mode with existing data. */
-        switch (merge_mode) {
-          case KEYFRAME_PASTE_MERGE_MIX:
-            /* Do nothing. */
-            break;
 
-          case KEYFRAME_PASTE_MERGE_OVER:
-            /* remove all keys */
-            grease_pencil->remove_frames(*layer, layer->sorted_keys());
-            change = true;
-            break;
+    for (Layer *layer : layers) {
+      std::string layer_name = layer->name();
+      if (!copy_buffer.contains(layer_name)) {
+        continue;
+      }
+      Vector<DrawingBufferItem> buffer_items = copy_buffer.lookup(layer_name);
+      /* Mix mode with existing data. */
+      switch (merge_mode) {
+        case KEYFRAME_PASTE_MERGE_MIX:
+          /* Do nothing. */
+          break;
 
-          case KEYFRAME_PASTE_MERGE_OVER_RANGE:
-          case KEYFRAME_PASTE_MERGE_OVER_RANGE_ALL: {
-            int frame_min, frame_max;
-
-            if (merge_mode == KEYFRAME_PASTE_MERGE_OVER_RANGE) {
-              /* Entire range of this layer. */
-              frame_min = buffer.drawing_buffer_items.first().frame_number + offset;
-              frame_max = buffer.drawing_buffer_items.last().frame_number + offset;
-            }
-            else {
-              /* Entire range of all copied keys. */
-              frame_min = copy_buffer_first_frame + offset;
-              frame_max = copy_buffer_last_frame + offset;
-            }
-
-            /* Remove keys in range. */
-            if (frame_min < frame_max) {
-              Vector<int> frames_to_remove;
-              for (auto frame_number : layer->sorted_keys()) {
-                if (frame_min < frame_number && frame_number < frame_max) {
-                  frames_to_remove.append(frame_number);
-                }
-              }
-              grease_pencil->remove_frames(*layer, frames_to_remove);
-              change = true;
-            }
-            break;
-          }
-        }
-        for (auto drawing_buffer : buffer.drawing_buffer_items) {
-          int target_frame_number = drawing_buffer.frame_number + offset;
-          if (layer->frames().contains(target_frame_number)) {
-            layer->remove_frame(target_frame_number);
-          }
-          layer->add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
-          grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
+        case KEYFRAME_PASTE_MERGE_OVER:
+          /* remove all keys */
+          grease_pencil->remove_frames(*layer, layer->sorted_keys());
           change = true;
+          break;
+
+        case KEYFRAME_PASTE_MERGE_OVER_RANGE:
+        case KEYFRAME_PASTE_MERGE_OVER_RANGE_ALL: {
+          int frame_min, frame_max;
+
+          if (merge_mode == KEYFRAME_PASTE_MERGE_OVER_RANGE) {
+            /* Entire range of this layer. */
+            frame_min = buffer_items.first().frame_number + offset;
+            frame_max = buffer_items.last().frame_number + offset;
+          }
+          else {
+            /* Entire range of all copied keys. */
+            frame_min = copy_buffer_first_frame + offset;
+            frame_max = copy_buffer_last_frame + offset;
+          }
+
+          /* Remove keys in range. */
+          if (frame_min < frame_max) {
+            Vector<int> frames_to_remove;
+            for (auto frame_number : layer->sorted_keys()) {
+              if (frame_min < frame_number && frame_number < frame_max) {
+                frames_to_remove.append(frame_number);
+              }
+            }
+            grease_pencil->remove_frames(*layer, frames_to_remove);
+            change = true;
+          }
+          break;
         }
       }
+      for (auto drawing_buffer : buffer_items) {
+        int target_frame_number = drawing_buffer.frame_number + offset;
+        if (layer->frames().contains(target_frame_number)) {
+          layer->remove_frame(target_frame_number);
+        }
+        layer->add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
+        grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
+        change = true;
+      }
     }
+
     if (change) {
       DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
     }
