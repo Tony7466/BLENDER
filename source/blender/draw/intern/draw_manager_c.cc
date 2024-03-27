@@ -74,14 +74,14 @@
 #include "WM_api.hh"
 #include "wm_window.hh"
 
-#include "draw_color_management.h"
-#include "draw_manager.h"
+#include "draw_color_management.hh"
+#include "draw_manager_c.hh"
 #include "draw_manager_profiling.hh"
-#include "draw_manager_testing.h"
+#include "draw_manager_testing.hh"
 #include "draw_manager_text.hh"
 #include "draw_shader.hh"
 #include "draw_subdivision.hh"
-#include "draw_texture_pool.h"
+#include "draw_texture_pool.hh"
 
 /* only for callbacks */
 #include "draw_cache_impl.hh"
@@ -2880,7 +2880,7 @@ void DRW_draw_depth_object(
 
   switch (object->type) {
     case OB_MESH: {
-      GPUBatch *batch;
+      blender::gpu::Batch *batch;
 
       Mesh *mesh = static_cast<Mesh *>(object->data);
 
