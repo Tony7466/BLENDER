@@ -18,8 +18,9 @@
 
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_object.hh"
 #include "BKE_unit.hh"
@@ -30,8 +31,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -255,7 +256,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
   DRWTextStore *dt = DRW_text_cache_ensure();
   const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
   Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   float v1[3], v2[3], v3[3], vmid[3], fvec[3];
   char numstr[32]; /* Stores the measurement display text here */
   size_t numstr_len;
@@ -340,11 +341,11 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
         if (clip_segment_v3_plane_n(v1, v2, clip_planes, 4, v1_clip, v2_clip)) {
 
           mid_v3_v3v3(vmid, v1_clip, v2_clip);
-          mul_m4_v3(ob->object_to_world, vmid);
+          mul_m4_v3(ob->object_to_world().ptr(), vmid);
 
           if (do_global) {
-            mul_mat3_m4_v3(ob->object_to_world, v1);
-            mul_mat3_m4_v3(ob->object_to_world, v2);
+            mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
+            mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
           }
 
           if (unit->system) {
@@ -408,7 +409,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             float angle;
 
             mid_v3_v3v3(vmid, v1_clip, v2_clip);
-            mul_m4_v3(ob->object_to_world, vmid);
+            mul_m4_v3(ob->object_to_world().ptr(), vmid);
 
             if (use_coords) {
               copy_v3_v3(no_a, face_normals[BM_elem_index_get(l_a->f)]);
@@ -420,8 +421,8 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             }
 
             if (do_global) {
-              mul_mat3_m4_v3(ob->world_to_object, no_a);
-              mul_mat3_m4_v3(ob->world_to_object, no_b);
+              mul_mat3_m4_v3(ob->world_to_object().ptr(), no_a);
+              mul_mat3_m4_v3(ob->world_to_object().ptr(), no_b);
               normalize_v3(no_a);
               normalize_v3(no_b);
             }
@@ -457,18 +458,18 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
         n = 0;
         area = 0;
         zero_v3(vmid);
-        BMLoop *(*l)[3] = &em->looptris[tri_index];
+        const std::array<BMLoop *, 3> *ltri_array = &em->looptris[tri_index];
         for (int j = 0; j < f_corner_tris_len; j++) {
 
           if (use_coords) {
-            copy_v3_v3(v1, vert_coords[BM_elem_index_get(l[j][0]->v)]);
-            copy_v3_v3(v2, vert_coords[BM_elem_index_get(l[j][1]->v)]);
-            copy_v3_v3(v3, vert_coords[BM_elem_index_get(l[j][2]->v)]);
+            copy_v3_v3(v1, vert_coords[BM_elem_index_get(ltri_array[j][0]->v)]);
+            copy_v3_v3(v2, vert_coords[BM_elem_index_get(ltri_array[j][1]->v)]);
+            copy_v3_v3(v3, vert_coords[BM_elem_index_get(ltri_array[j][2]->v)]);
           }
           else {
-            copy_v3_v3(v1, l[j][0]->v->co);
-            copy_v3_v3(v2, l[j][1]->v->co);
-            copy_v3_v3(v3, l[j][2]->v->co);
+            copy_v3_v3(v1, ltri_array[j][0]->v->co);
+            copy_v3_v3(v2, ltri_array[j][1]->v->co);
+            copy_v3_v3(v3, ltri_array[j][2]->v->co);
           }
 
           add_v3_v3(vmid, v1);
@@ -477,16 +478,16 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
           n += 3;
 
           if (do_global) {
-            mul_mat3_m4_v3(ob->object_to_world, v1);
-            mul_mat3_m4_v3(ob->object_to_world, v2);
-            mul_mat3_m4_v3(ob->object_to_world, v3);
+            mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
+            mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
+            mul_mat3_m4_v3(ob->object_to_world().ptr(), v3);
           }
 
           area += area_tri_v3(v1, v2, v3);
         }
 
         mul_v3_fl(vmid, 1.0f / float(n));
-        mul_m4_v3(ob->object_to_world, vmid);
+        mul_m4_v3(ob->object_to_world().ptr(), vmid);
 
         if (unit->system) {
           numstr_len = BKE_unit_value_as_string(
@@ -557,9 +558,9 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             copy_v3_v3(v2_local, v2);
 
             if (do_global) {
-              mul_mat3_m4_v3(ob->object_to_world, v1);
-              mul_mat3_m4_v3(ob->object_to_world, v2);
-              mul_mat3_m4_v3(ob->object_to_world, v3);
+              mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
+              mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
+              mul_mat3_m4_v3(ob->object_to_world().ptr(), v3);
             }
 
             float angle = angle_v3v3v3(v1, v2, v3);
@@ -569,7 +570,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
                                        (is_rad) ? angle : RAD2DEGF(angle),
                                        (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
             interp_v3_v3v3(fvec, vmid, v2_local, 0.8f);
-            mul_m4_v3(ob->object_to_world, fvec);
+            mul_m4_v3(ob->object_to_world().ptr(), fvec);
             DRW_text_cache_add(dt, fvec, numstr, numstr_len, 0, 0, txt_flag, col);
           }
         }
@@ -600,7 +601,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             copy_v3_v3(v1, v->co);
           }
 
-          mul_m4_v3(ob->object_to_world, v1);
+          mul_m4_v3(ob->object_to_world().ptr(), v1);
 
           numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
           DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
@@ -629,7 +630,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
 
           if (clip_segment_v3_plane_n(v1, v2, clip_planes, 4, v1_clip, v2_clip)) {
             mid_v3_v3v3(vmid, v1_clip, v2_clip);
-            mul_m4_v3(ob->object_to_world, vmid);
+            mul_m4_v3(ob->object_to_world().ptr(), vmid);
 
             numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
             DRW_text_cache_add(
@@ -663,7 +664,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
             BM_face_calc_center_median(f, v1);
           }
 
-          mul_m4_v3(ob->object_to_world, v1);
+          mul_m4_v3(ob->object_to_world().ptr(), v1);
 
           numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
           DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);

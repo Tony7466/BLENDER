@@ -12,9 +12,7 @@
 #include "BLI_string.h"
 
 #include "DNA_ID.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_image_types.h"
-#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
@@ -22,7 +20,6 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
-#include "DNA_world_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -30,11 +27,10 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_screen.hh"
@@ -42,7 +38,6 @@
 #include "ED_image.hh"
 #include "ED_node.hh"
 #include "ED_node_preview.hh"
-#include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
@@ -1155,10 +1150,8 @@ static void node_widgets()
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_corner_pin);
 }
 
-static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
+static void node_id_remap(ID *old_id, ID *new_id, SpaceNode *snode)
 {
-  SpaceNode *snode = static_cast<SpaceNode *>(user_data);
-
   if (snode->id == old_id) {
     /* nasty DNA logic for SpaceNode:
      * ideally should be handled by editor code, but would be bad level call
@@ -1188,8 +1181,10 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
   }
   else if (GS(old_id->name) == ID_NT) {
 
-    if (&snode->geometry_nodes_tool_tree->id == old_id) {
-      snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+    if (snode->geometry_nodes_tool_tree) {
+      if (&snode->geometry_nodes_tool_tree->id == old_id) {
+        snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+      }
     }
 
     bNodeTreePath *path, *path_next;
@@ -1228,7 +1223,9 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
   }
 }
 
-static void node_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void node_id_remap(ScrArea * /*area*/,
+                          SpaceLink *slink,
+                          const blender::bke::id::IDRemapper &mappings)
 {
   /* Although we should be able to perform all the mappings in a single go this lead to issues when
    * running the python test cases. Somehow the nodetree/edittree weren't updated to the new
@@ -1241,7 +1238,9 @@ static void node_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
    * We could also move a remap address at a time to use the IDRemapper as that should get closer
    * to cleaner code. See {D13615} for more information about this topic.
    */
-  BKE_id_remapper_iter(mappings, node_id_remap_cb, slink);
+  mappings.iter([&](ID *old_id, ID *new_id) {
+    node_id_remap(old_id, new_id, reinterpret_cast<SpaceNode *>(slink));
+  });
 }
 
 static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)

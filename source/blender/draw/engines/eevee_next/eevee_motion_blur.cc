@@ -28,7 +28,9 @@ void MotionBlurModule::init()
   const Scene *scene = inst_.scene;
   const ViewLayer *view_layer = inst_.view_layer;
 
-  enabled_ = (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED) != 0;
+  /* Disable on viewport outside of animation playback,
+   * since it can get distracting while editing the scene. */
+  enabled_ = (scene->r.mode & R_MBLUR) != 0 && (inst_.is_image_render() || inst_.is_playback());
   if (enabled_) {
     enabled_ = (view_layer->layflag & SCE_LAY_MOTION_BLUR) != 0;
   }
@@ -46,8 +48,8 @@ void MotionBlurModule::init()
   initial_frame_ = scene->r.cfra;
   initial_subframe_ = scene->r.subframe;
   frame_time_ = initial_frame_ + initial_subframe_;
-  shutter_position_ = scene->eevee.motion_blur_position;
-  shutter_time_ = scene->eevee.motion_blur_shutter;
+  shutter_position_ = scene->r.motion_blur_position;
+  shutter_time_ = scene->r.motion_blur_shutter;
 
   data_.depth_scale = scene->eevee.motion_blur_depth_scale;
   motion_blur_fx_enabled_ = true; /* TODO(fclem): UI option. */
@@ -108,13 +110,13 @@ void MotionBlurModule::step()
 float MotionBlurModule::shutter_time_to_scene_time(float time)
 {
   switch (shutter_position_) {
-    case SCE_EEVEE_MB_START:
+    case SCE_MB_START:
       /* No offset. */
       break;
-    case SCE_EEVEE_MB_CENTER:
+    case SCE_MB_CENTER:
       time -= 0.5f;
       break;
-    case SCE_EEVEE_MB_END:
+    case SCE_MB_END:
       time -= 1.0;
       break;
     default:

@@ -15,13 +15,12 @@
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_context.hh"
-#include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -184,6 +183,17 @@ static bool collection_edit_in_active_scene_poll(bContext *C)
   return true;
 }
 
+static bool collection_new_poll(bContext *C)
+{
+  if (!ED_operator_region_outliner_active(C)) {
+    return false;
+  }
+  if (!collection_edit_in_active_scene_poll(C)) {
+    return false;
+  }
+  return true;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -252,7 +262,7 @@ static int collection_new_exec(bContext *C, wmOperator *op)
 
   BKE_collection_add(bmain, data.collection, nullptr);
 
-  DEG_id_tag_update(&data.collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&data.collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   outliner_cleanup_tree(space_outliner);
@@ -269,7 +279,7 @@ void OUTLINER_OT_collection_new(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = collection_new_exec;
-  ot->poll = collection_edit_in_active_scene_poll;
+  ot->poll = collection_new_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -418,7 +428,7 @@ static int collection_hierarchy_delete_exec(bContext *C, wmOperator *op)
 
   outliner_collection_delete(C, bmain, scene, op->reports, true);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_main_add_notifier(NC_SCENE | ND_LAYER, nullptr);
@@ -744,7 +754,7 @@ static int collection_link_exec(bContext *C, wmOperator *op)
 
   BLI_gset_free(data.collections_to_edit, nullptr);
 
-  DEG_id_tag_update(&active_collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&active_collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_main_add_notifier(NC_SCENE | ND_LAYER, nullptr);

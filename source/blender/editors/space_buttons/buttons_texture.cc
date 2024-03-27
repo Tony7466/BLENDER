@@ -15,7 +15,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_brush_types.h"
@@ -34,7 +34,6 @@
 #include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
@@ -53,7 +52,7 @@
 
 #include "../interface/interface_intern.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static ScrArea *find_area_properties(const bContext *C);
 static SpaceProperties *find_space_properties(const bContext *C);
@@ -519,8 +518,6 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void * /*a
                            nullptr,
                            0.0,
                            0.0,
-                           0.0,
-                           0.0,
                            "");
     UI_but_funcN_set(but, template_texture_select, MEM_dupallocN(user), nullptr);
 
@@ -688,8 +685,6 @@ void uiTemplateTextureShow(uiLayout *layout, const bContext *C, PointerRNA *ptr,
                      UI_UNIT_X,
                      UI_UNIT_Y,
                      nullptr,
-                     0.0,
-                     0.0,
                      0.0,
                      0.0,
                      TIP_("Show texture in texture tab"));

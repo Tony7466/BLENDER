@@ -27,13 +27,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
-#include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
@@ -557,7 +555,7 @@ static void ui_item_array(uiLayout *layout,
 
   /* create label */
   if (name[0] && show_text) {
-    uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+    uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
   }
 
   /* create buttons */
@@ -1054,7 +1052,7 @@ static uiBut *ui_item_with_label(uiLayout *layout,
       else {
         w_label = w_hint / 3;
       }
-      uiDefBut(block, UI_BTYPE_LABEL, 0, name, x, y, w_label, h, nullptr, 0.0, 0.0, 0, 0, "");
+      uiDefBut(block, UI_BTYPE_LABEL, 0, name, x, y, w_label, h, nullptr, 0.0, 0.0, "");
     }
   }
 
@@ -1096,15 +1094,13 @@ static uiBut *ui_item_with_label(uiLayout *layout,
                          nullptr);
   }
   else if ((flag & UI_ITEM_R_FULL_EVENT) && is_keymapitem_ptr) {
-    char buf[128];
-
-    WM_keymap_item_to_string(
-        static_cast<const wmKeyMapItem *>(ptr->data), false, buf, sizeof(buf));
+    std::string kmi_str =
+        WM_keymap_item_to_string(static_cast<const wmKeyMapItem *>(ptr->data), false).value_or("");
 
     but = uiDefButR_prop(block,
                          UI_BTYPE_HOTKEY_EVENT,
                          0,
-                         buf,
+                         kmi_str.c_str(),
                          x,
                          y,
                          prop_but_width,
@@ -1116,13 +1112,14 @@ static uiBut *ui_item_with_label(uiLayout *layout,
                          0,
                          nullptr);
     UI_but_func_set(but, ui_keymap_but_cb, but, nullptr);
-    if (flag & UI_ITEM_R_IMMEDIATE) {
-      UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
-    }
   }
   else {
     const char *str = (type == PROP_ENUM && !(flag & UI_ITEM_R_ICON_ONLY)) ? nullptr : "";
     but = uiDefAutoButR(block, ptr, prop, index, str, icon, x, y, prop_but_width, h);
+  }
+
+  if (flag & UI_ITEM_R_IMMEDIATE) {
+    UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
   }
 
 #ifdef UI_PROP_DECORATE
@@ -1207,8 +1204,7 @@ static void ui_item_disabled(uiLayout *layout, const char *name)
 
   const int w = ui_text_icon_width(layout, name, 0, false);
 
-  uiBut *but = uiDefBut(
-      block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+  uiBut *but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
   UI_but_disable(but, "");
 }
 
@@ -1298,8 +1294,7 @@ static uiBut *uiItemFullO_ptr_ex(uiLayout *layout,
       opptr->data = properties;
     }
     else {
-      const IDPropertyTemplate val = {0};
-      opptr->data = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
+      opptr->data = blender::bke::idprop::create_group("wmOperatorProperties").release();
     }
     if (r_opptr) {
       *r_opptr = *opptr;
@@ -1517,8 +1512,6 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                  nullptr,
                  0,
                  0,
-                 0,
-                 0,
                  nullptr);
   }
   else {
@@ -1609,8 +1602,6 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                          nullptr,
                          0.0,
                          0.0,
-                         0,
-                         0,
                          "");
           uiItemS(target);
         }
@@ -2303,8 +2294,6 @@ void uiItemFullR(uiLayout *layout,
                          nullptr,
                          0.0,
                          0.0,
-                         0,
-                         0,
                          "");
           but->drawflag |= UI_BUT_TEXT_RIGHT;
           but->drawflag &= ~UI_BUT_TEXT_LEFT;
@@ -2315,7 +2304,7 @@ void uiItemFullR(uiLayout *layout,
       else {
         if (name) {
           but = uiDefBut(
-              block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+              block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
           but->drawflag |= UI_BUT_TEXT_RIGHT;
           but->drawflag &= ~UI_BUT_TEXT_LEFT;
 
@@ -3136,8 +3125,6 @@ void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop,
                               nullptr,
                               0.0,
                               0.0,
-                              0.0,
-                              0.0,
                               "");
     but->flag |= UI_BUT_DISABLED;
     return;
@@ -3159,13 +3146,12 @@ void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop,
                                                          nullptr,
                                                          0.0,
                                                          0.0,
-                                                         0.0,
-                                                         0.0,
                                                          TIP_("Animate property"));
 
     UI_but_func_set(but, ui_but_anim_decorate_cb, but, nullptr);
     but->flag |= UI_BUT_UNDO | UI_BUT_DRAG_LOCK;
-    /* Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects. */
+    /* Decorators have their own RNA data, using the normal #uiBut RNA members has many
+     * side-effects. */
     but->decorated_rnapoin = *ptr;
     but->decorated_rnaprop = prop;
     /* ui_def_but_rna() sets non-array buttons to have a RNA index of 0. */
@@ -3283,29 +3269,15 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
       layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
   uiBut *but;
   if (icon && name[0]) {
-    but = uiDefIconTextBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           icon,
-                           name,
-                           0,
-                           0,
-                           w,
-                           UI_UNIT_Y,
-                           nullptr,
-                           0.0,
-                           0.0,
-                           0,
-                           0,
-                           nullptr);
+    but = uiDefIconTextBut(
+        block, UI_BTYPE_LABEL, 0, icon, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, nullptr);
   }
   else if (icon) {
     but = uiDefIconBut(
-        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
+        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, nullptr);
   }
   else {
-    but = uiDefBut(
-        block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
+    but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, nullptr);
   }
 
   /* to compensate for string size padding in ui_text_icon_width,
@@ -3398,75 +3370,50 @@ void uiItemLDrag(uiLayout *layout, PointerRNA *ptr, const char *name, int icon)
   }
 }
 
-void uiItemV(uiLayout *layout, const char *name, int icon, int argval)
-{
-  /* label */
-  uiBlock *block = layout->root->block;
-  int *retvalue = (block->handle) ? &block->handle->retvalue : nullptr;
-
-  UI_block_layout_set_current(block, layout);
-
-  if (!name) {
-    name = "";
-  }
-  if (layout->root->type == UI_LAYOUT_MENU && !icon) {
-    icon = ICON_BLANK1;
-  }
-
-  const int w = ui_text_icon_width(layout, name, icon, false);
-
-  if (icon && name[0]) {
-    uiDefIconTextButI(block,
-                      UI_BTYPE_BUT,
-                      argval,
-                      icon,
-                      name,
-                      0,
-                      0,
-                      w,
-                      UI_UNIT_Y,
-                      retvalue,
-                      0.0,
-                      0.0,
-                      0,
-                      -1,
-                      "");
-  }
-  else if (icon) {
-    uiDefIconButI(
-        block, UI_BTYPE_BUT, argval, icon, 0, 0, w, UI_UNIT_Y, retvalue, 0.0, 0.0, 0, -1, "");
-  }
-  else {
-    uiDefButI(
-        block, UI_BTYPE_BUT, argval, name, 0, 0, w, UI_UNIT_Y, retvalue, 0.0, 0.0, 0, -1, "");
-  }
-}
-
-void uiItemS_ex(uiLayout *layout, float factor)
+void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
 {
   uiBlock *block = layout->root->block;
   const bool is_menu = ui_block_is_menu(block);
   if (is_menu && !UI_block_can_add_separator(block)) {
     return;
   }
+
   int space = (is_menu) ? int(0.35f * UI_UNIT_X) : int(0.3f * UI_UNIT_X);
   space *= factor;
 
+  eButType but_type;
+
+  switch (type) {
+    case LayoutSeparatorType::Line:
+      but_type = UI_BTYPE_SEPR_LINE;
+      break;
+    case LayoutSeparatorType::Auto:
+      but_type = is_menu ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR;
+      break;
+    default:
+      but_type = UI_BTYPE_SEPR;
+  }
+
+  bool is_vertical_bar = (layout->w == 0) && but_type == UI_BTYPE_SEPR_LINE;
+
   UI_block_layout_set_current(block, layout);
-  uiDefBut(block,
-           (is_menu) ? UI_BTYPE_SEPR_LINE : UI_BTYPE_SEPR,
-           0,
-           "",
-           0,
-           0,
-           space,
-           space,
-           nullptr,
-           0.0,
-           0.0,
-           0,
-           0,
-           "");
+  uiBut *but = uiDefBut(block,
+                        but_type,
+                        0,
+                        "",
+                        0,
+                        0,
+                        space,
+                        is_vertical_bar ? UI_UNIT_Y : space,
+                        nullptr,
+                        0.0,
+                        0.0,
+                        "");
+
+  if (but_type == UI_BTYPE_SEPR_LINE) {
+    uiButSeparatorLine *but_line = static_cast<uiButSeparatorLine *>(but);
+    but_line->is_vertical = is_vertical_bar;
+  }
 }
 
 void uiItemS(uiLayout *layout)
@@ -3505,8 +3452,6 @@ void uiItemProgressIndicator(uiLayout *layout,
                         nullptr,
                         0.0,
                         0.0,
-                        0,
-                        0,
                         "");
 
   if (has_text && (progress_type == UI_BUT_PROGRESS_TYPE_RING)) {
@@ -3546,8 +3491,6 @@ void uiItemSpacer(uiLayout *layout)
            nullptr,
            0.0,
            0.0,
-           0,
-           0,
            "");
 }
 
@@ -3667,11 +3610,10 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
 
   /* add hotkey here, lower UI code can't detect it */
   if ((layout->root->block->flag & UI_BLOCK_LOOP) && (ot->prop && ot->invoke)) {
-    char keybuf[128];
-    if (WM_key_event_operator_string(
-            C, ot->idname, layout->root->opcontext, nullptr, false, keybuf, sizeof(keybuf)))
+    if (std::optional<std::string> shortcut_str = WM_key_event_operator_string(
+            C, ot->idname, layout->root->opcontext, nullptr, false))
     {
-      ui_but_add_shortcut(but, keybuf, false);
+      ui_but_add_shortcut(but, shortcut_str->c_str(), false);
     }
   }
 }
@@ -4998,21 +4940,8 @@ PanelLayout uiLayoutPanelProp(const bContext *C,
     uiBlock *block = uiLayoutGetBlock(row);
     const int icon = is_open ? ICON_DOWNARROW_HLT : ICON_RIGHTARROW;
     const int width = ui_text_icon_width(layout, "", icon, false);
-    uiDefIconTextBut(block,
-                     UI_BTYPE_LABEL,
-                     0,
-                     icon,
-                     "",
-                     0,
-                     0,
-                     width,
-                     UI_UNIT_Y,
-                     nullptr,
-                     0.0f,
-                     0.0f,
-                     0.0f,
-                     0.0f,
-                     "");
+    uiDefIconTextBut(
+        block, UI_BTYPE_LABEL, 0, icon, "", 0, 0, width, UI_UNIT_Y, nullptr, 0.0f, 0.0f, "");
 
     panel_layout.header = row;
   }
@@ -5152,8 +5081,7 @@ static uiLayoutItemBx *ui_layout_box(uiLayout *layout, int type)
 
   UI_block_layout_set_current(layout->root->block, &box->litem);
 
-  box->roundbox = uiDefBut(
-      layout->root->block, type, 0, "", 0, 0, 0, 0, nullptr, 0.0, 0.0, 0, 0, "");
+  box->roundbox = uiDefBut(layout->root->block, type, 0, "", 0, 0, 0, 0, nullptr, 0.0, 0.0, "");
 
   return box;
 }
@@ -5835,20 +5763,8 @@ static void ui_layout_add_padding_button(uiLayoutRoot *root)
     uiLayout *prev_layout = block->curlayout;
 
     block->curlayout = root->layout;
-    uiDefBut(block,
-             UI_BTYPE_SEPR,
-             0,
-             "",
-             0,
-             0,
-             root->padding,
-             root->padding,
-             nullptr,
-             0.0,
-             0.0,
-             0,
-             0,
-             "");
+    uiDefBut(
+        block, UI_BTYPE_SEPR, 0, "", 0, 0, root->padding, root->padding, nullptr, 0.0, 0.0, "");
     block->curlayout = prev_layout;
   }
 }
@@ -6059,12 +5975,6 @@ void UI_block_layout_resolve(uiBlock *block, int *r_x, int *r_y)
   }
 
   BLI_listbase_clear(&block->layouts);
-
-  /* XXX silly trick, `interface_templates.cc` doesn't get linked
-   * because it's not used by other files in this module? */
-  {
-    UI_template_fix_linking();
-  }
 }
 
 bool UI_block_layout_needs_resolving(const uiBlock *block)
@@ -6225,11 +6135,19 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
+  uiBlock *block = uiLayoutGetBlock(layout);
   Panel *panel = BKE_panel_new(pt);
   panel->flag = PNL_POPOVER;
 
   if (pt->listener) {
-    ui_block_add_dynamic_listener(uiLayoutGetBlock(layout), pt->listener);
+    ui_block_add_dynamic_listener(block, pt->listener);
+  }
+
+  /* This check may be paranoid, this function might run outside the context of a popup or can run
+   * in popovers that are not supposed to support refreshing, see #ui_popover_create_block. */
+  if (block->handle && block->handle->region) {
+    /* Allow popovers to contain collapsible sections, see #uiItemPopoverPanel. */
+    UI_popup_dummy_panel_set(block->handle->region, block);
   }
 
   uiLayout *last_item = static_cast<uiLayout *>(layout->items.last);

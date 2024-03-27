@@ -2,6 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# Compilers
+#
+# Version used for precompiled library builds used for official releases.
+# For anyone making their own library build, matching these exactly is not
+# needed but it can be a useful reference.
+
+set(RELEASE_GCC_VERSION 11.2.*)
+set(RELEASE_CUDA_VERSION 12.3.*)
+set(RELEASE_HIP_VERSION 5.7.*)
+
+# Libraries
+#
 # CPE's are used to identify dependencies, for more information on what they
 # are please see https://nvd.nist.gov/products/cpe
 #
@@ -207,9 +219,9 @@ set(TIFF_HOMEPAGE http://www.simplesystems.org/libtiff/)
 # Recent commit from 1.13.5.0 under development, which includes string table
 # changes that make the Cycles OptiX implementation work. Official 1.12 OSL
 # releases should also build but without OptiX support.
-set(OSL_VERSION 3d52f3906b12d38ad0f4b991a8f9ea678171bd28)
-set(OSL_URI https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/${OSL_VERSION}.tar.gz)
-set(OSL_HASH dfe5d69f48930badc1ad39a4e11e2e98)
+set(OSL_VERSION 1.13.7.0)
+set(OSL_URI https://github.com/AcademySoftwareFoundation/OpenShadingLanguage/archive/refs/tags/v${OSL_VERSION}.tar.gz)
+set(OSL_HASH 769ae444a7df0e6561b3e745fd2eb50d)
 set(OSL_HASH_TYPE MD5)
 set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 
@@ -493,7 +505,7 @@ set(SSL_HOMEPAGE https://www.openssl.org)
 set(SQLITE_VERSION 3.45.1)
 set(SQLLITE_LONG_VERSION 3450100)
 set(SQLITE_URI https://www.sqlite.org/2024/sqlite-autoconf-${SQLLITE_LONG_VERSION}.tar.gz)
-set(SQLITE_HASH 036575929b174c1b829769255491ba2b32bda9ee)
+set(SQLITE_HASH 650305e234add12fc1e6bef0b365d86a087b3d38)
 set(SQLITE_HASH_TYPE SHA1)
 set(SQLITE_FILE sqlite-autoconf-${SQLLITE_LONG_VERSION}.tar.gz)
 set(SQLITE_CPE "cpe:2.3:a:sqlite:sqlite:${SQLITE_VERSION}:*:*:*:*:*:*:*")
@@ -517,9 +529,9 @@ set(MATERIALX_HASH fad8f4e19305fb2ee920cbff638f3560)
 set(MATERIALX_HASH_TYPE MD5)
 set(MATERIALX_FILE materialx-v${MATERIALX_VERSION}.tar.gz)
 
-set(OIDN_VERSION 2.2.0-rc)
+set(OIDN_VERSION 2.2.2)
 set(OIDN_URI https://github.com/OpenImageDenoise/oidn/releases/download/v${OIDN_VERSION}/oidn-${OIDN_VERSION}.src.tar.gz)
-set(OIDN_HASH 896d43b65c3fe71144914a1d6b8a5bfb)
+set(OIDN_HASH 40c04b0371334ab863230e99a587fd59)
 set(OIDN_HASH_TYPE MD5)
 set(OIDN_FILE oidn-${OIDN_VERSION}.src.tar.gz)
 
@@ -627,10 +639,10 @@ set(BROTLI_HASH_TYPE SHA256)
 set(BROTLI_FILE brotli-v${BROTLI_VERSION}.tar.gz)
 set(BROTLI_CPE "cpe:2.3:a:google:brotli:${BROTLI_VERSION}:*:*:*:*:*:*:*")
 
-set(OPENPGL_VERSION v0.5.0)
-set(OPENPGL_SHORT_VERSION 0.5.0)
+set(OPENPGL_VERSION v0.6.0)
+set(OPENPGL_SHORT_VERSION 0.6.0)
 set(OPENPGL_URI https://github.com/OpenPathGuidingLibrary/openpgl/archive/refs/tags/${OPENPGL_VERSION}.tar.gz)
-set(OPENPGL_HASH 1ec806d434d45e43e098f82ee9be0cb74928343898c57490b34ff80584e9805a)
+set(OPENPGL_HASH 4192a4096ee3e3d31878cd013f8de23418c8037c576537551f946c4811931c5e)
 set(OPENPGL_HASH_TYPE SHA256)
 set(OPENPGL_FILE openpgl-${OPENPGL_VERSION}.tar.gz)
 
@@ -710,9 +722,9 @@ set(UNIFIED_RUNTIME_FILE unified-runtime-${UNIFIED_RUNTIME_VERSION}.tar.gz)
 # compiler, the versions used are taken from the following location
 # https://github.com/intel/intel-graphics-compiler/releases
 
-set(IGC_VERSION 1.0.14828.26)
+set(IGC_VERSION 1.0.15468.25)
 set(IGC_URI https://github.com/intel/intel-graphics-compiler/archive/refs/tags/igc-${IGC_VERSION}.tar.gz)
-set(IGC_HASH acad90b3e149cf87875e6b9100152f9e7644d6cc79ed54eaf52698abdb42076c)
+set(IGC_HASH c2c36af98ead4f4f6975633eaa53f45b84cb96ce48d9bfa879bebfaf12367b79)
 set(IGC_HASH_TYPE SHA256)
 set(IGC_FILE igc-${IGC_VERSION}.tar.gz)
 
@@ -756,9 +768,9 @@ set(IGC_SPIRV_TOOLS_HASH 327b2dba4515646eee28c1a5fe1332891e81c8b6ff289363f52877f
 set(IGC_SPIRV_TOOLS_HASH_TYPE SHA256)
 set(IGC_SPIRV_TOOLS_FILE SPIR-V-Tools-${IGC_SPIRV_TOOLS_VERSION}.tar.gz)
 
-set(IGC_SPIRV_TRANSLATOR_VERSION 23f398bf369093b1fd67459db8071ffcc6b92658)
+set(IGC_SPIRV_TRANSLATOR_VERSION 7e332d0acc8ee57462d9fbedefaf411fc193fdd0)
 set(IGC_SPIRV_TRANSLATOR_URI https://github.com/KhronosGroup/SPIRV-LLVM-Translator/archive/${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
-set(IGC_SPIRV_TRANSLATOR_HASH a96447656ff6b40d9ad286524e22f4e7319d439c54136026fe72550d1162cd35)
+set(IGC_SPIRV_TRANSLATOR_HASH 29aadf5fd4e64ff1d4f86446eacd6a7439efeb280478988c36314c4441072c36)
 set(IGC_SPIRV_TRANSLATOR_HASH_TYPE SHA256)
 set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
 
@@ -766,15 +778,15 @@ set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.
 ### Intel Graphics Compiler DEPS END ###
 ########################################
 
-set(GMMLIB_VERSION intel-gmmlib-22.3.0)
+set(GMMLIB_VERSION intel-gmmlib-22.3.11)
 set(GMMLIB_URI https://github.com/intel/gmmlib/archive/refs/tags/${GMMLIB_VERSION}.tar.gz)
-set(GMMLIB_HASH c1f33e1519edfc527127baeb0436b783430dfd256c643130169a3a71dc86aff9)
+set(GMMLIB_HASH b97f4e501c1e902a559cbd6597c008a700f4ab8c495680bf1968db99c6547afe)
 set(GMMLIB_HASH_TYPE SHA256)
 set(GMMLIB_FILE ${GMMLIB_VERSION}.tar.gz)
 
-set(OCLOC_VERSION 23.30.26918.47)
+set(OCLOC_VERSION 23.43.27642.40)
 set(OCLOC_URI https://github.com/intel/compute-runtime/archive/refs/tags/${OCLOC_VERSION}.tar.gz)
-set(OCLOC_HASH 9890f29cbf27ce7eb845f3f7711fe8f3b0c4ee2164b77871fe51102548553f8f)
+set(OCLOC_HASH 67d0c6f3103ff12408a628e14f7170da3e0220313e10799693d576cea7821fe2)
 set(OCLOC_HASH_TYPE SHA256)
 set(OCLOC_FILE ocloc-${OCLOC_VERSION}.tar.gz)
 

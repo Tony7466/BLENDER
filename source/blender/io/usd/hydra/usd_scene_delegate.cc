@@ -9,15 +9,17 @@
 #include "BLI_string.h"
 
 #include "BKE_appdir.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "usd.h"
 #include "usd.hh"
+#include "usd_private.hh"
+
+using namespace blender::io::usd;
 
 namespace blender::io::hydra {
 

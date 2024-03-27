@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -24,7 +25,6 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
@@ -37,39 +37,33 @@
 #include "DNA_vfont_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
-#include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
-#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
-#include "BKE_armature.hh"
-#include "BKE_bpath.h"
-#include "BKE_cachefile.h"
-#include "BKE_collection.h"
+#include "BKE_bpath.hh"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_effect.h"
-#include "BKE_fcurve.h"
-#include "BKE_freestyle.h"
-#include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_fcurve.hh"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -77,35 +71,29 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
-#include "BKE_linestyle.h"
 #include "BKE_main.hh"
-#include "BKE_mask.h"
-#include "BKE_modifier.hh"
-#include "BKE_node.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pointcache.h"
 #include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
+#include "BKE_scene_runtime.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_unit.hh"
 #include "BKE_workspace.h"
-#include "BKE_world.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
-#include "DEG_depsgraph_writeback_sync.hh"
 
 #include "RE_engine.h"
 
 #include "RNA_access.hh"
 
-#include "SEQ_edit.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_sequencer.hh"
 
@@ -119,6 +107,8 @@
 #include "DRW_engine.hh"
 
 #include "bmesh.hh"
+
+using blender::bke::SceneRuntime;
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
 
@@ -249,6 +239,8 @@ static void scene_init_data(ID *id)
   scene->master_collection = BKE_collection_master_add(scene);
 
   BKE_view_layer_add(scene, DATA_("ViewLayer"), nullptr, VIEWLAYER_ADD_NEW);
+
+  scene->runtime = MEM_new<SceneRuntime>(__func__);
 }
 
 static void scene_copy_markers(Scene *scene_dst, const Scene *scene_src, const int flag)
@@ -261,7 +253,11 @@ static void scene_copy_markers(Scene *scene_dst, const Scene *scene_src, const i
   }
 }
 
-static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void scene_copy_data(Main *bmain,
+                            std::optional<Library *> owner_library,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   Scene *scene_dst = (Scene *)id_dst;
   const Scene *scene_src = (const Scene *)id_src;
@@ -276,10 +272,11 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   /* Master Collection */
   if (scene_src->master_collection) {
-    BKE_id_copy_ex(bmain,
-                   (ID *)scene_src->master_collection,
-                   (ID **)&scene_dst->master_collection,
-                   flag_private_id_data);
+    BKE_id_copy_in_lib(bmain,
+                       owner_library,
+                       reinterpret_cast<ID *>(scene_src->master_collection),
+                       reinterpret_cast<ID **>(&scene_dst->master_collection),
+                       flag_private_id_data);
     scene_dst->master_collection->owner_id = &scene_dst->id;
   }
 
@@ -303,8 +300,11 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
   BKE_keyingsets_copy(&(scene_dst->keyingsets), &(scene_src->keyingsets));
 
   if (scene_src->nodetree) {
-    BKE_id_copy_ex(
-        bmain, (ID *)scene_src->nodetree, (ID **)&scene_dst->nodetree, flag_private_id_data);
+    BKE_id_copy_in_lib(bmain,
+                       owner_library,
+                       (ID *)scene_src->nodetree,
+                       (ID **)&scene_dst->nodetree,
+                       flag_private_id_data);
     BKE_libblock_relink_ex(bmain,
                            scene_dst->nodetree,
                            (void *)(&scene_src->id),
@@ -332,14 +332,6 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   /* tool settings */
   scene_dst->toolsettings = BKE_toolsettings_copy(scene_dst->toolsettings, flag_subdata);
-
-  /* make a private copy of the avicodecdata */
-  if (scene_src->r.avicodecdata) {
-    scene_dst->r.avicodecdata = static_cast<AviCodecData *>(
-        MEM_dupallocN(scene_src->r.avicodecdata));
-    scene_dst->r.avicodecdata->lpFormat = MEM_dupallocN(scene_dst->r.avicodecdata->lpFormat);
-    scene_dst->r.avicodecdata->lpParms = MEM_dupallocN(scene_dst->r.avicodecdata->lpParms);
-  }
 
   if (scene_src->display.shading.prop) {
     scene_dst->display.shading.prop = IDP_CopyProperty(scene_src->display.shading.prop);
@@ -369,6 +361,8 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
   }
 
   BKE_scene_copy_data_eevee(scene_dst, scene_src);
+
+  scene_dst->runtime = MEM_new<SceneRuntime>(__func__);
 }
 
 static void scene_free_markers(Scene *scene, bool do_id_user)
@@ -407,12 +401,6 @@ static void scene_free_data(ID *id)
     scene->rigidbody_world->constraints = nullptr;
     scene->rigidbody_world->group = nullptr;
     BKE_rigidbody_free_world(scene);
-  }
-
-  if (scene->r.avicodecdata) {
-    free_avicodecdata(scene->r.avicodecdata);
-    MEM_freeN(scene->r.avicodecdata);
-    scene->r.avicodecdata = nullptr;
   }
 
   scene_free_markers(scene, do_id_user);
@@ -464,6 +452,8 @@ static void scene_free_data(ID *id)
 
   /* These are freed on `do_versions`. */
   BLI_assert(scene->layer_properties == nullptr);
+
+  MEM_delete(scene->runtime);
 }
 
 static void scene_foreach_rigidbodyworldSceneLooper(RigidBodyWorld * /*rbw*/,
@@ -839,8 +829,9 @@ static bool seq_foreach_member_id_cb(Sequence *seq, void *user_data)
   FOREACHID_PROCESS_IDSUPER(data, seq->clip, IDWALK_CB_USER);
   FOREACHID_PROCESS_IDSUPER(data, seq->mask, IDWALK_CB_USER);
   FOREACHID_PROCESS_IDSUPER(data, seq->sound, IDWALK_CB_USER);
-  IDP_foreach_property(
-      seq->prop, IDP_TYPE_FILTER_ID, BKE_lib_query_idpropertiesForeachIDLink_callback, data);
+  IDP_foreach_property(seq->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+    BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+  });
   LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     FOREACHID_PROCESS_IDSUPER(data, smd->mask_id, IDWALK_CB_USER);
   }
@@ -892,12 +883,12 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->mat_override, IDWALK_CB_USER);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->world_override, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data,
-        IDP_foreach_property(view_layer->id_properties,
-                             IDP_TYPE_FILTER_ID,
-                             BKE_lib_query_idpropertiesForeachIDLink_callback,
-                             data));
+        IDP_foreach_property(view_layer->id_properties, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+          BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+        }));
 
     BKE_view_layer_synced_ensure(scene, view_layer);
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
@@ -923,11 +914,9 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
   LISTBASE_FOREACH (TimeMarker *, marker, &scene->markers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, marker->camera, IDWALK_CB_NOP);
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-        data,
-        IDP_foreach_property(marker->prop,
-                             IDP_TYPE_FILTER_ID,
-                             BKE_lib_query_idpropertiesForeachIDLink_callback,
-                             data));
+        data, IDP_foreach_property(marker->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+          BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+        }));
   }
 
   ToolSettings *toolsett = scene->toolsettings;
@@ -1125,16 +1114,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     }
   }
 
-  if (sce->r.avicodecdata) {
-    BLO_write_struct(writer, AviCodecData, sce->r.avicodecdata);
-    if (sce->r.avicodecdata->lpFormat) {
-      BLO_write_raw(writer, size_t(sce->r.avicodecdata->cbFormat), sce->r.avicodecdata->lpFormat);
-    }
-    if (sce->r.avicodecdata->lpParms) {
-      BLO_write_raw(writer, size_t(sce->r.avicodecdata->cbParms), sce->r.avicodecdata->lpParms);
-    }
-  }
-
   /* writing dynamic list of TimeMarkers to the blend file */
   LISTBASE_FOREACH (TimeMarker *, marker, &sce->markers) {
     BLO_write_struct(writer, TimeMarker, marker);
@@ -1258,6 +1237,8 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* set users to one by default, not in lib-link, this will increase it for compo nodes */
   id_us_ensure_real(&sce->id);
+
+  sce->runtime = MEM_new<SceneRuntime>(__func__);
 
   BLO_read_list(reader, &(sce->base));
 
@@ -1443,11 +1424,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   sce->r.mode &= ~R_NO_CAMERA_SWITCH;
 #endif
 
-  BLO_read_data_address(reader, &sce->r.avicodecdata);
-  if (sce->r.avicodecdata) {
-    BLO_read_data_address(reader, &sce->r.avicodecdata->lpFormat);
-    BLO_read_data_address(reader, &sce->r.avicodecdata->lpParms);
-  }
   BLO_read_list(reader, &(sce->markers));
   LISTBASE_FOREACH (TimeMarker *, marker, &sce->markers) {
     BLO_read_data_address(reader, &marker->prop);
@@ -1604,6 +1580,10 @@ constexpr IDTypeInfo get_type_info()
   IDTypeInfo info{};
   info.id_code = ID_SCE;
   info.id_filter = FILTER_ID_SCE;
+  info.dependencies_id_types = (FILTER_ID_OB | FILTER_ID_WO | FILTER_ID_SCE | FILTER_ID_MC |
+                                FILTER_ID_MA | FILTER_ID_GR | FILTER_ID_TXT | FILTER_ID_LS |
+                                FILTER_ID_MSK | FILTER_ID_SO | FILTER_ID_GD_LEGACY | FILTER_ID_BR |
+                                FILTER_ID_PAL | FILTER_ID_IM | FILTER_ID_NT);
   info.main_listbase_index = INDEX_ID_SCE;
   info.struct_size = sizeof(Scene);
   info.name = "Scene";
@@ -1638,22 +1618,6 @@ const char *RE_engine_id_BLENDER_EEVEE = "BLENDER_EEVEE";
 const char *RE_engine_id_BLENDER_EEVEE_NEXT = "BLENDER_EEVEE_NEXT";
 const char *RE_engine_id_BLENDER_WORKBENCH = "BLENDER_WORKBENCH";
 const char *RE_engine_id_CYCLES = "CYCLES";
-
-void free_avicodecdata(AviCodecData *acd)
-{
-  if (acd) {
-    if (acd->lpFormat) {
-      MEM_freeN(acd->lpFormat);
-      acd->lpFormat = nullptr;
-      acd->cbFormat = 0;
-    }
-    if (acd->lpParms) {
-      MEM_freeN(acd->lpParms);
-      acd->lpParms = nullptr;
-      acd->cbParms = 0;
-    }
-  }
-}
 
 static void remove_sequencer_fcurves(Scene *sce)
 {
@@ -1866,13 +1830,6 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
     /* tool settings */
     BKE_toolsettings_free(sce_copy->toolsettings);
     sce_copy->toolsettings = BKE_toolsettings_copy(sce->toolsettings, 0);
-
-    /* make a private copy of the avicodecdata */
-    if (sce->r.avicodecdata) {
-      sce_copy->r.avicodecdata = static_cast<AviCodecData *>(MEM_dupallocN(sce->r.avicodecdata));
-      sce_copy->r.avicodecdata->lpFormat = MEM_dupallocN(sce_copy->r.avicodecdata->lpFormat);
-      sce_copy->r.avicodecdata->lpParms = MEM_dupallocN(sce_copy->r.avicodecdata->lpParms);
-    }
 
     BKE_sound_reset_scene_runtime(sce_copy);
 
@@ -2170,13 +2127,13 @@ int BKE_scene_base_iter_next(
           if (iter->dupli_refob != *ob) {
             if (iter->dupli_refob) {
               /* Restore previous object's real matrix. */
-              copy_m4_m4(iter->dupli_refob->object_to_world, iter->omat);
+              copy_m4_m4(iter->dupli_refob->runtime->object_to_world.ptr(), iter->omat);
             }
             /* Backup new object's real matrix. */
             iter->dupli_refob = *ob;
-            copy_m4_m4(iter->omat, iter->dupli_refob->object_to_world);
+            copy_m4_m4(iter->omat, iter->dupli_refob->object_to_world().ptr());
           }
-          copy_m4_m4((*ob)->object_to_world, iter->dupob->mat);
+          copy_m4_m4((*ob)->runtime->object_to_world.ptr(), iter->dupob->mat);
 
           iter->dupob = iter->dupob->next;
         }
@@ -2186,7 +2143,7 @@ int BKE_scene_base_iter_next(
 
           if (iter->dupli_refob) {
             /* Restore last object's real matrix. */
-            copy_m4_m4(iter->dupli_refob->object_to_world, iter->omat);
+            copy_m4_m4(iter->dupli_refob->runtime->object_to_world.ptr(), iter->omat);
             iter->dupli_refob = nullptr;
           }
 
@@ -2268,7 +2225,7 @@ bool BKE_scene_camera_switch_update(Scene *scene)
   Object *camera = BKE_scene_camera_switch_find(scene);
   if (camera && (camera != scene->camera)) {
     scene->camera = camera;
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     return true;
   }
 #else
@@ -2496,7 +2453,7 @@ static void prepare_mesh_for_viewport_render(Main *bmain,
         ((obedit->id.recalc & ID_RECALC_ALL) || (mesh->id.recalc & ID_RECALC_ALL)))
     {
       if (check_rendered_viewport_visible(bmain)) {
-        BMesh *bm = mesh->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         BMeshToMeshParams params{};
         params.calc_object_remap = true;
         params.update_shapekey_indices = true;

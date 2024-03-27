@@ -357,7 +357,6 @@ def _template_items_transform_actions(
         use_shear=False,
 ):
     items = [
-        ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
         op_tool_optional(
             ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
             (op_tool_cycle, "builtin.move"), params),
@@ -367,6 +366,8 @@ def _template_items_transform_actions(
         op_tool_optional(
             ("transform.resize", {"type": 'S', "value": 'PRESS'}, None),
             (op_tool_cycle, "builtin.scale"), params),
+
+        ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
     ]
 
     if use_bend:
@@ -767,7 +768,7 @@ def km_window(params):
                 ("wm.search_menu", {"type": 'SPACE', "value": 'PRESS'}, None),
             )
         else:
-            assert False
+            assert False, "unreachable"
 
     return keymap
 
@@ -3529,7 +3530,7 @@ def km_frames(params):
                 ("screen.animation_play", {"type": 'SPACE', "value": 'PRESS'}, None),
             )
         else:
-            assert False
+            assert False, "unreachable"
 
         items.extend([
             ("screen.animation_play", {"type": 'SPACE', "value": 'PRESS', "shift": True, "ctrl": True},
@@ -4586,6 +4587,9 @@ def km_grease_pencil_paint_mode(_params):
         *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
 
         ("paint.sample_color", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+
+        # Isolate Layer
+        ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -4612,6 +4616,11 @@ def km_grease_pencil_edit_mode(params):
         # Dissolve
         ("grease_pencil.dissolve", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.dissolve", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
+        # Copy/paste
+        ("grease_pencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
+        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
+        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "shift": True, "ctrl": True},
+         {"properties": [("paste_back", True)]}),
         # Separate
         ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
         # Delete all active frames
@@ -4659,6 +4668,14 @@ def km_grease_pencil_edit_mode(params):
          "ctrl": True, "repeat": True}, {"properties": [("direction", "DOWN")]}),
         ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
          "ctrl": True, "shift": True}, {"properties": [("direction", "BOTTOM")]}),
+
+        # Isolate Layer
+        ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
+
+        # Select mode
+        ("grease_pencil.set_selection_mode", {"type": 'ONE', "value": 'PRESS'}, {"properties": [("mode", 'POINT')]}),
+        ("grease_pencil.set_selection_mode", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("mode", 'STROKE')]}),
+
     ])
 
     return keymap
@@ -5442,8 +5459,8 @@ def km_sculpt(params):
          {"properties": [("mode", 'TOGGLE')]}),
         ("sculpt.face_set_change_visibility", {"type": 'H', "value": 'PRESS'},
          {"properties": [("mode", 'HIDE_ACTIVE')]}),
-        ("paint.hide_show", {"type": 'H', "value": 'PRESS', "alt": True},
-         {"properties": [("action", "SHOW"), ("area", "ALL")]}),
+        ("paint.hide_show_all", {"type": 'H', "value": 'PRESS', "alt": True},
+         {"properties": [("action", "SHOW")]}),
         ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True},
          {"properties": [("mode", 'GROW')]}),
         ("sculpt.face_set_edit", {"type": 'W', "value": 'PRESS', "ctrl": True, "alt": True},
@@ -6965,7 +6982,7 @@ def km_image_editor_tool_generic_sample(params):
 
 def km_image_editor_tool_uv_cursor(params):
     return (
-        "Image Editor Tool: UV, Cursor",
+        "Image Editor Tool: Uv, Cursor",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("uv.cursor_set", {"type": params.tool_mouse, "value": 'PRESS'}, None),
@@ -6978,7 +6995,7 @@ def km_image_editor_tool_uv_cursor(params):
 
 def km_image_editor_tool_uv_select(params, *, fallback):
     return (
-        _fallback_id("Image Editor Tool: UV, Tweak", fallback),
+        _fallback_id("Image Editor Tool: Uv, Tweak", fallback),
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             *([] if (fallback and (params.select_mouse == 'RIGHTMOUSE')) else _template_items_tool_select(
@@ -6996,7 +7013,7 @@ def km_image_editor_tool_uv_select(params, *, fallback):
 
 def km_image_editor_tool_uv_select_box(params, *, fallback):
     return (
-        _fallback_id("Image Editor Tool: UV, Select Box", fallback),
+        _fallback_id("Image Editor Tool: Uv, Select Box", fallback),
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
@@ -7010,7 +7027,7 @@ def km_image_editor_tool_uv_select_box(params, *, fallback):
 
 def km_image_editor_tool_uv_select_circle(params, *, fallback):
     return (
-        _fallback_id("Image Editor Tool: UV, Select Circle", fallback),
+        _fallback_id("Image Editor Tool: Uv, Select Circle", fallback),
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
@@ -7025,7 +7042,7 @@ def km_image_editor_tool_uv_select_circle(params, *, fallback):
 
 def km_image_editor_tool_uv_select_lasso(params, *, fallback):
     return (
-        _fallback_id("Image Editor Tool: UV, Select Lasso", fallback),
+        _fallback_id("Image Editor Tool: Uv, Select Lasso", fallback),
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
 
         {"items": [
@@ -7039,7 +7056,7 @@ def km_image_editor_tool_uv_select_lasso(params, *, fallback):
 
 def km_image_editor_tool_uv_rip_region(params):
     return (
-        "Image Editor Tool: UV, Rip Region",
+        "Image Editor Tool: Uv, Rip Region",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("uv.rip_move", {**params.tool_maybe_tweak_event, **params.tool_modifier},
@@ -7050,7 +7067,7 @@ def km_image_editor_tool_uv_rip_region(params):
 
 def km_image_editor_tool_uv_sculpt_stroke(params):
     return (
-        "Image Editor Tool: UV, Sculpt Stroke",
+        "Image Editor Tool: Uv, Sculpt Stroke",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS'}, None),
@@ -7069,7 +7086,7 @@ def km_image_editor_tool_uv_sculpt_stroke(params):
 
 def km_image_editor_tool_uv_move(params):
     return (
-        "Image Editor Tool: UV, Move",
+        "Image Editor Tool: Uv, Move",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.translate", {**params.tool_maybe_tweak_event, **params.tool_modifier},
@@ -7080,7 +7097,7 @@ def km_image_editor_tool_uv_move(params):
 
 def km_image_editor_tool_uv_rotate(params):
     return (
-        "Image Editor Tool: UV, Rotate",
+        "Image Editor Tool: Uv, Rotate",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.rotate", {**params.tool_maybe_tweak_event, **params.tool_modifier},
@@ -7091,7 +7108,7 @@ def km_image_editor_tool_uv_rotate(params):
 
 def km_image_editor_tool_uv_scale(params):
     return (
-        "Image Editor Tool: UV, Scale",
+        "Image Editor Tool: Uv, Scale",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
             ("transform.resize", {**params.tool_maybe_tweak_event, **params.tool_modifier},
@@ -7869,8 +7886,23 @@ def km_3d_view_tool_sculpt_box_hide(params):
              {"properties": [("action", 'HIDE')]}),
             ("paint.hide_show", {**params.tool_maybe_tweak_event, "ctrl": True},
              {"properties": [("action", 'SHOW')]}),
-            ("paint.hide_show", {"type": params.select_mouse, "value": params.select_mouse_value},
-             {"properties": [("action", 'SHOW'), ("area", 'ALL')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+
+
+def km_3d_view_tool_sculpt_lasso_hide(params):
+    return (
+        "3D View Tool: Sculpt, Lasso Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show_lasso_gesture", params.tool_maybe_tweak_event,
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
         ]},
     )
 
@@ -8720,6 +8752,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_curve_extrude_to_cursor(params),
         km_3d_view_tool_edit_curves_draw(params),
         km_3d_view_tool_sculpt_box_hide(params),
+        km_3d_view_tool_sculpt_lasso_hide(params),
         km_3d_view_tool_sculpt_box_mask(params),
         km_3d_view_tool_sculpt_lasso_mask(params),
         km_3d_view_tool_sculpt_box_face_set(params),

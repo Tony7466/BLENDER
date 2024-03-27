@@ -11,8 +11,7 @@
  * Event codes are used as identifiers.
  */
 
-#include "GPU_batch.h"
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "BLI_string.h"
 

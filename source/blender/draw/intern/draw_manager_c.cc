@@ -18,14 +18,14 @@
 
 #include "BLF_api.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.h"
 #include "BKE_lattice.hh"
@@ -55,15 +55,15 @@
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_uniform_buffer.h"
-#include "GPU_viewport.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_uniform_buffer.hh"
+#include "GPU_viewport.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -74,14 +74,14 @@
 #include "WM_api.hh"
 #include "wm_window.hh"
 
-#include "draw_color_management.h"
-#include "draw_manager.h"
+#include "draw_color_management.hh"
+#include "draw_manager_c.hh"
 #include "draw_manager_profiling.hh"
-#include "draw_manager_testing.h"
+#include "draw_manager_testing.hh"
 #include "draw_manager_text.hh"
 #include "draw_shader.hh"
 #include "draw_subdivision.hh"
-#include "draw_texture_pool.h"
+#include "draw_texture_pool.hh"
 
 /* only for callbacks */
 #include "draw_cache_impl.hh"
@@ -97,7 +97,7 @@
 #include "engines/select/select_engine.hh"
 #include "engines/workbench/workbench_engine.h"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -188,7 +188,7 @@ bool DRW_object_is_renderable(const Object *ob)
   if (ob->type == OB_MESH) {
     if ((ob == DST.draw_ctx.object_edit) || DRW_object_is_in_edit_mode(ob)) {
       View3D *v3d = DST.draw_ctx.v3d;
-      if (v3d && RETOPOLOGY_ENABLED(v3d)) {
+      if (v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && RETOPOLOGY_ENABLED(v3d)) {
         return false;
       }
     }
@@ -517,6 +517,8 @@ static void drw_manager_init(DRWManager *dst, GPUViewport *viewport, const int s
   RegionView3D *rv3d = dst->draw_ctx.rv3d;
   ARegion *region = dst->draw_ctx.region;
 
+  dst->in_progress = true;
+
   int view = (viewport) ? GPU_viewport_active_view_get(viewport) : 0;
 
   if (!dst->viewport && dst->vmempool) {
@@ -647,6 +649,7 @@ static void drw_manager_exit(DRWManager *dst)
   /* Avoid accidental reuse. */
   drw_state_ensure_not_reused(dst);
 #endif
+  dst->in_progress = false;
 }
 
 DefaultFramebufferList *DRW_viewport_framebuffer_list_get()
@@ -976,7 +979,7 @@ void DRW_cache_free_old_batches(Main *bmain)
   using namespace blender::draw;
   Scene *scene;
   static int lasttime = 0;
-  int ctime = int(BLI_check_seconds_timer());
+  int ctime = int(BLI_time_now_seconds());
 
   if (U.vbotimeout == 0 || (ctime - lasttime) < U.vbocollectrate || ctime == lasttime) {
     return;
@@ -1064,7 +1067,7 @@ static void drw_engines_cache_populate(Object *ob)
 {
   DST.ob_handle = 0;
 
-  /* HACK: DrawData is copied by COW from the duplicated object.
+  /* HACK: DrawData is copied by copy-on-eval from the duplicated object.
    * This is valid for IDs that cannot be instantiated but this
    * is not what we want in this case so we clear the pointer
    * ourselves here. */
@@ -1268,8 +1271,7 @@ static void drw_engines_enable(ViewLayer * /*view_layer*/,
 
   drw_engines_enable_from_engine(engine_type, drawtype);
   if (gpencil_engine_needed && ((drawtype >= OB_SOLID) || !use_xray)) {
-    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                               &draw_engine_gpencil_type);
+    use_drw_engine(&draw_engine_gpencil_type);
   }
 
   if (is_compositor_enabled()) {
@@ -1299,16 +1301,12 @@ static void drw_engines_data_validate()
  * For slow exact check use `DRW_render_check_grease_pencil` */
 static bool drw_gpencil_engine_needed(Depsgraph *depsgraph, View3D *v3d)
 {
-  if (U.experimental.use_grease_pencil_version3) {
-    const bool exclude_gpencil_rendering = v3d ? (v3d->object_type_exclude_viewport &
-                                                  (1 << OB_GREASE_PENCIL)) != 0 :
-                                                 false;
-    return (!exclude_gpencil_rendering) && DEG_id_type_any_exists(depsgraph, ID_GP);
-  }
-  const bool exclude_gpencil_rendering = v3d ? (v3d->object_type_exclude_viewport &
-                                                (1 << OB_GPENCIL_LEGACY)) != 0 :
-                                               false;
-  return (!exclude_gpencil_rendering) && DEG_id_type_any_exists(depsgraph, ID_GD_LEGACY);
+  const bool exclude_gpencil_rendering =
+      v3d ? ((v3d->object_type_exclude_viewport & (1 << OB_GPENCIL_LEGACY)) != 0) ||
+                ((v3d->object_type_exclude_viewport & (1 << OB_GREASE_PENCIL)) != 0) :
+            false;
+  return (!exclude_gpencil_rendering) && (DEG_id_type_any_exists(depsgraph, ID_GD_LEGACY) ||
+                                          DEG_id_type_any_exists(depsgraph, ID_GP));
 }
 
 /* -------------------------------------------------------------------- */
@@ -1469,7 +1467,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (do_annotations) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet. */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet. */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -1522,7 +1520,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, false);
     }
 
@@ -1545,7 +1543,7 @@ void DRW_draw_callbacks_post_scene()
   else {
     if (v3d && ((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -1867,9 +1865,7 @@ bool DRW_render_check_grease_pencil(Depsgraph *depsgraph)
   deg_iter_settings.depsgraph = depsgraph;
   deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
-    if (ob->type == OB_GPENCIL_LEGACY ||
-        (U.experimental.use_grease_pencil_version3 && ob->type == OB_GREASE_PENCIL))
-    {
+    if (ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
       if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
         return true;
       }
@@ -1884,9 +1880,7 @@ static void DRW_render_gpencil_to_image(RenderEngine *engine,
                                         RenderLayer *render_layer,
                                         const rcti *rect)
 {
-  DrawEngineType *draw_engine = U.experimental.use_grease_pencil_version3 ?
-                                    &draw_engine_gpencil_next_type :
-                                    &draw_engine_gpencil_type;
+  DrawEngineType *draw_engine = &draw_engine_gpencil_type;
   if (draw_engine->render_to_image) {
     ViewportEngineData *gpdata = DRW_view_data_engine_data_get_ensure(DST.view_data_active,
                                                                       draw_engine);
@@ -1902,6 +1896,12 @@ void DRW_render_gpencil(RenderEngine *engine, Depsgraph *depsgraph)
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
+  RenderResult *render_result = RE_engine_get_result(engine);
+  RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
+  if (render_layer == nullptr) {
+    return;
+  }
+
   RenderEngineType *engine_type = engine->type;
   Render *render = engine->re;
 
@@ -1935,8 +1935,6 @@ void DRW_render_gpencil(RenderEngine *engine, Depsgraph *depsgraph)
     BLI_rcti_init(&render_rect, 0, size[0], 0, size[1]);
   }
 
-  RenderResult *render_result = RE_engine_get_result(engine);
-  RenderLayer *render_layer = RE_GetRenderLayer(render_result, view_layer->name);
   for (RenderView *render_view = static_cast<RenderView *>(render_result->views.first);
        render_view != nullptr;
        render_view = render_view->next)
@@ -2479,8 +2477,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
   else if (!draw_surface) {
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                                 &draw_engine_gpencil_type);
+      use_drw_engine(&draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2490,8 +2487,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
     drw_engines_enable_basic();
     /* grease pencil selection */
     if (drw_gpencil_engine_needed(depsgraph, v3d)) {
-      use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                                 &draw_engine_gpencil_type);
+      use_drw_engine(&draw_engine_gpencil_type);
     }
 
     drw_engines_enable_overlays();
@@ -2664,8 +2660,7 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
   drw_manager_init(&DST, viewport, nullptr);
 
   if (use_gpencil) {
-    use_drw_engine(U.experimental.use_grease_pencil_version3 ? &draw_engine_gpencil_next_type :
-                                                               &draw_engine_gpencil_type);
+    use_drw_engine(&draw_engine_gpencil_type);
   }
   if (use_basic) {
     drw_engines_enable_basic();
@@ -2854,7 +2849,7 @@ void DRW_draw_depth_object(
 
   GPU_matrix_projection_set(rv3d->winmat);
   GPU_matrix_set(rv3d->viewmat);
-  GPU_matrix_mul(object->object_to_world);
+  GPU_matrix_mul(object->object_to_world().ptr());
 
   /* Setup frame-buffer. */
   GPUTexture *depth_tx = GPU_viewport_depth_texture(viewport);
@@ -2874,18 +2869,18 @@ void DRW_draw_depth_object(
   const bool use_clipping_planes = RV3D_CLIPPING_ENABLED(v3d, rv3d);
   if (use_clipping_planes) {
     GPU_clip_distances(6);
-    ED_view3d_clipping_local(rv3d, object->object_to_world);
+    ED_view3d_clipping_local(rv3d, object->object_to_world().ptr());
     for (int i = 0; i < 6; i++) {
       copy_v4_v4(planes.world[i], rv3d->clip_local[i]);
     }
-    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world);
+    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world().ptr());
   }
 
   drw_batch_cache_validate(object);
 
   switch (object->type) {
     case OB_MESH: {
-      GPUBatch *batch;
+      blender::gpu::Batch *batch;
 
       Mesh *mesh = static_cast<Mesh *>(object->data);
 
@@ -2928,6 +2923,11 @@ void DRW_draw_depth_object(
   GPU_framebuffer_restore();
 
   GPU_framebuffer_free(depth_fb);
+}
+
+bool DRW_draw_in_progress()
+{
+  return DST.in_progress;
 }
 
 /** \} */
@@ -3050,7 +3050,6 @@ void DRW_engines_register()
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
-  DRW_engine_register(&draw_engine_gpencil_next_type);
 
   DRW_engine_register(&draw_engine_overlay_type);
   DRW_engine_register(&draw_engine_overlay_next_type);

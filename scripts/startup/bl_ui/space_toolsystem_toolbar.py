@@ -803,6 +803,7 @@ class _defs_edit_mesh:
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("mesh.spin")
             layout.prop(props, "steps")
+            layout.prop(props, "dupli")
             props = tool.gizmo_group_properties("MESH_GGT_spin")
             layout.prop(props, "axis")
 
@@ -810,23 +811,6 @@ class _defs_edit_mesh:
             idname="builtin.spin",
             label="Spin",
             icon="ops.mesh.spin",
-            widget="MESH_GGT_spin",
-            keymap=(),
-            draw_settings=draw_settings,
-        )
-
-    @ToolDef.from_fn
-    def spin_duplicate():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("mesh.spin")
-            layout.prop(props, "steps")
-            props = tool.gizmo_group_properties("MESH_GGT_spin")
-            layout.prop(props, "axis")
-
-        return dict(
-            idname="builtin.spin_duplicates",
-            label="Spin Duplicates",
-            icon="ops.mesh.spin.duplicate",
             widget="MESH_GGT_spin",
             keymap=(),
             draw_settings=draw_settings,
@@ -1148,7 +1132,7 @@ class _defs_edit_mesh:
         )
 
 
-def curve_draw_settings(context, layout, _tool, *, extra=False):
+def curve_draw_settings(context, layout, tool, *, extra=False):
     # Tool settings initialize operator options.
     tool_settings = context.tool_settings
     cps = tool_settings.curve_paint_settings
@@ -1202,6 +1186,11 @@ def curve_draw_settings(context, layout, _tool, *, extra=False):
         if cps.use_stroke_endpoints:
             colsub = layout.column(align=True)
             colsub.prop(cps, "surface_plane")
+
+    props = tool.operator_properties("curves.draw")
+    col = layout.column(align=True)
+    col.prop(props, "is_curve_2d", text="Curve 2D")
+    col.prop(props, "bezier_as_nurbs", text="As NURBS")
 
 
 class _defs_edit_curve:
@@ -1303,12 +1292,6 @@ class _defs_edit_curves:
         def curve_draw(context, layout, tool, *, extra=False):
             curve_draw_settings(context, layout, tool, extra=extra)
 
-            if extra:
-                props = tool.operator_properties("curves.draw")
-                col = layout.column(align=True)
-                col.prop(props, "is_curve_2d", text="Curve 2D")
-                col.prop(props, "bezier_as_nurbs", text="As NURBS")
-
         return dict(
             idname="builtin.draw",
             label="Draw",
@@ -1397,12 +1380,32 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def hide_border():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show")
+            layout.prop(props, "area", expand=False)
+
         return dict(
             idname="builtin.box_hide",
             label="Box Hide",
             icon="ops.sculpt.border_hide",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_lasso():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_lasso_gesture")
+            layout.prop(props, "area", expand=False)
+
+        return dict(
+            idname="builtin.lasso_hide",
+            label="Lasso Hide",
+            icon="ops.sculpt.lasso_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -1485,6 +1488,7 @@ class _defs_sculpt:
     def trim_box():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.trim_box_gesture")
+            layout.prop(props, "trim_solver", expand=False)
             layout.prop(props, "trim_mode", expand=False)
             layout.prop(props, "trim_orientation", expand=False)
             layout.prop(props, "trim_extrude_mode", expand=False)
@@ -1502,6 +1506,7 @@ class _defs_sculpt:
     def trim_lasso():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("sculpt.trim_lasso_gesture")
+            layout.prop(props, "trim_solver", expand=False)
             layout.prop(props, "trim_mode", expand=False)
             layout.prop(props, "trim_orientation", expand=False)
             layout.prop(props, "trim_extrude_mode", expand=False)
@@ -1688,7 +1693,7 @@ class _defs_weight_paint:
              ob.data.use_paint_mask_vertex)):
             return VIEW3D_PT_tools_active._tools_select
         elif context.pose_object:
-            return (_defs_view3d_select.select,)
+            return VIEW3D_PT_tools_active._tools_select
         return ()
 
     @staticmethod
@@ -1858,7 +1863,7 @@ class _defs_image_uv_transform:
             icon="ops.transform.translate",
             widget="IMAGE_GGT_gizmo2d_translate",
             operator="transform.translate",
-            keymap="Image Editor Tool: UV, Move",
+            keymap="Image Editor Tool: Uv, Move",
         )
 
     @ToolDef.from_fn
@@ -1869,7 +1874,7 @@ class _defs_image_uv_transform:
             icon="ops.transform.rotate",
             widget="IMAGE_GGT_gizmo2d_rotate",
             operator="transform.rotate",
-            keymap="Image Editor Tool: UV, Rotate",
+            keymap="Image Editor Tool: Uv, Rotate",
         )
 
     @ToolDef.from_fn
@@ -1880,7 +1885,7 @@ class _defs_image_uv_transform:
             icon="ops.transform.resize",
             widget="IMAGE_GGT_gizmo2d_resize",
             operator="transform.resize",
-            keymap="Image Editor Tool: UV, Scale",
+            keymap="Image Editor Tool: Uv, Scale",
         )
 
     @ToolDef.from_fn
@@ -2010,7 +2015,7 @@ class _defs_image_uv_sculpt:
             attr="uv_sculpt_tool",
             tooldef_keywords=dict(
                 operator="sculpt.uv_sculpt_stroke",
-                keymap="Image Editor Tool: UV, Sculpt Stroke",
+                keymap="Image Editor Tool: Uv, Sculpt Stroke",
                 draw_cursor=draw_cursor,
                 options={'KEYMAP_FALLBACK'},
             ),
@@ -2996,10 +3001,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_edit_mesh.bisect,
             ),
             _defs_edit_mesh.poly_build,
-            (
-                _defs_edit_mesh.spin,
-                _defs_edit_mesh.spin_duplicate,
-            ),
+            _defs_edit_mesh.spin,
             (
                 _defs_edit_mesh.vertex_smooth,
                 _defs_edit_mesh.vertex_randomize,
@@ -3096,7 +3098,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_sculpt.mask_lasso,
                 _defs_sculpt.mask_line,
             ),
-            _defs_sculpt.hide_border,
+            (
+                _defs_sculpt.hide_border,
+                _defs_sculpt.hide_lasso
+            ),
             (
                 _defs_sculpt.face_set_box,
                 _defs_sculpt.face_set_lasso,

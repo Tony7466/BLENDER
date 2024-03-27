@@ -7,18 +7,11 @@
 #include "BKE_editmesh.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
-#include "BKE_type_conversions.hh"
 
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
-
-#include "UI_interface.hh"
-#include "UI_resources.hh"
-
-#include "NOD_socket_search_link.hh"
 
 #include "GEO_reverse_uv_sampler.hh"
 
@@ -249,7 +242,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Object *surface_ob_orig = DEG_get_original_object(surface_ob_eval);
   Mesh &surface_object_data = *static_cast<Mesh *>(surface_ob_orig->data);
 
-  if (BMEditMesh *em = surface_object_data.edit_mesh) {
+  if (BMEditMesh *em = surface_object_data.runtime->edit_mesh) {
     surface_mesh_orig = BKE_mesh_from_bmesh_for_eval_nomain(em->bm, nullptr, &surface_object_data);
     free_suface_mesh_orig = true;
   }

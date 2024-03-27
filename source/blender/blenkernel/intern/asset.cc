@@ -19,7 +19,7 @@
 #include "BLI_uuid.h"
 
 #include "BKE_asset.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_preview_image.hh"
 
 #include "BLO_read_write.hh"
@@ -52,18 +52,10 @@ AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
 
   BKE_asset_metadata_catalog_id_set(copy, source->catalog_id, source->catalog_simple_name);
 
-  if (source->author) {
-    copy->author = BLI_strdup(source->author);
-  }
-  if (source->description) {
-    copy->description = BLI_strdup(source->description);
-  }
-  if (source->copyright) {
-    copy->copyright = BLI_strdup(source->copyright);
-  }
-  if (source->license) {
-    copy->license = BLI_strdup(source->license);
-  }
+  copy->author = BLI_strdup_null(source->author);
+  copy->description = BLI_strdup_null(source->description);
+  copy->copyright = BLI_strdup_null(source->copyright);
+  copy->license = BLI_strdup_null(source->license);
 
   BLI_duplicatelist(&copy->tags, &source->tags);
   copy->active_tag = source->active_tag;
@@ -163,9 +155,9 @@ void BKE_asset_metadata_catalog_id_set(AssetMetaData *asset_data,
 
 void BKE_asset_metadata_idprop_ensure(AssetMetaData *asset_data, IDProperty *prop)
 {
+  using namespace blender::bke;
   if (!asset_data->properties) {
-    IDPropertyTemplate val = {0};
-    asset_data->properties = IDP_New(IDP_GROUP, &val, "AssetMetaData.properties");
+    asset_data->properties = idprop::create_group("AssetMetaData.properties").release();
   }
   /* Important: The property may already exist. For now just allow always allow a newly allocated
    * property, and replace the existing one as a way of updating. */

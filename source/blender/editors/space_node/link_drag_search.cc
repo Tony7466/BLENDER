@@ -10,7 +10,7 @@
 
 #include "BKE_asset.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
@@ -21,9 +21,7 @@
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "BLT_translation.h"
-
-#include "RNA_access.hh"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 
@@ -235,7 +233,7 @@ static void gather_search_link_ops_for_asset_library(const bContext &C,
                                                      const bool skip_local,
                                                      Vector<SocketLinkOperation> &search_link_ops)
 {
-  AssetFilterSettings filter_settings{};
+  asset::AssetFilterSettings filter_settings{};
   filter_settings.id_types = FILTER_ID_NT;
 
   asset::list::storage_fetch(&library_ref, &C);
@@ -449,8 +447,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
                               10,
                               UI_searchbox_size_x(),
                               UI_UNIT_Y,
-                              0,
-                              0,
                               "");
   UI_but_func_search_set_sep_string(but, UI_MENU_ARROW_SEP);
   UI_but_func_search_set_listen(but, link_drag_search_listen_fn);
@@ -474,8 +470,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
            UI_searchbox_size_x(),
            UI_searchbox_size_y(),
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

@@ -20,17 +20,18 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_addon.h"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_screen.hh"
 
 #include "ED_asset.hh"
 #include "ED_keyframing.hh"
 #include "ED_screen.hh"
 
+#include "UI_abstract_view.hh"
 #include "UI_interface.hh"
 
 #include "interface_intern.hh"
@@ -57,6 +58,7 @@
 
 static IDProperty *shortcut_property_from_rna(bContext *C, uiBut *but)
 {
+  using namespace blender;
   /* Compute data path from context to property. */
 
   /* If this returns null, we won't be able to bind shortcuts to these RNA properties.
@@ -68,15 +70,14 @@ static IDProperty *shortcut_property_from_rna(bContext *C, uiBut *but)
   }
 
   /* Create ID property of data path, to pass to the operator. */
-  const IDPropertyTemplate val = {0};
-  IDProperty *prop = IDP_New(IDP_GROUP, &val, __func__);
-  IDP_AddToGroup(prop, IDP_NewString(final_data_path.value().c_str(), "data_path"));
-
+  IDProperty *prop = bke::idprop::create_group(__func__).release();
+  IDP_AddToGroup(prop, bke::idprop::create("data_path", final_data_path.value()).release());
   return prop;
 }
 
 static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDProperty **r_prop)
 {
+  using namespace blender;
   if (but->optype) {
     /* Operator */
     *r_prop = (but->opptr && but->opptr->data) ?
@@ -107,17 +108,15 @@ static const char *shortcut_get_operator_property(bContext *C, uiBut *but, IDPro
   }
 
   if (MenuType *mt = UI_but_menutype_get(but)) {
-    const IDPropertyTemplate val = {0};
-    IDProperty *prop = IDP_New(IDP_GROUP, &val, __func__);
-    IDP_AddToGroup(prop, IDP_NewString(mt->idname, "name"));
+    IDProperty *prop = bke::idprop::create_group(__func__).release();
+    IDP_AddToGroup(prop, bke::idprop::create("name", mt->idname).release());
     *r_prop = prop;
     return "WM_OT_call_menu";
   }
 
   if (PanelType *pt = UI_but_paneltype_get(but)) {
-    const IDPropertyTemplate val = {0};
-    IDProperty *prop = IDP_New(IDP_GROUP, &val, __func__);
-    IDP_AddToGroup(prop, IDP_NewString(pt->idname, "name"));
+    IDProperty *prop = blender::bke::idprop::create_group(__func__).release();
+    IDP_AddToGroup(prop, bke::idprop::create("name", pt->idname).release());
     *r_prop = prop;
     return "WM_OT_call_panel";
   }
@@ -136,7 +135,6 @@ static void shortcut_free_operator_property(IDProperty *prop)
 static void but_shortcut_name_func(bContext *C, void *arg1, int /*event*/)
 {
   uiBut *but = (uiBut *)arg1;
-  char shortcut_str[128];
 
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
@@ -145,10 +143,10 @@ static void but_shortcut_name_func(bContext *C, void *arg1, int /*event*/)
   }
 
   /* complex code to change name of button */
-  if (WM_key_event_operator_string(
-          C, idname, but->opcontext, prop, true, shortcut_str, sizeof(shortcut_str)))
+  if (std::optional<std::string> shortcut_str = WM_key_event_operator_string(
+          C, idname, but->opcontext, prop, true))
   {
-    ui_but_add_shortcut(but, shortcut_str, true);
+    ui_but_add_shortcut(but, shortcut_str->c_str(), true);
   }
   else {
     /* simply strip the shortcut */
@@ -553,7 +551,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     PropertyRNA *prop = but->rnaprop;
     const PropertyType type = RNA_property_type(prop);
     const PropertySubType subtype = RNA_property_subtype(prop);
-    bool is_anim = RNA_property_animateable(ptr, prop);
+    bool is_anim = RNA_property_anim_editable(ptr, prop);
     const bool is_idprop = RNA_property_is_idprop(prop);
 
     /* second slower test,
@@ -684,7 +682,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
         uiItemFullO_ptr(layout,
                         ot,
                         CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "View All in Graph Editor"),
-                        ICON_NONE,
+                        ICON_GRAPH,
                         nullptr,
                         WM_OP_INVOKE_DEFAULT,
                         UI_ITEM_NONE,
@@ -1026,7 +1024,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       /* Sub-layout for context override. */
       uiLayout *sub = uiLayoutColumn(layout, false);
       set_layout_context_from_button(C, sub, view_item_but);
-      UI_view_item_context_menu_build(C, view_item_but->view_item, sub);
+      view_item_but->view_item->build_context_menu(*C, *sub);
 
       /* Reset context. */
       CTX_store_set(C, prev_ctx);
@@ -1108,8 +1106,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             nullptr,
             0,
             0,
-            0,
-            0,
             "");
         item_found = true;
         UI_but_func_set(but2, [um, umi](bContext &) {
@@ -1134,8 +1130,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           w,
           UI_UNIT_Y,
           nullptr,
-          0,
-          0,
           0,
           0,
           "Add to a user defined context menu (stored in the user preferences)");
@@ -1189,8 +1183,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             nullptr,
             0,
             0,
-            0,
-            0,
             "");
         UI_but_func_set(but2, [but](bContext &C) {
           UI_popup_block_invoke(&C, menu_change_shortcut, but, nullptr);
@@ -1207,8 +1199,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                                        w,
                                        UI_UNIT_Y,
                                        nullptr,
-                                       0,
-                                       0,
                                        0,
                                        0,
                                        TIP_("Only keyboard shortcuts can be edited that way, "
@@ -1229,8 +1219,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           nullptr,
           0,
           0,
-          0,
-          0,
           "");
       UI_but_func_set(but2, [but](bContext &C) { remove_shortcut_func(&C, but); });
     }
@@ -1249,8 +1237,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
           nullptr,
           0,
           0,
-          0,
-          0,
           "");
       UI_but_func_set(but2, [but](bContext &C) {
         UI_popup_block_ex(&C, menu_add_shortcut, nullptr, menu_add_shortcut_cancel, but, nullptr);
@@ -1266,9 +1252,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
   }
 
   { /* Docs */
-    char buf[512];
-
-    if (UI_but_online_manual_id(but, buf, sizeof(buf))) {
+    if (std::optional<std::string> manual_id = UI_but_online_manual_id(but)) {
       PointerRNA ptr_props;
       uiItemO(layout,
               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Online Manual"),
@@ -1284,7 +1268,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                     WM_OP_EXEC_DEFAULT,
                     UI_ITEM_NONE,
                     &ptr_props);
-        RNA_string_set(&ptr_props, "doc_id", buf);
+        RNA_string_set(&ptr_props, "doc_id", manual_id.value().c_str());
       }
     }
   }

@@ -15,15 +15,12 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
@@ -38,15 +35,11 @@
 #include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_mball.hh"
-#include "BKE_mesh.hh"
-#include "BKE_scene.h"
+#include "BKE_mesh_types.hh"
 
 #include "bmesh.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
-
-#include "WM_types.hh"
 
 #include "ED_armature.hh"
 #include "ED_mesh.hh"
@@ -321,7 +314,7 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
       const int key_index = -1;
 
       if (is_edit_mode) {
-        BMesh *bm = mesh->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
         const int elem_array_len = bm->totvert;
@@ -542,7 +535,7 @@ void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][
 
       XFormObjectData_Mesh *xod = (XFormObjectData_Mesh *)xod_base;
       if (xod_base->is_edit_mode) {
-        BMesh *bm = mesh->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         BM_mesh_vert_coords_apply_with_mat4(bm, xod->elem_array, mat);
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
@@ -660,7 +653,7 @@ void ED_object_data_xform_restore(XFormObjectData *xod_base)
 
       XFormObjectData_Mesh *xod = (XFormObjectData_Mesh *)xod_base;
       if (xod_base->is_edit_mode) {
-        BMesh *bm = mesh->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         BM_mesh_vert_coords_apply(bm, xod->elem_array);
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
@@ -787,13 +780,13 @@ void ED_object_data_xform_tag_update(XFormObjectData *xod_base)
     case ID_MB: {
       /* Generic update. */
       MetaBall *mb = (MetaBall *)xod_base->id;
-      DEG_id_tag_update(&mb->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&mb->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
       break;
     }
     case ID_GD_LEGACY: {
       /* Generic update. */
       bGPdata *gpd = (bGPdata *)xod_base->id;
-      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
       break;
     }
 

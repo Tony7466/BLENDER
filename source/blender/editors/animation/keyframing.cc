@@ -13,33 +13,29 @@
 
 #include "BLI_blenlib.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_constraint_types.h"
-#include "DNA_key_types.h"
-#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_nla.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_build.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
@@ -51,7 +47,6 @@
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
-#include "ANIM_visualkey.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -65,7 +60,7 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "anim_intern.h"
+#include "anim_intern.hh"
 
 static KeyingSet *keyingset_get_from_op_with_error(wmOperator *op,
                                                    PropertyRNA *prop,
@@ -312,8 +307,8 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   return paths;
 }
 
-/* Fill the list with CollectionPointerLink depending on the mode of the context. */
-static bool get_selection(bContext *C, ListBase *r_selection)
+/* Fill the list with items depending on the mode of the context. */
+static bool get_selection(bContext *C, blender::Vector<PointerRNA> *r_selection)
 {
   const eContextObjectMode context_mode = CTX_data_mode_enum(C);
 
@@ -337,7 +332,7 @@ static int insert_key(bContext *C, wmOperator *op)
 {
   using namespace blender;
 
-  ListBase selection = {nullptr, nullptr};
+  blender::Vector<PointerRNA> selection;
   const bool found_selection = get_selection(C, &selection);
   if (!found_selection) {
     BKE_reportf(op->reports, RPT_ERROR, "Unsupported context mode");
@@ -350,22 +345,29 @@ static int insert_key(bContext *C, wmOperator *op)
   const eInsertKeyFlags insert_key_flags = ANIM_get_keyframing_flags(scene);
   const eBezTriple_KeyframeType key_type = eBezTriple_KeyframeType(
       scene->toolsettings->keyframe_type);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
+      depsgraph, BKE_scene_frame_get(scene));
 
-  LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selection) {
-    ID *selected_id = collection_ptr_link->ptr.owner_id;
+  for (PointerRNA &id_ptr : selection) {
+    ID *selected_id = id_ptr.owner_id;
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
       continue;
     }
-    PointerRNA id_ptr = collection_ptr_link->ptr;
-    Vector<std::string> rna_paths = construct_rna_paths(&collection_ptr_link->ptr);
+    Vector<std::string> rna_paths = construct_rna_paths(&id_ptr);
 
-    animrig::insert_key_rna(
-        &id_ptr, rna_paths.as_span(), scene_frame, insert_key_flags, key_type, bmain, op->reports);
+    animrig::insert_key_rna(&id_ptr,
+                            rna_paths.as_span(),
+                            scene_frame,
+                            insert_key_flags,
+                            key_type,
+                            bmain,
+                            op->reports,
+                            anim_eval_context);
   }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
-  BLI_freelistN(&selection);
 
   return OPERATOR_FINISHED;
 }
@@ -709,6 +711,20 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int clear_anim_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Remove animation from selected objects?"),
+                                  nullptr,
+                                  IFACE_("Remove"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return clear_anim_v3d_exec(C, op);
+}
+
 void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
 {
   /* identifiers */
@@ -717,7 +733,7 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_clear_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = clear_anim_v3d_invoke;
   ot->exec = clear_anim_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
@@ -851,6 +867,20 @@ static int delete_key_v3d_exec(bContext *C, wmOperator *op)
   return delete_key_using_keying_set(C, op, ks);
 }
 
+static int delete_key_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete keyframes from selected objects?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return delete_key_v3d_exec(C, op);
+}
+
 void ANIM_OT_keyframe_delete_v3d(wmOperatorType *ot)
 {
   /* identifiers */
@@ -859,7 +889,7 @@ void ANIM_OT_keyframe_delete_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_delete_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = delete_key_v3d_invoke;
   ot->exec = delete_key_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
@@ -893,7 +923,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
 
-  if ((ptr.owner_id && ptr.data && prop) && RNA_property_animateable(&ptr, prop)) {
+  if ((ptr.owner_id && ptr.data && prop) && RNA_property_anim_editable(&ptr, prop)) {
     if (ptr.type == &RNA_NlaStrip) {
       /* Handle special properties for NLA Strips, whose F-Curves are stored on the
        * strips themselves. These are stored separately or else the properties will
@@ -978,7 +1008,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         changed = (blender::animrig::insert_keyframe(bmain,
                                                      op->reports,
                                                      ptr.owner_id,
-                                                     nullptr,
                                                      group,
                                                      path->c_str(),
                                                      index,
@@ -995,7 +1024,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    if (prop && !RNA_property_animateable(&ptr, prop)) {
+    if (prop && !RNA_property_anim_editable(&ptr, prop)) {
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "\"%s\" property cannot be animated",
@@ -1310,7 +1339,7 @@ static bool object_frame_has_keyframe(Object *ob, float frame)
     return false;
   }
 
-  /* check own animation data - specifically, the action it contains */
+  /* check its own animation data - specifically, the action it contains */
   if ((ob->adt) && (ob->adt->action)) {
     /* #41525 - When the active action is a NLA strip being edited,
      * we need to correct the frame number to "look inside" the

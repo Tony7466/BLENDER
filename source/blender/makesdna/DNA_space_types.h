@@ -53,7 +53,7 @@ using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
 typedef struct AssetRepresentationHandle AssetRepresentationHandle;
 #endif
 
-/** Defined in `buttons_intern.h`. */
+/** Defined in `buttons_intern.hh`. */
 typedef struct SpaceProperties_Runtime SpaceProperties_Runtime;
 
 #ifdef __cplusplus
@@ -509,7 +509,8 @@ typedef enum eGraphEdit_Flag {
   SIPO_NOTRANSKEYCULL = (1 << 1),
   /* don't show any keyframe handles at all */
   SIPO_NOHANDLES = (1 << 2),
-  /* SIPO_NODRAWCFRANUM = (1 << 3), DEPRECATED */
+  /* Automatically lock the transform to whichever axis the cursor has moved the most. */
+  SIPO_AUTOLOCK_AXIS = (1 << 3),
   /* show timing in seconds instead of frames */
   SIPO_DRAWTIME = (1 << 4),
   /* draw names of F-Curves beside the respective curves */
@@ -1032,7 +1033,7 @@ typedef enum eFileSelectType {
 /**
  * #FileSelectParams.flag / `sfile->params->flag`.
  * \note short flag, also used as 16 lower bits of flags in link/append code
- * (WM and BLO code area, see #eBLOLibLinkFlags in BLO_readfile.h).
+ * (WM and BLO code area, see #eBLOLibLinkFlags in BLO_readfile.hh).
  */
 typedef enum eFileSel_Params_Flag {
   FILE_PARAMS_FLAG_UNUSED_1 = (1 << 0),
@@ -1266,11 +1267,13 @@ typedef struct SpaceImage {
   char gizmo_flag;
 
   char grid_shape_source;
-  char _pad1[2];
+  char _pad1[6];
 
   int flag;
 
   float uv_opacity;
+
+  float stretch_opacity;
 
   int tile_grid_shape[2];
   /**
@@ -1696,9 +1699,7 @@ typedef struct SpaceConsole {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  /* space vars */
-  int lheight;
-  char _pad[4];
+  /* Space variables. */
 
   /** ConsoleLine; output. */
   ListBase scrollback;
@@ -1707,6 +1708,11 @@ typedef struct SpaceConsole {
   char prompt[256];
   /** Multiple consoles are possible, not just python. */
   char language[32];
+
+  int lheight;
+
+  /** Index into history of most recent up/down arrow keys. */
+  int history_index;
 
   /** Selection offset in bytes. */
   int sel_start;
@@ -2036,6 +2042,7 @@ typedef enum eSpreadsheetColumnValueType {
   SPREADSHEET_VALUE_TYPE_INT8 = 9,
   SPREADSHEET_VALUE_TYPE_INT32_2D = 10,
   SPREADSHEET_VALUE_TYPE_QUATERNION = 11,
+  SPREADSHEET_VALUE_TYPE_FLOAT4X4 = 12,
 } eSpreadsheetColumnValueType;
 
 /**

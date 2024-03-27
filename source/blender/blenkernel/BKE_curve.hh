@@ -19,7 +19,6 @@
 struct BezTriple;
 struct BezTriple;
 struct BMEditMesh;
-struct BoundBox;
 struct BPoint;
 struct Curve;
 struct Depsgraph;
@@ -32,7 +31,7 @@ struct Object;
 struct rctf;
 struct TextBox;
 
-typedef int eBezTriple_Flag__Alias;
+using eBezTriple_Flag__Alias = int;
 
 struct CurveCache {
   ListBase disp;

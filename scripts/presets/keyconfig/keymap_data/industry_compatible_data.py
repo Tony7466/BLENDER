@@ -3708,10 +3708,10 @@ def km_sculpt(params):
          {"properties": [("mode", 'HIDE_ACTIVE')]}),
         ("sculpt.face_set_change_visibility", {"type": 'H', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'TOGGLE')]}),
-        ("paint.hide_show", {"type": 'H', "value": 'PRESS', "ctrl": True},
-         {"properties": [("action", 'HIDE'), ("area", 'MASKED')]}),
-        ("paint.hide_show", {"type": 'H', "value": 'PRESS', "alt": True},
-         {"properties": [("action", 'SHOW'), ("area", 'ALL')]}),
+        ("paint.hide_show_masked", {"type": 'H', "value": 'PRESS', "ctrl": True},
+         {"properties": [("action", 'HIDE')]}),
+        ("paint.hide_show_all", {"type": 'H', "value": 'PRESS', "alt": True},
+         {"properties": [("action", 'SHOW')]}),
         # Subdivision levels
         *_template_items_object_subdivision_set(),
         ("object.subdivision_set", {"type": 'D', "value": 'PRESS', "repeat": True},
@@ -4373,7 +4373,7 @@ def km_3d_view_tool_select(params):
 
 def km_image_editor_tool_uv_select(params):
     return (
-        "Image Editor Tool: UV, Tweak",
+        "Image Editor Tool: Uv, Tweak",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": _template_items_tool_select(params, "uv.select", extend="extend")},
     )

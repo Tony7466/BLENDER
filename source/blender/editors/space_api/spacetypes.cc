@@ -10,7 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
@@ -19,7 +18,7 @@
 #include "BKE_context.hh"
 #include "BKE_screen.hh"
 
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"

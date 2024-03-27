@@ -29,9 +29,9 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_texture.h"
-#include "eevee_private.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_texture.hh"
+#include "eevee_private.hh"
 
 #define CAMERA_JITTER_RING_DENSITY 6
 
@@ -188,7 +188,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *veda
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-  Camera *cam = static_cast<Camera *>(
+  const Camera *cam = static_cast<const Camera *>(
       (camera != nullptr && camera->type == OB_CAMERA) ? camera->data : nullptr);
 
   if (cam && (cam->dof.flag & CAM_DOF_ENABLED)) {

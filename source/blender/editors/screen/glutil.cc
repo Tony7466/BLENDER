@@ -14,23 +14,18 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_context.hh"
-
 #include "BIF_glutil.hh"
 
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "GPU_context.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_texture.h"
+#include "GPU_context.hh"
+#include "GPU_immediate.hh"
+#include "GPU_texture.hh"
 
 #ifdef __APPLE__
-#  include "GPU_state.h"
+#  include "GPU_state.hh"
 #endif
-
-#include "UI_interface.hh"
 
 /* ******************************************** */
 

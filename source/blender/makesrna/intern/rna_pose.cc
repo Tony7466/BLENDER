@@ -24,7 +24,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8_symbols.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_resources.hh"
 
@@ -74,8 +74,8 @@ const EnumPropertyItem rna_enum_color_sets_items[] = {
 
 #  include "BKE_constraint.h"
 #  include "BKE_context.hh"
-#  include "BKE_global.h"
-#  include "BKE_idprop.h"
+#  include "BKE_global.hh"
+#  include "BKE_idprop.hh"
 
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
@@ -499,7 +499,7 @@ bool rna_PoseChannel_constraints_override_apply(Main *bmain,
   return true;
 }
 
-static int rna_PoseChannel_proxy_editable(PointerRNA * /*ptr*/, const char ** /*r_info*/)
+static int rna_PoseChannel_proxy_editable(const PointerRNA * /*ptr*/, const char ** /*r_info*/)
 {
 #  if 0
   Object *ob = (Object *)ptr->owner_id;
@@ -515,7 +515,7 @@ static int rna_PoseChannel_proxy_editable(PointerRNA * /*ptr*/, const char ** /*
   return PROP_EDITABLE;
 }
 
-static int rna_PoseChannel_location_editable(PointerRNA *ptr, int index)
+static int rna_PoseChannel_location_editable(const PointerRNA *ptr, int index)
 {
   bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 
@@ -534,7 +534,7 @@ static int rna_PoseChannel_location_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_PoseChannel_scale_editable(PointerRNA *ptr, int index)
+static int rna_PoseChannel_scale_editable(const PointerRNA *ptr, int index)
 {
   bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 
@@ -553,7 +553,7 @@ static int rna_PoseChannel_scale_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_PoseChannel_rotation_euler_editable(PointerRNA *ptr, int index)
+static int rna_PoseChannel_rotation_euler_editable(const PointerRNA *ptr, int index)
 {
   bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 
@@ -572,7 +572,7 @@ static int rna_PoseChannel_rotation_euler_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_PoseChannel_rotation_4d_editable(PointerRNA *ptr, int index)
+static int rna_PoseChannel_rotation_4d_editable(const PointerRNA *ptr, int index)
 {
   bPoseChannel *pchan = (bPoseChannel *)ptr->data;
 

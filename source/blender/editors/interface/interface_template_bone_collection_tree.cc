@@ -8,7 +8,7 @@
 
 #include "BKE_context.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -19,6 +19,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "ED_armature.hh"
 #include "ED_undo.hh"
 
 #include "WM_api.hh"
@@ -99,6 +100,10 @@ class BoneCollectionDropTarget : public TreeViewItemDropTarget {
 
   bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
   {
+    if (drag.type != WM_DRAG_BONE_COLLECTION) {
+      return false;
+    }
+
     const ArmatureBoneCollection *drag_arm_bcoll = static_cast<const ArmatureBoneCollection *>(
         drag.poin);
 
@@ -456,20 +461,18 @@ void uiTemplateBoneCollectionTree(uiLayout *layout, bContext *C)
 {
   using namespace blender;
 
-  Object *object = CTX_data_active_object(C);
-  if (!object || object->type != OB_ARMATURE) {
+  bArmature *armature = ED_armature_context(C);
+  if (armature == nullptr) {
     return;
   }
-
-  bArmature *arm = static_cast<bArmature *>(object->data);
-  BLI_assert(GS(arm->id.name) == ID_AR);
+  BLI_assert(GS(armature->id.name) == ID_AR);
 
   uiBlock *block = uiLayoutGetBlock(layout);
 
   ui::AbstractTreeView *tree_view = UI_block_add_view(
       *block,
       "Bone Collection Tree View",
-      std::make_unique<blender::ui::bonecollections::BoneCollectionTreeView>(*arm));
+      std::make_unique<blender::ui::bonecollections::BoneCollectionTreeView>(*armature));
   tree_view->set_min_rows(3);
 
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);

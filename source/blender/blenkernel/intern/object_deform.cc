@@ -11,7 +11,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -70,11 +70,18 @@ void BKE_object_defgroup_remap_update_users(Object *ob, const int *map)
     else if (md->type == eModifierType_Cloth) {
       ClothModifierData *clmd = (ClothModifierData *)md;
       ClothSimSettings *clsim = clmd->sim_parms;
+      ClothCollSettings *clcoll = clmd->coll_parms;
 
       if (clsim) {
         clsim->vgroup_mass = map[clsim->vgroup_mass];
-        clsim->vgroup_bend = map[clsim->vgroup_bend];
+        clsim->vgroup_shrink = map[clsim->vgroup_shrink];
         clsim->vgroup_struct = map[clsim->vgroup_struct];
+        clsim->vgroup_shear = map[clsim->vgroup_shear];
+        clsim->vgroup_bend = map[clsim->vgroup_bend];
+        clsim->vgroup_intern = map[clsim->vgroup_intern];
+        clsim->vgroup_pressure = map[clsim->vgroup_pressure];
+        clcoll->vgroup_selfcol = map[clcoll->vgroup_selfcol];
+        clcoll->vgroup_objcol = map[clcoll->vgroup_objcol];
       }
     }
   }
@@ -142,8 +149,8 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->edit_mesh) {
-      BMEditMesh *em = mesh->edit_mesh;
+    if (mesh->runtime->edit_mesh) {
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
       if (cd_dvert_offset != -1) {
@@ -338,7 +345,7 @@ static void object_defgroup_remove_edit_mode(Object *ob, bDeformGroup *dg)
   /* Else, make sure that any groups with higher indices are adjusted accordingly */
   else if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
     const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
     BMIter iter;

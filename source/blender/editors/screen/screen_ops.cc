@@ -11,20 +11,16 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_dlrbTree.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_mask_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -32,18 +28,18 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
@@ -56,7 +52,6 @@
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
-#include "ED_clip.hh"
 #include "ED_fileselect.hh"
 #include "ED_image.hh"
 #include "ED_keyframes_keylist.hh"
@@ -66,8 +61,6 @@
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 #include "ED_sequencer.hh"
-#include "ED_undo.hh"
-#include "ED_util.hh"
 #include "ED_view3d.hh"
 
 #include "RNA_access.hh"
@@ -79,9 +72,11 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
-#include "screen_intern.h" /* own module include */
+#include "screen_intern.hh" /* own module include */
+
+using blender::Vector;
 
 #define KM_MODAL_CANCEL 1
 #define KM_MODAL_APPLY 2
@@ -281,6 +276,20 @@ bool ED_operator_animview_active(bContext *C)
 bool ED_operator_outliner_active(bContext *C)
 {
   return ed_spacetype_test(C, SPACE_OUTLINER);
+}
+
+bool ED_operator_region_outliner_active(bContext *C)
+{
+  if (!ED_operator_outliner_active(C)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an active Outliner");
+    return false;
+  }
+  const ARegion *region = CTX_wm_region(C);
+  if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an Outliner region");
+    return false;
+  }
+  return true;
 }
 
 bool ED_operator_outliner_active_no_editobject(bContext *C)
@@ -1697,7 +1706,7 @@ static void area_move_set_limits(wmWindow *win,
         areamin += U.pixelsize;
       }
 
-      int y1 = screen_geom_area_height(area) - areamin;
+      int y1 = screen_geom_area_height(area) - areamin - int(U.pixelsize);
 
       /* if top or down edge selected, test height */
       if (area->v1->editflag && area->v4->editflag) {
@@ -1717,7 +1726,7 @@ static void area_move_set_limits(wmWindow *win,
         areamin += U.pixelsize;
       }
 
-      int x1 = screen_geom_area_width(area) - areamin;
+      int x1 = screen_geom_area_width(area) - areamin - int(U.pixelsize);
 
       /* if left or right edge selected, test width */
       if (area->v1->editflag && area->v2->editflag) {
@@ -5572,7 +5581,7 @@ void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARe
     ED_area_init(wm, win, area);
   }
   else {
-    WM_event_remove_handlers(C, &region->handlers);
+    ED_region_visibility_change_update_ex(C, area, region, true, false);
   }
 
   if (region->next) {
@@ -5795,32 +5804,24 @@ static int space_workspace_cycle_invoke(bContext *C, wmOperator *op, const wmEve
   Main *bmain = CTX_data_main(C);
   const eScreenCycle direction = eScreenCycle(RNA_enum_get(op->ptr, "direction"));
   WorkSpace *workspace_src = WM_window_get_active_workspace(win);
-  WorkSpace *workspace_dst = nullptr;
 
-  ListBase ordered;
-  BKE_id_ordered_list(&ordered, &bmain->workspaces);
-
-  LISTBASE_FOREACH (LinkData *, link, &ordered) {
-    if (link->data == workspace_src) {
-      if (direction == SPACE_CONTEXT_CYCLE_PREV) {
-        workspace_dst = static_cast<WorkSpace *>((link->prev) ? link->prev->data : nullptr);
-      }
-      else {
-        workspace_dst = static_cast<WorkSpace *>((link->next) ? link->next->data : nullptr);
-      }
-    }
-  }
-
-  if (workspace_dst == nullptr) {
-    LinkData *link = static_cast<LinkData *>(
-        (direction == SPACE_CONTEXT_CYCLE_PREV) ? ordered.last : ordered.first);
-    workspace_dst = static_cast<WorkSpace *>(link->data);
-  }
-
-  BLI_freelistN(&ordered);
-
-  if (workspace_src == workspace_dst) {
+  Vector<ID *> ordered = BKE_id_ordered_list(&bmain->workspaces);
+  if (ordered.size() == 1) {
     return OPERATOR_CANCELLED;
+  }
+
+  const int index = ordered.first_index_of(&workspace_src->id);
+
+  WorkSpace *workspace_dst = nullptr;
+  switch (direction) {
+    case SPACE_CONTEXT_CYCLE_PREV:
+      workspace_dst = reinterpret_cast<WorkSpace *>(index == 0 ? ordered.last() :
+                                                                 ordered[index - 1]);
+      break;
+    case SPACE_CONTEXT_CYCLE_NEXT:
+      workspace_dst = reinterpret_cast<WorkSpace *>(
+          index == ordered.index_range().last() ? ordered.first() : ordered[index + 1]);
+      break;
   }
 
   win->workspace_hook->temp_workspace_store = workspace_dst;

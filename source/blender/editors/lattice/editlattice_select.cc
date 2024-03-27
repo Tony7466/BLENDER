@@ -29,7 +29,7 @@
 #include "BKE_context.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ED_lattice.hh"
 #include "ED_object.hh"
@@ -42,7 +42,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "lattice_intern.h"
+#include "lattice_intern.hh"
 
 using blender::Span;
 using blender::Vector;

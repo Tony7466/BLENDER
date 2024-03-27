@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "usd.h"
+#include "usd.hh"
 
 #include "BLI_map.hh"
 
@@ -22,6 +22,7 @@ struct CacheFile;
 struct Main;
 struct Material;
 struct Object;
+struct ReportList;
 
 namespace blender::io::usd {
 
