@@ -1305,6 +1305,77 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   return data;
 }
 
+/**
+ * Decoded tile data structure.
+ * Similar to ShadowTileData, this one is only used for rendering and packed into `tilemap_tx`.
+ * This allow to reuse some bits for other purpose.
+ */
+struct ShadowSamplingTile {
+  /** Page inside the virtual shadow map atlas. */
+  uint3 page;
+  /** LOD pointed to LOD 0 tile page. (punctual only). */
+  uint lod;
+  /** Offset to the texel position to align with the LOD page start. (directional only). */
+  uint2 lod_offset;
+  /** If the tile is needed for rendering. */
+  bool is_valid;
+};
+/** \note Stored packed as a uint. */
+#define ShadowSamplingTilePacked uint
+
+#define SHADOW_TILE_IS_VALID (1u << 31u)
+
+/* NOTE: Trust the input to be in valid range (max is [128,128]).
+ * Maximum LOD level index we can store is 7, so we need 7 bits to store the offset in each
+ * dimension. Result fits into 14 bits. */
+static inline uint shadow_lod_offset_pack(uint2 ofs)
+{
+  BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
+  return (ofs.x << 0u) | (ofs.y << 7u);
+}
+static inline uint2 shadow_lod_offset_unpack(uint data)
+{
+  return (uint2(data) >> uint2(0u, 7u)) & uint2(7u);
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
+{
+  ShadowSamplingTile tile;
+  tile.page = shadow_page_unpack(data);
+  /* -- 12 bits -- */
+  tile.lod = (data >> 12u) & 7u;
+  /* -- 15 bits -- */
+  tile.lod_offset = shadow_lod_offset_unpack((data >> 15u) & 14u);
+  /* -- 29 bits -- */
+  /* Only 3 padding bits left. */
+  tile.is_valid = (data & SHADOW_TILE_IS_VALID) != 0;
+  return tile;
+}
+
+static inline ShadowSamplingTilePacked shadow_sampling_tile_pack(ShadowSamplingTile tile)
+{
+  uint data;
+  /* NOTE: Page might be set to invalid values for tracking invalid usages.
+   * So we have to mask the result. */
+  data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
+  data |= (tile.lod & 7u) << 12u;
+  data |= shadow_lod_offset_pack(tile.lod_offset) << 15u;
+  data |= (tile.is_valid ? uint(SHADOW_TILE_IS_VALID) : 0);
+  return data;
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_create(ShadowTileData tile_data, uint lod)
+{
+  ShadowSamplingTile tile;
+  tile.page = tile_data.page;
+  tile.lod = lod;
+  tile.lod_offset = uint2(0, 0); /* Computed during tilemap amend phase. */
+  /* At this point, it should be the case that all given tiles that have been tagged as used are
+   * ready for sampling. Otherwise tile_data should be SHADOW_NO_DATA. */
+  tile.is_valid = tile_data.is_used;
+  return tile;
+}
+
 struct ShadowSceneData {
   /* Number of shadow rays to shoot for each light. */
   int ray_count;

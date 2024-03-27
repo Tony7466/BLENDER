@@ -10,7 +10,7 @@
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 
-#include "DEG_depsgraph.hh"
+#include "BLI_vector.hh"
 
 #include "RNA_define.hh"
 
@@ -1168,20 +1168,68 @@ static void test_eevee_shadow_tilemap_amend()
 {
   GPU_render_begin();
 
+  blender::Vector<uint32_t> tilemap_data(SHADOW_TILEMAP_RES * SHADOW_TILEMAP_RES *
+                                         SHADOW_TILEMAP_PER_ROW);
+  tilemap_data.fill(0);
+
+  auto pixel_get = [&](int x, int y, int tilemap_index) -> uint32_t & {
+    /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+    return tilemap_data[y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
+                        tilemap_index * SHADOW_TILEMAP_RES];
+  };
+  ShadowSamplingTile tile;
+  tile.lod = 0;
+  tile.lod_offset = uint2(0);
+  tile.is_valid = true;
+  tile.page = uint3(1, 0, 0);
+  pixel_get(16, 16, 2) = shadow_sampling_tile_pack(tile);
+  tile.page = uint3(2, 0, 0);
+  pixel_get(17, 16, 2) = shadow_sampling_tile_pack(tile);
+  tile.page = uint3(3, 0, 0);
+  pixel_get(17, 16, 1) = shadow_sampling_tile_pack(tile);
+  tile.page = uint3(4, 0, 0);
+  pixel_get(17, 16, 0) = shadow_sampling_tile_pack(tile);
+
   Texture tilemap_tx = {"tilemap_tx"};
-  tilemap_tx.ensure_2d(GPU_R32UI,
-                       int2(SHADOW_TILEMAP_RES),
-                       GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_SHADER_READ |
-                           GPU_TEXTURE_USAGE_SHADER_WRITE);
-  tilemap_tx.clear(uint4(0));
+  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_SHADER_READ |
+                           GPU_TEXTURE_USAGE_SHADER_WRITE;
+  int2 tilemap_res(SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW, SHADOW_TILEMAP_RES);
+  tilemap_tx.ensure_2d(GPU_R32UI, tilemap_res, usage);
+  GPU_texture_update_sub(
+      tilemap_tx, GPU_DATA_UINT, tilemap_data.data(), 0, 0, 0, tilemap_res.x, tilemap_res.y, 0);
+
+  /* Setup one directional light with 3 tilemaps. Fill only the needed data. */
+  LightData light;
+  light.type = LIGHT_SUN;
+  light.sun.clipmap_lod_min = 0;
+  light.sun.clipmap_lod_max = 2;
+  light.tilemap_index = 0;
+
+  LightDataBuf culling_light_buf = {"Lights_culled"};
+  culling_light_buf[0] = light;
+  culling_light_buf.push_update();
+
+  LightCullingDataBuf culling_data_buf = {"LightCull_data"};
+  culling_data_buf.local_lights_len = 0;
+  culling_data_buf.sun_lights_len = 1;
+  culling_data_buf.items_count = 1;
+  culling_data_buf.push_update();
+
+  /* Needed for validation. But not used since we use directionals. */
+  LightCullingZbinBuf culling_zbin_buf = {"LightCull_zbin"};
+  LightCullingTileBuf culling_tile_buf = {"LightCull_tile"};
 
   GPUShader *sh = GPU_shader_create_from_info_name("eevee_shadow_tilemap_amend");
 
   PassSimple pass("Test");
   pass.shader_set(sh);
   pass.bind_image("tilemaps_img", tilemap_tx);
+  pass.bind_ssbo(LIGHT_CULL_BUF_SLOT, culling_data_buf);
+  pass.bind_ssbo(LIGHT_BUF_SLOT, culling_light_buf);
+  pass.bind_ssbo(LIGHT_ZBIN_BUF_SLOT, culling_zbin_buf);
+  pass.bind_ssbo(LIGHT_TILE_BUF_SLOT, culling_tile_buf);
   pass.dispatch(int3(1));
-  pass.barrier(GPU_BARRIER_BUFFER_UPDATE | GPU_BARRIER_TEXTURE_UPDATE);
+  pass.barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
   Manager manager;
   manager.submit(pass);
@@ -1189,52 +1237,129 @@ static void test_eevee_shadow_tilemap_amend()
   {
     uint *pixels = tilemap_tx.read<uint32_t>(GPU_DATA_UINT);
 
-    std::string result = "";
-    for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
-      for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
-        ShadowTileData tile = shadow_tile_unpack(pixels[y * SHADOW_TILEMAP_RES + x]);
-        result += std::to_string(tile.page.x + tile.page.y * SHADOW_PAGE_PER_ROW);
+    auto stringify_tilemap = [&](int tilemap_index) -> std::string {
+      std::string result = "";
+      for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
+        for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
+          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
+                         tilemap_index * SHADOW_TILEMAP_RES;
+          ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
+          result += std::to_string(tile.page.x + tile.page.y * SHADOW_PAGE_PER_ROW);
+        }
+        result += "\n";
       }
-    }
-
-    MEM_SAFE_FREE(pixels);
+      return result;
+    };
 
     /** The layout of these expected strings is Y down. */
-    StringRefNull expected_pages =
-        "12334444555555556666666666666667"
-        "22334444555555556666666666666666"
-        "33334444555555556666666666666666"
-        "33334444555555556666666666666666"
-        "44444444555555556666666666666666"
-        "44444444555555556666666666666666"
-        "44444444555555556666666666666666"
-        "44444444555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "55555555555555556666666696666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "88888888666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666";
+    StringRefNull expected_pages_lod2 =
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000001200000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n";
 
-    EXPECT_EQ(expected_pages, result);
+    StringRefNull expected_pages_lod1 =
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000001322000000000000\n"
+        "00000000000000001122000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n";
+
+    StringRefNull expected_pages_lod0 =
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000001433222200000000\n"
+        "00000000000000001133222200000000\n"
+        "00000000000000001111222200000000\n"
+        "00000000000000001111222200000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n"
+        "00000000000000000000000000000000\n";
+
+    EXPECT_EQ(expected_pages_lod0, stringify_tilemap(0));
+    EXPECT_EQ(expected_pages_lod1, stringify_tilemap(1));
+    EXPECT_EQ(expected_pages_lod2, stringify_tilemap(2));
+
+    MEM_SAFE_FREE(pixels);
   }
 
   GPU_shader_free(sh);

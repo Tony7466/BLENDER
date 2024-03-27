@@ -198,9 +198,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
 GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_amend)
     .do_static_compilation(true)
     .local_group_size(SHADOW_TILEMAP_RES, SHADOW_TILEMAP_RES)
-    .storage_buf(5, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
-    .storage_buf(6, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
-    .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D, "tilemaps_img")
+    .image(0, GPU_R32UI, Qualifier::READ_WRITE, ImageType::UINT_2D, "tilemaps_img")
     .additional_info("eevee_shared", "eevee_light_data", "draw_view")
     .compute_source("eevee_shadow_tilemap_amend_comp.glsl");
 

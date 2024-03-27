@@ -1201,8 +1201,6 @@ void ShadowModule::end_sync()
         /* Amend tilemap_tx content to support clipmap LODs. */
         PassSimple::Sub &sub = pass.sub("Amend");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_AMEND));
-        sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
-        sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
         sub.bind_resources(inst_.lights);
         sub.dispatch(int3(1));

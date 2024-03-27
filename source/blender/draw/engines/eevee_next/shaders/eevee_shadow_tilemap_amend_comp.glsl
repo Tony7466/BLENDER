@@ -20,7 +20,7 @@
 #pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
-ShadowSamplingTile tiles_local[SHADOW_TILEMAP_RES][SHADOW_TILEMAP_RES];
+shared ShadowSamplingTilePacked tiles_local[SHADOW_TILEMAP_RES][SHADOW_TILEMAP_RES];
 
 void main()
 {
@@ -28,20 +28,16 @@ void main()
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
     LightData light = light_buf[l_idx];
+    /* This only works on clipmaps. Cascade have already the same LOD for every tilemaps. */
+    if (light.type != LIGHT_SUN) {
+      break;
+    }
     /* LOD relative max with respect to clipmap_lod_min. */
     int lod_max = light_sun_data_get(light).clipmap_lod_max -
                   light_sun_data_get(light).clipmap_lod_min;
     /* Iterate in reverse. */
     for (int lod = lod_max; lod >= 0; lod--) {
-
       int tilemap_index = light.tilemap_index + lod;
-
-      ShadowTileMapData tilemap_data = tilemaps_buf[tilemap_index];
-      /* This only works on clipmaps. Cascade have already the same LOD for every tilemaps. */
-      if (tilemap_data.projection_type != SHADOW_PROJECTION_CLIPMAP) {
-        break;
-      }
-
       ivec2 atlas_texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
 
       ShadowSamplingTilePacked tile_packed = imageLoad(tilemaps_img, atlas_texel).x;
@@ -52,20 +48,21 @@ void main()
         ivec2 offset = ivec2(SHADOW_TILEMAP_RES / 2) +
                        0 /* TODO offset from clipmap_base_offset. */;
         /* Load tile from the previous LOD. */
-        ivec2 tile_co_prev = tile_co; /* ((tile_co + offset) >> 1) */
+        ivec2 tile_co_prev = (tile_co + offset) >> 1;
 
         ShadowSamplingTilePacked tile_prev_packed = tiles_local[tile_co_prev.y][tile_co_prev.x];
         ShadowSamplingTile tile_prev = shadow_sampling_tile_unpack(tile_prev_packed);
-        /* Add the offset of this tilemap to the tile data. */
-        // tile_prev.lod_offset += offset;
-        tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
 
         if (tile_prev.is_valid) {
-          /* Replace the missing new page with the one from the lower LOD. */
-          imageStore(tilemaps_img, atlas_texel, uvec4(shadow_sampling_tile_pack(tile)));
+          /* Add the offset of this tilemap to the tile data. */
+          tile_prev.lod_offset += offset;
+          tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
+          /* Replace the missing page with the one from the lower LOD. */
+          imageStore(tilemaps_img, atlas_texel, uvec4(tile_prev_packed));
+          /* Push this amended tile to the local tiles. */
+          tile_packed = tile_prev_packed;
+          tile.is_valid = true;
         }
-        /* Push this amended tile to the local tiles. */
-        tile_packed = tile_prev_packed;
       }
 
       barrier();
