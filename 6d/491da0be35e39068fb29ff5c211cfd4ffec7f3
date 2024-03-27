@@ -1,1 +1,2 @@
 Referenced by commit a292dc3117cd3955c63d38c13b35dff3596b38e1, Cleanup: update code comments to match refactor
+Referenced by commit 3031146097b42cc2aa6d64b78b6485de38a727c7, Fix #119957: Crash when using 'angle constraint' Relative in Knife tool
