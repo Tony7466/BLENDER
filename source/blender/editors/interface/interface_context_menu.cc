@@ -1012,6 +1012,28 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       }
     }
   }
+  else if (but->optype && but->opptr && RNA_struct_property_is_set(but->opptr, "filepath")) {
+    /* Operator with "filepath" property. */
+    char filepath[FILE_MAX] = {0};
+    RNA_string_get(but->opptr, "filepath", filepath);
+    if (filepath[0] && BLI_exists(filepath)) {
+      wmOperatorType *ot = WM_operatortype_find("WM_OT_path_open", true);
+      PointerRNA props_ptr;
+      char dir[FILE_MAXDIR];
+      char file[FILE_MAXFILE];
+      BLI_path_split_dir_file(filepath, dir, sizeof(dir), file, sizeof(file));
+      uiItemFullO_ptr(layout,
+                      ot,
+                      CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open Folder"),
+                      ICON_NONE,
+                      nullptr,
+                      WM_OP_INVOKE_DEFAULT,
+                      UI_ITEM_NONE,
+                      &props_ptr);
+      RNA_string_set(&props_ptr, "filepath", dir);
+      uiItemS(layout);
+    }
+  }
 
   {
     const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
