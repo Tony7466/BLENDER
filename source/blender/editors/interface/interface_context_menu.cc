@@ -1024,7 +1024,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       BLI_path_split_dir_file(filepath, dir, sizeof(dir), file, sizeof(file));
       uiItemFullO_ptr(layout,
                       ot,
-                      CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open Folder"),
+                      CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Open File Location"),
                       ICON_NONE,
                       nullptr,
                       WM_OP_INVOKE_DEFAULT,
