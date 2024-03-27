@@ -1,2 +1,3 @@
 Referenced by issue #114571, Regression: Retopology overlay color only visible with face selection
 Referenced by commit 3fddfb48be7acea139c8ee8262bc568f25e992fc, Fix #114571: Retopology Overlay Face Color Regression
+Referenced by issue #119953, Duplicate unused Face selection color
