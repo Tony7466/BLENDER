@@ -17,6 +17,10 @@
 
 #include "DNA_screen_types.h"
 
+#include "BKE_customdata.hh"
+#include "BKE_mesh.hh"
+#include "BKE_object.hh"
+
 #include "GPU_select.hh"
 
 #include "DEG_depsgraph.hh"
@@ -392,7 +396,8 @@ uint DRW_select_buffer_find_nearest_to_point(Depsgraph *depsgraph,
 bool DRW_select_buffer_elem_get(const uint sel_id,
                                 uint *r_elem,
                                 uint *r_base_index,
-                                char *r_elem_type)
+                                char *r_elem_type,
+                                const bool use_orig_index)
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
@@ -424,8 +429,6 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
     return false;
   }
 
-  *r_elem = elem_id;
-
   if (r_base_index) {
     *r_base_index = base_index;
   }
@@ -433,6 +436,22 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
   if (r_elem_type) {
     *r_elem_type = elem_type;
   }
+
+  if (use_orig_index) {
+    Object *object = select_ctx->objects[base_index];
+    Mesh *mesh_eval = BKE_object_get_evaluated_mesh(object);
+    const int *orig_index = reinterpret_cast<const int *>(
+        CustomData_get_layer(elem_type == SCE_SELECT_FACE ? &mesh_eval->face_data :
+                             elem_type == SCE_SELECT_EDGE ? &mesh_eval->edge_data :
+                                                            &mesh_eval->vert_data,
+                             CD_ORIGINDEX));
+
+    if (orig_index) {
+      elem_id = orig_index[elem_id];
+    }
+  }
+
+  *r_elem = elem_id;
 
   return true;
 }

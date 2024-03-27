@@ -17,6 +17,7 @@ enum MeshForeachFlag {
 
 void BKE_mesh_foreach_mapped_vert(
     const Mesh *mesh,
+    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float co[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag);
@@ -28,9 +29,11 @@ void BKE_mesh_foreach_mapped_vert(
 void BKE_mesh_foreach_mapped_edge(
     Mesh *mesh,
     int tot_edges,
+    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float v0co[3], const float v1co[3]),
     void *user_data);
 void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
+                                  const bool use_orig_index,
                                   void (*func)(void *user_data,
                                                int vertex_index,
                                                int face_index,
@@ -40,11 +43,13 @@ void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
                                   MeshForeachFlag flag);
 void BKE_mesh_foreach_mapped_face_center(
     Mesh *mesh,
+    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float cent[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag);
 void BKE_mesh_foreach_mapped_subdiv_face_center(
     Mesh *mesh,
+    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float cent[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag);

@@ -830,13 +830,15 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
   if (data.is_init) {
     data.vert_visit = BLI_BITMAP_NEW(mesh->verts_num, __func__);
 
-    BKE_mesh_foreach_mapped_vert(mesh_eval, gradientVertInit__mapFunc, &data, MESH_FOREACH_NOP);
+    BKE_mesh_foreach_mapped_vert(
+        mesh_eval, true, gradientVertInit__mapFunc, &data, MESH_FOREACH_NOP);
 
     MEM_freeN(data.vert_visit);
     data.vert_visit = nullptr;
   }
   else {
-    BKE_mesh_foreach_mapped_vert(mesh_eval, gradientVertUpdate__mapFunc, &data, MESH_FOREACH_NOP);
+    BKE_mesh_foreach_mapped_vert(
+        mesh_eval, true, gradientVertUpdate__mapFunc, &data, MESH_FOREACH_NOP);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

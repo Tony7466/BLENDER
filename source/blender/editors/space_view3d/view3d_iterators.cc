@@ -312,7 +312,7 @@ void meshobject_foreachScreenVert(const ViewContext *vc,
   }
 
   BKE_mesh_foreach_mapped_vert(
-      mesh, meshobject_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
+      mesh, true, meshobject_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
 }
 
 static void mesh_foreachScreenVert__mapFunc(void *user_data,
@@ -361,7 +361,8 @@ void mesh_foreachScreenVert(
   }
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_VERT);
-  BKE_mesh_foreach_mapped_vert(mesh, mesh_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
+  BKE_mesh_foreach_mapped_vert(
+      mesh, true, mesh_foreachScreenVert__mapFunc, &data, MESH_FOREACH_NOP);
 }
 
 /** \} */
@@ -440,7 +441,8 @@ void mesh_foreachScreenEdge(const ViewContext *vc,
   }
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_EDGE);
-  BKE_mesh_foreach_mapped_edge(mesh, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
+  BKE_mesh_foreach_mapped_edge(
+      mesh, true, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
 }
 
 /** \} */
@@ -530,11 +532,11 @@ void mesh_foreachScreenEdge_clip_bb_segment(const ViewContext *vc,
     ED_view3d_clipping_local(
         vc->rv3d, vc->obedit->object_to_world().ptr()); /* for local clipping lookups. */
     BKE_mesh_foreach_mapped_edge(
-        mesh, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
+        mesh, true, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
   }
   else {
     BKE_mesh_foreach_mapped_edge(
-        mesh, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
+        mesh, true, vc->em->bm->totedge, mesh_foreachScreenEdge__mapFunc, &data);
   }
 }
 
@@ -589,11 +591,11 @@ void mesh_foreachScreenFace(
   const int face_dot_tags_num = mesh->runtime->subsurf_face_dot_tags.size();
   if (face_dot_tags_num && (face_dot_tags_num != mesh->verts_num)) {
     BKE_mesh_foreach_mapped_subdiv_face_center(
-        mesh, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
+        mesh, true, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }
   else {
     BKE_mesh_foreach_mapped_face_center(
-        mesh, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
+        mesh, true, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }
 }
 

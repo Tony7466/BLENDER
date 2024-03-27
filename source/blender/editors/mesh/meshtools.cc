@@ -1391,7 +1391,8 @@ bool ED_mesh_pick_vert(
     data.v_idx_best = -1;
     data.hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
-    BKE_mesh_foreach_mapped_vert(mesh_eval, ed_mesh_pick_vert__mapFunc, &data, MESH_FOREACH_NOP);
+    BKE_mesh_foreach_mapped_vert(
+        mesh_eval, true, ed_mesh_pick_vert__mapFunc, &data, MESH_FOREACH_NOP);
 
     if (data.v_idx_best == -1) {
       return false;

@@ -157,7 +157,7 @@ float (*BKE_editmesh_vert_coords_alloc(
   data.cos_cage = cos_cage;
   data.visit_bitmap = visit_bitmap;
 
-  BKE_mesh_foreach_mapped_vert(cage, cage_mapped_verts_callback, &data, MESH_FOREACH_NOP);
+  BKE_mesh_foreach_mapped_vert(cage, true, cage_mapped_verts_callback, &data, MESH_FOREACH_NOP);
 
   MEM_freeN(visit_bitmap);
 

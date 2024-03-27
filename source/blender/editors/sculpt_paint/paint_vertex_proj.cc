@@ -83,7 +83,7 @@ static void vpaint_proj_dm_map_cosnos_init(Depsgraph *depsgraph,
 
   memset(vp_handle->vcosnos, 0, sizeof(*vp_handle->vcosnos) * mesh->verts_num);
   BKE_mesh_foreach_mapped_vert(
-      mesh_eval, vpaint_proj_dm_map_cosnos_init__map_cb, vp_handle, MESH_FOREACH_USE_NORMAL);
+      mesh_eval, true, vpaint_proj_dm_map_cosnos_init__map_cb, vp_handle, MESH_FOREACH_USE_NORMAL);
 }
 
 /* -------------------------------------------------------------------- */
@@ -146,8 +146,11 @@ static void vpaint_proj_dm_map_cosnos_update(Depsgraph *depsgraph,
   BLI_assert(BLI_listbase_is_empty(&ob->modifiers) == false);
 
   copy_vn_fl(vp_handle->dists_sq, mesh->verts_num, FLT_MAX);
-  BKE_mesh_foreach_mapped_vert(
-      mesh_eval, vpaint_proj_dm_map_cosnos_update__map_cb, &vp_update, MESH_FOREACH_USE_NORMAL);
+  BKE_mesh_foreach_mapped_vert(mesh_eval,
+                               true,
+                               vpaint_proj_dm_map_cosnos_update__map_cb,
+                               &vp_update,
+                               MESH_FOREACH_USE_NORMAL);
 }
 
 /* -------------------------------------------------------------------- */

@@ -310,7 +310,7 @@ void ED_transverts_create_from_obedit(TransVertStore *tvs, const Object *obedit,
       if (tvs->transverts && editmesh_eval_cage) {
         BM_mesh_elem_table_ensure(bm, BM_VERT);
         BKE_mesh_foreach_mapped_vert(
-            editmesh_eval_cage, set_mapped_co, userdata, MESH_FOREACH_NOP);
+            editmesh_eval_cage, true, set_mapped_co, userdata, MESH_FOREACH_NOP);
       }
     }
   }
