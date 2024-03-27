@@ -13,6 +13,7 @@
 #include "intern/abc_axis_conversion.h"
 
 #include "BLI_array_utils.hh"
+#include "BLI_offset_indices.hh"
 
 #include "DNA_curve_types.h"
 #include "DNA_object_types.h"
@@ -162,69 +163,70 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
   const Span<float> nurbs_weights = curves.nurbs_weights();
   const VArray<int8_t> nurbs_orders = curves.nurbs_orders();
   const bke::AttributeAccessor curve_attributes = curves.attributes();
-  const bke::AttributeReader<float> radii = curve_attributes.lookup<float>("radius",
-                                                                           bke::AttrDomain::Point);
+  const VArray<float> radii = *curve_attributes.lookup_or_default<float>(
+      "radius", bke::AttrDomain::Point, 0.01f);
 
+  vert_counts.resize(curves.curves_num());
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  for (const int i_curve : curves.curves_range()) {
-    const IndexRange points = points_by_curve[i_curve];
-    const size_t current_vert_count = verts.size();
+  if (blender_curve_type == CURVE_TYPE_BEZIER) {
+    const Span<float3> handles_l = curves.handle_positions_left();
+    const Span<float3> handles_r = curves.handle_positions_right();
 
-    switch (blender_curve_type) {
-      case CURVE_TYPE_POLY:
-      case CURVE_TYPE_CATMULL_ROM:
-        for (const int i_point : points) {
-          verts.push_back(to_yup_V3f(positions[i_point]));
-          widths.push_back(radii.varray[i_point] * 2.0f);
-        }
-        break;
+    for (const int i_curve : curves.curves_range()) {
+      const IndexRange points = points_by_curve[i_curve];
+      const size_t current_vert_count = verts.size();
 
-      case CURVE_TYPE_BEZIER: {
-        const Span<float3> handles_l = curves.handle_positions_left();
-        const Span<float3> handles_r = curves.handle_positions_right();
+      const int start_point_index = points.first();
+      const int last_point_index = points.last();
 
-        const int start_point_index = points.first();
-        const int last_point_index = points.last();
+      /* Vert order in the bezier curve representation is:
+       * [
+       *   control point 0(+ width), right handle 0, left handle 1,
+       *   control point 1(+ width), right handle 1, left handle 2,
+       *   control point 2(+ width), ...
+       * ] */
+      for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
+        verts.push_back(to_yup_V3f(positions[i_point]));
+        widths.push_back(radii[last_point_index] * 2.0f);
 
-        /* Vert order in the bezier curve representation is:
-         * [
-         *   control point 0(+ width), right handle 0, left handle 1,
-         *   control point 1(+ width), right handle 1, left handle 2,
-         *   control point 2(+ width), ...
-         * ] */
-        for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
-          verts.push_back(to_yup_V3f(positions[i_point]));
-          widths.push_back(radii.varray[last_point_index] * 2.0f);
-
-          verts.push_back(to_yup_V3f(handles_r[i_point]));
-          verts.push_back(to_yup_V3f(handles_l[i_point + 1]));
-        }
-
-        /* The last vert in the array doesn't need a right handle because the curve stops
-         * at that point. */
-        verts.push_back(to_yup_V3f(positions[last_point_index]));
-        widths.push_back(radii.varray[last_point_index] * 2.0f);
-
-        /* If the curve is cyclic, include the right handle of the last point and the
-         * left handle of the first point. */
-        if (is_cyclic) {
-          verts.push_back(to_yup_V3f(handles_r[last_point_index]));
-          verts.push_back(to_yup_V3f(handles_l[start_point_index]));
-        }
-        break;
+        verts.push_back(to_yup_V3f(handles_r[i_point]));
+        verts.push_back(to_yup_V3f(handles_l[i_point + 1]));
       }
 
-      case CURVE_TYPE_NURBS:
-        for (const int i_point : points) {
-          verts.push_back(to_yup_V3f(positions[i_point]));
-          weights.push_back(nurbs_weights[i_point]);
-          widths.push_back(radii.varray[i_point] * 2.0f);
-        }
-        break;
+      /* The last vert in the array doesn't need a right handle because the curve stops
+       * at that point. */
+      verts.push_back(to_yup_V3f(positions[last_point_index]));
+      widths.push_back(radii[last_point_index] * 2.0f);
+
+      /* If the curve is cyclic, include the right handle of the last point and the
+       * left handle of the first point. */
+      if (is_cyclic) {
+        verts.push_back(to_yup_V3f(handles_r[last_point_index]));
+        verts.push_back(to_yup_V3f(handles_l[start_point_index]));
+      }
+
+      vert_counts[i_curve] = verts.size() - current_vert_count;
+    }
+  }
+  else {
+    verts.resize(curves.points_num());
+    widths.resize(curves.points_num());
+    for (const int i_point : curves.points_range()) {
+      verts[i_point] = to_yup_V3f(positions[i_point]);
+      widths[i_point] = radii[i_point] * 2.0f;
     }
 
-    orders.push_back(nurbs_orders[i_curve]);
-    vert_counts.push_back(verts.size() - current_vert_count);
+    if (blender_curve_type == CURVE_TYPE_NURBS) {
+      weights.resize(curves.points_num());
+      std::copy_n(nurbs_weights.data(), weights.size(), weights.data());
+
+      orders.resize(curves.curves_num());
+      for (const int i_curve : curves.curves_range()) {
+        orders[i_curve] = nurbs_orders[i_curve];
+      }
+    }
+
+    offset_indices::copy_group_sizes(points_by_curve, points_by_curve.index_range(), vert_counts);
   }
 
   Alembic::AbcGeom::OFloatGeomParam::Sample width_sample;
