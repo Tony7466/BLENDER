@@ -2712,6 +2712,12 @@ void uiTemplateNodeInputs(uiLayout *layout, bContext *C, PointerRNA *ptr);
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C);
 
 /**
+ * \return: True if the list item with unfiltered, unordered index \a item_idx is visible given the
+ *          current filter settings.
+ */
+bool UI_list_item_index_is_filtered_visible(const struct uiList *ui_list, int item_idx);
+
+/**
  * \return An RNA pointer for the operator properties.
  */
 PointerRNA *UI_list_custom_activate_operator_set(uiList *ui_list,
@@ -3055,7 +3061,7 @@ bool UI_drop_color_poll(bContext *C, wmDrag *drag, const wmEvent *event);
 bool UI_context_copy_to_selected_list(bContext *C,
                                       PointerRNA *ptr,
                                       PropertyRNA *prop,
-                                      ListBase *r_lb,
+                                      blender::Vector<PointerRNA> *r_lb,
                                       bool *r_use_path_from_id,
                                       std::optional<std::string> *r_path);
 bool UI_context_copy_to_selected_check(PointerRNA *ptr,

@@ -31,8 +31,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
 
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -458,18 +458,18 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
         n = 0;
         area = 0;
         zero_v3(vmid);
-        BMLoop *(*l)[3] = &em->looptris[tri_index];
+        const std::array<BMLoop *, 3> *ltri_array = &em->looptris[tri_index];
         for (int j = 0; j < f_corner_tris_len; j++) {
 
           if (use_coords) {
-            copy_v3_v3(v1, vert_coords[BM_elem_index_get(l[j][0]->v)]);
-            copy_v3_v3(v2, vert_coords[BM_elem_index_get(l[j][1]->v)]);
-            copy_v3_v3(v3, vert_coords[BM_elem_index_get(l[j][2]->v)]);
+            copy_v3_v3(v1, vert_coords[BM_elem_index_get(ltri_array[j][0]->v)]);
+            copy_v3_v3(v2, vert_coords[BM_elem_index_get(ltri_array[j][1]->v)]);
+            copy_v3_v3(v3, vert_coords[BM_elem_index_get(ltri_array[j][2]->v)]);
           }
           else {
-            copy_v3_v3(v1, l[j][0]->v->co);
-            copy_v3_v3(v2, l[j][1]->v->co);
-            copy_v3_v3(v3, l[j][2]->v->co);
+            copy_v3_v3(v1, ltri_array[j][0]->v->co);
+            copy_v3_v3(v2, ltri_array[j][1]->v->co);
+            copy_v3_v3(v3, ltri_array[j][2]->v->co);
           }
 
           add_v3_v3(vmid, v1);
