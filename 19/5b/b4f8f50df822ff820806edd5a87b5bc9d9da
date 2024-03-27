@@ -1,2 +1,3 @@
 Referenced by issue #71244, Renaming an ID through RNA does not consistently increment OTHER or CURRENT ID in case of name collision
 Referenced by issue #119139, WIP: Allow name-swapping when renaming IDs from the UI
+Referenced by issue #119955, Blender 4.1 changed behaviour for renaming objects when name already is used
