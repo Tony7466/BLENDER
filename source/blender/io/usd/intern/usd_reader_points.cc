@@ -19,7 +19,7 @@
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
 #include "CLG_log.h"
-static CLG_LogRef LOG = { "io.usd" };
+static CLG_LogRef LOG = {"io.usd"};
 
 namespace blender::io::usd {
 
@@ -50,7 +50,7 @@ void USDPointsReader::read_object_data(Main *bmain, double motionSampleTime)
   }
 
   const USDMeshReadParams params = create_mesh_read_params(motionSampleTime,
-                                                          import_params_.mesh_read_flag);
+                                                           import_params_.mesh_read_flag);
 
   PointCloud *point_cloud = static_cast<PointCloud *>(object_->data);
 
@@ -102,11 +102,11 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
 
   /* Update point positions and attributes. */
   bke::SpanAttributeWriter<float3> positions_writer =
-      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("position",
-                                                                               bke::AttrDomain::Point);
+      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>(
+          "position", bke::AttrDomain::Point);
   MutableSpan<float3> point_positions = positions_writer.span;
 
-  for (size_t i = 0 ; i < positions.size(); i++) {
+  for (size_t i = 0; i < positions.size(); i++) {
     point_positions[i][0] = positions[i][0];
     point_positions[i][1] = positions[i][1];
     point_positions[i][2] = positions[i][2];
@@ -119,53 +119,53 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
 
   std::vector<pxr::UsdGeomPrimvar> primvars = primvarsLoaded.GetPrimvarsWithValues();
   for (auto pv : primvars) {
-      if (!pv.HasValue()) {
+    if (!pv.HasValue()) {
+      continue;
+    }
+    const pxr::SdfValueTypeName type = pv.GetTypeName();
+    const pxr::TfToken interp = pv.GetInterpolation();
+    const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+
+    if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
+      bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
+          point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
+              name.GetText(), bke::AttrDomain::Point);
+      if (!primvar_writer) {
+        CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
         continue;
       }
-      const pxr::SdfValueTypeName type = pv.GetTypeName();
-      const pxr::TfToken interp = pv.GetInterpolation();
-      const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
-    
-      if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
-        bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(name.GetText(), bke::AttrDomain::Point);
-        if (!primvar_writer) {
-          CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
-          continue;
-        }
-        pxr::VtVec3fArray colors;
-        if (!pv.ComputeFlattened(&colors, params.motion_sample_time)) {
-          CLOG_WARN(&LOG, "Couldn't compute the flattened colors %s", name.GetText());
-          continue;
-        }
-
-        for (int i =0; i < colors.size(); ++i) {
-          const pxr::GfVec3f & usd_color = colors[i];
-          primvar_writer.span[i] = ColorGeometry4f(
-            usd_color[0], usd_color[1], usd_color[2], 1.0f
-          );
-        };
-        primvar_writer.finish();
+      pxr::VtVec3fArray colors;
+      if (!pv.ComputeFlattened(&colors, params.motion_sample_time)) {
+        CLOG_WARN(&LOG, "Couldn't compute the flattened colors %s", name.GetText());
+        continue;
       }
-      if (type == pxr::SdfValueTypeNames->FloatArray) {
 
-        bke::SpanAttributeWriter<float> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(name.GetText(), bke::AttrDomain::Point);
-        if (!primvar_writer) {
-          CLOG_WARN(&LOG, "Couldn't make writer for float prop %s", name.GetText());
-          continue;
-        }
-        pxr::VtArray<float> values;
-        if (!pv.ComputeFlattened(&values,params.motion_sample_time)) {
-          CLOG_WARN(&LOG, "Couldn't compute the flattened float prop %s", name.GetText());
-          continue;
-        }
+      for (int i = 0; i < colors.size(); ++i) {
+        const pxr::GfVec3f &usd_color = colors[i];
+        primvar_writer.span[i] = ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f);
+      };
+      primvar_writer.finish();
+    }
+    if (type == pxr::SdfValueTypeNames->FloatArray) {
 
-        for (int i =0; i < values.size(); ++i) {
-          primvar_writer.span[i] = values[i];
-        };
+      bke::SpanAttributeWriter<float> primvar_writer =
+          point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(
+              name.GetText(), bke::AttrDomain::Point);
+      if (!primvar_writer) {
+        CLOG_WARN(&LOG, "Couldn't make writer for float prop %s", name.GetText());
+        continue;
+      }
+      pxr::VtArray<float> values;
+      if (!pv.ComputeFlattened(&values, params.motion_sample_time)) {
+        CLOG_WARN(&LOG, "Couldn't compute the flattened float prop %s", name.GetText());
+        continue;
+      }
 
-        primvar_writer.finish();
+      for (int i = 0; i < values.size(); ++i) {
+        primvar_writer.span[i] = values[i];
+      };
+
+      primvar_writer.finish();
     }
   }
 

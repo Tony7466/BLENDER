@@ -34,7 +34,7 @@ class USDPointsReader : public USDGeomReader {
    * to update animated geomtery. */
   void read_geometry(bke::GeometrySet &geometry_set,
                      USDMeshReadParams params,
-                     const char ** err_str) override;
+                     const char **err_str) override;
 
   /* Return true if the USD data may be time varying. */
   bool is_animated() const;
