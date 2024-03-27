@@ -350,6 +350,9 @@ static float *geodesic_mesh_create_parallel(Object *ob,
           }
         }
       }
+        
+      // Mark the edge as visited
+      edge_tag[e].set();
     }
 
     std::queue<int> tmp = queue_next;
