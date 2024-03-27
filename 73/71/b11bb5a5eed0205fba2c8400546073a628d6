@@ -1,1 +1,2 @@
 Referenced by issue #119631, 4.1: Candidates for corrective releases
+Referenced by commit 3f7742f65d4040ce1dbf4187069a84a55d6cac6d, GHOST/Wayland: only apply #119871 workaround with LIBDECOR
