@@ -58,35 +58,6 @@ typedef struct SceneRuntimeHandle SceneRuntimeHandle;
 /** \name FFMPEG
  * \{ */
 
-typedef struct AviCodecData {
-  /** Save format. */
-  void *lpFormat;
-  /** Compressor options. */
-  void *lpParms;
-  /** Size of lpFormat buffer. */
-  unsigned int cbFormat;
-  /** Size of lpParms buffer. */
-  unsigned int cbParms;
-
-  /** Stream type, for consistency. */
-  unsigned int fccType;
-  /** Compressor. */
-  unsigned int fccHandler;
-  /** Keyframe rate. */
-  unsigned int dwKeyFrameEvery;
-  /** Compress quality 0-10,000. */
-  unsigned int dwQuality;
-  /** Bytes per second. */
-  unsigned int dwBytesPerSecond;
-  /** Flags... see below. */
-  unsigned int dwFlags;
-  /** For non-video streams only. */
-  unsigned int dwInterleaveEvery;
-  char _pad[4];
-
-  char avicodecname[128];
-} AviCodecData;
-
 typedef enum eFFMpegPreset {
   FFM_PRESET_NONE = 0,
 
@@ -684,7 +655,7 @@ typedef enum eBakePassFilter {
 typedef struct RenderData {
   struct ImageFormatData im_format;
 
-  struct AviCodecData *avicodecdata;
+  void *_pad;
   struct FFMpegCodecData ffcodecdata;
 
   /** Frames as in 'images'. */
@@ -950,15 +921,10 @@ typedef struct TimeMarker {
 
 typedef struct Paint_Runtime {
   /** Avoid having to compare with scene pointer everywhere. */
-  unsigned int tool_offset;
+  unsigned int initialized;
   unsigned short ob_mode;
   char _pad[2];
 } Paint_Runtime;
-
-/** We might want to store other things here. */
-typedef struct PaintToolSlot {
-  struct Brush *brush;
-} PaintToolSlot;
 
 /** Paint Tool Base. */
 typedef struct Paint {
@@ -975,14 +941,6 @@ typedef struct Paint {
    * file load.
    */
   struct AssetWeakReference *brush_asset_reference;
-
-  /**
-   * Each tool has its own active brush,
-   * The currently active tool is defined by the current 'brush'.
-   */
-  struct PaintToolSlot *tool_slots;
-  int tool_slots_len;
-  char _pad1[4];
 
   struct Palette *palette;
   /** Cavity curve. */
@@ -2388,7 +2346,7 @@ typedef enum eSnapFlag {
   // SCE_SNAP_PROJECT = (1 << 3), /* DEPRECATED, see #SCE_SNAP_INDIVIDUAL_PROJECT. */
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
-  SCE_SNAP_ABS_GRID = (1 << 5),
+  /* SCE_SNAP_ABS_GRID = (1 << 5), */ /* UNUSED */
   /* Same value with different name to make it easier to understand in time based code. */
   SCE_SNAP_ABS_TIME_STEP = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),

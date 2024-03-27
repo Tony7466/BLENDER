@@ -61,6 +61,7 @@
 #include "ED_image.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_object_vgroup.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
@@ -181,8 +182,8 @@ bool test_brush_angle_falloff(const Brush &brush,
 
 bool use_normal(const VPaint *vp)
 {
-  return ((vp->paint.brush->flag & BRUSH_FRONTFACE) != 0) ||
-         ((vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
+  return ((brush->flag & BRUSH_FRONTFACE) != 0) || ((brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 }
 
 bool brush_use_accumulate_ex(const Brush *brush, const int ob_mode)
@@ -194,7 +195,8 @@ bool brush_use_accumulate_ex(const Brush *brush, const int ob_mode)
 
 bool brush_use_accumulate(const VPaint *vp)
 {
-  return brush_use_accumulate_ex(vp->paint.brush, vp->paint.runtime.ob_mode);
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
+  return brush_use_accumulate_ex(brush, vp->paint.runtime.ob_mode);
 }
 
 void init_stroke(Depsgraph *depsgraph, Object *ob)
@@ -479,7 +481,7 @@ void update_cache_invariants(
   }
 
   copy_v2_v2(cache->mouse, cache->initial_mouse);
-  const Brush *brush = vp->paint.brush;
+  const Brush *brush = BKE_paint_brush(&vp->paint);
   /* Truly temporary data that isn't stored in properties */
   cache->vc = vc;
   cache->brush = brush;
@@ -574,48 +576,34 @@ void last_stroke_update(Scene *scene, const float location[3])
 /* -------------------------------------------------------------------- */
 void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 {
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
+  Brush *cur_brush = BKE_paint_brush(paint);
 
   /* Switch to the blur (smooth) brush if possible. */
-  /* Note: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
-   * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
-  Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
+  BKE_paint_brush_set_essentials(bmain,
+                                 paint,
+                                 (paint->runtime.ob_mode = OB_MODE_WEIGHT_PAINT) ? "Blur Weight" :
+                                                                                   "Blur Vertex");
+  Brush *smooth_brush = BKE_paint_brush(paint);
+
   if (!smooth_brush) {
+    BKE_paint_brush_set(paint, cur_brush);
     CLOG_WARN(&LOG, "Switching to the blur (smooth) brush not possible, corresponding brush not");
     cache->saved_active_brush_name[0] = '\0';
     return;
   }
 
-  Brush *cur_brush = paint->brush;
   int cur_brush_size = BKE_brush_size_get(scene, cur_brush);
 
   STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
 
-  BKE_paint_brush_set(paint, smooth_brush);
   cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
   BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
   BKE_curvemapping_init(smooth_brush->curve);
 }
 /** \} */
 }  // namespace blender::ed::sculpt_paint::vwpaint
-
-static bool color_attribute_supported(const std::optional<bke::AttributeMetaData> meta_data)
-{
-  if (!meta_data) {
-    return false;
-  }
-  if (!(ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) ||
-      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
-  {
-    return false;
-  }
-  return true;
-}
-
-static bool color_attribute_supported(const Mesh &mesh, const StringRef name)
-{
-  return color_attribute_supported(mesh.attributes().lookup_meta_data(name));
-}
 
 bool vertex_paint_mode_poll(bContext *C)
 {
@@ -629,7 +617,7 @@ bool vertex_paint_mode_poll(bContext *C)
     return false;
   }
 
-  if (!color_attribute_supported(*mesh, mesh->active_color_attribute)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -686,7 +674,7 @@ static Color vpaint_blend(const VPaint *vp,
 {
   using Value = typename Traits::ValueType;
 
-  const Brush *brush = vp->paint.brush;
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
   const IMB_BlendMode blend = (IMB_BlendMode)brush->blend;
 
   const Color color_blend = BLI_mix_colors<Color, Traits>(blend, color_curr, color_paint, alpha);
@@ -855,7 +843,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
       depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     }
     ED_object_vpaintmode_enter_ex(bmain, depsgraph, scene, ob);
-    BKE_paint_toolslots_brush_validate(bmain, &ts->vpaint->paint);
+    BKE_paint_brush_validate(bmain, &ts->vpaint->paint);
   }
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob->data, BKE_MESH_BATCH_DIRTY_ALL);
@@ -963,9 +951,10 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
   vpd->domain = domain;
 
   vpd->vc = ED_view3d_viewcontext_init(C, depsgraph);
+
   vwpaint::view_angle_limits_init(&vpd->normal_angle_precalc,
-                                  vp->paint.brush->falloff_angle,
-                                  (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+                                  brush->falloff_angle,
+                                  (brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
   vpd->paintcol = vpaint_get_current_col(
       scene, vp, (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT));
@@ -1011,7 +1000,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 
   const std::optional<bke::AttributeMetaData> meta_data = *mesh->attributes().lookup_meta_data(
       mesh->active_color_attribute);
-  if (!color_attribute_supported(meta_data)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -1950,7 +1939,8 @@ static void vpaint_stroke_update_step(bContext *C,
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob->data, BKE_MESH_BATCH_DIRTY_ALL);
 
-  if (vp->paint.brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
+  Brush *brush = BKE_paint_brush(&vp->paint);
+  if (brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
     vpd->smear.color_prev = vpd->smear.color_curr;
   }
 
@@ -2156,8 +2146,8 @@ static void fill_mesh_color(Mesh &mesh,
                             const bool use_face_sel,
                             const bool affect_alpha)
 {
-  if (mesh.edit_mesh) {
-    BMesh *bm = mesh.edit_mesh->bm;
+  if (BMEditMesh *em = mesh.runtime->edit_mesh) {
+    BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
     const AttrDomain domain = BKE_id_attribute_domain(&mesh.id, layer);

@@ -33,6 +33,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -262,7 +263,7 @@ void BKE_paint_invalidate_overlay_tex(Scene *scene, ViewLayer *view_layer, const
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (!br) {
     return;
   }
@@ -282,7 +283,7 @@ void BKE_paint_invalidate_cursor_overlay(Scene *scene, ViewLayer *view_layer, Cu
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (br && br->curve == curve) {
     overlay_flags |= PAINT_OVERLAY_INVALID_CURVE;
   }
@@ -438,61 +439,6 @@ const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(const PaintMode m
       break;
   }
   return nullptr;
-}
-
-const char *BKE_paint_get_tool_prop_id_from_paintmode(const PaintMode mode)
-{
-  switch (mode) {
-    case PaintMode::Sculpt:
-      return "sculpt_tool";
-    case PaintMode::Vertex:
-      return "vertex_tool";
-    case PaintMode::Weight:
-      return "weight_tool";
-    case PaintMode::Texture2D:
-    case PaintMode::Texture3D:
-      return "image_tool";
-    case PaintMode::SculptUV:
-      return "uv_sculpt_tool";
-    case PaintMode::GPencil:
-      return "gpencil_tool";
-    case PaintMode::VertexGPencil:
-      return "gpencil_vertex_tool";
-    case PaintMode::SculptGPencil:
-      return "gpencil_sculpt_tool";
-    case PaintMode::WeightGPencil:
-      return "gpencil_weight_tool";
-    case PaintMode::SculptCurves:
-      return "curves_sculpt_tool";
-    case PaintMode::Invalid:
-      break;
-  }
-
-  /* Invalid paint mode. */
-  return nullptr;
-}
-
-const char *BKE_paint_get_tool_enum_translation_context_from_paintmode(const PaintMode mode)
-{
-  switch (mode) {
-    case PaintMode::Sculpt:
-    case PaintMode::GPencil:
-    case PaintMode::Texture2D:
-    case PaintMode::Texture3D:
-      return BLT_I18NCONTEXT_ID_BRUSH;
-    case PaintMode::Vertex:
-    case PaintMode::Weight:
-    case PaintMode::SculptUV:
-    case PaintMode::VertexGPencil:
-    case PaintMode::SculptGPencil:
-    case PaintMode::WeightGPencil:
-    case PaintMode::SculptCurves:
-    case PaintMode::Invalid:
-      break;
-  }
-
-  /* Invalid paint mode. */
-  return BLT_I18NCONTEXT_DEFAULT;
 }
 
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
@@ -664,28 +610,53 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
   return PaintMode::Invalid;
 }
 
-Brush *BKE_paint_brush(Paint *p)
+static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
 {
-  return (Brush *)BKE_paint_brush_for_read((const Paint *)p);
-}
-
-const Brush *BKE_paint_brush_for_read(const Paint *p)
-{
-  return p ? p->brush : nullptr;
-}
-
-void BKE_paint_brush_set(Paint *p, Brush *br)
-{
-  if (p) {
-    p->brush = br;
-
-    BKE_paint_toolslots_brush_update(p);
+  /* Attempt to restore a valid active brush from brush asset information. */
+  if (paint->brush != nullptr) {
+    return false;
   }
+  if (paint->brush_asset_reference == nullptr) {
+    return false;
+  }
+
+  Brush *brush = reinterpret_cast<Brush *>(
+      BKE_asset_weak_reference_ensure(*bmain, ID_BR, *paint->brush_asset_reference));
+  BLI_assert(brush == nullptr || (brush->id.tag & LIB_TAG_ASSET_MAIN));
+
+  /* Ensure we have a brush with appropriate mode to assign.
+   * Could happen if contents of asset blend was manually changed. */
+  if (brush == nullptr || (paint->runtime.ob_mode & brush->ob_mode) == 0) {
+    MEM_delete(paint->brush_asset_reference);
+    paint->brush_asset_reference = nullptr;
+    return false;
+  }
+
+  paint->brush = brush;
+  return true;
 }
 
-bool BKE_paint_brush_is_valid_asset(const Brush *brush)
+Brush *BKE_paint_brush(Paint *paint)
 {
-  return brush && ID_IS_ASSET(&brush->id);
+  return (Brush *)BKE_paint_brush_for_read((const Paint *)paint);
+}
+
+const Brush *BKE_paint_brush_for_read(const Paint *paint)
+{
+  return paint ? paint->brush : nullptr;
+}
+
+bool BKE_paint_brush_set(Paint *paint, Brush *brush)
+{
+  if (paint == nullptr || paint->brush == brush) {
+    return false;
+  }
+  if (brush && (paint->runtime.ob_mode & brush->ob_mode) == 0) {
+    return false;
+  }
+
+  paint->brush = brush;
+  return true;
 }
 
 static void paint_brush_asset_update(Paint &paint,
@@ -718,67 +689,138 @@ bool BKE_paint_brush_asset_set(Paint *paint,
   return true;
 }
 
-std::optional<AssetWeakReference *> BKE_paint_brush_asset_get(Paint *paint, Brush **r_brush)
+static void paint_brush_set_essentials_reference(Paint *paint, const char *name)
 {
-  Brush *brush = *r_brush = BKE_paint_brush(paint);
-
-  if (!BKE_paint_brush_is_valid_asset(brush)) {
-    return {};
-  }
-
-  if (paint->brush_asset_reference) {
-    return paint->brush_asset_reference;
-  }
-
-  return {};
-}
-
-void BKE_paint_brush_asset_restore(Main *bmain, Paint *paint)
-{
-  if (paint->brush != nullptr) {
-    return;
-  }
-
-  if (paint->brush_asset_reference == nullptr) {
-    return;
-  }
-
-  AssetWeakReference weak_ref = std::move(*paint->brush_asset_reference);
+  /* Set brush asset reference to a named brush in the essentials asset library. */
   MEM_delete(paint->brush_asset_reference);
-  paint->brush_asset_reference = nullptr;
 
-  Brush *brush_asset = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(*bmain, ID_BR, weak_ref));
-
-  /* Will either re-assign the brush_asset_reference to `paint`, or free it if loading a brush ID
-   * from it failed. */
-  BKE_paint_brush_asset_set(paint, brush_asset, weak_ref);
+  AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
+  weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
+  weak_ref->relative_asset_identifier = BLI_sprintfN("brushes/essentials_brushes.blend/Brush/%s",
+                                                     name);
+  paint->brush_asset_reference = weak_ref;
+  paint->brush = nullptr;
 }
 
-void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
+static void paint_brush_set_default_reference(Paint *paint)
+{
+  const char *name = nullptr;
+
+  switch (paint->runtime.ob_mode) {
+    case OB_MODE_SCULPT:
+      name = "Draw";
+      break;
+    case OB_MODE_VERTEX_PAINT:
+      name = "Paint Vertex";
+      break;
+    case OB_MODE_WEIGHT_PAINT:
+      name = "Paint Weight";
+      break;
+    case OB_MODE_TEXTURE_PAINT:
+      name = "Paint Texture";
+      break;
+    case OB_MODE_SCULPT_CURVES:
+      name = "Comb Curves";
+      break;
+    case OB_MODE_EDIT:
+      /* TODO: UV sculpt. */
+      break;
+    case OB_MODE_PAINT_GREASE_PENCIL:
+    case OB_MODE_PAINT_GPENCIL_LEGACY:
+      name = "Pencil";
+      break;
+    case OB_MODE_VERTEX_GPENCIL_LEGACY:
+      name = "Paint Point Color";
+      break;
+    case OB_MODE_SCULPT_GPENCIL_LEGACY:
+      name = "Smooth Stroke";
+      break;
+    case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+      name = "Paint Point Weight";
+      break;
+    default:
+      BLI_assert_unreachable();
+      return;
+  }
+
+  if (name) {
+    paint_brush_set_essentials_reference(paint, name);
+  }
+}
+
+void BKE_paint_brush_set_default_references(ToolSettings *ts)
+{
+  if (ts->sculpt) {
+    paint_brush_set_default_reference(&ts->sculpt->paint);
+  }
+  if (ts->curves_sculpt) {
+    paint_brush_set_default_reference(&ts->curves_sculpt->paint);
+  }
+  if (ts->wpaint) {
+    paint_brush_set_default_reference(&ts->wpaint->paint);
+  }
+  if (ts->vpaint) {
+    paint_brush_set_default_reference(&ts->vpaint->paint);
+  }
+  if (ts->uvsculpt) {
+    paint_brush_set_default_reference(&ts->uvsculpt->paint);
+  }
+  if (ts->gp_paint) {
+    paint_brush_set_default_reference(&ts->gp_paint->paint);
+  }
+  if (ts->gp_vertexpaint) {
+    paint_brush_set_default_reference(&ts->gp_vertexpaint->paint);
+  }
+  if (ts->gp_sculptpaint) {
+    paint_brush_set_default_reference(&ts->gp_sculptpaint->paint);
+  }
+  if (ts->gp_weightpaint) {
+    paint_brush_set_default_reference(&ts->gp_weightpaint->paint);
+  }
+  paint_brush_set_default_reference(&ts->imapaint.paint);
+}
+
+bool BKE_paint_brush_set_default(Main *bmain, Paint *paint)
+{
+  paint_brush_set_default_reference(paint);
+  return paint_brush_set_from_asset_reference(bmain, paint);
+}
+
+bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name)
+{
+  paint_brush_set_essentials_reference(paint, name);
+  return paint_brush_set_from_asset_reference(bmain, paint);
+}
+
+void BKE_paint_brush_validate(Main *bmain, Paint *paint)
+{
+  /* Clear brush with invalid mode. Unclear if this can still happen,
+   * but kept from old paint toolslots code. */
+  Brush *brush = BKE_paint_brush(paint);
+  if (brush && (paint->runtime.ob_mode & brush->ob_mode) == 0) {
+    BKE_paint_brush_set(paint, nullptr);
+    BKE_paint_brush_set_default(bmain, paint);
+  }
+}
+
+static void paint_runtime_init(const ToolSettings *ts, Paint *paint)
 {
   if (paint == &ts->imapaint.paint) {
-    paint->runtime.tool_offset = offsetof(Brush, imagepaint_tool);
     paint->runtime.ob_mode = OB_MODE_TEXTURE_PAINT;
   }
   else if (ts->sculpt && paint == &ts->sculpt->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, sculpt_tool);
     paint->runtime.ob_mode = OB_MODE_SCULPT;
   }
   else if (ts->vpaint && paint == &ts->vpaint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, vertexpaint_tool);
     paint->runtime.ob_mode = OB_MODE_VERTEX_PAINT;
   }
   else if (ts->wpaint && paint == &ts->wpaint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, weightpaint_tool);
     paint->runtime.ob_mode = OB_MODE_WEIGHT_PAINT;
   }
   else if (ts->uvsculpt && paint == &ts->uvsculpt->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, uv_sculpt_tool);
     paint->runtime.ob_mode = OB_MODE_EDIT;
   }
   else if (ts->gp_paint && paint == &ts->gp_paint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, gpencil_tool);
     if (U.experimental.use_grease_pencil_version3) {
       paint->runtime.ob_mode = OB_MODE_PAINT_GREASE_PENCIL;
     }
@@ -787,24 +829,22 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
     }
   }
   else if (ts->gp_vertexpaint && paint == &ts->gp_vertexpaint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, gpencil_vertex_tool);
     paint->runtime.ob_mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
   }
   else if (ts->gp_sculptpaint && paint == &ts->gp_sculptpaint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, gpencil_sculpt_tool);
     paint->runtime.ob_mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
   }
   else if (ts->gp_weightpaint && paint == &ts->gp_weightpaint->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, gpencil_weight_tool);
     paint->runtime.ob_mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
   }
   else if (ts->curves_sculpt && paint == &ts->curves_sculpt->paint) {
-    paint->runtime.tool_offset = offsetof(Brush, curves_sculpt_tool);
     paint->runtime.ob_mode = OB_MODE_SCULPT_CURVES;
   }
   else {
     BLI_assert_unreachable();
   }
+
+  paint->runtime.initialized = true;
 }
 
 uint BKE_paint_get_brush_tool_offset_from_paintmode(const PaintMode mode)
@@ -1175,13 +1215,11 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
 {
   Paint *paint = nullptr;
   if (*r_paint) {
-    /* Tool offset should never be 0 for initialized paint settings, so it's a reliable way to
-     * check if already initialized. */
-    if ((*r_paint)->runtime.tool_offset == 0) {
+    if (!(*r_paint)->runtime.initialized) {
       /* Currently only image painting is initialized this way, others have to be allocated. */
       BLI_assert(ELEM(*r_paint, (Paint *)&ts->imapaint));
 
-      BKE_paint_runtime_init(ts, *r_paint);
+      paint_runtime_init(ts, *r_paint);
     }
     else {
       BLI_assert(ELEM(*r_paint,
@@ -1198,14 +1236,13 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
                       (Paint *)&ts->imapaint));
 #ifndef NDEBUG
       Paint paint_test = **r_paint;
-      BKE_paint_runtime_init(ts, *r_paint);
+      paint_runtime_init(ts, *r_paint);
       /* Swap so debug doesn't hide errors when release fails. */
       std::swap(**r_paint, paint_test);
       BLI_assert(paint_test.runtime.ob_mode == (*r_paint)->runtime.ob_mode);
-      BLI_assert(paint_test.runtime.tool_offset == (*r_paint)->runtime.tool_offset);
 #endif
     }
-    BKE_paint_brush_asset_restore(bmain, *r_paint);
+    paint_brush_set_from_asset_reference(bmain, *r_paint);
     return true;
   }
 
@@ -1252,8 +1289,8 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
 
   *r_paint = paint;
 
-  BKE_paint_runtime_init(ts, paint);
-  BKE_paint_brush_asset_restore(bmain, paint);
+  paint_runtime_init(ts, paint);
+  BKE_paint_brush_set_default(bmain, paint);
 
   return false;
 }
@@ -1278,7 +1315,6 @@ void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3])
 void BKE_paint_free(Paint *paint)
 {
   BKE_curvemapping_free(paint->cavity_curve);
-  MEM_SAFE_FREE(paint->tool_slots);
   MEM_delete(paint->brush_asset_reference);
 }
 
@@ -1286,7 +1322,6 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
 {
   dst->brush = src->brush;
   dst->cavity_curve = BKE_curvemapping_copy(src->cavity_curve);
-  dst->tool_slots = static_cast<PaintToolSlot *>(MEM_dupallocN(src->tool_slots));
 
   if (src->brush_asset_reference) {
     dst->brush_asset_reference = MEM_new<AssetWeakReference>(__func__,
@@ -1318,7 +1353,6 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *p)
   if (p->brush_asset_reference) {
     BKE_asset_weak_reference_write(writer, p->brush_asset_reference);
   }
-  BLO_write_struct_array(writer, PaintToolSlot, p->tool_slots_len, p->tool_slots);
 }
 
 void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Paint *p)
@@ -1336,17 +1370,8 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     BKE_asset_weak_reference_read(reader, p->brush_asset_reference);
   }
 
-  BLO_read_data_address(reader, &p->tool_slots);
-
-  /* Workaround for invalid data written in older versions. */
-  const size_t expected_size = sizeof(PaintToolSlot) * p->tool_slots_len;
-  if (p->tool_slots && MEM_allocN_len(p->tool_slots) < expected_size) {
-    MEM_freeN(p->tool_slots);
-    p->tool_slots = static_cast<PaintToolSlot *>(MEM_callocN(expected_size, "PaintToolSlot"));
-  }
-
   p->paint_cursor = nullptr;
-  BKE_paint_runtime_init(scene->toolsettings, p);
+  paint_runtime_init(scene->toolsettings, p);
 }
 
 bool paint_is_grid_face_hidden(const blender::BoundedBitSpan grid_hidden,
@@ -1977,7 +2002,7 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   using namespace blender::bke;
   Mesh *orig_me = BKE_object_get_original_mesh(object);
 
-  if (orig_me->attributes().contains(orig_me->active_color_attribute)) {
+  if (BKE_color_attribute_supported(*orig_me, orig_me->active_color_attribute)) {
     return;
   }
 

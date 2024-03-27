@@ -50,6 +50,7 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
@@ -60,6 +61,7 @@
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_nla.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_paint.hh"
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
@@ -1997,29 +1999,7 @@ static void update_paint_modes_for_brush_assets(Main &bmain)
 {
   /* Replace paint brushes with a reference to the default brush asset for that mode. */
   LISTBASE_FOREACH (Scene *, scene, &bmain.scenes) {
-    auto set_paint_asset_ref = [&](Paint &paint, const blender::StringRef asset) {
-      AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
-      weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
-      const std::string path = "brushes/essentials_brushes.blend/Brush/" + asset;
-      weak_ref->relative_asset_identifier = BLI_strdupn(path.data(), path.size());
-      paint.brush_asset_reference = weak_ref;
-      paint.brush = nullptr;
-    };
-
-    ToolSettings *ts = scene->toolsettings;
-    if (ts->sculpt) {
-      set_paint_asset_ref(ts->sculpt->paint, "Draw");
-    }
-    if (ts->curves_sculpt) {
-      set_paint_asset_ref(ts->curves_sculpt->paint, "Comb Curves");
-    }
-    if (ts->wpaint) {
-      set_paint_asset_ref(ts->wpaint->paint, "Paint Weight");
-    }
-    if (ts->vpaint) {
-      set_paint_asset_ref(ts->vpaint->paint, "Paint Vertex");
-    }
-    set_paint_asset_ref(ts->imapaint.paint, "Paint Texture");
+    BKE_paint_brush_set_default_references(scene->toolsettings);
   }
 
   /* Replace persistent tool references with the new single builtin brush tool. */
@@ -2046,6 +2026,31 @@ static void image_settings_avi_to_ffmpeg(Scene *scene)
 {
   if (ELEM(scene->r.im_format.imtype, R_IMF_IMTYPE_AVIRAW, R_IMF_IMTYPE_AVIJPEG)) {
     scene->r.im_format.imtype = R_IMF_IMTYPE_FFMPEG;
+  }
+}
+
+static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
+{
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
+    if (smd->type == seqModifierType_HueCorrect) {
+      HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
+      CurveMapping *cumap = (CurveMapping *)&hcmd->curve_mapping;
+      cumap->flag |= CUMA_USE_WRAPPING;
+    }
+  }
+  return true;
+}
+
+static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
+{
+  if (ntree->type == NTREE_COMPOSIT) {
+    LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+
+      if (node->type == CMP_NODE_HUECORRECT) {
+        CurveMapping *cumap = (CurveMapping *)node->storage;
+        cumap->flag |= CUMA_USE_WRAPPING;
+      }
+    }
   }
 }
 
@@ -3128,6 +3133,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 12)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_node_hue_correct_set_wrappng(ntree);
+    }
+    FOREACH_NODETREE_END;
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_hue_correct_set_wrapping, nullptr);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 13)) {
     update_paint_modes_for_brush_assets(*bmain);
   }
 

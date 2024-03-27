@@ -253,7 +253,6 @@ set(SRC
   intern/packedFile.cc
   intern/paint.cc
   intern/paint_canvas.cc
-  intern/paint_toolslots.cc
   intern/particle.cc
   intern/particle_child.cc
   intern/particle_distribute.cc
@@ -412,7 +411,6 @@ set(SRC
   BKE_grease_pencil_legacy_convert.hh
   BKE_grease_pencil_vertex_groups.hh
   BKE_icons.h
-  BKE_idprop.h
   BKE_idprop.hh
   BKE_idtype.hh
   BKE_image.h

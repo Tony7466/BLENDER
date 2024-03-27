@@ -34,7 +34,6 @@
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
-#include "BKE_lib_override.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
@@ -64,6 +63,7 @@
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
+#include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
 #include "curves_sculpt_intern.hh"
@@ -369,8 +369,8 @@ static int palette_color_add_exec(bContext *C, wmOperator * /*op*/)
   color = BKE_palette_color_add(palette);
   palette->active_color = BLI_listbase_count(&palette->colors) - 1;
 
-  if (paint->brush) {
-    const Brush *brush = paint->brush;
+  const Brush *brush = BKE_paint_brush_for_read(paint);
+  if (brush) {
     if (ELEM(mode,
              PaintMode::Texture3D,
              PaintMode::Texture2D,
@@ -721,42 +721,6 @@ static void PALETTE_OT_join(wmOperatorType *ot)
   RNA_def_string(ot->srna, "palette", nullptr, MAX_ID_NAME - 2, "Palette", "Name of the Palette");
 }
 
-static int brush_reset_exec(bContext *C, wmOperator * /*op*/)
-{
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = BKE_paint_brush(paint);
-  Object *ob = CTX_data_active_object(C);
-
-  if (!ob || !brush) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* TODO: other modes */
-  if (ob->mode & OB_MODE_SCULPT) {
-    BKE_brush_sculpt_reset(brush);
-  }
-  else {
-    return OPERATOR_CANCELLED;
-  }
-  WM_event_add_notifier(C, NC_BRUSH | NA_EDITED, brush);
-
-  return OPERATOR_FINISHED;
-}
-
-static void BRUSH_OT_reset(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Reset Brush";
-  ot->description = "Return brush to defaults based on current tool";
-  ot->idname = "BRUSH_OT_reset";
-
-  /* api callbacks */
-  ot->exec = brush_reset_exec;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
 namespace blender::ed::sculpt_paint {
 
 /**************************** Brush Assets **********************************/
@@ -1091,11 +1055,11 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   }
 
   /* Turn brush into asset if it isn't yet. */
-  if (!BKE_paint_brush_is_valid_asset(brush)) {
+  if (!ID_IS_ASSET(brush)) {
     asset::mark_id(&brush->id);
     asset::generate_preview(C, &brush->id);
   }
-  BLI_assert(BKE_paint_brush_is_valid_asset(brush));
+  BLI_assert(ID_IS_ASSET(brush));
 
   asset_system::AssetLibrary *library = AS_asset_library_load(
       CTX_data_main(C), user_library_to_library_ref(*user_library));
@@ -1107,10 +1071,16 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   /* Add asset to catalog. */
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
-  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(*library,
-                                                                                    catalog_path);
-  const asset_system::CatalogID catalog_id = catalog.catalog_id;
-  const std::string catalog_simple_name = catalog.simple_name;
+
+  std::optional<asset_system::CatalogID> catalog_id;
+  std::optional<StringRefNull> catalog_simple_name;
+
+  if (catalog_path[0]) {
+    const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(
+        *library, catalog_path);
+    catalog_id = catalog.catalog_id;
+    catalog_simple_name = catalog.simple_name;
+  }
 
   library->catalog_service().write_to_disk(filepath);
 
@@ -1118,16 +1088,16 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   Main *asset_main = BKE_main_from_id(bmain, &brush->id);
 
   std::string final_full_asset_filepath;
-  const bool sucess = brush_asset_write_in_library(asset_main,
-                                                   brush,
-                                                   name,
-                                                   filepath,
-                                                   catalog_id,
-                                                   catalog_simple_name,
-                                                   final_full_asset_filepath,
-                                                   op->reports);
+  const bool success = brush_asset_write_in_library(asset_main,
+                                                    brush,
+                                                    name,
+                                                    filepath,
+                                                    catalog_id,
+                                                    catalog_simple_name,
+                                                    final_full_asset_filepath,
+                                                    op->reports);
 
-  if (!sucess) {
+  if (!success) {
     BKE_report(op->reports, RPT_ERROR, "Failed to write to asset library");
     return OPERATOR_CANCELLED;
   }
@@ -1135,7 +1105,6 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   AssetWeakReference new_brush_weak_ref = brush_asset_create_weakref_hack(
       user_library, final_full_asset_filepath);
 
-  /* TODO: maybe not needed, even less so if there is more visual confirmation of change. */
   BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", filepath.c_str());
 
   brush = reinterpret_cast<Brush *>(
@@ -1249,7 +1218,7 @@ static bool brush_asset_delete_poll(bContext *C)
   }
 
   /* Asset brush, check if belongs to an editable blend file. */
-  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
+  if (paint->brush_asset_reference && ID_IS_ASSET(brush)) {
     if (!asset_is_editable(*paint->brush_asset_reference)) {
       CTX_wm_operator_poll_msg_set(C, "Asset blend file is not editable");
       return false;
@@ -1272,7 +1241,7 @@ static int brush_asset_delete_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
+  if (paint->brush_asset_reference && ID_IS_ASSET(brush)) {
     /* Delete from asset library on disk. */
     char path_buffer[FILE_MAX_LIBEXTRA];
     char *filepath;
@@ -1285,19 +1254,29 @@ static int brush_asset_delete_exec(bContext *C, wmOperator *op)
   }
 
   if (asset_main != bmain) {
-    // TODO: hack: no pointer should exist, should do runtime lookup
-    BKE_libblock_remap(bmain, brush, nullptr, 0);
+    BKE_asset_weak_reference_main_free(*bmain, *asset_main);
   }
-  BKE_id_delete(asset_main, brush);
-  // TODO: delete whole asset main if empty?
 
   refresh_asset_library(C, *library);
+
+  BKE_paint_brush_set_default(bmain, paint);
+
   WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_REMOVED, nullptr);
   WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
 
-  /* TODO: activate default brush. */
-
   return OPERATOR_FINISHED;
+}
+
+static int brush_asset_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(
+      C,
+      op,
+      IFACE_("Delete Brush Asset"),
+      IFACE_("Permanently delete brush asset blend file. This can't be undone."),
+      IFACE_("Delete"),
+      ALERT_ICON_WARNING,
+      false);
 }
 
 static void BRUSH_OT_asset_delete(wmOperatorType *ot)
@@ -1307,7 +1286,7 @@ static void BRUSH_OT_asset_delete(wmOperatorType *ot)
   ot->idname = "BRUSH_OT_asset_delete";
 
   ot->exec = brush_asset_delete_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = brush_asset_delete_invoke;
   ot->poll = brush_asset_delete_poll;
 }
 
@@ -1319,7 +1298,11 @@ static bool brush_asset_update_poll(bContext *C)
     return false;
   }
 
-  if (!(paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush))) {
+  if ((brush->id.tag & LIB_TAG_ASSET_MAIN) == 0) {
+    return false;
+  }
+
+  if (!(paint->brush_asset_reference && ID_IS_ASSET(brush))) {
     return false;
   }
 
@@ -1335,12 +1318,8 @@ static int brush_asset_update_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = nullptr;
-  const AssetWeakReference *asset_weak_ref =
-      BKE_paint_brush_asset_get(paint, &brush).value_or(nullptr);
-  if (!asset_weak_ref) {
-    return OPERATOR_CANCELLED;
-  }
+  Brush *brush = BKE_paint_brush(paint);
+  const AssetWeakReference *asset_weak_ref = paint->brush_asset_reference;
 
   const bUserAssetLibrary *user_library = BKE_preferences_asset_library_find_by_name(
       &U, asset_weak_ref->asset_library_identifier);
@@ -1348,15 +1327,12 @@ static int brush_asset_update_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  // TODO: maybe can check directly in poll
-  BLI_assert((brush->id.tag & LIB_TAG_ASSET_MAIN) != 0);
-
   char path_buffer[FILE_MAX_LIBEXTRA];
   char *filepath;
   AS_asset_full_path_explode_from_weak_ref(
       asset_weak_ref, path_buffer, &filepath, nullptr, nullptr);
 
-  BLI_assert(BKE_paint_brush_is_valid_asset(brush));
+  BLI_assert(ID_IS_ASSET(brush));
 
   Main *asset_main = BKE_main_from_id(bmain, &brush->id);
   std::string final_full_asset_filepath;
@@ -1388,14 +1364,13 @@ static void BRUSH_OT_asset_update(wmOperatorType *ot)
 
 static bool brush_asset_revert_poll(bContext *C)
 {
-  /* TODO: check if there is anything to revert? */
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = (paint) ? BKE_paint_brush(paint) : nullptr;
   if (paint == nullptr || brush == nullptr) {
     return false;
   }
 
-  return paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush);
+  return paint->brush_asset_reference && (brush->id.tag & LIB_TAG_ASSET_MAIN);
 }
 
 static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
@@ -1405,19 +1380,12 @@ static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
   Brush *brush = BKE_paint_brush(paint);
   Main *asset_main = BKE_main_from_id(bmain, &brush->id);
 
-  // TODO: delete and reload dependencies too?
-  // TODO: hack to make remapping work, should not be needed
-  // if we can make brush pointer not part of ID management at all
-  BLI_remlink(&asset_main->brushes, brush);
+  /* Reload entire main, including texture dependencies. This relies on there
+   * being only a single brush asset per blend file. */
+  BKE_asset_weak_reference_main_reload(*bmain, *asset_main);
 
-  Brush *new_brush = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(*bmain, ID_BR, *paint->brush_asset_reference));
-
-  BKE_libblock_remap(bmain, brush, new_brush, 0);
-  BLI_addtail(&asset_main->brushes, brush);
-  BKE_id_delete(asset_main, brush);
-
-  WM_main_add_notifier(NC_BRUSH | NA_EDITED, new_brush);
+  WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
+  WM_main_add_notifier(NC_TEXTURE | ND_NODES, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1891,7 +1859,6 @@ void ED_operatortypes_paint()
   WM_operatortype_append(BRUSH_OT_scale_size);
   WM_operatortype_append(BRUSH_OT_curve_preset);
   WM_operatortype_append(BRUSH_OT_sculpt_curves_falloff_preset);
-  WM_operatortype_append(BRUSH_OT_reset);
   WM_operatortype_append(BRUSH_OT_stencil_control);
   WM_operatortype_append(BRUSH_OT_stencil_fit_image_aspect);
   WM_operatortype_append(BRUSH_OT_stencil_reset_transform);
