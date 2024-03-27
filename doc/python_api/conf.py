@@ -25,8 +25,15 @@ else:
     BLENDER_VERSION_HASH = "Hash Unknown"
     BLENDER_VERSION_HASH_HTML_LINK = BLENDER_VERSION_HASH
 
-extensions = ["sphinx.ext.intersphinx"]
-intersphinx_mapping = {"blender_manual": ("https://docs.blender.org/manual/en/dev/", None)}
+extensions = [
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+]
+
+intersphinx_mapping = {'blender_manual': ("https://docs.blender.org/manual/en/dev/", None)}
+# Exclude line numbers, prompts, and console text.
+copybutton_exclude = ".linenos, .gp, .go"
+
 project = "Blender %s Python API" % BLENDER_VERSION_STRING
 root_doc = "index"
 copyright = "Blender Authors"
