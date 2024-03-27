@@ -448,7 +448,7 @@ struct LayerBufferItem {
 static Map<std::string, LayerBufferItem> copy_buffer;
 static int copy_buffer_first_frame = INT_MAX;
 static int copy_buffer_last_frame = INT_MIN;
-static int copy_buffer_cfra = 0.0;
+static int copy_buffer_cfra = 0;
 
 bool grease_pencil_copy_keyframes(bAnimContext *ac)
 {
@@ -484,7 +484,6 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
-
         buf.append({frame_number, Drawing(*drawing)});
 
         /* Check the range of this layer only. */
@@ -564,7 +563,6 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       continue;
     }
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-    blender::Span<Layer *> layers = grease_pencil->layers_for_write();
     bool change = false;
 
     for (auto [layer_name, layer_buffer] : copy_buffer.items()) {
