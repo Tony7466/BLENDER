@@ -432,7 +432,7 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
 }
 
-/* Datatype for use in copy/paste buffer */
+/* Datatype for use in copy/paste buffer. */
 struct DrawingBufferItem {
   blender::bke::greasepencil::FramesMapKey frame_number;
   bke::greasepencil::Drawing drawing;
@@ -444,7 +444,7 @@ struct LayerBufferItem {
   blender::bke::greasepencil::FramesMapKey last_frame;
 };
 
-/* Globals for copy/paste data (like for other copy/paste buffers) */
+/* Globals for copy/paste data (like for other copy/paste buffers). */
 static Map<std::string, LayerBufferItem> copy_buffer;
 static int copy_buffer_first_frame = INT_MAX;
 static int copy_buffer_last_frame = INT_MIN;
@@ -456,7 +456,7 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
   ListBase anim_data = {nullptr, nullptr};
 
-  /* clear buffer first */
+  /* Clear buffer first. */
   copy_buffer.clear();
   copy_buffer_first_frame = INT_MAX;
   copy_buffer_last_frame = INT_MIN;
@@ -464,7 +464,7 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   Scene *scene = ac->scene;
   Object *object = ac->obact;
 
-  /* Filter data */
+  /* Filter data. */
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
@@ -508,13 +508,13 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     }
   }
 
-  /* In case 'relative' paste method is used */
+  /* In case 'relative' paste method is used. */
   copy_buffer_cfra = scene->r.cfra;
 
-  /* Clean up */
+  /* Clean up. */
   ANIM_animdata_freelist(&anim_data);
 
-  /* If nothing ended up in the buffer, copy failed */
+  /* If nothing ended up in the buffer, copy failed. */
   return !copy_buffer.is_empty();
 }
 
@@ -526,7 +526,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
 
   ListBase anim_data = {nullptr, nullptr};
 
-  /* Check if buffer is empty */
+  /* Check if buffer is empty. */
   if (copy_buffer.is_empty()) {
     return false;
   }
@@ -535,7 +535,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   Object *object = ac->obact;
   int offset = 0;
 
-  /* methods of offset (eKeyPasteOffset) */
+  /* Methods of offset (eKeyPasteOffset). */
   switch (offset_mode) {
     case KEYFRAME_PASTE_OFFSET_CFRA_START:
       offset = (scene->r.cfra - copy_buffer_first_frame);
@@ -556,9 +556,8 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  /* from selected channels */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    /* only deal with GPlayers (case of calls from general dopesheet) */
+    /* Only deal with GPlayers (case of calls from general dopesheet). */
     if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
       continue;
     }
@@ -578,7 +577,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
           break;
 
         case KEYFRAME_PASTE_MERGE_OVER: {
-          /* remove all keys */
+          /* Remove all keys. */
           Vector<int> frames_to_remove;
           for (auto frame_number : layer.frames().keys()) {
             frames_to_remove.append(frame_number);
@@ -632,7 +631,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     }
   }
 
-  /* Clean up */
+  /* Clean up. */
   ANIM_animdata_freelist(&anim_data);
 
   return true;
