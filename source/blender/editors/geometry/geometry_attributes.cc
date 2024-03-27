@@ -184,7 +184,7 @@ void rna_property_for_attribute_type_set_value(PointerRNA &ptr,
 
 static bool geometry_attributes_poll(bContext *C)
 {
-  const Object *ob = ED_object_context(C);
+  const Object *ob = object::context_object(C);
   const Main *bmain = CTX_data_main(C);
   const ID *data = (ob) ? static_cast<ID *>(ob->data) : nullptr;
   return (ob && BKE_id_is_editable(bmain, &ob->id) && data && BKE_id_is_editable(bmain, data)) &&
@@ -197,7 +197,7 @@ static bool geometry_attributes_remove_poll(bContext *C)
     return false;
   }
 
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *data = (ob) ? static_cast<ID *>(ob->data) : nullptr;
   if (BKE_id_attributes_active_get(data) != nullptr) {
     return true;
@@ -215,7 +215,7 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
     return rna_enum_dummy_NULL_items;
   }
 
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   if (ob == nullptr) {
     return rna_enum_dummy_NULL_items;
   }
@@ -225,7 +225,7 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
 
 static int geometry_attribute_add_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
 
   char name[MAX_NAME];
@@ -300,7 +300,7 @@ void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
 
 static int geometry_attribute_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
   CustomDataLayer *layer = BKE_id_attributes_active_get(id);
 
@@ -336,7 +336,7 @@ void GEOMETRY_OT_attribute_remove(wmOperatorType *ot)
 
 static int geometry_color_attribute_add_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
 
   char name[MAX_NAME];
@@ -387,7 +387,7 @@ static bool geometry_attribute_convert_poll(bContext *C)
     return false;
   }
 
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *data = static_cast<ID *>(ob->data);
   if (GS(data->name) != ID_ME) {
     return false;
@@ -404,7 +404,7 @@ static bool geometry_attribute_convert_poll(bContext *C)
 
 static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *ob_data = static_cast<ID *>(ob->data);
   CustomDataLayer *layer = BKE_id_attributes_active_get(ob_data);
   const ConvertAttributeMode mode = static_cast<ConvertAttributeMode>(
@@ -522,7 +522,7 @@ void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
 
 static int geometry_color_attribute_set_render_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
 
   char name[MAX_NAME];
@@ -563,7 +563,7 @@ void GEOMETRY_OT_color_attribute_render_set(wmOperatorType *ot)
 
 static int geometry_color_attribute_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
   const std::string active_name = StringRef(BKE_id_attributes_active_color_name(id));
   if (active_name.empty()) {
@@ -586,7 +586,7 @@ static bool geometry_color_attributes_remove_poll(bContext *C)
     return false;
   }
 
-  const Object *ob = ED_object_context(C);
+  const Object *ob = object::context_object(C);
   const ID *data = static_cast<ID *>(ob->data);
 
   if (BKE_id_attributes_color_find(data, BKE_id_attributes_active_color_name(data))) {
@@ -613,7 +613,7 @@ void GEOMETRY_OT_color_attribute_remove(wmOperatorType *ot)
 
 static int geometry_color_attribute_duplicate_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
   const char *active_name = BKE_id_attributes_active_color_name(id);
   if (active_name == nullptr) {
@@ -643,7 +643,7 @@ static bool geometry_color_attributes_duplicate_poll(bContext *C)
     return false;
   }
 
-  const Object *ob = ED_object_context(C);
+  const Object *ob = object::context_object(C);
   const ID *data = static_cast<ID *>(ob->data);
 
   if (BKE_id_attributes_color_find(data, BKE_id_attributes_active_color_name(data))) {
@@ -672,7 +672,7 @@ static int geometry_attribute_convert_invoke(bContext *C,
                                              wmOperator *op,
                                              const wmEvent * /*event*/)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   const bke::AttributeMetaData meta_data = *mesh->attributes().lookup_meta_data(
@@ -719,7 +719,7 @@ static bool geometry_color_attribute_convert_poll(bContext *C)
     return false;
   }
 
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   ID *id = static_cast<ID *>(ob->data);
   if (GS(id->name) != ID_ME) {
     return false;
@@ -742,7 +742,7 @@ static bool geometry_color_attribute_convert_poll(bContext *C)
 
 static int geometry_color_attribute_convert_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   const char *name = mesh->active_color_attribute;
   ED_geometry_attribute_convert(mesh,
@@ -757,7 +757,7 @@ static int geometry_color_attribute_convert_invoke(bContext *C,
                                                    wmOperator *op,
                                                    const wmEvent * /*event*/)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   const char *name = mesh->active_color_attribute;
   const bke::AttributeMetaData meta_data = *mesh->attributes().lookup_meta_data(name);
