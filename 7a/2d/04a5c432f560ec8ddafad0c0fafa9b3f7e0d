@@ -2,3 +2,4 @@ Referenced by issue #119907, Active curve vertex/spline not visualizing properly
 Referenced by pull request #119918, Fix #119907: Active curve vertex/spline not visualizing properly
 Referenced by commit d3504a6bab5bbeed5fc6d4bfd8f0db84c129c8c1, Fix #119907: Active curve vertex/spline not visualizing properly
 Referenced by issue #119936, !!Crash!! when left-clicking in masking tab with no selected points in MovieClipEditor/ImageEditor
+Referenced by pull request #119956, Fix #119936: Crash selecting in mask editor
