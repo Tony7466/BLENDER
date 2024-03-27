@@ -58,7 +58,7 @@ vec3 debug_tile_state_color(ShadowTileData tile)
   return col;
 }
 
-vec3 debug_tile_state_color(ShadowSamplingData tile)
+vec3 debug_tile_state_color(ShadowSamplingTile tile)
 {
   if (!tile.is_valid) {
     return vec3(1, 0, 0);
