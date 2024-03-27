@@ -1,2 +1,3 @@
 Referenced by issue #119907, Active curve vertex/spline not visualizing properly
 Referenced by issue #119926, Compositor: Channel Key create artefac in HSV color for certain pictures
+Referenced by issue #119993, Memory access fault by GPU when using HIP Cycles
