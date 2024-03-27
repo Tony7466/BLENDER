@@ -10,8 +10,7 @@
 float safe_noise(float co)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
-   * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticeable. */
+   * representation issues. */
   float p = fmod(co, 100000.0);
 
   return noise("noise", p);
@@ -22,7 +21,7 @@ float safe_noise(vector2 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector2 p = vector2(fmod(co.x, 100000.0), fmod(co.y, 100000.0));
+  vector2 p = fmod(co, 100000.0);
 
   return noise("noise", p.x, p.y);
 }
@@ -32,7 +31,7 @@ float safe_noise(vector3 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector3 p = vector3(fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0));
+  vector3 p = fmod(co, 100000.0);
 
   return noise("noise", p);
 }
@@ -42,8 +41,7 @@ float safe_noise(vector4 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector4 p = vector4(
-      fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0), fmod(co.w, 100000.0));
+  vector4 p = fmod(co, 100000.0);
 
   return noise("noise", vector3(p.x, p.y, p.z), p.w);
 }
@@ -51,8 +49,7 @@ float safe_noise(vector4 co)
 float safe_snoise(float co)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
-   * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticeable. */
+   * representation issues. */
   float p = fmod(co, 100000.0);
 
   return noise("snoise", p);
@@ -63,7 +60,7 @@ float safe_snoise(vector2 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector2 p = vector2(fmod(co.x, 100000.0), fmod(co.y, 100000.0));
+  vector2 p = fmod(co, 100000.0);
 
   return noise("snoise", p.x, p.y);
 }
@@ -73,7 +70,7 @@ float safe_snoise(vector3 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector3 p = vector3(fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0));
+  vector3 p = fmod(co, 100000.0);
 
   return noise("snoise", p);
 }
@@ -83,8 +80,7 @@ float safe_snoise(vector4 co)
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
    * usually shouldn't be noticeable. */
-  vector4 p = vector4(
-      fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0), fmod(co.w, 100000.0));
+  vector4 p = fmod(co, 100000.0);
 
   return noise("snoise", vector3(p.x, p.y, p.z), p.w);
 }

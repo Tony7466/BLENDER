@@ -490,10 +490,9 @@ BLI_INLINE float perlin_noise(float4 position)
 
 float perlin_signed(float position)
 {
-  /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
-   * representation issues. This causes discontinuities every 100000.0f, however at such scales
-   * this usually shouldn't be noticeable. */
-  position = fmodf(position, 100000.0f);
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. */
+  position = math::mod(position, 100000.0f);
 
   return perlin_noise(position) * 0.2500f;
 }
@@ -503,7 +502,7 @@ float perlin_signed(float2 position)
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
    * this usually shouldn't be noticeable. */
-  position = float2(fmodf(position.x, 100000.0f), fmodf(position.y, 100000.0f));
+  position = math::mod(position, 100000.0f);
 
   return perlin_noise(position) * 0.6616f;
 }
@@ -513,8 +512,7 @@ float perlin_signed(float3 position)
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
    * this usually shouldn't be noticeable. */
-  position = float3(
-      fmodf(position.x, 100000.0f), fmodf(position.y, 100000.0f), fmodf(position.z, 100000.0f));
+  position = math::mod(position, 100000.0f);
 
   return perlin_noise(position) * 0.9820f;
 }
@@ -524,10 +522,7 @@ float perlin_signed(float4 position)
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
    * this usually shouldn't be noticeable. */
-  position = float4(fmodf(position.x, 100000.0f),
-                    fmodf(position.y, 100000.0f),
-                    fmodf(position.z, 100000.0f),
-                    fmodf(position.w, 100000.0f));
+  position = math::mod(position, 100000.0f);
 
   return perlin_noise(position) * 0.8344f;
 }
