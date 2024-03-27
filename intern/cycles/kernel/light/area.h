@@ -492,13 +492,11 @@ ccl_device_forceinline bool area_light_tree_parameters(const ccl_global KernelLi
                                                        ccl_private float2 &distance,
                                                        ccl_private float3 &point_to_centroid)
 {
-  if (!in_volume_segment) {
-    /* TODO: a cheap substitute for minimal distance between point and primitive. Does it
-     * worth the overhead to compute the accurate minimal distance? */
-    float min_distance;
-    point_to_centroid = safe_normalize_len(centroid - P, &min_distance);
-    distance = make_float2(min_distance, min_distance);
-  }
+  /* TODO: a cheap substitute for minimal distance between point and primitive. Does it worth the
+   * overhead to compute the accurate minimal distance? */
+  float min_distance;
+  point_to_centroid = safe_normalize_len(centroid - P, &min_distance);
+  distance = make_float2(min_distance, min_distance);
 
   cos_theta_u = FLT_MAX;
 
@@ -518,9 +516,8 @@ ccl_device_forceinline bool area_light_tree_parameters(const ccl_global KernelLi
   const bool shape_above_surface = dot(N, centroid - P) + fabsf(dot(N, extentu)) +
                                        fabsf(dot(N, extentv)) >
                                    0;
-  const bool in_volume = is_zero(N);
 
-  return (front_facing && shape_above_surface) || in_volume;
+  return front_facing && shape_above_surface;
 }
 
 CCL_NAMESPACE_END

@@ -74,7 +74,7 @@
 
 #include "GPU_capabilities.hh"
 
-#include "screen_intern.h" /* own module include */
+#include "screen_intern.hh" /* own module include */
 
 using blender::Vector;
 
@@ -276,6 +276,20 @@ bool ED_operator_animview_active(bContext *C)
 bool ED_operator_outliner_active(bContext *C)
 {
   return ed_spacetype_test(C, SPACE_OUTLINER);
+}
+
+bool ED_operator_region_outliner_active(bContext *C)
+{
+  if (!ED_operator_outliner_active(C)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an active Outliner");
+    return false;
+  }
+  const ARegion *region = CTX_wm_region(C);
+  if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an Outliner region");
+    return false;
+  }
+  return true;
 }
 
 bool ED_operator_outliner_active_no_editobject(bContext *C)

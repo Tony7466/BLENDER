@@ -5803,6 +5803,7 @@ class VIEW3D_MT_edit_greasepencil_showhide(Menu):
         layout.operator("grease_pencil.layer_hide", text="Hide Active Layer").unselected = False
         layout.operator("grease_pencil.layer_hide", text="Hide Inactive Layers").unselected = True
 
+
 class VIEW3D_MT_edit_greasepencil_cleanup(Menu):
     bl_label = "Cleanup"
 
@@ -5810,6 +5811,7 @@ class VIEW3D_MT_edit_greasepencil_cleanup(Menu):
         layout = self.layout
 
         layout.operator("grease_pencil.clean_loose")
+
 
 class VIEW3D_MT_edit_greasepencil(Menu):
     bl_label = "Grease Pencil"
@@ -7534,20 +7536,17 @@ class VIEW3D_PT_snapping(Panel):
         layout = self.layout
         col = layout.column()
 
-        col.label(text="Snap With")
+        col.label(text="Snap Base")
         row = col.row(align=True)
         row.prop(tool_settings, "snap_target", expand=True)
 
-        col.label(text="Snap To")
+        col.label(text="Snap Target")
         col.prop(tool_settings, "snap_elements_base", expand=True)
 
-        col.label(text="Snap Individual Elements To")
+        col.label(text="Snap Target for Individual Elements")
         col.prop(tool_settings, "snap_elements_individual", expand=True)
 
         col.separator()
-
-        if 'INCREMENT' in tool_settings.snap_elements:
-            col.prop(tool_settings, "use_snap_grid_absolute")
 
         if 'VOLUME' in tool_settings.snap_elements:
             col.prop(tool_settings, "use_snap_peel_object")
