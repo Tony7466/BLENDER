@@ -128,7 +128,7 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     
       if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
         bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(pv.GetName().GetText(), bke::AttrDomain::Point);
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(name.GetText(), bke::AttrDomain::Point);
         if (!primvar_writer) {
           CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
           continue;
