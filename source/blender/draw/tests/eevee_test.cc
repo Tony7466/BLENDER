@@ -1164,6 +1164,85 @@ static void test_eevee_shadow_finalize()
 }
 DRAW_TEST(eevee_shadow_finalize)
 
+static void test_eevee_shadow_tilemap_amend()
+{
+  GPU_render_begin();
+
+  Texture tilemap_tx = {"tilemap_tx"};
+  tilemap_tx.ensure_2d(GPU_R32UI,
+                       int2(SHADOW_TILEMAP_RES),
+                       GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_SHADER_READ |
+                           GPU_TEXTURE_USAGE_SHADER_WRITE);
+  tilemap_tx.clear(uint4(0));
+
+  GPUShader *sh = GPU_shader_create_from_info_name("eevee_shadow_tilemap_amend");
+
+  PassSimple pass("Test");
+  pass.shader_set(sh);
+  pass.bind_image("tilemaps_img", tilemap_tx);
+  pass.dispatch(int3(1));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE | GPU_BARRIER_TEXTURE_UPDATE);
+
+  Manager manager;
+  manager.submit(pass);
+
+  {
+    uint *pixels = tilemap_tx.read<uint32_t>(GPU_DATA_UINT);
+
+    std::string result = "";
+    for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
+      for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
+        ShadowTileData tile = shadow_tile_unpack(pixels[y * SHADOW_TILEMAP_RES + x]);
+        result += std::to_string(tile.page.x + tile.page.y * SHADOW_PAGE_PER_ROW);
+      }
+    }
+
+    MEM_SAFE_FREE(pixels);
+
+    /** The layout of these expected strings is Y down. */
+    StringRefNull expected_pages =
+        "12334444555555556666666666666667"
+        "22334444555555556666666666666666"
+        "33334444555555556666666666666666"
+        "33334444555555556666666666666666"
+        "44444444555555556666666666666666"
+        "44444444555555556666666666666666"
+        "44444444555555556666666666666666"
+        "44444444555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666666666666"
+        "55555555555555556666666696666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666"
+        "66666666666666666666666666666666";
+
+    EXPECT_EQ(expected_pages, result);
+  }
+
+  GPU_shader_free(sh);
+  DRW_shaders_free();
+  GPU_render_end();
+}
+DRAW_TEST(eevee_shadow_tilemap_amend)
+
 static void test_eevee_shadow_page_mask()
 {
   GPU_render_begin();
