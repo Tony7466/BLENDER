@@ -282,6 +282,7 @@ class USERPREF_PT_interface_editors(InterfacePanel, CenterAlignMixIn, Panel):
         col.prop(view, "color_picker_type")
         col.row().prop(view, "header_align")
         col.prop(view, "factor_display_type")
+        col.prop(prefs.inputs, "header_highlight")
 
 
 class USERPREF_PT_interface_temporary_windows(InterfacePanel, CenterAlignMixIn, Panel):
@@ -543,6 +544,22 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
 
         col = layout.column()
         col.prop(edit, "sculpt_paint_overlay_color", text="Sculpt Overlay Color")
+        col.separator(factor=1.5)
+        col = layout.column(heading="Adjustable Click Select")
+        col.prop(edit, "adjustable_click_select")
+        colsub = col.column(align=True)
+        colsub.active = edit.adjustable_click_select
+        colsub.prop(edit, "select_unbiased")
+        colsub.prop(edit, "selection_radius")
+        col.separator(factor=1.5)
+        col.prop(edit, "system_cursor")
+        col.prop(edit, "edit_cursor")
+        col.prop(edit, "paint_cursor")
+        col.prop(edit, "dot_cursor")
+        col.prop(edit, "knife_cursor")
+        col.prop(edit, "pencil_cursor")
+        col.prop(edit, "eraser_cursor")
+        col.prop(edit, "eyedropper_cursor")
 
 
 # -----------------------------------------------------------------------------
@@ -1711,6 +1728,7 @@ class USERPREF_PT_input_mouse(InputPanel, CenterAlignMixIn, Panel):
 
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
+        flow.prop(inputs, "click_drag_direction")
         if sys.platform[:3] == "win":
             flow.prop(inputs, "use_mouse_emulate_3_button")
         else:

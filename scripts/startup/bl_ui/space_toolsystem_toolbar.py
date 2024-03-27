@@ -426,6 +426,9 @@ class _defs_view3d_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+            if _context.mode == 'OBJECT':
+                tool_settings = _context.tool_settings
+                layout.prop(tool_settings, "wireless_touch_object")
         return dict(
             idname="builtin.select_box",
             label="Select Box",
@@ -442,6 +445,9 @@ class _defs_view3d_select:
             row = layout.row()
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
+            if _context.mode == 'OBJECT':
+                tool_settings = _context.tool_settings
+                layout.prop(tool_settings, "wireless_touch_object")
         return dict(
             idname="builtin.select_lasso",
             label="Select Lasso",
@@ -459,6 +465,10 @@ class _defs_view3d_select:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(props, "radius")
+            tool_settings = _context.tool_settings
+            layout.prop(tool_settings, "square_select")
+            if _context.mode == 'OBJECT':
+                layout.prop(tool_settings, "wireless_touch_object")
 
         def draw_cursor(_context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
@@ -2272,6 +2282,8 @@ class _defs_gpencil_edit:
             row.use_property_split = False
             row.prop(props, "mode", text="", expand=True, icon_only=True)
             layout.prop(props, "radius")
+            tool_settings = context.tool_settings
+            layout.prop(tool_settings, "square_select")
             if _defs_gpencil_edit.is_segment(context):
                 layout.prop(context.tool_settings.gpencil_sculpt, "intersection_threshold")
 

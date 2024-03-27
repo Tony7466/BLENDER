@@ -875,9 +875,12 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
   bNodeTree &node_tree = *snode->edittree;
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  const bool square = ts->square_select;
 
   int x, y, radius;
   float2 offset;
+  rctf rectf;
 
   float zoom = float(BLI_rcti_size_x(&region->winrct)) / float(BLI_rctf_size_x(&region->v2d.cur));
 
@@ -896,6 +899,11 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
 
   UI_view2d_region_to_view(&region->v2d, x, y, &offset.x, &offset.y);
 
+  if (square) {
+    BLI_rctf_init(&rectf, x - radius, x + radius, y - radius, y + radius);
+    UI_view2d_region_to_view_rctf(&region->v2d, &rectf, &rectf);
+  }
+
   for (bNode *node : node_tree.all_nodes()) {
     switch (node->type) {
       case NODE_FRAME: {
@@ -904,16 +912,32 @@ static int node_circleselect_exec(bContext *C, wmOperator *op)
         rctf frame_inside = node_frame_rect_inside(*snode, *node);
         const float radius_adjusted = float(radius) / zoom;
         BLI_rctf_pad(&frame_inside, -2.0f * radius_adjusted, -2.0f * radius_adjusted);
-        if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius_adjusted) &&
-            !BLI_rctf_isect_circle(&frame_inside, offset, radius_adjusted))
-        {
-          nodeSetSelected(node, select);
+        if (square) {
+          if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr) &&
+              !BLI_rctf_inside_rctf(&frame_inside, &rectf))
+          {
+            nodeSetSelected(node, select);
+          }
+        }
+        else {
+          if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius_adjusted) &&
+              !BLI_rctf_isect_circle(&frame_inside, offset, radius_adjusted))
+          {
+            nodeSetSelected(node, select);
+          }
         }
         break;
       }
       default: {
-        if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius / zoom)) {
-          nodeSetSelected(node, select);
+        if (square) {
+          if (BLI_rctf_isect(&rectf, &node->runtime->totr, nullptr)) {
+            nodeSetSelected(node, select);
+          }
+        }
+        else {
+          if (BLI_rctf_isect_circle(&node->runtime->totr, offset, radius / zoom)) {
+            nodeSetSelected(node, select);
+          }
         }
         break;
       }

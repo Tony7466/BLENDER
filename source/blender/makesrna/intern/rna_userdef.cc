@@ -5366,6 +5366,124 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem system_cursor_items[] = {
+      {USER_SYSTEM_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_SYSTEM_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_SYSTEM_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_SYSTEM_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_SYSTEM_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_SYSTEM_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_SYSTEM_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_SYSTEM_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_SYSTEM_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_SYSTEM_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edit_cursor_items[] = {
+      {USER_EDIT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_EDIT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_EDIT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_EDIT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_EDIT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_EDIT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_EDIT_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_EDIT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_EDIT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_EDIT_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem paint_cursor_items[] = {
+      {USER_PAINT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_PAINT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_PAINT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_PAINT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_PAINT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_PAINT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_PAINT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_PAINT_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_PAINT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_PAINT_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {USER_PAINT_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem dot_cursor_items[] = {
+      {USER_DOT_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {USER_DOT_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_DOT_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_DOT_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_DOT_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_DOT_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_DOT_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_DOT_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_DOT_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_DOT_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_DOT_CURSOR_BLANK, "BLANK", 0, "Blank", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem knife_cursor_items[] = {
+      {USER_KNIFE_CURSOR_KNIFE, "KNIFE", 0, "Knife", ""},
+      {USER_KNIFE_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_KNIFE_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_KNIFE_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_KNIFE_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_KNIFE_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_KNIFE_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_KNIFE_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_KNIFE_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_KNIFE_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_KNIFE_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem eyedropper_cursor_items[] = {
+      {USER_EYEDROPPER_CURSOR_EYEDROPPER, "EYEDROPPER", 0, "Eyedropper", ""},
+      {USER_EYEDROPPER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_EYEDROPPER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_EYEDROPPER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_EYEDROPPER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_EYEDROPPER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_EYEDROPPER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_EYEDROPPER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_EYEDROPPER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_EYEDROPPER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_EYEDROPPER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem eraser_cursor_items[] = {
+      {USER_ERASER_CURSOR_ERASER, "ERASER", 0, "Eraser", ""},
+      {USER_ERASER_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_ERASER_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_ERASER_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_ERASER_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_ERASER_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_ERASER_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_ERASER_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_ERASER_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_ERASER_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_ERASER_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem pencil_cursor_items[] = {
+      {USER_PENCIL_CURSOR_PENCIL, "PENCIL", 0, "Pencil", ""},
+      {USER_PENCIL_CURSOR_CROSS, "CROSS", 0, "Cross", ""},
+      {USER_PENCIL_CURSOR_SYSTEM, "SYSTEM", 0, "System", ""},
+      {USER_PENCIL_CURSOR_POINTER, "POINTER", 0, "Pointer", ""},
+      {USER_PENCIL_CURSOR_CROSS_OPEN, "CROSS_OPEN", 0, "Cross Open", ""},
+      {USER_PENCIL_CURSOR_CROSS_DOT, "CROSS_DOT", 0, "Cross Dot", ""},
+      {USER_PENCIL_CURSOR_CROSS_MIN, "CROSS_MIN", 0, "Cross Minimal", ""},
+      {USER_PENCIL_CURSOR_BOX, "BOX", 0, "Box", ""},
+      {USER_PENCIL_CURSOR_BOX_DOT, "BOX_DOT", 0, "Box Dot", ""},
+      {USER_PENCIL_CURSOR_BOX_POINTER, "BOX_POINTER", 0, "Box Pointer", ""},
+      {USER_PENCIL_CURSOR_DOT, "DOT", 0, "Dot", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "PreferencesEdit", nullptr);
   RNA_def_struct_sdna(srna, "UserDef");
   RNA_def_struct_nested(brna, srna, "Preferences");
@@ -5740,6 +5858,60 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "uiflag", USER_DEPTH_CURSOR);
   RNA_def_property_ui_text(
       prop, "Cursor Surface Project", "Use the surface depth for cursor placement");
+
+  prop = RNA_def_property(srna, "adjustable_click_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_ADJUSTABLE_CLICK_SELECT);
+  RNA_def_property_ui_text(prop, "Enable", "Use additional options for single-click select");
+
+  prop = RNA_def_property(srna, "select_unbiased", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_SELECT_UNBIASED);
+  RNA_def_property_ui_text(
+      prop, "Select Unbiased", "Click-select will not favor unselected mesh elements");
+
+  prop = RNA_def_property(srna, "selection_radius", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.1f, 150.0f);
+  RNA_def_property_ui_range(prop, 0.1f, 150.0f, 0.01f, 2);
+  RNA_def_property_ui_text(prop, "Radius", "Size of single-click selection radius");
+
+  prop = RNA_def_property(srna, "system_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, system_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "system_cursor");
+  RNA_def_property_ui_text(prop, "System Cursor", "System mode cursor style");
+
+  prop = RNA_def_property(srna, "edit_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, edit_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "edit_cursor");
+  RNA_def_property_ui_text(prop, "Edit Cursor", "Edit mode cursor style");
+
+  prop = RNA_def_property(srna, "paint_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, paint_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "paint_cursor");
+  RNA_def_property_ui_text(prop, "Paint Cursor", "Paint mode cursor style");
+
+  prop = RNA_def_property(srna, "dot_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, dot_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "dot_cursor");
+  RNA_def_property_ui_text(prop, "2D Cursor", "2D mode cursor style");
+
+  prop = RNA_def_property(srna, "knife_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, knife_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "knife_cursor");
+  RNA_def_property_ui_text(prop, "Knife Cursor", "Knife cursor style");
+
+  prop = RNA_def_property(srna, "eyedropper_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eyedropper_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "eyedropper_cursor");
+  RNA_def_property_ui_text(prop, "Eyedropper Cursor", "Eyedropper cursor style");
+
+  prop = RNA_def_property(srna, "eraser_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, eraser_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "eraser_cursor");
+  RNA_def_property_ui_text(prop, "Eraser Cursor", "Eraser cursor style");
+
+  prop = RNA_def_property(srna, "pencil_cursor", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, pencil_cursor_items);
+  RNA_def_property_enum_sdna(prop, nullptr, "pencil_cursor");
+  RNA_def_property_ui_text(prop, "Pencil Cursor", "Pencil cursor style");
 }
 
 static void rna_def_userdef_system(BlenderRNA *brna)
@@ -6210,6 +6382,17 @@ static void rna_def_userdef_input(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem click_drag_direction_types[] = {
+      {USER_CLICK_DRAG_DIRECTION_EIGHT_WAY,
+       "EIGHT_WAY",
+       0,
+       "Eight",
+       "Eight directions (N, NE, E, SE, S, SW, W, NW)"},
+      {USER_CLICK_DRAG_DIRECTION_LEFT_RIGHT, "LEFT_RIGHT", 0, "Left Right", "Left and right"},
+      {USER_CLICK_DRAG_DIRECTION_UP_DOWN, "UP_DOWN", 0, "Up Down", "Up and down"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem view_zoom_styles[] = {
       {USER_ZOOM_CONTINUE,
        "CONTINUE",
@@ -6316,6 +6499,11 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Release Confirms",
                            "Moving things with a mouse drag confirms when releasing the button");
 
+  prop = RNA_def_property(srna, "click_drag_direction", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, click_drag_direction_types);
+  RNA_def_property_ui_text(
+      prop, "Keymap Drag Directions", "Style of click-drag direction the keymap will use");
+
   prop = RNA_def_property(srna, "use_numeric_input_advanced", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_FLAG_NUMINPUT_ADVANCED);
   RNA_def_property_ui_text(prop,
@@ -6379,6 +6567,12 @@ static void rna_def_userdef_input(BlenderRNA *brna)
                            "Motion Threshold",
                            "Number of pixels to before the cursor is considered to have moved "
                            "(used for cycling selected items on successive clicks)");
+
+  prop = RNA_def_property(srna, "header_highlight", PROP_INT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0, 10);
+  RNA_def_property_ui_range(prop, 0, 10, 1, -1);
+  RNA_def_property_ui_text(
+      prop, "Header Highlight", "How much brighter the header of the active window is");
 
   /* tablet pressure curve */
   prop = RNA_def_property(srna, "pressure_threshold_max", PROP_FLOAT, PROP_FACTOR);

@@ -203,6 +203,8 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
+      /* Show xray facedots */
+      v3d->overlay.edit_flag |= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
     }
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
@@ -392,6 +394,25 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   if (ts->unified_paint_settings.input_samples == 0) {
     ts->unified_paint_settings.input_samples = 1;
   }
+
+  /* X-Ray. */
+  ts->xray_button = true;
+  ts->auto_xray_object = true;
+  ts->auto_xray_edit = true;
+  ts->auto_xray_box = true;
+  ts->auto_xray_lasso = true;
+  ts->auto_xray_circle = true;
+  ts->select_through = true;
+  ts->select_through_object = true;
+  ts->select_through_box = true;
+  ts->select_through_lasso = true;
+  ts->select_through_circle = true;
+
+  /* Viewport-Facing Select */
+  ts->viewport_facing_select_mode = 1;
+  ts->viewport_facing_select_vert = 1;
+  ts->viewport_facing_select_edge = 1;
+  ts->viewport_facing_select_face = 1;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

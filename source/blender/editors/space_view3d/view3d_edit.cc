@@ -1243,3 +1243,248 @@ void VIEW3D_OT_toggle_xray(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Automatic XRay
+ * \{ */
+
+static int toggle_auto_xray_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Object *obedit = CTX_data_edit_object(C);
+  bToolRef *tref = area->runtime.tool;
+  const bool mode_match = obedit ? ts->auto_xray_edit : ts->auto_xray_object;
+
+  if (STREQ(tref->idname, "builtin.select_box") ||
+      STREQ(tref->idname_fallback, "builtin.select_box"))
+  {
+    if (mode_match && ts->auto_xray && ts->auto_xray_box) {
+      ts->auto_xray ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->auto_xray_edit ^= true;
+        }
+        else {
+          ts->auto_xray_object ^= true;
+        }
+      }
+
+      if (!ts->auto_xray) {
+        ts->auto_xray ^= true;
+      }
+
+      if (!ts->auto_xray_box) {
+        ts->auto_xray_box ^= true;
+      }
+    }
+  }
+  else if (STREQ(tref->idname, "builtin.select_lasso") ||
+           STREQ(tref->idname_fallback, "builtin.select_lasso"))
+  {
+    if (mode_match && ts->auto_xray && ts->auto_xray_lasso) {
+      ts->auto_xray ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->auto_xray_edit ^= true;
+        }
+        else {
+          ts->auto_xray_object ^= true;
+        }
+      }
+
+      if (!ts->auto_xray) {
+        ts->auto_xray ^= true;
+      }
+
+      if (!ts->auto_xray_lasso) {
+        ts->auto_xray_lasso ^= true;
+      }
+    }
+  }
+  else if (STREQ(tref->idname, "builtin.select_circle") ||
+           STREQ(tref->idname_fallback, "builtin.select_circle"))
+  {
+    if (mode_match && ts->auto_xray && ts->auto_xray_circle) {
+      ts->auto_xray ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->auto_xray_edit ^= true;
+        }
+        else {
+          ts->auto_xray_object ^= true;
+        }
+      }
+
+      if (!ts->auto_xray) {
+        ts->auto_xray ^= true;
+      }
+
+      if (!ts->auto_xray_circle) {
+        ts->auto_xray_circle ^= true;
+      }
+    }
+  }
+
+  ED_area_tag_redraw(area);
+
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_toggle_auto_xray(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle Automatic X-Ray";
+  ot->idname = "VIEW3D_OT_toggle_auto_xray";
+  ot->description = "Transparent scene display during box, lasso, and circle select";
+
+  /* api callbacks */
+  ot->exec = toggle_auto_xray_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Select Through
+ * \{ */
+
+static int toggle_select_through_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Object *obedit = CTX_data_edit_object(C);
+  bToolRef *tref = area->runtime.tool;
+  const bool mode_match = obedit ? ts->select_through_edit : ts->select_through_object;
+
+  if (STREQ(tref->idname, "builtin.select_box") ||
+      STREQ(tref->idname_fallback, "builtin.select_box"))
+  {
+    if (mode_match && ts->select_through && ts->select_through_box) {
+      ts->select_through ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->select_through_edit ^= true;
+        }
+        else {
+          ts->select_through_object ^= true;
+        }
+      }
+
+      if (!ts->select_through) {
+        ts->select_through ^= true;
+      }
+
+      if (!ts->select_through_box) {
+        ts->select_through_box ^= true;
+      }
+    }
+  }
+  else if (STREQ(tref->idname, "builtin.select_lasso") ||
+           STREQ(tref->idname_fallback, "builtin.select_lasso"))
+  {
+    if (mode_match && ts->select_through && ts->select_through_lasso) {
+      ts->select_through ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->select_through_edit ^= true;
+        }
+        else {
+          ts->select_through_object ^= true;
+        }
+      }
+
+      if (!ts->select_through) {
+        ts->select_through ^= true;
+      }
+
+      if (!ts->select_through_lasso) {
+        ts->select_through_lasso ^= true;
+      }
+    }
+  }
+  else if (STREQ(tref->idname, "builtin.select_circle") ||
+           STREQ(tref->idname_fallback, "builtin.select_circle"))
+  {
+    if (mode_match && ts->select_through && ts->select_through_circle) {
+      ts->select_through ^= true;
+    }
+    else {
+      if (!mode_match) {
+        if (obedit) {
+          ts->select_through_edit ^= true;
+        }
+        else {
+          ts->select_through_object ^= true;
+        }
+      }
+
+      if (!ts->select_through) {
+        ts->select_through ^= true;
+      }
+
+      if (!ts->select_through_circle) {
+        ts->select_through_circle ^= true;
+      }
+    }
+  }
+
+  ED_area_tag_redraw(area);
+
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_toggle_select_through(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle Select Through";
+  ot->idname = "VIEW3D_OT_toggle_select_through";
+  ot->description = "Select occluded objects and mesh elements with box, lasso, and circle select";
+
+  /* api callbacks */
+  ot->exec = toggle_select_through_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Toggle Facedots
+ * \{ */
+
+static int toggle_facedots_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  View3D *v3d = CTX_wm_view3d(C);
+  if (!XRAY_FLAG_ENABLED(v3d)) {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT;
+  }
+  else {
+    v3d->overlay.edit_flag ^= V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
+  }
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_toggle_facedots(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Toggle Facedots";
+  ot->idname = "VIEW3D_OT_toggle_facedots";
+  ot->description = "Show face center dots in the current shading mode";
+  /* api callbacks */
+  ot->exec = toggle_facedots_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */

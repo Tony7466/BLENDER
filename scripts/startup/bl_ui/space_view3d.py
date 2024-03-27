@@ -1057,8 +1057,45 @@ class VIEW3D_HT_header(Header):
         ):
             sub.popover(panel="VIEW3D_PT_overlay_bones", text="", icon='POSE_HLT')
 
-        row = layout.row()
+        row = layout.row(align=True)
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
+
+        if object_mode in 'EDIT' or object_mode in 'OBJECT':
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+
+            if tool_settings.workspace_tool_type == 'FALLBACK':
+                tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
+            else:
+                tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+
+            if object_mode in 'EDIT':
+                mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
+                mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
+            elif object_mode in 'OBJECT':
+                mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
+                mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
+            else:
+                mode_match_auto_xray = False
+                mode_match_select_through = False
+
+            if tool == "builtin.select_box":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
+                depress_select_through = mode_match_select_through and tool_settings.select_through_box
+            elif tool == "builtin.select_lasso":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
+                depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
+            elif tool == "builtin.select_circle":
+                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
+                depress_select_through = mode_match_select_through and tool_settings.select_through_circle
+            else:
+                depress_auto_xray = False
+                depress_select_through = False
+
+            if tool_settings.auto_xray_button:
+                row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
+            if tool_settings.select_through_button:
+                row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.
@@ -1068,15 +1105,24 @@ class VIEW3D_HT_header(Header):
             draw_depressed = shading.show_xray_wireframe
         else:
             draw_depressed = shading.show_xray
-        row.operator(
-            "view3d.toggle_xray",
-            text="",
-            icon='XRAY',
-            depress=draw_depressed,
-        )
+
+        if tool_settings.xray_button or not tool_settings.auto_xray_button and not tool_settings.select_through_button:
+            row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
+        row.popover(panel="VIEW3D_PT_xray", text="")
 
         row = layout.row(align=True)
-        row.prop(shading, "type", text="", expand=True)
+        if tool_settings.shrink_shading_header:
+            if shading.type == 'SOLID':
+                shadicon = 'SHADING_SOLID'
+            elif shading.type == 'MATERIAL':
+                shadicon = 'SHADING_TEXTURE'
+            elif shading.type == 'RENDERED':
+                shadicon = 'SHADING_RENDERED'
+            else:
+                shadicon = 'SHADING_WIRE'
+            row.operator("view3d.toggle_xray", text="", icon=shadicon, depress=draw_depressed)
+        else:
+            row.prop(shading, "type", text="", expand=True)
         sub = row.row(align=True)
         # TODO, currently render shading type ignores mesh two-side, until it's supported
         # show the shading popover which shows double-sided option.
@@ -1231,6 +1277,21 @@ class ShowHideMenu:
         layout.operator("%s.reveal" % self._operator_name)
         layout.operator("%s.hide" % self._operator_name, text="Hide Selected").unselected = False
         layout.operator("%s.hide" % self._operator_name, text="Hide Unselected").unselected = True
+
+
+# Custom Operators
+class VIEW3D_box_lasso(bpy.types.Operator):
+  bl_idname = "view3d.box_lasso"
+  bl_label = "box lasso"
+
+  def invoke(self, context, event):
+    from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+    tool = ToolSelectPanelHelper.tool_active_from_context(context)
+    if tool.idname == "builtin.select_box":
+        bpy.ops.wm.tool_set_by_id(name="builtin.select_lasso")
+    else:
+        bpy.ops.wm.tool_set_by_id(name="builtin.select_box")
+    return {'FINISHED'}
 
 
 # Standard transforms which apply to all cases (mix-in class, not used directly).
@@ -6493,6 +6554,12 @@ class VIEW3D_PT_shading(Panel):
     def draw(self, _context):
         layout = self.layout
         layout.label(text="Viewport Shading")
+        tool_settings = _context.tool_settings
+        shading = VIEW3D_PT_shading.get_shading(_context)
+
+        layout.prop(tool_settings, "shrink_shading_header")
+        if tool_settings.shrink_shading_header:
+            layout.prop(shading, "type", text="", expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
@@ -6684,17 +6751,7 @@ class VIEW3D_PT_shading_options(Panel):
 
         row = col.row(align=True)
 
-        if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="")
-            sub = row.row()
-            sub.active = shading.show_xray_wireframe
-            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
-        elif shading.type == 'SOLID':
-            row.prop(shading, "show_xray", text="")
-            sub = row.row()
-            sub.active = shading.show_xray
-            sub.prop(shading, "xray_alpha", text="X-Ray")
-            # X-ray mode is off when alpha is 1.0
+        if shading.type == 'SOLID':
             xray_active = shading.show_xray and shading.xray_alpha != 1
 
             row = col.row(align=True)
@@ -6877,6 +6934,95 @@ class VIEW3D_PT_gizmo_display(Panel):
         col.label(text="Camera")
         col.prop(view, "show_gizmo_camera_lens", text="Lens")
         col.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
+
+
+class VIEW3D_PT_xray(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "X-Ray Settings"
+    bl_ui_units_x = 14
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="X-Ray Settings")
+        shading = VIEW3D_PT_shading.get_shading(context)
+
+        col = layout.column()
+        row = col.row(align=True)
+        if shading.type == 'WIREFRAME':
+            row.prop(shading, "show_xray_wireframe", text="")
+            sub = row.row()
+            sub.active = shading.show_xray_wireframe
+            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray Wireframe")
+        elif shading.type == 'SOLID':
+            row.prop(shading, "show_xray", text="")
+            sub = row.row()
+            sub.active = shading.show_xray
+            sub.prop(shading, "xray_alpha", text="X-Ray Solid")
+
+
+class VIEW3D_PT_auto_xray(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Automatic X-Ray"
+    bl_parent_id = 'VIEW3D_PT_xray'
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        row = layout.row(align=True)
+        row.prop(tool_settings, "auto_xray")
+        sub = row.row(align=True)
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_object")
+        sub.prop(tool_settings, "auto_xray_edit")
+        row = layout.row(align=True)
+        sub = row.row(align=True)
+        sub.active = tool_settings.auto_xray
+        sub.prop(tool_settings, "auto_xray_box", toggle=True)
+        sub.prop(tool_settings, "auto_xray_lasso", toggle=True)
+        sub.prop(tool_settings, "auto_xray_circle", toggle=True)
+
+
+class VIEW3D_PT_select_through(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Select Through"
+    bl_parent_id = 'VIEW3D_PT_xray'
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        row = layout.row(align=True)
+        row.prop(tool_settings, "select_through")
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_object")
+        sub.prop(tool_settings, "select_through_edit")
+        row = layout.row(align=True)
+        sub = row.row(align=True)
+        sub.active = tool_settings.select_through
+        sub.prop(tool_settings, "select_through_box", toggle=True)
+        sub.prop(tool_settings, "select_through_lasso", toggle=True)
+        sub.prop(tool_settings, "select_through_circle", toggle=True)
+
+
+class VIEW3D_PT_xray_buttons(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Header Buttons"
+    bl_parent_id = 'VIEW3D_PT_xray'
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        row = layout.row(align=True)
+        row.prop(tool_settings, "auto_xray_button", toggle=True)
+        row.prop(tool_settings, "select_through_button", toggle=True)
+        row.prop(tool_settings, "xray_button", toggle=True)
 
 
 class VIEW3D_PT_overlay(Panel):
@@ -7131,6 +7277,21 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
 
         is_any_solid_shading = not (shading.show_xray or (shading.type == 'WIREFRAME'))
 
+        if shading.type == 'WIREFRAME':
+            xray = shading.show_xray_wireframe and shading.xray_alpha_wireframe < 1.0
+        elif shading.type == 'SOLID':
+            xray = shading.show_xray and shading.xray_alpha < 1.0
+        else:
+            xray = False
+
+        if xray:
+            fdot_draw_depressed = overlay.show_face_center_xray
+        else:
+            fdot_draw_depressed = overlay.show_face_center
+
+        col = layout.column()
+        col.active = display_all
+
         col = layout.column()
         col.active = display_all
 
@@ -7139,8 +7300,7 @@ class VIEW3D_PT_overlay_edit_mesh(Panel):
         sub = split.column()
         sub.prop(overlay, "show_faces", text="Faces")
         sub = split.column()
-        sub.active = is_any_solid_shading
-        sub.prop(overlay, "show_face_center", text="Center")
+        sub.operator("view3d.toggle_facedots", text="Facedots", depress = fdot_draw_depressed)
 
         row = col.row(align=True)
         row.prop(overlay, "show_edge_crease", text="Creases", toggle=True)
@@ -9018,6 +9178,7 @@ classes = (
     VIEW3D_MT_sculpt_gpencil_automasking_pie,
     VIEW3D_MT_wpaint_vgroup_lock_pie,
     VIEW3D_MT_sculpt_face_sets_edit_pie,
+    VIEW3D_box_lasso,
     VIEW3D_MT_sculpt_curves,
     VIEW3D_PT_active_tool,
     VIEW3D_PT_active_tool_duplicate,
@@ -9042,6 +9203,10 @@ classes = (
     VIEW3D_PT_shading_render_pass,
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
+    VIEW3D_PT_xray,
+    VIEW3D_PT_auto_xray,
+    VIEW3D_PT_select_through,
+    VIEW3D_PT_xray_buttons,
     VIEW3D_PT_overlay,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,

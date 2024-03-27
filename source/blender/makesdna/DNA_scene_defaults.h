@@ -408,6 +408,25 @@
     /* Placement */ \
     .snap_mode_tools = SCE_SNAP_TO_GEOM,\
     .plane_axis = 2,\
+\
+    /* X-Ray */ \
+    .xray_button = true, \
+    .auto_xray_object = true, \
+    .auto_xray_edit = true, \
+    .auto_xray_box = true, \
+    .auto_xray_lasso = true, \
+    .auto_xray_circle = true, \
+    .select_through = true, \
+    .select_through_object = true, \
+    .select_through_box = true, \
+    .select_through_lasso = true, \
+    .select_through_circle = true, \
+ \
+    /* Viewport-Facing Select */ \
+    .viewport_facing_select_mode = 1, \
+    .viewport_facing_select_vert = 1, \
+    .viewport_facing_select_edge = 1, \
+    .viewport_facing_select_face = 1, \
   }
 
 #define _DNA_DEFAULT_Sculpt \

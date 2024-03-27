@@ -1599,7 +1599,40 @@ typedef struct ToolSettings {
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
-  char _pad0[6];
+
+  /* Mesh Normal Direction Select */
+  char viewport_facing_select;
+  char viewport_facing_select_mode;
+  float viewport_facing_select_threshold;
+  char viewport_facing_select_vert;
+  char viewport_facing_select_edge;
+  char viewport_facing_select_face;
+
+  /* X-Ray Options */
+  char xray_button;
+  char auto_xray;
+  char auto_xray_button;
+  char auto_xray_reset;
+  char auto_xray_object;
+  char auto_xray_edit;
+  char auto_xray_box;
+  char auto_xray_lasso;
+  char auto_xray_circle;
+  char select_through;
+  char select_through_button;
+  char select_through_object;
+  char select_through_edit;
+  char select_through_box;
+  char select_through_lasso;
+  char select_through_circle;
+  char wireless_touch_object;
+
+  /* Combine shading and xray header buttons */
+  char shrink_shading_header;
+
+  /* Square Select option for Circle */
+  char square_select;
+  char _pad0[2];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -2450,6 +2483,78 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_ROTATE = (1 << 1),
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
+
+/** #Viewport-facing select mode */
+enum {
+  VIEWPORT_FACING_SELECT_BOTH = (1 << 0),
+  VIEWPORT_FACING_SELECT_NEAR = (1 << 1),
+  VIEWPORT_FACING_SELECT_XRAY = (1 << 2),
+};
+
+/** #Viewport-facing select vert */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_VERTS = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_VERTS = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_VERTS_FACE = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_VERTS = (1 << 4),
+};
+
+/** #Viewport-facing select edge */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_EDGES = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_EDGES = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_EDGES_FACE = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_EDGES = (1 << 4),
+};
+
+/** #Viewport-facing select face */
+enum {
+  VIEWPORT_FACING_SELECT_FRONT_FACES = (1 << 0),
+  VIEWPORT_FACING_SELECT_FRONT_FACES_VERT = (1 << 1),
+  VIEWPORT_FACING_SELECT_REAR_FACES = (1 << 2),
+  VIEWPORT_FACING_SELECT_REAR_FACES_VERT = (1 << 3),
+  VIEWPORT_FACING_SELECT_ALL_FACES = (1 << 4),
+};
+
+/** #Object select style */
+enum {
+  OBJECT_TOUCH = (1 << 0),
+  OBJECT_ENCLOSE = (1 << 1),
+  OBJECT_ORIGIN = (1 << 2),
+};
+
+/** #Face select style */
+enum {
+  FACE_DEFAULT = (1 << 0),
+  FACE_TOUCH = (1 << 1),
+  FACE_ENCLOSE = (1 << 2),
+  FACE_CENTER = (1 << 3),
+};
+
+/** #Edge select style */
+enum {
+  EDGE_DEFAULT = (1 << 0),
+  EDGE_TOUCH = (1 << 1),
+  EDGE_ENCLOSE = (1 << 2),
+};
+
+/** #Auto X-Ray mode */
+enum {
+  AUTO_XRAY_DISABLE = (1 << 0),
+  AUTO_XRAY_OBJECT = (1 << 1),
+  AUTO_XRAY_EDIT = (1 << 2),
+  AUTO_XRAY_BOTH = (1 << 3),
+};
+
+/** #Select through mode */
+enum {
+  SELECT_THROUGH_DISABLE = (1 << 0),
+  SELECT_THROUGH_OBJECT = (1 << 1),
+  SELECT_THROUGH_EDIT = (1 << 2),
+  SELECT_THROUGH_BOTH = (1 << 3),
+};
 
 /** #ToolSettings::selectmode */
 enum {

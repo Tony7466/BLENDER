@@ -663,6 +663,25 @@ void view3d_operator_properties_common(wmOperatorType *ot, const enum eV3D_OpPro
   if (flag & V3D_OP_PROP_USE_MOUSE_INIT) {
     WM_operator_properties_use_cursor_init(ot);
   }
+
+  if (flag & V3D_OP_PROP_FRAME_SELECTED_DISTANCE) {
+    PropertyRNA *prop;
+    prop = RNA_def_int(ot->srna,
+                       "frame_selected_distance",
+                       0,
+                       0,
+                       1000,
+                       "Camera Offset",
+                       "Distance to put camera from selected",
+                       0,
+                       1000);
+  }
+
+  if (flag & V3D_OP_PROP_ZOOM_SPEED) {
+    PropertyRNA *prop;
+    prop = RNA_def_float(
+        ot->srna, "zoom_speed", 1.2f, 1.001, 10, "Zoom Speed", "Speed to zoom camera", 1.001f, 10);
+  }
 }
 
 /** \} */

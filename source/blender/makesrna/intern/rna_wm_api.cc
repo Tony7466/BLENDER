@@ -421,6 +421,41 @@ static void rna_KeyMap_item_remove(wmKeyMap *km, ReportList *reports, PointerRNA
   RNA_POINTER_INVALIDATE(kmi_ptr);
 }
 
+static void rna_keymap_set_direction_any(wmKeyMap *km, PointerRNA *kmi_ptr)
+{
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(kmi_ptr->data);
+  kmi->direction = -1;
+  WM_keyconfig_update_tag(km, kmi);
+}
+
+static void rna_keymap_set_direction_left(wmKeyMap *km, PointerRNA *kmi_ptr)
+{
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(kmi_ptr->data);
+  kmi->direction = 7;
+  WM_keyconfig_update_tag(km, kmi);
+}
+
+static void rna_keymap_set_direction_right(wmKeyMap *km, PointerRNA *kmi_ptr)
+{
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(kmi_ptr->data);
+  kmi->direction = 3;
+  WM_keyconfig_update_tag(km, kmi);
+}
+
+static void rna_keymap_set_direction_up(wmKeyMap *km, PointerRNA *kmi_ptr)
+{
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(kmi_ptr->data);
+  kmi->direction = 1;
+  WM_keyconfig_update_tag(km, kmi);
+}
+
+static void rna_keymap_set_direction_down(wmKeyMap *km, PointerRNA *kmi_ptr)
+{
+  wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(kmi_ptr->data);
+  kmi->direction = 5;
+  WM_keyconfig_update_tag(km, kmi);
+}
+
 static PointerRNA rna_KeyMap_item_find_from_operator(ID *id,
                                                      wmKeyMap *km,
                                                      const char *idname,
@@ -1274,6 +1309,31 @@ void RNA_api_keymapitems(StructRNA *srna)
 
   func = RNA_def_function(srna, "remove", "rna_KeyMap_item_remove");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  func = RNA_def_function(srna, "set_direction_any", "rna_keymap_set_direction_any");
+  parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  func = RNA_def_function(srna, "set_direction_left", "rna_keymap_set_direction_left");
+  parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  func = RNA_def_function(srna, "set_direction_right", "rna_keymap_set_direction_right");
+  parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  func = RNA_def_function(srna, "set_direction_up", "rna_keymap_set_direction_up");
+  parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+
+  func = RNA_def_function(srna, "set_direction_down", "rna_keymap_set_direction_down");
   parm = RNA_def_pointer(func, "item", "KeyMapItem", "Item", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
   RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));

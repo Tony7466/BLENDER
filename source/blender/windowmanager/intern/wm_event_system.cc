@@ -1323,6 +1323,11 @@ int WM_operator_repeat(bContext *C, wmOperator *op)
   op->flag &= ~op_flag;
   return ret;
 }
+int WM_operator_invoke_last(bContext *C, wmOperator *op)
+{
+  const int ret = WM_operator_name_call_ptr(C, op->type, WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
+  return ret;
+}
 int WM_operator_repeat_last(bContext *C, wmOperator *op)
 {
   const int op_flag = OP_IS_REPEAT_LAST;

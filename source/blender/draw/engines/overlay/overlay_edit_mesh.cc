@@ -61,8 +61,10 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   bool select_face = pd->edit_mesh.select_face = (tsettings->selectmode & SCE_SELECT_FACE) != 0;
   bool select_edge = pd->edit_mesh.select_edge = (tsettings->selectmode & SCE_SELECT_EDGE) != 0;
 
-  bool show_face_dots = (v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) != 0 ||
-                        pd->edit_mesh.do_zbufclip;
+  bool show_face_dots = !XRAY_FLAG_ENABLED(draw_ctx->v3d) &&
+                            v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT ||
+                        XRAY_FLAG_ENABLED(draw_ctx->v3d) &&
+                            v3d->overlay.edit_flag & V3D_OVERLAY_EDIT_FACE_DOT_XRAY;
 
   bool show_retopology = RETOPOLOGY_ENABLED(v3d);
   float retopology_offset = RETOPOLOGY_OFFSET(v3d);

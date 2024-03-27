@@ -3724,6 +3724,7 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
   int x, y, radius, width, height;
   float zoomx, zoomy;
   float offset[2], ellipse[2];
+  rctf rectf;
 
   const bool use_face_center = ((ts->uv_flag & UV_SYNC_SELECTION) ?
                                     (ts->selectmode == SCE_SELECT_FACE) :
@@ -3733,6 +3734,7 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
                              (ts->uv_selectmode == UV_SELECT_EDGE));
   const bool use_select_linked = !(ts->uv_flag & UV_SYNC_SELECTION) &&
                                  (ts->uv_selectmode == UV_SELECT_ISLAND);
+  const bool square = ts->square_select;
 
   /* get operator properties */
   x = RNA_int_get(op->ptr, "x");
@@ -3748,6 +3750,11 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
   ellipse[1] = height * zoomy / radius;
 
   UI_view2d_region_to_view(&region->v2d, x, y, &offset[0], &offset[1]);
+
+  if (square) {
+    BLI_rctf_init(&rectf, x - radius, x + radius, y - radius, y + radius);
+    UI_view2d_region_to_view_rctf(&region->v2d, &rectf, &rectf);
+  }
 
   bool changed_multi = false;
 
@@ -3782,7 +3789,9 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
         if (select != uvedit_face_select_test(scene, efa, offsets)) {
           float cent[2];
           BM_face_uv_calc_center_median(efa, offsets.uv, cent);
-          if (uv_circle_select_is_point_inside(cent, offset, ellipse)) {
+          if (square ? BLI_rctf_isect_pt_v(&rectf, cent) :
+                       uv_circle_select_is_point_inside(cent, offset, ellipse))
+          {
             BM_elem_flag_enable(efa, BM_ELEM_TAG);
             changed = true;
           }
@@ -3805,7 +3814,9 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
 
         BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
           luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-          if (uv_circle_select_is_edge_inside(luv, luv_prev, offset, ellipse)) {
+          if (square ? BLI_rctf_isect_pt_v(&rectf, luv) && BLI_rctf_isect_pt_v(&rectf, luv_prev) :
+                       uv_circle_select_is_edge_inside(luv, luv_prev, offset, ellipse))
+          {
             uvedit_edge_select_set_with_sticky(scene, em, l_prev, select, false, offsets);
             changed = true;
           }
@@ -3825,7 +3836,9 @@ static int uv_circle_select_exec(bContext *C, wmOperator *op)
         BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
           if (select != uvedit_uv_select_test(scene, l, offsets)) {
             luv = BM_ELEM_CD_GET_FLOAT_P(l, offsets.uv);
-            if (uv_circle_select_is_point_inside(luv, offset, ellipse)) {
+            if (square ? BLI_rctf_isect_pt_v(&rectf, luv) :
+                         uv_circle_select_is_point_inside(luv, offset, ellipse))
+            {
               changed = true;
               uvedit_uv_select_set(scene, em->bm, l, select, false, offsets);
               BM_elem_flag_enable(l->v, BM_ELEM_TAG);
@@ -3919,7 +3932,7 @@ static bool do_lasso_select_mesh_uv_is_edge_inside(const ARegion *region,
           &region->v2d, co_test_a, co_test_b, co_screen_a, co_screen_b) &&
       BLI_rcti_isect_segment(clip_rect, co_screen_a, co_screen_b) &&
       BLI_lasso_is_edge_inside(
-          mcoords, mcoords_len, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED))
+          mcoords, mcoords_len, UNPACK2(co_screen_a), UNPACK2(co_screen_b), V2D_IS_CLIPPED, false))
   {
     return true;
   }

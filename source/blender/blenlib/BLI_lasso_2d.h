@@ -26,7 +26,8 @@ bool BLI_lasso_is_edge_inside(const int mcoords[][2],
                               int y0,
                               int x1,
                               int y1,
-                              int error_value);
+                              int error_value,
+                              bool fully_inside);
 
 #ifdef __cplusplus
 }

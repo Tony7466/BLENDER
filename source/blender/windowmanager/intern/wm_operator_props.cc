@@ -416,7 +416,58 @@ void WM_operator_properties_gesture_box_ex(wmOperatorType *ot, bool deselect, bo
 {
   PropertyRNA *prop;
 
+  static const EnumPropertyItem object_select_items[] = {
+      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the box"},
+      {OBJECT_ENCLOSE,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the box"},
+      {OBJECT_ORIGIN,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the box in near select. Select faces if their center is "
+       "touched by the box in X-Ray select"},
+      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the box"},
+      {FACE_ENCLOSE, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the box"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_DEFAULT,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the box. If no edges are fully inside the box, select "
+       "edges that are touched by the box"},
+      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the box"},
+      {EDGE_ENCLOSE, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the box"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   WM_operator_properties_border(ot);
+
+  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   if (deselect) {
     prop = RNA_def_boolean(
@@ -524,6 +575,58 @@ void WM_operator_properties_gesture_box_zoom(wmOperatorType *ot)
 void WM_operator_properties_gesture_lasso(wmOperatorType *ot)
 {
   PropertyRNA *prop;
+  static const EnumPropertyItem object_select_items[] = {
+      {OBJECT_ORIGIN,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the lasso"},
+      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the lasso"},
+      {OBJECT_ENCLOSE,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the lasso in near select. Select faces if their center "
+       "is touched by the lasso in X-Ray select"},
+      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the lasso"},
+      {FACE_ENCLOSE, "FACE_ENCLOSE", 0, "Enclose", "Select faces that are fully inside the lasso"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_DEFAULT,
+       "EDGE_DEFAULT",
+       0,
+       "Default",
+       "Select edges that are fully inside the lasso. If no edges are fully inside the lasso, "
+       "select edges that are touched by the lasso"},
+      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the lasso"},
+      {EDGE_ENCLOSE, "EDGE_ENCLOSE", 0, "Enclose", "Select edges that are fully inside the lasso"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  WM_operator_properties_border(ot);
+
+  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_collection_runtime(ot->srna, "path", &RNA_OperatorMousePath, "Path", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
@@ -562,6 +665,52 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   PropertyRNA *prop;
   const int radius_default = 25;
 
+  static const EnumPropertyItem object_select_items[] = {
+      {OBJECT_ORIGIN,
+       "OBJECT_ORIGIN",
+       0,
+       "Origin",
+       "Select objects if their origin is touched by the circle"},
+      {OBJECT_TOUCH, "OBJECT_TOUCH", 0, "Touch", "Select objects that are touched by the circle"},
+      {OBJECT_ENCLOSE,
+       "OBJECT_ENCLOSE",
+       0,
+       "Enclose",
+       "Select objects that are fully inside the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_DEFAULT,
+       "FACE_DEFAULT",
+       0,
+       "Default",
+       "Select faces that are touched by the circle in near select. Select faces if their center "
+       "is touched by the circle in X-Ray select"},
+      {FACE_TOUCH, "FACE_TOUCH", 0, "Touch", "Select faces that are touched by the circle"},
+      {FACE_ENCLOSE,
+       "FACE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select faces that are fully inside the circle"},
+      {FACE_CENTER,
+       "FACE_CENTER",
+       0,
+       "Center",
+       "Select faces if their center is touched by the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_TOUCH, "EDGE_TOUCH", 0, "Touch", "Select edges that are touched by the circle"},
+      {EDGE_ENCLOSE,
+       "EDGE_ENCLOSE",
+       0,
+       "Enclose",
+       "Select edges that are fully inside the circle"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   prop = RNA_def_int(ot->srna, "x", 0, INT_MIN, INT_MAX, "X", "", INT_MIN, INT_MAX);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   prop = RNA_def_int(ot->srna, "y", 0, INT_MIN, INT_MAX, "Y", "", INT_MIN, INT_MAX);
@@ -569,6 +718,13 @@ void WM_operator_properties_gesture_circle(wmOperatorType *ot)
   RNA_def_int(ot->srna, "radius", radius_default, 1, INT_MAX, "Radius", "", 1, INT_MAX);
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+
+  prop = RNA_def_enum(ot->srna, "object_type", object_select_items, 0, "Object", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "face_type", face_select_items, 0, "Face", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+  prop = RNA_def_enum(ot->srna, "edge_type", edge_select_items, 0, "Edge", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

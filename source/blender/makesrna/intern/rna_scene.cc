@@ -3186,9 +3186,148 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem viewport_facing_select_mode_items[] = {
+      {VIEWPORT_FACING_SELECT_BOTH,
+       "BOTH",
+       0,
+       "Near and X-Ray",
+       "Use viewport-facing selection in near select and X-Ray"},
+      {VIEWPORT_FACING_SELECT_NEAR,
+       "NEAR",
+       0,
+       "Near",
+       "Use viewport-facing selection in near select"},
+      {VIEWPORT_FACING_SELECT_XRAY, "XRAY", 0, "X-Ray", "Use viewport-facing selection in X-Ray"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_vert_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_VERTS,
+       "FRONT_VERTS",
+       0,
+       "Front Verts",
+       "Select vertices with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE,
+       "FRONT_VERTS_FACE",
+       0,
+       "Verts of Front Face",
+       "Select vertices if they are part of a face that has a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_VERTS,
+       "REAR_VERTS",
+       0,
+       "Rear Verts",
+       "Select vertices without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_VERTS_FACE,
+       "REAR_VERTS_FACE",
+       0,
+       "Verts of Rear Face",
+       "Select vertices if they are part of a face that does not have a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_VERTS,
+       "ALL_VERTS",
+       0,
+       "All Verts",
+       "Select vertices regarless of their normal direction"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_edge_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_EDGES,
+       "FRONT_EDGES",
+       0,
+       "Front Edges",
+       "Select edges with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE,
+       "FRONT_EDGES_FACE",
+       0,
+       "Edges of Front Face",
+       "Select edges if they are part of a face that has a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_EDGES,
+       "REAR_EDGES",
+       0,
+       "Rear Edges",
+       "Select edges without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_EDGES_FACE,
+       "REAR_EDGES_FACE",
+       0,
+       "Edges of Rear Face",
+       "Select edges if they are part of a face that does not have a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_EDGES,
+       "ALL_EDGES",
+       0,
+       "All Edges",
+       "Select edges regarless of their normal direction"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem viewport_facing_select_face_items[] = {
+      {VIEWPORT_FACING_SELECT_FRONT_FACES,
+       "FRONT_FACES",
+       0,
+       "Front Faces",
+       "Select faces with viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_FRONT_FACES_VERT,
+       "FRONT_FACES_VERT",
+       0,
+       "Faces of Front Vert",
+       "Select faces if they have a vertex with a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_REAR_FACES,
+       "REAR_FACES",
+       0,
+       "Rear Faces",
+       "Select faces without viewport-facing normals"},
+      {VIEWPORT_FACING_SELECT_REAR_FACES_VERT,
+       "REAR_FACES_VERT",
+       0,
+       "Faces of Rear Vert",
+       "Select faces if they have a vertex without a viewport-facing normal"},
+      {VIEWPORT_FACING_SELECT_ALL_FACES,
+       "ALL_FACES",
+       0,
+       "All Faces",
+       "Select faces regarless of their normal direction"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "ToolSettings", nullptr);
   RNA_def_struct_path_func(srna, "rna_ToolSettings_path");
   RNA_def_struct_ui_text(srna, "Tool Settings", "");
+
+  /* Viewport-Facing Select */
+  prop = RNA_def_property(srna, "viewport_facing_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "viewport_facing_select", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Viewport Facing Select",
+      "Filter box, lasso, and circle selection of mesh elements based on the direction of their "
+      "normals compared to the viewport");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "viewport_facing_select_mode");
+  RNA_def_property_enum_items(prop, viewport_facing_select_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Which selection modes to use viewport-facing selection");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_vert", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "viewport_facing_select_vert");
+  RNA_def_property_enum_items(prop, viewport_facing_select_vert_items);
+  RNA_def_property_ui_text(prop, "Vert", "Direction and mode for vertices");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_edge", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "viewport_facing_select_edge");
+  RNA_def_property_enum_items(prop, viewport_facing_select_edge_items);
+  RNA_def_property_ui_text(prop, "Edge", "Direction and mode for edges");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "viewport_facing_select_face");
+  RNA_def_property_enum_items(prop, viewport_facing_select_face_items);
+  RNA_def_property_ui_text(prop, "Face", "Direction and mode for faces");
+
+  prop = RNA_def_property(srna, "viewport_facing_select_threshold", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, -0.999999, 0.999999);
+  RNA_def_property_ui_range(prop, -0.999999, 0.999999, 1.0, 6);
+  RNA_def_property_ui_text(
+      prop,
+      "Threshold",
+      "How close the angles of the viewport and mesh element need to be for selection to occur");
 
   prop = RNA_def_property(srna, "sculpt", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Sculpt");
@@ -4040,6 +4179,119 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "normal_vector", PROP_FLOAT, PROP_XYZ);
   RNA_def_property_ui_text(prop, "Normal Vector", "Normal Vector used to copy, add or multiply");
   RNA_def_property_ui_range(prop, -10000.0, 10000.0, 1, 3);
+
+  /* Square Select */
+  prop = RNA_def_property(srna, "square_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "square_select", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Square Select",
+      "Change selection shape to a square with side length equal to the circle diameter");
+
+  /* Wireless Touch Object */
+  prop = RNA_def_property(srna, "wireless_touch_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "wireless_touch_object", 0);
+  RNA_def_property_ui_text(prop,
+                           "Wireless Touch Object",
+                           "If using Touch select with X-Ray and Wireframe shading, select "
+                           "objects if inside them but not intersecting any wires");
+
+  /* Shrink Shading Header */
+  prop = RNA_def_property(srna, "shrink_shading_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "shrink_shading_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Shrink Header",
+      "Combine the four Shading Header buttons into one button that also toggles X-Ray");
+
+  /* X-Ray header button */
+  prop = RNA_def_property(srna, "xray_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "xray_button", 0);
+  RNA_def_property_ui_text(prop, "X-Ray", "Show button for X-Ray in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  /* Auto X-Ray */
+  prop = RNA_def_property(srna, "auto_xray", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray", 0);
+  RNA_def_property_ui_text(prop, "Enable", "Transparent scene display during drag select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Auto X-Ray", "Show button for automatic X-Ray in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_reset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_reset", 0);
+  RNA_def_property_ui_text(prop, "Auto X-Ray Reset", "Helper that turns xray off for autoxray");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_object", 0);
+  RNA_def_property_ui_text(prop, "Object", "Automatic X-Ray in object mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_edit", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_edit", 0);
+  RNA_def_property_ui_text(prop, "Edit", "Automatic X-Ray in edit mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_box", 0);
+  RNA_def_property_ui_text(prop, "Box", "Transparent scene display during box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_lasso", 0);
+  RNA_def_property_ui_text(prop, "Lasso", "Transparent scene display during lasso select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "auto_xray_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray_circle", 0);
+  RNA_def_property_ui_text(prop, "Circle", "Transparent scene display during circle select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  /* Select Through */
+  prop = RNA_def_property(srna, "select_through", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through", 0);
+  RNA_def_property_ui_text(
+      prop, "Enable", "Select occluded objects and mesh elements with drag select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Select Through", "Show button for select through in viewport header");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_object", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_object", 0);
+  RNA_def_property_ui_text(prop, "Object", "Select through in object mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_edit", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_edit", 0);
+  RNA_def_property_ui_text(prop, "Edit", "Select through in edit mode");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_box", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_box", 0);
+  RNA_def_property_ui_text(
+      prop, "Box", "Select occluded objects and mesh elements with box select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_lasso", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_lasso", 0);
+  RNA_def_property_ui_text(
+      prop, "Lasso", "Select occluded objects and mesh elements with lasso select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "select_through_circle", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_through_circle", 0);
+  RNA_def_property_ui_text(
+      prop, "Circle", "Select occluded objects and mesh elements with circle select");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   /* Unified Paint Settings */
   prop = RNA_def_property(srna, "unified_paint_settings", PROP_POINTER, PROP_NONE);

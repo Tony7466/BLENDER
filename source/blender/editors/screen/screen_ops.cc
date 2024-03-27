@@ -3983,6 +3983,62 @@ static void SCREEN_OT_repeat_history(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Invoke Last Operator
+ * \{ */
+
+static int invoke_last_exec(bContext *C, wmOperator * /*op*/)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmOperator *lastop = static_cast<wmOperator *>(wm->operators.last);
+
+  /* Seek last registered operator */
+  while (lastop) {
+    if (lastop->type->flag & OPTYPE_REGISTER) {
+      if (STREQ(lastop->idname, "MESH_OT_delete") || STREQ(lastop->idname, "MESH_OT_select_all") ||
+          STREQ(lastop->idname, "MESH_OT_select_mode") ||
+          STREQ(lastop->idname, "OBJECT_OT_editmode_toggle") ||
+          STREQ(lastop->idname, "OBJECT_OT_select_all") ||
+          STREQ(lastop->idname, "TRANSFORM_OT_resize") ||
+          STREQ(lastop->idname, "TRANSFORM_OT_rotate") ||
+          STREQ(lastop->idname, "TRANSFORM_OT_trackball") ||
+          STREQ(lastop->idname, "TRANSFORM_OT_translate"))
+      {
+        lastop = lastop->prev;
+      }
+      else {
+        // printf(lastop->idname, "\n");
+        break;
+      }
+    }
+    else {
+      lastop = lastop->prev;
+    }
+  }
+
+  if (lastop) {
+    WM_operator_free_all_after(wm, lastop);
+    WM_operator_invoke_last(C, lastop);
+  }
+
+  return OPERATOR_CANCELLED;
+}
+
+static void SCREEN_OT_invoke_last(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Invoke Last";
+  ot->description = "Invoke last operation";
+  ot->idname = "SCREEN_OT_invoke_last";
+
+  /* api callbacks */
+  ot->exec = invoke_last_exec;
+
+  ot->poll = ED_operator_screenactive;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Redo Operator
  * \{ */
 
@@ -5863,6 +5919,7 @@ void ED_operatortypes_screen()
   WM_operatortype_append(SCREEN_OT_actionzone);
   WM_operatortype_append(SCREEN_OT_repeat_last);
   WM_operatortype_append(SCREEN_OT_repeat_history);
+  WM_operatortype_append(SCREEN_OT_invoke_last);
   WM_operatortype_append(SCREEN_OT_redo_last);
 
   /* Screen tools. */

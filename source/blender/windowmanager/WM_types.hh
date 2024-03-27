@@ -559,6 +559,7 @@ struct wmNotifier {
 #define WM_GESTURE_LASSO 4
 #define WM_GESTURE_CIRCLE 5
 #define WM_GESTURE_STRAIGHTLINE 6
+#define WM_GESTURE_SQUARE 7
 
 /**
  * wmGesture is registered to #wmWindow.gesture, handled by operator callbacks.

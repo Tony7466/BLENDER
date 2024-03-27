@@ -405,6 +405,111 @@ class PREFERENCES_OT_keyitem_remove(Operator):
         return {'FINISHED'}
 
 
+class PREFERENCES_OT_set_direction_any(Operator):
+    """Drag in any direction"""
+    bl_idname = "preferences.set_direction_any"
+    bl_label = "Set Direction Any"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to set direction for",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.set_direction_any(kmi)
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_set_direction_left(Operator):
+    """Drag to the left"""
+    bl_idname = "preferences.set_direction_left"
+    bl_label = "Set Direction Left"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to set direction for",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.set_direction_left(kmi)
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_set_direction_right(Operator):
+    """Drag to the right"""
+    bl_idname = "preferences.set_direction_right"
+    bl_label = "Set Direction Right"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to set direction for",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.set_direction_right(kmi)
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_set_direction_up(Operator):
+    """Drag upwards"""
+    bl_idname = "preferences.set_direction_up"
+    bl_label = "Set Direction Up"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to set direction for",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.set_direction_up(kmi)
+        return {'FINISHED'}
+
+
+class PREFERENCES_OT_set_direction_down(Operator):
+    """Drag downwards"""
+    bl_idname = "preferences.set_direction_down"
+    bl_label = "Set Direction Down"
+
+    item_id: IntProperty(
+        name="Item Identifier",
+        description="Identifier of the item to set direction for",
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return hasattr(context, "keymap")
+
+    def execute(self, context):
+        km = context.keymap
+        kmi = km.keymap_items.from_id(self.item_id)
+        km.keymap_items.set_direction_down(kmi)
+        return {'FINISHED'}
+
+
 class PREFERENCES_OT_keyconfig_remove(Operator):
     """Remove key config"""
     bl_idname = "preferences.keyconfig_remove"
@@ -1226,6 +1331,11 @@ classes = (
     PREFERENCES_OT_keyconfig_test,
     PREFERENCES_OT_keyitem_add,
     PREFERENCES_OT_keyitem_remove,
+    PREFERENCES_OT_set_direction_any,
+    PREFERENCES_OT_set_direction_left,
+    PREFERENCES_OT_set_direction_right,
+    PREFERENCES_OT_set_direction_up,
+    PREFERENCES_OT_set_direction_down,
     PREFERENCES_OT_keyitem_restore,
     PREFERENCES_OT_keymap_restore,
     PREFERENCES_OT_theme_install,

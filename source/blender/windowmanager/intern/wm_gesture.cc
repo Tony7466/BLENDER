@@ -56,6 +56,7 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
            WM_GESTURE_RECT,
            WM_GESTURE_CROSS_RECT,
            WM_GESTURE_CIRCLE,
+           WM_GESTURE_SQUARE,
            WM_GESTURE_STRAIGHTLINE))
   {
     rcti *rect = static_cast<rcti *>(MEM_callocN(sizeof(rcti), "gesture rect new"));
@@ -63,7 +64,7 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
     gesture->customdata = rect;
     rect->xmin = xy[0] - gesture->winrct.xmin;
     rect->ymin = xy[1] - gesture->winrct.ymin;
-    if (type == WM_GESTURE_CIRCLE) {
+    if (type == WM_GESTURE_CIRCLE || type == WM_GESTURE_SQUARE) {
       /* caller is responsible for initializing 'xmax' to radius. */
     }
     else {
@@ -275,6 +276,51 @@ static void wm_gesture_draw_circle(wmGesture *gt)
   immUnbindProgram();
 }
 
+static void wm_gesture_draw_square(wmGesture *gt)
+{
+  rcti *rect = (rcti *)gt->customdata;
+
+  uint shdr_pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4f(1.0f, 1.0f, 1.0f, 0.05f);
+
+  immRecti(shdr_pos,
+           rect->xmin - rect->xmax,
+           rect->ymin - rect->xmax,
+           rect->xmin + rect->xmax,
+           rect->ymin + rect->xmax);
+
+  immUnbindProgram();
+
+  GPU_blend(GPU_BLEND_NONE);
+
+  shdr_pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_LINE_DASHED_UNIFORM_COLOR);
+
+  float viewport_size[4];
+  GPU_viewport_size_get_f(viewport_size);
+  immUniform2f("viewport_size", viewport_size[2], viewport_size[3]);
+
+  immUniform1i("colors_len", 2); /* "advanced" mode */
+  immUniform4f("color", 0.4f, 0.4f, 0.4f, 1.0f);
+  immUniform4f("color2", 1.0f, 1.0f, 1.0f, 1.0f);
+  immUniform1f("dash_width", 8.0f);
+  immUniform1f("udash_factor", 0.5f);
+
+  imm_draw_box_wire_2d(shdr_pos,
+                       float(rect->xmin - rect->xmax),
+                       float(rect->ymin - rect->xmax),
+                       float(rect->xmin + rect->xmax),
+                       float(rect->ymin + rect->xmax));
+
+  immUnbindProgram();
+}
+
 struct LassoFillData {
   uchar *px;
   int width;
@@ -446,6 +492,9 @@ void wm_gesture_draw(wmWindow *win)
     }
     else if (gt->type == WM_GESTURE_CIRCLE) {
       wm_gesture_draw_circle(gt);
+    }
+    else if (gt->type == WM_GESTURE_SQUARE) {
+      wm_gesture_draw_square(gt);
     }
     else if (gt->type == WM_GESTURE_CROSS_RECT) {
       if (gt->is_active) {

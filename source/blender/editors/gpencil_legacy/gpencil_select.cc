@@ -1490,7 +1490,8 @@ static bool gpencil_stroke_do_circle_sel(bGPdata *gpd,
                                          const float diff_mat[4][4],
                                          const int selectmode,
                                          const float scale,
-                                         const bool is_curve_edit)
+                                         const bool is_curve_edit,
+                                         const bool square)
 {
   bGPDspoint *pt = nullptr;
   int x0 = 0, y0 = 0;
@@ -1510,7 +1511,9 @@ static bool gpencil_stroke_do_circle_sel(bGPdata *gpd,
     /* do boundbox check first */
     if (!ELEM(V2D_IS_CLIPPED, x0, y0) && BLI_rcti_isect_pt(rect, x0, y0)) {
       /* only check if point is inside */
-      if (((x0 - mx) * (x0 - mx) + (y0 - my) * (y0 - my)) <= radius * radius) {
+      if (square ? BLI_rcti_isect_pt(rect, x0, y0) :
+                   ((x0 - mx) * (x0 - mx) + (y0 - my) * (y0 - my)) <= radius * radius)
+      {
         hit = true;
 
         /* change selection */
@@ -1581,7 +1584,8 @@ static bool gpencil_do_curve_circle_sel(bContext *C,
                                         const bool select,
                                         rcti *rect,
                                         const float diff_mat[4][4],
-                                        const int selectmode)
+                                        const int selectmode,
+                                        const bool square)
 {
   ARegion *region = CTX_wm_region(C);
   View3D *v3d = CTX_wm_view3d(C);
@@ -1629,7 +1633,7 @@ static bool gpencil_do_curve_circle_sel(bContext *C,
       int dist_x = screen_co[0] - mx;
       int dist_y = screen_co[1] - my;
       int dist = dist_x * dist_x + dist_y * dist_y;
-      if (dist <= radius * radius) {
+      if (square ? BLI_rcti_isect_pt(rect, screen_co[0], screen_co[1]) : dist <= radius * radius) {
         hit = true;
         /* change selection */
         if (select) {
@@ -1674,6 +1678,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = CTX_data_tool_settings(C);
   Object *ob = CTX_data_active_object(C);
   const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+  const bool square = ts->square_select;
 
   int selectmode;
   if (ob && ob->mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {
@@ -1729,7 +1734,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
     GP_EDITABLE_CURVES_BEGIN(gps_iter, C, gpl, gps, gpc)
     {
       changed |= gpencil_do_curve_circle_sel(
-          C, gps, gpc, mx, my, radius, select, &rect, gps_iter.diff_mat, selectmode);
+          C, gps, gpc, mx, my, radius, select, &rect, gps_iter.diff_mat, selectmode, square);
     }
     GP_EDITABLE_CURVES_END(gps_iter);
   }
@@ -1758,7 +1763,8 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
                                               gpstroke_iter.diff_mat,
                                               selectmode,
                                               scale,
-                                              is_curve_edit);
+                                              is_curve_edit,
+                                              square);
     }
     GP_EVALUATED_STROKES_END(gpstroke_iter);
   }

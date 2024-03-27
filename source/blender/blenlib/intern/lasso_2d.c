@@ -57,7 +57,8 @@ bool BLI_lasso_is_edge_inside(const int mcoords[][2],
                               int y0,
                               int x1,
                               int y1,
-                              const int error_value)
+                              const int error_value,
+                              bool fully_inside)
 {
 
   if (x0 == error_value || x1 == error_value || mcoords_len == 0) {
@@ -66,22 +67,31 @@ bool BLI_lasso_is_edge_inside(const int mcoords[][2],
 
   const int v1[2] = {x0, y0}, v2[2] = {x1, y1};
 
-  /* check points in lasso */
-  if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v1[0], v1[1], error_value)) {
-    return true;
-  }
-  if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v2[0], v2[1], error_value)) {
+  /* enclosed faces only checks for both points inside selection area */
+  if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v1[0], v1[1], error_value) &&
+      BLI_lasso_is_point_inside(mcoords, mcoords_len, v2[0], v2[1], error_value))
+  {
     return true;
   }
 
-  /* no points in lasso, so we have to intersect with lasso edge */
-
-  if (isect_seg_seg_v2_int(mcoords[0], mcoords[mcoords_len - 1], v1, v2) > 0) {
-    return true;
-  }
-  for (uint a = 0; a < mcoords_len - 1; a++) {
-    if (isect_seg_seg_v2_int(mcoords[a], mcoords[a + 1], v1, v2) > 0) {
+  if (!fully_inside) {
+    /* check points in lasso */
+    if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v1[0], v1[1], error_value)) {
       return true;
+    }
+    if (BLI_lasso_is_point_inside(mcoords, mcoords_len, v2[0], v2[1], error_value)) {
+      return true;
+    }
+
+    /* no points in lasso, so we have to intersect with lasso edge */
+
+    if (isect_seg_seg_v2_int(mcoords[0], mcoords[mcoords_len - 1], v1, v2) > 0) {
+      return true;
+    }
+    for (unsigned int a = 0; a < mcoords_len - 1; a++) {
+      if (isect_seg_seg_v2_int(mcoords[a], mcoords[a + 1], v1, v2) > 0) {
+        return true;
+      }
     }
   }
 

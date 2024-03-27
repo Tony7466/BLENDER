@@ -728,6 +728,9 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
     case GHOST_kStandardCursorHorizontalSplit:
       cursor = ::LoadImage(module, "splith_cursor", IMAGE_CURSOR, cx, cy, flags);
       break;
+    case GHOST_kStandardCursorPointer:
+      cursor = ::LoadImage(module, "pointer_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break;
     case GHOST_kStandardCursorKnife:
       cursor = ::LoadImage(module, "knife_cursor", IMAGE_CURSOR, cx, cy, flags);
       break;
@@ -773,6 +776,21 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
     case GHOST_kStandardCursorCrosshairC:
       cursor = ::LoadImage(module, "crossC_cursor", IMAGE_CURSOR, cx, cy, flags);
       break; /* Minimal Crosshair C */
+    case GHOST_kStandardCursorCrosshairD:
+      cursor = ::LoadImage(module, "crossD_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Open Crosshair D */
+    case GHOST_kStandardCursorBlank:
+      cursor = ::LoadImage(module, "blank_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Blank */
+    case GHOST_kStandardCursorBox:
+      cursor = ::LoadImage(module, "box_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Box */
+    case GHOST_kStandardCursorBoxDot:
+      cursor = ::LoadImage(module, "boxdot_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Box Dot */
+    case GHOST_kStandardCursorBoxPointer:
+      cursor = ::LoadImage(module, "boxpointer_cursor", IMAGE_CURSOR, cx, cy, flags);
+      break; /* Box Pointer */
     case GHOST_kStandardCursorBottomSide:
     case GHOST_kStandardCursorUpDown:
       cursor = ::LoadImage(module, "movens_cursor", IMAGE_CURSOR, cx, cy, flags);
