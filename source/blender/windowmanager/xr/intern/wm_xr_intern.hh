@@ -128,6 +128,7 @@ struct wmXrController {
   char subaction_path[64]; /* #XR_MAX_USER_PATH_LENGTH. */
 
   /** Pose (in world space) that represents the user's hand when holding the controller. */
+  bool grip_active;
   GHOST_XrPose grip_pose;
   float grip_mat[4][4];
   float grip_mat_base[4][4];
