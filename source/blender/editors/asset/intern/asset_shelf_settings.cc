@@ -84,6 +84,11 @@ void settings_set_active_catalog(AssetShelfSettings &settings,
   *active_catalog_path = BLI_strdupn(path.c_str(), path.length());
 }
 
+StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings, const bool is_popup)
+{
+  return is_popup ? settings.active_catalog_path_popup : settings.active_catalog_path;
+}
+
 void settings_set_all_catalog_active(AssetShelfSettings &settings, const bool is_popup)
 {
   const char **active_catalog_path = is_popup ? &settings.active_catalog_path_popup :

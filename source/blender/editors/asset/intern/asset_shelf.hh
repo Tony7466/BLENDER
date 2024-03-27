@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_function_ref.hh"
+#include "BLI_string_ref.hh"
 
 struct ARegion;
 struct ARegionType;
@@ -64,6 +65,8 @@ void settings_blend_read_data(BlendDataReader *reader, AssetShelfSettings &setti
 void settings_set_active_catalog(AssetShelfSettings &settings,
                                  const asset_system::AssetCatalogPath &path,
                                  bool is_popup = false);
+blender::StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings,
+                                                    const bool is_popup = false);
 void settings_set_all_catalog_active(AssetShelfSettings &settings, bool is_popup = false);
 bool settings_is_active_catalog(const AssetShelfSettings &settings,
                                 const asset_system::AssetCatalogPath &path,
