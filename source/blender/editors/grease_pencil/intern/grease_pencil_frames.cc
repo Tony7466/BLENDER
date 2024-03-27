@@ -577,12 +577,16 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
           /* Do nothing. */
           break;
 
-        case KEYFRAME_PASTE_MERGE_OVER:
+        case KEYFRAME_PASTE_MERGE_OVER: {
           /* remove all keys */
-          grease_pencil->remove_frames(layer, layer.sorted_keys());
+          Vector<int> frames_to_remove;
+          for (auto frame_number : layer.frames().keys()) {
+            frames_to_remove.append(frame_number);
+          }
+          grease_pencil->remove_frames(layer, frames_to_remove);
           change = true;
           break;
-
+        }
         case KEYFRAME_PASTE_MERGE_OVER_RANGE:
         case KEYFRAME_PASTE_MERGE_OVER_RANGE_ALL: {
           int frame_min, frame_max;
