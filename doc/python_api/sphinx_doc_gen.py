@@ -2322,16 +2322,14 @@ def format_config(basepath):
         'BLENDER_VERSION_DOTS': BLENDER_VERSION_DOTS,
         'BLENDER_REVISION_TIMESTAMP': BLENDER_REVISION_TIMESTAMP,
         'BLENDER_REVISION': BLENDER_REVISION,
-        }
+    }
 
     # Read the template string from the template file
     with open(os.path.join(basepath, "conf.py"), 'r') as file:
         template_file = file.read()
 
     with open(os.path.join(basepath, "conf.py"), 'w') as file:
-        file.write(Template(template_file).safe_substitute(substitutions))
-
-    return Template(template_file).safe_substitute(substitutions)
+        file.write(Template(template_file).substitute(substitutions))
 
 
 def rna2sphinx(basepath):

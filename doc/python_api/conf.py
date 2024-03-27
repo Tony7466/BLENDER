@@ -5,15 +5,18 @@
 from string import Template
 import time
 
-BLENDER_VERSION_STRING = Template.safe_substitute(Template("$BLENDER_VERSION_STRING"))
-BLENDER_VERSION_DOTS = Template.safe_substitute(Template("$BLENDER_VERSION_DOTS"))
-BLENDER_REVISION = Template.safe_substitute(Template("$BLENDER_REVISION"))
-BLENDER_REVISION_TIMESTAMP = Template.safe_substitute(Template("$BLENDER_REVISION_TIMESTAMP"))
+
+# These are substituted when this file is copied to the build directory.
+BLENDER_VERSION_STRING = "${BLENDER_VERSION_STRING}"
+BLENDER_VERSION_DOTS = "${BLENDER_VERSION_DOTS}"
+BLENDER_REVISION = "${BLENDER_REVISION}"
+BLENDER_REVISION_TIMESTAMP = "${BLENDER_REVISION_TIMESTAMP}"
 
 if BLENDER_REVISION != "Unknown":
     # SHA1 Git hash
     BLENDER_VERSION_HASH = BLENDER_REVISION
-    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % (BLENDER_VERSION_HASH, BLENDER_VERSION_HASH)
+    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % (
+        BLENDER_VERSION_HASH, BLENDER_VERSION_HASH)
     BLENDER_VERSION_DATE = time.strftime("%d/%m/%Y", time.localtime(BLENDER_REVISION_TIMESTAMP))
 else:
     # Fallback: Should not be used
@@ -22,10 +25,10 @@ else:
     BLENDER_VERSION_DATE = time.strftime("%Y-%m-%d")
 
 extensions = ['sphinx.ext.intersphinx']
-intersphinx_mapping = {'blender_manual': ('https://docs.blender.org/manual/en/dev/', None)}
-project = 'Blender %s Python API' % BLENDER_VERSION_STRING
-root_doc = 'index'
-copyright = 'Blender Authors'
+intersphinx_mapping = {'blender_manual': ("https://docs.blender.org/manual/en/dev/", None)}
+project = "Blender %s Python API" % BLENDER_VERSION_STRING
+root_doc = "index"
+copyright = "Blender Authors"
 version = BLENDER_VERSION_DOTS
 release = BLENDER_VERSION_DOTS
 
@@ -36,13 +39,13 @@ highlight_options = {'default': {'encoding': 'utf-8'}}
 
 # Quiet file not in table-of-contents warnings.
 exclude_patterns = [
-    'include__bmesh.rst',
+    "include__bmesh.rst",
 ]
 
-html_title = 'Blender Python API'
+html_title = "Blender Python API"
 
+# The fallback to a built-in theme when furo is not found.
 html_theme = 'default'
-# The theme 'sphinx_rtd_theme' is no longer distributed with sphinx by default, only use when available.
 
 try:
     import furo
@@ -50,6 +53,7 @@ try:
     del furo
 except ModuleNotFoundError:
     pass
+
 if html_theme == "furo":
     html_theme_options = {
         "light_css_variables": {
@@ -72,32 +76,33 @@ if html_theme == "furo":
 # not helpful since the source is generated, adds to upload size.
 html_copy_source = False
 html_show_sphinx = False
-html_baseurl = 'https://docs.blender.org/api/current/'
-html_use_opensearch = 'https://docs.blender.org/api/current'
+html_baseurl = "https://docs.blender.org/api/current/"
+html_use_opensearch = "https://docs.blender.org/api/current"
 html_show_search_summary = True
 html_split_index = True
-html_static_path = ['static']
-templates_path = ['templates']
-html_context = {'commit': '%s - %s' % (BLENDER_VERSION_HASH_HTML_LINK, BLENDER_VERSION_DATE)}
-html_extra_path = ['static']
-html_favicon = 'static/favicon.ico'
-html_logo = 'static/blender_logo.svg'
+html_static_path = ["static"]
+templates_path = ["templates"]
+html_context = {"commit": "%s - %s" % (BLENDER_VERSION_HASH_HTML_LINK, BLENDER_VERSION_DATE)}
+html_extra_path = ["static"]
+html_favicon = "static/favicon.ico"
+html_logo = "static/blender_logo.svg"
 # Disable default `last_updated` value, since this is the date of doc generation, not the one of the source commit.
 html_last_updated_fmt = None
 if html_theme == 'furo':
-    html_css_files = ['css/theme_overrides.css', 'css/version_switch.css']
-    html_js_files = ['js/version_switch.js']
+    html_css_files = ["css/theme_overrides.css", "css/version_switch.css"]
+    html_js_files = ["js/version_switch.js"]
 
 # needed for latex, pdf gen
 latex_elements = {
-  'papersize': 'a4paper',
+    'papersize': 'a4paper',
 }
 
-latex_documents = [ ('contents', 'contents.tex', 'Blender Index', 'Blender Foundation', 'manual'), ]
+latex_documents = [("contents", "contents.tex", "Blender Index", "Blender Foundation", "manual"), ]
 
 # Workaround for useless links leading to compile errors
 # See https://github.com/sphinx-doc/sphinx/issues/3866
 from sphinx.domains.python import PythonDomain
+
 
 class PatchedPythonDomain(PythonDomain):
     def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
@@ -105,6 +110,7 @@ class PatchedPythonDomain(PythonDomain):
             del node['refspecific']
         return super(PatchedPythonDomain, self).resolve_xref(
             env, fromdocname, builder, typ, target, node, contnode)
+
 
 def setup(app):
     app.add_domain(PatchedPythonDomain, override=True)
