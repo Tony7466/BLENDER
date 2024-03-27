@@ -1,2 +1,3 @@
 Referenced by issue #115682, cannot replace mesh with volume (geonodes + EEVEE)
 Referenced by commit 9af176bfe661cea4e46c9e3eec2628adf499dd00, Curves: Add edit mode duplicate operator
+Referenced by issue #119969, Rendering from sculpt mode causes a segfault
