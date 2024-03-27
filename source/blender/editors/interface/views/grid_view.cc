@@ -410,9 +410,9 @@ PreviewGridItem::PreviewGridItem(StringRef identifier, StringRef label, int prev
 {
 }
 
-uiBut *PreviewGridItem::build_grid_tile_button(uiLayout &layout,
-                                               const wmOperatorType *ot,
-                                               const PointerRNA *op_props) const
+void PreviewGridItem::build_grid_tile_button(uiLayout &layout,
+                                             const wmOperatorType *ot,
+                                             const PointerRNA *op_props) const
 {
   const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
@@ -458,8 +458,6 @@ uiBut *PreviewGridItem::build_grid_tile_button(uiLayout &layout,
                   UI_HAS_ICON | is_preview_flag);
   UI_but_func_tooltip_label_set(but, [this](const uiBut * /*but*/) { return label; });
   but->emboss = UI_EMBOSS_NONE;
-
-  return but;
 }
 
 void PreviewGridItem::build_grid_tile(uiLayout &layout) const

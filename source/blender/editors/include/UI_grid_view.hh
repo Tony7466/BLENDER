@@ -208,9 +208,9 @@ class PreviewGridItem : public AbstractGridViewItem {
   /**
    * \note: Takes ownership of the operator properies defined in \a op_props.
    */
-  uiBut *build_grid_tile_button(uiLayout &layout,
-                                const wmOperatorType *ot = nullptr,
-                                const PointerRNA *op_props = nullptr) const;
+  void build_grid_tile_button(uiLayout &layout,
+                              const wmOperatorType *ot = nullptr,
+                              const PointerRNA *op_props = nullptr) const;
 
   /**
    * Set a custom callback to execute when activating this view item. This way users don't have to

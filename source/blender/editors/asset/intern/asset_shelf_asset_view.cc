@@ -73,6 +73,7 @@ class AssetViewItem : public ui::PreviewGridItem {
   void disable_asset_drag();
   void build_grid_tile(uiLayout &layout) const override;
   void build_context_menu(bContext &C, uiLayout &column) const override;
+  void on_activate(bContext &C) override;
   std::optional<bool> should_be_active() const override;
   bool is_filtered_visible() const override;
 
@@ -220,13 +221,7 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
     asset::operator_asset_reference_props_set(*handle_get_representation(&asset_), op_props);
   }
 
-  uiBlock *block = uiLayoutGetBlock(&layout);
-  uiBut *but = ui::PreviewGridItem::build_grid_tile_button(layout, ot, &op_props);
-  /* Close popup when selecting an asset. */
-  if (asset_view.is_popup_) {
-    UI_but_func_set(but,
-                    [block](bContext &) { UI_popup_menu_retval_set(block, UI_RETURN_OK, true); });
-  }
+  ui::PreviewGridItem::build_grid_tile_button(layout, ot, &op_props);
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
@@ -236,6 +231,14 @@ void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
   if (shelf_type.draw_context_menu) {
     asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
     shelf_type.draw_context_menu(&C, &shelf_type, asset, &column);
+  }
+}
+
+void AssetViewItem::on_activate(bContext & /*C*/)
+{
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  if (asset_view.is_popup_) {
+    UI_popup_menu_close_from_but(reinterpret_cast<uiBut *>(view_item_button()));
   }
 }
 
