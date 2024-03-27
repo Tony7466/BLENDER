@@ -26,7 +26,11 @@ namespace blender::eevee {
 
 void Sampling::init(const Scene *scene)
 {
-  sample_count_ = inst_.is_image_render() ? scene->eevee.taa_render_samples : scene->eevee.taa_samples;
+  sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples : scene->eevee.taa_render_samples;
+
+  if (inst_.is_image_render()) {
+    sample_count_ = std::max(1ULL, sample_count_);
+  }
 
   if (sample_count_ == 0) {
     BLI_assert(inst_.is_viewport());
