@@ -130,7 +130,7 @@ static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
 {
   /* Texture matrices are a combination of an unknown 3D transform into UV space, with a known 2D
    * transform on top.
-
+   *
    * However, the modifier offset is not applied directly to the UV transform, since it emulates
    * legacy behavior of the GPv2 modifier, which applied translation first, before rotating about
    * (0.5, 0.5) and scaling. To achieve the same result as the legacy modifier, the actual offset
