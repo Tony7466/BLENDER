@@ -38,26 +38,29 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
-  Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  Field<bool> realize_all_filed = params.extract_input<Field<bool>>("Realize All");
+
+  Field<bool> realize_all_field = params.extract_input<Field<bool>>("Realize All");
   Field<int> depth_field = params.extract_input<Field<int>>("Depth");
 
   static auto depth_override = mf::build::SI2_SO<int, bool, int>(
       "depth_override",
-      [](int value, bool realize_all_filed) {
-        return realize_all_filed ? geometry::VariedDepthOption::MAX_DEPTH : std::max(value, 0);
+      [](int depth, bool realize_all_field) {
+        return realize_all_field ? geometry::VariedDepthOption::MAX_DEPTH : std::max(depth, 0);
       },
       mf::build::exec_presets::AllSpanOrSingle());
 
+  Field<int> depth_field_overrided(FieldOperation::Create(
+      depth_override, {std::move(depth_field), std::move(realize_all_field)}));
+
+  Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+
   static auto selection_override = mf::build::SI2_SO<int, bool, bool>(
       "selection_override",
-      [](int value, bool selection) { return value == 0 ? false : selection; },
+      [](int depth_override, bool selection) { return depth_override == 0 ? false : selection; },
       mf::build::exec_presets::AllSpanOrSingle());
 
-  Field<int> depth_field_overrided(
-      FieldOperation::Create(depth_override, {depth_field, realize_all_filed}));
-  Field<bool> selection_field_overrided(
-      FieldOperation::Create(selection_override, {depth_field_overrided, selection_field}));
+  Field<bool> selection_field_overrided(FieldOperation::Create(
+      selection_override, {depth_field_overrided, std::move(selection_field)}));
 
   const bke::Instances &instances = *geometry_set.get_instances();
   const bke::InstancesFieldContext field_context(instances);
