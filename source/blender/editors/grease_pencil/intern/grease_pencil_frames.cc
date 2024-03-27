@@ -487,13 +487,6 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
         buf.append({frame_number, Drawing(*drawing)});
 
-        /* Check the range of entire copy buffer. */
-        if (frame_number < copy_buffer_first_frame) {
-          copy_buffer_first_frame = frame_number;
-        }
-        if (frame_number > copy_buffer_last_frame) {
-          copy_buffer_last_frame = frame_number;
-        }
         /* Check the range of this layer only. */
         if (frame_number < layer_first_frame) {
           layer_first_frame = frame_number;
@@ -506,6 +499,13 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     if (!buf.is_empty()) {
       BLI_assert(!copy_buffer.contains(layer->name()));
       copy_buffer.add_new(layer->name(), {buf, layer_first_frame, layer_last_frame});
+      /* Update the range of entire copy buffer. */
+      if (layer_first_frame < copy_buffer_first_frame) {
+        copy_buffer_first_frame = layer_first_frame;
+      }
+      if (layer_last_frame > copy_buffer_last_frame) {
+        copy_buffer_last_frame = layer_last_frame;
+      }
     }
   }
 
