@@ -724,7 +724,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_freestyle.h"
 #  include "BKE_global.hh"
 #  include "BKE_gpencil_legacy.h"
-#  include "BKE_idprop.h"
+#  include "BKE_idprop.hh"
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
 #  include "BKE_layer.hh"
@@ -1170,7 +1170,7 @@ static void rna_Scene_active_keying_set_index_set(PointerRNA *ptr, int value)
 
 /* XXX: evil... builtin_keyingsets is defined in `keyingsets.cc`! */
 /* TODO: make API function to retrieve this... */
-extern "C" ListBase builtin_keyingsets;
+extern ListBase builtin_keyingsets;
 
 static void rna_Scene_all_keyingsets_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {

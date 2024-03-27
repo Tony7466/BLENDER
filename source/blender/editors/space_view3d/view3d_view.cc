@@ -19,7 +19,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
@@ -46,7 +46,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "view3d_intern.h" /* own include */
+#include "view3d_intern.hh" /* own include */
 #include "view3d_navigate.hh"
 
 /* -------------------------------------------------------------------- */
