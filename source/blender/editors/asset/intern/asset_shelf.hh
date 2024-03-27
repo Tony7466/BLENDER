@@ -47,7 +47,6 @@ AssetShelfType *asset_shelf_type_ensure(const SpaceType &space_type, AssetShelf 
 AssetShelf *create_shelf_from_type(AssetShelfType &type);
 
 void library_selector_draw(const bContext *C, uiLayout *layout, AssetShelf &shelf);
-void catalog_selector_tree_draw(uiLayout *layout, AssetShelf &shelf);
 
 /**
  * Deep-copies \a shelf_regiondata into newly allocated memory. Must be freed using

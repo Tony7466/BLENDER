@@ -187,23 +187,6 @@ void library_selector_draw(const bContext *C, uiLayout *layout, AssetShelf &shel
   }
 }
 
-void catalog_selector_tree_draw(uiLayout *layout, AssetShelf &shelf)
-{
-  asset_system::AssetLibrary *library = list::library_get_once_available(
-      shelf.settings.asset_library_reference);
-  if (!library) {
-    return;
-  }
-
-  uiBlock *block = uiLayoutGetBlock(layout);
-  ui::AbstractTreeView *tree_view = UI_block_add_view(
-      *block,
-      "asset catalog tree view",
-      std::make_unique<AssetCatalogSelectorTree>(*library, shelf));
-
-  ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
-}
-
 static void catalog_selector_panel_draw(const bContext *C, Panel *panel)
 {
   AssetShelf *shelf = active_shelf_from_context(C);
@@ -214,7 +197,20 @@ static void catalog_selector_panel_draw(const bContext *C, Panel *panel)
   uiLayout *layout = panel->layout;
 
   library_selector_draw(C, layout, *shelf);
-  catalog_selector_tree_draw(layout, *shelf);
+
+  asset_system::AssetLibrary *library = list::library_get_once_available(
+      shelf->settings.asset_library_reference);
+  if (!library) {
+    return;
+  }
+
+  uiBlock *block = uiLayoutGetBlock(layout);
+  ui::AbstractTreeView *tree_view = UI_block_add_view(
+      *block,
+      "asset catalog tree view",
+      std::make_unique<AssetCatalogSelectorTree>(*library, *shelf));
+
+  ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
 }
 
 void catalog_selector_panel_register(ARegionType *region_type)
