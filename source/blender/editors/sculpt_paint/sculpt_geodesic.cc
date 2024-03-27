@@ -269,14 +269,13 @@ static float *geodesic_mesh_create_parallel(Object *ob,
   /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
    * to define a distance to them the algorithm can stop earlier by skipping them. */
   BitVector<> affected_vert(totvert);
-  GSetIterator gs_iter;
-
   if (limit_radius == FLT_MAX) {
     /* In this case, no need to loop through all initial vertices to check distances as they are
      * all going to be affected. */
     affected_vert.fill(true);
   }
   else {
+      GSetIterator gs_iter;
     /* This is an O(n^2) loop used to limit the geodesic distance calculation to a radius. When
      * this optimization is needed, it is expected for the tool to request the distance to a low
      * number of vertices (usually just 1 or 2). */
@@ -292,12 +291,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
   }
 
   // Initialize queues
-  /* Both contain edge indices encoded as *void. */
-  BLI_LINKSTACK_DECLARE(queue, void *);
-  BLI_LINKSTACK_DECLARE(queue_next, void *);
-
-  BLI_LINKSTACK_INIT(queue);
-  BLI_LINKSTACK_INIT(queue_next);
+  std::queue<int> queue, queue_next;
 
   /* Add edges adjacent to an initial vertex to the queue. */
   tbb::parallel_for(0, totedge, [&](int i) {
@@ -305,13 +299,14 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     const int v2 = edges[i][1];
     if ((affected_vert[v1] || affected_vert[v2]) && (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
     {
-      BLI_LINKSTACK_PUSH(queue, POINTER_FROM_INT(i));
+      queue.push(i);
     }
   });
 
   do {
-    while (BLI_LINKSTACK_SIZE(queue)) {
-      const int e = POINTER_AS_INT(BLI_LINKSTACK_POP(queue));
+    while (!queue.empty()) {
+      const int e = queue.front();
+      queue.pop();
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
@@ -348,7 +343,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
               {
                 if (affected_vert[v_other] || affected_vert[ev_other]) {
                   edge_tag[e_other].set();
-                  BLI_LINKSTACK_PUSH(queue_next, POINTER_FROM_INT(e_other));
+                  queue_next.push(e_other);
                 }
               }
             }
@@ -357,17 +352,14 @@ static float *geodesic_mesh_create_parallel(Object *ob,
       }
     }
 
-    for (LinkNode *lnk = queue_next; lnk; lnk = lnk->next) {
-      const int e = POINTER_AS_INT(lnk->link);
-      edge_tag[e].reset();
+    std::queue<int> tmp = queue_next;
+    while (!tmp.empty()) {
+      edge_tag[tmp.front()].reset();
+      tmp.pop();
     }
-
-    BLI_LINKSTACK_SWAP(queue, queue_next);
-
-  } while (BLI_LINKSTACK_SIZE(queue));
-
-  BLI_LINKSTACK_FREE(queue);
-  BLI_LINKSTACK_FREE(queue_next);
+    queue.swap(queue_next);
+      
+  } while (!queue.empty());
 
   return dists;
 }
