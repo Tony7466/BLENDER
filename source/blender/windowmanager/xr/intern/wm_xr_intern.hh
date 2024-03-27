@@ -133,6 +133,7 @@ struct wmXrController {
   float grip_mat[4][4];
   float grip_mat_base[4][4];
   /** Pose (in world space) that represents the controller's aiming source. */
+  bool aim_active;
   GHOST_XrPose aim_pose;
   float aim_mat[4][4];
   float aim_mat_base[4][4];

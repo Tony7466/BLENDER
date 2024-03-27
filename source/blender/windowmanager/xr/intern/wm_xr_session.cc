@@ -647,6 +647,7 @@ static void wm_xr_session_controller_data_update(const XrSessionSettings *settin
                                        &controller->grip_pose,
                                        controller->grip_mat,
                                        controller->grip_mat_base);
+    controller->aim_active = ((GHOST_XrPose *)aim_action->states)[subaction_idx].is_active;
     wm_xr_session_controller_pose_calc(&((GHOST_XrPose *)aim_action->states)[subaction_idx],
                                        view_ofs,
                                        base_mat,
