@@ -29,7 +29,7 @@ void Sampling::init(const Scene *scene)
   sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples : scene->eevee.taa_render_samples;
 
   if (inst_.is_image_render()) {
-    sample_count_ = std::max(1ULL, sample_count_);
+    sample_count_ = math::max(uint64_t(1), sample_count_);
   }
 
   if (sample_count_ == 0) {
