@@ -438,8 +438,14 @@ struct DrawingBufferItem {
   bke::greasepencil::Drawing drawing;
 };
 
+struct LayerBufferItem {
+  Vector<DrawingBufferItem> drawing_buffers;
+  blender::bke::greasepencil::FramesMapKey first_frame;
+  blender::bke::greasepencil::FramesMapKey last_frame;
+};
+
 /* Globals for copy/paste data (like for other copy/paste buffers) */
-static Map<std::string, Vector<DrawingBufferItem>> copy_buffer;
+static Map<std::string, LayerBufferItem> copy_buffer;
 static int copy_buffer_first_frame = INT_MAX;
 static int copy_buffer_last_frame = INT_MIN;
 static int copy_buffer_cfra = 0.0;
@@ -473,24 +479,33 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
     Vector<DrawingBufferItem> buf;
+    FramesMapKey layer_first_frame = INT_MAX;
+    FramesMapKey layer_last_frame = INT_MIN;
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
 
         buf.append({frame_number, Drawing(*drawing)});
 
-        /* Check if this is the earliest frame encountered so far */
+        /* Check the range of entire copy buffer. */
         if (frame_number < copy_buffer_first_frame) {
           copy_buffer_first_frame = frame_number;
         }
         if (frame_number > copy_buffer_last_frame) {
           copy_buffer_last_frame = frame_number;
         }
+        /* Check the range of this layer only. */
+        if (frame_number < layer_first_frame) {
+          layer_first_frame = frame_number;
+        }
+        if (frame_number > layer_last_frame) {
+          layer_last_frame = frame_number;
+        }
       }
     }
     if (!buf.is_empty()) {
       BLI_assert(!copy_buffer.contains(layer->name()));
-      copy_buffer.add_new(layer->name(), buf);
+      copy_buffer.add_new(layer->name(), {buf, layer_first_frame, layer_last_frame});
     }
   }
 
@@ -557,7 +572,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       if (!copy_buffer.contains(layer_name)) {
         continue;
       }
-      Vector<DrawingBufferItem> buffer_items = copy_buffer.lookup(layer_name);
+      LayerBufferItem layer_buffer = copy_buffer.lookup(layer_name);
       /* Mix mode with existing data. */
       switch (merge_mode) {
         case KEYFRAME_PASTE_MERGE_MIX:
@@ -576,8 +591,8 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
 
           if (merge_mode == KEYFRAME_PASTE_MERGE_OVER_RANGE) {
             /* Entire range of this layer. */
-            frame_min = buffer_items.first().frame_number + offset;
-            frame_max = buffer_items.last().frame_number + offset;
+            frame_min = layer_buffer.first_frame + offset;
+            frame_max = layer_buffer.last_frame + offset;
           }
           else {
             /* Entire range of all copied keys. */
@@ -599,7 +614,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
           break;
         }
       }
-      for (auto drawing_buffer : buffer_items) {
+      for (auto drawing_buffer : layer_buffer.drawing_buffers) {
         int target_frame_number = drawing_buffer.frame_number + offset;
         if (layer->frames().contains(target_frame_number)) {
           layer->remove_frame(target_frame_number);
