@@ -335,14 +335,12 @@ static int insert_key(bContext *C, wmOperator *op)
   blender::Vector<PointerRNA> selection;
   const bool found_selection = get_selection(C, &selection);
   if (!found_selection) {
-    BLI_freelistN(&selection);
     BKE_reportf(op->reports, RPT_ERROR, "Unsupported context mode");
     return OPERATOR_CANCELLED;
   }
 
-  if (BLI_listbase_is_empty(&selection)) {
+  if (selection.is_empty()) {
     BKE_reportf(op->reports, RPT_WARNING, "Nothing selected to key");
-    BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }
 
