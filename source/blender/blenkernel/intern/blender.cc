@@ -331,7 +331,7 @@ void BKE_blender_userdef_data_free(UserDef *userdef, bool clear_fonts)
 
   if (clear_fonts) {
     LISTBASE_FOREACH (uiFont *, font, &userdef->uifonts) {
-      BLF_unload_id(font->blf_id);
+      BLF_unload(font->blf_id);
     }
     BLF_default_set(-1);
   }

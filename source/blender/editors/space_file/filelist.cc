@@ -1981,7 +1981,7 @@ static const char *fileentry_uiname(const char *root, FileListInternEntry *entry
   if (typeflag & FILE_TYPE_FTFONT && !(typeflag & FILE_TYPE_BLENDERLIB)) {
     char abspath[FILE_MAX_LIBEXTRA];
     BLI_path_join(abspath, sizeof(abspath), root, relpath);
-    name = BLF_display_name_from_file(abspath);
+    name = BLF_display_name(abspath);
     if (name) {
       /* Allocated string, so no need to #BLI_strdup. */
       return name;

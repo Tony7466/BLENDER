@@ -223,17 +223,17 @@ void BLF_metrics_attach(int fontid, uchar *mem, int mem_size)
   }
 }
 
-int BLF_load_mem(const char *name, const uchar *mem, int mem_size)
+int BLF_load(const char *name, const uchar *mem, int mem_size)
 {
   int i = blf_search_by_mem_name(name);
   if (i >= 0) {
     // font = global_font[i]; /* UNUSED */
     return i;
   }
-  return BLF_load_mem_unique(name, mem, mem_size);
+  return BLF_load_unique(name, mem, mem_size);
 }
 
-int BLF_load_mem_unique(const char *name, const uchar *mem, int mem_size)
+int BLF_load_unique(const char *name, const uchar *mem, int mem_size)
 {
   /*
    * Don't search in the cache, make a new object font!
@@ -281,7 +281,7 @@ void BLF_unload(const char *filepath)
   }
 }
 
-void BLF_unload_id(int fontid)
+void BLF_unload(int fontid)
 {
   FontBLF *font = blf_get(fontid);
   if (font) {
@@ -924,7 +924,7 @@ blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
   return blf_font_string_wrap(font, str, max_pixel_width);
 }
 
-char *BLF_display_name_from_file(const char *filepath)
+char *BLF_display_name(const char *filepath)
 {
   /* While listing font directories this function can be called simultaneously from a greater
    * number of threads than we want the FreeType cache to keep open at a time. Therefore open
@@ -944,7 +944,7 @@ char *BLF_display_name_from_file(const char *filepath)
   return name;
 }
 
-char *BLF_display_name_from_id(int fontid)
+char *BLF_display_name(int fontid)
 {
   FontBLF *font = blf_get(fontid);
   if (!font) {

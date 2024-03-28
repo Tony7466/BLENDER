@@ -33,7 +33,7 @@ extern int builtin_font_size;
 
 VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 {
-  int fontid = BLF_load_mem("FTVFont", static_cast<const uchar *>(pf->data), pf->size);
+  int fontid = BLF_load("FTVFont", static_cast<const uchar *>(pf->data), pf->size);
   if (fontid == -1) {
     return nullptr;
   }
@@ -42,7 +42,7 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
   VFontData *vfd = static_cast<VFontData *>(MEM_callocN(sizeof(*vfd), "FTVFontData"));
 
   /* Get the font name. */
-  char *name = BLF_display_name_from_id(fontid);
+  char *name = BLF_display_name(fontid);
   STRNCPY(vfd->name, name);
   /* BLF_display_name result must be freed. */
   MEM_freeN(name);
@@ -53,7 +53,7 @@ VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf)
 
   vfd->characters = BLI_ghash_int_new_ex(__func__, 255);
 
-  BLF_unload_id(fontid);
+  BLF_unload(fontid);
 
   return vfd;
 }
@@ -84,11 +84,11 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
   int font_id = -1;
 
   if (BKE_vfont_is_builtin(vfont)) {
-    font_id = BLF_load_mem(
+    font_id = BLF_load(
         vfont->data->name, static_cast<const uchar *>(builtin_font_data), builtin_font_size);
   }
   else if (vfont->temp_pf) {
-    font_id = BLF_load_mem(
+    font_id = BLF_load(
         vfont->data->name, static_cast<const uchar *>(vfont->temp_pf->data), vfont->temp_pf->size);
   }
 
@@ -105,7 +105,7 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
   che->width = BLF_character_to_curves(font_id, character, &che->nurbsbase, vfont->data->scale);
 
   BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->index), che);
-  BLF_unload_id(font_id);
+  BLF_unload(font_id);
   return che;
 }
 

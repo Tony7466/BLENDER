@@ -50,27 +50,25 @@ void BLF_cache_flush_set_fn(void (*cache_flush_fn)());
  * Loads a font, or returns an already loaded font and increments its reference count.
  */
 int BLF_load(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
-int BLF_load_mem(const char *name, const unsigned char *mem, int mem_size) ATTR_WARN_UNUSED_RESULT
+int BLF_load(const char *name, const unsigned char *mem, int mem_size) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1, 2);
 
 bool BLF_is_loaded(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 bool BLF_is_loaded_mem(const char *name) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
 int BLF_load_unique(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
-int BLF_load_mem_unique(const char *name, const unsigned char *mem, int mem_size)
-    ATTR_NONNULL(1, 2);
+int BLF_load_unique(const char *name, const unsigned char *mem, int mem_size) ATTR_NONNULL(1, 2);
 
 void BLF_unload(const char *filepath) ATTR_NONNULL(1);
 #if 0 /* Not needed at the moment. */
 void BLF_unload_mem(const char *name) ATTR_NONNULL(1);
 #endif
+void BLF_unload(int fontid);
 
-void BLF_unload_id(int fontid);
 void BLF_unload_all();
 
-char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
-
-char *BLF_display_name_from_id(int fontid);
+char *BLF_display_name(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
+char *BLF_display_name(int fontid);
 
 /**
  * Get the metrics needed for the initial sizing of text objects.

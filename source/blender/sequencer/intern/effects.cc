@@ -2612,7 +2612,7 @@ void SEQ_effect_text_font_unload(TextVars *data, const bool do_id_user)
 
   /* Unload the BLF font. */
   if (data->text_blf_id >= 0) {
-    BLF_unload_id(data->text_blf_id);
+    BLF_unload(data->text_blf_id);
   }
 }
 
@@ -2638,7 +2638,7 @@ void SEQ_effect_text_font_load(TextVars *data, const bool do_id_user)
     char name[MAX_ID_FULL_NAME];
     BKE_id_full_name_get(name, &vfont->id, 0);
 
-    data->text_blf_id = BLF_load_mem(name, static_cast<const uchar *>(pf->data), pf->size);
+    data->text_blf_id = BLF_load(name, static_cast<const uchar *>(pf->data), pf->size);
   }
   else {
     char filepath[FILE_MAX];
