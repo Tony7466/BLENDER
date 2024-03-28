@@ -123,13 +123,13 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
     SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
 
     switch (area->spacetype) {
-      case SPACE_INFO:       /* header info */
+      case SPACE_INFO: /* header info */
       {
         return nullptr;
       }
 
-      case SPACE_TOPBAR: /* Top-bar */
-      case SPACE_VIEW3D: /* 3D-View */
+      case SPACE_TOPBAR:     /* Top-bar */
+      case SPACE_VIEW3D:     /* 3D-View */
       case SPACE_PROPERTIES: /* properties */
       {
         if (r_ptr) {
