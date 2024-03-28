@@ -27,9 +27,10 @@
 
 /* ************************** registration **********************************/
 
-void ED_operatortypes_object()
+namespace blender::ed::object {
+
+void operatortypes_object()
 {
-  using namespace blender::ed::object;
   WM_operatortype_append(OBJECT_OT_location_clear);
   WM_operatortype_append(OBJECT_OT_rotation_clear);
   WM_operatortype_append(OBJECT_OT_scale_clear);
@@ -264,11 +265,11 @@ void ED_operatortypes_object()
 
   WM_operatortype_append(OBJECT_OT_bake_image);
   WM_operatortype_append(OBJECT_OT_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_calculate_to_frame);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_bake);
-  WM_operatortype_append(OBJECT_OT_simulation_nodes_cache_delete);
-  WM_operatortype_append(OBJECT_OT_geometry_node_bake_single);
-  WM_operatortype_append(OBJECT_OT_geometry_node_bake_delete_single);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_calculate_to_frame);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_bake);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_simulation_nodes_cache_delete);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_geometry_node_bake_single);
+  WM_operatortype_append(bake_simulation::OBJECT_OT_geometry_node_bake_delete_single);
   WM_operatortype_append(OBJECT_OT_drop_named_material);
   WM_operatortype_append(OBJECT_OT_drop_geometry_nodes);
   WM_operatortype_append(OBJECT_OT_unlink_data);
@@ -305,7 +306,7 @@ void ED_operatortypes_object()
   collection_io_handler_register();
 }
 
-void ED_operatormacros_object()
+void operatormacros_object()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -339,7 +340,7 @@ static bool object_mode_poll(bContext *C)
   return (!ob || ob->mode == OB_MODE_OBJECT);
 }
 
-void ED_keymap_object(wmKeyConfig *keyconf)
+void keymap_object(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap;
 
@@ -351,3 +352,5 @@ void ED_keymap_object(wmKeyConfig *keyconf)
   keymap = WM_keymap_ensure(keyconf, "Object Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = object_mode_poll;
 }
+
+}  // namespace blender::ed::object
