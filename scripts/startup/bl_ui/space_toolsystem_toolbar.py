@@ -1417,7 +1417,7 @@ class _defs_sculpt:
         return dict(
             idname="builtin.line_hide",
             label="Line Hide",
-            icon="None",
+            icon="ops.sculpt.line_hide",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
