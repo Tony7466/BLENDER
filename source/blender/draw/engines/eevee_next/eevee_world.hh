@@ -88,6 +88,8 @@ class World {
     return has_volume_scatter_;
   }
 
+  float background_blur_get() const;
+
  private:
   void sync_volume();
 

@@ -68,12 +68,12 @@ class LookdevWorld {
     return &world;
   }
 
-  float background_opacity_get()
+  float background_opacity_get() const
   {
     return parameters_.background_opacity;
   }
 
-  float background_blur_get()
+  float background_blur_get() const
   {
     return parameters_.blur;
   }
