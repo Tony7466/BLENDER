@@ -32,6 +32,8 @@ void main()
     if (light.type != LIGHT_SUN) {
       break;
     }
+    ivec2 base_offset_neg = light_sun_data_get(light).clipmap_base_offset_neg;
+    ivec2 base_offset_pos = light_sun_data_get(light).clipmap_base_offset_pos;
     /* LOD relative max with respect to clipmap_lod_min. */
     int lod_max = light_sun_data_get(light).clipmap_lod_max -
                   light_sun_data_get(light).clipmap_lod_min;
@@ -45,17 +47,22 @@ void main()
 
       if (lod != lod_max && !tile.is_valid) {
         /* Offset this LOD has with the previous one. In unit of tile of the current LOD. */
-        ivec2 offset = ivec2(SHADOW_TILEMAP_RES / 2) +
-                       0 /* TODO offset from clipmap_base_offset. */;
-        /* Load tile from the previous LOD. */
-        ivec2 tile_co_prev = (tile_co + offset) >> 1;
+        ivec2 offset_binary = ((base_offset_pos >> lod) & 1) - ((base_offset_neg >> lod) & 1);
+        ivec2 offset_centered = ivec2(SHADOW_TILEMAP_RES / 2) + offset_binary;
+        ivec2 tile_co_prev = (tile_co + offset_centered) >> 1;
 
+        /* Load tile from the previous LOD. */
         ShadowSamplingTilePacked tile_prev_packed = tiles_local[tile_co_prev.y][tile_co_prev.x];
         ShadowSamplingTile tile_prev = shadow_sampling_tile_unpack(tile_prev_packed);
 
         if (tile_prev.is_valid) {
-          /* Add the offset of this tilemap to the tile data. */
-          tile_prev.lod_offset += offset;
+          /* Previous level is now twice as big as this level.
+           * Double the offset to the valid page. */
+          tile_prev.lod_offset = tile_prev.lod_offset * 2;
+          /* Add the offset of this tile relative to the previous level to the tile data.
+           * There is only an offset if offset is odd since previous level is twice as big. */
+          tile_prev.lod_offset += ivec2(not(equal(offset_binary, ivec2(0))));
+
           tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
           /* Replace the missing page with the one from the lower LOD. */
           imageStore(tilemaps_img, atlas_texel, uvec4(tile_prev_packed));
