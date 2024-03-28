@@ -538,7 +538,6 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
 {
   using namespace blender;
   using namespace blender::bke;
-  /* Input mesh shouldn't be modified. */
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
 
   GeometrySet geometry_set = GeometrySet::from_mesh(const_cast<Mesh *>(mesh_input),
@@ -1158,10 +1157,9 @@ static void mesh_build_data(Depsgraph *depsgraph,
   GeometrySet geometry_set = mesh_calc_modifiers(
       depsgraph, scene, ob, true, need_mapping, dataMask, true, true, &mesh_deform_eval);
 
-  const Mesh *mesh_final = geometry_set.get_mesh();
+  const Mesh *mesh_eval = geometry_set.get_mesh();
 
-  BKE_object_eval_assign_data(ob, &const_cast<ID &>(mesh_final->id), false);
-
+  BKE_object_eval_assign_data(ob, &const_cast<ID &>(mesh_eval->id), false);
   ob->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 
   ob->runtime->mesh_deform_eval = mesh_deform_eval;
@@ -1171,9 +1169,11 @@ static void mesh_build_data(Depsgraph *depsgraph,
   /* Make sure that drivers can target shapekey properties.
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
-  BLI_assert(mesh_input->key == nullptr || DEG_is_evaluated_id(&mesh_input->key->id));
-  if (mesh_final != mesh_input) {
-    const_cast<Mesh *>(mesh_final)->key = mesh_input->key;
+  if (mesh_input->key) {
+    BLI_assert(DEG_is_evaluated_id(&mesh_input->key->id));
+    if (mesh_eval != mesh_input) {
+      const_cast<Mesh *>(mesh_eval)->key = mesh_input->key;
+    }
   }
 
   if ((ob->mode & OB_MODE_ALL_SCULPT) && ob->sculpt) {
@@ -1182,8 +1182,7 @@ static void mesh_build_data(Depsgraph *depsgraph,
     }
   }
 
-  // TODO: Protext with mutex
-  mesh_build_extra_data(depsgraph, ob, const_cast<Mesh *>(mesh_final));
+  mesh_build_extra_data(depsgraph, ob, mesh_eval);
 }
 
 static void editbmesh_build_data(Depsgraph *depsgraph,

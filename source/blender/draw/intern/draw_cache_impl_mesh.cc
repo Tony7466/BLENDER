@@ -1512,8 +1512,8 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
 
   bool do_cage = false, do_uvcage = false;
   if (is_editmode && is_mode_active) {
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
-    Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+    const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
 
     do_cage = editmesh_eval_final != editmesh_eval_cage;
     do_uvcage = !(editmesh_eval_final->runtime->is_original_bmesh &&

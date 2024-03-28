@@ -1082,7 +1082,7 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
       const float(*coords)[3] = nullptr;
       {
         Object *obedit_eval = DEG_get_evaluated_object(vc->depsgraph, obedit);
-        Mesh *mesh_eval = BKE_object_get_editmesh_eval_cage(obedit_eval);
+        const Mesh *mesh_eval = BKE_object_get_editmesh_eval_cage(obedit_eval);
         if (BKE_mesh_wrapper_vert_len(mesh_eval) == bm->totvert) {
           coords = BKE_mesh_wrapper_vert_coords(mesh_eval);
         }

@@ -3087,8 +3087,8 @@ static void give_parvert(Object *par, int nr, float vec[3])
   if (par->type == OB_MESH) {
     Mesh *mesh = (Mesh *)par->data;
     BMEditMesh *em = mesh->runtime->edit_mesh;
-    Mesh *mesh_eval = (em) ? BKE_object_get_editmesh_eval_final(par) :
-                             BKE_object_get_evaluated_mesh(par);
+    const Mesh *mesh_eval = (em) ? BKE_object_get_editmesh_eval_final(par) :
+                                   BKE_object_get_evaluated_mesh(par);
 
     if (mesh_eval) {
       const Span<float3> positions = mesh_eval->vert_positions();
@@ -4202,7 +4202,7 @@ Mesh *BKE_object_get_original_mesh(const Object *object)
   return result;
 }
 
-Mesh *BKE_object_get_editmesh_eval_final(const Object *object)
+const Mesh *BKE_object_get_editmesh_eval_final(const Object *object)
 {
   BLI_assert(!DEG_is_original_id(&object->id));
   BLI_assert(object->type == OB_MESH);
@@ -4214,19 +4214,35 @@ Mesh *BKE_object_get_editmesh_eval_final(const Object *object)
     return nullptr;
   }
 
-  return reinterpret_cast<Mesh *>(object->runtime->data_eval);
+  return reinterpret_cast<const Mesh *>(object->runtime->data_eval);
 }
 
-Mesh *BKE_object_get_editmesh_eval_cage(const Object *object)
+const Mesh *BKE_object_get_editmesh_eval_cage(const Object *object)
 {
+  using namespace blender::bke;
   BLI_assert(!DEG_is_original_id(&object->id));
   BLI_assert(object->type == OB_MESH);
 
   const Mesh *mesh = static_cast<const Mesh *>(object->data);
   BLI_assert(mesh->runtime->edit_mesh != nullptr);
   UNUSED_VARS_NDEBUG(mesh);
-
-  return object->runtime->editmesh_eval_cage;
+  const GeometrySet *geometry_set = object->runtime->geometry_set_eval;
+  if (!geometry_set) {
+    return nullptr;
+  }
+  const auto *component = geometry_set->get_component<GeometryComponentEditData>();
+  if (!component) {
+    return nullptr;
+  }
+  const MeshEditHints *edit_hints = component->mesh_edit_hints_.get();
+  if (!edit_hints) {
+    return nullptr;
+  }
+  const MeshComponent *mesh_component = edit_hints->mesh_cage.get();
+  if (!mesh_component) {
+    return nullptr;
+  }
+  return mesh_component->get();
 }
 
 Lattice *BKE_object_get_lattice(const Object *object)
@@ -4865,7 +4881,6 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int /*flag*/)
   blender::bke::ObjectRuntime *runtime = object->runtime;
   runtime->data_eval = nullptr;
   runtime->gpd_eval = nullptr;
-  runtime->mesh_deform_eval = nullptr;
   runtime->curve_cache = nullptr;
   runtime->object_as_temp_mesh = nullptr;
   runtime->pose_backup = nullptr;
@@ -5039,8 +5054,8 @@ KDTree_3d *BKE_object_as_kdtree(Object *ob, int *r_tot)
       Mesh *mesh = (Mesh *)ob->data;
       uint i;
 
-      Mesh *mesh_eval = ob->runtime->mesh_deform_eval ? ob->runtime->mesh_deform_eval :
-                                                        BKE_object_get_evaluated_mesh(ob);
+      const Mesh *mesh_eval = ob->runtime->mesh_deform_eval ? ob->runtime->mesh_deform_eval :
+                                                              BKE_object_get_evaluated_mesh(ob);
       const int *index;
 
       if (mesh_eval &&

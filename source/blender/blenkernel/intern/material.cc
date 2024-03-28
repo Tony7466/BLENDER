@@ -733,9 +733,9 @@ static ID *get_evaluated_object_data_with_materials(Object *ob)
   /* Meshes in edit mode need special handling. */
   if (ob->type == OB_MESH && ob->mode == OB_MODE_EDIT) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
     if (mesh->runtime->edit_mesh && editmesh_eval_final) {
-      data = &editmesh_eval_final->id;
+      data = const_cast<ID *>(&editmesh_eval_final->id);
     }
   }
   return data;

@@ -675,6 +675,25 @@ class VolumeComponent : public GeometryComponent {
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
+struct MeshEditHints {
+  /**
+   * Mesh created by object evaluation. It only has leading deformation modifiers applied.
+   *
+   * \todo This should use a similar system to #CurvesEditHints storing just an array for the
+   * deformed positions, but for historical reasons we copy the whole mesh.
+   */
+  ImplicitSharingPtr<MeshComponent> mesh_deform;
+  /**
+   * Evaluated mesh cage in edit mode.
+   *
+   * \note When the mesh's `runtime->deformed_only` is true, its vertex positions and other
+   * geometry arrays will be aligned the edit-mesh. Otherwise the #CD_ORIGINDEX custom-data should
+   * be used to map the cage geometry back to the original indices, see
+   * #eModifierTypeFlag_SupportsMapping.
+   */
+  ImplicitSharingPtr<MeshComponent> mesh_cage;
+};
+
 /**
  * When the original data is in some edit mode, we want to propagate some additional information
  * through object evaluation. This information can be used by edit modes to support working on
@@ -695,6 +714,8 @@ class GeometryComponentEditData final : public GeometryComponent {
    * Information about how drawings on the grease pencil layers are manipulated during evaluation.
    */
   std::unique_ptr<GreasePencilEditHints> grease_pencil_edit_hints_;
+
+  std::unique_ptr<MeshEditHints> mesh_edit_hints_;
 
   GeometryComponentEditData();
 

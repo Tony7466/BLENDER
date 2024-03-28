@@ -85,22 +85,6 @@ struct ObjectRuntime {
   GeometrySet *geometry_set_eval = nullptr;
 
   /**
-   * Mesh structure created during object evaluation.
-   * It has deformation only modifiers applied on it.
-   */
-  Mesh *mesh_deform_eval = nullptr;
-
-  /**
-   * Evaluated mesh cage in edit mode.
-   *
-   * \note When the mesh's `runtime->deformed_only` is true, the meshes vertex positions
-   * and other geometry arrays will be aligned the edit-mesh. Otherwise the #CD_ORIGINDEX
-   * custom-data should be used to map the cage geometry back to the original indices, see
-   * #eModifierTypeFlag_SupportsMapping.
-   */
-  Mesh *editmesh_eval_cage = nullptr;
-
-  /**
    * Original grease pencil bGPdata pointer, before object->data was changed to point
    * to gpd_eval.
    * Is assigned by dependency graph's copy-on-evaluation.

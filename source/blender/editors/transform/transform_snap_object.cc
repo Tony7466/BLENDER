@@ -368,17 +368,17 @@ static ID *data_for_snap(Object *ob_eval, eSnapEditType edit_mode_type, bool *r_
 
   switch (ob_eval->type) {
     case OB_MESH: {
-      Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
+      const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
       if (BKE_object_is_in_editmode(ob_eval)) {
         if (edit_mode_type == SNAP_GEOM_EDIT) {
           return nullptr;
         }
 
-        Mesh *editmesh_eval = (edit_mode_type == SNAP_GEOM_FINAL) ?
-                                  BKE_object_get_editmesh_eval_final(ob_eval) :
-                              (edit_mode_type == SNAP_GEOM_CAGE) ?
-                                  BKE_object_get_editmesh_eval_cage(ob_eval) :
-                                  nullptr;
+        const Mesh *editmesh_eval = (edit_mode_type == SNAP_GEOM_FINAL) ?
+                                        BKE_object_get_editmesh_eval_final(ob_eval) :
+                                    (edit_mode_type == SNAP_GEOM_CAGE) ?
+                                        BKE_object_get_editmesh_eval_cage(ob_eval) :
+                                        nullptr;
 
         if (editmesh_eval) {
           if (editmesh_eval->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {

@@ -26,17 +26,17 @@ using namespace blender;
 /** \name Snap Object Data
  * \{ */
 
-static Mesh *get_mesh_ref(Object *ob_eval)
+static const Mesh *get_mesh_ref(Object *ob_eval)
 {
-  if (Mesh *me = BKE_object_get_editmesh_eval_final(ob_eval)) {
+  if (const Mesh *me = BKE_object_get_editmesh_eval_final(ob_eval)) {
     return me;
   }
 
-  if (Mesh *me = BKE_object_get_editmesh_eval_cage(ob_eval)) {
+  if (const Mesh *me = BKE_object_get_editmesh_eval_cage(ob_eval)) {
     return me;
   }
 
-  return static_cast<Mesh *>(ob_eval->data);
+  return static_cast<const Mesh *>(ob_eval->data);
 }
 
 struct SnapCache_EditMesh : public SnapObjectContext::SnapCache {
@@ -44,11 +44,11 @@ struct SnapCache_EditMesh : public SnapObjectContext::SnapCache {
   Mesh *mesh;
 
   /* Reference to pointers that change when the mesh is changed. It is used to detect updates. */
-  Mesh *mesh_ref;
+  const Mesh *mesh_ref;
   bke::MeshRuntime *runtime_ref;
   bke::EditMeshData *edit_data_ref;
 
-  bool has_mesh_updated(Mesh *mesh)
+  bool has_mesh_updated(const Mesh *mesh)
   {
     if (mesh != this->mesh_ref || mesh->runtime != this->runtime_ref ||
         mesh->runtime->edit_data.get() != this->edit_data_ref)
@@ -154,11 +154,11 @@ static SnapCache_EditMesh *snap_object_data_editmesh_get(SnapObjectContext *sctx
   SnapCache_EditMesh *em_cache = nullptr;
 
   bool init = false;
-  Mesh *mesh_ref = (G.moving) ? /* WORKAROUND:
-                                 * Avoid updating while transforming. Do not check if the reference
-                                 * mesh has been updated. */
-                       nullptr :
-                       get_mesh_ref(ob_eval);
+  const Mesh *mesh_ref = (G.moving) ? /* WORKAROUND:
+                                       * Avoid updating while transforming. Do not check if the
+                                       * reference mesh has been updated. */
+                             nullptr :
+                             get_mesh_ref(ob_eval);
 
   if (std::unique_ptr<SnapObjectContext::SnapCache> *em_cache_p = sctx->editmesh_caches.lookup_ptr(
           ob_eval->runtime->data_orig))
