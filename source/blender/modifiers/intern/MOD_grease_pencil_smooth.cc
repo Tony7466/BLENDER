@@ -168,7 +168,7 @@ static void deform_drawing(const ModifierData &md,
     radii.finish();
   }
   if (smooth_uv) {
-    bke::GSpanAttributeWriter rotation = attributes.lookup_for_write_span("rotation");
+    bke::SpanAttributeWriter<float> rotation = attributes.lookup_for_write_span<float>("rotation");
     if (rotation) {
       geometry::smooth_curve_attribute(strokes,
                                        points_by_curve,
