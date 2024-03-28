@@ -252,7 +252,7 @@ static std::optional<int> get_frame_id(const bke::greasepencil::Layer &layer,
     }
     return {};
   }
-  else if (do_onion_skinning && layer.use_onion_skinning()) {
+  if (do_onion_skinning && layer.use_onion_skinning()) {
     /* Keyframe type filter. */
     if (onion_settings.filter != 0 && (onion_settings.filter & (1 << frame.type)) == 0) {
       return {};
