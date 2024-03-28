@@ -90,7 +90,7 @@ static IndexMask simplify_fixed(const bke::CurvesGeometry &curves,
         const IndexRange points = points_by_curve[curve_i];
         if (points.drop_front(1).drop_back(1).contains(i)) {
           const int local_i = i - points.start();
-          return local_i % int(math::pow(2.0f, float(step - 1))) != 0;
+          return local_i % int(math::pow(2.0f, float(step - 1))) == 0;
         }
         return false;
       });
@@ -278,8 +278,9 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
 
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
-      const IndexMask points_to_delete = simplify_fixed(curves, mmd.step, memory);
-      drawing.strokes_for_write().remove_points(points_to_delete, {});
+      const IndexMask points_to_keep = simplify_fixed(curves, mmd.step, memory);
+      drawing.strokes_for_write() = std::move(
+          bke::curves_copy_point_selection(curves, points_to_keep, {}));
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
