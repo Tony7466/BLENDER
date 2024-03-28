@@ -58,6 +58,64 @@ void PathTraceWorkCPU::init_execution()
   device_->get_cpu_kernel_thread_globals(kernel_thread_globals_);
 }
 
+void PathTraceWorkCPU::setup_work_tile(KernelWorkTile &work_tile,
+                                       const int64_t work_index,
+                                       const int64_t image_width,
+                                       const int start_sample,
+                                       const int sample_offset)
+{
+  const int y = work_index / image_width;
+  const int x = work_index - y * image_width;
+
+  work_tile.x = effective_buffer_params_.full_x + x;
+  work_tile.y = effective_buffer_params_.full_y + y;
+  work_tile.w = 1;
+  work_tile.h = 1;
+  work_tile.start_sample = start_sample;
+  work_tile.sample_offset = sample_offset;
+  work_tile.num_samples = 1;
+  work_tile.offset = effective_buffer_params_.offset;
+  work_tile.stride = effective_buffer_params_.stride;
+}
+
+void PathTraceWorkCPU::initial_resampling(const int64_t image_width,
+                                          const int64_t total_pixels_num,
+                                          const int start_sample,
+                                          const int sample_offset)
+{
+  parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
+    if (is_cancel_requested()) {
+      return;
+    }
+
+    KernelWorkTile work_tile;
+    setup_work_tile(work_tile, work_index, image_width, start_sample, sample_offset);
+
+    CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
+
+    render_samples_full_pipeline(kernel_globals, work_tile);
+  });
+}
+
+void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
+                                          const int64_t total_pixels_num,
+                                          const int start_sample,
+                                          const int sample_offset)
+{
+  parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
+    if (is_cancel_requested()) {
+      return;
+    }
+
+    KernelWorkTile work_tile;
+    setup_work_tile(work_tile, work_index, image_width, start_sample, sample_offset);
+
+    CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
+
+    ++work_tile.start_sample;
+  });
+}
+
 void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
                                       int start_sample,
                                       int samples_num,
@@ -74,31 +132,15 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
   }
 
   tbb::task_arena local_arena = local_tbb_arena_create(device_);
-  local_arena.execute([&]() {
-    parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
-      if (is_cancel_requested()) {
-        return;
-      }
 
-      const int y = work_index / image_width;
-      const int x = work_index - y * image_width;
+  /* Initial Resampling. */
+  local_arena.execute(
+      [&] { initial_resampling(image_width, total_pixels_num, start_sample, sample_offset); });
 
-      KernelWorkTile work_tile;
-      work_tile.x = effective_buffer_params_.full_x + x;
-      work_tile.y = effective_buffer_params_.full_y + y;
-      work_tile.w = 1;
-      work_tile.h = 1;
-      work_tile.start_sample = start_sample;
-      work_tile.sample_offset = sample_offset;
-      work_tile.num_samples = 1;
-      work_tile.offset = effective_buffer_params_.offset;
-      work_tile.stride = effective_buffer_params_.stride;
+  /* Spatial Resampling. */
+  local_arena.execute(
+      [&] { spatial_resampling(image_width, total_pixels_num, start_sample, sample_offset); });
 
-      CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
-
-      render_samples_full_pipeline(kernel_globals, work_tile, samples_num);
-    });
-  });
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {
       kernel_globals.stop_profiling();
@@ -109,8 +151,7 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 }
 
 void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
-                                                    const KernelWorkTile &work_tile,
-                                                    const int samples_num)
+                                                    const KernelWorkTile &work_tile)
 {
   const bool has_bake = device_scene_->data.bake.use;
 
@@ -127,40 +168,36 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   KernelWorkTile sample_work_tile = work_tile;
   float *render_buffer = buffers_->buffer.data();
 
-  for (int sample = 0; sample < samples_num; ++sample) {
-    if (is_cancel_requested()) {
-      break;
-    }
+  if (is_cancel_requested()) {
+    return;
+  }
 
-    if (has_bake) {
-      if (!kernels_.integrator_init_from_bake(
-              kernel_globals, state, &sample_work_tile, render_buffer))
-      {
-        break;
-      }
+  if (has_bake) {
+    if (!kernels_.integrator_init_from_bake(
+            kernel_globals, state, &sample_work_tile, render_buffer))
+    {
+      return;
     }
-    else {
-      if (!kernels_.integrator_init_from_camera(
-              kernel_globals, state, &sample_work_tile, render_buffer))
-      {
-        break;
-      }
+  }
+  else {
+    if (!kernels_.integrator_init_from_camera(
+            kernel_globals, state, &sample_work_tile, render_buffer))
+    {
+      return;
     }
+  }
 
-    kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
+  kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
 
 #ifdef WITH_PATH_GUIDING
-    if (kernel_globals->data.integrator.train_guiding) {
-      /* Push the generated sample data to the global sample data storage. */
-      guiding_push_sample_data_to_global_storage(kernel_globals, state, render_buffer);
-    }
+  if (kernel_globals->data.integrator.train_guiding) {
+    /* Push the generated sample data to the global sample data storage. */
+    guiding_push_sample_data_to_global_storage(kernel_globals, state, render_buffer);
+  }
 #endif
 
-    if (shadow_catcher_state) {
-      kernels_.integrator_megakernel(kernel_globals, shadow_catcher_state, render_buffer);
-    }
-
-    ++sample_work_tile.start_sample;
+  if (shadow_catcher_state) {
+    kernels_.integrator_megakernel(kernel_globals, shadow_catcher_state, render_buffer);
   }
 }
 

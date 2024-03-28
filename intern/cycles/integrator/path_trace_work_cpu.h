@@ -35,6 +35,24 @@ class PathTraceWorkCPU : public PathTraceWork {
 
   virtual void init_execution() override;
 
+  void test();
+
+  void initial_resampling(const int64_t image_width,
+                          const int64_t total_pixels_num,
+                          const int start_sample,
+                          const int sample_offset);
+
+  void spatial_resampling(const int64_t image_width,
+                          const int64_t total_pixels_num,
+                          const int start_sample,
+                          const int sample_offset);
+
+  void setup_work_tile(KernelWorkTile &work_tile,
+                       const int64_t work_index,
+                       const int64_t image_width,
+                       const int start_sample,
+                       const int sample_offset);
+
   virtual void render_samples(RenderStatistics &statistics,
                               int start_sample,
                               int samples_num,
@@ -71,8 +89,7 @@ class PathTraceWorkCPU : public PathTraceWork {
  protected:
   /* Core path tracing routine. Renders given work time on the given queue. */
   void render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
-                                    const KernelWorkTile &work_tile,
-                                    const int samples_num);
+                                    const KernelWorkTile &work_tile);
 
   /* CPU kernels. */
   const CPUKernels &kernels_;
