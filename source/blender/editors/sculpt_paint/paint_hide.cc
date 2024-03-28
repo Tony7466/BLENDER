@@ -716,6 +716,222 @@ void PAINT_OT_visibility_invert(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER;
 }
 
+enum class EditMode {
+  Grow = 0,
+  Shrink = 1,
+};
+
+static void grow_shrink_visibility_mesh(Object &object,
+                                        PBVH &pbvh,
+                                        const Span<PBVHNode *> nodes,
+                                        const EditMode mode)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  const Span<int2> edges = mesh.edges();
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  if (!attributes.contains(".hide_vert")) {
+    // If the entire mesh is visible, we can neither grow nor shrink the boundary.
+    return;
+  }
+
+  bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
+      ".hide_vert", bke::AttrDomain::Point);
+  Array<bool> orig_hide_vert(hide_vert.span.size());
+  array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
+
+  bool any_changed = false;
+  const bool desired_state = !(mode == EditMode::Grow);
+  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const blender::int2 edge = edges[i];
+      if (orig_hide_vert[edge[0]] == orig_hide_vert[edge[1]]) {
+        continue;
+      }
+
+      if (orig_hide_vert[edge[0]] != desired_state && orig_hide_vert[edge[1]] != desired_state) {
+        continue;
+      }
+
+      any_changed = true;
+
+      hide_vert.span[edge[0]] = desired_state;
+      hide_vert.span[edge[1]] = desired_state;
+    }
+  });
+
+  hide_vert.finish();
+  if (any_changed) {
+    bke::mesh_hide_vert_flush(mesh);
+  }
+
+  for (const int i : nodes.index_range()) {
+    undo::push_node(&object, nodes[i], undo::Type::HideVert);
+
+    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+  }
+
+  bke::pbvh::update_visibility(pbvh);
+}
+
+static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
+                                        Object &object,
+                                        PBVH &pbvh,
+                                        const Span<PBVHNode *> nodes,
+                                        const EditMode mode)
+{
+  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+
+  BitGroupVector<> &orig_hide = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+
+  const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
+  const bool desired_state = !(mode == EditMode::Grow);
+
+  grid_hide_update(
+      depsgraph, object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
+        const BoundedBitSpan grid_hidden = orig_hide[grid_index];
+        for (const int y : IndexRange(key.grid_size)) {
+          for (const int x : IndexRange(key.grid_size)) {
+            const int cur_idx = y * key.grid_size + x;
+            if (grid_hidden[cur_idx] != desired_state) {
+              continue;
+            }
+
+            SubdivCCGCoord coord{};
+            coord.grid_index = grid_index;
+            coord.x = x;
+            coord.y = y;
+
+            SubdivCCGNeighbors neighbors;
+            BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
+            bool should_scan_dup = true;
+            int dup_idx_start = neighbors.coords.size() - neighbors.num_duplicates;
+            for (int i = 0; i < dup_idx_start; i++) {
+              int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
+              if (grid_hidden[neighbor_idx] == desired_state) {
+                hide[cur_idx].set(desired_state);
+                should_scan_dup = false;
+                break;
+              }
+            }
+
+            if (!should_scan_dup) {
+              break;
+            }
+
+            for (int i = dup_idx_start; i < neighbors.coords.size(); i++) {
+              const BoundedBitSpan neighbor_span = orig_hide[neighbors.coords[i].grid_index];
+              int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
+              if (neighbor_span[neighbor_idx] == desired_state) {
+                hide[cur_idx].set(desired_state);
+                break;
+              }
+            }
+          }
+        }
+      });
+}
+
+static Array<bool> duplicate_visibility(const Object &object)
+{
+  const SculptSession &ss = *object.sculpt;
+  BMesh &bm = *ss.bm;
+  Array<bool> result(bm.totvert);
+  BM_mesh_elem_table_ensure(&bm, BM_VERT);
+  for (const int i : result.index_range()) {
+    result[i] = BM_elem_flag_test_bool(BM_vert_at_index(&bm, i), BM_ELEM_HIDDEN);
+  }
+  return result;
+}
+
+static void grow_shrink_visibility_bmesh(Object &object,
+                                         PBVH &pbvh,
+                                         const Span<PBVHNode *> nodes,
+                                         const EditMode mode)
+{
+
+  SculptSession *ss = object.sculpt;
+  const VisAction action = mode == EditMode::Grow ? VisAction::Show : VisAction::Hide;
+  const Array<bool> prev_visibility = duplicate_visibility(object);
+  const bool desired_state = !(mode == EditMode::Grow);
+
+  partialvis_update_bmesh_nodes(&object, nodes, action, [&](const BMVert *vert) {
+    int vi = BM_elem_index_get(vert);
+    PBVHVertRef vref = BKE_pbvh_index_to_vertex(&pbvh, vi);
+    SculptVertexNeighborIter ni;
+
+    bool should_change = false;
+    SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vref, ni) {
+      if (prev_visibility[ni.index] == desired_state) {
+        /* Not returning instantly to avoid leaking memory. */
+        should_change = true;
+        break;
+      }
+    }
+    SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
+    return should_change;
+  });
+}
+
+static int visibility_edit_exec(bContext *C, wmOperator *op)
+{
+  Object &object = *CTX_data_active_object(C);
+  Depsgraph &depsgraph = *CTX_data_ensure_evaluated_depsgraph(C);
+
+  PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
+  BLI_assert(BKE_object_sculpt_pbvh_get(&object) == pbvh);
+
+  const EditMode mode = EditMode(RNA_enum_get(op->ptr, "mode"));
+
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
+  undo::push_begin(&object, op);
+  switch (BKE_pbvh_type(pbvh)) {
+    case PBVH_FACES:
+      grow_shrink_visibility_mesh(object, *pbvh, nodes, mode);
+      break;
+    case PBVH_GRIDS:
+      grow_shrink_visibility_grid(depsgraph, object, *pbvh, nodes, mode);
+      break;
+    case PBVH_BMESH:
+      grow_shrink_visibility_bmesh(object, *pbvh, nodes, mode);
+      break;
+  }
+
+  undo::push_end(&object);
+
+  SCULPT_topology_islands_invalidate(object.sculpt);
+  tag_update_visibility(*C);
+
+  return OPERATOR_FINISHED;
+}
+
+void PAINT_OT_visibility_edit(wmOperatorType *ot)
+{
+  static EnumPropertyItem modes[] = {
+      {int(EditMode::Grow),
+       "GROW",
+       0,
+       "Grow Visibility",
+       "Grows the visibility by one face based on mesh topology"},
+      {int(EditMode::Shrink),
+       "SHRINK",
+       0,
+       "Shrink Visibility",
+       "Shrinks the visibility by one face based on mesh topology"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  ot->name = "Visibility Edit";
+  ot->idname = "PAINT_OT_visibility_edit";
+  ot->description = "Edits the visibility of the current mesh";
+
+  ot->exec = visibility_edit_exec;
+  ot->poll = SCULPT_mode_poll_view3d;
+
+  ot->flag = OPTYPE_REGISTER;
+
+  RNA_def_enum(ot->srna, "mode", modes, int(EditMode::Grow), "Mode", "");
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
