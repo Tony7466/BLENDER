@@ -195,6 +195,9 @@ class ProjectApply(Operator):
         return {'FINISHED'}
 
 
+bl_file_extensions_image_movie = (*bpy.path.extensions_image, *bpy.path.extensions_movie)
+
+
 class IMAGE_OT_open_images(Operator):
     bl_idname = "image.open_images"
     bl_label = "Open Images"
@@ -217,59 +220,57 @@ class IMAGE_OT_open_images(Operator):
         # List of files that are not part of an image sequence or UDIM group
         files = []
         # Groups of files that may be part of an image sequence or a UDIM group.
-        # The elements looks like [(prefix,ext,frame_size,[file.name,...]),...]
         sequences = []
+        import re
+        regex_extension = re.compile("(" + "|".join([re.escape(ext) for ext in bl_file_extensions_image_movie]) + ")$")
+        regex_sequence = re.compile("(\\d+)(\\.[\\w\\d]+)$")
         for file in self.files:
-            import re
-            match = re.search("\\.[\\w\\d]+$", file.name)
             # Filter by extension
-            if not match or not (match.group(0) in bpy.path.extensions_image or match.group(0)
-                                 in bpy.path.extensions_movie):
+            if not regex_extension.search(file.name):
                 continue
-            match = re.search("(\\d*)(\\.[\\w\\d]*)$", file.name)
-            if match and (self.use_sequence_detection or self.use_udim_detection):
-                prefix = file.name[:len(file.name) - len(match.group(0))]
-                ext = match.group(2)
-                frame_size = len(match.group(1))
-                seq = None
-                for test_seq in sequences:
-                    if test_seq[0] == prefix and test_seq[1] == ext and test_seq[2] == frame_size:
-                        seq = test_seq
-                        seq[3].append(file.name)
-                        break
-                if not seq:
-                    sequences.append((prefix, ext, frame_size, [file.name,]))
-            else:
+            match = regex_sequence.search(file.name)
+            if not (match and (self.use_sequence_detection or self.use_udim_detection)):
                 files.append(file.name)
-
+                continue
+            seq = {'prefix': file.name[:len(file.name) - len(match.group(0))],
+                   'ext': match.group(2),
+                   'frame_size': len(match.group(1)),
+                   'files': [file.name,]}
+            for test_seq in sequences:
+                if (test_seq['prefix'] == seq['prefix'] and test_seq['ext'] == seq['ext'] and
+                        test_seq['frame_size'] == seq['frame_size']):
+                    test_seq['files'].append(file.name)
+                    seq = None
+                    break
+            if seq:
+                sequences.append(seq)
+        import os
         for file in files:
-            import os
             filepath = os.path.join(self.directory, file)
             bpy.ops.image.open(filepath=filepath, relative_path=self.relative_path)
         for seq in sequences:
-            seq[3].sort()
-            import os
-            directory = self.directory
-            filepath = os.path.join(directory, seq[3][0])
-            files = [{"name": file} for file in seq[3]]
+            seq['files'].sort()
+            filepath = os.path.join(self.directory, seq['files'][0])
+            files = [{"name": file} for file in seq['files']]
             bpy.ops.image.open(
                 filepath=filepath,
-                directory=directory,
+                directory=self.directory,
                 files=files,
                 use_sequence_detection=self.use_sequence_detection,
                 use_udim_detecting=self.use_udim_detection,
                 relative_path=self.relative_path)
             if len(files) > 1 and self.use_sequence_detection:
-                context.edit_image.name = "{prefix}{hash}{ext}".format(prefix=seq[0], hash=("#" * seq[2]), ext=seq[1])
+                context.edit_image.name = "{prefix}{hash}{ext}".format(
+                    prefix=seq['prefix'], hash=("#" * seq['frame_size']), ext=seq['ext'])
 
         return {'FINISHED'}
 
 
 class IMAGE_FH_drop_handler(FileHandler):
     bl_idname = "IMAGE_FH_drop_handler"
-    bl_label = "Open droped imagenes"
+    bl_label = "Open images"
     bl_import_operator = "image.open_images"
-    bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
+    bl_file_extensions = ';'.join(bl_file_extensions_image_movie)
 
     @classmethod
     def poll_drop(cls, context):
