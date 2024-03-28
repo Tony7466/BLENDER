@@ -908,15 +908,11 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
         /* Re-sort actual beztriples
          * (perhaps this could be done using the beztmaps to save time?). */
         sort_time_fcurve(fcu);
+
+        testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
       }
     }
   });
-
-  /* Run the handle recalculation outside the parallel_for
-   * because it might use threading itself. */
-  for (FCurve *fcu : fcurves) {
-    testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-  }
 }
 
 static void recalcData_graphedit(TransInfo *t)
