@@ -142,8 +142,10 @@ static bke::CurvesGeometry curves_merge_by_distance(
   const VArray<bool> cyclic = src_curves.cyclic();
   src_curves.ensure_evaluated_lengths();
 
+  bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+
   std::atomic<int> total_duplicate_count = 0;
-  Array<int> dst_curve_counts(src_curves.curves_num());
   Array<Array<int>> merge_indices_per_curve(src_curves.curves_num());
   threading::parallel_for(src_curves.curves_range(), 512, [&](const IndexRange range) {
     for (const int curve_i : range) {
@@ -163,19 +165,15 @@ static bke::CurvesGeometry curves_merge_by_distance(
                                                           selection.slice_content(points),
                                                           merge_distance,
                                                           merge_indices);
-
-      dst_curve_counts[curve_i] = points.size() - duplicate_count;
+      /* Write the curve size. The counts will be accumulated to offsets below. */
+      dst_offsets[curve_i] = points.size() - duplicate_count;
       total_duplicate_count += duplicate_count;
     }
   });
 
-  bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
   const int dst_point_size = src_point_size - total_duplicate_count;
   dst_curves.resize(dst_point_size, src_curves.curves_num());
-
-  array_utils::copy(dst_curve_counts.as_span(), dst_curves.offsets_for_write().drop_back(1));
-  dst_curves.offsets_for_write().last() = dst_point_size;
-  offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
 
   int merged_points = 0;
   Array<int> src_to_dst_indices(src_point_size);
