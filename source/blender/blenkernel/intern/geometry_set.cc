@@ -133,7 +133,7 @@ GeometryComponent &GeometrySet::get_component_for_write(GeometryComponent::Type 
   return const_cast<GeometryComponent &>(*component_ptr);
 }
 
-GeometryComponent *GeometrySet::get_component_ptr(GeometryComponent::Type type)
+GeometryComponent *GeometrySet::get_component_for_write_ptr(GeometryComponent::Type type)
 {
   if (this->has(type)) {
     return &this->get_component_for_write(type);

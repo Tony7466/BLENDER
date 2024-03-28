@@ -35,10 +35,9 @@ struct Scene;
  * Through this, you get access to both the edit #BMesh, its tessellation,
  * and various data that doesn't belong in the #BMesh struct itself
  * (mostly related to mesh evaluation).
- *
- * #Mesh.runtime.edit_mesh stores a pointer to this structure.
  */
 struct BMEditMesh {
+  /* Always owned by an original mesh in edit mode. */
   BMesh *bm;
 
   /**

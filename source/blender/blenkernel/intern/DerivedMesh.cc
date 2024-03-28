@@ -938,6 +938,8 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
   return {};
 }
 
+namespace blender::bke {
+
 static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
 {
   Mesh *result = BKE_mesh_copy_for_eval(&mesh);
@@ -953,16 +955,28 @@ static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
   return result;
 }
 
+static void save_cage_mesh(GeometrySet &geometry_set)
+{
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
+    auto &edit_data = geometry_set.get_component_for_write<GeometryComponentEditData>();
+    if (!edit_data.mesh_edit_hints_) {
+      edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
+    }
+    BLI_assert(!edit_data.mesh_edit_hints_->mesh_cage);
+    edit_data.mesh_edit_hints_->mesh_cage = geometry_set.get_component_ptr<MeshComponent>();
+  }
+}
+
+}  // namespace blender::bke
+
 static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                             const Scene *scene,
                                             Object *ob,
                                             BMEditMesh *em_input,
-                                            const CustomData_MeshMasks *dataMask,
-                                            /* return args */
-                                            Mesh **r_cage)
+                                            const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
-  Mesh *mesh_cage = nullptr;
 
   /* Mesh with constructive modifiers but no deformation applied. Tracked
    * along with final mesh if undeformed / orco coordinates are requested
@@ -996,8 +1010,8 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
       BKE_mesh_wrapper_from_editmesh(em_input, &final_datamask, mesh_input));
 
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
-  if (r_cage && cageIndex == -1) {
-    mesh_cage = mesh_copy_with_edit_data(*geometry_set.get_mesh());
+  if (cageIndex == -1) {
+    save_cage_mesh(geometry_set);
   }
 
   /* The mesh from edit mode should not have any original index layers already, since those
@@ -1100,8 +1114,8 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
       modifier_modify_mesh_and_geometry_set(md, mectx, geometry_set);
     }
 
-    if (r_cage && i == cageIndex) {
-      mesh_cage = mesh_copy_with_edit_data(*geometry_set.get_mesh());
+    if (i == cageIndex) {
+      blender::bke::save_cage_mesh(geometry_set);
     }
   }
 
@@ -1121,16 +1135,15 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
   }
 
   /* Compute normals. */
-  if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
-    editbmesh_calc_modifier_final_normals_or_defer(mesh);
+  if (geometry_set.get_mesh()->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
+    if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
+      editbmesh_calc_modifier_final_normals_or_defer(mesh);
+    }
   }
   if (mesh_cage) {
     editbmesh_calc_modifier_final_normals_or_defer(mesh_cage);
   }
 
-  if (r_cage) {
-    *r_cage = mesh_cage;
-  }
   return geometry_set;
 }
 
@@ -1192,9 +1205,7 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
                                  CustomData_MeshMasks *dataMask)
 {
   Mesh *mesh = static_cast<Mesh *>(obedit->data);
-  Mesh *me_cage;
-  GeometrySet geometry_set = editbmesh_calc_modifiers(
-      depsgraph, scene, obedit, em, dataMask, &me_cage);
+  GeometrySet geometry_set = editbmesh_calc_modifiers(depsgraph, scene, obedit, em, dataMask);
 
   Mesh *mesh_final = geometry_set.get_mesh_for_write();
 

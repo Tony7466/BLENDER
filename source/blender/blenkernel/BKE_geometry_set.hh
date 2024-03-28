@@ -168,6 +168,13 @@ struct GeometrySet {
     return static_cast<Component &>(this->get_component_for_write(Component::static_type));
   }
 
+  GeometryComponentPtr get_component_ptr(GeometryComponent::Type component_type) const;
+  template<typename Component> ImplicitSharingPtr<Component> get_component_ptr() const
+  {
+    BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
+    return static_cast<ImplicitSharingPtr<Component>>(components_(Component::static_type));
+  }
+
   /**
    * Get the component of the given type. Might return null if the component does not exist yet.
    */
@@ -428,11 +435,11 @@ struct GeometrySet {
    * Retrieve the pointer to a component without creating it if it does not exist,
    * unlike #get_component_for_write.
    */
-  GeometryComponent *get_component_ptr(GeometryComponent::Type type);
-  template<typename Component> Component *get_component_ptr()
+  GeometryComponent *get_component_for_write_ptr(GeometryComponent::Type type);
+  template<typename Component> Component *get_component_for_write_ptr()
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
-    return static_cast<Component *>(get_component_ptr(Component::static_type));
+    return static_cast<Component *>(get_component_for_write_ptr(Component::static_type));
   }
 };
 
