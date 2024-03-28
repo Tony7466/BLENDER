@@ -10,7 +10,7 @@ void main()
   vec2 uv = gl_FragCoord.xy / vec2(textureSize(planar_radiance_tx, 0).xy);
   float depth = texture(planar_depth_tx, vec3(uv, probe_index)).r;
   if (depth == 1.0) {
-    vec3 ndc = vec3(uv, 0.0) * 2.0 - 1.0;
+    vec3 ndc = drw_screen_to_ndc(vec3(uv, 0.0));
     vec3 wP = drw_point_ndc_to_world(ndc);
     vec3 V = drw_world_incident_vector(wP);
     vec3 R = -reflect(V, probe_normal);

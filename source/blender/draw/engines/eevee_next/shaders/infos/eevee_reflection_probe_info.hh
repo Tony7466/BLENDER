@@ -83,7 +83,6 @@ GPU_SHADER_INTERFACE_INFO(eevee_display_probe_planar_iface, "")
     .flat(Type::INT, "probe_index");
 
 GPU_SHADER_CREATE_INFO(eevee_display_probe_planar)
-    .push_constant(Type::FLOAT, "world_background_blur")
     .push_constant(Type::IVEC4, "world_coord_packed")
     .additional_info("eevee_shared",
                      "draw_view",
