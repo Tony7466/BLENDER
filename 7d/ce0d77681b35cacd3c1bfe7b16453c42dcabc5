@@ -1,3 +1,4 @@
 Referenced by issue #116623, Use EEVEE rendering blender Software crashes and closes
 Referenced by issue #116996, Node Editor: Impossible to link to reroute nodes
 Referenced by issue #116998, Assign a material causes crashes Blender.
+Referenced by issue #119992, Regression: Wrong orientation on shrinkwrap constrained instanced collection
