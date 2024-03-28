@@ -47,6 +47,7 @@ extern "C" {
 #  include <libavutil/buffer.h>
 #  include <libavutil/channel_layout.h>
 #  include <libavutil/imgutils.h>
+#  include <libavutil/mastering_display_metadata.h>
 #  include <libavutil/opt.h>
 #  include <libavutil/rational.h>
 #  include <libavutil/samplefmt.h>
@@ -396,9 +397,12 @@ static bool write_video_frame(FFMpegContext *context, AVFrame *frame, ReportList
 /* read and encode a frame of video from the buffer */
 static AVFrame *generate_video_frame(FFMpegContext *context, const ImBuf *image)
 {
-  /* For now only 8-bit/channel images are supported. */
   const uint8_t *pixels = image->byte_buffer.data;
-  if (pixels == nullptr) {
+  const float *pixels_fl = image->float_buffer.data;
+  /* Use float input if needed. */
+  const bool use_float = context->img_convert_frame != nullptr &&
+                         context->img_convert_frame->format != AV_PIX_FMT_RGBA;
+  if ((!use_float && (pixels == nullptr)) || (use_float && (pixels_fl == nullptr))) {
     return nullptr;
   }
 
@@ -415,30 +419,55 @@ static AVFrame *generate_video_frame(FFMpegContext *context, const ImBuf *image)
     rgb_frame = context->current_frame;
   }
 
-  /* Copy the Blender pixels into the FFMPEG data-structure, taking care of endianness and flipping
-   * the image vertically. */
-  int linesize = rgb_frame->linesize[0];
-  for (int y = 0; y < height; y++) {
-    uint8_t *target = rgb_frame->data[0] + linesize * (height - y - 1);
-    const uint8_t *src = pixels + linesize * y;
+  const size_t linesize = rgb_frame->linesize[0];
+  if (use_float) {
+    /* Float image: need to split up the image into a planar format,
+     * because libswscale does not support RGBA->YUV conversions from
+     * packed float formats. */
+    BLI_assert_msg(rgb_frame->linesize[1] == linesize && rgb_frame->linesize[2] == linesize &&
+                       rgb_frame->linesize[3] == linesize,
+                   "ffmpeg frame should be 4 same size planes for a floating point image case");
+    for (int y = 0; y < height; y++) {
+      size_t dst_offset = linesize * (height - y - 1);
+      float *dst_g = reinterpret_cast<float *>(rgb_frame->data[0] + dst_offset);
+      float *dst_b = reinterpret_cast<float *>(rgb_frame->data[1] + dst_offset);
+      float *dst_r = reinterpret_cast<float *>(rgb_frame->data[2] + dst_offset);
+      float *dst_a = reinterpret_cast<float *>(rgb_frame->data[3] + dst_offset);
+      const float *src = pixels_fl + image->x * y * 4;
+      for (int x = 0; x < image->x; x++) {
+        *dst_g++ = src[1];
+        *dst_b++ = src[2];
+        *dst_r++ = src[0];
+        *dst_a++ = src[3];
+        src += 4;
+      }
+    }
+  }
+  else {
+    /* Byte image: flip the image vertically, possibly with endian
+     * conversion. */
+    for (int y = 0; y < height; y++) {
+      uint8_t *target = rgb_frame->data[0] + linesize * (height - y - 1);
+      const uint8_t *src = pixels + linesize * y;
 
 #  if ENDIAN_ORDER == L_ENDIAN
-    memcpy(target, src, linesize);
+      memcpy(target, src, linesize);
 
 #  elif ENDIAN_ORDER == B_ENDIAN
-    const uint8_t *end = src + linesize;
-    while (src != end) {
-      target[3] = src[0];
-      target[2] = src[1];
-      target[1] = src[2];
-      target[0] = src[3];
+      const uint8_t *end = src + linesize;
+      while (src != end) {
+        target[3] = src[0];
+        target[2] = src[1];
+        target[1] = src[2];
+        target[0] = src[3];
 
-      target += 4;
-      src += 4;
-    }
+        target += 4;
+        src += 4;
+      }
 #  else
 #    error ENDIAN_ORDER should either be L_ENDIAN or B_ENDIAN.
 #  endif
+    }
   }
 
   /* Convert to the output pixel format, if it's different that Blender's internal one. */
@@ -1001,6 +1030,16 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
     c->pix_fmt = AV_PIX_FMT_YUV422P;
   }
 
+  const bool bpp10 = rd->ffcodecdata.video_bpp == FFM_VIDEO_BPP_10;
+  const bool bpp12 = rd->ffcodecdata.video_bpp == FFM_VIDEO_BPP_12;
+  const bool hdrHLG = rd->ffcodecdata.video_hdr == FFM_VIDEO_HDR_REC2020_HLG;
+  if (bpp10) {
+    c->pix_fmt = AV_PIX_FMT_YUV420P10LE;
+  }
+  if (bpp12) {
+    c->pix_fmt = AV_PIX_FMT_YUV420P12LE;
+  }
+
   if (context->ffmpeg_type == FFMPEG_XVID) {
     /* Alas! */
     c->pix_fmt = AV_PIX_FMT_YUV420P;
@@ -1040,6 +1079,12 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   else if (ELEM(codec_id, AV_CODEC_ID_H264, AV_CODEC_ID_VP9) && (context->ffmpeg_crf == 0)) {
     /* Use 4:4:4 instead of 4:2:0 pixel format for lossless rendering. */
     c->pix_fmt = AV_PIX_FMT_YUV444P;
+    if (bpp10) {
+      c->pix_fmt = AV_PIX_FMT_YUV444P10LE;
+    }
+    if (bpp12) {
+      c->pix_fmt = AV_PIX_FMT_YUV444P12LE;
+    }
   }
 
   if (codec_id == AV_CODEC_ID_PNG) {
@@ -1051,6 +1096,13 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   if (of->oformat->flags & AVFMT_GLOBALHEADER) {
     PRINT("Using global header\n");
     c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+  }
+
+  if (hdrHLG) {
+    c->color_range = AVCOL_RANGE_JPEG;  //@TODO: this or MPEG? or configurable?
+    c->color_primaries = AVCOL_PRI_BT2020;
+    c->color_trc = AVCOL_TRC_ARIB_STD_B67;
+    c->colorspace = AVCOL_SPC_BT2020_NCL;
   }
 
   /* xasp & yasp got float lately... */
@@ -1097,12 +1149,60 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   }
   else {
     /* Output pixel format is different, allocate frame for conversion. */
-    context->img_convert_frame = alloc_picture(AV_PIX_FMT_RGBA, c->width, c->height);
+    AVPixelFormat src_format = bpp10 || bpp12 ? AV_PIX_FMT_GBRAPF32LE : AV_PIX_FMT_RGBA;
+    context->img_convert_frame = alloc_picture(src_format, c->width, c->height);
     context->img_convert_ctx = BKE_ffmpeg_sws_get_context(
-        c->width, c->height, AV_PIX_FMT_RGBA, c->pix_fmt, SWS_BICUBIC);
+        c->width, c->height, src_format, c->pix_fmt, SWS_BICUBIC);
   }
 
   avcodec_parameters_from_context(st->codecpar, c);
+
+  /* Add side data indicating light levels and things. @TODO: not quite sure if this is really
+   * needed. */
+  if (hdrHLG) {
+    constexpr int hdr_peak_level = 1000;
+
+    size_t light_meta_size;
+    AVContentLightMetadata *light_meta = av_content_light_metadata_alloc(&light_meta_size);
+    light_meta->MaxCLL = hdr_peak_level;
+    light_meta->MaxFALL = hdr_peak_level;
+#  if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 31, 102)
+    av_stream_add_side_data(
+        st, AV_PKT_DATA_CONTENT_LIGHT_LEVEL, (uint8_t *)light_meta, light_meta_size);
+#  else
+    av_packet_side_data_add(&st->codecpar->coded_side_data,
+                            &st->codecpar->nb_coded_side_data,
+                            AV_PKT_DATA_CONTENT_LIGHT_LEVEL,
+                            light_meta,
+                            light_meta_size,
+                            0);
+#  endif
+
+    AVMasteringDisplayMetadata *mastering = av_mastering_display_metadata_alloc();
+    mastering->display_primaries[0][0] = av_make_q(17, 25);
+    mastering->display_primaries[0][1] = av_make_q(8, 25);
+    mastering->display_primaries[1][0] = av_make_q(53, 200);
+    mastering->display_primaries[1][1] = av_make_q(69, 100);
+    mastering->display_primaries[2][0] = av_make_q(3, 20);
+    mastering->display_primaries[2][1] = av_make_q(3, 50);
+    mastering->white_point[0] = av_make_q(3127, 10000);
+    mastering->white_point[1] = av_make_q(329, 1000);
+    mastering->min_luminance = av_make_q(0, 1);
+    mastering->max_luminance = av_make_q(hdr_peak_level, 1);
+    mastering->has_primaries = 1;
+    mastering->has_luminance = 1;
+#  if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(60, 31, 102)
+    av_stream_add_side_data(
+        st, AV_PKT_DATA_MASTERING_DISPLAY_METADATA, (uint8_t *)mastering, sizeof(*mastering));
+#  else
+    av_packet_side_data_add(&st->codecpar->coded_side_data,
+                            &st->codecpar->nb_coded_side_data,
+                            AV_PKT_DATA_MASTERING_DISPLAY_METADATA,
+                            mastering,
+                            sizeof(*mastering),
+                            0);
+#  endif
+  }
 
   context->video_time = 0.0f;
 
@@ -1836,6 +1936,7 @@ void BKE_ffmpeg_end(void *context_v)
 void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
 {
   bool is_ntsc = (rd->frs_sec != 25);
+  rd->ffcodecdata.video_bpp = FFM_VIDEO_BPP_8;
 
   switch (preset) {
     case FFMPEG_PRESET_H264:

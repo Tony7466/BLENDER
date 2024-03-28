@@ -907,4 +907,18 @@ void BKE_image_format_init_for_write(ImageFormatData *imf,
     STRNCPY(imf->linear_colorspace_settings.name,
             IMB_colormanagement_role_colorspace_name_get(COLOR_ROLE_SCENE_LINEAR));
   }
+
+  if (imf_src == nullptr && scene_src->r.im_format.imtype == R_IMF_IMTYPE_FFMPEG) {
+    if (scene_src->r.ffcodecdata.video_bpp == FFM_VIDEO_BPP_10) {
+      imf->depth = R_IMF_CHAN_DEPTH_10;
+    }
+    if (scene_src->r.ffcodecdata.video_bpp == FFM_VIDEO_BPP_12) {
+      imf->depth = R_IMF_CHAN_DEPTH_12;
+    }
+    if (scene_src->r.ffcodecdata.video_hdr == FFM_VIDEO_HDR_REC2020_HLG) {
+      /* @TODO: until we get proper OCIO config to do full HLG stuff, use this and to HLG math
+       * manually. */
+      STRNCPY(imf->linear_colorspace_settings.name, "Linear Rec.2020");
+    }
+  }
 }

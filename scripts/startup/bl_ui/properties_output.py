@@ -460,6 +460,14 @@ class RENDER_PT_encoding_video(RenderOutputButtonsPanel, Panel):
         if ffmpeg.codec == 'DNXHD':
             layout.prop(ffmpeg, "use_lossless_output")
 
+        has_10_bit = ffmpeg.codec in {'H264', 'AV1'}
+        has_12_bit = ffmpeg.codec in {'AV1'}
+        has_hdr = ffmpeg.codec in {'H264', 'AV1'}
+        if has_10_bit or has_12_bit:
+            layout.prop(ffmpeg, "video_bpp")
+        if has_10_bit:
+            layout.prop(ffmpeg, "video_hdr")
+
         # Output quality
         use_crf = needs_codec and ffmpeg.codec in {
             'H264',

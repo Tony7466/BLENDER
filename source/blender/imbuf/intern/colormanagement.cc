@@ -2580,7 +2580,8 @@ static ImBuf *imbuf_ensure_editable(ImBuf *ibuf, ImBuf *colormanaged_ibuf, bool 
 ImBuf *IMB_colormanagement_imbuf_for_write(ImBuf *ibuf,
                                            bool save_as_render,
                                            bool allocate_result,
-                                           const ImageFormatData *image_format)
+                                           const ImageFormatData *image_format,
+                                           bool force_linear)
 {
   ImBuf *colormanaged_ibuf = ibuf;
 
@@ -2593,7 +2594,8 @@ ImBuf *IMB_colormanagement_imbuf_for_write(ImBuf *ibuf,
   }
 
   /* Detect if we are writing to a file format that needs a linear float buffer. */
-  const bool linear_float_output = BKE_imtype_requires_linear_float(image_format->imtype);
+  bool linear_float_output = force_linear ||
+                             BKE_imtype_requires_linear_float(image_format->imtype);
 
   /* Detect if we are writing output a byte buffer, which we would need to create
    * with color management conversions applied. This may be for either applying the

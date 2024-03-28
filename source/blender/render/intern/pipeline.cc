@@ -2079,6 +2079,20 @@ void RE_RenderFreestyleExternal(Render *re)
 /** \name Read/Write Render Result (Images & Movies)
  * \{ */
 
+/* @TODO: this should be done by OCIO, but until we get the correct configuration, do Linear
+ * Rec.2020 -> HLG transform manually. */
+static float do_hlg(float v)
+{
+  if (v <= 0.0f)
+    return 0.0f;
+  if (v <= 1.0f)
+    return 0.5f * sqrtf(v);
+  const float ca = 0.17883277f;
+  const float cb = 0.28466892f;
+  const float cc = 0.55991073f;
+  return ca * logf(v - cb) + cc;
+}
+
 bool RE_WriteRenderViewsMovie(ReportList *reports,
                               RenderResult *rr,
                               Scene *scene,
@@ -2099,6 +2113,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
 
   const bool is_mono = BLI_listbase_count_at_most(&rr->views, 2) < 2;
   const float dither = scene->r.dither_intensity;
+  const bool is_hdr = scene->r.ffcodecdata.video_hdr == FFM_VIDEO_HDR_REC2020_HLG;
 
   if (is_mono || (image_format.views_format == R_IMF_VIEWS_INDIVIDUAL)) {
     int view_id;
@@ -2106,7 +2121,17 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, view_id);
       ImBuf *ibuf = RE_render_result_rect_to_ibuf(rr, &rd->im_format, dither, view_id);
 
-      IMB_colormanagement_imbuf_for_write(ibuf, true, false, &image_format);
+      IMB_colormanagement_imbuf_for_write(ibuf, true, false, &image_format, is_hdr);
+
+      /* @TODO: this should be done by OCIO, but until we get the correct configuration, do Linear
+       * Rec.2020 -> HLG transform manually. */
+      if (ibuf->float_buffer.data && is_hdr) {
+        for (int idx = 0; idx < ibuf->x * ibuf->y * 4; idx += 4) {
+          ibuf->float_buffer.data[idx + 0] = do_hlg(ibuf->float_buffer.data[idx + 0]);
+          ibuf->float_buffer.data[idx + 1] = do_hlg(ibuf->float_buffer.data[idx + 1]);
+          ibuf->float_buffer.data[idx + 2] = do_hlg(ibuf->float_buffer.data[idx + 2]);
+        }
+      }
 
       if (!mh->append_movie(movie_ctx_arr[view_id],
                             rd,
@@ -2135,7 +2160,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
       int view_id = BLI_findstringindex(&rr->views, names[i], offsetof(RenderView, name));
       ibuf_arr[i] = RE_render_result_rect_to_ibuf(rr, &rd->im_format, dither, view_id);
 
-      IMB_colormanagement_imbuf_for_write(ibuf_arr[i], true, false, &image_format);
+      IMB_colormanagement_imbuf_for_write(ibuf_arr[i], true, false, &image_format, is_hdr);
     }
 
     ibuf_arr[2] = IMB_stereo3d_ImBuf(&image_format, ibuf_arr[0], ibuf_arr[1]);
