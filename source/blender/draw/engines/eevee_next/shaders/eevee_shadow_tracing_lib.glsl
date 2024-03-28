@@ -31,7 +31,9 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
   if (!tile.is_valid) {
     return -1.0;
   }
-
+  /* Shift LOD0 pixels so that they get wrapped at the right position for the given LOD. */
+  /* TODO convert everything to uint to avoid signed int operations. */
+  texel_coord += ivec2(tile.lod_offset << SHADOW_PAGE_LOD);
   /* Scale to LOD pixels (merge LOD0 pixels together) then mask to get pixel in page. */
   ivec2 texel_page = (texel_coord >> int(tile.lod)) & page_mask;
   ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);

@@ -61,10 +61,10 @@ void main()
           tile_prev.lod += 1;
           /* Previous level is now twice as big as this level.
            * Double the offset to the valid page. */
-          tile_prev.lod_offset *= 2;
+          tile_prev.lod_offset *= 2u;
           /* Add the offset of this tile relative to the previous level to the tile data.
            * There is only an offset if offset is odd since previous level is twice as big. */
-          tile_prev.lod_offset += uvec2(not(equal(offset_binary, ivec2(0))));
+          tile_prev.lod_offset += uint2(offset_centered) & 1u;
 
           tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
           /* Replace the missing page with the one from the lower LOD. */

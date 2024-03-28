@@ -1335,7 +1335,7 @@ static inline uint shadow_lod_offset_pack(uint2 ofs)
 }
 static inline uint2 shadow_lod_offset_unpack(uint data)
 {
-  return (uint2(data) >> uint2(0u, 7u)) & uint2(7u);
+  return (uint2(data) >> uint2(0u, 7u)) & uint2(127u);
 }
 
 static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
@@ -1345,7 +1345,7 @@ static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTileP
   /* -- 12 bits -- */
   tile.lod = (data >> 12u) & 7u;
   /* -- 15 bits -- */
-  tile.lod_offset = shadow_lod_offset_unpack((data >> 15u) & 14u);
+  tile.lod_offset = shadow_lod_offset_unpack(data >> 15u);
   /* -- 29 bits -- */
   /* Only 3 padding bits left. */
   tile.is_valid = (data & SHADOW_TILE_IS_VALID) != 0;

@@ -1164,6 +1164,41 @@ static void test_eevee_shadow_finalize()
 }
 DRAW_TEST(eevee_shadow_finalize)
 
+static void test_eevee_shadow_tile_packing()
+{
+  Vector<uint> test_values{0x00000000u, 0x00000001u, 0x0000000Fu, 0x000000FFu, 0xABCDEF01u,
+                           0xAAAAAAAAu, 0xBBBBBBBBu, 0xCCCCCCCCu, 0xDDDDDDDDu, 0xEEEEEEEEu,
+                           0xFFFFFFFFu, 0xDEADBEEFu, 0x8BADF00Du, 0xABADCAFEu, 0x0D15EA5Eu,
+                           0xFEE1DEADu, 0xDEADC0DEu, 0xC00010FFu, 0xBBADBEEFu, 0xBAAAAAADu};
+
+  for (auto value : test_values) {
+    EXPECT_EQ(shadow_page_unpack(value),
+              shadow_page_unpack(shadow_page_pack(shadow_page_unpack(value))));
+
+    EXPECT_EQ(shadow_lod_offset_unpack(value),
+              shadow_lod_offset_unpack(shadow_lod_offset_pack(shadow_lod_offset_unpack(value))));
+
+    ShadowTileData expected_tile = shadow_tile_unpack(value);
+    ShadowTileData result_tile = shadow_tile_unpack(shadow_tile_pack(expected_tile));
+    EXPECT_EQ(expected_tile.page, result_tile.page);
+    EXPECT_EQ(expected_tile.cache_index, result_tile.cache_index);
+    EXPECT_EQ(expected_tile.is_used, result_tile.is_used);
+    EXPECT_EQ(expected_tile.do_update, result_tile.do_update);
+    EXPECT_EQ(expected_tile.is_allocated, result_tile.is_allocated);
+    EXPECT_EQ(expected_tile.is_rendered, result_tile.is_rendered);
+    EXPECT_EQ(expected_tile.is_cached, result_tile.is_cached);
+
+    ShadowSamplingTile expected_sampling_tile = shadow_sampling_tile_unpack(value);
+    ShadowSamplingTile result_sampling_tile = shadow_sampling_tile_unpack(
+        shadow_sampling_tile_pack(expected_sampling_tile));
+    EXPECT_EQ(expected_sampling_tile.page, result_sampling_tile.page);
+    EXPECT_EQ(expected_sampling_tile.lod, result_sampling_tile.lod);
+    EXPECT_EQ(expected_sampling_tile.lod_offset, result_sampling_tile.lod_offset);
+    EXPECT_EQ(expected_sampling_tile.is_valid, result_sampling_tile.is_valid);
+  }
+}
+DRAW_TEST(eevee_shadow_tile_packing)
+
 static void test_eevee_shadow_tilemap_amend()
 {
   GPU_render_begin();
@@ -1271,6 +1306,27 @@ static void test_eevee_shadow_tilemap_amend()
                          tilemap_index * SHADOW_TILEMAP_RES;
           ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
           result += std::to_string(tile.lod);
+          if (x + 1 == SHADOW_TILEMAP_RES / 2) {
+            result += " ";
+          }
+        }
+        result += "\n";
+        if (y + 1 == SHADOW_TILEMAP_RES / 2) {
+          result += "\n";
+        }
+      }
+      return result;
+    };
+
+    auto stringify_offset = [&](int tilemap_index) -> std::string {
+      std::string result = "";
+      for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
+        for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
+          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
+                         tilemap_index * SHADOW_TILEMAP_RES;
+          ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
+          result += std::to_string(tile.lod_offset.x + tile.lod_offset.y);
           if (x + 1 == SHADOW_TILEMAP_RES / 2) {
             result += " ";
           }
@@ -1431,6 +1487,43 @@ static void test_eevee_shadow_tilemap_amend()
 
     EXPECT_EQ(expected_lod_lod0, stringify_lod(0));
 
+    /* Offset for each axis are added together in this test. */
+    StringRefNull expected_offset_lod0 =
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000033 3333330000000000\n"
+        "0000000000000033 3333330000000000\n"
+        "0000000000000033 3333330000000000\n"
+        "0000000000000033 3333330000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000011000000\n"
+        "0000000000000000 0000000011000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n";
+
+    EXPECT_EQ(expected_offset_lod0, stringify_offset(0));
     MEM_SAFE_FREE(pixels);
   }
 
