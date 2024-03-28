@@ -19,12 +19,12 @@
 
 #include "BLI_blenlib.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_fcurve.h"
+#include "BKE_context.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -33,7 +33,6 @@
 #include "RNA_prototypes.h"
 
 #include "ED_anim_api.hh"
-#include "ED_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -265,7 +264,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
 {
   PointerRNA adt_ptr;
   PointerRNA strip_ptr;
-  /* AnimData *adt; */
+  // AnimData *adt;
   uiLayout *layout = panel->layout;
   uiLayout *row;
   uiBlock *block;
@@ -279,7 +278,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
     return;
   }
 
-  /* adt = adt_ptr.data; */
+  // adt = adt_ptr.data;
 
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, nullptr);

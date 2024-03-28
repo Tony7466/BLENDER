@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -17,7 +18,6 @@
 #include "DNA_object_types.h"
 
 #include "BLI_index_range.hh"
-#include "BLI_listbase.h"
 #include "BLI_math_base.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_rand.hh"
@@ -26,23 +26,20 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_curves.hh"
-#include "BKE_customdata.h"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -65,7 +62,11 @@ static void curves_init_data(ID *id)
   new (&curves->geometry) blender::bke::CurvesGeometry();
 }
 
-static void curves_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
+static void curves_copy_data(Main * /*bmain*/,
+                             std::optional<Library *> /*owner_library*/,
+                             ID *id_dst,
+                             const ID *id_src,
+                             const int /*flag*/)
 {
   Curves *curves_dst = (Curves *)id_dst;
   const Curves *curves_src = (const Curves *)id_src;
@@ -137,10 +138,11 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_CV = {
     /*id_code*/ ID_CV,
     /*id_filter*/ FILTER_ID_CV,
+    /*dependencies_id_types*/ FILTER_ID_MA | FILTER_ID_OB,
     /*main_listbase_index*/ INDEX_ID_CV,
     /*struct_size*/ sizeof(Curves),
     /*name*/ "Curves",
-    /*name_plural*/ "hair_curves",
+    /*name_plural*/ N_("hair_curves"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_CURVES,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -168,30 +170,6 @@ void *BKE_curves_add(Main *bmain, const char *name)
   Curves *curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, name));
 
   return curves;
-}
-
-BoundBox *BKE_curves_boundbox_get(Object *ob)
-{
-  using namespace blender;
-  BLI_assert(ob->type == OB_CURVES);
-  const Curves *curves_id = static_cast<const Curves *>(ob->data);
-
-  if (ob->runtime.bb != nullptr && (ob->runtime.bb->flag & BOUNDBOX_DIRTY) == 0) {
-    return ob->runtime.bb;
-  }
-
-  if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>(__func__);
-    const bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-    if (const std::optional<Bounds<float3>> bounds = curves.bounds_min_max()) {
-      BKE_boundbox_init_from_minmax(ob->runtime.bb, bounds->min, bounds->max);
-    }
-    else {
-      BKE_boundbox_init_from_minmax(ob->runtime.bb, float3(-1), float3(1));
-    }
-  }
-
-  return ob->runtime.bb;
 }
 
 bool BKE_curves_attribute_required(const Curves * /*curves*/, const char *name)
@@ -271,7 +249,7 @@ void BKE_curves_data_update(Depsgraph *depsgraph, Scene *scene, Object *object)
   else {
     BKE_object_eval_assign_data(object, &curves_eval->id, false);
   }
-  object->runtime.geometry_set_eval = new GeometrySet(std::move(geometry_set));
+  object->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 }
 
 /* Draw Cache */
@@ -340,11 +318,11 @@ void curves_copy_parameters(const Curves &src, Curves &dst)
 
 CurvesSurfaceTransforms::CurvesSurfaceTransforms(const Object &curves_ob, const Object *surface_ob)
 {
-  this->curves_to_world = float4x4_view(curves_ob.object_to_world);
+  this->curves_to_world = curves_ob.object_to_world();
   this->world_to_curves = math::invert(this->curves_to_world);
 
   if (surface_ob != nullptr) {
-    this->surface_to_world = float4x4_view(surface_ob->object_to_world);
+    this->surface_to_world = surface_ob->object_to_world();
     this->world_to_surface = math::invert(this->surface_to_world);
     this->surface_to_curves = this->world_to_curves * this->surface_to_world;
     this->curves_to_surface = this->world_to_surface * this->curves_to_world;
@@ -370,7 +348,7 @@ bool CurvesEditHints::is_valid() const
 
 void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals)
 {
-  const bke::CurvesFieldContext context(curves, ATTR_DOMAIN_POINT);
+  const bke::CurvesFieldContext context(curves, AttrDomain::Point);
   fn::FieldEvaluator evaluator(context, curves.points_num());
   fn::Field<float3> field(std::make_shared<bke::NormalFieldInput>());
   evaluator.add_with_destination(std::move(field), normals);

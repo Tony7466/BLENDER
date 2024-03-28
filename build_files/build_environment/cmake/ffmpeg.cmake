@@ -39,17 +39,19 @@ set(FFMPEG_PATCH_FILE)
 
 if(WIN32)
   set(FFMPEG_CFLAGS "\
-  ${FFMPEG_CFLAGS} \
-  -I${temp_LIBDIR}/openjpeg_msvc/include/openjpeg-2.5 \
-  -I${temp_LIBDIR}/opus/include/opus \
-  -DOPJ_STATIC \
-  -MD \
-  -UHAVE_UNISTD_H")
+${FFMPEG_CFLAGS} \
+-I${temp_LIBDIR}/openjpeg_msvc/include/openjpeg-2.5 \
+-I${temp_LIBDIR}/opus/include/opus \
+-DOPJ_STATIC \
+-MD \
+-UHAVE_UNISTD_H"
+  )
 
   set(FFMPEG_LDFLAGS "\
-  ${FFMPEG_LDFLAGS} \
-  ${LIBDIR_FLAG}${temp_LIBDIR}/openjpeg_msvc/lib \
-  ucrt.lib")
+${FFMPEG_LDFLAGS} \
+${LIBDIR_FLAG}${temp_LIBDIR}/openjpeg_msvc/lib \
+ucrt.lib"
+  )
 
   # As we now use MSVC on windows, pkgconfig is not really a viable option for many packages
   # so this patch removes those checks in favour of looking for the libs directly.
@@ -70,7 +72,7 @@ set(FFMPEG_EXTRA_FLAGS
 
 set(FFMPEG_ENV)
 if(NOT WIN32)
-set(FFMPEG_ENV "PKG_CONFIG_PATH=\
+  set(FFMPEG_ENV "PKG_CONFIG_PATH=\
 ${temp_LIBDIR}/openjpeg/lib/pkgconfig:\
 ${temp_LIBDIR}/x264/lib/pkgconfig:\
 ${temp_LIBDIR}/vorbis/lib/pkgconfig:\
@@ -80,7 +82,7 @@ ${temp_LIBDIR}/theora/lib/pkgconfig:\
 ${temp_LIBDIR}/openjpeg/lib/pkgconfig:\
 ${temp_LIBDIR}/opus/lib/pkgconfig:\
 ${temp_LIBDIR}/aom/lib/pkgconfig:"
-)
+  )
 endif()
 
 unset(temp_LIBDIR)
@@ -147,60 +149,76 @@ ExternalProject_Add(external_ffmpeg
   URL file://${PACKAGE_DIR}/${FFMPEG_FILE}
   DOWNLOAD_DIR ${DOWNLOAD_DIR}
   URL_HASH ${FFMPEG_HASH_TYPE}=${FFMPEG_HASH}
-  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d ${BUILD_DIR}/ffmpeg/src/external_ffmpeg < ${FFMPEG_PATCH_FILE}
+
+  PATCH_COMMAND ${PATCH_CMD} --verbose -p 1 -N -d
+    ${BUILD_DIR}/ffmpeg/src/external_ffmpeg <
+    ${FFMPEG_PATCH_FILE}
+
   PREFIX ${BUILD_DIR}/ffmpeg
+
   CONFIGURE_COMMAND ${FFMPEG_CONFIGURE_COMMAND} &&
     cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ &&
     ${FFMPEG_ENV} ${CONFIGURE_COMMAND_NO_TARGET} ${FFMPEG_EXTRA_FLAGS}
-    --disable-lzma
-    --disable-avfilter
-    --disable-vdpau
-    --disable-bzlib
-    --disable-libgsm
-    --disable-libspeex
-    --enable-libvpx
-    --enable-libopus
-    --prefix=${LIBDIR}/ffmpeg
-    --enable-libtheora
-    --enable-libvorbis
-    --enable-zlib
-    --enable-stripping
-    --enable-runtime-cpudetect
-    --disable-vaapi
-    --disable-nonfree
-    --enable-gpl
-    --disable-postproc
-    --enable-libmp3lame
-    --disable-librtmp
-    --enable-libx264
-    --enable-libaom
-    --disable-libopencore-amrnb
-    --disable-libopencore-amrwb
-    --disable-libdc1394
-    --disable-version3
-    --disable-debug
-    --enable-optimizations
-    --enable-ffplay
-    --disable-openssl
-    --disable-securetransport
-    --disable-indev=avfoundation
-    --disable-indev=qtkit
-    --disable-sdl2
-    --disable-gnutls
-    --disable-videotoolbox
-    --disable-libxcb
-    --disable-xlib
-    --disable-audiotoolbox
-    --disable-cuvid
-    --disable-nvenc
-    --disable-indev=jack
-    --disable-indev=alsa
-    --disable-outdev=alsa
-    --disable-crystalhd
-    --disable-sndio
-  BUILD_COMMAND ${FFMPEG_CONFIGURE_COMMAND} && cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ && make -j${MAKE_THREADS}
-  INSTALL_COMMAND ${FFMPEG_CONFIGURE_COMMAND} && cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ && make install
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/ffmpeg ${DEFAULT_CMAKE_FLAGS}
+      --disable-lzma
+      --disable-avfilter
+      --disable-vdpau
+      --disable-bzlib
+      --disable-libgsm
+      --disable-libspeex
+      --enable-libvpx
+      --enable-libopus
+      --prefix=${LIBDIR}/ffmpeg
+      --enable-libtheora
+      --enable-libvorbis
+      --enable-zlib
+      --enable-stripping
+      --enable-runtime-cpudetect
+      --disable-vaapi
+      --disable-nonfree
+      --enable-gpl
+      --disable-postproc
+      --enable-libmp3lame
+      --disable-librtmp
+      --enable-libx264
+      --enable-libaom
+      --disable-libopencore-amrnb
+      --disable-libopencore-amrwb
+      --disable-libdc1394
+      --disable-version3
+      --disable-debug
+      --enable-optimizations
+      --enable-ffplay
+      --disable-openssl
+      --disable-securetransport
+      --disable-indev=avfoundation
+      --disable-indev=qtkit
+      --disable-sdl2
+      --disable-gnutls
+      --disable-videotoolbox
+      --disable-libxcb
+      --disable-xlib
+      --disable-audiotoolbox
+      --disable-cuvid
+      --disable-nvenc
+      --disable-indev=jack
+      --disable-indev=alsa
+      --disable-outdev=alsa
+      --disable-crystalhd
+      --disable-sndio
+      --disable-doc
+
+  BUILD_COMMAND ${FFMPEG_CONFIGURE_COMMAND} &&
+    cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ &&
+    make -j${MAKE_THREADS}
+
+  INSTALL_COMMAND ${FFMPEG_CONFIGURE_COMMAND} &&
+    cd ${BUILD_DIR}/ffmpeg/src/external_ffmpeg/ &&
+    make install
+
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${LIBDIR}/ffmpeg
+    ${DEFAULT_CMAKE_FLAGS}
+
   INSTALL_DIR ${LIBDIR}/ffmpeg
 )
 
@@ -239,8 +257,13 @@ endif()
 
 if(BUILD_MODE STREQUAL Release AND WIN32)
   ExternalProject_Add_Step(external_ffmpeg after_install
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/ffmpeg/include ${HARVEST_TARGET}/ffmpeg/include
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/ffmpeg/bin ${HARVEST_TARGET}/ffmpeg/lib
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${LIBDIR}/ffmpeg/include
+      ${HARVEST_TARGET}/ffmpeg/include
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      ${LIBDIR}/ffmpeg/bin
+      ${HARVEST_TARGET}/ffmpeg/lib
+
     DEPENDEES install
   )
 endif()

@@ -53,7 +53,10 @@ void ED_space_image_set_mask(bContext *C, SpaceImage *sima, Mask *mask);
 /**
  * Returns mouse position in image space.
  */
-bool ED_space_image_get_position(SpaceImage *sima, ARegion *region, int mval[2], float fpos[2]);
+bool ED_space_image_get_position(SpaceImage *sima,
+                                 ARegion *region,
+                                 const int mval[2],
+                                 float r_fpos[2]);
 /**
  * Returns color in linear space, matching #ED_space_node_color_sample().
  */
@@ -116,36 +119,44 @@ bool ED_space_image_paint_curve(const bContext *C);
  */
 bool ED_space_image_check_show_maskedit(SpaceImage *sima, Object *obedit);
 
-/* Returns true when the following conditions are met:
+/**
+ * Returns true when the following conditions are met:
  * - Current space is Image Editor.
  * - The image editor is not a UV Editor.
  * - It is set to Mask mode.
  *
- * It is not required to have mask opened for editing. */
+ * It is not required to have mask opened for editing.
+ */
 bool ED_space_image_maskedit_poll(bContext *C);
 
-/* Returns true when the following conditions are met:
+/**
+ * Returns true when the following conditions are met:
  * - Current space is Image Editor.
  * - The image editor is not a UV Editor.
  * - It is set to Mask mode.
  * - Mask has visible and editable splines.
  *
- * It is not required to have mask opened for editing. */
+ * It is not required to have mask opened for editing.
+ */
 bool ED_space_image_maskedit_visible_splines_poll(bContext *C);
 
-/* Returns true when the following conditions are met:
- * - Current space is Image Editor.
- * - The image editor is not an UV Editor.
- * - It is set to Mask mode.
- * - The space has mask opened. */
-bool ED_space_image_maskedit_mask_poll(bContext *C);
-
-/* Returns true when the following conditions are met:
+/**
+ * Returns true when the following conditions are met:
  * - Current space is Image Editor.
  * - The image editor is not an UV Editor.
  * - It is set to Mask mode.
  * - The space has mask opened.
- * - Mask has visible and editable splines. */
+ */
+bool ED_space_image_maskedit_mask_poll(bContext *C);
+
+/**
+ * Returns true when the following conditions are met:
+ * - Current space is Image Editor.
+ * - The image editor is not an UV Editor.
+ * - It is set to Mask mode.
+ * - The space has mask opened.
+ * - Mask has visible and editable splines.
+ */
 bool ED_space_image_maskedit_mask_visible_splines_poll(bContext *C);
 
 bool ED_space_image_cursor_poll(bContext *C);

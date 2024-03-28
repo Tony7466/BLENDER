@@ -11,6 +11,10 @@
 
 #include "RE_engine.h"
 
+#include "BKE_curves.hh"
+
+#include "BLI_index_mask.hh"
+
 struct BMEditMesh;
 struct BMesh;
 struct BezTriple;
@@ -22,7 +26,7 @@ struct TransInfo;
 struct bContext;
 
 struct TransConvertTypeInfo {
-  int flags; /* eTFlag */
+  int flags; /* #eTFlag. */
 
   /**
    * Allocate and initialize `t->data`.
@@ -38,6 +42,42 @@ struct TransConvertTypeInfo {
    * Called when the operation is finished.
    */
   void (*special_aftertrans_update)(bContext *C, TransInfo *t);
+};
+
+/**
+ * Structure used for Edge Slide operation.
+ * The data is filled based on the 'transform_convert_' type.
+ */
+struct TransDataEdgeSlideVert {
+  TransData *td;
+  blender::float3 dir_side[2]; /* Directional vectors on the sides.*/
+  float edge_len;              /* Distance between vectors. */
+  int loop_nr;                 /* Number that identifies the group of connected edges. */
+
+  const float *v_co_orig() const
+  {
+    return this->td->iloc;
+  }
+};
+
+/**
+ * Structure used for Vert Slide operation.
+ * The data is filled based on the 'transform_convert_' type.
+ */
+struct TransDataVertSlideVert {
+  TransData *td;
+  blender::Span<blender::float3> co_link_orig_3d; /* Target locations.*/
+  int co_link_curr;
+
+  const float *co_orig_3d() const
+  {
+    return this->td->iloc;
+  }
+
+  const blender::float3 &co_dest_3d() const
+  {
+    return this->co_link_orig_3d[this->co_link_curr];
+  }
 };
 
 /* `transform_convert.cc` */
@@ -106,6 +146,21 @@ void transform_convert_clip_mirror_modifier_apply(TransDataContainer *tc);
  */
 void animrecord_check_state(TransInfo *t, ID *id);
 
+/* `transform_convert_curves.cc` */
+
+/**
+ * Used for both curves and grease pencil objects.
+ */
+void curve_populate_trans_data_structs(TransDataContainer &tc,
+                                       blender::bke::CurvesGeometry &curves,
+                                       const blender::float4x4 &matrix,
+                                       std::optional<blender::MutableSpan<float>> value_attribute,
+                                       const blender::IndexMask &selected_indices,
+                                       bool use_proportional_edit,
+                                       const blender::IndexMask &affected_curves,
+                                       bool use_connected_only,
+                                       int trans_data_offset);
+
 /* `transform_convert_action.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Action;
@@ -131,7 +186,7 @@ extern TransConvertTypeInfo TransConvertType_Cursor3D;
 
 extern TransConvertTypeInfo TransConvertType_Curve;
 
-/* transform_convert_curves.cc */
+/* `transform_convert_curves.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Curves;
 
@@ -142,6 +197,10 @@ extern TransConvertTypeInfo TransConvertType_Graph;
 /* `transform_convert_gpencil_legacy.cc` */
 
 extern TransConvertTypeInfo TransConvertType_GPencil;
+
+/* `transform_convert_greasepencil.cc` */
+
+extern TransConvertTypeInfo TransConvertType_GreasePencil;
 
 /* `transform_convert_lattice.cc` */
 
@@ -178,7 +237,7 @@ struct TransMirrorData {
 
 struct TransMeshDataCrazySpace {
   float (*quats)[4];
-  float (*defmats)[3][3];
+  blender::Array<blender::float3x3, 0> defmats;
 };
 
 void transform_convert_mesh_islands_calc(BMEditMesh *em,
@@ -217,6 +276,12 @@ void transform_convert_mesh_crazyspace_transdata_set(const float mtx[3][3],
                                                      TransData *r_td);
 void transform_convert_mesh_crazyspace_free(TransMeshDataCrazySpace *r_crazyspace_data);
 
+blender::Array<TransDataVertSlideVert> transform_mesh_vert_slide_data_create(
+    const TransDataContainer *tc, blender::Vector<blender::float3> &r_loc_dst_buffer);
+
+blender::Array<TransDataEdgeSlideVert> transform_mesh_edge_slide_data_create(
+    const TransDataContainer *tc, int *r_group_len);
+
 /* `transform_convert_mesh_edge.cc` */
 
 extern TransConvertTypeInfo TransConvertType_MeshEdge;
@@ -229,6 +294,14 @@ extern TransConvertTypeInfo TransConvertType_MeshSkin;
 
 extern TransConvertTypeInfo TransConvertType_MeshUV;
 
+blender::Array<TransDataVertSlideVert> transform_mesh_uv_vert_slide_data_create(
+    const TransInfo *t,
+    TransDataContainer *tc,
+    blender::Vector<blender::float3> &r_loc_dst_buffer);
+
+blender::Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(
+    const TransInfo *t, TransDataContainer *tc, int *r_group_len);
+
 /* `transform_convert_mesh_vert_cdata.cc` */
 
 extern TransConvertTypeInfo TransConvertType_MeshVertCData;
@@ -237,7 +310,7 @@ extern TransConvertTypeInfo TransConvertType_MeshVertCData;
 
 extern TransConvertTypeInfo TransConvertType_NLA;
 
-/* transform_convert_node.cc */
+/* `transform_convert_node.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Node;
 
@@ -257,7 +330,7 @@ extern TransConvertTypeInfo TransConvertType_PaintCurve;
 
 extern TransConvertTypeInfo TransConvertType_Particle;
 
-/* transform_convert_sculpt.cc */
+/* `transform_convert_sculpt.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Sculpt;
 
@@ -268,6 +341,10 @@ extern TransConvertTypeInfo TransConvertType_Sequencer;
 /* `transform_convert_sequencer_image.cc` */
 
 extern TransConvertTypeInfo TransConvertType_SequencerImage;
+
+/* `transform_convert_sequencer_retiming.cc` */
+
+extern TransConvertTypeInfo TransConvertType_SequencerRetiming;
 
 /* `transform_convert_tracking.cc` */
 

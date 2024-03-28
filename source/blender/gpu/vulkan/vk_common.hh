@@ -18,7 +18,7 @@
 
 #include "vk_mem_alloc.h"
 
-#include "gpu_index_buffer_private.hh"
+#include "GPU_index_buffer.hh"
 #include "gpu_shader_create_info.hh"
 #include "gpu_texture_private.hh"
 
@@ -38,8 +38,8 @@ enum class eImageViewUsage {
   Attachment,
 };
 
-VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
-VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUFrameBufferBits buffers);
+VkImageAspectFlags to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
+VkImageAspectFlags to_vk_image_aspect_flag_bits(const eGPUFrameBufferBits buffers);
 VkFormat to_vk_format(const eGPUTextureFormat format);
 eGPUTextureFormat to_gpu_format(const VkFormat format);
 VkFormat to_vk_format(const GPUVertCompType type,
@@ -54,7 +54,7 @@ VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const voi
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const eGPUFaceCullTest cull_test);
-const char *to_string(VkObjectType type);
+VkSamplerAddressMode to_vk_sampler_address_mode(const GPUSamplerExtendMode extend_mode);
 
 template<typename T> VkObjectType to_vk_object_type(T /*vk_obj*/)
 {

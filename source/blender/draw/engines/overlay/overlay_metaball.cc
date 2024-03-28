@@ -6,13 +6,14 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_meta_types.h"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_mball.hh"
 
@@ -46,10 +47,10 @@ static void metaball_instance_data_set(
     BoneInstanceData *data, Object *ob, const float *pos, const float radius, const float color[4])
 {
   /* Bone point radius is 0.05. Compensate for that. */
-  mul_v3_v3fl(data->mat[0], ob->object_to_world[0], radius / 0.05f);
-  mul_v3_v3fl(data->mat[1], ob->object_to_world[1], radius / 0.05f);
-  mul_v3_v3fl(data->mat[2], ob->object_to_world[2], radius / 0.05f);
-  mul_v3_m4v3(data->mat[3], ob->object_to_world, pos);
+  mul_v3_v3fl(data->mat[0], ob->object_to_world().ptr()[0], radius / 0.05f);
+  mul_v3_v3fl(data->mat[1], ob->object_to_world().ptr()[1], radius / 0.05f);
+  mul_v3_v3fl(data->mat[2], ob->object_to_world().ptr()[2], radius / 0.05f);
+  mul_v3_m4v3(data->mat[3], ob->object_to_world().ptr(), pos);
   /* WATCH: Reminder, alpha is wire-size. */
   OVERLAY_bone_instance_data_set_color(data, color);
 }
@@ -69,7 +70,7 @@ void OVERLAY_edit_metaball_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   int select_id = 0;
   if (is_select) {
-    select_id = ob->runtime.select_id;
+    select_id = ob->runtime->select_id;
   }
 
   LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {

@@ -11,14 +11,10 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_material.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "BKE_screen.h"
-
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_screen.hh"

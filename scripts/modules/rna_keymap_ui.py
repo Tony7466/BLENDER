@@ -164,8 +164,6 @@ def draw_kmi(display_keymaps, kc, km, kmi, layout, level):
         if km.is_modal:
             sub.prop(kmi, "propvalue", text="")
         else:
-            # One day...
-            # sub.prop_search(kmi, "idname", bpy.context.window_manager, "operators_all", text="")
             sub.prop(kmi, "idname", text="")
 
         if map_type not in {'TEXTINPUT', 'TIMER'}:
@@ -336,17 +334,14 @@ def draw_filtered(display_keymaps, filter_type, filter_text, layout):
         if filtered_items:
             col = layout.column()
 
-            row = col.row()
+            row = col.row(align=True)
             row.label(text=km.name, icon='DOT',
                       text_ctxt=i18n_contexts.id_windowmanager)
 
-            row.label()
-            row.label()
-
             if km.is_user_modified:
-                row.operator("preferences.keymap_restore", text="Restore")
-            else:
-                row.label()
+                subrow = row.row()
+                subrow.alignment = 'RIGHT'
+                subrow.operator("preferences.keymap_restore", text="Restore")
 
             for kmi in filtered_items:
                 draw_kmi(display_keymaps, kc, km, kmi, col, 1)
@@ -380,7 +375,7 @@ def draw_keymaps(context, layout):
 
     rowsub.menu("USERPREF_MT_keyconfigs", text=text)
     rowsub.operator("wm.keyconfig_preset_add", text="", icon='ADD')
-    rowsub.operator("wm.keyconfig_preset_add", text="", icon='REMOVE').remove_active = True
+    rowsub.operator("wm.keyconfig_preset_remove", text="", icon='REMOVE')
 
     rowsub = split.row(align=True)
     rowsub.operator("preferences.keyconfig_import", text="Import...", icon='IMPORT')

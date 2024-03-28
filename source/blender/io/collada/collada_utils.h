@@ -37,14 +37,14 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_idprop.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
-#include "BKE_object.h"
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_idprop.hh"
+#include "BKE_main.hh"
+#include "BKE_node.hh"
+#include "BKE_object.hh"
+#include "BKE_scene.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BCSampleData.h"
 #include "BlenderContext.h"
@@ -95,7 +95,7 @@ inline bAction *bc_getSceneCameraAction(Object *ob)
     return NULL;
   }
 
-  Camera *camera = (Camera *)ob->data;
+  const Camera *camera = (const Camera *)ob->data;
   return (camera->adt && camera->adt->action) ? camera->adt->action : NULL;
 }
 
@@ -233,7 +233,7 @@ extern void bc_rotate_from_reference_quat(float quat_to[4],
                                           float quat_from[4],
                                           float mat_to[4][4]);
 
-extern void bc_triangulate_mesh(Mesh *me);
+extern void bc_triangulate_mesh(Mesh *mesh);
 /**
  * A bone is a leaf when it has no children or all children are not connected.
  */

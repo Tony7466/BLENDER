@@ -44,38 +44,19 @@ struct World;
 struct bGPdata;
 struct bNodeTree;
 
+/** Workaround to forward-declare C++ type in C header. */
+#ifdef __cplusplus
+namespace blender::bke {
+class SceneRuntime;
+}
+using SceneRuntimeHandle = blender::bke::SceneRuntime;
+#else   // __cplusplus
+typedef struct SceneRuntimeHandle SceneRuntimeHandle;
+#endif  // __cplusplus
+
 /* -------------------------------------------------------------------- */
 /** \name FFMPEG
  * \{ */
-
-typedef struct AviCodecData {
-  /** Save format. */
-  void *lpFormat;
-  /** Compressor options. */
-  void *lpParms;
-  /** Size of lpFormat buffer. */
-  unsigned int cbFormat;
-  /** Size of lpParms buffer. */
-  unsigned int cbParms;
-
-  /** Stream type, for consistency. */
-  unsigned int fccType;
-  /** Compressor. */
-  unsigned int fccHandler;
-  /** Keyframe rate. */
-  unsigned int dwKeyFrameEvery;
-  /** Compress quality 0-10,000. */
-  unsigned int dwQuality;
-  /** Bytes per second. */
-  unsigned int dwBytesPerSecond;
-  /** Flags... see below. */
-  unsigned int dwFlags;
-  /** For non-video streams only. */
-  unsigned int dwInterleaveEvery;
-  char _pad[4];
-
-  char avicodecname[128];
-} AviCodecData;
 
 typedef enum eFFMpegPreset {
   FFM_PRESET_NONE = 0,
@@ -189,6 +170,7 @@ typedef struct SceneRenderLayer {
 
   /** Converted to ViewLayer setting. */
   struct Material *mat_override DNA_DEPRECATED;
+  struct World *world_override DNA_DEPRECATED;
 
   /** Converted to LayerCollection cycles camera visibility override. */
   unsigned int lay DNA_DEPRECATED;
@@ -673,7 +655,7 @@ typedef enum eBakePassFilter {
 typedef struct RenderData {
   struct ImageFormatData im_format;
 
-  struct AviCodecData *avicodecdata;
+  void *_pad;
   struct FFMpegCodecData ffcodecdata;
 
   /** Frames as in 'images'. */
@@ -686,20 +668,16 @@ typedef struct RenderData {
   int images, framapto;
   short flag, threads;
 
-  float framelen, blurfac;
+  float framelen;
 
   /** Frames to jump during render/playback. */
   int frame_step;
-
-  char _pad10[2];
 
   /** For the dimensions presets menu. */
   short dimensionspreset;
 
   /** Size in %. */
   short size;
-
-  char _pad6[2];
 
   /* From buttons: */
   /**
@@ -845,7 +823,9 @@ typedef struct RenderData {
   /* Hair Display. */
   short hair_type, hair_subdiv;
 
-  /** Motion blur shutter. */
+  /** Motion blur */
+  float motion_blur_shutter;
+  int motion_blur_position;
   struct CurveMapping mblur_shutter_curve;
 } RenderData;
 
@@ -859,6 +839,13 @@ typedef enum eHairType {
   SCE_HAIR_SHAPE_STRAND = 0,
   SCE_HAIR_SHAPE_STRIP = 1,
 } eHairType;
+
+/** #RenderData::motion_blur_position */
+enum {
+  SCE_MB_CENTER = 0,
+  SCE_MB_START = 1,
+  SCE_MB_END = 2,
+};
 
 /** \} */
 
@@ -967,8 +954,11 @@ typedef struct Paint {
   /** Enum #ePaintFlags. */
   int flags;
 
-  /** Paint stroke can use up to PAINT_MAX_INPUT_SAMPLES inputs to smooth the stroke. */
-  int num_input_samples;
+  /**
+   * Paint stroke can use up to #PAINT_MAX_INPUT_SAMPLES inputs to smooth the stroke.
+   * This value is deprecated. Refer to the #Brush and #UnifiedPaintSetting values instead.
+   */
+  int num_input_samples_deprecated;
 
   /** Flags used for symmetry. */
   int symmetry_flags;
@@ -1107,9 +1097,9 @@ typedef struct Sculpt {
   float constant_detail;
   float detail_percent;
 
+  int automasking_boundary_edges_propagation_steps;
   int automasking_cavity_blur_steps;
   float automasking_cavity_factor;
-  char _pad[4];
 
   float automasking_start_normal_limit, automasking_start_normal_falloff;
   float automasking_view_normal_limit, automasking_view_normal_falloff;
@@ -1338,8 +1328,12 @@ typedef struct UnifiedPaintSettings {
   /** Unified brush secondary color. */
   float secondary_rgb[3];
 
+  /** Unified brush stroke input samples. */
+  int input_samples;
+
   /** User preferences for sculpt and paint. */
   int flag;
+  char _pad[4];
 
   /* Rake rotation. */
 
@@ -1351,6 +1345,9 @@ typedef struct UnifiedPaintSettings {
   float average_stroke_accum[3];
   int average_stroke_counter;
 
+  /* How much brush should be rotated in the view plane, 0 means x points right, y points up.
+   * The convention is that the brush's _negative_ Y axis points in the tangent direction (of the
+   * mouse curve, Bezier curve, etc.) */
   float brush_rotation;
   float brush_rotation_sec;
 
@@ -1408,6 +1405,7 @@ typedef enum {
   UNIFIED_PAINT_ALPHA = (1 << 1),
   UNIFIED_PAINT_WEIGHT = (1 << 5),
   UNIFIED_PAINT_COLOR = (1 << 6),
+  UNIFIED_PAINT_INPUT_SAMPLES = (1 << 7),
 
   /** Only used if unified size is enabled, mirrors the brush flag #BRUSH_LOCK_SIZE. */
   UNIFIED_PAINT_BRUSH_LOCK_SIZE = (1 << 2),
@@ -1511,13 +1509,6 @@ typedef enum eSeqOverlapMode {
   SEQ_OVERLAP_SHUFFLE,
 } eSeqOverlapMode;
 
-typedef enum eSeqImageFitMethod {
-  SEQ_SCALE_TO_FIT,
-  SEQ_SCALE_TO_FILL,
-  SEQ_STRETCH_TO_FILL,
-  SEQ_USE_ORIGINAL_SIZE,
-} eSeqImageFitMethod;
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1536,7 +1527,7 @@ typedef struct ToolSettings {
   /** Weight paint. */
   VPaint *wpaint;
   Sculpt *sculpt;
-  /** Uv smooth. */
+  /** UV smooth. */
   UvSculpt *uvsculpt;
   /** Gpencil paint. */
   GpPaint *gp_paint;
@@ -1581,18 +1572,21 @@ typedef struct ToolSettings {
   char gpencil_v3d_align;
   /** General 2D Editor. */
   char gpencil_v2d_align;
-  char _pad0[2];
 
   /* Annotations. */
   /** Stroke placement settings - 3D View. */
   char annotate_v3d_align;
-
   /** Default stroke thickness for annotation strokes. */
   short annotate_thickness;
+
+  /** Normal offset used when drawing on surfaces. */
+  float gpencil_surface_offset;
+
   /** Stroke selection mode for Edit. */
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
+  char _pad0[6];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -1615,9 +1609,9 @@ typedef struct ToolSettings {
   /** Select Group Threshold. */
   float select_thresh;
 
-  /* Auto-Keying Mode. */
+  /* Keying Settings. */
   /** Defines in DNA_userdef_types.h. */
-  short autokey_flag;
+  short keying_flag;
   char autokey_mode;
   /** Keyframe type (see DNA_curve_types.h). */
   char keyframe_type;
@@ -1635,10 +1629,9 @@ typedef struct ToolSettings {
   char transform_pivot_point;
   char transform_flag;
   /** Snap elements (per space-type), #eSnapMode. */
-  char _pad1[1];
-  short snap_mode;
   char snap_node_mode;
-  char snap_uv_mode;
+  short snap_mode;
+  short snap_uv_mode;
   short snap_anim_mode;
   /** Generic flags (per space-type), #eSnapFlag. */
   short snap_flag;
@@ -1726,6 +1719,12 @@ typedef struct ToolSettings {
   char plane_orient;     /* #eV3DPlaceOrient. */
   char use_plane_axis_auto;
   char _pad7[2];
+
+  /** Rotation Angle snapping amount */
+  float snap_angle_increment_2d;
+  float snap_angle_increment_2d_precision;
+  float snap_angle_increment_3d;
+  float snap_angle_increment_3d_precision;
 
 } ToolSettings;
 
@@ -1815,6 +1814,8 @@ typedef struct RaytraceEEVEE {
   float screen_trace_quality;
   /** Thickness in world space each surface will have during screen space tracing. */
   float screen_trace_thickness;
+  /** Maximum roughness before using horizon scan. */
+  float screen_trace_max_roughness;
   /** Resolution downscale factor. */
   int resolution_scale;
   /** Maximum intensity a ray can have. */
@@ -1823,6 +1824,8 @@ typedef struct RaytraceEEVEE {
   int flag;
   /** #RaytraceEEVEE_DenoiseStages. */
   int denoise_stages;
+
+  char _pad0[4];
 } RaytraceEEVEE;
 
 typedef struct SceneEEVEE {
@@ -1856,10 +1859,14 @@ typedef struct SceneEEVEE {
   float volumetric_sample_distribution;
   float volumetric_light_clamp;
   int volumetric_shadow_samples;
+  int volumetric_ray_depth;
 
   float gtao_distance;
   float gtao_factor;
   float gtao_quality;
+  float gtao_thickness;
+  float gtao_focus;
+  int gtao_resolution;
 
   float bokeh_overblur;
   float bokeh_max_size;
@@ -1877,20 +1884,21 @@ typedef struct SceneEEVEE {
   int motion_blur_samples DNA_DEPRECATED;
   int motion_blur_max;
   int motion_blur_steps;
-  int motion_blur_position;
-  float motion_blur_shutter;
+  int motion_blur_position_deprecated DNA_DEPRECATED;
+  float motion_blur_shutter_deprecated DNA_DEPRECATED;
   float motion_blur_depth_scale;
 
   int shadow_method DNA_DEPRECATED;
   int shadow_cube_size;
   int shadow_cascade_size;
   int shadow_pool_size;
+  int shadow_ray_count;
+  int shadow_step_count;
+  float shadow_normal_bias;
 
-  int ray_split_settings;
   int ray_tracing_method;
 
-  struct RaytraceEEVEE reflection_options;
-  struct RaytraceEEVEE refraction_options;
+  struct RaytraceEEVEE ray_tracing_options;
 
   struct LightCache *light_cache DNA_DEPRECATED;
   struct LightCache *light_cache_data;
@@ -1942,7 +1950,10 @@ typedef struct Scene {
   ID id;
   /** Animation data (must be immediately after id for utilities to use it). */
   struct AnimData *adt;
-  /** Runtime (must be immediately after id for utilities to use it). */
+  /**
+   * Engines draw data, must be immediately after AnimData. See IdDdtTemplate and
+   * DRW_drawdatalist_from_id to understand this requirement.
+   */
   DrawDataList drawdata;
 
   struct Object *camera;
@@ -2052,10 +2063,20 @@ typedef struct Scene {
   /** Settings to be override by work-spaces. */
   IDProperty *layer_properties;
 
+  /**
+   * Frame range used for simulations in geometry nodes by default, if SCE_CUSTOM_SIMULATION_RANGE
+   * is set. Individual simulations can overwrite this though.
+   */
+  int simulation_frame_start;
+  int simulation_frame_end;
+
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
   struct SceneHydra hydra;
+
+  SceneRuntimeHandle *runtime;
+  void *_pad9;
 } Scene;
 
 /** \} */
@@ -2076,7 +2097,7 @@ enum {
 /** #RenderData::mode. */
 enum {
   R_MODE_UNUSED_0 = 1 << 0, /* dirty */
-  R_MODE_UNUSED_1 = 1 << 1, /* cleared */
+  R_SIMPLIFY_NORMALS = 1 << 1,
   R_MODE_UNUSED_2 = 1 << 2, /* cleared */
   R_MODE_UNUSED_3 = 1 << 3, /* cleared */
   R_MODE_UNUSED_4 = 1 << 4, /* cleared */
@@ -2232,6 +2253,7 @@ enum {
 
 /** #RenderData::engine (scene.cc) */
 extern const char *RE_engine_id_BLENDER_EEVEE;
+extern const char *RE_engine_id_BLENDER_EEVEE_NEXT;
 extern const char *RE_engine_id_BLENDER_WORKBENCH;
 extern const char *RE_engine_id_CYCLES;
 
@@ -2325,7 +2347,7 @@ typedef enum eSnapFlag {
   // SCE_SNAP_PROJECT = (1 << 3), /* DEPRECATED, see #SCE_SNAP_INDIVIDUAL_PROJECT. */
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
-  SCE_SNAP_ABS_GRID = (1 << 5),
+  /* SCE_SNAP_ABS_GRID = (1 << 5), */ /* UNUSED */
   /* Same value with different name to make it easier to understand in time based code. */
   SCE_SNAP_ABS_TIME_STEP = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),
@@ -2371,40 +2393,38 @@ typedef enum eSnapMode {
   SCE_SNAP_TO_NODE_X = (1 << 0),
   SCE_SNAP_TO_NODE_Y = (1 << 1),
 
+  /** #ToolSettings::snap_anim_mode */
+  SCE_SNAP_TO_FRAME = (1 << 0),
+  SCE_SNAP_TO_SECOND = (1 << 1),
+  SCE_SNAP_TO_MARKERS = (1 << 2),
+
   /** #ToolSettings::snap_mode and #ToolSettings::snap_node_mode and #ToolSettings.snap_uv_mode */
   SCE_SNAP_TO_POINT = (1 << 0),
-  /* Even with the same value, there is a distinction between point and endpoint in the snap code.
-   * Therefore, use different enums for better code readability. */
-  SCE_SNAP_TO_EDGE_ENDPOINT = (1 << 0),
-  SCE_SNAP_TO_EDGE = (1 << 1),
-  SCE_SNAP_TO_FACE = (1 << 2),
-  SCE_SNAP_TO_VOLUME = (1 << 3),
-  SCE_SNAP_TO_EDGE_MIDPOINT = (1 << 4),
-  SCE_SNAP_TO_EDGE_PERPENDICULAR = (1 << 5),
-  SCE_SNAP_TO_INCREMENT = (1 << 6),
+  SCE_SNAP_TO_EDGE_MIDPOINT = (1 << 1),
+  SCE_SNAP_TO_EDGE_ENDPOINT = (1 << 2),
+  SCE_SNAP_TO_EDGE_PERPENDICULAR = (1 << 3),
+  SCE_SNAP_TO_EDGE = (1 << 4),
+  SCE_SNAP_TO_FACE = (1 << 5),
+  SCE_SNAP_TO_VOLUME = (1 << 6),
   SCE_SNAP_TO_GRID = (1 << 7),
+  SCE_SNAP_TO_INCREMENT = (1 << 8),
 
   /** For snap individual elements. */
-  SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 8),
-  SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 9),
-
-  /** #ToolSettings::snap_anim_mode */
-  SCE_SNAP_TO_FRAME = (1 << 10),
-  SCE_SNAP_TO_SECOND = (1 << 11),
-  SCE_SNAP_TO_MARKERS = (1 << 12),
+  SCE_SNAP_INDIVIDUAL_NEAREST = (1 << 9),
+  SCE_SNAP_INDIVIDUAL_PROJECT = (1 << 10),
 } eSnapMode;
 
 /* Due to dependency conflicts with Cycles, header cannot directly include `BLI_utildefines.h`. */
 /* TODO: move this macro to a more general place. */
 #ifdef ENUM_OPERATORS
-ENUM_OPERATORS(eSnapMode, SCE_SNAP_TO_MARKERS)
+ENUM_OPERATORS(eSnapMode, SCE_SNAP_INDIVIDUAL_PROJECT)
 #endif
 
 #define SCE_SNAP_TO_VERTEX (SCE_SNAP_TO_POINT | SCE_SNAP_TO_EDGE_ENDPOINT)
 
 #define SCE_SNAP_TO_GEOM \
-  (SCE_SNAP_TO_VERTEX | SCE_SNAP_TO_EDGE | SCE_SNAP_TO_FACE | SCE_SNAP_TO_EDGE_PERPENDICULAR | \
-   SCE_SNAP_TO_EDGE_MIDPOINT)
+  (SCE_SNAP_TO_VERTEX | SCE_SNAP_TO_EDGE | SCE_SNAP_TO_FACE | SCE_SNAP_TO_EDGE_MIDPOINT | \
+   SCE_SNAP_TO_EDGE_PERPENDICULAR)
 
 /** #SequencerToolSettings::snap_mode */
 enum {
@@ -2491,6 +2511,7 @@ enum {
   SCE_FRAME_DROP = 1 << 3,
   SCE_KEYS_NO_SELONLY = 1 << 4,
   SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK = 1 << 5,
+  SCE_CUSTOM_SIMULATION_RANGE = 1 << 6,
 };
 
 /* Return flag BKE_scene_base_iter_next functions. */
@@ -2680,6 +2701,8 @@ enum {
 
 /** #ToolSettings::gpencil_flags */
 typedef enum eGPencil_Flags {
+  /** Enables multi-frame editing. */
+  GP_USE_MULTI_FRAME_EDITING = (1 << 0),
   /** When creating new frames, the last frame gets used as the basis for the new one. */
   GP_TOOL_FLAG_RETAIN_LAST = (1 << 1),
   /** Add the strokes below all strokes in the layer. */
@@ -2818,7 +2841,7 @@ enum {
   SCE_EEVEE_GTAO_BOUNCE = (1 << 6),
   // SCE_EEVEE_DOF_ENABLED = (1 << 7), /* Moved to camera->dof.flag */
   SCE_EEVEE_BLOOM_ENABLED = (1 << 8),
-  SCE_EEVEE_MOTION_BLUR_ENABLED = (1 << 9),
+  SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED = (1 << 9), /* Moved to scene->r.mode */
   SCE_EEVEE_SHADOW_HIGH_BITDEPTH = (1 << 10),
   SCE_EEVEE_TAA_REPROJECTION = (1 << 11),
   // SCE_EEVEE_SSS_ENABLED = (1 << 12), /* Unused */
@@ -2835,6 +2858,7 @@ enum {
   SCE_EEVEE_DOF_JITTER = (1 << 23),
   SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
   SCE_EEVEE_RAYTRACE_OPTIONS_SPLIT = (1 << 25),
+  SCE_EEVEE_SHADOW_JITTERED_VIEWPORT = (1 << 26),
 };
 
 typedef enum RaytraceEEVEE_Flag {
@@ -2859,13 +2883,6 @@ enum {
   SHADOW_ESM = 1,
   /* SHADOW_VSM = 2, */        /* UNUSED */
   /* SHADOW_METHOD_MAX = 3, */ /* UNUSED */
-};
-
-/** #SceneEEVEE::motion_blur_position */
-enum {
-  SCE_EEVEE_MB_CENTER = 0,
-  SCE_EEVEE_MB_START = 1,
-  SCE_EEVEE_MB_END = 2,
 };
 
 /** #SceneDisplay->render_aa and #SceneDisplay->viewport_aa */

@@ -14,7 +14,6 @@
 
 #include "BKE_grease_pencil.hh"
 
-#include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 
@@ -22,18 +21,15 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "GPU_immediate.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "ED_anim_api.hh"
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 
@@ -319,7 +315,8 @@ static void draw_keylist_block(const DrawKeylistUIData *ctx, const ActKeyColumn 
       }
     }
     if (ctx->show_ipo && actkeyblock_is_valid(ab) &&
-        (ab->block.flag & ACTKEYBLOCK_FLAG_NON_BEZIER)) {
+        (ab->block.flag & ACTKEYBLOCK_FLAG_NON_BEZIER))
+    {
       /* draw an interpolation line */
       draw_keylist_block_interpolation_line(ctx, ab, ypos);
     }
@@ -416,31 +413,31 @@ struct ChannelListElement {
   MaskLayer *masklay;
 };
 
-static void build_channel_keylist(ChannelListElement *elem)
+static void build_channel_keylist(ChannelListElement *elem, blender::float2 range)
 {
   switch (elem->type) {
     case ChannelType::SUMMARY: {
-      summary_to_keylist(elem->ac, elem->keylist, elem->saction_flag);
+      summary_to_keylist(elem->ac, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::SCENE: {
-      scene_to_keylist(elem->ads, elem->sce, elem->keylist, elem->saction_flag);
+      scene_to_keylist(elem->ads, elem->sce, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::OBJECT: {
-      ob_to_keylist(elem->ads, elem->ob, elem->keylist, elem->saction_flag);
+      ob_to_keylist(elem->ads, elem->ob, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::FCURVE: {
-      fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag);
+      fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::ACTION: {
-      action_to_keylist(elem->adt, elem->act, elem->keylist, elem->saction_flag);
+      action_to_keylist(elem->adt, elem->act, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::ACTION_GROUP: {
-      action_group_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag);
+      action_group_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::GREASE_PENCIL_CELS: {
@@ -496,7 +493,7 @@ static void prepare_channel_for_drawing(ChannelListElement *elem)
   ED_keylist_prepare_for_direct_access(elem->keylist);
 }
 
-/* List of channels that are actually drawn because they are in view. */
+/** List of channels that are actually drawn because they are in view. */
 struct ChannelDrawList {
   ListBase /*ChannelListElement*/ channels;
 };
@@ -506,10 +503,10 @@ ChannelDrawList *ED_channel_draw_list_create()
   return static_cast<ChannelDrawList *>(MEM_callocN(sizeof(ChannelDrawList), __func__));
 }
 
-static void channel_list_build_keylists(ChannelDrawList *channel_list)
+static void channel_list_build_keylists(ChannelDrawList *channel_list, blender::float2 range)
 {
   LISTBASE_FOREACH (ChannelListElement *, elem, &channel_list->channels) {
-    build_channel_keylist(elem);
+    build_channel_keylist(elem, range);
     prepare_channel_for_drawing(elem);
   }
 }
@@ -594,7 +591,7 @@ static void channel_list_draw(ChannelDrawList *channel_list, View2D *v2d)
 
 void ED_channel_list_flush(ChannelDrawList *channel_list, View2D *v2d)
 {
-  channel_list_build_keylists(channel_list);
+  channel_list_build_keylists(channel_list, {v2d->cur.xmin, v2d->cur.xmax});
   channel_list_draw(channel_list, v2d);
 }
 

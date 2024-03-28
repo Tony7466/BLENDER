@@ -7,7 +7,6 @@
  */
 
 #include "BLI_math_rotation.h"
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
 #include "node_util.hh"
 
@@ -285,7 +284,7 @@ static void valuefn(float *out, TexParams *p, bNode *node, bNodeStack **in, shor
 
     case NODE_MATH_COMPARE: {
       float in2 = tex_input_value(in[2], p, thread);
-      *out = (fabsf(in0 - in1) <= MAX2(in2, 1e-5f)) ? 1.0f : 0.0f;
+      *out = (fabsf(in0 - in1) <= std::max(in2, 1e-5f)) ? 1.0f : 0.0f;
       break;
     }
 

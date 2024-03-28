@@ -11,20 +11,17 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_modifier.hh"
+#include "BKE_screen.hh"
 
-#include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "ED_object.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -35,7 +32,6 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh" /* Self include */
 
 /**
@@ -44,7 +40,7 @@
  */
 static bool modifier_ui_poll(const bContext *C, PanelType * /*pt*/)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
 
   return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
 }
@@ -95,7 +91,7 @@ void modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
   ModifierData *md = static_cast<ModifierData *>(ptr->data);
   if (md->error) {
     uiLayout *row = uiLayoutRow(layout, false);
-    uiItemL(row, TIP_(md->error), ICON_ERROR);
+    uiItemL(row, RPT_(md->error), ICON_ERROR);
   }
 }
 
@@ -105,7 +101,7 @@ void modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
  *
  * \note The modifier #PointerRNA is owned by the panel so we only need a pointer to it.
  */
-#define ERROR_LIBDATA_MESSAGE TIP_("External library data")
+#define ERROR_LIBDATA_MESSAGE N_("External library data")
 PointerRNA *modifier_panel_get_property_pointers(Panel *panel, PointerRNA *r_ob_ptr)
 {
   PointerRNA *ptr = UI_panel_custom_data_get(panel);
@@ -134,13 +130,31 @@ void modifier_vgroup_ui(uiLayout *layout,
   bool has_vertex_group = RNA_string_length(ptr, vgroup_prop) != 0;
 
   uiLayout *row = uiLayoutRow(layout, true);
-  uiItemPointerR(row, ptr, vgroup_prop, ob_ptr, "vertex_groups", text, ICON_NONE);
+  uiItemPointerR(row, ptr, vgroup_prop, ob_ptr, "vertex_groups", text, ICON_GROUP_VERTEX);
   if (invert_vgroup_prop != nullptr) {
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiLayoutSetPropDecorate(sub, false);
     uiItemR(sub, ptr, invert_vgroup_prop, UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
   }
+}
+
+void modifier_grease_pencil_curve_header_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiItemR(layout, ptr, "use_custom_curve", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+void modifier_grease_pencil_curve_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false);
 }
 
 /**
@@ -198,7 +212,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
   uiLayout *row;
   ModifierData *md = (ModifierData *)md_v;
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_Modifier, md);
   uiLayoutSetContextPointer(layout, "modifier", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -362,11 +376,9 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
                                     &apply_on_spline_always_off_hack,
                                     0.0,
                                     0.0,
-                                    0.0,
-                                    0.0,
-                                    TIP_("Apply on Spline"));
-      UI_but_disable(
-          but, TIP_("This modifier can only deform filled curve/surface, not the control points"));
+                                    RPT_("Apply on Spline"));
+      UI_but_disable(but,
+                     "This modifier can only deform filled curve/surface, not the control points");
       buttons_number++;
     }
     /* Some modifiers can work with pre-tessellated curves only. */
@@ -388,14 +400,12 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
                                     &apply_on_spline_always_on_hack,
                                     0.0,
                                     0.0,
-                                    0.0,
-                                    0.0,
-                                    TIP_("Apply on Spline"));
-      UI_but_disable(
-          but, TIP_("This modifier can only deform control points, not the filled curve/surface"));
+                                    RPT_("Apply on Spline"));
+      UI_but_disable(but,
+                     "This modifier can only deform control points, not the filled curve/surface");
       buttons_number++;
     }
-    else if (mti->type != eModifierTypeType_Constructive) {
+    else if (mti->type != ModifierTypeType::Constructive) {
       /* Constructive modifiers tessellates curve before applying. */
       uiItemR(row, ptr, "use_apply_on_spline", UI_ITEM_NONE, "", ICON_NONE);
       buttons_number++;

@@ -25,7 +25,7 @@ class FILEBROWSER_HT_header(Header):
         layout.separator_spacer()
 
         if params.asset_library_reference not in {'LOCAL', 'ESSENTIALS'}:
-            layout.prop(params, "import_type", text="")
+            layout.prop(params, "import_method", text="")
 
         layout.separator_spacer()
 
@@ -142,12 +142,10 @@ class FILEBROWSER_PT_filter(FileBrowserPanel, Panel):
         else:
             row = col.row()
             row.label(icon='FILE_BLEND')
-            row.prop(params, "use_filter_blender",
-                     text=".blend Files", toggle=False)
+            row.prop(params, "use_filter_blender", text=".blend Files", toggle=False)
             row = col.row()
             row.label(icon='FILE_BACKUP')
-            row.prop(params, "use_filter_backup",
-                     text="Backup .blend Files", toggle=False)
+            row.prop(params, "use_filter_backup", text="Backup .blend Files", toggle=False)
             row = col.row()
             row.label(icon='FILE_IMAGE')
             row.prop(params, "use_filter_image", text="Image Files", toggle=False)
@@ -156,8 +154,7 @@ class FILEBROWSER_PT_filter(FileBrowserPanel, Panel):
             row.prop(params, "use_filter_movie", text="Movie Files", toggle=False)
             row = col.row()
             row.label(icon='FILE_SCRIPT')
-            row.prop(params, "use_filter_script",
-                     text="Script Files", toggle=False)
+            row.prop(params, "use_filter_script", text="Script Files", toggle=False)
             row = col.row()
             row.label(icon='FILE_FONT')
             row.prop(params, "use_filter_font", text="Font Files", toggle=False)
@@ -176,8 +173,7 @@ class FILEBROWSER_PT_filter(FileBrowserPanel, Panel):
         if is_lib_browser:
             row = col.row()
             row.label(icon='BLANK1')  # Indentation
-            row.prop(params, "use_filter_blendid",
-                     text="Blender IDs", toggle=False)
+            row.prop(params, "use_filter_blendid", text="Blender IDs", toggle=False)
             if params.use_filter_blendid:
                 row = col.row()
                 row.label(icon='BLANK1')  # Indentation
@@ -281,10 +277,8 @@ class FILEBROWSER_MT_bookmarks_context_menu(Menu):
         layout.operator("file.bookmark_cleanup", icon='X', text="Cleanup")
 
         layout.separator()
-        layout.operator("file.bookmark_move", icon='TRIA_UP_BAR',
-                        text="Move to Top").direction = 'TOP'
-        layout.operator("file.bookmark_move", icon='TRIA_DOWN_BAR',
-                        text="Move to Bottom").direction = 'BOTTOM'
+        layout.operator("file.bookmark_move", icon='TRIA_UP_BAR', text="Move to Top").direction = 'TOP'
+        layout.operator("file.bookmark_move", icon='TRIA_DOWN_BAR', text="Move to Bottom").direction = 'BOTTOM'
 
 
 class FILEBROWSER_PT_bookmarks_favorites(FileBrowserPanel, Panel):
@@ -314,17 +308,23 @@ class FILEBROWSER_PT_bookmarks_favorites(FileBrowserPanel, Panel):
             col = row.column(align=True)
             col.operator("file.bookmark_add", icon='ADD', text="")
             col.operator("file.bookmark_delete", icon='REMOVE', text="")
-            col.menu("FILEBROWSER_MT_bookmarks_context_menu",
-                     icon='DOWNARROW_HLT', text="")
+            col.menu("FILEBROWSER_MT_bookmarks_context_menu", icon='DOWNARROW_HLT', text="")
 
             if num_rows > 1:
                 col.separator()
-                col.operator("file.bookmark_move", icon='TRIA_UP',
-                             text="").direction = 'UP'
-                col.operator("file.bookmark_move", icon='TRIA_DOWN',
-                             text="").direction = 'DOWN'
+                col.operator("file.bookmark_move", icon='TRIA_UP', text="").direction = 'UP'
+                col.operator("file.bookmark_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
         else:
             layout.operator("file.bookmark_add", icon='ADD')
+
+
+class FILEBROWSER_MT_bookmarks_recents_specials_menu(Menu):
+    bl_label = "Recent Items Specials"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("file.reset_recent", icon='X', text="Clear Recent Items")
 
 
 class FILEBROWSER_PT_bookmarks_recents(Panel):
@@ -351,7 +351,7 @@ class FILEBROWSER_PT_bookmarks_recents(Panel):
                               space, "recent_folders_active", item_dyntip_propname="path", rows=1, maxrows=10)
 
             col = row.column(align=True)
-            col.operator("file.reset_recent", icon='X', text="")
+            col.menu("FILEBROWSER_MT_bookmarks_recents_specials_menu", icon='DOWNARROW_HLT', text="")
 
 
 class FILEBROWSER_PT_advanced_filter(Panel):
@@ -505,7 +505,7 @@ class FILEBROWSER_MT_view(FileBrowserMenu, Menu):
 
         layout.separator()
 
-        layout.prop_menu_enum(params, "display_size")
+        layout.prop_menu_enum(params, "display_size_discrete")
         layout.prop_menu_enum(params, "recursion_level")
 
         layout.separator()
@@ -529,7 +529,7 @@ class FILEBROWSER_MT_select(FileBrowserMenu, Menu):
 
 
 class FILEBROWSER_MT_context_menu(FileBrowserMenu, Menu):
-    bl_label = "Files Context Menu"
+    bl_label = "Files"
 
     def draw(self, context):
         layout = self.layout
@@ -544,10 +544,8 @@ class FILEBROWSER_MT_context_menu(FileBrowserMenu, Menu):
 
         layout.separator()
 
-        layout.operator("file.filenum", text="Increase Number",
-                        icon='ADD').increment = 1
-        layout.operator("file.filenum", text="Decrease Number",
-                        icon='REMOVE').increment = -1
+        layout.operator("file.filenum", text="Increase Number", icon='ADD').increment = 1
+        layout.operator("file.filenum", text="Decrease Number", icon='REMOVE').increment = -1
 
         layout.separator()
 
@@ -567,7 +565,7 @@ class FILEBROWSER_MT_context_menu(FileBrowserMenu, Menu):
 
         layout.prop_menu_enum(params, "display_type")
         if params.display_type == 'THUMBNAIL':
-            layout.prop_menu_enum(params, "display_size")
+            layout.prop_menu_enum(params, "display_size_discrete")
         layout.prop_menu_enum(params, "recursion_level", text="Recursions")
         layout.prop_menu_enum(params, "sort_method")
 
@@ -667,7 +665,7 @@ class ASSETBROWSER_MT_view(AssetBrowserMenu, Menu):
 
         layout.separator()
 
-        layout.prop_menu_enum(params, "display_size")
+        layout.prop_menu_enum(params, "display_size_discrete")
 
         layout.separator()
 
@@ -818,7 +816,7 @@ class ASSETBROWSER_UL_metadata_tags(UIList):
 
 
 class ASSETBROWSER_MT_context_menu(AssetBrowserMenu, Menu):
-    bl_label = "Assets Context Menu"
+    bl_label = "Assets"
 
     def draw(self, context):
         layout = self.layout
@@ -841,7 +839,7 @@ class ASSETBROWSER_MT_context_menu(AssetBrowserMenu, Menu):
         layout.separator()
 
         if params.display_type == 'THUMBNAIL':
-            layout.prop_menu_enum(params, "display_size")
+            layout.prop_menu_enum(params, "display_size_discrete")
 
 
 classes = (
@@ -853,6 +851,7 @@ classes = (
     FILEBROWSER_PT_bookmarks_favorites,
     FILEBROWSER_PT_bookmarks_system,
     FILEBROWSER_PT_bookmarks_volumes,
+    FILEBROWSER_MT_bookmarks_recents_specials_menu,
     FILEBROWSER_PT_bookmarks_recents,
     FILEBROWSER_PT_advanced_filter,
     FILEBROWSER_PT_directory_path,

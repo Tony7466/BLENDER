@@ -2,27 +2,27 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_report.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
 
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
-#include "ED_keyframing.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
+#include "ANIM_keyframing.hh"
+
 #include "RNA_access.hh"
-#include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
@@ -115,13 +115,50 @@ static void stroke_done(const bContext *C, PaintStroke *stroke)
   GreasePencilStrokeOperation *operation = static_cast<GreasePencilStrokeOperation *>(
       paint_stroke_mode_data(stroke));
   operation->on_stroke_done(*C);
+  operation->~GreasePencilStrokeOperation();
 }
 
-static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static bool grease_pencil_brush_stroke_poll(bContext *C)
 {
+  if (!ed::greasepencil::grease_pencil_painting_poll(C)) {
+    return false;
+  }
+  if (!WM_toolsystem_active_tool_is_brush(C)) {
+    return false;
+  }
+  return true;
+}
+
+static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_GREASE_PENCIL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  if (!grease_pencil.has_active_layer()) {
+    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
+    return OPERATOR_CANCELLED;
+  }
+
   const Paint *paint = BKE_paint_get_active_from_context(C);
   const Brush *brush = BKE_paint_brush_for_read(paint);
   if (brush == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+
+  if (!active_layer.is_editable()) {
+    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Ensure a drawing at the current keyframe. */
+  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
 
@@ -143,12 +180,12 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int grease_pencil_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
+static int grease_pencil_brush_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   return paint_stroke_modal(C, op, event, reinterpret_cast<PaintStroke **>(&op->customdata));
 }
 
-static void grease_pencil_stroke_cancel(bContext *C, wmOperator *op)
+static void grease_pencil_brush_stroke_cancel(bContext *C, wmOperator *op)
 {
   paint_stroke_cancel(C, op, static_cast<PaintStroke *>(op->customdata));
 }
@@ -159,9 +196,10 @@ static void GREASE_PENCIL_OT_brush_stroke(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_brush_stroke";
   ot->description = "Draw a new stroke in the active Grease Pencil object";
 
-  ot->invoke = grease_pencil_stroke_invoke;
-  ot->modal = grease_pencil_stroke_modal;
-  ot->cancel = grease_pencil_stroke_cancel;
+  ot->poll = grease_pencil_brush_stroke_poll;
+  ot->invoke = grease_pencil_brush_stroke_invoke;
+  ot->modal = grease_pencil_brush_stroke_modal;
+  ot->cancel = grease_pencil_brush_stroke_cancel;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
@@ -174,9 +212,9 @@ static void GREASE_PENCIL_OT_brush_stroke(wmOperatorType *ot)
 /** \name Toggle Draw Mode
  * \{ */
 
-static bool grease_pencil_mode_poll_view3d(bContext *C)
+static bool grease_pencil_mode_poll_paint_cursor(bContext *C)
 {
-  if (!ed::greasepencil::grease_pencil_painting_poll(C)) {
+  if (!grease_pencil_brush_stroke_poll(C)) {
     return false;
   }
   if (CTX_wm_region_view3d(C) == nullptr) {
@@ -197,11 +235,11 @@ static void grease_pencil_draw_mode_enter(bContext *C)
   ob->mode = OB_MODE_PAINT_GREASE_PENCIL;
 
   /* TODO: Setup cursor color. BKE_paint_init() could be used, but creates an additional brush. */
-  ED_paint_cursor_start(&grease_pencil_paint->paint, grease_pencil_mode_poll_view3d);
+  ED_paint_cursor_start(&grease_pencil_paint->paint, grease_pencil_mode_poll_paint_cursor);
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 }
@@ -220,7 +258,7 @@ static int grease_pencil_draw_mode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = ob->mode == OB_MODE_PAINT_GREASE_PENCIL;
 
   if (is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, OB_MODE_PAINT_GREASE_PENCIL, op->reports)) {
+    if (!object::mode_compat_set(C, ob, OB_MODE_PAINT_GREASE_PENCIL, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -235,7 +273,7 @@ static int grease_pencil_draw_mode_toggle_exec(bContext *C, wmOperator *op)
   WM_toolsystem_update_from_context_view3d(C);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
   return OPERATOR_FINISHED;

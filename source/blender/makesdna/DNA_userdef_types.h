@@ -32,8 +32,6 @@ struct ColorBand;
 
 /* ************************ style definitions ******************** */
 
-#define MAX_STYLE_NAME 64
-
 /**
  * Default offered by Blender.
  * #uiFont.uifont_id
@@ -57,7 +55,7 @@ typedef struct uiFont {
   struct uiFont *next, *prev;
   /** 1024 = FILE_MAX. */
   char filepath[1024];
-  /** From blfont lib. */
+  /** From BLF library. */
   short blf_id;
   /** Own id (eUIFont_ID). */
   short uifont_id;
@@ -81,7 +79,8 @@ typedef struct uiFontStyle {
   float shadowalpha;
   /** 1 value, typically white or black anyway. */
   float shadowcolor;
-  char _pad2[4];
+  /** Weight class 100-900, 400 is normal. */
+  int character_weight;
 } uiFontStyle;
 
 /* this is fed to the layout engine and widget code */
@@ -89,7 +88,7 @@ typedef struct uiFontStyle {
 typedef struct uiStyle {
   struct uiStyle *next, *prev;
 
-  /** MAX_STYLE_NAME. */
+  /** #MAX_NAME */
   char name[64];
 
   uiFontStyle paneltitle;
@@ -286,10 +285,11 @@ typedef struct ThemeSpace {
   unsigned char active[4], group[4], group_active[4], transform[4];
   unsigned char vertex[4], vertex_select[4], vertex_active[4], vertex_bevel[4],
       vertex_unreferenced[4];
-  unsigned char edge[4], edge_select[4];
+  unsigned char edge[4], edge_select[4], edge_mode_select[4];
   unsigned char edge_seam[4], edge_sharp[4], edge_facesel[4], edge_crease[4], edge_bevel[4];
   /** Solid faces. */
-  unsigned char face[4], face_select[4], face_retopology[4], face_back[4], face_front[4];
+  unsigned char face[4], face_select[4], face_mode_select[4], face_retopology[4];
+  unsigned char face_back[4], face_front[4];
   /** Selected color. */
   unsigned char face_dot[4];
   unsigned char extra_edge_len[4], extra_edge_angle[4], extra_face_angle[4], extra_face_area[4];
@@ -333,10 +333,10 @@ typedef struct ThemeSpace {
   float dash_alpha;
 
   /* Syntax for text-window and nodes. */
-  unsigned char syntaxl[4], syntaxs[4]; /* in nodespace used for backdrop matte */
-  unsigned char syntaxb[4], syntaxn[4]; /* in nodespace used for color input */
-  unsigned char syntaxv[4], syntaxc[4]; /* in nodespace used for converter group */
-  unsigned char syntaxd[4], syntaxr[4]; /* in nodespace used for distort */
+  unsigned char syntaxl[4], syntaxs[4]; /* In node-space used for backdrop matte. */
+  unsigned char syntaxb[4], syntaxn[4]; /* In node-space used for color input. */
+  unsigned char syntaxv[4], syntaxc[4]; /* In node-space used for converter group. */
+  unsigned char syntaxd[4], syntaxr[4]; /* In node-space used for distort. */
 
   unsigned char line_numbers[4];
   char _pad6[3];
@@ -349,7 +349,6 @@ typedef struct ThemeSpace {
 
   unsigned char node_zone_simulation[4];
   unsigned char node_zone_repeat[4];
-  unsigned char _pad9[4];
   unsigned char simulated_frames[4];
 
   /** For sequence editor. */
@@ -377,7 +376,7 @@ typedef struct ThemeSpace {
   unsigned char path_keyframe_before[4], path_keyframe_after[4];
   unsigned char camera_path[4];
   unsigned char camera_passepartout[4];
-  unsigned char _pad1[6];
+  unsigned char _pad1[2];
 
   unsigned char gp_vertex_size;
   unsigned char gp_vertex[4], gp_vertex_select[4];
@@ -624,12 +623,24 @@ typedef struct bUserExtensionRepo {
    */
   char module[48];
 
-  char dirpath[1024];     /* FILE_MAX */
-  char remote_path[1024]; /* FILE_MAX */
+  /**
+   * The "local" directory where extensions are stored.
+   * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
+   */
+  char custom_dirpath[1024]; /* FILE_MAX */
+  char remote_path[1024];    /* FILE_MAX */
 
   int flag;
   char _pad0[4];
 } bUserExtensionRepo;
+
+typedef enum eUserExtensionRepo_Flag {
+  /** Maintain disk cache. */
+  USER_EXTENSION_REPO_FLAG_NO_CACHE = 1 << 0,
+  USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
+  USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
+  USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
+} eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
   int flag;
@@ -703,15 +714,15 @@ typedef struct UserDef_Experimental {
   char use_full_frame_compositor;
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
-  char use_override_templates;
-  char enable_eevee_next;
   char use_sculpt_texture_paint;
   char use_grease_pencil_version3;
+  char use_new_matrix_socket;
   char enable_overlay_next;
   char use_new_volume_nodes;
-  char use_node_group_operators;
   char use_shader_node_previews;
   char use_extension_repos;
+  char use_extension_utils;
+  char use_grease_pencil_version3_convert_on_load;
 
   char _pad[1];
   /** `makesdna` does not allow empty structs. */
@@ -731,6 +742,12 @@ typedef struct bUserScriptDirectory {
   char dir_path[768]; /* FILE_MAXDIR */
 } bUserScriptDirectory;
 
+/**
+ * Main user preferences data, typically accessed from #U.
+ * See: #BKE_blendfile_userdef_from_defaults & #BKE_blendfile_userdef_read.
+ *
+ * \note This is either loaded from the file #BLENDER_USERPREF_FILE or from memory, see #U_default.
+ */
 typedef struct UserDef {
   DNA_DEFINE_CXX_METHODS(UserDef)
 
@@ -954,8 +971,11 @@ typedef struct UserDef {
 
   /** #eAutokey_Mode, auto-keying mode. */
   short autokey_mode;
-  /** Flags for autokeying. */
-  short autokey_flag;
+  /** Flags for inserting keyframes. */
+  short keying_flag;
+  /** Flags for which channels to insert keys at. */
+  short key_insert_channels;  // eKeyInsertChannels
+  char _pad15[6];
   /** Flags for animation. */
   short animation_flag;
 
@@ -1041,7 +1061,7 @@ typedef struct UserDef {
   UserDef_Runtime runtime;
 } UserDef;
 
-/** From blenkernel `blender.cc`. */
+/** From `source/blender/blenkernel/intern/blender.cc`. */
 extern UserDef U;
 
 /* ***************** USERDEF ****************** */
@@ -1084,7 +1104,7 @@ typedef enum eUserPref_SpaceData_Flag {
 typedef enum eUserPref_Flag {
   USER_AUTOSAVE = (1 << 0),
   USER_FLAG_NUMINPUT_ADVANCED = (1 << 1),
-  USER_FLAG_UNUSED_2 = (1 << 2), /* cleared */
+  USER_FLAG_RECENT_SEARCHES_DISABLE = (1 << 2),
   USER_FLAG_UNUSED_3 = (1 << 3), /* cleared */
   USER_FLAG_UNUSED_4 = (1 << 4), /* cleared */
   USER_TRACKBALL = (1 << 5),
@@ -1279,28 +1299,40 @@ typedef enum eZoomFrame_Mode {
 } eZoomFrame_Mode;
 
 /**
- * Auto-Keying flag
- * #UserDef.autokey_flag (not strictly used when autokeying only -
- * is also used when keyframing these days).
- * \note #eAutokey_Flag is used with a macro, search for lines like IS_AUTOKEY_FLAG(INSERTAVAIL).
+ * Defines how keyframes are inserted.
+ * Used for regular keying and auto-keying.
+ * Not all of those flags are stored in the user preferences (U.keying_flag).
+ * Some are stored on the scene (toolsettings.keying_flag).
  */
-typedef enum eAutokey_Flag {
-  AUTOKEY_FLAG_INSERTAVAIL = (1 << 0),
-  AUTOKEY_FLAG_INSERTNEEDED = (1 << 1),
-  AUTOKEY_FLAG_AUTOMATKEY = (1 << 2),
-  AUTOKEY_FLAG_XYZ2RGB = (1 << 3),
+typedef enum eKeying_Flag {
+  /* Settings used across manual and auto-keying. */
+  KEYING_FLAG_VISUALKEY = (1 << 2),
+  KEYING_FLAG_XYZ2RGB = (1 << 3),
+  KEYING_FLAG_CYCLEAWARE = (1 << 8),
 
-  /* toolsettings->autokey_flag */
+  /* Auto-key options. */
+  AUTOKEY_FLAG_INSERTAVAILABLE = (1 << 0),
+  AUTOKEY_FLAG_INSERTNEEDED = (1 << 1),
   AUTOKEY_FLAG_ONLYKEYINGSET = (1 << 6),
   AUTOKEY_FLAG_NOWARNING = (1 << 7),
-  AUTOKEY_FLAG_CYCLEAWARE = (1 << 8),
-  ANIMRECORD_FLAG_WITHNLA = (1 << 10),
-} eAutokey_Flag;
+  AUTOKEY_FLAG_LAYERED_RECORD = (1 << 10),
+
+  /* Manual Keying options. */
+  MANUALKEY_FLAG_INSERTNEEDED = (1 << 11),
+} eKeying_Flag;
+
+typedef enum eKeyInsertChannels {
+  USER_ANIM_KEY_CHANNEL_LOCATION = (1 << 0),
+  USER_ANIM_KEY_CHANNEL_ROTATION = (1 << 1),
+  USER_ANIM_KEY_CHANNEL_SCALE = (1 << 2),
+  USER_ANIM_KEY_CHANNEL_ROTATION_MODE = (1 << 3),
+  USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES = (1 << 4),
+} eKeyInsertChannels;
 
 /**
  * Animation flags
  * #UserDef.animation_flag, used for animation flags that aren't covered by more specific flags
- * (like eAutokey_Flag).
+ * (like eKeying_Flag).
  */
 typedef enum eUserpref_Anim_Flags {
   USER_ANIM_SHOW_CHANNEL_GROUP_COLORS = (1 << 0),
@@ -1312,7 +1344,7 @@ typedef enum eUserpref_Anim_Flags {
 typedef enum eUserpref_Translation_Flags {
   USER_TR_TOOLTIPS = (1 << 0),
   USER_TR_IFACE = (1 << 1),
-  USER_TR_UNUSED_2 = (1 << 2),            /* cleared */
+  USER_TR_REPORTS = (1 << 2),
   USER_TR_UNUSED_3 = (1 << 3),            /* cleared */
   USER_TR_UNUSED_4 = (1 << 4),            /* cleared */
   USER_DOTRANSLATE_DEPRECATED = (1 << 5), /* Deprecated in 2.83. */
@@ -1339,6 +1371,8 @@ typedef enum eText_Draw_Options {
   USER_TEXT_HINTING_NONE = (1 << 1),
   USER_TEXT_HINTING_SLIGHT = (1 << 2),
   USER_TEXT_HINTING_FULL = (1 << 3),
+
+  USER_TEXT_RENDER_SUBPIXELAA = (1 << 4),
 } eText_Draw_Options;
 
 /**
@@ -1444,16 +1478,6 @@ typedef enum eUserpref_VirtualPixel {
   VIRTUAL_PIXEL_NATIVE = 0,
   VIRTUAL_PIXEL_DOUBLE = 1,
 } eUserpref_VirtualPixel;
-
-typedef enum eOpensubdiv_Computee_Type {
-  USER_OPENSUBDIV_COMPUTE_NONE = 0,
-  USER_OPENSUBDIV_COMPUTE_CPU = 1,
-  USER_OPENSUBDIV_COMPUTE_OPENMP = 2,
-  USER_OPENSUBDIV_COMPUTE_OPENCL = 3,
-  USER_OPENSUBDIV_COMPUTE_CUDA = 4,
-  USER_OPENSUBDIV_COMPUTE_GLSL_TRANSFORM_FEEDBACK = 5,
-  USER_OPENSUBDIV_COMPUTE_GLSL_COMPUTE = 6,
-} eOpensubdiv_Computee_Type;
 
 /** #UserDef.factor_display_type */
 typedef enum eUserpref_FactorDisplay {

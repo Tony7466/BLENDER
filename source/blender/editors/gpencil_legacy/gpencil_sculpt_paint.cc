@@ -22,15 +22,13 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "PIL_time.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -38,17 +36,15 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_deform.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_gpencil_update_cache_legacy.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "UI_interface.hh"
 
@@ -57,20 +53,20 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_view2d.hh"
 
 #include "ED_gpencil_legacy.hh"
-#include "ED_keyframing.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "ANIM_keyframing.hh"
 
-#include "gpencil_intern.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
+
+#include "gpencil_intern.hh"
 
 #define SEARCH_RADIUS_PIXEL 20
 
@@ -231,7 +227,7 @@ static bool gpencil_brush_invert_check(tGP_BrushEditData *gso)
 {
   /* The basic setting is the brush's setting (from the panel) */
   bool invert = ((gso->brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
-                (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
+                (gso->brush->flag & BRUSH_DIR_IN);
   /* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
   if (gso->flag & GP_SCULPT_FLAG_INVERT) {
     invert ^= true;
@@ -304,7 +300,6 @@ static void gpencil_update_geometry(bGPdata *gpd)
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         if (gps->flag & GP_STROKE_TAG) {
           BKE_gpencil_stroke_geometry_update(gpd, gps);
-          BKE_gpencil_tag_full_update(gpd, gpl, gpf, gps);
           gps->flag &= ~GP_STROKE_TAG;
           changed = true;
         }
@@ -683,7 +678,7 @@ static bool gpencil_brush_pinch_apply(tGP_BrushEditData *gso,
 
   /* 1) Make this point relative to the cursor/midpoint (dvec) */
   float fpt[3];
-  mul_v3_m4v3(fpt, gso->object->object_to_world, &pt->x);
+  mul_v3_m4v3(fpt, gso->object->object_to_world().ptr(), &pt->x);
   sub_v3_v3v3(vec, fpt, gso->dvec);
 
   /* 2) Shrink the distance by pulling the point towards the midpoint
@@ -703,7 +698,7 @@ static bool gpencil_brush_pinch_apply(tGP_BrushEditData *gso,
 
   /* 3) Translate back to original space, with the shrinkage applied */
   add_v3_v3v3(fpt, gso->dvec, vec);
-  mul_v3_m4v3(&pt->x, gso->object->world_to_object, fpt);
+  mul_v3_m4v3(&pt->x, gso->object->world_to_object().ptr(), fpt);
 
   /* compute lock axis */
   gpencil_sculpt_compute_lock_axis(gso, pt, save_pt);
@@ -755,12 +750,12 @@ static bool gpencil_brush_twist_apply(tGP_BrushEditData *gso,
 
     /* Rotate point */
     float fpt[3];
-    mul_v3_m4v3(fpt, gso->object->object_to_world, &pt->x);
+    mul_v3_m4v3(fpt, gso->object->object_to_world().ptr(), &pt->x);
     sub_v3_v3v3(vec, fpt, gso->dvec); /* make relative to center
                                        * (center is stored in dvec) */
     mul_m3_v3(rmat, vec);
     add_v3_v3v3(fpt, vec, gso->dvec); /* restore */
-    mul_v3_m4v3(&pt->x, gso->object->world_to_object, fpt);
+    mul_v3_m4v3(&pt->x, gso->object->world_to_object().ptr(), fpt);
 
     /* compute lock axis */
     gpencil_sculpt_compute_lock_axis(gso, pt, save_pt);
@@ -1026,7 +1021,9 @@ static void gpencil_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
         gpl = CTX_data_active_gpencil_layer(C);
       }
       bGPDframe *gpf = BKE_gpencil_layer_frame_get(
-          gpl, scene->r.cfra, IS_AUTOKEY_ON(scene) ? GP_GETFRAME_ADD_NEW : GP_GETFRAME_USE_PREV);
+          gpl,
+          scene->r.cfra,
+          blender::animrig::is_autokey_on(scene) ? GP_GETFRAME_ADD_NEW : GP_GETFRAME_USE_PREV);
       if (gpf == nullptr) {
         continue;
       }
@@ -1049,11 +1046,11 @@ static void gpencil_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
        */
       for (i = 0, pt = new_stroke->points; i < new_stroke->totpoints; i++, pt++) {
         /* Rotate around center new position */
-        mul_mat3_m4_v3(gso->object->object_to_world, &pt->x); /* only rotation component */
+        mul_mat3_m4_v3(gso->object->object_to_world().ptr(), &pt->x); /* only rotation component */
 
         /* assume that the delta can just be applied, and then everything works */
         add_v3_v3(&pt->x, delta);
-        mul_m4_v3(gso->object->world_to_object, &pt->x);
+        mul_m4_v3(gso->object->world_to_object().ptr(), &pt->x);
       }
 
       /* Store ref for later */
@@ -1136,9 +1133,9 @@ static void gpencil_sculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
   char str[UI_MAX_DRAW_STR] = "";
 
   SNPRINTF(str,
-           TIP_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                " | Shift-Wheel Up/Down for Strength"),
+           IFACE_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                  " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                  " | Shift-Wheel Up/Down for Strength"),
            brush->id.name + 2);
 
   ED_workspace_status_text(C, str);
@@ -1169,7 +1166,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->settings = gpencil_sculpt_get_settings(scene);
 
   /* Random generator, only init once. */
-  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(gso);
   gso->rng = BLI_rng_new(rng_seed);
 
@@ -1184,7 +1181,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->object = ob;
   if (ob) {
     float matrix[4][4];
-    copy_m4_m4(matrix, ob->object_to_world);
+    copy_m4_m4(matrix, ob->object_to_world().ptr());
     zero_axis_bias_m4(matrix);
     invert_m4_m4(gso->inv_mat, matrix);
     gso->vrgroup = gso->gpd->vertex_group_active_index - 1;
@@ -1206,7 +1203,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->region = CTX_wm_region(C);
 
   Paint *paint = &ts->gp_sculptpaint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
   gso->brush = brush;
   BKE_curvemapping_init(gso->brush->curve);
 
@@ -1374,7 +1371,7 @@ static void gpencil_sculpt_brush_init_stroke(bContext *C, tGP_BrushEditData *gso
 
   /* go through each layer, and ensure that we've got a valid frame to use */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    if (!IS_AUTOKEY_ON(scene) && (gpl->actframe == nullptr)) {
+    if (!blender::animrig::is_autokey_on(scene) && (gpl->actframe == nullptr)) {
       continue;
     }
 
@@ -1387,9 +1384,8 @@ static void gpencil_sculpt_brush_init_stroke(bContext *C, tGP_BrushEditData *gso
        * - This is useful when animating as it saves that "uh-oh" moment when you realize you've
        *   spent too much time editing the wrong frame.
        */
-      if (IS_AUTOKEY_ON(scene) && (gpf->framenum != cfra)) {
+      if (blender::animrig::is_autokey_on(scene) && (gpf->framenum != cfra)) {
         BKE_gpencil_frame_addcopy(gpl, cfra);
-        BKE_gpencil_tag_full_update(gpd, gpl, nullptr, nullptr);
         /* Need tag to recalculate evaluated data to avoid crashes. */
         DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
         WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
@@ -1636,9 +1632,6 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
                                 GP_SCULPT_SETT_FLAG_AUTOMASK_MATERIAL_STROKE |
                                 GP_SCULPT_SETT_FLAG_AUTOMASK_LAYER_ACTIVE |
                                 GP_SCULPT_SETT_FLAG_AUTOMASK_MATERIAL_ACTIVE)) != 0;
-  /* Calc bound box matrix. */
-  float bound_mat[4][4];
-  BKE_gpencil_layer_transform_matrix_get(gso->depsgraph, gso->object, gpl, bound_mat);
 
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     /* skip strokes that are invalid for current view */
@@ -1659,7 +1652,7 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
 
     /* Check if the stroke collide with brush. */
     if ((gps->totpoints > 1) &&
-        !ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, bound_mat))
+        !ED_gpencil_stroke_check_collision(gsc, gps, gso->mval, radius, diff_mat))
     {
       continue;
     }
@@ -1697,7 +1690,7 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
              */
             gpencil_brush_grab_stroke_init(gso, gps_active);
             changed |= gpencil_sculpt_brush_do_stroke(
-                gso, gps, bound_mat, gpencil_brush_grab_store_points);
+                gso, gps, diff_mat, gpencil_brush_grab_store_points);
           }
           else {
             /* Apply effect to the stored points */
@@ -1760,9 +1753,6 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
         /* Delay a full recalculation for other frames. */
         gpencil_recalc_geometry_tag(gps_active);
       }
-      bGPDlayer *gpl_active = (gpl->runtime.gpl_orig) ? gpl->runtime.gpl_orig : gpl;
-      bGPDframe *gpf_active = (gpf->runtime.gpf_orig) ? gpf->runtime.gpf_orig : gpf;
-      BKE_gpencil_tag_full_update(gpd, gpl_active, gpf_active, gps_active);
     }
   }
 

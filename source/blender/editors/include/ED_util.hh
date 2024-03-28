@@ -11,11 +11,14 @@
 #include "BLI_compiler_attrs.h"
 #include "WM_types.hh"
 
-struct IDRemapper;
 struct Main;
 struct bContext;
 
-/* ed_util.cc */
+namespace blender::bke::id {
+class IDRemapper;
+}
+
+/* `ed_util.cc` */
 
 void ED_editors_init_for_undo(Main *bmain);
 void ED_editors_init(bContext *C);
@@ -42,7 +45,9 @@ bool ED_editors_flush_edits(Main *bmain);
  * \param new_id: may be NULL to unlink \a old_id.
  */
 void ED_spacedata_id_remap_single(ScrArea *area, SpaceLink *sl, ID *old_id, ID *new_id);
-void ED_spacedata_id_remap(ScrArea *area, SpaceLink *sl, const IDRemapper *mappings);
+void ED_spacedata_id_remap(ScrArea *area,
+                           SpaceLink *sl,
+                           const blender::bke::id::IDRemapper &mappings);
 
 void ED_operatortypes_edutils();
 
@@ -85,7 +90,7 @@ void ED_slider_status_string_get(const tSlider *slider,
 float ED_slider_factor_get(tSlider *slider);
 void ED_slider_factor_set(tSlider *slider, float factor);
 
-/* One bool value for each side of the slider. Allows to enable overshoot only on one side. */
+/** One bool value for each side of the slider. Allows to enable overshoot only on one side. */
 void ED_slider_allow_overshoot_set(tSlider *slider, bool lower, bool upper);
 
 /**
@@ -96,7 +101,7 @@ void ED_slider_factor_bounds_set(tSlider *slider, float lower_bound, float upper
 bool ED_slider_allow_increments_get(tSlider *slider);
 void ED_slider_allow_increments_set(tSlider *slider, bool value);
 
-void ED_slider_mode_set(tSlider *slider, SliderMode unit);
+void ED_slider_mode_set(tSlider *slider, SliderMode mode);
 SliderMode ED_slider_mode_get(tSlider *slider);
 void ED_slider_unit_set(tSlider *slider, const char *unit);
 

@@ -10,10 +10,10 @@
 #include <sstream>
 #include <string>
 
-#include "BKE_anim_data.h"
-#include "BKE_duplilist.h"
-#include "BKE_key.h"
-#include "BKE_object.h"
+#include "BKE_anim_data.hh"
+#include "BKE_duplilist.hh"
+#include "BKE_key.hh"
+#include "BKE_object.hh"
 #include "BKE_particle.h"
 
 #include "BLI_assert.h"
@@ -27,7 +27,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_rigidbody_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io {
 
@@ -413,7 +413,7 @@ void AbstractHierarchyIterator::visit_object(Object *object,
   context->original_export_path = "";
   context->higher_up_export_path = "";
 
-  copy_m4_m4(context->matrix_world, object->object_to_world);
+  copy_m4_m4(context->matrix_world, object->object_to_world().ptr());
 
   ExportGraph::key_type graph_index = determine_graph_index_object(context);
   context_update_for_graph_index(context, graph_index);

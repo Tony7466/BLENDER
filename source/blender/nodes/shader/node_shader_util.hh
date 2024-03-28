@@ -10,20 +10,25 @@
 
 #include <cfloat>
 #include <cmath>
-#include <cstring>
 
 #include "BKE_node.hh"
 
 #include "DNA_node_types.h"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "NOD_socket_declarations.hh"
 
 #include "node_shader_register.hh"
 
+#ifdef WITH_MATERIALX
+#  include "materialx/node_parser.h"
+#else
+#  define NODE_SHADER_MATERIALX_BEGIN NodeMaterialXFunction node_shader_materialx = nullptr;
+#  define NODE_SHADER_MATERIALX_END
+#endif
+
 struct bContext;
-typedef struct bContext bContext;
 struct bNodeExecContext;
 struct bNodeExecData;
 struct bNodeTreeExec;
@@ -63,5 +68,16 @@ bNodeTreeExec *ntreeShaderBeginExecTree_internal(bNodeExecContext *context,
                                                  bNodeInstanceKey parent_key);
 void ntreeShaderEndExecTree_internal(bNodeTreeExec *exec);
 
-void ntreeExecGPUNodes(bNodeTreeExec *exec, GPUMaterial *mat, bNode *output_node);
+/* If depth_level is not null, only nodes where `node->runtime->tmp_flag == depth_level` will be
+ * executed. This allows finer control over node execution order without modifying the tree
+ * topology. */
+void ntreeExecGPUNodes(bNodeTreeExec *exec,
+                       GPUMaterial *mat,
+                       bNode *output_node,
+                       int *depth_level = nullptr);
+
 void get_XYZ_to_RGB_for_gpu(XYZ_to_RGB *data);
+
+bool node_socket_not_zero(const GPUNodeStack &socket);
+bool node_socket_not_white(const GPUNodeStack &socket);
+bool node_socket_not_black(const GPUNodeStack &socket);

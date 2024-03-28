@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
-blender -b -noaudio --factory-startup --python tests/python/bl_animation_fcurves.py -- --testdir /path/to/lib/tests/animation
+blender -b --factory-startup --python tests/python/bl_animation_fcurves.py -- --testdir /path/to/tests/data/animation
 """
 
 import pathlib
@@ -171,7 +171,7 @@ def get_view3d_context():
 class KeyframeInsertTest(AbstractAnimationTest, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        bpy.ops.wm.read_homefile()
+        bpy.ops.wm.read_homefile(use_factory_startup=True)
 
     def test_keyframe_insertion_basic(self):
         bpy.ops.mesh.primitive_monkey_add()
@@ -264,7 +264,7 @@ class KeyframeInsertTest(AbstractAnimationTest, unittest.TestCase):
 class KeyframeDeleteTest(AbstractAnimationTest, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        bpy.ops.wm.read_homefile()
+        bpy.ops.wm.read_homefile(use_factory_startup=True)
 
     def test_keyframe_deletion_basic(self):
         bpy.ops.mesh.primitive_monkey_add()

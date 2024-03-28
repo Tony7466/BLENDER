@@ -6,16 +6,14 @@
  * \ingroup cmpnodes
  */
 
-#include "RNA_access.hh"
-
 #include "BLI_string.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_ocio_color_space_conversion_shader.hh"
@@ -84,7 +82,8 @@ class ConvertColorSpaceOperation : public NodeOperation {
     const char *target = node_storage(bnode()).to_color_space;
 
     OCIOColorSpaceConversionShader &ocio_shader =
-        context().cache_manager().ocio_color_space_conversion_shaders.get(source, target);
+        context().cache_manager().ocio_color_space_conversion_shaders.get(
+            context(), source, target);
 
     GPUShader *shader = ocio_shader.bind_shader_and_resources();
 

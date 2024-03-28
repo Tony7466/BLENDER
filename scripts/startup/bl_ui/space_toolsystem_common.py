@@ -226,8 +226,7 @@ class ToolSelectPanelHelper:
     @staticmethod
     def _tool_class_from_space_type(space_type):
         return next(
-            (cls for cls in ToolSelectPanelHelper.__subclasses__()
-             if cls.bl_space_type == space_type),
+            (cls for cls in ToolSelectPanelHelper.__subclasses__() if cls.bl_space_type == space_type),
             None,
         )
 
@@ -500,6 +499,15 @@ class ToolSelectPanelHelper:
             kc_default.keymaps.new(km_idname, **km_kwargs)
 
     @classmethod
+    def register_ensure(cls):
+        """
+        Ensure register has created key-map data, needed when key-map data is needed in background mode.
+        """
+        if cls._has_keymap_data:
+            return
+        cls.register()
+
+    @classmethod
     def register(cls):
         wm = bpy.context.window_manager
         # Write into defaults, users may modify in preferences.
@@ -513,6 +521,7 @@ class ToolSelectPanelHelper:
 
         # ignore in background mode
         if kc_default is None:
+            cls._has_keymap_data = False
             return
 
         for context_mode, tools in cls.tools_all():
@@ -529,6 +538,8 @@ class ToolSelectPanelHelper:
                     continue
                 if callable(keymap_data[0]):
                     cls._km_action_simple(kc_default, kc_default, context_descr, item.label, keymap_data)
+
+        cls._has_keymap_data = True
 
     @classmethod
     def keymap_ui_hierarchy(cls, context_mode):
@@ -801,11 +812,9 @@ class ToolSelectPanelHelper:
             layout.label(text="    " + iface_(item.label, "Operator"), icon_value=icon_value)
             layout.separator()
         else:
-            if context.space_data.show_region_toolbar:
-                layout.template_icon(icon_value=0, scale=0.5)
-            else:
+            if not context.space_data.show_region_toolbar:
                 layout.template_icon(icon_value=icon_value, scale=0.5)
-            layout.separator()
+                layout.separator()
 
         draw_settings = item.draw_settings
         if draw_settings is not None:

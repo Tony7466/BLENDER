@@ -6,12 +6,14 @@
  * \ingroup draw
  */
 
+#include "DNA_meshdata_types.h"
+
 #include "MEM_guardedalloc.h"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
 
-#include "draw_subdivision.h"
+#include "draw_subdivision.hh"
 #include "extract_mesh.hh"
 
 namespace blender::draw {
@@ -85,13 +87,13 @@ static void extract_weights_init(const MeshRenderData &mr,
                                  void *buf,
                                  void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
   GPU_vertbuf_init_with_format(vbo, &format);
-  GPU_vertbuf_data_alloc(vbo, mr.loop_len + mr.loop_loose_len);
+  GPU_vertbuf_data_alloc(vbo, mr.corners_num + mr.loose_indices_num);
 
   MeshExtract_Weight_Data *data = static_cast<MeshExtract_Weight_Data *>(tls_data);
   data->vbo_data = (float *)GPU_vertbuf_get_data(vbo);
@@ -107,7 +109,7 @@ static void extract_weights_init(const MeshRenderData &mr,
     data->cd_ofs = CustomData_get_offset(&mr.bm->vdata, CD_MDEFORMVERT);
   }
   else {
-    data->dvert = mr.me->deform_verts().data();
+    data->dvert = mr.mesh->deform_verts().data();
     data->cd_ofs = -1;
   }
 }
@@ -138,15 +140,15 @@ static void extract_weights_iter_face_mesh(const MeshRenderData &mr,
                                            void *_data)
 {
   MeshExtract_Weight_Data *data = static_cast<MeshExtract_Weight_Data *>(_data);
-  for (const int ml_index : mr.faces[face_index]) {
-    const int vert = mr.corner_verts[ml_index];
+  for (const int corner : mr.faces[face_index]) {
+    const int vert = mr.corner_verts[corner];
     if (data->dvert != nullptr) {
       const MDeformVert *dvert = &data->dvert[vert];
-      data->vbo_data[ml_index] = evaluate_vertex_weight(dvert, data->wstate);
+      data->vbo_data[corner] = evaluate_vertex_weight(dvert, data->wstate);
     }
     else {
       const MDeformVert *dvert = nullptr;
-      data->vbo_data[ml_index] = evaluate_vertex_weight(dvert, data->wstate);
+      data->vbo_data[corner] = evaluate_vertex_weight(dvert, data->wstate);
     }
   }
 }
@@ -158,7 +160,7 @@ static void extract_weights_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                         void *_data)
 {
   Mesh *coarse_mesh = subdiv_cache.mesh;
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
@@ -166,7 +168,7 @@ static void extract_weights_init_subdiv(const DRWSubdivCache &subdiv_cache,
   }
   GPU_vertbuf_init_build_on_device(vbo, &format, subdiv_cache.num_subdiv_loops);
 
-  GPUVertBuf *coarse_weights = GPU_vertbuf_calloc();
+  gpu::VertBuf *coarse_weights = GPU_vertbuf_calloc();
   extract_weights_init(mr, cache, coarse_weights, _data);
 
   if (mr.extract_type != MR_EXTRACT_BMESH) {
@@ -205,6 +207,6 @@ constexpr MeshExtract create_extractor_weights()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_weights = create_extractor_weights();
 
-const MeshExtract extract_weights = blender::draw::create_extractor_weights();
+}  // namespace blender::draw

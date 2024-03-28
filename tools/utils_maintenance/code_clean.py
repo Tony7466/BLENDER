@@ -327,7 +327,7 @@ def process_commands(cmake_dir: str, data: Sequence[str]) -> Optional[ProcessedC
         return None
 
     # Check for unsupported configurations.
-    for arg in ("WITH_UNITY_BUILD", "WITH_COMPILER_CCACHE"):
+    for arg in ("WITH_UNITY_BUILD", "WITH_COMPILER_CCACHE", "WITH_COMPILER_PRECOMPILED_HEADERS"):
         if cmake_cache_var_is_true(cmake_cache_var(cmake_dir, arg)):
             sys.stderr.write("The option '%s' must be disabled for proper functionality\n" % arg)
             return None
@@ -1076,6 +1076,41 @@ class edit_generators:
 
             return edits
 
+    class use_std_min_max(EditGenerator):
+        """
+        Use `std::min` & `std::max` instead of `MIN2`, `MAX2` macros:
+
+        Replace:
+          MAX2(a, b)
+        With:
+          std::max(a, b)
+        """
+        is_default = True
+
+        @staticmethod
+        def edit_list_from_file(source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits: List[Edit] = []
+
+            # The user might include C & C++, if they forget, it is better not to operate on C.
+            if source.lower().endswith((".h", ".c")):
+                return edits
+
+            for src, dst in (
+                    ("MIN2", "std::min"),
+                    ("MAX2", "std::max"),
+            ):
+                for match in re.finditer(
+                        (r"\b(" + src + r")\("),
+                        data,
+                ):
+                    edits.append(Edit(
+                        span=match.span(1),
+                        content=dst,
+                        content_fail='__ALWAYS_FAIL__',
+                    ))
+
+            return edits
+
     class use_str_sizeof_macros(EditGenerator):
         """
         Use `STRNCPY` & `SNPRINTF` macros:
@@ -1420,13 +1455,23 @@ class edit_generators:
         """
         Clean headers, ensuring that the headers removed are not used directly or indirectly.
 
-        Note that the `CFLAGS` should be set so missing prototypes error instead of warn:
-        With GCC: `-Werror=missing-prototypes`
+        Note that the `CFLAGS` should be set so missing prototypes error instead of warn.
+        With GCC:
+           CMAKE_C_FLAGS=-Werror=missing-prototypes -Werror=undef
+           CMAKE_CXX_FLAGS=-Werror=missing-declarations -Werror=undef
         """
 
         # Non-default because changes to headers may cause breakage on other platforms.
         # Before committing these changes all supported platforms should be tested to compile without problems.
         is_default = False
+
+        @staticmethod
+        def _header_exclude(f_basename: str) -> bool:
+            # This header only exists to add additional warnings, removing it doesn't impact generated output.
+            # Skip this file.
+            if f_basename == "BLI_strict_flags.h":
+                return True
+            return False
 
         @staticmethod
         def _header_guard_from_filename(f: str) -> str:
@@ -1444,6 +1489,10 @@ class edit_generators:
                     os.path.join(SOURCE_DIR, 'source'),
                     ('.h', '.hh', '.inl', '.hpp', '.hxx'),
             ):
+                f_basename = os.path.basename(f)
+                if cls._header_exclude(f_basename):
+                    continue
+
                 with open(f, 'r', encoding='utf-8') as fh:
                     data = fh.read()
 
@@ -1484,7 +1533,12 @@ class edit_generators:
             # Remove include.
             for match in re.finditer(r"^(([ \t]*#\s*include\s+\")([^\"]+)(\"[^\n]*\n))", data, flags=re.MULTILINE):
                 header_name = match.group(3)
-                header_guard = cls._header_guard_from_filename(header_name)
+                # Use in case the include has a leading path.
+                header_basename = os.path.basename(header_name)
+                if cls._header_exclude(header_basename):
+                    continue
+
+                header_guard = cls._header_guard_from_filename(header_basename)
                 edits.append(Edit(
                     span=match.span(),
                     content='',  # Remove the header.
@@ -1610,6 +1664,9 @@ def test_edit(
     """
     if os.path.exists(output):
         os.remove(output)
+
+    # Useful when inspecting failure to compile files, so it's possible to run the command manually.
+    # `print("COMMAND: {:s}\nCMD: {:s}\nOUTPUT: {:s}\n".format(" ".join(build_args), str(build_cwd), output))`
 
     with open(source, 'w', encoding='utf-8') as fh:
         fh.write(data_test)
@@ -1781,7 +1838,7 @@ def wash_source_with_edit(
             build_args_for_edit = build_args
             if extra_build_args:
                 # Add directly after the compile command.
-                build_args_for_edit = build_args[:1] + extra_build_args + build_args[1:]
+                build_args_for_edit = tuple(list(build_args[:1]) + list(extra_build_args) + list(build_args[1:]))
 
             data_test = apply_edit(source_relative, data, text, start, end, verbose=verbose_edit_actions)
             if test_edit(
@@ -1882,7 +1939,7 @@ def run_edits_on_directory(
         return 1
 
     if jobs <= 0:
-        jobs = multiprocessing.cpu_count() * 2
+        jobs = multiprocessing.cpu_count()
 
     if args is None:
         # Error will have been reported.
@@ -2135,7 +2192,7 @@ def main() -> int:
     verbose_edit_actions = False
     verbose_all_from_args = args.verbose.split(",") if args.verbose else []
     while verbose_all_from_args:
-        match (verbose_id := verbose_all_from_args.pop()):
+        match(verbose_id := verbose_all_from_args.pop()):
             case "compile":
                 verbose_compile = True
             case "edit_actions":

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -77,16 +77,15 @@ uint64_t BoneColor::hash() const
   /* For custom colors, hash everything together. */
 
   /* The last byte of the color is skipped, as it is inconsistent (see note above). */
-  const uint64_t hash_solid = get_default_hash_3(
-      custom.solid[0], custom.solid[1], custom.solid[2]);
-  const uint64_t hash_select = get_default_hash_3(
+  const uint64_t hash_solid = get_default_hash(custom.solid[0], custom.solid[1], custom.solid[2]);
+  const uint64_t hash_select = get_default_hash(
       custom.select[0], custom.select[1], custom.select[2]);
-  const uint64_t hash_active = get_default_hash_3(
+  const uint64_t hash_active = get_default_hash(
       custom.active[0], custom.active[1], custom.active[2]);
-  return get_default_hash_4(hash_solid, hash_select, hash_active, custom.flag);
+  return get_default_hash(hash_solid, hash_select, hash_active, custom.flag);
 }
 
-BoneColor &ANIM_bonecolor_posebone_get(bPoseChannel *pose_bone)
+const BoneColor &ANIM_bonecolor_posebone_get(const bPoseChannel *pose_bone)
 {
   if (pose_bone->color.palette_index == 0) {
     return pose_bone->bone->color.wrap();

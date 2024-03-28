@@ -45,6 +45,7 @@ CCL_NAMESPACE_BEGIN
 #define OBJECT_NONE (~0)
 #define PRIM_NONE (~0)
 #define LAMP_NONE (~0)
+#define EMITTER_NONE (~0)
 #define ID_NONE (0.0f)
 #define PASS_UNUSED (~0)
 #define LIGHTGROUP_NONE (~0)
@@ -75,6 +76,7 @@ CCL_NAMESPACE_BEGIN
 #define __PASSES__
 #define __PATCH_EVAL__
 #define __POINTCLOUD__
+#define __PRINCIPLED_HAIR__
 #define __RAY_DIFFERENTIALS__
 #define __SHADER_RAYTRACE__
 #define __SHADOW_CATCHER__
@@ -111,6 +113,13 @@ CCL_NAMESPACE_BEGIN
 #  undef __LIGHT_TREE__
 /* Disabled due to compiler crash on Metal/AMD. */
 #  undef __MNEE__
+/* Disable due to performance regression on Metal/AMD. */
+#  ifndef WITH_PRINCIPLED_HAIR
+#    undef __PRINCIPLED_HAIR__
+#  endif
+#  ifndef WITH_PATCH_EVAL
+#    undef __PATCH_EVAL__
+#  endif
 #endif
 
 /* Scene-based selective features compilation. */
@@ -336,8 +345,8 @@ enum PathRayMNEE {
 #define SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) ((visibility) << 16)
 
 #define SHADOW_CATCHER_PATH_VISIBILITY(path_flag, visibility) \
-  (((path_flag)&PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
-                                                (visibility))
+  (((path_flag) & PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
+                                                  (visibility))
 
 #define SHADOW_CATCHER_OBJECT_VISIBILITY(is_shadow_catcher, visibility) \
   (((is_shadow_catcher) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : 0) | (visibility))
@@ -643,7 +652,8 @@ typedef enum PrimitiveType {
 } PrimitiveType;
 
 /* Convert type to index in range 0..PRIMITIVE_NUM-1. */
-#define PRIMITIVE_INDEX(type) (bitscan((uint32_t)(type)) * 2 + (((type)&PRIMITIVE_MOTION) ? 1 : 0))
+#define PRIMITIVE_INDEX(type) \
+  (bitscan((uint32_t)(type)) * 2 + (((type) & PRIMITIVE_MOTION) ? 1 : 0))
 
 /* Pack segment into type value to save space. */
 #define PRIMITIVE_PACK_SEGMENT(type, segment) ((segment << PRIMITIVE_NUM_BITS) | (type))
@@ -831,6 +841,8 @@ enum ShaderDataFlag {
 
   /* Shader flags. */
 
+  /* Apply a correction term to smooth illumination on grazing angles when using bump mapping.. */
+  SD_USE_BUMP_MAP_CORRECTION = (1 << 15),
   /* Use front side for direct light sampling. */
   SD_MIS_FRONT = (1 << 16),
   /* Has transparent shadow. */
@@ -1209,7 +1221,9 @@ typedef enum KernelBVHLayout {
 } KernelBVHLayout;
 
 /* Specialized struct that can become constants in dynamic compilation. */
-#define KERNEL_STRUCT_BEGIN(name, parent) struct name {
+#define KERNEL_STRUCT_BEGIN(name, parent) \
+  struct ccl_align(16) name \
+  {
 #define KERNEL_STRUCT_END(name) \
   } \
   ; \
@@ -1251,7 +1265,8 @@ typedef struct KernelLightLinkSet {
   uint light_tree_root;
 } KernelLightLinkSet;
 
-typedef struct KernelData {
+typedef struct ccl_align(16) KernelData
+{
   /* Features and limits. */
   uint kernel_features;
   uint max_closures;
@@ -1286,7 +1301,8 @@ typedef struct KernelData {
 #  endif
 #endif
   int pad2, pad3;
-} KernelData;
+}
+KernelData;
 static_assert_align(KernelData, 16);
 
 /* Kernel data structures. */
@@ -1352,16 +1368,17 @@ typedef struct KernelCurveSegment {
 static_assert_align(KernelCurveSegment, 8);
 
 typedef struct KernelSpotLight {
-  packed_float3 scaled_axis_u;
-  float radius;
-  packed_float3 scaled_axis_v;
-  float eval_fac;
   packed_float3 dir;
+  float radius;
+  float eval_fac;
   float cos_half_spot_angle;
   float half_cot_half_spot_angle;
-  float inv_len_z;
   float spot_smooth;
-  float pad;
+  int is_sphere;
+  /* For non-uniform object scaling, the actual spread might be different. */
+  float cos_half_larger_spread;
+  /* Distance from the apex of the smallest enclosing cone of the light spread to light center. */
+  float ray_segment_dp;
 } KernelSpotLight;
 
 /* PointLight is SpotLight with only radius and invarea being used. */
@@ -1679,9 +1696,7 @@ enum KernelFeatureFlag : uint32_t {
   KERNEL_FEATURE_NODE_RAYTRACE = (1U << 6U),
   KERNEL_FEATURE_NODE_AOV = (1U << 7U),
   KERNEL_FEATURE_NODE_LIGHT_PATH = (1U << 8U),
-
-  /* Use denoising kernels and output denoising passes. */
-  KERNEL_FEATURE_DENOISING = (1U << 9U),
+  KERNEL_FEATURE_NODE_PRINCIPLED_HAIR = (1U << 9U),
 
   /* Use path tracing kernels. */
   KERNEL_FEATURE_PATH_TRACING = (1U << 10U),
@@ -1730,6 +1745,9 @@ enum KernelFeatureFlag : uint32_t {
   /* Light and shadow linking. */
   KERNEL_FEATURE_LIGHT_LINKING = (1U << 27U),
   KERNEL_FEATURE_SHADOW_LINKING = (1U << 28U),
+
+  /* Use denoising kernels and output denoising passes. */
+  KERNEL_FEATURE_DENOISING = (1U << 29U),
 };
 
 /* Shader node feature mask, to specialize shader evaluation for kernels. */
@@ -1742,7 +1760,7 @@ enum KernelFeatureFlag : uint32_t {
 #define KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW \
   (KERNEL_FEATURE_NODE_BSDF | KERNEL_FEATURE_NODE_EMISSION | KERNEL_FEATURE_NODE_BUMP | \
    KERNEL_FEATURE_NODE_BUMP_STATE | KERNEL_FEATURE_NODE_VORONOI_EXTRA | \
-   KERNEL_FEATURE_NODE_LIGHT_PATH)
+   KERNEL_FEATURE_NODE_LIGHT_PATH | KERNEL_FEATURE_NODE_PRINCIPLED_HAIR)
 #define KERNEL_FEATURE_NODE_MASK_SURFACE \
   (KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW | KERNEL_FEATURE_NODE_RAYTRACE | \
    KERNEL_FEATURE_NODE_AOV | KERNEL_FEATURE_NODE_LIGHT_PATH)

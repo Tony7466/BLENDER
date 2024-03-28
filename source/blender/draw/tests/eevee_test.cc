@@ -4,16 +4,18 @@
 
 #include "testing/testing.h"
 
-#include "BKE_context.h"
-#include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_idtype.hh"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
-#include "BKE_object.h"
-#include "DEG_depsgraph.h"
+#include "BKE_object.hh"
+
+#include "DEG_depsgraph.hh"
+
 #include "RNA_define.hh"
 
-#include "GPU_batch.h"
-#include "draw_shader.h"
+#include "GPU_batch.hh"
+#include "draw_shader.hh"
 #include "draw_testing.hh"
 #include "engines/eevee_next/eevee_instance.hh"
 #include "engines/eevee_next/eevee_precompute.hh"
@@ -49,7 +51,7 @@ static void test_eevee_shadow_shift_clear()
     tilemaps_data.push_update();
   }
   {
-    ShadowTileData tile;
+    ShadowTileData tile = {};
 
     tile.page = uint3(1, 2, 0);
     tile.is_used = true;
@@ -133,7 +135,7 @@ static void test_eevee_shadow_shift()
     tilemaps_data.push_update();
   }
   {
-    ShadowTileData tile = shadow_tile_unpack(ShadowTileDataPacked(SHADOW_NO_DATA));
+    ShadowTileData tile = {};
 
     for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
       for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
@@ -231,7 +233,7 @@ static void test_eevee_shadow_tag_update()
 
   {
     ShadowTileMap tilemap(0 * SHADOW_TILEDATA_PER_TILEMAP);
-    tilemap.sync_cubeface(float4x4::identity(), 0.01f, 1.0f, Z_NEG, 0.0f);
+    tilemap.sync_cubeface(float4x4::identity(), 0.01f, 1.0f, 0.01f, 0.0f, Z_NEG, 0.0f);
     tilemaps_data.append(tilemap);
   }
   {
@@ -400,7 +402,7 @@ static void test_eevee_shadow_free()
   pages_cached_data.push_update();
 
   {
-    ShadowTileData tile;
+    ShadowTileData tile = {};
 
     tiles_data.clear_to_zero();
     tiles_data.read();
@@ -500,7 +502,8 @@ class TestDefrag {
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
-  StorageBuffer<DispatchCommand> clear_draw_buf;
+  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageBuffer<DrawCommand> tile_draw_buf;
   ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
 
  public:
@@ -570,8 +573,9 @@ class TestDefrag {
     pass.bind_ssbo("pages_infos_buf", pages_infos_data);
     pass.bind_ssbo("pages_free_buf", pages_free_data);
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
+    pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+    pass.bind_ssbo("tile_draw_buf", tile_draw_buf);
     pass.bind_ssbo("statistics_buf", statistics_buf);
-    pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
     pass.dispatch(int3(1, 1, 1));
     pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
@@ -644,6 +648,10 @@ class TestAlloc {
     GPU_render_begin();
     int tiles_index = 1;
 
+    for (int i : IndexRange(SHADOW_MAX_TILE)) {
+      tiles_data[i] = 0;
+    }
+
     for (uint i : IndexRange(0, page_free_count)) {
       uint2 page = {i % SHADOW_PAGE_PER_ROW, i / SHADOW_PAGE_PER_ROW};
       pages_free_data[i] = page.x | (page.y << 16u);
@@ -665,7 +673,7 @@ class TestAlloc {
     int tile_free = tiles_index * SHADOW_TILEDATA_PER_TILEMAP + 6;
 
     {
-      ShadowTileData tile;
+      ShadowTileData tile = {};
 
       tile.is_used = true;
       tile.do_update = false;
@@ -758,7 +766,7 @@ static void test_eevee_shadow_finalize()
   }
 
   {
-    ShadowTileData tile;
+    ShadowTileData tile = {};
     tile.is_used = true;
     tile.is_allocated = true;
 
@@ -805,6 +813,9 @@ static void test_eevee_shadow_finalize()
     tilemap.viewmat = float4x4::identity();
     tilemap.tiles_index = 0;
     tilemap.clip_data_index = 0;
+    tilemap.clip_far = 10.0f;
+    tilemap.clip_near = 1.0f;
+    tilemap.half_size = 1.0f;
     tilemap.projection_type = SHADOW_PROJECTION_CUBEFACE;
     tilemaps_data.append(tilemap);
 
@@ -839,7 +850,9 @@ static void test_eevee_shadow_finalize()
 
   StorageArrayBuffer<ViewMatrices, DRW_VIEW_MAX> shadow_multi_view_buf = {"ShadowMultiView"};
   StorageBuffer<DispatchCommand> clear_dispatch_buf;
-  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_list_buf = {"clear_list_buf"};
+  StorageBuffer<DrawCommand> tile_draw_buf;
+  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> dst_coord_buf = {"dst_coord_buf"};
+  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> src_coord_buf = {"src_coord_buf"};
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE> render_map_buf = {"render_map_buf"};
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX> viewport_index_buf = {"viewport_index_buf"};
 
@@ -855,7 +868,9 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("view_infos_buf", shadow_multi_view_buf);
   pass.bind_ssbo("statistics_buf", statistics_buf);
   pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
-  pass.bind_ssbo("clear_list_buf", clear_list_buf);
+  pass.bind_ssbo("tile_draw_buf", tile_draw_buf);
+  pass.bind_ssbo("dst_coord_buf", dst_coord_buf);
+  pass.bind_ssbo("src_coord_buf", src_coord_buf);
   pass.bind_ssbo("render_map_buf", render_map_buf);
   pass.bind_ssbo("viewport_index_buf", viewport_index_buf);
   pass.bind_ssbo("pages_infos_buf", pages_infos_data);
@@ -1149,7 +1164,7 @@ static void test_eevee_shadow_finalize()
 }
 DRAW_TEST(eevee_shadow_finalize)
 
-static void test_eevee_shadow_page_mask()
+static void test_eevee_shadow_page_mask_ex(int max_view_per_tilemap)
 {
   GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
@@ -1157,7 +1172,7 @@ static void test_eevee_shadow_page_mask()
 
   {
     ShadowTileMap tilemap(0);
-    tilemap.sync_cubeface(float4x4::identity(), 0.01f, 1.0f, Z_NEG, 0.0f);
+    tilemap.sync_cubeface(float4x4::identity(), 0.01f, 1.0f, 0.01f, 0.0f, Z_NEG, 0.0f);
     tilemaps_data.append(tilemap);
   }
 
@@ -1176,23 +1191,26 @@ static void test_eevee_shadow_page_mask()
   const uint lod5_ofs = lod4_ofs + lod4_len;
 
   {
-    ShadowTileData tile;
+    ShadowTileData tile = {};
     /* Init all LOD to true. */
     for (auto i : IndexRange(SHADOW_TILEDATA_PER_TILEMAP)) {
       tile.is_used = true;
+      tile.do_update = true;
       tiles_data[i] = shadow_tile_pack(tile);
     }
 
     /* Init all of LOD0 to false. */
     for (auto i : IndexRange(square_i(SHADOW_TILEMAP_RES))) {
       tile.is_used = false;
+      tile.do_update = false;
       tiles_data[i] = shadow_tile_pack(tile);
     }
 
     /* Bottom Left of the LOD0 to true. */
-    for (auto y : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
+    for (auto y : IndexRange((SHADOW_TILEMAP_RES / 2))) {
       for (auto x : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
         tile.is_used = true;
+        tile.do_update = true;
         tiles_data[x + y * SHADOW_TILEMAP_RES] = shadow_tile_pack(tile);
       }
     }
@@ -1200,6 +1218,7 @@ static void test_eevee_shadow_page_mask()
     /* All Bottom of the LOD0 to true. */
     for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
       tile.is_used = true;
+      tile.do_update = true;
       tiles_data[x] = shadow_tile_pack(tile);
     }
 
@@ -1208,6 +1227,7 @@ static void test_eevee_shadow_page_mask()
     for (auto y : IndexRange((SHADOW_TILEMAP_RES / 8))) {
       for (auto x : IndexRange((SHADOW_TILEMAP_RES / 8))) {
         tile.is_used = false;
+        tile.do_update = false;
         tiles_data[x + y * (SHADOW_TILEMAP_RES / 2) + lod0_len] = shadow_tile_pack(tile);
       }
     }
@@ -1218,6 +1238,7 @@ static void test_eevee_shadow_page_mask()
       int x = SHADOW_TILEMAP_RES / 4;
       int y = SHADOW_TILEMAP_RES / 4;
       tile.is_used = false;
+      tile.do_update = false;
       tiles_data[x + y * (SHADOW_TILEMAP_RES / 2) + lod0_len] = shadow_tile_pack(tile);
     }
 
@@ -1230,6 +1251,7 @@ static void test_eevee_shadow_page_mask()
 
   PassSimple pass("Test");
   pass.shader_set(sh);
+  pass.push_constant("max_view_per_tilemap", max_view_per_tilemap);
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
   pass.bind_ssbo("tiles_buf", tiles_data);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
@@ -1258,7 +1280,7 @@ static void test_eevee_shadow_page_mask()
       "xxxxxxxxxxxxxxxxx---------------"
       "xxxxxxxxxxxxxxxxx---------------"
       "xxxxxxxxxxxxxxxxx---------------"
-      "xxxxxxxxxxxxxxxxx---------------"
+      "--------------------------------"
       "--------------------------------"
       "--------------------------------"
       "--------------------------------"
@@ -1291,6 +1313,23 @@ static void test_eevee_shadow_page_mask()
       "xxxxxxxxxxxxxxxx"
       "xxxxxxxxxxxxxxxx"
       "xxxxxxxxxxxxxxxx";
+  StringRefNull expected_lod1_collapsed =
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxx-xxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx";
   StringRefNull expected_lod2 =
       "--------"
       "--------"
@@ -1300,6 +1339,15 @@ static void test_eevee_shadow_page_mask()
       "--------"
       "--------"
       "--------";
+  StringRefNull expected_lod2_collapsed =
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx";
   StringRefNull expected_lod3 =
       "----"
       "----"
@@ -1318,9 +1366,40 @@ static void test_eevee_shadow_page_mask()
     return result;
   };
 
-  EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), expected_lod0);
-  EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1);
-  EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2);
+  auto empty_result = [&](uint len) -> std::string {
+    std::string result = "";
+    for ([[maybe_unused]] const int i : IndexRange(len)) {
+      result += "-";
+    }
+    return result;
+  };
+
+  if (max_view_per_tilemap >= 3) {
+    EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), expected_lod0);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), empty_result(lod0_len));
+  }
+
+  if (max_view_per_tilemap > 2) {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1);
+  }
+  else if (max_view_per_tilemap == 2) {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1_collapsed);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), empty_result(lod1_len));
+  }
+
+  if (max_view_per_tilemap > 1) {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2);
+  }
+  else if (max_view_per_tilemap == 1) {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2_collapsed);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), empty_result(lod2_len));
+  }
   EXPECT_EQ(stringify_result(lod3_ofs, lod3_len), expected_lod3);
   EXPECT_EQ(stringify_result(lod4_ofs, lod4_len), expected_lod4);
   EXPECT_EQ(stringify_result(lod5_ofs, lod5_len), expected_lod5);
@@ -1328,6 +1407,18 @@ static void test_eevee_shadow_page_mask()
   GPU_shader_free(sh);
   DRW_shaders_free();
   GPU_render_end();
+}
+
+static void test_eevee_shadow_page_mask()
+{
+  /* Expect default behavior. */
+  test_eevee_shadow_page_mask_ex(999);
+  /* Expect default behavior. */
+  test_eevee_shadow_page_mask_ex(3);
+  /* Expect LOD0 merged into LOD1. */
+  test_eevee_shadow_page_mask_ex(2);
+  /* Expect LOD0 and LOD1 merged into LOD2. */
+  test_eevee_shadow_page_mask_ex(1);
 }
 DRAW_TEST(eevee_shadow_page_mask)
 
@@ -1425,14 +1516,14 @@ static void test_eevee_surfel_list()
   /* NOTE: All of these are unstable by definition (atomic + multi-thread).
    * But should be consistent since we only dispatch one thread-group. */
   /* Expect last added surfel index. It is the list start index before sorting. */
-  Vector<int> expect_list_start = {-1, 3, 5, 4};
+  Vector<int> expect_list_start = {-1, 1, 5, 4};
   // Span<int>(list_start_buf.data(), expect_list_start.size()).print_as_lines("list_start");
   // link_next.as_span().print_as_lines("link_next");
   // link_prev.as_span().print_as_lines("link_prev");
-  EXPECT_EQ_ARRAY(list_start_buf.data(), expect_list_start.data(), expect_list_start.size());
+  EXPECT_EQ_ARRAY(expect_list_start.data(), list_start_buf.data(), expect_list_start.size());
 #endif
-  EXPECT_EQ_ARRAY(link_next.data(), expect_link_next.data(), expect_link_next.size());
-  EXPECT_EQ_ARRAY(link_prev.data(), expect_link_prev.data(), expect_link_prev.size());
+  EXPECT_EQ_ARRAY(expect_link_next.data(), link_next.data(), expect_link_next.size());
+  EXPECT_EQ_ARRAY(expect_link_prev.data(), link_prev.data(), expect_link_prev.size());
 
   GPU_shader_free(sh_build);
   GPU_shader_free(sh_sort);
@@ -1448,20 +1539,20 @@ static void test_eevee_lut_gen()
   Manager manager;
 
   /* Check if LUT generation matches the header version. */
-  auto brdf_ggx_gen = Precompute(manager, LUT_GGX_BRDF_SPLIT_SUM, {64, 64, 1}).data<float2>();
+  auto brdf_ggx_gen = Precompute(manager, LUT_GGX_BRDF_SPLIT_SUM, {64, 64, 1}).data<float3>();
   auto btdf_ggx_gen = Precompute(manager, LUT_GGX_BTDF_IOR_GT_ONE, {64, 64, 16}).data<float1>();
   auto bsdf_ggx_gen = Precompute(manager, LUT_GGX_BSDF_SPLIT_SUM, {64, 64, 16}).data<float3>();
   auto burley_gen = Precompute(manager, LUT_BURLEY_SSS_PROFILE, {64, 1, 1}).data<float1>();
   auto rand_walk_gen = Precompute(manager, LUT_RANDOM_WALK_SSS_PROFILE, {64, 1, 1}).data<float1>();
 
-  Span<float2> brdf_ggx_lut((const float2 *)&eevee::lut::brdf_ggx, 64 * 64);
+  Span<float3> brdf_ggx_lut((const float3 *)&eevee::lut::brdf_ggx, 64 * 64);
   Span<float1> btdf_ggx_lut((const float1 *)&eevee::lut::btdf_ggx, 64 * 64 * 16);
   Span<float3> bsdf_ggx_lut((const float3 *)&eevee::lut::bsdf_ggx, 64 * 64 * 16);
   Span<float1> burley_sss_lut((const float1 *)&eevee::lut::burley_sss_profile, 64);
   Span<float1> rand_walk_lut((const float1 *)&eevee::lut::random_walk_sss_profile, 64);
 
   const float eps = 3e-3f;
-  EXPECT_NEAR_ARRAY_ND(brdf_ggx_lut.data(), brdf_ggx_gen.data(), brdf_ggx_gen.size(), 2, eps);
+  EXPECT_NEAR_ARRAY_ND(brdf_ggx_lut.data(), brdf_ggx_gen.data(), brdf_ggx_gen.size(), 3, eps);
   EXPECT_NEAR_ARRAY_ND(btdf_ggx_lut.data(), btdf_ggx_gen.data(), btdf_ggx_gen.size(), 1, eps);
   EXPECT_NEAR_ARRAY_ND(bsdf_ggx_lut.data(), bsdf_ggx_gen.data(), bsdf_ggx_gen.size(), 3, eps);
   EXPECT_NEAR_ARRAY_ND(burley_gen.data(), burley_sss_lut.data(), burley_sss_lut.size(), 1, eps);

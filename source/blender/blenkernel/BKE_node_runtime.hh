@@ -30,7 +30,6 @@ struct FieldInferencingInterface;
 class NodeDeclaration;
 struct GeometryNodesLazyFunctionGraphInfo;
 namespace anonymous_attribute_lifetime {
-struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
@@ -75,11 +74,17 @@ namespace blender::bke {
 
 using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
 
+/**
+ * Runtime data for #bNodeTree from the perspective of execution instructions (rather than runtime
+ * data from evaluation of the node tree). Evaluation data is not the responsibility of the node
+ * tree and should be stored elsewhere. Evaluating a node tree should be possible without changing
+ * it.
+ */
 class bNodeTreeRuntime : NonCopyable, NonMovable {
  public:
   /**
    * Keeps track of what changed in the node tree until the next update.
-   * Should not be changed directly, instead use the functions in `BKE_node_tree_update.h`.
+   * Should not be changed directly, instead use the functions in `BKE_node_tree_update.hh`.
    * #eNodeTreeChangedFlag.
    */
   uint32_t changed_flag = 0;
@@ -109,24 +114,20 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   NodeIDVectorSet nodes_by_id;
 
   /**
-   * Execution data.
+   * Legacy execution data.
    *
-   * XXX It would be preferable to completely move this data out of the underlying node tree,
-   * so node tree execution could finally run independent of the tree itself.
-   * This would allow node trees to be merely linked by other data (materials, textures, etc.),
-   * as ID data is supposed to.
-   * Execution data is generated from the tree once at execution start and can then be used
-   * as long as necessary, even while the tree is being modified.
+   * \todo Move this out of the node tree to improve semantic/physical separation between the node
+   * tree execution instructions and its evaluation.
    */
   bNodeTreeExec *execdata = nullptr;
-
-  /* Callbacks. */
   void (*progress)(void *, float progress) = nullptr;
   /** \warning may be called by different threads */
   void (*stats_draw)(void *, const char *str) = nullptr;
   bool (*test_break)(void *) = nullptr;
   void (*update_draw)(void *) = nullptr;
   void *tbh = nullptr, *prh = nullptr, *sdh = nullptr, *udh = nullptr;
+
+  /* End legacy execution data. */
 
   /** Information about how inputs and outputs of the node group interact with fields. */
   std::unique_ptr<nodes::FieldInferencingInterface> field_inferencing_interface;
@@ -185,7 +186,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * data. It has to be updated when the node declaration changes. Access can be allowed by using
    * #AllowUsingOutdatedInfo.
    */
-  const SocketDeclarationHandle *declaration = nullptr;
+  const nodes::SocketDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -252,7 +253,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
    * intended to change though. Especially when nodes become more dynamic with respect to how many
    * sockets they have.
    */
-  NodeDeclarationHandle *declaration = nullptr;
+  nodes::NodeDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -295,6 +296,9 @@ class bNodeRuntime : NonCopyable, NonMovable {
 
   /** Eagerly maintained cache of the node's index in the tree. */
   int index_in_tree = -1;
+
+  /** Used to avoid running forward compatibility code more often than necessary. */
+  bool forward_compatible_versioning_done = false;
 
   /** Only valid if #topology_cache_is_dirty is false. */
   Vector<bNodeSocket *> inputs;
@@ -476,6 +480,11 @@ inline const bNode *bNodeTree::group_output_node() const
   return this->runtime->group_output_node;
 }
 
+inline blender::Span<bNode *> bNodeTree::group_input_nodes()
+{
+  return this->nodes_by_type("NodeGroupInput");
+}
+
 inline blender::Span<const bNode *> bNodeTree::group_input_nodes() const
 {
   return this->nodes_by_type("NodeGroupInput");
@@ -550,19 +559,37 @@ inline void bNodeTree::ensure_interface_cache() const
   this->tree_interface.ensure_items_cache();
 }
 
-inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_inputs() const
+inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_inputs()
 {
   BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->inputs_;
 }
 
-inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_outputs() const
+inline blender::Span<const bNodeTreeInterfaceSocket *> bNodeTree::interface_inputs() const
+{
+  BLI_assert(this->tree_interface.items_cache_is_available());
+  return this->tree_interface.runtime->inputs_;
+}
+
+inline blender::Span<bNodeTreeInterfaceSocket *> bNodeTree::interface_outputs()
 {
   BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->outputs_;
 }
 
-inline blender::Span<bNodeTreeInterfaceItem *> bNodeTree::interface_items() const
+inline blender::Span<const bNodeTreeInterfaceSocket *> bNodeTree::interface_outputs() const
+{
+  BLI_assert(this->tree_interface.items_cache_is_available());
+  return this->tree_interface.runtime->outputs_;
+}
+
+inline blender::Span<bNodeTreeInterfaceItem *> bNodeTree::interface_items()
+{
+  BLI_assert(this->tree_interface.items_cache_is_available());
+  return this->tree_interface.runtime->items_;
+}
+
+inline blender::Span<const bNodeTreeInterfaceItem *> bNodeTree::interface_items() const
 {
   BLI_assert(this->tree_interface.items_cache_is_available());
   return this->tree_interface.runtime->items_;
@@ -913,6 +940,11 @@ inline bool bNodePanelState::is_collapsed() const
 inline bool bNodePanelState::is_parent_collapsed() const
 {
   return flag & NODE_PANEL_PARENT_COLLAPSED;
+}
+
+inline bool bNodePanelState::has_visible_content() const
+{
+  return flag & NODE_PANEL_CONTENT_VISIBLE;
 }
 
 /** \} */

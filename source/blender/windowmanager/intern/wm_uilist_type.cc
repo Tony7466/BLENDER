@@ -25,8 +25,8 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_main.h"
-#include "BKE_screen.h"
+#include "BKE_main.hh"
+#include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -153,6 +153,6 @@ const char *WM_uilisttype_list_id_get(const uiListType *ult, uiList *list)
 {
   /* Some sanity check for the assumed behavior of #WM_uilisttype_to_full_list_id(). */
   BLI_assert((list->list_id + strlen(ult->idname))[0] == '_');
-  /* +1 to skip the '_' */
+  /* +1 to skip the '_'. */
   return list->list_id + strlen(ult->idname) + 1;
 }

@@ -10,7 +10,9 @@
 
 #include "DNA_ID.h"
 #include "DNA_customdata_types.h"
+#include "DNA_object_types.h"
 
+#include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #ifdef __cplusplus
@@ -84,6 +86,8 @@ typedef enum NormalMode {
    * is vertical, the X axis is used.
    */
   NORMAL_MODE_Z_UP = 1,
+  /** Interpolate the stored "custom_normal" attribute for the final normals. */
+  NORMAL_MODE_FREE = 2,
 } NormalMode;
 
 /**
@@ -113,13 +117,13 @@ typedef struct CurvesGeometry {
   int *curve_offsets;
 
   /**
-   * All attributes stored on control points (#ATTR_DOMAIN_POINT).
+   * All attributes stored on control points (#AttrDomain::Point).
    * This might not contain a layer for positions if there are no points.
    */
   CustomData point_data;
 
   /**
-   * All attributes stored on curves (#ATTR_DOMAIN_CURVE).
+   * All attributes stored on curves (#AttrDomain::Curve).
    */
   CustomData curve_data;
 
@@ -131,6 +135,14 @@ typedef struct CurvesGeometry {
    * The number of curves.
    */
   int curve_num;
+
+  /**
+   * List of vertex group (#bDeformGroup) names and flags only.
+   */
+  ListBase vertex_group_names;
+  /** The active index in the #vertex_group_names list. */
+  int vertex_group_active_index;
+  char _pad[4];
 
   /**
    * Runtime data for curves, stored as a pointer to allow defining this as a C++ class.
@@ -169,7 +181,7 @@ typedef struct Curves {
    */
   char symmetry;
   /**
-   * #eAttrDomain. The active domain for edit/sculpt mode selection. Only one selection mode can
+   * #AttrDomain. The active domain for edit/sculpt mode selection. Only one selection mode can
    * be active at a time.
    */
   char selection_domain;

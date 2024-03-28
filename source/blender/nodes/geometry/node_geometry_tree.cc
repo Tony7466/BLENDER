@@ -10,21 +10,20 @@
 
 #include "NOD_geometry.hh"
 
-#include "BKE_context.h"
-#include "BKE_layer.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_node.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_space_types.h"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "node_common.h"
 
@@ -35,7 +34,7 @@ static void geometry_node_tree_get_from_context(
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
   if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
-    *r_ntree = snode->nodetree;
+    *r_ntree = snode->geometry_nodes_tool_tree;
     return;
   }
 
@@ -93,18 +92,39 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
   {
     return true;
   }
+  if (ELEM(type_a, SOCK_FLOAT, SOCK_VECTOR) && type_b == SOCK_ROTATION) {
+    /* Floats and vectors implicitly convert to rotations. */
+    return true;
+  }
+
+  /* Support implicit conversions between matrices and rotations. */
+  if (type_a == SOCK_MATRIX && type_b == SOCK_ROTATION) {
+    return true;
+  }
+  if (type_a == SOCK_ROTATION && type_b == SOCK_MATRIX) {
+    return true;
+  }
+
+  if (type_a == SOCK_ROTATION && type_b == SOCK_VECTOR) {
+    /* Rotations implicitly convert to vectors. */
+    return true;
+  }
   return type_a == type_b;
 }
 
 static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
                                                  bNodeSocketType *socket_type)
 {
+  if (socket_type->type == SOCK_MATRIX) {
+    return U.experimental.use_new_matrix_socket;
+  }
   return blender::bke::nodeIsStaticSocketType(socket_type) && ELEM(socket_type->type,
                                                                    SOCK_FLOAT,
                                                                    SOCK_VECTOR,
                                                                    SOCK_RGBA,
                                                                    SOCK_BOOLEAN,
                                                                    SOCK_ROTATION,
+                                                                   SOCK_MATRIX,
                                                                    SOCK_INT,
                                                                    SOCK_STRING,
                                                                    SOCK_OBJECT,
@@ -112,7 +132,8 @@ static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
                                                                    SOCK_COLLECTION,
                                                                    SOCK_TEXTURE,
                                                                    SOCK_IMAGE,
-                                                                   SOCK_MATERIAL);
+                                                                   SOCK_MATERIAL,
+                                                                   SOCK_MENU);
 }
 
 void register_node_tree_type_geo()
@@ -133,4 +154,18 @@ void register_node_tree_type_geo()
   tt->validate_link = geometry_node_tree_validate_link;
 
   ntreeTypeAdd(tt);
+}
+
+bool is_layer_selection_field(const bNodeTreeInterfaceSocket &socket)
+{
+  if (!U.experimental.use_grease_pencil_version3) {
+    return false;
+  }
+  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
+  BLI_assert(typeinfo != nullptr);
+
+  if (typeinfo->type != SOCK_BOOLEAN) {
+    return false;
+  }
+  return (socket.flag & NODE_INTERFACE_SOCKET_LAYER_SELECTION) != 0;
 }

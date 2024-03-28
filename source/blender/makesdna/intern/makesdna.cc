@@ -26,6 +26,7 @@
 
 #define DNA_DEPRECATED_ALLOW
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -171,7 +172,7 @@ static void dna_write(FILE *file, const void *pntr, const int size);
 /**
  * Report all structures found so far, and print their lengths.
  */
-void print_struct_sizes(void);
+void print_struct_sizes();
 
 /** \} */
 
@@ -188,7 +189,8 @@ static bool match_identifier_with_len(const char *str,
   if (strncmp(str, identifier, identifier_len) == 0) {
     /* Check `str` isn't a prefix to a longer identifier. */
     if (isdigit(str[identifier_len]) || isalpha(str[identifier_len]) ||
-        (str[identifier_len] == '_')) {
+        (str[identifier_len] == '_'))
+    {
       return false;
     }
     return true;
@@ -364,7 +366,7 @@ static int add_name(const char *str)
     /* We handle function pointer and special array cases here, e.g.
      * `void (*function)(...)` and `float (*array)[..]`. the array case
      * name is still converted to (array *)() though because it is that
-     * way in old DNA too, and works correct with #DNA_elem_size_nr. */
+     * way in old DNA too, and works correct with #DNA_struct_member_size. */
     int isfuncptr = (strchr(str + 1, '(')) != nullptr;
 
     DEBUG_PRINTF(3, "\t\t\t\t*** Function pointer or multidim array pointer found\n");
@@ -1041,8 +1043,8 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             size_native += sizeof(void *) * mul;
             size_32 += 4 * mul;
             size_64 += 8 * mul;
-            max_align_32 = MAX2(max_align_32, 4);
-            max_align_64 = MAX2(max_align_64, 8);
+            max_align_32 = std::max(max_align_32, 4);
+            max_align_64 = std::max(max_align_64, 8);
           }
           else if (cp[0] == '[') {
             /* parsing can cause names "var" and "[3]"
@@ -1096,8 +1098,8 @@ static int calculate_struct_sizes(int firststruct, FILE *file_verify, const char
             size_native += mul * types_size_native[type];
             size_32 += mul * types_size_32[type];
             size_64 += mul * types_size_64[type];
-            max_align_32 = MAX2(max_align_32, types_align_32[type]);
-            max_align_64 = MAX2(max_align_64, types_align_64[type]);
+            max_align_32 = std::max<int>(max_align_32, types_align_32[type]);
+            max_align_64 = std::max<int>(max_align_64, types_align_64[type]);
           }
           else {
             size_native = 0;
@@ -1340,7 +1342,7 @@ static int make_structDNA(const char *base_directory,
   /* FOR DEBUG */
   if (debugSDNA > 1) {
     int a, b;
-    /* short *elem; */
+    // short *elem;
     short num_types;
 
     printf("names_len %d types_len %d structs_len %d\n", names_len, types_len, structs_len);

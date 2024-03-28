@@ -11,7 +11,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -22,7 +22,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #define DEF_ICON(name) {ICON_##name, (#name), 0, (#name), ""},
 #define DEF_ICON_VECTOR(name) {ICON_##name, (#name), 0, (#name), ""},
@@ -37,7 +37,9 @@ const EnumPropertyItem rna_enum_icon_items[] = {
 
 #  include "DNA_asset_types.h"
 
+#  include "ED_asset_filter.hh"
 #  include "ED_geometry.hh"
+#  include "ED_node.hh"
 #  include "ED_object.hh"
 
 const char *rna_translate_ui_text(
@@ -83,6 +85,7 @@ static void rna_uiItemR(uiLayout *layout,
                         const char *text_ctxt,
                         bool translate,
                         int icon,
+                        const char *placeholder,
                         bool expand,
                         bool slider,
                         int toggle,
@@ -108,6 +111,7 @@ static void rna_uiItemR(uiLayout *layout,
 
   /* Get translated name (label). */
   name = rna_translate_ui_text(name, text_ctxt, nullptr, prop, translate);
+  placeholder = rna_translate_ui_text(placeholder, text_ctxt, nullptr, prop, translate);
 
   if (slider) {
     flag |= UI_ITEM_R_SLIDER;
@@ -139,7 +143,7 @@ static void rna_uiItemR(uiLayout *layout,
     flag |= UI_ITEM_R_CHECKBOX_INVERT;
   }
 
-  uiItemFullR(layout, ptr, prop, index, 0, flag, name, icon);
+  uiItemFullR(layout, ptr, prop, index, 0, flag, name, icon, placeholder);
 }
 
 static void rna_uiItemR_with_popover(uiLayout *layout,
@@ -337,7 +341,7 @@ static PointerRNA rna_uiItemO(uiLayout *layout,
 
   ot = WM_operatortype_find(opname, false); /* print error next */
   if (!ot || !ot->srna) {
-    RNA_warning("%s '%s'", ot ? "unknown operator" : "operator missing srna", opname);
+    RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
     return PointerRNA_NULL;
   }
 
@@ -374,7 +378,7 @@ static PointerRNA rna_uiItemOMenuHold(uiLayout *layout,
 {
   wmOperatorType *ot = WM_operatortype_find(opname, false); /* print error next */
   if (!ot || !ot->srna) {
-    RNA_warning("%s '%s'", ot ? "unknown operator" : "operator missing srna", opname);
+    RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
     return PointerRNA_NULL;
   }
 
@@ -418,7 +422,7 @@ static PointerRNA rna_uiItemMenuEnumO(uiLayout *layout,
   wmOperatorType *ot = WM_operatortype_find(opname, false); /* print error next */
 
   if (!ot || !ot->srna) {
-    RNA_warning("%s '%s'", ot ? "unknown operator" : "operator missing srna", opname);
+    RNA_warning("%s '%s'", ot ? "operator missing srna" : "unknown operator", opname);
     return PointerRNA_NULL;
   }
 
@@ -511,6 +515,11 @@ static void rna_uiItemProgress(uiLayout *layout,
   }
 
   uiItemProgressIndicator(layout, text, factor, eButProgressType(progress_type));
+}
+
+static void rna_uiItemSeparator(uiLayout *layout, float factor, int type)
+{
+  uiItemS_ex(layout, factor, LayoutSeparatorType(type));
 }
 
 static void rna_uiTemplateID(uiLayout *layout,
@@ -712,7 +721,7 @@ static void rna_uiTemplateAssetView(uiLayout *layout,
                                     const char *drag_opname,
                                     PointerRNA *r_drag_op_properties)
 {
-  AssetFilterSettings filter_settings{};
+  blender::ed::asset::AssetFilterSettings filter_settings{};
   filter_settings.id_types = filter_id_types ? filter_id_types : FILTER_ID_ALL;
 
   uiTemplateAssetView(layout,
@@ -777,31 +786,74 @@ static uiLayout *rna_uiLayoutColumnWithHeading(
   return uiLayoutColumnWithHeading(layout, align, heading);
 }
 
+void rna_uiLayoutPanelProp(uiLayout *layout,
+                           bContext *C,
+                           ReportList *reports,
+                           PointerRNA *data,
+                           const char *property,
+                           uiLayout **r_layout_header,
+                           uiLayout **r_layout_body)
+{
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  if (panel == nullptr) {
+    BKE_reportf(reports, RPT_ERROR, "Layout panels can not be used in this context");
+    *r_layout_header = nullptr;
+    *r_layout_body = nullptr;
+    return;
+  }
+
+  PanelLayout panel_layout = uiLayoutPanelProp(C, layout, data, property);
+  *r_layout_header = panel_layout.header;
+  *r_layout_body = panel_layout.body;
+}
+
+void rna_uiLayoutPanel(uiLayout *layout,
+                       bContext *C,
+                       ReportList *reports,
+                       const char *idname,
+                       const bool default_closed,
+                       uiLayout **r_layout_header,
+                       uiLayout **r_layout_body)
+{
+  Panel *panel = uiLayoutGetRootPanel(layout);
+  if (panel == nullptr) {
+    BKE_reportf(reports, RPT_ERROR, "Layout panels can not be used in this context");
+    *r_layout_header = nullptr;
+    *r_layout_body = nullptr;
+    return;
+  }
+  PanelLayout panel_layout = uiLayoutPanel(C, layout, idname, default_closed);
+  *r_layout_header = panel_layout.header;
+  *r_layout_body = panel_layout.body;
+}
+
+static void rna_uiLayout_template_node_asset_menu_items(uiLayout *layout,
+                                                        bContext *C,
+                                                        const char *catalog_path)
+{
+  using namespace blender;
+  ed::space_node::ui_template_node_asset_menu_items(*layout, *C, StringRef(catalog_path));
+}
+
 static void rna_uiLayout_template_node_operator_asset_menu_items(uiLayout *layout,
                                                                  bContext *C,
                                                                  const char *catalog_path)
 {
-  if (U.experimental.use_node_group_operators) {
-    blender::ed::geometry::ui_template_node_operator_asset_menu_items(
-        *layout, *C, blender::StringRef(catalog_path));
-  }
+  using namespace blender;
+  ed::geometry::ui_template_node_operator_asset_menu_items(*layout, *C, StringRef(catalog_path));
 }
 
 static void rna_uiLayout_template_modifier_asset_menu_items(uiLayout *layout,
                                                             bContext *C,
                                                             const char *catalog_path)
 {
-  if (U.experimental.use_node_group_operators) {
-    blender::ed::object::ui_template_modifier_asset_menu_items(
-        *layout, *C, blender::StringRef(catalog_path));
-  }
+  using namespace blender;
+  ed::object::ui_template_modifier_asset_menu_items(*layout, *C, StringRef(catalog_path));
 }
 
 static void rna_uiLayout_template_node_operator_root_items(uiLayout *layout, bContext *C)
 {
-  if (U.experimental.use_node_group_operators) {
-    blender::ed::geometry::ui_template_node_operator_asset_root_items(*layout, *C);
-  }
+  blender::ed::geometry::ui_template_node_operator_asset_root_items(*layout, *C);
 }
 
 static int rna_ui_get_rnaptr_icon(bContext *C, PointerRNA *ptr_icon)
@@ -925,21 +977,26 @@ static void api_ui_item_common_heading(FunctionRNA *func)
       func, "translate", true, "", "Translate the given heading, when UI translation is enabled");
 }
 
+void api_ui_item_common_translation(FunctionRNA *func)
+{
+  PropertyRNA *prop = RNA_def_string(func,
+                                     "text_ctxt",
+                                     nullptr,
+                                     0,
+                                     "",
+                                     "Override automatic translation context of the given text");
+  RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
+  RNA_def_boolean(
+      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
+}
+
 static void api_ui_item_common_text(FunctionRNA *func)
 {
   PropertyRNA *prop;
 
   prop = RNA_def_string(func, "text", nullptr, 0, "", "Override automatic text of the item");
   RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
-  prop = RNA_def_string(func,
-                        "text_ctxt",
-                        nullptr,
-                        0,
-                        "",
-                        "Override automatic translation context of the given text");
-  RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
-  RNA_def_boolean(
-      func, "translate", true, "", "Translate the given text, when UI translation is enabled");
+  api_ui_item_common_translation(func);
 }
 
 static void api_ui_item_common(FunctionRNA *func)
@@ -1020,6 +1077,25 @@ void RNA_api_ui_layout(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem rna_enum_separator_type_items[] = {
+      {int(LayoutSeparatorType::Auto),
+       "AUTO",
+       0,
+       "Auto",
+       "Best guess at what type of separator is needed."},
+      {int(LayoutSeparatorType::Space),
+       "SPACE",
+       0,
+       "Empty space",
+       "Horizontal or Vertical empty space, depending on layout direction."},
+      {int(LayoutSeparatorType::Line),
+       "LINE",
+       0,
+       "Line",
+       "Horizontal or Vertical line, depending on layout direction."},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   /* simple layout specifiers */
@@ -1042,6 +1118,58 @@ void RNA_api_ui_layout(StructRNA *srna)
       "in a column");
   RNA_def_boolean(func, "align", false, "", "Align buttons to each other");
   api_ui_item_common_heading(func);
+
+  func = RNA_def_function(srna, "panel", "rna_uiLayoutPanel");
+  RNA_def_function_ui_description(
+      func,
+      "Creates a collapsable panel. Whether it is open or closed is stored in the region using "
+      "the given idname. This can only be used when the panel has the full width of the panel "
+      "region available to it. So it can't be used in e.g. in a box or columns");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  parm = RNA_def_string(func, "idname", nullptr, 0, "", "Identifier of the panel");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  RNA_def_boolean(func,
+                  "default_closed",
+                  false,
+                  "Open by Default",
+                  "When true, the panel will be open the first time it is shown");
+  parm = RNA_def_pointer(func, "layout_header", "UILayout", "", "Sub-layout to put items in");
+  RNA_def_function_output(func, parm);
+  parm = RNA_def_pointer(func,
+                         "layout_body",
+                         "UILayout",
+                         "",
+                         "Sub-layout to put items in. Will be none if the panel is collapsed");
+  RNA_def_function_output(func, parm);
+
+  func = RNA_def_function(srna, "panel_prop", "rna_uiLayoutPanelProp");
+  RNA_def_function_ui_description(
+      func,
+      "Similar to `.panel(...)` but instead of storing whether it is open or closed in the "
+      "region, it is stored in the provided boolean property. This should be used when multiple "
+      "instances of the same panel can exist. For example one for every item in a collection "
+      "property or list. This can only be used when the panel has the full width of the panel "
+      "region available to it. So it can't be used in e.g. in a box or columns");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  parm = RNA_def_pointer(
+      func, "data", "AnyType", "", "Data from which to take the open-state property");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  parm = RNA_def_string(
+      func,
+      "property",
+      nullptr,
+      0,
+      "",
+      "Identifier of the boolean property that determines whether the panel is open or closed");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_pointer(func, "layout_header", "UILayout", "", "Sub-layout to put items in");
+  RNA_def_function_output(func, parm);
+  parm = RNA_def_pointer(func,
+                         "layout_body",
+                         "UILayout",
+                         "",
+                         "Sub-layout to put items in. Will be none if the panel is collapsed");
+  RNA_def_function_output(func, parm);
 
   func = RNA_def_function(srna, "column_flow", "uiLayoutColumnFlow");
   RNA_def_int(func, "columns", 0, 0, INT_MAX, "", "Number of columns, 0 is automatic", 0, INT_MAX);
@@ -1144,6 +1272,8 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(func, "Item. Exposes an RNA item and places it into the layout");
   api_ui_item_rna_common(func);
   api_ui_item_common(func);
+  RNA_def_string(
+      func, "placeholder", nullptr, 0, "", "Hint describing the expected value when empty");
   RNA_def_boolean(func, "expand", false, "", "Expand button to show more detail");
   RNA_def_boolean(func, "slider", false, "", "Use slider widget for numeric values");
   RNA_def_int(func,
@@ -1378,7 +1508,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_string(func, "category", nullptr, 0, "", "panel type category");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "separator", "uiItemS_ex");
+  func = RNA_def_function(srna, "separator", "rna_uiItemSeparator");
   RNA_def_function_ui_description(func, "Item. Inserts empty space into the layout between items");
   RNA_def_float(func,
                 "factor",
@@ -1389,6 +1519,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                 "Percentage of width to space (leave unset for default space)",
                 0.0f,
                 FLT_MAX);
+  RNA_def_enum(func,
+               "type",
+               rna_enum_separator_type_items,
+               int(LayoutSeparatorType::Auto),
+               "Type",
+               "The type of the separator");
 
   func = RNA_def_function(srna, "separator_spacer", "uiItemSpacer");
   RNA_def_function_ui_description(
@@ -1900,7 +2036,8 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "template_node_asset_menu_items", "uiTemplateNodeAssetMenuItems");
+  func = RNA_def_function(
+      srna, "template_node_asset_menu_items", "rna_uiLayout_template_node_asset_menu_items");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_string(func, "catalog_path", nullptr, 0, "", "");
 
@@ -2096,12 +2233,24 @@ void RNA_api_ui_layout(StructRNA *srna)
       srna, "template_light_linking_collection", "uiTemplateLightLinkingCollection");
   RNA_def_function_ui_description(func,
                                   "Visualization of a content of a light linking collection");
+  parm = RNA_def_pointer(func,
+                         "context_layout",
+                         "UILayout",
+                         "",
+                         "Layout to set active list element as context properties");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   api_ui_item_rna_common(func);
 
+  func = RNA_def_function(srna, "template_bone_collection_tree", "uiTemplateBoneCollectionTree");
+  RNA_def_function_ui_description(func, "Show bone collections tree");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+
+#  ifdef WITH_GREASE_PENCIL_V3
   func = RNA_def_function(
       srna, "template_grease_pencil_layer_tree", "uiTemplateGreasePencilLayerTree");
   RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+#  endif
 
   func = RNA_def_function(srna, "template_node_tree_interface", "uiTemplateNodeTreeInterface");
   RNA_def_function_ui_description(func, "Show a node tree interface");
@@ -2110,6 +2259,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                          "NodeTreeInterface",
                          "Node Tree Interface",
                          "Interface of a node tree to display");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+
+  func = RNA_def_function(srna, "template_node_inputs", "uiTemplateNodeInputs");
+  RNA_def_function_ui_description(func, "Show a node settings and input socket values");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_pointer(func, "node", "Node", "Node", "Display inputs of this node");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 

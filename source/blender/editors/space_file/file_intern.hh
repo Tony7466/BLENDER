@@ -15,7 +15,6 @@
 
 struct ARegion;
 struct ARegionType;
-struct AssetLibrary;
 struct bContextDataResult;
 struct FileAssetSelectParams;
 struct FileSelectParams;
@@ -23,6 +22,9 @@ struct Main;
 struct SpaceFile;
 struct View2D;
 struct uiLayout;
+namespace blender::asset_system {
+class AssetLibrary;
+}
 
 bool file_main_region_needs_refresh_before_draw(SpaceFile *sfile);
 
@@ -36,8 +38,12 @@ int /*eContextResult*/ file_context(const bContext *C,
 
 #define ATTRIBUTE_COLUMN_PADDING (0.5f * UI_UNIT_X)
 
-/** Related to #FileSelectParams.thumbnail_size. */
-#define SMALL_SIZE_CHECK(_size) ((_size) < 64)
+#define FILE_LAYOUT_COMPACT(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 500)
+#define FILE_LAYOUT_HIDE_DATE(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 250)
+#define FILE_LAYOUT_HIDE_SIZE(_layout) \
+  (_layout->flag & FILE_LAYOUT_VER && (_layout->width / UI_SCALE_FAC) < 350)
 
 void file_calc_previews(const bContext *C, ARegion *region);
 void file_draw_list(const bContext *C, ARegion *region);
@@ -125,7 +131,8 @@ void fileselect_refresh_params(SpaceFile *sfile);
  */
 void fileselect_file_set(bContext *C, SpaceFile *sfile, int index);
 bool file_attribute_column_type_enabled(const FileSelectParams *params,
-                                        FileAttributeColumnType column);
+                                        FileAttributeColumnType column,
+                                        const FileLayout *layout);
 /**
  * Check if the region coordinate defined by \a x and \a y are inside the column header.
  */
@@ -223,32 +230,29 @@ void file_path_to_ui_path(const char *path, char *r_pathi, int max_size);
 
 /* asset_catalog_tree_view.cc */
 
-/* C-handle for #ed::asset_browser::AssetCatalogFilterSettings. */
-typedef struct FileAssetCatalogFilterSettingsHandle FileAssetCatalogFilterSettingsHandle;
+namespace blender::ed::asset_browser {
 
-void file_create_asset_catalog_tree_view_in_layout(::AssetLibrary *asset_library,
+void file_create_asset_catalog_tree_view_in_layout(asset_system::AssetLibrary *asset_library,
                                                    uiLayout *layout,
                                                    SpaceFile *space_file,
                                                    FileAssetSelectParams *params);
 
-namespace blender::asset_system {
-class AssetLibrary;
-}
+class AssetCatalogFilterSettings;
 
-FileAssetCatalogFilterSettingsHandle *file_create_asset_catalog_filter_settings();
+AssetCatalogFilterSettings *file_create_asset_catalog_filter_settings();
 void file_delete_asset_catalog_filter_settings(
-    FileAssetCatalogFilterSettingsHandle **filter_settings_handle);
+    AssetCatalogFilterSettings **filter_settings_handle);
 /**
  * \return True if the file list should update its filtered results
  * (e.g. because filtering parameters changed).
  */
 bool file_set_asset_catalog_filter_settings(
-    FileAssetCatalogFilterSettingsHandle *filter_settings_handle,
+    AssetCatalogFilterSettings *filter_settings_handle,
     eFileSel_Params_AssetCatalogVisibility catalog_visibility,
-    ::bUUID catalog_id);
-void file_ensure_updated_catalog_filter_data(
-    FileAssetCatalogFilterSettingsHandle *filter_settings_handle,
-    const blender::asset_system::AssetLibrary *asset_library);
+    const ::bUUID &catalog_id);
+void file_ensure_updated_catalog_filter_data(AssetCatalogFilterSettings *filter_settings_handle,
+                                             const asset_system::AssetLibrary *asset_library);
 bool file_is_asset_visible_in_catalog_filter_settings(
-    const FileAssetCatalogFilterSettingsHandle *filter_settings_handle,
-    const AssetMetaData *asset_data);
+    const AssetCatalogFilterSettings *filter_settings_handle, const AssetMetaData *asset_data);
+
+}  // namespace blender::ed::asset_browser

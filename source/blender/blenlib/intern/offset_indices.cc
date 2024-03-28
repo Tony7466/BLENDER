@@ -24,10 +24,12 @@ OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offse
 
 void fill_constant_group_size(const int size, const int start_offset, MutableSpan<int> offsets)
 {
-  threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
-    for (const int64_t i : range) {
-      offsets[i] = size * i + start_offset;
-    }
+  threading::memory_bandwidth_bound_task(offsets.size_in_bytes(), [&]() {
+    threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t i : range) {
+        offsets[i] = size * i + start_offset;
+      }
+    });
   });
 }
 
@@ -48,16 +50,34 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
   });
 }
 
+void gather_group_sizes(const OffsetIndices<int> offsets,
+                        const Span<int> indices,
+                        MutableSpan<int> sizes)
+{
+  threading::memory_bandwidth_bound_task(
+      sizes.size_in_bytes() + offsets.data().size_in_bytes() + indices.size_in_bytes(), [&]() {
+        threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
+          for (const int i : range) {
+            sizes[i] = offsets[indices[i]].size();
+          }
+        });
+      });
+}
+
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
+                                           const int start_offset,
                                            MutableSpan<int> dst_offsets)
 {
   if (selection.is_empty()) {
     return {};
   }
-  BLI_assert(selection.size() == (dst_offsets.size() - 1));
-  gather_group_sizes(src_offsets, selection, dst_offsets);
-  accumulate_counts_to_offsets(dst_offsets);
+  int offset = start_offset;
+  selection.foreach_index_optimized<int>([&](const int i, const int pos) {
+    dst_offsets[pos] = offset;
+    offset += src_offsets[i].size();
+  });
+  dst_offsets.last() = offset;
   return OffsetIndices<int>(dst_offsets);
 }
 

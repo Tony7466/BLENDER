@@ -8,8 +8,6 @@ void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
 
-  /* Add 0.5 to evaluate the input sampler at the center of the pixel and divide by the image size
-   * to get the coordinates into the sampler's expected [0, 1] range. */
   vec2 coordinates = (vec2(texel) + vec2(0.5)) / vec2(texture_size(input_tx));
 
   vec3 transformed_coordinates = mat3(homography_matrix) * vec3(coordinates, 1.0);
@@ -23,6 +21,8 @@ void main()
 
   vec4 sampled_color = textureGrad(input_tx, projected_coordinates, x_gradient, y_gradient);
 
-  imageStore(output_img, texel, sampled_color);
-  imageStore(mask_img, texel, sampled_color.aaaa);
+  /* Premultiply the mask value as an alpha. */
+  vec4 plane_color = sampled_color * texture_load(mask_tx, texel).x;
+
+  imageStore(output_img, texel, plane_color);
 }

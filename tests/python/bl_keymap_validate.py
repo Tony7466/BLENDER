@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# ./blender.bin --background -noaudio --factory-startup --python tests/python/bl_keymap_validate.py
+# ./blender.bin --background --factory-startup --python tests/python/bl_keymap_validate.py
 #
 
 """
@@ -273,10 +273,8 @@ def main() -> None:
     relaxed = "--relaxed" in argv
 
     # NOTE(@ideasman42): Disable add-on items as they may cause differences in the key-map.
-    # An alternative would be to disable all add-ons, but this is simpler.
-    if kc_addon := bpy.context.window_manager.keyconfigs.addon:
-        kc_addon.keymaps.clear()
-    del kc_addon
+    import addon_utils
+    addon_utils.disable_all()
 
     has_error = False
 

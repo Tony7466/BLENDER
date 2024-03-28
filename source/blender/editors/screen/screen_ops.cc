@@ -11,20 +11,16 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_dlrbTree.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_mask_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -32,31 +28,30 @@
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_callbacks.h"
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_callbacks.hh"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
+#include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_armature.hh"
-#include "ED_clip.hh"
 #include "ED_fileselect.hh"
 #include "ED_image.hh"
 #include "ED_keyframes_keylist.hh"
@@ -66,8 +61,6 @@
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 #include "ED_sequencer.hh"
-#include "ED_undo.hh"
-#include "ED_util.hh"
 #include "ED_view3d.hh"
 
 #include "RNA_access.hh"
@@ -79,9 +72,11 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
-#include "screen_intern.h" /* own module include */
+#include "screen_intern.hh" /* own module include */
+
+using blender::Vector;
 
 #define KM_MODAL_CANCEL 1
 #define KM_MODAL_APPLY 2
@@ -283,10 +278,24 @@ bool ED_operator_outliner_active(bContext *C)
   return ed_spacetype_test(C, SPACE_OUTLINER);
 }
 
+bool ED_operator_region_outliner_active(bContext *C)
+{
+  if (!ED_operator_outliner_active(C)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an active Outliner");
+    return false;
+  }
+  const ARegion *region = CTX_wm_region(C);
+  if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
+    CTX_wm_operator_poll_msg_set(C, "Expected an Outliner region");
+    return false;
+  }
+  return true;
+}
+
 bool ED_operator_outliner_active_no_editobject(bContext *C)
 {
   if (ed_spacetype_test(C, SPACE_OUTLINER)) {
-    Object *ob = ED_object_active_context(C);
+    Object *ob = blender::ed::object::context_active_object(C);
     Object *obedit = CTX_data_edit_object(C);
     if (ob && ob == obedit) {
       return false;
@@ -397,7 +406,7 @@ static bool ed_object_hidden(const Object *ob)
 
 bool ED_operator_object_active(bContext *C)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   return ((ob != nullptr) && !ed_object_hidden(ob));
 }
 
@@ -423,7 +432,7 @@ bool ED_operator_object_active_editable_ex(bContext *C, const Object *ob)
 
 bool ED_operator_object_active_editable(bContext *C)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   return ED_operator_object_active_editable_ex(C, ob);
 }
 
@@ -434,20 +443,20 @@ bool ED_operator_object_active_local_editable_ex(bContext *C, const Object *ob)
 
 bool ED_operator_object_active_local_editable(bContext *C)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   return ED_operator_object_active_editable_ex(C, ob) && !ID_IS_OVERRIDE_LIBRARY(ob);
 }
 
 bool ED_operator_object_active_editable_mesh(bContext *C)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   return ((ob != nullptr) && !ID_IS_LINKED(ob) && !ed_object_hidden(ob) && (ob->type == OB_MESH) &&
           !ID_IS_LINKED(ob->data) && !ID_IS_OVERRIDE_LIBRARY(ob->data));
 }
 
 bool ED_operator_object_active_editable_font(bContext *C)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   return ((ob != nullptr) && !ID_IS_LINKED(ob) && !ed_object_hidden(ob) && (ob->type == OB_FONT) &&
           !ID_IS_LINKED(ob->data) && !ID_IS_OVERRIDE_LIBRARY(ob->data));
 }
@@ -482,15 +491,6 @@ bool ED_operator_editmesh_region_view3d(bContext *C)
   return false;
 }
 
-bool ED_operator_editmesh_auto_smooth(bContext *C)
-{
-  Object *obedit = CTX_data_edit_object(C);
-  if (obedit && obedit->type == OB_MESH && (((Mesh *)(obedit->data))->flag & ME_AUTOSMOOTH)) {
-    return nullptr != BKE_editmesh_from_object(obedit);
-  }
-  return false;
-}
-
 bool ED_operator_editarmature(bContext *C)
 {
   Object *obedit = CTX_data_edit_object(C);
@@ -521,14 +521,14 @@ static bool ed_operator_posemode_exclusive_ex(bContext *C, Object *obact)
 
 bool ED_operator_posemode_exclusive(bContext *C)
 {
-  Object *obact = ED_object_active_context(C);
+  Object *obact = blender::ed::object::context_active_object(C);
 
   return ed_operator_posemode_exclusive_ex(C, obact);
 }
 
 bool ED_operator_object_active_local_editable_posemode_exclusive(bContext *C)
 {
-  Object *obact = ED_object_active_context(C);
+  Object *obact = blender::ed::object::context_active_object(C);
 
   if (!ed_operator_posemode_exclusive_ex(C, obact)) {
     return false;
@@ -782,7 +782,7 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
   if (az->type == AZONE_REGION) {
     if (region->overlap && (region->v2d.keeptot != V2D_KEEPTOT_STRICT) &&
         /* Only when this isn't hidden (where it's displayed as an button that expands). */
-        ((az->region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_TOO_SMALL)) == 0))
+        region->visible)
     {
       /* A floating region to be resized, clip by the visible region. */
       switch (az->edge) {
@@ -856,6 +856,20 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
         break;
       }
       if (az->type == AZONE_REGION) {
+        const ARegion *region = az->region;
+        const int local_xy[2] = {xy[0] - region->winrct.xmin, xy[1] - region->winrct.ymin};
+
+        /* Respect button sections: Clusters of buttons (separated using separator-spacers) are
+         * drawn with a background, in-between them the region is fully transparent (if "Region
+         * Overlap" is enabled). Only allow dragging visible edges, so at the button sections. */
+        if (region->visible && region->overlap &&
+            (region->flag & RGN_FLAG_RESIZE_RESPECT_BUTTON_SECTIONS) &&
+            !UI_region_button_sections_is_inside_x(az->region, local_xy[0]))
+        {
+          az = nullptr;
+          break;
+        }
+
         break;
       }
       if (az->type == AZONE_FULLSCREEN) {
@@ -1438,6 +1452,7 @@ static void area_dupli_fn(bScreen * /*screen*/, ScrArea *area, void *user_data)
 {
   ScrArea *area_src = static_cast<ScrArea *>(user_data);
   ED_area_data_copy(area, area_src, true);
+  ED_area_tag_redraw(area);
 };
 
 /* operator callback */
@@ -1691,7 +1706,7 @@ static void area_move_set_limits(wmWindow *win,
         areamin += U.pixelsize;
       }
 
-      int y1 = screen_geom_area_height(area) - areamin;
+      int y1 = screen_geom_area_height(area) - areamin - int(U.pixelsize);
 
       /* if top or down edge selected, test height */
       if (area->v1->editflag && area->v4->editflag) {
@@ -1711,7 +1726,7 @@ static void area_move_set_limits(wmWindow *win,
         areamin += U.pixelsize;
       }
 
-      int x1 = screen_geom_area_width(area) - areamin;
+      int x1 = screen_geom_area_width(area) - areamin - int(U.pixelsize);
 
       /* if left or right edge selected, test width */
       if (area->v1->editflag && area->v2->editflag) {
@@ -2848,8 +2863,10 @@ static int region_scale_modal(bContext *C, wmOperator *op, const wmEvent *event)
   /* execute the events */
   switch (event->type) {
     case MOUSEMOVE: {
-      const float aspect = BLI_rctf_size_x(&rmd->region->v2d.cur) /
-                           (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1);
+      const float aspect = (rmd->region->v2d.flag & V2D_IS_INIT) ?
+                               (BLI_rctf_size_x(&rmd->region->v2d.cur) /
+                                (BLI_rcti_size_x(&rmd->region->v2d.mask) + 1)) :
+                               1.0f;
       const int snap_size_threshold = (U.widget_unit * 2) / aspect;
       bool size_changed = false;
 
@@ -3187,10 +3204,10 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   /* populate tree with keyframe nodes */
-  scene_to_keylist(&ads, scene, keylist, 0);
+  scene_to_keylist(&ads, scene, keylist, 0, {-FLT_MAX, FLT_MAX});
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, {-FLT_MAX, FLT_MAX});
 
     if (ob->type == OB_GPENCIL_LEGACY) {
       const bool active = !(scene->flag & SCE_KEYS_NO_SELONLY);
@@ -3740,7 +3757,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Vertical Split"),
-              ICON_NONE,
+              ICON_SPLIT_VERTICAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -3753,7 +3770,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Horizontal Split"),
-              ICON_NONE,
+              ICON_SPLIT_HORIZONTAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -3771,7 +3788,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     uiItemFullO(layout,
                 "SCREEN_OT_area_join",
                 IFACE_("Join Areas"),
-                ICON_NONE,
+                ICON_AREA_JOIN,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
                 UI_ITEM_NONE,
@@ -3784,7 +3801,7 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     uiItemFullO(layout,
                 "SCREEN_OT_area_swap",
                 IFACE_("Swap Areas"),
-                ICON_NONE,
+                ICON_AREA_SWAP,
                 nullptr,
                 WM_OP_EXEC_DEFAULT,
                 UI_ITEM_NONE,
@@ -4064,7 +4081,7 @@ static int region_quadview_exec(bContext *C, wmOperator *op)
 
         if (ED_view3d_context_user_region(C, &v3d_user, &region_user)) {
           if (region != region_user) {
-            SWAP(void *, region->regiondata, region_user->regiondata);
+            std::swap(region->regiondata, region_user->regiondata);
             rv3d = static_cast<RegionView3D *>(region->regiondata);
           }
         }
@@ -4341,7 +4358,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Vertical Split"),
-              ICON_NONE,
+              ICON_SPLIT_VERTICAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -4354,7 +4371,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   uiItemFullO(layout,
               "SCREEN_OT_area_split",
               IFACE_("Horizontal Split"),
-              ICON_NONE,
+              ICON_SPLIT_HORIZONTAL,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
@@ -4511,7 +4528,7 @@ static int screen_context_menu_invoke(bContext *C, wmOperator * /*op*/, const wm
 static void SCREEN_OT_region_context_menu(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Region Context Menu";
+  ot->name = "Region";
   ot->description = "Display region context menu";
   ot->idname = "SCREEN_OT_region_context_menu";
 
@@ -4694,7 +4711,7 @@ static void screen_animation_region_tag_redraw(
   ED_region_tag_redraw(region);
 }
 
-//#define PROFILE_AUDIO_SYNCH
+// #define PROFILE_AUDIO_SYNCH
 
 static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
@@ -5491,7 +5508,9 @@ struct RegionAlphaInfo {
 float ED_region_blend_alpha(ARegion *region)
 {
   /* check parent too */
-  if (region->regiontimer == nullptr && (region->alignment & RGN_SPLIT_PREV) && region->prev) {
+  if (region->regiontimer == nullptr &&
+      (region->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) && region->prev)
+  {
     region = region->prev;
   }
 
@@ -5562,11 +5581,11 @@ void ED_region_visibility_change_update_animated(bContext *C, ScrArea *area, ARe
     ED_area_init(wm, win, area);
   }
   else {
-    WM_event_remove_handlers(C, &region->handlers);
+    ED_region_visibility_change_update_ex(C, area, region, true, false);
   }
 
   if (region->next) {
-    if (region->next->alignment & RGN_SPLIT_PREV) {
+    if (region->next->alignment & (RGN_SPLIT_PREV | RGN_ALIGN_HIDE_WITH_PREV)) {
       rgi->child_region = region->next;
     }
   }
@@ -5785,32 +5804,24 @@ static int space_workspace_cycle_invoke(bContext *C, wmOperator *op, const wmEve
   Main *bmain = CTX_data_main(C);
   const eScreenCycle direction = eScreenCycle(RNA_enum_get(op->ptr, "direction"));
   WorkSpace *workspace_src = WM_window_get_active_workspace(win);
-  WorkSpace *workspace_dst = nullptr;
 
-  ListBase ordered;
-  BKE_id_ordered_list(&ordered, &bmain->workspaces);
-
-  LISTBASE_FOREACH (LinkData *, link, &ordered) {
-    if (link->data == workspace_src) {
-      if (direction == SPACE_CONTEXT_CYCLE_PREV) {
-        workspace_dst = static_cast<WorkSpace *>((link->prev) ? link->prev->data : nullptr);
-      }
-      else {
-        workspace_dst = static_cast<WorkSpace *>((link->next) ? link->next->data : nullptr);
-      }
-    }
-  }
-
-  if (workspace_dst == nullptr) {
-    LinkData *link = static_cast<LinkData *>(
-        (direction == SPACE_CONTEXT_CYCLE_PREV) ? ordered.last : ordered.first);
-    workspace_dst = static_cast<WorkSpace *>(link->data);
-  }
-
-  BLI_freelistN(&ordered);
-
-  if (workspace_src == workspace_dst) {
+  Vector<ID *> ordered = BKE_id_ordered_list(&bmain->workspaces);
+  if (ordered.size() == 1) {
     return OPERATOR_CANCELLED;
+  }
+
+  const int index = ordered.first_index_of(&workspace_src->id);
+
+  WorkSpace *workspace_dst = nullptr;
+  switch (direction) {
+    case SPACE_CONTEXT_CYCLE_PREV:
+      workspace_dst = reinterpret_cast<WorkSpace *>(index == 0 ? ordered.last() :
+                                                                 ordered[index - 1]);
+      break;
+    case SPACE_CONTEXT_CYCLE_NEXT:
+      workspace_dst = reinterpret_cast<WorkSpace *>(
+          index == ordered.index_range().last() ? ordered.first() : ordered[index + 1]);
+      break;
   }
 
   win->workspace_hook->temp_workspace_store = workspace_dst;
@@ -5934,7 +5945,7 @@ static bool blend_file_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent *
 static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 void ED_keymap_screen(wmKeyConfig *keyconf)

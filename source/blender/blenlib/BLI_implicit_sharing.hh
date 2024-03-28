@@ -10,8 +10,7 @@
 
 #include <atomic>
 
-#include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
+#include "BLI_assert.h"
 #include "BLI_utility_mixins.hh"
 
 namespace blender {
@@ -124,6 +123,11 @@ class ImplicitSharingInfo : NonCopyable, NonMovable {
   int64_t version() const
   {
     return version_.load(std::memory_order_acquire);
+  }
+
+  int strong_users() const
+  {
+    return strong_users_.load(std::memory_order_acquire);
   }
 
   /**

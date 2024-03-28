@@ -2,16 +2,18 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "hydra_scene_delegate.h"
+#include "hydra_scene_delegate.hh"
 
 #include <bitset>
 
 #include "DNA_scene_types.h"
 
+#include "BKE_particle.h"
+
 #include "BLI_set.hh"
 #include "BLI_string.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io::hydra {
 
@@ -35,6 +37,7 @@ HydraSceneDelegate::HydraSceneDelegate(pxr::HdRenderIndex *parent_index,
     : HdSceneDelegate(parent_index, delegate_id)
 {
   instancer_data_ = std::make_unique<InstancerData>(this, instancer_prim_id());
+  world_data_ = std::make_unique<WorldData>(this, world_prim_id());
 }
 
 pxr::HdMeshTopology HydraSceneDelegate::GetMeshTopology(pxr::SdfPath const &id)
@@ -214,7 +217,7 @@ void HydraSceneDelegate::populate(Depsgraph *deps, View3D *v3d)
     set_light_shading_settings();
     set_world_shading_settings();
     update_collection();
-    update_world();
+    world_data_->update();
   }
 }
 
@@ -254,6 +257,16 @@ pxr::SdfPath HydraSceneDelegate::material_prim_id(const Material *mat) const
   return prim_id((ID *)mat, "M");
 }
 
+pxr::SdfPath HydraSceneDelegate::hair_prim_id(Object *parent_obj, const ParticleSystem *psys) const
+{
+  char name[128];
+  SNPRINTF(name,
+           "%s_%s",
+           object_prim_id(parent_obj).GetName().c_str(),
+           prim_id((ID *)psys, "PS").GetName().c_str());
+  return GetDelegateID().AppendElementString(name);
+}
+
 pxr::SdfPath HydraSceneDelegate::instancer_prim_id() const
 {
   return GetDelegateID().AppendElementString("Instancer");
@@ -277,7 +290,6 @@ ObjectData *HydraSceneDelegate::object_data(pxr::SdfPath const &id) const
   if (obj_data) {
     return obj_data->get();
   }
-
   InstancerData *i_data = instancer_data(p_id, true);
   if (i_data) {
     return i_data->object_data(id);
@@ -314,6 +326,11 @@ MaterialData *HydraSceneDelegate::material_data(pxr::SdfPath const &id) const
   return mat_data->get();
 }
 
+HairData *HydraSceneDelegate::hair_data(pxr::SdfPath const &id) const
+{
+  return dynamic_cast<HairData *>(object_data(id));
+}
+
 InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool child_id) const
 {
   pxr::SdfPath p_id;
@@ -338,26 +355,6 @@ InstancerData *HydraSceneDelegate::instancer_data(pxr::SdfPath const &id, bool c
   return nullptr;
 }
 
-void HydraSceneDelegate::update_world()
-{
-  if (!world_data_) {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_ = std::make_unique<WorldData>(this, world_prim_id());
-      world_data_->init();
-      world_data_->insert();
-    }
-  }
-  else {
-    if (!shading_settings.use_scene_world || (shading_settings.use_scene_world && scene->world)) {
-      world_data_->update();
-    }
-    else {
-      world_data_->remove();
-      world_data_ = nullptr;
-    }
-  }
-}
-
 void HydraSceneDelegate::check_updates()
 {
   bool do_update_collection = false;
@@ -371,7 +368,7 @@ void HydraSceneDelegate::check_updates()
     do_update_collection = true;
   }
 
-  DEGIDIterData data = {0};
+  DEGIDIterData data = {nullptr};
   data.graph = depsgraph;
   data.only_updated = true;
   ITER_BEGIN (DEG_iterator_ids_begin, DEG_iterator_ids_next, DEG_iterator_ids_end, &data, ID *, id)
@@ -385,33 +382,32 @@ void HydraSceneDelegate::check_updates()
     switch (GS(id->name)) {
       case ID_OB: {
         do_update_collection = true;
-      } break;
-
+        break;
+      }
       case ID_MA: {
         MaterialData *mat_data = material_data(material_prim_id((Material *)id));
         if (mat_data) {
           mat_data->update();
         }
-      } break;
-
+        break;
+      }
       case ID_WO: {
         if (shading_settings.use_scene_world && id->recalc & ID_RECALC_SHADING) {
           do_update_world = true;
         }
-      } break;
-
+        break;
+      }
       case ID_SCE: {
-        if ((id->recalc & ID_RECALC_COPY_ON_WRITE && !(id->recalc & ID_RECALC_SELECT)) ||
+        if ((id->recalc & ID_RECALC_SYNC_TO_EVAL && !(id->recalc & ID_RECALC_SELECT)) ||
             id->recalc & (ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_BASE_FLAGS))
         {
           do_update_collection = true;
         }
-        if (id->recalc & ID_RECALC_AUDIO_VOLUME &&
-            ((scene->world && !world_data_) || (!scene->world && world_data_)))
-        {
+        if (id->recalc & ID_RECALC_AUDIO_VOLUME) {
           do_update_world = true;
         }
-      } break;
+        break;
+      }
 
       default:
         break;
@@ -420,7 +416,7 @@ void HydraSceneDelegate::check_updates()
   ITER_END;
 
   if (do_update_world) {
-    update_world();
+    world_data_->update();
   }
   if (do_update_collection) {
     update_collection();
@@ -431,15 +427,58 @@ void HydraSceneDelegate::update_collection()
 {
   Set<std::string> available_objects;
 
-  DEGObjectIterSettings settings = {0};
+  DEGObjectIterSettings settings = {nullptr};
   settings.depsgraph = depsgraph;
   settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
-  DEGObjectIterData data = {0};
+  DEGObjectIterData data = {nullptr};
   data.settings = &settings;
   data.graph = settings.depsgraph;
   data.flag = settings.flags;
 
   instancer_data_->pre_update();
+
+  auto update_psys = [this, &available_objects](Object *object) {
+    LISTBASE_FOREACH (ParticleSystem *, psys, &object->particlesystem) {
+      if (psys_in_edit_mode(depsgraph, psys)) {
+        continue;
+      }
+      if (HairData::is_supported(psys) && HairData::is_visible(this, object, psys)) {
+        pxr::SdfPath id = hair_prim_id(object, psys);
+        HairData *h_data = hair_data(id);
+        if (h_data) {
+          h_data->update();
+        }
+        else {
+          h_data = dynamic_cast<HairData *>(
+              objects_.lookup_or_add(id, std::make_unique<HairData>(this, object, id, psys))
+                  .get());
+          h_data->init();
+          h_data->insert();
+        }
+        available_objects.add(id.GetName());
+      }
+    }
+  };
+
+  auto update_object = [this, &available_objects](Object *object) {
+    if (!ObjectData::is_supported(object) || !ObjectData::is_visible(this, object) ||
+        (!shading_settings.use_scene_lights && object->type == OB_LAMP))
+    {
+      return;
+    }
+
+    available_objects.add(object_prim_id(object).GetName());
+
+    pxr::SdfPath id = object_prim_id(object);
+    ObjectData *obj_data = object_data(id);
+    if (obj_data) {
+      obj_data->update();
+    }
+    else {
+      obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
+      obj_data->insert();
+    }
+  };
 
   ITER_BEGIN (DEG_iterator_objects_begin,
               DEG_iterator_objects_next,
@@ -461,23 +500,8 @@ void HydraSceneDelegate::update_collection()
       continue;
     }
 
-    if (!ObjectData::is_supported(object) || !ObjectData::is_visible(this, object) ||
-        (!shading_settings.use_scene_lights && object->type == OB_LAMP))
-    {
-      continue;
-    }
-
-    available_objects.add(object_prim_id(object).GetName());
-
-    pxr::SdfPath id = object_prim_id(object);
-    ObjectData *obj_data = object_data(id);
-    if (obj_data) {
-      obj_data->update();
-    }
-    else {
-      obj_data = objects_.lookup_or_add(id, ObjectData::create(this, object, id)).get();
-      obj_data->insert();
-    }
+    update_psys(object);
+    update_object(object);
   }
   ITER_END;
 

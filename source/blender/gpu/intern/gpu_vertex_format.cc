@@ -8,12 +8,12 @@
  * GPU vertex format
  */
 
-#include "GPU_vertex_format.h"
-#include "GPU_capabilities.h"
+#include "GPU_vertex_format.hh"
+#include "GPU_capabilities.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
-#include "gpu_vertex_format_private.h"
+#include "gpu_vertex_format_private.hh"
 
 #include <cstddef>
 #include <cstring>
@@ -258,7 +258,7 @@ void GPU_vertformat_safe_attr_name(const char *attr_name, char *r_safe_name, uin
   uint len = strlen(attr_name);
 
   if (len > 8) {
-    /* Start with the first 4 chars of the name; */
+    /* Start with the first 4 chars of the name. */
     for (int i = 0; i < 4; i++) {
       data[i] = attr_name[i];
     }

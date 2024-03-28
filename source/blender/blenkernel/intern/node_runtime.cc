@@ -10,7 +10,6 @@
 #include "BLI_function_ref.hh"
 #include "BLI_stack.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "NOD_geometry_nodes_lazy_function.hh"
 
@@ -136,7 +135,7 @@ static void update_directly_linked_links_and_sockets(const bNodeTree &ntree)
       std::sort(socket->runtime->directly_linked_links.begin(),
                 socket->runtime->directly_linked_links.end(),
                 [&](const bNodeLink *a, const bNodeLink *b) {
-                  return a->multi_input_socket_index > b->multi_input_socket_index;
+                  return a->multi_input_sort_id > b->multi_input_sort_id;
                 });
     }
   }
@@ -606,4 +605,29 @@ bool bNodeTree::node_id_path_from_nested_node_ref(const int32_t nested_node_id,
     return false;
   }
   return group->node_id_path_from_nested_node_ref(ref->path.id_in_node, r_node_ids);
+}
+
+const bNode *bNodeTree::find_nested_node(const int32_t nested_node_id,
+                                         const bNodeTree **r_tree) const
+{
+  const bNestedNodeRef *ref = this->find_nested_node_ref(nested_node_id);
+  if (ref == nullptr) {
+    return nullptr;
+  }
+  const int32_t node_id = ref->path.node_id;
+  const bNode *node = this->node_by_id(node_id);
+  if (node == nullptr) {
+    return nullptr;
+  }
+  if (!node->is_group()) {
+    if (r_tree) {
+      *r_tree = this;
+    }
+    return node;
+  }
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node->id);
+  if (group == nullptr) {
+    return nullptr;
+  }
+  return group->find_nested_node(ref->path.id_in_node, r_tree);
 }

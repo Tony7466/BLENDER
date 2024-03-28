@@ -20,11 +20,11 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
-#include "gpu_material_library.h"
+#include "gpu_material_library.hh"
 #include "gpu_shader_create_info.hh"
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 extern "C" {
 #define SHADER_SOURCE(datatoc, filename, filepath) extern char datatoc[];
@@ -104,12 +104,13 @@ struct GPUSource {
     if (filename.endswith(".h") || filename.endswith(".hh")) {
       enum_preprocess();
       quote_preprocess();
+      small_types_check();
     }
     else {
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }
-#ifdef DEBUG
+#ifndef NDEBUG
       if (source.find("drw_print") != StringRef::not_found) {
         string_preprocess();
       }
@@ -205,7 +206,7 @@ struct GPUSource {
    */
   void check_no_quotes()
   {
-#ifdef DEBUG
+#ifndef NDEBUG
     int64_t pos = -1;
     do {
       pos = source.find('"', pos + 1);
@@ -234,6 +235,45 @@ struct GPUSource {
     std::replace(processed_source.begin(), processed_source.end(), '"', ' ');
 
     source = processed_source.c_str();
+  }
+
+  /**
+   * Assert not small types are present inside shader shared files.
+   */
+  void small_types_check()
+  {
+#ifndef NDEBUG
+    auto check_type = [&](StringRefNull type_str) {
+      int64_t cursor = -1;
+      while (true) {
+        cursor = find_keyword(source, type_str, cursor + 1);
+        if (cursor == -1) {
+          break;
+        }
+        print_error(source, cursor, "small types are forbidden in shader interfaces");
+      }
+    };
+    check_type("char ");
+    check_type("char2 ");
+    check_type("char3 ");
+    check_type("char4 ");
+    check_type("uchar ");
+    check_type("uchar2 ");
+    check_type("uchar3 ");
+    check_type("uchar4 ");
+    check_type("short ");
+    check_type("short2 ");
+    check_type("short3 ");
+    check_type("short4 ");
+    check_type("ushort ");
+    check_type("ushort2 ");
+    check_type("ushort3 ");
+    check_type("ushort4 ");
+    check_type("half ");
+    check_type("half2 ");
+    check_type("half3 ");
+    check_type("half4 ");
+#endif
   }
 
   /**
@@ -575,7 +615,7 @@ struct GPUSource {
       CHECK(char_end, input, cursor, "Malformed char literal. Missing ending `'`.");
 
       StringRef input_char = input.substr(char_start, char_end - char_start);
-      if (input_char.size() == 0) {
+      if (input_char.is_empty()) {
         CHECK(-1, input, cursor, "Malformed char literal. Empty character constant");
       }
 

@@ -12,7 +12,6 @@
 #include <cstring>
 
 #include "DNA_listBase.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -22,19 +21,15 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-
 #include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_event_types.hh"
 
 #include "RNA_enum_types.hh"
-
-#include "DEG_depsgraph.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Event Printing
@@ -144,7 +139,7 @@ void WM_event_print(const wmEvent *event)
                ndof->progress);
       }
       else {
-        /* ndof buttons printed already */
+        /* NDOF buttons printed already. */
       }
     }
 #endif /* WITH_INPUT_NDOF */
@@ -201,7 +196,7 @@ bool WM_event_type_mask_test(const int event_type, const enum eEventType_Mask ma
     }
   }
 
-  /* NDOF */
+  /* NDOF. */
   if (mask & EVT_TYPE_MASK_NDOF) {
     if (ISNDOF(event_type)) {
       return true;
@@ -231,7 +226,7 @@ bool WM_event_is_modal_drag_exit(const wmEvent *event,
   /* If the release-confirm preference setting is enabled,
    * drag events can be canceled when mouse is released. */
   if (U.flag & USER_RELEASECONFIRM) {
-    /* option on, so can exit with km-release */
+    /* Option on, so can exit with km-release. */
     if (event->val == KM_RELEASE) {
       if ((init_event_val == KM_CLICK_DRAG) && (event->type == init_event_type)) {
         return true;
@@ -300,7 +295,7 @@ int WM_event_drag_direction(const wmEvent *event)
   }
 
 #if 0
-  /* debug */
+  /* Debug. */
   if (val == 1) {
     printf("tweak north\n");
   }
@@ -560,15 +555,15 @@ float wm_pressure_curve(float pressure)
   return pressure;
 }
 
-float WM_event_tablet_data(const wmEvent *event, int *pen_flip, float tilt[2])
+float WM_event_tablet_data(const wmEvent *event, bool *r_pen_flip, float r_tilt[2])
 {
-  if (tilt) {
-    tilt[0] = event->tablet.x_tilt;
-    tilt[1] = event->tablet.y_tilt;
+  if (r_tilt) {
+    r_tilt[0] = event->tablet.x_tilt;
+    r_tilt[1] = event->tablet.y_tilt;
   }
 
-  if (pen_flip) {
-    (*pen_flip) = (event->tablet.active == EVT_TABLET_ERASER);
+  if (r_pen_flip) {
+    (*r_pen_flip) = (event->tablet.active == EVT_TABLET_ERASER);
   }
 
   return event->tablet.pressure;
@@ -624,7 +619,7 @@ int WM_event_absolute_delta_y(const wmEvent *event)
  *
  * \note Shift is excluded from this check since it prevented typing `Shift+Space`, see: #85517.
  */
-bool WM_event_is_ime_switch(const struct wmEvent *event)
+bool WM_event_is_ime_switch(const wmEvent *event)
 {
   return (event->val == KM_PRESS) && (event->type == EVT_SPACEKEY) &&
          (event->modifier & (KM_CTRL | KM_OSKEY | KM_ALT));

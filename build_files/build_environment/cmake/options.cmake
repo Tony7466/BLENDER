@@ -41,6 +41,10 @@ message("PATCH_DIR = ${PATCH_DIR}")
 message("BUILD_DIR = ${BUILD_DIR}")
 
 if(WIN32)
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    set(BLENDER_PLATFORM_ARM ON)
+    set(BLENDER_PLATFORM_WINDOWS_ARM ON)
+  endif()
   set(PATCH_CMD ${DOWNLOAD_DIR}/msys2/msys64/usr/bin/patch.exe)
   set(LIBEXT ".lib")
   set(SHAREDLIBEXT ".lib")
@@ -97,9 +101,40 @@ if(WIN32)
   set(BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE "${COMMON_CLANG_FLAGS} -Xclang --dependent-lib=msvcrt -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -O2 -DNDEBUG -DPLATFORM_WINDOWS -DPSAPI_VERSION=2 -DTINYFORMAT_ALLOW_WCHAR_STRINGS")
   set(BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO "${COMMON_CLANG_FLAGS} -Xclang --dependent-lib=msvcrt -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -g -O2 -DNDEBUG -DPLATFORM_WINDOWS -DPSAPI_VERSION=2 -DTINYFORMAT_ALLOW_WCHAR_STRINGS")
 
+  set(DEFAULT_CLANG_CMAKE_FLAGS
+    -DCMAKE_BUILD_TYPE=${BUILD_MODE}
+    -DCMAKE_C_FLAGS_DEBUG=${BLENDER_CLANG_CMAKE_C_FLAGS_DEBUG}
+    -DCMAKE_C_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_C_FLAGS_MINSIZEREL}
+    -DCMAKE_C_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_C_FLAGS_RELEASE}
+    -DCMAKE_C_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_C_FLAGS_RELWITHDEBINFO}
+    -DCMAKE_CXX_FLAGS_DEBUG=${BLENDER_CLANG_CMAKE_CXX_FLAGS_DEBUG}
+    -DCMAKE_CXX_FLAGS_MINSIZEREL=${BLENDER_CLANG_CMAKE_CXX_FLAGS_MINSIZEREL}
+    -DCMAKE_CXX_FLAGS_RELEASE=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELEASE}
+    -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${BLENDER_CLANG_CMAKE_CXX_FLAGS_RELWITHDEBINFO}
+    -DCMAKE_CXX_STANDARD=17
+  )
+
   set(PLATFORM_FLAGS)
   set(PLATFORM_CXX_FLAGS)
-  set(PLATFORM_CMAKE_FLAGS)
+
+  if(BLENDER_PLATFORM_ARM)
+    # In some cases on ARM64 (unsure why), dep builds using the "Ninja" generator appear to use
+    # the x86 host tools (ie, x86 cl.exe producing ARM64 binaries). This is problematic when
+    # building things like LLVM, as memory is limited to 3GB, giving internal compiler errors.
+    # Here, we set CMAKE_C_COMPILER et al via PLATFORM_CMAKE_FLAGS to point to the ARM64 native
+    # binary, which doesn't have this issue.
+    # We make an assumption that the tools (ie, right now in the code) are the ones we want
+    set(PLATFORM_CMAKE_FLAGS
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      -DCMAKE_AR=${CMAKE_AR}
+      -DCMAKE_LINKER=${CMAKE_LINKER}
+      -DCMAKE_MT=${CMAKE_MT}
+      -DCMAKE_RC_COMPILER=${CMAKE_RC_COMPILER}
+    )
+  else()
+    set(PLATFORM_CMAKE_FLAGS)
+  endif()
 
   set(MINGW_PATH ${DOWNLOAD_DIR}/msys2/msys64/)
   set(MINGW_SHELL ming64sh.cmd)
@@ -164,7 +199,7 @@ else()
     set(PLATFORM_CXXFLAGS "-isysroot ${CMAKE_OSX_SYSROOT} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -std=c++17 -stdlib=libc++ -arch ${CMAKE_OSX_ARCHITECTURES}")
     set(PLATFORM_LDFLAGS "-isysroot ${CMAKE_OSX_SYSROOT} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -arch ${CMAKE_OSX_ARCHITECTURES}")
     if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "x86_64")
-      set(PLATFORM_BUILD_TARGET --build=x86_64-apple-darwin17.0.0) # OS X 10.13
+      set(PLATFORM_BUILD_TARGET --build=x86_64-apple-darwin19.0.0) # OS X 10.15
     else()
       set(PLATFORM_BUILD_TARGET --build=aarch64-apple-darwin20.0.0) # macOS 11.00
     endif()

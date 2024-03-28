@@ -43,7 +43,7 @@
 #pragma once
 
 #include "BLI_map.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "eevee_sampling.hh"
 #include "eevee_shader_shared.hh"
@@ -75,7 +75,7 @@ class MotionBlurModule {
   float initial_subframe_;
   /** Time of the frame we are rendering. */
   float frame_time_;
-  /** Enum controlling when the shutter opens. See SceneEEVEE.motion_blur_position. */
+  /** Enum controlling when the shutter opens. See RenderData.motion_blur_position. */
   int shutter_position_;
   /** Time in scene frame the shutter is open. Controls the amount of blur. */
   float shutter_time_;

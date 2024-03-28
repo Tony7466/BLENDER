@@ -105,7 +105,6 @@ def do_previews(do_objects, do_collections, do_scenes, do_data_intern):
             scene.collection.objects.link(camera)
 
             light.rotation_euler = Euler((0.7853981852531433, 0.0, 1.7453292608261108), 'XYZ')  # (45, 0, 100)
-            light_data.falloff_type = 'CONSTANT'
             light_data.spot_size = 1.0471975803375244  # 60
             scene.collection.objects.link(light)
 
@@ -426,8 +425,8 @@ def do_previews(do_objects, do_collections, do_scenes, do_data_intern):
         try:
             bpy.ops.wm.save_mainfile()
         except BaseException as ex:
-            # Might fail in some odd cases, like e.g. in regression files we have glsl/ram_glsl.blend which
-            # references an inexistent texture... Better not break in this case, just spit error to console.
+            # Might fail in some odd cases, like e.g. in regression files we have `glsl/ram_glsl.blend` which
+            # references an nonexistent texture. Better not break in this case, just spit error to console.
             print("ERROR:", ex)
     else:
         print("*NOT* Saving %s, because some error(s) happened while deleting temp render data..." % bpy.data.filepath)

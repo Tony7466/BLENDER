@@ -10,7 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
@@ -18,7 +17,6 @@
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
-#include "BLI_session_uuid.h"
 #include "BLI_string.h"
 
 #ifdef WIN32
@@ -27,31 +25,28 @@
 #  include <unistd.h>
 #endif
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
-#include "BKE_scene.h"
+#include "BKE_main.hh"
+#include "BKE_scene.hh"
 
-#include "DEG_depsgraph.h"
+#include "WM_types.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
 
-#include "SEQ_iterator.h"
-#include "SEQ_proxy.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_proxy.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
-#include "multiview.h"
-#include "proxy.h"
-#include "render.h"
-#include "sequencer.h"
-#include "strip_time.h"
-#include "utils.h"
+#include "multiview.hh"
+#include "proxy.hh"
+#include "render.hh"
+#include "sequencer.hh"
+#include "utils.hh"
 
 struct SeqIndexBuildContext {
   IndexBuildContext *index_context;
@@ -66,7 +61,7 @@ struct SeqIndexBuildContext {
   Depsgraph *depsgraph;
   Scene *scene;
   Sequence *seq, *orig_seq;
-  SessionUUID orig_seq_uuid;
+  SessionUID orig_seq_uid;
 };
 
 int SEQ_rendersize_to_proxysize(int render_size)
@@ -213,7 +208,7 @@ ImBuf *seq_proxy_fetch(const SeqRenderData *context, Sequence *seq, int timeline
   }
 
   if (proxy->storage & SEQ_STORAGE_PROXY_CUSTOM_FILE) {
-    int frameno = int(SEQ_give_frame_index(context->scene, seq, timeline_frame)) +
+    int frameno = round_fl_to_int(SEQ_give_frame_index(context->scene, seq, timeline_frame)) +
                   seq->anim_startofs;
     if (proxy->anim == nullptr) {
       if (seq_proxy_get_filepath(
@@ -411,7 +406,7 @@ static int seq_proxy_context_count(Sequence *seq, Scene *scene)
   return num_views;
 }
 
-static bool seq_proxy_need_rebuild(Sequence *seq, anim *anim)
+static bool seq_proxy_need_rebuild(Sequence *seq, ImBufAnim *anim)
 {
   if ((seq->strip->proxy->build_flags & SEQ_PROXY_SKIP_EXISTING) == 0) {
     return true;
@@ -476,7 +471,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
     context->depsgraph = depsgraph;
     context->scene = scene;
     context->orig_seq = seq;
-    context->orig_seq_uuid = seq->runtime.session_uuid;
+    context->orig_seq_uid = seq->runtime.session_uid;
     context->seq = nseq;
 
     context->view_id = i; /* only for images */
@@ -508,7 +503,7 @@ bool SEQ_proxy_rebuild_context(Main *bmain,
   return true;
 }
 
-void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_update, float *progress)
+void SEQ_proxy_rebuild(SeqIndexBuildContext *context, wmJobWorkerStatus *worker_status)
 {
   const bool overwrite = context->overwrite;
   SeqRenderData render_context;
@@ -519,7 +514,10 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
 
   if (seq->type == SEQ_TYPE_MOVIE) {
     if (context->index_context) {
-      IMB_anim_index_rebuild(context->index_context, stop, do_update, progress);
+      IMB_anim_index_rebuild(context->index_context,
+                             &worker_status->stop,
+                             &worker_status->do_update,
+                             &worker_status->progress);
     }
 
     return;
@@ -546,7 +544,6 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
   render_context.view_id = context->view_id;
 
   SeqRenderState state;
-  seq_render_state_init(&state);
 
   for (timeline_frame = SEQ_time_left_handle_frame_get(scene, seq);
        timeline_frame < SEQ_time_right_handle_frame_get(scene, seq);
@@ -565,12 +562,12 @@ void SEQ_proxy_rebuild(SeqIndexBuildContext *context, bool *stop, bool *do_updat
       seq_proxy_build_frame(&render_context, &state, seq, timeline_frame, 100, overwrite);
     }
 
-    *progress = float(timeline_frame - SEQ_time_left_handle_frame_get(scene, seq)) /
-                (SEQ_time_right_handle_frame_get(scene, seq) -
-                 SEQ_time_left_handle_frame_get(scene, seq));
-    *do_update = true;
+    worker_status->progress = float(timeline_frame - SEQ_time_left_handle_frame_get(scene, seq)) /
+                              (SEQ_time_right_handle_frame_get(scene, seq) -
+                               SEQ_time_left_handle_frame_get(scene, seq));
+    worker_status->do_update = true;
 
-    if (*stop || G.is_break) {
+    if (worker_status->stop || G.is_break) {
       break;
     }
   }
@@ -604,7 +601,7 @@ void SEQ_proxy_set(Sequence *seq, bool value)
   }
 }
 
-void seq_proxy_index_dir_set(anim *anim, const char *base_dir)
+void seq_proxy_index_dir_set(ImBufAnim *anim, const char *base_dir)
 {
   char dirname[FILE_MAX];
   char filename[FILE_MAXFILE];

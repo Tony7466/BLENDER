@@ -13,29 +13,29 @@
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "DNA_vec_types.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
-#include "GPU_viewport.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_texture.hh"
+#include "GPU_uniform_buffer.hh"
+#include "GPU_viewport.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "MEM_guardedalloc.h"
 
-/* Struct storing a viewport specific GPUBatch.
+/* Struct storing a viewport specific blender::gpu::Batch.
  * The end-goal is to have a single batch shared across viewport and use a model matrix to place
  * the batch. Due to OCIO and Image/UV editor we are not able to use an model matrix yet. */
 struct GPUViewportBatch {
-  GPUBatch *batch;
+  blender::gpu::Batch *batch;
   struct {
     rctf rect_pos;
     rctf rect_uv;
@@ -159,14 +159,16 @@ static void gpu_viewport_textures_create(GPUViewport *viewport)
     }
   }
 
-  /* Can be shared with GPUOffscreen. */
+  /* Can be shared with #GPUOffscreen. */
   if (viewport->depth_tx == nullptr) {
     /* Depth texture can be read back by gizmos #view3d_depths_create. */
+    /* Swizzle flag is needed by Workbench Volumes to read the stencil view. */
     viewport->depth_tx = GPU_texture_create_2d("dtxl_depth",
                                                UNPACK2(size),
                                                1,
                                                GPU_DEPTH24_STENCIL8,
-                                               usage | GPU_TEXTURE_USAGE_HOST_READ,
+                                               usage | GPU_TEXTURE_USAGE_HOST_READ |
+                                                   GPU_TEXTURE_USAGE_FORMAT_VIEW,
                                                nullptr);
     if (GPU_clear_viewport_workaround()) {
       static int depth_clear = 0;
@@ -367,9 +369,9 @@ static GPUVertFormat *gpu_viewport_batch_format()
   return &g_viewport.format;
 }
 
-static GPUBatch *gpu_viewport_batch_create(const rctf *rect_pos, const rctf *rect_uv)
+static blender::gpu::Batch *gpu_viewport_batch_create(const rctf *rect_pos, const rctf *rect_uv)
 {
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(gpu_viewport_batch_format());
+  blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(gpu_viewport_batch_format());
   const uint vbo_len = 4;
   GPU_vertbuf_data_alloc(vbo, vbo_len);
 
@@ -397,9 +399,9 @@ static GPUBatch *gpu_viewport_batch_create(const rctf *rect_pos, const rctf *rec
   return GPU_batch_create_ex(GPU_PRIM_TRI_STRIP, vbo, nullptr, GPU_BATCH_OWNS_VBO);
 }
 
-static GPUBatch *gpu_viewport_batch_get(GPUViewport *viewport,
-                                        const rctf *rect_pos,
-                                        const rctf *rect_uv)
+static blender::gpu::Batch *gpu_viewport_batch_get(GPUViewport *viewport,
+                                                   const rctf *rect_pos,
+                                                   const rctf *rect_uv)
 {
   const float compare_limit = 0.0001f;
   const bool parameters_changed =
@@ -461,7 +463,7 @@ static void gpu_viewport_draw_colormanaged(GPUViewport *viewport,
                                                               do_overlay_merge);
   }
 
-  GPUBatch *batch = gpu_viewport_batch_get(viewport, rect_pos, rect_uv);
+  blender::gpu::Batch *batch = gpu_viewport_batch_get(viewport, rect_pos, rect_uv);
   if (use_ocio) {
     GPU_batch_program_set_imm_shader(batch);
   }
@@ -524,10 +526,10 @@ void GPU_viewport_draw_to_screen_ex(GPUViewport *viewport,
   /* Mirror the UV rect in case axis-swapped drawing is requested (by passing a rect with min and
    * max values swapped). */
   if (BLI_rcti_size_x(rect) < 0) {
-    SWAP(float, uv_rect.xmin, uv_rect.xmax);
+    std::swap(uv_rect.xmin, uv_rect.xmax);
   }
   if (BLI_rcti_size_y(rect) < 0) {
-    SWAP(float, uv_rect.ymin, uv_rect.ymax);
+    std::swap(uv_rect.ymin, uv_rect.ymax);
   }
 
   gpu_viewport_draw_colormanaged(

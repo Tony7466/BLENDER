@@ -8,8 +8,10 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 #include "UI_resources.hh"
 #include "draw_manager.hh"
 #include "draw_pass.hh"
@@ -62,12 +64,12 @@ struct State {
 class ShapeCache {
  private:
   struct BatchDeleter {
-    void operator()(GPUBatch *shader)
+    void operator()(gpu::Batch *shader)
     {
       GPU_BATCH_DISCARD_SAFE(shader);
     }
   };
-  using BatchPtr = std::unique_ptr<GPUBatch, BatchDeleter>;
+  using BatchPtr = std::unique_ptr<gpu::Batch, BatchDeleter>;
 
  public:
   BatchPtr quad_wire;
@@ -129,7 +131,7 @@ class ShaderModule {
   }
   ShaderPtr selectable_shader(const char *create_info_name);
   ShaderPtr selectable_shader(const char *create_info_name,
-                              std::function<void(gpu::shader::ShaderCreateInfo &info)> patch);
+                              FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch);
 };
 
 struct Resources : public select::SelectMap {
@@ -254,9 +256,9 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     data_buf.append(data);
   }
 
-  void end_sync(PassSimple &pass, GPUBatch *shape)
+  void end_sync(PassSimple &pass, gpu::Batch *shape)
   {
-    if (data_buf.size() == 0) {
+    if (data_buf.is_empty()) {
       return;
     }
     this->select_bind(pass);
