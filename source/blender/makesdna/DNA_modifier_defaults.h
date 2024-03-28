@@ -1065,7 +1065,7 @@
 #define _DNA_DEFAULT_GreasePencilSimplifyModifierData \
   { \
     .factor = 0.0f, \
-    .mode = 0, \
+    .mode = MOD_GREASE_PENCIL_SIMPLIFY_FIXED, \
     .step = 1, \
     .length = 0.1f, \
     .distance = 0.1f, \
