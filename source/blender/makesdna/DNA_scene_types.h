@@ -112,6 +112,17 @@ typedef enum eFFMpegAudioChannels {
   FFM_CHANNELS_SURROUND71 = 8,
 } eFFMpegAudioChannels;
 
+typedef enum eFFMpegVideoBpp {
+  FFM_VIDEO_BPP_8 = 0,
+  FFM_VIDEO_BPP_10 = 1,
+  FFM_VIDEO_BPP_12 = 2,
+} eFFMpegVideoBpp;
+
+typedef enum eFFMpegVideoHdr {
+  FFM_VIDEO_HDR_NONE = 0,
+  FFM_VIDEO_HDR_REC2020_HLG = 1,
+} eFFMpegVideoHdr;
+
 typedef struct FFMpegCodecData {
   int type;
   int codec;
@@ -134,7 +145,8 @@ typedef struct FFMpegCodecData {
   int rc_buffer_size;
   int mux_packet_size;
   int mux_rate;
-  void *_pad1;
+  int video_bpp; /* eFFMpegVideoBpp */
+  int video_hdr; /* eFFMpegVideoHdr */
 } FFMpegCodecData;
 
 /** \} */
@@ -654,8 +666,6 @@ typedef enum eBakePassFilter {
 
 typedef struct RenderData {
   struct ImageFormatData im_format;
-
-  void *_pad;
   struct FFMpegCodecData ffcodecdata;
 
   /** Frames as in 'images'. */
