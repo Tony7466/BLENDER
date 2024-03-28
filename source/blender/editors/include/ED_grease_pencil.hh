@@ -178,6 +178,10 @@ struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  /* This is used by the onion skinning system. A value of 0 means the drawing is on the current
+   * frame. Negative values are before the current frame, positive values are drawings after the
+   * current frame. The magnitude of the value indicates how far the drawing is from the current
+   * frame (either in absolute frames, or in number of keyframes). */
   const int onion_id;
 };
 struct MutableDrawingInfo {

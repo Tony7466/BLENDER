@@ -284,6 +284,9 @@ class DATA_PT_grease_pencil_onion_skinning_display(DataButtonsPanel, Panel):
 
         layout = self.layout
         layout.use_property_split = True
+        # This was done in GPv2 but it's not entirely clear why. Presumably it was
+        # to indicate that the settings will affect the onion skinning of the
+        # other users.
         layout.enabled = grease_pencil.users <= 1
 
         col = layout.column(align=True)

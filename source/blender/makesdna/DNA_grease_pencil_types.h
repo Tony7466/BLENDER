@@ -387,17 +387,11 @@ typedef struct GreasePencilOnionSkinningSettings {
    * Opacity for the ghost frames.
    */
   float opacity;
-  /**
-   * Onion skinning mode. See `GreasePencilOnionSkinningMode`.
-   */
+  /* #GreasePencilOnionSkinningMode. */
   int8_t mode;
-  /**
-   * Onion skinning settings flag. See `GreasePencilOnionSkinningFlag`.
-   */
+  /* #GreasePencilOnionSkinningFlag. */
   uint8_t flag;
-  /**
-   * Onion skinning filtering flag. See `GreasePencilOnionSkinningFilter`.
-   */
+  /* #GreasePencilOnionSkinningFilter. */
   uint8_t filter;
   char _pad[1];
   /**
