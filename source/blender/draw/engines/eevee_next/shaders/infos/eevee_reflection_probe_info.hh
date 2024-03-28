@@ -86,10 +86,7 @@ GPU_SHADER_CREATE_INFO(eevee_display_probe_planar)
     .additional_info("eevee_shared",
                      "draw_view",
                      "eevee_lightprobe_planar_data",
-                     "eevee_reflection_probe_data",
-                     "eevee_volume_probe_data",
-                     "eevee_sampling_data",
-                     "eevee_utility_texture")
+                     "eevee_reflection_probe_data")
     .storage_buf(0, Qualifier::READ, "PlanarProbeDisplayData", "display_data_buf[]")
     .vertex_source("eevee_display_probe_planar_vert.glsl")
     .vertex_out(eevee_display_probe_planar_iface)
