@@ -1313,7 +1313,7 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 struct ShadowSamplingTile {
   /** Page inside the virtual shadow map atlas. */
   uint3 page;
-  /** LOD pointed to LOD 0 tile page. (punctual only). */
+  /** LOD pointed to LOD 0 tile page. */
   uint lod;
   /** Offset to the texel position to align with the LOD page start. (directional only). */
   uint2 lod_offset;

@@ -1262,6 +1262,27 @@ static void test_eevee_shadow_tilemap_amend()
       return result;
     };
 
+    auto stringify_lod = [&](int tilemap_index) -> std::string {
+      std::string result = "";
+      for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
+        for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
+          /* Note: assumes that tilemap_index is < SHADOW_TILEMAP_PER_ROW. */
+          int tile_ofs = y * SHADOW_TILEMAP_RES * SHADOW_TILEMAP_PER_ROW + x +
+                         tilemap_index * SHADOW_TILEMAP_RES;
+          ShadowSamplingTile tile = shadow_sampling_tile_unpack(pixels[tile_ofs]);
+          result += std::to_string(tile.lod);
+          if (x + 1 == SHADOW_TILEMAP_RES / 2) {
+            result += " ";
+          }
+        }
+        result += "\n";
+        if (y + 1 == SHADOW_TILEMAP_RES / 2) {
+          result += "\n";
+        }
+      }
+      return result;
+    };
+
     /** The layout of these expected strings is Y down. */
 
     StringRefNull expected_pages_lod2 =
@@ -1372,6 +1393,43 @@ static void test_eevee_shadow_tilemap_amend()
     EXPECT_EQ(expected_pages_lod2, stringify_tilemap(2));
     EXPECT_EQ(expected_pages_lod1, stringify_tilemap(1));
     EXPECT_EQ(expected_pages_lod0, stringify_tilemap(0));
+
+    StringRefNull expected_lod_lod0 =
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000022 2222220000000000\n"
+        "0000000000000022 2222220000000000\n"
+        "0000000000000022 2222220000000000\n"
+        "0000000000000022 2222220000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000011000000\n"
+        "0000000000000000 0000000011000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n"
+        "0000000000000000 0000000000000000\n";
+
+    EXPECT_EQ(expected_lod_lod0, stringify_lod(0));
 
     MEM_SAFE_FREE(pixels);
   }
