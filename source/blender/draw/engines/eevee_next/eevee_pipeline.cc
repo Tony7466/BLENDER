@@ -35,7 +35,7 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
   world_ps_.material_set(manager, gpumat);
   world_ps_.push_constant("world_opacity_fade", background_opacity);
-  world_ps_.push_constant("world_background_blur", background_blur);
+  world_ps_.push_constant("world_background_blur", square_f(background_blur));
   SphereProbeData &world_data = *static_cast<SphereProbeData *>(&inst_.light_probes.world_sphere_);
   world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
   world_ps_.bind_texture("utility_tx", inst_.pipelines.utility_tx);
