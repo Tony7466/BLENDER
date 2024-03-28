@@ -604,7 +604,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         /* Remove keys in range. */
         if (frame_min < frame_max) {
           Vector<int> frames_to_remove;
-          for (auto frame_number : layer->sorted_keys()) {
+          for (auto frame_number : layer->frames().keys()) {
             if (frame_min < frame_number && frame_number < frame_max) {
               frames_to_remove.append(frame_number);
             }
