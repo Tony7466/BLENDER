@@ -279,8 +279,7 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
       const IndexMask points_to_keep = simplify_fixed(curves, mmd.step, memory);
-      drawing.strokes_for_write() = std::move(
-          bke::curves_copy_point_selection(curves, points_to_keep, {}));
+      drawing.strokes_for_write() = bke::curves_copy_point_selection(curves, points_to_keep, {});
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
@@ -296,8 +295,8 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE: {
-      drawing.strokes_for_write() = std::move(geometry::resample_to_length(
-          curves, strokes, VArray<float>::ForSingle(mmd.length, curves.curves_num()), {}));
+      drawing.strokes_for_write() = geometry::resample_to_length(
+          curves, strokes, VArray<float>::ForSingle(mmd.length, curves.curves_num()), {});
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_MERGE: {
@@ -312,8 +311,7 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
             }
             return false;
           });
-      drawing.strokes_for_write() = std::move(
-          curves_merge_by_distance(curves, mmd.distance, points, {}));
+      drawing.strokes_for_write() = curves_merge_by_distance(curves, mmd.distance, points, {});
       break;
     }
     default:
