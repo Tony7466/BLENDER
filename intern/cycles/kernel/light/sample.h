@@ -19,99 +19,6 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Evaluate shader on light. */
-ccl_device_noinline_cpu Spectrum
-light_sample_shader_eval(KernelGlobals kg,
-                         IntegratorState state,
-                         ccl_private ShaderData *ccl_restrict emission_sd,
-                         ccl_private LightSample *ccl_restrict ls,
-                         float time)
-{
-  /* setup shading at emitter */
-  Spectrum eval = zero_spectrum();
-
-  if (surface_shader_constant_emission(kg, ls->shader, &eval)) {
-    if ((ls->prim != PRIM_NONE) && dot(ls->Ng, ls->D) > 0.0f) {
-      ls->Ng = -ls->Ng;
-    }
-  }
-  else {
-    /* Setup shader data and call surface_shader_eval once, better
-     * for GPU coherence and compile times. */
-    PROFILING_INIT_FOR_SHADER(kg, PROFILING_SHADE_LIGHT_SETUP);
-    if (ls->type == LIGHT_BACKGROUND) {
-      shader_setup_from_background(kg, emission_sd, ls->P, ls->D, time);
-    }
-    else {
-      shader_setup_from_sample(kg,
-                               emission_sd,
-                               ls->P,
-                               ls->Ng,
-                               -ls->D,
-                               ls->shader,
-                               ls->object,
-                               ls->prim,
-                               ls->u,
-                               ls->v,
-                               ls->t,
-                               time,
-                               false,
-                               ls->lamp);
-
-      ls->Ng = emission_sd->Ng;
-    }
-
-    PROFILING_SHADER(emission_sd->object, emission_sd->shader);
-    PROFILING_EVENT(PROFILING_SHADE_LIGHT_EVAL);
-
-    /* No proper path flag, we're evaluating this for all closures. that's
-     * weak but we'd have to do multiple evaluations otherwise. */
-    surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT>(
-        kg, state, emission_sd, NULL, PATH_RAY_EMISSION);
-
-    /* Evaluate closures. */
-    if (ls->type == LIGHT_BACKGROUND) {
-      eval = surface_shader_background(emission_sd);
-    }
-    else {
-      eval = surface_shader_emission(emission_sd);
-    }
-  }
-
-  eval *= ls->eval_fac;
-
-  if (ls->lamp != LAMP_NONE) {
-    ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
-    eval *= rgb_to_spectrum(
-        make_float3(klight->strength[0], klight->strength[1], klight->strength[2]));
-  }
-
-  return eval;
-}
-
-/* Early path termination of shadow rays. */
-ccl_device_inline bool light_sample_terminate(KernelGlobals kg,
-                                              ccl_private BsdfEval *ccl_restrict eval,
-                                              const float rand_terminate)
-{
-  if (bsdf_eval_is_zero(eval)) {
-    return true;
-  }
-
-  if (kernel_data.integrator.light_inv_rr_threshold > 0.0f) {
-    float probability = reduce_max(fabs(bsdf_eval_sum(eval))) *
-                        kernel_data.integrator.light_inv_rr_threshold;
-    if (probability < 1.0f) {
-      if (rand_terminate >= probability) {
-        return true;
-      }
-      bsdf_eval_mul(eval, 1.0f / probability);
-    }
-  }
-
-  return false;
-}
-
 /* This function should be used to compute a modified ray start position for
  * rays leaving from a surface. The algorithm slightly distorts flat surface
  * of a triangle. Surface is lifted by amount h along normal n in the incident
@@ -274,6 +181,112 @@ ccl_device_inline void light_sample_to_volume_shadow_ray(
     ccl_private Ray *ray)
 {
   shadow_ray_setup(sd, ls, P, ray, false);
+}
+
+/* Evaluate shader on light. */
+ccl_device_noinline_cpu Spectrum
+light_sample_shader_eval(KernelGlobals kg,
+                         IntegratorState state,
+                         ccl_private ShaderData *ccl_restrict emission_sd,
+                         ccl_private LightSample *ccl_restrict ls,
+                         float time,
+                         ccl_private const ShaderData *ccl_restrict sd = nullptr,
+                         bool check_visibility = false)
+{
+  /* setup shading at emitter */
+  Spectrum eval = zero_spectrum();
+
+  if (surface_shader_constant_emission(kg, ls->shader, &eval)) {
+    if ((ls->prim != PRIM_NONE) && dot(ls->Ng, ls->D) > 0.0f) {
+      ls->Ng = -ls->Ng;
+    }
+  }
+  else {
+    /* Setup shader data and call surface_shader_eval once, better
+     * for GPU coherence and compile times. */
+    PROFILING_INIT_FOR_SHADER(kg, PROFILING_SHADE_LIGHT_SETUP);
+    if (ls->type == LIGHT_BACKGROUND) {
+      shader_setup_from_background(kg, emission_sd, ls->P, ls->D, time);
+    }
+    else {
+      shader_setup_from_sample(kg,
+                               emission_sd,
+                               ls->P,
+                               ls->Ng,
+                               -ls->D,
+                               ls->shader,
+                               ls->object,
+                               ls->prim,
+                               ls->u,
+                               ls->v,
+                               ls->t,
+                               time,
+                               false,
+                               ls->lamp);
+
+      ls->Ng = emission_sd->Ng;
+    }
+
+    PROFILING_SHADER(emission_sd->object, emission_sd->shader);
+    PROFILING_EVENT(PROFILING_SHADE_LIGHT_EVAL);
+
+    /* No proper path flag, we're evaluating this for all closures. that's
+     * weak but we'd have to do multiple evaluations otherwise. */
+    surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_LIGHT>(
+        kg, state, emission_sd, NULL, PATH_RAY_EMISSION);
+
+    /* Evaluate closures. */
+    if (ls->type == LIGHT_BACKGROUND) {
+      eval = surface_shader_background(emission_sd);
+    }
+    else {
+      eval = surface_shader_emission(emission_sd);
+    }
+  }
+
+  eval *= ls->eval_fac;
+
+  if (ls->lamp != LAMP_NONE) {
+    ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
+    eval *= rgb_to_spectrum(
+        make_float3(klight->strength[0], klight->strength[1], klight->strength[2]));
+  }
+
+  if (check_visibility) {
+    Ray ray ccl_optional_struct_init;
+    light_sample_to_surface_shadow_ray(kg, sd, ls, &ray);
+
+    /* TODO(weizhen): this is opque visibility, only works for surface. */
+    Intersection isect;
+    if (scene_intersect(kg, &ray, PATH_RAY_SHADOW_OPAQUE, &isect)) {
+      return zero_spectrum();
+    }
+  }
+
+  return eval;
+}
+
+/* Early path termination of shadow rays. */
+ccl_device_inline bool light_sample_terminate(KernelGlobals kg,
+                                              ccl_private BsdfEval *ccl_restrict eval,
+                                              const float rand_terminate)
+{
+  if (bsdf_eval_is_zero(eval)) {
+    return true;
+  }
+
+  if (kernel_data.integrator.light_inv_rr_threshold > 0.0f) {
+    float probability = reduce_max(fabs(bsdf_eval_sum(eval))) *
+                        kernel_data.integrator.light_inv_rr_threshold;
+    if (probability < 1.0f) {
+      if (rand_terminate >= probability) {
+        return true;
+      }
+      bsdf_eval_mul(eval, 1.0f / probability);
+    }
+  }
+
+  return false;
 }
 
 /* Multiple importance sampling weights. */
