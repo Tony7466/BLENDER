@@ -272,7 +272,6 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
-
   if (strokes.is_empty()) {
     return;
   }
