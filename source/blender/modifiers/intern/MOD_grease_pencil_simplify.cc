@@ -264,8 +264,8 @@ static bke::CurvesGeometry curves_merge_by_distance(
   return dst_curves;
 }
 
-static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
-                             Object &ob,
+static void simplify_drawing(const GreasePencilSimplifyModifierData &mmd,
+                             const Object &ob,
                              bke::greasepencil::Drawing &drawing)
 {
   IndexMaskMemory memory;
@@ -325,7 +325,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  auto *mmd = reinterpret_cast<GreasePencilSimplifyModifierData *>(md);
+  const auto *mmd = reinterpret_cast<GreasePencilSimplifyModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
