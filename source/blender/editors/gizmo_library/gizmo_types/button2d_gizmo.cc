@@ -43,7 +43,7 @@
 #include "UI_interface_icons.hh"
 
 /* own includes */
-#include "../gizmo_library_intern.h"
+#include "../gizmo_library_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Types
@@ -54,7 +54,7 @@ struct ButtonGizmo2D {
   bool is_init;
   /* Use an icon or shape */
   int icon;
-  GPUBatch *shape_batch[2];
+  blender::gpu::Batch *shape_batch[2];
 };
 
 /** \} */
