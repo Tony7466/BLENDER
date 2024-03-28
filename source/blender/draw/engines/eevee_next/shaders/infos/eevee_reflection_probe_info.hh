@@ -78,7 +78,9 @@ GPU_SHADER_CREATE_INFO(eevee_display_probe_reflection)
     .fragment_out(0, Type::VEC4, "out_color")
     .do_static_compilation(true);
 
-GPU_SHADER_INTERFACE_INFO(eevee_display_probe_planar_iface, "").flat(Type::INT, "probe_index");
+GPU_SHADER_INTERFACE_INFO(eevee_display_probe_planar_iface, "")
+    .flat(Type::VEC3, "probe_normal")
+    .flat(Type::INT, "probe_index");
 
 GPU_SHADER_CREATE_INFO(eevee_display_probe_planar)
     .push_constant(Type::FLOAT, "world_background_blur")
