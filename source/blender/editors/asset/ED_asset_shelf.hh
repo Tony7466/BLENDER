@@ -19,8 +19,8 @@ struct BlendWriter;
 struct Main;
 struct SpaceType;
 struct uiBlock;
-struct wmWindowManager;
 struct RegionPollParams;
+struct wmWindowManager;
 
 namespace blender {
 class StringRef;
