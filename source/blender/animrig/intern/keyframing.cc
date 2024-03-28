@@ -1015,9 +1015,13 @@ void insert_key_rna(PointerRNA *rna_pointer,
   /* Keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};
   NlaKeyframingContext *nla_context = nullptr;
+  /* The function to get the NLA context needs to get the PointerRNA from the ID because it uses
+   * F-Curve paths to resolve properties. Since F-Curve paths are always relative to the ID this
+   * would fail if the PointerRNA was a bone. */
+  PointerRNA id_pointer = RNA_id_pointer_create(id);
   if (adt && adt->action == action) {
     nla_context = BKE_animsys_get_nla_keyframing_context(
-        &nla_cache, rna_pointer, adt, &anim_eval_context);
+        &nla_cache, &id_pointer, adt, &anim_eval_context);
   }
 
   const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
