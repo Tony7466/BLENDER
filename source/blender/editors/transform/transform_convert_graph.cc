@@ -886,7 +886,6 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
-  SCOPED_TIMER_AVERAGED("remake");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
