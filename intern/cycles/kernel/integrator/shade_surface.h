@@ -16,6 +16,7 @@
 #include "kernel/integrator/mnee.h"
 
 #include "kernel/integrator/guiding.h"
+#include "kernel/integrator/restir.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/subsurface.h"
 #include "kernel/integrator/volume_stack.h"
@@ -308,27 +309,19 @@ ccl_device
   /* TODO(weizhen): add MNEE back? */
   const bool use_ris = (bounce == 0);
 
-  /* TODO(weizhen): find optimal values automatically? */
-  const int num_light_samples = use_ris ? 8 : 1;
-  const int num_bsdf_samples = use_ris ? 3 : 1;
+  const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
   /* Sample position on a light. */
-  LightSample light_sample ccl_optional_struct_init;
-  BsdfEval radiance ccl_optional_struct_init;
+  Reservoir reservoir(use_ris, rand);
 
-  float total_weight = 0.0f;
-
-  for (int i = 0; i < num_light_samples; i++) {
+  for (int i = 0; i < reservoir.num_light_samples; i++) {
     LightSample ls ccl_optional_struct_init;
     BsdfEval bsdf_eval ccl_optional_struct_init;
 
     /* TODO(weizhen): does this result in correlated samples if different sample numbers are used
      * when using RIS? */
     const float3 rand_light = path_branched_rng_3D(
-        kg, rng_state, i, num_light_samples, PRNG_LIGHT);
-
-    const float rand_pick = path_branched_rng_1D(
-        kg, rng_state, i, num_light_samples + num_bsdf_samples, PRNG_PICK);
+        kg, rng_state, i, reservoir.num_light_samples, PRNG_LIGHT);
 
     /* TODO(weizhen): use higher-level nodes in light tree, or use light tile as in the ReSTIR PT
      * paper. */
@@ -368,36 +361,16 @@ ccl_device
     ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
 
     const Spectrum L = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
-    if (is_zero(L)) {
-      continue;
-    }
 
     /* Evaluate BSDF. */
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
 
-    /* TODO(weizhen): this should be called radiance instead of bsdf eval. */
     bsdf_eval_mul(&bsdf_eval, L / ls.pdf);
-
-    const float mis_weight = power_heuristic(
-        num_light_samples, ls.pdf, num_bsdf_samples, bsdf_pdf);
-
-    const float current_weight = reduce_add(fabs(bsdf_eval.sum)) * mis_weight;
-
-    if (!isfinite_safe(current_weight)) {
-      continue;
-    }
-
-    total_weight += current_weight;
-
-    const float thresh = current_weight / total_weight;
-    if (rand_pick <= thresh) {
-      light_sample = ls;
-      radiance = bsdf_eval;
-    }
+    reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < num_bsdf_samples * use_ris; i++) {
+  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
@@ -408,10 +381,8 @@ ccl_device
     float2 bsdf_sampled_roughness = make_float2(1.0f, 1.0f);
     float bsdf_eta = 1.0f;
 
-    float3 rand_bsdf = path_branched_rng_3D(kg, rng_state, i, num_bsdf_samples, PRNG_SURFACE_BSDF);
-
-    const float rand_pick = path_branched_rng_1D(
-        kg, rng_state, num_light_samples + i, num_light_samples + num_bsdf_samples, PRNG_PICK);
+    float3 rand_bsdf = path_branched_rng_3D(
+        kg, rng_state, i, reservoir.num_bsdf_samples, PRNG_SURFACE_BSDF);
 
     ccl_private const ShaderClosure *sc = surface_shader_bsdf_bssrdf_pick(sd, &rand_bsdf);
 
@@ -589,40 +560,24 @@ ccl_device
       /* /\* TODO(weizhen): how to do background light pdf? *\/ */
     }
 
-    if (is_zero(L)) {
-      continue;
-    }
-
     bsdf_eval_mul(&bsdf_eval, L / bsdf_pdf);
-
-    const float mis_weight = power_heuristic(
-        num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
-
-    const float current_weight = reduce_add(fabs(bsdf_eval.sum)) * mis_weight;
-
-    if (!isfinite_safe(current_weight)) {
-      continue;
-    }
-
-    total_weight += current_weight;
-
-    const float thresh = current_weight / total_weight;
-    if (rand_pick <= thresh) {
-      light_sample = ls;
-      radiance = bsdf_eval;
-    }
+    reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
-  if (!(total_weight > 0.0f)) {
+  if (reservoir.is_empty()) {
     return;
   }
 
-  const float unbiased_contribution_weight = total_weight / reduce_add(fabs(radiance.sum));
+  LightSample ls = reservoir.ls;
+  BsdfEval radiance = reservoir.radiance;
+
+  const float unbiased_contribution_weight = reservoir.total_weight /
+                                             reduce_add(fabs(radiance.sum));
 
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
   int mnee_vertex_count = 0;
-  const bool is_transmission = dot(light_sample.D, sd->N) < 0.0f;
+  const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
   Ray ray ccl_optional_struct_init;
 
   /* Path termination. */
@@ -632,7 +587,7 @@ ccl_device
   }
 
   /* Create shadow ray. */
-  light_sample_to_surface_shadow_ray(kg, sd, &light_sample, &ray);
+  light_sample_to_surface_shadow_ray(kg, sd, &ls, &ray);
 
   if (ray.self.object != OBJECT_NONE) {
     ray.P = integrate_surface_ray_offset(kg, sd, ray.P, ray.D);
@@ -640,7 +595,7 @@ ccl_device
 
   /* Branch off shadow kernel. */
   IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
-      kg, state, &ray, bsdf_eval_sum(&radiance), light_sample.group, mnee_vertex_count);
+      kg, state, &ray, bsdf_eval_sum(&radiance), ls.group, mnee_vertex_count);
 
   if (is_transmission) {
 #ifdef __VOLUME__
