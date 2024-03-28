@@ -19,7 +19,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
@@ -34,9 +34,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -1304,6 +1304,7 @@ static int select_timeline_marker_frame(ListBase *markers,
 static void select_marker_camera_switch(
     bContext *C, bool camera, bool extend, ListBase *markers, int cfra)
 {
+  using namespace blender::ed;
 #ifdef DURIAN_CAMERA_SWITCH
   if (camera) {
     BLI_assert(CTX_data_mode_enum(C) == CTX_MODE_OBJECT);
@@ -1329,9 +1330,9 @@ static void select_marker_camera_switch(
         if (marker->frame == cfra) {
           base = BKE_view_layer_base_find(view_layer, marker->camera);
           if (base) {
-            ED_object_base_select(base, eObjectSelect_Mode(sel));
+            object::base_select(base, object::eObjectSelect_Mode(sel));
             if (sel) {
-              ED_object_base_activate(C, base);
+              object::base_activate(C, base);
             }
           }
         }
