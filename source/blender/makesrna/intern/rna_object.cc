@@ -1592,6 +1592,22 @@ static PointerRNA rna_Object_field_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_FieldSettings, ob->pd);
 }
 
+static void rna_Object_empty_image_alpha_get(PointerRNA *ptr, float *value)
+{
+  Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  if (ob->type != OB_EMPTY) {
+    return;
+  }
+
+  value[0] = (float)(((float *)ob->color)[3]);
+}
+
+static void rna_Object_empty_image_alpha_set(PointerRNA *ptr, const float *value)
+{
+  Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  ((float *)ob->color)[3] = std::clamp(value[0], 0.0f, 1.0f);
+}
+
 static PointerRNA rna_Object_collision_get(PointerRNA *ptr)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
@@ -3555,9 +3571,18 @@ static void rna_def_object(BlenderRNA *brna)
       prop, "Pass Index", "Index number for the \"Object Index\" render pass");
   RNA_def_property_update(prop, NC_OBJECT, "rna_Object_internal_update_draw");
 
-  prop = RNA_def_property(srna, "empty_image_alpha", PROP_FLOAT, PROP_COLOR);
-  RNA_def_property_float_sdna(prop, nullptr, "color");
-  RNA_def_property_ui_text(prop, "Image Opacity", "Degree of transparency applied to the image");
+  prop = RNA_def_float(srna,
+                       "empty_image_alpha",
+                       1.0f,
+                       0.0f,
+                       1.0f,
+                       "Image Opacity",
+                       "Degree of transparency applied to the image",
+                       0.0f,
+                       1.0f);
+  RNA_def_property_array(prop, 1);
+  RNA_def_property_float_funcs(
+      prop, "rna_Object_empty_image_alpha_get", "rna_Object_empty_image_alpha_set", nullptr);
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
