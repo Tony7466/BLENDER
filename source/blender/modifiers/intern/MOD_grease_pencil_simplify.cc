@@ -138,8 +138,8 @@ static bke::CurvesGeometry curves_merge_by_distance(
   if (src_point_size == 0) {
     return {};
   }
-  OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
-  VArray<bool> cyclic = src_curves.cyclic();
+  const OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
+  const VArray<bool> cyclic = src_curves.cyclic();
   src_curves.ensure_evaluated_lengths();
 
   std::atomic<int> total_duplicate_count = 0;
