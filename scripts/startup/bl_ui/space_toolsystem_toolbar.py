@@ -1417,6 +1417,21 @@ class _defs_sculpt:
         )
 
     @ToolDef.from_fn
+    def hide_line():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_line_gesture")
+            layout.prop(props, "use_limit_to_segment", expand=False)
+
+        return dict(
+            idname="builtin.line_hide",
+            label="Line Hide",
+            icon="ops.sculpt.line_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
     def hide_polyline():
         def draw_settings(_context, layout, tool):
             props = tool.operator_properties("paint.hide_show_polyline_gesture")
@@ -3124,6 +3139,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             (
                 _defs_sculpt.hide_border,
                 _defs_sculpt.hide_lasso,
+                _defs_sculpt.hide_line,,
                 _defs_sculpt.hide_polyline,
             ),
             (
