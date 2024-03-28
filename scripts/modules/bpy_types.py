@@ -1196,7 +1196,6 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
                 for attr, value in add_operator_props.items():
                     setattr(props, attr, value)
 
-
     def draw_preset(self, _context):
         """
         Define these on the subclass:
