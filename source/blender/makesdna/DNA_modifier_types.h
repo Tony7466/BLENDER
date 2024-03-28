@@ -3412,6 +3412,7 @@ typedef struct GreasePencilSimplifyModifierData {
 
   /** #GreasePencilSimplifyModifierMode. */
   short mode;
+  char _pad[4];
   /** Every n vertex to keep. */
   short step;
   float factor;
