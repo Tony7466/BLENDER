@@ -128,6 +128,7 @@ static int curve_merge_by_distance(const IndexRange points,
   return duplicate_count;
 }
 
+/* NOTE: The code here is an adapted version of #blender::geometry::point_merge_by_distance. */
 static bke::CurvesGeometry curves_merge_by_distance(
     const bke::CurvesGeometry &src_curves,
     const float merge_distance,
