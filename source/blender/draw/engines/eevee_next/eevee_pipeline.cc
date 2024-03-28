@@ -83,7 +83,7 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   pass.material_set(manager, gpumat);
   pass.push_constant("world_opacity_fade", 1.0f);
   pass.push_constant("world_background_blur", 0.0f);
-  pass.push_constant("world_coord_packed", float4(0.0f));
+  pass.push_constant("world_coord_packed", int4(0.0f));
   pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
   pass.bind_image("rp_light_img", dummy_renderpass_tx_);
