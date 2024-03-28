@@ -3410,11 +3410,8 @@ typedef struct GreasePencilSimplifyModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
 
-  /** #GreasePencilSimplifyModifierFlag. */
-  int flag;
   /** #GreasePencilSimplifyModifierMode. */
   short mode;
-
   /** Every n vertex to keep. */
   short step;
   float factor;
