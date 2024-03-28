@@ -76,6 +76,24 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
+static IndexMask simplify_fixed(const bke::CurvesGeometry &curves,
+                                const int step,
+                                IndexMaskMemory &memory)
+{
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  const Array<int> point_to_curve_map = curves.point_to_curve_map();
+  return IndexMask::from_predicate(
+      curves.points_range(), GrainSize(2048), memory, [&](const int64_t i) {
+        const int curve_i = point_to_curve_map[i];
+        const IndexRange points = points_by_curve[curve_i];
+        if (points.drop_front(1).drop_back(1).contains(i)) {
+          const int local_i = i - points.start();
+          return local_i % int(math::pow(2.0f, float(step - 1))) != 0;
+        }
+        return false;
+      });
+}
+
 static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
                              Object &ob,
                              bke::greasepencil::Drawing &drawing)
@@ -91,16 +109,8 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
 
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
-      const OffsetIndices points_by_curve = curves.points_by_curve();
-      Array<int> target_count(curves.curves_num());
-      target_count.fill(2);
-      strokes.foreach_index(GrainSize(4096), [&](const int i) {
-        target_count[i] = math::max(int(math::round(float(points_by_curve[i].size()) /
-                                                    math::pow(2.0f, float(mmd.step - 1)))),
-                                    2);
-      });
-      drawing.strokes_for_write() = std::move(geometry::resample_to_count(
-          curves, strokes, VArray<int>::ForSpan(target_count.as_span()), {}));
+      const IndexMask points_to_delete = simplify_fixed(curves, mmd.step, memory);
+      drawing.strokes_for_write().remove_points(points_to_delete, {});
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
