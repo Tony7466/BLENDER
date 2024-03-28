@@ -728,14 +728,33 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
         faces, corner_edges, edges.size(), ss->edge_to_face_offsets, ss->edge_to_face_indices);
   }
 
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan<bool> hide_poly = *attributes.lookup_or_default<bool>(
+      ".hide_poly", bke::AttrDomain::Face, false);
+
+  const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
+  Set<int> hidden_face_sets;
+
+  for (const int i : hide_poly.index_range()) {
+    if (hide_poly[i]) {
+      hidden_face_sets.add(prev_face_sets[i]);
+    }
+  }
+
   int next_face_set = 1;
 
   for (const int i : faces.index_range()) {
+    if (!hide_poly.is_empty() && hide_poly[i]) {
+      continue;
+    }
     if (visited_faces[i]) {
       continue;
     }
     std::queue<int> queue;
 
+    while (hidden_face_sets.contains(next_face_set)) {
+      next_face_set += 1;
+    }
     face_sets.span[i] = next_face_set;
     visited_faces[i].set(true);
     queue.push(i);
@@ -750,6 +769,9 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
             continue;
           }
           if (visited_faces[neighbor_i]) {
+            continue;
+          }
+          if (!hide_poly.is_empty() && hide_poly[neighbor_i]) {
             continue;
           }
           if (!test_fn(face_i, edge_i, neighbor_i)) {
