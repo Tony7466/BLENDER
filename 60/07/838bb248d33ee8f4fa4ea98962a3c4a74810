@@ -1,1 +1,2 @@
 Referenced by issue #116373, Regression 4.1 alpha: foreach_get crash
+Referenced by issue #119992, Regression: Wrong orientation on shrinkwrap constrained instanced collection
