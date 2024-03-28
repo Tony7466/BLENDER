@@ -341,30 +341,6 @@ class DeferredPipeline {
  *
  * \{ */
 
-struct GridAABB {
-  int3 min, max;
-
-  GridAABB(int3 min_, int3 max_) : min(min_), max(max_){};
-
-  /** Returns the intersection between this AABB and the \a other AABB. */
-  GridAABB intersection(const GridAABB &other) const
-  {
-    return {math::max(this->min, other.min), math::min(this->max, other.max)};
-  }
-
-  /** Returns the extent of the volume. Undefined if AABB is empty. */
-  int3 extent() const
-  {
-    return max - min;
-  }
-
-  /** Returns true if volume covers nothing or is negative. */
-  bool is_empty() const
-  {
-    return math::reduce_min(max - min) <= 0;
-  }
-};
-
 /**
  * A volume layer contains a list of non-overlapping volume objects.
  */
@@ -384,7 +360,7 @@ class VolumeLayer {
   PassMain::Sub *occupancy_ps_;
   PassMain::Sub *material_ps_;
   /* List of bounds from all objects contained inside this pass. */
-  Vector<GridAABB> object_bounds_;
+  Vector<Bounds<float2>> object_bounds_;
 
  public:
   VolumeLayer(Instance &inst) : inst_(inst)
@@ -400,17 +376,9 @@ class VolumeLayer {
                               GPUMaterial *gpumat);
 
   /* Return true if the given bounds overlaps any of the contained object in this layer. */
-  bool bounds_overlaps(const GridAABB &object_aabb) const
-  {
-    for (const GridAABB &other_aabb : object_bounds_) {
-      if (object_aabb.intersection(other_aabb).is_empty() == false) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool bounds_overlaps(const Bounds<float2> &object_aabb) const;
 
-  void add_object_bound(const GridAABB &object_aabb)
+  void add_object_bound(const Bounds<float2> &object_aabb)
   {
     object_bounds_.append(object_aabb);
   }
@@ -471,19 +439,11 @@ class VolumePipeline {
 
  private:
   /**
-   * Returns Axis aligned bounding box in the volume grid.
+   * Returns Axis aligned bounding box in screen space.
    * Used for frustum culling and volumes overlapping detection.
    * Represents min and max grid corners covered by a volume.
-   * So a volume covering the first froxel will have min={0,0,0} and max={1,1,1}.
-   * A volume with min={0,0,0} and max={0,0,0} covers nothing.
    */
-  GridAABB grid_aabb_from_object(Object *ob);
-
-  /**
-   * Returns the view entire AABB. Used for clipping object bounds.
-   * Remember that these are cells corners, so this extents to `tex_size`.
-   */
-  GridAABB grid_aabb_from_view();
+  Bounds<float2> grid_aabb_from_object(Object *ob);
 };
 
 /** \} */

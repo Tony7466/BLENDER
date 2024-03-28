@@ -10,9 +10,13 @@
  * This file is only for shading passes. Other passes are declared in their own module.
  */
 
-#include "eevee_pipeline.hh"
+#include "BLI_bounds.hh"
+
 #include "eevee_instance.hh"
+#include "eevee_pipeline.hh"
 #include "eevee_shadow.hh"
+
+#include <iostream>
 
 #include "draw_common.hh"
 
@@ -995,6 +999,17 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
   return pass;
 }
 
+bool VolumeLayer::bounds_overlaps(const Bounds<float2> &object_aabb) const
+{
+  /* TODO(fclem): Speedup by first testing the union of all bounds first. */
+  for (const Bounds<float2> &other_aabb : object_bounds_) {
+    if (bounds::intersect(object_aabb, other_aabb).has_value()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void VolumeLayer::render(View &view, Texture &occupancy_tx)
 {
   if (is_empty) {
@@ -1039,59 +1054,37 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
   }
 }
 
-GridAABB VolumePipeline::grid_aabb_from_object(Object *ob)
+Bounds<float2> VolumePipeline::grid_aabb_from_object(Object *ob)
 {
   const Camera &camera = inst_.camera;
-  const VolumesInfoData &data = inst_.volume.data_;
-  /* Returns the unified volume grid cell corner of a world space coordinate. */
-  auto to_global_grid_coords = [&](float3 wP) -> int3 {
-    /* TODO(fclem): Should we use the render view winmat and not the camera one? */
-    const float4x4 &view_matrix = camera.data_get().viewmat;
-    const float4x4 &projection_matrix = camera.data_get().winmat;
-
-    float3 ndc_coords = math::project_point(projection_matrix * view_matrix, wP);
-    ndc_coords = (ndc_coords * 0.5f) + float3(0.5f);
-
-    float3 grid_coords = screen_to_volume(projection_matrix,
-                                          data.depth_near,
-                                          data.depth_far,
-                                          data.depth_distribution,
-                                          data.coord_scale,
-                                          ndc_coords);
-    /* Round to nearest grid corner. */
-    return int3(grid_coords * float3(data.tex_size) + 0.5);
-  };
+  /* TODO(fclem): For panoramic camera, we will have to do this check for each cubeface. */
+  const float4x4 &view_matrix = camera.data_get().viewmat;
+  /* Note in practice we only care about the projection type since we only care about 2D overlap,
+   * and this is independant of FOV. */
+  const float4x4 &projection_matrix = camera.data_get().winmat;
 
   const Bounds<float3> bounds = BKE_object_boundbox_get(ob).value_or(Bounds(float3(0)));
-  int3 min = int3(INT32_MAX);
-  int3 max = int3(INT32_MIN);
 
   BoundBox bb;
   BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
-  for (float3 l_corner : bb.vec) {
-    float3 w_corner = math::transform_point(ob->object_to_world(), l_corner);
-    /* Note that this returns the nearest cell corner coordinate.
-     * So sub-froxel AABB will effectively return the same coordinate
-     * for each corner (making it empty and skipped) unless it
-     * cover the center of the froxel. */
-    math::min_max(to_global_grid_coords(w_corner), min, max);
-  }
-  return {min, max};
-}
 
-GridAABB VolumePipeline::grid_aabb_from_view()
-{
-  return {int3(0), inst_.volume.data_.tex_size};
+  std::array<float2, 8> ss_bb;
+  int i = 0;
+  for (float3 l_corner : bb.vec) {
+    float3 ws_corner = math::transform_point(ob->object_to_world(), l_corner);
+    /* Split view and projection for percision. */
+    float3 vs_corner = math::transform_point(view_matrix, ws_corner);
+    float3 ss_corner = math::project_point(projection_matrix, vs_corner);
+    /* TODO: This is ill defined if crossing the nearplane. */
+    ss_bb[i++] = ss_corner.xy();
+  }
+  Bounds<float2> result = bounds::min_max(Span<float2>(ss_bb)).value();
+  return result;
 }
 
 VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
 {
-  GridAABB object_aabb = grid_aabb_from_object(ob);
-  GridAABB view_aabb = grid_aabb_from_view();
-  if (object_aabb.intersection(view_aabb).is_empty()) {
-    /* Skip invisible object with respect to raster grid and bounds density. */
-    return nullptr;
-  }
+  Bounds<float2> object_aabb = grid_aabb_from_object(ob);
   enabled_ = true;
   /* Do linear search in all layers in order. This can be optimized. */
   for (auto &layer : layers_) {

@@ -117,6 +117,20 @@ template<typename T, typename RadiusT>
       [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
 }
 
+/**
+ * Returns a new bound that contains the intersection of the two given bound.
+ * Returns no box if there are no overlap.
+ */
+template<typename T>
+[[nodiscard]] inline std::optional<Bounds<T>> intersect(const Bounds<T> &a, const Bounds<T> &b)
+{
+  const Bounds<T> result{math::max(a.min, b.min), math::min(a.max, b.max)};
+  if (result.is_empty()) {
+    return std::nullopt;
+  }
+  return result;
+}
+
 }  // namespace bounds
 
 namespace detail {
