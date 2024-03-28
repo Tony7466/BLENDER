@@ -6231,6 +6231,11 @@ void UI_but_hint_drawstr_set(uiBut *but, const char *string)
   ui_but_add_shortcut(but, string, false);
 }
 
+void UI_but_icon_indicator_set(uiBut *but, const char *string)
+{
+  STRNCPY(but->icon_overlay_text.text, string);
+}
+
 void UI_but_icon_indicator_number_set(uiBut *but, const int indicator_number)
 {
   UI_icon_text_overlay_init_from_count(&but->icon_overlay_text, indicator_number);

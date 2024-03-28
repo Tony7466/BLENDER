@@ -1761,36 +1761,30 @@ static void outliner_draw_userbuts(uiBlock *block,
     }
 
     uiBut *bt;
-    char buf[BLI_STR_FORMAT_INT32_GROUPED_SIZE] = "";
-    int but_flag = UI_BUT_DRAG_LOCK;
+    const char *tip = nullptr;
     const int real_users = id->us - ID_FAKE_USERS(id);
     const bool has_fake_user = id->flag & LIB_FAKEUSER;
     const bool is_linked = ID_IS_LINKED(id);
     const bool is_object = GS(id->name) == ID_OB;
+    char overlay[5];
+    BLI_str_format_integer_unit(overlay, id->us);
 
-    if (is_linked) {
-      but_flag |= UI_BUT_DISABLED;
+    if (is_object) {
+      bt = uiDefBut(block,
+                    UI_BTYPE_BUT,
+                    0,
+                    overlay,
+                    int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_STATUS),
+                    te->ys,
+                    UI_UNIT_X,
+                    UI_UNIT_Y,
+                    nullptr,
+                    0.0,
+                    0.0,
+                    TIP_("Number of users"));
     }
+    else {
 
-    /* Number of users in first column. */
-    BLI_str_format_int_grouped(buf, id->us);
-    bt = uiDefBut(block,
-                  UI_BTYPE_BUT,
-                  1,
-                  buf,
-                  int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_USERS),
-                  te->ys,
-                  UI_UNIT_X,
-                  UI_UNIT_Y,
-                  nullptr,
-                  0.0,
-                  0.0,
-                  TIP_("Number of users"));
-    UI_but_flag_enable(bt, but_flag);
-
-    /* Fake User shield toggle in second column. */
-    if (!is_object) {
-      const char *tip = nullptr;
       if (has_fake_user) {
         tip = is_linked ? TIP_("Item is protected from deletion") :
                           TIP_("Click to remove protection from deletion");
@@ -1820,8 +1814,16 @@ static void outliner_draw_userbuts(uiBlock *block,
                             0,
                             0,
                             tip);
-      UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
-      UI_but_flag_enable(bt, but_flag);
+
+      if (is_linked) {
+        UI_but_flag_enable(bt, UI_BUT_DISABLED);
+      }
+      else {
+        UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
+        UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
+      }
+
+      UI_but_icon_indicator_set(bt, overlay);
     }
   });
 }
