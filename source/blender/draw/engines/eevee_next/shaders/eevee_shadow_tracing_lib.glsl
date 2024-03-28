@@ -23,6 +23,7 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
   ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
   /* Using bitwise ops is way faster than integer ops. */
   const int page_shift = SHADOW_PAGE_LOD;
+  const int page_mask = ~(0xFFFFFFFF << SHADOW_PAGE_LOD);
 
   ivec2 tile_coord = texel_coord >> page_shift;
   ShadowSamplingTile tile = shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
@@ -31,8 +32,8 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
     return -1.0;
   }
 
-  int page_mask = ~(0xFFFFFFFF << (SHADOW_PAGE_LOD + int(tile.lod)));
-  ivec2 texel_page = (texel_coord & page_mask) >> int(tile.lod);
+  /* Scale to LOD pixels (merge LOD0 pixels together) then mask to get pixel in page. */
+  ivec2 texel_page = (texel_coord >> int(tile.lod)) & page_mask;
   ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
 
   return uintBitsToFloat(texelFetch(shadow_atlas_tx, texel, 0).r);
