@@ -260,7 +260,7 @@ void BKE_paint_invalidate_overlay_tex(Scene *scene, ViewLayer *view_layer, const
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (!br) {
     return;
   }
@@ -280,7 +280,7 @@ void BKE_paint_invalidate_cursor_overlay(Scene *scene, ViewLayer *view_layer, Cu
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (br && br->curve == curve) {
     overlay_flags |= PAINT_OVERLAY_INVALID_CURVE;
   }
@@ -1909,7 +1909,7 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   using namespace blender::bke;
   Mesh *orig_me = BKE_object_get_original_mesh(object);
 
-  if (orig_me->attributes().contains(orig_me->active_color_attribute)) {
+  if (BKE_color_attribute_supported(*orig_me, orig_me->active_color_attribute)) {
     return;
   }
 

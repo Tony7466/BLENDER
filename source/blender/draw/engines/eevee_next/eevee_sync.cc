@@ -71,7 +71,7 @@ WorldHandle SyncModule::sync_world()
  * \{ */
 
 static inline void geometry_call(PassMain::Sub *sub_pass,
-                                 GPUBatch *geom,
+                                 gpu::Batch *geom,
                                  ResourceHandle resource_handle)
 {
   if (sub_pass != nullptr) {
@@ -80,7 +80,7 @@ static inline void geometry_call(PassMain::Sub *sub_pass,
 }
 
 static inline void volume_call(
-    MaterialPass &matpass, Scene *scene, Object *ob, GPUBatch *geom, ResourceHandle res_handle)
+    MaterialPass &matpass, Scene *scene, Object *ob, gpu::Batch *geom, ResourceHandle res_handle)
 {
   if (matpass.sub_pass != nullptr) {
     PassMain::Sub *object_pass = volume_sub_pass(*matpass.sub_pass, scene, ob, matpass.gpumat);
@@ -108,7 +108,7 @@ void SyncModule::sync_mesh(Object *ob,
 
   MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
 
-  GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
+  gpu::Batch **mat_geom = DRW_cache_object_surface_material_get(
       ob, material_array.gpu_materials.data(), material_array.gpu_materials.size());
 
   if (mat_geom == nullptr) {
@@ -123,9 +123,10 @@ void SyncModule::sync_mesh(Object *ob,
   }
 
   bool is_alpha_blend = false;
+  bool has_transparent_shadows = false;
   float inflate_bounds = 0.0f;
   for (auto i : material_array.gpu_materials.index_range()) {
-    GPUBatch *geom = mat_geom[i];
+    gpu::Batch *geom = mat_geom[i];
     if (geom == nullptr) {
       continue;
     }
@@ -155,6 +156,7 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
 
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
+    has_transparent_shadows = has_transparent_shadows || material.has_transparent_shadows;
 
     ::Material *mat = GPU_material_get_material(gpu_material);
     inst_.cryptomatte.sync_material(mat);
@@ -170,7 +172,7 @@ void SyncModule::sync_mesh(Object *ob,
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
   inst_.cryptomatte.sync_object(ob, res_handle);
 }
 
@@ -200,11 +202,12 @@ bool SyncModule::sync_sculpt(Object *ob,
   MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
 
   bool is_alpha_blend = false;
+  bool has_transparent_shadows = false;
   float inflate_bounds = 0.0f;
   for (SculptBatch &batch :
        sculpt_batches_per_material_get(ob_ref.object, material_array.gpu_materials))
   {
-    GPUBatch *geom = batch.batch;
+    gpu::Batch *geom = batch.batch;
     if (geom == nullptr) {
       continue;
     }
@@ -233,6 +236,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     geometry_call(material.reflection_probe_shading.sub_pass, geom, res_handle);
 
     is_alpha_blend = is_alpha_blend || material.is_alpha_blend_transparent;
+    has_transparent_shadows = has_transparent_shadows || material.has_transparent_shadows;
 
     GPUMaterial *gpu_material = material_array.gpu_materials[batch.material_slot];
     ::Material *mat = GPU_material_get_material(gpu_material);
@@ -252,7 +256,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material_array.gpu_materials);
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
   inst_.cryptomatte.sync_object(ob, res_handle);
 
   return true;
@@ -282,7 +286,7 @@ void SyncModule::sync_point_cloud(Object *ob,
       return;
     }
     PassMain::Sub &object_pass = matpass.sub_pass->sub("Point Cloud Sub Pass");
-    GPUBatch *geometry = point_cloud_sub_pass_setup(object_pass, ob, matpass.gpumat);
+    gpu::Batch *geometry = point_cloud_sub_pass_setup(object_pass, ob, matpass.gpumat);
     object_pass.draw(geometry, res_handle);
   };
 
@@ -315,13 +319,15 @@ void SyncModule::sync_point_cloud(Object *ob,
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 
-  bool is_alpha_blend = material.is_alpha_blend_transparent;
-
   if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
+  inst_.shadows.sync_object(ob,
+                            ob_handle,
+                            res_handle,
+                            material.is_alpha_blend_transparent,
+                            material.has_transparent_shadows);
 }
 
 /** \} */
@@ -345,9 +351,9 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
       ob, has_motion, material_slot - 1, MAT_GEOM_VOLUME);
 
   /* Use bounding box tag empty spaces. */
-  GPUBatch *geom = DRW_cache_cube_get();
+  gpu::Batch *geom = DRW_cache_cube_get();
 
-  auto drawcall_add = [&](MaterialPass &matpass, GPUBatch *geom, ResourceHandle res_handle) {
+  auto drawcall_add = [&](MaterialPass &matpass, gpu::Batch *geom, ResourceHandle res_handle) {
     if (matpass.sub_pass == nullptr) {
       return;
     }
@@ -375,7 +381,7 @@ struct gpIterData {
   int cfra;
 
   /* Drawcall batching. */
-  GPUBatch *geom = nullptr;
+  gpu::Batch *geom = nullptr;
   Material *material = nullptr;
   int vfirst = 0;
   int vcount = 0;
@@ -424,7 +430,7 @@ static void gpencil_drawcall_flush(gpIterData &iter)
 
 /* Group draw-calls that are consecutive and with the same type. Reduces GPU driver overhead. */
 static void gpencil_drawcall_add(gpIterData &iter,
-                                 GPUBatch *geom,
+                                 gpu::Batch *geom,
                                  Material *material,
                                  int v_first,
                                  int v_count,
@@ -463,7 +469,7 @@ static void gpencil_stroke_sync(bGPDlayer * /*gpl*/,
     return;
   }
 
-  GPUBatch *geom = DRW_cache_gpencil_get(iter.ob, iter.cfra);
+  gpu::Batch *geom = DRW_cache_gpencil_get(iter.ob, iter.cfra);
 
   if (show_fill) {
     int vfirst = gps->runtime.fill_start * 3;
@@ -500,8 +506,9 @@ void SyncModule::sync_gpencil(Object *ob, ObjectHandle &ob_handle, ResourceHandl
 
   gpencil_drawcall_flush(iter);
 
-  bool is_alpha_blend = true; /* TODO material.is_alpha_blend. */
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
+  bool is_alpha_blend = true;          /* TODO material.is_alpha_blend. */
+  bool has_transparent_shadows = true; /* TODO material.has_transparent_shadows. */
+  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
 }
 
 /** \} */
@@ -536,13 +543,13 @@ void SyncModule::sync_curves(Object *ob,
     }
     if (particle_sys != nullptr) {
       PassMain::Sub &sub_pass = matpass.sub_pass->sub("Hair SubPass");
-      GPUBatch *geometry = hair_sub_pass_setup(
+      gpu::Batch *geometry = hair_sub_pass_setup(
           sub_pass, inst_.scene, ob, particle_sys, modifier_data, matpass.gpumat);
       sub_pass.draw(geometry, res_handle);
     }
     else {
       PassMain::Sub &sub_pass = matpass.sub_pass->sub("Curves SubPass");
-      GPUBatch *geometry = curves_sub_pass_setup(sub_pass, inst_.scene, ob, matpass.gpumat);
+      gpu::Batch *geometry = curves_sub_pass_setup(sub_pass, inst_.scene, ob, matpass.gpumat);
       sub_pass.draw(geometry, res_handle);
     }
   };
@@ -575,13 +582,15 @@ void SyncModule::sync_curves(Object *ob,
   ::Material *mat = GPU_material_get_material(gpu_material);
   inst_.cryptomatte.sync_material(mat);
 
-  bool is_alpha_blend = material.is_alpha_blend_transparent;
-
   if (GPU_material_has_displacement_output(gpu_material) && mat->inflate_bounds != 0.0f) {
     inst_.manager->update_handle_bounds(res_handle, ob_ref, mat->inflate_bounds);
   }
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend);
+  inst_.shadows.sync_object(ob,
+                            ob_handle,
+                            res_handle,
+                            material.is_alpha_blend_transparent,
+                            material.has_transparent_shadows);
 }
 
 /** \} */
