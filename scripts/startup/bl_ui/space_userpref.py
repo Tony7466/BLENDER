@@ -247,7 +247,7 @@ class USERPREF_PT_interface_text(InterfacePanel, CenterAlignMixIn, Panel):
 
 
 class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel):
-    bl_label = "Translation"
+    bl_label = "Language"
     bl_translation_context = i18n_contexts.id_windowmanager
 
     @classmethod
@@ -260,7 +260,7 @@ class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel)
 
         layout.prop(view, "language")
 
-        col = layout.column(heading="Affect")
+        col = layout.column(heading="Translate")
         col.active = (bpy.app.translations.locale != "en_US")
         col.prop(view, "use_translate_tooltips", text="Tooltips")
         col.prop(view, "use_translate_interface", text="Interface")
@@ -876,7 +876,8 @@ class USERPREF_PT_theme(ThemePanel, Panel):
         row = split.row(align=True)
         row.menu("USERPREF_MT_interface_theme_presets", text=USERPREF_MT_interface_theme_presets.bl_label)
         row.operator("wm.interface_theme_preset_add", text="", icon='ADD')
-        row.operator("wm.interface_theme_preset_add", text="", icon='REMOVE').remove_active = True
+        row.operator("wm.interface_theme_preset_remove", text="", icon='REMOVE')
+        row.operator("wm.interface_theme_preset_save", text="", icon='FILE_TICK')
 
         row = split.row(align=True)
         row.operator("preferences.theme_install", text="Install...", icon='IMPORT')
@@ -1021,8 +1022,7 @@ class USERPREF_PT_theme_interface_transparent_checker(ThemePanel, CenterAlignMix
         theme = context.preferences.themes[0]
         ui = theme.user_interface
 
-        flow = layout.grid_flow(
-            row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
+        flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=False)
 
         col = flow.column(align=True)
         col.prop(ui, "transparent_checker_primary")
@@ -2045,28 +2045,6 @@ class USERPREF_PT_extensions_repos(Panel):
     # Show wider than most panels so the URL & directory aren't overly clipped.
     bl_ui_units_x = 16
 
-    # NOTE: ideally `if panel := layout.panel("extensions_repo_advanced", default_closed=True):`
-    # would be used but it isn't supported here, use a kludge to achieve a similar UI.
-    _panel_layout_kludge_state = False
-
-    @classmethod
-    def _panel_layout_kludge(cls, layout, *, text):
-        row = layout.row(align=True)
-        row.alignment = 'LEFT'
-        show_advanced = USERPREF_PT_extensions_repos._panel_layout_kludge_state
-        props = row.operator(
-            "wm.context_toggle",
-            text="Advanced",
-            icon='DOWNARROW_HLT' if show_advanced else 'RIGHTARROW',
-            emboss=False,
-        )
-        props.module = "bl_ui.space_userpref"
-        props.data_path = "USERPREF_PT_extensions_repos._panel_layout_kludge_state"
-
-        if show_advanced:
-            return layout.column()
-        return None
-
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = False
@@ -2115,8 +2093,9 @@ class USERPREF_PT_extensions_repos(Panel):
             split.prop(active_repo, "remote_path", text="URL")
             split = row.split()
 
-        if layout_panel := self._panel_layout_kludge(layout, text="Advanced"):
-
+        layout_header, layout_panel = layout.panel("advanced", default_closed=True)
+        layout_header.label(text="Advanced")
+        if layout_panel:
             layout_panel.prop(active_repo, "use_custom_directory")
 
             row = layout_panel.row()
@@ -2252,8 +2231,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         prefs = context.preferences
 
-        use_extension_repos = prefs.experimental.use_extension_repos
-        if use_extension_repos and self.is_extended():
+        if (
+                prefs.view.show_developer_ui and
+                prefs.experimental.use_extension_repos and
+                self.is_extended()
+        ):
             # Rely on the draw function being appended to by the extensions add-on.
             return
 
@@ -2693,9 +2675,11 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
+                ({"property": "use_grease_pencil_version3_convert_on_load"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "use_new_matrix_socket"}, ("blender/blender/issues/116067", "Matrix Socket")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/117286", "#117286")),
+                ({"property": "use_extension_utils"}, ("/blender/blender/issues/117286", "#117286")),
             ),
         )
 

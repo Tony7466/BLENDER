@@ -187,7 +187,7 @@ enum eWM_CapabilitiesFlag {
   /** Support for IME input methods. */
   WM_CAPABILITY_INPUT_IME = (1 << 6),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
-  WM_CAPABILITY_INITIALIZED = (1 << 31),
+  WM_CAPABILITY_INITIALIZED = (1u << 31),
 };
 ENUM_OPERATORS(eWM_CapabilitiesFlag, WM_CAPABILITY_CLIPBOARD_IMAGES)
 
@@ -1219,8 +1219,8 @@ void WM_uilisttype_free();
 /**
  * The "full" list-ID is an internal name used for storing and identifying a list. It is built like
  * this:
- * "{uiListType.idname}_{list_id}", whereby "list_id" is an optional parameter passed to
- * `UILayout.template_list()`. If it is not set, the full list-ID is just "{uiListType.idname}_".
+ * `{uiListType.idname}_{list_id}`, whereby `list_id` is an optional parameter passed to
+ * `UILayout.template_list()`. If it is not set, the full list-ID is just `{uiListType.idname}_`.
  *
  * Note that whenever the Python API refers to the list-ID, it's the short, "non-full" one it
  * passed to `UILayout.template_list()`. C code can query that through
