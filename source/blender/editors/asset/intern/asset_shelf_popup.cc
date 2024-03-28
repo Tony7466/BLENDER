@@ -36,11 +36,7 @@ static AssetShelf *get_shelf_for_popup(const bContext *C,
     return nullptr;
   }
 
-  if (!shelf_region->regiondata) {
-    shelf_region->regiondata = MEM_cnew<RegionAssetShelf>("RegionAssetShelf");
-  }
-
-  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(
+  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::ensure_from_asset_shelf_region(
       *shelf_region);
 
   const SpaceType *space_type = area->type;

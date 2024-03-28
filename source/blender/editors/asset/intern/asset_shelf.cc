@@ -494,19 +494,13 @@ void region_draw(const bContext *C, ARegion *region)
 
 void region_on_poll_success(const bContext *C, ARegion *region)
 {
-  ScrArea *area = CTX_wm_area(C);
-
-  BLI_assert(region->regiontype == RGN_TYPE_ASSET_SHELF);
-  if (!region->regiondata) {
-    region->regiondata = MEM_cnew<RegionAssetShelf>("RegionAssetShelf");
-  }
-
-  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(*region);
+  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::ensure_from_asset_shelf_region(*region);
   if (!shelf_regiondata) {
     BLI_assert_unreachable();
     return;
   }
 
+  ScrArea *area = CTX_wm_area(C);
   update_active_shelf(
       *C, *area->type, *shelf_regiondata, /*on_create=*/[&](AssetShelf &new_shelf) {
         /* Update region visibility (`'DEFAULT_VISIBLE'` option). */
