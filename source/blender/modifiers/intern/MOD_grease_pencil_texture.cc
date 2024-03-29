@@ -122,6 +122,44 @@ static float2 rotate_by_angle(const float2 &p, const float angle)
   return float2(p.x * cos_angle - p.y * sin_angle, p.x * sin_angle + p.y * cos_angle);
 }
 
+/*
+ * This gets the legacy stroke-space to layer-space matrix.
+ */
+static void get_legacy_stroke_matrix(const Span<float3> positions,
+                                     float3x4 &stroke_to_layer,
+                                     float4x3 &layer_to_stroke)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  if (positions.size() < 2) {
+    stroke_to_layer = float3x4::identity();
+    layer_to_stroke = float4x3::identity();
+  }
+
+  const float3 &pt0 = positions[0];
+  const float3 &pt1 = positions[1];
+  const float3 &pt3 = positions[int(positions.size() * 0.75f)];
+
+  /* Local X axis (p0 -> p1) */
+  const float3 local_x = normalize(pt1 - pt0);
+
+  /* Point vector at 3/4 */
+  const float3 local_3 = (positions.size() == 2) ? (pt3 * 0.001f) - pt0 : pt3 - pt0;
+
+  /* Vector orthogonal to polygon plane. */
+  const float3 normal = cross(local_x, local_3);
+
+  /* Local Y axis (cross to normal/x axis). */
+  const float3 local_y = normalize(cross(normal, local_x));
+
+  /* Get layer space using first point as origin. */
+  stroke_to_layer = float3x4(float4(local_x, 0), float4(local_y, 0), float4(pt0, 1));
+  layer_to_stroke = math::transpose(float3x4(float4(local_x, -dot(pt0, local_x)),
+                                             float4(local_y, -dot(pt0, local_y)),
+                                             float4(0, 0, 0, 1)));
+}
+
 static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
                                   const IndexMask &curves_mask,
                                   const float2 &offset,
@@ -157,21 +195,26 @@ static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
    */
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float2> uv_translations =
-      attributes.lookup_or_add_for_write_span<float2>("uv_translation", bke::AttrDomain::Curve);
-  bke::SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
-      "uv_rotation", bke::AttrDomain::Curve);
-  bke::SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_scale",
-      bke::AttrDomain::Curve,
-      bke::AttributeInitVArray(
-          VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
+  const Span<float3> positions = curves.positions();
+  Array<float4x2> texture_matrices(drawing.texture_matrices());
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    const float2 uv_translation = uv_translations.span[curve_i];
-    const float uv_rotation = uv_rotations.span[curve_i];
-    const float2 uv_scale = uv_scales.span[curve_i];
+    const IndexRange points = curves.points_by_curve()[curve_i];
+    float4x2 &texture_matrix = texture_matrices[curve_i];
+    /* Factor out the stroke-to-layer transform part used by GPv2.
+     * This may not be the same as the transform used by GPv3 for concave shapes due to a
+     * simplistic normal calculation, but we want to achieve the same effect as GPv2 so have to use
+     * the same matrix. */
+    float3x4 stroke_to_layer;
+    float4x3 layer_to_stroke;
+    get_legacy_stroke_matrix(positions.slice(points), stroke_to_layer, layer_to_stroke);
+    const float3x2 uv_matrix = texture_matrix * stroke_to_layer;
+    const float2 uv_translation = uv_matrix[2];
+    float2 inv_uv_scale;
+    const float2 axis_u = math::normalize_and_get_length(uv_matrix[0], inv_uv_scale[0]);
+    const float2 axis_v = math::normalize_and_get_length(uv_matrix[1], inv_uv_scale[1]);
+    const float uv_rotation = math::atan2(axis_u[1], axis_u[0]);
+    const float2 uv_scale = math::safe_rcp(inv_uv_scale);
 
     const float2 legacy_uv_translation = rotate_by_angle(0.5f * uv_scale * uv_translation - 0.5f,
                                                          -uv_rotation);
@@ -182,18 +225,23 @@ static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
     const float legacy_uv_rotation_new = legacy_uv_rotation + rotation;
     const float2 legacy_uv_scale_new = legacy_uv_scale * scale;
 
-    uv_translations.span[curve_i] =
+    const float2 uv_translation_new =
         (rotate_by_angle(legacy_uv_translation_new, legacy_uv_rotation_new) + 0.5f) *
         math::safe_rcp(legacy_uv_scale_new);
-    uv_rotations.span[curve_i] = legacy_uv_rotation_new;
-    uv_scales.span[curve_i] = 2.0f * legacy_uv_scale_new;
+    const float uv_rotation_new = legacy_uv_rotation_new;
+    const float2 uv_scale_new = 2.0f * legacy_uv_scale_new;
+
+    const float cos_uv_rotation_new = math::cos(uv_rotation_new);
+    const float sin_uv_rotation_new = math::sin(uv_rotation_new);
+    const float2 inv_uv_scale_new = math::safe_rcp(uv_scale_new);
+    const float3x2 uv_matrix_new = float3x2(
+        inv_uv_scale_new[0] * float2(cos_uv_rotation_new, sin_uv_rotation_new),
+        inv_uv_scale_new[1] * float2(-sin_uv_rotation_new, cos_uv_rotation_new),
+        uv_translation_new);
+    texture_matrix = uv_matrix_new * layer_to_stroke;
   });
 
-  uv_rotations.finish();
-  uv_translations.finish();
-  uv_scales.finish();
-
-  drawing.tag_texture_matrices_changed();
+  drawing.set_texture_matrices(texture_matrices, curves_mask);
 }
 
 static void modify_curves(const GreasePencilTextureModifierData &tmd,
