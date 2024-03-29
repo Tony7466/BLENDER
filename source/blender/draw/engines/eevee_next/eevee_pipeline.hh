@@ -361,6 +361,8 @@ class VolumeLayer {
   PassMain::Sub *material_ps_;
   /* List of bounds from all objects contained inside this pass. */
   Vector<Bounds<float2>> object_bounds_;
+  /* Combined bounds from object_bounds_. */
+  std::optional<Bounds<float2>> combined_bounds_;
 
  public:
   VolumeLayer(Instance &inst) : inst_(inst)
@@ -378,10 +380,7 @@ class VolumeLayer {
   /* Return true if the given bounds overlaps any of the contained object in this layer. */
   bool bounds_overlaps(const Bounds<float2> &object_aabb) const;
 
-  void add_object_bound(const Bounds<float2> &object_aabb)
-  {
-    object_bounds_.append(object_aabb);
-  }
+  void add_object_bound(const Bounds<float2> &object_aabb);
 
   void sync();
   void render(View &view, Texture &occupancy_tx);

@@ -931,6 +931,7 @@ void DeferredPipeline::render(View &main_view,
 void VolumeLayer::sync()
 {
   object_bounds_.clear();
+  combined_bounds_ = std::nullopt;
   use_hit_list = false;
   is_empty = true;
   finalized = false;
@@ -999,13 +1000,24 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
 
 bool VolumeLayer::bounds_overlaps(const Bounds<float2> &object_aabb) const
 {
-  /* TODO(fclem): Speedup by first testing the union of all bounds first. */
+  if (combined_bounds_.has_value() &&
+      bounds::intersect(object_aabb, combined_bounds_.value()).has_value())
+  {
+    return true;
+  }
+
   for (const Bounds<float2> &other_aabb : object_bounds_) {
     if (bounds::intersect(object_aabb, other_aabb).has_value()) {
       return true;
     }
   }
   return false;
+}
+
+void VolumeLayer::add_object_bound(const Bounds<float2> &object_aabb)
+{
+  object_bounds_.append(object_aabb);
+  combined_bounds_ = bounds::merge(combined_bounds_, std::optional<Bounds<float2>>(object_aabb));
 }
 
 void VolumeLayer::render(View &view, Texture &occupancy_tx)
