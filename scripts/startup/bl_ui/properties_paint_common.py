@@ -883,6 +883,8 @@ def brush_shared_settings(layout, context, brush, popover=False):
     # Grease Pencil #
     if mode == 'PAINT_GREASE_PENCIL':
         size_mode = True
+        size = True
+        strength = True
 
     ### Draw settings. ###
     ups = context.scene.tool_settings.unified_paint_settings

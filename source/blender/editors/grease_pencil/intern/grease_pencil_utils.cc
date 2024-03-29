@@ -96,10 +96,6 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
   {
     plane_from_point_normal_v3(placement_plane_, placement_loc_, placement_normal_);
   }
-
-  if (ELEM(depth_, DrawingPlacementDepth::Surface, DrawingPlacementDepth::NearestStroke)) {
-    this->cache_viewport_depths(depsgraph);
-  }
 }
 
 DrawingPlacement::~DrawingPlacement()
@@ -117,6 +113,14 @@ bool DrawingPlacement::use_project_to_surface() const
 bool DrawingPlacement::use_project_to_nearest_stroke() const
 {
   return depth_ == DrawingPlacementDepth::NearestStroke;
+}
+
+void DrawingPlacement::cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d)
+{
+  const eV3DDepthOverrideMode mode = (depth_ == DrawingPlacementDepth::Surface) ?
+                                         V3D_DEPTH_NO_GPENCIL :
+                                         V3D_DEPTH_GPENCIL_ONLY;
+  ED_view3d_depth_override(depsgraph, region, view3d, nullptr, mode, &this->depth_cache_);
 }
 
 void DrawingPlacement::set_origin_to_nearest_stroke(const float2 co)

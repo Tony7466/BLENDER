@@ -96,6 +96,8 @@ class DrawingPlacement {
  public:
   bool use_project_to_surface() const;
   bool use_project_to_nearest_stroke() const;
+
+  void cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d);
   void set_origin_to_nearest_stroke(float2 co);
 
   /**
@@ -103,9 +105,6 @@ class DrawingPlacement {
    */
   float3 project(float2 co) const;
   void project(Span<float2> src, MutableSpan<float3> dst) const;
-
- private:
-  void cache_viewport_depths(const Depsgraph &depsgraph);
 };
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,

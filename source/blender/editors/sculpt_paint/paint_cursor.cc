@@ -1515,6 +1515,8 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     return;
   }
 
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+
   float3 color(1.0f);
   const int x = pcontext->x;
   const int y = pcontext->y;
@@ -1541,7 +1543,9 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
     }
     else {
-      const ed::greasepencil::DrawingPlacement placement(pcontext->C);
+      const bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
+      const ed::greasepencil::DrawingPlacement placement(
+          *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
       const float radius = BKE_brush_unprojected_radius_get(pcontext->scene, brush);
       float3 location = placement.project(float2(pcontext->x, pcontext->y));
       pcontext->pixel_radius = project_brush_radius(&pcontext->vc, radius, location);
