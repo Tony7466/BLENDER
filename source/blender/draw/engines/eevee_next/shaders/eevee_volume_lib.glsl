@@ -21,9 +21,14 @@ float volume_z_to_view_z(float z)
   float near = uniform_buf.volumes.depth_near;
   float far = uniform_buf.volumes.depth_far;
   float distribution = uniform_buf.volumes.depth_distribution;
-  bool is_persp = ProjectionMatrix[3][3] == 0.0;
-  /* Implemented in eevee_shader_shared.cc */
-  return volume_z_to_view_z(near, far, distribution, is_persp, z);
+  if (drw_view_is_perspective()) {
+    /* Exponential distribution. */
+    return (exp2(z / distribution) - near) / far;
+  }
+  else {
+    /* Linear distribution. */
+    return near + (far - near) * z;
+  }
 }
 
 float view_z_to_volume_z(float depth)
@@ -31,9 +36,14 @@ float view_z_to_volume_z(float depth)
   float near = uniform_buf.volumes.depth_near;
   float far = uniform_buf.volumes.depth_far;
   float distribution = uniform_buf.volumes.depth_distribution;
-  bool is_persp = ProjectionMatrix[3][3] == 0.0;
-  /* Implemented in eevee_shader_shared.cc */
-  return view_z_to_volume_z(near, far, distribution, is_persp, depth);
+  if (drw_view_is_perspective()) {
+    /* Exponential distribution. */
+    return distribution * log2(depth * far + near);
+  }
+  else {
+    /* Linear distribution. */
+    return (depth - near) * distribution;
+  }
 }
 
 /* Volume texture normalized coordinates to screen UVs (special range [0, 1]). */
@@ -47,12 +57,10 @@ vec3 volume_to_screen(vec3 coord)
 
 vec3 screen_to_volume(vec3 coord)
 {
-  float near = uniform_buf.volumes.depth_near;
-  float far = uniform_buf.volumes.depth_far;
-  float distribution = uniform_buf.volumes.depth_distribution;
-  vec2 coord_scale = uniform_buf.volumes.coord_scale;
-  /* Implemented in eevee_shader_shared.cc */
-  return screen_to_volume(ProjectionMatrix, near, far, distribution, coord_scale, coord);
+  coord.xy *= uniform_buf.volumes.coord_scale;
+  coord.z = drw_depth_screen_to_view(coord.z);
+  coord.z = view_z_to_volume_z(coord.z);
+  return coord;
 }
 
 float volume_phase_function_isotropic()

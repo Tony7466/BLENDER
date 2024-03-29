@@ -40,12 +40,13 @@ struct VolumeProperties {
   float anisotropy;
 };
 
-VolumeProperties eval_froxel(ivec3 froxel)
+VolumeProperties eval_froxel(ivec3 froxel, float jitter)
 {
-  /* TODO(fclem): Make sure this volume to screen is well aligned with the view. */
-  vec3 ndc_cell = volume_to_screen((vec3(froxel) + 0.5) * uniform_buf.volumes.inv_tex_size);
+  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
+  vec3 ss_P = volume_to_screen(uvw);
 
-  vec3 vP = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
+  /* TODO(fclem): Wrong with the infinite matrix. */
+  vec3 vP = get_view_space_from_depth(ss_P.xy, ss_P.z);
   vec3 wP = point_view_to_world(vP);
 #ifdef GRID_ATTRIBUTES
 #  if defined(MAT_GEOM_WORLD)
@@ -102,11 +103,13 @@ void write_froxel(ivec3 froxel, VolumeProperties prop)
 void main()
 {
   ivec3 froxel = ivec3(ivec2(gl_FragCoord.xy), 0);
+  float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
+  float jitter = interlieved_gradient_noise(vec2(froxel.xy), 0.0, offset);
 
 #ifdef VOLUME_HOMOGENOUS
   /* Homogenous volumes only evaluate properties at volume entrance and write the same values for
    * each froxel. */
-  VolumeProperties prop = eval_froxel(froxel);
+  VolumeProperties prop = eval_froxel(froxel, jitter);
 #endif
 
 #ifndef MAT_GEOM_WORLD
@@ -134,7 +137,7 @@ void main()
 
 #ifndef VOLUME_HOMOGENOUS
       /* Heterogenous volumes evaluate properties at every froxel position. */
-      VolumeProperties prop = eval_froxel(froxel);
+      VolumeProperties prop = eval_froxel(froxel, jitter);
 #endif
       write_froxel(froxel, prop);
     }

@@ -66,10 +66,11 @@ void main()
   vec3 extinction = imageLoad(in_extinction_img, froxel).rgb;
   vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
-  vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
-  vec3 volume_screen = volume_to_screen((vec3(froxel) + jitter) *
-                                        uniform_buf.volumes.inv_tex_size);
-  vec3 vP = drw_point_screen_to_view(volume_screen);
+  float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
+  float jitter = interlieved_gradient_noise(vec2(froxel.xy), 0.0, offset);
+  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
+  vec3 ss_P = volume_to_screen(uvw);
+  vec3 vP = drw_point_screen_to_view(ss_P);
   vec3 P = drw_point_view_to_world(vP);
   vec3 V = drw_world_incident_vector(P);
 

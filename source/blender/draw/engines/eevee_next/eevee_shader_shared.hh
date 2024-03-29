@@ -518,57 +518,6 @@ struct VolumesInfoData {
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
-/* Volume slice to view space depth. */
-static inline float volume_z_to_view_z(
-    float near, float far, float distribution, bool is_persp, float z)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return (exp2(z / distribution) - near) / far;
-  }
-  else {
-    /* Linear distribution. */
-    return near + (far - near) * z;
-  }
-}
-
-static inline float view_z_to_volume_z(
-    float near, float far, float distribution, bool is_persp, float depth)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return distribution * log2(depth * far + near);
-  }
-  else {
-    /* Linear distribution. */
-    return (depth - near) * distribution;
-  }
-}
-
-static inline float3 screen_to_volume(float4x4 projection_matrix,
-                                      float near,
-                                      float far,
-                                      float distribution,
-                                      float2 coord_scale,
-                                      float3 coord)
-{
-  bool is_persp = projection_matrix[3][3] == 0.0;
-
-  /* get_view_z_from_depth */
-  float d = 2.0 * coord.z - 1.0;
-  if (is_persp) {
-    coord.z = -projection_matrix[3][2] / (d + projection_matrix[2][2]);
-  }
-  else {
-    coord.z = (d - projection_matrix[3][2]) / projection_matrix[2][2];
-  }
-
-  coord.z = view_z_to_volume_z(near, far, distribution, is_persp, coord.z);
-  coord.x *= coord_scale.x;
-  coord.y *= coord_scale.y;
-  return coord;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
