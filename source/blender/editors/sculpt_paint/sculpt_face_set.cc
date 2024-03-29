@@ -641,9 +641,14 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
     case CreateMode::Selection: {
       const VArraySpan<bool> select_poly = *attributes.lookup_or_default<bool>(
           ".select_poly", bke::AttrDomain::Face, false);
+      const VArray<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
       face_sets_update(object, nodes, [&](const Span<int> indices, MutableSpan<int> face_sets) {
         for (const int i : indices.index_range()) {
           if (select_poly[indices[i]]) {
+            if (!hide_poly.is_empty() && hide_poly[i]) {
+              continue;
+            }
             face_sets[i] = next_face_set;
           }
         }
