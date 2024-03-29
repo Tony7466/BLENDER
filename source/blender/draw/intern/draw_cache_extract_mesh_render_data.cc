@@ -25,7 +25,7 @@
 #include "BKE_mesh_runtime.hh"
 #include "BKE_object.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "ED_mesh.hh"
 
@@ -335,9 +335,8 @@ void mesh_render_data_update_faces_sorted(MeshRenderData &mr,
 
 const Mesh *editmesh_final_or_this(const Object *object, const Mesh *mesh)
 {
-  if (mesh->edit_mesh != nullptr) {
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
-    if (editmesh_eval_final != nullptr) {
+  if (mesh->runtime->edit_mesh != nullptr) {
+    if (const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object)) {
       return editmesh_eval_final;
     }
   }
@@ -353,7 +352,7 @@ const CustomData *mesh_cd_ldata_get_from_mesh(const Mesh *mesh)
       return &mesh->corner_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
-      return &mesh->edit_mesh->bm->ldata;
+      return &mesh->runtime->edit_mesh->bm->ldata;
       break;
   }
 
@@ -369,7 +368,7 @@ const CustomData *mesh_cd_pdata_get_from_mesh(const Mesh *mesh)
       return &mesh->face_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
-      return &mesh->edit_mesh->bm->pdata;
+      return &mesh->runtime->edit_mesh->bm->pdata;
       break;
   }
 
@@ -385,7 +384,7 @@ const CustomData *mesh_cd_edata_get_from_mesh(const Mesh *mesh)
       return &mesh->edge_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
-      return &mesh->edit_mesh->bm->edata;
+      return &mesh->runtime->edit_mesh->bm->edata;
       break;
   }
 
@@ -401,7 +400,7 @@ const CustomData *mesh_cd_vdata_get_from_mesh(const Mesh *mesh)
       return &mesh->vert_data;
       break;
     case ME_WRAPPER_TYPE_BMESH:
-      return &mesh->edit_mesh->bm->vdata;
+      return &mesh->runtime->edit_mesh->bm->vdata;
       break;
   }
 
@@ -424,7 +423,7 @@ void mesh_render_data_update_corner_tris(MeshRenderData &mr,
     /* #BMesh */
     if ((iter_type & MR_ITER_CORNER_TRI) || (data_flag & MR_DATA_CORNER_TRI)) {
       /* Edit mode ensures this is valid, no need to calculate. */
-      BLI_assert((mr.bm->totloop == 0) || (mr.edit_bmesh->looptris != nullptr));
+      BLI_assert((mr.bm->totloop == 0) || !mr.edit_bmesh->looptris.is_empty());
     }
   }
 }
@@ -507,7 +506,7 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
       const float(*vert_normals)[3] = nullptr;
       const float(*face_normals)[3] = nullptr;
 
-      if (mr.edit_data && !mr.edit_data->vertexCos.is_empty()) {
+      if (mr.edit_data && !mr.edit_data->vert_positions.is_empty()) {
         vert_coords = reinterpret_cast<const float(*)[3]>(mr.bm_vert_coords.data());
         vert_normals = reinterpret_cast<const float(*)[3]>(mr.bm_vert_normals.data());
         face_normals = reinterpret_cast<const float(*)[3]>(mr.bm_face_normals.data());
@@ -559,12 +558,12 @@ MeshRenderData *mesh_render_data_create(Object *object,
   mr->use_hide = use_hide;
 
   if (is_editmode) {
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
-    Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(object);
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
+    const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(object);
 
     BLI_assert(editmesh_eval_cage && editmesh_eval_final);
-    mr->bm = mesh->edit_mesh->bm;
-    mr->edit_bmesh = mesh->edit_mesh;
+    mr->bm = mesh->runtime->edit_mesh->bm;
+    mr->edit_bmesh = mesh->runtime->edit_mesh;
     mr->mesh = (do_final) ? editmesh_eval_final : editmesh_eval_cage;
     mr->edit_data = is_mode_active ? mr->mesh->runtime->edit_data.get() : nullptr;
 
@@ -573,15 +572,14 @@ MeshRenderData *mesh_render_data_create(Object *object,
 
     if (mr->edit_data) {
       bke::EditMeshData *emd = mr->edit_data;
-      if (!emd->vertexCos.is_empty()) {
+      if (!emd->vert_positions.is_empty()) {
         BKE_editmesh_cache_ensure_vert_normals(*mr->edit_bmesh, *emd);
         BKE_editmesh_cache_ensure_face_normals(*mr->edit_bmesh, *emd);
       }
 
-      mr->bm_vert_coords = mr->edit_data->vertexCos;
-      mr->bm_vert_normals = mr->edit_data->vertexNos;
-      mr->bm_face_normals = mr->edit_data->faceNos;
-      mr->bm_face_centers = mr->edit_data->faceCos;
+      mr->bm_vert_coords = mr->edit_data->vert_positions;
+      mr->bm_vert_normals = mr->edit_data->vert_normals;
+      mr->bm_face_normals = mr->edit_data->face_normals;
     }
 
     int bm_ensure_types = BM_VERT | BM_EDGE | BM_LOOP | BM_FACE;
