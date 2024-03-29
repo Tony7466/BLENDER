@@ -806,7 +806,8 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
      *
      * This would be unnecessary if the active attribute were stored as a string on the ID. */
     std::string active_attribute;
-    if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
+    const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id);
+    if (layer) {
       active_attribute = layer->name;
     }
     for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
@@ -825,8 +826,9 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
         }
       }
     }
-
-    BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    if (layer) {
+      BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    }
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
      * attribute for now. */
