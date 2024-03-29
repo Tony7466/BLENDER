@@ -567,11 +567,6 @@ void MTLStateManager::issue_barrier(eGPUBarrier barrier_bits,
 #endif
 void MTLStateManager::issue_barrier(eGPUBarrier barrier_bits)
 {
-  if (barrier_bits & GPU_BARRIER_BUFFER_UPDATE) {
-    GPU_finish();
-    return;
-  }
-
   /* NOTE(Metal): The Metal API implicitly tracks dependencies between resources.
    * Memory barriers and execution barriers (Fences/Events) can be used to coordinate
    * this explicitly, however, in most cases, the driver will be able to
@@ -584,6 +579,10 @@ void MTLStateManager::issue_barrier(eGPUBarrier barrier_bits)
   BLI_assert(ctx);
 
   ctx->main_command_buffer.insert_memory_barrier(barrier_bits, before_stages, after_stages);
+
+  if (barrier_bits & GPU_BARRIER_BUFFER_UPDATE) {
+    GPU_finish();
+  }
 }
 
 MTLFence::~MTLFence()
