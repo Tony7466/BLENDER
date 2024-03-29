@@ -525,7 +525,7 @@ static void set_rest_position(Mesh &mesh)
   }
 }
 
-static void save_cage_mesh(GeometrySet &geometry_set)
+static void save_deform_mesh(GeometrySet &geometry_set)
 {
   if (const Mesh *mesh = geometry_set.get_mesh()) {
     auto &edit_data = geometry_set.get_component_for_write<GeometryComponentEditData>();
@@ -533,7 +533,7 @@ static void save_cage_mesh(GeometrySet &geometry_set)
       edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
     }
     BLI_assert(!edit_data.mesh_edit_hints_->mesh_cage);
-    edit_data.mesh_edit_hints_->mesh_cage = geometry_set.get_component_ptr<MeshComponent>();
+    edit_data.mesh_edit_hints_->mesh_deform = geometry_set.get_component_ptr<MeshComponent>();
   }
 }
 
@@ -632,9 +632,7 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
     /* Result of all leading deforming modifiers is cached for
      * places that wish to use the original mesh but with deformed
      * coordinates (like vertex paint). */
-    if (r_deform) {
-      mesh_deform = BKE_mesh_copy_for_eval(geometry_set.get_mesh());
-    }
+    save_deform_mesh(geometry_set);
   }
 
   /* Apply all remaining constructive and deforming modifiers. */
@@ -862,18 +860,6 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
   return geometry_set;
 }
 
-static Array<float3> editbmesh_vert_coords_alloc(const BMEditMesh *em)
-{
-  Array<float3> cos(em->bm->totvert);
-  BMIter iter;
-  BMVert *eve;
-  int i;
-  BM_ITER_MESH_INDEX (eve, &iter, em->bm, BM_VERTS_OF_MESH, i) {
-    cos[i] = eve->co;
-  }
-  return cos;
-}
-
 bool editbmesh_modifier_is_enabled(const Scene *scene,
                                    const Object *ob,
                                    ModifierData *md,
@@ -929,8 +915,8 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH:
       if (mesh->runtime->edit_data->vert_positions.is_empty()) {
-        mesh->runtime->edit_data->vert_positions = editbmesh_vert_coords_alloc(
-            mesh->runtime->edit_mesh);
+        mesh->runtime->edit_data->vert_positions = BM_mesh_vert_coords_alloc(
+            mesh->runtime->edit_mesh->bm);
       }
       return mesh->runtime->edit_data->vert_positions;
     case ME_WRAPPER_TYPE_MDATA:
