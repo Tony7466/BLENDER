@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <optional>
 
 #include "CLG_log.h"
 
@@ -27,8 +28,6 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -44,10 +43,10 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
-#include "BKE_attribute.h"
+#include "BKE_anim_data.hh"
+#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_curve.hh"
 #include "BKE_displist.h"
@@ -55,10 +54,10 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -67,14 +66,14 @@
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_preview_image.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_vfont.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "NOD_shader.h"
 
@@ -93,7 +92,11 @@ static void material_init_data(ID *id)
   *((short *)id->name) = ID_MA;
 }
 
-static void material_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void material_copy_data(Main *bmain,
+                               std::optional<Library *> owner_library,
+                               ID *id_dst,
+                               const ID *id_src,
+                               const int flag)
 {
   Material *material_dst = (Material *)id_dst;
   const Material *material_src = (const Material *)id_src;
@@ -107,10 +110,11 @@ static void material_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const 
       material_dst->nodetree = ntreeLocalize(material_src->nodetree);
     }
     else {
-      BKE_id_copy_ex(bmain,
-                     (ID *)material_src->nodetree,
-                     (ID **)&material_dst->nodetree,
-                     flag_private_id_data);
+      BKE_id_copy_in_lib(bmain,
+                         owner_library,
+                         (ID *)material_src->nodetree,
+                         (ID **)&material_dst->nodetree,
+                         flag_private_id_data);
     }
     material_dst->nodetree->owner_id = &material_dst->id;
   }
@@ -233,6 +237,7 @@ static void material_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_MA = {
     /*id_code*/ ID_MA,
     /*id_filter*/ FILTER_ID_MA,
+    /*dependencies_id_types*/ FILTER_ID_TE | FILTER_ID_GR,
     /*main_listbase_index*/ INDEX_ID_MA,
     /*struct_size*/ sizeof(Material),
     /*name*/ "Material",
@@ -552,7 +557,7 @@ void BKE_id_materials_copy(Main *bmain, ID *id_src, ID *id_dst)
       id_us_plus((ID *)(*matar_dst)[a]);
     }
 
-    DEG_id_tag_update(id_dst, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(id_dst, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(bmain);
   }
 }
@@ -584,7 +589,7 @@ void BKE_id_material_resize(Main *bmain, ID *id, short totcol, bool do_id_user)
   }
   *totcolp = totcol;
 
-  DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 }
 
@@ -607,7 +612,7 @@ void BKE_id_material_append(Main *bmain, ID *id, Material *ma)
     id_us_plus((ID *)ma);
     BKE_objects_materials_test_all(bmain, id);
 
-    DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(id, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(bmain);
   }
 }
@@ -642,7 +647,7 @@ Material *BKE_id_material_pop(Main *bmain, ID *id, int index_i)
 
       material_data_index_remove_id(id, index);
 
-      DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(id, ID_RECALC_SYNC_TO_EVAL);
       DEG_relations_tag_update(bmain);
     }
   }
@@ -668,7 +673,7 @@ void BKE_id_material_clear(Main *bmain, ID *id)
     BKE_objects_materials_test_all(bmain, id);
     material_data_index_clear_id(id);
 
-    DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(id, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(bmain);
   }
 }
@@ -722,14 +727,14 @@ Material *BKE_object_material_get(Object *ob, short act)
   return ma_p ? *ma_p : nullptr;
 }
 
-static ID *get_evaluated_object_data_with_materials(Object *ob)
+static const ID *get_evaluated_object_data_with_materials(Object *ob)
 {
-  ID *data = static_cast<ID *>(ob->data);
+  const ID *data = static_cast<ID *>(ob->data);
   /* Meshes in edit mode need special handling. */
   if (ob->type == OB_MESH && ob->mode == OB_MODE_EDIT) {
-    Mesh *mesh = static_cast<Mesh *>(ob->data);
-    Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
-    if (mesh->edit_mesh && editmesh_eval_final) {
+    const Mesh *mesh = static_cast<const Mesh *>(ob->data);
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+    if (mesh->runtime->edit_mesh && editmesh_eval_final) {
       data = &editmesh_eval_final->id;
     }
   }
@@ -740,8 +745,8 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
 {
   BLI_assert(DEG_is_evaluated_object(ob));
 
-  ID *data = get_evaluated_object_data_with_materials(ob);
-  const short *tot_slots_data_ptr = BKE_id_material_len_p(data);
+  const ID *data = get_evaluated_object_data_with_materials(ob);
+  const short *tot_slots_data_ptr = BKE_id_material_len_p(const_cast<ID *>(data));
   const int tot_slots_data = tot_slots_data_ptr ? *tot_slots_data_ptr : 0;
 
   if (tot_slots_data == 0) {
@@ -752,7 +757,7 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
   const int slot_index = clamp_i(act - 1, 0, tot_slots_data - 1);
   const int tot_slots_object = ob->totcol;
 
-  Material ***materials_data_ptr = BKE_id_material_array_p(data);
+  Material ***materials_data_ptr = BKE_id_material_array_p(const_cast<ID *>(data));
   Material **materials_data = materials_data_ptr ? *materials_data_ptr : nullptr;
   Material **materials_object = ob->mat;
 
@@ -825,6 +830,33 @@ void BKE_id_material_eval_ensure_default_slot(ID *id)
   }
 }
 
+int BKE_object_material_index_get(Object *ob, Material *ma)
+{
+  short *totcol = BKE_object_material_len_p(ob);
+  Material *read_ma = nullptr;
+  for (short i = 0; i < *totcol; i++) {
+    read_ma = BKE_object_material_get(ob, i + 1);
+    if (ma == read_ma) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int BKE_object_material_ensure(Main *bmain, Object *ob, Material *material)
+{
+  if (!material) {
+    return -1;
+  }
+  int index = BKE_object_material_index_get(ob, material);
+  if (index < 0) {
+    BKE_object_material_slot_add(bmain, ob);
+    BKE_object_material_assign(bmain, ob, material, ob->totcol, BKE_MAT_ASSIGN_USERPREF);
+    return ob->totcol - 1;
+  }
+  return index;
+}
+
 Material *BKE_gpencil_material(Object *ob, short act)
 {
   Material *ma = BKE_object_material_get(ob, act);
@@ -890,7 +922,7 @@ void BKE_object_material_resize(Main *bmain, Object *ob, const short totcol, boo
     ob->actcol = ob->totcol;
   }
 
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
 }
 
@@ -929,7 +961,8 @@ void BKE_objects_materials_test_all(Main *bmain, ID *id)
   BKE_main_lock(bmain);
   int processed_objects = 0;
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (ob->data == id) {
       BKE_object_material_resize(bmain, ob, *totcol, false);
       processed_objects++;
@@ -1223,7 +1256,7 @@ void BKE_object_material_array_assign(
 
   /* now we have the right number of slots */
   for (int i = 0; i < totcol; i++) {
-    if (to_object_only && ob->matbits[i] == 0) {
+    if (to_object_only && ob->matbits && ob->matbits[i] == 0) {
       /* If we only assign to object, and that slot uses obdata material, do nothing. */
       continue;
     }
@@ -1587,7 +1620,7 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const Object *o
     }
   }
 
-  /* COW needed when adding texture slot on an object with no materials.
+  /* Copy-on-eval needed when adding texture slot on an object with no materials.
    * But do it only when slots actually change to avoid continuous depsgraph updates. */
   if (ma->tot_slots != prev_tot_slots || ma->paint_active_slot != prev_paint_active_slot ||
       ma->paint_clone_slot != prev_paint_clone_slot ||
@@ -1595,7 +1628,7 @@ void BKE_texpaint_slot_refresh_cache(Scene *scene, Material *ma, const Object *o
        memcmp(ma->texpaintslot, prev_texpaintslot, sizeof(*ma->texpaintslot) * ma->tot_slots) !=
            0))
   {
-    DEG_id_tag_update(&ma->id, ID_RECALC_SHADING | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ma->id, ID_RECALC_SHADING | ID_RECALC_SYNC_TO_EVAL);
   }
 
   MEM_SAFE_FREE(prev_texpaintslot);
@@ -1638,6 +1671,14 @@ static bool texpaint_slot_node_find_cb(bNode *node, void *userdata)
 
 bNode *BKE_texpaint_slot_material_find_node(Material *ma, short texpaint_slot)
 {
+  if (ma->texpaintslot == nullptr) {
+    return nullptr;
+  }
+
+  if (texpaint_slot >= ma->tot_slots) {
+    return nullptr;
+  }
+
   TexPaintSlot *slot = &ma->texpaintslot[texpaint_slot];
   FindTexPaintNodeData find_data = {slot, nullptr};
   ntree_foreach_texnode_recursive(ma->nodetree,

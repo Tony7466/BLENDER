@@ -21,20 +21,20 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_addon.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh_runtime.hh"
 
-#include "BLO_readfile.h" /* for UserDef version patching. */
+#include "BLO_userdef_default.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "ED_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 
-#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.hh"
 #include "interface_intern.hh"
 
 /* be sure to keep 'bThemeState' in sync */

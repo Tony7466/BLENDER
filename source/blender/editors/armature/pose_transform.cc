@@ -22,16 +22,15 @@
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_armature.hh"
-#include "BKE_blender_copybuffer.h"
+#include "BKE_blender_copybuffer.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
-#include "BKE_idprop.h"
-#include "BKE_layer.h"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -46,7 +45,6 @@
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
 #include "ED_screen.hh"
-#include "ED_util.hh"
 
 #include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
@@ -54,7 +52,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -85,20 +83,19 @@ static void applyarmature_fix_boneparents(const bContext *C, Scene *scene, Objec
    * in this function. */
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
-  Object workob, *ob;
 
   /* go through all objects in database */
-  for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+  for (Object *ob = static_cast<Object *>(bmain->objects.first); ob;
+       ob = static_cast<Object *>(ob->id.next))
+  {
     /* if parent is bone in this armature, apply corrections */
     if ((ob->parent == armob) && (ob->partype == PARBONE)) {
       /* apply current transform from parent (not yet destroyed),
        * then calculate new parent inverse matrix
        */
-      BKE_object_apply_mat4(ob, ob->object_to_world, false, false);
+      BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, false);
 
-      BKE_object_workob_calc_parent(depsgraph, scene, ob, &workob);
-      invert_m4_m4(ob->parentinv, workob.object_to_world);
+      invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
     }
   }
 }
@@ -212,7 +209,7 @@ static void applyarmature_process_selected_recursive(bArmature *arm,
                                                      bPose *pose,
                                                      bPose *pose_eval,
                                                      Bone *bone,
-                                                     ListBase *selected,
+                                                     blender::Span<PointerRNA> selected,
                                                      ApplyArmature_ParentState *pstate)
 {
   bPoseChannel *pchan = BKE_pose_channel_find_name(pose, bone->name);
@@ -225,7 +222,10 @@ static void applyarmature_process_selected_recursive(bArmature *arm,
   ApplyArmature_ParentState new_pstate{};
   new_pstate.bone = bone;
 
-  if (BLI_findptr(selected, pchan, offsetof(CollectionPointerLink, ptr.data))) {
+  if (std::find_if(selected.begin(), selected.end(), [&](const PointerRNA &ptr) {
+        return ptr.data == pchan;
+      }) != selected.end())
+  {
     /* SELECTED BONE: Snap to final pose transform minus un-applied parent effects.
      *
      * I.e. bone position with accumulated parent effects but no local
@@ -391,7 +391,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   bArmature *arm = BKE_armature_from_object(ob);
   bPose *pose;
-  ListBase selected_bones;
+  blender::Vector<PointerRNA> selected_bones;
 
   const bool use_selected = RNA_boolean_get(op->ptr, "selected");
 
@@ -417,7 +417,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
   if (use_selected) {
     CTX_data_selected_pose_bones(C, &selected_bones);
 
-    if (!selected_bones.first) {
+    if (!selected_bones.is_empty()) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -432,10 +432,8 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
     /* The selected only mode requires a recursive walk to handle parent-child relations. */
     LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
       applyarmature_process_selected_recursive(
-          arm, pose, ob_eval->pose, bone, &selected_bones, nullptr);
+          arm, pose, ob_eval->pose, bone, selected_bones, nullptr);
     }
-
-    BLI_freelistN(&selected_bones);
   }
   else {
     LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
@@ -463,7 +461,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 
   /* NOTE: notifier might evolve. */
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 
   return OPERATOR_FINISHED;
 }
@@ -605,7 +603,7 @@ static void set_pose_keys(Object *ob)
   if (ob->pose) {
     LISTBASE_FOREACH (bPoseChannel *, chan, &ob->pose->chanbase) {
       Bone *bone = chan->bone;
-      if ((bone) && (bone->flag & BONE_SELECTED) && ANIM_bonecoll_is_visible(arm, bone)) {
+      if ((bone) && (bone->flag & BONE_SELECTED) && ANIM_bone_in_visible_collection(arm, bone)) {
         chan->flag |= POSE_KEY;
       }
       else {
@@ -1049,7 +1047,8 @@ static void pchan_clear_rot(bPoseChannel *pchan)
         /* check validity of axis - axis should never be 0,0,0
          * (if so, then we make it rotate about y). */
         if (IS_EQF(pchan->rotAxis[0], pchan->rotAxis[1]) &&
-            IS_EQF(pchan->rotAxis[1], pchan->rotAxis[2])) {
+            IS_EQF(pchan->rotAxis[1], pchan->rotAxis[2]))
+        {
           pchan->rotAxis[1] = 1.0f;
         }
       }
@@ -1116,7 +1115,8 @@ static void pchan_clear_rot(bPoseChannel *pchan)
 
         /* quaternions flip w sign to accumulate rotations correctly */
         if ((quat1[0] < 0.0f && pchan->quat[0] > 0.0f) ||
-            (quat1[0] > 0.0f && pchan->quat[0] < 0.0f)) {
+            (quat1[0] > 0.0f && pchan->quat[0] < 0.0f))
+        {
           mul_qt_fl(pchan->quat, -1.0f);
         }
       }

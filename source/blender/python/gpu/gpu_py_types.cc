@@ -11,10 +11,8 @@
 
 #include <Python.h>
 
-#include "../generic/py_capi_utils.h"
-
-#include "gpu_py.h"
-#include "gpu_py_types.h" /* own include */
+#include "gpu_py.hh"
+#include "gpu_py_types.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name GPU Types Module

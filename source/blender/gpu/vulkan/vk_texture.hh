@@ -73,7 +73,7 @@ class VKTexture : public Texture, public VKBindableResource {
   void mip_range_set(int min, int max) override;
   void *read(int mip, eGPUDataFormat format) override;
   void read_sub(
-      int mip, eGPUDataFormat format, const int area[4], IndexRange layers, void *r_data);
+      int mip, eGPUDataFormat format, const int area[6], IndexRange layers, void *r_data);
   void update_sub(
       int mip, int offset[3], int extent[3], eGPUDataFormat format, const void *data) override;
   void update_sub(int offset[3],
@@ -107,7 +107,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
  protected:
   bool init_internal() override;
-  bool init_internal(GPUVertBuf *vbo) override;
+  bool init_internal(VertBuf *vbo) override;
   bool init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil) override;
 
  private:

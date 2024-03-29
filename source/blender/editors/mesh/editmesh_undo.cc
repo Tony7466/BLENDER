@@ -26,13 +26,13 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
-#include "BKE_undo_system.h"
+#include "BKE_undo_system.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -50,7 +50,7 @@
 // #  define DEBUG_PRINT
 // #  define DEBUG_TIME
 #  ifdef DEBUG_TIME
-#    include "PIL_time_utildefines.h"
+#    include "BLI_time_utildefines.h"
 #  endif
 
 #  include "BLI_array_store.h"
@@ -110,14 +110,17 @@ struct UndoMesh {
   int selectmode;
   char uv_selectmode;
 
-  /** \note
-   * This isn't a perfect solution, if you edit keys and change shapes this works well
-   * (fixing #32442), but editing shape keys, going into object mode, removing or changing their
-   * order, then go back into editmode and undo will give issues - where the old index will be
-   * out of sync with the new object index.
+  /**
+   * The active shape key associated with this mesh.
+   *
+   * NOTE(@ideasman42): This isn't a perfect solution, if you edit keys and change shapes this
+   * works well (fixing #32442), but editing shape keys, going into object mode, removing or
+   * changing their order, then go back into edit-mode and undo will give issues - where the old
+   * index will be out of sync with the new object index.
    *
    * There are a few ways this could be made to work but for now its a known limitation with mixing
-   * object and editmode operations - Campbell. */
+   * object and edit-mode operations.
+   */
   int shapenr;
 
 #ifdef USE_ARRAY_STORE
@@ -368,10 +371,10 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
    * Since this is itself a background thread, using too many threads here could
    * interfere with foreground tasks. */
   blender::threading::parallel_invoke(
-      4096 < (mesh->totvert + mesh->totedge + mesh->totloop + mesh->faces_num),
+      4096 < (mesh->verts_num + mesh->edges_num + mesh->corners_num + mesh->faces_num),
       [&]() {
         um_arraystore_cd_compact(&mesh->vert_data,
-                                 mesh->totvert,
+                                 mesh->verts_num,
                                  create,
                                  ARRAY_STORE_INDEX_VERT,
                                  um_ref ? um_ref->store.vdata : nullptr,
@@ -379,15 +382,15 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
       },
       [&]() {
         um_arraystore_cd_compact(&mesh->edge_data,
-                                 mesh->totedge,
+                                 mesh->edges_num,
                                  create,
                                  ARRAY_STORE_INDEX_EDGE,
                                  um_ref ? um_ref->store.edata : nullptr,
                                  &um->store.edata);
       },
       [&]() {
-        um_arraystore_cd_compact(&mesh->loop_data,
-                                 mesh->totloop,
+        um_arraystore_cd_compact(&mesh->corner_data,
+                                 mesh->corners_num,
                                  create,
                                  ARRAY_STORE_INDEX_LOOP,
                                  um_ref ? um_ref->store.ldata : nullptr,
@@ -563,9 +566,9 @@ static void um_arraystore_expand(UndoMesh *um)
 {
   Mesh *mesh = &um->mesh;
 
-  um_arraystore_cd_expand(um->store.vdata, &mesh->vert_data, mesh->totvert);
-  um_arraystore_cd_expand(um->store.edata, &mesh->edge_data, mesh->totedge);
-  um_arraystore_cd_expand(um->store.ldata, &mesh->loop_data, mesh->totloop);
+  um_arraystore_cd_expand(um->store.vdata, &mesh->vert_data, mesh->verts_num);
+  um_arraystore_cd_expand(um->store.edata, &mesh->edge_data, mesh->edges_num);
+  um_arraystore_cd_expand(um->store.ldata, &mesh->corner_data, mesh->corners_num);
   um_arraystore_cd_expand(um->store.pdata, &mesh->face_data, mesh->faces_num);
 
   if (um->store.keyblocks) {
@@ -677,13 +680,13 @@ static void um_arraystore_free(UndoMesh *um)
  */
 static UndoMesh **mesh_undostep_reference_elems_from_objects(Object **object, int object_len)
 {
-  /* Map: `Mesh.id.session_uuid` -> `UndoMesh`. */
+  /* Map: `Mesh.id.session_uid` -> `UndoMesh`. */
   GHash *uuid_map = BLI_ghash_ptr_new_ex(__func__, object_len);
   UndoMesh **um_references = static_cast<UndoMesh **>(
       MEM_callocN(sizeof(UndoMesh *) * object_len, __func__));
   for (int i = 0; i < object_len; i++) {
     const Mesh *mesh = static_cast<const Mesh *>(object[i]->data);
-    BLI_ghash_insert(uuid_map, POINTER_FROM_INT(mesh->id.session_uuid), &um_references[i]);
+    BLI_ghash_insert(uuid_map, POINTER_FROM_INT(mesh->id.session_uid), &um_references[i]);
   }
   int uuid_map_len = object_len;
 
@@ -693,8 +696,8 @@ static UndoMesh **mesh_undostep_reference_elems_from_objects(Object **object, in
   UndoMesh *um_iter = static_cast<UndoMesh *>(um_arraystore.local_links.last);
   while (um_iter && (uuid_map_len != 0)) {
     UndoMesh **um_p;
-    if ((um_p = static_cast<UndoMesh **>(BLI_ghash_popkey(
-             uuid_map, POINTER_FROM_INT(um_iter->mesh.id.session_uuid), nullptr))))
+    if ((um_p = static_cast<UndoMesh **>(
+             BLI_ghash_popkey(uuid_map, POINTER_FROM_INT(um_iter->mesh.id.session_uid), nullptr))))
     {
       *um_p = um_iter;
       uuid_map_len--;
@@ -883,7 +886,7 @@ static Object *editmesh_object_from_context(bContext *C)
   Object *obedit = BKE_view_layer_edit_object_get(view_layer);
   if (obedit && obedit->type == OB_MESH) {
     const Mesh *mesh = static_cast<Mesh *>(obedit->data);
-    if (mesh->edit_mesh != nullptr) {
+    if (mesh->runtime->edit_mesh != nullptr) {
       return obedit;
     }
   }
@@ -925,39 +928,39 @@ static bool mesh_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const ToolSettings *ts = scene->toolsettings;
-  uint objects_len = 0;
-  Object **objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer, &objects_len);
+  blender::Vector<Object *> objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer);
 
   us->scene_ref.ptr = scene;
   us->elems = static_cast<MeshUndoStep_Elem *>(
-      MEM_callocN(sizeof(*us->elems) * objects_len, __func__));
-  us->elems_len = objects_len;
+      MEM_callocN(sizeof(*us->elems) * objects.size(), __func__));
+  us->elems_len = objects.size();
 
   UndoMesh **um_references = nullptr;
 
 #ifdef USE_ARRAY_STORE
-  um_references = mesh_undostep_reference_elems_from_objects(objects, objects_len);
+  um_references = mesh_undostep_reference_elems_from_objects(objects.data(), objects.size());
 #endif
 
-  for (uint i = 0; i < objects_len; i++) {
+  for (uint i = 0; i < objects.size(); i++) {
     Object *ob = objects[i];
     MeshUndoStep_Elem *elem = &us->elems[i];
 
     elem->obedit_ref.ptr = ob;
     Mesh *mesh = static_cast<Mesh *>(elem->obedit_ref.ptr->data);
-    BMEditMesh *em = mesh->edit_mesh;
-    undomesh_from_editmesh(
-        &elem->data, mesh->edit_mesh, mesh->key, um_references ? um_references[i] : nullptr);
+    BMEditMesh *em = mesh->runtime->edit_mesh;
+    undomesh_from_editmesh(&elem->data,
+                           mesh->runtime->edit_mesh,
+                           mesh->key,
+                           um_references ? um_references[i] : nullptr);
     em->needs_flush_to_id = 1;
     us->step.data_size += elem->data.undo_size;
     elem->data.uv_selectmode = ts->uv_selectmode;
 
 #ifdef USE_ARRAY_STORE
     /** As this is only data storage it is safe to set the session ID here. */
-    elem->data.mesh.id.session_uuid = mesh->id.session_uuid;
+    elem->data.mesh.id.session_uid = mesh->id.session_uid;
 #endif
   }
-  MEM_freeN(objects);
 
   if (um_references != nullptr) {
     MEM_freeN(um_references);
@@ -986,7 +989,7 @@ static void mesh_undosys_step_decode(
     MeshUndoStep_Elem *elem = &us->elems[i];
     Object *obedit = elem->obedit_ref.ptr;
     Mesh *mesh = static_cast<Mesh *>(obedit->data);
-    if (mesh->edit_mesh == nullptr) {
+    if (mesh->runtime->edit_mesh == nullptr) {
       /* Should never fail, may not crash but can give odd behavior. */
       CLOG_ERROR(&LOG,
                  "name='%s', failed to enter edit-mode for object '%s', undo state invalid",
@@ -994,7 +997,7 @@ static void mesh_undosys_step_decode(
                  obedit->id.name);
       continue;
     }
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
     undomesh_to_editmesh(&elem->data, obedit, em);
     em->needs_flush_to_id = 1;
     DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);

@@ -8,11 +8,9 @@
 
 #include <cmath>
 
-#include "BLI_jitter_2d.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
@@ -20,34 +18,31 @@
 
 #include "BKE_armature.hh"
 #include "BKE_camera.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_scene.h"
-#include "BKE_studiolight.h"
+#include "BKE_scene.hh"
 #include "BKE_unit.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
-#include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
 #include "DNA_key_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 #include "DRW_select_buffer.hh"
 
 #include "ED_gpencil_legacy.hh"
@@ -55,8 +50,6 @@
 #include "ED_keyframing.hh"
 #include "ED_scene.hh"
 #include "ED_screen.hh"
-#include "ED_screen_types.hh"
-#include "ED_transform.hh"
 #include "ED_view3d_offscreen.hh"
 #include "ED_viewer_path.hh"
 
@@ -64,16 +57,14 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_material.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-#include "GPU_viewport.h"
+#include "GPU_batch.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_material.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
+#include "GPU_viewport.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -85,12 +76,10 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-
-#include "view3d_intern.h" /* own include */
+#include "view3d_intern.hh" /* own include */
 
 using blender::float4;
 
@@ -795,11 +784,11 @@ static void drawviewborder(Scene *scene, Depsgraph *depsgraph, ARegion *region, 
   /* camera name - draw in highlighted text color */
   if (ca && ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) && (ca->flag & CAM_SHOWNAME)) {
     UI_FontThemeColor(BLF_default(), TH_TEXT_HI);
-    BLF_draw_default(x1i,
-                     y1i - (0.7f * U.widget_unit),
-                     0.0f,
-                     v3d->camera->id.name + 2,
-                     sizeof(v3d->camera->id.name) - 2);
+    BLF_draw_default_shadowed(x1i,
+                              y1i - (0.7f * U.widget_unit),
+                              0.0f,
+                              v3d->camera->id.name + 2,
+                              sizeof(v3d->camera->id.name) - 2);
   }
 }
 
@@ -925,13 +914,13 @@ void ED_view3d_grid_steps(const Scene *scene,
   view3d_grid_steps_ex(scene, v3d, rv3d, r_grid_steps, nullptr, nullptr);
 }
 
-float ED_view3d_grid_view_scale(Scene *scene,
-                                View3D *v3d,
-                                ARegion *region,
+float ED_view3d_grid_view_scale(const Scene *scene,
+                                const View3D *v3d,
+                                const ARegion *region,
                                 const char **r_grid_unit)
 {
   float grid_scale;
-  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  const RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   if (!rv3d->is_persp && RV3D_VIEW_IS_AXIS(rv3d->view)) {
     /* Decrease the distance between grid snap points depending on zoom. */
     float dist = 12.0f / (region->sizex * rv3d->winmat[0][0]);
@@ -1230,8 +1219,7 @@ static const char *view3d_get_name(View3D *v3d, RegionView3D *rv3d)
     default:
       if (rv3d->persp == RV3D_CAMOB) {
         if ((v3d->camera) && (v3d->camera->type == OB_CAMERA)) {
-          Camera *cam;
-          cam = static_cast<Camera *>(v3d->camera->data);
+          const Camera *cam = static_cast<const Camera *>(v3d->camera->data);
           if (cam->type == CAM_PERSP) {
             name = IFACE_("Camera Perspective");
           }
@@ -1262,15 +1250,10 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
   const char *name = view3d_get_name(v3d, rv3d);
   const char *name_array[3] = {name, nullptr, nullptr};
   int name_array_len = 1;
-  const int font_id = BLF_default();
 
   /* 6 is the maximum size of the axis roll text. */
   /* increase size for unicode languages (Chinese in utf-8...) */
   char tmpstr[96 + 6];
-
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
 
   if (RV3D_VIEW_IS_AXIS(rv3d->view) && (rv3d->view_axis_roll != RV3D_VIEW_AXIS_ROLL_0)) {
     const char *axis_roll;
@@ -1306,9 +1289,7 @@ static void draw_viewport_name(ARegion *region, View3D *v3d, int xoffset, int *y
 
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
 
-  BLF_draw_default(xoffset, *yoffset, 0.0f, name, sizeof(tmpstr));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, name, sizeof(tmpstr));
 }
 
 /**
@@ -1451,14 +1432,8 @@ static void draw_selected_name(
   BLI_assert(BLI_string_len_array(info_array, i) < sizeof(info));
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
-
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
-  BLF_draw_default(xoffset, *yoffset, 0.0f, info, sizeof(info));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, info, sizeof(info));
 }
 
 static void draw_grid_unit_name(
@@ -1478,11 +1453,8 @@ static void draw_grid_unit_name(
       }
 
       *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
-      BLF_enable(font_id, BLF_SHADOW);
-      BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-      BLF_shadow_offset(font_id, 1, -1);
-      BLF_draw_default(xoffset, *yoffset, 0.0f, numstr[0] ? numstr : grid_unit, sizeof(numstr));
-      BLF_disable(font_id, BLF_SHADOW);
+      BLF_draw_default_shadowed(
+          xoffset, *yoffset, 0.0f, numstr[0] ? numstr : grid_unit, sizeof(numstr));
     }
   }
 }
@@ -1534,7 +1506,10 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
   if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
     int xoffset = rect->xmin + (0.5f * U.widget_unit);
     int yoffset = rect->ymax - (0.1f * U.widget_unit);
-    BLF_default_size(UI_style_get()->widgetlabel.points);
+
+    const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
+    UI_fontstyle_set(fstyle);
+    BLF_default_size(fstyle->points);
     BLF_set_default();
 
     if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
@@ -1623,6 +1598,7 @@ static void view3d_update_viewer_path(const bContext *C)
 
 void view3d_main_region_draw(const bContext *C, ARegion *region)
 {
+  using namespace blender::draw;
   Main *bmain = CTX_data_main(C);
   View3D *v3d = CTX_wm_view3d(C);
 
@@ -1688,6 +1664,7 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
                               GPUOffScreen *ofs,
                               GPUViewport *viewport)
 {
+  using namespace blender::draw;
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
   RenderEngineType *engine_type = ED_view3d_engine_type(scene, drawtype);
 
@@ -1751,6 +1728,10 @@ void ED_view3d_draw_offscreen(Depsgraph *depsgraph,
   }
   else {
     view3d_main_region_setup_offscreen(depsgraph, scene, v3d, region, viewmat, winmat);
+  }
+
+  if (viewport) {
+    GPU_viewport_tag_update(viewport);
   }
 
   /* main drawing call */
@@ -1905,8 +1886,9 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                                       int alpha_mode,
                                       const char *viewname,
                                       const bool restore_rv3d_mats,
-                                      /* output vars */
                                       GPUOffScreen *ofs,
+                                      GPUViewport *viewport,
+                                      /* output vars */
                                       char err_out[256])
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
@@ -2024,7 +2006,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
                            do_color_management,
                            restore_rv3d_mats,
                            ofs,
-                           nullptr);
+                           viewport);
 
   if (ibuf->float_buffer.data) {
     GPU_offscreen_read_color(ofs, GPU_DATA_FLOAT, ibuf->float_buffer.data);
@@ -2065,6 +2047,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
                                              int alpha_mode,
                                              const char *viewname,
                                              GPUOffScreen *ofs,
+                                             GPUViewport *viewport,
                                              char err_out[256])
 {
   View3D v3d = blender::dna::shallow_zero_initialize();
@@ -2109,8 +2092,14 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
   v3d.flag2 = V3D_HIDE_OVERLAYS;
   /* HACK: When rendering gpencil objects this opacity is used to mix vertex colors in when not in
-   * render mode. */
+   * render mode (e.g. in the sequencer). */
   v3d.overlay.gpencil_vertex_paint_opacity = 1.0f;
+
+  /* Also initialize wire-frame properties to the default so it renders properly in sequencer.
+   * Should find some way to use the viewport's current opacity and threshold,
+   * but this is a start. */
+  v3d.overlay.wireframe_opacity = 1.0f;
+  v3d.overlay.wireframe_threshold = 0.5f;
 
   if (draw_flags & V3D_OFSDRAW_SHOW_ANNOTATION) {
     v3d.flag2 |= V3D_SHOW_ANNOTATION;
@@ -2123,7 +2112,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
   rv3d.persp = RV3D_CAMOB;
 
-  copy_m4_m4(rv3d.viewinv, v3d.camera->object_to_world);
+  copy_m4_m4(rv3d.viewinv, v3d.camera->object_to_world().ptr());
   normalize_m4(rv3d.viewinv);
   invert_m4_m4(rv3d.viewmat, rv3d.viewinv);
 
@@ -2159,7 +2148,13 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
                                         viewname,
                                         true,
                                         ofs,
+                                        viewport,
                                         err_out);
+}
+
+bool ED_view3d_draw_offscreen_check_nested()
+{
+  return DRW_draw_in_progress();
 }
 
 /** \} */
@@ -2170,16 +2165,11 @@ ImBuf *ED_view3d_draw_offscreen_imbuf_simple(Depsgraph *depsgraph,
 
 static bool view3d_clipping_test(const float co[3], const float clip[6][4])
 {
-  if (plane_point_side_v3(clip[0], co) > 0.0f) {
-    if (plane_point_side_v3(clip[1], co) > 0.0f) {
-      if (plane_point_side_v3(clip[2], co) > 0.0f) {
-        if (plane_point_side_v3(clip[3], co) > 0.0f) {
-          return false;
-        }
-      }
-    }
+  if (plane_point_side_v3(clip[0], co) > 0.0f && plane_point_side_v3(clip[1], co) > 0.0f &&
+      plane_point_side_v3(clip[2], co) > 0.0f && plane_point_side_v3(clip[3], co) > 0.0f)
+  {
+    return false;
   }
-
   return true;
 }
 
@@ -2220,7 +2210,8 @@ static void validate_object_select_id(Depsgraph *depsgraph,
   }
   /* texture paint mode sampling */
   else if (obact_eval && (obact_eval->mode & OB_MODE_TEXTURE_PAINT) &&
-           (v3d->shading.type > OB_WIRE)) {
+           (v3d->shading.type > OB_WIRE))
+  {
     /* do nothing */
   }
   else if ((obact_eval && (obact_eval->mode & OB_MODE_PARTICLE_EDIT)) && !XRAY_ENABLED(v3d)) {
@@ -2234,7 +2225,7 @@ static void validate_object_select_id(Depsgraph *depsgraph,
   if (obact_eval && ((obact_eval->base_flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) != 0)) {
     BKE_view_layer_synced_ensure(scene, view_layer);
     Base *base = BKE_view_layer_base_find(view_layer, obact);
-    DRW_select_buffer_context_create(depsgraph, &base, 1, -1);
+    DRW_select_buffer_context_create(depsgraph, {base}, -1);
   }
 
   v3d->runtime.flag |= V3D_RUNTIME_DEPTHBUF_OVERRIDDEN;
@@ -2266,7 +2257,7 @@ static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void 
   GPU_framebuffer_free(depth_read_fb);
 }
 
-void ED_view3d_select_id_validate(ViewContext *vc)
+void ED_view3d_select_id_validate(const ViewContext *vc)
 {
   validate_object_select_id(
       vc->depsgraph, vc->scene, vc->view_layer, vc->region, vc->v3d, vc->obact);
@@ -2457,6 +2448,39 @@ void ED_view3d_depths_free(ViewDepths *depths)
   MEM_freeN(depths);
 }
 
+bool ED_view3d_has_depth_buffer_updated(const Depsgraph *depsgraph, const View3D *v3d)
+{
+#ifdef REUSE_DEPTH_BUFFER
+  /* Check if the depth buffer was drawn by any engine and thus can be reused.
+   *
+   * The idea is good, but it is too error prone.
+   * Even when updated by an engine, the depth buffer can still be cleared by drawing callbacks and
+   * by the GPU_select API used by gizmos.
+   * Check #GPU_clear_depth to track when the depth buffer is cleared. */
+  const char *engine_name = DEG_get_evaluated_scene(depsgraph)->r.engine;
+  RenderEngineType *engine_type = RE_engines_find(engine_name);
+
+  bool is_viewport_wire_no_xray = v3d->shading.type < OB_SOLID && !XRAY_ENABLED(v3d);
+  bool is_viewport_preview_solid = v3d->shading.type == OB_SOLID;
+  bool is_viewport_preview_material = v3d->shading.type == OB_MATERIAL;
+  bool is_viewport_render_eevee = v3d->shading.type == OB_RENDER &&
+                                  (STREQ(engine_name, RE_engine_id_BLENDER_EEVEE) ||
+                                   STREQ(engine_name, RE_engine_id_BLENDER_EEVEE_NEXT));
+  bool is_viewport_render_workbench = v3d->shading.type == OB_RENDER &&
+                                      STREQ(engine_name, RE_engine_id_BLENDER_WORKBENCH);
+  bool is_viewport_render_external_with_overlay = v3d->shading.type == OB_RENDER &&
+                                                  !(engine_type->flag & RE_INTERNAL) &&
+                                                  !(v3d->flag2 & V3D_HIDE_OVERLAYS);
+
+  return is_viewport_preview_solid || is_viewport_preview_material || is_viewport_wire_no_xray ||
+         is_viewport_render_eevee || is_viewport_render_workbench ||
+         is_viewport_render_external_with_overlay;
+#else
+  UNUSED_VARS(depsgraph, v3d);
+  return false;
+#endif
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2607,15 +2631,9 @@ void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
     SNPRINTF(printable, IFACE_("fps: %i"), int(state.fps_average + 0.5f));
   }
 
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow(font_id, 5, float4{0.0f, 0.0f, 0.0f, 1.0f});
-  BLF_shadow_offset(font_id, 1, -1);
-
   *yoffset -= VIEW3D_OVERLAY_LINEHEIGHT;
 
-  BLF_draw_default(xoffset, *yoffset, 0.0f, printable, sizeof(printable));
-
-  BLF_disable(font_id, BLF_SHADOW);
+  BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, printable, sizeof(printable));
 }
 
 /** \} */

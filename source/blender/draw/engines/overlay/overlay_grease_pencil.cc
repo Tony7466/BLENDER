@@ -6,20 +6,22 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "ED_grease_pencil.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_grease_pencil.hh"
 
 #include "overlay_private.hh"
 
 void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
 {
+  using namespace blender;
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  const eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       draw_ctx->scene->toolsettings);
   const View3D *v3d = draw_ctx->v3d;
 
@@ -30,7 +32,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
                    DRW_STATE_BLEND_ALPHA;
   DRW_PASS_CREATE(psl->edit_grease_pencil_ps, (state | pd->clipping_state));
 
-  const bool show_points = selection_domain == ATTR_DOMAIN_POINT;
+  const bool show_points = selection_domain == bke::AttrDomain::Point;
   const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES) != 0;
 
   if (show_lines) {
@@ -48,19 +50,21 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
 
 void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
+  using namespace blender::draw;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
 
   DRWShadingGroup *lines_grp = pd->edit_grease_pencil_wires_grp;
   if (lines_grp) {
-    GPUBatch *geom_lines = DRW_cache_grease_pencil_edit_lines_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_lines = DRW_cache_grease_pencil_edit_lines_get(draw_ctx->scene, ob);
 
     DRW_shgroup_call_no_cull(lines_grp, geom_lines, ob);
   }
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
   if (points_grp) {
-    GPUBatch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene,
+                                                                               ob);
     DRW_shgroup_call_no_cull(points_grp, geom_points, ob);
   }
 }

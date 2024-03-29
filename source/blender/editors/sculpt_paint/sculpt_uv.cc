@@ -16,12 +16,11 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
@@ -43,7 +42,7 @@
 #include "RNA_define.hh"
 
 #include "paint_intern.hh"
-#include "uvedit_intern.h"
+#include "uvedit_intern.hh"
 
 #include "UI_view2d.hh"
 
@@ -648,10 +647,11 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
   UvSculptData *data = MEM_cnew<UvSculptData>(__func__);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   BMesh *bm = em->bm;
+  Brush *brush = BKE_paint_brush(&ts->uvsculpt->paint);
 
   op->customdata = data;
 
-  BKE_curvemapping_init(ts->uvsculpt->paint.brush->curve);
+  BKE_curvemapping_init(brush->curve);
 
   if (data) {
     ARegion *region = CTX_wm_region(C);
@@ -669,7 +669,7 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
     int island_index = 0;
     data->tool = (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_SMOOTH) ?
                      UV_SCULPT_TOOL_RELAX :
-                     eBrushUVSculptTool(ts->uvsculpt->paint.brush->uv_sculpt_tool);
+                     eBrushUVSculptTool(brush->uv_sculpt_tool);
     data->invert = (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT) ? 1 : 0;
 
     data->uvsculpt = &ts->uvsculpt->paint;

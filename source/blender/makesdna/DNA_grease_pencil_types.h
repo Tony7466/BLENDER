@@ -51,6 +51,7 @@ struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
 struct Object;
+struct bDeformGroup;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -239,6 +240,7 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_USE_LIGHTS = (1 << 4),
   GP_LAYER_TREE_NODE_USE_ONION_SKINNING = (1 << 5),
   GP_LAYER_TREE_NODE_EXPANDED = (1 << 6),
+  GP_LAYER_TREE_NODE_HIDE_MASKS = (1 << 7),
 } GreasePencilLayerTreeNodeFlag;
 
 struct GreasePencilLayerTreeGroup;
@@ -291,6 +293,21 @@ typedef struct GreasePencilLayer {
    * List of `GreasePencilLayerMask`.
    */
   ListBase masks;
+  int active_mask_index;
+  char _pad2[4];
+  /**
+   * Layer parent object. Can be an armature in which case the `parsubstr` is the bone name.
+   */
+  struct Object *parent;
+  char *parsubstr;
+  /**
+   * Layer transform UI settings. These should *not* be used to do any computation.
+   * Use the functions is the `bke::greasepencil::Layer` class instead.
+   */
+  float translation[3], rotation[3], scale[3];
+  char _pad3[4];
+  /** Name of the view layer used to filter render output. */
+  char *viewlayername;
   /**
    * Runtime struct pointer.
    */
@@ -322,6 +339,8 @@ typedef struct GreasePencilLayerTreeGroup {
  */
 typedef enum GreasePencilFlag {
   GREASE_PENCIL_ANIM_CHANNEL_EXPANDED = (1 << 0),
+  GREASE_PENCIL_AUTOLOCK_LAYERS = (1 << 1),
+  GREASE_PENCIL_STROKE_ORDER_3D = (1 << 2),
 } GreasePencilFlag;
 
 /**
@@ -408,7 +427,7 @@ typedef struct GreasePencil {
   GreasePencilLayerTreeGroup *root_group_ptr;
 
   /**
-   * All attributes stored on the grease pencil layers (#ATTR_DOMAIN_LAYER).
+   * All attributes stored on the grease pencil layers (#AttrDomain::Layer).
    */
   CustomData layers_data;
   /**
@@ -433,6 +452,11 @@ typedef struct GreasePencil {
    * Global flag on the data-block.
    */
   uint32_t flag;
+
+  ListBase vertex_group_names;
+  int vertex_group_active_index;
+  char _pad4[4];
+
   /**
    * Onion skinning settings.
    */
@@ -462,12 +486,16 @@ typedef struct GreasePencil {
   blender::Span<const blender::bke::greasepencil::TreeNode *> nodes() const;
   blender::Span<blender::bke::greasepencil::TreeNode *> nodes_for_write();
 
+  /* Return the index of the layer if it's found, otherwise `std::nullopt`. */
+  std::optional<int> get_layer_index(const blender::bke::greasepencil::Layer &layer) const;
+
   /* Active layer functions. */
   bool has_active_layer() const;
   const blender::bke::greasepencil::Layer *get_active_layer() const;
-  blender::bke::greasepencil::Layer *get_active_layer_for_write();
+  blender::bke::greasepencil::Layer *get_active_layer();
   void set_active_layer(const blender::bke::greasepencil::Layer *layer);
   bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
+  void autolock_inactive_layers();
 
   /* Adding layers and layer groups. */
   /** Adds a new layer with the given name to the top of root group. */
@@ -509,6 +537,13 @@ typedef struct GreasePencil {
   void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   /* Drawing API functions. */
+
+  /**
+   * Low-level resizing of drawings array. Only allocates new entries in the array, no drawings are
+   * created in case of size increase. In case of size decrease, the removed drawings are deleted.
+   */
+  void resize_drawings(const int new_num);
+  /** Add `add_num` new empty geometry drawings. */
   void add_empty_drawings(int add_num);
   void add_duplicate_drawings(int duplicate_num,
                               const blender::bke::greasepencil::Drawing &drawing);
@@ -536,11 +571,11 @@ typedef struct GreasePencil {
   /**
    * Moves and/or inserts duplicates of a set of frames in a \a layer.
    *
-   * \param frame_number_destination describes all transformations that should be applied on the
+   * \param frame_number_destination: describes all transformations that should be applied on the
    * frame keys.
-   * \param duplicate_frames the frames that should be duplicated instead of moved. Keys of the map
-   * are the keys of the corresponding source frames. Frames will be inserted at the key given by
-   * the map \a frame_number_destination.
+   * \param duplicate_frames: the frames that should be duplicated instead of moved.
+   * Keys of the map are the keys of the corresponding source frames.
+   * Frames will be inserted at the key given by the map \a frame_number_destination.
    *
    * If a transformation overlaps another frames, the frame will be overwritten, and the
    * corresponding drawing may be removed, if it no longer has users.
@@ -569,13 +604,13 @@ typedef struct GreasePencil {
    * drawing exists.
    */
   const blender::bke::greasepencil::Drawing *get_drawing_at(
-      const blender::bke::greasepencil::Layer *layer, int frame_number) const;
+      const blender::bke::greasepencil::Layer &layer, int frame_number) const;
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
    * drawing exists.
    */
   blender::bke::greasepencil::Drawing *get_editable_drawing_at(
-      const blender::bke::greasepencil::Layer *layer, int frame_number);
+      const blender::bke::greasepencil::Layer &layer, int frame_number);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max(int frame) const;
   std::optional<blender::Bounds<blender::float3>> bounds_min_max_eval() const;

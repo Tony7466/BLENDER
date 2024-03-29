@@ -5,19 +5,16 @@
 #include "DNA_space_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ED_node.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
-
-#include "NOD_socket.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -159,7 +156,7 @@ static int node_clipboard_copy_exec(bContext *C, wmOperator * /*op*/)
       new_link.tosock = socket_map.lookup(link->tosock);
       new_link.fromnode = node_map.lookup(link->fromnode);
       new_link.fromsock = socket_map.lookup(link->fromsock);
-      new_link.multi_input_socket_index = link->multi_input_socket_index;
+      new_link.multi_input_sort_id = link->multi_input_sort_id;
       clipboard.links.append(new_link);
     }
   }
@@ -293,7 +290,7 @@ static int node_clipboard_paste_exec(bContext *C, wmOperator *op)
                                         socket_map.lookup(link.fromsock),
                                         node_map.lookup(tonode),
                                         socket_map.lookup(link.tosock));
-      new_link->multi_input_socket_index = link.multi_input_socket_index;
+      new_link->multi_input_sort_id = link.multi_input_sort_id;
     }
   }
 

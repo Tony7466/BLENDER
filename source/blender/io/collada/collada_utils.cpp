@@ -37,17 +37,17 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_global.hh"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "ANIM_bone_collections.hh"
 
@@ -130,15 +130,17 @@ bool bc_validateConstraints(bConstraint *con)
 bool bc_set_parent(Object *ob, Object *par, bContext *C, bool is_parent_space)
 {
   Scene *scene = CTX_data_scene(C);
-  int partype = PAR_OBJECT;
+  int partype = blender::ed::object::PAR_OBJECT;
   const bool xmirror = false;
   const bool keep_transform = false;
 
   if (par && is_parent_space) {
-    mul_m4_m4m4(ob->object_to_world, par->object_to_world, ob->object_to_world);
+    mul_m4_m4m4(ob->runtime->object_to_world.ptr(),
+                par->object_to_world().ptr(),
+                ob->object_to_world().ptr());
   }
 
-  bool ok = ED_object_parent_set(
+  bool ok = blender::ed::object::parent_set(
       nullptr, C, scene, ob, par, partype, xmirror, keep_transform, nullptr);
   return ok;
 }
@@ -226,10 +228,10 @@ static void bc_add_armature_collections(COLLADAFW::Node *node,
   for (const std::string &name : collection_names) {
     BoneCollection *bcoll = ANIM_armature_bonecoll_new(arm, name.c_str());
     if (visible_names_set.find(name) == visible_names_set.end()) {
-      ANIM_bonecoll_hide(bcoll);
+      ANIM_bonecoll_hide(arm, bcoll);
     }
     else {
-      ANIM_bonecoll_show(bcoll);
+      ANIM_bonecoll_show(arm, bcoll);
     }
   }
 
@@ -365,7 +367,7 @@ bool bc_is_root_bone(Bone *aBone, bool deform_bones_only)
 int bc_get_active_UVLayer(Object *ob)
 {
   Mesh *mesh = (Mesh *)ob->data;
-  return CustomData_get_active_layer_index(&mesh->loop_data, CD_PROP_FLOAT2);
+  return CustomData_get_active_layer_index(&mesh->corner_data, CD_PROP_FLOAT2);
 }
 
 std::string bc_url_encode(std::string data)
@@ -391,10 +393,12 @@ std::string bc_replace_string(std::string data,
 void bc_match_scale(Object *ob, UnitConverter &bc_unit, bool scale_to_scene)
 {
   if (scale_to_scene) {
-    mul_m4_m4m4(ob->object_to_world, bc_unit.get_scale(), ob->object_to_world);
+    mul_m4_m4m4(
+        ob->runtime->object_to_world.ptr(), bc_unit.get_scale(), ob->object_to_world().ptr());
   }
-  mul_m4_m4m4(ob->object_to_world, bc_unit.get_rotation(), ob->object_to_world);
-  BKE_object_apply_mat4(ob, ob->object_to_world, false, false);
+  mul_m4_m4m4(
+      ob->runtime->object_to_world.ptr(), bc_unit.get_rotation(), ob->object_to_world().ptr());
+  BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, false);
 }
 
 void bc_match_scale(std::vector<Object *> *objects_done,
@@ -648,22 +652,13 @@ void bc_set_IDPropertyMatrix(EditBone *ebone, const char *key, float mat[4][4])
 {
   IDProperty *idgroup = (IDProperty *)ebone->prop;
   if (idgroup == nullptr) {
-    IDPropertyTemplate val = {0};
-    idgroup = IDP_New(IDP_GROUP, &val, "RNA_EditBone ID properties");
+    idgroup = blender::bke::idprop::create_group("RNA_EditBone ID properties").release();
     ebone->prop = idgroup;
   }
 
-  IDPropertyTemplate val = {0};
-  val.array.len = 16;
-  val.array.type = IDP_FLOAT;
-
-  IDProperty *data = IDP_New(IDP_ARRAY, &val, key);
-  float *array = (float *)IDP_Array(data);
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      array[4 * i + j] = mat[i][j];
-    }
-  }
+  IDProperty *data = blender::bke::idprop::create(
+                         key, blender::Span(reinterpret_cast<float *>(mat), 16))
+                         .release();
 
   IDP_AddToGroup(idgroup, data);
 }
@@ -678,14 +673,11 @@ static void bc_set_IDProperty(EditBone *ebone, const char *key, float value)
 {
   if (ebone->prop == nullptr) {
     IDPropertyTemplate val = {0};
-    ebone->prop = IDP_New(IDP_GROUP, &val, "RNA_EditBone ID properties");
+    ebone->prop = blender::bke::idprop::create_group( "RNA_EditBone ID properties").release();
   }
 
   IDProperty *pgroup = (IDProperty *)ebone->prop;
-  IDPropertyTemplate val = {0};
-  IDProperty *prop = IDP_New(IDP_FLOAT, &val, key);
-  IDP_Float(prop) = value;
-  IDP_AddToGroup(pgroup, prop);
+  IDP_AddToGroup(pgroup, blender::bke::idprop::create(key, value).release());
 }
 #endif
 
@@ -1066,9 +1058,10 @@ void bc_copy_m4d_v44(double (&r)[4][4], std::vector<std::vector<double>> &a)
  */
 static std::string bc_get_active_uvlayer_name(Mesh *mesh)
 {
-  int num_layers = CustomData_number_of_layers(&mesh->loop_data, CD_PROP_FLOAT2);
+  int num_layers = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
   if (num_layers) {
-    const char *layer_name = bc_CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
+    const char *layer_name = bc_CustomData_get_active_layer_name(&mesh->corner_data,
+                                                                 CD_PROP_FLOAT2);
     if (layer_name) {
       return std::string(layer_name);
     }
@@ -1091,9 +1084,10 @@ static std::string bc_get_active_uvlayer_name(Object *ob)
  */
 static std::string bc_get_uvlayer_name(Mesh *mesh, int layer)
 {
-  int num_layers = CustomData_number_of_layers(&mesh->loop_data, CD_PROP_FLOAT2);
+  int num_layers = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
   if (num_layers && layer < num_layers) {
-    const char *layer_name = bc_CustomData_get_layer_name(&mesh->loop_data, CD_PROP_FLOAT2, layer);
+    const char *layer_name = bc_CustomData_get_layer_name(
+        &mesh->corner_data, CD_PROP_FLOAT2, layer);
     if (layer_name) {
       return std::string(layer_name);
     }

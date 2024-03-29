@@ -21,18 +21,19 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_layer.h"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -53,7 +54,9 @@
 
 #include "ANIM_bone_collections.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
+
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name Edit Armature Join
@@ -101,13 +104,13 @@ static void joined_armature_fix_links_constraints(Main *bmain,
         BKE_action_fix_paths_rename(
             &tarArm->id, data->act, "pose.bones[", pchan->name, curbone->name, 0, 0, false);
 
-        DEG_id_tag_update_ex(bmain, &data->act->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update_ex(bmain, &data->act->id, ID_RECALC_SYNC_TO_EVAL);
       }
     }
   }
 
   if (changed) {
-    DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -209,7 +212,7 @@ static void joined_armature_fix_animdata_cb(ID *id, FCurve *fcu, void *user_data
   }
 
   if (changed) {
-    DEG_id_tag_update_ex(afd->bmain, id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update_ex(afd->bmain, id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -222,7 +225,8 @@ static void joined_armature_fix_links(
 
   /* let's go through all objects in database */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     /* do some object-type specific things */
     if (ob->type == OB_ARMATURE) {
       pose = ob->pose;
@@ -251,9 +255,53 @@ static void joined_armature_fix_links(
       /* make tar armature be new parent */
       ob->parent = tarArm;
 
-      DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update_ex(bmain, &ob->id, ID_RECALC_SYNC_TO_EVAL);
     }
   }
+}
+
+static BoneCollection *join_armature_remap_collection(
+    const bArmature *src_arm,
+    const int src_index,
+    bArmature *dest_arm,
+    blender::Map<std::string, BoneCollection *> &bone_collection_by_name)
+{
+  using namespace blender::animrig;
+  const BoneCollection *bcoll = src_arm->collection_array[src_index];
+
+  /* Check if already remapped. */
+  BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
+
+  if (mapped) {
+    return mapped;
+  }
+
+  /* Remap the parent collection if necessary. */
+  const int src_parent_index = armature_bonecoll_find_parent_index(src_arm, src_index);
+  int parent_index = -1;
+
+  if (src_parent_index >= 0) {
+    BoneCollection *mapped_parent = join_armature_remap_collection(
+        src_arm, src_parent_index, dest_arm, bone_collection_by_name);
+
+    if (mapped_parent) {
+      parent_index = armature_bonecoll_find_index(dest_arm, mapped_parent);
+    }
+  }
+
+  /* Create the new collection instance. */
+  BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(dest_arm, bcoll->name, parent_index);
+
+  /* Copy collection visibility. */
+  new_bcoll->flags = bcoll->flags;
+
+  /* Copy custom properties. */
+  if (bcoll->prop) {
+    new_bcoll->prop = IDP_CopyProperty_ex(bcoll->prop, 0);
+  }
+
+  bone_collection_by_name.add(bcoll->name, new_bcoll);
+  return new_bcoll;
 }
 
 int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
@@ -292,7 +340,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
 
   /* Inverse transform for all selected armatures in this object,
    * See #object_join_exec for detailed comment on why the safe version is used. */
-  invert_m4_m4_safe_ortho(oimat, ob_active->object_to_world);
+  invert_m4_m4_safe_ortho(oimat, ob_active->object_to_world().ptr());
 
   /* Index bone collections by name.  This is also used later to keep track
    * of collections added from other armatures. */
@@ -329,21 +377,12 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       /* Make a list of edit-bones in current armature */
       ED_armature_to_edit(curarm);
 
-      /* Move new bone collections, and store their remapping info.
-       * TODO: armatures can potentially have multiple users, so these should
-       * actually be copied, not moved.  However, the armature join code is
-       * already broken in that situation.  When that gets fixed, this should
-       * also get fixed.  Note that copying the collections should include
-       * copying their custom properties. (Nathan Vegdahl) */
-      for (BoneCollection *bcoll : curarm->collections_span()) {
-        BoneCollection *mapped = bone_collection_by_name.lookup_default(bcoll->name, nullptr);
-        if (!mapped) {
-          BoneCollection *new_bcoll = ANIM_armature_bonecoll_new(arm, bcoll->name);
-          bone_collection_by_name.add(bcoll->name, new_bcoll);
-          mapped = new_bcoll;
-        }
+      /* Copy new bone collections, and store their remapping info. */
+      for (int i = 0; i < curarm->collection_array_num; i++) {
+        BoneCollection *mapped = join_armature_remap_collection(
+            curarm, i, arm, bone_collection_by_name);
 
-        bone_collection_remap.add(bcoll, mapped);
+        bone_collection_remap.add(curarm->collection_array[i], mapped);
       }
 
       /* Get Pose of current armature */
@@ -352,7 +391,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       // BASACT->flag &= ~OB_MODE_POSE;
 
       /* Find the difference matrix */
-      mul_m4_m4m4(mat, oimat, ob_iter->object_to_world);
+      mul_m4_m4m4(mat, oimat, ob_iter->object_to_world().ptr());
 
       /* Copy bones and posechannels from the object to the edit armature */
       for (pchan = static_cast<bPoseChannel *>(opose->chanbase.first); pchan; pchan = pchann) {
@@ -454,7 +493,7 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
       }
 
       /* Free the old object data */
-      ED_object_base_free_and_unlink(bmain, scene, ob_iter);
+      blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
     }
   }
   CTX_DATA_END;
@@ -463,6 +502,9 @@ int ED_armature_join_objects_exec(bContext *C, wmOperator *op)
 
   ED_armature_from_edit(bmain, arm);
   ED_armature_edit_free(arm);
+
+  /* Make sure to recompute bone collection visibility. */
+  ANIM_armature_runtime_refresh(arm);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
@@ -489,7 +531,8 @@ static void separated_armature_fix_links(Main *bmain, Object *origArm, Object *n
 
   /* let's go through all objects in database */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     /* do some object-type specific things */
     if (ob->type == OB_ARMATURE) {
       LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
@@ -641,12 +684,10 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
   /* set wait cursor in case this takes a while */
   WM_cursor_wait(true);
 
-  uint bases_len = 0;
-  Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &bases_len);
+  Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint base_index = 0; base_index < bases_len; base_index++) {
-    Base *base_old = bases[base_index];
+  for (Base *base_old : bases) {
     Object *ob_old = base_old->object;
 
     {
@@ -694,7 +735,7 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
     /* Only duplicate linked armature but take into account
      * user preferences for duplicating actions. */
     short dupflag = USER_DUP_ARM | (U.dupflag & USER_DUP_ACT);
-    Base *base_new = ED_object_add_duplicate(
+    Base *base_new = blender::ed::object::add_duplicate(
         bmain, scene, view_layer, base_old, eDupli_ID_Flags(dupflag));
     Object *ob_new = base_new->object;
 
@@ -721,7 +762,6 @@ static int separate_armature_exec(bContext *C, wmOperator *op)
     /* NOTE: notifier might evolve. */
     WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob_old);
   }
-  MEM_freeN(bases);
 
   /* Recalculate/redraw + cleanup */
   WM_cursor_wait(false);
@@ -742,13 +782,11 @@ void ARMATURE_OT_separate(wmOperatorType *ot)
   ot->description = "Isolate selected bones into a separate armature";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = separate_armature_exec;
   ot->poll = ED_operator_editarmature;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */
@@ -1015,11 +1053,9 @@ static int armature_parent_clear_exec(bContext *C, wmOperator *op)
   }
   CTX_DATA_END;
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *ob : objects) {
     bArmature *arm = static_cast<bArmature *>(ob->data);
     bool changed = false;
 
@@ -1039,8 +1075,6 @@ static int armature_parent_clear_exec(bContext *C, wmOperator *op)
     /* NOTE: notifier might evolve. */
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
   }
-  MEM_freeN(objects);
-
   return OPERATOR_FINISHED;
 }
 

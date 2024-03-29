@@ -8,7 +8,7 @@
  * \brief Particle API for render engines
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -33,24 +33,26 @@
 
 #include "ED_particle.hh"
 
-#include "GPU_batch.h"
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_material.h"
+#include "GPU_batch.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_material.hh"
 
 #include "DEG_depsgraph_query.hh"
 
 #include "draw_cache_impl.hh" /* own include */
-#include "draw_hair_private.h"
+#include "draw_hair_private.hh"
+
+namespace blender::draw {
 
 static void particle_batch_cache_clear(ParticleSystem *psys);
 
 /* ---------------------------------------------------------------------- */
-/* Particle GPUBatch Cache */
+/* Particle gpu::Batch Cache */
 
 struct ParticlePointCache {
-  GPUVertBuf *pos;
-  GPUBatch *points;
+  gpu::VertBuf *pos;
+  gpu::Batch *points;
   int elems_len;
   int point_len;
 };
@@ -65,15 +67,15 @@ struct ParticleBatchCache {
   /* Control points when in edit mode. */
   ParticleHairCache edit_hair;
 
-  GPUVertBuf *edit_pos;
-  GPUBatch *edit_strands;
+  gpu::VertBuf *edit_pos;
+  gpu::Batch *edit_strands;
 
-  GPUVertBuf *edit_inner_pos;
-  GPUBatch *edit_inner_points;
+  gpu::VertBuf *edit_inner_pos;
+  gpu::Batch *edit_inner_points;
   int edit_inner_point_len;
 
-  GPUVertBuf *edit_tip_pos;
-  GPUBatch *edit_tip_points;
+  gpu::VertBuf *edit_tip_pos;
+  gpu::Batch *edit_tip_points;
   int edit_tip_point_len;
 
   /* Settings to determine if cache is invalid. */
@@ -81,7 +83,7 @@ struct ParticleBatchCache {
   bool edit_is_weight;
 };
 
-/* GPUBatch cache management. */
+/* gpu::Batch cache management. */
 
 struct HairAttributeID {
   uint pos;
@@ -848,22 +850,22 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
   ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)md;
 
   if (psmd != nullptr && psmd->mesh_final != nullptr) {
-    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2)) {
-      cache->num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
+    if (CustomData_has_layer(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2)) {
+      cache->num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->corner_data,
                                                          CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
-      render_uv = CustomData_get_render_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
+      active_uv = CustomData_get_active_layer(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2);
+      render_uv = CustomData_get_render_layer(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2);
     }
-    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
-      cache->num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
+    if (CustomData_has_layer(&psmd->mesh_final->corner_data, CD_PROP_BYTE_COLOR)) {
+      cache->num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->corner_data,
                                                           CD_PROP_BYTE_COLOR);
       if (psmd->mesh_final->active_color_attribute != nullptr) {
-        active_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
+        active_col = CustomData_get_named_layer(&psmd->mesh_final->corner_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->active_color_attribute);
       }
       if (psmd->mesh_final->default_color_attribute != nullptr) {
-        render_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
+        render_col = CustomData_get_named_layer(&psmd->mesh_final->corner_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->default_color_attribute);
       }
@@ -913,7 +915,8 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
     GPU_vertbuf_attr_get_raw_data(cache->proc_uv_buf[i], uv_id, &uv_step[i]);
 
     char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
-    const char *name = CustomData_get_layer_name(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2, i);
+    const char *name = CustomData_get_layer_name(
+        &psmd->mesh_final->corner_data, CD_PROP_FLOAT2, i);
     GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
     int n = 0;
@@ -934,7 +937,7 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
   MEM_SAFE_FREE(cache->col_tex);
   MEM_SAFE_FREE(cache->col_layer_names);
 
-  cache->proc_col_buf = static_cast<GPUVertBuf **>(
+  cache->proc_col_buf = static_cast<gpu::VertBuf **>(
       MEM_calloc_arrayN(cache->num_col_layers, sizeof(void *), "proc_col_buf"));
   cache->col_tex = static_cast<GPUTexture **>(
       MEM_calloc_arrayN(cache->num_col_layers, sizeof(void *), "col_tex"));
@@ -950,7 +953,7 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
 
     char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
     const char *name = CustomData_get_layer_name(
-        &psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR, i);
+        &psmd->mesh_final->corner_data, CD_PROP_BYTE_COLOR, i);
     GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
     int n = 0;
@@ -1004,7 +1007,8 @@ static void particle_batch_cache_ensure_procedural_strand_data(PTCacheEdit *edit
   else {
     int curr_point = 0;
     if ((psys->pathcache != nullptr) &&
-        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT))) {
+        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT)))
+    {
       curr_point = particle_batch_cache_fill_strands_data(psys,
                                                           psmd,
                                                           psys->pathcache,
@@ -1091,7 +1095,7 @@ static void particle_batch_cache_ensure_procedural_indices(PTCacheEdit *edit,
    * stride requirement. */
   GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_U32, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
   GPU_vertbuf_data_alloc(vbo, 1);
 
   GPUIndexBufBuilder elb;
@@ -1104,7 +1108,8 @@ static void particle_batch_cache_ensure_procedural_indices(PTCacheEdit *edit,
   else {
     int curr_point = 0;
     if ((psys->pathcache != nullptr) &&
-        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT))) {
+        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT)))
+    {
       curr_point = particle_batch_cache_fill_segments_indices(
           psys->pathcache, 0, psys->totpart, verts_per_hair, &elb);
     }
@@ -1154,7 +1159,8 @@ static void particle_batch_cache_ensure_procedural_pos(PTCacheEdit *edit,
     }
     else {
       if ((psys->pathcache != nullptr) &&
-          (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT))) {
+          (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT)))
+      {
         particle_batch_cache_fill_segments_proc_pos(
             psys->pathcache, psys->totpart, &pos_step, &length_step);
       }
@@ -1196,15 +1202,15 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
   MCol **parent_mcol = nullptr;
 
   if (psmd != nullptr) {
-    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2)) {
-      num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
-      active_uv = CustomData_get_active_layer(&psmd->mesh_final->loop_data, CD_PROP_FLOAT2);
+    if (CustomData_has_layer(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2)) {
+      num_uv_layers = CustomData_number_of_layers(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2);
+      active_uv = CustomData_get_active_layer(&psmd->mesh_final->corner_data, CD_PROP_FLOAT2);
     }
-    if (CustomData_has_layer(&psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR)) {
-      num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->loop_data,
+    if (CustomData_has_layer(&psmd->mesh_final->corner_data, CD_PROP_BYTE_COLOR)) {
+      num_col_layers = CustomData_number_of_layers(&psmd->mesh_final->corner_data,
                                                    CD_PROP_BYTE_COLOR);
       if (psmd->mesh_final->active_color_attribute != nullptr) {
-        active_col = CustomData_get_named_layer(&psmd->mesh_final->loop_data,
+        active_col = CustomData_get_named_layer(&psmd->mesh_final->corner_data,
                                                 CD_PROP_BYTE_COLOR,
                                                 psmd->mesh_final->active_color_attribute);
       }
@@ -1226,7 +1232,7 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
 
       char uuid[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
       const char *name = CustomData_get_layer_name(
-          &psmd->mesh_final->loop_data, CD_PROP_FLOAT2, i);
+          &psmd->mesh_final->corner_data, CD_PROP_FLOAT2, i);
       GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
       SNPRINTF(uuid, "a%s", attr_safe_name);
@@ -1240,7 +1246,7 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
     for (int i = 0; i < num_col_layers; i++) {
       char uuid[32], attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
       const char *name = CustomData_get_layer_name(
-          &psmd->mesh_final->loop_data, CD_PROP_BYTE_COLOR, i);
+          &psmd->mesh_final->corner_data, CD_PROP_BYTE_COLOR, i);
       GPU_vertformat_safe_attr_name(name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
 
       SNPRINTF(uuid, "a%s", attr_safe_name);
@@ -1300,7 +1306,8 @@ static void particle_batch_cache_ensure_pos_and_seg(PTCacheEdit *edit,
   }
   else {
     if ((psys->pathcache != nullptr) &&
-        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT))) {
+        (!psys->childcache || (psys->part->draw & PART_DRAW_PARENT)))
+    {
       curr_point = particle_batch_cache_fill_segments(psys,
                                                       psmd,
                                                       psys->pathcache,
@@ -1505,9 +1512,9 @@ static void drw_particle_get_hair_source(Object *object,
   }
 }
 
-GPUBatch *DRW_particles_batch_cache_get_hair(Object *object,
-                                             ParticleSystem *psys,
-                                             ModifierData *md)
+gpu::Batch *DRW_particles_batch_cache_get_hair(Object *object,
+                                               ParticleSystem *psys,
+                                               ModifierData *md)
 {
   ParticleBatchCache *cache = particle_batch_cache_get(psys);
   if (cache->hair.hairs == nullptr) {
@@ -1522,7 +1529,7 @@ GPUBatch *DRW_particles_batch_cache_get_hair(Object *object,
   return cache->hair.hairs;
 }
 
-GPUBatch *DRW_particles_batch_cache_get_dots(Object *object, ParticleSystem *psys)
+gpu::Batch *DRW_particles_batch_cache_get_dots(Object *object, ParticleSystem *psys)
 {
   ParticleBatchCache *cache = particle_batch_cache_get(psys);
 
@@ -1570,10 +1577,10 @@ static void particle_batch_cache_ensure_edit_pos_and_seg(PTCacheEdit *edit,
   hair_cache->indices = GPU_indexbuf_build(&elb);
 }
 
-GPUBatch *DRW_particles_batch_cache_get_edit_strands(Object *object,
-                                                     ParticleSystem *psys,
-                                                     PTCacheEdit *edit,
-                                                     bool use_weight)
+gpu::Batch *DRW_particles_batch_cache_get_edit_strands(Object *object,
+                                                       ParticleSystem *psys,
+                                                       PTCacheEdit *edit,
+                                                       bool use_weight)
 {
   ParticleBatchCache *cache = particle_batch_cache_get(psys);
   if (cache->edit_is_weight != use_weight) {
@@ -1637,9 +1644,9 @@ static void particle_batch_cache_ensure_edit_inner_pos(PTCacheEdit *edit,
   }
 }
 
-GPUBatch *DRW_particles_batch_cache_get_edit_inner_points(Object *object,
-                                                          ParticleSystem *psys,
-                                                          PTCacheEdit *edit)
+gpu::Batch *DRW_particles_batch_cache_get_edit_inner_points(Object *object,
+                                                            ParticleSystem *psys,
+                                                            PTCacheEdit *edit)
 {
   ParticleBatchCache *cache = particle_batch_cache_get(psys);
   if (cache->edit_inner_points != nullptr) {
@@ -1694,9 +1701,9 @@ static void particle_batch_cache_ensure_edit_tip_pos(PTCacheEdit *edit, Particle
   }
 }
 
-GPUBatch *DRW_particles_batch_cache_get_edit_tip_points(Object *object,
-                                                        ParticleSystem *psys,
-                                                        PTCacheEdit *edit)
+gpu::Batch *DRW_particles_batch_cache_get_edit_tip_points(Object *object,
+                                                          ParticleSystem *psys,
+                                                          PTCacheEdit *edit)
 {
   ParticleBatchCache *cache = particle_batch_cache_get(psys);
   if (cache->edit_tip_points != nullptr) {
@@ -1758,3 +1765,5 @@ bool particles_ensure_procedural_data(Object *object,
 
   return need_ft_update;
 }
+
+}  // namespace blender::draw

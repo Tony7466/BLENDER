@@ -2,7 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_asset_utils.h"
+#include "usd_asset_utils.hh"
+#include "usd.hh"
 
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/packageUtils.h>
@@ -10,14 +11,13 @@
 #include <pxr/usd/ar/writableAsset.h>
 
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "WM_api.hh"
-#include "WM_types.hh"
+#include <string_view>
 
 static const char UDIM_PATTERN[] = "<UDIM>";
 static const char UDIM_PATTERN2[] = "%3CUDIM%3E";
@@ -39,16 +39,15 @@ namespace blender::io::usd {
  */
 static std::pair<std::string, std::string> split_udim_pattern(const std::string &path)
 {
-  static const std::vector<std::string> patterns = {UDIM_PATTERN, UDIM_PATTERN2};
-
-  for (const std::string &pattern : patterns) {
+  std::string_view patterns[]{UDIM_PATTERN, UDIM_PATTERN2};
+  for (const std::string_view pattern : patterns) {
     const std::string::size_type pos = path.find(pattern);
     if (pos != std::string::npos) {
       return {path.substr(0, pos), path.substr(pos + pattern.size())};
     }
   }
 
-  return {std::string(), std::string()};
+  return {};
 }
 
 /* Return the asset file base name, with special handling of
@@ -287,12 +286,9 @@ std::string import_asset(const char *src,
   char dest_dir_path[FILE_MAXDIR];
   STRNCPY(dest_dir_path, import_dir);
 
-  const char *basepath = nullptr;
-
   if (BLI_path_is_rel(import_dir)) {
-    basepath = BKE_main_blendfile_path_from_global();
-
-    if (!basepath || basepath[0] == '\0') {
+    const char *basepath = BKE_main_blendfile_path_from_global();
+    if (basepath[0] == '\0') {
       BKE_reportf(reports,
                   RPT_ERROR,
                   "%s: import directory is relative "
@@ -304,7 +300,10 @@ std::string import_asset(const char *src,
                   src);
       return src;
     }
-    BLI_path_abs(dest_dir_path, basepath);
+    char path_temp[FILE_MAX];
+    STRNCPY(path_temp, dest_dir_path);
+    BLI_path_abs(path_temp, basepath);
+    STRNCPY(dest_dir_path, path_temp);
   }
 
   BLI_path_normalize(dest_dir_path);

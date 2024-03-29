@@ -14,7 +14,6 @@
 
 #include "BKE_grease_pencil.hh"
 
-#include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 
@@ -22,18 +21,15 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "GPU_immediate.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "ED_anim_api.hh"
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 
@@ -319,7 +315,8 @@ static void draw_keylist_block(const DrawKeylistUIData *ctx, const ActKeyColumn 
       }
     }
     if (ctx->show_ipo && actkeyblock_is_valid(ab) &&
-        (ab->block.flag & ACTKEYBLOCK_FLAG_NON_BEZIER)) {
+        (ab->block.flag & ACTKEYBLOCK_FLAG_NON_BEZIER))
+    {
       /* draw an interpolation line */
       draw_keylist_block_interpolation_line(ctx, ab, ypos);
     }
@@ -496,7 +493,7 @@ static void prepare_channel_for_drawing(ChannelListElement *elem)
   ED_keylist_prepare_for_direct_access(elem->keylist);
 }
 
-/* List of channels that are actually drawn because they are in view. */
+/** List of channels that are actually drawn because they are in view. */
 struct ChannelDrawList {
   ListBase /*ChannelListElement*/ channels;
 };

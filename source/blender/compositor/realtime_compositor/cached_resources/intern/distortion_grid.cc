@@ -15,7 +15,7 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_tracking_types.h"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
@@ -40,7 +40,7 @@ DistortionGridKey::DistortionGridKey(MovieTrackingCamera camera,
 
 uint64_t DistortionGridKey::hash() const
 {
-  return get_default_hash_4(
+  return get_default_hash(
       BKE_tracking_camera_distortion_hash(&camera), size, type, calibration_size);
 }
 

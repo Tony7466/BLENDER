@@ -11,9 +11,9 @@
 #include "BLI_color.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "GPU_batch.h"
-#include "GPU_index_buffer.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_batch.hh"
+#include "GPU_index_buffer.hh"
+#include "GPU_vertex_buffer.hh"
 
 struct ColorVertex {
   blender::float2 pos;
@@ -21,7 +21,7 @@ struct ColorVertex {
 };
 static_assert(sizeof(ColorVertex) == 12);
 
-static GPUIndexBuf *create_quads_index_buffer(int quads_count)
+static blender::gpu::IndexBuf *create_quads_index_buffer(int quads_count)
 {
   GPUIndexBufBuilder elb;
   GPU_indexbuf_init(&elb, GPU_PRIM_TRIS, quads_count * 2, quads_count * 4);
@@ -53,10 +53,10 @@ SeqQuadsBatch::SeqQuadsBatch()
 
   batch_quads = GPU_batch_create_ex(
       GPU_PRIM_TRIS, vbo_quads, ibo_quads, GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
-  GPU_batch_program_set_builtin(batch_quads, GPU_SHADER_3D_FLAT_COLOR);
+  GPU_batch_program_set_builtin(batch_quads, GPU_SHADER_3D_SMOOTH_COLOR);
 
   batch_lines = GPU_batch_create_ex(GPU_PRIM_LINES, vbo_lines, nullptr, GPU_BATCH_OWNS_VBO);
-  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_FLAT_COLOR);
+  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_SMOOTH_COLOR);
 }
 
 SeqQuadsBatch::~SeqQuadsBatch()
@@ -93,7 +93,10 @@ void SeqQuadsBatch::add_quad(float x1,
                              float y3,
                              float x4,
                              float y4,
-                             const uchar color[4])
+                             const uchar color1[4],
+                             const uchar color2[4],
+                             const uchar color3[4],
+                             const uchar color4[4])
 {
   if (quads_num >= MAX_QUADS) {
     draw();
@@ -103,10 +106,10 @@ void SeqQuadsBatch::add_quad(float x1,
     BLI_assert(verts_quads != nullptr);
   }
 
-  ColorVertex v0 = {blender::float2(x1, y1), color};
-  ColorVertex v1 = {blender::float2(x2, y2), color};
-  ColorVertex v2 = {blender::float2(x3, y3), color};
-  ColorVertex v3 = {blender::float2(x4, y4), color};
+  ColorVertex v0 = {blender::float2(x1, y1), color1};
+  ColorVertex v1 = {blender::float2(x2, y2), color2};
+  ColorVertex v2 = {blender::float2(x3, y3), color3};
+  ColorVertex v3 = {blender::float2(x4, y4), color4};
 
   *verts_quads++ = v0;
   *verts_quads++ = v1;
@@ -147,7 +150,8 @@ void SeqQuadsBatch::add_wire_quad(float x1, float y1, float x2, float y2, const 
   lines_num += 4;
 }
 
-void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar color[4])
+void SeqQuadsBatch::add_line(
+    float x1, float y1, float x2, float y2, const uchar color1[4], const uchar color2[4])
 {
   if (lines_num + 1 > MAX_LINES) {
     draw();
@@ -157,8 +161,8 @@ void SeqQuadsBatch::add_line(float x1, float y1, float x2, float y2, const uchar
     BLI_assert(verts_lines != nullptr);
   }
 
-  ColorVertex v0 = {blender::float2(x1, y1), color};
-  ColorVertex v1 = {blender::float2(x2, y2), color};
+  ColorVertex v0 = {blender::float2(x1, y1), color1};
+  ColorVertex v1 = {blender::float2(x2, y2), color2};
 
   *verts_lines++ = v0;
   *verts_lines++ = v1;

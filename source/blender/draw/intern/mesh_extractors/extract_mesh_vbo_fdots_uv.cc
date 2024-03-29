@@ -27,7 +27,7 @@ static void extract_fdots_uv_init(const MeshRenderData &mr,
                                   void *buf,
                                   void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "u", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -36,11 +36,11 @@ static void extract_fdots_uv_init(const MeshRenderData &mr,
   }
 
   GPU_vertbuf_init_with_format(vbo, &format);
-  GPU_vertbuf_data_alloc(vbo, mr.face_len);
+  GPU_vertbuf_data_alloc(vbo, mr.faces_num);
 
   if (!mr.use_subsurf_fdots) {
     /* Clear so we can accumulate on it. */
-    memset(GPU_vertbuf_get_data(vbo), 0x0, mr.face_len * GPU_vertbuf_get_format(vbo)->stride);
+    memset(GPU_vertbuf_get_data(vbo), 0x0, mr.faces_num * GPU_vertbuf_get_format(vbo)->stride);
   }
 
   MeshExtract_FdotUV_Data *data = static_cast<MeshExtract_FdotUV_Data *>(tls_data);
@@ -50,7 +50,7 @@ static void extract_fdots_uv_init(const MeshRenderData &mr,
     data->cd_ofs = CustomData_get_offset(&mr.bm->ldata, CD_PROP_FLOAT2);
   }
   else {
-    data->uv_data = (const float(*)[2])CustomData_get_layer(&mr.mesh->loop_data, CD_PROP_FLOAT2);
+    data->uv_data = (const float(*)[2])CustomData_get_layer(&mr.mesh->corner_data, CD_PROP_FLOAT2);
   }
 }
 
@@ -76,16 +76,16 @@ static void extract_fdots_uv_iter_face_mesh(const MeshRenderData &mr,
   MeshExtract_FdotUV_Data *data = static_cast<MeshExtract_FdotUV_Data *>(_data);
   const BitSpan facedot_tags = mr.mesh->runtime->subsurf_face_dot_tags;
 
-  for (const int ml_index : mr.faces[face_index]) {
-    const int vert = mr.corner_verts[ml_index];
+  for (const int corner : mr.faces[face_index]) {
+    const int vert = mr.corner_verts[corner];
     if (mr.use_subsurf_fdots) {
       if (facedot_tags[vert]) {
-        copy_v2_v2(data->vbo_data[face_index], data->uv_data[ml_index]);
+        copy_v2_v2(data->vbo_data[face_index], data->uv_data[corner]);
       }
     }
     else {
       float w = 1.0f / float(mr.faces[face_index].size());
-      madd_v2_v2fl(data->vbo_data[face_index], data->uv_data[ml_index], w);
+      madd_v2_v2fl(data->vbo_data[face_index], data->uv_data[corner], w);
     }
   }
 }
@@ -105,6 +105,6 @@ constexpr MeshExtract create_extractor_fdots_uv()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_fdots_uv = create_extractor_fdots_uv();
 
-const MeshExtract extract_fdots_uv = blender::draw::create_extractor_fdots_uv();
+}  // namespace blender::draw

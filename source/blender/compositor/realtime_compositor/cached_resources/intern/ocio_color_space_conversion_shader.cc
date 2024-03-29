@@ -13,10 +13,10 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
+#include "GPU_uniform_buffer.hh"
 
 #include "gpu_shader_create_info.hh"
 
@@ -43,7 +43,7 @@ OCIOColorSpaceConversionShaderKey::OCIOColorSpaceConversionShaderKey(std::string
 
 uint64_t OCIOColorSpaceConversionShaderKey::hash() const
 {
-  return get_default_hash_3(source, target, config_cache_id);
+  return get_default_hash(source, target, config_cache_id);
 }
 
 bool operator==(const OCIOColorSpaceConversionShaderKey &a,

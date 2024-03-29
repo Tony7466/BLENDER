@@ -82,65 +82,62 @@ set(SRC
   intern/gpu_vertex_format.cc
   intern/gpu_viewport.cc
 
-  GPU_batch.h
-  GPU_batch_presets.h
-  GPU_batch_utils.h
-  GPU_capabilities.h
-  GPU_common.h
-  GPU_common_types.h
-  GPU_compute.h
-  GPU_context.h
-  GPU_debug.h
-  GPU_drawlist.h
-  GPU_framebuffer.h
-  GPU_immediate.h
-  GPU_immediate_util.h
-  GPU_index_buffer.h
-  GPU_init_exit.h
-  GPU_material.h
-  GPU_matrix.h
-  GPU_platform.h
-  GPU_primitive.h
+  GPU_batch.hh
+  GPU_batch_presets.hh
+  GPU_batch_utils.hh
+  GPU_capabilities.hh
+  GPU_common.hh
+  GPU_common_types.hh
+  GPU_compute.hh
+  GPU_context.hh
+  GPU_debug.hh
+  GPU_drawlist.hh
+  GPU_framebuffer.hh
+  GPU_immediate.hh
+  GPU_immediate_util.hh
+  GPU_index_buffer.hh
+  GPU_init_exit.hh
+  GPU_material.hh
+  GPU_matrix.hh
+  GPU_platform.hh
+  GPU_primitive.hh
   GPU_select.hh
-  GPU_shader.h
-  GPU_shader_builtin.h
-  GPU_shader_shared.h
-  GPU_state.h
-  GPU_storage_buffer.h
-  GPU_texture.h
-  GPU_uniform_buffer.h
-  GPU_vertex_buffer.h
-  GPU_vertex_format.h
-  GPU_viewport.h
+  GPU_shader.hh
+  GPU_shader_builtin.hh
+  GPU_shader_shared.hh
+  GPU_state.hh
+  GPU_storage_buffer.hh
+  GPU_texture.hh
+  GPU_uniform_buffer.hh
+  GPU_vertex_buffer.hh
+  GPU_vertex_format.hh
+  GPU_viewport.hh
 
   intern/gpu_backend.hh
-  intern/gpu_batch_private.hh
   intern/gpu_capabilities_private.hh
-  intern/gpu_codegen.h
+  intern/gpu_codegen.hh
   intern/gpu_context_private.hh
   intern/gpu_debug_private.hh
   intern/gpu_drawlist_private.hh
   intern/gpu_framebuffer_private.hh
   intern/gpu_immediate_private.hh
-  intern/gpu_index_buffer_private.hh
-  intern/gpu_material_library.h
-  intern/gpu_matrix_private.h
-  intern/gpu_node_graph.h
+  intern/gpu_material_library.hh
+  intern/gpu_matrix_private.hh
+  intern/gpu_node_graph.hh
   intern/gpu_platform_private.hh
-  intern/gpu_private.h
+  intern/gpu_private.hh
   intern/gpu_query.hh
-  intern/gpu_select_private.h
+  intern/gpu_select_private.hh
   intern/gpu_shader_create_info.hh
   intern/gpu_shader_create_info_private.hh
-  intern/gpu_shader_dependency_private.h
+  intern/gpu_shader_dependency_private.hh
   intern/gpu_shader_interface.hh
   intern/gpu_shader_private.hh
   intern/gpu_state_private.hh
   intern/gpu_storage_buffer_private.hh
   intern/gpu_texture_private.hh
   intern/gpu_uniform_buffer_private.hh
-  intern/gpu_vertex_buffer_private.hh
-  intern/gpu_vertex_format_private.h
+  intern/gpu_vertex_format_private.hh
 
   dummy/dummy_backend.hh
   dummy/dummy_batch.hh
@@ -231,6 +228,7 @@ set(VULKAN_SRC
   vulkan/vk_storage_buffer.cc
   vulkan/vk_texture.cc
   vulkan/vk_timeline_semaphore.cc
+  vulkan/vk_to_string.cc
   vulkan/vk_uniform_buffer.cc
   vulkan/vk_vertex_attribute_object.cc
   vulkan/vk_vertex_buffer.cc
@@ -272,6 +270,7 @@ set(VULKAN_SRC
   vulkan/vk_storage_buffer.hh
   vulkan/vk_texture.hh
   vulkan/vk_timeline_semaphore.hh
+  vulkan/vk_to_string.hh
   vulkan/vk_uniform_buffer.hh
   vulkan/vk_vertex_attribute_object.hh
   vulkan/vk_vertex_buffer.hh
@@ -408,7 +407,7 @@ set(MSL_SRC
 )
 
 set(GLSL_SRC
-  GPU_shader_shared.h
+  GPU_shader_shared.hh
   shaders/opengl/glsl_shader_defines.glsl
 
   shaders/gpu_shader_depth_only_frag.glsl
@@ -590,8 +589,11 @@ set(GLSL_SRC
   shaders/gpu_shader_cfg_world_clip_lib.glsl
   shaders/gpu_shader_colorspace_lib.glsl
 
+  shaders/gpu_shader_index_2d_array_points.glsl
+  shaders/gpu_shader_index_2d_array_lines.glsl
+  shaders/gpu_shader_index_2d_array_tris.glsl
 
-  GPU_shader_shared_utils.h
+  GPU_shader_shared_utils.hh
 )
 
 set(GLSL_SRC_TEST
@@ -603,6 +605,7 @@ set(GLSL_SRC_TEST
   tests/shaders/gpu_compute_ssbo_test.glsl
   tests/shaders/gpu_compute_vbo_test.glsl
   tests/shaders/gpu_compute_dummy_test.glsl
+  tests/shaders/gpu_specialization_test.glsl
   tests/shaders/gpu_framebuffer_layer_viewport_test.glsl
   tests/shaders/gpu_framebuffer_subpass_input_test.glsl
   tests/shaders/gpu_push_constants_test.glsl
@@ -756,6 +759,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/gpu_shader_3D_uniform_color_info.hh
   shaders/infos/gpu_shader_gpencil_stroke_info.hh
   shaders/infos/gpu_shader_icon_info.hh
+  shaders/infos/gpu_shader_index_info.hh
   shaders/infos/gpu_shader_instance_varying_color_varying_size_info.hh
   shaders/infos/gpu_shader_keyframe_shape_info.hh
   shaders/infos/gpu_shader_line_dashed_uniform_color_info.hh
@@ -824,31 +828,26 @@ endif()
 
 
 if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
-  # TODO(@fclem) Fix this mess.
-  if(APPLE)
-    add_executable(shader_builder
-      intern/gpu_shader_builder.cc
-      intern/gpu_shader_builder_stubs.cc
-      ${shader_create_info_list_file}
-      )
-    target_link_libraries(shader_builder PUBLIC buildinfoobj)
-  else()
-    if(WIN32)
-      # We can re-use the manifest from tests.exe here since it's
-      # rather generic and just selects the appropriate common
-      # controls version.
-      set(MANIFEST "${CMAKE_BINARY_DIR}/tests.exe.manifest")
-    endif()
-    add_executable(shader_builder
-      intern/gpu_shader_builder.cc
-      intern/gpu_shader_builder_stubs.cc
-      ${shader_create_info_list_file}
-      ${MANIFEST}
-    )
+  set(_manifest)
+  if(WIN32)
+    # We can re-use the manifest from tests.exe here since it's
+    # rather generic and just selects the appropriate common
+    # controls version.
+    set(_manifest "${CMAKE_BINARY_DIR}/tests.exe.manifest")
   endif()
+  add_executable(shader_builder
+    intern/gpu_shader_builder.cc
+    intern/gpu_shader_builder_stubs.cc
+    ${shader_create_info_list_file}
+    ${_manifest}
+  )
+  unset(_manifest)
   setup_platform_linker_flags(shader_builder)
 
-  target_link_libraries(shader_builder PUBLIC
+  if (WITH_BUILD_INFO)
+    target_link_libraries(shader_builder PRIVATE buildinfoobj)
+  endif()
+  target_link_libraries(shader_builder PRIVATE
     bf_gpu
     bf_intern_clog
     bf_blenlib
@@ -856,6 +855,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
     ${PLATFORM_LINKLIBS}
     PRIVATE bf::intern::guardedalloc
   )
+  target_include_directories(shader_builder SYSTEM PRIVATE ${INC_SYS})
   target_include_directories(shader_builder PRIVATE ${INC} ${CMAKE_CURRENT_BINARY_DIR})
 
   set(SRC_BAKED_CREATE_INFOS_FILE ${CMAKE_CURRENT_BINARY_DIR}/shader_baked.hh)
@@ -882,7 +882,11 @@ endif()
 if(WITH_GTESTS)
   set(TEST_SRC)
   set(TEST_INC)
-  set(TEST_LIB)
+  set(TEST_LIB
+    bf_intern_ghost
+    bf_imbuf
+    bf_windowmanager
+  )
 
   if(WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
@@ -892,12 +896,13 @@ if(WITH_GTESTS)
       tests/immediate_test.cc
       tests/index_buffer_test.cc
       tests/push_constants_test.cc
+      tests/shader_create_info_test.cc
       tests/shader_test.cc
+      tests/specialization_constants_test.cc
       tests/state_blend_test.cc
       tests/storage_buffer_test.cc
       tests/texture_test.cc
       tests/vertex_buffer_test.cc
-      tests/shader_create_info_test.cc
     )
   endif()
 
@@ -916,12 +921,13 @@ if(WITH_GTESTS)
   endif()
 
   if (TEST_SRC)
-    list(APPEND TEST_SRC
+    set(TEST_COMMON_SRC
       tests/gpu_testing.cc
       tests/gpu_testing.hh
     )
 
-    include(GTestTesting)
-    blender_add_test_lib(bf_gpu_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+    blender_add_test_suite_lib(gpu
+      "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}" "${TEST_COMMON_SRC}"
+    )
   endif()
 endif()

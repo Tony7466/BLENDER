@@ -8,7 +8,7 @@
 
 #include "BKE_paint.hh"
 #include "BLI_math_color.h"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "ED_view3d.hh"
 
@@ -61,7 +61,7 @@ void OVERLAY_fade_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_call_sculpt(pd->fade_grp[is_xray], ob, false, false, false, false, false);
   }
   else {
-    GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRW_shgroup_call(pd->fade_grp[is_xray], geom, ob);
     }

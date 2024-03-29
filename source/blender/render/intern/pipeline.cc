@@ -29,43 +29,41 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
-#include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h" /* <------ should this be here?, needed for sequencer update */
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_camera.h"
-#include "BKE_colortools.h"
-#include "BKE_global.h"
+#include "BKE_colortools.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_object.hh"
 #include "BKE_pointcache.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_sound.h"
-#include "BKE_writeavi.h" /* <------ should be replaced once with generic movie module */
+#include "BKE_writemovie.hh"
 
 #include "NOD_composite.hh"
 
+#include "COM_profile.hh"
 #include "COM_render_context.hh"
 
 #include "DEG_depsgraph.hh"
@@ -73,11 +71,10 @@
 #include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "PIL_time.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -86,8 +83,8 @@
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
 #include "WM_api.hh"
 #include "wm_window.hh"
 
@@ -202,7 +199,7 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
   megs_peak_memory = (peak_memory) / (1024.0 * 1024.0);
 
   BLI_timecode_string_from_time_simple(
-      info_time_str, sizeof(info_time_str), PIL_check_seconds_timer() - rs->starttime);
+      info_time_str, sizeof(info_time_str), BLI_time_now_seconds() - rs->starttime);
 
   /* Compositor calls this from multiple threads, mutex lock to ensure we don't
    * get garbled output. */
@@ -210,12 +207,12 @@ static void stats_background(void * /*arg*/, RenderStats *rs)
   BLI_mutex_lock(&mutex);
 
   fprintf(stdout,
-          TIP_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
+          RPT_("Fra:%d Mem:%.2fM (Peak %.2fM) "),
           rs->cfra,
           megs_used_memory,
           megs_peak_memory);
 
-  fprintf(stdout, TIP_("| Time:%s | "), info_time_str);
+  fprintf(stdout, RPT_("| Time:%s | "), info_time_str);
 
   fprintf(stdout, "%s", rs->infostr);
 
@@ -565,8 +562,9 @@ void RE_InitRenderCB(Render *re)
   else {
     re->stats_draw_cb = stats_nothing;
   }
+  re->draw_lock_cb = nullptr;
   /* clear callback handles */
-  re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = nullptr;
+  re->dih = re->dch = re->duh = re->sdh = re->prh = re->tbh = re->dlh = nullptr;
 }
 
 void RE_FreeRender(Render *re)
@@ -660,15 +658,16 @@ void RE_FreeUnusedGPUResources()
        * race condition here because we are on the main thread and new jobs can only
        * be started from the main thread. */
       if (WM_jobs_test(wm, scene, WM_JOB_TYPE_RENDER) ||
-          WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE)) {
+          WM_jobs_test(wm, scene, WM_JOB_TYPE_COMPOSITE))
+      {
         do_free = false;
         break;
       }
 
-      /* Detect if scene is using realtime compositing, and if either a node editor is
+      /* Detect if scene is using GPU compositing, and if either a node editor is
        * showing the nodes, or an image editor is showing the render result or viewer. */
       if (!(scene->use_nodes && scene->nodetree &&
-            scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_REALTIME))
+            scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU))
       {
         continue;
       }
@@ -790,7 +789,7 @@ void RE_InitState(Render *re,
 
   re->ok = true; /* maybe flag */
 
-  re->i.starttime = PIL_check_seconds_timer();
+  re->i.starttime = BLI_time_now_seconds();
 
   /* copy render data and render layers for thread safety */
   render_copy_renderdata(&re->r, rd);
@@ -1099,7 +1098,7 @@ static void do_render_compositor_scene(Render *re, Scene *sce, int cfra)
 
   BKE_scene_camera_switch_update(sce);
 
-  /* exception: scene uses own size (unfinished code) */
+  /* exception: scene uses its own size (unfinished code) */
   if (false) {
     BKE_render_resolution(&sce->r, false, &winx, &winy);
   }
@@ -1155,6 +1154,29 @@ static bool compositor_needs_render(Scene *sce, const bool this_scene)
   return false;
 }
 
+/** Returns true if the node tree has a composite output node. */
+static bool node_tree_has_composite_output(const bNodeTree *node_tree)
+{
+  if (node_tree == nullptr) {
+    return false;
+  }
+
+  for (const bNode *node : node_tree->all_nodes()) {
+    if (node->flag & NODE_MUTED) {
+      continue;
+    }
+    if (node->type == CMP_NODE_COMPOSITE && node->flag & NODE_DO_OUTPUT) {
+      return true;
+    }
+    if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP) && node->id) {
+      if (node_tree_has_composite_output(reinterpret_cast<const bNodeTree *>(node->id))) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /* Render all scenes within a compositor node tree. */
 static void do_render_compositor_scenes(Render *re)
 {
@@ -1175,7 +1197,8 @@ static void do_render_compositor_scenes(Render *re)
       if (node->id && node->id != (ID *)re->scene) {
         Scene *scene = (Scene *)node->id;
         if (!BLI_gset_haskey(scenes_rendered, scene) &&
-            render_scene_has_layers_to_render(scene, nullptr)) {
+            render_scene_has_layers_to_render(scene, nullptr))
+        {
           do_render_compositor_scene(re, scene, cfra);
           BLI_gset_add(scenes_rendered, scene);
           node->typeinfo->updatefunc(restore_scene->nodetree, node);
@@ -1236,6 +1259,12 @@ static void do_render_compositor(Render *re)
 
     /* Scene render process already updates animsys. */
     update_newframe = true;
+
+    /* The compositor does not have an output, skip writing the render result. See R_SKIP_WRITE for
+     * more information. */
+    if (!node_tree_has_composite_output(re->pipeline_scene_eval->nodetree)) {
+      re->flag |= R_SKIP_WRITE;
+    }
   }
 
   /* swap render result */
@@ -1270,6 +1299,7 @@ static void do_render_compositor(Render *re)
         }
 
         blender::realtime_compositor::RenderContext compositor_render_context;
+        blender::compositor::ProfilerData profiler_data;
         LISTBASE_FOREACH (RenderView *, rv, &re->result->views) {
           ntreeCompositExecTree(re,
                                 re->pipeline_scene_eval,
@@ -1278,7 +1308,8 @@ static void do_render_compositor(Render *re)
                                 true,
                                 G.background == 0,
                                 rv->name,
-                                &compositor_render_context);
+                                &compositor_render_context,
+                                profiler_data);
         }
         compositor_render_context.save_file_outputs(re->pipeline_scene_eval);
 
@@ -1295,6 +1326,23 @@ static void do_render_compositor(Render *re)
     re->result->renlay = render_get_single_layer(re, re->result);
     re->display_update(re->result, nullptr);
   }
+}
+
+static void renderresult_set_passes_metadata(Render *re)
+{
+  RenderResult *render_result = re->result;
+
+  BLI_rw_mutex_lock(&re->resultmutex, THREAD_LOCK_WRITE);
+
+  LISTBASE_FOREACH (RenderLayer *, render_layer, &render_result->layers) {
+    LISTBASE_FOREACH_BACKWARD (RenderPass *, render_pass, &render_layer->passes) {
+      if (render_pass->ibuf) {
+        BKE_imbuf_stamp_info(render_result, render_pass->ibuf);
+      }
+    }
+  }
+
+  BLI_rw_mutex_unlock(&re->resultmutex);
 }
 
 static void renderresult_stampinfo(Render *re)
@@ -1459,7 +1507,7 @@ static void do_render_full_pipeline(Render *re)
 
   BKE_scene_camera_switch_update(re->scene);
 
-  re->i.starttime = PIL_check_seconds_timer();
+  re->i.starttime = BLI_time_now_seconds();
 
   /* ensure no images are in memory from previous animated sequences */
   BKE_image_all_free_anim_ibufs(re->main, re->r.cfra);
@@ -1482,7 +1530,7 @@ static void do_render_full_pipeline(Render *re)
     do_render_compositor(re);
   }
 
-  re->i.lastframetime = PIL_check_seconds_timer() - re->i.starttime;
+  re->i.lastframetime = BLI_time_now_seconds() - re->i.starttime;
 
   re->stats_draw(&re->i);
 
@@ -1493,6 +1541,8 @@ static void do_render_full_pipeline(Render *re)
       Object *ob_camera_eval = DEG_get_evaluated_object(re->pipeline_depsgraph, RE_GetCamera(re));
       BKE_render_result_stamp_info(re->scene, ob_camera_eval, re->result, false);
     }
+
+    renderresult_set_passes_metadata(re);
 
     /* stamp image info here */
     if ((re->r.stamp & R_STAMP_ALL) && (re->r.stamp & R_STAMP_DRAW)) {
@@ -1616,7 +1666,7 @@ static int check_valid_camera(Scene *scene, Object *camera_override, ReportList 
   return true;
 }
 
-static bool node_tree_has_compositor_output(const bNodeTree *ntree)
+static bool node_tree_has_any_compositor_output(const bNodeTree *ntree)
 {
   for (const bNode *node : ntree->all_nodes()) {
     if (ELEM(node->type, CMP_NODE_COMPOSITE, CMP_NODE_OUTPUT_FILE)) {
@@ -1624,7 +1674,7 @@ static bool node_tree_has_compositor_output(const bNodeTree *ntree)
     }
     if (ELEM(node->type, NODE_GROUP, NODE_CUSTOM_GROUP)) {
       if (node->id) {
-        if (node_tree_has_compositor_output((const bNodeTree *)node->id)) {
+        if (node_tree_has_any_compositor_output((const bNodeTree *)node->id)) {
           return true;
         }
       }
@@ -1636,7 +1686,7 @@ static bool node_tree_has_compositor_output(const bNodeTree *ntree)
 
 static int check_compositor_output(Scene *scene)
 {
-  return node_tree_has_compositor_output(scene->nodetree);
+  return node_tree_has_any_compositor_output(scene->nodetree);
 }
 
 /* Identify if the compositor can run on the GPU. Currently, this only checks if the compositor is
@@ -1645,7 +1695,7 @@ static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
 {
   /* CPU compositor can always run. */
   if (!U.experimental.use_full_frame_compositor ||
-      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_REALTIME)
+      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU)
   {
     return true;
   }
@@ -1674,7 +1724,8 @@ bool RE_is_rendering_allowed(Scene *scene,
 
   if (scene->r.mode & R_BORDER) {
     if (scene->r.border.xmax <= scene->r.border.xmin ||
-        scene->r.border.ymax <= scene->r.border.ymin) {
+        scene->r.border.ymax <= scene->r.border.ymin)
+    {
       BKE_report(reports, RPT_ERROR, "No border area selected");
       return false;
     }
@@ -1761,6 +1812,12 @@ static bool render_init_from_main(Render *re,
 {
   int winx, winy;
   rcti disprect;
+
+  /* Reset the runtime flags before rendering, but only if this init is not an inter-animation
+   * init, since some flags needs to be kept across the entire animation. */
+  if (!anim) {
+    re->flag = 0;
+  }
 
   /* r.xsch and r.ysch has the actual view window size
    * r.border is the clipping rect */
@@ -1911,7 +1968,8 @@ void RE_RenderFrame(Render *re,
 
     do_render_full_pipeline(re);
 
-    if (write_still && !G.is_break) {
+    const bool should_write = write_still && !(re->flag & R_SKIP_WRITE);
+    if (should_write && !G.is_break) {
       if (BKE_imtype_is_movie(rd.im_format.imtype)) {
         /* operator checks this but in case its called from elsewhere */
         printf("Error: can't write single images with a movie format!\n");
@@ -1934,7 +1992,7 @@ void RE_RenderFrame(Render *re,
 
     /* keep after file save */
     render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_POST);
-    if (write_still) {
+    if (should_write) {
       render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
     }
   }
@@ -2054,9 +2112,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
                             rd,
                             preview ? scene->r.psfra : scene->r.sfra,
                             scene->r.cfra,
-                            (int *)ibuf->byte_buffer.data,
-                            ibuf->x,
-                            ibuf->y,
+                            ibuf,
                             suffix,
                             reports))
       {
@@ -2088,9 +2144,7 @@ bool RE_WriteRenderViewsMovie(ReportList *reports,
                           rd,
                           preview ? scene->r.psfra : scene->r.sfra,
                           scene->r.cfra,
-                          (int *)ibuf_arr[2]->byte_buffer.data,
-                          ibuf_arr[2]->x,
-                          ibuf_arr[2]->y,
+                          ibuf_arr[2],
                           "",
                           reports))
     {
@@ -2156,7 +2210,7 @@ static bool do_write_image_or_movie(Render *re,
   }
 
   render_time = re->i.lastframetime;
-  re->i.lastframetime = PIL_check_seconds_timer() - re->i.starttime;
+  re->i.lastframetime = BLI_time_now_seconds() - re->i.starttime;
 
   BLI_timecode_string_from_time_simple(filepath, sizeof(filepath), re->i.lastframetime);
   printf("Time: %s", filepath);
@@ -2364,18 +2418,17 @@ void RE_RenderAnim(Render *re,
         }
         else {
           bool is_skip = false;
-          char filepath[FILE_MAX];
+          char filepath_view[FILE_MAX];
 
           LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
             if (!BKE_scene_multiview_is_render_view_active(&scene->r, srv)) {
               continue;
             }
 
-            BKE_scene_multiview_filepath_get(srv, filepath, filepath);
-
-            if (BLI_exists(filepath)) {
+            BKE_scene_multiview_filepath_get(srv, filepath, filepath_view);
+            if (BLI_exists(filepath_view)) {
               is_skip = true;
-              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath, srv->name);
+              printf("skipping existing frame \"%s\" for view \"%s\"\n", filepath_view, srv->name);
             }
           }
 
@@ -2421,8 +2474,9 @@ void RE_RenderAnim(Render *re,
     do_render_full_pipeline(re);
     totrendered++;
 
+    const bool should_write = !(re->flag & R_SKIP_WRITE);
     if (re->test_break_cb(re->tbh) == 0) {
-      if (!G.is_break) {
+      if (!G.is_break && should_write) {
         if (!do_write_image_or_movie(re, bmain, scene, mh, totvideos, nullptr)) {
           G.is_break = true;
         }
@@ -2467,7 +2521,9 @@ void RE_RenderAnim(Render *re,
     if (G.is_break == false) {
       /* keep after file save */
       render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_POST);
-      render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
+      if (should_write) {
+        render_callback_exec_id(re, re->main, &scene->id, BKE_CB_EVT_RENDER_WRITE);
+      }
     }
   }
 
@@ -2482,8 +2538,6 @@ void RE_RenderAnim(Render *re,
 
   scene->r.cfra = cfra_old;
   scene->r.subframe = subframe_old;
-
-  re->flag &= ~R_ANIMATION;
 
   render_callback_exec_id(re,
                           re->main,

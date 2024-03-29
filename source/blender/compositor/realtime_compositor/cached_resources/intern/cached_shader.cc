@@ -8,8 +8,8 @@
 
 #include "BLI_hash.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_cached_shader.hh"
 #include "COM_result.hh"
@@ -29,7 +29,7 @@ CachedShaderKey::CachedShaderKey(const char *info_name, ResultPrecision precisio
 
 uint64_t CachedShaderKey::hash() const
 {
-  return get_default_hash_2(info_name, precision);
+  return get_default_hash(info_name, precision);
 }
 
 bool operator==(const CachedShaderKey &a, const CachedShaderKey &b)

@@ -9,7 +9,7 @@
  * and static shader usage.
  */
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "gpu_shader_create_info.hh"
 
@@ -18,6 +18,7 @@
 #include "eevee_shadow.hh"
 
 #include "BLI_assert.h"
+#include "BLI_math_bits.h"
 
 namespace blender::eevee {
 
@@ -118,12 +119,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_hiz_update_layer";
     case HORIZON_DENOISE:
       return "eevee_horizon_denoise";
-    case HORIZON_SCAN_DIFFUSE:
-      return "eevee_horizon_scan_diffuse";
-    case HORIZON_SCAN_REFLECT:
-      return "eevee_horizon_scan_reflect";
-    case HORIZON_SCAN_REFRACT:
-      return "eevee_horizon_scan_refract";
+    case HORIZON_RESOLVE:
+      return "eevee_horizon_resolve";
+    case HORIZON_SCAN:
+      return "eevee_horizon_scan";
     case HORIZON_SETUP:
       return "eevee_horizon_setup";
     case LOOKDEV_DISPLAY:
@@ -192,36 +191,20 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
-    case RAY_DENOISE_SPATIAL_DIFFUSE:
-      return "eevee_ray_denoise_spatial_diffuse";
-    case RAY_DENOISE_SPATIAL_REFLECT:
-      return "eevee_ray_denoise_spatial_reflect";
-    case RAY_DENOISE_SPATIAL_REFRACT:
-      return "eevee_ray_denoise_spatial_refract";
+    case RAY_DENOISE_SPATIAL:
+      return "eevee_ray_denoise_spatial";
     case RAY_DENOISE_TEMPORAL:
       return "eevee_ray_denoise_temporal";
-    case RAY_DENOISE_BILATERAL_DIFFUSE:
-      return "eevee_ray_denoise_bilateral_diffuse";
-    case RAY_DENOISE_BILATERAL_REFLECT:
-      return "eevee_ray_denoise_bilateral_reflect";
-    case RAY_DENOISE_BILATERAL_REFRACT:
-      return "eevee_ray_denoise_bilateral_refract";
-    case RAY_GENERATE_DIFFUSE:
-      return "eevee_ray_generate_diffuse";
-    case RAY_GENERATE_REFLECT:
-      return "eevee_ray_generate_reflect";
-    case RAY_GENERATE_REFRACT:
-      return "eevee_ray_generate_refract";
+    case RAY_DENOISE_BILATERAL:
+      return "eevee_ray_denoise_bilateral";
+    case RAY_GENERATE:
+      return "eevee_ray_generate";
     case RAY_TRACE_FALLBACK:
       return "eevee_ray_trace_fallback";
     case RAY_TRACE_PLANAR:
       return "eevee_ray_trace_planar";
-    case RAY_TRACE_SCREEN_DIFFUSE:
-      return "eevee_ray_trace_screen_diffuse";
-    case RAY_TRACE_SCREEN_REFLECT:
-      return "eevee_ray_trace_screen_reflect";
-    case RAY_TRACE_SCREEN_REFRACT:
-      return "eevee_ray_trace_screen_refract";
+    case RAY_TRACE_SCREEN:
+      return "eevee_ray_trace_screen";
     case RAY_TILE_CLASSIFY:
       return "eevee_ray_tile_classify";
     case RAY_TILE_COMPACT:
@@ -234,11 +217,15 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_lightprobe_irradiance_ray";
     case LIGHTPROBE_IRRADIANCE_LOAD:
       return "eevee_lightprobe_irradiance_load";
-    case REFLECTION_PROBE_REMAP:
+    case LIGHTPROBE_IRRADIANCE_WORLD:
+      return "eevee_lightprobe_irradiance_world";
+    case SPHERE_PROBE_CONVOLVE:
+      return "eevee_reflection_probe_convolve";
+    case SPHERE_PROBE_REMAP:
       return "eevee_reflection_probe_remap";
-    case REFLECTION_PROBE_UPDATE_IRRADIANCE:
-      return "eevee_reflection_probe_update_irradiance";
-    case REFLECTION_PROBE_SELECT:
+    case SPHERE_PROBE_IRRADIANCE:
+      return "eevee_reflection_probe_irradiance";
+    case SPHERE_PROBE_SELECT:
       return "eevee_reflection_probe_select";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
@@ -397,7 +384,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   bool supports_render_passes = (pipeline_type == MAT_PIPE_DEFERRED);
   /* Opaque forward do support AOVs and render pass if not using transparency. */
   if (!GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT) &&
-      (pipeline_type == MAT_PIPE_FORWARD)) {
+      (pipeline_type == MAT_PIPE_FORWARD))
+  {
     supports_render_passes = true;
   }
 
@@ -406,35 +394,78 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.additional_info("eevee_cryptomatte_out");
   }
 
-  int lit_closure_count = 0;
+  int32_t closure_data_slots = 0;
+  int32_t closure_extra_eval = 0;
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_DIFFUSE)) {
     info.define("MAT_DIFFUSE");
-    lit_closure_count++;
-  }
-  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
-    info.define("MAT_REFLECTION");
-    lit_closure_count++;
-  }
-  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
-    info.define("MAT_TRANSLUCENT");
-    lit_closure_count++;
+    closure_data_slots |= (1 << 0);
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
     info.define("MAT_SUBSURFACE");
-    lit_closure_count++;
+    closure_data_slots |= (1 << 0);
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_REFRACT)) {
     info.define("MAT_REFRACTION");
-    /* TODO(fclem): Support refracted lights. */
+    closure_data_slots |= (1 << 0);
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
+    info.define("MAT_TRANSLUCENT");
+    closure_data_slots |= (1 << 1);
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
+    info.define("MAT_REFLECTION");
+    closure_data_slots |= (1 << 2);
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_COAT)) {
+    info.define("MAT_CLEARCOAT");
+    closure_data_slots |= (1 << 3);
   }
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT | GPU_MATFLAG_SUBSURFACE)) {
     info.define("SHADOW_SUBSURFACE");
   }
 
+  int32_t CLOSURE_BIN_COUNT = count_bits_i(closure_data_slots);
+  switch (CLOSURE_BIN_COUNT) {
+    /* These need to be separated since the strings need to be static. */
+    case 0:
+    case 1:
+      info.define("CLOSURE_BIN_COUNT", "1");
+      break;
+    case 2:
+      info.define("CLOSURE_BIN_COUNT", "2");
+      break;
+    case 3:
+      info.define("CLOSURE_BIN_COUNT", "3");
+      break;
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+
+  if (pipeline_type == MAT_PIPE_DEFERRED) {
+    switch (CLOSURE_BIN_COUNT) {
+      /* These need to be separated since the strings need to be static. */
+      case 0:
+      case 1:
+        info.define("GBUFFER_LAYER_MAX", "1");
+        break;
+      case 2:
+        info.define("GBUFFER_LAYER_MAX", "2");
+        break;
+      case 3:
+        info.define("GBUFFER_LAYER_MAX", "3");
+        break;
+      default:
+        BLI_assert_unreachable();
+        break;
+    }
+  }
+
   if ((pipeline_type == MAT_PIPE_FORWARD) ||
       GPU_material_flag_get(gpumat, GPU_MATFLAG_SHADER_TO_RGBA))
   {
+    int32_t lit_closure_count = CLOSURE_BIN_COUNT + closure_extra_eval;
     switch (lit_closure_count) {
       case 0:
         /* Define nothing. This will in turn define SKIP_LIGHT_EVAL. */
@@ -448,9 +479,6 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
         break;
       case 3:
         info.define("LIGHT_CLOSURE_EVAL_COUNT", "3");
-        break;
-      case 4:
-        info.define("LIGHT_CLOSURE_EVAL_COUNT", "4");
         break;
       default:
         BLI_assert_unreachable();
@@ -545,7 +573,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   std::stringstream attr_load;
   attr_load << "void attrib_load()\n";
   attr_load << "{\n";
-  attr_load << ((codegen.attr_load) ? codegen.attr_load : "");
+  attr_load << ((!codegen.attr_load.empty()) ? codegen.attr_load : "");
   attr_load << "}\n\n";
 
   std::stringstream vert_gen, frag_gen, comp_gen;
@@ -563,7 +591,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (!is_compute) {
-    const bool use_vertex_displacement = (codegen.displacement != nullptr) &&
+    const bool use_vertex_displacement = (!codegen.displacement.empty()) &&
                                          (displacement_type != MAT_DISPLACEMENT_BUMP) &&
                                          (!ELEM(geometry_type,
                                                 MAT_GEOM_WORLD,
@@ -580,9 +608,9 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (!is_compute && pipeline_type != MAT_PIPE_VOLUME_OCCUPANCY) {
-    frag_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
+    frag_gen << ((!codegen.material_functions.empty()) ? codegen.material_functions : "\n");
 
-    if (codegen.displacement) {
+    if (!codegen.displacement.empty()) {
       /* Bump displacement. Needed to recompute normals after displacement. */
       info.define("MAT_DISPLACEMENT_BUMP");
 
@@ -592,28 +620,28 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       frag_gen << "}\n\n";
     }
 
-    frag_gen << "Closure nodetree_surface()\n";
+    frag_gen << "Closure nodetree_surface(float closure_rand)\n";
     frag_gen << "{\n";
-    frag_gen << "  closure_weights_reset();\n";
-    frag_gen << ((codegen.surface) ? codegen.surface : "return Closure(0);\n");
+    frag_gen << "  closure_weights_reset(closure_rand);\n";
+    frag_gen << ((!codegen.surface.empty()) ? codegen.surface : "return Closure(0);\n");
     frag_gen << "}\n\n";
 
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
     /* TODO(fclem): Better default. */
-    frag_gen << ((codegen.thickness) ? codegen.thickness : "return 0.1;\n");
+    frag_gen << ((!codegen.thickness.empty()) ? codegen.thickness : "return 0.1;\n");
     frag_gen << "}\n\n";
 
     info.fragment_source_generated = frag_gen.str();
   }
 
   if (is_compute) {
-    comp_gen << ((codegen.material_functions) ? codegen.material_functions : "\n");
+    comp_gen << ((!codegen.material_functions.empty()) ? codegen.material_functions : "\n");
 
     comp_gen << "Closure nodetree_volume()\n";
     comp_gen << "{\n";
-    comp_gen << "  closure_weights_reset();\n";
-    comp_gen << ((codegen.volume) ? codegen.volume : "return Closure(0);\n");
+    comp_gen << "  closure_weights_reset(0.0);\n";
+    comp_gen << ((!codegen.volume.empty()) ? codegen.volume : "return Closure(0);\n");
     comp_gen << "}\n\n";
 
     info.compute_source_generated = comp_gen.str();

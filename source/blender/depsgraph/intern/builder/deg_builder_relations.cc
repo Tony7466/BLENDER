@@ -56,22 +56,23 @@
 #include "DNA_world_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_armature.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_collision.h"
 #include "BKE_constraint.h"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_grease_pencil.hh"
+#include "BKE_idprop.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_lib_query.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_material.h"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -119,20 +120,30 @@ namespace blender::deg {
 
 namespace {
 
-bool driver_target_depends_on_time(const DriverTarget *target)
+bool is_time_dependent_scene_driver_target(const DriverTarget *target)
 {
-  if (target->idtype == ID_SCE &&
-      (target->rna_path != nullptr && STREQ(target->rna_path, "frame_current")))
+  return target->rna_path != nullptr && STREQ(target->rna_path, "frame_current");
+}
+
+bool driver_target_depends_on_time(const DriverVar *variable, const DriverTarget *target)
+{
+  if (variable->type == DVAR_TYPE_CONTEXT_PROP &&
+      target->context_property == DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE)
   {
-    return true;
+    return is_time_dependent_scene_driver_target(target);
   }
+
+  if (target->idtype == ID_SCE) {
+    return is_time_dependent_scene_driver_target(target);
+  }
+
   return false;
 }
 
 bool driver_variable_depends_on_time(const DriverVar *variable)
 {
   for (int i = 0; i < variable->num_targets; ++i) {
-    if (driver_target_depends_on_time(&variable->targets[i])) {
+    if (driver_target_depends_on_time(variable, &variable->targets[i])) {
       return true;
     }
   }
@@ -212,8 +223,9 @@ OperationCode bone_target_opcode(ID *target,
                                  const char *component_subdata,
                                  RootPChanMap *root_map)
 {
-  /* Same armature. */
-  if (target == id) {
+  /* Same armature. root_map will be nullptr when building object-level constraints, and in that
+   * case we don't need to check for the common chains. */
+  if (target == id && root_map != nullptr) {
     /* Using "done" here breaks in-chain deps, while using
      * "ready" here breaks most production rigs instead.
      * So, we do a compromise here, and only do this when an
@@ -513,6 +525,10 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_AC:
       build_action((bAction *)id);
       break;
+    case ID_AN:
+      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
+      build_generic_id(id);
+      break;
     case ID_AR:
       build_armature((bArmature *)id);
       break;
@@ -597,7 +613,7 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_PAL:
     case ID_PC:
     case ID_WS:
-      BLI_assert(!deg_copy_on_write_is_needed(id_type));
+      BLI_assert(!deg_eval_copy_is_needed(id_type));
       build_generic_id(id);
       break;
   }
@@ -616,16 +632,11 @@ void DepsgraphRelationBuilder::build_generic_id(ID *id)
   build_parameters(id);
 }
 
-static void build_idproperties_callback(IDProperty *id_property, void *user_data)
-{
-  DepsgraphRelationBuilder *builder = reinterpret_cast<DepsgraphRelationBuilder *>(user_data);
-  BLI_assert(id_property->type == IDP_ID);
-  builder->build_id(reinterpret_cast<ID *>(id_property->data.pointer));
-}
-
 void DepsgraphRelationBuilder::build_idproperties(IDProperty *id_property)
 {
-  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, build_idproperties_callback, this);
+  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, [&](IDProperty *id_property) {
+    this->build_id(static_cast<ID *>(id_property->data.pointer));
+  });
 }
 
 void DepsgraphRelationBuilder::build_collection(LayerCollection *from_layer_collection,
@@ -680,17 +691,9 @@ void DepsgraphRelationBuilder::build_collection(LayerCollection *from_layer_coll
     const ComponentKey object_hierarchy_key{&object->id, NodeType::HIERARCHY};
     add_relation(collection_hierarchy_key, object_hierarchy_key, "Collection -> Object hierarchy");
 
-    /* The geometry of a collection depends on the positions of the elements in it. */
-    const OperationKey object_transform_key{
-        &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL};
-    add_relation(object_transform_key, collection_geometry_key, "Collection Geometry");
-
-    /* Only create geometry relations to child objects, if they have a geometry component. */
-    const OperationKey object_geometry_key{
-        &object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL};
-    if (find_node(object_geometry_key) != nullptr) {
-      add_relation(object_geometry_key, collection_geometry_key, "Collection Geometry");
-    }
+    const OperationKey object_instance_key{
+        &object->id, NodeType::INSTANCING, OperationCode::INSTANCE};
+    add_relation(object_instance_key, collection_geometry_key, "Collection Geometry");
 
     /* An instance is part of the geometry of the collection. */
     if (object->type == OB_EMPTY) {
@@ -747,6 +750,10 @@ void DepsgraphRelationBuilder::build_object(Object *object)
     /* Local -> parent. */
     add_relation(local_transform_key, parent_transform_key, "ObLocal -> ObParent");
   }
+
+  add_relation(ComponentKey(&object->id, NodeType::TRANSFORM),
+               OperationKey{&object->id, NodeType::INSTANCING, OperationCode::INSTANCE},
+               "Transform -> Instance");
 
   /* Modifiers. */
   build_object_modifiers(object);
@@ -821,6 +828,8 @@ void DepsgraphRelationBuilder::build_object(Object *object)
 
   build_object_instance_collection(object);
   build_object_pointcache(object);
+
+  build_object_shading(object);
   build_object_light_linking(object);
 
   /* Synchronization back to original object. */
@@ -1247,31 +1256,47 @@ void DepsgraphRelationBuilder::build_object_instance_collection(Object *object)
 
   const OperationKey object_transform_final_key(
       &object->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
-  const ComponentKey duplicator_key(&object->id, NodeType::DUPLI);
+  const OperationKey instancer_key(&object->id, NodeType::INSTANCING, OperationCode::INSTANCER);
 
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (instance_collection, ob, graph_->mode) {
     const ComponentKey dupli_transform_key(&ob->id, NodeType::TRANSFORM);
     add_relation(dupli_transform_key, object_transform_final_key, "Dupligroup");
 
     /* Hook to special component, to ensure proper visibility/evaluation optimizations. */
-    add_relation(dupli_transform_key, duplicator_key, "Dupligroup");
-    const NodeType dupli_geometry_component_type = geometry_tag_to_component(&ob->id);
-    if (dupli_geometry_component_type != NodeType::UNDEFINED) {
-      ComponentKey dupli_geometry_component_key(&ob->id, dupli_geometry_component_type);
-      add_relation(dupli_geometry_component_key, duplicator_key, "Dupligroup");
-    }
+    add_relation(OperationKey(&ob->id, NodeType::INSTANCING, OperationCode::INSTANCE),
+                 instancer_key,
+                 "Instance -> Instancer");
   }
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
+}
+
+void DepsgraphRelationBuilder::build_object_shading(Object *object)
+{
+  const OperationKey shading_done_key(&object->id, NodeType::SHADING, OperationCode::SHADING_DONE);
+
+  const OperationKey shading_key(&object->id, NodeType::SHADING, OperationCode::SHADING);
+  add_relation(shading_key, shading_done_key, "Shading -> Done");
+
+  /* Hook up shading component to the instance, so that if the object is instanced by a visible
+   * object the shading component is ensured to be evaluated.
+   * Don't to flushing to avoid re-evaluation of geometry when the object is used as part of a
+   * collection used as a boolean modifier operand. */
+  add_relation(shading_done_key,
+               OperationKey(&object->id, NodeType::INSTANCING, OperationCode::INSTANCE),
+               "Light Linking -> Instance",
+               RELATION_FLAG_NO_FLUSH);
 }
 
 void DepsgraphRelationBuilder::build_object_light_linking(Object *emitter)
 {
   const ComponentKey hierarchy_key(&emitter->id, NodeType::HIERARCHY);
-
+  const OperationKey shading_done_key(
+      &emitter->id, NodeType::SHADING, OperationCode::SHADING_DONE);
   const OperationKey light_linking_key(
       &emitter->id, NodeType::SHADING, OperationCode::LIGHT_LINKING_UPDATE);
 
   add_relation(hierarchy_key, light_linking_key, "Light Linking From Layer");
+  add_relation(light_linking_key, shading_done_key, "Light Linking -> Shading Done");
 
   if (emitter->light_linking) {
     LightLinking &light_linking = *emitter->light_linking;
@@ -1474,7 +1499,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           /* Standard object relation. */
           /* TODO: loc vs rot vs scale? */
           if (&ct->tar->id == id) {
-            /* Constraint targeting own object:
+            /* Constraint targeting its own object:
              * - This case is fine IF we're dealing with a bone
              *   constraint pointing to its own armature. In that
              *   case, it's just transform -> bone.
@@ -1610,10 +1635,10 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(ID *id,
     const IDNode *id_node_from = operation_from->owner->owner;
     const IDNode *id_node_to = operation_to->owner->owner;
     if (id_node_from != id_node_to) {
-      ComponentKey cow_key(id_node_to->id_orig, NodeType::COPY_ON_WRITE);
+      ComponentKey cow_key(id_node_to->id_orig, NodeType::COPY_ON_EVAL);
       add_relation(cow_key,
                    adt_key,
-                   "Animated CoW -> Animation",
+                   "Animated Copy-on-Eval -> Animation",
                    RELATION_CHECK_BEFORE_ADD | RELATION_FLAG_NO_FLUSH);
     }
   }
@@ -1656,7 +1681,7 @@ void DepsgraphRelationBuilder::build_animdata_drivers(ID *id)
     /* create the driver's relations to targets */
     build_driver(id, fcu);
 
-    /* prevent driver from occurring before own animation... */
+    /* prevent driver from occurring before its own animation... */
     if (adt->action || adt->nla_tracks.first) {
       add_relation(adt_key, driver_key, "AnimData Before Drivers");
     }
@@ -1821,10 +1846,11 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
       OperationKey bone_key(&object->id, NodeType::BONE, pchan->name, target_op);
       add_relation(driver_key, bone_key, "Arm Bone -> Driver -> Bone");
     }
-    /* Make the driver depend on COW, similar to the generic case below. */
+    /* Make the driver depend on copy-on-eval, similar to the generic case below. */
     if (id_ptr != id) {
-      ComponentKey cow_key(id_ptr, NodeType::COPY_ON_WRITE);
-      add_relation(cow_key, driver_key, "Driven CoW -> Driver", RELATION_CHECK_BEFORE_ADD);
+      ComponentKey cow_key(id_ptr, NodeType::COPY_ON_EVAL);
+      add_relation(
+          cow_key, driver_key, "Driven Copy-on-Eval -> Driver", RELATION_CHECK_BEFORE_ADD);
     }
   }
   else {
@@ -1842,8 +1868,9 @@ void DepsgraphRelationBuilder::build_driver_data(ID *id, FCurve *fcu)
       PointerRNA ptr;
       if (RNA_path_resolve_full(&id_ptr, fcu->rna_path, &ptr, nullptr, nullptr)) {
         if (id_ptr.owner_id != ptr.owner_id) {
-          ComponentKey cow_key(ptr.owner_id, NodeType::COPY_ON_WRITE);
-          add_relation(cow_key, driver_key, "Driven CoW -> Driver", RELATION_CHECK_BEFORE_ADD);
+          ComponentKey cow_key(ptr.owner_id, NodeType::COPY_ON_EVAL);
+          add_relation(
+              cow_key, driver_key, "Driven Copy-on-Eval -> Driver", RELATION_CHECK_BEFORE_ADD);
         }
       }
     }
@@ -2023,18 +2050,18 @@ void DepsgraphRelationBuilder::build_driver_rna_path_variable(const OperationKey
    * driver is re-evaluated.
    *
    * The most straightforward (at the moment of writing this comment) way of figuring out
-   * such relation is to use copy-on-write operation of the target ID. There are two down
+   * such relation is to use copy-on-evaluation operation of the target ID. There are two down
    * sides of this approach which are considered a design limitation as there is a belief
    * that they are not common in practice or are not reliable due to other issues:
    *
-   * - IDs which are not covered with the copy-on-write mechanism.
+   * - IDs which are not covered with the copy-on-evaluation mechanism.
    *
    *   Such IDs are either do not have ID properties, or are not part of the dependency
    *   graph.
    *
    * - Modifications of evaluated IDs from a Python handler.
    *   Such modifications are not fully integrated in the dependency graph evaluation as it
-   *   has issues with copy-on-write tagging and the fact that relations are defined by the
+   *   has issues with copy-on-evaluation tagging and the fact that relations are defined by the
    *   original main database status.
    *
    * The original report for this is #98618.
@@ -2045,8 +2072,8 @@ void DepsgraphRelationBuilder::build_driver_rna_path_variable(const OperationKey
    * scene.camera not caused by animation should actually force a dependency graph rebuild.
    */
   if (target_id != variable_exit_key.ptr.owner_id && GS(target_id->name) != ID_SCE) {
-    if (deg_copy_on_write_is_needed(GS(target_id->name))) {
-      ComponentKey target_id_key(target_id, NodeType::COPY_ON_WRITE);
+    if (deg_eval_copy_is_needed(GS(target_id->name))) {
+      ComponentKey target_id_key(target_id, NodeType::COPY_ON_EVAL);
       add_relation(target_id_key, driver_key, "Target ID -> Driver");
     }
   }
@@ -2464,9 +2491,13 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
   OperationKey obdata_ubereval_key(&object->id, NodeType::GEOMETRY, OperationCode::GEOMETRY_EVAL);
   /* Special case: modifiers evaluation queries scene for various things like
    * data mask to be used. We add relation here to ensure object is never
-   * evaluated prior to Scene's CoW is ready. */
-  OperationKey scene_key(&scene_->id, NodeType::PARAMETERS, OperationCode::SCENE_EVAL);
-  add_relation(scene_key, obdata_ubereval_key, "CoW Relation", RELATION_FLAG_NO_FLUSH);
+   * evaluated prior to Scene's evaluated copy is ready. */
+  ComponentKey scene_key(&scene_->id, NodeType::SCENE);
+  add_relation(scene_key, obdata_ubereval_key, "Copy-on-Eval Relation", RELATION_FLAG_NO_FLUSH);
+  /* Relation to the instance, so that instancer can use geometry of this object. */
+  add_relation(ComponentKey(&object->id, NodeType::GEOMETRY),
+               OperationKey(&object->id, NodeType::INSTANCING, OperationCode::INSTANCE),
+               "Transform -> Instance");
   /* Grease Pencil Modifiers. */
   if (object->greasepencil_modifiers.first != nullptr) {
     ModifierUpdateDepsgraphContext ctx = {};
@@ -2630,6 +2661,17 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
         add_relation(textoncurve_key, obdata_geom_eval_key, "Text on Curve Transform");
         build_object(cu->textoncurve);
       }
+      /* Special relation to ensure active spline index gets properly updated.
+       *
+       * The active spline index is stored on the Curve data-block, and the curve evaluation might
+       * create a new curve data-block for the result, which does not intrinsically sharing the
+       * active spline index. Hence a special relation is added to ensure the modifier stack is
+       * evaluated when selection changes. */
+      {
+        const OperationKey object_data_select_key(
+            obdata, NodeType::BATCH_CACHE, OperationCode::GEOMETRY_SELECT_UPDATE);
+        add_relation(object_data_select_key, obdata_geom_eval_key, "Active Spline Update");
+      }
       break;
     }
     case ID_LT:
@@ -2700,9 +2742,32 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
       break;
     }
     case ID_GP: {
+      GreasePencil &grease_pencil = *reinterpret_cast<GreasePencil *>(obdata);
+
+      /* Update geometry when time is changed. */
       TimeSourceKey time_key;
-      ComponentKey geometry_key(obdata, NodeType::GEOMETRY);
+      ComponentKey geometry_key(&grease_pencil.id, NodeType::GEOMETRY);
       add_relation(time_key, geometry_key, "Grease Pencil Frame Change");
+
+      /* Add relations for layer parents. */
+      for (const bke::greasepencil::Layer *layer : grease_pencil.layers()) {
+        Object *parent = layer->parent;
+        if (parent == nullptr) {
+          continue;
+        }
+        if (parent->type == OB_ARMATURE && !layer->parent_bone_name().is_empty()) {
+          ComponentKey bone_key(&parent->id, NodeType::BONE, layer->parent_bone_name().c_str());
+          OperationKey armature_key(
+              &parent->id, NodeType::TRANSFORM, OperationCode::TRANSFORM_FINAL);
+
+          add_relation(bone_key, geometry_key, "Grease Pencil Layer Bone Parent");
+          add_relation(armature_key, geometry_key, "Grease Pencil Layer Armature Parent");
+        }
+        else {
+          ComponentKey transform_key(&parent->id, NodeType::TRANSFORM);
+          add_relation(transform_key, geometry_key, "Grease Pencil Layer Object Parent");
+        }
+      }
       break;
     }
     default:
@@ -2851,8 +2916,8 @@ void DepsgraphRelationBuilder::build_nodetree(bNodeTree *ntree)
   OperationKey ntree_geo_preprocess_key(
       &ntree->id, NodeType::NTREE_GEOMETRY_PREPROCESS, OperationCode::NTREE_GEOMETRY_PREPROCESS);
   if (ntree->type == NTREE_GEOMETRY) {
-    OperationKey ntree_cow_key(&ntree->id, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
-    add_relation(ntree_cow_key, ntree_geo_preprocess_key, "COW -> Preprocess");
+    OperationKey ntree_cow_key(&ntree->id, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
+    add_relation(ntree_cow_key, ntree_geo_preprocess_key, "Copy-on-Eval -> Preprocess");
     add_relation(ntree_geo_preprocess_key,
                  ntree_output_key,
                  "Preprocess -> Output",
@@ -3336,9 +3401,8 @@ void DepsgraphRelationBuilder::build_nested_datablock(ID *owner, ID *id, bool fl
   if (!flush_cow_changes) {
     relation_flag |= RELATION_FLAG_NO_FLUSH;
   }
-  OperationKey owner_copy_on_write_key(
-      owner, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
-  OperationKey id_copy_on_write_key(id, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
+  OperationKey owner_copy_on_write_key(owner, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
+  OperationKey id_copy_on_write_key(id, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
   add_relation(id_copy_on_write_key, owner_copy_on_write_key, "Eval Order", relation_flag);
 }
 
@@ -3367,11 +3431,11 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
 
   const ID_Type id_type = GS(id_orig->name);
 
-  if (!deg_copy_on_write_is_needed(id_type)) {
+  if (!deg_eval_copy_is_needed(id_type)) {
     return;
   }
 
-  OperationKey copy_on_write_key(id_orig, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
+  OperationKey copy_on_write_key(id_orig, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
   /* XXX: This is a quick hack to make Alt-A to work. */
   // add_relation(time_source_key, copy_on_write_key, "Fluxgate capacitor hack");
   /* Resat of code is using rather low level trickery, so need to get some
@@ -3380,8 +3444,8 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
   OperationNode *op_cow = node_cow->get_exit_operation();
   /* Plug any other components to this one. */
   for (ComponentNode *comp_node : id_node->components.values()) {
-    if (comp_node->type == NodeType::COPY_ON_WRITE) {
-      /* Copy-on-write component never depends on itself. */
+    if (comp_node->type == NodeType::COPY_ON_EVAL) {
+      /* Copy-on-eval component never depends on itself. */
       continue;
     }
     if (!comp_node->depends_on_cow()) {
@@ -3399,19 +3463,21 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
       rel_flag &= ~RELATION_FLAG_NO_FLUSH;
     }
     /* Notes on exceptions:
-     * - Parameters component is where drivers are living. Changing any
-     *   of the (custom) properties in the original datablock (even the
-     *   ones which do not imply other component update) need to make
-     *   sure drivers are properly updated.
-     *   This way, for example, changing ID property will properly poke
-     *   all drivers to be updated.
-     *
      * - View layers have cached array of bases in them, which is not
-     *   copied by copy-on-write, and not preserved. PROBABLY it is better
-     *   to preserve that cache in copy-on-write, but for the time being
+     *   copied by copy-on-evaluation, and not preserved. PROBABLY it is better
+     *   to preserve that cache in copy-on-evaluation, but for the time being
      *   we allow flush to layer collections component which will ensure
      *   that cached array of bases exists and is up-to-date. */
-    if (ELEM(comp_node->type, NodeType::PARAMETERS, NodeType::LAYER_COLLECTIONS)) {
+    if (ELEM(comp_node->type, NodeType::LAYER_COLLECTIONS)) {
+      rel_flag &= ~RELATION_FLAG_NO_FLUSH;
+    }
+    /* Mask evaluation operation is part of parameters, and it needs to be re-evaluated when the
+     * mask is tagged for copy-on-eval.
+     *
+     * TODO(@sergey): This needs to be moved out of here.
+     * In order to do so, moving mask evaluation out of parameters would be helpful and
+     * semantically correct. */
+    if (comp_node->type == NodeType::PARAMETERS && id_type == ID_MSK) {
       rel_flag &= ~RELATION_FLAG_NO_FLUSH;
     }
     /* Compatibility with the legacy tagging: groups are only tagged for Copy-on-Write when their
@@ -3423,16 +3489,16 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
      * copy of ID. */
     OperationNode *op_entry = comp_node->get_entry_operation();
     if (op_entry != nullptr) {
-      Relation *rel = graph_->add_new_relation(op_cow, op_entry, "CoW Dependency");
+      Relation *rel = graph_->add_new_relation(op_cow, op_entry, "Copy-on-Eval Dependency");
       rel->flag |= rel_flag;
     }
-    /* All dangling operations should also be executed after copy-on-write. */
+    /* All dangling operations should also be executed after copy-on-evaluation. */
     for (OperationNode *op_node : comp_node->operations_map->values()) {
       if (op_node == op_entry) {
         continue;
       }
       if (op_node->inlinks.is_empty()) {
-        Relation *rel = graph_->add_new_relation(op_cow, op_node, "CoW Dependency");
+        Relation *rel = graph_->add_new_relation(op_cow, op_node, "Copy-on-Eval Dependency");
         rel->flag |= rel_flag;
       }
       else {
@@ -3448,18 +3514,18 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
           }
         }
         if (!has_same_comp_dependency) {
-          Relation *rel = graph_->add_new_relation(op_cow, op_node, "CoW Dependency");
+          Relation *rel = graph_->add_new_relation(op_cow, op_node, "Copy-on-Eval Dependency");
           rel->flag |= rel_flag;
         }
       }
     }
     /* NOTE: We currently ignore implicit relations to an external
-     * data-blocks for copy-on-write operations. This means, for example,
-     * copy-on-write component of Object will not wait for copy-on-write
+     * data-blocks for copy-on-evaluation operations. This means, for example,
+     * copy-on-evaluation component of Object will not wait for copy-on-evaluation
      * component of its Mesh. This is because pointers are all known
      * already so remapping will happen all correct. And then If some object
      * evaluation step needs geometry, it will have transitive dependency
-     * to Mesh copy-on-write already. */
+     * to Mesh copy-on-evaluation already. */
   }
   /* TODO(sergey): This solves crash for now, but causes too many
    * updates potentially. */
@@ -3467,9 +3533,9 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
     Object *object = (Object *)id_orig;
     ID *object_data_id = (ID *)object->data;
     if (object_data_id != nullptr) {
-      if (deg_copy_on_write_is_needed(object_data_id)) {
+      if (deg_eval_copy_is_needed(object_data_id)) {
         OperationKey data_copy_on_write_key(
-            object_data_id, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
+            object_data_id, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
         add_relation(
             data_copy_on_write_key, copy_on_write_key, "Eval Order", RELATION_FLAG_GODMODE);
       }
@@ -3483,14 +3549,14 @@ void DepsgraphRelationBuilder::build_copy_on_write_relations(IDNode *id_node)
   /* NOTE: Relation is disabled since AnimationBackup() is disabled.
    * See comment in  AnimationBackup:init_from_id(). */
 
-  /* Copy-on-write of write will iterate over f-curves to store current values corresponding
-   * to their RNA path. This means that action must be copied prior to the ID's copy-on-write,
+  /* Copy-on-eval of write will iterate over f-curves to store current values corresponding
+   * to their RNA path. This means that action must be copied prior to the ID's copy-on-evaluation,
    * otherwise depsgraph might try to access freed data. */
   AnimData *animation_data = BKE_animdata_from_id(id_orig);
   if (animation_data != nullptr) {
     if (animation_data->action != nullptr) {
       OperationKey action_copy_on_write_key(
-          &animation_data->action->id, NodeType::COPY_ON_WRITE, OperationCode::COPY_ON_WRITE);
+          &animation_data->action->id, NodeType::COPY_ON_EVAL, OperationCode::COPY_ON_EVAL);
       add_relation(action_copy_on_write_key,
                    copy_on_write_key,
                    "Eval Order",

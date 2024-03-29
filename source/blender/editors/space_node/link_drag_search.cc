@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
@@ -10,8 +11,8 @@
 
 #include "BKE_asset.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_screen.hh"
@@ -21,9 +22,7 @@
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "BLT_translation.h"
-
-#include "RNA_access.hh"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 
@@ -228,59 +227,23 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
   }
 }
 
-static void gather_search_link_ops_for_asset_library(const bContext &C,
-                                                     const bNodeTree &node_tree,
-                                                     const bNodeSocket &socket,
-                                                     const AssetLibraryReference &library_ref,
-                                                     const bool skip_local,
-                                                     Vector<SocketLinkOperation> &search_link_ops)
-{
-  AssetFilterSettings filter_settings{};
-  filter_settings.id_types = FILTER_ID_NT;
-
-  ED_assetlist_storage_fetch(&library_ref, &C);
-  ED_assetlist_ensure_previews_job(&library_ref, &C);
-  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
-    if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
-      return true;
-    }
-    if (skip_local && asset.is_local_id()) {
-      return true;
-    }
-    search_link_ops_for_asset_metadata(node_tree, socket, asset, search_link_ops);
-    return true;
-  });
-}
-
 static void gather_search_link_ops_for_all_assets(const bContext &C,
                                                   const bNodeTree &node_tree,
                                                   const bNodeSocket &socket,
                                                   Vector<SocketLinkOperation> &search_link_ops)
 {
-  int i;
-  LISTBASE_FOREACH_INDEX (const bUserAssetLibrary *, asset_library, &U.asset_libraries, i) {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = i;
-    library_ref.type = ASSET_LIBRARY_CUSTOM;
-    /* Skip local assets to avoid duplicates when the asset is part of the local file library. */
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, true, search_link_ops);
-  }
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  asset::AssetFilterSettings filter_settings{};
+  filter_settings.id_types = FILTER_ID_NT;
 
-  {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = -1;
-    library_ref.type = ASSET_LIBRARY_ESSENTIALS;
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, true, search_link_ops);
-  }
-  {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = -1;
-    library_ref.type = ASSET_LIBRARY_LOCAL;
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, false, search_link_ops);
-  }
+  asset::list::storage_fetch(&library_ref, &C);
+  asset::list::iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (!asset::filter_matches_asset(&filter_settings, asset)) {
+      return true;
+    }
+    search_link_ops_for_asset_metadata(node_tree, socket, asset, search_link_ops);
+    return true;
+  });
 }
 
 /**
@@ -450,8 +413,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
                               10,
                               UI_searchbox_size_x(),
                               UI_UNIT_Y,
-                              0,
-                              0,
                               "");
   UI_but_func_search_set_sep_string(but, UI_MENU_ARROW_SEP);
   UI_but_func_search_set_listen(but, link_drag_search_listen_fn);
@@ -475,8 +436,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
            UI_searchbox_size_x(),
            UI_searchbox_size_y(),
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

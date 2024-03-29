@@ -10,7 +10,8 @@
 
 #pragma once
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
+#include "GPU_capabilities.hh"
 
 #include "eevee_material.hh"
 #include "eevee_shader_shared.hh"
@@ -127,28 +128,63 @@ struct GBuffer {
   /* TODO(fclem): Use texture from pool once they support texture array and layer views. */
   Texture header_tx = {"GBufferHeader"};
   Texture closure_tx = {"GBufferClosure"};
-  Texture color_tx = {"GBufferColor"};
+  Texture normal_tx = {"GBufferNormal"};
   /* References to the GBuffer layer range [1..max]. */
   GPUTexture *closure_img_tx = nullptr;
-  GPUTexture *color_img_tx = nullptr;
+  GPUTexture *normal_img_tx = nullptr;
 
-  void acquire(int2 extent, int closure_layer_count, int color_layer_count)
+  void acquire(int2 extent, int data_count, int normal_count)
   {
-    /* Always allocating 2 layers so that the image view is always valid. */
-    closure_layer_count = max_ii(2, closure_layer_count);
-    color_layer_count = max_ii(2, color_layer_count);
+    /* Always allocating enough layers so that the image view is always valid. */
+    data_count = max_ii(3, data_count);
+    normal_count = max_ii(2, normal_count);
 
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                              GPU_TEXTURE_USAGE_ATTACHMENT;
     header_tx.ensure_2d(GPU_R16UI, extent, usage);
-    closure_tx.ensure_2d_array(GPU_RGBA16, extent, closure_layer_count, usage);
-    color_tx.ensure_2d_array(GPU_RGB10_A2, extent, color_layer_count, usage);
+    closure_tx.ensure_2d_array(GPU_RGB10_A2, extent, data_count, usage);
+    normal_tx.ensure_2d_array(GPU_RG16, extent, normal_count, usage);
     /* Ensure layer view for frame-buffer attachment. */
     closure_tx.ensure_layer_views();
-    color_tx.ensure_layer_views();
+    normal_tx.ensure_layer_views();
     /* Ensure layer view for image store. */
-    closure_img_tx = closure_tx.layer_range_view(1, closure_layer_count - 1);
-    color_img_tx = color_tx.layer_range_view(1, color_layer_count - 1);
+    closure_img_tx = closure_tx.layer_range_view(2, data_count - 2);
+    normal_img_tx = normal_tx.layer_range_view(1, normal_count - 1);
+  }
+
+  /* Bind the GBuffer frame-buffer correctly using the correct workarounds. */
+  void bind(Framebuffer &gbuffer_fb)
+  {
+    if (/* FIXME(fclem): Vulkan doesn't implement load / store config yet. */
+        GPU_backend_get_type() == GPU_BACKEND_VULKAN ||
+        /* FIXME(fclem): Metal has bug in backend. */
+        GPU_backend_get_type() == GPU_BACKEND_METAL)
+    {
+      header_tx.clear(uint4(0));
+    }
+
+    if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+      /* TODO(fclem): Load/store action is broken on Metal. */
+      GPU_framebuffer_bind(gbuffer_fb);
+    }
+    else {
+      if (!GPU_stencil_export_support()) {
+        /* Clearing custom load-store frame-buffers is invalid,
+         * clear the stencil as a regular frame-buffer first. */
+        GPU_framebuffer_bind(gbuffer_fb);
+        GPU_framebuffer_clear_stencil(gbuffer_fb, 0x0u);
+      }
+      GPU_framebuffer_bind_ex(
+          gbuffer_fb,
+          {
+              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Depth */
+              {GPU_LOADACTION_LOAD, GPU_STOREACTION_STORE},       /* Combined */
+              {GPU_LOADACTION_CLEAR, GPU_STOREACTION_STORE, {0}}, /* GBuf Header */
+              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Normal */
+              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Closure */
+              {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE},  /* GBuf Closure 2*/
+          });
+    }
   }
 
   void release()
@@ -156,17 +192,17 @@ struct GBuffer {
     /* TODO(fclem): Use texture from pool once they support texture array. */
     // header_tx.release();
     // closure_tx.release();
-    // color_tx.release();
+    // normal_tx.release();
 
     closure_img_tx = nullptr;
-    color_img_tx = nullptr;
+    normal_img_tx = nullptr;
   }
 
   template<typename PassType> void bind_resources(PassType &pass)
   {
     pass.bind_texture("gbuf_header_tx", &header_tx);
     pass.bind_texture("gbuf_closure_tx", &closure_tx);
-    pass.bind_texture("gbuf_color_tx", &color_tx);
+    pass.bind_texture("gbuf_normal_tx", &normal_tx);
   }
 };
 

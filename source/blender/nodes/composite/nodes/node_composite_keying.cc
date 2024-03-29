@@ -15,8 +15,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_algorithm_morphological_distance.hh"
 #include "COM_algorithm_morphological_distance_feather.hh"
@@ -136,7 +136,8 @@ class KeyingOperation : public NodeOperation {
     Result chroma = extract_input_chroma();
 
     Result blurred_chroma = context().create_temporary_result(ResultType::Color);
-    symmetric_separable_blur(context(), chroma, blurred_chroma, float2(blur_size), R_FILTER_BOX);
+    symmetric_separable_blur(
+        context(), chroma, blurred_chroma, float2(blur_size) / 2, R_FILTER_BOX);
     chroma.release();
 
     Result blurred_input = replace_input_chroma(blurred_chroma);
@@ -289,7 +290,8 @@ class KeyingOperation : public NodeOperation {
     }
 
     Result blurred_matte = context().create_temporary_result(ResultType::Float);
-    symmetric_separable_blur(context(), input_matte, blurred_matte, float2(blur_size));
+    symmetric_separable_blur(
+        context(), input_matte, blurred_matte, float2(blur_size) / 2, R_FILTER_BOX);
 
     return blurred_matte;
   }

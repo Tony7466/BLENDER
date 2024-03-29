@@ -8,8 +8,8 @@
 
 #include "BLI_math_vector.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -97,7 +97,8 @@ class DisplaceOperation : public NodeOperation {
 
     const Result &input_displacement = get_input("Vector");
     if (input_displacement.is_single_value() &&
-        math::is_zero(input_displacement.get_vector_value())) {
+        math::is_zero(input_displacement.get_vector_value()))
+    {
       return true;
     }
 

@@ -15,11 +15,11 @@
 #include "DNA_tracking_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"

@@ -10,26 +10,29 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_virtual_array.hh"
 
-#include "DNA_meshdata_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_mesh.hh"
 
 #include "bmesh.hh"
 
-#include "GPU_vertex_buffer.h"
-#include "GPU_vertex_format.h"
+#include "GPU_vertex_buffer.hh"
+#include "GPU_vertex_format.hh"
 
 #include "draw_cache_extract.hh"
 
 struct DRWSubdivCache;
 struct BMVert;
 struct BMEdge;
+struct BMEditMesh;
 struct BMFace;
 struct BMLoop;
+
+namespace blender::draw {
 
 #define MIN_RANGE_LEN 1024
 
@@ -45,34 +48,39 @@ enum eMRExtractType {
 struct MeshRenderData {
   eMRExtractType extract_type;
 
-  int face_len, edge_len, vert_len, loop_len;
-  int edge_loose_len;
-  int vert_loose_len;
-  int loop_loose_len;
-  int tri_len;
-  int mat_len;
+  int verts_num;
+  int edges_num;
+  int faces_num;
+  int corners_num;
+
+  int loose_edges_num;
+  int loose_verts_num;
+  int loose_indices_num;
+
+  int corner_tris_num;
+  int materials_num;
 
   bool use_hide;
   bool use_subsurf_fdots;
   bool use_final_mesh;
   bool hide_unmapped_edges;
+  bool use_simplify_normals;
 
   /** Use for #MeshStatVis calculation which use world-space coords. */
-  float obmat[4][4];
+  float4x4 object_to_world;
 
   const ToolSettings *toolsettings;
   /** Edit Mesh */
   BMEditMesh *edit_bmesh;
   BMesh *bm;
-  blender::bke::EditMeshData *edit_data;
+  bke::EditMeshData *edit_data;
 
   /* For deformed edit-mesh data. */
   /* Use for #ME_WRAPPER_TYPE_BMESH. */
-  blender::Span<blender::float3> bm_vert_coords;
-  blender::Span<blender::float3> bm_vert_normals;
-  blender::Span<blender::float3> bm_face_normals;
-  blender::Span<blender::float3> bm_face_centers;
-  blender::Array<blender::float3> bm_loop_normals;
+  Span<float3> bm_vert_coords;
+  Span<float3> bm_vert_normals;
+  Span<float3> bm_face_normals;
+  Array<float3> bm_loop_normals;
 
   const int *v_origindex, *e_origindex, *p_origindex;
   int edge_crease_ofs;
@@ -81,36 +89,37 @@ struct MeshRenderData {
   int freestyle_edge_ofs;
   int freestyle_face_ofs;
   /** Mesh */
-  Mesh *mesh;
-  blender::Span<blender::float3> vert_positions;
-  blender::Span<blender::int2> edges;
-  blender::OffsetIndices<int> faces;
-  blender::Span<int> corner_verts;
-  blender::Span<int> corner_edges;
+  const Mesh *mesh;
+  Span<float3> vert_positions;
+  Span<int2> edges;
+  OffsetIndices<int> faces;
+  Span<int> corner_verts;
+  Span<int> corner_edges;
+
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
   BMFace *efa_act_uv;
   /* The triangulation of #Mesh faces, owned by the mesh. */
-  blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_faces;
-  blender::VArraySpan<int> material_indices;
+  Span<int3> corner_tris;
+  Span<int> corner_tri_faces;
+  VArraySpan<int> material_indices;
 
-  blender::bke::MeshNormalDomain normals_domain;
-  blender::Span<blender::float3> vert_normals;
-  blender::Span<blender::float3> face_normals;
-  blender::Span<blender::float3> loop_normals;
+  bke::MeshNormalDomain normals_domain;
+  Span<float3> vert_normals;
+  Span<float3> face_normals;
+  Span<float3> corner_normals;
 
-  blender::VArraySpan<bool> hide_vert;
-  blender::VArraySpan<bool> hide_edge;
-  blender::VArraySpan<bool> hide_poly;
-  blender::VArraySpan<bool> select_vert;
-  blender::VArraySpan<bool> select_edge;
-  blender::VArraySpan<bool> select_poly;
-  blender::VArraySpan<bool> sharp_faces;
+  VArraySpan<bool> hide_vert;
+  VArraySpan<bool> hide_edge;
+  VArraySpan<bool> hide_poly;
+  VArraySpan<bool> select_vert;
+  VArraySpan<bool> select_edge;
+  VArraySpan<bool> select_poly;
+  VArraySpan<bool> sharp_faces;
 
-  blender::Span<int> loose_verts;
-  blender::Span<int> loose_edges;
+  Span<int> loose_verts;
+  Span<int> loose_edges;
   const SortedFaceData *face_sorted;
 
   const char *active_color_name;
@@ -178,7 +187,7 @@ BLI_INLINE const float *bm_face_no_get(const MeshRenderData &mr, const BMFace *e
 
 using ExtractTriBMeshFn = void(const MeshRenderData &mr, BMLoop **elt, int elt_index, void *data);
 using ExtractTriMeshFn = void(const MeshRenderData &mr,
-                              const MLoopTri *lt,
+                              const int3 &tri,
                               int elt_index,
                               void *data);
 using ExtractFaceBMeshFn = void(const MeshRenderData &mr,
@@ -190,10 +199,7 @@ using ExtractLEdgeBMeshFn = void(const MeshRenderData &mr,
                                  const BMEdge *eed,
                                  int loose_edge_i,
                                  void *data);
-using ExtractLEdgeMeshFn = void(const MeshRenderData &mr,
-                                blender::int2 edge,
-                                int loose_edge_i,
-                                void *data);
+using ExtractLEdgeMeshFn = void(const MeshRenderData &mr, int2 edge, int loose_edge_i, void *data);
 using ExtractLVertBMeshFn = void(const MeshRenderData &mr,
                                  const BMVert *eve,
                                  int loose_vert_i,
@@ -239,7 +245,7 @@ struct MeshExtract {
   ExtractInitFn *init;
   /** Executed on one (or more if use_threading) worker thread(s). */
   ExtractTriBMeshFn *iter_looptri_bm;
-  ExtractTriMeshFn *iter_looptri_mesh;
+  ExtractTriMeshFn *iter_corner_tri_mesh;
   ExtractFaceBMeshFn *iter_face_bm;
   ExtractFaceMeshFn *iter_face_mesh;
   ExtractLEdgeBMeshFn *iter_loose_edge_bm;
@@ -280,9 +286,10 @@ MeshRenderData *mesh_render_data_create(Object *object,
                                         bool is_editmode,
                                         bool is_paint_mode,
                                         bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
+                                        bool use_hide,
                                         const ToolSettings *ts);
 void mesh_render_data_free(MeshRenderData *mr);
 void mesh_render_data_update_normals(MeshRenderData &mr, eMRDataType data_flag);
@@ -296,9 +303,9 @@ void mesh_render_data_update_faces_sorted(MeshRenderData &mr,
 /**
  * Part of the creation of the #MeshRenderData that happens in a thread.
  */
-void mesh_render_data_update_looptris(MeshRenderData &mr,
-                                      eMRIterType iter_type,
-                                      eMRDataType data_flag);
+void mesh_render_data_update_corner_tris(MeshRenderData &mr,
+                                         eMRIterType iter_type,
+                                         eMRDataType data_flag);
 
 /* draw_cache_extract_mesh_extractors.c */
 
@@ -329,6 +336,9 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
                                      BMUVOffsets offsets,
                                      EditLoopData *eattr);
 
+template<typename GPUType>
+void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
+
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_tris_single_mat;
 extern const MeshExtract extract_lines;
@@ -342,10 +352,9 @@ extern const MeshExtract extract_edituv_tris;
 extern const MeshExtract extract_edituv_lines;
 extern const MeshExtract extract_edituv_points;
 extern const MeshExtract extract_edituv_fdots;
-extern const MeshExtract extract_pos_nor;
-extern const MeshExtract extract_pos_nor_hq;
-extern const MeshExtract extract_lnor_hq;
-extern const MeshExtract extract_lnor;
+extern const MeshExtract extract_pos;
+extern const MeshExtract extract_nor_hq;
+extern const MeshExtract extract_nor;
 extern const MeshExtract extract_uv;
 extern const MeshExtract extract_tan;
 extern const MeshExtract extract_tan_hq;
@@ -371,3 +380,6 @@ extern const MeshExtract extract_vert_idx;
 extern const MeshExtract extract_fdot_idx;
 extern const MeshExtract extract_attr[GPU_MAX_ATTR];
 extern const MeshExtract extract_attr_viewer;
+extern const MeshExtract extract_vnor;
+
+}  // namespace blender::draw

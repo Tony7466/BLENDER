@@ -20,16 +20,18 @@
 #include "BLI_vector.hh"
 
 #include "DNA_customdata_types.h"
-#include "DNA_meshdata_types.h"
 
+struct BMEditMesh;
 struct BVHCache;
 struct Mesh;
-struct MLoopTri;
 struct ShrinkwrapBoundaryData;
 struct SubdivCCG;
 struct SubsurfRuntimeData;
 namespace blender::bke {
 struct EditMeshData;
+}
+namespace blender::bke::bake {
+struct BakeMaterialsList;
 }
 
 /** #MeshRuntime.wrapper_type */
@@ -86,13 +88,11 @@ struct LooseGeomCache {
 /**
  * Cache of a mesh's loose edges, accessed with #Mesh::loose_edges(). *
  */
-struct LooseEdgeCache : public LooseGeomCache {
-};
+struct LooseEdgeCache : public LooseGeomCache {};
 /**
  * Cache of a mesh's loose vertices or vertices not used by faces.
  */
-struct LooseVertCache : public LooseGeomCache {
-};
+struct LooseVertCache : public LooseGeomCache {};
 
 struct MeshRuntime {
   /* Evaluated mesh for objects which do not have effective modifiers.
@@ -106,6 +106,13 @@ struct MeshRuntime {
 
   /** Implicit sharing user count for #Mesh::face_offset_indices. */
   const ImplicitSharingInfo *face_offsets_sharing_info = nullptr;
+
+  /**
+   * Storage of the edit mode mesh. If it exists, it generally has the most up-to-date
+   * information about the mesh.
+   * \note When the object is available, the preferred access method is #BKE_editmesh_from_object.
+   */
+  BMEditMesh *edit_mesh = nullptr;
 
   /**
    * A cache of bounds shared between data-blocks with unchanged positions. When changing positions
@@ -125,16 +132,13 @@ struct MeshRuntime {
    */
   void *batch_cache = nullptr;
 
-  /** Cache for derived triangulation of the mesh, accessed with #Mesh::looptris(). */
-  SharedCache<Array<MLoopTri>> looptris_cache;
-  /** Cache for triangle to original face index map, accessed with #Mesh::looptri_faces(). */
-  SharedCache<Array<int>> looptri_faces_cache;
+  /** Cache for derived triangulation of the mesh, accessed with #Mesh::corner_tris(). */
+  SharedCache<Array<int3>> corner_tris_cache;
+  /** Cache for triangle to original face index map, accessed with #Mesh::corner_tri_faces(). */
+  SharedCache<Array<int>> corner_tri_faces_cache;
 
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;
-
-  /** Cache of non-manifold boundary data for Shrink-wrap Target Project. */
-  std::unique_ptr<ShrinkwrapBoundaryData> shrinkwrap_data;
 
   /** Needed in case we need to lazily initialize the mesh. */
   CustomData_MeshMasks cd_mask_extra = {};
@@ -174,9 +178,9 @@ struct MeshRuntime {
 
   /** Lazily computed vertex normals (#Mesh::vert_normals()). */
   SharedCache<Vector<float3>> vert_normals_cache;
-  /** Lazily computed face normals (#Mesh::vert_normals()). */
+  /** Lazily computed face normals (#Mesh::face_normals()). */
   SharedCache<Vector<float3>> face_normals_cache;
-  /** Lazily computed face corner normals (#Mesh::vert_normals()). */
+  /** Lazily computed face corner normals (#Mesh::corner_normals()). */
   SharedCache<Vector<float3>> corner_normals_cache;
 
   /**
@@ -197,6 +201,9 @@ struct MeshRuntime {
   /** Cache of data about vertices not used by faces. See #Mesh::verts_no_face(). */
   SharedCache<LooseVertCache> verts_no_face_cache;
 
+  /** Cache of non-manifold boundary data for shrinkwrap target Project. */
+  SharedCache<ShrinkwrapBoundaryData> shrinkwrap_boundary_cache;
+
   /**
    * A bit vector the size of the number of vertices, set to true for the center vertices of
    * subdivided faces. The values are set by the subdivision surface modifier and used by
@@ -210,6 +217,9 @@ struct MeshRuntime {
    * Otherwise it will be empty.
    */
   BitVector<> subsurf_optimal_display_edges;
+
+  /** Stores weak references to material data blocks. */
+  std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 
   MeshRuntime();
   ~MeshRuntime();

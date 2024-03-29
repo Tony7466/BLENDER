@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "eevee_instance.hh"
 
@@ -18,8 +18,10 @@ namespace blender::eevee {
 void HiZBuffer::sync()
 {
   int2 render_extent = inst_.film.render_extent_get();
+  int2 probe_extent = int2(inst_.sphere_probes.probe_render_extent());
   /* Padding to avoid complexity during down-sampling and screen tracing. */
-  int2 hiz_extent = math::ceil_to_multiple(render_extent, int2(1u << (HIZ_MIP_COUNT - 1)));
+  int2 hiz_extent = math::ceil_to_multiple(math::max(render_extent, probe_extent),
+                                           int2(1u << (HIZ_MIP_COUNT - 1)));
   int2 dispatch_size = math::divide_ceil(hiz_extent, int2(HIZ_GROUP_SIZE));
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
@@ -32,10 +34,16 @@ void HiZBuffer::sync()
 
   data_.uv_scale = float2(render_extent) / float2(hiz_extent);
 
+  /* TODO(@fclem): There might be occasions where we might not want to
+   * copy mip 0 for performance reasons if there is no need for it. */
+  bool update_mip_0 = true;
+
   {
     PassSimple &pass = hiz_update_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(HIZ_UPDATE));
+    pass.specialize_constant(sh, "update_mip_0", update_mip_0);
+    pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */
     pass.bind_texture("depth_tx", &src_tx_, with_filter);
@@ -46,16 +54,15 @@ void HiZBuffer::sync()
     pass.bind_image("out_mip_4", &hiz_mip_ref_[4]);
     pass.bind_image("out_mip_5", &hiz_mip_ref_[5]);
     pass.bind_image("out_mip_6", &hiz_mip_ref_[6]);
-    /* TODO(@fclem): There might be occasions where we might not want to
-     * copy mip 0 for performance reasons if there is no need for it. */
-    pass.push_constant("update_mip_0", true);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
   {
     PassSimple &pass = hiz_update_layer_ps_;
+    GPUShader *sh = inst_.shaders.static_shader_get(HIZ_UPDATE_LAYER);
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(HIZ_UPDATE_LAYER));
+    pass.specialize_constant(sh, "update_mip_0", update_mip_0);
+    pass.shader_set(sh);
     pass.bind_ssbo("finished_tile_counter", atomic_tile_counter_);
     /* TODO(fclem): Should be a parameter to avoid confusion. */
     pass.bind_texture("depth_layered_tx", &src_tx_, with_filter);
@@ -66,9 +73,6 @@ void HiZBuffer::sync()
     pass.bind_image("out_mip_4", &hiz_mip_ref_[4]);
     pass.bind_image("out_mip_5", &hiz_mip_ref_[5]);
     pass.bind_image("out_mip_6", &hiz_mip_ref_[6]);
-    /* TODO(@fclem): There might be occasions where we might not want to
-     * copy mip 0 for performance reasons if there is no need for it. */
-    pass.push_constant("update_mip_0", true);
     pass.push_constant("layer_id", &layer_id_);
     pass.dispatch(int3(dispatch_size, 1));
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
@@ -78,7 +82,7 @@ void HiZBuffer::sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(HIZ_DEBUG));
-    this->bind_resources(debug_draw_ps_);
+    debug_draw_ps_.bind_resources(this->front);
     debug_draw_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   }
 }
@@ -107,10 +111,10 @@ void HiZBuffer::update()
 void HiZBuffer::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (inst_.debug_mode == eDebugMode::DEBUG_HIZ_VALIDATION) {
-    inst_.info =
+    inst_.info +=
         "Debug Mode: HiZ Validation\n"
         " - Red: pixel in front of HiZ tile value.\n"
-        " - Blue: No error.";
+        " - Blue: No error.\n";
     inst_.hiz_buffer.update();
     GPU_framebuffer_bind(view_fb);
     inst_.manager->submit(debug_draw_ps_, view);

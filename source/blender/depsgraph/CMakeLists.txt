@@ -43,6 +43,7 @@ set(SRC
   intern/builder/pipeline.cc
   intern/builder/pipeline_all_objects.cc
   intern/builder/pipeline_compositor.cc
+  intern/builder/pipeline_from_collection.cc
   intern/builder/pipeline_from_ids.cc
   intern/builder/pipeline_render.cc
   intern/builder/pipeline_view_layer.cc
@@ -88,6 +89,7 @@ set(SRC
   intern/depsgraph_tag.cc
   intern/depsgraph_type.cc
   intern/depsgraph_update.cc
+  intern/depsgraph_writeback_sync.cc
 
   DEG_depsgraph.hh
   DEG_depsgraph_build.hh
@@ -95,6 +97,7 @@ set(SRC
   DEG_depsgraph_light_linking.hh
   DEG_depsgraph_physics.hh
   DEG_depsgraph_query.hh
+  DEG_depsgraph_writeback_sync.hh
 
   intern/builder/deg_builder.h
   intern/builder/deg_builder_cache.h
@@ -112,6 +115,7 @@ set(SRC
   intern/builder/pipeline.h
   intern/builder/pipeline_all_objects.h
   intern/builder/pipeline_compositor.h
+  intern/builder/pipeline_from_collection.h
   intern/builder/pipeline_from_ids.h
   intern/builder/pipeline_render.h
   intern/builder/pipeline_view_layer.h
@@ -178,6 +182,5 @@ if(WITH_GTESTS)
   set(TEST_LIB
     bf_depsgraph
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_depsgraph_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+  blender_add_test_suite_lib(depsgraph "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
 endif()

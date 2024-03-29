@@ -16,26 +16,22 @@
 #include "DNA_node_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
-#include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_dlrbTree.h"
 #include "BLI_range.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
-#include "BKE_screen.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "WM_types.hh"
 
@@ -85,7 +81,7 @@ static void nla_action_draw_keyframes(
 
   /* get a list of the keyframes with NLA-scaling applied */
   AnimKeylist *keylist = ED_keylist_create();
-  action_to_keylist(adt, act, keylist, 0, {-FLT_MAX, FLT_MAX});
+  action_to_keylist(adt, act, keylist, 0, {v2d->cur.xmin, v2d->cur.xmax});
 
   if (ED_keylist_is_empty(keylist)) {
     ED_keylist_free(keylist);
@@ -806,11 +802,12 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
        ale = ale->next, ymax -= NLATRACK_STEP(snla))
   {
     float ymin = ymax - NLATRACK_HEIGHT(snla);
-    float ycenter = (ymax + ymin) / 2.0f;
+    float ycenter = (ymax + ymin + 2 * NLATRACK_SKIP - 1) / 2.0f;
 
     /* check if visible */
     if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-        IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+        IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+    {
       /* data to draw depends on the type of track */
       switch (ale->type) {
         case ANIMTYPE_NLATRACK: {
@@ -868,8 +865,11 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
            */
           switch (adt->act_extendmode) {
             case NLASTRIP_EXTEND_HOLD: {
-              immRectf(
-                  pos, v2d->cur.xmin, ymin + NLATRACK_SKIP, v2d->cur.xmax, ymax - NLATRACK_SKIP);
+              immRectf(pos,
+                       v2d->cur.xmin,
+                       ymin + NLATRACK_SKIP,
+                       v2d->cur.xmax,
+                       ymax + NLATRACK_SKIP - 1);
               break;
             }
             case NLASTRIP_EXTEND_HOLD_FORWARD: {
@@ -893,7 +893,7 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
                                     static_cast<bAction *>(ale->data),
                                     ycenter,
                                     ymin + NLATRACK_SKIP,
-                                    ymax - NLATRACK_SKIP);
+                                    ymax + NLATRACK_SKIP - 1);
 
           GPU_blend(GPU_BLEND_NONE);
           break;
@@ -909,27 +909,14 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
 /* *********************************************** */
 /* Track List */
 
-void draw_nla_track_list(const bContext *C, bAnimContext *ac, ARegion *region)
+void draw_nla_track_list(const bContext *C,
+                         bAnimContext *ac,
+                         ARegion *region,
+                         const ListBase /* bAnimListElem */ &anim_data)
 {
-  ListBase anim_data = {nullptr, nullptr};
 
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(ac->sl);
   View2D *v2d = &region->v2d;
-  size_t items;
-
-  /* build list of tracks to draw */
-  eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
-                              ANIMFILTER_LIST_CHANNELS | ANIMFILTER_FCURVESONLY);
-  items = ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
-
-  /* Update max-extent of tracks here (taking into account scrollers):
-   * - this is done to allow the track list to be scrollable, but must be done here
-   *   to avoid regenerating the list again and/or also because tracks list is drawn first
-   * - offset of NLATRACK_HEIGHT*2 is added to the height of the tracks, as first is for
-   *  start of list offset, and the second is as a correction for the scrollers.
-   */
-  int height = NLATRACK_TOT_HEIGHT(ac, items);
-  v2d->tot.ymin = -height;
 
   /* need to do a view-sync here, so that the keys area doesn't jump around
    * (it must copy this) */
@@ -947,7 +934,8 @@ void draw_nla_track_list(const bContext *C, bAnimContext *ac, ARegion *region)
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+      {
         /* draw all tracks using standard channel-drawing API */
         ANIM_channel_draw(ac, ale, ymin, ymax, track_index);
       }
@@ -969,7 +957,8 @@ void draw_nla_track_list(const bContext *C, bAnimContext *ac, ARegion *region)
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+      {
         /* draw all tracks using standard channel-drawing API */
         rctf track_rect;
         BLI_rctf_init(&track_rect, 0, v2d->cur.xmax, ymin, ymax);
@@ -982,9 +971,6 @@ void draw_nla_track_list(const bContext *C, bAnimContext *ac, ARegion *region)
 
     GPU_blend(GPU_BLEND_NONE);
   }
-
-  /* free temporary tracks */
-  ANIM_animdata_freelist(&anim_data);
 }
 
 /* *********************************************** */

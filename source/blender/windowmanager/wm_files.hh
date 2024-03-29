@@ -20,7 +20,7 @@ struct wmOperatorType;
 struct wmWindow;
 struct wmWindowManager;
 
-/* wm_files.cc */
+/* `wm_files.cc`. */
 
 void wm_history_file_read();
 
@@ -115,6 +115,8 @@ void WM_OT_recover_auto_save(wmOperatorType *ot);
 
 void WM_OT_save_as_mainfile(wmOperatorType *ot);
 void WM_OT_save_mainfile(wmOperatorType *ot);
+
+void WM_OT_clear_recent_files(wmOperatorType *ot);
 
 /* `wm_files_link.cc` */
 

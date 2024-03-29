@@ -16,15 +16,14 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_idprop.h"
-#include "BKE_layer.h"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_unit.hh"
 
@@ -35,9 +34,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -510,7 +509,7 @@ static void draw_marker(const uiFontStyle *fstyle,
   draw_marker_name(text_color, fstyle, marker, xpos, xmax, name_y);
 }
 
-static void draw_markers_background(rctf *rect)
+static void draw_markers_background(const rctf *rect)
 {
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
@@ -866,14 +865,14 @@ static void ed_marker_move_update_header(bContext *C, wmOperator *op)
   if (totmark == 1 && selmarker) {
     /* we print current marker value */
     if (use_time) {
-      SNPRINTF(str, TIP_("Marker %.2f offset %s"), FRA2TIME(selmarker->frame), str_ofs);
+      SNPRINTF(str, IFACE_("Marker %.2f offset %s"), FRA2TIME(selmarker->frame), str_ofs);
     }
     else {
-      SNPRINTF(str, TIP_("Marker %d offset %s"), selmarker->frame, str_ofs);
+      SNPRINTF(str, IFACE_("Marker %d offset %s"), selmarker->frame, str_ofs);
     }
   }
   else {
-    SNPRINTF(str, TIP_("Marker offset %s"), str_ofs);
+    SNPRINTF(str, IFACE_("Marker offset %s"), str_ofs);
   }
 
   ED_area_status_text(CTX_wm_area(C), str);
@@ -991,7 +990,8 @@ static void ed_marker_move_apply(bContext *C, wmOperator *op)
 
   ofs = RNA_int_get(op->ptr, "frames");
   for (a = 0, marker = static_cast<TimeMarker *>(mm->markers->first); marker;
-       marker = marker->next) {
+       marker = marker->next)
+  {
     if (marker->flag & SELECT) {
       marker->frame = mm->oldframe[a] + ofs;
       a++;
@@ -1304,6 +1304,7 @@ static int select_timeline_marker_frame(ListBase *markers,
 static void select_marker_camera_switch(
     bContext *C, bool camera, bool extend, ListBase *markers, int cfra)
 {
+  using namespace blender::ed;
 #ifdef DURIAN_CAMERA_SWITCH
   if (camera) {
     BLI_assert(CTX_data_mode_enum(C) == CTX_MODE_OBJECT);
@@ -1329,9 +1330,9 @@ static void select_marker_camera_switch(
         if (marker->frame == cfra) {
           base = BKE_view_layer_base_find(view_layer, marker->camera);
           if (base) {
-            ED_object_base_select(base, eObjectSelect_Mode(sel));
+            object::base_select(base, object::eObjectSelect_Mode(sel));
             if (sel) {
-              ED_object_base_activate(C, base);
+              object::base_activate(C, base);
             }
           }
         }
@@ -1680,6 +1681,20 @@ static int ed_marker_delete_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int ed_marker_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete selected markers?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return ed_marker_delete_exec(C, op);
+}
+
 static void MARKER_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1688,7 +1703,7 @@ static void MARKER_OT_delete(wmOperatorType *ot)
   ot->idname = "MARKER_OT_delete";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = ed_marker_delete_invoke;
   ot->exec = ed_marker_delete_exec;
   ot->poll = ed_markers_poll_selected_no_locked_markers;
 

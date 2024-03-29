@@ -33,7 +33,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* used for iterative_raycast */
 // #define USE_SKIP_LINKS
@@ -258,7 +258,7 @@ static void bvh_insertionsort(BVHNode **a, int lo, int hi, int axis)
   }
 }
 
-static int bvh_partition(BVHNode **a, int lo, int hi, BVHNode *x, int axis)
+static int bvh_partition(BVHNode **a, int lo, int hi, const BVHNode *x, int axis)
 {
   int i = lo, j = hi;
   while (1) {
@@ -1578,7 +1578,8 @@ static void dfs_find_nearest_dfs(BVHNearestData *data, BVHNode *node)
 
       for (i = 0; i != node->node_num; i++) {
         if (calc_nearest_point_squared(data->proj, node->children[i], nearest) >=
-            data->nearest.dist_sq) {
+            data->nearest.dist_sq)
+        {
           continue;
         }
         dfs_find_nearest_dfs(data, node->children[i]);
@@ -1587,7 +1588,8 @@ static void dfs_find_nearest_dfs(BVHNearestData *data, BVHNode *node)
     else {
       for (i = node->node_num - 1; i >= 0; i--) {
         if (calc_nearest_point_squared(data->proj, node->children[i], nearest) >=
-            data->nearest.dist_sq) {
+            data->nearest.dist_sq)
+        {
           continue;
         }
         dfs_find_nearest_dfs(data, node->children[i]);
@@ -1642,7 +1644,8 @@ static void heap_find_nearest_begin(BVHNearestData *data, BVHNode *root)
     heap_find_nearest_inner(data, heap, root);
 
     while (!BLI_heapsimple_is_empty(heap) &&
-           BLI_heapsimple_top_value(heap) < data->nearest.dist_sq) {
+           BLI_heapsimple_top_value(heap) < data->nearest.dist_sq)
+    {
       BVHNode *node = BLI_heapsimple_pop_min(heap);
       heap_find_nearest_inner(data, heap, node);
     }

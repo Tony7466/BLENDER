@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Panel
+from bl_ui.properties_grease_pencil_common import GreasePencilSimplifyPanel
 from bl_ui.space_view3d import (
     VIEW3D_PT_shading_lighting,
     VIEW3D_PT_shading_color,
     VIEW3D_PT_shading_options,
 )
-
-from bl_ui.properties_grease_pencil_common import GreasePencilSimplifyPanel
+from bl_ui.utils import PresetPanel
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 class RenderButtonsPanel:
@@ -112,7 +113,8 @@ class RENDER_PT_color_management_display_settings(RenderButtonsPanel, Panel):
         col = layout.column(align=True)
         sub = col.row()
         sub.active = (not view.view_transform.startswith("Filmic") and not view.view_transform.startswith("AgX") and not
-                      view.view_transform.startswith("False Color"))
+                      view.view_transform.startswith("False Color") and not
+                      view.view_transform.startswith("Khronos PBR Neutral"))
         sub.prop(view, "use_hdr_view")
 
 
@@ -196,6 +198,7 @@ class RENDER_PT_eevee_next_horizon_scan(RenderButtonsPanel, Panel):
         col.prop(props, "horizon_quality", text="Precision")
         col.prop(props, "horizon_thickness", text="Thickness")
         col.prop(props, "horizon_bias", text="Bias")
+        col.prop(props, "horizon_resolution", text="Resolution")
 
 
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
@@ -209,23 +212,24 @@ class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
 
     def draw_header(self, context):
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
         self.layout.prop(props, "use_motion_blur", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
+        eevee_props = scene.eevee
 
         layout.active = props.use_motion_blur
         col = layout.column()
         col.prop(props, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
         col.separator()
-        col.prop(props, "motion_blur_depth_scale")
-        col.prop(props, "motion_blur_max")
-        col.prop(props, "motion_blur_steps", text="Steps")
+        col.prop(eevee_props, "motion_blur_depth_scale")
+        col.prop(eevee_props, "motion_blur_max")
+        col.prop(eevee_props, "motion_blur_steps", text="Steps")
 
 
 class RENDER_PT_eevee_next_motion_blur(RenderButtonsPanel, Panel):
@@ -239,22 +243,24 @@ class RENDER_PT_eevee_next_motion_blur(RenderButtonsPanel, Panel):
 
     def draw_header(self, context):
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
         self.layout.prop(props, "use_motion_blur", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
+        eevee_props = scene.eevee
 
         layout.active = props.use_motion_blur
         col = layout.column()
         col.prop(props, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
         col.separator()
-        col.prop(props, "motion_blur_depth_scale")
-        col.prop(props, "motion_blur_steps", text="Steps")
+        col.prop(eevee_props, "motion_blur_depth_scale")
+        col.prop(eevee_props, "motion_blur_max")
+        col.prop(eevee_props, "motion_blur_steps", text="Steps")
 
 
 class RENDER_PT_eevee_next_motion_blur_curve(RenderButtonsPanel, Panel):
@@ -555,6 +561,13 @@ class RENDER_PT_eevee_screen_space_reflections(RenderButtonsPanel, Panel):
         col.prop(props, "ssr_firefly_fac")
 
 
+class RENDER_PT_eevee_next_raytracing_presets(PresetPanel, Panel):
+    bl_label = "Raytracing Presets"
+    preset_subdir = "eevee/raytracing"
+    preset_operator = "script.execute_preset"
+    preset_add_operator = "render.eevee_raytracing_preset_add"
+
+
 class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
     bl_label = "Raytracing"
     bl_options = {'DEFAULT_CLOSED'}
@@ -563,6 +576,13 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
     @classmethod
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw_header(self, context):
+        props = context.scene.eevee
+        self.layout.prop(props, "use_raytracing", text="")
+
+    def draw_header_preset(self, _context):
+        RENDER_PT_eevee_next_raytracing_presets.draw_panel_header(self.layout)
 
     def draw(self, context):
         layout = self.layout
@@ -707,6 +727,9 @@ class RENDER_PT_eevee_next_shadows(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(props, "shadow_normal_bias", text="Normal Bias")
 
+        col = layout.column()
+        col.prop(props, "use_shadow_jittered_viewport", text="Jittered Transparency (Viewport)")
+
 
 class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
     bl_label = "Sampling"
@@ -815,7 +838,7 @@ class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
 
         cache_info = scene.eevee.gi_cache_info
         if cache_info:
-            col.label(text=cache_info)
+            col.label(text=rpt_(cache_info), translate=False)
 
         col.prop(props, "gi_auto_bake")
 
@@ -1017,6 +1040,28 @@ class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
         layout.prop(rd, "use_high_quality_normals")
 
 
+class RENDER_PT_eevee_performance_viewport(RenderButtonsPanel, Panel):
+    bl_label = "Viewport"
+    bl_parent_id = "RENDER_PT_eevee_performance"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        scene = context.scene
+        rd = scene.render
+
+        col = layout.column()
+        col.prop(rd, "preview_pixel_size", text="Pixel Size")
+
+
 class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
     bl_label = "Grease Pencil"
     bl_options = {'DEFAULT_CLOSED'}
@@ -1162,6 +1207,9 @@ class RENDER_PT_simplify_viewport(RenderButtonsPanel, Panel):
             col = flow.column()
             col.prop(rd, "simplify_shadows", text="Shadow Resolution")
 
+        col = flow.column()
+        col.prop(rd, "use_simplify_normals", text="Normals")
+
 
 class RENDER_PT_simplify_render(RenderButtonsPanel, Panel):
     bl_label = "Render"
@@ -1240,6 +1288,7 @@ classes = (
     RENDER_PT_eevee_subsurface_scattering,
     RENDER_PT_eevee_screen_space_reflections,
     RENDER_PT_eevee_next_horizon_scan,
+    RENDER_PT_eevee_next_raytracing_presets,
     RENDER_PT_eevee_next_raytracing,
     RENDER_PT_eevee_next_screen_trace,
     RENDER_PT_eevee_next_denoise,
@@ -1251,6 +1300,7 @@ classes = (
     RENDER_PT_eevee_next_volumes_lighting,
     RENDER_PT_eevee_next_volumes_shadows,
     RENDER_PT_eevee_performance,
+    RENDER_PT_eevee_performance_viewport,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
     RENDER_PT_eevee_next_lights,

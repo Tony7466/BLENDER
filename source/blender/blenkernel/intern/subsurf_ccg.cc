@@ -23,7 +23,6 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_blenlib.h"
 #include "BLI_memarena.h"
 #include "BLI_ordered_edge.hh"
 #include "BLI_set.hh"
@@ -34,13 +33,10 @@
 
 #include "BKE_ccg.h"
 #include "BKE_cdderivedmesh.h"
-#include "BKE_mesh.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
-#include "BKE_object.hh"
-#include "BKE_paint.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_subsurf.hh"
 
 #include "CCGSubSurf.h"
@@ -493,7 +489,7 @@ static float *get_ss_weights(WeightTable *wtable, int gridCuts, int faceLen)
           w2 = (1.0f - fx + fac2 * fx * -fac) * (fy);
           w4 = (fx) * (1.0f - fy + -fac2 * fy * fac);
 
-          /* these values aren't used for tri's and cause divide by zero */
+          /* These values aren't used for triangles and cause divide by zero. */
           if (faceLen > 3) {
             fac2 = 1.0f - (w1 + w2 + w4);
             fac2 = fac2 / float(faceLen - 3);
@@ -819,13 +815,13 @@ static void ccgDM_copyFinalVertArray(DerivedMesh *dm, float (*r_positions)[3])
 }
 
 /* utility function */
-BLI_INLINE void ccgDM_to_MEdge(vec2i *edge, const int v1, const int v2)
+BLI_INLINE void ccgDM_to_MEdge(blender::int2 *edge, const int v1, const int v2)
 {
   edge->x = v1;
   edge->y = v2;
 }
 
-static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, vec2i *edges)
+static void ccgDM_copyFinalEdgeArray(DerivedMesh *dm, blender::int2 *edges)
 {
   CCGDerivedMesh *ccgdm = (CCGDerivedMesh *)dm;
   CCGSubSurf *ss = ccgdm->ss;
@@ -1296,14 +1292,6 @@ static void ccgDM_getGridKey(DerivedMesh *dm, CCGKey *key)
   CCG_key_top_level(key, ccgdm->ss);
 }
 
-static BLI_bitmap **ccgDM_getGridHidden(DerivedMesh *dm)
-{
-  CCGDerivedMesh *ccgdm = (CCGDerivedMesh *)dm;
-
-  ccgdm_create_grids(dm);
-  return ccgdm->gridHidden;
-}
-
 static void set_default_ccgdm_callbacks(CCGDerivedMesh *ccgdm)
 {
   ccgdm->dm.getNumVerts = ccgDM_getNumVerts;
@@ -1325,7 +1313,6 @@ static void set_default_ccgdm_callbacks(CCGDerivedMesh *ccgdm)
   ccgdm->dm.getGridData = ccgDM_getGridData;
   ccgdm->dm.getGridOffset = ccgDM_getGridOffset;
   ccgdm->dm.getGridKey = ccgDM_getGridKey;
-  ccgdm->dm.getGridHidden = ccgDM_getGridHidden;
 
   ccgdm->dm.release = ccgDM_release;
 }

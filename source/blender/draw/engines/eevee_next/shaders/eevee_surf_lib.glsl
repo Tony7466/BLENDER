@@ -63,8 +63,7 @@ void init_globals_curves()
     /* Random cosine normal distribution on the hair surface. */
     float noise = utility_tx_fetch(utility_tx, gl_FragCoord.xy, UTIL_BLUE_NOISE_LAYER).x;
 #      ifdef EEVEE_SAMPLING_DATA
-    /* Needs to check for SAMPLING_DATA,
-     * otherwise Surfel and World (?!?!) shader validation fails. */
+    /* Needs to check for SAMPLING_DATA, otherwise surfel shader validation fails. */
     noise = fract(noise + sampling_rng_1D_get(SAMPLING_CURVES_U));
 #      endif
     cos_theta = noise * 2.0 - 1.0;
@@ -152,10 +151,14 @@ void init_interface()
 #if defined(GPU_VERTEX_SHADER) && defined(MAT_SHADOW)
 void shadow_viewport_layer_set(int view_id, int lod)
 {
+#  ifdef SHADOW_UPDATE_ATOMIC_RASTER
+  shadow_iface.shadow_view_id = view_id;
+#  else
   /* We still render to a layered frame-buffer in the case of Metal + Tile Based Renderer.
    * Since it needs correct depth buffering, each view needs to not overlap each others.
    * It doesn't matter much for other platform, so we use that as a way to pass the view id. */
   gpu_Layer = view_id;
+#  endif
   gpu_ViewportIndex = lod;
 }
 #endif
@@ -163,6 +166,10 @@ void shadow_viewport_layer_set(int view_id, int lod)
 #if defined(GPU_FRAGMENT_SHADER) && defined(MAT_SHADOW)
 int shadow_view_id_get()
 {
+#  ifdef SHADOW_UPDATE_ATOMIC_RASTER
+  return shadow_iface.shadow_view_id;
+#  else
   return gpu_Layer;
+#  endif
 }
 #endif

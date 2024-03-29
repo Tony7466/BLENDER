@@ -12,10 +12,10 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "GPU_debug.h"
-#include "GPU_framebuffer.h"
+#include "GPU_debug.hh"
+#include "GPU_framebuffer.hh"
 #include "GPU_select.hh"
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -23,9 +23,9 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "gpu_select_private.h"
+#include "gpu_select_private.hh"
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* #define DEBUG_PRINT */
 
@@ -515,7 +515,7 @@ bool gpu_select_pick_load_id(uint id, bool end)
         ps->gpu.rect_depth = depth_buf_malloc(ps->src.rect_len);
       }
 
-      SWAP(DepthBufCache *, ps->gpu.rect_depth, ps->gpu.rect_depth_test);
+      std::swap(ps->gpu.rect_depth, ps->gpu.rect_depth_test);
 
       if (g_pick_state.mode == GPU_SELECT_PICK_ALL) {
         /* (fclem) This is to be on the safe side. I don't know if this is required. */

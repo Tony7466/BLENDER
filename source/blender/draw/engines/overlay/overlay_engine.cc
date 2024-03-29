@@ -8,8 +8,8 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -17,11 +17,11 @@
 
 #include "UI_interface.hh"
 
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "DNA_space_types.h"
 
@@ -404,6 +404,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     }
   }
 
+  if (is_preview && (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) != 0) {
+    OVERLAY_viewer_attribute_text(*ob);
+  }
+
   if (ob->type == OB_VOLUME) {
     OVERLAY_volume_cache_populate(data, ob);
   }
@@ -440,9 +444,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_curves_cache_populate(data, ob);
         break;
       case OB_GREASE_PENCIL:
-        if (U.experimental.use_grease_pencil_version3) {
-          OVERLAY_edit_grease_pencil_cache_populate(data, ob);
-        }
+        OVERLAY_edit_grease_pencil_cache_populate(data, ob);
         break;
     }
   }

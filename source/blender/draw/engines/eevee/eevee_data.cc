@@ -8,21 +8,21 @@
  * All specific data handler for Objects, Lights, ViewLayers, ...
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_memblock.h"
 
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_vertex_buffer.h"
+#include "GPU_vertex_buffer.hh"
 
 #include "eevee_lightcache.h"
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 /* Motion Blur data. */
 

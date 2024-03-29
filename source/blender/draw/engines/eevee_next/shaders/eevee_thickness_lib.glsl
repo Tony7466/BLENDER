@@ -23,7 +23,7 @@ void thickness_from_shadow_single(
 
   LightVector lv = light_vector_get(light, is_directional, P);
   /* Note that we reverse the surface normal to reject surfaces facing the light. */
-  float attenuation = light_attenuation_surface(light, is_directional, Ng, true, lv);
+  float attenuation = light_attenuation_surface(light, is_directional, Ng, lv).y;
   if ((attenuation < LIGHT_ATTENUATION_THRESHOLD)) {
     return;
   }
@@ -44,7 +44,8 @@ void thickness_from_shadow_single(
 float thickness_from_shadow(vec3 P, vec3 Ng, float vPz)
 {
   /* Bias surface inward to avoid shadow map aliasing. */
-  P += -Ng * uniform_buf.shadow.normal_bias;
+  float normal_offset = uniform_buf.shadow.normal_bias;
+  P += -Ng * normal_offset;
 
   vec2 thickness = vec2(0.0);
 

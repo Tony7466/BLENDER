@@ -14,7 +14,7 @@
 #include "BLI_math_matrix.hh"
 
 #include "BKE_curve.hh"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_mesh.h"
 #include "BKE_object.hh"
 #include "BKE_volume.hh"
@@ -26,7 +26,7 @@
 
 #include "draw_handle.hh"
 #include "draw_manager.hh"
-#include "draw_shader_shared.h"
+#include "draw_shader_shared.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name ObjectMatrices
@@ -34,8 +34,8 @@
 
 inline void ObjectMatrices::sync(const Object &object)
 {
-  model.view() = blender::float4x4_view(object.object_to_world);
-  model_inverse.view() = blender::float4x4_view(object.world_to_object);
+  model = object.object_to_world();
+  model_inverse = object.world_to_object();
 }
 
 inline void ObjectMatrices::sync(const float4x4 &model_matrix)
@@ -103,10 +103,12 @@ inline void ObjectInfos::sync(const blender::draw::ObjectRef ref, bool is_active
 
   switch (GS(reinterpret_cast<ID *>(ref.object->data)->name)) {
     case ID_VO: {
-      const blender::Bounds<float3> bounds = *BKE_volume_min_max(
+      std::optional<const blender::Bounds<float3>> bounds = BKE_volume_min_max(
           static_cast<const Volume *>(ref.object->data));
-      orco_add = blender::math::midpoint(bounds.min, bounds.max);
-      orco_mul = (bounds.max - bounds.min) * 0.5f;
+      if (bounds) {
+        orco_add = blender::math::midpoint(bounds->min, bounds->max);
+        orco_mul = (bounds->max - bounds->min) * 0.5f;
+      }
       break;
     }
     case ID_ME: {

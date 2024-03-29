@@ -6,14 +6,15 @@
  * \ingroup bli
  */
 
-#include <stdlib.h> /* malloc */
-#include <string.h>
+#include <algorithm>
+#include <cstdlib> /* malloc */
+#include <cstring>
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <errno.h>
+#include <cerrno>
 
 #include <zlib.h>
 #include <zstd.h>
@@ -45,7 +46,7 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
-#include "BLI_sys_types.h" /* for intptr_t support */
+#include "BLI_sys_types.h" /* For `intptr_t` support. */
 #include "BLI_utildefines.h"
 
 /** Sizes above this must be allocated. */
@@ -106,7 +107,7 @@ int64_t BLI_read(int fd, void *buf, size_t nbytes)
                                buf,
 #ifdef WIN32
                                /* Read must not exceed INT_MAX on WIN32, clamp. */
-                               MIN2(nbytes, INT_MAX)
+                               std::min<size_t>(nbytes, INT_MAX)
 #else
                                nbytes
 #endif
@@ -291,19 +292,19 @@ bool BLI_file_is_writable(const char *filepath)
 {
   bool writable;
   if (BLI_access(filepath, W_OK) == 0) {
-    /* file exists and I can write to it */
+    /* File exists and I can write to it. */
     writable = true;
   }
   else if (errno != ENOENT) {
-    /* most likely file or containing directory cannot be accessed */
+    /* Most likely file or containing directory cannot be accessed. */
     writable = false;
   }
   else {
-    /* file doesn't exist -- check I can create it in parent directory */
+    /* File doesn't exist -- check I can create it in parent directory. */
     char parent[FILE_MAX];
     BLI_path_split_dir_part(filepath, parent, sizeof(parent));
 #ifdef WIN32
-    /* windows does not have X_OK */
+    /* Windows does not have X_OK. */
     writable = BLI_access(parent, W_OK) == 0;
 #else
     writable = BLI_access(parent, X_OK | W_OK) == 0;
@@ -320,7 +321,7 @@ bool BLI_file_touch(const char *filepath)
     int c = getc(f);
 
     if (c == EOF) {
-      /* Empty file, reopen in truncate write mode... */
+      /* Empty file, reopen in truncate write mode. */
       fclose(f);
       f = BLI_fopen(filepath, "w+b");
     }
@@ -476,18 +477,29 @@ int BLI_rename(const char *from, const char *to)
   return urename(from, to, false);
 #elif defined(__APPLE__)
   return renamex_np(from, to, RENAME_EXCL);
-#elif defined(__GLIBC_PREREQ)
-#  if __GLIBC_PREREQ(2, 28)
-  /* Most common Linux cases. */
-  return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
-#  endif
 #else
-  /* At least all BSD's currently. */
+
+#  if defined(__GLIBC_PREREQ)
+#    if __GLIBC_PREREQ(2, 28)
+  /* Most common Linux case, use `RENAME_NOREPLACE` when available. */
+  {
+    const int ret = renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
+    if (!(ret < 0 && errno == EINVAL)) {
+      return ret;
+    }
+    /* Most likely a file-system that doesn't support RENAME_NOREPLACE.
+     * (For example NFS, Samba, exFAT, NTFS, etc)
+     * Fall through to use the generic UNIX non atomic operation, see #116049. */
+  }
+#    endif /* __GLIBC_PREREQ(2, 28) */
+#  endif   /* __GLIBC_PREREQ */
+
+  /* All BSD's currently & fallback for Linux. */
   if (BLI_exists(to)) {
     return 1;
   }
   return rename(from, to);
-#endif
+#endif     /* !defined(WIN32) && !defined(__APPLE__) */
 }
 
 int BLI_rename_overwrite(const char *from, const char *to)
@@ -535,7 +547,7 @@ void BLI_get_short_name(char short_name[256], const char *filepath)
   GetShortPathNameW(filepath_16, short_name_16, 256);
 
   for (i = 0; i < 256; i++) {
-    short_name[i] = (char)short_name_16[i];
+    short_name[i] = char(short_name_16[i]);
   }
 
   UTF16_UN_ENCODE(filepath);
@@ -722,6 +734,9 @@ int BLI_delete(const char *path, bool dir, bool recursive)
 
   BLI_assert(!BLI_path_is_rel(path));
 
+  /* Not an error but avoid ambiguous arguments (recursive file deletion isn't meaningful). */
+  BLI_assert(!(dir == false && recursive == true));
+
   if (recursive) {
     err = delete_recursive(path);
   }
@@ -857,65 +872,114 @@ enum {
 
 typedef int (*RecursiveOp_Callback)(const char *from, const char *to);
 
-/* appending of filename to dir (ensures for buffer size before appending) */
-static void join_dirfile_alloc(char **dst, size_t *alloc_len, const char *dir, const char *file)
+[[maybe_unused]] static bool path_has_trailing_slash(const char *path)
 {
-  size_t len = strlen(dir) + strlen(file) + 1;
-
-  if (*dst == nullptr) {
-    *dst = MEM_cnew_array<char>(len + 1, "join_dirfile_alloc path");
+  const int path_len = strlen(path);
+  if (path_len == 0) {
+    return false;
   }
-  else if (*alloc_len < len) {
-    *dst = static_cast<char *>(MEM_reallocN(*dst, len + 1));
-  }
-
-  *alloc_len = len;
-
-  BLI_path_join(*dst, len + 1, dir, file);
+  return BLI_path_slash_is_native_compat(path[path_len - 1]);
 }
 
-static char *strip_last_slash(const char *dirpath)
+static size_t path_len_no_trailing_slash(const char *path)
 {
-  char *result = BLI_strdup(dirpath);
-  BLI_path_slash_rstrip(result);
+  int len = strlen(path);
+  int len_found = len;
+  while (len) {
+    len--;
+    if (!BLI_path_slash_is_native_compat(path[len])) {
+      break;
+    }
+    len_found = len;
+  }
+  return len_found;
+}
 
-  return result;
+/* -------------------------------------------------------------------- */
+/** \name Simple String Buffer
+ * \{ */
+
+/**
+ * Simple string buffer type, needed when guarded-malloc can't be used.
+ */
+struct StrBuf {
+  char *str;
+  size_t str_len;
+  size_t str_len_alloc;
+};
+
+static void strbuf_init(StrBuf *buf, const char *str, size_t str_len, size_t str_len_alloc)
+{
+  str_len_alloc = std::max(str_len + 1, str_len_alloc);
+  buf->str = static_cast<char *>(malloc(str_len_alloc));
+  memcpy(buf->str, str, str_len);
+  buf->str[str_len] = '\0';
+  buf->str_len = str_len;
+  buf->str_len_alloc = str_len_alloc;
+}
+
+static void strbuf_free(StrBuf *buf)
+{
+  free(buf->str);
 }
 
 /**
- * Scans \a startfrom, generating a corresponding destination name for each item found by
- * prefixing it with startto, recursively scanning subdirectories, and invoking the specified
- * callbacks for files and subdirectories found as appropriate.
- *
- * \param startfrom: Top-level source path.
- * \param startto: Top-level destination path.
- * \param callback_dir_pre: Optional, to be invoked before entering a subdirectory, can return
- *                          RecursiveOp_Callback_StopRecurs to skip the subdirectory.
- * \param callback_file: Optional, to be invoked on each file found.
- * \param callback_dir_post: optional, to be invoked after leaving a subdirectory.
- * \return
+ * Appending of filename to dir (ensures for buffer size before appending).
  */
-static int recursive_operation(const char *startfrom,
-                               const char *startto,
-                               RecursiveOp_Callback callback_dir_pre,
-                               RecursiveOp_Callback callback_file,
-                               RecursiveOp_Callback callback_dir_post)
+static void strbuf_append_path(StrBuf *buf, const char *filename)
 {
+  BLI_assert(strlen(buf->str) == buf->str_len);
+  BLI_assert(!path_has_trailing_slash(buf->str));
+  bool has_slash = (buf->str_len > 0 &&
+                    BLI_path_slash_is_native_compat(buf->str[buf->str_len - 1]));
+  const size_t filename_len = strlen(filename);
+  const size_t len = buf->str_len + (has_slash ? 0 : 1) + filename_len;
+
+  if (buf->str_len_alloc < len) {
+    buf->str = static_cast<char *>(realloc(static_cast<void *>(buf->str), len + 1));
+    buf->str_len_alloc = len;
+  }
+  if (has_slash == false) {
+    buf->str[buf->str_len++] = SEP;
+  }
+  memcpy(buf->str + buf->str_len, filename, filename_len + 1);
+  buf->str_len += filename_len;
+  BLI_assert(buf->str_len <= buf->str_len_alloc);
+}
+
+static void strbuf_trim(StrBuf *buf, size_t len)
+{
+  BLI_assert(len <= buf->str_len);
+  buf->str_len = len;
+  buf->str[len] = '\0';
+}
+
+/** \} */
+
+static int recursive_operation_impl(StrBuf *src_buf,
+                                    StrBuf *dst_buf,
+                                    RecursiveOp_Callback callback_dir_pre,
+                                    RecursiveOp_Callback callback_file,
+                                    RecursiveOp_Callback callback_dir_post)
+{
+  /* NOTE(@ideasman42): This function must *not* use any `MEM_*` functions
+   * as it's used to purge temporary files on when the processed is aborted,
+   * in this case the `MEM_*` state may have already been freed (memory usage tracking for e.g.)
+   * causing freed memory access, potentially crashing. This constraint doesn't apply to the
+   * callbacks themselves - unless they might also be called when aborting. */
   struct stat st;
-  char *from = nullptr, *to = nullptr;
-  char *from_path = nullptr, *to_path = nullptr;
+  int ret = 0;
+
   dirent **dirlist = nullptr;
-  size_t from_alloc_len = -1, to_alloc_len = -1;
-  int i, n = 0, ret = 0;
+  int dirlist_num = 0;
+
+  /* Check there's no trailing slash in file paths. */
+  BLI_assert(!path_has_trailing_slash(src_buf->str));
+  BLI_assert(!(dst_buf && path_has_trailing_slash(dst_buf->str)));
 
   do { /* once */
-    /* ensure there's no trailing slash in file path */
-    from = strip_last_slash(startfrom);
-    if (startto) {
-      to = strip_last_slash(startto);
-    }
 
-    ret = lstat(from, &st);
+    ret = lstat(src_buf->str, &st);
     if (ret < 0) {
       /* source wasn't found, nothing to operate with */
       break;
@@ -925,7 +989,7 @@ static int recursive_operation(const char *startfrom,
       /* source isn't a directory, can't do recursive walking for it,
        * so just call file callback and leave */
       if (callback_file != nullptr) {
-        ret = callback_file(from, to);
+        ret = callback_file(src_buf->str, dst_buf ? dst_buf->str : nullptr);
         if (ret != RecursiveOp_Callback_OK) {
           ret = -1;
         }
@@ -933,8 +997,8 @@ static int recursive_operation(const char *startfrom,
       break;
     }
 
-    n = scandir(startfrom, &dirlist, nullptr, alphasort);
-    if (n < 0) {
+    dirlist_num = scandir(src_buf->str, &dirlist, nullptr, alphasort);
+    if (dirlist_num < 0) {
       /* error opening directory for listing */
       perror("scandir");
       ret = -1;
@@ -942,7 +1006,7 @@ static int recursive_operation(const char *startfrom,
     }
 
     if (callback_dir_pre != nullptr) {
-      ret = callback_dir_pre(from, to);
+      ret = callback_dir_pre(src_buf->str, dst_buf ? dst_buf->str : nullptr);
       if (ret != RecursiveOp_Callback_OK) {
         if (ret == RecursiveOp_Callback_StopRecurs) {
           /* callback requested not to perform recursive walking, not an error */
@@ -954,17 +1018,19 @@ static int recursive_operation(const char *startfrom,
         break;
       }
     }
+    const size_t src_len = src_buf->str_len;
+    const size_t dst_len = dst_buf ? dst_buf->str_len : 0;
 
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < dirlist_num; i++) {
       const dirent *const dirent = dirlist[i];
 
       if (FILENAME_IS_CURRPAR(dirent->d_name)) {
         continue;
       }
 
-      join_dirfile_alloc(&from_path, &from_alloc_len, from, dirent->d_name);
-      if (to) {
-        join_dirfile_alloc(&to_path, &to_alloc_len, to, dirent->d_name);
+      strbuf_append_path(src_buf, dirent->d_name);
+      if (dst_buf) {
+        strbuf_append_path(dst_buf, dirent->d_name);
       }
 
       bool is_dir;
@@ -972,9 +1038,7 @@ static int recursive_operation(const char *startfrom,
 #  ifdef __HAIKU__
       {
         struct stat st_dir;
-        char filepath[FILE_MAX];
-        BLI_path_join(filepath, sizeof(filepath), startfrom, dirent->d_name, NULL);
-        lstat(filepath, &st_dir);
+        lstat(src_buf->str, &st_dir);
         is_dir = S_ISDIR(st_dir.st_mode);
       }
 #  else
@@ -983,14 +1047,18 @@ static int recursive_operation(const char *startfrom,
 
       if (is_dir) {
         /* Recurse into sub-directories. */
-        ret = recursive_operation(
-            from_path, to_path, callback_dir_pre, callback_file, callback_dir_post);
+        ret = recursive_operation_impl(
+            src_buf, dst_buf, callback_dir_pre, callback_file, callback_dir_post);
       }
       else if (callback_file != nullptr) {
-        ret = callback_file(from_path, to_path);
+        ret = callback_file(src_buf->str, dst_buf ? dst_buf->str : nullptr);
         if (ret != RecursiveOp_Callback_OK) {
           ret = -1;
         }
+      }
+      strbuf_trim(src_buf, src_len);
+      if (dst_buf) {
+        strbuf_trim(dst_buf, dst_len);
       }
 
       if (ret != 0) {
@@ -1002,7 +1070,7 @@ static int recursive_operation(const char *startfrom,
     }
 
     if (callback_dir_post != nullptr) {
-      ret = callback_dir_post(from, to);
+      ret = callback_dir_post(src_buf->str, dst_buf ? dst_buf->str : nullptr);
       if (ret != RecursiveOp_Callback_OK) {
         ret = -1;
       }
@@ -1010,25 +1078,62 @@ static int recursive_operation(const char *startfrom,
   } while (false);
 
   if (dirlist != nullptr) {
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < dirlist_num; i++) {
       free(dirlist[i]);
     }
     free(dirlist);
   }
-  if (from_path != nullptr) {
-    MEM_freeN(from_path);
-  }
-  if (to_path != nullptr) {
-    MEM_freeN(to_path);
-  }
-  if (from != nullptr) {
-    MEM_freeN(from);
-  }
-  if (to != nullptr) {
-    MEM_freeN(to);
-  }
 
   return ret;
+}
+
+/**
+ * Scans \a path_src, generating a corresponding destination name for each item found by
+ * prefixing it with path_dst, recursively scanning subdirectories, and invoking the specified
+ * callbacks for files and subdirectories found as appropriate.
+ *
+ * \note Symbolic links are *not* followed, even when `path_src` links to a directory,
+ * it wont be recursed down. Support for this could be added.
+ *
+ * \param path_src: Top-level source path.
+ * \param path_dst: Top-level destination path.
+ * \param callback_dir_pre: Optional, to be invoked before entering a subdirectory,
+ * can return #RecursiveOp_Callback_StopRecurs to skip the subdirectory.
+ * \param callback_file: Optional, to be invoked on each file found.
+ * \param callback_dir_post: Optional, to be invoked after leaving a subdirectory.
+ * \return Zero on success.
+ */
+static int recursive_operation(const char *path_src,
+                               const char *path_dst,
+                               RecursiveOp_Callback callback_dir_pre,
+                               RecursiveOp_Callback callback_file,
+                               RecursiveOp_Callback callback_dir_post)
+
+{
+  StrBuf src_buf_stack = {};
+  StrBuf dst_buf_stack = {};
+  StrBuf *src_buf = &src_buf_stack;
+  StrBuf *dst_buf = path_dst ? &dst_buf_stack : nullptr;
+#  ifndef NDEBUG
+  /* Don't over allocate to ensure resizing works as expected. */
+  const size_t str_len_over_alloc = 0;
+#  else
+  const size_t str_len_over_alloc = FILE_MAX;
+#  endif
+
+  strbuf_init(src_buf, path_src, path_len_no_trailing_slash(path_src), str_len_over_alloc);
+  if (dst_buf) {
+    strbuf_init(dst_buf, path_dst, path_len_no_trailing_slash(path_dst), str_len_over_alloc);
+  }
+
+  const int result = recursive_operation_impl(
+      src_buf, dst_buf, callback_dir_pre, callback_file, callback_dir_post);
+
+  strbuf_free(src_buf);
+  if (dst_buf) {
+    strbuf_free(dst_buf);
+  }
+  return result;
 }
 
 static int delete_callback_post(const char *from, const char * /*to*/)
@@ -1066,8 +1171,8 @@ static int delete_soft(const char *file, const char **error_message)
 
   Class NSStringClass = objc_getClass("NSString");
   SEL stringWithUTF8StringSel = sel_registerName("stringWithUTF8String:");
-  id pathString = ((
-      id(*)(Class, SEL, const char *))objc_msgSend)(NSStringClass, stringWithUTF8StringSel, file);
+  id pathString = ((id(*)(Class, SEL, const char *))objc_msgSend)(
+      NSStringClass, stringWithUTF8StringSel, file);
 
   Class NSFileManagerClass = objc_getClass("NSFileManager");
   SEL defaultManagerSel = sel_registerName("defaultManager");
@@ -1078,8 +1183,8 @@ static int delete_soft(const char *file, const char **error_message)
   id nsurl = ((id(*)(Class, SEL, id))objc_msgSend)(NSURLClass, fileURLWithPathSel, pathString);
 
   SEL trashItemAtURLSel = sel_registerName("trashItemAtURL:resultingItemURL:error:");
-  BOOL deleteSuccessful = ((
-      BOOL(*)(id, SEL, id, id, id))objc_msgSend)(fileManager, trashItemAtURLSel, nsurl, nil, nil);
+  BOOL deleteSuccessful = ((BOOL(*)(id, SEL, id, id, id))objc_msgSend)(
+      fileManager, trashItemAtURLSel, nsurl, nil, nil);
 
   if (deleteSuccessful) {
     ret = 0;
@@ -1123,7 +1228,7 @@ static int delete_soft(const char *file, const char **error_message)
   int pid = fork();
 
   if (pid != 0) {
-    /* Parent process */
+    /* Parent process. */
     int wstatus = 0;
 
     waitpid(pid, &wstatus, 0);
@@ -1144,7 +1249,7 @@ static int delete_soft(const char *file, const char **error_message)
   execvp(args[0], (char **)args);
 
   *error_message = "Forking process failed.";
-  return -1; /* This should only be reached if execvp fails and stack isn't replaced. */
+  return -1; /* This should only be reached if `execvp` fails and stack isn't replaced. */
 }
 #  endif
 
@@ -1179,6 +1284,8 @@ int BLI_access(const char *filepath, int mode)
 int BLI_delete(const char *path, bool dir, bool recursive)
 {
   BLI_assert(!BLI_path_is_rel(path));
+  /* Not an error but avoid ambiguous arguments (recursive file deletion isn't meaningful). */
+  BLI_assert(!(dir == false && recursive == true));
 
   if (recursive) {
     return recursive_operation(path, nullptr, nullptr, delete_single_file, delete_callback_post);
@@ -1248,13 +1355,13 @@ static int copy_callback_pre(const char *from, const char *to)
     return RecursiveOp_Callback_Error;
   }
 
-  /* create a directory */
+  /* Create a directory. */
   if (mkdir(to, st.st_mode)) {
     perror("mkdir");
     return RecursiveOp_Callback_Error;
   }
 
-  /* set proper owner and group on new directory */
+  /* Set proper owner and group on new directory. */
   if (chown(to, st.st_uid, st.st_gid)) {
     perror("chown");
     return RecursiveOp_Callback_Error;
@@ -1281,12 +1388,12 @@ static int copy_single_file(const char *from, const char *to)
   }
 
   if (S_ISLNK(st.st_mode)) {
-    /* symbolic links should be copied in special way */
+    /* Symbolic links should be copied in special way. */
     char *link_buffer;
     int need_free;
     int64_t link_len;
 
-    /* get large enough buffer to read link content */
+    /* Get large enough buffer to read link content. */
     if ((st.st_size + 1) < sizeof(buf)) {
       link_buffer = buf;
       need_free = 0;
@@ -1324,7 +1431,7 @@ static int copy_single_file(const char *from, const char *to)
     return RecursiveOp_Callback_OK;
   }
   if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode) || S_ISFIFO(st.st_mode) || S_ISSOCK(st.st_mode)) {
-    /* copy special type of file */
+    /* Copy special type of file. */
     if (mknod(to, st.st_mode, st.st_rdev)) {
       perror("mknod");
       return RecursiveOp_Callback_Error;
@@ -1408,7 +1515,8 @@ static const char *path_destination_ensure_filename(const char *path_src,
                                                     size_t buf_size)
 {
   if (BLI_is_dir(path_dst)) {
-    char *path_src_no_slash = strip_last_slash(path_src);
+    char *path_src_no_slash = BLI_strdup(path_src);
+    BLI_path_slash_rstrip(path_src_no_slash);
     const char *filename_src = BLI_path_basename(path_src_no_slash);
     if (filename_src != path_src_no_slash) {
       const size_t buf_size_needed = strlen(path_dst) + 1 + strlen(filename_src) + 1;

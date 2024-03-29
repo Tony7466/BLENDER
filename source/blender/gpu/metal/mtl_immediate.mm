@@ -8,12 +8,12 @@
  * Mimics old style opengl immediate mode drawing.
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
-#include "GPU_vertex_format.h"
+#include "GPU_vertex_format.hh"
 #include "gpu_context_private.hh"
 #include "gpu_shader_private.hh"
-#include "gpu_vertex_format_private.h"
+#include "gpu_vertex_format_private.hh"
 
 #include "mtl_context.hh"
 #include "mtl_debug.hh"
@@ -384,7 +384,8 @@ void MTLImmediate::end()
 
           /* SSBO vertex fetch - Nullify elements buffer. */
           if (rps.cached_vertex_buffer_bindings[MTL_SSBO_VERTEX_FETCH_IBO_INDEX].metal_buffer ==
-              nil) {
+              nil)
+          {
             rps.bind_vertex_buffer(null_buffer, 0, MTL_SSBO_VERTEX_FETCH_IBO_INDEX);
           }
 

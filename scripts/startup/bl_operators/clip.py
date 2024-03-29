@@ -9,7 +9,7 @@ from mathutils import (
     Vector,
     Matrix,
 )
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 def CLIP_spaces_walk(context, all_screens, tarea, tspace, callback, *args):
@@ -197,7 +197,7 @@ class CLIP_OT_filter_tracks(Operator):
 
     def execute(self, context):
         num_tracks = self._filter_values(context, self.track_threshold)
-        self.report({'INFO'}, tip_("Identified %d problematic tracks") % num_tracks)
+        self.report({'INFO'}, rpt_("Identified %d problematic tracks") % num_tracks)
         return {'FINISHED'}
 
 
@@ -760,8 +760,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
         def setup_space(space):
             space.show_backdrop = True
 
-        CLIP_spaces_walk(context, True, 'NODE_EDITOR', 'NODE_EDITOR',
-                         setup_space)
+        CLIP_spaces_walk(context, True, 'NODE_EDITOR', 'NODE_EDITOR', setup_space)
 
         sc = context.space_data
         scene = context.scene
@@ -812,8 +811,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
         tree.links.new(movieclip.outputs["Image"], distortion.inputs["Image"])
 
         if need_stabilization:
-            tree.links.new(distortion.outputs["Image"],
-                           stabilize.inputs["Image"])
+            tree.links.new(distortion.outputs["Image"], stabilize.inputs["Image"])
             tree.links.new(stabilize.outputs["Image"], scale.inputs["Image"])
         else:
             tree.links.new(distortion.outputs["Image"], scale.inputs["Image"])

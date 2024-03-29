@@ -11,15 +11,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_main.hh"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -27,7 +24,7 @@
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLI_index_range.hh"
 
@@ -47,11 +44,12 @@
 
 void SCULPT_pbvh_clear(Object *ob)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
 
   /* Clear out any existing DM and PBVH. */
   if (ss->pbvh) {
-    BKE_pbvh_free(ss->pbvh);
+    bke::pbvh::free(ss->pbvh);
     ss->pbvh = nullptr;
   }
 
@@ -101,7 +99,7 @@ void enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob)
   BM_mesh_bm_from_me(ss->bm, mesh, &convert_params);
   triangulate(ss->bm);
 
-  BM_data_layer_add_named(ss->bm, &ss->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  BM_data_layer_ensure_named(ss->bm, &ss->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
   /* Make sure the data for existing faces are initialized. */
   if (mesh->faces_num != ss->bm->totface) {
@@ -146,14 +144,15 @@ static void SCULPT_dynamic_topology_disable_ex(
 
     /* Copy over stored custom data. */
     undo::NodeGeometry *geometry = &unode->geometry_bmesh_enter;
-    mesh->totvert = geometry->totvert;
-    mesh->totloop = geometry->totloop;
+    mesh->verts_num = geometry->totvert;
+    mesh->corners_num = geometry->totloop;
     mesh->faces_num = geometry->faces_num;
-    mesh->totedge = geometry->totedge;
+    mesh->edges_num = geometry->totedge;
     mesh->totface_legacy = 0;
     CustomData_copy(&geometry->vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, geometry->totvert);
     CustomData_copy(&geometry->edge_data, &mesh->edge_data, CD_MASK_MESH.emask, geometry->totedge);
-    CustomData_copy(&geometry->loop_data, &mesh->loop_data, CD_MASK_MESH.lmask, geometry->totloop);
+    CustomData_copy(
+        &geometry->corner_data, &mesh->corner_data, CD_MASK_MESH.lmask, geometry->totloop);
     CustomData_copy(
         &geometry->face_data, &mesh->face_data, CD_MASK_MESH.pmask, geometry->faces_num);
     implicit_sharing::copy_shared_pointer(geometry->face_offset_indices,
@@ -164,11 +163,11 @@ static void SCULPT_dynamic_topology_disable_ex(
   else {
     BKE_sculptsession_bm_to_me(ob, true);
 
-    /* Sync the visibility to vertices manually as the `pmap` is still not initialized. */
+    /* Sync the visibility to vertices manually as `vert_to_face_map` is still not initialized. */
     bool *hide_vert = (bool *)CustomData_get_layer_named_for_write(
-        &mesh->vert_data, CD_PROP_BOOL, ".hide_vert", mesh->totvert);
+        &mesh->vert_data, CD_PROP_BOOL, ".hide_vert", mesh->verts_num);
     if (hide_vert != nullptr) {
-      memset(hide_vert, 0, sizeof(bool) * mesh->totvert);
+      memset(hide_vert, 0, sizeof(bool) * mesh->verts_num);
     }
   }
 
@@ -266,16 +265,16 @@ static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, enum WarnFlag 
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   if (flag & (VDATA | EDATA | LDATA)) {
-    const char *msg_error = TIP_("Attribute Data Detected");
-    const char *msg = TIP_("Dyntopo will not preserve colors, UVs, or other attributes");
+    const char *msg_error = RPT_("Attribute Data Detected");
+    const char *msg = RPT_("Dyntopo will not preserve colors, UVs, or other attributes");
     uiItemL(layout, msg_error, ICON_INFO);
     uiItemL(layout, msg, ICON_NONE);
     uiItemS(layout);
   }
 
   if (flag & MODIFIER) {
-    const char *msg_error = TIP_("Generative Modifiers Detected!");
-    const char *msg = TIP_(
+    const char *msg_error = RPT_("Generative Modifiers Detected!");
+    const char *msg = RPT_(
         "Keeping the modifiers will increase polycount when returning to object mode");
 
     uiItemL(layout, msg_error, ICON_INFO);
@@ -293,11 +292,12 @@ static int dyntopo_warning_popup(bContext *C, wmOperatorType *ot, enum WarnFlag 
 
 static bool dyntopo_supports_layer(const CustomDataLayer &layer)
 {
+  if (layer.type == CD_PROP_FLOAT && STREQ(layer.name, ".sculpt_mask")) {
+    return true;
+  }
   if (CD_TYPE_AS_MASK(layer.type) & CD_MASK_PROP_ALL) {
-    /* Some data is stored as generic attributes on #Mesh but in flags or fields on #BMesh. */
     return BM_attribute_stored_in_bmesh_builtin(layer.name);
   }
-  /* Some layers just encode #Mesh topology or are handled as special cases for dyntopo. */
   return ELEM(layer.type, CD_ORIGINDEX);
 }
 
@@ -327,7 +327,8 @@ enum WarnFlag check_attribute_warning(Scene *scene, Object *ob)
   if (!dyntopo_supports_customdata_layers({mesh->face_data.layers, mesh->face_data.totlayer})) {
     flag |= LDATA;
   }
-  if (!dyntopo_supports_customdata_layers({mesh->loop_data.layers, mesh->loop_data.totlayer})) {
+  if (!dyntopo_supports_customdata_layers({mesh->corner_data.layers, mesh->corner_data.totlayer}))
+  {
     flag |= LDATA;
   }
 

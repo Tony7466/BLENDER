@@ -15,6 +15,19 @@
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+#  include "BLI_span.hh"
+
+#  include <type_traits>
+#endif
+
+/* Forward declarations so the actual declarations can happen top-down. */
+struct Animation;
+struct AnimationLayer;
+struct AnimationBinding;
+struct AnimationStrip;
+struct AnimationChannelBag;
+
 /* ************************************************ */
 /* F-Curve DataTypes */
 
@@ -312,13 +325,15 @@ typedef struct DriverTarget {
 
   /** Rotation channel calculation type. */
   char rotation_mode;
-  char _pad[7];
+  char _pad[5];
 
   /**
    * Flags for the validity of the target
    * (NOTE: these get reset every time the types change).
    */
   short flag;
+  /** Single-bit user-visible toggles (not reset on type change) from eDriverTarget_Options. */
+  short options;
   /** Type of ID-block that this target can use. */
   int idtype;
 
@@ -327,8 +342,15 @@ typedef struct DriverTarget {
    * This is a value of enumerator #eDriverTarget_ContextProperty. */
   int context_property;
 
-  int _pad1;
+  /* Fallback value to use with DTAR_OPTION_USE_FALLBACK. */
+  float fallback_value;
 } DriverTarget;
+
+/** Driver Target options. */
+typedef enum eDriverTarget_Options {
+  /** Use the fallback value when the target is invalid (rna_path cannot be resolved). */
+  DTAR_OPTION_USE_FALLBACK = (1 << 0),
+} eDriverTarget_Options;
 
 /** Driver Target flags. */
 typedef enum eDriverTarget_Flag {
@@ -346,6 +368,9 @@ typedef enum eDriverTarget_Flag {
 
   /** error flags */
   DTAR_FLAG_INVALID = (1 << 4),
+
+  /** the fallback value was actually used */
+  DTAR_FLAG_FALLBACK_USED = (1 << 5),
 } eDriverTarget_Flag;
 
 /* Transform Channels for Driver Targets */
@@ -576,7 +601,7 @@ typedef struct FPoint {
   char _pad[4];
 } FPoint;
 
-/* 'Function-Curve' - defines values over time for a given setting (fcu) */
+/** 'Function-Curve' - defines values over time for a given setting (fcu). */
 typedef struct FCurve {
   struct FCurve *next, *prev;
 
@@ -704,11 +729,10 @@ typedef enum eFCurve_Smoothing {
 } eFCurve_Smoothing;
 
 /* ************************************************ */
-/* 'Action' Datatypes */
+/* 'Action' Data-types */
 
 /* NOTE: Although these are part of the Animation System,
- * they are not stored here... see DNA_action_types.h instead
- */
+ * they are not stored here, see `DNA_action_types.h` instead. */
 
 /* ************************************************ */
 /* NLA - Non-Linear Animation */
@@ -914,7 +938,7 @@ typedef enum eNlaTrack_Flag {
 } eNlaTrack_Flag;
 
 /* ************************************ */
-/* KeyingSet Datatypes */
+/* KeyingSet Data-types */
 
 /**
  * Path for use in KeyingSet definitions (ksp)
@@ -1043,8 +1067,6 @@ typedef enum eInsertKeyFlags {
    * Used by copy/paste code.
    */
   INSERTKEY_OVERWRITE_FULL = (1 << 7),
-  /** for driver FCurves, use driver's "input" value - for easier corrective driver setup */
-  INSERTKEY_DRIVER = (1 << 8),
   /** for cyclic FCurves, adjust key timing to preserve the cycle period and flow */
   INSERTKEY_CYCLE_AWARE = (1 << 9),
   /** don't create new F-Curves (implied by INSERTKEY_REPLACE) */
@@ -1136,10 +1158,32 @@ typedef struct AnimData {
   /** Runtime data, for depsgraph evaluation. */
   FCurve **driver_array;
 
+  /**
+   * Active Animation data-block. If this is set, `action` and NLA-related
+   * properties should be ignored. Note that there is plenty of code in Blender
+   * that doesn't check this pointer yet.
+   */
+  struct Animation *animation;
+
+  /**
+   * Identifier for which AnimationBinding of the above Animation is actually animating this
+   * data-block.
+   *
+   * Do not set this directly, use one of the assignment functions in ANIM_animation.hh instead.
+   */
+  int32_t binding_handle;
+  /**
+   * Binding name, primarily used for mapping to the right binding when assigning
+   * another Animation data-block. Should be the same type as #AnimationBinding::name.
+   *
+   * \see #AnimationBinding::name
+   */
+  char binding_name[66];
+  uint8_t _pad0[6];
+
   /* settings for animation evaluation */
   /** User-defined settings. */
   int flag;
-  char _pad[4];
 
   /* settings for active action evaluation (based on NLA strip settings) */
   /** Accumulation mode for active action. */
@@ -1194,7 +1238,187 @@ typedef struct IdAdtTemplate {
   AnimData *adt;
 } IdAdtTemplate;
 
-/* From: `DNA_object_types.h`, see it's doc-string there. */
+/* From: `DNA_object_types.h`, see its doc-string there. */
 #define SELECT 1
 
 /* ************************************************ */
+/* Layered Animation data-types. */
+
+/* Declarations of C++ wrappers. See ANIM_animation.hh for the actual classes. */
+#ifdef __cplusplus
+namespace blender::animrig {
+class Animation;
+class ChannelBag;
+class KeyframeStrip;
+class Layer;
+class Binding;
+class Strip;
+}  // namespace blender::animrig
+#endif
+
+/**
+ * Container of layered animation data.
+ *
+ * \see #blender::animrig::Animation
+ */
+typedef struct Animation {
+  ID id;
+
+  struct AnimationLayer **layer_array; /* Array of 'layer_array_num' layers. */
+  int layer_array_num;
+  int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
+
+  struct AnimationBinding **binding_array; /* Array of 'binding_array_num` bindings. */
+  int binding_array_num;
+  int32_t last_binding_handle;
+
+#ifdef __cplusplus
+  blender::animrig::Animation &wrap();
+  const blender::animrig::Animation &wrap() const;
+#endif
+} Animation;
+
+/**
+ * \see #blender::animrig::Layer
+ */
+typedef struct AnimationLayer {
+  /** User-Visible identifier, unique within the Animation. */
+  char name[64]; /* MAX_NAME. */
+
+  float influence; /* [0-1] */
+
+  /** \see #blender::animrig::Layer::flags() */
+  uint8_t layer_flags;
+
+  /** \see #blender::animrig::Layer::mixmode() */
+  int8_t layer_mix_mode;
+
+  uint8_t _pad0[2];
+
+  /**
+   * There is always at least one strip.
+   * If there is only one, it can be infinite. This is the default for new layers.
+   */
+  struct AnimationStrip **strip_array; /* Array of 'strip_array_num' strips. */
+  int strip_array_num;
+
+  uint8_t _pad1[4];
+
+#ifdef __cplusplus
+  blender::animrig::Layer &wrap();
+  const blender::animrig::Layer &wrap() const;
+#endif
+} AnimationLayer;
+
+/**
+ * \see #blender::animrig::Binding
+ */
+typedef struct AnimationBinding {
+  /**
+   * Typically the ID name this binding was created for, including the two
+   * letters indicating the ID type.
+   *
+   * \see #AnimData::binding_name
+   */
+  char name[66]; /* MAX_ID_NAME */
+  uint8_t _pad0[2];
+
+  /**
+   * Type of ID-blocks that this binding can be assigned to.
+   * If 0, will be set to whatever ID is first assigned.
+   */
+  int idtype;
+
+  /**
+   * Identifier of this Binding within the Animation data-block.
+   *
+   * This number allows reorganization of the #Animation::bindings_array without
+   * invalidating references. Also these remain valid when copy-on-evaluate
+   * copies are made.
+   *
+   * Only valid within the Animation data-block that owns this Binding.
+   *
+   * \see #blender::animrig::Animation::binding_for_handle()
+   */
+  int32_t handle;
+
+#ifdef __cplusplus
+  blender::animrig::Binding &wrap();
+  const blender::animrig::Binding &wrap() const;
+#endif
+} AnimationBinding;
+
+/**
+ * \see #blender::animrig::Strip
+ */
+typedef struct AnimationStrip {
+  /**
+   * \see #blender::animrig::Strip::type()
+   */
+  int8_t strip_type;
+  uint8_t _pad0[3];
+
+  float frame_start; /** Start frame of the strip, in Animation time. */
+  float frame_end;   /** End frame of the strip, in Animation time. */
+
+  /**
+   * Offset applied to the contents of the strip, in frames.
+   *
+   * This offset determines the difference between "Animation time" (which would
+   * typically be the same as the scene time, until the animation system
+   * supports strips referencing other Animation data-blocks).
+   */
+  float frame_offset;
+
+#ifdef __cplusplus
+  blender::animrig::Strip &wrap();
+  const blender::animrig::Strip &wrap() const;
+#endif
+} AnimationStrip;
+
+/**
+ * #AnimationStrip::type = #Strip::Type::Keyframe.
+ *
+ * \see #blender::animrig::KeyframeStrip
+ */
+typedef struct KeyframeAnimationStrip {
+  AnimationStrip strip;
+
+  struct AnimationChannelBag **channelbags_array;
+  int channelbags_array_num;
+
+  uint8_t _pad[4];
+
+#ifdef __cplusplus
+  blender::animrig::KeyframeStrip &wrap();
+  const blender::animrig::KeyframeStrip &wrap() const;
+#endif
+} KeyframeAnimationStrip;
+
+/**
+ * \see #blender::animrig::ChannelBag
+ */
+typedef struct AnimationChannelBag {
+  int32_t binding_handle;
+
+  int fcurve_array_num;
+  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
+
+  /* TODO: Design & implement a way to integrate other channel types as well,
+   * and still have them map to a certain binding */
+#ifdef __cplusplus
+  blender::animrig::ChannelBag &wrap();
+  const blender::animrig::ChannelBag &wrap() const;
+#endif
+} ChannelBag;
+
+#ifdef __cplusplus
+/* Some static assertions that things that should have the same type actually do. */
+static_assert(
+    std::is_same_v<decltype(AnimationBinding::handle), decltype(AnimData::binding_handle)>);
+static_assert(
+    std::is_same_v<decltype(AnimationBinding::handle), decltype(Animation::last_binding_handle)>);
+static_assert(std::is_same_v<decltype(AnimationBinding::handle),
+                             decltype(AnimationChannelBag::binding_handle)>);
+static_assert(std::is_same_v<decltype(AnimationBinding::name), decltype(AnimData::binding_name)>);
+#endif

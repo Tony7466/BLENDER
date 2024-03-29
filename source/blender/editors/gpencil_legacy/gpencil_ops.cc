@@ -22,14 +22,14 @@
 #include "DNA_space_types.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
 
 #include "ED_gpencil_legacy.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ****************************************** */
 /* Grease Pencil Keymaps */

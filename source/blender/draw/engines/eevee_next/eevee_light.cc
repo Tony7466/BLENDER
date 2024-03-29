@@ -22,16 +22,18 @@ namespace blender::eevee {
 /** \name LightData
  * \{ */
 
-static eLightType to_light_type(short blender_light_type, short blender_area_type)
+static eLightType to_light_type(short blender_light_type,
+                                short blender_area_type,
+                                bool use_soft_falloff)
 {
   switch (blender_light_type) {
     default:
     case LA_LOCAL:
-      return LIGHT_POINT;
+      return use_soft_falloff ? LIGHT_OMNI_DISK : LIGHT_OMNI_SPHERE;
     case LA_SUN:
       return LIGHT_SUN;
     case LA_SPOT:
-      return LIGHT_SPOT;
+      return use_soft_falloff ? LIGHT_SPOT_DISK : LIGHT_SPOT_SPHERE;
     case LA_AREA:
       return ELEM(blender_area_type, LA_AREA_DISK, LA_AREA_ELLIPSE) ? LIGHT_ELLIPSE : LIGHT_RECT;
   }
@@ -45,41 +47,43 @@ static eLightType to_light_type(short blender_light_type, short blender_area_typ
 
 void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 {
+  using namespace blender::math;
+
   const ::Light *la = (const ::Light *)ob->data;
-  float scale[3];
 
-  float max_power = max_fff(la->r, la->g, la->b) * fabsf(la->energy / 100.0f);
-  float surface_max_power = max_ff(la->diff_fac, la->spec_fac) * max_power;
-  float volume_max_power = la->volume_fac * max_power;
-
-  float influence_radius_surface = attenuation_radius_get(la, threshold, surface_max_power);
-  float influence_radius_volume = attenuation_radius_get(la, threshold, volume_max_power);
-
-  this->influence_radius_max = max_ff(influence_radius_surface, influence_radius_volume);
-  this->influence_radius_invsqr_surface = 1.0f / square_f(max_ff(influence_radius_surface, 1e-8f));
-  this->influence_radius_invsqr_volume = 1.0f / square_f(max_ff(influence_radius_volume, 1e-8f));
+  eLightType new_type = to_light_type(la->type, la->area_shape, la->mode & LA_USE_SOFT_FALLOFF);
+  if (assign_if_different(this->type, new_type)) {
+    shadow_discard_safe(shadows);
+  }
 
   this->color = float3(&la->r) * la->energy;
-  normalize_m4_m4_ex(this->object_mat.ptr(), ob->object_to_world, scale);
+
+  float3 scale;
+  this->object_mat = ob->object_to_world();
+  this->object_mat.view<3, 3>() = normalize_and_get_size(this->object_mat.view<3, 3>(), scale);
+
   /* Make sure we have consistent handedness (in case of negatively scaled Z axis). */
-  float3 cross = math::cross(float3(this->_right), float3(this->_up));
-  if (math::dot(cross, float3(this->_back)) < 0.0f) {
+  float3 back = cross(float3(this->_right), float3(this->_up));
+  if (dot(back, float3(this->_back)) < 0.0f) {
     negate_v3(this->_up);
   }
 
-  shape_parameters_set(la, scale);
+  shape_parameters_set(la, scale, threshold);
 
-  float shape_power = shape_radiance_get(la);
-  float point_power = point_radiance_get(la);
+  float shape_power = shape_radiance_get();
+  float point_power = point_radiance_get();
   this->power[LIGHT_DIFFUSE] = la->diff_fac * shape_power;
   this->power[LIGHT_TRANSMIT] = la->diff_fac * point_power;
   this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
-  eLightType new_type = to_light_type(la->type, la->area_shape);
-  if (assign_if_different(this->type, new_type)) {
-    shadow_discard_safe(shadows);
-  }
+  this->pcf_radius = la->shadow_filter_radius;
+
+  /* TODO(fclem): Cleanup: Move that block to `ShadowPunctual::end_sync()` and
+   * `ShadowDirectional::end_sync()`. */
+  float resolution_scale = clamp(la->shadow_resolution_scale, 0.0f, 2.0f);
+  this->lod_bias = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
+  this->lod_bias += shadows.get_global_lod_bias();
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
@@ -92,13 +96,24 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
     else {
       /* Reuse shape radius as near clip plane. */
       /* This assumes `shape_parameters_set` has already set `radius_squared`. */
-      float radius = math::sqrt(this->radius_squared);
+      float radius = math::sqrt(this->local.radius_squared);
+      float shadow_radius = la->shadow_softness_factor * radius;
+      if (ELEM(la->type, LA_LOCAL, LA_SPOT)) {
+        /* `shape_parameters_set` can increase the radius of point and spot lights to ensure a
+         * minimum radius/energy ratio.
+         * But we don't want to take that into account for computing the shadow-map projection,
+         * since non-zero radius introduces padding (required for soft-shadows tracing), reducing
+         * the effective resolution of shadow-maps.
+         * So we use the original light radius instead. */
+        shadow_radius = la->shadow_softness_factor * la->radius;
+      }
       this->punctual->sync(this->type,
                            this->object_mat,
                            la->spotsize,
                            radius,
-                           this->influence_radius_max,
-                           la->shadow_softness_factor);
+                           this->local.influence_radius_max,
+                           la->shadow_softness_factor,
+                           shadow_radius);
     }
   }
   else {
@@ -132,10 +147,6 @@ void Light::shadow_ensure(ShadowModule &shadows)
 
 float Light::attenuation_radius_get(const ::Light *la, float light_threshold, float light_power)
 {
-  if (la->type == LA_SUN) {
-    return (light_power > 1e-5f) ? 1e16f : 0.0f;
-  }
-
   if (la->mode & LA_CUSTOM_ATTENUATION) {
     return la->att_dist;
   }
@@ -145,102 +156,139 @@ float Light::attenuation_radius_get(const ::Light *la, float light_threshold, fl
   return sqrtf(light_power / light_threshold);
 }
 
-void Light::shape_parameters_set(const ::Light *la, const float scale[3])
+void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float threshold)
 {
-  if (la->type == LA_AREA) {
-    float area_size_y = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE) ? la->area_sizey :
-                                                                              la->area_size;
-    _area_size_x = max_ff(0.003f, la->area_size * scale[0] * 0.5f);
-    _area_size_y = max_ff(0.003f, area_size_y * scale[1] * 0.5f);
-    /* For volume point lighting. */
-    radius_squared = max_ff(0.001f, hypotf(_area_size_x, _area_size_y) * 0.5f);
-    radius_squared = square_f(radius_squared);
-  }
-  else {
-    if (la->type == LA_SPOT) {
-      /* Spot size & blend */
-      spot_size_inv[0] = scale[2] / scale[0];
-      spot_size_inv[1] = scale[2] / scale[1];
-      float spot_size = cosf(la->spotsize * 0.5f);
-      float spot_blend = (1.0f - spot_size) * la->spotblend;
-      _spot_mul = 1.0f / max_ff(1e-8f, spot_blend);
-      _spot_bias = -spot_size * _spot_mul;
-      spot_tan = tanf(min_ff(la->spotsize * 0.5f, M_PI_2 - 0.0001f));
-    }
+  using namespace blender::math;
 
-    if (la->type == LA_SUN) {
-      _area_size_x = tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f);
+  if (is_sun_light(this->type)) {
+    this->sun.radius = tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f);
+    /* Clamp to minimum value before float imprecision artifacts appear. */
+    this->sun.radius = max(0.001f, this->sun.radius);
+  }
+  else if (is_area_light(this->type)) {
+    const bool is_irregular = ELEM(la->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
+    this->area.size = float2(la->area_size, is_irregular ? la->area_sizey : la->area_size);
+    /* Scale and clamp to minimum value before float imprecision artifacts appear. */
+    this->area.size = max(float2(0.003f), this->area.size * scale.xy() / 2.0f);
+
+    /* For volume point lighting. */
+    this->local.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
+  }
+  else if (is_point_light(this->type)) {
+    /* Spot size & blend */
+    if (is_spot_light(this->type)) {
+      const float spot_size = cosf(la->spotsize * 0.5f);
+      const float spot_blend = (1.0f - spot_size) * la->spotblend;
+      this->spot.spot_size_inv = scale.z / max(scale.xy(), float2(1e-8f));
+      this->spot.spot_mul = 1.0f / max(1e-8f, spot_blend);
+      this->spot.spot_bias = -spot_size * this->spot.spot_mul;
+      this->spot.spot_tan = tanf(min(la->spotsize * 0.5f, float(M_PI_2 - 0.0001f)));
     }
     else {
-      /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
-      float min_radius = la->energy * 2e-05f;
-      _area_size_x = std::max(la->radius, min_radius);
+      /* Point light could access it. Make sure to avoid Undefined Behavior.
+       * In practice it is only ever used. */
+      this->spot.spot_size_inv = float2(1.0f);
+      this->spot.spot_mul = 0.0f;
+      this->spot.spot_bias = 1.0f;
+      this->spot.spot_tan = 0.0f;
     }
-    _area_size_y = _area_size_x = max_ff(0.001f, _area_size_x);
-    radius_squared = square_f(_area_size_x);
+
+    this->spot.radius = la->radius;
+    /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
+    this->spot.radius = max(this->spot.radius, la->energy * 2e-05f);
+    /* Clamp to minimum value before float imprecision artifacts appear. */
+    this->spot.radius = max(0.001f, this->spot.radius);
+
+    /* For volume point lighting. */
+    this->local.radius_squared = square(this->spot.radius);
+  }
+
+  if (is_local_light(this->type)) {
+    const float max_power = reduce_max(float3(&la->r)) * fabsf(la->energy / 100.0f);
+    const float surface_max_power = max(la->diff_fac, la->spec_fac) * max_power;
+    const float volume_max_power = la->volume_fac * max_power;
+
+    float influence_radius_surface = attenuation_radius_get(la, threshold, surface_max_power);
+    float influence_radius_volume = attenuation_radius_get(la, threshold, volume_max_power);
+
+    this->local.influence_radius_max = max(influence_radius_surface, influence_radius_volume);
+    this->local.influence_radius_invsqr_surface = safe_rcp(square(influence_radius_surface));
+    this->local.influence_radius_invsqr_volume = safe_rcp(square(influence_radius_volume));
   }
 }
 
-float Light::shape_radiance_get(const ::Light *la)
+float Light::shape_radiance_get()
 {
+  using namespace blender::math;
+
   /* Make illumination power constant. */
-  switch (la->type) {
-    case LA_AREA: {
+  switch (this->type) {
+    case LIGHT_RECT:
+    case LIGHT_ELLIPSE: {
       /* Rectangle area. */
-      float area = (_area_size_x * 2.0f) * (_area_size_y * 2.0f);
+      float area = this->area.size.x * this->area.size.y * 4.0f;
       /* Scale for the lower area of the ellipse compared to the surrounding rectangle. */
-      if (ELEM(la->area_shape, LA_AREA_DISK, LA_AREA_ELLIPSE)) {
+      if (this->type == LIGHT_ELLIPSE) {
         area *= M_PI / 4.0f;
       }
       /* Convert radiant flux to radiance. */
       return float(M_1_PI) / area;
     }
-    case LA_SPOT:
-    case LA_LOCAL: {
+    case LIGHT_OMNI_SPHERE:
+    case LIGHT_OMNI_DISK:
+    case LIGHT_SPOT_SPHERE:
+    case LIGHT_SPOT_DISK: {
       /* Sphere area. */
-      float area = 4.0f * float(M_PI) * square_f(_radius);
+      float area = float(4.0f * M_PI) * this->spot.radius_squared;
       /* Convert radiant flux to radiance. */
       return 1.0f / (area * float(M_PI));
     }
-    default:
-    case LA_SUN: {
-      float inv_sin_sq = 1.0f + 1.0f / square_f(_radius);
+    case LIGHT_SUN_ORTHO:
+    case LIGHT_SUN: {
+      float inv_sin_sq = 1.0f + 1.0f / square(this->sun.radius);
       /* Convert irradiance to radiance. */
       return float(M_1_PI) * inv_sin_sq;
     }
   }
+  BLI_assert_unreachable();
+  return 0.0f;
 }
 
-float Light::point_radiance_get(const ::Light *la)
+float Light::point_radiance_get()
 {
   /* Volume light is evaluated as point lights. */
-  switch (la->type) {
-    case LA_AREA: {
+  switch (this->type) {
+    case LIGHT_RECT:
+    case LIGHT_ELLIPSE: {
       /* This corrects for area light most representative point trick.
        * The fit was found by reducing the average error compared to cycles. */
-      float area = (_area_size_x * 2.0) * (_area_size_y * 2.0f);
+      float area = this->area.size.x * this->area.size.y * 4.0f;
       float tmp = M_PI_2 / (M_PI_2 + sqrtf(area));
       /* Lerp between 1.0 and the limit (1 / pi). */
       float mrp_scaling = tmp + (1.0f - tmp) * M_1_PI;
       return float(M_1_PI) * mrp_scaling;
     }
-    case LA_SPOT:
-    case LA_LOCAL: {
+    case LIGHT_OMNI_SPHERE:
+    case LIGHT_OMNI_DISK:
+    case LIGHT_SPOT_SPHERE:
+    case LIGHT_SPOT_DISK: {
       /* Convert radiant flux to intensity. */
       /* Inverse of sphere solid angle. */
-      return 0.25f * float(M_1_PI);
+      return float(1.0 / (4.0 * M_PI));
     }
-    default:
-    case LA_SUN: {
+    case LIGHT_SUN_ORTHO:
+    case LIGHT_SUN: {
       return 1.0f;
     }
   }
+  BLI_assert_unreachable();
+  return 0.0f;
 }
 
 void Light::debug_draw()
 {
 #ifndef NDEBUG
-  drw_debug_sphere(float3(_position), influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+  drw_debug_sphere(float3(_position), local.influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 
@@ -336,7 +384,7 @@ void LightModule::end_sync()
   if (sun_lights_len_ + local_lights_len_ > CULLING_MAX_ITEM) {
     sun_lights_len_ = min_ii(sun_lights_len_, CULLING_MAX_ITEM);
     local_lights_len_ = min_ii(local_lights_len_, CULLING_MAX_ITEM - sun_lights_len_);
-    inst_.info = "Error: Too many lights in the scene.";
+    inst_.info += "Error: Too many lights in the scene.\n";
   }
   lights_len_ = sun_lights_len_ + local_lights_len_;
 
@@ -354,6 +402,7 @@ void LightModule::end_sync()
     /* Default to 32 as this is likely to be the maximum
      * tile size used by hardware or compute shading. */
     uint tile_size = 16;
+    bool tile_size_valid = false;
     do {
       tile_size *= 2;
       tiles_extent = math::divide_ceil(render_extent, int2(tile_size));
@@ -362,8 +411,9 @@ void LightModule::end_sync()
         continue;
       }
       total_word_count_ = tile_count * word_per_tile;
+      tile_size_valid = true;
 
-    } while (total_word_count_ > max_word_count_threshold);
+    } while (total_word_count_ > max_word_count_threshold || !tile_size_valid);
     /* Keep aligned with storage buffer requirements. */
     total_word_count_ = ceil_to_multiple_u(total_word_count_, 32);
 
@@ -439,8 +489,8 @@ void LightModule::debug_pass_sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_DEBUG));
-    inst_.bind_uniform_data(&debug_draw_ps_);
-    inst_.hiz_buffer.bind_resources(debug_draw_ps_);
+    debug_draw_ps_.bind_resources(inst_.uniform_data);
+    debug_draw_ps_.bind_resources(inst_.hiz_buffer.front);
     debug_draw_ps_.bind_ssbo("light_buf", &culling_light_buf_);
     debug_draw_ps_.bind_ssbo("light_cull_buf", &culling_data_buf_);
     debug_draw_ps_.bind_ssbo("light_zbin_buf", &culling_zbin_buf_);
@@ -467,7 +517,7 @@ void LightModule::set_view(View &view, const int2 extent)
 void LightModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (inst_.debug_mode == eDebugMode::DEBUG_LIGHT_CULLING) {
-    inst_.info = "Debug Mode: Light Culling Validation";
+    inst_.info += "Debug Mode: Light Culling Validation\n";
     inst_.hiz_buffer.update();
     GPU_framebuffer_bind(view_fb);
     inst_.manager->submit(debug_draw_ps_, view);

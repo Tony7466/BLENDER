@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_context.hh"
 #include "COM_input_descriptor.hh"
@@ -125,9 +125,6 @@ class ConvertColorToVectorOperation : public ConversionOperation {
  * components.
  * \{ */
 
-/*
- *
- * */
 class ConvertVectorToFloatOperation : public ConversionOperation {
  public:
   ConvertVectorToFloatOperation(Context &context);

@@ -38,11 +38,11 @@ static void extract_sculpt_data_init(const MeshRenderData &mr,
                                      void *buf,
                                      void * /*tls_data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   GPUVertFormat *format = get_sculpt_data_format();
 
   GPU_vertbuf_init_with_format(vbo, format);
-  GPU_vertbuf_data_alloc(vbo, mr.loop_len);
+  GPU_vertbuf_data_alloc(vbo, mr.corners_num);
 
   struct gpuSculptData {
     uint8_t face_set_color[4];
@@ -81,10 +81,11 @@ static void extract_sculpt_data_init(const MeshRenderData &mr,
   }
   else {
     const bke::AttributeAccessor attributes = mr.mesh->attributes();
-    const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
-    const VArray<int> face_set = *attributes.lookup<int>(".sculpt_face_set", ATTR_DOMAIN_FACE);
+    const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
+    const VArray<int> face_set = *attributes.lookup<int>(".sculpt_face_set",
+                                                         bke::AttrDomain::Face);
 
-    for (int face_index = 0; face_index < mr.face_len; face_index++) {
+    for (int face_index = 0; face_index < mr.faces_num; face_index++) {
       for (const int corner : mr.faces[face_index]) {
         float v_mask = 0.0f;
         if (mask) {
@@ -114,16 +115,16 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                             void *buffer,
                                             void * /*data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
 
-  Mesh *coarse_mesh = mr.mesh;
+  const Mesh *coarse_mesh = mr.mesh;
 
   /* First, interpolate mask if available. */
-  GPUVertBuf *mask_vbo = nullptr;
-  GPUVertBuf *subdiv_mask_vbo = nullptr;
+  gpu::VertBuf *mask_vbo = nullptr;
+  gpu::VertBuf *subdiv_mask_vbo = nullptr;
 
   const bke::AttributeAccessor attributes = coarse_mesh->attributes();
-  const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", ATTR_DOMAIN_POINT);
+  const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
 
   const OffsetIndices coarse_faces = coarse_mesh->faces();
   const Span<int> coarse_corner_verts = coarse_mesh->corner_verts();
@@ -135,7 +136,7 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
 
     mask_vbo = GPU_vertbuf_calloc();
     GPU_vertbuf_init_with_format(mask_vbo, &mask_format);
-    GPU_vertbuf_data_alloc(mask_vbo, coarse_mesh->totloop);
+    GPU_vertbuf_data_alloc(mask_vbo, coarse_mesh->corners_num);
     float *v_mask = static_cast<float *>(GPU_vertbuf_get_data(mask_vbo));
 
     for (int i = 0; i < coarse_mesh->faces_num; i++) {
@@ -154,7 +155,7 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
   GPUVertFormat face_set_format = {0};
   GPU_vertformat_attr_add(&face_set_format, "msk", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
-  GPUVertBuf *face_set_vbo = GPU_vertbuf_calloc();
+  gpu::VertBuf *face_set_vbo = GPU_vertbuf_calloc();
   GPU_vertbuf_init_with_format(face_set_vbo, &face_set_format);
   GPU_vertbuf_data_alloc(face_set_vbo, subdiv_cache.num_subdiv_loops);
 
@@ -163,7 +164,8 @@ static void extract_sculpt_data_init_subdiv(const DRWSubdivCache &subdiv_cache,
   };
 
   gpuFaceSet *face_sets = (gpuFaceSet *)GPU_vertbuf_get_data(face_set_vbo);
-  const VArray<int> cd_face_sets = *attributes.lookup<int>(".sculpt_face_set", ATTR_DOMAIN_FACE);
+  const VArray<int> cd_face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
 
   GPUVertFormat *format = get_sculpt_data_format();
   GPU_vertbuf_init_build_on_device(vbo, format, subdiv_cache.num_subdiv_loops);
@@ -209,6 +211,6 @@ constexpr MeshExtract create_extractor_sculpt_data()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_sculpt_data = create_extractor_sculpt_data();
 
-const MeshExtract extract_sculpt_data = blender::draw::create_extractor_sculpt_data();
+}  // namespace blender::draw

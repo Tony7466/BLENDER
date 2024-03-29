@@ -19,7 +19,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -30,22 +30,17 @@
 #include "DNA_lattice_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "BKE_anim_data.h"
 #include "BKE_curve.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_displist.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lattice.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -61,7 +56,11 @@ static void lattice_init_data(ID *id)
   BKE_lattice_resize(lattice, 2, 2, 2, nullptr); /* creates a uniform lattice */
 }
 
-static void lattice_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void lattice_copy_data(Main *bmain,
+                              std::optional<Library *> owner_library,
+                              ID *id_dst,
+                              const ID *id_src,
+                              const int flag)
 {
   Lattice *lattice_dst = (Lattice *)id_dst;
   const Lattice *lattice_src = (const Lattice *)id_src;
@@ -69,7 +68,8 @@ static void lattice_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const i
   lattice_dst->def = static_cast<BPoint *>(MEM_dupallocN(lattice_src->def));
 
   if (lattice_src->key && (flag & LIB_ID_COPY_SHAPEKEY)) {
-    BKE_id_copy_ex(bmain, &lattice_src->key->id, (ID **)&lattice_dst->key, flag);
+    BKE_id_copy_in_lib(
+        bmain, owner_library, &lattice_src->key->id, (ID **)&lattice_dst->key, flag);
     /* XXX This is not nice, we need to make BKE_id_copy_ex fully re-entrant... */
     lattice_dst->key->from = &lattice_dst->id;
   }
@@ -163,6 +163,7 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_LT = {
     /*id_code*/ ID_LT,
     /*id_filter*/ FILTER_ID_LT,
+    /*dependencies_id_types*/ FILTER_ID_KE,
     /*main_listbase_index*/ INDEX_ID_LT,
     /*struct_size*/ sizeof(Lattice),
     /*name*/ "Lattice",
@@ -297,7 +298,7 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
   calc_lat_fudu(lt->flag, wNew, &fw, &dw);
 
   /* If old size is different than resolution changed in interface,
-   * try to do clever reinit of points. Pretty simply idea, we just
+   * try to do clever reinitialize of points. Pretty simply idea, we just
    * deform new verts by old lattice, but scaling them to match old
    * size first.
    */
@@ -343,10 +344,10 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
       BKE_displist_free(&ltOb->runtime->curve_cache->disp);
     }
 
-    copy_m4_m4(mat, ltOb->object_to_world);
-    unit_m4(ltOb->object_to_world);
+    copy_m4_m4(mat, ltOb->object_to_world().ptr());
+    unit_m4(ltOb->runtime->object_to_world.ptr());
     BKE_lattice_deform_coords(ltOb, nullptr, vert_coords, uNew * vNew * wNew, 0, nullptr, 1.0f);
-    copy_m4_m4(ltOb->object_to_world, mat);
+    copy_m4_m4(ltOb->runtime->object_to_world.ptr(), mat);
 
     lt->typeu = typeu;
     lt->typev = typev;
@@ -417,7 +418,8 @@ void outside_lattice(Lattice *lt)
 
         for (u = 0; u < lt->pntsu; u++, bp++) {
           if (u == 0 || v == 0 || w == 0 || u == lt->pntsu - 1 || v == lt->pntsv - 1 ||
-              w == lt->pntsw - 1) {
+              w == lt->pntsw - 1)
+          {
             /* pass */
           }
           else {

@@ -9,7 +9,7 @@
 #include "vk_data_conversion.hh"
 #include "vk_device.hh"
 
-#include "gpu_vertex_format_private.h"
+#include "gpu_vertex_format_private.hh"
 
 #include "BLI_color.hh"
 
@@ -69,6 +69,8 @@ enum class ConversionType {
   FLOAT3_TO_FLOAT4,
   FLOAT4_TO_FLOAT3,
 
+  UINT_TO_DEPTH_COMPONENT24,
+  DEPTH_COMPONENT24_TO_UINT,
   /**
    * The requested conversion isn't supported.
    */
@@ -136,6 +138,16 @@ static ConversionType type_of_conversion_float(const eGPUTextureFormat host_form
     case GPU_R11F_G11F_B10F:
       return ConversionType::FLOAT_TO_B10F_G11F_R11F;
 
+    case GPU_SRGB8_A8_DXT1:
+    case GPU_SRGB8_A8_DXT3:
+    case GPU_SRGB8_A8_DXT5:
+    case GPU_RGBA8_DXT1:
+    case GPU_RGBA8_DXT3:
+    case GPU_RGBA8_DXT5:
+      /* Not an actual "conversion", but compressed texture upload code
+       * pretends that host data is a float. It is actually raw BCn bits. */
+      return ConversionType::PASS_THROUGH;
+
     case GPU_RGB32F: /* GPU_RGB32F Not supported by vendors. */
     case GPU_RGBA8UI:
     case GPU_RGBA8I:
@@ -167,12 +179,6 @@ static ConversionType type_of_conversion_float(const eGPUTextureFormat host_form
     case GPU_RGB16:
     case GPU_RGB32UI:
     case GPU_RGB32I:
-    case GPU_SRGB8_A8_DXT1:
-    case GPU_SRGB8_A8_DXT3:
-    case GPU_SRGB8_A8_DXT5:
-    case GPU_RGBA8_DXT1:
-    case GPU_RGBA8_DXT3:
-    case GPU_RGBA8_DXT5:
     case GPU_SRGB8:
     case GPU_RGB9_E5:
     case GPU_DEPTH_COMPONENT16:
@@ -283,7 +289,8 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_DEPTH_COMPONENT32F:
     case GPU_DEPTH32F_STENCIL8:
       return ConversionType::UNORM32_TO_FLOAT;
-
+    case GPU_DEPTH24_STENCIL8:
+      return ConversionType::UINT_TO_DEPTH_COMPONENT24;
     case GPU_RGBA8I:
     case GPU_RGBA8:
     case GPU_RGBA16I:
@@ -308,7 +315,6 @@ static ConversionType type_of_conversion_uint(eGPUTextureFormat device_format)
     case GPU_RGB10_A2:
     case GPU_RGB10_A2UI:
     case GPU_R11F_G11F_B10F:
-    case GPU_DEPTH24_STENCIL8:
     case GPU_SRGB8_A8:
     case GPU_RGBA8_SNORM:
     case GPU_RGBA16_SNORM:
@@ -562,6 +568,7 @@ static ConversionType reversed(ConversionType type)
       CASE_PAIR(FLOAT, HALF)
       CASE_PAIR(FLOAT, SRGBA8)
       CASE_PAIR(FLOAT, DEPTH_COMPONENT24)
+      CASE_PAIR(UINT, DEPTH_COMPONENT24)
       CASE_PAIR(FLOAT, B10F_G11F_R11F)
       CASE_PAIR(FLOAT3, HALF4)
       CASE_PAIR(FLOAT3, FLOAT4)
@@ -621,8 +628,7 @@ using SRGBA8 = PixelValue<ColorSceneLinearByteEncoded4b<eAlpha::Premultiplied>>;
 using FLOAT3 = PixelValue<float3>;
 using FLOAT4 = PixelValue<ColorSceneLinear4f<eAlpha::Premultiplied>>;
 /* NOTE: Vulkan stores R11_G11_B10 in reverse component order. */
-class B10F_G11G_R11F : public PixelValue<uint32_t> {
-};
+class B10F_G11G_R11F : public PixelValue<uint32_t> {};
 
 class HALF4 : public PixelValue<uint64_t> {
  public:
@@ -765,6 +771,18 @@ template<typename StorageType> void convert(F32 &dst, const UnsignedNormalized<S
   dst.value = float(uint32_t(src.value)) / float(scalar);
 }
 
+template<typename StorageType>
+void convert(UnsignedNormalized<StorageType> & /*dst*/, const UI32 & /*src*/)
+{
+  BLI_assert_unreachable();
+}
+
+template<typename StorageType> void convert(UI32 &dst, const UnsignedNormalized<StorageType> &src)
+{
+  static constexpr uint32_t scalar = UnsignedNormalized<StorageType>::scalar();
+  dst.value = uint32_t(src.value) & scalar;
+}
+
 /* Copy the contents of src to dst with out performing any actual conversion. */
 template<typename DestinationType, typename SourceType>
 void convert(DestinationType &dst, const SourceType &src)
@@ -899,6 +917,7 @@ static void convert_buffer(void *dst_memory,
       return;
 
     case ConversionType::PASS_THROUGH:
+    case ConversionType::UINT_TO_DEPTH_COMPONENT24:
       memcpy(dst_memory, src_memory, buffer_size * to_bytesize(device_format));
       return;
 
@@ -1001,7 +1020,10 @@ static void convert_buffer(void *dst_memory,
       convert_per_component<F32, UnsignedNormalized<DepthComponent24>>(
           dst_memory, src_memory, buffer_size, device_format);
       break;
-
+    case ConversionType::DEPTH_COMPONENT24_TO_UINT:
+      convert_per_component<UI32, UnsignedNormalized<DepthComponent24>>(
+          dst_memory, src_memory, buffer_size, device_format);
+      break;
     case ConversionType::FLOAT_TO_B10F_G11F_R11F:
       convert_per_pixel<B10F_G11G_R11F, FLOAT3>(dst_memory, src_memory, buffer_size);
       break;

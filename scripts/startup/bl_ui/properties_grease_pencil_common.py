@@ -274,6 +274,30 @@ class GPENCIL_MT_layer_active(Menu):
                 i -= 1
 
 
+class GREASE_PENCIL_MT_move_to_layer(Menu):
+    bl_label = "Move to Layer"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        grease_pencil = context.active_object.data
+
+        layout.operator("grease_pencil.move_to_layer", text="New Layer", icon='ADD').add_new_layer = True
+
+        if not grease_pencil.layers:
+            return
+
+        layout.separator()
+
+        for i in range(len(grease_pencil.layers) - 1, -1, -1):
+            layer = grease_pencil.layers[i]
+            if layer == grease_pencil.layers.active:
+                icon = 'GREASEPENCIL'
+            else:
+                icon = 'NONE'
+            layout.operator("grease_pencil.move_to_layer", text=layer.name, icon=icon).target_layer_name = layer.name
+
+
 class GREASE_PENCIL_MT_layer_active(Menu):
     bl_label = "Change Active Layer"
 
@@ -393,14 +417,23 @@ class AnnotationDataPanel:
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):
-        if context.space_data.type not in {'VIEW_3D', 'TOPBAR', 'SEQUENCE_EDITOR'}:
-            self.layout.prop(context.space_data, "show_annotation", text="")
+        space = context.space_data
+        if space.type not in {
+            'VIEW_3D',
+            'TOPBAR',
+            'SEQUENCE_EDITOR',
+            'IMAGE_EDITOR',
+            'NODE_EDITOR',
+            'PROPERTIES',
+        }:
+            self.layout.prop(space, "show_annotation", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_decorate = False
+        space = context.space_data
 
-        is_clip_editor = context.space_data.type == 'CLIP_EDITOR'
+        is_clip_editor = space.type == 'CLIP_EDITOR'
 
         # Grease Pencil owner.
         gpd_owner = context.annotation_data_owner
@@ -411,7 +444,7 @@ class AnnotationDataPanel:
             col = layout.column()
             col.label(text="Data Source:")
             row = col.row()
-            row.prop(context.space_data, "annotation_source", expand=True)
+            row.prop(space, "annotation_source", expand=True)
 
         # Only allow adding annotation ID if its owner exist
         if context.annotation_data_owner is None:
@@ -582,9 +615,11 @@ class GreasePencilMaterialsPanel:
                 if is_grease_pencil_version3 and ob.mode == 'EDIT':
                     row = layout.row(align=True)
                     row.operator("grease_pencil.stroke_material_set", text="Assign")
+                    row.operator("grease_pencil.material_select", text="Select").deselect = False
+                    row.operator("grease_pencil.material_select", text="Deselect").deselect = True
                 elif not is_grease_pencil_version3 and ob.data.use_stroke_edit_mode:
                     row = layout.row(align=True)
-                    row.operator("gpencil.stroke_material_set", text="Assign")
+                    row.operator("gpencil.stroke_change_color", text="Assign")
                     row.operator("gpencil.material_select", text="Select").deselect = False
                     row.operator("gpencil.material_select", text="Deselect").deselect = True
         # stroke color
@@ -669,7 +704,7 @@ class GPENCIL_UL_layer(UIList):
 
             row = layout.row(align=True)
 
-            icon_mask = 'MOD_MASK' if gpl.use_mask_layer else 'LAYER_ACTIVE'
+            icon_mask = 'CLIPUV_DEHLT' if gpl.use_mask_layer else 'CLIPUV_HLT'
 
             row.prop(gpl, "use_mask_layer", text="", icon=icon_mask, emboss=False)
 
@@ -884,9 +919,9 @@ class GreasePencilLayerDisplayPanel:
 
 
 class GreasePencilFlipTintColors(Operator):
+    """Switch tint colors"""
     bl_label = "Flip Colors"
     bl_idname = "gpencil.tint_flip"
-    bl_description = "Switch tint colors"
 
     @classmethod
     def poll(cls, context):
@@ -942,6 +977,7 @@ classes = (
     GPENCIL_UL_layer,
     GPENCIL_UL_masks,
 
+    GREASE_PENCIL_MT_move_to_layer,
     GREASE_PENCIL_MT_layer_active,
 
     GreasePencilFlipTintColors,

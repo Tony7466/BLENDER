@@ -11,6 +11,7 @@ set(INC
   ../editors/include
   ../makesrna
   ../windowmanager
+  ../../../extern/fmtlib/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -21,23 +22,28 @@ set(INC_SYS
 set(SRC
   intern/action.cc
   intern/anim_rna.cc
+  intern/animation.cc
   intern/animdata.cc
   intern/bone_collections.cc
   intern/bonecolor.cc
+  intern/driver.cc
   intern/fcurve.cc
   intern/keyframing.cc
   intern/keyframing_auto.cc
   intern/visualkey.cc
 
   ANIM_action.hh
+  ANIM_animation.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
   ANIM_bone_collections.hh
   ANIM_bonecolor.hh
+  ANIM_driver.hh
   ANIM_fcurve.hh
   ANIM_keyframing.hh
   ANIM_rna.hh
   ANIM_visualkey.hh
+  intern/bone_collections_internal.hh
 )
 
 set(LIB
@@ -47,6 +53,7 @@ set(LIB
   bf::dna
   PRIVATE bf_editor_interface
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::intern::atomic
 )
 
 
@@ -62,6 +69,5 @@ if(WITH_GTESTS)
   set(TEST_LIB
     PRIVATE bf::animrig
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_animrig_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_lib(animrig "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()

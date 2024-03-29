@@ -22,20 +22,20 @@
 #include "BLI_task.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 
 #include "ED_paint.hh"
 #include "ED_screen.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -191,7 +191,7 @@ static void brush_painter_cache_2d_free(BrushPainterCache *cache)
   }
 }
 
-static void brush_imbuf_tex_co(rctf *mapping, int x, int y, float texco[3])
+static void brush_imbuf_tex_co(const rctf *mapping, int x, int y, float texco[3])
 {
   texco[0] = mapping->xmin + x * mapping->xmax;
   texco[1] = mapping->ymin + y * mapping->ymax;
@@ -692,7 +692,7 @@ static void brush_painter_2d_refresh_cache(ImagePaintState *s,
   Brush *brush = painter->brush;
   BrushPainterCache *cache = &tile->cache;
   /* Adding 4 pixels of padding for brush anti-aliasing. */
-  const int diameter = MAX2(1, size * 2) + 4;
+  const int diameter = std::max(1, int(size * 2)) + 4;
 
   bool do_random = false;
   bool do_partial_update = false;

@@ -11,8 +11,8 @@
 
 #include "gpu_context_private.hh"
 
-#include "GPU_common_types.h"
-#include "GPU_context.h"
+#include "GPU_common_types.hh"
+#include "GPU_context.hh"
 
 /* Don't generate OpenGL deprecation warning. This is a known thing, and is not something easily
  * solvable in a short term. */
@@ -488,7 +488,7 @@ struct MTLContextGlobalShaderPipelineState {
   MTLTextureBinding image_bindings[MTL_MAX_TEXTURE_SLOTS];
 
   /*** --- Render Pipeline State --- ***/
-  /* Track global render pipeline state for the current context. The functions in GPU_state.h
+  /* Track global render pipeline state for the current context. The functions in GPU_state.hh
    * modify these parameters. Certain values, tagged [PSO], are parameters which are required to be
    * passed into PSO creation, rather than dynamic state functions on the RenderCommandEncoder.
    */
@@ -754,7 +754,7 @@ class MTLContext : public Context {
   /* Maximum of 32 texture types. Though most combinations invalid. */
   gpu::MTLTexture *dummy_textures_[GPU_SAMPLER_TYPE_MAX][GPU_TEXTURE_BUFFER] = {{nullptr}};
   GPUVertFormat dummy_vertformat_[GPU_SAMPLER_TYPE_MAX];
-  GPUVertBuf *dummy_verts_[GPU_SAMPLER_TYPE_MAX] = {nullptr};
+  VertBuf *dummy_verts_[GPU_SAMPLER_TYPE_MAX] = {nullptr};
 
  public:
   /* GPUContext interface. */
@@ -780,7 +780,7 @@ class MTLContext : public Context {
 
   void debug_group_begin(const char *name, int index) override;
   void debug_group_end() override;
-  bool debug_capture_begin() override;
+  bool debug_capture_begin(const char *title) override;
   void debug_capture_end() override;
   void *debug_capture_scope_create(const char *name) override;
   bool debug_capture_scope_begin(void *scope) override;
@@ -839,13 +839,13 @@ class MTLContext : public Context {
                               const MTLRenderPipelineStateInstance *pipeline_state_instance);
   bool ensure_buffer_bindings(id<MTLComputeCommandEncoder> rec,
                               const MTLShaderInterface *shader_interface,
-                              const MTLComputePipelineStateInstance &pipeline_state_instance);
+                              const MTLComputePipelineStateInstance *pipeline_state_instance);
   void ensure_texture_bindings(id<MTLRenderCommandEncoder> rec,
                                MTLShaderInterface *shader_interface,
                                const MTLRenderPipelineStateInstance *pipeline_state_instance);
   void ensure_texture_bindings(id<MTLComputeCommandEncoder> rec,
                                MTLShaderInterface *shader_interface,
-                               const MTLComputePipelineStateInstance &pipeline_state_instance);
+                               const MTLComputePipelineStateInstance *pipeline_state_instance);
   void ensure_depth_stencil_state(MTLPrimitiveType prim_type);
 
   id<MTLBuffer> get_null_buffer();
@@ -854,7 +854,8 @@ class MTLContext : public Context {
   void free_dummy_resources();
 
   /* Compute. */
-  bool ensure_compute_pipeline_state();
+  /* Ensure compute pipeline state for current config is compiled and return PSO instance. */
+  const MTLComputePipelineStateInstance *ensure_compute_pipeline_state();
   void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void compute_dispatch_indirect(StorageBuf *indirect_buf);
 
