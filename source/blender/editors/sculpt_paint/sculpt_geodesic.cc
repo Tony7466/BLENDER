@@ -245,9 +245,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
   const Span<int> corner_edges = mesh->corner_edges();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-
   float *dists = static_cast<float *>(MEM_malloc_arrayN(totvert, sizeof(float), __func__));
-  BitVector<> edge_tag(totedge);
 
   if (ss->edge_to_face_map.is_empty()) {
     ss->edge_to_face_map = bke::mesh::build_edge_to_face_map(
@@ -304,50 +302,48 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     }
   });
 
+  BitVector<> edge_tag(totedge);
   while (!queue.empty()) {
     tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int e) {
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
-      // geodesic_criteria --------------------------------------------------------
-        if ((dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) &&
-            !(dists[v1] == FLT_MAX && dists[v2] == FLT_MAX))
-        {
-          if (dists[v1] > dists[v2]) {
-            std::swap(v1, v2);
-          }
-          sculpt_geodesic_mesh_test_dist_add(
-              vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
+      if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX)
+      {
+        if (dists[v1] > dists[v2]) {
+          std::swap(v1, v2);
         }
+        sculpt_geodesic_mesh_test_dist_add(
+            vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
+      }
 
-        for (const int face : ss->edge_to_face_map[e]) {
-          if (!hide_poly.is_empty() && hide_poly[face]) {
+      for (const int face : ss->edge_to_face_map[e]) {
+        if (!hide_poly.is_empty() && hide_poly[face]) {
+          continue;
+        }
+        for (const int v_other : corner_verts.slice(faces[face])) {
+          if (ELEM(v_other, v1, v2)) {
             continue;
           }
-          for (const int v_other : corner_verts.slice(faces[face])) {
-            if (ELEM(v_other, v1, v2)) {
-              continue;
-            }
-            if (sculpt_geodesic_mesh_test_dist_add(
-                    vert_positions, v_other, v1, v2, dists, initial_verts))
-            {
-              for (const int e_other : ss->vert_to_edge_map[v_other]) {
-                const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
-                                                                      edges[e_other][0];
+          if (sculpt_geodesic_mesh_test_dist_add(
+                  vert_positions, v_other, v1, v2, dists, initial_verts))
+          {
+            for (const int e_other : ss->vert_to_edge_map[v_other]) {
+              const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
+                                                                    edges[e_other][0];
 
-                if (e_other != e && !edge_tag[e_other] &&
-                    (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
-                {
-                  if (affected_vert[v_other] || affected_vert[ev_other]) {
-                    edge_tag[e_other].set();
-                    queue_next.push_back(e_other);
-                  }
-                }
+              if ((affected_vert[v_other] || affected_vert[ev_other]) && e_other != e &&
+                  !edge_tag[e_other] &&
+                  (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
+              {
+                edge_tag[e_other].set();
+                edge_tag[e].set();
+                queue_next.push_back(e_other);
               }
             }
           }
         }
-        //-----
+      }
     });
 
     queue.swap(queue_next);
@@ -355,7 +351,6 @@ static float *geodesic_mesh_create_parallel(Object *ob,
         queue.begin(), queue.end(), [&](const int val) { edge_tag[val].reset(); });
     queue_next.clear();
   }
-  //-----
 
   return dists;
 }
