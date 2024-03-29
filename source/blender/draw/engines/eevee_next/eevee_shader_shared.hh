@@ -1323,19 +1323,19 @@ struct ShadowSamplingTile {
 /** \note Stored packed as a uint. */
 #define ShadowSamplingTilePacked uint
 
-#define SHADOW_TILE_IS_VALID (1u << 31u)
-
-/* NOTE: Trust the input to be in valid range (max is [128,128]).
- * Maximum LOD level index we can store is 7, so we need 7 bits to store the offset in each
- * dimension. Result fits into 14 bits. */
+/* NOTE: Trust the input to be in valid range [0, (1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1].
+ * Maximum LOD level index we can store is SHADOW_TILEMAP_MAX_CLIPMAP_LOD,
+ * so we need SHADOW_TILEMAP_MAX_CLIPMAP_LOD bits to store the offset in each dimension.
+ * Result fits into SHADOW_TILEMAP_MAX_CLIPMAP_LOD * 2 bits. */
 static inline uint shadow_lod_offset_pack(uint2 ofs)
 {
-  BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
-  return (ofs.x << 0u) | (ofs.y << 7u);
+  BLI_STATIC_ASSERT(SHADOW_TILEMAP_MAX_CLIPMAP_LOD <= 8, "Update page packing")
+  return ofs.x | (ofs.y << SHADOW_TILEMAP_MAX_CLIPMAP_LOD);
 }
 static inline uint2 shadow_lod_offset_unpack(uint data)
 {
-  return (uint2(data) >> uint2(0u, 7u)) & uint2(127u);
+  return (uint2(data) >> uint2(0, SHADOW_TILEMAP_MAX_CLIPMAP_LOD)) &
+         uint2((1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1);
 }
 
 static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
@@ -1343,24 +1343,36 @@ static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTileP
   ShadowSamplingTile tile;
   tile.page = shadow_page_unpack(data);
   /* -- 12 bits -- */
-  tile.lod = (data >> 12u) & 7u;
-  /* -- 15 bits -- */
-  tile.lod_offset = shadow_lod_offset_unpack(data >> 15u);
-  /* -- 29 bits -- */
-  /* Only 3 padding bits left. */
-  tile.is_valid = (data & SHADOW_TILE_IS_VALID) != 0;
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  tile.lod = (data >> 12u) & 15u;
+  /* -- 16 bits -- */
+  tile.lod_offset = shadow_lod_offset_unpack(data >> 16u);
+  /* -- 32 bits -- */
+  tile.is_valid = data != 0u;
+#ifndef GPU_SHADER
+  /* Make tests pass on CPU but it is not required for proper rendering. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 0;
+  }
+#endif
   return tile;
 }
 
 static inline ShadowSamplingTilePacked shadow_sampling_tile_pack(ShadowSamplingTile tile)
 {
-  uint data;
-  /* NOTE: Page might be set to invalid values for tracking invalid usages.
-   * So we have to mask the result. */
-  data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
-  data |= (tile.lod & 7u) << 12u;
-  data |= shadow_lod_offset_pack(tile.lod_offset) << 15u;
-  data |= (tile.is_valid ? uint(SHADOW_TILE_IS_VALID) : 0);
+  if (!tile.is_valid) {
+    return 0u;
+  }
+  /* Tag a valid tile of LOD0 valid by setting their offset to 1.
+   * This doesn't change the sampling and allows to use of all bits for data.
+   * This makes sure no valid packed tile is 0u. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 1;
+  }
+  uint data = shadow_page_pack(tile.page);
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  data |= (tile.lod & 15u) << 12u;
+  data |= shadow_lod_offset_pack(tile.lod_offset) << 16u;
   return data;
 }
 

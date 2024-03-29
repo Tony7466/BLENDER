@@ -58,13 +58,15 @@ vec3 debug_tile_state_color(ShadowTileData tile)
   return col;
 }
 
-vec3 debug_tile_state_color(ShadowSamplingTile tile)
+vec3 debug_tile_state_color(eLightType type, ShadowSamplingTile tile)
 {
   if (!tile.is_valid) {
     return vec3(1, 0, 0);
   }
   /* Uses data from another LOD. */
-  return neon_gradient(float(tile.lod) / float(SHADOW_TILEMAP_LOD));
+  return neon_gradient(float(tile.lod) / float((type == LIGHT_SUN) ?
+                                                   SHADOW_TILEMAP_MAX_CLIPMAP_LOD :
+                                                   SHADOW_TILEMAP_LOD));
 }
 
 ShadowSampleParams debug_shadow_sample_get(vec3 P, LightData light)
@@ -110,6 +112,26 @@ bool debug_tilemaps(vec3 P, LightData light)
   int tilemap = px.x / SHADOW_TILEMAP_RES;
   int tilemap_index = light.tilemap_index + tilemap;
   if ((px.y < SHADOW_TILEMAP_RES) && (tilemap_index <= light_tilemap_max_get(light))) {
+#if 1
+    /* Debug values in the tilemap_tx. */
+    ivec2 tilemap_texel = shadow_tile_coord_in_atlas(px, tilemap_index);
+    ShadowSamplingTile tile = shadow_sampling_tile_unpack(
+        texelFetch(shadow_tilemaps_tx, tilemap_texel, 0).x);
+    /* Leave 1 px border between tile-maps. */
+    if (!any(equal(ivec2(gl_FragCoord.xy) % (SHADOW_TILEMAP_RES * debug_tile_size_px), ivec2(0))))
+    {
+      gl_FragDepth = 0.0;
+      out_color_add = vec4(debug_tile_state_color(light.type, tile), 0.0);
+      out_color_mul = vec4(0.0);
+
+#  ifdef DRW_DEBUG_PRINT
+      if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
+        drw_print(light.object_mat);
+      }
+#  endif
+      return true;
+    }
+#else
     /* Debug actual values in the tile-map buffer. */
     ShadowTileMapData tilemap = tilemaps_buf[tilemap_index];
     int tile_index = shadow_tile_offset(
@@ -122,13 +144,14 @@ bool debug_tilemaps(vec3 P, LightData light)
       out_color_add = vec4(debug_tile_state_color(tile), 0.0);
       out_color_mul = vec4(0.0);
 
-#ifdef DRW_DEBUG_PRINT
+#  ifdef DRW_DEBUG_PRINT
       if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
         drw_print(light.object_mat);
       }
-#endif
+#  endif
       return true;
     }
+#endif
   }
   return false;
 }
@@ -136,7 +159,7 @@ bool debug_tilemaps(vec3 P, LightData light)
 void debug_tile_state(vec3 P, LightData light)
 {
   ShadowSamplingTile tile = debug_tile_get(P, light);
-  out_color_add = vec4(debug_tile_state_color(tile), 0) * 0.5;
+  out_color_add = vec4(debug_tile_state_color(light.type, tile), 0) * 0.5;
   out_color_mul = vec4(0.5);
 }
 

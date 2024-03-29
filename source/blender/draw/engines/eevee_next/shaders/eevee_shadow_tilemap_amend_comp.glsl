@@ -55,16 +55,26 @@ void main()
         ShadowSamplingTilePacked tile_prev_packed = tiles_local[tile_co_prev.y][tile_co_prev.x];
         ShadowSamplingTile tile_prev = shadow_sampling_tile_unpack(tile_prev_packed);
 
-        if (tile_prev.is_valid) {
+        /* We can only propagate LODs up to a certain level.
+         * Afterwards we run out of bits to store the offsets. */
+        if (tile_prev.is_valid && tile_prev.lod < SHADOW_TILEMAP_MAX_CLIPMAP_LOD - 1) {
           /* Relative LOD. Used for reducing pixel rate at sampling time.
            * Increase with each new invalid level. */
           tile_prev.lod += 1;
-          /* Previous level is now twice as big as this level.
-           * Double the offset to the valid page. */
-          tile_prev.lod_offset *= 2u;
-          /* Add the offset of this tile relative to the previous level to the tile data.
-           * There is only an offset if offset is odd since previous level is twice as big. */
-          tile_prev.lod_offset += uint2(offset_centered) & 1u;
+
+          /* The offset (in tile of current LOD) is equal to the offset from the bottom left corner
+           * of both LODs modulo the size of a tile of the source LOD (in tile of current LOD). */
+
+          /* Offset corner to center. */
+          tile_prev.lod_offset = uvec2(SHADOW_TILEMAP_RES / 2) << tile_prev.lod;
+          /* Align center of both LODs. */
+          tile_prev.lod_offset -= uvec2(SHADOW_TILEMAP_RES / 2);
+          /* Add the offset relative to the source LOD. */
+          tile_prev.lod_offset += bitfieldExtract(base_offset_pos, lod, int(tile_prev.lod)) -
+                                  bitfieldExtract(base_offset_neg, lod, int(tile_prev.lod));
+          /* Wrap to valid range. This should be modulo the size of a source LOD page but it has
+           * the same effect. */
+          tile_prev.lod_offset &= ~(~0 << uint(SHADOW_TILEMAP_MAX_CLIPMAP_LOD));
 
           tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
           /* Replace the missing page with the one from the lower LOD. */
