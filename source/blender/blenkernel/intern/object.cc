@@ -1635,13 +1635,6 @@ void BKE_object_free_derived_caches(Object *ob)
 
   object_update_from_subsurf_ccg(ob);
 
-  if (ob->runtime->editmesh_eval_cage &&
-      ob->runtime->editmesh_eval_cage != reinterpret_cast<Mesh *>(ob->runtime->data_eval))
-  {
-    BKE_mesh_eval_delete(ob->runtime->editmesh_eval_cage);
-  }
-  ob->runtime->editmesh_eval_cage = nullptr;
-
   if (ob->runtime->data_eval != nullptr) {
     if (ob->runtime->is_data_eval_owned) {
       ID *data_eval = ob->runtime->data_eval;
@@ -1655,11 +1648,6 @@ void BKE_object_free_derived_caches(Object *ob)
       }
     }
     ob->runtime->data_eval = nullptr;
-  }
-  if (ob->runtime->mesh_deform_eval != nullptr) {
-    Mesh *mesh_deform_eval = ob->runtime->mesh_deform_eval;
-    BKE_mesh_eval_delete(mesh_deform_eval);
-    ob->runtime->mesh_deform_eval = nullptr;
   }
 
   /* Restore initial pointer for copy-on-evaluation data-blocks, object->data
@@ -1681,10 +1669,8 @@ void BKE_object_free_derived_caches(Object *ob)
     ob->runtime->gpd_eval = nullptr;
   }
 
-  if (ob->runtime->geometry_set_eval != nullptr) {
-    delete ob->runtime->geometry_set_eval;
-    ob->runtime->geometry_set_eval = nullptr;
-  }
+  delete ob->runtime->geometry_set_eval;
+  ob->runtime->geometry_set_eval = nullptr;
 }
 
 void BKE_object_free_caches(Object *object)
@@ -4250,9 +4236,26 @@ const Mesh *BKE_object_get_editmesh_eval_cage(const Object *object)
 
 const Mesh *BKE_object_get_mesh_deform_eval(const Object *object)
 {
+  using namespace blender::bke;
   BLI_assert(!DEG_is_original_id(&object->id));
   BLI_assert(object->type == OB_MESH);
-  return object->runtime->mesh_deform_eval;
+  const GeometrySet *geometry_set = object->runtime->geometry_set_eval;
+  if (!geometry_set) {
+    return nullptr;
+  }
+  const auto *component = geometry_set->get_component<GeometryComponentEditData>();
+  if (!component) {
+    return nullptr;
+  }
+  const MeshEditHints *edit_hints = component->mesh_edit_hints_.get();
+  if (!edit_hints) {
+    return nullptr;
+  }
+  const MeshComponent *mesh_component = edit_hints->mesh_deform.get();
+  if (!mesh_component) {
+    return nullptr;
+  }
+  return mesh_component->get();
 }
 
 Lattice *BKE_object_get_lattice(const Object *object)
