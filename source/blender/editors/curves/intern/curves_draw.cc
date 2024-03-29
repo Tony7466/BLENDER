@@ -774,9 +774,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
-  for (const StringRef selection_name : selection_attribute_names) {
-    attributes.remove(selection_name);
-  }
+  remove_selection_attributes(attributes, selection_attribute_names);
 
   if (cdd->curve_type == CU_BEZIER) {
     /* Allow to interpolate multiple channels */

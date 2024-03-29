@@ -65,6 +65,14 @@ Span<std::string> get_curves_all_selection_attribute_names();
  */
 Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves);
 
+/**
+ * Used to select everything or to delete selection attribute so that it will not have to be
+ * resized.
+ */
+void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
+                                 const Span<std::string> selection_attribute_names =
+                                     get_curves_all_selection_attribute_names());
+
 using SelectableRangeConsumer = blender::FunctionRef<void(
     const IndexRange range, const Span<float3> positions, StringRef selection_attribute_name)>;
 /**

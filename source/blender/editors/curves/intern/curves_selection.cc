@@ -102,6 +102,14 @@ Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesG
              Span<std::string>();
 }
 
+void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
+                                 const Span<std::string> selection_attribute_names)
+{
+  for (const StringRef selection_name : selection_attribute_names) {
+    attributes.remove(selection_name);
+  }
+}
+
 inline MutableSpan<bke::GSpanAttributeWriter> init_selection_writers(
     Vector<bke::GSpanAttributeWriter> &writers,
     bke::CurvesGeometry &curves,
@@ -458,9 +466,7 @@ void select_all(bke::CurvesGeometry &curves,
     {
       bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
       /* As an optimization, just remove the selection attributes when everything is selected. */
-      attributes.remove(".selection");
-      attributes.remove(".selection_handle_left");
-      attributes.remove(".selection_handle_right");
+      remove_selection_attributes(attributes);
       return;
     }
   }
