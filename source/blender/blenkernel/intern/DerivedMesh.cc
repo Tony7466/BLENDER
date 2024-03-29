@@ -475,6 +475,8 @@ void BKE_mesh_wrapper_deferred_finalize_mdata(Mesh *mesh_eval)
   BLI_assert(mesh_eval->runtime->wrapper_type_finalize == 0);
 }
 
+namespace blender::bke {
+
 /**
  * Modifies the given mesh and geometry set. The mesh is not passed as part of the mesh component
  * in the \a geometry_set input, it is only passed in \a input_mesh and returned in the return
@@ -506,8 +508,6 @@ static void modifier_modify_mesh_and_geometry_set(ModifierData *md,
 
 static void set_rest_position(Mesh &mesh)
 {
-  using namespace blender;
-  using namespace blender::bke;
   MutableAttributeAccessor attributes = mesh.attributes_for_write();
   const AttributeReader positions = attributes.lookup<float3>("position");
   attributes.remove("rest_position");
@@ -525,19 +525,26 @@ static void set_rest_position(Mesh &mesh)
   }
 }
 
+static void save_cage_mesh(GeometrySet &geometry_set)
+{
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
+    auto &edit_data = geometry_set.get_component_for_write<GeometryComponentEditData>();
+    if (!edit_data.mesh_edit_hints_) {
+      edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
+    }
+    BLI_assert(!edit_data.mesh_edit_hints_->mesh_cage);
+    edit_data.mesh_edit_hints_->mesh_cage = geometry_set.get_component_ptr<MeshComponent>();
+  }
+}
+
 static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
                                        const Scene *scene,
                                        Object *ob,
                                        const bool use_deform,
                                        const bool need_mapping,
                                        const CustomData_MeshMasks *dataMask,
-                                       const bool use_cache,
-                                       const bool allow_shared_mesh,
-                                       /* return args */
-                                       Mesh **r_deform)
+                                       const bool use_cache)
 {
-  using namespace blender;
-  using namespace blender::bke;
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
 
   GeometrySet geometry_set = GeometrySet::from_mesh(const_cast<Mesh *>(mesh_input),
@@ -852,16 +859,12 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
     }
   }
 
-  /* Return final mesh */
-  if (r_deform) {
-    *r_deform = mesh_deform;
-  }
   return geometry_set;
 }
 
-static blender::Array<float3> editbmesh_vert_coords_alloc(const BMEditMesh *em)
+static Array<float3> editbmesh_vert_coords_alloc(const BMEditMesh *em)
 {
-  blender::Array<float3> cos(em->bm->totvert);
+  Array<float3> cos(em->bm->totvert);
   BMIter iter;
   BMVert *eve;
   int i;
@@ -937,8 +940,6 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
   BLI_assert_unreachable();
   return {};
 }
-
-namespace blender::bke {
 
 static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
 {
@@ -1166,16 +1167,14 @@ static void mesh_build_data(Depsgraph *depsgraph,
 {
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
 
-  Mesh *mesh_deform_eval = nullptr;
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, true, need_mapping, dataMask, true, true, &mesh_deform_eval);
+      depsgraph, scene, ob, true, need_mapping, dataMask, true, true);
 
   const Mesh *mesh_eval = geometry_set.get_mesh();
 
   BKE_object_eval_assign_data(ob, &const_cast<ID &>(mesh_eval->id), false);
   ob->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 
-  ob->runtime->mesh_deform_eval = mesh_deform_eval;
   ob->runtime->last_data_mask = *dataMask;
   ob->runtime->last_need_mapping = need_mapping;
 
@@ -1379,7 +1378,7 @@ Mesh *mesh_create_eval_final(Depsgraph *depsgraph,
                              const CustomData_MeshMasks *dataMask)
 {
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, true, false, dataMask, false, false, nullptr);
+      depsgraph, scene, ob, true, false, dataMask, false, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
@@ -1390,7 +1389,7 @@ Mesh *mesh_create_eval_no_deform(Depsgraph *depsgraph,
                                  const CustomData_MeshMasks *dataMask)
 {
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, false, false, nullptr);
+      depsgraph, scene, ob, false, false, dataMask, false, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
@@ -1401,7 +1400,7 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
                                         const CustomData_MeshMasks *dataMask)
 {
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, false, false, nullptr);
+      depsgraph, scene, ob, false, false, dataMask, false, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
