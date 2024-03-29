@@ -292,15 +292,23 @@ static float *geodesic_mesh_create_parallel(Object *ob,
 
   tbb::concurrent_vector<int> queue, queue_next;
 
-  /* Add edges adjacent to an initial vertex to the queue. */
-  tbb::parallel_for(0, totedge, [&](const int i) {
-    const int v1 = edges[i][0];
-    const int v2 = edges[i][1];
-    if ((affected_vert[v1] || affected_vert[v2]) && (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
-    {
-      queue.push_back(i);
+  /* Add edges adjacent to an initial vertex to the queue.
+   Since initial vertex are few only, iterating over its neighbour edges
+   instead of over all edges scales better as mesh edge count increases */
+
+  GSetIterator gs_iter;
+  GSET_ITER (gs_iter, initial_verts) {
+    const int seed_vert = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
+    for (const int e : ss->vert_to_edge_map[seed_vert]) {
+      const int v1 = edges[e][0];
+      const int v2 = edges[e][1];
+      if ((affected_vert[v1] || affected_vert[v2]) &&
+          (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
+      {
+        queue.push_back(e);
+      }
     }
-  });
+  }
 
   BitVector<> edge_tag(totedge);
   while (!queue.empty()) {
@@ -308,8 +316,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
-      if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX)
-      {
+      if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) {
         if (dists[v1] > dists[v2]) {
           std::swap(v1, v2);
         }
@@ -325,22 +332,25 @@ static float *geodesic_mesh_create_parallel(Object *ob,
           if (ELEM(v_other, v1, v2)) {
             continue;
           }
-          if (sculpt_geodesic_mesh_test_dist_add(
+          if (!sculpt_geodesic_mesh_test_dist_add(
                   vert_positions, v_other, v1, v2, dists, initial_verts))
           {
-            for (const int e_other : ss->vert_to_edge_map[v_other]) {
-              const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
-                                                                    edges[e_other][0];
+            continue;
+          }
 
-              if ((affected_vert[v_other] || affected_vert[ev_other]) && e_other != e &&
-                  !edge_tag[e_other] &&
-                  (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
-              {
-                edge_tag[e_other].set();
-                edge_tag[e].set();
-                queue_next.push_back(e_other);
-              }
+          for (const int e_other : ss->vert_to_edge_map[v_other]) {
+            const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
+                                                                  edges[e_other][0];
+
+            if (!(affected_vert[v_other] || affected_vert[ev_other]) || e_other == e ||
+                edge_tag[e_other] ||
+                (!ss->edge_to_face_map[e_other].is_empty() && dists[ev_other] == FLT_MAX))
+            {
+              continue;
             }
+
+            edge_tag[e_other].set();
+            queue_next.push_back(e_other);
           }
         }
       }
