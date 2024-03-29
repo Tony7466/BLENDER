@@ -915,8 +915,10 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
         LISTBASE_FOREACH (SpaceLink *, space_link, &area->spacedata) {
           if (space_link->spacetype == SPACE_OUTLINER) {
             SpaceOutliner *space_outliner = reinterpret_cast<SpaceOutliner *>(space_link);
-            BLI_mempool_destroy(space_outliner->treestore);
-            space_outliner->treestore = nullptr;
+            if (space_outliner->treestore) {
+              BLI_mempool_destroy(space_outliner->treestore);
+              space_outliner->treestore = nullptr;
+            }
           }
         }
       }
