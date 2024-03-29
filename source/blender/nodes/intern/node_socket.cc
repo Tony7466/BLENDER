@@ -187,7 +187,7 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 VectorSet<bNodeSocket *> &new_sockets)
 {
   /* Only group inputs have the option to hide new sockets. */
-  const bool hide_new_group_input_sockets = (node.is_group_input()) &&
+  const bool hide_new_group_input_sockets = node.is_group_input() &&
                                             (node.flag & NODE_HIDE_UNUSED_SOCKETS);
   /* Try to find a socket that corresponds to the declaration. */
   bNodeSocket *old_socket_with_same_identifier = nullptr;

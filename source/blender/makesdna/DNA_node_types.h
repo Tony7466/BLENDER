@@ -480,6 +480,7 @@ enum {
   NODE_PREVIEW = 1 << 2,
   NODE_HIDDEN = 1 << 3,
   NODE_ACTIVE = 1 << 4,
+  /** For group input nodes: new group inputs aren't displayed in this node. */
   NODE_HIDE_UNUSED_SOCKETS = 1 << 5,
   /** Used to indicate which group output node is used and which viewer node is active. */
   NODE_DO_OUTPUT = 1 << 6,
