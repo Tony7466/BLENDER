@@ -4,6 +4,7 @@
 
 /* Shader to convert cube-map to octahedral projection. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
@@ -69,6 +70,7 @@ void main()
   SphereProbeUvArea world_coord = reinterpret_as_atlas_coord(world_coord_packed);
   SphereProbeUvArea sample_coord = reinterpret_as_atlas_coord(probe_coord_packed);
   SphereProbePixelArea write_coord = reinterpret_as_write_coord(write_coord_packed);
+  bool is_world = all(equal(probe_coord_packed, world_coord_packed));
 
   /* Texel in probe. */
   ivec2 local_texel = ivec2(gl_GlobalInvocationID.xy);
@@ -76,13 +78,15 @@ void main()
   vec2 wrapped_uv;
   vec3 direction = sphere_probe_texel_to_direction(
       local_texel, write_coord, sample_coord, wrapped_uv);
+  if (is_world) {
+    direction = transform_direction(world_rotation, direction);
+  }
   vec4 radiance_and_transmittance = texture(cubemap_tx, direction);
   vec3 radiance = radiance_and_transmittance.xyz;
 
   float opacity = 1.0 - radiance_and_transmittance.a;
 
   /* Composite world into reflection probes. */
-  bool is_world = all(equal(probe_coord_packed, world_coord_packed));
   if (!is_world && opacity != 1.0) {
     vec2 world_uv = wrapped_uv * world_coord.scale + world_coord.offset;
     vec4 world_radiance = textureLod(atlas_tx, vec3(world_uv, world_coord.layer), 0.0);

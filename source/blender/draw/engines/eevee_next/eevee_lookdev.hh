@@ -31,6 +31,7 @@ struct LookdevParameters {
   float intensity = 1.0f;
   float blur = 0.0f;
   bool show_scene_world = true;
+  bool use_view_rotation = false;
 
   LookdevParameters();
   LookdevParameters(const ::View3D *v3d);

@@ -303,6 +303,7 @@ LookdevParameters::LookdevParameters(const ::View3D *v3d)
   show_scene_world = shading.type == OB_RENDER ? shading.flag & V3D_SHADING_SCENE_WORLD_RENDER :
                                                  shading.flag & V3D_SHADING_SCENE_WORLD;
   if (!show_scene_world) {
+    use_view_rotation = shading.flag & V3D_SHADING_STUDIOLIGHT_VIEW_ROTATION;
     rot_z = shading.studiolight_rot_z;
     background_opacity = shading.studiolight_background;
     blur = shading.studiolight_blur;
@@ -315,7 +316,8 @@ bool LookdevParameters::operator==(const LookdevParameters &other) const
 {
   return hdri == other.hdri && rot_z == other.rot_z &&
          background_opacity == other.background_opacity && blur == other.blur &&
-         intensity == other.intensity && show_scene_world == other.show_scene_world;
+         intensity == other.intensity && show_scene_world == other.show_scene_world &&
+         use_view_rotation == other.use_view_rotation;
 }
 
 bool LookdevParameters::operator!=(const LookdevParameters &other) const

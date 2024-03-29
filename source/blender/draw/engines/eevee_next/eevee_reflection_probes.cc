@@ -23,6 +23,7 @@ void SphereProbeModule::init()
      * there are other light probes in the scene. */
     update_probes_next_sample_ = DEG_id_type_any_exists(instance_.depsgraph, ID_LP);
   }
+  world_rotation_ = float4x4::identity();
 
   do_display_draw_ = false;
 }
@@ -51,6 +52,7 @@ void SphereProbeModule::begin_sync()
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
     pass.push_constant("probe_brightness_clamp", probe_brightness_clamp);
+    pass.push_constant("world_rotation", &world_rotation_);
     pass.dispatch(&dispatch_probe_pack_);
   }
   {
@@ -137,6 +139,11 @@ void SphereProbeModule::end_sync()
        * This avoids stuttering when moving a light-probe. */
       update_probes_next_sample_ = true;
     }
+  }
+
+  if (world_updated) {
+    // update world_rotation_
+    
   }
 
   /* When reflection probes are synced the sampling must be reset.

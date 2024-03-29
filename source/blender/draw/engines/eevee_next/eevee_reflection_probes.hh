@@ -62,6 +62,9 @@ class SphereProbeModule {
   int3 dispatch_probe_convolve_ = int3(1);
   int3 dispatch_probe_select_ = int3(1);
 
+  /** World rotation to lock the world HDRI to the view. (lookdev)*/
+  float4x4 world_rotation_;
+
   /**
    * Texture containing a cube-map where the probe should be rendering to.
    *
