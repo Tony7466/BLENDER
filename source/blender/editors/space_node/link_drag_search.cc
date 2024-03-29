@@ -101,9 +101,9 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   /* This is necessary to create the new sockets in the other input nodes. */
   ED_node_tree_propagate_change(&params.C, CTX_data_main(&params.C), &params.node_tree);
 
-  /* Hide the new input in all other group input nodes, to avoid making them taller. */
+  /* Don't show the new input other group input nodes, that hide unused sockets. */
   for (bNode *node : params.node_tree.all_nodes()) {
-    if (node->type == NODE_GROUP_INPUT) {
+    if (node->is_group_input() && (node->flag & NODE_HIDE_UNUSED_SOCKETS)) {
       bNodeSocket *new_group_input_socket = nodeFindSocket(
           node, SOCK_OUT, socket_iface->identifier);
       if (new_group_input_socket) {
