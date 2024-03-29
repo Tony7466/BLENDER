@@ -571,9 +571,9 @@ static void rna_def_collection_exporter_data(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "ExportHandlerData", nullptr);
-  RNA_def_struct_sdna(srna, "ExportHandlerData");
-  RNA_def_struct_ui_text(srna, "IO Handler Data", "IO Handlers configured for the collection");
+  srna = RNA_def_struct(brna, "CollectionExport", nullptr);
+  RNA_def_struct_sdna(srna, "CollectionExport");
+  RNA_def_struct_ui_text(srna, "Collection Export Data", "Exporter configured for the collection");
 
   prop = RNA_def_property(srna, "is_open", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", IO_HANDLER_PANEL_OPEN);
@@ -670,7 +670,7 @@ void RNA_def_collections(BlenderRNA *brna)
 
   /* Export Handlers. */
   prop = RNA_def_property(srna, "exporters", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "ExportHandlerData");
+  RNA_def_property_struct_type(prop, "CollectionExport");
   RNA_def_property_collection_sdna(prop, nullptr, "exporters", nullptr);
   RNA_def_property_ui_text(
       prop, "Collection Export Handlers", "Export Handlers configured for the collection");

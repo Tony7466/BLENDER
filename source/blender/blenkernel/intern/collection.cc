@@ -109,7 +109,7 @@ static void collection_gobject_hash_ensure(Collection *collection);
 static void collection_gobject_hash_update_object(Collection *collection,
                                                   Object *ob_old,
                                                   CollectionObject *cob);
-static void collection_exporter_copy(Collection *collection, ExportHandlerData *data);
+static void collection_exporter_copy(Collection *collection, CollectionExport *data);
 
 /** \} */
 
@@ -172,7 +172,7 @@ static void collection_copy_data(Main *bmain,
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, &cob->light_linking, flag, false);
   }
-  LISTBASE_FOREACH (ExportHandlerData *, data, &collection_src->exporters) {
+  LISTBASE_FOREACH (CollectionExport *, data, &collection_src->exporters) {
     collection_exporter_copy(collection_dst, data);
   }
 }
@@ -193,7 +193,7 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->children);
   BLI_freelistN(&collection->runtime.parents);
 
-  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
     BKE_collection_exporter_free_data(data);
   }
   BLI_freelistN(&collection->exporters);
@@ -286,8 +286,8 @@ void BKE_collection_blend_write_nolib(BlendWriter *writer, Collection *collectio
     BLO_write_struct(writer, CollectionChild, child);
   }
 
-  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
-    BLO_write_struct(writer, ExportHandlerData, data);
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
+    BLO_write_struct(writer, CollectionExport, data);
     if (data->export_properties) {
       IDP_BlendWrite(writer, data->export_properties);
     }
@@ -343,7 +343,7 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
   BLO_read_list(reader, &collection->children);
 
   BLO_read_list(reader, &collection->exporters);
-  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
     BLO_read_data_address(reader, &data->export_properties);
     IDP_BlendDataRead(reader, &data->export_properties);
   }
@@ -514,7 +514,7 @@ void BKE_collection_free_data(Collection *collection)
   collection_free_data(&collection->id);
 }
 
-void BKE_collection_exporter_free_data(struct ExportHandlerData *data)
+void BKE_collection_exporter_free_data(struct CollectionExport *data)
 {
   if (data->export_properties) {
     IDP_FreeProperty(data->export_properties);
@@ -1384,9 +1384,9 @@ static bool collection_object_remove(
   return true;
 }
 
-static void collection_exporter_copy(Collection *collection, ExportHandlerData *data)
+static void collection_exporter_copy(Collection *collection, CollectionExport *data)
 {
-  ExportHandlerData *new_data = MEM_cnew<ExportHandlerData>("ExportHandlerData");
+  CollectionExport *new_data = MEM_cnew<CollectionExport>("CollectionExport");
   STRNCPY(new_data->fh_idname, data->fh_idname);
   new_data->export_properties = IDP_CopyProperty(data->export_properties);
   new_data->flag = data->flag;

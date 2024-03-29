@@ -63,8 +63,8 @@ typedef struct CollectionChild {
 } CollectionChild;
 
 /* Collection IO property storage and access. */
-typedef struct ExportHandlerData {
-  struct ExportHandlerData *next, *prev;
+typedef struct CollectionExport {
+  struct CollectionExport *next, *prev;
 
   /** Identifier that matches the #FileHandlerType.idname. */
   char fh_idname[64];
@@ -73,7 +73,7 @@ typedef struct ExportHandlerData {
   uint32_t flag;
 
   uint32_t _pad0;
-} ExportHandlerData;
+} CollectionExport;
 
 typedef enum IOHandlerPanelFlag {
   IO_HANDLER_PANEL_OPEN = 1 << 0,

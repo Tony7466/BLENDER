@@ -455,9 +455,9 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Add a new #ExportHandlerData item to our handler list and fill it with #FileHandlerType
+  /* Add a new #CollectionExport item to our handler list and fill it with #FileHandlerType
    * information. Also load in the operator's properties now as well. */
-  ExportHandlerData *data = MEM_cnew<ExportHandlerData>("ExportHandlerData");
+  CollectionExport *data = MEM_cnew<CollectionExport>("CollectionExport");
   STRNCPY(data->fh_idname, fh->idname);
 
   IDPropertyTemplate val{};
@@ -495,7 +495,7 @@ static int collection_exporter_remove_exec(bContext *C, wmOperator *op)
   ListBase *exporters = &collection->exporters;
 
   int index = RNA_int_get(op->ptr, "index");
-  ExportHandlerData *data = static_cast<ExportHandlerData *>(BLI_findlink(exporters, index));
+  CollectionExport *data = static_cast<CollectionExport *>(BLI_findlink(exporters, index));
   if (!data) {
     return OPERATOR_CANCELLED;
   }
@@ -528,7 +528,7 @@ void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
-static int collection_exporter_export(bContext *C, ExportHandlerData *data, Collection *collection)
+static int collection_exporter_export(bContext *C, CollectionExport *data, Collection *collection)
 {
   using namespace blender;
   bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
@@ -570,7 +570,7 @@ static int collection_exporter_export_exec(bContext *C, wmOperator *op)
   ListBase *exporters = &collection->exporters;
 
   int index = RNA_int_get(op->ptr, "index");
-  ExportHandlerData *data = static_cast<ExportHandlerData *>(BLI_findlink(exporters, index));
+  CollectionExport *data = static_cast<CollectionExport *>(BLI_findlink(exporters, index));
   if (!data) {
     return OPERATOR_CANCELLED;
   }
@@ -599,7 +599,7 @@ static int collection_export(bContext *C, Collection *collection)
 {
   ListBase *exporters = &collection->exporters;
 
-  LISTBASE_FOREACH (ExportHandlerData *, data, exporters) {
+  LISTBASE_FOREACH (CollectionExport *, data, exporters) {
     if (collection_exporter_export(C, data, collection) != OPERATOR_FINISHED) {
       /* Do not continue calling exporters if we encounter one that fails. */
       return OPERATOR_CANCELLED;

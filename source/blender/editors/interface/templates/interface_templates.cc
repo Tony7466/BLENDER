@@ -3012,9 +3012,9 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 
   /* Draw all the IO handlers. */
   int index = 0;
-  LISTBASE_FOREACH_INDEX (ExportHandlerData *, data, exporters, index) {
+  LISTBASE_FOREACH_INDEX (CollectionExport *, data, exporters, index) {
     using namespace blender;
-    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_ExportHandlerData, data);
+    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_CollectionExport, data);
     PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
 
     bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);

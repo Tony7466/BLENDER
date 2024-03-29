@@ -23,7 +23,7 @@ struct BlendDataReader;
 struct BlendWriter;
 struct Collection;
 struct ID;
-struct ExportHandlerData;
+struct CollectionExport;
 struct Main;
 struct Object;
 struct Scene;
@@ -69,7 +69,7 @@ void BKE_collection_free_data(Collection *collection);
 /**
  * Free any data used by the IO handler (does not free the IO handler itself).
  */
-void BKE_collection_exporter_free_data(ExportHandlerData *data);
+void BKE_collection_exporter_free_data(CollectionExport *data);
 
 /**
  * Remove a collection, optionally removing its child objects or moving
