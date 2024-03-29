@@ -2024,6 +2024,25 @@ static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
   }
 }
 
+static void versioning_node_group_input_socket_visibility(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (!node->is_group_input()) {
+      continue;
+    }
+    bNodeSocket *extension_socket = static_cast<bNodeSocket *>(node->outputs.last);
+    if (extension_socket->flag & SOCK_HIDDEN) {
+      node->flag |= NODE_HIDE_UNUSED_SOCKETS;
+    }
+    else {
+      /* When the extension socket is shown, the node should show all sockets. */
+      LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+        sock->flag &= ~SOCK_HIDDEN;
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -3107,6 +3126,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         SEQ_for_each_callback(&scene->ed->seqbase, seq_hue_correct_set_wrapping, nullptr);
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 13)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_node_group_input_socket_visibility(ntree);
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
