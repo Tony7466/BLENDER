@@ -1345,7 +1345,8 @@ static int rna_operator_exec_cb(bContext *C, wmOperator *op)
   void *ret;
   int result;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_execute_func; /* RNA_struct_find_function(&opr, "execute"); */
 
   RNA_parameter_list_create(&list, &opr, func);
@@ -1375,7 +1376,8 @@ static bool rna_operator_check_cb(bContext *C, wmOperator *op)
   void *ret;
   bool result;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_check_func; /* RNA_struct_find_function(&opr, "check"); */
 
   RNA_parameter_list_create(&list, &opr, func);
@@ -1399,7 +1401,8 @@ static int rna_operator_invoke_cb(bContext *C, wmOperator *op, const wmEvent *ev
   void *ret;
   int result;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_invoke_func; /* RNA_struct_find_function(&opr, "invoke"); */
 
   RNA_parameter_list_create(&list, &opr, func);
@@ -1430,7 +1433,8 @@ static int rna_operator_modal_cb(bContext *C, wmOperator *op, const wmEvent *eve
   void *ret;
   int result;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_modal_func; /* RNA_struct_find_function(&opr, "modal"); */
 
   RNA_parameter_list_create(&list, &opr, func);
@@ -1456,7 +1460,6 @@ static void rna_operator_draw_cb(bContext *C, wmOperator *op)
   /* Operator draw gets reused for drawing stored properties, in which
    * case we need a proper owner. */
   ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
-
   PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_draw_func; /* RNA_struct_find_function(&opr, "draw"); */
 
@@ -1475,7 +1478,8 @@ static void rna_operator_cancel_cb(bContext *C, wmOperator *op)
   ParameterList list;
   FunctionRNA *func;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_cancel_func; /* RNA_struct_find_function(&opr, "cancel"); */
 
   RNA_parameter_list_create(&list, &opr, func);
