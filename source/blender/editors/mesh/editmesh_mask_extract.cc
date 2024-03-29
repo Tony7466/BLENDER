@@ -423,6 +423,9 @@ static void slice_paint_mask(BMesh *bm, bool invert, bool fill_holes, float mask
         break;
       }
     }
+    if (!fill_holes && BM_elem_flag_test_bool(f, BM_ELEM_HIDDEN)) {
+      keep_face = false;
+    };
     if (invert) {
       keep_face = !keep_face;
     }
