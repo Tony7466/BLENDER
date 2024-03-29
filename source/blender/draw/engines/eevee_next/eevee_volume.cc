@@ -89,7 +89,7 @@ void VolumeModule::begin_sync()
 
     data_.depth_near = integration_start;
     data_.depth_far = integration_end;
-    data_.depth_distribution = 1.0f / (integration_end - integration_start);
+    data_.depth_distribution = 0.0f; /* Unused. */
   }
 }
 

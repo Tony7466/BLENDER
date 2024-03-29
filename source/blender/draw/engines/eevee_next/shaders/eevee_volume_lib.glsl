@@ -42,7 +42,7 @@ float view_z_to_volume_z(float depth)
   }
   else {
     /* Linear distribution. */
-    return (depth - near) * distribution;
+    return (depth - near) / (far - near);
   }
 }
 
