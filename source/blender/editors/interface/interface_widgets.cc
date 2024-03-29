@@ -394,7 +394,6 @@ static const uint g_shape_preset_hold_action_face[2][3] = {{2, 0, 1}, {3, 5, 4}}
 static struct {
   blender::gpu::Batch *roundbox_widget;
   blender::gpu::Batch *roundbox_shadow;
-  blender::gpu::Batch *node_socket;
 
   /* TODO: remove. */
   GPUVertFormat format;
@@ -500,26 +499,6 @@ blender::gpu::Batch *ui_batch_roundbox_shadow_get()
     gpu_batch_presets_register(g_ui_batch_cache.roundbox_shadow);
   }
   return g_ui_batch_cache.roundbox_shadow;
-}
-
-GPUBatch *ui_batch_node_socket_get(void)
-{
-  if (g_ui_batch_cache.node_socket == NULL) {
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
-
-    GPU_vertbuf_data_alloc(vbo, 6);
-
-    GPUIndexBufBuilder ibuf;
-    GPU_indexbuf_init(&ibuf, GPU_PRIM_TRIS, 2, 4);
-    /* Quad to draw the node socket in. */
-    GPU_indexbuf_add_tri_verts(&ibuf, 0, 1, 2);
-    GPU_indexbuf_add_tri_verts(&ibuf, 2, 1, 3);
-
-    g_ui_batch_cache.node_socket = GPU_batch_create_ex(
-        GPU_PRIM_TRIS, vbo, GPU_indexbuf_build(&ibuf), GPU_BATCH_OWNS_INDEX | GPU_BATCH_OWNS_VBO);
-    gpu_batch_presets_register(g_ui_batch_cache.node_socket);
-  }
-  return g_ui_batch_cache.node_socket;
 }
 
 #undef INNER

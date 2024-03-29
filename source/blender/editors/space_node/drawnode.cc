@@ -1799,6 +1799,152 @@ void node_link_bezier_points_evaluated(const bNodeLink &link,
                                 sizeof(float2));
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Node Socket Drawing
+ * \{ */
+
+/* Node Socket shader parameters, must match the shader layout. */
+struct NodeSocketShaderParameters {
+  rctf rect;
+  float color_inner[4];
+  float color_outline[4];
+  float outline_thickness;
+  float outline_offset;
+  float dot_radius;
+  float shape;
+};
+
+/* Keep in sync with shader. */
+#define MAX_SOCKET_PARAMETERS 4
+#define MAX_SOCKET_INSTANCE 32
+
+static struct {
+  blender::gpu::Batch *batch;
+  NodeSocketShaderParameters params[MAX_SOCKET_INSTANCE];
+  int count;
+  bool enabled;
+} g_batch_nodesocket;
+
+blender::gpu::Batch *nodesocket_batch_init(void)
+{
+  if (g_batch_nodesocket.batch == NULL) {
+    GPUVertFormat format = {0};
+    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STATIC);
+
+    GPU_vertbuf_data_alloc(vbo, 6);
+
+    GPUIndexBufBuilder ibuf;
+    GPU_indexbuf_init(&ibuf, GPU_PRIM_TRIS, 2, 4);
+    /* Quad to draw the node socket in. */
+    GPU_indexbuf_add_tri_verts(&ibuf, 0, 1, 2);
+    GPU_indexbuf_add_tri_verts(&ibuf, 2, 1, 3);
+
+    g_batch_nodesocket.batch = GPU_batch_create_ex(
+        GPU_PRIM_TRIS, vbo, GPU_indexbuf_build(&ibuf), GPU_BATCH_OWNS_INDEX | GPU_BATCH_OWNS_VBO);
+    gpu_batch_presets_register(g_batch_nodesocket.batch);
+  }
+  return g_batch_nodesocket.batch;
+}
+
+static void nodesocket_cache_flush()
+{
+  if (g_batch_nodesocket.count == 0) {
+    return;
+  }
+
+  blender::gpu::Batch *batch = nodesocket_batch_init();
+  if (g_batch_nodesocket.count == 1) {
+    /* draw single */
+    GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
+    GPU_batch_uniform_4fv_array(
+        batch, "parameters", 4, (const float(*)[4])g_batch_nodesocket.params);
+    GPU_batch_draw(batch);
+  }
+  else {
+    GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET_INST);
+    GPU_batch_uniform_4fv_array(batch,
+                                "parameters",
+                                MAX_SOCKET_PARAMETERS * MAX_SOCKET_INSTANCE,
+                                (float(*)[4])g_batch_nodesocket.params);
+    GPU_batch_draw_instance_range(batch, 0, g_batch_nodesocket.count);
+  }
+  g_batch_nodesocket.count = 0;
+}
+
+void nodesocket_batch_start()
+{
+  BLI_assert(g_batch_nodesocket.enabled == false);
+  g_batch_nodesocket.enabled = true;
+}
+
+void nodesocket_batch_end()
+{
+  BLI_assert(g_batch_nodesocket.enabled == true);
+  g_batch_nodesocket.enabled = false;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  nodesocket_cache_flush();
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+static void draw_node_socket_batch(NodeSocketShaderParameters *socket_params)
+{
+  if (g_batch_nodesocket.enabled) {
+    g_batch_nodesocket.params[g_batch_nodesocket.count] = *socket_params;
+    g_batch_nodesocket.count++;
+
+    if (g_batch_nodesocket.count >= MAX_SOCKET_INSTANCE) {
+      nodesocket_cache_flush();
+    }
+  }
+  else {
+    /* draw single */
+    blender::gpu::Batch *batch = nodesocket_batch_init();
+    GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
+    GPU_batch_uniform_4fv_array(
+        batch, "parameters", MAX_SOCKET_PARAMETERS, (float(*)[4])socket_params);
+    GPU_batch_draw(batch);
+  }
+}
+
+void node_draw_nodesocket(const rctf *rect,
+                          const float color_inner[4],
+                          const float color_outline[4],
+                          const float outline_thickness,
+                          const float outline_offset,
+                          const float dot_radius,
+                          int shape)
+{
+  /* WATCH: This is assuming the ModelViewProjectionMatrix is area pixel space.
+   * If it has been scaled, then it's no longer valid. */
+  BLI_assert((color_inner != nullptr) && (color_outline != nullptr));
+
+  NodeSocketShaderParameters socket_params = {};
+  socket_params.rect = *rect;
+  socket_params.color_inner[0] = color_inner[0];
+  socket_params.color_inner[1] = color_inner[1];
+  socket_params.color_inner[2] = color_inner[2];
+  socket_params.color_inner[3] = color_inner[3];
+  socket_params.color_outline[0] = color_outline[0];
+  socket_params.color_outline[1] = color_outline[1];
+  socket_params.color_outline[2] = color_outline[2];
+  socket_params.color_outline[3] = color_outline[3];
+  socket_params.outline_thickness = outline_thickness;
+  socket_params.dot_radius = dot_radius;
+  socket_params.outline_offset = outline_offset;
+  socket_params.shape = float(shape) + 0.1f;
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  draw_node_socket_batch(&socket_params);
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Node Link Drawing
+ * \{ */
+
 #define NODELINK_GROUP_SIZE 256
 #define LINK_RESOL 24
 #define LINK_WIDTH 2.5f
@@ -2407,3 +2553,5 @@ void ED_node_draw_snap(View2D *v2d, const float cent[2], float size, NodeBorder 
 
   immEnd();
 }
+
+/** \} */

@@ -16,17 +16,13 @@
 #define outlineThickness parameters[widgetID * MAX_PARAM + 3].x
 #define outlineOffset parameters[widgetID * MAX_PARAM + 3].y
 #define dotRadius parameters[widgetID * MAX_PARAM + 3].z
+#define shape parameters[widgetID * MAX_PARAM + 3].w
 
 #define AA_SIZE 0.75
-#define IS_CIRCLE \
-  (shape_flags == SOCK_DISPLAY_SHAPE_CIRCLE || shape_flags == SOCK_DISPLAY_SHAPE_CIRCLE_DOT)
 #define IS_DIAMOND \
-  (shape_flags == SOCK_DISPLAY_SHAPE_DIAMOND || shape_flags == SOCK_DISPLAY_SHAPE_DIAMOND_DOT)
-#define IS_SQUARE \
-  (shape_flags == SOCK_DISPLAY_SHAPE_SQUARE || shape_flags == SOCK_DISPLAY_SHAPE_SQUARE_DOT)
+  (shapeFlags == SOCK_DISPLAY_SHAPE_DIAMOND || shapeFlags == SOCK_DISPLAY_SHAPE_DIAMOND_DOT)
 #define HAS_DOT \
-  (shape_flags == SOCK_DISPLAY_SHAPE_CIRCLE_DOT || \
-   shape_flags == SOCK_DISPLAY_SHAPE_DIAMOND_DOT || shape_flags == SOCK_DISPLAY_SHAPE_SQUARE_DOT)
+  (shapeFlags > 2)
 
 /* Offsetting by a pixel further to avoid losing pixels. */
 vec2 ofs = vec2(outlineOffset + 1.0, -outlineOffset - 1.0);
@@ -44,7 +40,8 @@ float minSize = min(rectSize.x, rectSize.y);
 vec3 shapeRadii = vec3(CIRCLE_RADIUS, SQUARE_RADIUS, DIAMOND_RADIUS);
 vec3 cornerRoundness = vec3(1.0, 0.4, 0.4);
 
-int shapeIndex = shape_flags % 3;
+int shapeFlags = int(shape);
+int shapeIndex = shapeFlags % 3;
 float shapeRadius = shapeRadii[shapeIndex];
 float cornerRadius = shapeRadius * cornerRoundness[shapeIndex];
 

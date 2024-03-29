@@ -228,41 +228,6 @@ void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const flo
   immUnbindProgram();
 }
 
-void UI_draw_node_socket(const rctf *rect,
-                         const float color_inner[4],
-                         const float color_outline[4],
-                         const float outline_thickness,
-                         const float outline_offset,
-                         const float dot_radius,
-                         const int flags)
-{
-  /* WATCH: This is assuming the ModelViewProjectionMatrix is area pixel space.
-   * If it has been scaled, then it's no longer valid. */
-  BLI_assert((color_inner != nullptr) && (color_outline != nullptr));
-
-  uiNodeSocketParameters socket_params = {};
-  socket_params.rect = *rect;
-  socket_params.color_inner[0] = color_inner[0];
-  socket_params.color_inner[1] = color_inner[1];
-  socket_params.color_inner[2] = color_inner[2];
-  socket_params.color_inner[3] = color_inner[3];
-  socket_params.color_outline[0] = color_outline[0];
-  socket_params.color_outline[1] = color_outline[1];
-  socket_params.color_outline[2] = color_outline[2];
-  socket_params.color_outline[3] = color_outline[3];
-  socket_params.outline_thickness = outline_thickness;
-  socket_params.dot_radius = dot_radius;
-  socket_params.outline_offset = outline_offset;
-
-  GPUBatch *batch = ui_batch_node_socket_get();
-  GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);
-  GPU_batch_uniform_4fv_array(batch, "parameters", 4, (const float(*)[4]) & socket_params);
-  GPU_batch_uniform_1i(batch, "shape_flags", flags);
-  GPU_blend(GPU_BLEND_ALPHA);
-  GPU_batch_draw(batch);
-  GPU_blend(GPU_BLEND_NONE);
-}
-
 /* ************** SPECIAL BUTTON DRAWING FUNCTIONS ************* */
 
 void ui_draw_but_TAB_outline(const rcti *rect,

@@ -1638,13 +1638,13 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
   };
   float outline_color[4] = {0};
 
-  UI_draw_node_socket(&draw_rect,
-                      color,
-                      outline_color,
-                      NODE_SOCKET_OUTLINE * scale,
-                      0.0f,
-                      NODE_SOCKET_DOT * scale,
-                      sock->display_shape);
+  node_draw_nodesocket(&draw_rect,
+                       color,
+                       outline_color,
+                       NODE_SOCKET_OUTLINE * scale,
+                       0.0f,
+                       NODE_SOCKET_DOT * scale,
+                       sock->display_shape);
 }
 
 static void node_draw_preview_background(rctf *rect)
@@ -1752,15 +1752,15 @@ static void node_draw_shadow(const SpaceNode &snode,
   UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
 }
 
-static void node_draw_socket_ex(const bContext &C,
-                                const bNodeTree &ntree,
-                                const bNode &node,
-                                PointerRNA &node_ptr,
-                                const bNodeSocket &sock,
-                                const float outline_thickness,
-                                const float outline_offset,
-                                const float dot_radius,
-                                const bool selected)
+static void node_draw_socket(const bContext &C,
+                             const bNodeTree &ntree,
+                             const bNode &node,
+                             PointerRNA &node_ptr,
+                             const bNodeSocket &sock,
+                             const float outline_thickness,
+                             const float outline_offset,
+                             const float dot_radius,
+                             const bool selected)
 {
   const float half_width = NODE_SOCKSIZE;
 
@@ -1781,13 +1781,13 @@ static void node_draw_socket_ex(const bContext &C,
       socket_location.y + half_height,
   };
 
-  UI_draw_node_socket(&rect,
-                      socket_color,
-                      outline_color,
-                      outline_thickness,
-                      outline_offset,
-                      dot_radius,
-                      sock.display_shape);
+  node_draw_nodesocket(&rect,
+                       socket_color,
+                       outline_color,
+                       outline_thickness,
+                       outline_offset,
+                       dot_radius,
+                       sock.display_shape);
 }
 
 /* Some elements of the node tree like labels or node sockets are hardly visible when zoomed
@@ -1818,13 +1818,14 @@ void node_draw_sockets(const View2D &v2d, const bContext &C, bNodeTree &ntree, c
   const float border_offset = 0.0f;
   const float dot_radius = NODE_SOCKET_DOT;
 
+  nodesocket_batch_start();
   /* Input sockets. */
   for (const bNodeSocket *sock : node.input_sockets()) {
     if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
     const bool selected = (sock->flag & SELECT);
-    node_draw_socket_ex(
+    node_draw_socket(
         C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
   }
 
@@ -1834,9 +1835,10 @@ void node_draw_sockets(const View2D &v2d, const bContext &C, bNodeTree &ntree, c
       continue;
     }
     const bool selected = (sock->flag & SELECT);
-    node_draw_socket_ex(
+    node_draw_socket(
         C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
   }
+  nodesocket_batch_end();
 }
 
 static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, void *ntree_argv)
@@ -3572,13 +3574,13 @@ void reroute_node_draw_body(const bContext &C,
   node_socket_color_get(C, ntree, nodeptr, sock, socket_color);
   node_socket_outline_color_get(selected, sock.type, outline_color);
 
-  UI_draw_node_socket(&node.runtime->totr,
-                      socket_color,
-                      outline_color,
-                      NODE_SOCKET_OUTLINE,
-                      0.0f,
-                      NODE_SOCKET_DOT,
-                      sock.display_shape);
+  node_draw_nodesocket(&node.runtime->totr,
+                       socket_color,
+                       outline_color,
+                       NODE_SOCKET_OUTLINE,
+                       0.0f,
+                       NODE_SOCKET_DOT,
+                       sock.display_shape);
 }
 
 static void reroute_node_draw_label(const bNode &node, uiBlock &block)

@@ -1185,17 +1185,6 @@ struct uiWidgetBaseParameters {
   float _pad[3];
 };
 
-/* Node Socket shader parameters, must match the shader layout. */
-struct uiNodeSocketParameters {
-  rctf rect;
-  float color_inner[4];
-  float color_outline[4];
-  float outline_thickness;
-  float outline_offset;
-  float dot_radius;
-  float _pad[1];
-};
-
 enum {
   ROUNDBOX_TRIA_NONE = 0,
   ROUNDBOX_TRIA_ARROWS,
@@ -1210,7 +1199,6 @@ enum {
 
 blender::gpu::Batch *ui_batch_roundbox_widget_get();
 blender::gpu::Batch *ui_batch_roundbox_shadow_get();
-blender::gpu::Batch *ui_batch_node_socket_get();
 
 void ui_draw_menu_back(uiStyle *style, uiBlock *block, rcti *rect);
 void ui_draw_popover_back(ARegion *region, uiStyle *style, uiBlock *block, rcti *rect);
