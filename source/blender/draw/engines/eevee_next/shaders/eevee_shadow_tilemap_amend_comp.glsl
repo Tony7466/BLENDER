@@ -70,11 +70,10 @@ void main()
           /* Align center of both LODs. */
           tile_prev.lod_offset -= uvec2(SHADOW_TILEMAP_RES / 2);
           /* Add the offset relative to the source LOD. */
-          tile_prev.lod_offset += bitfieldExtract(base_offset_pos, lod, int(tile_prev.lod)) -
-                                  bitfieldExtract(base_offset_neg, lod, int(tile_prev.lod));
-          /* Wrap to valid range. This should be modulo the size of a source LOD page but it has
-           * the same effect. */
-          tile_prev.lod_offset &= ~(~0 << uint(SHADOW_TILEMAP_MAX_CLIPMAP_LOD));
+          tile_prev.lod_offset += uvec2(bitfieldExtract(base_offset_pos, lod, int(tile_prev.lod)) -
+                                        bitfieldExtract(base_offset_neg, lod, int(tile_prev.lod)));
+          /* Wrap to valid range. */
+          tile_prev.lod_offset &= ~(~0u << tile_prev.lod);
 
           tile_prev_packed = shadow_sampling_tile_pack(tile_prev);
           /* Replace the missing page with the one from the lower LOD. */
