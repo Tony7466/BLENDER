@@ -109,7 +109,7 @@ static void collection_gobject_hash_ensure(Collection *collection);
 static void collection_gobject_hash_update_object(Collection *collection,
                                                   Object *ob_old,
                                                   CollectionObject *cob);
-static void collection_io_handler_copy(Collection *collection, IOHandlerData *data);
+static void collection_exporter_copy(Collection *collection, ExportHandlerData *data);
 
 /** \} */
 
@@ -161,7 +161,7 @@ static void collection_copy_data(Main *bmain,
 
   BLI_listbase_clear(&collection_dst->gobject);
   BLI_listbase_clear(&collection_dst->children);
-  BLI_listbase_clear(&collection_dst->io_handlers);
+  BLI_listbase_clear(&collection_dst->exporters);
   BLI_listbase_clear(&collection_dst->runtime.parents);
   collection_dst->runtime.gobject_hash = nullptr;
 
@@ -172,8 +172,8 @@ static void collection_copy_data(Main *bmain,
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, &cob->light_linking, flag, false);
   }
-  LISTBASE_FOREACH (IOHandlerData *, data, &collection_src->io_handlers) {
-    collection_io_handler_copy(collection_dst, data);
+  LISTBASE_FOREACH (ExportHandlerData *, data, &collection_src->exporters) {
+    collection_exporter_copy(collection_dst, data);
   }
 }
 
@@ -193,10 +193,10 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->children);
   BLI_freelistN(&collection->runtime.parents);
 
-  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
-    BKE_collection_io_handler_free_data(data);
+  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
+    BKE_collection_exporter_free_data(data);
   }
-  BLI_freelistN(&collection->io_handlers);
+  BLI_freelistN(&collection->exporters);
 
   /* No need for depsgraph tagging here, since the data is being deleted. */
   collection_object_cache_free(nullptr, collection, LIB_ID_CREATE_NO_DEG_TAG, 0);
@@ -286,8 +286,8 @@ void BKE_collection_blend_write_nolib(BlendWriter *writer, Collection *collectio
     BLO_write_struct(writer, CollectionChild, child);
   }
 
-  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
-    BLO_write_struct(writer, IOHandlerData, data);
+  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
+    BLO_write_struct(writer, ExportHandlerData, data);
     if (data->export_properties) {
       IDP_BlendWrite(writer, data->export_properties);
     }
@@ -342,8 +342,8 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
   BLO_read_list(reader, &collection->gobject);
   BLO_read_list(reader, &collection->children);
 
-  BLO_read_list(reader, &collection->io_handlers);
-  LISTBASE_FOREACH (IOHandlerData *, data, &collection->io_handlers) {
+  BLO_read_list(reader, &collection->exporters);
+  LISTBASE_FOREACH (ExportHandlerData *, data, &collection->exporters) {
     BLO_read_data_address(reader, &data->export_properties);
     IDP_BlendDataRead(reader, &data->export_properties);
   }
@@ -514,7 +514,7 @@ void BKE_collection_free_data(Collection *collection)
   collection_free_data(&collection->id);
 }
 
-void BKE_collection_io_handler_free_data(struct IOHandlerData *data)
+void BKE_collection_exporter_free_data(struct ExportHandlerData *data)
 {
   if (data->export_properties) {
     IDP_FreeProperty(data->export_properties);
@@ -1384,9 +1384,9 @@ static bool collection_object_remove(
   return true;
 }
 
-static void collection_io_handler_copy(Collection *collection, IOHandlerData *data)
+static void collection_exporter_copy(Collection *collection, ExportHandlerData *data)
 {
-  IOHandlerData *new_data = MEM_cnew<IOHandlerData>("IOHandlerData");
+  ExportHandlerData *new_data = MEM_cnew<ExportHandlerData>("ExportHandlerData");
   STRNCPY(new_data->fh_idname, data->fh_idname);
   new_data->export_properties = IDP_CopyProperty(data->export_properties);
   new_data->flag = data->flag;
@@ -1397,7 +1397,7 @@ static void collection_io_handler_copy(Collection *collection, IOHandlerData *da
     IDP_AssignString(filepath, "");
   }
 
-  BLI_addtail(&collection->io_handlers, new_data);
+  BLI_addtail(&collection->exporters, new_data);
 }
 
 bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Object *ob)

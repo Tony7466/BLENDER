@@ -3437,7 +3437,7 @@ static void outliner_draw_tree_element(bContext *C,
       }
 
       Collection *collection = (Collection *)tselem->id;
-      if (!BLI_listbase_is_empty(&collection->io_handlers)) {
+      if (!BLI_listbase_is_empty(&collection->exporters)) {
         UI_icon_draw_alpha(
             float(startx) + offsx + 2 * ufac, float(*starty) + 2 * ufac, ICON_EXPORT, alpha_fac);
         offsx += UI_UNIT_X + 4 * ufac;

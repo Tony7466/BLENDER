@@ -566,13 +566,13 @@ static void rna_def_collection_child(BlenderRNA *brna)
       prop, "Light Linking", "Light linking settings of the collection object");
 }
 
-static void rna_def_io_handler_data(BlenderRNA *brna)
+static void rna_def_collection_exporter_data(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "IOHandlerData", nullptr);
-  RNA_def_struct_sdna(srna, "IOHandlerData");
+  srna = RNA_def_struct(brna, "ExportHandlerData", nullptr);
+  RNA_def_struct_sdna(srna, "ExportHandlerData");
   RNA_def_struct_ui_text(srna, "IO Handler Data", "IO Handlers configured for the collection");
 
   prop = RNA_def_property(srna, "is_open", PROP_BOOLEAN, PROP_NONE);
@@ -668,12 +668,12 @@ void RNA_def_collections(BlenderRNA *brna)
                            "Collection Children",
                            "Children collections their parent-collection-specific settings");
 
-  /* IO Handlers. */
-  prop = RNA_def_property(srna, "io_handlers", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "IOHandlerData");
-  RNA_def_property_collection_sdna(prop, nullptr, "io_handlers", nullptr);
+  /* Export Handlers. */
+  prop = RNA_def_property(srna, "exporters", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ExportHandlerData");
+  RNA_def_property_collection_sdna(prop, nullptr, "exporters", nullptr);
   RNA_def_property_ui_text(
-      prop, "Collection IO Handlers", "IO Handlers configured for the collection");
+      prop, "Collection Export Handlers", "Export Handlers configured for the collection");
 
   /* TODO(sergey): Functions to link and unlink collections. */
 
@@ -777,7 +777,7 @@ void RNA_def_collections(BlenderRNA *brna)
   rna_def_collection_light_linking(brna);
   rna_def_collection_object(brna);
   rna_def_collection_child(brna);
-  rna_def_io_handler_data(brna);
+  rna_def_collection_exporter_data(brna);
 }
 
 #endif

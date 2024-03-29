@@ -424,34 +424,47 @@ void COLLECTION_OT_create(wmOperatorType *ot)
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Name of the new collection");
 }
 
-static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
+static bool collection_exporter_poll(bContext *C)
+{
+  return CTX_data_collection(C) != nullptr;
+}
+
+static bool collection_export_all_poll(bContext *C)
+{
+  return CTX_data_view_layer(C) != nullptr;
+}
+
+static int collection_exporter_add_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
   Collection *collection = CTX_data_collection(C);
-  ListBase *io_handlers = &collection->io_handlers;
+  ListBase *exporters = &collection->exporters;
 
   char name[MAX_ID_NAME - 2]; /* id name */
   RNA_string_get(op->ptr, "name", name);
 
   bke::FileHandlerType *fh = bke::file_handler_find(name);
   if (!fh) {
+    BKE_reportf(op->reports, RPT_ERROR, "File handler '%s' not found'", name);
     return OPERATOR_CANCELLED;
   }
 
   if (!WM_operatortype_find(fh->export_operator, true)) {
+    BKE_reportf(
+        op->reports, RPT_ERROR, "File handler operator '%s' not found'", fh->export_operator);
     return OPERATOR_CANCELLED;
   }
 
-  /* Add a new #IOHandlerData item to our handler list and fill it with #FileHandlerType
+  /* Add a new #ExportHandlerData item to our handler list and fill it with #FileHandlerType
    * information. Also load in the operator's properties now as well. */
-  IOHandlerData *data = MEM_cnew<IOHandlerData>("IOHandlerData");
+  ExportHandlerData *data = MEM_cnew<ExportHandlerData>("ExportHandlerData");
   STRNCPY(data->fh_idname, fh->idname);
 
   IDPropertyTemplate val{};
-  data->export_properties = IDP_New(IDP_GROUP, &val, "io_wmOpItemProp");
+  data->export_properties = IDP_New(IDP_GROUP, &val, "export_properties");
   data->flag |= IO_HANDLER_PANEL_OPEN;
 
-  BLI_addtail(io_handlers, data);
+  BLI_addtail(exporters, data);
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
@@ -459,16 +472,16 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
+void COLLECTION_OT_exporter_add(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Add Exporter";
   ot->description = "Add Exporter";
-  ot->idname = "COLLECTION_OT_io_handler_add";
+  ot->idname = "COLLECTION_OT_exporter_add";
 
   /* api callbacks */
-  ot->exec = collection_io_handler_add_exec;
-  ot->poll = WM_operator_winactive;
+  ot->exec = collection_exporter_add_exec;
+  ot->poll = collection_exporter_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -476,20 +489,20 @@ void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
   RNA_def_string(ot->srna, "name", nullptr, MAX_ID_NAME - 2, "Name", "FileHandler idname");
 }
 
-static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
+static int collection_exporter_remove_exec(bContext *C, wmOperator *op)
 {
   Collection *collection = CTX_data_collection(C);
-  ListBase *io_handlers = &collection->io_handlers;
+  ListBase *exporters = &collection->exporters;
 
   int index = RNA_int_get(op->ptr, "index");
-  IOHandlerData *data = static_cast<IOHandlerData *>(BLI_findlink(io_handlers, index));
+  ExportHandlerData *data = static_cast<ExportHandlerData *>(BLI_findlink(exporters, index));
   if (!data) {
     return OPERATOR_CANCELLED;
   }
 
-  BKE_collection_io_handler_free_data(data);
+  BKE_collection_exporter_free_data(data);
 
-  BLI_remlink(io_handlers, data);
+  BLI_remlink(exporters, data);
   MEM_freeN(data);
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
@@ -498,16 +511,16 @@ static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
+void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Remove Exporter";
   ot->description = "Remove Exporter";
-  ot->idname = "COLLECTION_OT_io_handler_remove";
+  ot->idname = "COLLECTION_OT_exporter_remove";
 
   /* api callbacks */
-  ot->exec = collection_io_handler_remove_exec;
-  ot->poll = WM_operator_winactive;
+  ot->exec = collection_exporter_remove_exec;
+  ot->poll = collection_exporter_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -515,7 +528,7 @@ void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
-static int io_handler_export(bContext *C, IOHandlerData *data, Collection *collection)
+static int collection_exporter_export(bContext *C, ExportHandlerData *data, Collection *collection)
 {
   using namespace blender;
   bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
@@ -551,43 +564,43 @@ static int io_handler_export(bContext *C, IOHandlerData *data, Collection *colle
   return op_result;
 }
 
-static int collection_io_handler_export_exec(bContext *C, wmOperator *op)
+static int collection_exporter_export_exec(bContext *C, wmOperator *op)
 {
   Collection *collection = CTX_data_collection(C);
-  ListBase *io_handlers = &collection->io_handlers;
+  ListBase *exporters = &collection->exporters;
 
   int index = RNA_int_get(op->ptr, "index");
-  IOHandlerData *data = static_cast<IOHandlerData *>(BLI_findlink(io_handlers, index));
+  ExportHandlerData *data = static_cast<ExportHandlerData *>(BLI_findlink(exporters, index));
   if (!data) {
     return OPERATOR_CANCELLED;
   }
 
-  return io_handler_export(C, data, collection);
+  return collection_exporter_export(C, data, collection);
 }
 
-void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
+void COLLECTION_OT_exporter_export(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export";
   ot->description = "Invoke the export operation";
-  ot->idname = "COLLECTION_OT_io_handler_export";
+  ot->idname = "COLLECTION_OT_exporter_export";
 
   /* api callbacks */
-  ot->exec = collection_io_handler_export_exec;
-  ot->poll = WM_operator_winactive;
+  ot->exec = collection_exporter_export_exec;
+  ot->poll = collection_exporter_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Exporter index", 0, INT_MAX);
 }
 
 static int collection_export(bContext *C, Collection *collection)
 {
-  ListBase *io_handlers = &collection->io_handlers;
+  ListBase *exporters = &collection->exporters;
 
-  LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
-    if (io_handler_export(C, data, collection) != OPERATOR_FINISHED) {
+  LISTBASE_FOREACH (ExportHandlerData *, data, exporters) {
+    if (collection_exporter_export(C, data, collection) != OPERATOR_FINISHED) {
       /* Do not continue calling exporters if we encounter one that fails. */
       return OPERATOR_CANCELLED;
     }
@@ -602,16 +615,16 @@ static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
   return collection_export(C, collection);
 }
 
-void COLLECTION_OT_io_export_all(wmOperatorType *ot)
+void COLLECTION_OT_export_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export All";
   ot->description = "Invoke all configured exporters on this collection";
-  ot->idname = "COLLECTION_OT_io_export_all";
+  ot->idname = "COLLECTION_OT_export_all";
 
   /* api callbacks */
   ot->exec = collection_io_export_all_exec;
-  ot->poll = WM_operator_winactive;
+  ot->poll = collection_exporter_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -653,13 +666,13 @@ void WM_OT_collection_export_all(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = wm_collection_export_all_exec;
-  ot->poll = WM_operator_winactive;
+  ot->poll = collection_export_all_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
+static void collection_exporter_menu_draw(const bContext * /*C*/, Menu *menu)
 {
   using namespace blender;
   uiLayout *layout = menu->layout;
@@ -669,7 +682,7 @@ static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
   for (const auto &fh : bke::file_handlers()) {
     if (WM_operatortype_find(fh->export_operator, true)) {
       uiItemStringO(
-          layout, fh->label, ICON_NONE, "COLLECTION_OT_io_handler_add", "name", fh->idname);
+          layout, fh->label, ICON_NONE, "COLLECTION_OT_exporter_add", "name", fh->idname);
       at_least_one = true;
     }
   }
@@ -679,24 +692,20 @@ static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
   }
 }
 
-namespace blender::ed::object {
-
-void collection_io_handler_register()
+void collection_exporter_register()
 {
   MenuType *mt = MEM_cnew<MenuType>(__func__);
-  STRNCPY(mt->idname, "COLLECTION_MT_io_handler_add");
+  STRNCPY(mt->idname, "COLLECTION_MT_exporter_add");
   STRNCPY(mt->label, N_("Add Exporter"));
-  mt->draw = collection_io_handler_menu_draw;
+  mt->draw = collection_exporter_menu_draw;
 
   WM_menutype_add(mt);
-  WM_operatortype_append(COLLECTION_OT_io_handler_add);
-  WM_operatortype_append(COLLECTION_OT_io_handler_remove);
-  WM_operatortype_append(COLLECTION_OT_io_handler_export);
-  WM_operatortype_append(COLLECTION_OT_io_export_all);
+  WM_operatortype_append(COLLECTION_OT_exporter_add);
+  WM_operatortype_append(COLLECTION_OT_exporter_remove);
+  WM_operatortype_append(COLLECTION_OT_exporter_export);
+  WM_operatortype_append(COLLECTION_OT_export_all);
   WM_operatortype_append(WM_OT_collection_export_all);
 }
-
-}  // namespace blender::ed::object
 
 /****************** properties window operators *********************/
 

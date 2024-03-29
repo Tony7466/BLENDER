@@ -49,16 +49,20 @@ class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):
         col.prop(vlc, "indirect_only", toggle=False)
 
 
-class COLLECTION_PT_io_handlers(CollectionButtonsPanel, Panel):
+class COLLECTION_PT_exporters(CollectionButtonsPanel, Panel):
     bl_label = "Exporters"
 
     def draw(self, context):
         layout = self.layout
         collection = context.collection
 
-        layout.operator("wm.call_menu", text="Add Exporter", icon='ADD').name = "COLLECTION_MT_io_handler_add"
-        if collection.io_handlers:
-            layout.operator("COLLECTION_OT_io_export_all", icon='EXPORT')
+        row = layout.row()
+        col = row.column()
+        col.operator("wm.call_menu", text="Add", icon='ADD').name = "COLLECTION_MT_exporter_add"
+        col = row.column()
+        col.operator("COLLECTION_OT_export_all", icon='EXPORT')
+        col.enabled = len(collection.exporters) > 0
+
         layout.template_collection_exporters()
 
 
@@ -127,7 +131,7 @@ classes = (
     COLLECTION_PT_instancing,
     COLLECTION_PT_lineart_collection,
     COLLECTION_PT_collection_custom_props,
-    COLLECTION_PT_io_handlers,
+    COLLECTION_PT_exporters,
 )
 
 if __name__ == "__main__":  # only for live edit.

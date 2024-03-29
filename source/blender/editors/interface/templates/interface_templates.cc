@@ -2987,8 +2987,8 @@ static void draw_export_controls(
   uiItemL(layout, label.c_str(), ICON_NONE);
   if (valid) {
     uiItemPopoverPanel(layout, C, "WM_PT_operator_presets", "", ICON_PRESET);
-    uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
-    uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
+    uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_exporter_export", "index", index);
+    uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_exporter_remove", "index", index);
   }
 }
 
@@ -3008,14 +3008,14 @@ static void draw_export_properties(bContext *C,
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
 {
   Collection *collection = CTX_data_collection(C);
-  ListBase *io_handlers = &collection->io_handlers;
+  ListBase *exporters = &collection->exporters;
 
   /* Draw all the IO handlers. */
   int index = 0;
-  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, index) {
+  LISTBASE_FOREACH_INDEX (ExportHandlerData *, data, exporters, index) {
     using namespace blender;
-    PointerRNA io_handler_ptr = RNA_pointer_create(&collection->id, &RNA_IOHandlerData, data);
-    PanelLayout panel = uiLayoutPanelProp(C, layout, &io_handler_ptr, "is_open");
+    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_ExportHandlerData, data);
+    PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
 
     bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
     if (!fh) {
