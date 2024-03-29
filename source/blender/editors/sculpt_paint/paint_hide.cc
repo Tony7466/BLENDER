@@ -989,7 +989,7 @@ void PAINT_OT_hide_show_polyline_gesture(wmOperatorType *ot)
   WM_operator_properties_gesture_polyline(ot);
   hide_show_operator_properties(ot);
   hide_show_operator_gesture_properties(ot);
-  gesture::operator_properties(ot);
+  gesture::operator_properties(ot, gesture::ShapeType::Lasso);
 }
 
 /** \} */

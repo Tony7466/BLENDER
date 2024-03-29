@@ -3139,7 +3139,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             (
                 _defs_sculpt.hide_border,
                 _defs_sculpt.hide_lasso,
-                _defs_sculpt.hide_line,,
+                _defs_sculpt.hide_line,
                 _defs_sculpt.hide_polyline,
             ),
             (
