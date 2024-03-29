@@ -686,6 +686,54 @@ class RemovePresetKeyconfig(AddPresetBase, Operator):
             self, event, title="Remove Keymap Configuration", confirm_text="Delete")
 
 
+class SavePresetKeyconfig(AddPresetBase, Operator):
+    """Save a custom keymap configuration in the preset list"""
+    bl_idname = "wm.keyconfig_preset_save"
+    bl_label = "Save Keymap Configuration"
+    preset_menu = "USERPREF_MT_keyconfigs"
+    preset_subdir = "keyconfig"
+
+    remove_active: BoolProperty(
+        default=True,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
+
+    @classmethod
+    def poll(cls, context):
+        from bpy.utils import is_path_builtin
+        keyconfigs = bpy.context.window_manager.keyconfigs
+        preset_menu_class = getattr(bpy.types, cls.preset_menu)
+        name = keyconfigs.active.name
+        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".py")
+        if not bool(filepath) or is_path_builtin(filepath):
+            cls.poll_message_set("Built-in keymap configurations cannot be overwritten")
+            return False
+        return True
+
+    def execute(self, context):
+        from bpy.utils import is_path_builtin
+        keyconfigs = bpy.context.window_manager.keyconfigs
+        preset_menu_class = getattr(bpy.types, self.preset_menu)
+        name = keyconfigs.active.name
+        filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=".py")
+        if not bool(filepath) or is_path_builtin(filepath):
+            self.report({'ERROR'}, f"Unable to overwrite preset: {ex}")
+            return {'CANCELLED'}
+
+        try:
+            bpy.ops.preferences.keyconfig_export(filepath=filepath)
+        except BaseException as ex:
+            self.report({'ERROR'}, f"Unable to overwrite preset: {ex}")
+            import traceback
+            traceback.print_exc()
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event, title="Overwrite Custom keymap configuration?", confirm_text="Save")
+
+
 class AddPresetOperator(AddPresetBase, Operator):
     """Add or remove an Operator Preset"""
     bl_idname = "wm.operator_preset_add"
@@ -908,6 +956,7 @@ classes = (
     SavePresetInterfaceTheme,
     AddPresetKeyconfig,
     RemovePresetKeyconfig,
+    SavePresetKeyconfig,
     AddPresetNodeColor,
     AddPresetOperator,
     AddPresetRender,
