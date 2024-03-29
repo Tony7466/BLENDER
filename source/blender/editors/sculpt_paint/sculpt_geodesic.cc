@@ -9,11 +9,9 @@
 #include <cmath>
 #include <cstdlib>
 
-#include <tbb/concurrent_queue.h>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for.h>
 #include <tbb/task_scheduler_init.h>
-#include <atomic>
 
 #include "MEM_guardedalloc.h"
 
@@ -233,14 +231,12 @@ static float *geodesic_mesh_create_parallel(Object *ob,
                                             GSet *initial_verts,
                                             const float limit_radius)
 {
-  tbb::task_scheduler_init init; // Initialize TBB scheduler
+  tbb::task_scheduler_init init;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
   const int totvert = mesh->verts_num;
   const int totedge = mesh->edges_num;
-
-  const float limit_radius_sq = limit_radius * limit_radius;
 
   const Span<float3> vert_positions = SCULPT_mesh_deformed_positions_get(ss);
   const Span<int2> edges = mesh->edges();
@@ -262,7 +258,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
         edges, mesh->verts_num, ss->vert_to_edge_offsets, ss->vert_to_edge_indices);
   }
 
-  tbb::parallel_for(0, totvert, [&](int i) {
+  tbb::parallel_for(0, totvert, [&](const int i) {
     if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
       dists[i] = 0.0f;
     }
@@ -280,6 +276,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     affected_vert.fill(true);
   }
   else {
+    const float limit_radius_sq = limit_radius * limit_radius;
     GSetIterator gs_iter;
     /* This is an O(n^2) loop used to limit the geodesic distance calculation to a radius. When
      * this optimization is needed, it is expected for the tool to request the distance to a low
@@ -287,7 +284,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     GSET_ITER (gs_iter, initial_verts) {
       const int v = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
       const float *v_co = vert_positions[v];
-      tbb::parallel_for(0, totvert, [&](int i) {
+      tbb::parallel_for(0, totvert, [&](const int i) {
         if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
           affected_vert[i].set();
         }
@@ -295,11 +292,10 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     }
   }
 
-  // Initialize queues
   tbb::concurrent_vector<int> queue, queue_next;
 
   /* Add edges adjacent to an initial vertex to the queue. */
-  tbb::parallel_for(0, totedge, [&](int i) {
+  tbb::parallel_for(0, totedge, [&](const int i) {
     const int v1 = edges[i][0];
     const int v2 = edges[i][1];
     if ((affected_vert[v1] || affected_vert[v2]) && (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
@@ -309,71 +305,57 @@ static float *geodesic_mesh_create_parallel(Object *ob,
   });
 
   while (!queue.empty()) {
-      tbb::parallel_for_each(queue.begin(), queue.end(), [&](int e) /*while (!queue.empty())*/ {
-      /*int e;  // = queue.front();
-      if (!queue.try_pop(e)) {
-        continue;
-      }*/
+    tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int e) {
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
-       // geodesic_criteria --------------------------------------------------------
-          
-              if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) {
-                if (dists[v1] > dists[v2]) {
-                  std::swap(v1, v2);
-                }
-                sculpt_geodesic_mesh_test_dist_add(
-                    vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
-              }
+      // geodesic_criteria --------------------------------------------------------
+        if ((dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) &&
+            !(dists[v1] == FLT_MAX && dists[v2] == FLT_MAX))
+        {
+          if (dists[v1] > dists[v2]) {
+            std::swap(v1, v2);
+          }
+          sculpt_geodesic_mesh_test_dist_add(
+              vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
+        }
 
-              for (const int face : ss->edge_to_face_map[e]) {
-                if (!hide_poly.is_empty() && hide_poly[face]) {
-                  continue;
-                }
-                for (const int v_other : corner_verts.slice(faces[face])) {
-                  if (ELEM(v_other, v1, v2)) {
-                    continue;
-                  }
-                  if (sculpt_geodesic_mesh_test_dist_add(
-                          vert_positions, v_other, v1, v2, dists, initial_verts))
-                  {
-                    for (const int e_other : ss->vert_to_edge_map[v_other]) {
-                      int ev_other;
-                      if (edges[e_other][0] == v_other) {
-                        ev_other = edges[e_other][1];
-                      }
-                      else {
-                        ev_other = edges[e_other][0];
-                      }
+        for (const int face : ss->edge_to_face_map[e]) {
+          if (!hide_poly.is_empty() && hide_poly[face]) {
+            continue;
+          }
+          for (const int v_other : corner_verts.slice(faces[face])) {
+            if (ELEM(v_other, v1, v2)) {
+              continue;
+            }
+            if (sculpt_geodesic_mesh_test_dist_add(
+                    vert_positions, v_other, v1, v2, dists, initial_verts))
+            {
+              for (const int e_other : ss->vert_to_edge_map[v_other]) {
+                const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
+                                                                      edges[e_other][0];
 
-                      if (e_other != e && !edge_tag[e_other] &&
-                          (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
-                      {
-                        if (affected_vert[v_other] || affected_vert[ev_other]) {
-                          edge_tag[e_other].set();
-                          queue_next.push_back(e_other);
-                        }
-                      }
-                    }
+                if (e_other != e && !edge_tag[e_other] &&
+                    (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
+                {
+                  if (affected_vert[v_other] || affected_vert[ev_other]) {
+                    edge_tag[e_other].set();
+                    queue_next.push_back(e_other);
                   }
                 }
               }
-
-          // -----------------------------------------------------
-         // Mark the edge as visited
-         // edge_tag[e].set();
-      });
-
-      
-    queue.clear();
-    tbb::parallel_for_each(queue_next.begin(), queue_next.end(), [&](int val) {
-      edge_tag[val].reset();
-      queue.push_back(val);
+            }
+          }
+        }
+        //-----
     });
+
+    queue.swap(queue_next);
+    tbb::parallel_for_each(
+        queue.begin(), queue.end(), [&](const int val) { edge_tag[val].reset(); });
     queue_next.clear();
-      
-  };
+  }
+  //-----
 
   return dists;
 }
@@ -417,10 +399,10 @@ float *distances_create(Object *ob, GSet *initial_verts, const float limit_radiu
   SculptSession *ss = ob->sculpt;
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
-          return geodesic_mesh_create_parallel(
+      return geodesic_mesh_create_parallel(
           ob,
           initial_verts,
-          limit_radius); // geodesic_mesh_create(ob, initial_verts, limit_radius); */
+          limit_radius);  // geodesic_mesh_create(ob, initial_verts, limit_radius); */
     case PBVH_BMESH:
     case PBVH_GRIDS:
       return geodesic_fallback_create(ob, initial_verts);

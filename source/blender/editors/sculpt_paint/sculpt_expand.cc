@@ -625,11 +625,6 @@ static float *sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertR
         PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
         dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
       });
-      /*for (int i = 0; i < totvert; i++) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
-
-        dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
-      }*/
     }
   }
 
