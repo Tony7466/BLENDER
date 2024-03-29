@@ -170,8 +170,11 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
     MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
     bke::MutableAttributeAccessor stroke_attributes = strokes.attributes_for_write();
     bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-        stroke_attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
-                                                                        bke::AttrDomain::Curve);
+        stroke_attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
+            "fill_color",
+            bke::AttrDomain::Curve,
+            bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
+                ColorGeometry4f(float4(0.0f)), strokes.curves_num())));
     OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
     const Span<float2> screen_space_positions =
