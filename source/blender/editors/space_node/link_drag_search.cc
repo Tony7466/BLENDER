@@ -125,6 +125,9 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 
     bke::node_socket_move_default_value(
         *CTX_data_main(&params.C), params.node_tree, params.socket, *socket);
+
+    /* Make sure the socket visibility stays the same on further updates to the group interface. */
+    group_input.flag |= NODE_HIDE_UNUSED_SOCKETS;
   }
 }
 
@@ -146,6 +149,9 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
+
+    /* Make sure the socket visibility stays the same on further updates to the group interface. */
+    group_input.flag |= NODE_HIDE_UNUSED_SOCKETS;
   }
 }
 

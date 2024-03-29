@@ -186,6 +186,10 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 Vector<bNodeSocket *> &old_sockets,
                                 VectorSet<bNodeSocket *> &new_sockets)
 {
+  /* Only group inputs have the option to hide new sockets. */
+  const bool hide_new_group_input_sockets = (node.is_group_input()) &&
+                                            (node.flag & NODE_HIDE_UNUSED_SOCKETS) &&
+                                            !(node.flag & NODE_SELECT);
   /* Try to find a socket that corresponds to the declaration. */
   bNodeSocket *old_socket_with_same_identifier = nullptr;
   for (const int i : old_sockets.index_range()) {
@@ -200,6 +204,9 @@ static void refresh_node_socket(bNodeTree &ntree,
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
     new_socket = &socket_decl.build(ntree, node);
+    if (hide_new_group_input_sockets) {
+      new_socket->flag |= SOCK_HIDDEN;
+    }
   }
   else {
     STRNCPY(old_socket_with_same_identifier->name, socket_decl.name.c_str());

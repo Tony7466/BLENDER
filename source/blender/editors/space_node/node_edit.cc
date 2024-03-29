@@ -1832,6 +1832,7 @@ static int node_socket_toggle_exec(bContext *C, wmOperator * /*op*/)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
       node_set_hidden_sockets(node, !hidden);
+      SET_FLAG_FROM_TEST(node->flag, !hidden, NODE_HIDE_UNUSED_SOCKETS);
     }
   }
 
