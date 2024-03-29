@@ -88,7 +88,9 @@ using blender::bke::MeshComponent;
 #  define ASSERT_IS_VALID_MESH(mesh)
 #endif
 
+namespace blender::bke {
 static void mesh_init_origspace(Mesh *mesh);
+}
 static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final);
 static void editbmesh_calc_modifier_final_normals_or_defer(Mesh *mesh_final);
 
@@ -860,6 +862,8 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
   return geometry_set;
 }
 
+}  // namespace blender::bke
+
 bool editbmesh_modifier_is_enabled(const Scene *scene,
                                    const Object *ob,
                                    ModifierData *md,
@@ -879,6 +883,8 @@ bool editbmesh_modifier_is_enabled(const Scene *scene,
 
   return true;
 }
+
+namespace blender::bke {
 
 static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
 {
@@ -954,15 +960,12 @@ static void save_cage_mesh(GeometrySet &geometry_set)
   }
 }
 
-}  // namespace blender::bke
-
 static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                             const Scene *scene,
                                             Object *ob,
                                             BMEditMesh *em_input,
                                             const CustomData_MeshMasks *dataMask)
 {
-  using namespace blender::bke;
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
 
   /* Mesh with constructive modifiers but no deformation applied. Tracked
@@ -1280,11 +1283,14 @@ static void object_get_datamask(const Depsgraph *depsgraph,
   }
 }
 
+}  // namespace blender::bke
+
 void makeDerivedMesh(Depsgraph *depsgraph,
                      const Scene *scene,
                      Object *ob,
                      const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   BLI_assert(ob->type == OB_MESH);
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
@@ -1322,6 +1328,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
                            Object *ob,
                            const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   BMEditMesh *em = ((Mesh *)ob->data)->runtime->edit_mesh;
   if (em != nullptr) {
     /* There is no such a concept as deformed mesh in edit mode.
@@ -1363,8 +1370,9 @@ Mesh *mesh_create_eval_final(Depsgraph *depsgraph,
                              Object *ob,
                              const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, true, false, dataMask, false, false);
+      depsgraph, scene, ob, true, false, dataMask, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
@@ -1374,8 +1382,9 @@ Mesh *mesh_create_eval_no_deform(Depsgraph *depsgraph,
                                  Object *ob,
                                  const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, false, false);
+      depsgraph, scene, ob, false, false, dataMask, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
@@ -1385,8 +1394,9 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
                                         Object *ob,
                                         const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, false, false, dataMask, false, false);
+      depsgraph, scene, ob, false, false, dataMask, false);
   geometry_set.ensure_owns_direct_data();
   return geometry_set.get_component_for_write<MeshComponent>().release();
 }
@@ -1399,6 +1409,7 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
                               BMEditMesh *em,
                               const CustomData_MeshMasks *dataMask)
 {
+  using namespace blender::bke;
   CustomData_MeshMasks cddata_masks = *dataMask;
 
   /* if there's no derived mesh or the last data mask used doesn't include
@@ -1465,6 +1476,8 @@ void mesh_get_mapped_verts_coords(Mesh *mesh_eval, blender::MutableSpan<blender:
     r_cos.copy_from(mesh_eval->vert_positions());
   }
 }
+
+namespace blender::bke {
 
 static void mesh_init_origspace(Mesh *mesh)
 {
@@ -1540,3 +1553,5 @@ static void mesh_init_origspace(Mesh *mesh)
 
   BKE_mesh_tessface_clear(mesh);
 }
+
+}  // namespace blender::bke
