@@ -1,2 +1,3 @@
 Referenced by issue #120038, EEVEE Next tests hang on macOS buildbot
 Referenced by pull request #120048, EEVEE-Next: Async read back statistic and result buffers
+Referenced by pull request #120050, Metal: Wait for finish when buffers are updated
