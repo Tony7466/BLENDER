@@ -230,11 +230,21 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                   const VkImageBlit *p_regions,
                   VkFilter filter) override
   {
-    UNUSED_VARS(
-        src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions, filter);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "blit_image(";
+    ss << "src_image=" << src_image;
+    ss << ", src_image_layout=" << to_string(src_image_layout);
+    ss << ", dst_image=" << dst_image;
+    ss << ", dst_image_layout=" << to_string(dst_image_layout);
+    ss << ", filter=" << to_string(filter);
+    ss << "\n";
+    for (const VkImageBlit &region : Span<const VkImageBlit>(p_regions, region_count)) {
+      ss << " - region(" << to_string(region, 1) << ")\n";
+    }
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void copy_buffer_to_image(VkBuffer src_buffer,

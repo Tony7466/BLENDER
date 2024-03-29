@@ -107,6 +107,24 @@ NodeHandle VKRenderGraphNodes::add_copy_image_to_buffer_node(VkImage src_image,
   return handle;
 }
 
+NodeHandle VKRenderGraphNodes::add_blit_image_node(VkImage src_image,
+                                                   VkImage dst_image,
+                                                   const VkImageBlit &region,
+                                                   VkFilter filter)
+{
+  NodeHandle handle = allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::BLIT_IMAGE;
+  node.blit_image.src_image = src_image;
+  node.blit_image.dst_image = dst_image;
+  node.blit_image.region = region;
+  node.blit_image.filter = filter;
+
+  return handle;
+}
+
 NodeHandle VKRenderGraphNodes::add_synchronization_node()
 {
   NodeHandle handle = allocate();

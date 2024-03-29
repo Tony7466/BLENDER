@@ -209,4 +209,94 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
       ")",
       log[7]);
 }
+
+/**
+ * Clear an image, blit it to another image, copy to a staging buffer and read back.
+ */
+TEST(vk_render_graph, clear_blit_copy_and_read_back)
+{
+  VkHandle<VkImage> src_image(1u);
+  VkHandle<VkImage> dst_image(2u);
+  VkHandle<VkBuffer> staging_buffer(3u);
+
+  Vector<std::string> log;
+  VKCommandBufferWrapper wrapper;
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
+                             std::make_unique<Sequential>());
+  render_graph.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  render_graph.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  render_graph.add_buffer(staging_buffer);
+  VkClearColorValue color_black = {};
+  color_black.float32[0] = 0.0f;
+  color_black.float32[1] = 0.0f;
+  color_black.float32[2] = 0.0f;
+  color_black.float32[3] = 1.0f;
+  VkImageSubresourceRange range = {};
+  VkImageBlit vk_image_blit = {};
+  VkBufferImageCopy vk_buffer_image_copy = {};
+
+  render_graph.add_clear_image_node(src_image, color_black, range);
+  render_graph.add_blit_image_node(src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR);
+  render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);
+  render_graph.submit_buffer_for_read_back(staging_buffer);
+
+  EXPECT_EQ(6, log.size());
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
+      " - image_barrier(src_access_mask=, dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "old_layout=VK_IMAGE_LAYOUT_UNDEFINED, "
+      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image=0x1, subresource_range=\n"
+      "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
+      "base_array_layer=0, layer_count=4294967295  )\n"
+      ")",
+      log[0]);
+  EXPECT_EQ("clear_color_image(image=0x1, image_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)",
+            log[1]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
+      " - image_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "dst_access_mask=VK_ACCESS_TRANSFER_READ_BIT, "
+      "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image=0x1, subresource_range=\n"
+      "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
+      "base_array_layer=0, layer_count=4294967295  )\n"
+      " - image_barrier(src_access_mask=, dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "old_layout=VK_IMAGE_LAYOUT_UNDEFINED, new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "image=0x2, subresource_range=\n"
+      "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
+      "base_array_layer=0, layer_count=4294967295  )\n"
+      ")",
+      log[2]);
+  EXPECT_EQ(
+      "blit_image(src_image=0x1, src_image_layout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, "
+      "dst_image=0x2, dst_image_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "filter=VK_FILTER_LINEAR\n"
+      " - region(src_subresource=\n"
+      "    aspect_mask=, mip_level=0, base_array_layer=0, layer_count=0  , dst_subresource=\n"
+      "    aspect_mask=, mip_level=0, base_array_layer=0, layer_count=0  )\n"
+      ")",
+      log[3]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
+      " - image_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "dst_access_mask=VK_ACCESS_TRANSFER_READ_BIT, "
+      "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image=0x2, subresource_range=\n"
+      "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
+      "base_array_layer=0, layer_count=4294967295  )\n"
+      ")",
+      log[4]);
+  EXPECT_EQ(
+      "copy_image_to_buffer(src_image=0x2, src_image_layout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, "
+      "dst_buffer=0x3\n"
+      " - region(buffer_offset=0, buffer_row_length=0, buffer_image_height=0, image_subresource=\n"
+      "    aspect_mask=, mip_level=0, base_array_layer=0, layer_count=0  , image_offset=\n"
+      "    x=0, y=0, z=0  , image_extent=\n"
+      "    width=0, height=0, depth=0  )\n"
+      ")",
+      log[5]);
+}
 }  // namespace blender::gpu

@@ -107,6 +107,9 @@ class VKRenderGraphCommandBuilder {
   void build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
                                        NodeHandle node_handle,
                                        const VKRenderGraphNodes::Node &node);
+  void build_node_blit_image(VKRenderGraph &render_graph,
+                             NodeHandle node_handle,
+                             const VKRenderGraphNodes::Node &node);
   void build_node_synchronization(VKRenderGraph &render_graph,
                                   NodeHandle node_handle,
                                   const VKRenderGraphNodes::Node &node);

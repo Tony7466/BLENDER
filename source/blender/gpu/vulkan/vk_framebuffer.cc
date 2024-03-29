@@ -286,8 +286,7 @@ void VKFrameBuffer::read(eGPUFrameBufferBits plane,
 /** \name Blit operations
  * \{ */
 
-static void blit_aspect(VKCommandBuffers &command_buffer,
-                        VKTexture &dst_texture,
+static void blit_aspect(VKTexture &dst_texture,
                         VKTexture &src_texture,
                         int dst_offset_x,
                         int dst_offset_y,
@@ -329,7 +328,9 @@ static void blit_aspect(VKCommandBuffers &command_buffer,
                                       dst_texture.height_get());
   image_blit.dstOffsets[1].z = 1;
 
-  command_buffer.blit(dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
+  VKDevice &device = VKBackend::get().device_get();
+  device.render_graph_get().add_blit_image_node(
+      src_texture.vk_image_handle(), dst_texture.vk_image_handle(), image_blit, VK_FILTER_NEAREST);
 }
 
 void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
@@ -345,7 +346,6 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   UNUSED_VARS_NDEBUG(planes);
 
   VKContext &context = *VKContext::get();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
   if (!context.has_active_framebuffer()) {
     BLI_assert_unreachable();
     return;
@@ -359,16 +359,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      color_attachment_layout_ensure(context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      dst_framebuffer.color_attachment_layout_ensure(
-          context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      blit_aspect(command_buffers,
-                  dst_texture,
-                  src_texture,
-                  dst_offset_x,
-                  dst_offset_y,
-                  VK_IMAGE_ASPECT_COLOR_BIT);
+      blit_aspect(dst_texture, src_texture, dst_offset_x, dst_offset_y, VK_IMAGE_ASPECT_COLOR_BIT);
     }
   }
 
@@ -384,16 +376,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     if (src_attachment.tex && dst_attachment.tex) {
       VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
       VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-      depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      dst_framebuffer.depth_attachment_layout_ensure(context,
-                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      blit_aspect(command_buffers,
-                  dst_texture,
-                  src_texture,
-                  dst_offset_x,
-                  dst_offset_y,
-                  VK_IMAGE_ASPECT_DEPTH_BIT);
+      blit_aspect(dst_texture, src_texture, dst_offset_x, dst_offset_y, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
   }
 }

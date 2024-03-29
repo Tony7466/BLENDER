@@ -33,6 +33,7 @@ class VKRenderGraphNodes {
       COPY_IMAGE,
       COPY_IMAGE_TO_BUFFER,
       COPY_BUFFER_TO_IMAGE,
+      BLIT_IMAGE,
       DISPATCH,
       SYNCHRONIZATION,
     };
@@ -74,6 +75,13 @@ class VKRenderGraphNodes {
         VkImage dst_image;
         VkBufferImageCopy region;
       } copy_buffer_to_image;
+
+      struct {
+        VkImage src_image;
+        VkImage dst_image;
+        VkImageBlit region;
+        VkFilter filter;
+      } blit_image;
 
       struct {
       } synchronization;
@@ -123,6 +131,10 @@ class VKRenderGraphNodes {
   NodeHandle add_copy_image_to_buffer_node(VkImage src_image,
                                            VkBuffer dst_buffer,
                                            const VkBufferImageCopy &region);
+  NodeHandle add_blit_image_node(VkImage src_image,
+                                 VkImage dst_image,
+                                 const VkImageBlit &region,
+                                 VkFilter filter);
   NodeHandle add_synchronization_node();
   NodeHandle add_dispatch_node(const VKDispatchInfo &dispatch_info);
 

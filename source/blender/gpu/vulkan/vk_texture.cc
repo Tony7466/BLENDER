@@ -323,10 +323,9 @@ void VKTexture::update_sub(
   region.imageSubresource.mipLevel = mip;
   region.imageSubresource.layerCount = layers;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(*this, staging_buffer, Span<VkBufferImageCopy>(&region, 1));
-  context.flush();
+  VKDevice &device = VKBackend::get().device_get();
+  device.render_graph_get().add_copy_buffer_to_image_node(
+      staging_buffer.vk_handle(), vk_image_handle(), region);
 }
 
 void VKTexture::update_sub(int /*offset*/[3],
@@ -388,11 +387,9 @@ bool VKTexture::init_internal(VertBuf *vbo)
   region.imageSubresource.mipLevel = 0;
   region.imageSubresource.layerCount = 1;
 
-  VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(*this, vertex_buffer->buffer_, Span<VkBufferImageCopy>(&region, 1));
-  context.flush();
+  VKDevice &device = VKBackend::get().device_get();
+  device.render_graph_get().add_copy_buffer_to_image_node(
+      vertex_buffer->vk_handle(), vk_image_handle(), region);
 
   return true;
 }

@@ -148,6 +148,22 @@ void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
+void VKRenderGraph::add_blit_image_node(VkImage src_image,
+                                        VkImage dst_image,
+                                        const VkImageBlit &region,
+                                        VkFilter filter)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_blit_image_node(src_image, dst_image, region, filter);
+
+  VersionedResource src_resource = resources_.get_image(src_image);
+  VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
+  nodes_.add_read_resource(
+      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  nodes_.add_write_resource(
+      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+}
+
 void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
 {
   std::scoped_lock lock(mutex_);
