@@ -65,45 +65,6 @@ Span<std::string> get_curves_all_selection_attribute_names();
  */
 Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves);
 
-class SelectionAttributeWriterList {
-  const Span<std::string> attribute_names_;
-  bke::GSpanAttributeWriter selections_[3];
-
- public:
-  SelectionAttributeWriterList(bke::CurvesGeometry &curves,
-                               const bke::AttrDomain selection_domain);
-  ~SelectionAttributeWriterList();
-
-  const Span<std::string> &attribute_names() const
-  {
-    return attribute_names_;
-  }
-
-  int size() const
-  {
-    return attribute_names_.size();
-  }
-
-  bke::GSpanAttributeWriter &operator[](const int index)
-  {
-    BLI_assert(index >= 0);
-    BLI_assert(index < attribute_names_.size());
-    return selections_[index];
-  }
-
-  bke::GSpanAttributeWriter &writter_by_name(StringRef attribute_name);
-
-  bke::GSpanAttributeWriter *begin()
-  {
-    return &(selections_[0]);
-  }
-
-  bke::GSpanAttributeWriter *end()
-  {
-    return &(selections_[0]) + attribute_names_.size();
-  }
-};
-
 using SelectableRangeConsumer = blender::FunctionRef<void(
     const IndexRange range, const Span<float3> positions, StringRef selection_attribute_name)>;
 /**
@@ -265,16 +226,31 @@ bke::GSpanAttributeWriter ensure_selection_attribute(
     const eCustomDataType create_type,
     const bke::AttributeIDRef &attribute_id = ".selection");
 
+MutableSpan<bke::GSpanAttributeWriter> init_selection_writers(
+    Vector<bke::GSpanAttributeWriter> &writers,
+    bke::CurvesGeometry &curves,
+    const bke::AttrDomain selection_domain);
+
+void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> selection_writers);
+
+bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
+    MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name);
+
 inline void foreach_selection_attribute_writer(
     bke::CurvesGeometry &curves,
     const bke::AttrDomain selection_domain,
     blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
 {
-  SelectionAttributeWriterList selections(curves, selection_domain);
+
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selection_writers = init_selection_writers(
+      writers_buffer, curves, selection_domain);
+
   /* TODO: maybe add threading */
-  for (bke::GSpanAttributeWriter &selection : selections) {
-    fn(selection);
+  for (bke::GSpanAttributeWriter &selection_writer : selection_writers) {
+    fn(selection_writer);
   }
+  finish_attribute_writers(selection_writers);
 }
 
 /** Apply a change to a single curve or point. Avoid using this when affecting many elements. */

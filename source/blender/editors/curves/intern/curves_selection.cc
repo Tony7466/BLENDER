@@ -102,34 +102,41 @@ Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesG
              Span<std::string>();
 }
 
-SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &curves,
-                                                           const bke::AttrDomain selection_domain)
-    : attribute_names_{get_curves_selection_attribute_names(curves)}
+inline MutableSpan<bke::GSpanAttributeWriter> init_selection_writers(
+    Vector<bke::GSpanAttributeWriter> &writers,
+    bke::CurvesGeometry &curves,
+    const bke::AttrDomain selection_domain)
 {
-  for (const int i : attribute_names_.index_range()) {
-    selections_[i] = ensure_selection_attribute(
-        curves, selection_domain, CD_PROP_BOOL, attribute_names_[i]);
+  const eCustomDataType create_type = CD_PROP_BOOL;
+  Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
+  for (const int i : selection_attribute_names.index_range()) {
+    writers.append(ensure_selection_attribute(
+        curves, selection_domain, create_type, selection_attribute_names[i]));
   };
+  return MutableSpan<bke::GSpanAttributeWriter>(writers.data(), selection_attribute_names.size());
 }
 
-SelectionAttributeWriterList::~SelectionAttributeWriterList()
+inline void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> attribute_writers)
 {
-  for (auto &selection : selections_) {
-    selection.finish();
+  for (auto &attribute_writer : attribute_writers) {
+    attribute_writer.finish();
   }
 }
 
-bke::GSpanAttributeWriter &SelectionAttributeWriterList::writter_by_name(StringRef attribute_name)
+inline bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
+    MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name)
 {
-  BLI_assert(attribute_names_.contains(attribute_name));
+  Span<std::string> selection_attribute_names = get_curves_all_selection_attribute_names();
 
-  for (const int index : attribute_names_.index_range()) {
-    if (attribute_name.size() == attribute_names_[index].length()) {
-      return selections_[index];
+  BLI_assert(selection_attribute_names.contains(attribute_name));
+
+  for (const int index : selections.index_range()) {
+    if (attribute_name.size() == selection_attribute_names[index].length()) {
+      return selections[index];
     }
   }
   BLI_assert_unreachable();
-  return selections_[0];
+  return selections[0];
 }
 
 static void init_selectable_foreach(const bke::CurvesGeometry &curves,
@@ -457,19 +464,18 @@ void select_all(bke::CurvesGeometry &curves,
       return;
     }
   }
-  for (bke::GSpanAttributeWriter &selection :
-       SelectionAttributeWriterList(curves, selection_domain))
-  {
-    if (action == SEL_SELECT) {
-      fill_selection_true(selection.span, mask);
-    }
-    else if (action == SEL_DESELECT) {
-      fill_selection_false(selection.span, mask);
-    }
-    else if (action == SEL_INVERT) {
-      invert_selection(selection.span, mask);
-    }
-  };
+  foreach_selection_attribute_writer(
+      curves, selection_domain, [&](bke::GSpanAttributeWriter &selection) {
+        if (action == SEL_SELECT) {
+          fill_selection_true(selection.span, mask);
+        }
+        else if (action == SEL_DESELECT) {
+          fill_selection_false(selection.span, mask);
+        }
+        else if (action == SEL_INVERT) {
+          invert_selection(selection.span, mask);
+        }
+      });
 }
 
 void select_all(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain, int action)
@@ -483,15 +489,17 @@ void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<int8_t> curve_types = curves.curve_types();
 
-  SelectionAttributeWriterList selections(curves, bke::AttrDomain::Point);
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
+      writers_buffer, curves, bke::AttrDomain::Point);
 
   curves_mask.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
-    for (const int i : selections.attribute_names().index_range()) {
+    for (const int i : selections.index_range()) {
       bke::GSpanAttributeWriter &selection = selections[i];
       GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
       if (has_anything_selected(selection_curve)) {
         fill_selection_true(selection_curve);
-        for (const int j : selections.attribute_names().index_range()) {
+        for (const int j : selections.index_range()) {
           if (j == i) {
             continue;
           }
@@ -504,6 +512,7 @@ void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
       }
     }
   });
+  finish_attribute_writers(selections);
 }
 
 void select_linked(bke::CurvesGeometry &curves)
@@ -861,7 +870,9 @@ bool select_box(const ViewContext &vc,
                 const rcti &rect,
                 const eSelectOp sel_op)
 {
-  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
+      writers_buffer, curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {
@@ -882,7 +893,9 @@ bool select_box(const ViewContext &vc,
                 vc.region, positions[point_i], projection);
             if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
               apply_selection_operation_at_index(
-                  selections.writter_by_name(selection_attribute_name).span, point_i, sel_op);
+                  selection_attribute_writer_by_name(selections, selection_attribute_name).span,
+                  point_i,
+                  sel_op);
               changed = true;
             }
           });
@@ -927,6 +940,7 @@ bool select_box(const ViewContext &vc,
           });
         });
   }
+  finish_attribute_writers(selections);
   return changed;
 }
 
@@ -941,7 +955,9 @@ bool select_lasso(const ViewContext &vc,
 {
   rcti bbox;
   BLI_lasso_boundbox(&bbox, lasso_coords);
-  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
+      writers_buffer, curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {
@@ -966,7 +982,9 @@ bool select_lasso(const ViewContext &vc,
                     lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
             {
               apply_selection_operation_at_index(
-                  selections.writter_by_name(selection_attribute_name).span, point_i, sel_op);
+                  selection_attribute_writer_by_name(selections, selection_attribute_name).span,
+                  point_i,
+                  sel_op);
               changed = true;
             }
           });
@@ -1025,6 +1043,7 @@ bool select_lasso(const ViewContext &vc,
           });
         });
   }
+  finish_attribute_writers(selections);
   return changed;
 }
 
@@ -1039,7 +1058,9 @@ bool select_circle(const ViewContext &vc,
                    const eSelectOp sel_op)
 {
   const float radius_sq = pow2f(radius);
-  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
+      writers_buffer, curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {
@@ -1060,7 +1081,9 @@ bool select_circle(const ViewContext &vc,
                 vc.region, positions[point_i], projection);
             if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
               apply_selection_operation_at_index(
-                  selections.writter_by_name(selection_attribute_name).span, point_i, sel_op);
+                  selection_attribute_writer_by_name(selections, selection_attribute_name).span,
+                  point_i,
+                  sel_op);
               changed = true;
             }
           });
@@ -1107,6 +1130,7 @@ bool select_circle(const ViewContext &vc,
           });
         });
   }
+  finish_attribute_writers(selections);
   return changed;
 }
 

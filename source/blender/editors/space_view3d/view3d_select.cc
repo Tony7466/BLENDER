@@ -3155,11 +3155,10 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           continue;
         }
 
-        for (bke::GSpanAttributeWriter &selection :
-             ed::curves::SelectionAttributeWriterList(curves, selection_domain))
-        {
-          ed::curves::fill_selection_false(selection.span);
-        };
+        ed::curves::foreach_selection_attribute_writer(
+            curves, selection_domain, [](bke::GSpanAttributeWriter &selection) {
+              ed::curves::fill_selection_false(selection.span);
+            });
 
         deselected = true;
         /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a
