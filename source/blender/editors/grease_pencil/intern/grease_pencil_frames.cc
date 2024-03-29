@@ -436,6 +436,7 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
 struct DrawingBufferItem {
   blender::bke::greasepencil::FramesMapKey frame_number;
   bke::greasepencil::Drawing drawing;
+  int duration;
 };
 
 struct LayerBufferItem {
@@ -484,7 +485,9 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
-        buf.append({frame_number, Drawing(*drawing)});
+        const int duration = frame.is_implicit_hold() ? 0 :
+                                                        layer->get_frame_duration_at(frame_number);
+        buf.append({frame_number, Drawing(*drawing), duration});
 
         /* Check the range of this layer only. */
         if (frame_number < layer_first_frame) {
@@ -620,7 +623,8 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       if (layer->frames().contains(target_frame_number)) {
         layer->remove_frame(target_frame_number);
       }
-      layer->add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
+      layer->add_frame(
+          target_frame_number, grease_pencil->drawings().size(), drawing_buffer.duration);
       grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
       change = true;
     }
