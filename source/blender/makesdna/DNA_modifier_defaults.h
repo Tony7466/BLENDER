@@ -1062,6 +1062,15 @@
     .percentage_fac = 0.0f, \
   }
 
+#define _DNA_DEFAULT_GreasePencilSimplifyModifierData \
+  { \
+    .factor = 0.0f, \
+    .mode = MOD_GREASE_PENCIL_SIMPLIFY_FIXED, \
+    .step = 1, \
+    .length = 0.1f, \
+    .distance = 0.1f, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilTextureModifierData \
   { \
     .uv_offset = 0.0f, \

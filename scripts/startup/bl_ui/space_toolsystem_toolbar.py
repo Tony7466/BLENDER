@@ -171,8 +171,8 @@ class _defs_annotate:
 
             gpl = context.active_annotation_layer
             if gpl is not None:
-                layout.label(text="Annotation:")
-                if context.space_data.type in {'VIEW_3D', 'SEQUENCE_EDITOR'}:
+                if context.space_data.type in {'VIEW_3D', 'SEQUENCE_EDITOR', 'IMAGE_EDITOR', 'NODE_EDITOR'}:
+                    layout.label(text="Annotation:")
                     if region_type == 'TOOL_HEADER':
                         sub = layout.split(align=True, factor=0.5)
                         sub.ui_units_x = 6.5
@@ -184,7 +184,15 @@ class _defs_annotate:
                         panel="TOPBAR_PT_annotation_layers",
                         text=text,
                     )
+                elif context.space_data.type == 'PROPERTIES':
+                    row = layout.row(align=True)
+                    row.prop(gpl, "color", text="Annotation")
+                    row.popover(
+                        panel="TOPBAR_PT_annotation_layers",
+                        text=text,
+                    )
                 else:
+                    layout.label(text="Annotation:")
                     layout.prop(gpl, "color", text="")
 
         space_type = tool.space_type
@@ -1403,6 +1411,21 @@ class _defs_sculpt:
             idname="builtin.lasso_hide",
             label="Lasso Hide",
             icon="ops.sculpt.lasso_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_line():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_line_gesture")
+            layout.prop(props, "use_limit_to_segment", expand=False)
+
+        return dict(
+            idname="builtin.line_hide",
+            label="Line Hide",
+            icon="ops.sculpt.line_hide",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -3100,7 +3123,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
             (
                 _defs_sculpt.hide_border,
-                _defs_sculpt.hide_lasso
+                _defs_sculpt.hide_lasso,
+                _defs_sculpt.hide_line,
             ),
             (
                 _defs_sculpt.face_set_box,
