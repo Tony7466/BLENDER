@@ -621,8 +621,8 @@ static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
     return false;
   }
 
-  Brush *brush = reinterpret_cast<Brush *>(
-      BKE_asset_edit_id_from_weak_reference(*bmain, ID_BR, *paint->brush_asset_reference));
+  Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
+      *bmain, ID_BR, *paint->brush_asset_reference));
   BLI_assert(brush == nullptr || (brush->id.tag & LIB_TAG_ASSET_MAIN));
 
   /* Ensure we have a brush with appropriate mode to assign.

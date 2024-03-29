@@ -29,35 +29,41 @@
 #include "AS_asset_catalog.hh"
 
 #include "DNA_ID_enums.h"
-#include "DNA_asset_types.h"
 
 struct bUserAssetLibrary;
+struct AssetWeakReference;
 struct ID;
 struct Main;
 struct ReportList;
 
-/* Get datablock from weak reference, loading the blend file as needed. */
-ID *BKE_asset_edit_id_from_weak_reference(Main &global_main,
-                                          ID_Type id_type,
-                                          const AssetWeakReference &weak_ref);
-/* Get main database that a given asset datablock corresponds to. */
-Main *BKE_asset_edit_main(const ID *id);
+namespace blender::bke {
 
-/* Asset editing operations. */
-bool BKE_asset_edit_id_is_editable(const ID *id);
+/** Get datablock from weak reference, loading the blend file as needed. */
+ID *asset_edit_id_from_weak_reference(Main &global_main,
+                                      ID_Type id_type,
+                                      const AssetWeakReference &weak_ref);
 
-std::optional<std::string> BKE_asset_edit_id_save_as(
+/** Get main database that a given asset datablock corresponds to. */
+Main *asset_edit_main(const ID *id);
+
+/** Asset editing operations. */
+
+bool asset_edit_id_is_editable(const ID *id);
+
+std::optional<std::string> asset_edit_id_save_as(
     Main &global_main,
     const ID *id,
     const char *name,
     std::optional<blender::asset_system::CatalogID> catalog_id,
-    std::optional<const std::string> catalog_simple_name,
+    std::optional<std::string> catalog_simple_name,
     const bUserAssetLibrary *user_library,
     ReportList *reports);
 
-bool BKE_asset_edit_id_save(Main &global_main, const ID *id, ReportList *reports);
-bool BKE_asset_edit_id_revert(Main &global_main, const ID *id, ReportList *reports);
-bool BKE_asset_edit_id_delete(Main &global_main, const ID *id, ReportList *reports);
+bool asset_edit_id_save(Main &global_main, const ID *id, ReportList *reports);
+bool asset_edit_id_revert(Main &global_main, const ID *id, ReportList *reports);
+bool asset_edit_id_delete(Main &global_main, const ID *id, ReportList *reports);
 
-/* Clean up on exit. */
-void BKE_asset_edit_main_free_all();
+/** Clean up on exit. */
+void asset_edit_main_free_all();
+
+}  // namespace blender::bke

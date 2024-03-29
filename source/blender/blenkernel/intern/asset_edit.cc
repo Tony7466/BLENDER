@@ -20,6 +20,7 @@
 #include "AS_asset_library.hh"
 
 #include "BKE_asset.hh"
+#include "BKE_asset_edit.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_blendfile_link_append.hh"
 #include "BKE_idtype.hh"
@@ -37,12 +38,11 @@
 
 #include "MEM_guardedalloc.h"
 
-using namespace blender;
+namespace blender::bke {
 
 /**
  * Asset library blend file, with editable contents.
  */
-
 struct AssetEditBlend {
   std::string filepath;
   Main *main;
@@ -172,16 +172,20 @@ static std::string asset_blendfile_path_for_save(ReportList *reports,
   BLI_strncpy(base_name_filesafe, base_name.c_str(), sizeof(base_name_filesafe));
   BLI_path_make_safe_filename(base_name_filesafe);
 
-  if (!BLI_is_file((root_path + SEP + base_name_filesafe + BLENDER_ASSET_FILE_SUFFIX).c_str())) {
-    return root_path + SEP + base_name_filesafe + BLENDER_ASSET_FILE_SUFFIX;
+  const std::string filepath = root_path + SEP + base_name_filesafe + BLENDER_ASSET_FILE_SUFFIX;
+  if (!BLI_is_file(filepath.c_str())) {
+    return filepath;
   }
-  int i = 1;
-  while (BLI_is_file((root_path + SEP + base_name_filesafe + "_" + std::to_string(i++) +
-                      BLENDER_ASSET_FILE_SUFFIX)
-                         .c_str()))
-    ;
-  return root_path + SEP + base_name_filesafe + "_" + std::to_string(i - 1) +
-         BLENDER_ASSET_FILE_SUFFIX;
+
+  for (int i = 1;; i++) {
+    const std::string filepath = root_path + SEP + base_name_filesafe + "_" + std::to_string(i++) +
+                                 BLENDER_ASSET_FILE_SUFFIX;
+    if (!BLI_is_file((filepath.c_str()))) {
+      return filepath;
+    }
+  }
+
+  return "";
 }
 
 static bool asset_write_in_library(Main *bmain,
@@ -352,7 +356,7 @@ static AssetEditBlend *asset_edit_blend_from_id(const ID *id)
   return nullptr;
 }
 
-Main *BKE_asset_edit_main(const ID *id)
+Main *asset_edit_main(const ID *id)
 {
   const AssetEditBlend *asset_blend = asset_edit_blend_from_id(id);
   return (asset_blend) ? asset_blend->main : nullptr;
@@ -370,14 +374,13 @@ static AssetEditBlend &asset_edit_blend_file_ensure(const StringRef filepath)
   return asset_edit_blend_get_all().last();
 }
 
-std::optional<std::string> BKE_asset_edit_id_save_as(
-    Main &global_main,
-    const ID *id,
-    const char *name,
-    std::optional<asset_system::CatalogID> catalog_id,
-    std::optional<const std::string> catalog_simple_name,
-    const bUserAssetLibrary *user_library,
-    ReportList *reports)
+std::optional<std::string> asset_edit_id_save_as(Main &global_main,
+                                                 const ID *id,
+                                                 const char *name,
+                                                 std::optional<asset_system::CatalogID> catalog_id,
+                                                 std::optional<std::string> catalog_simple_name,
+                                                 const bUserAssetLibrary *user_library,
+                                                 ReportList *reports)
 {
   const std::string filepath = asset_blendfile_path_for_save(
       reports, *user_library, name, GS(id->name));
@@ -405,7 +408,7 @@ std::optional<std::string> BKE_asset_edit_id_save_as(
   return final_full_asset_filepath;
 }
 
-bool BKE_asset_edit_id_save(Main & /* global_main */, const ID *id, ReportList *reports)
+bool asset_edit_id_save(Main & /*global_main*/, const ID *id, ReportList *reports)
 {
   AssetEditBlend *asset_blend = asset_edit_blend_from_id(id);
   if (asset_blend == nullptr) {
@@ -430,7 +433,7 @@ bool BKE_asset_edit_id_save(Main & /* global_main */, const ID *id, ReportList *
   return true;
 }
 
-bool BKE_asset_edit_id_revert(Main &global_main, const ID *id, ReportList * /*reports*/)
+bool asset_edit_id_revert(Main &global_main, const ID *id, ReportList * /*reports*/)
 {
   AssetEditBlend *asset_blend = asset_edit_blend_from_id(id);
   if (asset_blend == nullptr) {
@@ -444,7 +447,7 @@ bool BKE_asset_edit_id_revert(Main &global_main, const ID *id, ReportList * /*re
   return true;
 }
 
-bool BKE_asset_edit_id_delete(Main &global_main, const ID *id, ReportList *reports)
+bool asset_edit_id_delete(Main &global_main, const ID *id, ReportList *reports)
 {
   AssetEditBlend *asset_blend = asset_edit_blend_from_id(id);
   if (asset_blend == nullptr) {
@@ -470,9 +473,9 @@ bool BKE_asset_edit_id_delete(Main &global_main, const ID *id, ReportList *repor
   return true;
 }
 
-ID *BKE_asset_edit_id_from_weak_reference(Main &global_main,
-                                          const ID_Type id_type,
-                                          const AssetWeakReference &weak_ref)
+ID *asset_edit_id_from_weak_reference(Main &global_main,
+                                      const ID_Type id_type,
+                                      const AssetWeakReference &weak_ref)
 {
   char asset_full_path_buffer[FILE_MAX_LIBEXTRA];
   char *asset_lib_path, *asset_group, *asset_name;
@@ -497,7 +500,7 @@ ID *BKE_asset_edit_id_from_weak_reference(Main &global_main,
   return asset_blend.ensure_id(id_type, asset_name);
 }
 
-bool BKE_asset_edit_id_is_editable(const ID *id)
+bool asset_edit_id_is_editable(const ID *id)
 {
   if (!(id->tag & LIB_TAG_ASSET_MAIN)) {
     return false;
@@ -507,7 +510,9 @@ bool BKE_asset_edit_id_is_editable(const ID *id)
   return (asset_blend) ? asset_blend->is_editable : false;
 }
 
-void BKE_asset_edit_main_free_all()
+void asset_edit_main_free_all()
 {
   asset_edit_blend_get_all().clear_and_shrink();
 }
+
+}  // namespace blender::bke
