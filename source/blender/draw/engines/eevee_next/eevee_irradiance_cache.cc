@@ -931,6 +931,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   inst_.manager->submit(irradiance_bounds_ps_);
 
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+  capture_info_buf_.async_flush_to_host();
   capture_info_buf_.read();
 
   auto ordered_int_bits_to_float = [](int32_t int_value) -> float {
@@ -974,6 +975,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
 
   /* Allocate surfel pool. */
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+  capture_info_buf_.async_flush_to_host();
   capture_info_buf_.read();
   if (capture_info_buf_.surfel_len == 0) {
     /* No surfel to allocated. */
@@ -1023,6 +1025,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   /* Sync with any other following pass using the surfel buffer. */
   GPU_memory_barrier(GPU_BARRIER_SHADER_STORAGE);
   /* Read back so that following push_update will contain correct surfel count. */
+  capture_info_buf_.async_flush_to_host();
   capture_info_buf_.read();
 
   DRW_stats_group_end();
@@ -1162,7 +1165,9 @@ void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)
   }
 
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
+  capture_info_buf_.async_flush_to_host();
   capture_info_buf_.read();
+  surfels_buf_.async_flush_to_host();
   surfels_buf_.read();
 
   cache_frame->surfels_len = capture_info_buf_.surfel_len;
