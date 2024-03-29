@@ -1,1 +1,2 @@
 Referenced by issue #120038, EEVEE Next tests hang on macOS buildbot
+Referenced by pull request #120048, EEVEE-Next: Read back statistic buffers and results in EEVEE next asynchronously
