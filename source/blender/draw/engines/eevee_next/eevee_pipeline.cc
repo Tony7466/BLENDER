@@ -939,11 +939,11 @@ void VolumeLayer::sync()
 
   draw::PassMain &layer_pass = volume_layer_ps_;
   layer_pass.init();
-  layer_pass.clear_depth_stencil(1.0f, 0x0u);
+  layer_pass.clear_stencil(0x0u);
   {
     PassMain::Sub &pass = layer_pass.sub("occupancy_ps");
-    /* Double sided with depth test (but ensure all fragment are invoked). */
-    pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+    /* Always double sided to let all fragments be invoked. */
+    pass.state_set(DRW_STATE_WRITE_DEPTH);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.volume.occupancy);
     pass.bind_resources(inst_.sampling);
@@ -951,10 +951,8 @@ void VolumeLayer::sync()
   }
   {
     PassMain::Sub &pass = layer_pass.sub("material_ps");
-    /* Double sided with depth test equal, and with stencil equal to ensure only one fragment is
-     * invoked per pixel. We might still have Z fighting if we have coplanar faces but this is not
-     * a case that has predictable outcome. */
-    pass.state_set(DRW_STATE_DEPTH_EQUAL | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+    /* Double sided with stencil equal to ensure only one fragment is nvoked per pixel. */
+    pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
     pass.state_stencil(0x1u, 0x1u, 0x1u);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
