@@ -8,6 +8,8 @@
 
 #include <cstdlib>
 
+#include "BKE_file_handler.hh"
+
 #include "DNA_collection_types.h"
 
 #include "DNA_lineart_types.h"
@@ -446,6 +448,25 @@ static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, Po
   DEG_relations_tag_update(bmain);
 }
 
+static PointerRNA rna_CollectionExport_export_properties_get(PointerRNA *ptr)
+{
+  const CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
+
+  /* If the File Handler or Operator is missing, we allow the data to be accessible
+   * as generic ID properties. */
+  blender::bke::FileHandlerType *fh = blender::bke::file_handler_find(data->fh_idname);
+  if (!fh) {
+    return RNA_pointer_create(ptr->owner_id, &RNA_IDPropertyWrapPtr, data->export_properties);
+  }
+
+  wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+  if (!ot) {
+    return RNA_pointer_create(ptr->owner_id, &RNA_IDPropertyWrapPtr, data->export_properties);
+  }
+
+  return RNA_pointer_create(ptr->owner_id, ot->srna, data->export_properties);
+}
+
 #else
 
 /* collection.objects */
@@ -580,6 +601,13 @@ static void rna_def_collection_exporter_data(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Is Open", "Whether the panel is expanded or closed");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
+  prop = RNA_def_property(srna, "export_properties", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "PropertyGroup");
+  RNA_def_property_ui_text(
+      prop, "Export Properties", "Properties associated with the configured exporter");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_CollectionExport_export_properties_get", nullptr, nullptr, nullptr);
 }
 
 void RNA_def_collections(BlenderRNA *brna)
