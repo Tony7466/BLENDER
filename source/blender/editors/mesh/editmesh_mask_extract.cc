@@ -244,6 +244,11 @@ static void geometry_extract_tag_masked_faces(BMesh *bm, GeometryExtractParams *
     bool keep_face = true;
     BMVert *v;
     BMIter face_iter;
+    if (BM_elem_flag_test_bool(f, BM_ELEM_HIDDEN)) {
+      keep_face = false;
+      BM_elem_flag_set(f, BM_ELEM_TAG, !keep_face);
+      continue;
+    };
     BM_ITER_ELEM (v, &face_iter, f, BM_VERTS_OF_FACE) {
       const float mask = BM_ELEM_CD_GET_FLOAT(v, cd_vert_mask_offset);
       if (mask < threshold) {
