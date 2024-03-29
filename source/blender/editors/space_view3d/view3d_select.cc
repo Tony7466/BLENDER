@@ -3114,6 +3114,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
               [&](const IndexRange range,
                   const Span<float3> positions,
                   StringRef selection_attribute_name) {
+                BLI_assert(elements.first() == 0 && (elements.last() == elements.size() - 1));
                 IndexMask mask = elements.slice(range);
 
                 std::optional<ed::curves::FindClosestData> new_closest_elem =

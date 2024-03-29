@@ -894,7 +894,7 @@ bool select_box(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef selection_attribute_name) {
-          mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
+          mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
             if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
@@ -915,7 +915,7 @@ bool select_box(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
-          mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
+          mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
               const float2 pos_proj = ED_view3d_project_float_v2_m4(
@@ -979,7 +979,7 @@ bool select_lasso(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef selection_attribute_name) {
-          mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
+          mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection_matrix);
             /* Check the lasso bounding box first as an optimization. */
@@ -1004,7 +1004,7 @@ bool select_lasso(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
-          mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
+          mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
               const float2 pos_proj = ED_view3d_project_float_v2_m4(
@@ -1082,7 +1082,7 @@ bool select_circle(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef selection_attribute_name) {
-          mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
+          mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
             if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
@@ -1103,7 +1103,7 @@ bool select_circle(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
-          mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
+          mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
               const float2 pos_proj = ED_view3d_project_float_v2_m4(
