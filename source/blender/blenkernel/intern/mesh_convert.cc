@@ -828,7 +828,7 @@ static Mesh *mesh_new_from_mesh_object(Depsgraph *depsgraph,
   if (preserve_all_data_layers || preserve_origindex) {
     return mesh_new_from_mesh_object_with_layers(depsgraph, object, preserve_origindex);
   }
-  const Mesh *mesh_input = (Mesh *)object->data;
+  const Mesh *mesh_input = (const Mesh *)object->data;
   /* If we are in edit mode, use evaluated mesh from edit structure, matching to what
    * viewport is using for visualization. */
   if (mesh_input->runtime->edit_mesh != nullptr) {
