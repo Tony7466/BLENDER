@@ -853,8 +853,30 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
       bke::SpanAttributeWriter<int> face_sets = ensure_face_sets_mesh(*ob);
       const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
+      const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
+          ".hide_poly", bke::AttrDomain::Face, false);
+      const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
+      Set<int> hidden_face_sets;
+      for (const int i : hide_poly.index_range()) {
+        if (hide_poly[i]) {
+          hidden_face_sets.add(prev_face_sets[i]);
+        }
+      }
+      int prev_material = material_indices[0];
+      int material_face_set = 1;
       for (const int i : IndexRange(mesh->faces_num)) {
-        face_sets.span[i] = material_indices[i] + 1;
+        if (!hide_poly.is_empty() && hide_poly[i]) {
+          continue;
+        }
+        if (prev_material != material_indices[i]) {
+          material_face_set += 1;
+        }
+        while (hidden_face_sets.contains(material_face_set)) {
+          material_face_set += 1;
+        }
+
+        face_sets.span[i] = material_face_set;
+        prev_material = material_indices[i];
       }
       face_sets.finish();
       break;
