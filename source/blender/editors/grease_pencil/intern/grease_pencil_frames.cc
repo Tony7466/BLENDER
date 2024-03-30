@@ -447,8 +447,8 @@ struct LayerBufferItem {
 
 /* Globals for copy/paste data (like for other copy/paste buffers). */
 static Map<std::string, LayerBufferItem> copy_buffer;
-static int copy_buffer_first_frame = INT_MAX;
-static int copy_buffer_last_frame = INT_MIN;
+static int copy_buffer_first_frame = std::numeric_limits<int>::max();
+static int copy_buffer_last_frame = std::numeric_limits<int>::min();
 static int copy_buffer_cfra = 0;
 
 bool grease_pencil_copy_keyframes(bAnimContext *ac)
@@ -459,8 +459,8 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
   /* Clear buffer first. */
   copy_buffer.clear();
-  copy_buffer_first_frame = INT_MAX;
-  copy_buffer_last_frame = INT_MIN;
+  copy_buffer_first_frame = std::numeric_limits<int>::max();
+  copy_buffer_last_frame = std::numeric_limits<int>::min();
 
   Scene *scene = ac->scene;
   Object *object = ac->obact;
@@ -480,8 +480,8 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
     Vector<DrawingBufferItem> buf;
-    FramesMapKey layer_first_frame = INT_MAX;
-    FramesMapKey layer_last_frame = INT_MIN;
+    FramesMapKey layer_first_frame = std::numeric_limits<int>::max();
+    FramesMapKey layer_last_frame = std::numeric_limits<int>::min();
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
         const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
