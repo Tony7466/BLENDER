@@ -264,15 +264,13 @@ static float *geodesic_mesh_create_parallel(Object *ob,
       dists[i] = FLT_MAX;
     }
   });*/
-  threading::parallel_for(IndexRange(0, totvert), 1024, [&](IndexRange range) {
-    for (const int i : range) {
-      if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
-        dists[i] = 0.0f;
+  threading::parallel_for_each(IndexRange(0, totvert), [&](const int val) {
+      if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(val))) {
+        dists[val] = 0.0f;
       }
       else {
-        dists[i] = FLT_MAX;
+        dists[val] = FLT_MAX;
       }
-    }
   });
 
   /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
@@ -292,10 +290,12 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     GSET_ITER (gs_iter, initial_verts) {
       const int v = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
       const float *v_co = vert_positions[v];
-      tbb::parallel_for(0, totvert, [&](const int i) {
-        if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
-          affected_vert[i].set();
-        }
+        threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
+            /*tbb::parallel_for(0, totvert, [&](const int i) {*/
+            for (const int i : range) {
+                if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
+                    affected_vert[i].set();
+                }}
       });
     }
   }
@@ -367,8 +367,10 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     });
 
     queue.swap(queue_next);
-    tbb::parallel_for_each(
-        queue.begin(), queue.end(), [&](const int val) { edge_tag[val].reset(); });
+      threading::parallel_for_each(queue, [&](const int val) {
+             // tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int i) {
+              edge_tag[val].reset();
+      });
     queue_next.clear();
   }
 
