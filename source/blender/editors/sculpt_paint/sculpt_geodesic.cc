@@ -256,12 +256,22 @@ static float *geodesic_mesh_create_parallel(Object *ob,
         edges, mesh->verts_num, ss->vert_to_edge_offsets, ss->vert_to_edge_indices);
   }
 
-  tbb::parallel_for(0, totvert, [&](const int i) {
+  /*tbb::parallel_for(0, totvert, [&](const int i) {
     if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
       dists[i] = 0.0f;
     }
     else {
       dists[i] = FLT_MAX;
+    }
+  });*/
+  threading::parallel_for(IndexRange(0, totvert), 1024, [&](IndexRange range) {
+    for (const int i : range) {
+      if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
+        dists[i] = 0.0f;
+      }
+      else {
+        dists[i] = FLT_MAX;
+      }
     }
   });
 
