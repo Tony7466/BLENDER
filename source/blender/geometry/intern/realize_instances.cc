@@ -298,7 +298,7 @@ struct InstanceContext {
         curves(gather_info.curves.attributes.size()),
         instances(gather_info.instances_attriubutes.size())
   {
-    //empty
+    // empty
   }
 };
 
@@ -753,7 +753,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
  * is an instance, the condition is true only when the depth is exactly 0. Additionally, the
  * function extends its operation to instances if any of their nested children meet the first
  * condition.
- * 
+ *
  * Based on bke::GeometrySet::attribute_foreach
  */
 static bool attribute_foreach(const bke::GeometrySet &geometry_set,
@@ -823,12 +823,11 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
   return is_relevant;
 }
 
-
 /**
  * Based on bke::GeometrySet::gather_attributes_for_propagation.
  * Specialized for Specialized attribute_foreach to get:
  * current_depth, depth_target, instance_depth and selection.
-*/
+ */
 void static gather_attributes_for_propagation(
     bke::GeometrySet re_geometry_set,
     const Span<bke::GeometryComponent::Type> component_types,
@@ -869,7 +868,8 @@ void static gather_attributes_for_propagation(
 
                       AttrDomain domain = meta_data.domain;
                       if (dst_component_type != bke::GeometryComponent::Type::Instance &&
-                          domain == AttrDomain::Instance) {
+                          domain == AttrDomain::Instance)
+                      {
                         domain = AttrDomain::Point;
                       }
 
@@ -983,7 +983,7 @@ static void execute_instances_tasks(
         continue;
       }
 
-      const void *attribute_ptr;  
+      const void *attribute_ptr;
       if (attribute_fallback_array[attribute_index] != nullptr) {
         attribute_ptr = attribute_fallback_array[attribute_index];
       }
@@ -1014,7 +1014,7 @@ static void execute_instances_tasks(
   }
 
   join_attributes(
-      for_join_attributes, dst_component, {"position", ".reference_index", "instance_transform"});
+      for_join_attributes, {"position", ".reference_index", "instance_transform"}, dst_component);
 }
 
 /** \} */
@@ -1990,9 +1990,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   VariedDepthOption all_instances;
   all_instances.depths = VArray<int>::ForSingle(VariedDepthOption::MAX_DEPTH,
                                                 geometry_set.get_instances()->instances_num());
-  IndexMaskMemory memory;
-  all_instances.selection = IndexMask::from_bools(
-      VArray<bool>::ForSingle(true, geometry_set.get_instances()->instances_num()), memory);
+  all_instances.selection = IndexMask(geometry_set.get_instances()->instances_num());
   return realize_instances(geometry_set, options, all_instances);
 }
 
@@ -2049,12 +2047,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
 
-  gather_realize_tasks_recursive(gather_info,
-                                 0,
-                                 VariedDepthOption::MAX_DEPTH,
-                                 geometry_set,
-                                 transform,
-                                 attribute_fallbacks);
+  gather_realize_tasks_recursive(
+      gather_info, 0, VariedDepthOption::MAX_DEPTH, geometry_set, transform, attribute_fallbacks);
 
   bke::GeometrySet new_geometry_set;
   execute_instances_tasks(gather_info.instances.instances_components_to_merge,
@@ -2062,28 +2056,28 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                           all_instance_attributes,
                           gather_info.instances.attribute_fallback,
                           new_geometry_set);
-                          
+
   const int64_t total_points_num = get_final_points_num(gather_info.r_tasks);
   /* This doesn't have to be exact at all, it's just a rough estimate ot make decisions about
    * multi-threading (overhead). */
   const int64_t approximate_used_bytes_num = total_points_num * 32;
   threading::memory_bandwidth_bound_task(approximate_used_bytes_num, [&]() {
-  execute_realize_pointcloud_tasks(options.keep_original_ids,
-                                   all_pointclouds_info,
-                                   gather_info.r_tasks.pointcloud_tasks,
-                                   all_pointclouds_info.attributes,
-                                   new_geometry_set);
-  execute_realize_mesh_tasks(options.keep_original_ids,
-                             all_meshes_info,
-                             gather_info.r_tasks.mesh_tasks,
-                             all_meshes_info.attributes,
-                             all_meshes_info.materials,
-                             new_geometry_set);
-  execute_realize_curve_tasks(options.keep_original_ids,
-                              all_curves_info,
-                              gather_info.r_tasks.curve_tasks,
-                              all_curves_info.attributes,
-                              new_geometry_set);
+    execute_realize_pointcloud_tasks(options.keep_original_ids,
+                                     all_pointclouds_info,
+                                     gather_info.r_tasks.pointcloud_tasks,
+                                     all_pointclouds_info.attributes,
+                                     new_geometry_set);
+    execute_realize_mesh_tasks(options.keep_original_ids,
+                               all_meshes_info,
+                               gather_info.r_tasks.mesh_tasks,
+                               all_meshes_info.attributes,
+                               all_meshes_info.materials,
+                               new_geometry_set);
+    execute_realize_curve_tasks(options.keep_original_ids,
+                                all_curves_info,
+                                gather_info.r_tasks.curve_tasks,
+                                all_curves_info.attributes,
+                                new_geometry_set);
   });
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);
