@@ -36,6 +36,7 @@
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_object.hh"
+#include "ED_view3d.hh"
 
 #include "GEO_join_geometries.hh"
 #include "GEO_reorder.hh"
@@ -2433,6 +2434,187 @@ static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
 
 /** \} */
 
+static float4x3 expand_4x2_mat(float4x2 strokemat)
+{
+  float4x3 strokemat4x3 = float4x3(strokemat);
+
+  /*
+   * We need the diagonal of ones to start from the bottom right instead top left to properly
+   * apply the two matrices.
+   *
+   * i.e.
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
+   */
+  strokemat4x3[2][2] = 0.0f;
+  strokemat4x3[3][2] = 1.0f;
+
+  return strokemat4x3;
+}
+
+static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  ARegion *region = CTX_wm_region(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, memory);
+    if (strokes.is_empty()) {
+      return;
+    }
+
+    const float2 sco_start = float2(RNA_int_get(op->ptr, "xstart"),
+                                    RNA_int_get(op->ptr, "ystart"));
+    const float2 sco_end = float2(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
+    const float2 dif = sco_end - sco_start;
+    const float2 sco_tang = sco_start + float2(-dif[1], dif[0]);
+
+    const bke::CurvesGeometry &curves = info.drawing.strokes();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const Span<float3> positions = curves.positions();
+    const Span<float3> normals = info.drawing.curve_plane_normals();
+    const VArray<int> materials = *curves.attributes().lookup_or_default<int>(
+        "material_index", bke::AttrDomain::Curve, 0);
+
+    Array<float4x2> texture_matrices(strokes.size());
+
+    strokes.foreach_index([&](const int curve_i, const int pos) {
+      const int material_index = materials[curve_i];
+
+      const MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(object,
+                                                                           material_index + 1);
+      const bool is_radial = gp_style->gradient_type == GP_MATERIAL_GRADIENT_RADIAL;
+
+      const float texture_angle = gp_style->texture_angle;
+      const float2 texture_scale = float2(gp_style->texture_scale);
+      const float2 texture_offset = float2(gp_style->texture_offset);
+
+      const float sin_rotation = sin(texture_angle);
+      const float cos_rotation = cos(texture_angle);
+      const float2x2 texture_rotation = float2x2(float2(cos_rotation, sin_rotation),
+                                                 float2(-sin_rotation, cos_rotation));
+
+      const float3 point = positions[points_by_curve[curve_i].first()];
+      const float3 normal = normals[curve_i];
+
+      const float4 plane = float4(normal, -math::dot(normal, point));
+
+      float3 start;
+      float3 tang;
+      float3 end;
+      ED_view3d_win_to_3d_on_plane(region, plane, sco_start, false, start);
+      ED_view3d_win_to_3d_on_plane(region, plane, sco_tang, false, tang);
+      ED_view3d_win_to_3d_on_plane(region, plane, sco_end, false, end);
+
+      const float3 origin = start;
+      /* Invert the length by dividing by the length squared. */
+      const float3 u_dir = (end - origin) / math::length_squared(end - origin);
+      float3 v_dir = math::cross(u_dir, normal);
+
+      /* Flip the texture if need so that it is not mirrored. */
+      if (math::dot(tang - start, v_dir) < 0.0f) {
+        v_dir = -v_dir;
+      }
+
+      /* Calculate the texture space before the texture offset transformation. */
+      const float4x2 base_texture_space = math::transpose(float2x4(
+          float4(u_dir, -math::dot(u_dir, origin)), float4(v_dir, -math::dot(v_dir, origin))));
+
+      float3x2 offset_matrix = float3x2::identity();
+
+      if (is_radial) {
+        /* Radial gradients are scaled down by a factor of 2 and have the center at 0.5 */
+        offset_matrix *= 0.5f;
+        offset_matrix[2] += float2(0.5f, 0.5f);
+      }
+
+      /* For some 0.5 is added to the offset before being past to the GPU, so remove it here. */
+      offset_matrix[2] -= float2(0.5f, 0.5f);
+
+      offset_matrix = math::from_scale<float2x2>(texture_scale) * offset_matrix;
+      offset_matrix = texture_rotation * offset_matrix;
+      offset_matrix[2] -= texture_offset;
+
+      texture_matrices[pos] = offset_matrix * expand_4x2_mat(base_texture_space);
+    });
+
+    info.drawing.set_texture_matrices(texture_matrices, strokes);
+
+    changed.store(true, std::memory_order_relaxed);
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_texture_gradient_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  int ret = WM_gesture_straightline_modal(C, op, event);
+
+  /* Check for mouse release. */
+  if (ret & OPERATOR_RUNNING_MODAL) {
+    if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
+      WM_gesture_straightline_cancel(C, op);
+      ret &= ~OPERATOR_RUNNING_MODAL;
+      ret |= OPERATOR_FINISHED;
+    }
+  }
+
+  return ret;
+}
+
+static int grease_pencil_texture_gradient_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  /* Invoke interactive line drawing (representing the gradient) in viewport. */
+  const int ret = WM_gesture_straightline_invoke(C, op, event);
+
+  if (ret & OPERATOR_RUNNING_MODAL) {
+    ARegion *region = CTX_wm_region(C);
+    if (region->regiontype == RGN_TYPE_WINDOW) {
+      if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
+        wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+        gesture->is_active = true;
+      }
+    }
+  }
+
+  return ret;
+}
+
+void GREASE_PENCIL_OT_texture_gradient(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Texture Gradient";
+  ot->idname = "GREASE_PENCIL_OT_texture_gradient";
+  ot->description =
+      "Draw a line to set gradient for the selected strokes (material style should already be set "
+      "to gradient)";
+
+  /* Api callbacks. */
+  ot->invoke = grease_pencil_texture_gradient_invoke;
+  ot->modal = grease_pencil_texture_gradient_modal;
+  ot->exec = grease_pencil_texture_gradient_exec;
+  ot->poll = editable_grease_pencil_poll;
+  ot->cancel = WM_gesture_straightline_cancel;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  WM_operator_properties_gesture_straightline(ot, WM_CURSOR_EDIT);
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -2459,4 +2641,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
   WM_operatortype_append(GREASE_PENCIL_OT_copy);
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
+  WM_operatortype_append(GREASE_PENCIL_OT_texture_gradient);
 }

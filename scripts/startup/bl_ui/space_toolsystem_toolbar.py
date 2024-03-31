@@ -1798,6 +1798,19 @@ class _defs_weight_paint:
         )
 
 
+class _defs_grease_pencil_edit:
+
+    @ToolDef.from_fn
+    def texture_gradient():
+        return dict(
+            idname="builtin.texture_gradient",
+            label="Gradient",
+            icon="ops.paint.weight_gradient",
+            widget=None,
+            keymap=(),
+        )
+
+
 class _defs_paint_grease_pencil:
 
     # FIXME: Replace brush tools with code below once they are all implemented:
@@ -3113,6 +3126,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_transform.shear,
                 _defs_edit_mesh.tosphere,
             ),
+            None,
+            _defs_grease_pencil_edit.texture_gradient,
             None,
             *_tools_annotate,
         ],
