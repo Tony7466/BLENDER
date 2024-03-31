@@ -2541,7 +2541,7 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
         offset_matrix[2] += float2(0.5f, 0.5f);
       }
 
-      /* For some 0.5 is added to the offset before being past to the GPU, so remove it here. */
+      /* For some reason 0.5 is added to the offset before being rendered, so remove it here. */
       offset_matrix[2] -= float2(0.5f, 0.5f);
 
       offset_matrix = math::from_scale<float2x2>(texture_scale) * offset_matrix;
