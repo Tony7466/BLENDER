@@ -62,6 +62,7 @@
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 #include "ED_object_vgroup.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
@@ -335,7 +336,7 @@ void mode_enter_generic(
 
     /* weight paint specific */
     ED_mesh_mirror_spatial_table_end(ob);
-    ED_vgroup_sync_from_pose(ob);
+    blender::ed::object::vgroup_sync_from_pose(ob);
   }
   else {
     BLI_assert(0);
@@ -600,24 +601,6 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 /** \} */
 }  // namespace blender::ed::sculpt_paint::vwpaint
 
-static bool color_attribute_supported(const std::optional<bke::AttributeMetaData> meta_data)
-{
-  if (!meta_data) {
-    return false;
-  }
-  if (!(ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) ||
-      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
-  {
-    return false;
-  }
-  return true;
-}
-
-static bool color_attribute_supported(const Mesh &mesh, const StringRef name)
-{
-  return color_attribute_supported(mesh.attributes().lookup_meta_data(name));
-}
-
 bool vertex_paint_mode_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
@@ -630,7 +613,7 @@ bool vertex_paint_mode_poll(bContext *C)
     return false;
   }
 
-  if (!color_attribute_supported(*mesh, mesh->active_color_attribute)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -839,7 +822,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
+    if (!blender::ed::object::mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -1013,7 +996,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 
   const std::optional<bke::AttributeMetaData> meta_data = *mesh->attributes().lookup_meta_data(
       mesh->active_color_attribute);
-  if (!color_attribute_supported(meta_data)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 

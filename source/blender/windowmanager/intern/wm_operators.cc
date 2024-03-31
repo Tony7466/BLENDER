@@ -1681,8 +1681,12 @@ int WM_operator_confirm_ex(bContext *C,
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
-  data->width = int(180.0f * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
+
+  /* Larger dialog needs a wider minimum width to balance with the big icon. */
+  const float min_width = (message == nullptr) ? 180.0f : 230.0f;
+  data->width = int(min_width * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
                     UI_DEFAULT_TEXT_POINTS);
+
   data->free_op = true;
   data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
   data->message = (message == nullptr) ? std::string() : message;
@@ -4129,6 +4133,7 @@ static void gesture_straightline_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "MESH_OT_bisect");
   WM_modalkeymap_assign(keymap, "PAINT_OT_mask_line_gesture");
   WM_modalkeymap_assign(keymap, "SCULPT_OT_project_line_gesture");
+  WM_modalkeymap_assign(keymap, "PAINT_OT_hide_show_line_gesture");
 }
 
 /* Box_select-like modal operators. */
