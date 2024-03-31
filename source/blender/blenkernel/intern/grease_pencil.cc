@@ -464,7 +464,8 @@ static float4x2 get_local_to_stroke_matrix(const Span<float3> positions, const f
  */
 static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
                                              const float2 uv_translation,
-                                             const float2 uv_scale)
+                                             const float2 uv_scale,
+                                             const float uv_shear)
 {
   using namespace blender::math;
 
@@ -480,8 +481,11 @@ static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
    *
    * The translation is applied last so that the origin goes to `uv_translation`
    * The rotation is applied after the scale so that the `u` direction's angle is `uv_rotation`
-   * Scale is the only transform that changes the length of the basis vectors and if it is applied
-   * first it's independent of the other transforms.
+   * Scale is the only transform that changes the length of the `u` basis vector and if it is
+   * applied first it's independent of the other transforms.
+   * The shear can be applied in any order
+   * as long as it is after scale so that the shear factor is in units of scale. The shear only
+   * changes the `v` basis vector.
    *
    * These properties are not true with a different order.
    */
@@ -491,6 +495,9 @@ static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
 
   /* Apply rotation. */
   texture_matrix = rot * texture_matrix;
+
+  /* Apply shear. */
+  texture_matrix[1] += texture_matrix[0] * uv_shear;
 
   /* Apply translation. */
   texture_matrix[2] += uv_translation;
@@ -530,6 +537,8 @@ Span<float4x2> Drawing::texture_matrices() const
         "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
     const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
         "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
+    const VArray<float> uv_shears = *attributes.lookup_or_default<float>(
+        "uv_shear", AttrDomain::Curve, 0.0f);
 
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const Span<float3> positions = curves.positions();
@@ -541,8 +550,10 @@ Span<float4x2> Drawing::texture_matrices() const
         const IndexRange points = points_by_curve[curve_i];
         const float3 normal = normals[curve_i];
         const float4x2 strokemat = get_local_to_stroke_matrix(positions.slice(points), normal);
-        const float3x2 texture_matrix = get_stroke_to_texture_matrix(
-            uv_rotations[curve_i], uv_translations[curve_i], uv_scales[curve_i]);
+        const float3x2 texture_matrix = get_stroke_to_texture_matrix(uv_rotations[curve_i],
+                                                                     uv_translations[curve_i],
+                                                                     uv_scales[curve_i],
+                                                                     uv_shears[curve_i]);
 
         const float4x2 texspace = texture_matrix * expand_4x2_mat(strokemat);
 
@@ -558,6 +569,7 @@ void Drawing::set_texture_matrices(Span<float4x2> matrices, const IndexMask &sel
   using namespace blender::math;
   CurvesGeometry &curves = this->strokes_for_write();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const bool did_shear_exist = attributes.contains("uv_shear");
   SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
       "uv_rotation", AttrDomain::Curve);
   SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
@@ -566,10 +578,14 @@ void Drawing::set_texture_matrices(Span<float4x2> matrices, const IndexMask &sel
       "uv_scale",
       AttrDomain::Curve,
       AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
+  SpanAttributeWriter<float> uv_shears = attributes.lookup_or_add_for_write_span<float>(
+      "uv_shear", AttrDomain::Curve);
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
   const Span<float3> normals = this->curve_plane_normals();
+
+  std::atomic<bool> is_shear_used = false;
 
   selection.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
     const IndexRange points = points_by_curve[curve_i];
@@ -612,18 +628,37 @@ void Drawing::set_texture_matrices(Span<float4x2> matrices, const IndexMask &sel
     /* Calculate the determinant to check if the `v` scale is negative. */
     const float det = determinant(float2x2(texture_matrix));
 
-    /* Solve scale, scaling is the only transformation that changes the length, so scale factor
-     * is simply the length. And flip the sign of `v` if the determinant is negative. */
+    /* Solve shear, without shear the `u` and `v` basis vectors are orthogonal, so the shear is
+     * just their dot product with scaling. */
+    const float uv_shear = dot(texture_matrix[0], texture_matrix[1]) /
+                           dot(texture_matrix[0], texture_matrix[0]);
+    /* Calculate the what the `v` basis would be without the shear. */
+    const float2 V_basis_without_shear = texture_matrix[1] - texture_matrix[0] * uv_shear;
+
+    /* Solve scale, scaling is the only transformation that changes the length of `u` basis, so
+     * scale factor is simply the length. And flip the sign of `v` if the determinant is negative.
+     */
     const float2 uv_scale = safe_rcp(
-        float2(length(texture_matrix[0]), sign(det) * length(texture_matrix[1])));
+        float2(length(texture_matrix[0]), sign(det) * length(V_basis_without_shear)));
 
     uv_rotations.span[curve_i] = uv_rotation;
     uv_translations.span[curve_i] = uv_translation;
     uv_scales.span[curve_i] = uv_scale;
+    uv_shears.span[curve_i] = uv_shear;
+
+    if (abs(uv_shear) > std::numeric_limits<float>::epsilon() * 10.0f) {
+      is_shear_used.store(true, std::memory_order_relaxed);
+    }
   });
   uv_rotations.finish();
   uv_translations.finish();
   uv_scales.finish();
+  uv_shears.finish();
+
+  /* Remove the attribute if it is only storing zeros. */
+  if (!is_shear_used && (!did_shear_exist || selection.size() == curves.curves_num())) {
+    attributes.remove("uv_shear");
+  }
 
   this->tag_texture_matrices_changed();
 }
