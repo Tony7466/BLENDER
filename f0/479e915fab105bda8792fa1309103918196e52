@@ -1,2 +1,3 @@
 Referenced by issue #119556, Grid Snap Does not work when Snap Base is Used
 Referenced by issue #66427, Snap to Grid in Perspective View performed only at ground level
+Referenced by issue #120109, Snap to grid crash when locking axis before selecting snap base
