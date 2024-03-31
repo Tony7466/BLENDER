@@ -334,7 +334,9 @@ static float *geodesic_mesh_create_parallel(Object *ob,
 
   BitVector<> edge_tag(totedge);
   while (!queue.empty()) {
-    tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int e) {
+      threading::parallel_for_each(IndexRange(0, queue.size()), [&](const int val) {
+          const int e = queue[val];
+    //tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int e) {
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
