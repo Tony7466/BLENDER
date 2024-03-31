@@ -2471,6 +2471,9 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       return;
     }
 
+    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const float4x4 layer_space_to_world_space = layer.to_world_space(*object);
+
     const float2 sco_start = float2(RNA_int_get(op->ptr, "xstart"),
                                     RNA_int_get(op->ptr, "ystart"));
     const float2 sco_end = float2(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
@@ -2502,8 +2505,10 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       const float2x2 texture_rotation = float2x2(float2(cos_rotation, sin_rotation),
                                                  float2(-sin_rotation, cos_rotation));
 
-      const float3 point = positions[points_by_curve[curve_i].first()];
-      const float3 normal = normals[curve_i];
+      const float3 point = math::transform_point(layer_space_to_world_space,
+                                                 positions[points_by_curve[curve_i].first()]);
+      const float3 normal = math::transform_direction(layer_space_to_world_space,
+                                                      normals[curve_i]);
 
       const float4 plane = float4(normal, -math::dot(normal, point));
 
@@ -2543,7 +2548,8 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       offset_matrix = texture_rotation * offset_matrix;
       offset_matrix[2] -= texture_offset;
 
-      texture_matrices[pos] = offset_matrix * expand_4x2_mat(base_texture_space);
+      texture_matrices[pos] = (offset_matrix * expand_4x2_mat(base_texture_space)) *
+                              layer_space_to_world_space;
     });
 
     info.drawing.set_texture_matrices(texture_matrices, strokes);
