@@ -2474,9 +2474,8 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
     const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
     const float4x4 layer_space_to_world_space = layer.to_world_space(*object);
 
-    const float2 sco_start = float2(RNA_int_get(op->ptr, "xstart"),
-                                    RNA_int_get(op->ptr, "ystart"));
-    const float2 sco_end = float2(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
+    const float2 sco_start(RNA_int_get(op->ptr, "xstart"), RNA_int_get(op->ptr, "ystart"));
+    const float2 sco_end(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
     const float2 dif = sco_end - sco_start;
     const float2 sco_tang = sco_start + float2(-dif[1], dif[0]);
 
