@@ -231,7 +231,6 @@ static float *geodesic_mesh_create_parallel(Object *ob,
                                             GSet *initial_verts,
                                             const float limit_radius)
 {
-  tbb::task_scheduler_init init;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -256,23 +255,6 @@ static float *geodesic_mesh_create_parallel(Object *ob,
         edges, mesh->verts_num, ss->vert_to_edge_offsets, ss->vert_to_edge_indices);
   }
 
-  /*tbb::parallel_for(0, totvert, [&](const int i) {
-    if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
-      dists[i] = 0.0f;
-    }
-    else {
-      dists[i] = FLT_MAX;
-    }
-  });*/
-  /* threading::parallel_for_each(IndexRange(0, totvert), [&](const int val) {
-   if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(val))) {
-     dists[val] = 0.0f;
-   }
-   else {
-     dists[val] = FLT_MAX;
-   }
-});
-   */
   threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
     for (const int i : range) {
       if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
@@ -302,7 +284,6 @@ static float *geodesic_mesh_create_parallel(Object *ob,
       const int v = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
       const float *v_co = vert_positions[v];
       threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
-        /*tbb::parallel_for(0, totvert, [&](const int i) {*/
         for (const int i : range) {
           if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
             affected_vert[i].set();
@@ -334,9 +315,8 @@ static float *geodesic_mesh_create_parallel(Object *ob,
 
   BitVector<> edge_tag(totedge);
   while (!queue.empty()) {
-      threading::parallel_for_each(IndexRange(0, queue.size()), [&](const int val) {
-          const int e = queue[val];
-    //tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int e) {
+    threading::parallel_for_each(IndexRange(0, queue.size()), [&](const int val) {
+      const int e = queue[val];
       int v1 = edges[e][0];
       int v2 = edges[e][1];
 
@@ -383,7 +363,6 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     queue.swap(queue_next);
     threading::parallel_for(IndexRange(0, queue.size()), 4096, [&](IndexRange range) {
       for (const int i : range) {
-        /*tbb::parallel_for_each(queue.begin(), queue.end(), [&](const int val) {*/
         edge_tag[queue[i]].reset();
       }
     });
