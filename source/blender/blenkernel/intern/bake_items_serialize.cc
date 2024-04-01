@@ -192,7 +192,7 @@ DictionaryValuePtr BlobWriteSharing::write_implicitly_shared(
 std::shared_ptr<io::serialize::DictionaryValue> BlobWriteSharing::write_deduplicated(
     BlobWriter &writer, const void *data, const int64_t size_in_bytes)
 {
-  const uint64_t content_hash = XXH64(data, size_in_bytes, 0);
+  const uint64_t content_hash = XXH3_64bits(data, size_in_bytes);
   const BlobSlice slice = slice_by_content_hash_.lookup_or_add_cb(
       content_hash, [&]() { return writer.write(data, size_in_bytes); });
   return slice.serialize();
