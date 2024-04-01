@@ -192,7 +192,7 @@ void PrintLogger::on_start(StringRef message)
 void PrintLogger::on_end() {}
 
 void PrintLogger::declare_variables(const int /*num_vars*/,
-                        FunctionRef<std::string(VariableIndex)> /*names_fn*/)
+                                    FunctionRef<std::string(VariableIndex)> /*names_fn*/)
 {
 }
 void PrintLogger::declare_constraints(const ConstraintSet & /*constraints*/) {}
@@ -231,7 +231,7 @@ void PrintLogger::on_domain_empty(VariableIndex var)
 
 void PrintLogger::on_solve_end() {}
 
-  JSONLogger::JSONLogger(std::ostream &stream) : stream(stream)
+JSONLogger::JSONLogger(std::ostream &stream) : stream(stream)
 {
   this->stream << "{" << std::endl;
 }
@@ -268,7 +268,7 @@ int JSONLogger::domain_as_int(const BitSpan domain)
 }
 
 void JSONLogger::declare_variables(const int num_vars,
-                                    FunctionRef<std::string(VariableIndex)> names_fn)
+                                   FunctionRef<std::string(VariableIndex)> names_fn)
 {
   variable_names.reinitialize(num_vars);
   this->stream << "\"variables\": [";
@@ -296,8 +296,8 @@ void JSONLogger::declare_constraints(const ConstraintSet &constraints)
       const std::string src_name = variable_names[src];
       const std::string dst_name = variable_names[dst];
       this->stream << "{\"name\": " << stringify(src_name + "--" + dst_name)
-                    << ", \"source\": " << stringify(src_name)
-                    << ", \"target\": " << stringify(dst_name) << "}" << std::endl;
+                   << ", \"source\": " << stringify(src_name)
+                   << ", \"target\": " << stringify(dst_name) << "}" << std::endl;
       has_constraints = true;
     }
   }
@@ -314,8 +314,8 @@ void JSONLogger::on_solve_start()
 void JSONLogger::on_worklist_extended(VariableIndex src, VariableIndex dst)
 {
   on_event("worklist added", [&]() {
-    this->stream << "\"source\": " << stringify(variable_names[src])
-                  << ", \"target\": \"" << variable_names[dst] << "\"";
+    this->stream << "\"source\": " << stringify(variable_names[src]) << ", \"target\": \""
+                 << variable_names[dst] << "\"";
   });
 }
 
@@ -323,7 +323,7 @@ void JSONLogger::on_binary_constraint_applied(VariableIndex src, VariableIndex d
 {
   on_event("constraint applied", [&]() {
     this->stream << "\"source\": " << stringify(variable_names[src])
-                  << ", \"target\": " << stringify(variable_names[dst]);
+                 << ", \"target\": " << stringify(variable_names[dst]);
   });
 }
 
@@ -331,7 +331,7 @@ void JSONLogger::on_domain_init(VariableIndex var, const BitSpan domain)
 {
   on_event("domain init", [&]() {
     this->stream << "\"variable\": " << stringify(variable_names[var])
-                  << ", \"domain\": " << domain_as_int(domain);
+                 << ", \"domain\": " << domain_as_int(domain);
   });
 }
 
@@ -339,15 +339,14 @@ void JSONLogger::on_domain_reduced(VariableIndex var, const BitSpan domain)
 {
   on_event("domain reduced", [&]() {
     this->stream << "\"variable\": " << stringify(variable_names[var])
-                  << ", \"domain\": " << domain_as_int(domain);
+                 << ", \"domain\": " << domain_as_int(domain);
   });
 }
 
 void JSONLogger::on_domain_empty(VariableIndex var)
 {
-  on_event("domain empty", [&]() {
-    this->stream << "\"variable\": " << stringify(variable_names[var]);
-  });
+  on_event("domain empty",
+           [&]() { this->stream << "\"variable\": " << stringify(variable_names[var]); });
 }
 
 void JSONLogger::on_solve_end()

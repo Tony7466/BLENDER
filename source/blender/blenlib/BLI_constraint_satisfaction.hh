@@ -91,16 +91,36 @@ class ConstraintSet {
     return nullptr;
   }
 
-  void add(const VariableIndex variable, UnaryConstraintFn constraint)
+  void add_unary(const VariableIndex variable, UnaryConstraintFn constraint)
   {
     unary_.add(variable, constraint);
   }
-  void add(const VariableIndex target,
-           const VariableIndex source,
-           BinaryConstraintFn constraint)
+  void add_binary(const VariableIndex target,
+                  const VariableIndex source,
+                  BinaryConstraintFn constraint)
   {
     binary_by_source_.add(source, {target, constraint});
     binary_by_target_.add(target, {source, constraint});
+  }
+  /** Add a binary from source to target as well as target to source. */
+  void add_binary_symmetric(const VariableIndex target,
+                            const VariableIndex source,
+                            BinaryConstraintFn constraint)
+  {
+    this->add_binary(target, source, constraint);
+    this->add_binary(source, target, constraint);
+  }
+  /** Add a binary from source to target as well as an inverted constraint from target to source.
+   */
+  void add_binary_antisymmetric(const VariableIndex target,
+                                const VariableIndex source,
+                                BinaryConstraintFn constraint)
+  {
+    this->add_binary(target, source, constraint);
+    auto anti_constraint = [constraint](VariableIndex source_key, VariableIndex target_key) {
+      return constraint(target_key, source_key);
+    };
+    this->add_binary(source, target, anti_constraint);
   }
 };
 
@@ -126,9 +146,8 @@ struct NullLogger {
   void on_start(StringRef message);
   void on_end();
 
-  void declare_variables(const int num_vars,
-                         FunctionRef<std::string(VariableIndex)> names_fn);
-  void declare_constraints(const ConstraintSet & constraints);
+  void declare_variables(const int num_vars, FunctionRef<std::string(VariableIndex)> names_fn);
+  void declare_constraints(const ConstraintSet &constraints);
   void notify(StringRef message);
   void on_solve_start();
   void on_worklist_extended(VariableIndex src, VariableIndex dst);

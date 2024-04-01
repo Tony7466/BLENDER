@@ -736,8 +736,8 @@ static void add_node_type_constraints(const bNodeTree &tree,
       }
       const int var_a = input_inputs[i]->index_in_tree();
       const int var_b = output_inputs[i]->index_in_tree();
-      constraints.add(var_a, var_b, shared_field_type_constraint);
-      constraints.add(var_b, var_a, shared_field_type_constraint);
+      constraints.add_binary(var_a, var_b, shared_field_type_constraint);
+      constraints.add_binary(var_b, var_a, shared_field_type_constraint);
     }
     for (const int i : input_outputs.index_range()) {
       if (!input_outputs[i]->is_available() || !output_outputs[i]->is_available()) {
@@ -745,8 +745,8 @@ static void add_node_type_constraints(const bNodeTree &tree,
       }
       const int var_a = input_outputs[i]->index_in_tree();
       const int var_b = output_outputs[i]->index_in_tree();
-      constraints.add(var_a, var_b, shared_field_type_constraint);
-      constraints.add(var_b, var_a, shared_field_type_constraint);
+      constraints.add_binary(var_a, var_b, shared_field_type_constraint);
+      constraints.add_binary(var_b, var_a, shared_field_type_constraint);
     }
   };
 
@@ -969,23 +969,23 @@ static void test_ac3_field_inferencing(
                                                   SOCK_CUSTOM;
 
       if (!nodes::socket_type_supports_fields(type)) {
-        constraints.add(var, [](const int value) { return value == DomainValue::Single; });
+        constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
       }
 
       const OutputFieldDependency &field_dependency =
           inferencing_interface.outputs[output_socket->index()];
       if (field_dependency.field_type() == OutputSocketFieldType::FieldSource) {
-        constraints.add(var, [](const int value) { return value == DomainValue::Field; });
+        constraints.add_unary(var, [](const int value) { return value == DomainValue::Field; });
       }
       if (field_dependency.field_type() == OutputSocketFieldType::None) {
-        constraints.add(var, [](const int value) { return value == DomainValue::Single; });
+        constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
       }
 
       /* The output is required to be a single value when it is connected to any input that does
        * not support fields. */
       for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
         if (target_socket->is_available()) {
-          constraints.add(
+          constraints.add_binary(
               var, target_socket->index_in_tree(), [](int value_a, int value_b) {
                 return value_a == DomainValue::Single || value_b == DomainValue::Field;
               });
@@ -1035,13 +1035,13 @@ static void test_ac3_field_inferencing(
                                                   SOCK_CUSTOM;
 
       if (!nodes::socket_type_supports_fields(type)) {
-        constraints.add(var, [](const int value) { return value == DomainValue::Single; });
+        constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
       }
 
       const InputSocketFieldType field_type = inferencing_interface.inputs[input_socket->index()];
       if (field_type == InputSocketFieldType::None) {
-        constraints.add(input_socket->index_in_tree(),
-                        [](int value) { return value == DomainValue::Single; });
+        constraints.add_unary(input_socket->index_in_tree(),
+                              [](int value) { return value == DomainValue::Single; });
       }
     }
 

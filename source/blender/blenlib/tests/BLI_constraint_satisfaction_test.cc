@@ -19,31 +19,6 @@ TEST(constraint_satisfaction, SimpleTest)
   const int domain_size = 4;
 
   csp::ConstraintSet constraints;
-  enum Symmetry {
-    None,
-    Symmetric,
-    Antisymmetric,
-  };
-  auto add_binary_constraint = [&](const int a,
-                                   const int b,
-                                   const Symmetry symmetry,
-                                   const csp::BinaryConstraintFn &constraint) {
-    constraints.add(a, b, constraint);
-    switch (symmetry) {
-      case None:
-        break;
-      case Symmetric:
-        constraints.add(b, a, constraint);
-        break;
-      case Antisymmetric: {
-        const auto anti_constraint = [constraint](int value_a, int value_b) {
-          return constraint(value_b, value_a);
-        };
-        constraints.add(b, a, anti_constraint);
-        break;
-      }
-    }
-  };
 
   const int var_A = 0;
   const int var_B = 1;
@@ -57,46 +32,37 @@ TEST(constraint_satisfaction, SimpleTest)
   [[maybe_unused]] const int value_4 = 3;
 
   /* C = {1, 2, 4} */
-  constraints.add(var_B, [](const int value) { return value != value_3; });
+  constraints.add_unary(var_B, [](const int value) { return value != value_3; });
   /* C = {1, 3, 4} */
-  constraints.add(var_C, [](const int value) { return value != value_2; });
+  constraints.add_unary(var_C, [](const int value) { return value != value_2; });
 
   /* A != B */
-  add_binary_constraint(var_A, var_B, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
+  constraints.add_binary_symmetric(
+      var_A, var_B, [](const int value_a, const int value_b) { return value_a != value_b; });
   /* A == D */
-  add_binary_constraint(var_A, var_D, Symmetric, [](const int value_a, const int value_b) {
-    return value_a == value_b;
-  });
+  constraints.add_binary_symmetric(
+      var_A, var_D, [](const int value_a, const int value_b) { return value_a == value_b; });
   /* A > E */
-  add_binary_constraint(var_A, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
+  constraints.add_binary_antisymmetric(
+      var_A, var_E, [](const int value_a, const int value_b) { return value_a > value_b; });
   /* B != C */
-  add_binary_constraint(var_B, var_C, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
+  constraints.add_binary_symmetric(
+      var_B, var_C, [](const int value_a, const int value_b) { return value_a != value_b; });
   /* B != D */
-  add_binary_constraint(var_B, var_D, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
+  constraints.add_binary_symmetric(
+      var_B, var_D, [](const int value_a, const int value_b) { return value_a != value_b; });
   /* B > E */
-  add_binary_constraint(var_B, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
+  constraints.add_binary_antisymmetric(
+      var_B, var_E, [](const int value_a, const int value_b) { return value_a > value_b; });
   /* C < D */
-  add_binary_constraint(var_C, var_D, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a < value_b;
-  });
+  constraints.add_binary_antisymmetric(
+      var_C, var_D, [](const int value_a, const int value_b) { return value_a < value_b; });
   /* C > E */
-  add_binary_constraint(var_C, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
+  constraints.add_binary_antisymmetric(
+      var_C, var_E, [](const int value_a, const int value_b) { return value_a > value_b; });
   /* D > E */
-  add_binary_constraint(var_D, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
+  constraints.add_binary_antisymmetric(
+      var_D, var_E, [](const int value_a, const int value_b) { return value_a > value_b; });
 
   BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
 
