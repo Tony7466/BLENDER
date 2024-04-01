@@ -63,7 +63,7 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
 
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
                                    IndexMaskMemory &memory,
-                                   const std::string &attribute_name)
+                                   const StringRef attribute_name)
 {
   return IndexMask::from_bools(
       *curves.attributes().lookup_or_default<bool>(attribute_name, bke::AttrDomain::Point, true),

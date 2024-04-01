@@ -222,17 +222,16 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
  */
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
                                    IndexMaskMemory &memory,
-                                   const std::string &attribute_name = ".selection");
+                                   const StringRef attribute_name = ".selection");
 IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
  * If the selection_id attribute doesn't exist, create it with the requested type (bool or float).
  */
-bke::GSpanAttributeWriter ensure_selection_attribute(
-    bke::CurvesGeometry &curves,
-    const bke::AttrDomain selection_domain,
-    const eCustomDataType create_type,
-    const std::string &attribute_name = ".selection");
+bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
+                                                     bke::AttrDomain selection_domain,
+                                                     eCustomDataType create_type,
+                                                     StringRef attribute_name = ".selection");
 
 Vector<bke::GSpanAttributeWriter> &init_selection_writers(
     Vector<bke::GSpanAttributeWriter> &writers,
