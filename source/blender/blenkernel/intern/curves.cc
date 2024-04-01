@@ -333,8 +333,8 @@ CurvesSurfaceTransforms::CurvesSurfaceTransforms(const Object &curves_ob, const 
 bool CurvesEditHints::is_valid() const
 {
   const int point_num = this->curves_id_orig.geometry.point_num;
-  if (this->positions.has_value()) {
-    if (this->positions->size() != point_num) {
+  if (this->positions().has_value()) {
+    if (this->positions()->size() != point_num) {
       return false;
     }
   }
@@ -344,6 +344,69 @@ bool CurvesEditHints::is_valid() const
     }
   }
   return true;
+}
+
+CurvesEditHints::CurvesEditHints(const CurvesEditHints &other)
+    : curves_id_orig(other.curves_id_orig),
+      positions_data(other.positions_data),
+      deform_mats(other.deform_mats)
+{
+  this->positions_data->sharing_info->add_user();
+}
+
+CurvesEditHints::CurvesEditHints(CurvesEditHints &&other)
+    : curves_id_orig(other.curves_id_orig),
+      positions_data(std::exchange(other.positions_data, std::nullopt)),
+      deform_mats(std::move(other.deform_mats))
+{
+}
+
+CurvesEditHints &CurvesEditHints::operator=(const CurvesEditHints &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) CurvesEditHints(other);
+  return *this;
+}
+
+CurvesEditHints &CurvesEditHints::operator=(CurvesEditHints &&other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) CurvesEditHints(std::move(other));
+  return *this;
+}
+
+CurvesEditHints::~CurvesEditHints()
+{
+  if (this->positions_data) {
+    this->positions_data->sharing_info->remove_user_and_delete_if_last();
+  }
+}
+
+std::optional<Span<float3>> CurvesEditHints::positions() const
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+  const int points_num = this->curves_id_orig.geometry.wrap().points_num();
+  return Span(static_cast<const float3 *>(this->positions_data->data), points_num);
+}
+
+std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+  ImplicitSharingInfoAndData &data = *this->positions_data;
+  const int points_num = this->curves_id_orig.geometry.wrap().points_num();
+  data.data = implicit_sharing::make_trivial_data_mutable<float3>(
+      data.data, &data.sharing_info, points_num);
+  return MutableSpan(const_cast<float3 *>(static_cast<const float3 *>(data.data)), points_num);
 }
 
 void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals)

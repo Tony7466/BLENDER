@@ -451,7 +451,7 @@ class CurvesEditHints {
    * Evaluated positions for the points in #curves_orig. If this is empty, the positions from the
    * evaluated #Curves should be used if possible.
    */
-  std::optional<Array<float3>> positions;
+  std::optional<ImplicitSharingInfoAndData> positions_data;
   /**
    * Matrices which transform point movement vectors from original data to corresponding movements
    * of evaluated data.
@@ -459,6 +459,14 @@ class CurvesEditHints {
   std::optional<Array<float3x3>> deform_mats;
 
   CurvesEditHints(const Curves &curves_id_orig) : curves_id_orig(curves_id_orig) {}
+  CurvesEditHints(const CurvesEditHints &other);
+  CurvesEditHints(CurvesEditHints &&other);
+  CurvesEditHints &operator=(const CurvesEditHints &other);
+  CurvesEditHints &operator=(CurvesEditHints &&other);
+  ~CurvesEditHints();
+
+  std::optional<Span<float3>> positions() const;
+  std::optional<MutableSpan<float3>> positions_for_write();
 
   /**
    * The edit hints have to correspond to the original curves, i.e. the number of deformed points

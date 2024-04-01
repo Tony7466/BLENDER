@@ -1570,6 +1570,73 @@ void LayerGroup::update_from_dna_read()
 
 }  // namespace blender::bke::greasepencil
 
+namespace blender::bke {
+
+GreasePencilDrawingEditHints::GreasePencilDrawingEditHints(
+    const GreasePencilDrawingEditHints &other)
+    : drawing_orig(other.drawing_orig), positions_data(other.positions_data)
+{
+  this->positions_data->sharing_info->add_user();
+}
+
+GreasePencilDrawingEditHints::GreasePencilDrawingEditHints(GreasePencilDrawingEditHints &&other)
+    : drawing_orig(other.drawing_orig),
+      positions_data(std::exchange(other.positions_data, std::nullopt))
+{
+}
+
+GreasePencilDrawingEditHints &GreasePencilDrawingEditHints::operator=(
+    const GreasePencilDrawingEditHints &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) GreasePencilDrawingEditHints(other);
+  return *this;
+}
+
+GreasePencilDrawingEditHints &GreasePencilDrawingEditHints::operator=(
+    GreasePencilDrawingEditHints &&other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) GreasePencilDrawingEditHints(std::move(other));
+  return *this;
+}
+
+GreasePencilDrawingEditHints::~GreasePencilDrawingEditHints()
+{
+  if (this->positions_data) {
+    this->positions_data->sharing_info->remove_user_and_delete_if_last();
+  }
+}
+
+std::optional<Span<float3>> GreasePencilDrawingEditHints::positions() const
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+  const int points_num = this->drawing_orig->geometry.wrap().points_num();
+  return Span(static_cast<const float3 *>(this->positions_data->data), points_num);
+}
+
+std::optional<MutableSpan<float3>> GreasePencilDrawingEditHints::positions_for_write()
+{
+  if (!this->positions_data.has_value()) {
+    return std::nullopt;
+  }
+  ImplicitSharingInfoAndData &data = *this->positions_data;
+  const int points_num = this->drawing_orig->geometry.wrap().points_num();
+  data.data = implicit_sharing::make_trivial_data_mutable<float3>(
+      data.data, &data.sharing_info, points_num);
+  return MutableSpan(const_cast<float3 *>(static_cast<const float3 *>(data.data)), points_num);
+}
+
+}  // namespace blender::bke
+
 /* ------------------------------------------------------------------- */
 /** \name Grease Pencil kernel functions
  * \{ */
