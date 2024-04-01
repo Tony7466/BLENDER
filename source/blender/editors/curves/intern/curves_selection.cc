@@ -115,13 +115,12 @@ void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
   }
 }
 
-Vector<bke::GSpanAttributeWriter> &init_selection_writers(
-    Vector<bke::GSpanAttributeWriter> &writers,
-    bke::CurvesGeometry &curves,
-    bke::AttrDomain selection_domain)
+static Vector<bke::GSpanAttributeWriter> init_selection_writers(bke::CurvesGeometry &curves,
+                                                                bke::AttrDomain selection_domain)
 {
   const eCustomDataType create_type = CD_PROP_BOOL;
   Span<StringRef> selection_attribute_names = get_curves_selection_attribute_names(curves);
+  Vector<bke::GSpanAttributeWriter> writers;
   for (const int i : selection_attribute_names.index_range()) {
     writers.append(ensure_selection_attribute(
         curves, selection_domain, create_type, selection_attribute_names[i]));
@@ -157,11 +156,9 @@ void foreach_selection_attribute_writer(
     bke::AttrDomain selection_domain,
     blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
 {
-
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selection_writers = init_selection_writers(
-      writers_buffer, curves, selection_domain);
-
+  Vector<bke::GSpanAttributeWriter> writers_buffer = init_selection_writers(curves,
+                                                                            selection_domain);
+  MutableSpan<bke::GSpanAttributeWriter> selection_writers = writers_buffer;
   for (bke::GSpanAttributeWriter &selection_writer : selection_writers) {
     fn(selection_writer);
   }
@@ -515,9 +512,9 @@ void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<int8_t> curve_types = curves.curve_types();
 
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
-      writers_buffer, curves, bke::AttrDomain::Point);
+  Vector<bke::GSpanAttributeWriter> writers_buffer = init_selection_writers(
+      curves, bke::AttrDomain::Point);
+  MutableSpan<bke::GSpanAttributeWriter> selections = writers_buffer;
 
   curves_mask.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
     for (const int i : selections.index_range()) {
@@ -896,9 +893,10 @@ bool select_box(const ViewContext &vc,
                 const rcti &rect,
                 const eSelectOp sel_op)
 {
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
-      writers_buffer, curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer = init_selection_writers(curves,
+                                                                            selection_domain);
+  MutableSpan<bke::GSpanAttributeWriter> selections = writers_buffer;
+
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {
@@ -979,9 +977,9 @@ bool select_lasso(const ViewContext &vc,
 {
   rcti bbox;
   BLI_lasso_boundbox(&bbox, lasso_coords);
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
-      writers_buffer, curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer = init_selection_writers(curves,
+                                                                            selection_domain);
+  MutableSpan<bke::GSpanAttributeWriter> selections = writers_buffer;
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {
@@ -1080,9 +1078,9 @@ bool select_circle(const ViewContext &vc,
                    const eSelectOp sel_op)
 {
   const float radius_sq = pow2f(radius);
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selections = init_selection_writers(
-      writers_buffer, curves, selection_domain);
+  Vector<bke::GSpanAttributeWriter> writers_buffer = init_selection_writers(curves,
+                                                                            selection_domain);
+  MutableSpan<bke::GSpanAttributeWriter> selections = writers_buffer;
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selections) {

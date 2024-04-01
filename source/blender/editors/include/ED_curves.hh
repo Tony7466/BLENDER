@@ -233,11 +233,6 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
                                                      eCustomDataType create_type,
                                                      StringRef attribute_name = ".selection");
 
-Vector<bke::GSpanAttributeWriter> &init_selection_writers(
-    Vector<bke::GSpanAttributeWriter> &writers,
-    bke::CurvesGeometry &curves,
-    bke::AttrDomain selection_domain);
-
 void foreach_selection_attribute_writer(
     bke::CurvesGeometry &curves,
     bke::AttrDomain selection_domain,
