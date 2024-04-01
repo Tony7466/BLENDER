@@ -61,9 +61,14 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_curves(curves, memory);
 }
 
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory)
+{
+  return retrieve_selected_points(curves, ".selection", memory);
+}
+
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
-                                   IndexMaskMemory &memory,
-                                   const StringRef attribute_name)
+                                   StringRef attribute_name,
+                                   IndexMaskMemory &memory)
 {
   return IndexMask::from_bools(
       *curves.attributes().lookup_or_default<bool>(attribute_name, bke::AttrDomain::Point, true),
@@ -113,7 +118,7 @@ void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
 Vector<bke::GSpanAttributeWriter> &init_selection_writers(
     Vector<bke::GSpanAttributeWriter> &writers,
     bke::CurvesGeometry &curves,
-    const bke::AttrDomain selection_domain)
+    bke::AttrDomain selection_domain)
 {
   const eCustomDataType create_type = CD_PROP_BOOL;
   Span<StringRef> selection_attribute_names = get_curves_selection_attribute_names(curves);
@@ -124,14 +129,14 @@ Vector<bke::GSpanAttributeWriter> &init_selection_writers(
   return writers;
 }
 
-inline void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> attribute_writers)
+static void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> attribute_writers)
 {
   for (auto &attribute_writer : attribute_writers) {
     attribute_writer.finish();
   }
 }
 
-inline bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
+static bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
     MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name)
 {
   Span<StringRef> selection_attribute_names = get_curves_all_selection_attribute_names();
@@ -149,7 +154,7 @@ inline bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
 
 void foreach_selection_attribute_writer(
     bke::CurvesGeometry &curves,
-    const bke::AttrDomain selection_domain,
+    bke::AttrDomain selection_domain,
     blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
 {
 
@@ -157,7 +162,6 @@ void foreach_selection_attribute_writer(
   MutableSpan<bke::GSpanAttributeWriter> selection_writers = init_selection_writers(
       writers_buffer, curves, selection_domain);
 
-  /* TODO: maybe add threading */
   for (bke::GSpanAttributeWriter &selection_writer : selection_writers) {
     fn(selection_writer);
   }
@@ -183,7 +187,7 @@ static void init_selectable_foreach(const bke::CurvesGeometry &curves,
 
 void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
-                                    SelectableRangeConsumer range_consumer)
+                                    SelectionRangeFn range_consumer)
 {
   Span<StringRef> bezier_attribute_names;
   Span<float3> positions;
@@ -212,7 +216,7 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
 
 void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
-                                    SelectableRangeConsumer range_consumer)
+                                    SelectionRangeFn range_consumer)
 {
   Span<StringRef> bezier_attribute_names;
   Span<float3> positions;
@@ -238,8 +242,8 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
 }
 
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
-                                                     const bke::AttrDomain selection_domain,
-                                                     const eCustomDataType create_type,
+                                                     bke::AttrDomain selection_domain,
+                                                     eCustomDataType create_type,
                                                      StringRef attribute_name)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -403,8 +407,7 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
   return !selection || contains(selection, selection.index_range(), true);
 }
 
-bool has_anything_selected(const bke::CurvesGeometry &curves,
-                           const bke::AttrDomain selection_domain)
+bool has_anything_selected(const bke::CurvesGeometry &curves, bke::AttrDomain selection_domain)
 {
   for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
     const VArray<bool> selection = *curves.attributes().lookup<bool>(selection_name,
@@ -908,9 +911,7 @@ bool select_box(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range,
-            const Span<float3> positions,
-            StringRef selection_attribute_name) {
+        [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
@@ -993,9 +994,7 @@ bool select_lasso(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range,
-            const Span<float3> positions,
-            StringRef selection_attribute_name) {
+        [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection_matrix);
@@ -1096,9 +1095,7 @@ bool select_circle(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range,
-            const Span<float3> positions,
-            StringRef selection_attribute_name) {
+        [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);

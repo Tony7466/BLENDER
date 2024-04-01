@@ -73,8 +73,8 @@ void remove_selection_attributes(
     bke::MutableAttributeAccessor &attributes,
     Span<StringRef> selection_attribute_names = get_curves_all_selection_attribute_names());
 
-using SelectableRangeConsumer = blender::FunctionRef<void(
-    const IndexRange range, const Span<float3> positions, StringRef selection_attribute_name)>;
+using SelectionRangeFn = FunctionRef<void(
+    IndexRange range, Span<float3> positions, StringRef selection_attribute_name)>;
 /**
  * Traverses all ranges of control points possible select. Callback function is provided with a
  * range being visited, positions (deformed if possible) referenced by the range and selection
@@ -85,7 +85,7 @@ using SelectableRangeConsumer = blender::FunctionRef<void(
  */
 void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
-                                    SelectableRangeConsumer range_consumer);
+                                    SelectionRangeFn range_consumer);
 
 /**
  * Same logic as in foreach_selectable_point_range, just ranges reference curves instead of
@@ -94,7 +94,7 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
  */
 void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
-                                    SelectableRangeConsumer range_consumer);
+                                    SelectionRangeFn range_consumer);
 
 bool object_has_editable_curves(const Main &bmain, const Object &object);
 bke::CurvesGeometry primitive_random_sphere(int curves_size, int points_per_curve);
@@ -198,8 +198,7 @@ void fill_selection_true(GMutableSpan selection, const IndexMask &mask);
  * Return true if any element is selected, on either domain with either type.
  */
 bool has_anything_selected(const bke::CurvesGeometry &curves);
-bool has_anything_selected(const bke::CurvesGeometry &curves,
-                           const bke::AttrDomain selection_domain);
+bool has_anything_selected(const bke::CurvesGeometry &curves, bke::AttrDomain selection_domain);
 bool has_anything_selected(const bke::CurvesGeometry &curves, const IndexMask &mask);
 
 /**
@@ -220,9 +219,10 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
  * Find points that are selected (a selection factor greater than zero),
  * or points in curves with a selection factor greater than zero).
  */
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory);
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
-                                   IndexMaskMemory &memory,
-                                   const StringRef attribute_name = ".selection");
+                                   StringRef attribute_name,
+                                   IndexMaskMemory &memory);
 IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
@@ -236,17 +236,12 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
 Vector<bke::GSpanAttributeWriter> &init_selection_writers(
     Vector<bke::GSpanAttributeWriter> &writers,
     bke::CurvesGeometry &curves,
-    const bke::AttrDomain selection_domain);
-
-void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> selection_writers);
-
-bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
-    MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name);
+    bke::AttrDomain selection_domain);
 
 void foreach_selection_attribute_writer(
     bke::CurvesGeometry &curves,
-    const bke::AttrDomain selection_domain,
-    blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn);
+    bke::AttrDomain selection_domain,
+    FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn);
 
 /** Apply a change to a single curve or point. Avoid using this when affecting many elements. */
 void apply_selection_operation_at_index(GMutableSpan selection, int index, eSelectOp sel_op);
