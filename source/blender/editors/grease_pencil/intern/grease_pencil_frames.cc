@@ -569,6 +569,9 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
   }
 
+  /* Check if single channel in buffer (disregard names if so). */
+  const bool from_single_channel = copy_buffer.size() == 1;
+
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     /* Only deal with GPlayers (case of calls from general dopesheet). */
     if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
@@ -577,10 +580,11 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
     const std::string layer_name = layer->name();
-    if (!copy_buffer.contains(layer_name)) {
+    if (!from_single_channel && !copy_buffer.contains(layer_name)) {
       continue;
     }
-    LayerBufferItem layer_buffer = copy_buffer.lookup(layer_name);
+    LayerBufferItem layer_buffer = from_single_channel ? *copy_buffer.values() :
+                                                         copy_buffer.lookup(layer_name);
     bool change = false;
 
     /* Mix mode with existing data. */
