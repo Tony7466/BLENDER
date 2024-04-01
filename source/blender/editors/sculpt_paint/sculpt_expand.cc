@@ -2124,7 +2124,6 @@ static bool any_nonzero_mask(const Object &object)
 
 static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  TICK_START;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -2211,18 +2210,14 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (SCULPT_vertex_is_boundary(ss, ss->expand_cache->initial_active_vertex)) {
     falloff_type = SCULPT_EXPAND_FALLOFF_BOUNDARY_TOPOLOGY;
   }
-  TOCK_START("1");
-  TICK;
-
+  TICK_START;
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
       ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
-
-  TOCK("2");
-  TICK;
+  TOCK_START("Bottleneck")
   sculpt_expand_check_topology_islands(ob, falloff_type);
   /* Initial mesh data update, resets all target data in the sculpt mesh. */
   sculpt_expand_update_for_vertex(C, ob, ss->expand_cache->initial_active_vertex);
-  TOCK("3");
+
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }

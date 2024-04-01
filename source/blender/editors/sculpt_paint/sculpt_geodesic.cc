@@ -10,8 +10,6 @@
 #include <cstdlib>
 
 #include <tbb/concurrent_vector.h>
-#include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -335,11 +333,8 @@ static float *geodesic_mesh_create_parallel(Object *ob,
           continue;
         }
         for (const int v_other : corner_verts.slice(faces[face])) {
-          if (ELEM(v_other, v1, v2)) {
-            continue;
-          }
-          if (!sculpt_geodesic_mesh_test_dist_add(
-                  vert_positions, v_other, v1, v2, dists, initial_verts))
+          if (ELEM(v_other, v1, v2) || !sculpt_geodesic_mesh_test_dist_add(
+                                           vert_positions, v_other, v1, v2, dists, initial_verts))
           {
             continue;
           }
@@ -456,4 +451,4 @@ float *distances_create_from_vert_and_symm(Object *ob,
   return dists;
 }
 
-}  /* namespace blender::ed::sculpt_paint::geodesic */
+} /* namespace blender::ed::sculpt_paint::geodesic */
