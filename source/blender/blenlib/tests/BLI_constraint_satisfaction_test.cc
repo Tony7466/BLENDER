@@ -10,7 +10,7 @@ namespace blender::tests {
 
 namespace csp = constraint_satisfaction;
 
-TEST(constraint_satisfaction, SimpleTest)
+TEST(constraint_satisfaction, BasicExample)
 {
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
@@ -90,6 +90,84 @@ TEST(constraint_satisfaction, SimpleTest)
   EXPECT_FALSE(result[var_E][1]);
   EXPECT_FALSE(result[var_E][2]);
   EXPECT_FALSE(result[var_E][3]);
+}
+
+/* An over-constrained system that results in an empty variable domain. */
+TEST(constraint_satisfaction, OverConstrained)
+{
+  const int num_vars = 3;
+  const int domain_size = 2;
+
+  csp::ConstraintSet constraints;
+
+  const int var_A = 0;
+  const int var_B = 1;
+  const int var_C = 2;
+
+  /* A = {0} */
+  constraints.add_unary(var_A, [](const int value) { return value == 0; });
+  /* B = {1} */
+  constraints.add_unary(var_B, [](const int value) { return value == 1; });
+
+  /* C != A */
+  constraints.add_binary_symmetric(
+      var_C, var_A, [](const int value_c, const int value_a) { return value_c != value_a; });
+  /* C < B */
+  constraints.add_binary_antisymmetric(
+      var_C, var_B, [](const int value_c, const int value_b) { return value_c < value_b; });
+
+  BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
+
+  EXPECT_FALSE(result[var_A][0]);
+  EXPECT_FALSE(result[var_A][1]);
+
+  EXPECT_FALSE(result[var_B][0]);
+  EXPECT_TRUE(result[var_B][1]);
+
+  EXPECT_FALSE(result[var_C][0]);
+  EXPECT_FALSE(result[var_C][1]);
+}
+
+/* An under-constrained system that cannot fully resolve all variables. */
+TEST(constraint_satisfaction, UnderConstrained)
+{
+  const int num_vars = 3;
+  const int domain_size = 4;
+
+  csp::ConstraintSet constraints;
+
+  const int var_A = 0;
+  const int var_B = 1;
+  const int var_C = 2;
+
+  /* A = {0} */
+  constraints.add_unary(var_A, [](const int value) { return value == 0; });
+  /* B = {3} */
+  constraints.add_unary(var_B, [](const int value) { return value == 3; });
+
+  /* C != A */
+  constraints.add_binary_symmetric(
+      var_C, var_A, [](const int value_c, const int value_a) { return value_c != value_a; });
+  /* C < B */
+  constraints.add_binary_antisymmetric(
+      var_C, var_B, [](const int value_c, const int value_b) { return value_c < value_b; });
+
+  BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
+
+  EXPECT_TRUE(result[var_A][0]);
+  EXPECT_FALSE(result[var_A][1]);
+  EXPECT_FALSE(result[var_A][2]);
+  EXPECT_FALSE(result[var_A][3]);
+
+  EXPECT_FALSE(result[var_B][0]);
+  EXPECT_FALSE(result[var_B][1]);
+  EXPECT_FALSE(result[var_B][2]);
+  EXPECT_TRUE(result[var_B][3]);
+
+  EXPECT_FALSE(result[var_C][0]);
+  EXPECT_TRUE(result[var_C][1]);
+  EXPECT_TRUE(result[var_C][2]);
+  EXPECT_FALSE(result[var_C][3]);
 }
 
 }  // namespace blender::tests
