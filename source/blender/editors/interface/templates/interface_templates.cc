@@ -6176,11 +6176,13 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
-      uiItemL(row, msg ? msg : "", (ICON_MOUSE_LMB + i));
+      uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemL(row, msg ? msg : "", ICON_NONE);
     }
 
     if (msg_drag) {
-      uiItemL(row, msg_drag, (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, msg_drag, ICON_NONE);
     }
 
     /* Use trick with empty string to keep icons in same position. */
@@ -6398,6 +6400,39 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /** \name Event Icon Template
  * \{ */
 
+static bool uiTemplateEventXYZ(
+    uiLayout *layout, int icon, int icon_mod[4], const char *text, const wmKeyMapItem *kmi)
+{
+  if (!ELEM(icon, ICON_EVENT_X, ICON_EVENT_Y, ICON_EVENT_Z)) {
+    return false;
+  }
+
+  if (icon != ICON_EVENT_Z) {
+    return true;
+  }
+
+  for (int j = 0; j < 4 && icon_mod[j]; j++) {
+    uiItemL(layout, "", icon_mod[j]);
+  }
+
+  uiItemL(layout, "", ICON_EVENT_X);
+  uiItemL(layout, "", ICON_EVENT_Y);
+  uiItemL(layout, "", ICON_EVENT_Z);
+
+  uiItemS_ex(layout, 0.6f);
+
+  std::string name(text);
+  int index = name.find("Z ");
+  if (index != std::string::npos) {
+    name.erase(index, 2);
+  }
+
+  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, name.c_str()), ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  return true;
+}
+
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const char *text,
                                    const wmKeyMapItem *kmi,
@@ -6412,16 +6447,29 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
   const int icon = UI_icon_from_keymap_item(kmi, icon_mod);
 #endif
   if (icon != 0) {
+
+    if (uiTemplateEventXYZ(layout, icon, icon_mod, text, kmi)) {
+      return true;
+    }
+
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
-    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
+
+    uiItemL(layout, "", icon);
+    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      uiItemS_ex(layout, 0.6f);
+    }
+    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+
     ok = true;
   }
   else if (text_fallback) {
     const char *event_text = WM_key_event_string(kmi->type, true);
     uiItemL(layout, event_text, ICON_NONE);
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemS_ex(layout, 0.5f);
     ok = true;
   }
   return ok;
