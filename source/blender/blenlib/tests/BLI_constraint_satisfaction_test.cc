@@ -100,33 +100,30 @@ TEST(constraint_satisfaction, SimpleTest)
 
   BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
 
-  csp::PrintLogger logger;
-  csp::solve_constraints_with_logger(constraints, num_vars, domain_size, logger);
+  EXPECT_FALSE(result[var_A][0]);
+  EXPECT_FALSE(result[var_A][1]);
+  EXPECT_FALSE(result[var_A][2]);
+  EXPECT_TRUE(result[var_A][3]);
 
-  //EXPECT_EQ(result[var_A], 
+  EXPECT_FALSE(result[var_B][0]);
+  EXPECT_TRUE(result[var_B][1]);
+  EXPECT_FALSE(result[var_B][2]);
+  EXPECT_FALSE(result[var_B][3]);
 
-  //DisjointSet disjoint_set(6);
-  //EXPECT_FALSE(disjoint_set.in_same_set(1, 2));
-  //EXPECT_FALSE(disjoint_set.in_same_set(5, 3));
-  //EXPECT_TRUE(disjoint_set.in_same_set(2, 2));
-  //EXPECT_EQ(disjoint_set.find_root(3), 3);
+  EXPECT_FALSE(result[var_C][0]);
+  EXPECT_FALSE(result[var_C][1]);
+  EXPECT_TRUE(result[var_C][2]);
+  EXPECT_FALSE(result[var_C][3]);
 
-  //disjoint_set.join(1, 2);
+  EXPECT_FALSE(result[var_D][0]);
+  EXPECT_FALSE(result[var_D][1]);
+  EXPECT_FALSE(result[var_D][2]);
+  EXPECT_TRUE(result[var_D][3]);
 
-  //EXPECT_TRUE(disjoint_set.in_same_set(1, 2));
-  //EXPECT_FALSE(disjoint_set.in_same_set(0, 1));
-
-  //disjoint_set.join(3, 4);
-
-  //EXPECT_FALSE(disjoint_set.in_same_set(2, 3));
-  //EXPECT_TRUE(disjoint_set.in_same_set(3, 4));
-
-  //disjoint_set.join(1, 4);
-
-  //EXPECT_TRUE(disjoint_set.in_same_set(1, 4));
-  //EXPECT_TRUE(disjoint_set.in_same_set(1, 3));
-  //EXPECT_TRUE(disjoint_set.in_same_set(2, 4));
-  //EXPECT_FALSE(disjoint_set.in_same_set(0, 4));
+  EXPECT_TRUE(result[var_E][0]);
+  EXPECT_FALSE(result[var_E][1]);
+  EXPECT_FALSE(result[var_E][2]);
+  EXPECT_FALSE(result[var_E][3]);
 }
 
 }  // namespace blender::tests
