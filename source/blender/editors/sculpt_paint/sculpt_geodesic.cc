@@ -9,10 +9,10 @@
 #include <cmath>
 #include <cstdlib>
 
-#include <tbb/concurrent_vector.h>
-#include <mutex>
-#include <thread>
 #include <functional>
+#include <mutex>
+#include <tbb/concurrent_vector.h>
+#include <thread>
 
 #include "MEM_guardedalloc.h"
 
@@ -231,96 +231,69 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
 /* Parallel vector implementation with multiple writting heads
  for fast parallel writting that minimizes collisions and race
- conditions 
+ conditions
 
  Use it in places where the writting order is not important and
  can tolerate some collission in writting data */
-template <typename T>
-class UnorderedParallelStorage {
-public:
-    int num_threads;
-    std::vector<std::vector<T>> data_heads;
-    
-public:
-    UnorderedParallelStorage(size_t SIZE, int threads = 4) {
-        num_threads = threads;
-        data_heads.reserve(num_threads);
-        const int chunk_size = SIZE/num_threads + 1;
-        for (size_t i = 0; i < num_threads; ++i) {
-            data_heads.push_back(std::vector<T>());
-            data_heads[i].reserve(chunk_size);
-        }
-    }
+template<typename T> class UnorderedParallelStorage {
+ public:
+  int num_threads;
+  std::vector<std::vector<T>> data_heads;
 
-    void push_back(T value) {
-        size_t head_id = std::hash<std::thread::id>{}(std::this_thread::get_id()) % num_threads; /* Assign a writing head based on thread ID */
-        data_heads[head_id].push_back(value);
+ public:
+  UnorderedParallelStorage(size_t SIZE, int threads = 4)
+  {
+    num_threads = threads;
+    data_heads.reserve(num_threads);
+    const int chunk_size = SIZE / num_threads + 1;
+    for (size_t i = 0; i < num_threads; ++i) {
+      data_heads.push_back(std::vector<T>());
+      data_heads[i].reserve(chunk_size);
     }
+  }
 
-    size_t size() const {
-        size_t max_index = 0;
-        for (size_t i = 0; i < num_threads; ++i) {
-            max_index += data_heads[i].size();
-        }
-        return max_index;
+  void push_back(T value)
+  {
+    size_t head_id = std::hash<std::thread::id>{}(std::this_thread::get_id()) %
+                     num_threads; /* Assign a writing head based on thread ID */
+    data_heads[head_id].push_back(value);
+  }
+
+  size_t size() const
+  {
+    size_t max_index = 0;
+    for (size_t i = 0; i < num_threads; ++i) {
+      max_index += data_heads[i].size();
     }
-    
-    bool empty() {
-        return size() == 0;
+    return max_index;
+  }
+
+  bool empty()
+  {
+    return size() == 0;
+  }
+
+  void clear()
+  {
+    for (size_t i = 0; i < num_threads; ++i) {
+      data_heads[i].clear();
     }
-    
-    void clear(){
-        for (size_t i = 0; i < num_threads; ++i){
-            data_heads[i].clear();
-        }
-    }
+  }
 };
 
-template <typename T>
-class ConcurrentVector {
-public:
-    std::vector<T> data;
-    std::atomic<size_t> tail;
-
-public:
-    ConcurrentVector() : tail(0) {}
-
-    void push_back(const T& value) {
-        size_t pos = tail.fetch_add(1, std::memory_order_relaxed);
-        data[pos] = value;
+static void reduce_and_reset_flag(UnorderedParallelStorage<int> &source,
+                                  std::vector<int> &target,
+                                  BitVector<> &edge_tag)
+{
+  target.clear();
+  for (int j = 0; j < source.num_threads; ++j) {
+    for (int i = 0; i < source.data_heads[j].size(); ++i) {
+      const int edge = source.data_heads[j][i];
+      edge_tag[edge].reset();
+      target.push_back(edge);
     }
-    
-    void reserve(size_t size){
-        data.resize(size);
-    }
-
-    size_t size() const {
-        return tail.load(std::memory_order_relaxed);
-    }
-    
-    bool empty(){
-        return size() == 0;
-    }
-
-    T& operator[](size_t index) {
-        return data[index];
-    }
-
-    const T& operator[](size_t index) const {
-        return data[index];
-    }
-};
-
-static void reduce_and_reset_flag(UnorderedParallelStorage<int> &source, std::vector<int> &target, BitVector<> &edge_tag) {
-    target.clear();
-    for (int j = 0; j<source.num_threads; ++j){
-        for (int i = 0; i<source.data_heads[j].size(); ++i){
-            const int edge = source.data_heads[j][i];
-            edge_tag[edge].reset();
-            target.push_back(edge);
-        }
-        source.data_heads[j].clear();
-    }
+    source.data_heads[j].clear();
+  }
 }
 
 static float *geodesic_mesh_create_parallel(Object *ob,
@@ -389,13 +362,10 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     }
   }
 
-  // TODO: use a blender equivalent fast and thread safe vector
-  //  UnorderedParallelStorage<int> /*std::vector<int>*/ /*tbb::concurrent_vector<int>*/ queue_next(totedge, std::thread::hardware_concurrency()/2);
-  ConcurrentVector<int> queue, queue_next;
+  std::atomic<size_t> writting_head(0);
+    std::vector<int> queue, queue_next;
   queue.reserve(totedge);
-  queue_next.reserve(totedge);
-  //std::fill(queue_next.begin(), queue_next.end(), -1);
-  //std::mutex mutex;
+  queue_next.resize(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
    Since initial vertex are few only, iterating over its neighbour edges
@@ -453,35 +423,19 @@ static float *geodesic_mesh_create_parallel(Object *ob,
             }
 
             edge_tag[e_other].set();
-              //{
-              //    std::lock_guard<std::mutex> lock(mutex);
-                  queue_next.push_back(e_other);
-              //}
+            size_t pos = writting_head.fetch_add(1, std::memory_order_relaxed);
+            queue_next[pos] = e_other;
           }
         }
       }
     });
 
-    queue.data.swap(queue_next.data);
-    queue.tail = std::atomic<int>(queue.data.size());
-    threading::parallel_for(IndexRange(0, queue.size()), 4096, [&](IndexRange range) {
-      for (const int i : range) {
-        edge_tag[queue[i]].reset();
-      }
-    });
-      queue_next.data.clear();
-      queue_next.tail = 0;
-      
-    //reduce_and_reset_flag(queue_next, queue, edge_tag);
-      
-      /*for (size_t i =0; i < queue_next.size(); ++i ) {
-          if (queue_next[i] != -1) {
-              edge_tag[queue_next[i]].reset();
-              queue.push_back(queue_next[i]);
-              queue_next[i] = -1;
-          }
-      }*/
-      
+    queue.clear();
+    for (size_t i = 0; i < writting_head; ++i) {
+      edge_tag[queue_next[i]].reset();
+      queue.push_back(queue_next[i]);
+    }
+    writting_head = 0;
   }
 
   return dists;
