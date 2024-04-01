@@ -429,16 +429,21 @@ size_t BLI_str_unescape(char *__restrict dst, const char *__restrict src, const 
   return len;
 }
 
-const char *BLI_str_escape_find_quote(const char *str)
+const char *BLI_str_escape_find_quote_with(const char *str, const char quote_character)
 {
   bool escape = false;
-  while (*str && (*str != '"' || escape)) {
+  while (*str && (*str != quote_character || escape)) {
     /* A pair of back-slashes represents a single back-slash,
      * only use a single back-slash for escaping. */
     escape = (escape == false) && (*str == '\\');
     str++;
   }
-  return (*str == '"') ? str : NULL;
+  return (*str == quote_character) ? str : NULL;
+}
+
+const char *BLI_str_escape_find_quote(const char *str)
+{
+  return BLI_str_escape_find_quote_with(str, '"');
 }
 
 /** \} */

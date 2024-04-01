@@ -276,6 +276,17 @@ size_t BLI_str_unescape(char *__restrict dst, const char *__restrict src, size_t
 const char *BLI_str_escape_find_quote(const char *str) ATTR_NONNULL(1);
 
 /**
+ * Find the first un-escaped quote in the string (to find the end of the string).
+ *
+ * \param str: Typically this is the first character in a quoted string.
+ * Where the character before `*str` would be #quote_character.
+ *
+ * \return The pointer to the first un-escaped quote.
+ */
+const char *BLI_str_escape_find_quote_with(const char *str, const char quote_character)
+    ATTR_NONNULL(1);
+
+/**
  * Format integers with decimal grouping.
  * 1000 -> 1,000
  *

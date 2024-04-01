@@ -86,7 +86,7 @@ static char *rna_path_token_in_brackets(const char **path,
                                         bool *r_quoted)
 {
   int len = 0;
-  bool quoted = false;
+  char quote_character = 0;
 
   BLI_assert(r_quoted != nullptr);
 
@@ -99,11 +99,12 @@ static char *rna_path_token_in_brackets(const char **path,
   const char *p = *path;
 
   /* 2 kinds of look-ups now, quoted or unquoted. */
-  if (*p == '"') {
+  if (*p == '"' || *p == '\'') {
+    quote_character = *p;
     /* Find the matching quote. */
     (*path)++;
     p = *path;
-    const char *p_end = BLI_str_escape_find_quote(p);
+    const char *p_end = BLI_str_escape_find_quote_with(p, quote_character);
     if (p_end == nullptr) {
       /* No Matching quote. */
       return nullptr;
@@ -114,7 +115,6 @@ static char *rna_path_token_in_brackets(const char **path,
     /* Skip the last quoted char to get the `]`. */
     p_end += 1;
     p = p_end;
-    quoted = true;
   }
   else {
     /* Find the matching bracket. */
@@ -129,7 +129,7 @@ static char *rna_path_token_in_brackets(const char **path,
   }
 
   /* Support empty strings in quotes, as this is a valid key for an ID-property. */
-  if (!quoted) {
+  if (!quote_character) {
     /* Empty, return. */
     if (UNLIKELY(len == 0)) {
       return nullptr;
@@ -141,10 +141,10 @@ static char *rna_path_token_in_brackets(const char **path,
                                      (char *)MEM_mallocN(sizeof(char) * (len + 1), __func__);
 
   /* Copy string, taking into account escaped ']' */
-  if (quoted) {
+  if (quote_character) {
     BLI_str_unescape(buf, *path, len);
     /* +1 to step over the last quote. */
-    BLI_assert((*path)[len] == '"');
+    BLI_assert((*path)[len] == quote_character);
     p = (*path) + len + 1;
   }
   else {
@@ -160,7 +160,7 @@ static char *rna_path_token_in_brackets(const char **path,
   }
   *path = p;
 
-  *r_quoted = quoted;
+  *r_quoted = (quote_character != 0);
 
   return buf;
 }
