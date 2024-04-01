@@ -56,6 +56,7 @@ set(SRC
   intern/buffer.c
   intern/cache_mutex.cc
   intern/compute_context.cc
+  intern/constraint_satisfaction.cc
   intern/convexhull_2d.cc
   intern/cpp_type.cc
   intern/cpp_types.cc
@@ -205,6 +206,7 @@ set(SRC
   BLI_compiler_typecheck.h
   BLI_compute_context.hh
   BLI_console.h
+  BLI_constraint_satisfaction.hh
   BLI_convexhull_2d.h
   BLI_cpp_type.hh
   BLI_cpp_type_make.hh

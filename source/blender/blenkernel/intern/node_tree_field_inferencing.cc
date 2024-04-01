@@ -15,9 +15,10 @@
 
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bit_span_ops.hh"
+#include "BLI_constraint_satisfaction.hh"
 #include "BLI_multi_value_map.hh"
-#include "BLI_path_util.h"
 #include "BLI_offset_indices.hh"
+#include "BLI_path_util.h"
 #include "BLI_resource_scope.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -714,461 +715,13 @@ static void prepare_inferencing_interfaces(
   }
 }
 
-namespace ac3 {
-
-/** Unary constraint function, returns true if the value is allowed. */
-using UnaryConstraintFn = std::function<bool(int value)>;
-/** Binary constraint function, returns true if both values are compatible. */
-using BinaryConstraintFn = std::function<bool(int value_a, int value_b)>;
-
-class VariableRef {
-  int index_;
-
- public:
-  explicit VariableRef(const int index) : index_(index) {}
-
-  int index() const
-  {
-    return index_;
-  }
-
-  operator int() const
-  {
-    return index_;
-  }
-
-  bool operator==(const VariableRef other) const
-  {
-    return index_ == other.index_;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash(index_);
-  }
-};
-
-struct MutableVariableRef {
-  int index_;
-
- public:
-  explicit MutableVariableRef(const int index) : index_(index) {}
-
-  int index() const
-  {
-    return index_;
-  }
-
-  operator int() const
-  {
-    return index_;
-  }
-
-  operator VariableRef() const
-  {
-    return VariableRef(index_);
-  }
-
-  bool operator==(const MutableVariableRef other) const
-  {
-    return index_ == other.index_;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash(index_);
-  }
-};
-
-class ConstraintSet {
- public:
-  struct Target {
-    MutableVariableRef variable;
-    BinaryConstraintFn constraint;
-  };
-  struct Source {
-    VariableRef variable;
-    BinaryConstraintFn constraint;
-  };
-
- private:
-  MultiValueMap<MutableVariableRef, UnaryConstraintFn> unary_;
-  MultiValueMap<VariableRef, Target> binary_by_source_;
-  MultiValueMap<MutableVariableRef, Source> binary_by_target_;
-
- public:
-  const MultiValueMap<MutableVariableRef, UnaryConstraintFn> &all_unary_constraints() const
-  {
-    return unary_;
-  }
-  const MultiValueMap<VariableRef, Target> &binary_constraints_by_source() const
-  {
-    return binary_by_source_;
-  }
-  const MultiValueMap<MutableVariableRef, Source> &binary_constraints_by_target() const
-  {
-    return binary_by_target_;
-  }
-
-  Span<UnaryConstraintFn> get_unary_constraints(const MutableVariableRef source) const
-  {
-    return unary_.lookup(source);
-  }
-  Span<Target> get_target_constraints(const VariableRef source) const
-  {
-    return binary_by_source_.lookup(source);
-  }
-  Span<Source> get_source_constraints(const MutableVariableRef target) const
-  {
-    return binary_by_target_.lookup(target);
-  }
-  BinaryConstraintFn get_binary_constraint(const VariableRef source_key,
-                                           const MutableVariableRef target_key) const
-  {
-    for (const Target &target : binary_by_source_.lookup(source_key)) {
-      if (target.variable == target_key) {
-        return target.constraint;
-      }
-    }
-    return nullptr;
-  }
-
-  void add(const MutableVariableRef variable, UnaryConstraintFn constraint)
-  {
-    unary_.add(variable, constraint);
-  }
-  void add(const MutableVariableRef target,
-           const VariableRef source,
-           BinaryConstraintFn constraint)
-  {
-    binary_by_source_.add(source, {target, constraint});
-    binary_by_target_.add(target, {source, constraint});
-  }
-};
-
-/* Remove all domain values that are not allowed by the constraint. */
-static void reduce_unary(const UnaryConstraintFn &constraint, MutableBitSpan domain)
-{
-  for (const int i : domain.index_range()) {
-    if (!domain[i]) {
-      continue;
-    }
-    if (!constraint(i)) {
-      domain[i].reset();
-    }
-  }
-}
-
-/* Remove all domain values from A that can not be paired with any value in B. */
-static bool reduce_binary(const BinaryConstraintFn &constraint,
-                          BitSpan domain_src,
-                          MutableBitSpan domain_dst)
-{
-  bool changed = false;
-  for (const int i : domain_dst.index_range()) {
-    if (!domain_dst[i]) {
-      continue;
-    }
-    bool valid = false;
-    for (const int j : domain_src.index_range()) {
-      if (domain_src[j] && constraint(i, j)) {
-        valid = true;
-      }
-    }
-    if (!valid) {
-      domain_dst[i].reset();
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-struct NullLogger {
-  void on_start(StringRef /*message*/) {}
-  void on_end() {}
-
-  void declare_variables(const int /*num_vars*/, FunctionRef<std::string(VariableRef)> /*names_fn*/) {}
-  void declare_constraints(const ConstraintSet &/*constraints*/) {}
-
-  void notify(StringRef /*message*/) {}
-
-  void on_solve_start() {}
-  void on_worklist_extended(VariableRef /*src*/, VariableRef /*dst*/) {}
-  void on_binary_constraint_applied(VariableRef /*src*/, VariableRef /*dst*/) {}
-
-  void on_domain_init(VariableRef /*var*/, const BitSpan /*domain*/) {}
-  void on_domain_reduced(VariableRef /*var*/, const BitSpan /*domain*/) {}
-  void on_domain_empty(VariableRef /*var*/) {}
-
-  void on_solve_end() {}
-};
-
-struct PrintLogger {
-  void on_start(StringRef message)
-  {
-    std::cout << message << std::endl;
-  }
-  void on_end() {}
-
-  void declare_variables(const int /*num_vars*/,
-                         FunctionRef<std::string(VariableRef)> /*names_fn*/)
-  {
-  }
-  void declare_constraints(const ConstraintSet & /*constraints*/) {}
-
-  void notify(StringRef message)
-  {
-    std::cout << message << std::endl;
-  }
-
-  void on_solve_start() {}
-
-  void on_worklist_extended(VariableRef src, VariableRef dst)
-  {
-    std::cout << "  Worklist extended: " << src.index() << ", " << dst.index() << std::endl;
-  }
-
-  void on_binary_constraint_applied(VariableRef src, VariableRef dst)
-  {
-    std::cout << "  Applying " << src.index() << ", " << dst.index() << std::endl;
-  }
-
-  void on_domain_init(VariableRef /*var*/, const BitSpan /*domain*/)
-  {
-    std::cout << "    Initialized domain" << std::endl;
-  }
-
-  void on_domain_reduced(VariableRef /*var*/, const BitSpan /*domain*/)
-  {
-    std::cout << "    Reduced domain!" << std::endl;
-  }
-
-  void on_domain_empty(VariableRef var)
-  {
-    std::cout << "      FAILED! No possible values for " << var.index() << std::endl;
-  }
-
-  static void on_solve_end() {}
-};
-
-struct JSONLogger {
-  std::ostream &stream;
-  Array<std::string> variable_names;
-  bool has_events = false;
-
-  JSONLogger(std::ostream &stream) : stream(stream)
-  {
-    this->stream << "{" << std::endl;
-  }
-  ~JSONLogger()
-  {
-    this->stream << "}" << std::endl;
-  }
-
-  template<typename Fn> void on_event(StringRef type, Fn fn)
-  {
-    if (has_events) {
-      this->stream << ", ";
-    }
-    this->stream << "{\"type\": \"" << type << "\", ";
-    fn();
-    this->stream << "}" << std::endl;
-    has_events = true;
-  }
-
-  std::string stringify(StringRef s)
-  {
-    return "\"" + s + "\"";
-  }
-
-  int domain_as_int(const BitSpan domain)
-  {
-    int d = 0;
-    for (const int k : domain.index_range()) {
-      if (domain[k]) {
-        d |= (1 << k);
-      }
-    }
-    return d;
-  }
-
-  void declare_variables(const int num_vars, FunctionRef<std::string(VariableRef)> names_fn)
-  {
-    variable_names.reinitialize(num_vars);
-    this->stream << "\"variables\": [";
-    for (const int i : IndexRange(num_vars)) {
-      variable_names[i] = names_fn(VariableRef(i));
-      if (i > 0) {
-        this->stream << ", ";
-      }
-      this->stream << "{\"name\": " << stringify(variable_names[i]) << "}" << std::endl;
-    }
-    this->stream << "]" << std::endl;
-  }
-
-  void declare_constraints(const ConstraintSet &constraints)
-  {
-    bool has_constraints = false;
-    this->stream << ", \"constraints\": [";
-    for (const auto &item : constraints.binary_constraints_by_source().items()) {
-      const VariableRef src = item.key;
-      for (const ConstraintSet::Target &target : item.value) {
-        const VariableRef dst = target.variable;
-        if (has_constraints) {
-          this->stream << ", ";
-        }
-        const std::string src_name = variable_names[src.index()];
-        const std::string dst_name = variable_names[dst.index()];
-        this->stream << "{\"name\": " << stringify(src_name + "--" + dst_name)
-                     << ", \"source\": " << stringify(src_name)
-                     << ", \"target\": " << stringify(dst_name) << "}" << std::endl;
-        has_constraints = true;
-      }
-    }
-    this->stream << "]" << std::endl;
-  }
-
-  void notify(StringRef /*message*/) {}
-
-  void on_solve_start()
-  {
-    this->stream << ", \"events\": [";
-  }
-
-  void on_worklist_extended(VariableRef src, VariableRef dst)
-  {
-    on_event("worklist added", [&]() {
-      this->stream << "\"source\": " << stringify(variable_names[src.index()]) << ", \"target\": \""
-                   << variable_names[dst.index()] << "\"";
-    });
-  }
-
-  void on_binary_constraint_applied(VariableRef src, VariableRef dst)
-  {
-    on_event("constraint applied", [&]() {
-      this->stream << "\"source\": " << stringify(variable_names[src.index()])
-                   << ", \"target\": " << stringify(variable_names[dst.index()]);
-    });
-  }
-
-  void on_domain_init(VariableRef var, const BitSpan domain)
-  {
-    on_event("domain init", [&]() {
-      this->stream << "\"variable\": " << stringify(variable_names[var.index()])
-                   << ", \"domain\": " << domain_as_int(domain);
-    });
-  }
-
-  void on_domain_reduced(VariableRef var, const BitSpan domain)
-  {
-    on_event("domain reduced", [&]() {
-      this->stream << "\"variable\": " << stringify(variable_names[var.index()])
-                   << ", \"domain\": " << domain_as_int(domain);
-    });
-  }
-
-  void on_domain_empty(VariableRef var)
-  {
-    on_event("domain empty",
-             [&]() { this->stream << "\"variable\": " << stringify(variable_names[var.index()]); });
-  }
-
-  void on_solve_end()
-  {
-    this->stream << "]" << std::endl;
-  }
-};
-
-/* Apply all unitary constraints. */
-template<typename Logger = NullLogger>
-static void solve_unary_constraints(const ConstraintSet &constraints,
-                                    BitGroupVector<> &variable_domains,
-                                    Logger & /*logger*/)
-{
-  for (const int i : variable_domains.index_range()) {
-    const MutableVariableRef var(i);
-    for (const UnaryConstraintFn &constraint : constraints.get_unary_constraints(var)) {
-      reduce_unary(constraint, variable_domains[i]);
-    }
-  }
-}
-
-template<typename Logger = NullLogger>
-static void solve_binary_constraints(const ConstraintSet &constraints,
-                                     BitGroupVector<> &variable_domains,
-                                     Logger &logger)
-{
-  /* TODO sorting the worklist could have significant impact on performance
-   * by reducing unnecessary repetition of constraints.
-   * Using the topological sorting of sockets should make a decent "preconditioner".
-   * This is similar to what the current R-L/L-R solver does. */
-  struct BinaryKey {
-    VariableRef source;
-    MutableVariableRef target;
-  };
-  Stack<BinaryKey> worklist;
-  logger.notify("Binary Constraint Solve");
-  for (const int i : variable_domains.index_range()) {
-    VariableRef source_var(i);
-    for (const ConstraintSet::Target &target : constraints.get_target_constraints(source_var)) {
-      worklist.push({source_var, target.variable});
-      logger.on_worklist_extended(source_var, target.variable);
-    }
-  }
-
-  while (!worklist.is_empty()) {
-    const BinaryKey key = worklist.pop();
-    logger.on_binary_constraint_applied(key.source, key.target);
-    const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key.source, key.target);
-    const BitSpan domain_src = variable_domains[key.source];
-    const MutableBitSpan domain_dst = variable_domains[key.target];
-    if (reduce_binary(constraint, domain_src, domain_dst)) {
-      logger.on_domain_reduced(key.source, domain_src);
-      if (!bits::any_bit_set(domain_src)) {
-        /* TODO FAILURE CASE! */
-        logger.on_domain_empty(key.target);
-        break;
-      }
-
-      /* Add arcs from target to all dependant variables (except the source). */
-      for (const ConstraintSet::Target &target : constraints.get_target_constraints(key.target)) {
-        if (target.variable == key.source) {
-          continue;
-        }
-        logger.on_worklist_extended(key.target, target.variable);
-        worklist.push({key.source, target.variable});
-      }
-    }
-  }
-}
-
-template<typename Logger = NullLogger>
-static BitGroupVector<> solve_constraints(const ConstraintSet &constraints,
-                                          const int num_vars,
-                                          const int domain_size,
-                                          Logger &logger)
-{
-  BitGroupVector variable_domains(num_vars, domain_size, true);
-
-  logger.on_solve_start();
-  for (const int i : variable_domains.index_range()) {
-    logger.on_domain_init(VariableRef(i), variable_domains[i]);
-  }
-
-  solve_unary_constraints<Logger>(constraints, variable_domains, logger);
-  solve_binary_constraints<Logger>(constraints, variable_domains, logger);
-  logger.on_solve_end();
-
-  return variable_domains;
-}
-
-}  // namespace ac3
-
 enum DomainValue { Single, Field, NumDomainValues };
+
+namespace csp = constraint_satisfaction;
 
 static void add_node_type_constraints(const bNodeTree &tree,
                                       const bNode &node,
-                                      ac3::ConstraintSet &constraints)
+                                      csp::ConstraintSet &constraints)
 {
   tree.ensure_topology_cache();
 
@@ -1187,8 +740,8 @@ static void add_node_type_constraints(const bNodeTree &tree,
       if (!input_inputs[i]->is_available() || !output_inputs[i]->is_available()) {
         continue;
       }
-      const ac3::MutableVariableRef var_a(input_inputs[i]->index_in_tree());
-      const ac3::MutableVariableRef var_b(output_inputs[i]->index_in_tree());
+      const csp::MutableVariableRef var_a(input_inputs[i]->index_in_tree());
+      const csp::MutableVariableRef var_b(output_inputs[i]->index_in_tree());
       constraints.add(var_a, var_b, shared_field_type_constraint);
       constraints.add(var_b, var_a, shared_field_type_constraint);
     }
@@ -1196,8 +749,8 @@ static void add_node_type_constraints(const bNodeTree &tree,
       if (!input_outputs[i]->is_available() || !output_outputs[i]->is_available()) {
         continue;
       }
-      const ac3::MutableVariableRef var_a(input_outputs[i]->index_in_tree());
-      const ac3::MutableVariableRef var_b(output_outputs[i]->index_in_tree());
+      const csp::MutableVariableRef var_a(input_outputs[i]->index_in_tree());
+      const csp::MutableVariableRef var_b(output_outputs[i]->index_in_tree());
       constraints.add(var_a, var_b, shared_field_type_constraint);
       constraints.add(var_b, var_a, shared_field_type_constraint);
     }
@@ -1339,7 +892,7 @@ static OutputFieldDependency find_group_output_dependencies(
   return OutputFieldDependency::ForPartiallyDependentField(std::move(linked_input_indices));
 }
 
-template <typename Logger>
+template<typename Logger>
 static void test_ac3_field_inferencing(
     const bNodeTree &tree,
     const Span<const FieldInferencingInterface *> interface_by_node,
@@ -1360,7 +913,7 @@ static void test_ac3_field_inferencing(
   const int num_vars = tree_output_vars.one_after_last();
 
   tree.ensure_topology_cache();
-  auto variable_name = [&](ac3::VariableRef var) -> std::string {
+  auto variable_name = [&](csp::VariableRef var) -> std::string {
     if (socket_vars.contains(var.index())) {
       const bNodeSocket &socket = *tree.all_sockets()[var.index()];
       const bNode &node = socket.owner_node();
@@ -1383,7 +936,7 @@ static void test_ac3_field_inferencing(
 
   const Span<const bNode *> nodes = tree.toposort_right_to_left();
 
-  ac3::ConstraintSet constraints;
+  csp::ConstraintSet constraints;
   for (const bNode *node : nodes) {
     /* Special case: Group inputs and outputs use the interface variables directly. */
     const IndexRange interface_inputs = node->is_group_input() ?
@@ -1392,21 +945,21 @@ static void test_ac3_field_inferencing(
     const IndexRange interface_outputs = node->is_group_output() ?
                                              tree.interface_outputs().index_range() :
                                              IndexRange();
-    auto get_socket_variable = [&](const bNodeSocket &socket) -> ac3::MutableVariableRef {
+    auto get_socket_variable = [&](const bNodeSocket &socket) -> csp::MutableVariableRef {
       if (socket.is_output()) {
         if (interface_inputs.contains(socket.index())) {
-          return ac3::MutableVariableRef(tree_input_vars[socket.index()]);
+          return csp::MutableVariableRef(tree_input_vars[socket.index()]);
         }
         else {
-          return ac3::MutableVariableRef(socket_vars[socket.index_in_tree()]);
+          return csp::MutableVariableRef(socket_vars[socket.index_in_tree()]);
         }
       }
       else {
         if (interface_outputs.contains(socket.index())) {
-          return ac3::MutableVariableRef(tree_output_vars[socket.index()]);
+          return csp::MutableVariableRef(tree_output_vars[socket.index()]);
         }
         else {
-          return ac3::MutableVariableRef(socket_vars[socket.index_in_tree()]);
+          return csp::MutableVariableRef(socket_vars[socket.index_in_tree()]);
         }
       }
     };
@@ -1416,7 +969,7 @@ static void test_ac3_field_inferencing(
       if (!output_socket->is_available()) {
         continue;
       }
-      const ac3::MutableVariableRef var = get_socket_variable(*output_socket);
+      const csp::MutableVariableRef var = get_socket_variable(*output_socket);
       const bNodeSocketType *typeinfo = output_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1428,8 +981,7 @@ static void test_ac3_field_inferencing(
       const OutputFieldDependency &field_dependency =
           inferencing_interface.outputs[output_socket->index()];
       if (field_dependency.field_type() == OutputSocketFieldType::FieldSource) {
-        constraints.add(var,
-                        [](const int value) { return value == DomainValue::Field; });
+        constraints.add(var, [](const int value) { return value == DomainValue::Field; });
       }
       if (field_dependency.field_type() == OutputSocketFieldType::None) {
         constraints.add(var, [](const int value) { return value == DomainValue::Single; });
@@ -1439,11 +991,10 @@ static void test_ac3_field_inferencing(
        * not support fields. */
       for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
         if (target_socket->is_available()) {
-          constraints.add(var,
-                          ac3::VariableRef{target_socket->index_in_tree()},
-                          [](int value_a, int value_b) {
-            return value_a == DomainValue::Single || value_b == DomainValue::Field;
-          });
+          constraints.add(
+              var, csp::VariableRef{target_socket->index_in_tree()}, [](int value_a, int value_b) {
+                return value_a == DomainValue::Single || value_b == DomainValue::Field;
+              });
         }
       }
 
@@ -1484,7 +1035,7 @@ static void test_ac3_field_inferencing(
       if (!input_socket->is_available()) {
         continue;
       }
-      const ac3::MutableVariableRef var = get_socket_variable(*input_socket);
+      const csp::MutableVariableRef var = get_socket_variable(*input_socket);
       const bNodeSocketType *typeinfo = input_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1495,7 +1046,7 @@ static void test_ac3_field_inferencing(
 
       const InputSocketFieldType field_type = inferencing_interface.inputs[input_socket->index()];
       if (field_type == InputSocketFieldType::None) {
-        constraints.add(ac3::MutableVariableRef(input_socket->index_in_tree()),
+        constraints.add(csp::MutableVariableRef(input_socket->index_in_tree()),
                         [](int value) { return value == DomainValue::Single; });
       }
     }
@@ -1505,7 +1056,8 @@ static void test_ac3_field_inferencing(
   }
   logger.declare_constraints(constraints);
 
-  BitGroupVector<> result = ac3::solve_constraints(constraints, num_vars, NumDomainValues, logger);
+  BitGroupVector<> result = csp::solve_constraints_with_logger(
+      constraints, num_vars, NumDomainValues, logger);
 
   /* Setup inferencing interface for the tree. */
   for (const int i : tree.interface_inputs().index_range()) {
@@ -1537,8 +1089,7 @@ static void test_ac3_field_inferencing(
   }
 }
 
-template <typename Logger>
-static void test_ac3_example(Logger &logger)
+template<typename Logger> static void test_ac3_example(Logger &logger)
 {
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
@@ -1546,7 +1097,7 @@ static void test_ac3_example(Logger &logger)
   const int num_vars = 5;
   const int domain_size = 4;
 
-  ac3::ConstraintSet constraints;
+  csp::ConstraintSet constraints;
   enum Symmetry {
     None,
     Symmetric,
@@ -1555,7 +1106,7 @@ static void test_ac3_example(Logger &logger)
   auto add_binary_constraint = [&](const int a,
                                    const int b,
                                    const Symmetry symmetry,
-                                   const ac3::BinaryConstraintFn &constraint) {
+                                   const csp::BinaryConstraintFn &constraint) {
     constraints.add(a, b, constraint);
     switch (symmetry) {
       case None:
@@ -1626,10 +1177,10 @@ static void test_ac3_example(Logger &logger)
     return value_a > value_b;
   });
 
-  ac3::solve_constraints(constraints, num_vars, domain_size, logger);
+  csp::solve_constraints(constraints, num_vars, domain_size, logger);
 }
 
-template <typename Logger>
+template<typename Logger>
 static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
 {
   BLI_assert(tree.type == NTREE_GEOMETRY);
@@ -1673,15 +1224,17 @@ static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
   return group_interface_changed;
 }
 
-bool update_field_inferencing(const bNodeTree &tree) {
-  ac3::NullLogger logger;
+bool update_field_inferencing(const bNodeTree &tree)
+{
+  csp::NullLogger logger;
   return update_field_inferencing_ex(tree, logger);
 }
 
-bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath) {
+bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath)
+{
   std::ofstream fs;
   fs.open(filepath, std::fstream::out);
-  ac3::JSONLogger logger(fs);
+  csp::JSONLogger logger(fs);
   return update_field_inferencing_ex(tree, logger);
 }
 
