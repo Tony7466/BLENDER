@@ -6,53 +6,70 @@
  * \ingroup editors
  */
 
+#include <algorithm>
+
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
-#include "BLI_linklist.h"
 #include "BLI_listbase.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.hh"
 #include "BLI_sort.hh"
+#include "BLI_string.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "PIL_time.h"
-
 #include "BKE_attribute.hh"
 #include "BKE_camera.h"
-#include "BKE_collection.h"
-#include "BKE_customdata.h"
-#include "BKE_deform.h"
-#include "BKE_duplilist.h"
-#include "BKE_editmesh.h"
-#include "BKE_global.h"
+#include "BKE_collection.hh"
+#include "BKE_curves.hh"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_global.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_id.h"
+#include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_legacy_convert.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_object.h"
-#include "BKE_pointcache.h"
-#include "BKE_scene.h"
-#include "DEG_depsgraph_query.h"
+#include "BKE_object.hh"
+#include "BKE_scene.hh"
+
+#include "DEG_depsgraph_query.hh"
+
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
+
 #include "MEM_guardedalloc.h"
 
+#include "RE_pipeline.h"
+#include "intern/render_types.h"
+
+#include "ED_grease_pencil.hh"
+
 #include "lineart_intern.h"
+
+#include <algorithm> /* For `min/max`. */
+
+using blender::float3;
+using blender::int3;
+using blender::MutableSpan;
+using namespace blender::bke;
+using blender::bke::mesh::corner_tri_get_real_edges;
 
 struct LineartIsecSingle {
   double v1[3], v2[3];
@@ -115,8 +132,6 @@ static void lineart_bounding_area_link_triangle(LineartData *ld,
 static void lineart_free_bounding_area_memory(LineartBoundingArea *ba, bool recursive);
 
 static void lineart_free_bounding_area_memories(LineartData *ld);
-
-static LineartCache *lineart_init_cache();
 
 static void lineart_discard_segment(LineartData *ld, LineartEdgeSegment *es)
 {
@@ -307,7 +322,8 @@ void lineart_edge_cut(LineartData *ld,
      * flags. See LineartEdgeSegment::shadow_mask_bits for details. */
     if (shadow_bits == LRT_SHADOW_MASK_ENCLOSED_SHAPE) {
       if (seg->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED ||
-          e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR) {
+          e->flags & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR)
+      {
         seg->shadow_mask_bits |= LRT_SHADOW_MASK_INHIBITED;
       }
       else if (seg->shadow_mask_bits & LRT_SHADOW_MASK_SHADED) {
@@ -335,7 +351,7 @@ void lineart_edge_cut(LineartData *ld,
       continue;
     }
 
-    min_occ = MIN2(min_occ, seg->occlusion);
+    min_occ = std::min<int8_t>(min_occ, seg->occlusion);
 
     prev_seg = seg;
   }
@@ -440,7 +456,7 @@ static int lineart_occlusion_make_task_info(LineartData *ld, LineartRenderTaskIn
   else {
     rti->pending_edges.array = &ld->pending_edges.array[starting_index];
     int remaining = ld->pending_edges.next - starting_index;
-    rti->pending_edges.max = MIN2(remaining, LRT_THREAD_EDGE_COUNT);
+    rti->pending_edges.max = std::min(remaining, LRT_THREAD_EDGE_COUNT);
     res = 1;
   }
 
@@ -736,9 +752,9 @@ static bool lineart_edge_match(LineartTriangle *tri, LineartEdge *e, int v1, int
 static void lineart_discard_duplicated_edges(LineartEdge *old_e)
 {
   LineartEdge *e = old_e;
-  while (e->flags & LRT_EDGE_FLAG_NEXT_IS_DUPLICATION) {
+  while (e->flags & MOD_LINEART_EDGE_FLAG_NEXT_IS_DUPLICATION) {
     e++;
-    e->flags |= LRT_EDGE_FLAG_CHAIN_PICKED;
+    e->flags |= MOD_LINEART_EDGE_FLAG_CHAIN_PICKED;
   }
 }
 
@@ -804,7 +820,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
   if (tri_adj->e[e_num]) { \
     old_e = tri_adj->e[e_num]; \
     new_flag = old_e->flags; \
-    old_e->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    old_e->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(old_e); \
     INCREASE_EDGE \
     e->v1 = (v1_link); \
@@ -827,15 +843,15 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
 #define REMOVE_TRIANGLE_EDGE \
   if (tri_adj->e[0]) { \
-    tri_adj->e[0]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[0]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[0]); \
   } \
   if (tri_adj->e[1]) { \
-    tri_adj->e[1]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[1]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[1]); \
   } \
   if (tri_adj->e[2]) { \
-    tri_adj->e[2]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[2]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[2]); \
   }
 
@@ -900,7 +916,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
         /* New line connecting two new points. */
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         /* NOTE: inverting `e->v1/v2` (left/right point) doesn't matter as long as
@@ -949,7 +965,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[0];
@@ -990,7 +1006,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1065,7 +1081,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
         /* New line connects two new points. */
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1117,7 +1133,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1166,7 +1182,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1381,16 +1397,29 @@ void lineart_main_perspective_division(LineartData *ld)
 void lineart_main_discard_out_of_frame_edges(LineartData *ld)
 {
   LineartEdge *e;
-  int i;
+  const float bounds[4][2] = {{-1.0f, -1.0f}, {-1.0f, 1.0f}, {1.0f, -1.0f}, {1.0f, 1.0f}};
 
 #define LRT_VERT_OUT_OF_BOUND(v) \
-  (v && (v->fbcoord[0] < -1 || v->fbcoord[0] > 1 || v->fbcoord[1] < -1 || v->fbcoord[1] > 1))
+  (v->fbcoord[0] < -1 || v->fbcoord[0] > 1 || v->fbcoord[1] < -1 || v->fbcoord[1] > 1)
 
   LISTBASE_FOREACH (LineartElementLinkNode *, eln, &ld->geom.line_buffer_pointers) {
     e = (LineartEdge *)eln->pointer;
-    for (i = 0; i < eln->element_count; i++) {
+    for (int i = 0; i < eln->element_count; i++) {
+      if (!e[i].v1 || !e[i].v2) {
+        e[i].flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED;
+        continue;
+      }
+      const blender::float2 vec1(e[i].v1->fbcoord), vec2(e[i].v2->fbcoord);
       if (LRT_VERT_OUT_OF_BOUND(e[i].v1) && LRT_VERT_OUT_OF_BOUND(e[i].v2)) {
-        e[i].flags = LRT_EDGE_FLAG_CHAIN_PICKED;
+        /* A line could still cross the image border even when both of the vertices are out of
+         * bound. */
+        if (isect_seg_seg_v2(bounds[0], bounds[1], vec1, vec2) == ISECT_LINE_LINE_NONE &&
+            isect_seg_seg_v2(bounds[0], bounds[2], vec1, vec2) == ISECT_LINE_LINE_NONE &&
+            isect_seg_seg_v2(bounds[1], bounds[3], vec1, vec2) == ISECT_LINE_LINE_NONE &&
+            isect_seg_seg_v2(bounds[2], bounds[3], vec1, vec2) == ISECT_LINE_LINE_NONE)
+        {
+          e[i].flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED;
+        }
       }
     }
   }
@@ -1423,12 +1452,12 @@ static void lineart_mvert_transform_task(void *__restrict userdata,
 }
 
 static const int LRT_MESH_EDGE_TYPES[] = {
-    LRT_EDGE_FLAG_EDGE_MARK,
-    LRT_EDGE_FLAG_CONTOUR,
-    LRT_EDGE_FLAG_CREASE,
-    LRT_EDGE_FLAG_MATERIAL,
-    LRT_EDGE_FLAG_LOOSE,
-    LRT_EDGE_FLAG_CONTOUR_SECONDARY,
+    MOD_LINEART_EDGE_FLAG_EDGE_MARK,
+    MOD_LINEART_EDGE_FLAG_CONTOUR,
+    MOD_LINEART_EDGE_FLAG_CREASE,
+    MOD_LINEART_EDGE_FLAG_MATERIAL,
+    MOD_LINEART_EDGE_FLAG_LOOSE,
+    MOD_LINEART_EDGE_FLAG_CONTOUR_SECONDARY,
 };
 
 #define LRT_MESH_EDGE_TYPES_COUNT 6
@@ -1460,14 +1489,14 @@ static LineartTriangle *lineart_triangle_from_index(LineartData *ld,
 
 struct EdgeFeatData {
   LineartData *ld;
-  Mesh *me;
-  Object *ob_eval; /* For evaluated materials. */
-  const int *material_indices;
+  Mesh *mesh;
+  Object *ob_eval;                     /* For evaluated materials. */
+  blender::Span<int> material_indices; /* May be empty. */
   blender::Span<blender::int2> edges;
   blender::Span<int> corner_verts;
   blender::Span<int> corner_edges;
-  blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_faces;
+  blender::Span<int3> corner_tris;
+  blender::Span<int> tri_faces;
   LineartTriangle *tri_array;
   blender::VArray<bool> sharp_edges;
   blender::VArray<bool> sharp_faces;
@@ -1494,18 +1523,18 @@ static void feat_data_sum_reduce(const void *__restrict /*userdata*/,
   feat_chunk_join->feat_edges += feat_chunk->feat_edges;
 }
 
-static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
-                                                    const int i,
-                                                    const TaskParallelTLS *__restrict tls)
+static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
+                                                      const int i,
+                                                      const TaskParallelTLS *__restrict tls)
 {
   EdgeFeatData *e_feat_data = (EdgeFeatData *)userdata;
   EdgeFeatReduceData *reduce_data = (EdgeFeatReduceData *)tls->userdata_chunk;
-  Mesh *me = e_feat_data->me;
-  const int *material_indices = e_feat_data->material_indices;
+  Mesh *mesh = e_feat_data->mesh;
   Object *ob_eval = e_feat_data->ob_eval;
   LineartEdgeNeighbor *edge_nabr = e_feat_data->edge_nabr;
-  const blender::Span<MLoopTri> looptris = e_feat_data->looptris;
-  const blender::Span<int> looptri_faces = e_feat_data->looptri_faces;
+  const blender::Span<int3> corner_tris = e_feat_data->corner_tris;
+  const blender::Span<int> tri_faces = e_feat_data->tri_faces;
+  const blender::Span<int> material_indices = e_feat_data->material_indices;
 
   uint16_t edge_flag_result = 0;
 
@@ -1523,11 +1552,10 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     FreestyleFace *ff1, *ff2;
     int index = e_feat_data->freestyle_face_index;
     if (index > -1) {
-      ff1 = &((FreestyleFace *)me->face_data.layers[index].data)[looptri_faces[i / 3]];
+      ff1 = &((FreestyleFace *)mesh->face_data.layers[index].data)[tri_faces[i / 3]];
     }
     if (edge_nabr[i].e > -1) {
-      ff2 = &(
-          (FreestyleFace *)me->face_data.layers[index].data)[looptri_faces[edge_nabr[i].e / 3]];
+      ff2 = &((FreestyleFace *)mesh->face_data.layers[index].data)[tri_faces[edge_nabr[i].e / 3]];
     }
     else {
       /* Handle mesh boundary cases: We want mesh boundaries to respect
@@ -1551,7 +1579,7 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
       face_mark_filtered = !face_mark_filtered;
     }
     if (!face_mark_filtered) {
-      edge_nabr[i].flags = LRT_EDGE_FLAG_INHIBIT;
+      edge_nabr[i].flags = MOD_LINEART_EDGE_FLAG_INHIBIT;
       if (e_feat_data->ld->conf.filter_face_mark_keep_contour) {
         only_contour = true;
       }
@@ -1564,7 +1592,7 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
 
   /* Mesh boundary */
   if (edge_nabr[i].e == -1) {
-    edge_nabr[i].flags = LRT_EDGE_FLAG_CONTOUR;
+    edge_nabr[i].flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
     reduce_data->feat_edges += 1;
     return;
   }
@@ -1599,7 +1627,7 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     dot_v2 = dot_v3v3_db(view_vector, tri2->gn);
 
     if ((result = dot_v1 * dot_v2) <= 0 && (dot_v1 + dot_v2)) {
-      edge_flag_result |= LRT_EDGE_FLAG_CONTOUR;
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR;
     }
 
     if (ld->conf.use_back_face_culling) {
@@ -1633,7 +1661,7 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     dot_v2 = dot_v3v3_db(view_vector, tri2->gn);
 
     if ((result = dot_v1 * dot_v2) <= 0 && (dot_v1 + dot_v2)) {
-      edge_flag_result |= LRT_EDGE_FLAG_CONTOUR_SECONDARY;
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR_SECONDARY;
     }
   }
 
@@ -1641,18 +1669,17 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     if (ld->conf.use_crease) {
       bool do_crease = true;
       if (!ld->conf.force_crease && !e_feat_data->use_auto_smooth &&
-          (!e_feat_data->sharp_faces[looptri_faces[f1]]) &&
-          (!e_feat_data->sharp_faces[looptri_faces[f2]]))
+          (!e_feat_data->sharp_faces[tri_faces[f1]]) && (!e_feat_data->sharp_faces[tri_faces[f2]]))
       {
         do_crease = false;
       }
       if (do_crease && (dot_v3v3_db(tri1->gn, tri2->gn) < e_feat_data->crease_threshold)) {
-        edge_flag_result |= LRT_EDGE_FLAG_CREASE;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_CREASE;
       }
     }
 
-    int mat1 = material_indices ? material_indices[looptri_faces[f1]] : 0;
-    int mat2 = material_indices ? material_indices[looptri_faces[f2]] : 0;
+    int mat1 = material_indices.is_empty() ? 0 : material_indices[tri_faces[f1]];
+    int mat2 = material_indices.is_empty() ? 0 : material_indices[tri_faces[f2]];
 
     if (mat1 != mat2) {
       Material *m1 = BKE_object_material_get_eval(ob_eval, mat1 + 1);
@@ -1662,11 +1689,11 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
            (m2->lineart.mat_occlusion == 0 && m1->lineart.mat_occlusion != 0)))
       {
         if (ld->conf.use_contour) {
-          edge_flag_result |= LRT_EDGE_FLAG_CONTOUR;
+          edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR;
         }
       }
       if (ld->conf.use_material) {
-        edge_flag_result |= LRT_EDGE_FLAG_MATERIAL;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_MATERIAL;
       }
     }
   }
@@ -1676,25 +1703,24 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     }
   }
 
-  int real_edges[3];
-  BKE_mesh_looptri_get_real_edges(e_feat_data->edges.data(),
-                                  e_feat_data->corner_verts.data(),
-                                  e_feat_data->corner_edges.data(),
-                                  &looptris[i / 3],
-                                  real_edges);
+  const int3 real_edges = corner_tri_get_real_edges(e_feat_data->edges,
+                                                    e_feat_data->corner_verts,
+                                                    e_feat_data->corner_edges,
+                                                    corner_tris[i / 3]);
 
   if (real_edges[i % 3] >= 0) {
     if (ld->conf.use_crease && ld->conf.sharp_as_crease &&
-        e_feat_data->sharp_edges[real_edges[i % 3]]) {
-      edge_flag_result |= LRT_EDGE_FLAG_CREASE;
+        e_feat_data->sharp_edges[real_edges[i % 3]])
+    {
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CREASE;
     }
 
     if (ld->conf.use_edge_marks && e_feat_data->use_freestyle_edge) {
       FreestyleEdge *fe;
       int index = e_feat_data->freestyle_edge_index;
-      fe = &((FreestyleEdge *)me->edge_data.layers[index].data)[real_edges[i % 3]];
+      fe = &((FreestyleEdge *)mesh->edge_data.layers[index].data)[real_edges[i % 3]];
       if (fe->flag & FREESTYLE_EDGE_MARK) {
-        edge_flag_result |= LRT_EDGE_FLAG_EDGE_MARK;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_EDGE_MARK;
       }
     }
   }
@@ -1788,9 +1814,9 @@ struct TriData {
   LineartObjectInfo *ob_info;
   blender::Span<blender::float3> positions;
   blender::Span<int> corner_verts;
-  blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_faces;
-  const int *material_indices;
+  blender::Span<int3> corner_tris;
+  blender::Span<int> tri_faces;
+  blender::Span<int> material_indices;
   LineartVert *vert_arr;
   LineartTriangle *tri_arr;
   int lineart_triangle_size;
@@ -1805,25 +1831,26 @@ static void lineart_load_tri_task(void *__restrict userdata,
   LineartObjectInfo *ob_info = tri_task_data->ob_info;
   const blender::Span<blender::float3> positions = tri_task_data->positions;
   const blender::Span<int> corner_verts = tri_task_data->corner_verts;
-  const MLoopTri *looptri = &tri_task_data->looptris[i];
-  const int face_i = tri_task_data->looptri_faces[i];
-  const int *material_indices = tri_task_data->material_indices;
+  const int3 &corner_tri = tri_task_data->corner_tris[i];
+  const int face_i = tri_task_data->tri_faces[i];
+  const blender::Span<int> material_indices = tri_task_data->material_indices;
+
   LineartVert *vert_arr = tri_task_data->vert_arr;
   LineartTriangle *tri = tri_task_data->tri_arr;
 
   tri = (LineartTriangle *)(((uchar *)tri) + tri_task_data->lineart_triangle_size * i);
 
-  int v1 = corner_verts[looptri->tri[0]];
-  int v2 = corner_verts[looptri->tri[1]];
-  int v3 = corner_verts[looptri->tri[2]];
+  int v1 = corner_verts[corner_tri[0]];
+  int v2 = corner_verts[corner_tri[1]];
+  int v3 = corner_verts[corner_tri[2]];
 
   tri->v[0] = &vert_arr[v1];
   tri->v[1] = &vert_arr[v2];
   tri->v[2] = &vert_arr[v3];
 
   /* Material mask bits and occlusion effectiveness assignment. */
-  Material *mat = BKE_object_material_get(ob_info->original_ob_eval,
-                                          material_indices ? material_indices[face_i] + 1 : 1);
+  Material *mat = BKE_object_material_get(
+      ob_info->original_ob_eval, material_indices.is_empty() ? 1 : material_indices[face_i] + 1);
   tri->material_mask_bits |= ((mat && (mat->lineart.flags & LRT_MATERIAL_MASK_ENABLED)) ?
                                   mat->lineart.material_mask_bits :
                                   0);
@@ -1864,8 +1891,8 @@ struct EdgeNeighborData {
   LineartEdgeNeighbor *edge_nabr;
   LineartAdjacentEdge *adj_e;
   blender::Span<int> corner_verts;
-  blender::Span<MLoopTri> looptris;
-  blender::Span<int> looptri_faces;
+  blender::Span<int3> corner_tris;
+  blender::Span<int> tri_faces;
 };
 
 static void lineart_edge_neighbor_init_task(void *__restrict userdata,
@@ -1874,13 +1901,13 @@ static void lineart_edge_neighbor_init_task(void *__restrict userdata,
 {
   EdgeNeighborData *en_data = (EdgeNeighborData *)userdata;
   LineartAdjacentEdge *adj_e = &en_data->adj_e[i];
-  const MLoopTri *looptri = &en_data->looptris[i / 3];
+  const int3 &tri = en_data->corner_tris[i / 3];
   LineartEdgeNeighbor *edge_nabr = &en_data->edge_nabr[i];
   const blender::Span<int> corner_verts = en_data->corner_verts;
 
   adj_e->e = i;
-  adj_e->v1 = corner_verts[looptri->tri[i % 3]];
-  adj_e->v2 = corner_verts[looptri->tri[(i + 1) % 3]];
+  adj_e->v1 = corner_verts[tri[i % 3]];
+  adj_e->v2 = corner_verts[tri[(i + 1) % 3]];
   if (adj_e->v1 > adj_e->v2) {
     std::swap(adj_e->v1, adj_e->v2);
   }
@@ -1910,9 +1937,9 @@ static void lineart_sort_adjacent_items(LineartAdjacentEdge *ai, int length)
       });
 }
 
-static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *me, int total_edges)
+static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *mesh, int total_edges)
 {
-  /* Because the mesh is triangulated, so `me->totedge` should be reliable? */
+  /* Because the mesh is triangulated, so `mesh->edges_num` should be reliable? */
   LineartAdjacentEdge *adj_e = static_cast<LineartAdjacentEdge *>(
       MEM_mallocN(sizeof(LineartAdjacentEdge) * total_edges, "LineartAdjacentEdge arr"));
   LineartEdgeNeighbor *edge_nabr = static_cast<LineartEdgeNeighbor *>(
@@ -1926,9 +1953,9 @@ static LineartEdgeNeighbor *lineart_build_edge_neighbor(Mesh *me, int total_edge
   EdgeNeighborData en_data;
   en_data.adj_e = adj_e;
   en_data.edge_nabr = edge_nabr;
-  en_data.corner_verts = me->corner_verts();
-  en_data.looptris = me->looptris();
-  en_data.looptri_faces = me->looptri_faces();
+  en_data.corner_verts = mesh->corner_verts();
+  en_data.corner_tris = mesh->corner_tris();
+  en_data.tri_faces = mesh->corner_tri_faces();
 
   BLI_task_parallel_range(0, total_edges, &en_data, lineart_edge_neighbor_init_task, &en_settings);
 
@@ -1951,26 +1978,25 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
                                          ListBase *shadow_elns)
 {
   using namespace blender;
-  Mesh *me = ob_info->original_me;
-  if (!me->totedge) {
+  Mesh *mesh = ob_info->original_me;
+  if (!mesh->edges_num) {
     return;
   }
 
   /* Triangulate. */
-  const blender::Span<MLoopTri> looptris = me->looptris();
-
-  const int *material_indices = (const int *)CustomData_get_layer_named(
-      &me->face_data, CD_PROP_INT32, "material_index");
+  const Span<int3> corner_tris = mesh->corner_tris();
+  const AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan material_indices = *attributes.lookup<int>("material_index", AttrDomain::Face);
 
   /* Check if we should look for custom data tags like Freestyle edges or faces. */
   bool can_find_freestyle_edge = false;
-  int layer_index = CustomData_get_active_layer_index(&me->edge_data, CD_FREESTYLE_EDGE);
+  int layer_index = CustomData_get_active_layer_index(&mesh->edge_data, CD_FREESTYLE_EDGE);
   if (layer_index != -1) {
     can_find_freestyle_edge = true;
   }
 
   bool can_find_freestyle_face = false;
-  layer_index = CustomData_get_active_layer_index(&me->face_data, CD_FREESTYLE_FACE);
+  layer_index = CustomData_get_active_layer_index(&mesh->face_data, CD_FREESTYLE_FACE);
   if (layer_index != -1) {
     can_find_freestyle_face = true;
   }
@@ -1978,10 +2004,10 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   /* If we allow duplicated edges, one edge should get added multiple times if is has been
    * classified as more than one edge type. This is so we can create multiple different line type
    * chains containing the same edge. */
-  LineartVert *la_v_arr = static_cast<LineartVert *>(
-      lineart_mem_acquire_thread(&la_data->render_data_pool, sizeof(LineartVert) * me->totvert));
+  LineartVert *la_v_arr = static_cast<LineartVert *>(lineart_mem_acquire_thread(
+      &la_data->render_data_pool, sizeof(LineartVert) * mesh->verts_num));
   LineartTriangle *la_tri_arr = static_cast<LineartTriangle *>(lineart_mem_acquire_thread(
-      &la_data->render_data_pool, looptris.size() * la_data->sizeof_triangle));
+      &la_data->render_data_pool, corner_tris.size() * la_data->sizeof_triangle));
 
   Object *orig_ob = ob_info->original_ob;
 
@@ -1994,7 +2020,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   BLI_spin_unlock(&la_data->lock_task);
 
   elem_link_node->obindex = ob_info->obindex;
-  elem_link_node->element_count = me->totvert;
+  elem_link_node->element_count = mesh->verts_num;
   elem_link_node->object_ref = orig_ob;
   ob_info->v_eln = elem_link_node;
 
@@ -2002,10 +2028,6 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   float crease_angle = 0;
   if (orig_ob->lineart.flags & OBJECT_LRT_OWN_CREASE) {
     crease_angle = cosf(M_PI - orig_ob->lineart.crease_threshold);
-  }
-  else if (ob_info->original_me->flag & ME_AUTOSMOOTH) {
-    crease_angle = cosf(ob_info->original_me->smoothresh);
-    use_auto_smooth = true;
   }
   else {
     crease_angle = la_data->conf.crease_threshold;
@@ -2027,15 +2049,15 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
 
   int usage = ob_info->usage;
 
-  elem_link_node->element_count = looptris.size();
+  elem_link_node->element_count = corner_tris.size();
   elem_link_node->object_ref = orig_ob;
   elem_link_node->flags = eLineArtElementNodeFlag(
       elem_link_node->flags |
       ((usage == OBJECT_LRT_NO_INTERSECTION) ? LRT_ELEMENT_NO_INTERSECTION : 0));
 
   /* Note this memory is not from pool, will be deleted after culling. */
-  LineartTriangleAdjacent *tri_adj = static_cast<LineartTriangleAdjacent *>(
-      MEM_callocN(sizeof(LineartTriangleAdjacent) * looptris.size(), "LineartTriangleAdjacent"));
+  LineartTriangleAdjacent *tri_adj = static_cast<LineartTriangleAdjacent *>(MEM_callocN(
+      sizeof(LineartTriangleAdjacent) * corner_tris.size(), "LineartTriangleAdjacent"));
   /* Link is minimal so we use pool anyway. */
   BLI_spin_lock(&la_data->lock_task);
   lineart_list_append_pointer_pool_thread(
@@ -2049,13 +2071,13 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   vert_settings.min_iter_per_thread = 4000;
 
   VertData vert_data;
-  vert_data.positions = me->vert_positions();
+  vert_data.positions = mesh->vert_positions();
   vert_data.v_arr = la_v_arr;
   vert_data.model_view = ob_info->model_view;
   vert_data.model_view_proj = ob_info->model_view_proj;
 
   BLI_task_parallel_range(
-      0, me->totvert, &vert_data, lineart_mvert_transform_task, &vert_settings);
+      0, mesh->verts_num, &vert_data, lineart_mvert_transform_task, &vert_settings);
 
   /* Convert all mesh triangles into lineart triangles.
    * Also create an edge map to get connectivity between edges and triangles. */
@@ -2066,19 +2088,19 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
 
   TriData tri_data;
   tri_data.ob_info = ob_info;
-  tri_data.positions = me->vert_positions();
-  tri_data.looptris = looptris;
-  tri_data.looptri_faces = me->looptri_faces();
-  tri_data.corner_verts = me->corner_verts();
+  tri_data.positions = mesh->vert_positions();
+  tri_data.corner_tris = corner_tris;
+  tri_data.tri_faces = mesh->corner_tri_faces();
+  tri_data.corner_verts = mesh->corner_verts();
   tri_data.material_indices = material_indices;
   tri_data.vert_arr = la_v_arr;
   tri_data.tri_arr = la_tri_arr;
   tri_data.lineart_triangle_size = la_data->sizeof_triangle;
   tri_data.tri_adj = tri_adj;
 
-  uint32_t total_edges = looptris.size() * 3;
+  uint32_t total_edges = corner_tris.size() * 3;
 
-  BLI_task_parallel_range(0, looptris.size(), &tri_data, lineart_load_tri_task, &tri_settings);
+  BLI_task_parallel_range(0, corner_tris.size(), &tri_data, lineart_load_tri_task, &tri_settings);
 
   /* Check for contour lines in the mesh.
    * IE check if the triangle edges lies in area where the triangles go from front facing to back
@@ -2093,25 +2115,24 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   edge_feat_settings.userdata_chunk_size = sizeof(EdgeFeatReduceData);
   edge_feat_settings.func_reduce = feat_data_sum_reduce;
 
-  const bke::AttributeAccessor attributes = me->attributes();
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
-      "sharp_edge", ATTR_DOMAIN_EDGE, false);
+      "sharp_edge", AttrDomain::Edge, false);
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE, false);
+      "sharp_face", AttrDomain::Face, false);
 
   EdgeFeatData edge_feat_data = {nullptr};
   edge_feat_data.ld = la_data;
-  edge_feat_data.me = me;
+  edge_feat_data.mesh = mesh;
   edge_feat_data.ob_eval = ob_info->original_ob_eval;
   edge_feat_data.material_indices = material_indices;
-  edge_feat_data.edges = me->edges();
-  edge_feat_data.corner_verts = me->corner_verts();
-  edge_feat_data.corner_edges = me->corner_edges();
-  edge_feat_data.looptris = looptris;
-  edge_feat_data.looptri_faces = me->looptri_faces();
+  edge_feat_data.edges = mesh->edges();
+  edge_feat_data.corner_verts = mesh->corner_verts();
+  edge_feat_data.corner_edges = mesh->corner_edges();
+  edge_feat_data.corner_tris = corner_tris;
+  edge_feat_data.tri_faces = mesh->corner_tri_faces();
   edge_feat_data.sharp_edges = sharp_edges;
   edge_feat_data.sharp_faces = sharp_faces;
-  edge_feat_data.edge_nabr = lineart_build_edge_neighbor(me, total_edges);
+  edge_feat_data.edge_nabr = lineart_build_edge_neighbor(mesh, total_edges);
   edge_feat_data.tri_array = la_tri_arr;
   edge_feat_data.v_array = la_v_arr;
   edge_feat_data.crease_threshold = crease_angle;
@@ -2119,31 +2140,31 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   edge_feat_data.use_freestyle_face = can_find_freestyle_face;
   edge_feat_data.use_freestyle_edge = can_find_freestyle_edge;
   if (edge_feat_data.use_freestyle_face) {
-    edge_feat_data.freestyle_face_index = CustomData_get_layer_index(&me->face_data,
+    edge_feat_data.freestyle_face_index = CustomData_get_layer_index(&mesh->face_data,
                                                                      CD_FREESTYLE_FACE);
   }
   if (edge_feat_data.use_freestyle_edge) {
-    edge_feat_data.freestyle_edge_index = CustomData_get_layer_index(&me->edge_data,
+    edge_feat_data.freestyle_edge_index = CustomData_get_layer_index(&mesh->edge_data,
                                                                      CD_FREESTYLE_EDGE);
   }
 
   BLI_task_parallel_range(0,
                           total_edges,
                           &edge_feat_data,
-                          lineart_identify_mlooptri_feature_edges,
+                          lineart_identify_corner_tri_feature_edges,
                           &edge_feat_settings);
 
   LooseEdgeData loose_data = {0};
 
   if (la_data->conf.use_loose) {
     /* Only identifying floating edges at this point because other edges has been taken care of
-     * inside #lineart_identify_mlooptri_feature_edges function. */
-    const bke::LooseEdgeCache &loose_edges = me->loose_edges();
+     * inside #lineart_identify_corner_tri_feature_edges function. */
+    const LooseEdgeCache &loose_edges = mesh->loose_edges();
     loose_data.loose_array = static_cast<int *>(
         MEM_malloc_arrayN(loose_edges.count, sizeof(int), __func__));
     if (loose_edges.count > 0) {
       loose_data.loose_count = 0;
-      for (const int64_t edge_i : IndexRange(me->totedge)) {
+      for (const int64_t edge_i : IndexRange(mesh->edges_num)) {
         if (loose_edges.is_loose_bits[edge_i]) {
           loose_data.loose_array[loose_data.loose_count] = int(edge_i);
           loose_data.loose_count++;
@@ -2240,7 +2261,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
       }
 
       if (edge_added) {
-        edge_added->flags |= LRT_EDGE_FLAG_NEXT_IS_DUPLICATION;
+        edge_added->flags |= MOD_LINEART_EDGE_FLAG_NEXT_IS_DUPLICATION;
       }
 
       edge_added = la_edge;
@@ -2255,12 +2276,12 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   }
 
   if (loose_data.loose_array) {
-    const Span<int2> edges = me->edges();
+    const Span<int2> edges = mesh->edges();
     for (int i = 0; i < loose_data.loose_count; i++) {
       const int2 &edge = edges[loose_data.loose_array[i]];
       la_edge->v1 = &la_v_arr[edge[0]];
       la_edge->v2 = &la_v_arr[edge[1]];
-      la_edge->flags = LRT_EDGE_FLAG_LOOSE;
+      la_edge->flags = MOD_LINEART_EDGE_FLAG_LOOSE;
       la_edge->object_ref = orig_ob;
       la_edge->edge_identifier = LRT_EDGE_IDENTIFIER(ob_info, la_edge);
       BLI_addtail(&la_edge->segments, la_seg);
@@ -2287,7 +2308,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   MEM_freeN(edge_feat_data.edge_nabr);
 
   if (ob_info->free_use_mesh) {
-    BKE_id_free(nullptr, me);
+    BKE_id_free(nullptr, mesh);
   }
 }
 
@@ -2456,7 +2477,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
                                                 Scene *scene,
                                                 Object *ob,
                                                 Object *ref_ob,
-                                                float use_mat[4][4],
+                                                const float use_mat[4][4],
                                                 bool is_render,
                                                 LineartObjectLoadTaskInfo *olti,
                                                 int thread_count,
@@ -2485,7 +2506,7 @@ static void lineart_object_load_single_instance(LineartData *ld,
   }
   if (ob->type == OB_MESH) {
     use_mesh = BKE_object_get_evaluated_mesh(ob);
-    if ((!use_mesh) || use_mesh->edit_mesh) {
+    if ((!use_mesh) || use_mesh->runtime->edit_mesh) {
       /* If the object is being edited, then the mesh is not evaluated fully into the final
        * result, do not load them. This could be caused by incorrect evaluation order due to
        * the way line art uses depsgraph.See #102612 for explanation of this workaround. */
@@ -2568,7 +2589,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
 
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_time_now_seconds();
   }
 
   int thread_count = ld->thread_count;
@@ -2618,7 +2639,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
                                           scene,
                                           eval_ob,
                                           eval_ob,
-                                          eval_ob->object_to_world,
+                                          eval_ob->object_to_world().ptr(),
                                           is_render,
                                           olti,
                                           thread_count,
@@ -2678,7 +2699,7 @@ void lineart_main_load_geometries(Depsgraph *depsgraph,
   }
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_time_now_seconds() - t_start;
     printf("Line art loading time: %lf\n", t_elapsed);
     printf("Discarded %d object from bound box check\n", bound_box_discard_count);
   }
@@ -2716,7 +2737,7 @@ bool lineart_edge_from_triangle(const LineartTriangle *tri,
                                 bool allow_overlapping_edges)
 {
   const LineartEdge *use_e = e;
-  if (e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR) {
+  if (e->flags & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR) {
     if (((e->target_reference & LRT_LIGHT_CONTOUR_TARGET) == tri->target_reference) ||
         (((e->target_reference >> 32) & LRT_LIGHT_CONTOUR_TARGET) == tri->target_reference))
     {
@@ -2840,11 +2861,11 @@ static bool lineart_triangle_edge_image_space_occlusion(const LineartTriangle *t
          *FBC1 = tri->v[1]->fbcoord, *FBC2 = tri->v[2]->fbcoord;
 
   /* Overlapping not possible, return early. */
-  if ((MAX3(FBC0[0], FBC1[0], FBC2[0]) < MIN2(LFBC[0], RFBC[0])) ||
-      (MIN3(FBC0[0], FBC1[0], FBC2[0]) > MAX2(LFBC[0], RFBC[0])) ||
-      (MAX3(FBC0[1], FBC1[1], FBC2[1]) < MIN2(LFBC[1], RFBC[1])) ||
-      (MIN3(FBC0[1], FBC1[1], FBC2[1]) > MAX2(LFBC[1], RFBC[1])) ||
-      (MIN3(FBC0[3], FBC1[3], FBC2[3]) > MAX2(LFBC[3], RFBC[3])))
+  if ((std::max({FBC0[0], FBC1[0], FBC2[0]}) < std::min(LFBC[0], RFBC[0])) ||
+      (std::min({FBC0[0], FBC1[0], FBC2[0]}) > std::max(LFBC[0], RFBC[0])) ||
+      (std::max({FBC0[1], FBC1[1], FBC2[1]}) < std::min(LFBC[1], RFBC[1])) ||
+      (std::min({FBC0[1], FBC1[1], FBC2[1]}) > std::max(LFBC[1], RFBC[1])) ||
+      (std::min({FBC0[3], FBC1[3], FBC2[3]}) > std::max(LFBC[3], RFBC[3])))
   {
     return false;
   }
@@ -2875,10 +2896,11 @@ static bool lineart_triangle_edge_image_space_occlusion(const LineartTriangle *t
   dot_v2 = dot_v3v3_db(dir_v2, tri->gn);
   dot_f = dot_v3v3_db(dir_cam, tri->gn);
 
-  if ((e->flags & LRT_EDGE_FLAG_PROJECTED_SHADOW) &&
-      (e->target_reference == tri->target_reference)) {
-    if (((dot_f > 0) && (e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)) ||
-        ((dot_f < 0) && !(e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)))
+  if ((e->flags & MOD_LINEART_EDGE_FLAG_PROJECTED_SHADOW) &&
+      (e->target_reference == tri->target_reference))
+  {
+    if (((dot_f > 0) && (e->flags & MOD_LINEART_EDGE_FLAG_SHADOW_FACING_LIGHT)) ||
+        ((dot_f < 0) && !(e->flags & MOD_LINEART_EDGE_FLAG_SHADOW_FACING_LIGHT)))
     {
       *from = 0.0f;
       *to = 1.0f;
@@ -3063,24 +3085,24 @@ static bool lineart_triangle_edge_image_space_occlusion(const LineartTriangle *t
 
   /* Determine the start and end point of image space cut on a line. */
   if (dot_1f <= 0 && dot_2f <= 0 && (dot_v1 || dot_v2)) {
-    *from = MAX2(0, cross_ratios[cross_v1]);
-    *to = MIN2(1, cross_ratios[cross_v2]);
+    *from = std::max(0.0, cross_ratios[cross_v1]);
+    *to = std::min(1.0, cross_ratios[cross_v2]);
     if (*from >= *to) {
       return false;
     }
     return true;
   }
   if (dot_1f >= 0 && dot_2f <= 0 && (dot_v1 || dot_v2)) {
-    *from = MAX2(cut, cross_ratios[cross_v1]);
-    *to = MIN2(1, cross_ratios[cross_v2]);
+    *from = std::max(cut, cross_ratios[cross_v1]);
+    *to = std::min(1.0, cross_ratios[cross_v2]);
     if (*from >= *to) {
       return false;
     }
     return true;
   }
   if (dot_1f <= 0 && dot_2f >= 0 && (dot_v1 || dot_v2)) {
-    *from = MAX2(0, cross_ratios[cross_v1]);
-    *to = MIN2(cut, cross_ratios[cross_v2]);
+    *from = std::max(0.0, cross_ratios[cross_v1]);
+    *to = std::min(cut, cross_ratios[cross_v2]);
     if (*from >= *to) {
       return false;
     }
@@ -3342,7 +3364,7 @@ static bool lineart_schedule_new_triangle_task(LineartIsecThread *th)
 
   while (remaining > 0 && eln) {
     int remaining_this_eln = eln->element_count - ld->isect_scheduled_up_to_index;
-    int added_count = MIN2(remaining, remaining_this_eln);
+    int added_count = std::min(remaining, remaining_this_eln);
     remaining -= added_count;
     if (remaining || added_count == remaining_this_eln) {
       eln = eln->next;
@@ -3437,12 +3459,12 @@ static void lineart_triangle_intersect_in_bounding_area(LineartTriangle *tri,
            *RG2 = testing_triangle->v[2]->gloc;
 
     /* Bounding box not overlapping or triangles share edges, not potential of intersecting. */
-    if ((MIN3(G0[2], G1[2], G2[2]) > MAX3(RG0[2], RG1[2], RG2[2])) ||
-        (MAX3(G0[2], G1[2], G2[2]) < MIN3(RG0[2], RG1[2], RG2[2])) ||
-        (MIN3(G0[0], G1[0], G2[0]) > MAX3(RG0[0], RG1[0], RG2[0])) ||
-        (MAX3(G0[0], G1[0], G2[0]) < MIN3(RG0[0], RG1[0], RG2[0])) ||
-        (MIN3(G0[1], G1[1], G2[1]) > MAX3(RG0[1], RG1[1], RG2[1])) ||
-        (MAX3(G0[1], G1[1], G2[1]) < MIN3(RG0[1], RG1[1], RG2[1])) ||
+    if ((std::min({G0[2], G1[2], G2[2]}) > std::max({RG0[2], RG1[2], RG2[2]})) ||
+        (std::max({G0[2], G1[2], G2[2]}) < std::min({RG0[2], RG1[2], RG2[2]})) ||
+        (std::min({G0[0], G1[0], G2[0]}) > std::max({RG0[0], RG1[0], RG2[0]})) ||
+        (std::max({G0[0], G1[0], G2[0]}) < std::min({RG0[0], RG1[0], RG2[0]})) ||
+        (std::min({G0[1], G1[1], G2[1]}) > std::max({RG0[1], RG1[1], RG2[1]})) ||
+        (std::max({G0[1], G1[1], G2[1]}) < std::min({RG0[1], RG1[1], RG2[1]})) ||
         lineart_triangle_share_edge(tri, testing_triangle))
     {
       continue;
@@ -3537,7 +3559,7 @@ static void lineart_destroy_render_data(LineartData *ld)
   lineart_mem_destroy(&ld->render_data_pool);
 }
 
-void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd)
+void MOD_lineart_destroy_render_data_v3(GreasePencilLineartModifierData *lmd)
 {
   LineartData *ld = lmd->la_data_ptr;
 
@@ -3553,7 +3575,15 @@ void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd)
   }
 }
 
-static LineartCache *lineart_init_cache()
+void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd_legacy)
+{
+  GreasePencilLineartModifierData lmd;
+  greasepencil::convert::lineart_wrap_v3(lmd_legacy, &lmd);
+  MOD_lineart_destroy_render_data_v3(&lmd);
+  greasepencil::convert::lineart_unwrap_v3(lmd_legacy, &lmd);
+}
+
+LineartCache *MOD_lineart_init_cache()
 {
   LineartCache *lc = static_cast<LineartCache *>(
       MEM_callocN(sizeof(LineartCache), "Lineart Cache"));
@@ -3570,11 +3600,11 @@ void MOD_lineart_clear_cache(LineartCache **lc)
   (*lc) = nullptr;
 }
 
-static LineartData *lineart_create_render_buffer(Scene *scene,
-                                                 LineartGpencilModifierData *lmd,
-                                                 Object *camera,
-                                                 Object *active_camera,
-                                                 LineartCache *lc)
+static LineartData *lineart_create_render_buffer_v3(Scene *scene,
+                                                    GreasePencilLineartModifierData *lmd,
+                                                    Object *camera,
+                                                    Object *active_camera,
+                                                    LineartCache *lc)
 {
   LineartData *ld = static_cast<LineartData *>(
       MEM_callocN(sizeof(LineartData), "Line Art render buffer"));
@@ -3585,19 +3615,19 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
   if (!scene || !camera || !lc) {
     return nullptr;
   }
-  Camera *c = static_cast<Camera *>(camera->data);
+  const Camera *c = static_cast<Camera *>(camera->data);
   double clipping_offset = 0;
 
-  if (lmd->calculation_flags & LRT_ALLOW_CLIPPING_BOUNDARIES) {
+  if (lmd->calculation_flags & MOD_LINEART_ALLOW_CLIPPING_BOUNDARIES) {
     /* This way the clipped lines are "stably visible" by prevents depth buffer artifacts. */
     clipping_offset = 0.0001;
   }
 
-  copy_v3db_v3fl(ld->conf.camera_pos, camera->object_to_world[3]);
+  copy_v3db_v3fl(ld->conf.camera_pos, camera->object_to_world().location());
   if (active_camera) {
-    copy_v3db_v3fl(ld->conf.active_camera_pos, active_camera->object_to_world[3]);
+    copy_v3db_v3fl(ld->conf.active_camera_pos, active_camera->object_to_world().location());
   }
-  copy_m4_m4(ld->conf.cam_obmat, camera->object_to_world);
+  copy_m4_m4(ld->conf.cam_obmat, camera->object_to_world().ptr());
   /* Make sure none of the scaling factor makes in, line art expects no scaling on cameras and
    * lights. */
   normalize_v3(ld->conf.cam_obmat[0]);
@@ -3617,7 +3647,7 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
     ld->qtree.recursive_level = LRT_TILE_RECURSIVE_ORTHO;
   }
 
-  double asp = (double(ld->w) / double(ld->h));
+  double asp = double(ld->w) / double(ld->h);
   int fit = BKE_camera_sensor_fit(c->sensor_fit, ld->w, ld->h);
   ld->conf.shift_x = fit == CAMERA_SENSOR_FIT_HOR ? c->shiftx : c->shiftx / asp;
   ld->conf.shift_y = fit == CAMERA_SENSOR_FIT_VERT ? c->shifty : c->shifty * asp;
@@ -3629,8 +3659,8 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
 
   if (lmd->light_contour_object) {
     Object *light_obj = lmd->light_contour_object;
-    copy_v3db_v3fl(ld->conf.camera_pos_secondary, light_obj->object_to_world[3]);
-    copy_m4_m4(ld->conf.cam_obmat_secondary, light_obj->object_to_world);
+    copy_v3db_v3fl(ld->conf.camera_pos_secondary, light_obj->object_to_world().location());
+    copy_m4_m4(ld->conf.cam_obmat_secondary, light_obj->object_to_world().ptr());
     /* Make sure none of the scaling factor makes in, line art expects no scaling on cameras and
      * lights. */
     normalize_v3(ld->conf.cam_obmat_secondary[0]);
@@ -3647,24 +3677,31 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
   ld->conf.angle_splitting_threshold = lmd->angle_splitting_threshold;
   ld->conf.chain_smooth_tolerance = lmd->chain_smooth_tolerance;
 
-  ld->conf.fuzzy_intersections = (lmd->calculation_flags & LRT_INTERSECTION_AS_CONTOUR) != 0;
-  ld->conf.fuzzy_everything = (lmd->calculation_flags & LRT_EVERYTHING_AS_CONTOUR) != 0;
-  ld->conf.allow_boundaries = (lmd->calculation_flags & LRT_ALLOW_CLIPPING_BOUNDARIES) != 0;
-  ld->conf.use_loose_as_contour = (lmd->calculation_flags & LRT_LOOSE_AS_CONTOUR) != 0;
-  ld->conf.use_loose_edge_chain = (lmd->calculation_flags & LRT_CHAIN_LOOSE_EDGES) != 0;
-  ld->conf.use_geometry_space_chain = (lmd->calculation_flags & LRT_CHAIN_GEOMETRY_SPACE) != 0;
+  ld->conf.fuzzy_intersections = (lmd->calculation_flags & MOD_LINEART_INTERSECTION_AS_CONTOUR) !=
+                                 0;
+  ld->conf.fuzzy_everything = (lmd->calculation_flags & MOD_LINEART_EVERYTHING_AS_CONTOUR) != 0;
+  ld->conf.allow_boundaries = (lmd->calculation_flags & MOD_LINEART_ALLOW_CLIPPING_BOUNDARIES) !=
+                              0;
+  ld->conf.use_loose_as_contour = (lmd->calculation_flags & MOD_LINEART_LOOSE_AS_CONTOUR) != 0;
+  ld->conf.use_loose_edge_chain = (lmd->calculation_flags & MOD_LINEART_CHAIN_LOOSE_EDGES) != 0;
+  ld->conf.use_geometry_space_chain = (lmd->calculation_flags &
+                                       MOD_LINEART_CHAIN_GEOMETRY_SPACE) != 0;
   ld->conf.use_image_boundary_trimming = (lmd->calculation_flags &
-                                          LRT_USE_IMAGE_BOUNDARY_TRIMMING) != 0;
+                                          MOD_LINEART_USE_IMAGE_BOUNDARY_TRIMMING) != 0;
 
   /* See lineart_edge_from_triangle() for how this option may impact performance. */
-  ld->conf.allow_overlapping_edges = (lmd->calculation_flags & LRT_ALLOW_OVERLAPPING_EDGES) != 0;
+  ld->conf.allow_overlapping_edges = (lmd->calculation_flags &
+                                      MOD_LINEART_ALLOW_OVERLAPPING_EDGES) != 0;
 
-  ld->conf.allow_duplicated_types = (lmd->calculation_flags & LRT_ALLOW_OVERLAP_EDGE_TYPES) != 0;
+  ld->conf.allow_duplicated_types = (lmd->calculation_flags &
+                                     MOD_LINEART_ALLOW_OVERLAP_EDGE_TYPES) != 0;
 
-  ld->conf.force_crease = (lmd->calculation_flags & LRT_USE_CREASE_ON_SMOOTH_SURFACES) != 0;
-  ld->conf.sharp_as_crease = (lmd->calculation_flags & LRT_USE_CREASE_ON_SHARP_EDGES) != 0;
+  ld->conf.force_crease = (lmd->calculation_flags & MOD_LINEART_USE_CREASE_ON_SMOOTH_SURFACES) !=
+                          0;
+  ld->conf.sharp_as_crease = (lmd->calculation_flags & MOD_LINEART_USE_CREASE_ON_SHARP_EDGES) != 0;
 
-  ld->conf.chain_preserve_details = (lmd->calculation_flags & LRT_CHAIN_PRESERVE_DETAILS) != 0;
+  ld->conf.chain_preserve_details = (lmd->calculation_flags &
+                                     MOD_LINEART_CHAIN_PRESERVE_DETAILS) != 0;
 
   /* This is used to limit calculation to a certain level to save time, lines who have higher
    * occlusion levels will get ignored. */
@@ -3673,30 +3710,32 @@ static LineartData *lineart_create_render_buffer(Scene *scene,
   int16_t edge_types = lmd->edge_types_override;
 
   /* lmd->edge_types_override contains all used flags in the modifier stack. */
-  ld->conf.use_contour = (edge_types & LRT_EDGE_FLAG_CONTOUR) != 0;
-  ld->conf.use_crease = (edge_types & LRT_EDGE_FLAG_CREASE) != 0;
-  ld->conf.use_material = (edge_types & LRT_EDGE_FLAG_MATERIAL) != 0;
-  ld->conf.use_edge_marks = (edge_types & LRT_EDGE_FLAG_EDGE_MARK) != 0;
-  ld->conf.use_intersections = (edge_types & LRT_EDGE_FLAG_INTERSECTION) != 0;
-  ld->conf.use_loose = (edge_types & LRT_EDGE_FLAG_LOOSE) != 0;
-  ld->conf.use_light_contour = ((edge_types & LRT_EDGE_FLAG_LIGHT_CONTOUR) != 0 &&
+  ld->conf.use_contour = (edge_types & MOD_LINEART_EDGE_FLAG_CONTOUR) != 0;
+  ld->conf.use_crease = (edge_types & MOD_LINEART_EDGE_FLAG_CREASE) != 0;
+  ld->conf.use_material = (edge_types & MOD_LINEART_EDGE_FLAG_MATERIAL) != 0;
+  ld->conf.use_edge_marks = (edge_types & MOD_LINEART_EDGE_FLAG_EDGE_MARK) != 0;
+  ld->conf.use_intersections = (edge_types & MOD_LINEART_EDGE_FLAG_INTERSECTION) != 0;
+  ld->conf.use_loose = (edge_types & MOD_LINEART_EDGE_FLAG_LOOSE) != 0;
+  ld->conf.use_light_contour = ((edge_types & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR) != 0 &&
                                 (lmd->light_contour_object != nullptr));
-  ld->conf.use_shadow = ((edge_types & LRT_EDGE_FLAG_PROJECTED_SHADOW) != 0 &&
+  ld->conf.use_shadow = ((edge_types & MOD_LINEART_EDGE_FLAG_PROJECTED_SHADOW) != 0 &&
                          (lmd->light_contour_object != nullptr));
 
   ld->conf.shadow_selection = lmd->shadow_selection_override;
   ld->conf.shadow_enclose_shapes = lmd->shadow_selection_override ==
-                                   LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES;
+                                   LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES;
   ld->conf.shadow_use_silhouette = lmd->shadow_use_silhouette_override != 0;
 
-  ld->conf.use_back_face_culling = (lmd->calculation_flags & LRT_USE_BACK_FACE_CULLING) != 0;
+  ld->conf.use_back_face_culling = (lmd->calculation_flags & MOD_LINEART_USE_BACK_FACE_CULLING) !=
+                                   0;
 
-  ld->conf.filter_face_mark_invert = (lmd->calculation_flags & LRT_FILTER_FACE_MARK_INVERT) != 0;
-  ld->conf.filter_face_mark = (lmd->calculation_flags & LRT_FILTER_FACE_MARK) != 0;
+  ld->conf.filter_face_mark_invert = (lmd->calculation_flags &
+                                      MOD_LINEART_FILTER_FACE_MARK_INVERT) != 0;
+  ld->conf.filter_face_mark = (lmd->calculation_flags & MOD_LINEART_FILTER_FACE_MARK) != 0;
   ld->conf.filter_face_mark_boundaries = (lmd->calculation_flags &
-                                          LRT_FILTER_FACE_MARK_BOUNDARIES) != 0;
+                                          MOD_LINEART_FILTER_FACE_MARK_BOUNDARIES) != 0;
   ld->conf.filter_face_mark_keep_contour = (lmd->calculation_flags &
-                                            LRT_FILTER_FACE_MARK_KEEP_CONTOUR) != 0;
+                                            MOD_LINEART_FILTER_FACE_MARK_KEEP_CONTOUR) != 0;
 
   ld->chain_data_pool = &lc->chain_data_pool;
 
@@ -4025,10 +4064,10 @@ static void lineart_bounding_area_split(LineartData *ld,
     LineartTriangle *tri = root->linked_triangles[i];
 
     double b[4];
-    b[0] = MIN3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-    b[1] = MAX3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-    b[2] = MAX3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
-    b[3] = MIN3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
+    b[0] = std::min({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+    b[1] = std::max({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+    b[2] = std::max({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
+    b[3] = std::min({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
 
     /* Re-link triangles into child tiles, not doing intersection lines during this because this
      * batch of triangles are all tested with each other for intersections. */
@@ -4064,8 +4103,10 @@ static bool lineart_bounding_area_edge_intersect(LineartData * /*fb*/,
   double converted[4];
   double c1, c;
 
-  if (((converted[0] = ba->l) > MAX2(l[0], r[0])) || ((converted[1] = ba->r) < MIN2(l[0], r[0])) ||
-      ((converted[2] = ba->b) > MAX2(l[1], r[1])) || ((converted[3] = ba->u) < MIN2(l[1], r[1])))
+  if (((converted[0] = ba->l) > std::max(l[0], r[0])) ||
+      ((converted[1] = ba->r) < std::min(l[0], r[0])) ||
+      ((converted[2] = ba->b) > std::max(l[1], r[1])) ||
+      ((converted[3] = ba->u) < std::min(l[1], r[1])))
   {
     return false;
   }
@@ -4172,10 +4213,10 @@ static void lineart_bounding_area_link_triangle(LineartData *ld,
     double *B1 = l_r_u_b;
     double b[4];
     if (!l_r_u_b) {
-      b[0] = MIN3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-      b[1] = MAX3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-      b[2] = MAX3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
-      b[3] = MIN3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
+      b[0] = std::min({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+      b[1] = std::max({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+      b[2] = std::max({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
+      b[3] = std::min({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
       B1 = b;
     }
     for (int iba = 0; iba < 4; iba++) {
@@ -4274,19 +4315,23 @@ static void lineart_bounding_area_link_edge(LineartData *ld,
   }
   else {
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[0])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[0]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[0], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[1])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[1]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[1], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[2])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[2]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[2], e);
     }
     if (lineart_bounding_area_edge_intersect(
-            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[3])) {
+            ld, e->v1->fbcoord, e->v2->fbcoord, &root_ba->child[3]))
+    {
       lineart_bounding_area_link_edge(ld, &root_ba->child[3], e);
     }
   }
@@ -4400,10 +4445,10 @@ static bool lineart_get_triangle_bounding_areas(
     return false;
   }
 
-  b[0] = MIN3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-  b[1] = MAX3(tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]);
-  b[2] = MIN3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
-  b[3] = MAX3(tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]);
+  b[0] = std::min({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+  b[1] = std::max({tri->v[0]->fbcoord[0], tri->v[1]->fbcoord[0], tri->v[2]->fbcoord[0]});
+  b[2] = std::min({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
+  b[3] = std::max({tri->v[0]->fbcoord[1], tri->v[1]->fbcoord[1], tri->v[2]->fbcoord[1]});
 
   if (b[0] > 1 || b[1] < -1 || b[2] > 1 || b[3] < -1) {
     return false;
@@ -4444,10 +4489,10 @@ static bool lineart_get_edge_bounding_areas(
     return false;
   }
 
-  b[0] = MIN2(e->v1->fbcoord[0], e->v2->fbcoord[0]);
-  b[1] = MAX2(e->v1->fbcoord[0], e->v2->fbcoord[0]);
-  b[2] = MIN2(e->v1->fbcoord[1], e->v2->fbcoord[1]);
-  b[3] = MAX2(e->v1->fbcoord[1], e->v2->fbcoord[1]);
+  b[0] = std::min(e->v1->fbcoord[0], e->v2->fbcoord[0]);
+  b[1] = std::max(e->v1->fbcoord[0], e->v2->fbcoord[0]);
+  b[2] = std::min(e->v1->fbcoord[1], e->v2->fbcoord[1]);
+  b[3] = std::max(e->v1->fbcoord[1], e->v2->fbcoord[1]);
 
   if (b[0] > 1 || b[1] < -1 || b[2] > 1 || b[3] < -1) {
     return false;
@@ -4559,7 +4604,8 @@ static void lineart_add_triangles_worker(TaskPool *__restrict /*pool*/, LineartI
   // int _dir_control = 0; /* UNUSED */
   while (lineart_schedule_new_triangle_task(th)) {
     for (LineartElementLinkNode *eln = th->pending_from; eln != th->pending_to->next;
-         eln = eln->next) {
+         eln = eln->next)
+    {
       int index_start = eln == th->pending_from ? th->index_from : 0;
       int index_end = eln == th->pending_to ? th->index_to : eln->element_count;
       LineartTriangle *tri = static_cast<LineartTriangle *>(
@@ -4666,7 +4712,7 @@ static void lineart_create_edges_from_isec_data(LineartIsecData *d)
       e->t2 = is->tri2;
       /* This is so we can also match intersection edges from shadow to later viewing stage. */
       e->edge_identifier = (uint64_t(e->t1->target_reference) << 32) | e->t2->target_reference;
-      e->flags = LRT_EDGE_FLAG_INTERSECTION;
+      e->flags = MOD_LINEART_EDGE_FLAG_INTERSECTION;
       e->intersection_mask = (is->tri1->intersection_mask | is->tri2->intersection_mask);
       BLI_addtail(&e->segments, es);
 
@@ -4705,7 +4751,7 @@ void lineart_main_add_triangles(LineartData *ld)
 {
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_time_now_seconds();
   }
 
   /* Initialize per-thread data for thread task scheduling information and storing intersection
@@ -4728,7 +4774,7 @@ void lineart_main_add_triangles(LineartData *ld)
   lineart_destroy_isec_thread(&d);
 
   if (G.debug_value == 4000) {
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_time_now_seconds() - t_start;
     printf("Line art intersection time: %f\n", t_elapsed);
   }
 }
@@ -4789,7 +4835,7 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
       ux = x + (uy - y) / k;
       r1 = ratiod(fbcoord1[0], fbcoord2[0], rx);
       r2 = ratiod(fbcoord1[0], fbcoord2[0], ux);
-      if (MIN2(r1, r2) > 1) {
+      if (std::min(r1, r2) > 1) {
         return nullptr;
       }
 
@@ -4822,7 +4868,7 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
       bx = x + (by - y) / k;
       r1 = ratiod(fbcoord1[0], fbcoord2[0], rx);
       r2 = ratiod(fbcoord1[0], fbcoord2[0], bx);
-      if (MIN2(r1, r2) > 1) {
+      if (std::min(r1, r2) > 1) {
         return nullptr;
       }
       if (r1 <= r2) {
@@ -4874,7 +4920,7 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
       ux = x + (uy - y) / k;
       r1 = ratiod(fbcoord1[0], fbcoord2[0], lx);
       r2 = ratiod(fbcoord1[0], fbcoord2[0], ux);
-      if (MIN2(r1, r2) > 1) {
+      if (std::min(r1, r2) > 1) {
         return nullptr;
       }
       if (r1 <= r2) {
@@ -4905,7 +4951,7 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
       bx = x + (by - y) / k;
       r1 = ratiod(fbcoord1[0], fbcoord2[0], lx);
       r2 = ratiod(fbcoord1[0], fbcoord2[0], bx);
-      if (MIN2(r1, r2) > 1) {
+      if (std::min(r1, r2) > 1) {
         return nullptr;
       }
       if (r1 <= r2) {
@@ -4983,42 +5029,53 @@ LineartBoundingArea *lineart_bounding_area_next(LineartBoundingArea *self,
   return nullptr;
 }
 
-bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
-                                       LineartGpencilModifierData *lmd,
-                                       LineartCache **cached_result,
-                                       bool enable_stroke_depth_offset)
+bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
+                                          GreasePencilLineartModifierData &lmd,
+                                          LineartCache **cached_result,
+                                          bool enable_stroke_depth_offset)
 {
   LineartData *ld;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   int intersections_only = 0; /* Not used right now, but preserve for future. */
-  Object *use_camera;
+  Object *lineart_camera = nullptr;
 
   double t_start;
   if (G.debug_value == 4000) {
-    t_start = PIL_check_seconds_timer();
+    t_start = BLI_time_now_seconds();
   }
 
-  if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA) {
-    if (!lmd->source_camera ||
-        (use_camera = DEG_get_evaluated_object(depsgraph, lmd->source_camera))->type != OB_CAMERA)
+  bool use_render_camera_override = false;
+  if (lmd.calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA) {
+    if (!lmd.source_camera ||
+        (lineart_camera = DEG_get_evaluated_object(depsgraph, lmd.source_camera))->type !=
+            OB_CAMERA)
     {
       return false;
     }
   }
   else {
-
-    BKE_scene_camera_switch_update(scene);
-
-    if (!scene->camera) {
-      return false;
+    Render *render = RE_GetSceneRender(scene);
+    if (render && render->camera_override) {
+      lineart_camera = DEG_get_evaluated_object(depsgraph, render->camera_override);
+      use_render_camera_override = true;
     }
-    use_camera = scene->camera;
+    if (!lineart_camera) {
+      BKE_scene_camera_switch_update(scene);
+      if (!scene->camera) {
+        return false;
+      }
+      lineart_camera = scene->camera;
+    }
   }
 
-  LineartCache *lc = lineart_init_cache();
+  LineartCache *lc = MOD_lineart_init_cache();
   *cached_result = lc;
 
-  ld = lineart_create_render_buffer(scene, lmd, use_camera, scene->camera, lc);
+  ld = lineart_create_render_buffer_v3(scene,
+                                       &lmd,
+                                       lineart_camera,
+                                       use_render_camera_override ? lineart_camera : scene->camera,
+                                       lc);
 
   /* Triangle thread testing data size varies depending on the thread count.
    * See definition of LineartTriangleThread for details. */
@@ -5027,24 +5084,24 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   LineartData *shadow_rb = nullptr;
   LineartElementLinkNode *shadow_veln, *shadow_eeln;
   ListBase *shadow_elns = ld->conf.shadow_selection ? &lc->shadow_elns : nullptr;
-  bool shadow_generated = lineart_main_try_generate_shadow(depsgraph,
-                                                           scene,
-                                                           ld,
-                                                           lmd,
-                                                           &lc->shadow_data_pool,
-                                                           &shadow_veln,
-                                                           &shadow_eeln,
-                                                           shadow_elns,
-                                                           &shadow_rb);
+  bool shadow_generated = lineart_main_try_generate_shadow_v3(depsgraph,
+                                                              scene,
+                                                              ld,
+                                                              &lmd,
+                                                              &lc->shadow_data_pool,
+                                                              &shadow_veln,
+                                                              &shadow_eeln,
+                                                              shadow_elns,
+                                                              &shadow_rb);
 
   /* Get view vector before loading geometries, because we detect feature lines there. */
   lineart_main_get_view_vector(ld);
 
   lineart_main_load_geometries(depsgraph,
                                scene,
-                               use_camera,
+                               lineart_camera,
                                ld,
-                               lmd->calculation_flags & LRT_ALLOW_DUPLI_OBJECTS,
+                               lmd.calculation_flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
                                false,
                                shadow_elns);
 
@@ -5133,9 +5190,9 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
       MOD_lineart_chain_split_angle(ld, ld->conf.angle_splitting_threshold);
     }
 
-    if (enable_stroke_depth_offset && lmd->stroke_depth_offset > FLT_EPSILON) {
+    if (enable_stroke_depth_offset && lmd.stroke_depth_offset > FLT_EPSILON) {
       MOD_lineart_chain_offset_towards_camera(
-          ld, lmd->stroke_depth_offset, lmd->flags & LRT_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA);
+          ld, lmd.stroke_depth_offset, lmd.flags & MOD_LINEART_OFFSET_TOWARDS_CUSTOM_CAMERA);
     }
 
     if (ld->conf.shadow_use_silhouette) {
@@ -5161,11 +5218,25 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
   if (G.debug_value == 4000) {
     lineart_count_and_print_render_buffer_memory(ld);
 
-    double t_elapsed = PIL_check_seconds_timer() - t_start;
+    double t_elapsed = BLI_time_now_seconds() - t_start;
     printf("Line art total time: %lf\n", t_elapsed);
   }
 
   return true;
+}
+
+bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
+                                       LineartGpencilModifierData *lmd_legacy,
+                                       LineartCache **cached_result,
+                                       bool enable_stroke_depth_offset)
+{
+  bool ret = false;
+  GreasePencilLineartModifierData lmd;
+  greasepencil::convert::lineart_wrap_v3(lmd_legacy, &lmd);
+  ret = MOD_lineart_compute_feature_lines_v3(
+      depsgraph, lmd, cached_result, enable_stroke_depth_offset);
+  greasepencil::convert::lineart_unwrap_v3(lmd_legacy, &lmd);
+  return ret;
 }
 
 static void lineart_gpencil_generate(LineartCache *cache,
@@ -5216,9 +5287,9 @@ static void lineart_gpencil_generate(LineartCache *cache,
   /* (!orig_col && !orig_ob) means the whole scene is selected. */
 
   int enabled_types = cache->all_enabled_edge_types;
-  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
-  bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP;
-  bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
+  bool invert_input = modifier_calculation_flags & MOD_LINEART_INVERT_SOURCE_VGROUP;
+  bool match_output = modifier_calculation_flags & MOD_LINEART_MATCH_OUTPUT_VGROUP;
+  bool inverse_silhouette = modifier_flags & MOD_LINEART_INVERT_SILHOUETTE_FILTER;
 
   LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
 
@@ -5236,18 +5307,18 @@ static void lineart_gpencil_generate(LineartCache *cache,
     }
     if (orig_col && ec->object_ref) {
       if (BKE_collection_has_object_recursive_instanced(orig_col, (Object *)ec->object_ref)) {
-        if (modifier_flags & LRT_GPENCIL_INVERT_COLLECTION) {
+        if (modifier_flags & MOD_LINEART_INVERT_COLLECTION) {
           continue;
         }
       }
       else {
-        if (!(modifier_flags & LRT_GPENCIL_INVERT_COLLECTION)) {
+        if (!(modifier_flags & MOD_LINEART_INVERT_COLLECTION)) {
           continue;
         }
       }
     }
-    if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_ENABLE) {
-      if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_MATCH) {
+    if (mask_switches & MOD_LINEART_MATERIAL_MASK_ENABLE) {
+      if (mask_switches & MOD_LINEART_MATERIAL_MASK_MATCH) {
         if (ec->material_mask_bits != material_mask_bits) {
           continue;
         }
@@ -5258,8 +5329,8 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
     }
-    if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
-      if (mask_switches & LRT_GPENCIL_INTERSECTION_MATCH) {
+    if (ec->type & MOD_LINEART_EDGE_FLAG_INTERSECTION) {
+      if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
         if (ec->intersection_mask != intersection_mask) {
           continue;
         }
@@ -5273,17 +5344,17 @@ static void lineart_gpencil_generate(LineartCache *cache,
     if (shaodow_selection) {
       if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
         /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
+        if (shaodow_selection == LINEART_SHADOW_FILTER_ILLUMINATED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_SHADED &&
+        if (shaodow_selection == LINEART_SHADOW_FILTER_SHADED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+        if (shaodow_selection == LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
           uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
           if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
               (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
@@ -5293,7 +5364,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
     }
-    if (silhouette_mode && (ec->type & (LRT_EDGE_FLAG_CONTOUR))) {
+    if (silhouette_mode && (ec->type & (MOD_LINEART_EDGE_FLAG_CONTOUR))) {
       bool is_silhouette = false;
       if (orig_col) {
         if (!ec->silhouette_backdrop) {
@@ -5310,7 +5381,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
 
-      if ((silhouette_mode == LRT_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
+      if ((silhouette_mode == LINEART_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
           ec->silhouette_backdrop != ec->object_ref)
       {
         is_silhouette = true;
@@ -5351,10 +5422,10 @@ static void lineart_gpencil_generate(LineartCache *cache,
       if (match_output || (gpdg = BKE_object_defgroup_name_index(gpencil_object, vgname)) >= 0) {
         if (eval_ob && eval_ob->type == OB_MESH) {
           int dindex = 0;
-          Mesh *me = BKE_object_get_evaluated_mesh(eval_ob);
-          MDeformVert *dvert = BKE_mesh_deform_verts_for_write(me);
+          Mesh *mesh = BKE_object_get_evaluated_mesh(eval_ob);
+          MDeformVert *dvert = mesh->deform_verts_for_write().data();
           if (dvert) {
-            LISTBASE_FOREACH (bDeformGroup *, db, &me->vertex_group_names) {
+            LISTBASE_FOREACH (bDeformGroup *, db, &mesh->vertex_group_names) {
               if ((!source_vgname) || strstr(db->name, source_vgname) == db->name) {
                 if (match_output) {
                   gpdg = BKE_object_defgroup_name_index(gpencil_object, db->name);
@@ -5365,7 +5436,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
                 int sindex = 0, vindex;
                 LISTBASE_FOREACH (LineartEdgeChainItem *, eci, &ec->chain) {
                   vindex = eci->index;
-                  if (vindex >= me->totvert) {
+                  if (vindex >= mesh->verts_num) {
                     break;
                   }
                   MDeformWeight *mdw = BKE_defvert_ensure_index(&dvert[vindex], dindex);
@@ -5375,7 +5446,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
                   if (invert_input) {
                     use_weight = 1 - use_weight;
                   }
-                  gdw->weight = MAX2(use_weight, gdw->weight);
+                  gdw->weight = std::max(use_weight, gdw->weight);
 
                   sindex++;
                 }
@@ -5398,6 +5469,11 @@ static void lineart_gpencil_generate(LineartCache *cache,
     printf("LRT: Generated %d strokes.\n", stroke_count);
   }
 }
+
+typedef struct LineartChainWriteInfo {
+  LineartEdgeChain *chain;
+  int point_count;
+} LineartChainWriteInfo;
 
 void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   Depsgraph *depsgraph,
@@ -5430,13 +5506,13 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
   Object *source_object = nullptr;
   Collection *source_collection = nullptr;
   int16_t use_types = edge_types;
-  if (source_type == LRT_SOURCE_OBJECT) {
+  if (source_type == LINEART_SOURCE_OBJECT) {
     if (!source_reference) {
       return;
     }
     source_object = (Object *)source_reference;
   }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
+  else if (source_type == LINEART_SOURCE_COLLECTION) {
     if (!source_reference) {
       return;
     }
@@ -5444,7 +5520,7 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
   }
 
   float gp_obmat_inverse[4][4];
-  invert_m4_m4(gp_obmat_inverse, ob->object_to_world);
+  invert_m4_m4(gp_obmat_inverse, ob->object_to_world().ptr());
   lineart_gpencil_generate(cache,
                            depsgraph,
                            ob,
@@ -5468,4 +5544,269 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                            vgname,
                            modifier_flags,
                            modifier_calculation_flags);
+}
+
+void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
+                                     const blender::float4x4 &inverse_mat,
+                                     Depsgraph *depsgraph,
+                                     blender::bke::greasepencil::Drawing &drawing,
+                                     const int8_t source_type,
+                                     Object *source_object,
+                                     Collection *source_collection,
+                                     const int level_start,
+                                     const int level_end,
+                                     const int mat_nr,
+                                     const int16_t edge_types,
+                                     const uchar mask_switches,
+                                     const uchar material_mask_bits,
+                                     const uchar intersection_mask,
+                                     const float thickness,
+                                     const float opacity,
+                                     const uchar shadow_selection,
+                                     const uchar silhouette_mode,
+                                     const char *source_vgname,
+                                     const char *vgname,
+                                     const int modifier_flags,
+                                     const int modifier_calculation_flags)
+{
+  if (G.debug_value == 4000) {
+    printf("Line Art v3: Generating...\n");
+  }
+
+  if (cache == nullptr) {
+    if (G.debug_value == 4000) {
+      printf("nullptr Lineart cache!\n");
+    }
+    return;
+  }
+
+  Object *orig_ob = nullptr;
+  Collection *orig_col = nullptr;
+
+  if (source_type == LINEART_SOURCE_OBJECT) {
+    if (!source_object) {
+      return;
+    }
+    orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
+    orig_col = nullptr;
+  }
+  else if (source_type == LINEART_SOURCE_COLLECTION) {
+    if (!source_collection) {
+      return;
+    }
+    orig_col = source_collection->id.orig_id ? (Collection *)source_collection->id.orig_id :
+                                               source_collection;
+    orig_ob = nullptr;
+  }
+  /* Otherwise the whole scene is selected. */
+
+  int enabled_types = cache->all_enabled_edge_types;
+
+  bool invert_input = modifier_calculation_flags & MOD_LINEART_INVERT_SOURCE_VGROUP;
+
+  bool inverse_silhouette = modifier_flags & MOD_LINEART_INVERT_SILHOUETTE_FILTER;
+
+  blender::Vector<LineartChainWriteInfo> writer;
+  writer.reserve(128);
+  int total_point_count = 0;
+  int stroke_count = 0;
+  LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
+
+    if (ec->picked) {
+      continue;
+    }
+    if (!(ec->type & (edge_types & enabled_types))) {
+      continue;
+    }
+    if (ec->level > level_end || ec->level < level_start) {
+      continue;
+    }
+    if (orig_ob && orig_ob != ec->object_ref) {
+      continue;
+    }
+    if (orig_col && ec->object_ref) {
+      if (BKE_collection_has_object_recursive_instanced(orig_col, (Object *)ec->object_ref)) {
+        if (modifier_flags & MOD_LINEART_INVERT_COLLECTION) {
+          continue;
+        }
+      }
+      else {
+        if (!(modifier_flags & MOD_LINEART_INVERT_COLLECTION)) {
+          continue;
+        }
+      }
+    }
+    if (mask_switches & MOD_LINEART_MATERIAL_MASK_ENABLE) {
+      if (mask_switches & MOD_LINEART_MATERIAL_MASK_MATCH) {
+        if (ec->material_mask_bits != material_mask_bits) {
+          continue;
+        }
+      }
+      else {
+        if (!(ec->material_mask_bits & material_mask_bits)) {
+          continue;
+        }
+      }
+    }
+    if (ec->type & MOD_LINEART_EDGE_FLAG_INTERSECTION) {
+      if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
+        if (ec->intersection_mask != intersection_mask) {
+          continue;
+        }
+      }
+      else {
+        if ((intersection_mask) && !(ec->intersection_mask & intersection_mask)) {
+          continue;
+        }
+      }
+    }
+    if (shadow_selection) {
+      if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
+        /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
+        if (shadow_selection == LINEART_SHADOW_FILTER_ILLUMINATED &&
+            !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
+        {
+          continue;
+        }
+        if (shadow_selection == LINEART_SHADOW_FILTER_SHADED &&
+            !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
+        {
+          continue;
+        }
+        if (shadow_selection == LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+          uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
+          if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
+              (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
+          {
+            continue;
+          }
+        }
+      }
+    }
+    if (silhouette_mode && (ec->type & (MOD_LINEART_EDGE_FLAG_CONTOUR))) {
+      bool is_silhouette = false;
+      if (orig_col) {
+        if (!ec->silhouette_backdrop) {
+          is_silhouette = true;
+        }
+        else if (!BKE_collection_has_object_recursive_instanced(orig_col, ec->silhouette_backdrop))
+        {
+          is_silhouette = true;
+        }
+      }
+      else {
+        if ((!orig_ob) && (!ec->silhouette_backdrop)) {
+          is_silhouette = true;
+        }
+      }
+
+      if ((silhouette_mode == LINEART_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
+          ec->silhouette_backdrop != ec->object_ref)
+      {
+        is_silhouette = true;
+      }
+
+      if (inverse_silhouette) {
+        is_silhouette = !is_silhouette;
+      }
+      if (!is_silhouette) {
+        continue;
+      }
+    }
+
+    /* Preserved: If we ever do asynchronous generation, this picked flag should be set here. */
+    // ec->picked = 1;
+
+    const int count = MOD_lineart_chain_count(ec);
+    if (count < 2) {
+      continue;
+    }
+
+    total_point_count += count;
+    writer.append({ec, count});
+
+    stroke_count++;
+  }
+
+  if (!total_point_count || !stroke_count) {
+    return;
+  }
+
+  blender::bke::CurvesGeometry new_curves(total_point_count, stroke_count);
+  new_curves.fill_curve_types(CURVE_TYPE_POLY);
+
+  MutableAttributeAccessor attributes = new_curves.attributes_for_write();
+  MutableSpan<float3> point_positions = new_curves.positions_for_write();
+
+  SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
+      "radius", AttrDomain::Point);
+
+  SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", AttrDomain::Point);
+
+  SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", AttrDomain::Curve);
+
+  MutableSpan<int> offsets = new_curves.offsets_for_write();
+
+  SpanAttributeWriter<float> vgroup_weights;
+  if (vgname) {
+    vgroup_weights = attributes.lookup_or_add_for_write_span<float>(vgname, AttrDomain::Point);
+  }
+
+  int up_to_point = 0;
+  for (int chain_i : writer.index_range()) {
+    LineartChainWriteInfo &cwi = writer[chain_i];
+
+    MDeformVert *src_dvert = nullptr;
+    int src_deform_group = -1;
+    Mesh *src_mesh = nullptr;
+    if (source_vgname && vgroup_weights) {
+      Object *eval_ob = DEG_get_evaluated_object(depsgraph, cwi.chain->object_ref);
+      if (eval_ob && eval_ob->type == OB_MESH) {
+        src_mesh = BKE_object_get_evaluated_mesh(eval_ob);
+        src_dvert = src_mesh->deform_verts_for_write().data();
+        src_deform_group = BKE_id_defgroup_name_index(&src_mesh->id, source_vgname);
+      }
+    }
+
+    int i;
+    LISTBASE_FOREACH_INDEX (LineartEdgeChainItem *, eci, &cwi.chain->chain, i) {
+      int point_i = i + up_to_point;
+      point_positions[point_i] = blender::math::transform_point(inverse_mat, float3(eci->gpos));
+      point_radii.span[point_i] = thickness / 2.0f;
+      point_opacities.span[point_i] = opacity;
+
+      if (src_deform_group >= 0) {
+        int vindex;
+        vindex = eci->index;
+        if (vindex >= src_mesh->verts_num) {
+          break;
+        }
+        MDeformWeight *mdw = BKE_defvert_ensure_index(&src_dvert[vindex], src_deform_group);
+
+        vgroup_weights.span[point_i] = invert_input ? (1 - mdw->weight) : mdw->weight;
+      }
+    }
+    offsets[chain_i] = up_to_point;
+    stroke_materials.span[chain_i] = max_ii(mat_nr, 0);
+    up_to_point += cwi.point_count;
+  }
+  offsets[writer.index_range().last() + 1] = up_to_point;
+
+  SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", AttrDomain::Curve);
+  stroke_cyclic.span.fill(false);
+  stroke_cyclic.finish();
+
+  point_radii.finish();
+  point_opacities.finish();
+  stroke_materials.finish();
+
+  drawing.strokes_for_write() = std::move(new_curves);
+  drawing.tag_topology_changed();
+
+  if (G.debug_value == 4000) {
+    printf("LRT: Generated %d strokes.\n", stroke_count);
+  }
 }

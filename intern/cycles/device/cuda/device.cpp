@@ -10,6 +10,8 @@
 #  include "device/cuda/device_impl.h"
 #  include "device/device.h"
 
+#  include "integrator/denoiser_oidn_gpu.h"
+
 #  include "util/string.h"
 #  include "util/windows.h"
 #endif /* WITH_CUDA */
@@ -24,8 +26,9 @@ bool device_cuda_init()
   static bool initialized = false;
   static bool result = false;
 
-  if (initialized)
+  if (initialized) {
     return result;
+  }
 
   initialized = true;
   int cuew_result = cuewInit(CUEW_INIT_CUDA);
@@ -99,8 +102,9 @@ void device_cuda_info(vector<DeviceInfo> &devices)
 #ifdef WITH_CUDA
   CUresult result = device_cuda_safe_init();
   if (result != CUDA_SUCCESS) {
-    if (result != CUDA_ERROR_NO_DEVICE)
+    if (result != CUDA_ERROR_NO_DEVICE) {
       fprintf(stderr, "CUDA cuInit: %s\n", cuewErrorString(result));
+    }
     return;
   }
 
@@ -160,6 +164,12 @@ void device_cuda_info(vector<DeviceInfo> &devices)
                             (unsigned int)pci_location[1],
                             (unsigned int)pci_location[2]);
 
+#  if defined(WITH_OPENIMAGEDENOISE)
+    if (OIDNDenoiserGPU::is_device_supported(info)) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
+
     /* If device has a kernel timeout and no compute preemption, we assume
      * it is connected to a display and will freeze the display while doing
      * computations. */
@@ -185,11 +195,16 @@ void device_cuda_info(vector<DeviceInfo> &devices)
       VLOG_INFO << "Device has compute preemption or is not used for display.";
       devices.push_back(info);
     }
-    VLOG_INFO << "Added device \"" << name << "\" with id \"" << info.id << "\".";
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 
-  if (!display_devices.empty())
+  if (!display_devices.empty()) {
     devices.insert(devices.end(), display_devices.begin(), display_devices.end());
+  }
 #else  /* WITH_CUDA */
   (void)devices;
 #endif /* WITH_CUDA */

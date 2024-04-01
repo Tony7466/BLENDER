@@ -12,7 +12,7 @@ from bpy.props import (
     IntProperty,
 )
 from bpy.app.translations import (
-    pgettext_tip as tip_,
+    pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
 
@@ -190,10 +190,6 @@ class QuickFur(ObjectModeOperator, Operator):
 
             curves_object.modifiers.move(0, len(curves_object.modifiers) - 1)
 
-            # Workaround for #105965: Rebuild UI data of modifier input properties.
-            for modifier in curves_object.modifiers:
-                modifier.node_group = modifier.node_group
-
         if mesh_with_zero_area:
             self.report({'WARNING'}, "Mesh has no face area")
         if mesh_missing_uv_map:
@@ -265,8 +261,10 @@ class QuickExplode(ObjectModeOperator, Operator):
             self.report({'ERROR'}, "Active object is not a mesh")
             return {'CANCELLED'}
 
-        mesh_objects = [obj for obj in context.selected_objects
-                        if obj.type == 'MESH' and obj != obj_act]
+        mesh_objects = [
+            obj for obj in context.selected_objects
+            if obj.type == 'MESH' and obj != obj_act
+        ]
         mesh_objects.insert(0, obj_act)
 
         if self.style == 'BLEND' and len(mesh_objects) != 2:
@@ -279,9 +277,7 @@ class QuickExplode(ObjectModeOperator, Operator):
 
         for obj in mesh_objects:
             if obj.particle_systems:
-                self.report({'ERROR'},
-                            tip_("Object %r already has a "
-                                 "particle system") % obj.name)
+                self.report({'ERROR'}, rpt_("Object %r already has a " "particle system") % obj.name)
 
                 return {'CANCELLED'}
 
@@ -303,7 +299,7 @@ class QuickExplode(ObjectModeOperator, Operator):
             settings.normal_factor = self.velocity
             settings.render_type = 'NONE'
 
-            explode = obj.modifiers.new(name='Explode', type='EXPLODE')
+            explode = obj.modifiers.new(name="Explode", type='EXPLODE')
             explode.use_edge_cut = True
 
             if self.fade:
@@ -441,8 +437,10 @@ class QuickSmoke(ObjectModeOperator, Operator):
             return {'CANCELLED'}
 
         context_override = context.copy()
-        mesh_objects = [obj for obj in context.selected_objects
-                        if obj.type == 'MESH']
+        mesh_objects = [
+            obj for obj in context.selected_objects
+            if obj.type == 'MESH'
+        ]
         min_co = Vector((100000.0, 100000.0, 100000.0))
         max_co = -min_co
 
@@ -518,8 +516,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
         # Add Principled Volume
         node_principled = nodes.new(type='ShaderNodeVolumePrincipled')
         node_principled.location = grid_location(4, 1)
-        links.new(node_principled.outputs["Volume"],
-                  node_out.inputs["Volume"])
+        links.new(node_principled.outputs["Volume"], node_out.inputs["Volume"])
 
         node_principled.inputs["Density"].default_value = 5.0
 
@@ -547,8 +544,10 @@ class QuickLiquid(Operator):
             return {'CANCELLED'}
 
         context_override = context.copy()
-        mesh_objects = [obj for obj in context.selected_objects
-                        if obj.type == 'MESH']
+        mesh_objects = [
+            obj for obj in context.selected_objects
+            if obj.type == 'MESH'
+        ]
         min_co = Vector((100000.0, 100000.0, 100000.0))
         max_co = -min_co
 

@@ -4,10 +4,10 @@
 
 #include "testing/testing.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_compute.h"
-#include "GPU_vertex_buffer.h"
-#include "GPU_vertex_format.h"
+#include "GPU_capabilities.hh"
+#include "GPU_compute.hh"
+#include "GPU_vertex_buffer.hh"
+#include "GPU_vertex_format.hh"
 
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
@@ -18,7 +18,7 @@ namespace blender::gpu::tests {
 
 static void test_buffer_texture()
 {
-  if (!GPU_compute_shader_support() && !GPU_shader_storage_buffer_objects_support()) {
+  if (!GPU_compute_shader_support()) {
     /* We can't test as a the platform does not support compute shaders. */
     std::cout << "Skipping compute shader test: platform not supported";
     GTEST_SKIP();
@@ -32,8 +32,8 @@ static void test_buffer_texture()
   /* Vertex buffer. */
   GPUVertFormat format = {};
   uint value_pos = GPU_vertformat_attr_add(&format, "value", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-  GPUVertBuf *vertex_buffer = GPU_vertbuf_create_with_format_ex(
-      &format, GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  VertBuf *vertex_buffer = GPU_vertbuf_create_with_format_ex(&format,
+                                                             GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
   float4 value = float4(42.42, 23.23, 1.0, -1.0);
   GPU_vertbuf_data_alloc(vertex_buffer, 4);
   GPU_vertbuf_attr_fill(vertex_buffer, value_pos, &value);
@@ -42,7 +42,7 @@ static void test_buffer_texture()
 
   /* Construct SSBO. */
   GPUStorageBuf *ssbo = GPU_storagebuf_create_ex(
-      4 * sizeof(float), nullptr, GPU_USAGE_DEVICE_ONLY, __func__);
+      4 * sizeof(float), nullptr, GPU_USAGE_STATIC, __func__);
   GPU_storagebuf_bind(ssbo, GPU_shader_get_ssbo_binding(shader, "data_out"));
 
   /* Dispatch compute task. */

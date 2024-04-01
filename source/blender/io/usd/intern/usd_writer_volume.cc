@@ -2,7 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_writer_volume.h"
+#include "usd_writer_volume.hh"
+#include "usd_hierarchy_iterator.hh"
 
 #include <pxr/base/tf/pathUtils.h>
 #include <pxr/usd/usdVol/openVDBAsset.h>
@@ -11,17 +12,15 @@
 #include "DNA_volume_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_volume.h"
+#include "BKE_report.hh"
+#include "BKE_volume.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_index_range.hh"
 #include "BLI_math_base.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-
-#include "WM_api.hh"
-
-#include "usd_hierarchy_iterator.h"
 
 namespace blender::io::usd {
 
@@ -47,9 +46,10 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
 
   auto vdb_file_path = resolve_vdb_file(volume);
   if (!vdb_file_path.has_value()) {
-    WM_reportf(RPT_WARNING,
-               "USD Export: failed to resolve .vdb file for object: %s",
-               volume->id.name + 2);
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Export: failed to resolve .vdb file for object: %s",
+                volume->id.name + 2);
     return;
   }
 
@@ -58,9 +58,10 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
       vdb_file_path = relative_vdb_file_path;
     }
     else {
-      WM_reportf(RPT_WARNING,
-                 "USD Export: couldn't construct relative file path for .vdb file, absolute path "
-                 "will be used instead");
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "USD Export: couldn't construct relative file path for .vdb file, absolute path "
+                  "will be used instead");
     }
   }
 
@@ -70,8 +71,8 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
   pxr::UsdVolVolume usd_volume = pxr::UsdVolVolume::Define(stage, volume_path);
 
   for (const int i : IndexRange(num_grids)) {
-    const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
-    const std::string grid_name = BKE_volume_grid_name(grid);
+    const bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
+    const std::string grid_name = bke::volume_grid::get_name(*grid);
     const std::string grid_id = pxr::TfMakeValidIdentifier(grid_name);
     const pxr::SdfPath grid_path = volume_path.AppendPath(pxr::SdfPath(grid_id));
     pxr::UsdVolOpenVDBAsset usd_grid = pxr::UsdVolOpenVDBAsset::Define(stage, grid_path);
@@ -80,11 +81,9 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
     usd_volume.CreateFieldRelationship(pxr::TfToken(grid_id), grid_path);
   }
 
-  float3 volume_bound_min(std::numeric_limits<float>::max());
-  float3 volume_bound_max(std::numeric_limits<float>::lowest());
-  if (BKE_volume_min_max(volume, volume_bound_min, volume_bound_max)) {
-    const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&volume_bound_min[0]),
-                                                      pxr::GfVec3f(&volume_bound_max[0])};
+  if (const std::optional<Bounds<float3>> bounds = BKE_volume_min_max(volume)) {
+    const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&bounds->min.x),
+                                                      pxr::GfVec3f(&bounds->max.x)};
     usd_volume.GetExtentAttr().Set(volume_extent, timecode);
   }
 

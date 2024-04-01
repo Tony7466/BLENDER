@@ -18,13 +18,13 @@
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 #ifdef RNA_RUNTIME
 
 #  include <stddef.h>
 
-#  include "BKE_fcurve.h"
+#  include "BKE_fcurve.hh"
 
 static void rna_FCurve_convert_to_samples(FCurve *fcu, ReportList *reports, int start, int end)
 {
@@ -96,8 +96,8 @@ void RNA_api_fcurves(StructRNA *srna)
 
 void RNA_api_drivers(StructRNA * /*srna*/)
 {
-  /*  FunctionRNA *func; */
-  /*  PropertyRNA *parm; */
+  // FunctionRNA *func;
+  // PropertyRNA *parm;
 }
 
 #endif

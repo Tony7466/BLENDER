@@ -19,20 +19,21 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_animsys.h"
-#include "BKE_idprop.h"
+#include "BKE_grease_pencil_legacy_convert.hh"
+#include "BKE_idprop.hh"
 #include "BKE_ipo.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_main.h"
-#include "BKE_main_namemap.h"
-#include "BKE_node.hh"
+#include "BKE_main.hh"
+#include "BKE_main_namemap.hh"
+#include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node_runtime.hh"
 
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "readfile.hh"
 #include "versioning_common.hh"
 
@@ -103,7 +104,7 @@ ID *do_versions_rename_id(Main *bmain,
     BKE_main_namemap_remove_name(bmain, id, id->name + 2);
     BLI_strncpy(id->name + 2, name_dst, sizeof(id->name) - 2);
     /* We know it's unique, this just sorts. */
-    BLI_libblock_ensure_unique_name(bmain, id->name);
+    BKE_libblock_ensure_unique_name(bmain, id);
   }
   return id;
 }
@@ -283,20 +284,24 @@ void node_tree_relink_with_socket_id_map(bNodeTree &ntree,
   LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &ntree.links) {
     if (link->tonode == &old_node) {
       bNodeSocket *old_socket = link->tosock;
-      if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
-        bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_IN, new_identifier->c_str());
-        link->tonode = &new_node;
-        link->tosock = new_socket;
-        old_socket->link = nullptr;
+      if (old_socket->is_available()) {
+        if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
+          bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_IN, new_identifier->c_str());
+          link->tonode = &new_node;
+          link->tosock = new_socket;
+          old_socket->link = nullptr;
+        }
       }
     }
     if (link->fromnode == &old_node) {
       bNodeSocket *old_socket = link->fromsock;
-      if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
-        bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_OUT, new_identifier->c_str());
-        link->fromnode = &new_node;
-        link->fromsock = new_socket;
-        old_socket->link = nullptr;
+      if (old_socket->is_available()) {
+        if (const std::string *new_identifier = map.lookup_ptr_as(old_socket->identifier)) {
+          bNodeSocket *new_socket = nodeFindSocket(&new_node, SOCK_OUT, new_identifier->c_str());
+          link->fromnode = &new_node;
+          link->fromsock = new_socket;
+          old_socket->link = nullptr;
+        }
       }
     }
   }
@@ -360,7 +365,7 @@ float *version_cycles_node_socket_vector_value(bNodeSocket *socket)
 
 IDProperty *version_cycles_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
@@ -384,14 +389,11 @@ int version_cycles_property_int(IDProperty *idprop, const char *name, int defaul
 
 void version_cycles_property_int_set(IDProperty *idprop, const char *name, int value)
 {
-  IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT);
-  if (prop) {
+  if (IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT)) {
     IDP_Int(prop) = value;
   }
   else {
-    IDPropertyTemplate val = {0};
-    val.i = value;
-    IDP_AddToGroup(idprop, IDP_New(IDP_INT, &val, name));
+    IDP_AddToGroup(idprop, blender::bke::idprop::create(name, value).release());
   }
 }
 
@@ -407,7 +409,7 @@ void version_cycles_property_boolean_set(IDProperty *idprop, const char *name, b
 
 IDProperty *version_cycles_visibility_properties_from_ID(ID *id)
 {
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  IDProperty *idprop = IDP_GetProperties(id);
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : nullptr;
 }
 
@@ -525,5 +527,18 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
   if (!blendfile_or_libraries_versions_atleast(new_bmain, 302, 3)) {
     /* Does not add any new IDs, but needs the full Main data-base. */
     BKE_lib_override_library_main_hierarchy_root_ensure(new_bmain);
+  }
+
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 402, 22)) {
+    /* Initial auto smooth versioning started at (401, 2), but a bug caused the legacy flag to not
+     * be cleared, so it is re-run in a later version when the bug is fixed and the versioning has
+     * been made idempotent. */
+    BKE_main_mesh_legacy_convert_auto_smooth(*new_bmain);
+  }
+
+  if (U.experimental.use_grease_pencil_version3 &&
+      U.experimental.use_grease_pencil_version3_convert_on_load)
+  {
+    blender::bke::greasepencil::convert::legacy_main(*new_bmain, *reports);
   }
 }

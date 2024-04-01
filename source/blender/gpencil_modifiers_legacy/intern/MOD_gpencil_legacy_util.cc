@@ -7,9 +7,9 @@
  */
 
 #include <cstdio>
+#include <cstring>
 
 #include "BLI_listbase.h"
-#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -19,15 +19,15 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_material.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_util.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 void gpencil_modifier_type_init(GpencilModifierTypeInfo *types[])
 {

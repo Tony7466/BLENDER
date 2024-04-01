@@ -9,6 +9,7 @@
 #include "../ABC_alembic.h"
 #include "IO_types.hh"
 
+#include <Alembic/AbcGeom/ILight.h>
 #include <Alembic/AbcMaterial/IMaterial.h>
 
 #include "abc_axis_conversion.h"
@@ -25,36 +26,31 @@
 
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
-#include "DNA_curve_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_cachefile.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_object.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_cachefile.hh"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_undo.hh"
 
 #include "BLI_compiler_compat.h"
-#include "BLI_fileops.h"
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
+#include "BLI_sort.hh"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -101,7 +97,7 @@ static void add_object_path(ListBase *object_paths, const IObject &object)
   BLI_addtail(object_paths, abc_path);
 }
 
-//#define USE_NURBS
+// #define USE_NURBS
 
 /* NOTE: this function is similar to visit_objects below, need to keep them in
  * sync. */
@@ -154,7 +150,7 @@ static bool gather_objects_paths(const IObject &object, ListBase *object_paths)
   return parent_is_part_of_this_object;
 }
 
-CacheArchiveHandle *ABC_create_handle(Main *bmain,
+CacheArchiveHandle *ABC_create_handle(const Main *bmain,
                                       const char *filepath,
                                       const CacheFileLayer *layers,
                                       ListBase *object_paths)
@@ -453,15 +449,25 @@ static void report_job_duration(const ImportJobData *data)
   std::cout << '\n';
 }
 
-static void import_startjob(void *user_data, bool *stop, bool *do_update, float *progress)
+static void sort_readers(blender::MutableSpan<AbcObjectReader *> readers)
+{
+  blender::parallel_sort(
+      readers.begin(), readers.end(), [](const AbcObjectReader *a, const AbcObjectReader *b) {
+        const char *na = a->name().c_str();
+        const char *nb = b->name().c_str();
+        return BLI_strcasecmp(na, nb) < 0;
+      });
+}
+
+static void import_startjob(void *user_data, wmJobWorkerStatus *worker_status)
 {
   SCOPE_TIMER("Alembic import, objects reading and creation");
 
   ImportJobData *data = static_cast<ImportJobData *>(user_data);
 
-  data->stop = stop;
-  data->do_update = do_update;
-  data->progress = progress;
+  data->stop = &worker_status->stop;
+  data->do_update = &worker_status->do_update;
+  data->progress = &worker_status->progress;
   data->start_time = blender::timeit::Clock::now();
 
   WM_set_locked_interface(data->wm, true);
@@ -509,6 +515,10 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
 
   /* Create objects and set scene frame range. */
 
+  /* Sort readers by name: when creating a lot of objects in Blender,
+   * it is much faster if the order is sorted by name. */
+  sort_readers(data->readers);
+
   const float size = float(data->readers.size());
   size_t i = 0;
 
@@ -531,7 +541,7 @@ static void import_startjob(void *user_data, bool *stop, bool *do_update, float 
                 << " is invalid.\n";
     }
 
-    *data->progress = 0.1f + 0.3f * (++i / size);
+    *data->progress = 0.1f + 0.6f * (++i / size);
     *data->do_update = true;
 
     if (G.is_break) {
@@ -627,7 +637,7 @@ static void import_endjob(void *user_data)
       /* TODO: is setting active needed? */
       BKE_view_layer_base_select_and_set_active(view_layer, base);
 
-      DEG_id_tag_update(&lc->collection->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&lc->collection->id, ID_RECALC_SYNC_TO_EVAL);
       DEG_id_tag_update_ex(data->bmain,
                            &ob->id,
                            ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION |
@@ -664,7 +674,7 @@ static void import_endjob(void *user_data)
       break;
   }
 
-  WM_main_add_notifier(NC_SCENE | ND_FRAME, data->scene);
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
   report_job_duration(data);
 }
 
@@ -721,11 +731,8 @@ bool ABC_import(bContext *C,
     WM_jobs_start(CTX_wm_manager(C), wm_job);
   }
   else {
-    /* Fake a job context, so that we don't need null pointer checks while importing. */
-    bool stop = false, do_update = false;
-    float progress = 0.0f;
-
-    import_startjob(job, &stop, &do_update, &progress);
+    wmJobWorkerStatus worker_status = {};
+    import_startjob(job, &worker_status);
     import_endjob(job);
     import_ok = job->import_ok;
 
@@ -775,7 +782,7 @@ static AbcObjectReader *get_abc_reader(CacheReader *reader, Object *ob, const ch
   IObject iobject = abc_reader->iobject();
 
   if (!iobject.valid()) {
-    *err_str = TIP_("Invalid object: verify object path");
+    *err_str = RPT_("Invalid object: verify object path");
     return nullptr;
   }
 
@@ -795,24 +802,24 @@ static ISampleSelector sample_selector_for_time(chrono_t time)
   return ISampleSelector(time, ISampleSelector::kFloorIndex);
 }
 
-Mesh *ABC_read_mesh(CacheReader *reader,
-                    Object *ob,
-                    Mesh *existing_mesh,
-                    const ABCReadParams *params,
-                    const char **err_str)
+void ABC_read_geometry(CacheReader *reader,
+                       Object *ob,
+                       blender::bke::GeometrySet &geometry_set,
+                       const ABCReadParams *params,
+                       const char **err_str)
 {
   AbcObjectReader *abc_reader = get_abc_reader(reader, ob, err_str);
   if (abc_reader == nullptr) {
-    return nullptr;
+    return;
   }
 
   ISampleSelector sample_sel = sample_selector_for_time(params->time);
-  return abc_reader->read_mesh(existing_mesh,
-                               sample_sel,
-                               params->read_flags,
-                               params->velocity_name,
-                               params->velocity_scale,
-                               err_str);
+  return abc_reader->read_geometry(geometry_set,
+                                   sample_sel,
+                                   params->read_flags,
+                                   params->velocity_name,
+                                   params->velocity_scale,
+                                   err_str);
 }
 
 bool ABC_mesh_topology_changed(CacheReader *reader,

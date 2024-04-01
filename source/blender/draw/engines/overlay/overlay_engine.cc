@@ -8,20 +8,20 @@
  * Engine for drawing a selection map where the pixels indicate the selection indices.
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_view3d.hh"
 
 #include "UI_interface.hh"
 
-#include "BKE_duplilist.h"
-#include "BKE_object.h"
+#include "BKE_duplilist.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "DNA_space_types.h"
 
@@ -238,10 +238,10 @@ static void OVERLAY_cache_init(void *vedata)
   OVERLAY_volume_cache_init(data);
 }
 
-BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *do_init)
+BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bool *r_do_init)
 {
   OVERLAY_DupliData **dupli_data = (OVERLAY_DupliData **)DRW_duplidata_get(vedata);
-  *do_init = false;
+  *r_do_init = false;
   if (!ELEM(ob->type, OB_MESH, OB_SURF, OB_LATTICE, OB_CURVES_LEGACY, OB_FONT)) {
     return nullptr;
   }
@@ -250,11 +250,11 @@ BLI_INLINE OVERLAY_DupliData *OVERLAY_duplidata_get(Object *ob, void *vedata, bo
     if (*dupli_data == nullptr) {
       *dupli_data = static_cast<OVERLAY_DupliData *>(
           MEM_callocN(sizeof(OVERLAY_DupliData), __func__));
-      *do_init = true;
+      *r_do_init = true;
     }
     else if ((*dupli_data)->base_flag != ob->base_flag) {
       /* Select state might have change, reinitialize. */
-      *do_init = true;
+      *r_do_init = true;
     }
     return *dupli_data;
   }
@@ -404,6 +404,10 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
     }
   }
 
+  if (is_preview && (pd->overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT) != 0) {
+    OVERLAY_viewer_attribute_text(*ob);
+  }
+
   if (ob->type == OB_VOLUME) {
     OVERLAY_volume_cache_populate(data, ob);
   }
@@ -440,9 +444,7 @@ static void OVERLAY_cache_populate(void *vedata, Object *ob)
         OVERLAY_edit_curves_cache_populate(data, ob);
         break;
       case OB_GREASE_PENCIL:
-        if (U.experimental.use_grease_pencil_version3) {
-          OVERLAY_edit_grease_pencil_cache_populate(data, ob);
-        }
+        OVERLAY_edit_grease_pencil_cache_populate(data, ob);
         break;
     }
   }

@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "GPU_common_types.h"
+#include "GPU_common_types.hh"
 #include "MEM_guardedalloc.h"
 
 #include "gpu_framebuffer_private.hh"
@@ -153,6 +153,11 @@ class MTLFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
+ protected:
+  void subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
+                               Span<GPUAttachmentState> /*color_attachment_states*/) override{};
+
+ public:
   void apply_state();
 
   /* State. */

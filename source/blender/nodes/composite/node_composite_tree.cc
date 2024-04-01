@@ -14,28 +14,26 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_tracking.h"
 
 #include "UI_resources.hh"
 
 #include "node_common.h"
-#include "node_util.hh"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "node_composite_util.hh"
 
 #ifdef WITH_COMPOSITOR_CPU
-#  include "COM_compositor.h"
+#  include "COM_compositor.hh"
 #endif
 
 static void composite_get_from_context(
@@ -78,7 +76,7 @@ static void localize(bNodeTree *localtree, bNodeTree *ntree)
     /* move over the compbufs */
     /* right after #blender::bke::ntreeCopyTree() `oldsock` pointers are valid */
 
-    if (ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
+    if (node->type == CMP_NODE_VIEWER) {
       if (node->id) {
         if (node->flag & NODE_DO_OUTPUT) {
           local_node->id = (ID *)node->id;
@@ -101,7 +99,7 @@ static void local_merge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree)
 
   LISTBASE_FOREACH (bNode *, lnode, &localtree->nodes) {
     if (bNode *orig_node = nodeFindNodebyName(ntree, lnode->name)) {
-      if (ELEM(lnode->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
+      if (lnode->type == CMP_NODE_VIEWER) {
         if (lnode->id && (lnode->flag & NODE_DO_OUTPUT)) {
           /* image_merge does sanity check for pointers */
           BKE_image_merge(bmain, (Image *)orig_node->id, (Image *)lnode->id);
@@ -179,12 +177,14 @@ void ntreeCompositExecTree(Render *render,
                            RenderData *rd,
                            bool rendering,
                            int do_preview,
-                           const char *view_name)
+                           const char *view_name,
+                           blender::realtime_compositor::RenderContext *render_context,
+                           blender::compositor::ProfilerData &profiler_data)
 {
 #ifdef WITH_COMPOSITOR_CPU
-  COM_execute(render, rd, scene, ntree, rendering, view_name);
+  COM_execute(render, rd, scene, ntree, rendering, view_name, render_context, profiler_data);
 #else
-  UNUSED_VARS(render, scene, ntree, rd, rendering, view_name);
+  UNUSED_VARS(render, scene, ntree, rd, rendering, view_name, render_context, profiler_data);
 #endif
 
   UNUSED_VARS(do_preview);
@@ -210,7 +210,7 @@ void ntreeCompositTagRender(Scene *scene)
   /* XXX Think using G_MAIN here is valid, since you want to update current file's scene nodes,
    * not the ones in temp main generated for rendering?
    * This is still rather weak though,
-   * ideally render struct would store own main AND original G_MAIN. */
+   * ideally render struct would store its own main AND original G_MAIN. */
 
   for (Scene *sce_iter = (Scene *)G_MAIN->scenes.first; sce_iter;
        sce_iter = (Scene *)sce_iter->id.next)

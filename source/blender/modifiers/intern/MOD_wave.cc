@@ -9,25 +9,17 @@
 #include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_deform.h"
-#include "BKE_editmesh.h"
-#include "BKE_editmesh_cache.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.hh"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_deform.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_texture.h"
 
 #include "UI_interface.hh"
@@ -44,8 +36,8 @@
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 static void init_data(ModifierData *md)
 {
@@ -152,8 +144,8 @@ static void waveModifier_do(WaveModifierData *md,
   if (wmd->objectcenter != nullptr) {
     float mat[4][4];
     /* get the control object's location in local coordinates */
-    invert_m4_m4(ob->world_to_object, ob->object_to_world);
-    mul_m4_m4m4(mat, ob->world_to_object, wmd->objectcenter->object_to_world);
+    invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
+    mul_m4_m4m4(mat, ob->world_to_object().ptr(), wmd->objectcenter->object_to_world().ptr());
 
     wmd->startx = mat[3][0];
     wmd->starty = mat[3][1];
@@ -291,11 +283,15 @@ static void waveModifier_do(WaveModifierData *md,
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
   WaveModifierData *wmd = (WaveModifierData *)md;
-  waveModifier_do(wmd, ctx, ctx->object, mesh, vertexCos, verts_num);
+  waveModifier_do(wmd,
+                  ctx,
+                  ctx->object,
+                  mesh,
+                  reinterpret_cast<float(*)[3]>(positions.data()),
+                  positions.size());
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -401,7 +397,7 @@ static void texture_panel_draw(const bContext *C, Panel *panel)
   }
   else if (texture_coords == MOD_DISP_MAP_UV && RNA_enum_get(&ob_ptr, "type") == OB_MESH) {
     PointerRNA obj_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-    uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", nullptr, ICON_NONE);
+    uiItemPointerR(col, ptr, "uv_layer", &obj_data_ptr, "uv_layers", nullptr, ICON_GROUP_UVS);
   }
 }
 
@@ -421,7 +417,7 @@ ModifierTypeInfo modifierType_Wave = {
     /*struct_name*/ "WaveModifierData",
     /*struct_size*/ sizeof(WaveModifierData),
     /*srna*/ &RNA_WaveModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsCVs | eModifierTypeFlag_AcceptsVertexCosOnly |
         eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_WAVE,
@@ -448,4 +444,5 @@ ModifierTypeInfo modifierType_Wave = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

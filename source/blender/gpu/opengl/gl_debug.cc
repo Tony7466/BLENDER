@@ -13,10 +13,10 @@
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
-#include "GPU_debug.h"
-#include "GPU_platform.h"
+#include "GPU_debug.hh"
+#include "GPU_platform.hh"
 
 #include "CLG_log.h"
 
@@ -71,12 +71,12 @@ static void APIENTRY debug_callback(GLenum /*source*/,
   if (TRIM_NVIDIA_BUFFER_INFO && STRPREFIX(message, "Buffer detailed info") &&
       GPU_type_matches(GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL))
   {
-    /** Suppress buffer infos flooding the output. */
+    /* Suppress buffer infos flooding the output. */
     return;
   }
 
   if (TRIM_SHADER_STATS_INFO && STRPREFIX(message, "Shader Stats")) {
-    /** Suppress buffer infos flooding the output. */
+    /* Suppress buffer infos flooding the output. */
     return;
   }
 
@@ -94,7 +94,7 @@ static void APIENTRY debug_callback(GLenum /*source*/,
     CLG_Severity clog_severity;
 
     if (GPU_debug_group_match(GPU_DEBUG_SHADER_COMPILATION_GROUP)) {
-      /** Do not duplicate shader compilation error/warnings. */
+      /* Do not duplicate shader compilation error/warnings. */
       return;
     }
 
@@ -386,18 +386,23 @@ void GLContext::debug_group_end()
   }
 }
 
-bool GLContext::debug_capture_begin()
+bool GLContext::debug_capture_begin(const char *title)
 {
-  return GLBackend::get()->debug_capture_begin();
+  return GLBackend::get()->debug_capture_begin(title);
 }
 
-bool GLBackend::debug_capture_begin()
+bool GLBackend::debug_capture_begin(const char *title)
 {
 #ifdef WITH_RENDERDOC
   if (G.debug & G_DEBUG_GPU_RENDERDOC) {
-    return renderdoc_.start_frame_capture(nullptr, nullptr);
+    bool result = renderdoc_.start_frame_capture(nullptr, nullptr);
+    if (result && title) {
+      renderdoc_.set_frame_capture_title(title);
+    }
+    return result;
   }
 #endif
+  UNUSED_VARS(title);
   return false;
 }
 

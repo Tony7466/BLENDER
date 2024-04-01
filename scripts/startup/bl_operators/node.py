@@ -20,7 +20,10 @@ from mathutils import (
     Vector,
 )
 
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import (
+    pgettext_tip as tip_,
+    pgettext_rpt as rpt_,
+)
 
 
 class NodeSetting(PropertyGroup):
@@ -55,8 +58,7 @@ class NodeAddOperator:
         # convert mouse position to the View2D for later node placement
         if context.region.type == 'WINDOW':
             # convert mouse position to the View2D for later node placement
-            space.cursor_location_from_region(
-                event.mouse_region_x, event.mouse_region_y)
+            space.cursor_location_from_region(event.mouse_region_x, event.mouse_region_y)
         else:
             space.cursor_location = tree.view_center
 
@@ -94,7 +96,7 @@ class NodeAddOperator:
             except AttributeError as ex:
                 self.report(
                     {'ERROR_INVALID_INPUT'},
-                    tip_("Node has no attribute %s") % setting.name)
+                    rpt_("Node has no attribute %s") % setting.name)
                 print(str(ex))
                 # Continue despite invalid attribute
 
@@ -165,8 +167,6 @@ class NodeAddZoneOperator(NodeAddOperator):
     def execute(self, context):
         space = context.space_data
         tree = space.edit_tree
-
-        props = self.properties
 
         self.deselect_nodes(context)
         input_node = self.create_node(context, self.input_node_type)
@@ -280,14 +280,33 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
     item_type: EnumProperty(
         name="Item Type",
         description="Type of the item to create",
-        items=[
+        items=(
             ('INPUT', "Input", ""),
             ('OUTPUT', "Output", ""),
-            ('PANEL', "Panel", "")],
+            ('PANEL', "Panel", ""),
+        ),
         default='INPUT',
     )
 
-    socket_type = 'NodeSocketFloat'
+    # Returns a valid socket type for the given tree or None.
+    @staticmethod
+    def find_valid_socket_type(tree):
+        socket_type = 'NodeSocketFloat'
+        # Socket type validation function is only available for custom
+        # node trees. Assume that 'NodeSocketFloat' is valid for
+        # built-in node tree types.
+        if not hasattr(tree, "valid_socket_type") or tree.valid_socket_type(socket_type):
+            return socket_type
+        # Custom nodes may not support float sockets, search all
+        # registered socket subclasses.
+        types_to_check = [bpy.types.NodeSocket]
+        while types_to_check:
+            t = types_to_check.pop()
+            idname = getattr(t, "bl_idname", "")
+            if tree.valid_socket_type(idname):
+                return idname
+            # Test all subclasses
+            types_to_check.extend(t.__subclasses__())
 
     def execute(self, context):
         snode = context.space_data
@@ -299,9 +318,9 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         active_pos = active_item.position if active_item else -1
 
         if self.item_type == 'INPUT':
-            item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'INPUT'})
+            item = interface.new_socket("Socket", socket_type=self.find_valid_socket_type(tree), in_out='INPUT')
         elif self.item_type == 'OUTPUT':
-            item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'OUTPUT'})
+            item = interface.new_socket("Socket", socket_type=self.find_valid_socket_type(tree), in_out='OUTPUT')
         elif self.item_type == 'PANEL':
             item = interface.new_panel("Panel")
         else:
@@ -361,8 +380,63 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
 
         if item:
             interface.remove(item)
-            interface.active_index = min(interface.active_index, len(interface.ui_items) - 1)
+            interface.active_index = min(interface.active_index, len(interface.items_tree) - 1)
 
+        return {'FINISHED'}
+
+
+class NODE_OT_enum_definition_item_add(Operator):
+    '''Add an enum item to the definition'''
+    bl_idname = "node.enum_definition_item_add"
+    bl_label = "Add Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        item = enum_def.enum_items.new("Item")
+        enum_def.active_index = enum_def.enum_items[:].index(item)
+        return {'FINISHED'}
+
+
+class NODE_OT_enum_definition_item_remove(Operator):
+    '''Remove the selected enum item from the definition'''
+    bl_idname = "node.enum_definition_item_remove"
+    bl_label = "Remove Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        item = enum_def.active_item
+        if item:
+            enum_def.enum_items.remove(item)
+        enum_def.active_index = min(max(enum_def.active_index, 0), len(enum_def.enum_items) - 1)
+        return {'FINISHED'}
+
+
+class NODE_OT_enum_definition_item_move(Operator):
+    '''Remove the selected enum item from the definition'''
+    bl_idname = "node.enum_definition_item_move"
+    bl_label = "Move Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        description="Move up or down",
+        items=[("UP", "Up", ""), ("DOWN", "Down", "")]
+    )
+
+    def execute(self, context):
+        node = context.active_node
+        enum_def = node.enum_definition
+        index = enum_def.active_index
+        if self.direction == 'UP':
+            enum_def.enum_items.move(index, index - 1)
+            enum_def.active_index = min(max(index - 1, 0), len(enum_def.enum_items) - 1)
+        else:
+            enum_def.enum_items.move(index, index + 1)
+            enum_def.active_index = min(max(index + 1, 0), len(enum_def.enum_items) - 1)
         return {'FINISHED'}
 
 
@@ -377,4 +451,7 @@ classes = (
     NODE_OT_interface_item_duplicate,
     NODE_OT_interface_item_remove,
     NODE_OT_tree_path_parent,
+    NODE_OT_enum_definition_item_add,
+    NODE_OT_enum_definition_item_remove,
+    NODE_OT_enum_definition_item_move,
 )

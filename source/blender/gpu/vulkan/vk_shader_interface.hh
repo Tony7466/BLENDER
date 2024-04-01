@@ -29,8 +29,11 @@ class VKShaderInterface : public ShaderInterface {
    */
   uint32_t image_offset_ = 0;
   Array<VKDescriptorSet::Location> descriptor_set_locations_;
+  Array<shader::ShaderCreateInfo::Resource::BindType> descriptor_set_bind_types_;
 
   VKPushConstants::Layout push_constants_layout_;
+
+  shader::BuiltinBits shader_builtins_;
 
  public:
   VKShaderInterface() = default;
@@ -53,6 +56,11 @@ class VKShaderInterface : public ShaderInterface {
     return static_cast<shader::Type>(attr_types_[location]);
   }
 
+  bool is_point_shader() const
+  {
+    return (shader_builtins_ & shader::BuiltinBits::POINT_SIZE) == shader::BuiltinBits::POINT_SIZE;
+  }
+
  private:
   /**
    * Retrieve the shader input for the given resource.
@@ -64,8 +72,12 @@ class VKShaderInterface : public ShaderInterface {
   const ShaderInput *shader_input_get(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
   const VKDescriptorSet::Location descriptor_set_location(const ShaderInput *shader_input) const;
-  void descriptor_set_location_update(const ShaderInput *shader_input,
-                                      const VKDescriptorSet::Location location);
+  const shader::ShaderCreateInfo::Resource::BindType descriptor_set_bind_type(
+      const ShaderInput *shader_input) const;
+  void descriptor_set_location_update(
+      const ShaderInput *shader_input,
+      const VKDescriptorSet::Location location,
+      const shader::ShaderCreateInfo::Resource::BindType bind_type);
 };
 
 }  // namespace blender::gpu

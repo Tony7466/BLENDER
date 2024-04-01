@@ -11,7 +11,7 @@
 
 #include "DNA_userdef_types.h" /* For `U.glreslimit`. */
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "gpu_context_private.hh"
 
@@ -69,6 +69,11 @@ int GPU_max_textures_frag()
 int GPU_max_textures()
 {
   return GCaps.max_textures;
+}
+
+int GPU_max_images()
+{
+  return GCaps.max_images;
 }
 
 int GPU_max_work_group_count(int index)
@@ -167,16 +172,6 @@ bool GPU_geometry_shader_support()
   return GCaps.geometry_shader_support;
 }
 
-bool GPU_shader_storage_buffer_objects_support()
-{
-  return GCaps.shader_storage_buffer_objects_support;
-}
-
-bool GPU_shader_image_load_store_support()
-{
-  return GCaps.shader_image_load_store_support;
-}
-
 bool GPU_shader_draw_parameters_support()
 {
   return GCaps.shader_draw_parameters_support;
@@ -190,6 +185,11 @@ bool GPU_hdr_support()
 bool GPU_texture_view_support()
 {
   return GCaps.texture_view_support;
+}
+
+bool GPU_stencil_export_support()
+{
+  return GCaps.stencil_export_support;
 }
 
 int GPU_max_shader_storage_buffer_bindings()
@@ -212,6 +212,11 @@ bool GPU_transform_feedback_support()
   return GCaps.transform_feedback_support;
 }
 
+size_t GPU_max_storage_buffer_size()
+{
+  return GCaps.max_storage_buffer_size;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -223,9 +228,9 @@ bool GPU_mem_stats_supported()
   return GCaps.mem_stats_support;
 }
 
-void GPU_mem_stats_get(int *totalmem, int *freemem)
+void GPU_mem_stats_get(int *r_totalmem, int *r_freemem)
 {
-  Context::get()->memory_statistics_get(totalmem, freemem);
+  Context::get()->memory_statistics_get(r_totalmem, r_freemem);
 }
 
 bool GPU_stereo_quadbuffer_support()

@@ -7,7 +7,7 @@
  */
 
 #include "intern/eval/deg_eval_runtime_backup_gpencil.h"
-#include "intern/depsgraph.h"
+#include "intern/depsgraph.hh"
 
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
@@ -30,7 +30,7 @@ void GPencilBackup::restore_to_gpencil(bGPdata *gpd)
   if (depsgraph->is_active) {
     BKE_gpencil_free_update_cache(gpd_orig);
   }
-  /* Doing a copy-on-write copies the update cache pointer. Make sure to reset it
+  /* Doing a copy-on-evaluation copies the update cache pointer. Make sure to reset it
    * to null as we should never use the update cache from eval data. */
   gpd->runtime.update_cache = nullptr;
   /* Make sure to update the original runtime pointers in the eval data. */

@@ -17,7 +17,6 @@
 
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
-#include "BLI_listbase.h"
 #include "BLI_path_util.h" /* Only for assertions. */
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -25,14 +24,13 @@
 #include "DNA_genfile.h"
 #include "DNA_sdna_types.h"
 
-#include "BKE_asset.h"
-#include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_asset.hh"
+#include "BKE_idtype.hh"
+#include "BKE_main.hh"
 #include "BKE_preview_image.hh"
 
 #include "BLO_blend_defs.hh"
-#include "BLO_readfile.h"
-#include "BLO_undofile.hh"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -158,7 +156,7 @@ LinkNode *BLO_blendhandle_get_datablock_info(BlendHandle *bh,
   BHead *bhead;
   int tot = 0;
 
-  const int sdna_nr_preview_image = DNA_struct_find_nr(fd->filesdna, "PreviewImage");
+  const int sdna_nr_preview_image = DNA_struct_find_with_alias(fd->filesdna, "PreviewImage");
 
   for (bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
     if (bhead->code == BLO_CODE_ENDB) {
@@ -261,7 +259,7 @@ PreviewImage *BLO_blendhandle_get_preview_for_id(BlendHandle *bh,
 {
   FileData *fd = (FileData *)bh;
   bool looking = false;
-  const int sdna_preview_image = DNA_struct_find_nr(fd->filesdna, "PreviewImage");
+  const int sdna_preview_image = DNA_struct_find_with_alias(fd->filesdna, "PreviewImage");
 
   for (BHead *bhead = blo_bhead_first(fd); bhead; bhead = blo_bhead_next(fd, bhead)) {
     if (bhead->code == BLO_CODE_DATA) {
@@ -331,7 +329,7 @@ LinkNode *BLO_blendhandle_get_previews(BlendHandle *bh, int ofblocktype, int *r_
     }
     else if (bhead->code == BLO_CODE_DATA) {
       if (looking) {
-        if (bhead->SDNAnr == DNA_struct_find_nr(fd->filesdna, "PreviewImage")) {
+        if (bhead->SDNAnr == DNA_struct_find_with_alias(fd->filesdna, "PreviewImage")) {
           prv = static_cast<PreviewImage *>(BLO_library_read_struct(fd, bhead, "PreviewImage"));
 
           if (prv) {

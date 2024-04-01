@@ -51,9 +51,11 @@ vec3 coordinate_camera(vec3 P);
 vec3 coordinate_screen(vec3 P);
 vec3 coordinate_reflect(vec3 P, vec3 N);
 vec3 coordinate_incoming(vec3 P);
+float film_scaling_factor_get();
 
 /* Single BSDFs. */
 Closure closure_eval(ClosureDiffuse diffuse);
+Closure closure_eval(ClosureSubsurface diffuse);
 Closure closure_eval(ClosureTranslucent translucent);
 Closure closure_eval(ClosureReflection reflection);
 Closure closure_eval(ClosureRefraction refraction);
@@ -66,7 +68,7 @@ Closure closure_eval(ClosureHair hair);
 /* Glass BSDF. */
 Closure closure_eval(ClosureReflection reflection, ClosureRefraction refraction);
 /* Dielectric BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection);
+Closure closure_eval(ClosureSubsurface diffuse, ClosureReflection reflection);
 /* Coat BSDF. */
 Closure closure_eval(ClosureReflection reflection, ClosureReflection coat);
 /* Volume BSDF. */
@@ -74,9 +76,11 @@ Closure closure_eval(ClosureVolumeScatter volume_scatter,
                      ClosureVolumeAbsorption volume_absorption,
                      ClosureEmission emission);
 /* Specular BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat);
+Closure closure_eval(ClosureSubsurface diffuse,
+                     ClosureReflection reflection,
+                     ClosureReflection coat);
 /* Principled BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse,
+Closure closure_eval(ClosureSubsurface diffuse,
                      ClosureReflection reflection,
                      ClosureReflection coat,
                      ClosureRefraction refraction);
@@ -93,8 +97,23 @@ float ambient_occlusion_eval(vec3 normal,
 vec3 safe_normalize(vec3 N);
 float fast_sqrt(float a);
 vec3 cameraVec(vec3 P);
-vec2 btdf_lut(float a, float b, float c, float d);
+vec2 bsdf_lut(float a, float b, float c, bool d);
+void bsdf_lut(vec3 F0,
+              vec3 F90,
+              vec3 transmission_tint,
+              float cos_theta,
+              float roughness,
+              float ior,
+              bool do_multiscatter,
+              out vec3 reflectance,
+              out vec3 transmittance);
 vec2 brdf_lut(float a, float b);
+void brdf_f82_tint_lut(vec3 F0,
+                       vec3 F82,
+                       float cos_theta,
+                       float roughness,
+                       bool do_multiscatter,
+                       out vec3 reflectance);
 vec3 F_brdf_multi_scatter(vec3 a, vec3 b, vec2 c);
 vec3 F_brdf_single_scatter(vec3 a, vec3 b, vec2 c);
 float F_eta(float a, float b);

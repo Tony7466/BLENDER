@@ -12,14 +12,18 @@
 #include "GHOST_DropTargetWin32.hh"
 #include "GHOST_SystemWin32.hh"
 #include "GHOST_WindowManager.hh"
-#include "utf_winfunc.h"
-#include "utfconv.h"
+#include "utf_winfunc.hh"
+#include "utfconv.hh"
 
 #ifdef WITH_OPENGL_BACKEND
 #  include "GHOST_ContextWGL.hh"
 #endif
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
+#endif
+
+#ifdef WIN32
+#  include "BLI_path_util.h"
 #endif
 
 #include <Dwmapi.h>
@@ -127,15 +131,27 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
 
   if (!setDrawingContextType(type)) {
     const char *title = "Blender - Unsupported Graphics Card Configuration";
-    const char *text =
-        "A graphics card and driver with support for OpenGL 3.3 or higher is "
-        "required.\n\nInstalling the latest driver for your graphics card might resolve the "
-        "issue.";
-    if (GetSystemMetrics(SM_CMONITORS) > 1) {
+    const char *text = "";
+#if defined(WIN32)
+    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0) {
       text =
-          "A graphics card and driver with support for OpenGL 3.3 or higher is "
-          "required.\n\nPlugging all monitors into your primary graphics card might resolve "
-          "this issue. Installing the latest driver for your graphics card could also help.";
+          "A driver with support for OpenGL 4.3 or higher is required.\n\n"
+          "If you are on a Qualcomm 8cx Gen3 device or newer, you need to download the"
+          "\"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" from the MS Store.";
+    }
+    else
+#endif
+    {
+      text =
+          "A graphics card and driver with support for OpenGL 4.3 or higher is "
+          "required.\n\nInstalling the latest driver for your graphics card might resolve the "
+          "issue.";
+      if (GetSystemMetrics(SM_CMONITORS) > 1) {
+        text =
+            "A graphics card and driver with support for OpenGL 4.3 or higher is "
+            "required.\n\nPlugging all monitors into your primary graphics card might resolve "
+            "this issue. Installing the latest driver for your graphics card could also help.";
+      }
     }
     MessageBox(m_hWnd, text, title, MB_OK | MB_ICONERROR);
     ::ReleaseDC(m_hWnd, m_hDC);
@@ -541,7 +557,8 @@ GHOST_TSuccess GHOST_WindowWin32::setState(GHOST_TWindowState state)
     case GHOST_kWindowStateNormal:
     default:
       if (curstate == GHOST_kWindowStateFullScreen &&
-          m_normal_state == GHOST_kWindowStateMaximized) {
+          m_normal_state == GHOST_kWindowStateMaximized)
+      {
         wp.showCmd = SW_SHOWMAXIMIZED;
         m_normal_state = GHOST_kWindowStateNormal;
       }

@@ -8,18 +8,19 @@
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_object.h"
+#include "BKE_layer.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
+#include "BLI_bounds_types.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_mesh.hh"
 #include "ED_particle.hh"
@@ -31,7 +32,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 #include "view3d_navigate.hh" /* own include */
 /* -------------------------------------------------------------------- */
 /** \name View All Operator
@@ -73,10 +74,10 @@ static void view3d_object_calc_minmax(Depsgraph *depsgraph,
   if (BKE_object_minmax_dupli(depsgraph, scene, ob_eval, min, max, false) == 0) {
     /* Use if duplis aren't found. */
     if (only_center) {
-      minmax_v3v3_v3(min, max, ob_eval->object_to_world[3]);
+      minmax_v3v3_v3(min, max, ob_eval->object_to_world().location());
     }
     else {
-      BKE_object_minmax(ob_eval, min, max, false);
+      BKE_object_minmax(ob_eval, min, max);
     }
   }
 }
@@ -237,7 +238,7 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
     wmMsgBus *mbus = CTX_wm_message_bus(C);
     WM_msg_publish_rna_prop(mbus, &scene->id, &scene->cursor, View3DCursor, location);
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   if (!changed) {
@@ -299,6 +300,7 @@ void VIEW3D_OT_view_all(wmOperatorType *ot)
 
 static int viewselected_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
   View3D *v3d = CTX_wm_view3d(C);
@@ -316,7 +318,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
   const bool is_gp_edit = gpd_eval ? GPENCIL_ANY_MODE(gpd_eval) : false;
   const bool is_face_map = ((is_gp_edit == false) && region->gizmo_map &&
                             WM_gizmomap_is_any_selected(region->gizmo_map));
-  float min[3], max[3];
+  float3 min, max;
   bool ok = false, ok_dist = true;
   const bool use_all_regions = RNA_boolean_get(op->ptr, "use_all_regions");
   const bool skip_camera = (ED_view3d_camera_lock_check(v3d, rv3d) ||
@@ -377,8 +379,8 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     CTX_DATA_END;
 
     if ((ob_eval) && (ok)) {
-      mul_m4_v3(ob_eval->object_to_world, min);
-      mul_m4_v3(ob_eval->object_to_world, max);
+      mul_m4_v3(ob_eval->object_to_world().ptr(), min);
+      mul_m4_v3(ob_eval->object_to_world().ptr(), max);
     }
   }
   else if (is_face_map) {
@@ -406,6 +408,14 @@ static int viewselected_exec(bContext *C, wmOperator *op)
   }
   else if (ob_eval && (ob_eval->mode & OB_MODE_PARTICLE_EDIT)) {
     ok = PE_minmax(depsgraph, scene, CTX_data_view_layer(C), min, max);
+  }
+  else if (ob_eval && (ob_eval->mode & OB_MODE_SCULPT_CURVES)) {
+    FOREACH_OBJECT_IN_MODE_BEGIN (
+        scene_eval, view_layer_eval, v3d, ob_eval->type, ob_eval->mode, ob_eval_iter)
+    {
+      ok |= ED_view3d_minmax_verts(ob_eval_iter, min, max);
+    }
+    FOREACH_OBJECT_IN_MODE_END;
   }
   else if (ob_eval && (ob_eval->mode & (OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT |
                                         OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)))

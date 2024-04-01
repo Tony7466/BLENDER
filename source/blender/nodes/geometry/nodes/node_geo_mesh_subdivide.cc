@@ -2,12 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_mesh.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -48,6 +48,7 @@ static Mesh *simple_subdivide_mesh(const Mesh &mesh, const int level)
 
   BKE_subdiv_free(subdiv);
 
+  geometry::debug_randomize_mesh_order(result);
   return result;
 }
 #endif /* WITH_OPENSUBDIV */

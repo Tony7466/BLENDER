@@ -15,7 +15,7 @@
 #include "DNA_ID.h"
 #include "DNA_armature_types.h"
 #include "DNA_listBase.h"
-#include "DNA_session_uuid_types.h"
+#include "DNA_session_uid_types.h"
 #include "DNA_userdef_types.h" /* ThemeWireColor */
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
@@ -24,6 +24,17 @@ struct Collection;
 struct GHash;
 struct Object;
 struct SpaceLink;
+#ifdef __cplusplus
+namespace blender::gpu {
+class VertBuf;
+class Batch;
+}  // namespace blender::gpu
+using GPUBatchHandle = blender::gpu::Batch;
+using GPUVertBufHandle = blender::gpu::VertBuf;
+#else
+typedef struct GPUBatchHandle GPUBatchHandle;
+typedef struct GPUVertBufHandle GPUVertBufHandle;
+#endif
 
 /* ************************************************ */
 /* Visualization */
@@ -57,9 +68,9 @@ typedef struct bMotionPath {
   /** The number of cached verts. */
   int length;
 
-  /** For drawing paths, the start frame number. */
+  /** For drawing paths, the start frame number. Inclusive.*/
   int start_frame;
-  /** For drawing paths, the end frame number. */
+  /** For drawing paths, the end frame number. Exclusive. */
   int end_frame;
 
   /** Optional custom color. */
@@ -70,9 +81,9 @@ typedef struct bMotionPath {
   int flag;
 
   /* Used for drawing. */
-  struct GPUVertBuf *points_vbo;
-  struct GPUBatch *batch_line;
-  struct GPUBatch *batch_points;
+  GPUVertBufHandle *points_vbo;
+  GPUBatchHandle *batch_line;
+  GPUBatchHandle *batch_points;
   void *_pad;
 } bMotionPath;
 
@@ -86,6 +97,8 @@ typedef enum eMotionPath_Flag {
   MOTIONPATH_FLAG_CUSTOM = (1 << 2),
   /* Draw lines or only points */
   MOTIONPATH_FLAG_LINES = (1 << 3),
+  /* Bake to scene camera. */
+  MOTIONPATH_FLAG_BAKE_CAMERA = (1 << 4),
 } eMotionPath_Flag;
 
 /* Visualization General --------------------------- */
@@ -111,7 +124,7 @@ typedef struct bAnimVizSettings {
   short path_bakeflag;
   char _pad[4];
 
-  /** Start and end frames of path-calculation range. */
+  /** Start and end frames of path-calculation range. Both are inclusive.*/
   int path_sf, path_ef;
   /** Number of frames before/after current frame to show. */
   int path_bc, path_ac;
@@ -163,6 +176,8 @@ typedef enum eMotionPaths_BakeFlag {
   /** motion paths exist for AnimVizSettings instance - set when calc for first time,
    * and unset when clearing */
   MOTIONPATH_BAKE_HAS_PATHS = (1 << 2),
+  /* Bake the path in camera space. */
+  MOTIONPATH_BAKE_CAMERA_SPACE = (1 << 3),
 } eMotionPath_BakeFlag;
 
 /* runtime */
@@ -180,14 +195,34 @@ typedef struct bPoseChannelDrawData {
 struct DualQuat;
 struct Mat4;
 
+/* Describes a plane in pose space that delimits B-Bone segments. */
+typedef struct bPoseChannel_BBoneSegmentBoundary {
+  /* Boundary data in pose space. */
+  float point[3];
+  float plane_normal[3];
+  /* Dot product of point and plane_normal to speed up distance computation. */
+  float plane_offset;
+
+  /**
+   * Inverse width of the smoothing at this level in head-tail space.
+   * Optimization: this value is actually indexed by BSP depth (0 to `bsp_depth - 1`), not joint
+   * index. It's put here to avoid allocating a separate array by utilizing the padding space.
+   */
+  float depth_scale;
+} bPoseChannel_BBoneSegmentBoundary;
+
 typedef struct bPoseChannel_Runtime {
-  SessionUUID session_uuid;
+  SessionUID session_uid;
 
   /* Cached dual quaternion for deformation. */
   struct DualQuat deform_dual_quat;
 
   /* B-Bone shape data: copy of the segment count for validation. */
   int bbone_segments;
+
+  /* Inverse of the total length of the segment polyline. */
+  float bbone_arc_length_reciprocal;
+  char _pad1[4];
 
   /* Rest and posed matrices for segments. */
   struct Mat4 *bbone_rest_mats;
@@ -196,6 +231,10 @@ typedef struct bPoseChannel_Runtime {
   /* Delta from rest to pose in matrix and DualQuat form. */
   struct Mat4 *bbone_deform_mats;
   struct DualQuat *bbone_dual_quats;
+
+  /* Segment boundaries for curved mode. */
+  struct bPoseChannel_BBoneSegmentBoundary *bbone_segment_boundaries;
+  void *_pad;
 } bPoseChannel_Runtime;
 
 /* ************************************************ */
@@ -389,16 +428,15 @@ typedef enum ePchan_Flag {
 
 /* PoseChannel constflag (constraint detection) */
 typedef enum ePchan_ConstFlag {
-  PCHAN_HAS_IK = (1 << 0),
-  PCHAN_HAS_CONST = (1 << 1),
-  /* Only used for drawing pose-mode, not stored in channel. */
+  PCHAN_HAS_IK = (1 << 0),           /* Has IK constraint. */
+  PCHAN_HAS_CONST = (1 << 1),        /* Has any constraint. */
   /* PCHAN_HAS_ACTION = (1 << 2), */ /* UNUSED */
-  PCHAN_HAS_TARGET = (1 << 3),
-  /* Only for drawing pose-mode too. */
+  PCHAN_HAS_NO_TARGET = (1 << 3),    /* Has (spline) IK constraint but no target is set. */
   /* PCHAN_HAS_STRIDE = (1 << 4), */ /* UNUSED */
-  /* spline IK */
-  PCHAN_HAS_SPLINEIK = (1 << 5),
+  PCHAN_HAS_SPLINEIK = (1 << 5),     /* Has Spline IK constraint. */
+  PCHAN_INFLUENCED_BY_IK = (1 << 6), /* Is part of a (non-spline) IK chain. */
 } ePchan_ConstFlag;
+ENUM_OPERATORS(ePchan_ConstFlag, PCHAN_INFLUENCED_BY_IK);
 
 /* PoseChannel->ikflag */
 typedef enum ePchan_IkFlag {
@@ -587,7 +625,8 @@ typedef enum eItasc_Solver {
 
 /* Groups -------------------------------------- */
 
-/* Action-Channel Group (agrp)
+/**
+ * Action-Channel Group (agrp)
  *
  * These are stored as a list per-Action, and are only used to
  * group that Action's channels in an Animation Editor.
@@ -696,7 +735,7 @@ typedef struct bAction {
   PreviewImage *preview;
 } bAction;
 
-/* Flags for the action */
+/** Flags for the action. */
 typedef enum eAction_Flags {
   /* flags for displaying in UI */
   ACT_COLLAPSED = (1 << 0),
@@ -715,7 +754,7 @@ typedef enum eAction_Flags {
 /* ************************************************ */
 /* Action/Dopesheet Editor */
 
-/* Storage for Dopesheet/Grease-Pencil Editor data */
+/** Storage for Dopesheet/Grease-Pencil Editor data. */
 typedef struct bDopeSheet {
   /** Currently ID_SCE (for Dopesheet), and ID_SC (for Grease Pencil). */
   ID *source;
@@ -738,7 +777,7 @@ typedef struct bDopeSheet {
   int renameIndex;
 } bDopeSheet;
 
-/* DopeSheet filter-flag */
+/** DopeSheet filter-flag. */
 typedef enum eDopeSheet_FilterFlag {
   /* general filtering */
   /** only include channels relating to selected data */
@@ -804,6 +843,9 @@ typedef enum eDopeSheet_FilterFlag2 {
   ADS_FILTER_NOHAIR = (1 << 3),
   ADS_FILTER_NOPOINTCLOUD = (1 << 4),
   ADS_FILTER_NOVOLUME = (1 << 5),
+
+  /** Include working drivers with variables using their fallback values into Only Show Errors. */
+  ADS_FILTER_DRIVER_FALLBACK_AS_ERROR = (1 << 6),
 } eDopeSheet_FilterFlag2;
 
 /* DopeSheet general flags */

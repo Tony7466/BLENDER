@@ -6,11 +6,9 @@ set(INC
   .
   ../include
   ../../asset_system
-  ../../blenfont
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../gpu
@@ -21,7 +19,6 @@ set(INC
   ../../render
   ../../windowmanager
   ../../../../intern/ghost
-  ../../../../extern/fmtlib/include
   ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -42,6 +39,7 @@ set(SRC
   interface_align.cc
   interface_anim.cc
   interface_button_group.cc
+  interface_button_sections.cc
   interface_context_menu.cc
   interface_context_path.cc
   interface_drag.cc
@@ -55,25 +53,27 @@ set(SRC
   interface_ops.cc
   interface_panel.cc
   interface_query.cc
-  interface_region_color_picker.cc
-  interface_region_hud.cc
-  interface_region_menu_pie.cc
-  interface_region_menu_popup.cc
-  interface_region_popover.cc
-  interface_region_popup.cc
-  interface_region_search.cc
-  interface_region_tooltip.cc
-  interface_regions.cc
+  regions/interface_region_color_picker.cc
+  regions/interface_region_hud.cc
+  regions/interface_region_menu_pie.cc
+  regions/interface_region_menu_popup.cc
+  regions/interface_region_popover.cc
+  regions/interface_region_popup.cc
+  regions/interface_region_search.cc
+  regions/interface_region_tooltip.cc
+  regions/interface_regions.cc
+  interface_string_search.cc
   interface_style.cc
-  interface_template_asset_view.cc
-  interface_template_attribute_search.cc
-  interface_template_grease_pencil_layer_tree.cc
-  interface_template_light_linking.cc
-  interface_template_list.cc
-  interface_template_node_tree_interface.cc
-  interface_template_search_menu.cc
-  interface_template_search_operator.cc
-  interface_templates.cc
+  templates/interface_template_asset_view.cc
+  templates/interface_template_attribute_search.cc
+  templates/interface_template_bone_collection_tree.cc
+  templates/interface_template_light_linking.cc
+  templates/interface_template_list.cc
+  templates/interface_template_node_inputs.cc
+  templates/interface_template_node_tree_interface.cc
+  templates/interface_template_search_menu.cc
+  templates/interface_template_search_operator.cc
+  templates/interface_templates.cc
   interface_undo.cc
   interface_utils.cc
   interface_widgets.cc
@@ -91,16 +91,20 @@ set(SRC
 
   eyedroppers/eyedropper_intern.hh
   interface_intern.hh
-  interface_regions_intern.hh
+  regions/interface_regions_intern.hh
   view2d_intern.hh
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_datafiles
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
 )
 
 if(WITH_INTERNATIONAL)
@@ -115,12 +119,16 @@ if(WITH_PYTHON)
   add_definitions(-DWITH_PYTHON)
 endif()
 
-if(WIN32 OR APPLE)
-  if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-  endif()
+if(WITH_INPUT_IME)
+  add_definitions(-DWITH_INPUT_IME)
 endif()
 
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_GREASE_PENCIL_V3)
+  list(APPEND SRC
+    templates/interface_template_grease_pencil_layer_tree.cc
+  )
+endif()
 
 blender_add_lib(bf_editor_interface "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 

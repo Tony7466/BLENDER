@@ -15,17 +15,17 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_deform.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
-#include "BKE_report.h"
+#include "BKE_object_types.hh"
+#include "BKE_report.hh"
 
-#include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "WM_api.hh"
@@ -38,7 +38,9 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
+
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name Select Similar (Vert/Edge/Face) Operator - common
@@ -52,32 +54,33 @@ static const EnumPropertyItem prop_similar_compare_types[] = {
 };
 
 static const EnumPropertyItem prop_similar_types[] = {
-    {SIMVERT_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SIMVERT_FACE, "FACE", 0, "Amount of Adjacent Faces", ""},
-    {SIMVERT_VGROUP, "VGROUP", 0, "Vertex Groups", ""},
-    {SIMVERT_EDGE, "EDGE", 0, "Amount of Connecting Edges", ""},
-    {SIMVERT_CREASE, "VCREASE", 0, "Vertex Crease", ""},
-    {SIMEDGE_LENGTH, "LENGTH", 0, "Length", ""},
-    {SIMEDGE_DIR, "DIR", 0, "Direction", ""},
-    {SIMEDGE_FACE, "FACE", 0, "Amount of Faces Around an Edge", ""},
-    {SIMEDGE_FACE_ANGLE, "FACE_ANGLE", 0, "Face Angles", ""},
-    {SIMEDGE_CREASE, "CREASE", 0, "Crease", ""},
-    {SIMEDGE_BEVEL, "BEVEL", 0, "Bevel", ""},
-    {SIMEDGE_SEAM, "SEAM", 0, "Seam", ""},
-    {SIMEDGE_SHARP, "SHARP", 0, "Sharpness", ""},
+    {SIMVERT_NORMAL, "VERT_NORMAL", 0, "Normal", ""},
+    {SIMVERT_FACE, "VERT_FACES", 0, "Amount of Adjacent Faces", ""},
+    {SIMVERT_VGROUP, "VERT_GROUPS", 0, "Vertex Groups", ""},
+    {SIMVERT_EDGE, "VERT_EDGES", 0, "Amount of Connecting Edges", ""},
+    {SIMVERT_CREASE, "VERT_CREASE", 0, "Vertex Crease", ""},
+
+    {SIMEDGE_LENGTH, "EDGE_LENGTH", 0, "Length", ""},
+    {SIMEDGE_DIR, "EDGE_DIR", 0, "Direction", ""},
+    {SIMEDGE_FACE, "EDGE_FACES", 0, "Amount of Faces Around an Edge", ""},
+    {SIMEDGE_FACE_ANGLE, "EDGE_FACE_ANGLE", 0, "Face Angles", ""},
+    {SIMEDGE_CREASE, "EDGE_CREASE", 0, "Crease", ""},
+    {SIMEDGE_BEVEL, "EDGE_BEVEL", 0, "Bevel", ""},
+    {SIMEDGE_SEAM, "EDGE_SEAM", 0, "Seam", ""},
+    {SIMEDGE_SHARP, "EDGE_SHARP", 0, "Sharpness", ""},
 #ifdef WITH_FREESTYLE
-    {SIMEDGE_FREESTYLE, "FREESTYLE_EDGE", 0, "Freestyle Edge Marks", ""},
+    {SIMEDGE_FREESTYLE, "EDGE_FREESTYLE", 0, "Freestyle Edge Marks", ""},
 #endif
 
-    {SIMFACE_MATERIAL, "MATERIAL", 0, "Material", ""},
-    {SIMFACE_AREA, "AREA", 0, "Area", ""},
-    {SIMFACE_SIDES, "SIDES", 0, "Polygon Sides", ""},
-    {SIMFACE_PERIMETER, "PERIMETER", 0, "Perimeter", ""},
-    {SIMFACE_NORMAL, "NORMAL", 0, "Normal", ""},
-    {SIMFACE_COPLANAR, "COPLANAR", 0, "Coplanar", ""},
-    {SIMFACE_SMOOTH, "SMOOTH", 0, "Flat/Smooth", ""},
+    {SIMFACE_MATERIAL, "FACE_MATERIAL", 0, "Material", ""},
+    {SIMFACE_AREA, "FACE_AREA", 0, "Area", ""},
+    {SIMFACE_SIDES, "FACE_SIDES", 0, "Polygon Sides", ""},
+    {SIMFACE_PERIMETER, "FACE_PERIMETER", 0, "Perimeter", ""},
+    {SIMFACE_NORMAL, "FACE_NORMAL", 0, "Normal", ""},
+    {SIMFACE_COPLANAR, "FACE_COPLANAR", 0, "Coplanar", ""},
+    {SIMFACE_SMOOTH, "FACE_SMOOTH", 0, "Flat/Smooth", ""},
 #ifdef WITH_FREESTYLE
-    {SIMFACE_FREESTYLE, "FREESTYLE_FACE", 0, "Freestyle Face Marks", ""},
+    {SIMFACE_FREESTYLE, "FACE_FREESTYLE", 0, "Freestyle Face Marks", ""},
 #endif
 
     {0, nullptr, 0, nullptr, nullptr},
@@ -135,9 +138,9 @@ static void face_to_plane(const Object *ob, BMFace *face, float r_plane[4])
 {
   float normal[3], co[3];
   copy_v3_v3(normal, face->no);
-  mul_transposed_mat3_m4_v3(ob->world_to_object, normal);
+  mul_transposed_mat3_m4_v3(ob->world_to_object().ptr(), normal);
   normalize_v3(normal);
-  mul_v3_m4v3(co, ob->object_to_world, BM_FACE_FIRST_LOOP(face)->v->co);
+  mul_v3_m4v3(co, ob->object_to_world().ptr(), BM_FACE_FIRST_LOOP(face)->v->co);
   plane_from_point_normal_v3(r_plane, co, normal);
 }
 
@@ -156,19 +159,16 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_faces_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_faces_selected_all += em->bm->totfacesel;
   }
 
   if (tot_faces_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No face selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -196,19 +196,18 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   }
 
   int tree_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     Material ***material_array = nullptr;
-    invert_m4_m4(ob->world_to_object, ob->object_to_world);
+    invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
 
     if (bm->totfacesel == 0) {
       continue;
     }
 
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     switch (type) {
       case SIMFACE_MATERIAL: {
@@ -256,7 +255,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           case SIMFACE_NORMAL: {
             float normal[3];
             copy_v3_v3(normal, face->no);
-            mul_transposed_mat3_m4_v3(ob->world_to_object, normal);
+            mul_transposed_mat3_m4_v3(ob->world_to_object().ptr(), normal);
             normalize_v3(normal);
             BLI_kdtree_3d_insert(tree_3d, tree_index++, normal);
             break;
@@ -308,15 +307,14 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     BLI_kdtree_4d_balance(tree_4d);
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
     Material ***material_array = nullptr;
 
     float ob_m3[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
 
     bool has_custom_data_layer = false;
     switch (type) {
@@ -384,7 +382,8 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           case SIMFACE_PERIMETER: {
             float perimeter = BM_face_calc_perimeter_with_mat3(face, ob_m3);
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, perimeter, thresh, eSimilarCmp(compare))) {
+                    tree_1d, perimeter, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -392,7 +391,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           case SIMFACE_NORMAL: {
             float normal[3];
             copy_v3_v3(normal, face->no);
-            mul_transposed_mat3_m4_v3(ob->world_to_object, normal);
+            mul_transposed_mat3_m4_v3(ob->world_to_object().ptr(), normal);
             normalize_v3(normal);
 
             /* We are treating the normals as coordinates, the "nearest" one will
@@ -423,7 +422,8 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
           }
           case SIMFACE_SMOOTH:
             if ((BM_elem_flag_test(face, BM_ELEM_SMOOTH) != 0) ==
-                ((face_data_value & SIMFACE_DATA_TRUE) != 0)) {
+                ((face_data_value & SIMFACE_DATA_TRUE) != 0))
+            {
               select = true;
             }
             break;
@@ -457,7 +457,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -468,8 +468,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   face_select_all:
     BLI_assert(ELEM(type, SIMFACE_SMOOTH, SIMFACE_FREESTYLE));
 
-    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-      Object *ob = objects[ob_index];
+    for (Object *ob : objects) {
       BMEditMesh *em = BKE_editmesh_from_object(ob);
       BMesh *bm = em->bm;
 
@@ -483,14 +482,13 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
       }
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   BLI_kdtree_4d_free(tree_4d);
@@ -507,46 +505,25 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 /** \name Select Similar Edge
  * \{ */
 
-/**
- * NOTE: This is not normal, but the edge direction itself and always in
- * a positive quadrant (tries z, y then x).
- * Therefore we need to use the entire object transformation matrix.
- */
 static void edge_pos_direction_worldspace_get(Object *ob, BMEdge *edge, float *r_dir)
 {
   float v1[3], v2[3];
   copy_v3_v3(v1, edge->v1->co);
   copy_v3_v3(v2, edge->v2->co);
 
-  mul_m4_v3(ob->object_to_world, v1);
-  mul_m4_v3(ob->object_to_world, v2);
+  mul_m4_v3(ob->object_to_world().ptr(), v1);
+  mul_m4_v3(ob->object_to_world().ptr(), v2);
 
   sub_v3_v3v3(r_dir, v1, v2);
   normalize_v3(r_dir);
-
-  /* Make sure we have a consistent direction that can be checked regardless of
-   * the verts order of the edges. This spares us from storing dir and -dir in the tree_3d. */
-  if (fabs(r_dir[2]) < FLT_EPSILON) {
-    if (fabs(r_dir[1]) < FLT_EPSILON) {
-      if (r_dir[0] < 0.0f) {
-        mul_v3_fl(r_dir, -1.0f);
-      }
-    }
-    else if (r_dir[1] < 0.0f) {
-      mul_v3_fl(r_dir, -1.0f);
-    }
-  }
-  else if (r_dir[2] < 0.0f) {
-    mul_v3_fl(r_dir, -1.0f);
-  }
 }
 
 static float edge_length_squared_worldspace_get(Object *ob, BMEdge *edge)
 {
   float v1[3], v2[3];
 
-  mul_v3_mat3_m4v3(v1, ob->object_to_world, edge->v1->co);
-  mul_v3_mat3_m4v3(v2, ob->object_to_world, edge->v2->co);
+  mul_v3_mat3_m4v3(v1, ob->object_to_world().ptr(), edge->v1->co);
+  mul_v3_mat3_m4v3(v2, ob->object_to_world().ptr(), edge->v2->co);
 
   return len_squared_v3v3(v1, v2);
 }
@@ -589,19 +566,16 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_edges_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_edges_selected_all += em->bm->totedgesel;
   }
 
   if (tot_edges_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No edge selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -618,7 +592,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       tree_1d = BLI_kdtree_1d_new(tot_edges_selected_all);
       break;
     case SIMEDGE_DIR:
-      tree_3d = BLI_kdtree_3d_new(tot_edges_selected_all);
+      tree_3d = BLI_kdtree_3d_new(tot_edges_selected_all * 2);
       break;
     case SIMEDGE_FACE:
       gset = BLI_gset_ptr_new("Select similar edge: face");
@@ -626,8 +600,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   }
 
   int tree_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
 
@@ -673,7 +646,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     }
 
     float ob_m3[3][3], ob_m3_inv[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
     invert_m3_m3(ob_m3_inv, ob_m3);
 
     BMEdge *edge; /* Mesh edge. */
@@ -686,9 +659,13 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             BLI_gset_add(gset, POINTER_FROM_INT(BM_edge_face_count(edge)));
             break;
           case SIMEDGE_DIR: {
-            float dir[3];
+            float dir[3], dir_flip[3];
             edge_pos_direction_worldspace_get(ob, edge, dir);
             BLI_kdtree_3d_insert(tree_3d, tree_index++, dir);
+            /* Also store the flipped direction so it can be checked regardless of the verts order
+             * of the edges. */
+            negate_v3_v3(dir_flip, dir);
+            BLI_kdtree_3d_insert(tree_3d, tree_index++, dir_flip);
             break;
           }
           case SIMEDGE_LENGTH: {
@@ -750,8 +727,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     BLI_kdtree_3d_balance(tree_3d);
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
@@ -794,7 +770,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     }
 
     float ob_m3[3][3], ob_m3_inv[3][3];
-    copy_m3_m4(ob_m3, ob->object_to_world);
+    copy_m3_m4(ob_m3, ob->object_to_world().ptr());
     invert_m3_m3(ob_m3_inv, ob_m3);
 
     int custom_data_offset;
@@ -845,7 +821,8 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
           case SIMEDGE_LENGTH: {
             float length = edge_length_squared_worldspace_get(ob, edge);
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, length, thresh, eSimilarCmp(compare))) {
+                    tree_1d, length, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -861,13 +838,15 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
           }
           case SIMEDGE_SEAM:
             if ((BM_elem_flag_test(edge, BM_ELEM_SEAM) != 0) ==
-                ((edge_data_value & SIMEDGE_DATA_TRUE) != 0)) {
+                ((edge_data_value & SIMEDGE_DATA_TRUE) != 0))
+            {
               select = true;
             }
             break;
           case SIMEDGE_SHARP:
             if ((BM_elem_flag_test(edge, BM_ELEM_SMOOTH) != 0) ==
-                ((edge_data_value & SIMEDGE_DATA_TRUE) != 0)) {
+                ((edge_data_value & SIMEDGE_DATA_TRUE) != 0))
+            {
               select = true;
             }
             break;
@@ -898,7 +877,8 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
 
             const float *value = BM_ELEM_CD_GET_FLOAT_P(edge, custom_data_offset);
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, *value, thresh, eSimilarCmp(compare))) {
+                    tree_1d, *value, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -915,7 +895,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
@@ -926,8 +906,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   edge_select_all:
     BLI_assert(ELEM(type, SIMEDGE_SEAM, SIMEDGE_SHARP, SIMEDGE_FREESTYLE));
 
-    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-      Object *ob = objects[ob_index];
+    for (Object *ob : objects) {
       BMEditMesh *em = BKE_editmesh_from_object(ob);
       BMesh *bm = em->bm;
 
@@ -941,14 +920,13 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       }
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   if (gset != nullptr) {
@@ -976,19 +954,16 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_verts_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_verts_selected_all += em->bm->totvertsel;
   }
 
   if (tot_verts_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No vertex selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -1014,8 +989,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
   int normal_tree_index = 0;
   int tree_1d_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     int cd_dvert_offset = -1;
@@ -1023,7 +997,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     BLI_bitmap *defbase_selected = nullptr;
     int defbase_len = 0;
 
-    invert_m4_m4(ob->world_to_object, ob->object_to_world);
+    invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
 
     if (bm->totvertsel == 0) {
       continue;
@@ -1064,7 +1038,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
           case SIMVERT_NORMAL: {
             float normal[3];
             copy_v3_v3(normal, vert->no);
-            mul_transposed_mat3_m4_v3(ob->world_to_object, normal);
+            mul_transposed_mat3_m4_v3(ob->world_to_object().ptr(), normal);
             normalize_v3(normal);
 
             BLI_kdtree_3d_insert(tree_3d, normal_tree_index++, normal);
@@ -1127,8 +1101,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Run the matching operations. */
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
@@ -1217,7 +1190,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
           case SIMVERT_NORMAL: {
             float normal[3];
             copy_v3_v3(normal, vert->no);
-            mul_transposed_mat3_m4_v3(ob->world_to_object, normal);
+            mul_transposed_mat3_m4_v3(ob->world_to_object().ptr(), normal);
             normalize_v3(normal);
 
             /* We are treating the normals as coordinates, the "nearest" one will
@@ -1254,7 +1227,8 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
             }
             const float *value = BM_ELEM_CD_GET_FLOAT_P(vert, cd_crease_offset);
             if (ED_select_similar_compare_float_tree(
-                    tree_1d, *value, thresh, eSimilarCmp(compare))) {
+                    tree_1d, *value, thresh, eSimilarCmp(compare)))
+            {
               select = true;
             }
             break;
@@ -1275,14 +1249,13 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     if (changed) {
       EDBM_selectmode_flush(em);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = false;
       EDBM_update(static_cast<Mesh *>(ob->data), &params);
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   if (gset != nullptr) {

@@ -14,24 +14,21 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_deform.h"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_armature.hh"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_armature.hh"
-#include "ED_util.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 #include <cstring>
 
@@ -179,7 +176,8 @@ EditBone *ED_armature_ebone_find_shared_parent(EditBone *ebone_child[], const ui
   /* accumulate */
   for (uint i = 0; i < ebone_child_tot; i++) {
     for (EditBone *ebone_iter = ebone_child[i]->parent; ebone_iter;
-         ebone_iter = ebone_iter->parent) {
+         ebone_iter = ebone_iter->parent)
+    {
       EBONE_TEMP_UINT(ebone_iter) += 1;
     }
   }
@@ -519,6 +517,7 @@ static EditBone *make_boneList_recursive(ListBase *edbo,
     eBone->bbone_prev_type = curBone->bbone_prev_type;
     eBone->bbone_next_type = curBone->bbone_next_type;
 
+    eBone->bbone_mapping_mode = eBone_BBoneMappingMode(curBone->bbone_mapping_mode);
     eBone->bbone_flag = curBone->bbone_flag;
     eBone->bbone_prev_flag = curBone->bbone_prev_flag;
     eBone->bbone_next_flag = curBone->bbone_next_flag;
@@ -733,6 +732,7 @@ void ED_armature_from_edit(Main *bmain, bArmature *arm)
     newBone->bbone_prev_type = eBone->bbone_prev_type;
     newBone->bbone_next_type = eBone->bbone_next_type;
 
+    newBone->bbone_mapping_mode = eBone->bbone_mapping_mode;
     newBone->bbone_flag = eBone->bbone_flag;
     newBone->bbone_prev_flag = eBone->bbone_prev_flag;
     newBone->bbone_next_flag = eBone->bbone_next_flag;

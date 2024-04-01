@@ -21,7 +21,7 @@ extern "C" {
  */
 
 /** Blender major and minor version. */
-#define BLENDER_VERSION 400
+#define BLENDER_VERSION 402
 /** Blender patch version for bug-fix releases. */
 #define BLENDER_VERSION_PATCH 0
 /** Blender release cycle stage: alpha/beta/rc/release. */
@@ -29,18 +29,23 @@ extern "C" {
 
 /* Blender file format version. */
 #define BLENDER_FILE_VERSION BLENDER_VERSION
-#define BLENDER_FILE_SUBVERSION 23
+#define BLENDER_FILE_SUBVERSION 12
 
 /* Minimum Blender version that supports reading file written with the current
  * version. Older Blender versions will test this and cancel loading the file, showing a warning to
  * the user.
  *
- * See https://wiki.blender.org/wiki/Process/Compatibility_Handling for details. */
+ * See
+ * https://developer.blender.org/docs/handbook/guidelines/compatibility_handling_for_blend_files/
+ * for details. */
 #define BLENDER_FILE_MIN_VERSION 306
 #define BLENDER_FILE_MIN_SUBVERSION 13
 
 /** User readable version string. */
 const char *BKE_blender_version_string(void);
+
+/** As above but does not show patch version. */
+const char *BKE_blender_version_string_compact(void);
 
 /** Returns true when version cycle is alpha, otherwise (beta, rc) returns false. */
 bool BKE_blender_version_is_alpha(void);

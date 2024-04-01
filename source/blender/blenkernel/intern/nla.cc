@@ -20,10 +20,10 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -31,11 +31,11 @@
 #include "DNA_speaker_types.h"
 
 #include "BKE_action.h"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_nla.h"
 #include "BKE_sound.h"
 
@@ -446,6 +446,21 @@ NlaTrack *BKE_nlatrack_new_tail(ListBase *nla_tracks, const bool is_liboverride)
   return BKE_nlatrack_new_after(nla_tracks, (NlaTrack *)nla_tracks->last, is_liboverride);
 }
 
+float BKE_nla_clip_length_get_nonzero(const NlaStrip *strip)
+{
+  if (strip->actend <= strip->actstart) {
+    return 1.0f;
+  }
+  return strip->actend - strip->actstart;
+}
+
+void BKE_nla_clip_length_ensure_nonzero(const float *actstart, float *r_actend)
+{
+  if (*r_actend <= *actstart) {
+    *r_actend = *actstart + 1.0f;
+  }
+}
+
 NlaStrip *BKE_nlastrip_new(bAction *act)
 {
   NlaStrip *strip;
@@ -478,13 +493,11 @@ NlaStrip *BKE_nlastrip_new(bAction *act)
   strip->act = act;
   id_us_plus(&act->id);
 
-  /* determine initial range
-   * - strip length cannot be 0... ever...
-   */
+  /* determine initial range */
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
-
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
   strip->start = strip->actstart;
-  strip->end = IS_EQF(strip->actstart, strip->actend) ? (strip->actstart + 1.0f) : strip->actend;
+  strip->end = strip->actend;
 
   /* strip should be referenced as-is */
   strip->scale = 1.0f;
@@ -606,7 +619,7 @@ void BKE_nlatrack_remove_and_free(ListBase *tracks, NlaTrack *nlt, bool do_id_us
  */
 static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short mode)
 {
-  float actlength, scale;
+  float scale;
   // float repeat; // UNUSED
 
   /* get number of repeats */
@@ -624,10 +637,7 @@ static float nlastrip_get_frame_actionclip(NlaStrip *strip, float cframe, short 
   scale = fabsf(strip->scale);
 
   /* length of referenced action */
-  actlength = strip->actend - strip->actstart;
-  if (IS_EQF(actlength, 0.0f)) {
-    actlength = 1.0f;
-  }
+  const float actlength = BKE_nla_clip_length_get_nonzero(strip);
 
   /* reversed = play strip backwards */
   if (strip->flag & NLASTRIP_FLAG_REVERSE) {
@@ -768,7 +778,7 @@ bool BKE_nlastrips_has_space(ListBase *strips, float start, float end)
   }
   if (start > end) {
     puts("BKE_nlastrips_has_space() error... start and end arguments swapped");
-    SWAP(float, start, end);
+    std::swap(start, end);
   }
 
   /* loop over NLA strips checking for any overlaps with this area... */
@@ -1064,9 +1074,20 @@ void BKE_nlameta_flush_transforms(NlaStrip *mstrip)
     if (scaleChanged) {
       float p1, p2;
 
-      /* compute positions of endpoints relative to old extents of strip */
-      p1 = (strip->start - oStart) / oLen;
-      p2 = (strip->end - oStart) / oLen;
+      if (oLen) {
+        /* Compute positions of endpoints relative to old extents of strip. */
+        p1 = (strip->start - oStart) / oLen;
+        p2 = (strip->end - oStart) / oLen;
+      }
+      else {
+        /* WORKAROUND: in theory, a strip should never be zero length. However,
+         * zero-length strips are nevertheless showing up here (see issue #113552).
+         * This is a stop-gap fix to handle that and prevent a divide by zero. A
+         * proper fix will need to track down and fix the source(s) of these
+         * zero-length strips. */
+        p1 = 0.0f;
+        p2 = 1.0f;
+      }
 
       /* Apply new strip endpoints using the proportions,
        * then wait for second pass to flush scale properly. */
@@ -1214,7 +1235,7 @@ bool BKE_nlatrack_has_space(NlaTrack *nlt, float start, float end)
 
   if (start > end) {
     puts("BKE_nlatrack_has_space() error... start and end arguments swapped");
-    SWAP(float, start, end);
+    std::swap(start, end);
   }
 
   /* check if there's any space left in the track for a strip of the given length */
@@ -1436,6 +1457,31 @@ void BKE_nlastrip_set_active(AnimData *adt, NlaStrip *strip)
   }
 }
 
+static NlaStrip *nlastrip_find_by_name(ListBase /* NlaStrip */ *strips, const char *name)
+{
+  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
+    if (STREQ(strip->name, name)) {
+      return strip;
+    }
+
+    if (strip->type != NLASTRIP_TYPE_META) {
+      continue;
+    }
+
+    NlaStrip *inner_strip = nlastrip_find_by_name(&strip->strips, name);
+    if (inner_strip != nullptr) {
+      return inner_strip;
+    }
+  }
+
+  return nullptr;
+}
+
+NlaStrip *BKE_nlastrip_find_by_name(NlaTrack *nlt, const char *name)
+{
+  return nlastrip_find_by_name(&nlt->strips, name);
+}
+
 bool BKE_nlastrip_within_bounds(NlaStrip *strip, float min, float max)
 {
   const float stripLen = (strip) ? strip->end - strip->start : 0.0f;
@@ -1587,6 +1633,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
   prev_actstart = strip->actstart;
 
   BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
+  BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
   strip->start += (strip->actstart - prev_actstart) * strip->scale;
@@ -1595,7 +1642,7 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
 }
 void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
 {
-  float actlen, mapping;
+  float mapping;
 
   /* sanity checks
    * - must have a strip
@@ -1606,10 +1653,7 @@ void BKE_nlastrip_recalculate_bounds(NlaStrip *strip)
   }
 
   /* calculate new length factors */
-  actlen = strip->actend - strip->actstart;
-  if (IS_EQF(actlen, 0.0f)) {
-    actlen = 1.0f;
-  }
+  const float actlen = BKE_nla_clip_length_get_nonzero(strip);
 
   mapping = strip->scale * strip->repeat;
 
@@ -2348,7 +2392,7 @@ static void blend_write_nla_strips(BlendWriter *writer, ListBase *strips)
   BLO_write_struct_list(writer, NlaStrip, strips);
   LISTBASE_FOREACH (NlaStrip *, strip, strips) {
     /* write the strip's F-Curves and modifiers */
-    BKE_fcurve_blend_write(writer, &strip->fcurves);
+    BKE_fcurve_blend_write_listbase(writer, &strip->fcurves);
     BKE_fmodifiers_blend_write(writer, &strip->modifiers);
 
     /* write the strip's children */
@@ -2365,7 +2409,7 @@ static void blend_data_read_nla_strips(BlendDataReader *reader, ListBase *strips
 
     /* strip's F-Curves */
     BLO_read_list(reader, &strip->fcurves);
-    BKE_fcurve_blend_read_data(reader, &strip->fcurves);
+    BKE_fcurve_blend_read_data_listbase(reader, &strip->fcurves);
 
     /* strip's F-Modifiers */
     BLO_read_list(reader, &strip->modifiers);

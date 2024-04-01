@@ -398,8 +398,14 @@ void BlenderSession::render(BL::Depsgraph &b_depsgraph_)
     /* update scene */
     BL::Object b_camera_override(b_engine.camera_override());
     sync->sync_camera(b_render, b_camera_override, width, height, b_rview_name.c_str());
-    sync->sync_data(
-        b_render, b_depsgraph, b_v3d, b_camera_override, width, height, &python_thread_state);
+    sync->sync_data(b_render,
+                    b_depsgraph,
+                    b_v3d,
+                    b_camera_override,
+                    width,
+                    height,
+                    &python_thread_state,
+                    session_params.device);
     builtin_images_load();
 
     /* Attempt to free all data which is held by Blender side, since at this
@@ -446,8 +452,9 @@ void BlenderSession::render(BL::Depsgraph &b_depsgraph_)
       printf("Render statistics:\n%s\n", stats.full_report().c_str());
     }
 
-    if (session->progress.get_cancel())
+    if (session->progress.get_cancel()) {
       break;
+    }
   }
 
   /* add metadata */
@@ -649,6 +656,13 @@ static bool bake_setup_pass(Scene *scene, const string &bake_type, const int bak
   integrator->set_use_direct_light(use_direct_light);
   integrator->set_use_indirect_light(use_indirect_light);
 
+  /* Disable denoiser if the pass does not support it.
+   * For the passes which support denoising follow the user configuration. */
+  const PassInfo pass_info = Pass::get_info(type);
+  if (integrator->get_use_denoise() && !pass_info.support_denoise) {
+    integrator->set_use_denoise(false);
+  }
+
   return true;
 }
 
@@ -661,6 +675,10 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
 {
   b_depsgraph = b_depsgraph_;
 
+  /* Get session parameters. */
+  const SessionParams session_params = BlenderSync::get_session_params(
+      b_engine, b_userpref, b_scene, background);
+
   /* Initialize bake manager, before we load the baking kernels. */
   scene->bake_manager->set(scene, b_object.name());
 
@@ -671,8 +689,19 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   /* Sync scene. */
   BL::Object b_camera_override(b_engine.camera_override());
   sync->sync_camera(b_render, b_camera_override, width, height, "");
-  sync->sync_data(
-      b_render, b_depsgraph, b_v3d, b_camera_override, width, height, &python_thread_state);
+  sync->sync_data(b_render,
+                  b_depsgraph,
+                  b_v3d,
+                  b_camera_override,
+                  width,
+                  height,
+                  &python_thread_state,
+                  session_params.device);
+
+  /* Save the current state of the denoiser, as it might be disabled by the pass configuration (for
+   * passed which do not support denoising). */
+  Integrator *integrator = scene->integrator;
+  const bool was_denoiser_enabled = integrator->get_use_denoise();
 
   /* Add render pass that we want to bake, and name it Combined so that it is
    * used as that on the Blender side. */
@@ -707,10 +736,7 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   }
 
   if (bake_object && !session->progress.get_cancel()) {
-    /* Get session and buffer parameters. */
-    const SessionParams session_params = BlenderSync::get_session_params(
-        b_engine, b_userpref, b_scene, background);
-
+    /* Get buffer parameters. */
     BufferParams buffer_params;
     buffer_params.width = bake_width;
     buffer_params.height = bake_height;
@@ -736,13 +762,18 @@ void BlenderSession::bake(BL::Depsgraph &b_depsgraph_,
   if (bake_object) {
     bake_object->set_is_shadow_catcher(was_shadow_catcher);
   }
+
+  /* Restore the state of denoiser to before it was possibly disabled by the pass, so that the
+   * next baking pass can use the original value. */
+  integrator->set_use_denoise(was_denoiser_enabled);
 }
 
 void BlenderSession::synchronize(BL::Depsgraph &b_depsgraph_)
 {
   /* only used for viewport render */
-  if (!b_v3d)
+  if (!b_v3d) {
     return;
+  }
 
   /* on session/scene parameter changes, we recreate session entirely */
   const SessionParams session_params = BlenderSync::get_session_params(
@@ -783,13 +814,21 @@ void BlenderSession::synchronize(BL::Depsgraph &b_depsgraph_)
   b_depsgraph = b_depsgraph_;
 
   BL::Object b_camera_override(b_engine.camera_override());
-  sync->sync_data(
-      b_render, b_depsgraph, b_v3d, b_camera_override, width, height, &python_thread_state);
+  sync->sync_data(b_render,
+                  b_depsgraph,
+                  b_v3d,
+                  b_camera_override,
+                  width,
+                  height,
+                  &python_thread_state,
+                  session_params.device);
 
-  if (b_rv3d)
+  if (b_rv3d) {
     sync->sync_view(b_v3d, b_rv3d, width, height);
-  else
+  }
+  else {
     sync->sync_camera(b_render, b_camera_override, width, height, "");
+  }
 
   /* get buffer parameters */
   const BufferParams buffer_params = BlenderSync::get_buffer_params(
@@ -891,8 +930,9 @@ void BlenderSession::view_draw(int w, int h)
 
       sync->sync_view(b_v3d, b_rv3d, width, height);
 
-      if (scene->camera->is_modified())
+      if (scene->camera->is_modified()) {
         reset = true;
+      }
 
       session->scene->mutex.unlock();
     }
@@ -960,13 +1000,16 @@ void BlenderSession::update_status_progress()
   }
 
   if (background) {
-    if (scene)
+    if (scene) {
       scene_status += " | " + scene->name;
-    if (b_rlay_name != "")
+    }
+    if (b_rlay_name != "") {
       scene_status += ", " + b_rlay_name;
+    }
 
-    if (b_rview_name != "")
+    if (b_rview_name != "") {
       scene_status += ", " + b_rview_name;
+    }
 
     if (remaining_time > 0) {
       timestatus += "Remaining:" + time_human_readable_from_seconds(remaining_time) + " | ";
@@ -974,10 +1017,12 @@ void BlenderSession::update_status_progress()
 
     timestatus += string_printf("Mem:%.2fM, Peak:%.2fM", (double)mem_used, (double)mem_peak);
 
-    if (status.size() > 0)
+    if (status.size() > 0) {
       status = " | " + status;
-    if (substatus.size() > 0)
+    }
+    if (substatus.size() > 0) {
       status += " | " + substatus;
+    }
   }
 
   double current_time = time_dt();
@@ -1046,9 +1091,11 @@ void BlenderSession::tag_redraw()
 void BlenderSession::test_cancel()
 {
   /* test if we need to cancel rendering */
-  if (background)
-    if (b_engine.test_break())
+  if (background) {
+    if (b_engine.test_break()) {
       session->progress.set_cancel("Cancelled");
+    }
+  }
 }
 
 void BlenderSession::free_blender_memory_if_possible()

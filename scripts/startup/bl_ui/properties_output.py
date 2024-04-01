@@ -8,7 +8,7 @@ from bl_ui.utils import PresetPanel
 
 from bpy.app.translations import (
     contexts as i18n_contexts,
-    pgettext_tip as tip_,
+    pgettext_iface as iface_,
 )
 
 
@@ -49,7 +49,8 @@ class RENDER_PT_format(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     _frame_rate_args_prev = None
     _preset_class = None
@@ -74,10 +75,10 @@ class RENDER_PT_format(RenderOutputButtonsPanel, Panel):
         custom_framerate = (fps_rate not in {23.98, 24, 25, 29.97, 30, 50, 59.94, 60, 120, 240})
 
         if custom_framerate is True:
-            fps_label_text = tip_("Custom (%.4g fps)") % fps_rate
+            fps_label_text = iface_("Custom (%.4g fps)") % fps_rate
             show_framerate = True
         else:
-            fps_label_text = tip_("%.4g fps") % fps_rate
+            fps_label_text = iface_("%.4g fps") % fps_rate
             show_framerate = (preset_label == "Custom")
 
         RENDER_PT_format._frame_rate_args_prev = args
@@ -131,7 +132,8 @@ class RENDER_PT_frame_range(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -154,7 +156,8 @@ class RENDER_PT_time_stretching(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -175,7 +178,8 @@ class RENDER_PT_post_processing(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -197,7 +201,8 @@ class RENDER_PT_stamp(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -235,7 +240,8 @@ class RENDER_PT_stamp_note(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header(self, context):
         rd = context.scene.render
@@ -259,7 +265,8 @@ class RENDER_PT_stamp_burn(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header(self, context):
         rd = context.scene.render
@@ -287,7 +294,8 @@ class RENDER_PT_output(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -320,7 +328,8 @@ class RENDER_PT_output_views(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -344,7 +353,8 @@ class RENDER_PT_output_color_management(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         scene = context.scene
@@ -383,7 +393,8 @@ class RENDER_PT_encoding(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header_preset(self, _context):
         RENDER_PT_ffmpeg_presets.draw_panel_header(self.layout)
@@ -412,7 +423,8 @@ class RENDER_PT_encoding_video(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -492,7 +504,8 @@ class RENDER_PT_encoding_audio(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -538,7 +551,8 @@ class RENDER_PT_stereoscopy(RenderOutputButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw_header(self, context):

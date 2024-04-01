@@ -12,16 +12,15 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BKE_animsys.h"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "SEQ_animation.h"
+#include "SEQ_animation.hh"
 
 bool SEQ_animation_curves_exist(Scene *scene)
 {

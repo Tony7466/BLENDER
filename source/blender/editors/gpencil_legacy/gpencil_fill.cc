@@ -16,7 +16,7 @@
 #include "BLI_stack.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -26,45 +26,43 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_brush.hh"
-#include "BKE_context.h"
-#include "BKE_deform.h"
+#include "BKE_context.hh"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 
 #include "ED_gpencil_legacy.hh"
-#include "ED_keyframing.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
+#include "ANIM_keyframing.hh"
+
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define LEAK_HORZ 0
 #define LEAK_VERT 1
@@ -158,7 +156,7 @@ struct tGPDfill {
   int fill_simplylvl;
   /** boundary limits drawing mode */
   int fill_draw_mode;
-  /** types of extensions **/
+  /** Types of extensions. */
   int fill_extend_mode;
   /* scaling factor */
   float fill_factor;
@@ -247,7 +245,8 @@ static void gpencil_delete_temp_stroke_extension(tGPDfill *tgpf, const bool all_
       LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
         /* free stroke */
         if ((gps->flag & GP_STROKE_NOFILL) &&
-            (gps->flag & GP_STROKE_TAG || gps->flag & GP_STROKE_HELP)) {
+            (gps->flag & GP_STROKE_TAG || gps->flag & GP_STROKE_HELP))
+        {
           BLI_remlink(&gpf->strokes, gps);
           BKE_gpencil_free_stroke(gps);
         }
@@ -259,8 +258,11 @@ static void gpencil_delete_temp_stroke_extension(tGPDfill *tgpf, const bool all_
   }
 }
 
-static bool extended_bbox_overlap(
-    float min1[3], float max1[3], float min2[3], float max2[3], float extend)
+static bool extended_bbox_overlap(const float min1[3],
+                                  const float max1[3],
+                                  const float min2[3],
+                                  const float max2[3],
+                                  float extend)
 {
   for (int axis = 0; axis < 3; axis++) {
     float intersection_min = max_ff(min1[axis], min2[axis]) - extend;
@@ -1124,7 +1126,7 @@ static void gpencil_draw_datablock(tGPDfill *tgpf, const float ink[4])
     if (gpl == tgpf->gpl) {
       if ((gpl->actframe == nullptr) || (gpl->actframe->framenum != tgpf->active_cfra)) {
         short add_frame_mode;
-        if (IS_AUTOKEY_ON(tgpf->scene)) {
+        if (blender::animrig::is_autokey_on(tgpf->scene)) {
           if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
             add_frame_mode = GP_GETFRAME_ADD_COPY;
           }
@@ -2160,10 +2162,10 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   tgpf->done = true;
 
   /* Get frame or create a new one. */
-  tgpf->gpf = BKE_gpencil_layer_frame_get(tgpf->gpl,
-                                          tgpf->active_cfra,
-                                          IS_AUTOKEY_ON(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
-                                                                       GP_GETFRAME_USE_PREV);
+  tgpf->gpf = BKE_gpencil_layer_frame_get(
+      tgpf->gpl,
+      tgpf->active_cfra,
+      blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW : GP_GETFRAME_USE_PREV);
 
   /* Set frame as selected. */
   tgpf->gpf->flag |= GP_FRAME_SELECT;
@@ -2172,7 +2174,7 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
   bGPDstroke *gps = static_cast<bGPDstroke *>(MEM_callocN(sizeof(bGPDstroke), "bGPDstroke"));
   gps->thickness = brush->size;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = brush->gpencil_settings->hardeness;
+  gps->hardness = brush->gpencil_settings->hardness;
   copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
   gps->inittime = 0.0f;
 
@@ -2258,7 +2260,8 @@ static void gpencil_stroke_from_buffer(tGPDfill *tgpf)
 
   /* if axis locked, reproject to plane locked */
   if ((tgpf->lock_axis > GP_LOCKAXIS_VIEW) &&
-      ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0)) {
+      ((ts->gpencil_v3d_align & GP_PROJECT_DEPTH_VIEW) == 0))
+  {
     float origin[3];
     ED_gpencil_drawing_reference_get(tgpf->scene, tgpf->ob, ts->gpencil_v3d_align, origin);
     ED_gpencil_project_stroke_to_plane(
@@ -2295,11 +2298,11 @@ static void gpencil_fill_status_indicators(tGPDfill *tgpf)
 
   char status_str[UI_MAX_DRAW_STR];
   SNPRINTF(status_str,
-           TIP_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back, MMB Adjust Extend, S: "
-                "Switch Mode, D: "
-                "Stroke Collision | %s %s (%.3f)"),
-           (is_extend) ? TIP_("Extend") : TIP_("Radius"),
-           (is_extend && use_stroke_collide) ? TIP_("Stroke: ON") : TIP_("Stroke: OFF"),
+           IFACE_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back, MMB Adjust Extend, S: "
+                  "Switch Mode, D: "
+                  "Stroke Collision | %s %s (%.3f)"),
+           (is_extend) ? IFACE_("Extend") : IFACE_("Radius"),
+           (is_extend && use_stroke_collide) ? IFACE_("Stroke: ON") : IFACE_("Stroke: OFF"),
            tgpf->fill_extend_fac);
 
   ED_workspace_status_text(tgpf->C, status_str);
@@ -2835,7 +2838,9 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
       estate = OPERATOR_CANCELLED;
       break;
     case LEFTMOUSE:
-      if (!IS_AUTOKEY_ON(tgpf->scene) && (!is_multiedit) && (tgpf->gpl->actframe == nullptr)) {
+      if (!blender::animrig::is_autokey_on(tgpf->scene) && (!is_multiedit) &&
+          (tgpf->gpl->actframe == nullptr))
+      {
         BKE_report(op->reports, RPT_INFO, "No available frame for creating stroke");
         estate = OPERATOR_CANCELLED;
         break;
@@ -2879,7 +2884,8 @@ static int gpencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
               tgpf->gpf = BKE_gpencil_layer_frame_get(
                   tgpf->gpl,
                   tgpf->active_cfra,
-                  IS_AUTOKEY_ON(tgpf->scene) ? GP_GETFRAME_ADD_NEW : GP_GETFRAME_USE_PREV);
+                  blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
+                                                                 GP_GETFRAME_USE_PREV);
               tgpf->gpf->flag |= GP_FRAME_SELECT;
 
               BLI_ghash_insert(

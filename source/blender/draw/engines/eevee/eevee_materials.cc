@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
@@ -14,9 +14,9 @@
 #include "BLI_math_bits.h"
 #include "BLI_memblock.h"
 #include "BLI_rand.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 
@@ -25,13 +25,13 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "../eevee_next/eevee_lut.hh"
 #include "eevee_engine.h"
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 /* *********** STATIC *********** */
 static struct {
@@ -154,14 +154,13 @@ static void eevee_init_util_texture()
   memcpy(texels_layer, blender::eevee::lut::ltc_mat_ggx, sizeof(float[4]) * 64 * 64);
   texels_layer += 64 * 64;
 
-  /* Copy bsdf_split_sum_ggx into 2nd layer red and green channels.
-   * Copy ltc_mag_ggx into 2nd layer blue and alpha channel. */
+  /* Copy brdf_ggx into 2nd layer red, green and blue channels. */
   for (int x = 0; x < 64; x++) {
     for (int y = 0; y < 64; y++) {
-      texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_split_sum_ggx[y][x][0];
-      texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_split_sum_ggx[y][x][1];
-      texels_layer[y * 64 + x][2] = blender::eevee::lut::ltc_mag_ggx[y][x][0];
-      texels_layer[y * 64 + x][3] = blender::eevee::lut::ltc_mag_ggx[y][x][1];
+      texels_layer[y * 64 + x][0] = blender::eevee::lut::brdf_ggx[y][x][0];
+      texels_layer[y * 64 + x][1] = blender::eevee::lut::brdf_ggx[y][x][1];
+      texels_layer[y * 64 + x][2] = blender::eevee::lut::brdf_ggx[y][x][2];
+      texels_layer[y * 64 + x][3] = 0.0f; /* UNUSED */
     }
   }
   texels_layer += 64 * 64;
@@ -177,25 +176,33 @@ static void eevee_init_util_texture()
   }
   texels_layer += 64 * 64;
 
-  /* Copy ltc_disk_integral in 4th layer. */
+  /* Copy ltc_disk_integral in 4th layer.
+   * Copy ltc_mag_ggx into blue and alpha channel. */
   for (int x = 0; x < 64; x++) {
     for (int y = 0; y < 64; y++) {
+      float ltc_sum = blender::eevee::lut::ltc_mag_ggx[y][x][0] +
+                      blender::eevee::lut::ltc_mag_ggx[y][x][1];
+      float brdf_sum = blender::eevee::lut::brdf_ggx[y][x][0] +
+                       blender::eevee::lut::brdf_ggx[y][x][1];
       texels_layer[y * 64 + x][0] = blender::eevee::lut::ltc_disk_integral[y][x][0];
-      texels_layer[y * 64 + x][1] = 0.0; /* UNUSED */
-      texels_layer[y * 64 + x][2] = 0.0; /* UNUSED */
-      texels_layer[y * 64 + x][3] = 0.0; /* UNUSED */
+      texels_layer[y * 64 + x][1] = ltc_sum / brdf_sum;
+      texels_layer[y * 64 + x][2] = 0.0f; /* UNUSED */
+      texels_layer[y * 64 + x][3] = 0.0f; /* UNUSED */
     }
   }
   texels_layer += 64 * 64;
 
-  /* Copy Refraction GGX LUT in layer 5 - 21 */
+  /* Copy BSDF GGX LUT in layer 5 - 21 */
   for (int j = 0; j < 16; j++) {
     for (int x = 0; x < 64; x++) {
       for (int y = 0; y < 64; y++) {
-        texels_layer[y * 64 + x][0] = blender::eevee::lut::btdf_split_sum_ggx[j][y][x][0];
-        texels_layer[y * 64 + x][1] = blender::eevee::lut::btdf_split_sum_ggx[j][y][x][1];
-        texels_layer[y * 64 + x][2] = 0.0; /* UNUSED */
-        texels_layer[y * 64 + x][3] = 0.0; /* UNUSED */
+        /* BSDF LUT for `IOR < 1`. */
+        texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_ggx[j][y][x][0];
+        texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_ggx[j][y][x][1];
+        texels_layer[y * 64 + x][2] = blender::eevee::lut::bsdf_ggx[j][y][x][2];
+        /* BTDF LUT for `IOR > 1`, parameterized differently as above.
+         * See `eevee_lut_comp.glsl`. */
+        texels_layer[y * 64 + x][3] = blender::eevee::lut::btdf_ggx[j][y][x][0];
       }
     }
     texels_layer += 64 * 64;
@@ -519,6 +526,8 @@ BLI_INLINE void material_shadow(EEVEE_Data *vedata,
       /* This GPUShader has already been used by another material.
        * Add new shading group just after to avoid shader switching cost. */
       grp = DRW_shgroup_create_sub(*grp_p);
+      /* Per material uniforms. */
+      DRW_shgroup_uniform_float_copy(grp, "alphaClipThreshold", alpha_clip_threshold);
     }
     else {
       *grp_p = grp = DRW_shgroup_create(sh, psl->shadow_pass);
@@ -599,6 +608,8 @@ static EeveeMaterialCache material_opaque(EEVEE_Data *vedata,
       /* This GPUShader has already been used by another material.
        * Add new shading group just after to avoid shader switching cost. */
       grp = DRW_shgroup_create_sub(*grp_p);
+      /* Per material uniforms. */
+      DRW_shgroup_uniform_float_copy(grp, "alphaClipThreshold", alpha_clip_threshold);
     }
     else {
       *grp_p = grp = DRW_shgroup_create(sh, depth_ps);
@@ -646,6 +657,7 @@ static EeveeMaterialCache material_opaque(EEVEE_Data *vedata,
       grp = DRW_shgroup_create_sub(*grp_p);
 
       /* Per material uniforms. */
+      DRW_shgroup_uniform_float_copy(grp, "alphaClipThreshold", alpha_clip_threshold);
       if (use_ssrefract) {
         DRW_shgroup_uniform_float_copy(grp, "refractionDepth", ma->refract_depth);
       }
@@ -862,7 +874,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
         GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
         MATCACHE_AS_ARRAY(matcache, shading_gpumat, materials_len, gpumat_array);
         /* Get per-material split surface */
-        GPUBatch **mat_geom = DRW_cache_object_surface_material_get(
+        blender::gpu::Batch **mat_geom = DRW_cache_object_surface_material_get(
             ob, gpumat_array, materials_len);
 
         if (mat_geom) {
@@ -874,7 +886,8 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
             /* Do not render surface if we are rendering a volume object
              * and do not have a surface closure. */
             if (use_volume_material &&
-                (gpumat_array[i] && !GPU_material_has_surface_output(gpumat_array[i]))) {
+                (gpumat_array[i] && !GPU_material_has_surface_output(gpumat_array[i])))
+            {
               continue;
             }
 
@@ -896,7 +909,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
 
         if (G.debug_value == 889 && ob->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
           int debug_node_nr = 0;
-          DRW_debug_modelmat(ob->object_to_world);
+          DRW_debug_modelmat(ob->object_to_world().ptr());
           BKE_pbvh_draw_debug_cb(
               BKE_object_sculpt_pbvh_get(ob), DRW_sculpt_debug_cb, &debug_node_nr);
         }
@@ -963,6 +976,7 @@ void EEVEE_object_curves_cache_populate(EEVEE_Data *vedata,
                                         Object *ob,
                                         bool *cast_shadow)
 {
+  using namespace blender::draw;
   EeveeMaterialCache matcache = eevee_material_cache_get(
       vedata, sldata, ob, CURVES_MATERIAL_NR - 1, true);
 

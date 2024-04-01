@@ -11,6 +11,7 @@ from bpy.types import (
 from bpy.app.translations import (
     contexts as i18n_contexts,
     pgettext_iface as iface_,
+    pgettext_rpt as rpt_,
 )
 from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
@@ -266,7 +267,7 @@ class SEQUENCER_PT_overlay(Panel):
 class SEQUENCER_PT_preview_overlay(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'SEQUENCER_PT_overlay'
+    bl_parent_id = "SEQUENCER_PT_overlay"
     bl_label = "Preview Overlays"
 
     @classmethod
@@ -292,7 +293,7 @@ class SEQUENCER_PT_preview_overlay(Panel):
 class SEQUENCER_PT_sequencer_overlay(Panel):
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_parent_id = 'SEQUENCER_PT_overlay'
+    bl_parent_id = "SEQUENCER_PT_overlay"
     bl_label = "Sequencer Overlays"
 
     @classmethod
@@ -316,12 +317,16 @@ class SEQUENCER_PT_sequencer_overlay(Panel):
 
         layout.prop(overlay_settings, "show_strip_offset", text="Offsets")
         layout.prop(overlay_settings, "show_fcurves", text="F-Curves")
+        layout.prop(overlay_settings, "show_strip_retiming", text="Retiming")
         layout.prop(overlay_settings, "show_thumbnails", text="Thumbnails")
         layout.prop(overlay_settings, "show_grid", text="Grid")
 
         layout.separator()
 
-        layout.prop_menu_enum(overlay_settings, "waveform_display_type")
+        layout.label(text="Waveforms")
+        layout.row().prop(overlay_settings, "waveform_display_type", expand=True)
+        layout.label(text="Waveform Style")
+        layout.row().prop(overlay_settings, "waveform_display_style", expand=True)
 
 
 class SEQUENCER_MT_view_cache(Menu):
@@ -410,22 +415,24 @@ class SEQUENCER_MT_view(Menu):
             # mode, else the lookup for the shortcut will fail in
             # wm_keymap_item_find_props() (see #32595).
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
+        layout.prop(st, "show_region_toolbar")
         layout.prop(st, "show_region_ui")
         layout.prop(st, "show_region_tool_header")
-        layout.prop(st, "show_region_toolbar")
         layout.operator_context = 'INVOKE_DEFAULT'
-
         if is_sequencer_view:
             layout.prop(st, "show_region_hud")
             layout.prop(st, "show_region_channels")
-
         layout.separator()
 
         if st.view_type == 'SEQUENCER':
             layout.prop(st, "show_backdrop", text="Preview as Backdrop")
         if is_preview or st.show_backdrop:
             layout.prop(st, "show_transform_preview", text="Preview During Transform")
+        layout.separator()
 
+        layout.operator_context = 'INVOKE_REGION_WIN'
+        layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
+        layout.operator_context = 'INVOKE_DEFAULT'
         layout.separator()
 
         layout.operator_context = 'INVOKE_REGION_WIN'
@@ -433,26 +440,23 @@ class SEQUENCER_MT_view(Menu):
             # See above (#32595)
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
         layout.operator("sequencer.view_selected", text="Frame Selected")
-
         if is_sequencer_view:
             layout.operator_context = 'INVOKE_REGION_WIN'
             layout.operator("sequencer.view_all")
             layout.operator("sequencer.view_frame")
-            layout.operator("view2d.zoom_border", text="Zoom")
+            layout.operator("view2d.zoom_border", text="Zoom to Border")
             layout.prop(st, "use_clamp_view")
 
         if is_preview:
+            if is_sequencer_view:
+                layout.separator()
             layout.operator_context = 'INVOKE_REGION_PREVIEW'
-            layout.separator()
-
             layout.operator("sequencer.view_all_preview", text="Fit Preview in Window")
-
             if is_sequencer_view:
                 layout.menu("SEQUENCER_MT_preview_zoom", text="Fractional Preview Zoom")
             else:
-                layout.operator("view2d.zoom_border", text="Zoom")
+                layout.operator("view2d.zoom_border", text="Zoom to Border")
                 layout.menu("SEQUENCER_MT_preview_zoom")
-
             layout.prop(st, "use_zoom_to_fit")
 
             if st.display_mode == 'WAVEFORM':
@@ -460,42 +464,34 @@ class SEQUENCER_MT_view(Menu):
                 layout.prop(st, "show_separate_color", text="Show Separate Color Channels")
 
             layout.separator()
-
             layout.menu("SEQUENCER_MT_proxy")
-
             layout.operator_context = 'INVOKE_DEFAULT'
-
-        layout.separator()
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.operator("sequencer.refresh_all", icon='FILE_REFRESH', text="Refresh All")
-        layout.operator_context = 'INVOKE_DEFAULT'
+            layout.separator()
 
         if is_sequencer_view:
+            layout.separator()
+
+            layout.prop(st, "show_markers")
+            layout.prop(st, "show_seconds")
+            layout.prop(st, "show_locked_time")
             layout.separator()
 
             layout.operator_context = 'INVOKE_DEFAULT'
             layout.menu("SEQUENCER_MT_navigation")
             layout.menu("SEQUENCER_MT_range")
-
             layout.separator()
-            layout.prop(st, "show_locked_time")
 
-            layout.separator()
-            layout.prop(st, "show_seconds")
-            layout.prop(st, "show_markers")
             if context.preferences.view.show_developer_ui:
-                layout.menu("SEQUENCER_MT_view_cache", text="Show Cache")
-
-        layout.separator()
+                layout.menu("SEQUENCER_MT_view_cache", text="Cache")
+                layout.separator()
 
         layout.operator("render.opengl", text="Sequence Render Image", icon='RENDER_STILL').sequencer = True
         props = layout.operator("render.opengl", text="Sequence Render Animation", icon='RENDER_ANIMATION')
         props.animation = True
         props.sequencer = True
-
         layout.separator()
-        layout.operator("sequencer.export_subtitles", text="Export Subtitles", icon='EXPORT')
 
+        layout.operator("sequencer.export_subtitles", text="Export Subtitles", icon='EXPORT')
         layout.separator()
 
         # Note that the context is needed for the shortcut to display properly.
@@ -509,7 +505,6 @@ class SEQUENCER_MT_view(Menu):
         props.value_1 = 'SEQUENCER'
         props.value_2 = 'PREVIEW'
         layout.operator_context = 'INVOKE_DEFAULT'
-
         layout.separator()
 
         layout.menu("INFO_MT_area")
@@ -562,6 +557,7 @@ class SEQUENCER_MT_select(Menu):
         layout = self.layout
         st = context.space_data
         has_sequencer, _has_preview = _space_view_types(st)
+        is_retiming = context.scene.sequence_editor.selected_retiming_keys
 
         layout.operator("sequencer.select_all", text="All").action = 'SELECT'
         layout.operator("sequencer.select_all", text="None").action = 'DESELECT'
@@ -570,21 +566,24 @@ class SEQUENCER_MT_select(Menu):
         layout.separator()
 
         layout.operator("sequencer.select_box", text="Box Select")
+
+        col = layout.column()
         if has_sequencer:
-            props = layout.operator("sequencer.select_box", text="Box Select (Include Handles)")
+            props = col.operator("sequencer.select_box", text="Box Select (Include Handles)")
             props.include_handles = True
 
-        layout.separator()
+        col.separator()
 
         if has_sequencer:
-            layout.operator_menu_enum("sequencer.select_side_of_frame", "side", text="Side of Frame...")
-            layout.menu("SEQUENCER_MT_select_handle", text="Handle")
-            layout.menu("SEQUENCER_MT_select_channel", text="Channel")
-            layout.menu("SEQUENCER_MT_select_linked", text="Linked")
+            col.operator_menu_enum("sequencer.select_side_of_frame", "side", text="Side of Frame...")
+            col.menu("SEQUENCER_MT_select_handle", text="Handle")
+            col.menu("SEQUENCER_MT_select_channel", text="Channel")
+            col.menu("SEQUENCER_MT_select_linked", text="Linked")
 
-            layout.separator()
+            col.separator()
 
-        layout.operator_menu_enum("sequencer.select_grouped", "type", text="Grouped")
+        col.operator_menu_enum("sequencer.select_grouped", "type", text="Grouped")
+        col.enabled = not is_retiming
 
 
 class SEQUENCER_MT_marker(Menu):
@@ -670,6 +669,7 @@ class SEQUENCER_MT_navigation(Menu):
 class SEQUENCER_MT_add(Menu):
     bl_label = "Add"
     bl_translation_context = i18n_contexts.operator_default
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
 
     def draw(self, context):
 
@@ -927,34 +927,67 @@ class SEQUENCER_MT_strip_movie(Menu):
         layout.operator("sequencer.deinterlace_selected_movies")
 
 
+class SEQUENCER_MT_strip_retiming(Menu):
+    bl_label = "Retiming"
+
+    def draw(self, context):
+        is_retiming = context.scene.sequence_editor.selected_retiming_keys
+        strip = context.active_sequence_strip
+        layout = self.layout
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_add_freeze_frame_slide")
+        col = layout.column()
+        col.operator("sequencer.retiming_add_transition_slide")
+        col.enabled = is_retiming
+
+        layout.separator()
+
+        layout.operator("sequencer.delete", text="Delete Retiming Keys")
+        col = layout.column()
+        col.operator("sequencer.retiming_reset")
+        col.enabled = not is_retiming
+
+        layout.separator()
+
+        layout.operator("sequencer.retiming_segment_speed_set")
+        layout.operator(
+            "sequencer.retiming_show",
+            icon='CHECKBOX_HLT' if (strip and strip.show_retiming_keys) else 'CHECKBOX_DEHLT',
+            text="Toggle Retiming Keys",
+        )
+
+
 class SEQUENCER_MT_strip(Menu):
     bl_label = "Strip"
 
     def draw(self, context):
+        from bl_ui_utils.layout import operator_context
+
         layout = self.layout
         st = context.space_data
         has_sequencer, _has_preview = _space_view_types(st)
 
         layout.menu("SEQUENCER_MT_strip_transform")
-        layout.separator()
 
         if has_sequencer:
+            layout.menu("SEQUENCER_MT_strip_retiming")
+            layout.separator()
 
-            props = layout.operator("sequencer.split", text="Split")
-            props.type = 'SOFT'
-            props.side = 'RIGHT'
+            with operator_context(layout, 'EXEC_REGION_WIN'):
+                props = layout.operator("sequencer.split", text="Split")
+                props.type = 'SOFT'
 
-            props = layout.operator("sequencer.split", text="Hold Split")
-            props.type = 'HARD'
-            props.side = 'RIGHT'
+                props = layout.operator("sequencer.split", text="Hold Split")
+                props.type = 'HARD'
 
             layout.separator()
 
-        if has_sequencer:
             layout.operator("sequencer.copy", text="Copy")
             layout.operator("sequencer.paste", text="Paste")
             layout.operator("sequencer.duplicate_move")
 
+        layout.separator()
         layout.operator("sequencer.delete", text="Delete")
 
         strip = context.active_sequence_strip
@@ -1059,10 +1092,23 @@ class SEQUENCER_MT_image_apply(Menu):
         layout.operator("sequencer.strip_transform_fit", text="Stretch To Fill").fit_method = 'STRETCH'
 
 
-class SEQUENCER_MT_context_menu(Menu):
-    bl_label = "Sequencer Context Menu"
+class SEQUENCER_MT_retiming(Menu):
+    bl_label = "Retiming"
+    bl_translation_context = i18n_contexts.operator_default
 
     def draw(self, context):
+
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_add_freeze_frame_slide")
+
+
+class SEQUENCER_MT_context_menu(Menu):
+    bl_label = "Sequencer"
+
+    def draw_generic(self, context):
         layout = self.layout
 
         layout.operator_context = 'INVOKE_REGION_WIN'
@@ -1099,8 +1145,6 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.operator("sequencer.gap_insert")
 
         layout.separator()
-
-        strip = context.active_sequence_strip
 
         if strip:
             strip_type = strip.type
@@ -1160,9 +1204,31 @@ class SEQUENCER_MT_context_menu(Menu):
 
         layout.menu("SEQUENCER_MT_strip_lock_mute")
 
+    def draw_retime(self, context):
+        layout = self.layout
+        layout.operator_context = 'INVOKE_REGION_WIN'
+
+        if context.scene.sequence_editor.selected_retiming_keys:
+            layout.operator("sequencer.retiming_add_freeze_frame_slide")
+            layout.operator("sequencer.retiming_add_transition_slide")
+            layout.separator()
+
+            layout.operator("sequencer.retiming_segment_speed_set")
+            layout.separator()
+
+            layout.operator("sequencer.delete", text="Delete Retiming Keys")
+
+    def draw(self, context):
+        ed = context.scene.sequence_editor
+        if ed.selected_retiming_keys:
+
+            self.draw_retime(context)
+        else:
+            self.draw_generic(context)
+
 
 class SEQUENCER_MT_preview_context_menu(Menu):
-    bl_label = "Sequencer Preview Context Menu"
+    bl_label = "Sequencer Preview"
 
     def draw(self, context):
         layout = self.layout
@@ -1175,11 +1241,6 @@ class SEQUENCER_MT_preview_context_menu(Menu):
 
         # TODO: support in preview.
         # layout.operator("sequencer.delete", text="Delete")
-
-        strip = context.active_sequence_strip
-
-        if strip:
-            pass
 
 
 class SEQUENCER_MT_pivot_pie(Menu):
@@ -1763,16 +1824,6 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
         if strip.scene_input == 'CAMERA':
             layout.template_ID(strip, "scene_camera", text="Camera")
 
-        if scene:
-            # Build a manual split layout as a hack to get proper alignment with the rest of the buttons.
-            sub = layout.row(align=True)
-            sub.use_property_decorate = True
-            split = sub.split(factor=0.4, align=True)
-            split.alignment = 'RIGHT'
-            split.label(text="Volume", text_ctxt=i18n_contexts.id_sound)
-            split.prop(scene, "audio_volume", text="")
-            sub.use_property_decorate = False
-
         if strip.scene_input == 'CAMERA':
             layout = layout.column(heading="Show")
             layout.prop(strip, "use_annotations", text="Annotations")
@@ -1780,6 +1831,39 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
                 # Warning, this is not a good convention to follow.
                 # Expose here because setting the alpha from the "Render" menu is very inconvenient.
                 layout.prop(scene.render, "film_transparent")
+
+
+class SEQUENCER_PT_scene_sound(SequencerButtonsPanel, Panel):
+    bl_label = "Sound"
+    bl_category = "Strip"
+
+    @classmethod
+    def poll(cls, context):
+        if not cls.has_sequencer(context):
+            return False
+
+        strip = context.active_sequence_strip
+        if not strip:
+            return False
+
+        return (strip.type == 'SCENE')
+
+    def draw(self, context):
+        strip = context.active_sequence_strip
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        layout.active = not strip.mute
+
+        col = layout.column()
+
+        col.use_property_decorate = True
+        split = col.split(factor=0.4)
+        split.alignment = 'RIGHT'
+        split.label(text="Strip Volume", text_ctxt=i18n_contexts.id_sound)
+        split.prop(strip, "volume", text="")
+        col.use_property_decorate = False
 
 
 class SEQUENCER_PT_mask(SequencerButtonsPanel, Panel):
@@ -1812,7 +1896,7 @@ class SEQUENCER_PT_mask(SequencerButtonsPanel, Panel):
         if mask:
             sta = mask.frame_start
             end = mask.frame_end
-            layout.label(text=iface_("Original frame range: %d-%d (%d)") % (sta, end, end - sta + 1), translate=False)
+            layout.label(text=rpt_("Original frame range: %d-%d (%d)") % (sta, end, end - sta + 1), translate=False)
 
 
 class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
@@ -1875,33 +1959,40 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
 
         max_length = max(len(x) for x in length_list)
         max_factor = (1.9 - max_length) / 30
+        factor = 0.45
 
         layout.enabled = not strip.lock
         layout.active = not strip.mute
 
         sub = layout.row(align=True)
-        split = sub.split(factor=0.5 + max_factor)
+        split = sub.split(factor=factor + max_factor)
+        split.alignment = 'RIGHT'
+        split.label(text="")
+        split.prop(strip, "show_retiming_keys")
+
+        sub = layout.row(align=True)
+        split = sub.split(factor=factor + max_factor)
         split.alignment = 'RIGHT'
         split.label(text="Channel")
         split.prop(strip, "channel", text="")
 
         sub = layout.column(align=True)
-        split = sub.split(factor=0.5 + max_factor, align=True)
+        split = sub.split(factor=factor + max_factor, align=True)
         split.alignment = 'RIGHT'
         split.label(text="Start")
         split.prop(strip, "frame_start", text=smpte_from_frame(frame_start))
 
-        split = sub.split(factor=0.5 + max_factor, align=True)
+        split = sub.split(factor=factor + max_factor, align=True)
         split.alignment = 'RIGHT'
         split.label(text="Duration")
         split.prop(strip, "frame_final_duration", text=smpte_from_frame(frame_final_duration))
 
         # Use label, editing this value from the UI allows negative values,
         # users can adjust duration.
-        split = sub.split(factor=0.5 + max_factor, align=True)
+        split = sub.split(factor=factor + max_factor, align=True)
         split.alignment = 'RIGHT'
         split.label(text="End")
-        split = split.split(factor=0.8 + max_factor, align=True)
+        split = split.split(factor=factor + 0.3 + max_factor, align=True)
         split.label(text="%14s" % smpte_from_frame(frame_final_end))
         split.alignment = 'RIGHT'
         split.label(text=str(frame_final_end) + " ")
@@ -1911,12 +2002,12 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
             layout.alignment = 'RIGHT'
             sub = layout.column(align=True)
 
-            split = sub.split(factor=0.5 + max_factor, align=True)
+            split = sub.split(factor=factor + max_factor, align=True)
             split.alignment = 'RIGHT'
             split.label(text="Strip Offset Start")
             split.prop(strip, "frame_offset_start", text=smpte_from_frame(frame_offset_start))
 
-            split = sub.split(factor=0.5 + max_factor, align=True)
+            split = sub.split(factor=factor + max_factor, align=True)
             split.alignment = 'RIGHT'
             split.label(text="End")
             split.prop(strip, "frame_offset_end", text=smpte_from_frame(frame_offset_end))
@@ -1924,12 +2015,12 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
             layout.alignment = 'RIGHT'
             sub = layout.column(align=True)
 
-            split = sub.split(factor=0.5 + max_factor, align=True)
+            split = sub.split(factor=factor + max_factor, align=True)
             split.alignment = 'RIGHT'
             split.label(text="Hold Offset Start")
             split.prop(strip, "animation_offset_start", text=smpte_from_frame(strip.animation_offset_start))
 
-            split = sub.split(factor=0.5 + max_factor, align=True)
+            split = sub.split(factor=factor + max_factor, align=True)
             split.alignment = 'RIGHT'
             split.label(text="End")
             split.prop(strip, "animation_offset_end", text=smpte_from_frame(strip.animation_offset_end))
@@ -1941,10 +2032,10 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
             (frame_current <= frame_final_start + frame_final_duration)
         )
 
-        split = col.split(factor=0.5 + max_factor, align=True)
+        split = col.split(factor=factor + max_factor, align=True)
         split.alignment = 'RIGHT'
         split.label(text="Current Frame")
-        split = split.split(factor=0.8 + max_factor, align=True)
+        split = split.split(factor=factor + 0.3 + max_factor, align=True)
         frame_display = frame_current - frame_final_start
         split.label(text="%14s" % smpte_from_frame(frame_display))
         split.alignment = 'RIGHT'
@@ -1956,7 +2047,7 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
             if scene:
                 sta = scene.frame_start
                 end = scene.frame_end
-                split = col.split(factor=0.5 + max_factor)
+                split = col.split(factor=factor + max_factor)
                 split.alignment = 'RIGHT'
                 split.label(text="Original Frame Range")
                 split.alignment = 'LEFT'
@@ -2183,6 +2274,7 @@ class SEQUENCER_PT_adjust_color(SequencerButtonsPanel, Panel):
         col = layout.column()
         col.prop(strip, "color_saturation", text="Saturation")
         col.prop(strip, "color_multiply", text="Multiply")
+        col.prop(strip, "multiply_alpha")
         col.prop(strip, "use_float", text="Convert to Float")
 
 
@@ -2577,7 +2669,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                             col.prop(mod, "gamma")
                 else:
                     if mod.type == 'SOUND_EQUALIZER':
-                        eq_row = box.row()
+                        # eq_row = box.row()
                         # eq_graphs = eq_row.operator_menu_enum("sequencer.strip_modifier_equalizer_redefine", "graphs")
                         # eq_graphs.name = mod.name
                         flow = box.grid_flow(
@@ -2631,6 +2723,8 @@ class SEQUENCER_PT_annotation_onion(AnnotationOnionSkin, SequencerButtonsPanel_O
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "View"
+    bl_parent_id = "SEQUENCER_PT_annotation"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @staticmethod
     def has_preview(context):
@@ -2711,6 +2805,7 @@ classes = (
     SEQUENCER_MT_strip_movie,
     SEQUENCER_MT_strip,
     SEQUENCER_MT_strip_transform,
+    SEQUENCER_MT_strip_retiming,
     SEQUENCER_MT_strip_input,
     SEQUENCER_MT_strip_lock_mute,
     SEQUENCER_MT_image,
@@ -2721,6 +2816,7 @@ classes = (
     SEQUENCER_MT_context_menu,
     SEQUENCER_MT_preview_context_menu,
     SEQUENCER_MT_pivot_pie,
+    SEQUENCER_MT_retiming,
     SEQUENCER_MT_view_pie,
     SEQUENCER_MT_preview_view_pie,
 
@@ -2736,6 +2832,7 @@ classes = (
 
     SEQUENCER_PT_effect,
     SEQUENCER_PT_scene,
+    SEQUENCER_PT_scene_sound,
     SEQUENCER_PT_mask,
     SEQUENCER_PT_effect_text_style,
     SEQUENCER_PT_effect_text_layout,

@@ -18,6 +18,8 @@ class FloatBuilder;
 
 class Float : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_FLOAT;
+
   float default_value = 0.0f;
   float soft_min_value = -FLT_MAX;
   float soft_max_value = FLT_MAX;
@@ -45,6 +47,8 @@ class IntBuilder;
 
 class Int : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_INT;
+
   int default_value = 0;
   int soft_min_value = INT32_MIN;
   int soft_max_value = INT32_MAX;
@@ -72,6 +76,8 @@ class VectorBuilder;
 
 class Vector : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_VECTOR;
+
   float3 default_value = {0, 0, 0};
   float soft_min_value = -FLT_MAX;
   float soft_max_value = FLT_MAX;
@@ -100,6 +106,8 @@ class BoolBuilder;
 
 class Bool : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_BOOLEAN;
+
   bool default_value = false;
   friend BoolBuilder;
 
@@ -120,7 +128,9 @@ class ColorBuilder;
 
 class Color : public SocketDeclaration {
  public:
-  ColorGeometry4f default_value;
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_RGBA;
+
+  ColorGeometry4f default_value{0.8f, 0.8f, 0.8f, 1.0f};
 
   friend ColorBuilder;
 
@@ -141,6 +151,8 @@ class RotationBuilder;
 
 class Rotation : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_ROTATION;
+
   math::EulerXYZ default_value;
 
   friend RotationBuilder;
@@ -158,10 +170,30 @@ class RotationBuilder : public SocketDeclarationBuilder<Rotation> {
   RotationBuilder &default_value(const math::EulerXYZ &value);
 };
 
+class MatrixBuilder;
+
+class Matrix : public SocketDeclaration {
+ public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_MATRIX;
+
+  friend MatrixBuilder;
+
+  using Builder = MatrixBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class MatrixBuilder : public SocketDeclarationBuilder<Matrix> {};
+
 class StringBuilder;
 
 class String : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_STRING;
+
   std::string default_value;
 
   friend StringBuilder;
@@ -177,6 +209,29 @@ class String : public SocketDeclaration {
 class StringBuilder : public SocketDeclarationBuilder<String> {
  public:
   StringBuilder &default_value(const std::string value);
+};
+
+class MenuBuilder;
+
+class Menu : public SocketDeclaration {
+ public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_MENU;
+
+  int32_t default_value;
+
+  friend MenuBuilder;
+
+  using Builder = MenuBuilder;
+
+  bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
+  bool matches(const bNodeSocket &socket) const override;
+  bNodeSocket &update_or_build(bNodeTree &ntree, bNode &node, bNodeSocket &socket) const override;
+  bool can_connect(const bNodeSocket &socket) const override;
+};
+
+class MenuBuilder : public SocketDeclarationBuilder<Menu> {
+ public:
+  MenuBuilder &default_value(int32_t value);
 };
 
 class IDSocketDeclaration : public SocketDeclaration {
@@ -200,6 +255,8 @@ class IDSocketDeclaration : public SocketDeclaration {
 
 class Object : public IDSocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_OBJECT;
+
   using Builder = SocketDeclarationBuilder<Object>;
 
   Object();
@@ -207,6 +264,8 @@ class Object : public IDSocketDeclaration {
 
 class Material : public IDSocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_MATERIAL;
+
   using Builder = SocketDeclarationBuilder<Material>;
 
   Material();
@@ -214,6 +273,8 @@ class Material : public IDSocketDeclaration {
 
 class Collection : public IDSocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_COLLECTION;
+
   using Builder = SocketDeclarationBuilder<Collection>;
 
   Collection();
@@ -221,6 +282,8 @@ class Collection : public IDSocketDeclaration {
 
 class Texture : public IDSocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_TEXTURE;
+
   using Builder = SocketDeclarationBuilder<Texture>;
 
   Texture();
@@ -228,6 +291,8 @@ class Texture : public IDSocketDeclaration {
 
 class Image : public IDSocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_IMAGE;
+
   using Builder = SocketDeclarationBuilder<Image>;
 
   Image();
@@ -237,6 +302,8 @@ class ShaderBuilder;
 
 class Shader : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_SHADER;
+
   friend ShaderBuilder;
 
   using Builder = ShaderBuilder;
@@ -246,8 +313,7 @@ class Shader : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-class ShaderBuilder : public SocketDeclarationBuilder<Shader> {
-};
+class ShaderBuilder : public SocketDeclarationBuilder<Shader> {};
 
 class ExtendBuilder;
 
@@ -256,6 +322,8 @@ class Extend : public SocketDeclaration {
   friend ExtendBuilder;
 
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_CUSTOM;
+
   using Builder = ExtendBuilder;
 
   bNodeSocket &build(bNodeTree &ntree, bNode &node) const override;
@@ -264,11 +332,12 @@ class Extend : public SocketDeclaration {
   bool can_connect(const bNodeSocket &socket) const override;
 };
 
-class ExtendBuilder : public SocketDeclarationBuilder<Extend> {
-};
+class ExtendBuilder : public SocketDeclarationBuilder<Extend> {};
 
 class Custom : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_CUSTOM;
+
   const char *idname_;
   std::function<void(bNode &node, bNodeSocket &socket, const char *data_path)> init_socket_fn;
 
@@ -405,6 +474,18 @@ inline ColorBuilder &ColorBuilder::default_value(const ColorGeometry4f value)
 inline StringBuilder &StringBuilder::default_value(std::string value)
 {
   decl_->default_value = std::move(value);
+  return *this;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #MenuBuilder Inline Methods
+ * \{ */
+
+inline MenuBuilder &MenuBuilder::default_value(const int32_t value)
+{
+  decl_->default_value = value;
   return *this;
 }
 

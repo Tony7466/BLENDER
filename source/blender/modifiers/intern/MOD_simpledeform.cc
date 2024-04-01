@@ -10,23 +10,15 @@
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_deform.h"
-#include "BKE_editmesh.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -34,14 +26,12 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_query.h"
-
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
 #define BEND_EPS 0.000001f
 
-ALIGN_STRUCT struct DeformUserData {
+BLI_ALIGN_STRUCT struct DeformUserData {
   bool invert_vgroup;
   char mode;
   char deform_axis;
@@ -80,8 +70,10 @@ BLI_INLINE void copy_v3_v3_unmap(float a[3], const float b[3], const uint map[3]
   a[map[2]] = b[2];
 }
 
-/* Clamps/Limits the given coordinate to:  limits[0] <= co[axis] <= limits[1]
- * The amount of clamp is saved on dcut */
+/**
+ * Clamps/Limits the given coordinate to: limits[0] <= co[axis] <= limits[1]
+ * The amount of clamp is saved on `dcut`.
+ */
 static void axis_limit(const int axis, const float limits[2], float co[3], float dcut[3])
 {
   float val = co[axis];
@@ -443,11 +435,15 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
   SimpleDeformModifierData *sdmd = (SimpleDeformModifierData *)md;
-  SimpleDeformModifier_do(sdmd, ctx, ctx->object, mesh, vertexCos, verts_num);
+  SimpleDeformModifier_do(sdmd,
+                          ctx,
+                          ctx->object,
+                          mesh,
+                          reinterpret_cast<float(*)[3]>(positions.data()),
+                          positions.size());
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -529,7 +525,7 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /*struct_name*/ "SimpleDeformModifierData",
     /*struct_size*/ sizeof(SimpleDeformModifierData),
     /*srna*/ &RNA_SimpleDeformModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
 
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_AcceptsVertexCosOnly | eModifierTypeFlag_SupportsEditmode |
@@ -558,4 +554,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

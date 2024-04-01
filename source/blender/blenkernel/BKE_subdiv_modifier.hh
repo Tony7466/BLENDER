@@ -12,10 +12,6 @@
 
 #include "BLI_sys_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* Hardcoded for until GPU shaders are automatically generated, then we will have a more
  * programmatic way of detecting this. */
 #define MAX_GPU_SUBDIV_SSBOS 12
@@ -45,7 +41,6 @@ struct SubsurfRuntimeData {
   bool has_gpu_subdiv;
   int resolution;
   bool use_optimal_display;
-  bool calc_loop_normals;
   bool use_loop_normals;
 
   /* Cached from the draw code for stats display. */
@@ -97,7 +92,3 @@ Subdiv *BKE_subsurf_modifier_subdiv_descriptor_ensure(SubsurfRuntimeData *runtim
  * which should be used to check if the modifier is enabled.
  */
 int BKE_subsurf_modifier_eval_required_mode(bool is_final_render, bool is_edit_mode);
-
-#ifdef __cplusplus
-}
-#endif

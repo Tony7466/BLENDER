@@ -98,19 +98,30 @@ struct bAnimContext {
   ReportList *reports;
 };
 
-/* Main Data container types */
+/** Main Data container types. */
 enum eAnimCont_Types {
-  ANIMCONT_NONE = 0,      /* invalid or no data */
-  ANIMCONT_ACTION = 1,    /* action (#bAction) */
-  ANIMCONT_SHAPEKEY = 2,  /* shape-key (#Key) */
-  ANIMCONT_GPENCIL = 3,   /* grease pencil (screen) */
-  ANIMCONT_DOPESHEET = 4, /* dope-sheet (#bDopesheet) */
-  ANIMCONT_FCURVES = 5,   /* animation F-Curves (#bDopesheet) */
-  ANIMCONT_DRIVERS = 6,   /* drivers (#bDopesheet) */
-  ANIMCONT_NLA = 7,       /* NLA (#bDopesheet) */
-  ANIMCONT_CHANNEL = 8,   /* animation channel (#bAnimListElem) */
-  ANIMCONT_MASK = 9,      /* mask dope-sheet */
-  ANIMCONT_TIMELINE = 10, /* "timeline" editor (#bDopeSheet) */
+  /** Invalid or no data. */
+  ANIMCONT_NONE = 0,
+  /** Action (#bAction). */
+  ANIMCONT_ACTION = 1,
+  /** Shape-key (#Key). */
+  ANIMCONT_SHAPEKEY = 2,
+  /** Grease pencil (screen). */
+  ANIMCONT_GPENCIL = 3,
+  /** Dope-sheet (#bDopesheet). */
+  ANIMCONT_DOPESHEET = 4,
+  /** Animation F-Curves (#bDopesheet). */
+  ANIMCONT_FCURVES = 5,
+  /** Drivers (#bDopesheet). */
+  ANIMCONT_DRIVERS = 6,
+  /** NLA (#bDopesheet). */
+  ANIMCONT_NLA = 7,
+  /** Animation channel (#bAnimListElem). */
+  ANIMCONT_CHANNEL = 8,
+  /** Mask dope-sheet. */
+  ANIMCONT_MASK = 9,
+  /** "timeline" editor (#bDopeSheet). */
+  ANIMCONT_TIMELINE = 10,
 };
 
 /** \} */
@@ -247,7 +258,7 @@ enum eAnim_ChannelType {
   ANIMTYPE_NUM_TYPES,
 };
 
-/* types of keyframe data in bAnimListElem */
+/** Types of keyframe data in #bAnimListElem. */
 enum eAnim_KeyType {
   ALE_NONE = 0, /* no keyframe data */
   ALE_FCURVE,   /* F-Curve */
@@ -272,9 +283,12 @@ enum eAnim_KeyType {
  * For use with ANIM_animdata_update()
  */
 enum eAnim_Update_Flags {
-  ANIM_UPDATE_DEPS = (1 << 0),    /* referenced data and dependencies get refreshed */
-  ANIM_UPDATE_ORDER = (1 << 1),   /* keyframes need to be sorted */
-  ANIM_UPDATE_HANDLES = (1 << 2), /* recalculate handles */
+  /** Referenced data and dependencies get refreshed. */
+  ANIM_UPDATE_DEPS = (1 << 0),
+  /** Keyframes need to be sorted. */
+  ANIM_UPDATE_ORDER = (1 << 1),
+  /** Recalculate handles. */
+  ANIM_UPDATE_HANDLES = (1 << 2),
 };
 
 /* used for most tools which change keyframes (flushed by ANIM_animdata_update) */
@@ -436,26 +450,23 @@ ENUM_OPERATORS(eAnimFilter_Flags, ANIMFILTER_TMP_IGNORE_ONLYSEL);
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name NLA Channel Defines
+/** \name NLA Track Defines
  * \{ */
 
-/** NLA channel heights */
-#define NLACHANNEL_FIRST_TOP(ac) \
-  (UI_view2d_scale_get_y(&(ac)->region->v2d) * -UI_TIME_SCRUB_MARGIN_Y - NLACHANNEL_SKIP)
-#define NLACHANNEL_HEIGHT(snla) \
+/** NLA track heights */
+#define NLATRACK_FIRST_TOP(ac) \
+  (UI_view2d_scale_get_y(&(ac)->region->v2d) * -UI_TIME_SCRUB_MARGIN_Y - NLATRACK_SKIP)
+#define NLATRACK_HEIGHT(snla) \
   (((snla) && ((snla)->flag & SNLA_NOSTRIPCURVES)) ? (0.8f * U.widget_unit) : \
                                                      (1.2f * U.widget_unit))
-#define NLACHANNEL_SKIP (0.1f * U.widget_unit)
-#define NLACHANNEL_STEP(snla) (NLACHANNEL_HEIGHT(snla) + NLACHANNEL_SKIP)
+#define NLATRACK_SKIP (0.1f * U.widget_unit)
+#define NLATRACK_STEP(snla) (NLATRACK_HEIGHT(snla) + NLATRACK_SKIP)
 /** Additional offset to give some room at the end. */
-#define NLACHANNEL_TOT_HEIGHT(ac, item_amount) \
-  (-NLACHANNEL_FIRST_TOP(ac) + NLACHANNEL_STEP(((SpaceNla *)(ac)->sl)) * (item_amount + 1))
+#define NLATRACK_TOT_HEIGHT(ac, item_amount) \
+  (-NLATRACK_FIRST_TOP(ac) + NLATRACK_STEP(((SpaceNla *)(ac)->sl)) * (item_amount + 1))
 
-/** Channel widths */
-#define NLACHANNEL_NAMEWIDTH (10 * U.widget_unit)
-
-/** Channel toggle-buttons */
-#define NLACHANNEL_BUTTON_WIDTH (0.8f * U.widget_unit)
+/** Track widths */
+#define NLATRACK_NAMEWIDTH (10 * U.widget_unit)
 
 /** \} */
 
@@ -492,6 +503,9 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac);
  * - AnimContext to write to is provided as pointer to var on stack so that we don't have
  *   allocation/freeing costs (which are not that avoidable with channels).
  * \return whether the operation was successful.
+ *
+ * \note This may also update the space data. For example, `SpaceAction::action`
+ * is set to the currently active object's Action.
  */
 bool ANIM_animdata_context_getdata(bAnimContext *ac);
 
@@ -537,7 +551,7 @@ enum eAnimChannels_SetFlag {
   ACHANNEL_SETFLAG_INVERT = 2,
   /** some on -> all off / all on */
   ACHANNEL_SETFLAG_TOGGLE = 3,
-  /** turn off, keep active flag **/
+  /** Turn off, keep active flag. */
   ACHANNEL_SETFLAG_EXTEND_RANGE = 4,
 };
 
@@ -570,6 +584,12 @@ struct bAnimChannelType {
   /* -- Drawing -- */
   /** Get RGB color that is used to draw the majority of the backdrop. */
   void (*get_backdrop_color)(bAnimContext *ac, bAnimListElem *ale, float r_color[3]);
+
+  /** Get RGB color that represents this channel.
+   * \return true when r_color was updated, false when there is no color for this channel.
+   */
+  bool (*get_channel_color)(const bAnimListElem *ale, uint8_t r_color[3]);
+
   /** Draw backdrop strip for channel. */
   void (*draw_backdrop)(bAnimContext *ac, bAnimListElem *ale, float yminc, float ymaxc);
   /** Get depth of indentation (relative to the depth channel is nested at). */
@@ -711,20 +731,6 @@ void ANIM_set_active_channel(bAnimContext *ac,
  * Return whether channel is active.
  */
 bool ANIM_is_active_channel(bAnimListElem *ale);
-
-/**
- * Delete the F-Curve from the given AnimData block (if possible),
- * as appropriate according to animation context.
- */
-void ANIM_fcurve_delete_from_animdata(bAnimContext *ac, AnimData *adt, FCurve *fcu);
-
-/**
- * Unlink the action from animdata if it's empty.
- *
- * If the action has no F-Curves, unlink it from AnimData if it did not
- * come from a NLA Strip being tweaked.
- */
-bool ANIM_remove_empty_action_from_animdata(AnimData *adt);
 
 /* ************************************************ */
 /* DRAWING API */
@@ -931,6 +937,7 @@ void ED_nla_postop_refresh(bAnimContext *ac);
 
 /** Flags for conversion mapping. */
 enum eAnimUnitConv_Flags {
+  ANIM_UNITCONV_NONE = 0,
   /** Restore to original internal values. */
   ANIM_UNITCONV_RESTORE = (1 << 0),
   /** Ignore handles (i.e. only touch main keyframes). */
@@ -952,7 +959,7 @@ enum eAnimUnitConv_Flags {
 /**
  * Get flags used for normalization in ANIM_unit_mapping_get_factor.
  */
-short ANIM_get_normalization_flags(bAnimContext *ac);
+short ANIM_get_normalization_flags(SpaceLink *space_link);
 /**
  * Get unit conversion factor for given ID + F-Curve.
  */
@@ -963,12 +970,6 @@ float ANIM_unit_mapping_get_factor(Scene *scene, ID *id, FCurve *fcu, short flag
 /* -------------------------------------------------------------------- */
 /** \name Utility macros
  * \{ */
-
-/**
- * Provide access to Keyframe Type info in #BezTriple.
- * NOTE: this is so that we can change it from being stored in 'hide'
- */
-#define BEZKEYTYPE(bezt) ((bezt)->hide)
 
 /**
  * Set/Clear/Toggle macro.

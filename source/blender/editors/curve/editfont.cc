@@ -27,21 +27,21 @@
 #include "DNA_text_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
-#include "BKE_vfont.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
+#include "BKE_vfont.hh"
 
 #include "BLI_string_utf8.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -57,7 +57,7 @@
 
 #include "UI_interface.hh"
 
-#include "curve_intern.h"
+#include "curve_intern.hh"
 
 #define MAXTEXT 32766
 
@@ -385,7 +385,7 @@ static int insert_into_textbuf(Object *obedit, uintptr_t c)
     ef->textbuf[ef->pos] = c;
     ef->textbufinfo[ef->pos] = cu->curinfo;
     ef->textbufinfo[ef->pos].kern = 0.0f;
-    ef->textbufinfo[ef->pos].mat_nr = obedit->actcol;
+    ef->textbufinfo[ef->pos].mat_nr = obedit->actcol - 1;
 
     ef->pos++;
     ef->len++;
@@ -418,10 +418,7 @@ static void text_update_edited(bContext *C, Object *obedit, const eEditFontMode 
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
   if (obedit->totcol > 0) {
-    obedit->actcol = cu->curinfo.mat_nr;
-
-    /* since this array is calloc'd, it can be 0 even though we try ensure
-     * (mat_nr > 0) almost everywhere */
+    obedit->actcol = cu->curinfo.mat_nr + 1;
     if (obedit->actcol < 1) {
       obedit->actcol = 1;
     }
@@ -478,7 +475,6 @@ static void font_select_update_primary_clipboard(Object *obedit)
 /** \name Generic Paste Functions
  * \{ */
 
-/* text_update_edited(C, scene, obedit, 1, FO_EDIT); */
 static bool font_paste_wchar(Object *obedit,
                              const char32_t *str,
                              const size_t str_len,
@@ -650,6 +646,143 @@ void FONT_OT_text_paste_from_file(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Insert Unicode Character
+ * \{ */
+
+static void text_insert_unicode_cancel(bContext *C, void *arg_block, void * /*arg2*/)
+{
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
+  UI_popup_block_close(C, CTX_wm_window(C), block);
+}
+
+static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_string)
+{
+  uiBlock *block = static_cast<uiBlock *>(arg_block);
+  char *edit_string = static_cast<char *>(arg_string);
+
+  if (edit_string[0] == 0) {
+    /* Blank text is probably purposeful closure. */
+    UI_popup_block_close(C, CTX_wm_window(C), block);
+    return;
+  }
+
+  uint val = strtoul(edit_string, nullptr, 16);
+  if (val > 31 && val < 0x10FFFF) {
+    Object *obedit = CTX_data_edit_object(C);
+    if (obedit) {
+      const char32_t utf32[2] = {val, 0};
+      font_paste_wchar(obedit, utf32, 1, nullptr);
+      text_update_edited(C, obedit, FO_EDIT);
+    }
+    UI_popup_block_close(C, CTX_wm_window(C), block);
+  }
+  else {
+    /* Invalid. Clear text and keep dialog open. */
+    edit_string[0] = 0;
+  }
+}
+
+static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, void *arg_string)
+{
+  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
+  char *edit_string = static_cast<char *>(arg_string);
+
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
+  const uiStyle *style = UI_style_get_dpi();
+  uiLayout *layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, 200 * UI_SCALE_FAC, UI_UNIT_Y, 0, style);
+
+  uiItemL_ex(layout, "Insert Unicode Character", ICON_NONE, true, false);
+  uiItemL(layout, "Enter a Unicode codepoint hex value", ICON_NONE);
+
+  uiBut *text_but = uiDefBut(block,
+                             UI_BTYPE_TEXT,
+                             0,
+                             "",
+                             0,
+                             0,
+                             100,
+                             UI_UNIT_Y,
+                             edit_string,
+                             0,
+                             7,
+                             TIP_("Unicode codepoint hex value"));
+  UI_but_flag_enable(text_but, UI_BUT_ACTIVATE_ON_INIT);
+  /* Hitting Enter in the text input is treated the same as clicking the Confirm button. */
+  UI_but_func_set(text_but, text_insert_unicode_confirm, block, edit_string);
+
+  uiItemS(layout);
+
+  /* Buttons. */
+
+#ifdef _WIN32
+  const bool windows_layout = true;
+#else
+  const bool windows_layout = false;
+#endif
+
+  uiBut *confirm = nullptr;
+  uiBut *cancel = nullptr;
+  uiLayout *split = uiLayoutSplit(layout, 0.0f, true);
+  uiLayoutColumn(split, false);
+
+  if (windows_layout) {
+    confirm = uiDefIconTextBut(
+        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, nullptr);
+    uiLayoutColumn(split, false);
+  }
+
+  cancel = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, 0, "Cancel", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, nullptr);
+
+  if (!windows_layout) {
+    uiLayoutColumn(split, false);
+    confirm = uiDefIconTextBut(
+        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, nullptr);
+  }
+
+  UI_block_func_set(block, nullptr, nullptr, nullptr);
+  UI_but_func_set(confirm, text_insert_unicode_confirm, block, edit_string);
+  UI_but_func_set(cancel, text_insert_unicode_cancel, block, nullptr);
+  UI_but_drawflag_disable(confirm, UI_BUT_TEXT_LEFT);
+  UI_but_drawflag_disable(cancel, UI_BUT_TEXT_LEFT);
+  UI_but_flag_enable(confirm, UI_BUT_ACTIVE_DEFAULT);
+
+  int bounds_offset[2];
+  bounds_offset[0] = uiLayoutGetWidth(layout) * -0.2f;
+  bounds_offset[1] = UI_UNIT_Y * 2.5;
+  UI_block_bounds_set_popup(block, 7 * UI_SCALE_FAC, bounds_offset);
+
+  return block;
+}
+
+static int text_insert_unicode_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /*event*/)
+{
+  char *edit_string = static_cast<char *>(MEM_mallocN(24, __func__));
+  edit_string[0] = 0;
+  UI_popup_block_invoke(C, wm_block_insert_unicode_create, edit_string, MEM_freeN);
+  return OPERATOR_FINISHED;
+}
+
+void FONT_OT_text_insert_unicode(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Insert Unicode";
+  ot->description = "Insert Unicode Character";
+  ot->idname = "FONT_OT_text_insert_unicode";
+
+  /* api callbacks */
+  ot->invoke = text_insert_unicode_invoke;
+  ot->poll = ED_operator_editfont;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Text To Object
  * \{ */
 
@@ -676,7 +809,7 @@ static void txt_add_object(bContext *C,
   object = BKE_view_layer_active_object_get(view_layer);
 
   /* seems to assume view align ? TODO: look into this, could be an operator option. */
-  ED_object_base_init_transform_on_add(object, nullptr, rot);
+  blender::ed::object::init_transform_on_add(object, nullptr, rot);
 
   BKE_object_where_is_calc(depsgraph, scene, obedit);
 
@@ -1753,13 +1886,13 @@ static int insert_text_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       if (accentcode) {
         if (ef->pos > 0) {
           inserted_text[0] = findaccent(ef->textbuf[ef->pos - 1],
-                                        BLI_str_utf8_as_unicode(event->utf8_buf));
+                                        BLI_str_utf8_as_unicode_or_error(event->utf8_buf));
           ef->textbuf[ef->pos - 1] = inserted_text[0];
         }
         accentcode = false;
       }
       else if (event->utf8_buf[0]) {
-        inserted_text[0] = BLI_str_utf8_as_unicode(event->utf8_buf);
+        inserted_text[0] = BLI_str_utf8_as_unicode_or_error(event->utf8_buf);
         insert_into_textbuf(obedit, inserted_text[0]);
         accentcode = false;
       }
@@ -1821,7 +1954,8 @@ static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const 
 {
   /* Calculate a plane from the text object's orientation. */
   float plane[4];
-  plane_from_point_normal_v3(plane, obedit->object_to_world[3], obedit->object_to_world[2]);
+  plane_from_point_normal_v3(
+      plane, obedit->object_to_world().location(), obedit->object_to_world().ptr()[2]);
 
   /* Convert Mouse location in region to 3D location in world space. */
   float mal_fl[2] = {float(event->mval[0]), float(event->mval[1])};
@@ -1829,7 +1963,7 @@ static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const 
   ED_view3d_win_to_3d_on_plane(CTX_wm_region(C), plane, mal_fl, true, mouse_loc);
 
   /* Convert to object space and scale by font size. */
-  mul_m4_v3(obedit->world_to_object, mouse_loc);
+  mul_m4_v3(obedit->world_to_object().ptr(), mouse_loc);
 
   float curs_loc[2] = {mouse_loc[0], mouse_loc[1]};
   return BKE_vfont_cursor_to_text_index(obedit, curs_loc);
@@ -1852,7 +1986,7 @@ static void font_cursor_set_apply(bContext *C, const wmEvent *event)
   cu->curinfo = ef->textbufinfo[ef->pos ? ef->pos - 1 : 0];
 
   if (ob->totcol > 0) {
-    ob->actcol = cu->curinfo.mat_nr;
+    ob->actcol = cu->curinfo.mat_nr + 1;
     if (ob->actcol < 1) {
       ob->actcol = 1;
     }
@@ -2390,7 +2524,6 @@ bool ED_curve_editfont_select_pick(
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obedit = CTX_data_edit_object(C);
   Curve *cu = static_cast<Curve *>(obedit->data);
-  ViewContext vc;
   /* bias against the active, in pixels, allows cycling */
   const float active_bias_px = 4.0f;
   const float mval_fl[2] = {float(mval[0]), float(mval[1])};
@@ -2399,7 +2532,7 @@ bool ED_curve_editfont_select_pick(
   const float dist = ED_view3d_select_dist_px();
   float dist_sq_best = dist * dist;
 
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   ED_view3d_init_mats_rv3d(vc.obedit, vc.rv3d);
 
@@ -2458,7 +2591,7 @@ bool ED_curve_editfont_select_pick(
       cu->actbox = actbox_select;
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
       /* TODO: support #ID_RECALC_SELECT. */
-      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SYNC_TO_EVAL);
     }
     return true;
   }

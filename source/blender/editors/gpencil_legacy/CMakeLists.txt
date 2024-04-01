@@ -4,11 +4,9 @@
 
 set(INC
   ../include
-  ../../blenfont
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../gpu
   ../../imbuf
   ../../makesrna
@@ -52,14 +50,16 @@ set(SRC
   gpencil_vertex_paint.cc
   gpencil_weight_paint.cc
 
-  gpencil_intern.h
+  gpencil_intern.hh
   gpencil_trace.h
 )
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )

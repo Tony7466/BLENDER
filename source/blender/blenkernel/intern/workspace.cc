@@ -12,30 +12,25 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_asset.h"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_scene.h"
-#include "BKE_viewer_path.h"
+#include "BKE_asset.hh"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
+#include "BKE_viewer_path.hh"
 #include "BKE_workspace.h"
 
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
-
-#include "DEG_depsgraph.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -174,10 +169,11 @@ static void workspace_blend_read_after_liblink(BlendLibReader *reader, ID *id)
 IDTypeInfo IDType_ID_WS = {
     /*id_code*/ ID_WS,
     /*id_filter*/ FILTER_ID_WS,
+    /*dependencies_id_types*/ FILTER_ID_SCE,
     /*main_listbase_index*/ INDEX_ID_WS,
     /*struct_size*/ sizeof(WorkSpace),
     /*name*/ "WorkSpace",
-    /*name_plural*/ "workspaces",
+    /*name_plural*/ N_("workspaces"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_WORKSPACE,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_ONLY_APPEND | IDTYPE_FLAGS_NO_ANIMDATA |
         IDTYPE_FLAGS_NO_MEMFILE_UNDO,
@@ -379,7 +375,7 @@ WorkSpaceLayout *BKE_workspace_layout_add(Main *bmain,
   WorkSpaceLayout *layout = MEM_cnew<WorkSpaceLayout>(__func__);
 
   BLI_assert(!workspaces_is_screen_used(bmain, screen));
-#ifndef DEBUG
+#ifdef NDEBUG
   UNUSED_VARS(bmain);
 #endif
   layout->screen = screen;

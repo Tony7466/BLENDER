@@ -28,12 +28,12 @@
  * of render samples is used.
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
 #include "BKE_cryptomatte.h"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "RE_pipeline.h"
 
@@ -46,9 +46,9 @@
 #include "DNA_modifier_types.h"
 #include "DNA_particle_types.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Data Management cryptomatte accum buffer
@@ -250,6 +250,7 @@ void EEVEE_cryptomatte_object_curves_cache_populate(EEVEE_Data *vedata,
                                                     EEVEE_ViewLayerData *sldata,
                                                     Object *ob)
 {
+  using namespace blender::draw;
   BLI_assert(ob->type == OB_CURVES);
   Material *material = BKE_object_material_get_eval(ob, CURVES_MATERIAL_NR);
   DRWShadingGroup *grp = eevee_cryptomatte_shading_group_create(
@@ -296,10 +297,11 @@ void EEVEE_cryptomatte_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *s
     const int materials_len = DRW_cache_object_material_count_get(ob);
     GPUMaterial **gpumat_array = BLI_array_alloca(gpumat_array, materials_len);
     memset(gpumat_array, 0, sizeof(*gpumat_array) * materials_len);
-    GPUBatch **geoms = DRW_cache_object_surface_material_get(ob, gpumat_array, materials_len);
+    blender::gpu::Batch **geoms = DRW_cache_object_surface_material_get(
+        ob, gpumat_array, materials_len);
     if (geoms) {
       for (int i = 0; i < materials_len; i++) {
-        GPUBatch *geom = geoms[i];
+        blender::gpu::Batch *geom = geoms[i];
         if (geom == nullptr) {
           continue;
         }
@@ -311,7 +313,7 @@ void EEVEE_cryptomatte_cache_populate(EEVEE_Data *vedata, EEVEE_ViewLayerData *s
     }
   }
   else {
-    GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRWShadingGroup *grp = eevee_cryptomatte_shading_group_create(
           vedata, sldata, ob, nullptr, false);

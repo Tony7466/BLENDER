@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
 #include "BLI_range.h"
 
 struct AnimData;
@@ -31,18 +32,18 @@ struct bGPdata;
 
 struct AnimKeylist;
 
-/* Information about the stretch of time from current to the next column */
+/** Information about the stretch of time from current to the next column. */
 struct ActKeyBlockInfo {
-  /* Combination of flags from all curves. */
+  /** Combination of flags from all curves. */
   short flag;
-  /* Mask of flags that differ between curves. */
+  /** Mask of flags that differ between curves. */
   short conflict;
 
-  /* Selection flag. */
+  /** Selection flag. */
   char sel;
 };
 
-/* Keyframe Column Struct */
+/** Keyframe Column Struct. */
 struct ActKeyColumn {
   /* ListBase linkage */
   ActKeyColumn *next, *prev;
@@ -72,23 +73,23 @@ struct ActKeyColumn {
   short totcurve, totkey, totblock;
 };
 
-/* ActKeyBlockInfo - Flag */
+/** #ActKeyBlockInfo - Flag. */
 enum eActKeyBlock_Hold {
-  /* Key block represents a moving hold */
+  /** Key block represents a moving hold. */
   ACTKEYBLOCK_FLAG_MOVING_HOLD = (1 << 0),
-  /* Key block represents a static hold */
+  /** Key block represents a static hold */
   ACTKEYBLOCK_FLAG_STATIC_HOLD = (1 << 1),
-  /* Key block represents any kind of hold */
+  /** Key block represents any kind of hold. */
   ACTKEYBLOCK_FLAG_ANY_HOLD = (1 << 2),
-  /* The curve segment uses non-bezier interpolation */
+  /** The curve segment uses non-bezier interpolation. */
   ACTKEYBLOCK_FLAG_NON_BEZIER = (1 << 3),
-  /* The block is grease pencil */
+  /** The block is grease pencil. */
   ACTKEYBLOCK_FLAG_GPENCIL = (1 << 4),
 };
 
 /* *********************** Keyframe Drawing ****************************** */
 
-/* options for keyframe shape drawing */
+/** Options for keyframe shape drawing. */
 enum eKeyframeShapeDrawOpts {
   /* only the border */
   KEYFRAME_SHAPE_FRAME = 0,
@@ -98,7 +99,7 @@ enum eKeyframeShapeDrawOpts {
   KEYFRAME_SHAPE_BOTH,
 };
 
-/* Handle type. */
+/** Handle type. */
 enum eKeyframeHandleDrawOpts {
   /* Don't draw */
   KEYFRAME_HANDLE_NONE = 0,
@@ -110,15 +111,16 @@ enum eKeyframeHandleDrawOpts {
   KEYFRAME_HANDLE_FREE,
 };
 
-/* Extreme type. */
+/** Extreme type. */
 enum eKeyframeExtremeDrawOpts {
   KEYFRAME_EXTREME_NONE = 0,
-  /* Minimum/maximum present. */
+  /** Minimum present. */
   KEYFRAME_EXTREME_MIN = (1 << 0),
+  /** Maximum present. */
   KEYFRAME_EXTREME_MAX = (1 << 1),
-  /* Grouped keys have different states. */
+  /** Grouped keys have different states. */
   KEYFRAME_EXTREME_MIXED = (1 << 2),
-  /* Both neighbors are equal to this key. */
+  /** Both neighbors are equal to this key. */
   KEYFRAME_EXTREME_FLAT = (1 << 3),
 };
 
@@ -145,26 +147,38 @@ int64_t ED_keylist_array_len(const AnimKeylist *keylist);
 
 /* Key-data Generation --------------- */
 
-/* F-Curve */
-void fcurve_to_keylist(AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag);
+/**
+ * Add the keyframes of the F-Curve to the keylist.
+ * \param adt: can be a nullptr.
+ * \param range: only adds keys in the given range to the keylist.
+ */
+void fcurve_to_keylist(
+    AnimData *adt, FCurve *fcu, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* Action Group */
 void action_group_to_keylist(AnimData *adt,
                              bActionGroup *agrp,
                              AnimKeylist *keylist,
-                             int saction_flag);
+                             int saction_flag,
+                             blender::float2 range);
 /* Action */
-void action_to_keylist(AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag);
+void action_to_keylist(
+    AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* Object */
-void ob_to_keylist(bDopeSheet *ads, Object *ob, AnimKeylist *keylist, int saction_flag);
+void ob_to_keylist(
+    bDopeSheet *ads, Object *ob, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* Cache File */
 void cachefile_to_keylist(bDopeSheet *ads,
                           CacheFile *cache_file,
                           AnimKeylist *keylist,
                           int saction_flag);
 /* Scene */
-void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag);
+void scene_to_keylist(
+    bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* DopeSheet Summary */
-void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag);
+void summary_to_keylist(bAnimContext *ac,
+                        AnimKeylist *keylist,
+                        int saction_flag,
+                        blender::float2 range);
 
 /* Grease Pencil datablock summary (Legacy) */
 void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);

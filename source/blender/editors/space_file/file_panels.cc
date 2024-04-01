@@ -9,10 +9,10 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -35,7 +35,6 @@
 
 #include "file_intern.hh"
 #include "filelist.hh"
-#include "fsmenu.h"
 
 #include <cstring>
 
@@ -163,9 +162,7 @@ static void file_panel_execution_buttons_draw(const bContext *C, Panel *panel)
                   0,
                   0.0f,
                   float(FILE_MAXFILE),
-                  0,
-                  0,
-                  TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
+                  overwrite_alert ? TIP_("File name, overwrite existing") : TIP_("File name"));
 
   BLI_assert(!UI_but_flag_is_set(but, UI_BUT_UNDO));
   BLI_assert(!UI_but_is_utf8(but));
@@ -225,7 +222,7 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
   bScreen *screen = CTX_wm_screen(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
   /* May be null if the library wasn't loaded yet. */
-  AssetLibrary *asset_library = filelist_asset_library(sfile->files);
+  blender::asset_system::AssetLibrary *asset_library = filelist_asset_library(sfile->files);
   FileAssetSelectParams *params = ED_fileselect_get_asset_params(sfile);
   BLI_assert(params != nullptr);
 
@@ -234,7 +231,7 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
 
   PointerRNA params_ptr = RNA_pointer_create(&screen->id, &RNA_FileAssetSelectParams, params);
 
-  uiItemR(row, &params_ptr, "asset_library_ref", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(row, &params_ptr, "asset_library_reference", UI_ITEM_NONE, "", ICON_NONE);
   if (params->asset_library_ref.type == ASSET_LIBRARY_LOCAL) {
     bContext *mutable_ctx = CTX_copy(C);
     if (WM_operator_name_poll(mutable_ctx, "asset.bundle_install")) {
@@ -242,7 +239,7 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
       uiItemMenuEnumO(col,
                       C,
                       "asset.bundle_install",
-                      "asset_library_ref",
+                      "asset_library_reference",
                       "Copy Bundle to Asset Library...",
                       ICON_IMPORT);
     }
@@ -254,7 +251,8 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
 
   uiItemS(col);
 
-  file_create_asset_catalog_tree_view_in_layout(asset_library, col, sfile, params);
+  blender::ed::asset_browser::file_create_asset_catalog_tree_view_in_layout(
+      asset_library, col, sfile, params);
 }
 
 void file_tools_region_panels_register(ARegionType *art)

@@ -18,22 +18,19 @@
 #include "BLI_blenlib.h"
 #include "BLI_threads.h"
 
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_screen.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "DEG_depsgraph.h"
-
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_image.hh"
 #include "ED_mask.hh"
@@ -54,9 +51,9 @@
 
 #include "BLO_read_write.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
-#include "image_intern.h"
+#include "image_intern.hh"
 
 /**************************** common state *****************************/
 
@@ -104,6 +101,7 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
   simage->uv_opacity = 1.0f;
+  simage->stretch_opacity = 1.0f;
   simage->overlay.flag = SI_OVERLAY_SHOW_OVERLAYS | SI_OVERLAY_SHOW_GRID_BACKGROUND;
 
   BKE_imageuser_default(&simage->iuser);
@@ -220,6 +218,7 @@ static void image_operatortypes()
   WM_operatortype_append(IMAGE_OT_clipboard_paste);
 
   WM_operatortype_append(IMAGE_OT_flip);
+  WM_operatortype_append(IMAGE_OT_rotate_orthogonal);
   WM_operatortype_append(IMAGE_OT_invert);
   WM_operatortype_append(IMAGE_OT_resize);
 
@@ -258,7 +257,7 @@ static bool image_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
   }
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
+    if (ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
       return true;
     }
   }
@@ -268,7 +267,7 @@ static bool image_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 static void image_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 /* area+region dropbox definition */
@@ -448,7 +447,7 @@ static int /*eContextResult*/ image_context(const bContext *C,
 
   if (CTX_data_dir(member)) {
     CTX_data_dir_set(result, image_context_dir);
-    /* TODO(sybren): return CTX_RESULT_OK; */
+    // return CTX_RESULT_OK; /* TODO(@sybren). */
   }
   else if (CTX_data_equals(member, "edit_image")) {
     CTX_data_id_pointer_set(result, (ID *)ED_space_image(sima));
@@ -807,7 +806,8 @@ static void image_buttons_region_layout(const bContext *C, ARegion *region)
       break;
   }
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts_base, nullptr);
+  ED_region_panels_layout_ex(
+      C, region, &region->type->paneltypes, WM_OP_INVOKE_REGION_WIN, contexts_base, nullptr);
 }
 
 static void image_buttons_region_draw(const bContext *C, ARegion *region)
@@ -941,6 +941,23 @@ static void image_tools_region_listener(const wmRegionListenerParams *params)
   }
 }
 
+/************************* Tool header region **************************/
+
+static void image_tools_header_region_draw(const bContext *C, ARegion *region)
+{
+  ScrArea *area = CTX_wm_area(C);
+  SpaceImage *sima = static_cast<SpaceImage *>(area->spacedata.first);
+
+  image_user_refresh_scene(C, sima);
+
+  ED_region_header_with_button_sections(
+      C,
+      region,
+      (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_TOP) ?
+          uiButtonSectionsAlign::Top :
+          uiButtonSectionsAlign::Bottom);
+}
+
 /************************* header region **************************/
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -987,21 +1004,30 @@ static void image_header_region_listener(const wmRegionListenerParams *params)
         ED_region_tag_redraw(region);
       }
       break;
+    case NC_GPENCIL:
+      if (wmn->data & ND_GPENCIL_EDITMODE) {
+        ED_region_tag_redraw(region);
+      }
+      else if (wmn->action == NA_EDITED) {
+        ED_region_tag_redraw(region);
+      }
+      break;
   }
 }
 
-static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void image_id_remap(ScrArea * /*area*/,
+                           SpaceLink *slink,
+                           const blender::bke::id::IDRemapper &mappings)
 {
   SpaceImage *simg = (SpaceImage *)slink;
 
-  if (!BKE_id_remapper_has_mapping_for(mappings,
-                                       FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK)) {
+  if (!mappings.contains_mappings_for_any(FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK)) {
     return;
   }
 
-  BKE_id_remapper_apply(mappings, (ID **)&simg->image, ID_REMAP_APPLY_ENSURE_REAL);
-  BKE_id_remapper_apply(mappings, (ID **)&simg->gpd, ID_REMAP_APPLY_UPDATE_REFCOUNT);
-  BKE_id_remapper_apply(mappings, (ID **)&simg->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&simg->image), ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&simg->gpd), ID_REMAP_APPLY_UPDATE_REFCOUNT);
+  mappings.apply(reinterpret_cast<ID **>(&simg->mask_info.mask), ID_REMAP_APPLY_ENSURE_REAL);
 }
 
 static void image_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -1060,6 +1086,7 @@ static void image_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink 
   sima->scopes.waveform_2 = nullptr;
   sima->scopes.waveform_3 = nullptr;
   sima->scopes.vecscope = nullptr;
+  sima->scopes.vecscope_rgb = nullptr;
   sima->scopes.ok = 0;
 
 /* WARNING: gpencil data is no longer stored directly in sima after 2.5
@@ -1082,7 +1109,7 @@ static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_image()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype image"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_IMAGE;
@@ -1153,7 +1180,7 @@ void ED_spacetype_image()
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
   art->listener = image_header_region_listener;
   art->init = image_header_region_init;
-  art->draw = image_header_region_draw;
+  art->draw = image_tools_header_region_draw;
   art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_header;
   BLI_addhead(&st->regiontypes, art);
 
@@ -1172,5 +1199,5 @@ void ED_spacetype_image()
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

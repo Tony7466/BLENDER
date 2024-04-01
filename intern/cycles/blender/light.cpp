@@ -33,8 +33,9 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   if (!light_map.add_or_update(&light, b_ob_info.real_object, b_parent, key) && !tfm_updated) {
     Shader *shader;
     if (!shader_map.add_or_update(&shader, b_light)) {
-      if (light->get_is_portal())
+      if (light->get_is_portal()) {
         *use_portal = true;
+      }
       return;
     }
   }
@@ -47,6 +48,7 @@ void BlenderSync::sync_light(BL::Object &b_parent,
       BL::PointLight b_point_light(b_light);
       light->set_size(b_point_light.shadow_soft_size());
       light->set_light_type(LIGHT_POINT);
+      light->set_is_sphere(!b_point_light.use_soft_falloff());
       break;
     }
     case BL::Light::type_SPOT: {
@@ -55,6 +57,7 @@ void BlenderSync::sync_light(BL::Object &b_parent,
       light->set_light_type(LIGHT_SPOT);
       light->set_spot_angle(b_spot_light.spot_size());
       light->set_spot_smooth(b_spot_light.spot_blend());
+      light->set_is_sphere(!b_spot_light.use_soft_falloff());
       break;
     }
     /* Hemi were removed from 2.8 */
@@ -126,13 +129,16 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     light->set_random_id(hash_uint2(hash_string(b_ob_info.real_object.name().c_str()), 0));
   }
 
-  if (light->get_light_type() == LIGHT_AREA)
+  if (light->get_light_type() == LIGHT_AREA) {
     light->set_is_portal(get_boolean(clight, "is_portal"));
-  else
+  }
+  else {
     light->set_is_portal(false);
+  }
 
-  if (light->get_is_portal())
+  if (light->get_is_portal()) {
     *use_portal = true;
+  }
 
   /* visibility */
   uint visibility = object_ray_visibility(b_ob_info.real_object);
@@ -160,7 +166,7 @@ void BlenderSync::sync_light(BL::Object &b_parent,
 
 void BlenderSync::sync_background_light(BL::SpaceView3D &b_v3d, bool use_portal)
 {
-  BL::World b_world = b_scene.world();
+  BL::World b_world = view_layer.world_override ? view_layer.world_override : b_scene.world();
 
   if (b_world) {
     PointerRNA cworld = RNA_pointer_get(&b_world.ptr, "cycles");

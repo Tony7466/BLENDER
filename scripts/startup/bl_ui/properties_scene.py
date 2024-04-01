@@ -88,16 +88,12 @@ class SceneKeyingSetsPanel:
         SceneKeyingSetsPanel._draw_keyframing_setting(
             context, layout, ks, ksp, iface_("Needed"),
             "use_insertkey_override_needed", "use_insertkey_needed",
-            userpref_fallback="use_keyframe_insert_needed",
+            userpref_fallback="use_auto_keyframe_insert_needed",
         )
         SceneKeyingSetsPanel._draw_keyframing_setting(
             context, layout, ks, ksp, iface_("Visual"),
             "use_insertkey_override_visual", "use_insertkey_visual",
             userpref_fallback="use_visual_keying",
-        )
-        SceneKeyingSetsPanel._draw_keyframing_setting(
-            context, layout, ks, ksp, iface_("XYZ to RGB"),
-            "use_insertkey_override_xyz_to_rgb", "use_insertkey_xyz_to_rgb",
         )
 
     @staticmethod
@@ -312,6 +308,24 @@ class SCENE_PT_physics(SceneButtonsPanel, Panel):
         layout.prop(scene, "gravity")
 
 
+class SCENE_PT_simulation(SceneButtonsPanel, Panel):
+    bl_label = "Simulation"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+
+        col = layout.column()
+        col.prop(scene, "use_custom_simulation_range", text="Simulation Range")
+        subcol = col.column(align=True)
+        subcol.active = scene.use_custom_simulation_range
+        subcol.prop(scene, "simulation_frame_start", text="Start")
+        subcol.prop(scene, "simulation_frame_end", text="End")
+
+
 class SCENE_PT_rigid_body_world(SceneButtonsPanel, Panel):
     bl_label = "Rigid Body World"
     bl_options = {'DEFAULT_CLOSED'}
@@ -409,6 +423,7 @@ classes = (
     SCENE_PT_scene,
     SCENE_PT_unit,
     SCENE_PT_physics,
+    SCENE_PT_simulation,
     SCENE_PT_keying_sets,
     SCENE_PT_keying_set_paths,
     SCENE_PT_keyframing_settings,

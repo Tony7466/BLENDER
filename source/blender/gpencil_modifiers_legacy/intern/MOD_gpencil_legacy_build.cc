@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -16,10 +17,9 @@
 #include "BLI_math_base.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_sort.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -29,24 +29,21 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_query.h"
-#include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 
 /* Two hard-coded values for GP_BUILD_MODE_ADDITIVE with GP_BUILD_TIMEMODE_DRAWSPEED. */
@@ -321,8 +318,8 @@ static void build_sequential(Object *ob,
     /* Compute distance to control object if set, and build according to that order. */
     if (mmd->object) {
       float sv1[3], sv2[3];
-      mul_v3_m4v3(sv1, ob->object_to_world, &gps->points[0].x);
-      mul_v3_m4v3(sv2, ob->object_to_world, &gps->points[gps->totpoints - 1].x);
+      mul_v3_m4v3(sv1, ob->object_to_world().ptr(), &gps->points[0].x);
+      mul_v3_m4v3(sv2, ob->object_to_world().ptr(), &gps->points[gps->totpoints - 1].x);
       float dist_l = len_v3v3(sv1, mmd->object->loc);
       float dist_r = len_v3v3(sv2, mmd->object->loc);
       if (dist_r < dist_l) {
@@ -358,7 +355,7 @@ static void build_sequential(Object *ob,
           float curgps_delay = fabs(cell->gps->inittime - (cell - 1)->gps->inittime) -
                                last_pointtime;
           if (0 < curgps_delay) {
-            sumtime += MIN2(curgps_delay, GP_BUILD_MAXGAP);
+            sumtime += std::min(curgps_delay, GP_BUILD_MAXGAP);
           }
         }
       }
@@ -537,7 +534,8 @@ static void build_sequential(Object *ob,
     }
     else {
       if (fade_start != fade_end && int(cell->start_idx) < fade_end &&
-          int(cell->end_idx) > fade_start) {
+          int(cell->end_idx) > fade_start)
+      {
         int start_index = fade_start - cell->start_idx;
         int end_index = cell->totpoints + fade_end - cell->end_idx - 1;
         CLAMP(start_index, 0, cell->totpoints - 1);
@@ -634,7 +632,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
       case GP_BUILD_TIMEALIGN_START: /* all start on frame 1 */
       {
         /* Scale fac to fit relative_len */
-        const float scaled_fac = use_fac / MAX2(relative_len, PSEUDOINVERSE_EPSILON);
+        const float scaled_fac = use_fac / std::max(relative_len, PSEUDOINVERSE_EPSILON);
 
         if (reverse) {
           points_num = int(roundf((1.0f - scaled_fac) * gps->totpoints));
@@ -651,7 +649,8 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
          */
         const float start_fac = 1.0f - relative_len;
 
-        const float scaled_fac = (use_fac - start_fac) / MAX2(relative_len, PSEUDOINVERSE_EPSILON);
+        const float scaled_fac = (use_fac - start_fac) /
+                                 std::max(relative_len, PSEUDOINVERSE_EPSILON);
 
         if (reverse) {
           points_num = int(roundf((1.0f - scaled_fac) * gps->totpoints));
@@ -806,7 +805,7 @@ static void generate_geometry(GpencilModifierData *md,
 
     if (gpf->next) {
       /* Use the next frame or upper bound as end frame, whichever is lower/closer */
-      end_frame = MIN2(end_frame, gpf->next->framenum);
+      end_frame = std::min(end_frame, float(gpf->next->framenum));
     }
 
     /* Early exit if current frame is outside start/end bounds */
