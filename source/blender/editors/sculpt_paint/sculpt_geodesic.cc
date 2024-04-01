@@ -81,6 +81,7 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   return false;
 }
 
+// TODO: replace by geodesic_mesh_create_parallel is polished
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
   SculptSession *ss = ob->sculpt;
@@ -293,6 +294,7 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     }
   }
 
+  // TODO: use a blender equivalent fast and thread safe vector
   tbb::concurrent_vector<int> queue, queue_next;
 
   /* Add edges adjacent to an initial vertex to the queue.
@@ -414,7 +416,7 @@ float *distances_create(Object *ob, GSet *initial_verts, const float limit_radiu
       return geodesic_mesh_create_parallel(
           ob,
           initial_verts,
-          limit_radius);  // geodesic_mesh_create(ob, initial_verts, limit_radius); */
+          limit_radius);  // geodesic_mesh_create(ob, initial_verts, limit_radius);
     case PBVH_BMESH:
     case PBVH_GRIDS:
       return geodesic_fallback_create(ob, initial_verts);
@@ -454,4 +456,4 @@ float *distances_create_from_vert_and_symm(Object *ob,
   return dists;
 }
 
-}  // namespace blender::ed::sculpt_paint::geodesic
+}  /* namespace blender::ed::sculpt_paint::geodesic */
