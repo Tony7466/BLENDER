@@ -54,6 +54,10 @@ void ABCCurveWriter::create_alembic_objects(const HierarchyContext *context)
   abc_curve_ = OCurves(args_.abc_parent, args_.abc_name, timesample_index_);
   abc_curve_schema_ = abc_curve_.getSchema();
 
+  /* TODO: Blender supports per-curve resolutions but we're only using the first curve's data
+   * here. Investigate using OInt16ArrayProperty to write out all the data but do so efficiently.
+   * e.g. Write just a single value if all curves share the same resolution etc. */
+
   int resolution_u = 1;
   switch (context->object->type) {
     case OB_CURVES_LEGACY: {
