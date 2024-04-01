@@ -12,7 +12,6 @@ namespace csp = constraint_satisfaction;
 
 TEST(constraint_satisfaction, SimpleTest)
 {
-  //template<typename Logger> static void test_ac3_example(Logger & logger)
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
    */
@@ -99,7 +98,12 @@ TEST(constraint_satisfaction, SimpleTest)
     return value_a > value_b;
   });
 
-  csp::solve_constraints(constraints, num_vars, domain_size);
+  BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
+
+  csp::PrintLogger logger;
+  csp::solve_constraints_with_logger(constraints, num_vars, domain_size, logger);
+
+  //EXPECT_EQ(result[var_A], 
 
   //DisjointSet disjoint_set(6);
   //EXPECT_FALSE(disjoint_set.in_same_set(1, 2));

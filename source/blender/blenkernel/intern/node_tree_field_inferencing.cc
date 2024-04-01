@@ -907,21 +907,21 @@ static void test_ac3_field_inferencing(
   const int num_vars = tree_output_vars.one_after_last();
 
   tree.ensure_topology_cache();
-  auto variable_name = [&](csp::VariableRef var) -> std::string {
-    if (socket_vars.contains(var.index())) {
-      const bNodeSocket &socket = *tree.all_sockets()[var.index()];
+  auto variable_name = [&](const csp::VariableIndex var) -> std::string {
+    if (socket_vars.contains(var)) {
+      const bNodeSocket &socket = *tree.all_sockets()[var];
       const bNode &node = socket.owner_node();
       return socket.is_output() ? std::string(node.name) + ":O:" + socket.identifier :
                                   std::string(node.name) + ":I:" + socket.identifier;
     }
-    if (tree_input_vars.contains(var.index())) {
+    if (tree_input_vars.contains(var)) {
       const bNodeTreeInterfaceSocket &iosocket =
-          *tree.interface_inputs()[var.index() - tree_input_vars.start()];
+          *tree.interface_inputs()[var - tree_input_vars.start()];
       return std::string("I:") + iosocket.identifier;
     }
-    if (tree_output_vars.contains(var.index())) {
+    if (tree_output_vars.contains(var)) {
       const bNodeTreeInterfaceSocket &iosocket =
-          *tree.interface_outputs()[var.index() - tree_output_vars.start()];
+          *tree.interface_outputs()[var - tree_output_vars.start()];
       return std::string("O:") + iosocket.identifier;
     }
     return "";
@@ -939,21 +939,21 @@ static void test_ac3_field_inferencing(
     const IndexRange interface_outputs = node->is_group_output() ?
                                              tree.interface_outputs().index_range() :
                                              IndexRange();
-    auto get_socket_variable = [&](const bNodeSocket &socket) -> csp::MutableVariableRef {
+    auto get_socket_variable = [&](const bNodeSocket &socket) -> csp::VariableIndex {
       if (socket.is_output()) {
         if (interface_inputs.contains(socket.index())) {
-          return csp::MutableVariableRef(tree_input_vars[socket.index()]);
+          return tree_input_vars[socket.index()];
         }
         else {
-          return csp::MutableVariableRef(socket_vars[socket.index_in_tree()]);
+          return socket_vars[socket.index_in_tree()];
         }
       }
       else {
         if (interface_outputs.contains(socket.index())) {
-          return csp::MutableVariableRef(tree_output_vars[socket.index()]);
+          return tree_output_vars[socket.index()];
         }
         else {
-          return csp::MutableVariableRef(socket_vars[socket.index_in_tree()]);
+          return socket_vars[socket.index_in_tree()];
         }
       }
     };
@@ -963,7 +963,7 @@ static void test_ac3_field_inferencing(
       if (!output_socket->is_available()) {
         continue;
       }
-      const csp::MutableVariableRef var = get_socket_variable(*output_socket);
+      const int var = get_socket_variable(*output_socket);
       const bNodeSocketType *typeinfo = output_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -986,7 +986,7 @@ static void test_ac3_field_inferencing(
       for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
         if (target_socket->is_available()) {
           constraints.add(
-              var, csp::VariableRef{target_socket->index_in_tree()}, [](int value_a, int value_b) {
+              var, target_socket->index_in_tree(), [](int value_a, int value_b) {
                 return value_a == DomainValue::Single || value_b == DomainValue::Field;
               });
         }
@@ -1029,7 +1029,7 @@ static void test_ac3_field_inferencing(
       if (!input_socket->is_available()) {
         continue;
       }
-      const csp::MutableVariableRef var = get_socket_variable(*input_socket);
+      const int var = get_socket_variable(*input_socket);
       const bNodeSocketType *typeinfo = input_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1040,7 +1040,7 @@ static void test_ac3_field_inferencing(
 
       const InputSocketFieldType field_type = inferencing_interface.inputs[input_socket->index()];
       if (field_type == InputSocketFieldType::None) {
-        constraints.add(csp::MutableVariableRef(input_socket->index_in_tree()),
+        constraints.add(input_socket->index_in_tree(),
                         [](int value) { return value == DomainValue::Single; });
       }
     }
