@@ -147,6 +147,23 @@ inline bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
   return selections[0];
 }
 
+void foreach_selection_attribute_writer(
+    bke::CurvesGeometry &curves,
+    const bke::AttrDomain selection_domain,
+    blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
+{
+
+  Vector<bke::GSpanAttributeWriter> writers_buffer;
+  MutableSpan<bke::GSpanAttributeWriter> selection_writers = init_selection_writers(
+      writers_buffer, curves, selection_domain);
+
+  /* TODO: maybe add threading */
+  for (bke::GSpanAttributeWriter &selection_writer : selection_writers) {
+    fn(selection_writer);
+  }
+  finish_attribute_writers(selection_writers);
+}
+
 static void init_selectable_foreach(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     Span<std::string> &r_bezier_attribute_names,

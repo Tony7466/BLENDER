@@ -88,7 +88,7 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     SelectableRangeConsumer range_consumer);
 
 /**
- * Same logic as in foreach_selectable_point_range, just ranges reference curves insted of
+ * Same logic as in foreach_selectable_point_range, just ranges reference curves instead of
  * positions directly. Futher positions can be referenced by using curves.points_by_curve() in a
  * callback function.
  */
@@ -244,22 +244,10 @@ void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> selection_w
 bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
     MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name);
 
-inline void foreach_selection_attribute_writer(
+void foreach_selection_attribute_writer(
     bke::CurvesGeometry &curves,
     const bke::AttrDomain selection_domain,
-    blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
-{
-
-  Vector<bke::GSpanAttributeWriter> writers_buffer;
-  MutableSpan<bke::GSpanAttributeWriter> selection_writers = init_selection_writers(
-      writers_buffer, curves, selection_domain);
-
-  /* TODO: maybe add threading */
-  for (bke::GSpanAttributeWriter &selection_writer : selection_writers) {
-    fn(selection_writer);
-  }
-  finish_attribute_writers(selection_writers);
-}
+    blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn);
 
 /** Apply a change to a single curve or point. Avoid using this when affecting many elements. */
 void apply_selection_operation_at_index(GMutableSpan selection, int index, eSelectOp sel_op);
