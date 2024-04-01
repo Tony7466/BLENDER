@@ -6418,8 +6418,11 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
       uiItemL(layout, "", icon_mod[j]);
     }
     uiItemL(layout, "", icon);
+    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      uiItemS_ex(layout, 0.6f);
+    }
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
-    uiItemS_ex(layout, 0.5f);
+    uiItemS_ex(layout, 0.7f);
     ok = true;
   }
   else if (text_fallback) {
