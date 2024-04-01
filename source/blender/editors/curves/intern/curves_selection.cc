@@ -63,10 +63,10 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
 
 IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
                                    IndexMaskMemory &memory,
-                                   const bke::AttributeIDRef &attribute_id)
+                                   const std::string &attribute_name)
 {
   return IndexMask::from_bools(
-      *curves.attributes().lookup_or_default<bool>(attribute_id, bke::AttrDomain::Point, true),
+      *curves.attributes().lookup_or_default<bool>(attribute_name, bke::AttrDomain::Point, true),
       memory);
 }
 
@@ -110,7 +110,7 @@ void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
   }
 }
 
-inline MutableSpan<bke::GSpanAttributeWriter> init_selection_writers(
+Vector<bke::GSpanAttributeWriter> &init_selection_writers(
     Vector<bke::GSpanAttributeWriter> &writers,
     bke::CurvesGeometry &curves,
     const bke::AttrDomain selection_domain)
@@ -121,7 +121,7 @@ inline MutableSpan<bke::GSpanAttributeWriter> init_selection_writers(
     writers.append(ensure_selection_attribute(
         curves, selection_domain, create_type, selection_attribute_names[i]));
   };
-  return MutableSpan<bke::GSpanAttributeWriter>(writers.data(), selection_attribute_names.size());
+  return writers;
 }
 
 inline void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> attribute_writers)
@@ -240,28 +240,28 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
                                                      const bke::AttrDomain selection_domain,
                                                      const eCustomDataType create_type,
-                                                     const bke::AttributeIDRef &attribute_id)
+                                                     const std::string &attribute_name)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  if (attributes.contains(attribute_id)) {
-    bke::GSpanAttributeWriter selection_attr = attributes.lookup_for_write_span(attribute_id);
+  if (attributes.contains(attribute_name)) {
+    bke::GSpanAttributeWriter selection_attr = attributes.lookup_for_write_span(attribute_name);
     /* Check domain type. */
     if (selection_attr.domain == selection_domain) {
       return selection_attr;
     }
     selection_attr.finish();
-    attributes.remove(attribute_id);
+    attributes.remove(attribute_name);
   }
   const int domain_size = attributes.domain_size(selection_domain);
   switch (create_type) {
     case CD_PROP_BOOL:
-      attributes.add(attribute_id,
+      attributes.add(attribute_name,
                      selection_domain,
                      CD_PROP_BOOL,
                      bke::AttributeInitVArray(VArray<bool>::ForSingle(true, domain_size)));
       break;
     case CD_PROP_FLOAT:
-      attributes.add(attribute_id,
+      attributes.add(attribute_name,
                      selection_domain,
                      CD_PROP_FLOAT,
                      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, domain_size)));
@@ -269,7 +269,7 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
     default:
       BLI_assert_unreachable();
   }
-  return attributes.lookup_for_write_span(attribute_id);
+  return attributes.lookup_for_write_span(attribute_name);
 }
 
 void fill_selection_false(GMutableSpan selection)

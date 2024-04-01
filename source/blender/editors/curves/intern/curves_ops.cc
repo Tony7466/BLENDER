@@ -826,7 +826,7 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
         }
       }
     }
-    if (layer) {
+    if (!active_attribute.empty()) {
       BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
     }
 
