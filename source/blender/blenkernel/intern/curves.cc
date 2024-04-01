@@ -346,66 +346,47 @@ bool CurvesEditHints::is_valid() const
   return true;
 }
 
-CurvesEditHints::CurvesEditHints(const CurvesEditHints &other)
-    : curves_id_orig(other.curves_id_orig),
-      positions_data(other.positions_data),
-      deform_mats(other.deform_mats)
-{
-  this->positions_data->sharing_info->add_user();
-}
-
-CurvesEditHints::CurvesEditHints(CurvesEditHints &&other)
-    : curves_id_orig(other.curves_id_orig),
-      positions_data(std::exchange(other.positions_data, std::nullopt)),
-      deform_mats(std::move(other.deform_mats))
-{
-}
-
-CurvesEditHints &CurvesEditHints::operator=(const CurvesEditHints &other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) CurvesEditHints(other);
-  return *this;
-}
-
-CurvesEditHints &CurvesEditHints::operator=(CurvesEditHints &&other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) CurvesEditHints(std::move(other));
-  return *this;
-}
-
-CurvesEditHints::~CurvesEditHints()
-{
-  if (this->positions_data) {
-    this->positions_data->sharing_info->remove_user_and_delete_if_last();
-  }
-}
-
 std::optional<Span<float3>> CurvesEditHints::positions() const
 {
-  if (!this->positions_data.has_value()) {
+  if (!this->positions_data.sharing_info.has_value()) {
     return std::nullopt;
   }
   const int points_num = this->curves_id_orig.geometry.wrap().points_num();
-  return Span(static_cast<const float3 *>(this->positions_data->data), points_num);
+  return Span(static_cast<const float3 *>(this->positions_data.data), points_num);
 }
+
+class ArrayImplicitSharing : public ImplicitSharingInfo {
+ public:
+  GArray<> data;
+
+  ArrayImplicitSharing(const CPPType &type, const int size) : data(type, size) {}
+
+ private:
+  void delete_self_with_data() override
+  {
+    MEM_delete(this);
+  }
+};
 
 std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
 {
-  if (!this->positions_data.has_value()) {
+  if (!this->positions_data.sharing_info.has_value()) {
     return std::nullopt;
   }
-  ImplicitSharingInfoAndData &data = *this->positions_data;
+
   const int points_num = this->curves_id_orig.geometry.wrap().points_num();
-  data.data = implicit_sharing::make_trivial_data_mutable<float3>(
-      data.data, &data.sharing_info, points_num);
+  ImplicitSharingPtrAndData &data = this->positions_data;
+  if (data.sharing_info->is_mutable()) {
+    data.sharing_info->tag_ensured_mutable();
+  }
+  else {
+    ArrayImplicitSharing *new_sharing_info = MEM_new<ArrayImplicitSharing>(
+        __func__, CPPType::get<float3>(), points_num);
+    new_sharing_info->data.as_mutable_span().copy_from(*this->positions());
+    data.sharing_info = ImplicitSharingPtr<ImplicitSharingInfo>(new_sharing_info);
+    data.data = new_sharing_info->data.data();
+  }
+
   return MutableSpan(const_cast<float3 *>(static_cast<const float3 *>(data.data)), points_num);
 }
 

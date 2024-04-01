@@ -271,14 +271,6 @@ void make_trivial_data_mutable(T **data,
   *data = static_cast<T *>(
       detail::make_trivial_data_mutable_impl(*data, sizeof(T) * size, alignof(T), sharing_info));
 }
-template<typename T>
-[[nodiscard]] void *make_trivial_data_mutable(const void *data,
-                                              const ImplicitSharingInfo **sharing_info,
-                                              const int64_t size)
-{
-  return static_cast<T *>(detail::make_trivial_data_mutable_impl(
-      const_cast<void *>(data), sizeof(T) * size, alignof(T), sharing_info));
-}
 
 /**
  * Resize an array of shared data. For trivially-copyable data only. Any new values are not

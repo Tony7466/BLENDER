@@ -53,17 +53,17 @@ class ArrayImplicitSharing : public ImplicitSharingInfo {
   }
 };
 
-static ImplicitSharingInfoAndData save_shared_attribute(const GAttributeReader &attribute)
+static ImplicitSharingPtrAndData save_shared_attribute(const GAttributeReader &attribute)
 {
   if (attribute.sharing_info && attribute.varray.is_span()) {
     const void *data = attribute.varray.get_internal_span().data();
     attribute.sharing_info->add_user();
-    return {attribute.sharing_info, data};
+    return {ImplicitSharingPtr(attribute.sharing_info), data};
   }
   ArrayImplicitSharing *data = MEM_new<ArrayImplicitSharing>(
       __func__, attribute.varray.type(), attribute.varray.size());
   attribute.varray.materialize(data->data.data());
-  return {data, data->data.data()};
+  return {ImplicitSharingPtr<ImplicitSharingInfo>(data), data->data.data()};
 }
 
 static void remember_deformed_curve_positions_if_necessary(

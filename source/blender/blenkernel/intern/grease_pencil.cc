@@ -1572,66 +1572,48 @@ void LayerGroup::update_from_dna_read()
 
 namespace blender::bke {
 
-GreasePencilDrawingEditHints::GreasePencilDrawingEditHints(
-    const GreasePencilDrawingEditHints &other)
-    : drawing_orig(other.drawing_orig), positions_data(other.positions_data)
-{
-  this->positions_data->sharing_info->add_user();
-}
-
-GreasePencilDrawingEditHints::GreasePencilDrawingEditHints(GreasePencilDrawingEditHints &&other)
-    : drawing_orig(other.drawing_orig),
-      positions_data(std::exchange(other.positions_data, std::nullopt))
-{
-}
-
-GreasePencilDrawingEditHints &GreasePencilDrawingEditHints::operator=(
-    const GreasePencilDrawingEditHints &other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) GreasePencilDrawingEditHints(other);
-  return *this;
-}
-
-GreasePencilDrawingEditHints &GreasePencilDrawingEditHints::operator=(
-    GreasePencilDrawingEditHints &&other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) GreasePencilDrawingEditHints(std::move(other));
-  return *this;
-}
-
-GreasePencilDrawingEditHints::~GreasePencilDrawingEditHints()
-{
-  if (this->positions_data) {
-    this->positions_data->sharing_info->remove_user_and_delete_if_last();
-  }
-}
-
 std::optional<Span<float3>> GreasePencilDrawingEditHints::positions() const
 {
-  if (!this->positions_data.has_value()) {
+  if (!this->positions_data.sharing_info.has_value()) {
     return std::nullopt;
   }
   const int points_num = this->drawing_orig->geometry.wrap().points_num();
-  return Span(static_cast<const float3 *>(this->positions_data->data), points_num);
+  return Span(static_cast<const float3 *>(this->positions_data.data), points_num);
 }
+
+class ArrayImplicitSharing : public ImplicitSharingInfo {
+ public:
+  GArray<> data;
+
+  ArrayImplicitSharing(const CPPType &type, const int size) : data(type, size) {}
+
+ private:
+  void delete_self_with_data() override
+  {
+    MEM_delete(this);
+  }
+};
 
 std::optional<MutableSpan<float3>> GreasePencilDrawingEditHints::positions_for_write()
 {
-  if (!this->positions_data.has_value()) {
+  if (!this->positions_data.sharing_info.has_value()) {
     return std::nullopt;
   }
-  ImplicitSharingInfoAndData &data = *this->positions_data;
+
   const int points_num = this->drawing_orig->geometry.wrap().points_num();
-  data.data = implicit_sharing::make_trivial_data_mutable<float3>(
-      data.data, &data.sharing_info, points_num);
+  ImplicitSharingPtrAndData &data = this->positions_data;
+  if (data.sharing_info->is_mutable()) {
+    /* If the referenced component is already mutable, return it directly. */
+    data.sharing_info->tag_ensured_mutable();
+  }
+  else {
+    ArrayImplicitSharing *new_sharing_info = MEM_new<ArrayImplicitSharing>(
+        __func__, CPPType::get<float3>(), points_num);
+    new_sharing_info->data.as_mutable_span().copy_from(*this->positions());
+    data.sharing_info = ImplicitSharingPtr<ImplicitSharingInfo>(new_sharing_info);
+    data.data = new_sharing_info->data.data();
+  }
+
   return MutableSpan(const_cast<float3 *>(static_cast<const float3 *>(data.data)), points_num);
 }
 

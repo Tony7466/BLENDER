@@ -132,4 +132,27 @@ template<typename T> class ImplicitSharingPtr {
   }
 };
 
+/**
+ * Utility struct to allow used #ImplicitSharingPtr when it's necessary to type-erase the backing
+ * storage for user-exposed data. For example, #blender::Vector, or #std::vector might be used to
+ * store an implicitly shared array that is only accessed with #Span or #MutableSpan.
+ *
+ * This class handles RAII for the sharing info and the exposed data pointer.
+ * Retrieving the data with write access and type safety must be handled elsewhere.
+ */
+class ImplicitSharingPtrAndData {
+ public:
+  ImplicitSharingPtr<ImplicitSharingInfo> sharing_info;
+  const void *data = nullptr;
+
+  ImplicitSharingPtrAndData() = default;
+  ImplicitSharingPtrAndData(ImplicitSharingPtr<ImplicitSharingInfo> sharing_info,
+                            const void *data);
+  ImplicitSharingPtrAndData(const ImplicitSharingPtrAndData &other);
+  ImplicitSharingPtrAndData(ImplicitSharingPtrAndData &&other);
+  ImplicitSharingPtrAndData &operator=(const ImplicitSharingPtrAndData &other);
+  ImplicitSharingPtrAndData &operator=(ImplicitSharingPtrAndData &&other);
+  ~ImplicitSharingPtrAndData();
+};
+
 }  // namespace blender
