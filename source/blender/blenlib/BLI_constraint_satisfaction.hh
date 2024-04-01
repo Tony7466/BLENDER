@@ -28,7 +28,7 @@ namespace blender::constraint_satisfaction {
 /** Unary constraint function, returns true if the value is allowed. */
 using UnaryConstraintFn = std::function<bool(int value)>;
 /** Binary constraint function, returns true if both values are compatible. */
-using BinaryConstraintFn = std::function<bool(int value_a, int value_b)>;
+using BinaryConstraintFn = std::function<bool(int value_dst, int value_src)>;
 
 using VariableIndex = int;
 
@@ -80,8 +80,8 @@ class ConstraintSet {
   {
     return binary_by_target_.lookup(target);
   }
-  BinaryConstraintFn get_binary_constraint(const VariableIndex source_key,
-                                           const VariableIndex target_key) const
+  BinaryConstraintFn get_binary_constraint(const VariableIndex target_key,
+                                           const VariableIndex source_key) const
   {
     for (const Target &target : binary_by_source_.lookup(source_key)) {
       if (target.variable == target_key) {

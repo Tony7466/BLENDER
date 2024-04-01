@@ -101,8 +101,8 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
   while (!worklist.is_empty()) {
     const BinaryKey key = worklist.pop();
     logger.on_binary_constraint_applied(key.source, key.target);
-    const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key.source,
-                                                                             key.target);
+    const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key.target,
+                                                                             key.source);
     const BitSpan domain_src = variable_domains[key.source];
     const MutableBitSpan domain_dst = variable_domains[key.target];
     if (reduce_binary(constraint, domain_src, domain_dst)) {

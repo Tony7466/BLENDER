@@ -170,4 +170,93 @@ TEST(constraint_satisfaction, UnderConstrained)
   EXPECT_FALSE(result[var_C][3]);
 }
 
+TEST(constraint_satisfaction, Sudoku)
+{
+  const int num_vars = 81;
+  const int domain_size = 9;
+
+  csp::ConstraintSet constraints;
+
+  /* clang-format off */
+  /* Example from https://en.wikipedia.org/wiki/Sudoku
+   * Values 1..9 are known states, value 0 indicates unknown state. */
+  const int initial_state[9][9] = {
+    { 5,  3,  0,  0,  7,  0,  0,  0,  0},
+    { 6,  0,  0,  1,  9,  5,  0,  0,  0},
+    { 0,  9,  8,  0,  0,  0,  0,  6,  0},
+    { 8,  0,  0,  0,  6,  0,  0,  0,  3},
+    { 4,  0,  0,  8,  0,  3,  0,  0,  1},
+    { 7,  0,  0,  0,  2,  0,  0,  0,  6},
+    { 0,  6,  0,  0,  0,  0,  2,  8,  0},
+    { 0,  0,  0,  4,  1,  9,  0,  0,  5},
+    { 0,  0,  0,  0,  8,  0,  0,  7,  9}};
+  const int solution[9][9] = {
+    { 5,  3,  4,  6,  7,  8,  9,  1,  2},
+    { 6,  7,  2,  1,  9,  5,  3,  4,  8},
+    { 1,  9,  8,  3,  4,  2,  5,  6,  7},
+    { 8,  5,  9,  7,  6,  1,  4,  2,  3},
+    { 4,  2,  6,  8,  5,  3,  7,  9,  1},
+    { 7,  1,  3,  9,  2,  4,  8,  5,  6},
+    { 9,  6,  1,  5,  3,  7,  2,  8,  4},
+    { 2,  8,  7,  4,  1,  9,  6,  3,  5},
+    { 3,  4,  5,  2,  8,  6,  1,  7,  9}};
+  /* clang-format on */
+
+  /* Inequality test for binary constraints. */
+  csp::BinaryConstraintFn inequality_fn = [](int value_dst, int value_src) {
+    return value_dst != value_src;
+  };
+
+  for (const int row : IndexRange(9)) {
+    for (const int col : IndexRange(9)) {
+      const int var = row * 9 + col;
+
+      /* Add unary constraints for known initial states. */
+      if (initial_state[row][col] > 0) {
+        const int known_value = initial_state[row][col] - 1;
+        constraints.add_unary(var,
+                              [known_value](const int value) { return value == known_value; });
+      }
+
+      /* Sudoku rules:
+       * Cell value cannot be the same as that in any other cell
+       * in the same row, column, or block.
+       *
+       * For simplicity only one direction of each symmetric constraint is added per cell. */
+      for (const int other_col : IndexRange(9)) {
+        const int other_var_in_row = row * 9 + other_col;
+        if (other_var_in_row != var) {
+          constraints.add_binary(var, other_var_in_row, inequality_fn);
+        }
+      }
+      for (const int other_row : IndexRange(9)) {
+        const int other_var_in_col = other_row * 9 + col;
+        if (other_var_in_col != var) {
+          constraints.add_binary(var, other_var_in_col, inequality_fn);
+        }
+      }
+      for (const int other_row : IndexRange( int(row/3) * 3, 3)) {
+        for (const int other_col : IndexRange(int(col / 3) * 3, 3)) {
+          const int other_var_in_block = other_row * 9 + other_col;
+          if (other_var_in_block != var) {
+            constraints.add_binary(var, other_var_in_block, inequality_fn);
+          }
+        }
+      }
+    }
+  }
+
+  BitGroupVector<> result = csp::solve_constraints(constraints, num_vars, domain_size);
+
+  for (const int row : IndexRange(9)) {
+    for (const int col : IndexRange(9)) {
+      const int var = row * 9 + col;
+      const int expected_value = solution[row][col] - 1;
+      for (const int value : IndexRange(9)) {
+        EXPECT_EQ(result[var][value], value == expected_value);
+      }
+    }
+  }
+}
+
 }  // namespace blender::tests
