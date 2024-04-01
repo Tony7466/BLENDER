@@ -507,6 +507,7 @@ if(WITH_GTESTS)
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
     tests/BLI_color_test.cc
+    tests/BLI_constraint_satisfaction_test.cc
     tests/BLI_convexhull_2d_test.cc
     tests/BLI_cpp_type_test.cc
     tests/BLI_delaunay_2d_test.cc

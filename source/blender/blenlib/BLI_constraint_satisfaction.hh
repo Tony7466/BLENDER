@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "BLI_bit_group_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_multi_value_map.hh"
 

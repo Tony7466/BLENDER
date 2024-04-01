@@ -1,8 +1,7 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_bit_group_vector.hh"
 #include "BLI_bit_span_ops.hh"
 #include "BLI_constraint_satisfaction.hh"
 #include "BLI_stack.hh"

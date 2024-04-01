@@ -7,16 +7,12 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
-#include "BLI_bit_span.hh"
 #include "DNA_node_tree_interface_types.h"
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
 
-#include "BLI_bit_group_vector.hh"
-#include "BLI_bit_span_ops.hh"
 #include "BLI_constraint_satisfaction.hh"
-#include "BLI_multi_value_map.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_path_util.h"
 #include "BLI_resource_scope.hh"
@@ -26,8 +22,6 @@
 #include "BLI_tempfile.h"
 
 #include <fstream>
-#include <iostream>
-#include <ostream>
 
 namespace blender::bke::node_field_inferencing {
 
@@ -1087,97 +1081,6 @@ static void test_ac3_field_inferencing(
         *group_output_socket, interface_by_node, result);
     inferencing_interface.outputs[group_output_socket->index()] = std::move(field_dependency);
   }
-}
-
-template<typename Logger> static void test_ac3_example(Logger &logger)
-{
-  /* Example taken from
-   * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
-   */
-  const int num_vars = 5;
-  const int domain_size = 4;
-
-  csp::ConstraintSet constraints;
-  enum Symmetry {
-    None,
-    Symmetric,
-    Antisymmetric,
-  };
-  auto add_binary_constraint = [&](const int a,
-                                   const int b,
-                                   const Symmetry symmetry,
-                                   const csp::BinaryConstraintFn &constraint) {
-    constraints.add(a, b, constraint);
-    switch (symmetry) {
-      case None:
-        break;
-      case Symmetric:
-        constraints.add(b, a, constraint);
-        break;
-      case Antisymmetric: {
-        const auto anti_constraint = [constraint](int value_a, int value_b) {
-          return constraint(value_b, value_a);
-        };
-        constraints.add(b, a, anti_constraint);
-        break;
-      }
-    }
-  };
-
-  const int var_A = 0;
-  const int var_B = 1;
-  const int var_C = 2;
-  const int var_D = 3;
-  const int var_E = 4;
-
-  [[maybe_unused]] const int value_1 = 0;
-  [[maybe_unused]] const int value_2 = 1;
-  [[maybe_unused]] const int value_3 = 2;
-  [[maybe_unused]] const int value_4 = 3;
-
-  /* C = {1, 2, 4} */
-  constraints.add(var_B, [](const int value) { return value != value_3; });
-  /* C = {1, 3, 4} */
-  constraints.add(var_C, [](const int value) { return value != value_2; });
-
-  /* A != B */
-  add_binary_constraint(var_A, var_B, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
-  /* A == D */
-  add_binary_constraint(var_A, var_D, Symmetric, [](const int value_a, const int value_b) {
-    return value_a == value_b;
-  });
-  /* A > E */
-  add_binary_constraint(var_A, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
-  /* B != C */
-  add_binary_constraint(var_B, var_C, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
-  /* B != D */
-  add_binary_constraint(var_B, var_D, Symmetric, [](const int value_a, const int value_b) {
-    return value_a != value_b;
-  });
-  /* B > E */
-  add_binary_constraint(var_B, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
-  /* C < D */
-  add_binary_constraint(var_C, var_D, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a < value_b;
-  });
-  /* C > E */
-  add_binary_constraint(var_C, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
-  /* D > E */
-  add_binary_constraint(var_D, var_E, Antisymmetric, [](const int value_a, const int value_b) {
-    return value_a > value_b;
-  });
-
-  csp::solve_constraints(constraints, num_vars, domain_size, logger);
 }
 
 template<typename Logger>
