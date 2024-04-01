@@ -7218,6 +7218,14 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Extensions Development Utilities", "Developer support utilities for extensions");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(
+      srna, "use_node_field_inferencing_constraint_solver", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_node_field_inferencing_constraint_solver", 1);
+  RNA_def_property_ui_text(prop,
+                           "Field Inferencing Constraint Solver",
+                           "Use a general constraint solver for field type inference");
+  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

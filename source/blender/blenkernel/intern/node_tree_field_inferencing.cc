@@ -887,7 +887,7 @@ static OutputFieldDependency find_group_output_dependencies(
 }
 
 template<typename Logger>
-static void test_ac3_field_inferencing(
+static void solve_field_inferencing_constraints(
     const bNodeTree &tree,
     const Span<const FieldInferencingInterface *> interface_by_node,
     FieldInferencingInterface &inferencing_interface,
@@ -1083,8 +1083,10 @@ static void test_ac3_field_inferencing(
   }
 }
 
-template<typename Logger>
-static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
+template <typename Logger>
+static bool update_field_inferencing_ex(const bNodeTree &tree,
+                                        const bool use_constraint_solver,
+                                        Logger &logger)
 {
   BLI_assert(tree.type == NTREE_GEOMETRY);
   tree.ensure_topology_cache();
@@ -1103,20 +1105,22 @@ static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
   new_inferencing_interface->outputs.resize(tree.interface_outputs().size(),
                                             OutputFieldDependency::ForDataSource());
 
-#if 0
-  /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
-  Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
+  if (use_constraint_solver) {
+    solve_field_inferencing_constraints(
+        tree, interface_by_node, *new_inferencing_interface, logger);
+  }
+  else {
+    /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
+    Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
 
-  propagate_data_requirements_from_right_to_left(
-      tree, interface_by_node, field_state_by_socket_id);
-  determine_group_input_states(tree, *new_inferencing_interface, field_state_by_socket_id);
-  propagate_field_status_from_left_to_right(tree, interface_by_node, field_state_by_socket_id);
-  determine_group_output_states(
-      tree, *new_inferencing_interface, interface_by_node, field_state_by_socket_id);
-  update_socket_shapes(tree, field_state_by_socket_id);
-#else
-  test_ac3_field_inferencing(tree, interface_by_node, *new_inferencing_interface, logger);
-#endif
+    propagate_data_requirements_from_right_to_left(
+        tree, interface_by_node, field_state_by_socket_id);
+    determine_group_input_states(tree, *new_inferencing_interface, field_state_by_socket_id);
+    propagate_field_status_from_left_to_right(tree, interface_by_node, field_state_by_socket_id);
+    determine_group_output_states(
+        tree, *new_inferencing_interface, interface_by_node, field_state_by_socket_id);
+    update_socket_shapes(tree, field_state_by_socket_id);
+  }
 
   /* Update the previous group interface. */
   const bool group_interface_changed = !tree.runtime->field_inferencing_interface ||
@@ -1127,10 +1131,10 @@ static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
   return group_interface_changed;
 }
 
-bool update_field_inferencing(const bNodeTree &tree)
-{
+bool update_field_inferencing(const bNodeTree &tree) {
   csp::NullLogger logger;
-  return update_field_inferencing_ex(tree, logger);
+  return update_field_inferencing_ex(
+      tree, U.experimental.use_node_field_inferencing_constraint_solver, logger);
 }
 
 bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath)
@@ -1138,7 +1142,7 @@ bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath
   std::ofstream fs;
   fs.open(filepath, std::fstream::out);
   csp::JSONLogger logger(fs);
-  return update_field_inferencing_ex(tree, logger);
+  return update_field_inferencing_ex(tree, true, logger);
 }
 
 }  // namespace blender::bke::node_field_inferencing
