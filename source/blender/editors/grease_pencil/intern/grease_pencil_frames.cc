@@ -463,7 +463,6 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   copy_buffer_last_frame = std::numeric_limits<int>::min();
 
   Scene *scene = ac->scene;
-  Object *object = ac->obact;
 
   /* Filter data. */
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
@@ -535,7 +534,6 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   }
 
   Scene *scene = ac->scene;
-  Object *object = ac->obact;
   int offset = 0;
 
   /* Methods of offset (eKeyPasteOffset). */
