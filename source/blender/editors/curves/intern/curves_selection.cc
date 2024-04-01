@@ -76,34 +76,34 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_points(curves, memory);
 }
 
-Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves)
+Span<StringRef> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves)
 {
-  static const std::array<std::string, 1> selection_attribute_names{".selection"};
+  static const std::array<StringRef, 1> selection_attribute_names{".selection"};
   const bke::AttributeAccessor attributes = curves.attributes();
   return (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
              get_curves_all_selection_attribute_names() :
              selection_attribute_names;
 }
 
-Span<std::string> get_curves_all_selection_attribute_names()
+Span<StringRef> get_curves_all_selection_attribute_names()
 {
-  static const std::array<std::string, 3> selection_attribute_names{
+  static const std::array<StringRef, 3> selection_attribute_names{
       ".selection", ".selection_handle_left", ".selection_handle_right"};
   return selection_attribute_names;
 }
 
-Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves)
+Span<StringRef> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves)
 {
-  static const std::array<std::string, 2> selection_attribute_names{".selection_handle_left",
-                                                                    ".selection_handle_right"};
+  static const std::array<StringRef, 2> selection_attribute_names{".selection_handle_left",
+                                                                  ".selection_handle_right"};
   const bke::AttributeAccessor attributes = curves.attributes();
   return (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
              selection_attribute_names :
-             Span<std::string>();
+             Span<StringRef>();
 }
 
 void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
-                                 const Span<std::string> selection_attribute_names)
+                                 Span<StringRef> selection_attribute_names)
 {
   for (const StringRef selection_name : selection_attribute_names) {
     attributes.remove(selection_name);
@@ -116,7 +116,7 @@ Vector<bke::GSpanAttributeWriter> &init_selection_writers(
     const bke::AttrDomain selection_domain)
 {
   const eCustomDataType create_type = CD_PROP_BOOL;
-  Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
+  Span<StringRef> selection_attribute_names = get_curves_selection_attribute_names(curves);
   for (const int i : selection_attribute_names.index_range()) {
     writers.append(ensure_selection_attribute(
         curves, selection_domain, create_type, selection_attribute_names[i]));
@@ -134,12 +134,12 @@ inline void finish_attribute_writers(MutableSpan<bke::GSpanAttributeWriter> attr
 inline bke::GSpanAttributeWriter &selection_attribute_writer_by_name(
     MutableSpan<bke::GSpanAttributeWriter> selections, StringRef attribute_name)
 {
-  Span<std::string> selection_attribute_names = get_curves_all_selection_attribute_names();
+  Span<StringRef> selection_attribute_names = get_curves_all_selection_attribute_names();
 
   BLI_assert(selection_attribute_names.contains(attribute_name));
 
   for (const int index : selections.index_range()) {
-    if (attribute_name.size() == selection_attribute_names[index].length()) {
+    if (attribute_name.size() == selection_attribute_names[index].size()) {
       return selections[index];
     }
   }
@@ -166,7 +166,7 @@ void foreach_selection_attribute_writer(
 
 static void init_selectable_foreach(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
-                                    Span<std::string> &r_bezier_attribute_names,
+                                    Span<StringRef> &r_bezier_attribute_names,
                                     Span<float3> &r_positions,
                                     std::array<Span<float3>, 2> &r_bezier_handle_positions,
                                     IndexMaskMemory &r_memory,
@@ -185,7 +185,7 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectableRangeConsumer range_consumer)
 {
-  Span<std::string> bezier_attribute_names;
+  Span<StringRef> bezier_attribute_names;
   Span<float3> positions;
   std::array<Span<float3>, 2> bezier_handle_positions;
   IndexMaskMemory memory;
@@ -214,7 +214,7 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectableRangeConsumer range_consumer)
 {
-  Span<std::string> bezier_attribute_names;
+  Span<StringRef> bezier_attribute_names;
   Span<float3> positions;
   std::array<Span<float3>, 2> bezier_handle_positions;
   IndexMaskMemory memory;
@@ -240,7 +240,7 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
                                                      const bke::AttrDomain selection_domain,
                                                      const eCustomDataType create_type,
-                                                     const std::string &attribute_name)
+                                                     StringRef attribute_name)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   if (attributes.contains(attribute_name)) {

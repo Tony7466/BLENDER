@@ -54,24 +54,24 @@ namespace blender::ed::curves {
  * Get selection attribute names need for given curve.
  * Possible outcomes: [".selection"] if Bezier curves are present,
  * [".selection", ".selection_handle_left", ".selection_handle_right"] otherwise. */
-Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
+Span<StringRef> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
 
 /* Get all possible curve selection attribute names. */
-Span<std::string> get_curves_all_selection_attribute_names();
+Span<StringRef> get_curves_all_selection_attribute_names();
 
 /**
  * Returns [".selection_handle_left", ".selection_handle_right"] if argument contains Bezier
  * curves, empty span otherwise.
  */
-Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves);
+Span<StringRef> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves);
 
 /**
  * Used to select everything or to delete selection attribute so that it will not have to be
  * resized.
  */
-void remove_selection_attributes(bke::MutableAttributeAccessor &attributes,
-                                 const Span<std::string> selection_attribute_names =
-                                     get_curves_all_selection_attribute_names());
+void remove_selection_attributes(
+    bke::MutableAttributeAccessor &attributes,
+    Span<StringRef> selection_attribute_names = get_curves_all_selection_attribute_names());
 
 using SelectableRangeConsumer = blender::FunctionRef<void(
     const IndexRange range, const Span<float3> positions, StringRef selection_attribute_name)>;

@@ -773,7 +773,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
                                     (cps->radius_taper_end != 0.0f));
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
+  Span<StringRef> selection_attribute_names = get_curves_selection_attribute_names(curves);
   remove_selection_attributes(attributes, selection_attribute_names);
 
   if (cdd->curve_type == CU_BEZIER) {
