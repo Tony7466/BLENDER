@@ -69,7 +69,7 @@ static void solve_unary_constraints(const ConstraintSet &constraints,
                                     Logger & /*logger*/)
 {
   for (const int i : variable_domains.index_range()) {
-    const MutableVariableRef var(i);
+    const VariableIndex var(i);
     for (const UnaryConstraintFn &constraint : constraints.get_unary_constraints(var)) {
       reduce_unary(constraint, variable_domains[i]);
     }
@@ -86,16 +86,15 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
    * Using the topological sorting of sockets should make a decent "preconditioner".
    * This is similar to what the current R-L/L-R solver does. */
   struct BinaryKey {
-    VariableRef source;
-    MutableVariableRef target;
+    VariableIndex source;
+    VariableIndex target;
   };
   Stack<BinaryKey> worklist;
   logger.notify("Binary Constraint Solve");
   for (const int i : variable_domains.index_range()) {
-    VariableRef source_var(i);
-    for (const ConstraintSet::Target &target : constraints.get_target_constraints(source_var)) {
-      worklist.push({source_var, target.variable});
-      logger.on_worklist_extended(source_var, target.variable);
+    for (const ConstraintSet::Target &target : constraints.get_target_constraints(i)) {
+      worklist.push({i, target.variable});
+      logger.on_worklist_extended(i, target.variable);
     }
   }
 
@@ -136,7 +135,7 @@ BitGroupVector<> solve_constraints_with_logger(const ConstraintSet &constraints,
 
   logger.on_solve_start();
   for (const int i : variable_domains.index_range()) {
-    logger.on_domain_init(VariableRef(i), variable_domains[i]);
+    logger.on_domain_init(i, variable_domains[i]);
   }
 
   solve_unary_constraints<Logger>(constraints, variable_domains, logger);
@@ -164,7 +163,7 @@ void NullLogger::on_start(StringRef /*message*/) {}
 void NullLogger::on_end() {}
 
 void NullLogger::declare_variables(const int /*num_vars*/,
-                                   FunctionRef<std::string(VariableRef)> /*names_fn*/)
+                                   FunctionRef<std::string(VariableIndex)> /*names_fn*/)
 {
 }
 
@@ -174,15 +173,15 @@ void NullLogger::notify(StringRef /*message*/) {}
 
 void NullLogger::on_solve_start() {}
 
-void NullLogger::on_worklist_extended(VariableRef /*src*/, VariableRef /*dst*/) {}
+void NullLogger::on_worklist_extended(VariableIndex /*src*/, VariableIndex /*dst*/) {}
 
-void NullLogger::on_binary_constraint_applied(VariableRef /*src*/, VariableRef /*dst*/) {}
+void NullLogger::on_binary_constraint_applied(VariableIndex /*src*/, VariableIndex /*dst*/) {}
 
-void NullLogger::on_domain_init(VariableRef /*var*/, const BitSpan /*domain*/) {}
+void NullLogger::on_domain_init(VariableIndex /*var*/, const BitSpan /*domain*/) {}
 
-void NullLogger::on_domain_reduced(VariableRef /*var*/, const BitSpan /*domain*/) {}
+void NullLogger::on_domain_reduced(VariableIndex /*var*/, const BitSpan /*domain*/) {}
 
-void NullLogger::on_domain_empty(VariableRef /*var*/) {}
+void NullLogger::on_domain_empty(VariableIndex /*var*/) {}
 
 void NullLogger::on_solve_end() {}
 
@@ -193,7 +192,7 @@ void PrintLogger::on_start(StringRef message)
 void PrintLogger::on_end() {}
 
 void PrintLogger::declare_variables(const int /*num_vars*/,
-                        FunctionRef<std::string(VariableRef)> /*names_fn*/)
+                        FunctionRef<std::string(VariableIndex)> /*names_fn*/)
 {
 }
 void PrintLogger::declare_constraints(const ConstraintSet & /*constraints*/) {}
@@ -205,29 +204,29 @@ void PrintLogger::notify(StringRef message)
 
 void PrintLogger::on_solve_start() {}
 
-void PrintLogger::on_worklist_extended(VariableRef src, VariableRef dst)
+void PrintLogger::on_worklist_extended(VariableIndex src, VariableIndex dst)
 {
-  std::cout << "  Worklist extended: " << src.index() << ", " << dst.index() << std::endl;
+  std::cout << "  Worklist extended: " << src << ", " << dst << std::endl;
 }
 
-void PrintLogger::on_binary_constraint_applied(VariableRef src, VariableRef dst)
+void PrintLogger::on_binary_constraint_applied(VariableIndex src, VariableIndex dst)
 {
-  std::cout << "  Applying " << src.index() << ", " << dst.index() << std::endl;
+  std::cout << "  Applying " << src << ", " << dst << std::endl;
 }
 
-void PrintLogger::on_domain_init(VariableRef /*var*/, const BitSpan /*domain*/)
+void PrintLogger::on_domain_init(VariableIndex /*var*/, const BitSpan /*domain*/)
 {
   std::cout << "    Initialized domain" << std::endl;
 }
 
-void PrintLogger::on_domain_reduced(VariableRef /*var*/, const BitSpan /*domain*/)
+void PrintLogger::on_domain_reduced(VariableIndex /*var*/, const BitSpan /*domain*/)
 {
   std::cout << "    Reduced domain!" << std::endl;
 }
 
-void PrintLogger::on_domain_empty(VariableRef var)
+void PrintLogger::on_domain_empty(VariableIndex var)
 {
-  std::cout << "      FAILED! No possible values for " << var.index() << std::endl;
+  std::cout << "      FAILED! No possible values for " << var << std::endl;
 }
 
 void PrintLogger::on_solve_end() {}
@@ -269,12 +268,12 @@ int JSONLogger::domain_as_int(const BitSpan domain)
 }
 
 void JSONLogger::declare_variables(const int num_vars,
-                                    FunctionRef<std::string(VariableRef)> names_fn)
+                                    FunctionRef<std::string(VariableIndex)> names_fn)
 {
   variable_names.reinitialize(num_vars);
   this->stream << "\"variables\": [";
   for (const int i : IndexRange(num_vars)) {
-    variable_names[i] = names_fn(VariableRef(i));
+    variable_names[i] = names_fn(i);
     if (i > 0) {
       this->stream << ", ";
     }
@@ -288,14 +287,14 @@ void JSONLogger::declare_constraints(const ConstraintSet &constraints)
   bool has_constraints = false;
   this->stream << ", \"constraints\": [";
   for (const auto &item : constraints.binary_constraints_by_source().items()) {
-    const VariableRef src = item.key;
+    const VariableIndex src = item.key;
     for (const ConstraintSet::Target &target : item.value) {
-      const VariableRef dst = target.variable;
+      const VariableIndex dst = target.variable;
       if (has_constraints) {
         this->stream << ", ";
       }
-      const std::string src_name = variable_names[src.index()];
-      const std::string dst_name = variable_names[dst.index()];
+      const std::string src_name = variable_names[src];
+      const std::string dst_name = variable_names[dst];
       this->stream << "{\"name\": " << stringify(src_name + "--" + dst_name)
                     << ", \"source\": " << stringify(src_name)
                     << ", \"target\": " << stringify(dst_name) << "}" << std::endl;
@@ -312,42 +311,42 @@ void JSONLogger::on_solve_start()
   this->stream << ", \"events\": [";
 }
 
-void JSONLogger::on_worklist_extended(VariableRef src, VariableRef dst)
+void JSONLogger::on_worklist_extended(VariableIndex src, VariableIndex dst)
 {
   on_event("worklist added", [&]() {
-    this->stream << "\"source\": " << stringify(variable_names[src.index()])
-                  << ", \"target\": \"" << variable_names[dst.index()] << "\"";
+    this->stream << "\"source\": " << stringify(variable_names[src])
+                  << ", \"target\": \"" << variable_names[dst] << "\"";
   });
 }
 
-void JSONLogger::on_binary_constraint_applied(VariableRef src, VariableRef dst)
+void JSONLogger::on_binary_constraint_applied(VariableIndex src, VariableIndex dst)
 {
   on_event("constraint applied", [&]() {
-    this->stream << "\"source\": " << stringify(variable_names[src.index()])
-                  << ", \"target\": " << stringify(variable_names[dst.index()]);
+    this->stream << "\"source\": " << stringify(variable_names[src])
+                  << ", \"target\": " << stringify(variable_names[dst]);
   });
 }
 
-void JSONLogger::on_domain_init(VariableRef var, const BitSpan domain)
+void JSONLogger::on_domain_init(VariableIndex var, const BitSpan domain)
 {
   on_event("domain init", [&]() {
-    this->stream << "\"variable\": " << stringify(variable_names[var.index()])
+    this->stream << "\"variable\": " << stringify(variable_names[var])
                   << ", \"domain\": " << domain_as_int(domain);
   });
 }
 
-void JSONLogger::on_domain_reduced(VariableRef var, const BitSpan domain)
+void JSONLogger::on_domain_reduced(VariableIndex var, const BitSpan domain)
 {
   on_event("domain reduced", [&]() {
-    this->stream << "\"variable\": " << stringify(variable_names[var.index()])
+    this->stream << "\"variable\": " << stringify(variable_names[var])
                   << ", \"domain\": " << domain_as_int(domain);
   });
 }
 
-void JSONLogger::on_domain_empty(VariableRef var)
+void JSONLogger::on_domain_empty(VariableIndex var)
 {
   on_event("domain empty", [&]() {
-    this->stream << "\"variable\": " << stringify(variable_names[var.index()]);
+    this->stream << "\"variable\": " << stringify(variable_names[var]);
   });
 }
 

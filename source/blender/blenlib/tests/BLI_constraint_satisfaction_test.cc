@@ -99,7 +99,7 @@ TEST(constraint_satisfaction, SimpleTest)
     return value_a > value_b;
   });
 
-  csp::solve_constraints(constraints, num_vars, domain_size, logger);
+  csp::solve_constraints(constraints, num_vars, domain_size);
 
   //DisjointSet disjoint_set(6);
   //EXPECT_FALSE(disjoint_set.in_same_set(1, 2));

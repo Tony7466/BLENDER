@@ -30,64 +30,7 @@ using UnaryConstraintFn = std::function<bool(int value)>;
 /** Binary constraint function, returns true if both values are compatible. */
 using BinaryConstraintFn = std::function<bool(int value_a, int value_b)>;
 
-class VariableRef {
-  int index_;
-
- public:
-  explicit VariableRef(const int index) : index_(index) {}
-
-  int index() const
-  {
-    return index_;
-  }
-
-  operator int() const
-  {
-    return index_;
-  }
-
-  bool operator==(const VariableRef other) const
-  {
-    return index_ == other.index_;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash(index_);
-  }
-};
-
-struct MutableVariableRef {
-  int index_;
-
- public:
-  explicit MutableVariableRef(const int index) : index_(index) {}
-
-  int index() const
-  {
-    return index_;
-  }
-
-  operator int() const
-  {
-    return index_;
-  }
-
-  operator VariableRef() const
-  {
-    return VariableRef(index_);
-  }
-
-  bool operator==(const MutableVariableRef other) const
-  {
-    return index_ == other.index_;
-  }
-
-  uint64_t hash() const
-  {
-    return get_default_hash(index_);
-  }
-};
+using VariableIndex = int;
 
 /**
  * Set of unary and binary constraint functions on abstract variables.
@@ -98,47 +41,47 @@ struct MutableVariableRef {
 class ConstraintSet {
  public:
   struct Target {
-    MutableVariableRef variable;
+    VariableIndex variable;
     BinaryConstraintFn constraint;
   };
   struct Source {
-    VariableRef variable;
+    VariableIndex variable;
     BinaryConstraintFn constraint;
   };
 
  private:
-  MultiValueMap<MutableVariableRef, UnaryConstraintFn> unary_;
-  MultiValueMap<VariableRef, Target> binary_by_source_;
-  MultiValueMap<MutableVariableRef, Source> binary_by_target_;
+  MultiValueMap<VariableIndex, UnaryConstraintFn> unary_;
+  MultiValueMap<VariableIndex, Target> binary_by_source_;
+  MultiValueMap<VariableIndex, Source> binary_by_target_;
 
  public:
-  const MultiValueMap<MutableVariableRef, UnaryConstraintFn> &all_unary_constraints() const
+  const MultiValueMap<VariableIndex, UnaryConstraintFn> &all_unary_constraints() const
   {
     return unary_;
   }
-  const MultiValueMap<VariableRef, Target> &binary_constraints_by_source() const
+  const MultiValueMap<VariableIndex, Target> &binary_constraints_by_source() const
   {
     return binary_by_source_;
   }
-  const MultiValueMap<MutableVariableRef, Source> &binary_constraints_by_target() const
+  const MultiValueMap<VariableIndex, Source> &binary_constraints_by_target() const
   {
     return binary_by_target_;
   }
 
-  Span<UnaryConstraintFn> get_unary_constraints(const MutableVariableRef source) const
+  Span<UnaryConstraintFn> get_unary_constraints(const VariableIndex source) const
   {
     return unary_.lookup(source);
   }
-  Span<Target> get_target_constraints(const VariableRef source) const
+  Span<Target> get_target_constraints(const VariableIndex source) const
   {
     return binary_by_source_.lookup(source);
   }
-  Span<Source> get_source_constraints(const MutableVariableRef target) const
+  Span<Source> get_source_constraints(const VariableIndex target) const
   {
     return binary_by_target_.lookup(target);
   }
-  BinaryConstraintFn get_binary_constraint(const VariableRef source_key,
-                                           const MutableVariableRef target_key) const
+  BinaryConstraintFn get_binary_constraint(const VariableIndex source_key,
+                                           const VariableIndex target_key) const
   {
     for (const Target &target : binary_by_source_.lookup(source_key)) {
       if (target.variable == target_key) {
@@ -148,12 +91,12 @@ class ConstraintSet {
     return nullptr;
   }
 
-  void add(const MutableVariableRef variable, UnaryConstraintFn constraint)
+  void add(const VariableIndex variable, UnaryConstraintFn constraint)
   {
     unary_.add(variable, constraint);
   }
-  void add(const MutableVariableRef target,
-           const VariableRef source,
+  void add(const VariableIndex target,
+           const VariableIndex source,
            BinaryConstraintFn constraint)
   {
     binary_by_source_.add(source, {target, constraint});
@@ -184,15 +127,15 @@ struct NullLogger {
   void on_end();
 
   void declare_variables(const int num_vars,
-                         FunctionRef<std::string(VariableRef)> names_fn);
+                         FunctionRef<std::string(VariableIndex)> names_fn);
   void declare_constraints(const ConstraintSet & constraints);
   void notify(StringRef message);
   void on_solve_start();
-  void on_worklist_extended(VariableRef src, VariableRef dst);
-  void on_binary_constraint_applied(VariableRef src, VariableRef dst);
-  void on_domain_init(VariableRef var, const BitSpan domain);
-  void on_domain_reduced(VariableRef var, const BitSpan domain);
-  void on_domain_empty(VariableRef var);
+  void on_worklist_extended(VariableIndex src, VariableIndex dst);
+  void on_binary_constraint_applied(VariableIndex src, VariableIndex dst);
+  void on_domain_init(VariableIndex var, const BitSpan domain);
+  void on_domain_reduced(VariableIndex var, const BitSpan domain);
+  void on_domain_empty(VariableIndex var);
   void on_solve_end();
 };
 
@@ -200,15 +143,15 @@ struct NullLogger {
 struct PrintLogger {
   void on_start(StringRef message);
   void on_end();
-  void declare_variables(const int num_vars, FunctionRef<std::string(VariableRef)> names_fn);
+  void declare_variables(const int num_vars, FunctionRef<std::string(VariableIndex)> names_fn);
   void declare_constraints(const ConstraintSet &constraints);
   void notify(StringRef message);
   void on_solve_start();
-  void on_worklist_extended(VariableRef src, VariableRef dst);
-  void on_binary_constraint_applied(VariableRef src, VariableRef dst);
-  void on_domain_init(VariableRef var, const BitSpan domain);
-  void on_domain_reduced(VariableRef var, const BitSpan domain);
-  void on_domain_empty(VariableRef var);
+  void on_worklist_extended(VariableIndex src, VariableIndex dst);
+  void on_binary_constraint_applied(VariableIndex src, VariableIndex dst);
+  void on_domain_init(VariableIndex var, const BitSpan domain);
+  void on_domain_reduced(VariableIndex var, const BitSpan domain);
+  void on_domain_empty(VariableIndex var);
   void on_solve_end();
 };
 
@@ -225,15 +168,15 @@ struct JSONLogger {
   std::string stringify(StringRef s);
   int domain_as_int(const BitSpan domain);
 
-  void declare_variables(const int num_vars, FunctionRef<std::string(VariableRef)> names_fn);
+  void declare_variables(const int num_vars, FunctionRef<std::string(VariableIndex)> names_fn);
   void declare_constraints(const ConstraintSet &constraints);
   void notify(StringRef message);
   void on_solve_start();
-  void on_worklist_extended(VariableRef src, VariableRef dst);
-  void on_binary_constraint_applied(VariableRef src, VariableRef dst);
-  void on_domain_init(VariableRef var, const BitSpan domain);
-  void on_domain_reduced(VariableRef var, const BitSpan domain);
-  void on_domain_empty(VariableRef var);
+  void on_worklist_extended(VariableIndex src, VariableIndex dst);
+  void on_binary_constraint_applied(VariableIndex src, VariableIndex dst);
+  void on_domain_init(VariableIndex var, const BitSpan domain);
+  void on_domain_reduced(VariableIndex var, const BitSpan domain);
+  void on_domain_empty(VariableIndex var);
   void on_solve_end();
 };
 
