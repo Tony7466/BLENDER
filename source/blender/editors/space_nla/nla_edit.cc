@@ -2098,8 +2098,8 @@ static int nlaedit_make_single_user_invoke(bContext *C, wmOperator *op, const wm
     return WM_operator_confirm_ex(
         C,
         op,
-        IFACE_("Make selected single-user?"),
-        IFACE_("Making single-user creates a new action for the select strip(s)"),
+        IFACE_("Make Selected Strips Single-User"),
+        IFACE_("Linked actions will be duplicated for each selected strip."),
         IFACE_("Make Single"),
         ALERT_ICON_WARNING,
         false);
