@@ -119,7 +119,7 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
           continue;
         }
         logger.on_worklist_extended(key.target, target.variable);
-        worklist.push({key.source, target.variable});
+        worklist.push({key.target, target.variable});
       }
     }
   }
