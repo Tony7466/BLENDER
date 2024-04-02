@@ -929,6 +929,10 @@ static bool verify_field_inferencing_csp_result(
     };
     const int var_index = socket_vars[socket->index_in_tree()];
     const BitSpan state = csp_result[var_index];
+    if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
+      log_error("ERROR: neither single value nor field");
+      continue;
+    }
     const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
     if (old_state.is_always_single) {
       if (!state[DomainValue::Single] || state[DomainValue::Field]) {
@@ -960,6 +964,10 @@ static bool verify_field_inferencing_csp_result(
     };
     const int var_index = tree_input_vars[i];
     const BitSpan state = csp_result[var_index];
+    if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
+      log_error("ERROR: neither single value nor field");
+      continue;
+    }
     const InputSocketFieldType &old_state = tmp_inferencing_interface->inputs[i];
     switch (old_state) {
       case InputSocketFieldType::None:
@@ -982,6 +990,10 @@ static bool verify_field_inferencing_csp_result(
     };
     const int var_index = tree_output_vars[i];
     const BitSpan state = csp_result[var_index];
+    if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
+      log_error("ERROR: neither single value nor field");
+      continue;
+    }
     const OutputFieldDependency &old_state = tmp_inferencing_interface->outputs[i];
     switch (old_state.field_type()) {
       case OutputSocketFieldType::None:
