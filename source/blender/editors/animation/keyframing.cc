@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <cstdio>
 
+#include <fmt/format.h>
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -326,9 +328,9 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
         if (!is_keyable_type(prop)) {
           continue;
         }
-        std::string name = prop->name;
-        std::string rna_path = "[\"" + name + "\"]";
-        paths.append(rna_path);
+        char name_escaped[MAX_IDPROP_NAME * 2];
+        BLI_str_escape(name_escaped, prop->name, sizeof(name_escaped));
+        paths.append(fmt::format("[\"{}\"]", name_escaped));
       }
     }
   }
