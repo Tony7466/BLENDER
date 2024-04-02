@@ -847,6 +847,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const ArmatureDrawContext *ctx,
                                                const float bone_color[4],
                                                const float hint_color[4],
                                                const float outline_color[4],
+                                               const float wire_width,
                                                Object *custom)
 {
   using namespace blender::draw;
@@ -880,7 +881,10 @@ static void drw_shgroup_bone_custom_solid_mesh(const ArmatureDrawContext *ctx,
   if (loose_edges) {
     buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
-    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
+    inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
+    /* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down.
+     * Keep in sync with the max value of RNA. */
+    inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / 16.0);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
@@ -957,6 +961,7 @@ static void drw_shgroup_bone_custom_solid(const ArmatureDrawContext *ctx,
                                           const float bone_color[4],
                                           const float hint_color[4],
                                           const float outline_color[4],
+                                          const float wire_width,
                                           Object *custom)
 {
   /* The custom object is not an evaluated object, so its object->data field hasn't been replaced
@@ -966,7 +971,7 @@ static void drw_shgroup_bone_custom_solid(const ArmatureDrawContext *ctx,
   Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf(custom);
   if (mesh != nullptr) {
     drw_shgroup_bone_custom_solid_mesh(
-        ctx, mesh, bone_mat, bone_color, hint_color, outline_color, custom);
+        ctx, mesh, bone_mat, bone_color, hint_color, outline_color, wire_width, custom);
     return;
   }
 
@@ -2126,7 +2131,13 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
       }
     }
     if ((boneflag & BONE_DRAWWIRE) == 0 && (boneflag & BONE_DRAW_LOCKED_WEIGHT) == 0) {
-      drw_shgroup_bone_custom_solid(ctx, disp_mat, col_solid, col_hint, col_wire, pchan->custom);
+      drw_shgroup_bone_custom_solid(ctx,
+                                    disp_mat,
+                                    col_solid,
+                                    col_hint,
+                                    col_wire,
+                                    pchan->custom_shape_wire_width,
+                                    pchan->custom);
     }
     else {
       drw_shgroup_bone_custom_wire(
