@@ -581,7 +581,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     if (!from_single_channel && !copy_buffer.contains(layer_name)) {
       continue;
     }
-    LayerBufferItem layer_buffer = from_single_channel ? *copy_buffer.values() :
+    LayerBufferItem layer_buffer = from_single_channel ? *copy_buffer.values().begin() :
                                                          copy_buffer.lookup(layer_name);
     bool change = false;
 
