@@ -624,7 +624,6 @@ static void invert_visibility_mesh(Object &object, const Span<PBVHNode *> nodes)
         hide_poly.span[face] = !hide_poly.span[face];
       }
       BKE_pbvh_node_mark_update_visibility(node);
-      //bke::pbvh::node_update_visibility_mesh(hide_poly.span, *node);
     }
   });
 
