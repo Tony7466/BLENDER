@@ -834,7 +834,6 @@ void ED_info_draw_stats(
     return;
   }
 
-
   if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
     stats_row(col1, labels[LAYERS], col2, stats_fmt.totgplayer, nullptr, y, height);
     stats_row(col1, labels[FRAMES], col2, stats_fmt.totgpframe, nullptr, y, height);
