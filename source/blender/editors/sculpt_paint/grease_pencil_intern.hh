@@ -38,6 +38,7 @@ float radius_from_input_sample(const float pressure,
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_tint_operation();
 
 int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
 

@@ -578,7 +578,7 @@ void Drawing::set_texture_matrices(Span<float4x2> matrices, const IndexMask &sel
     const float4x2 texspace = matrices[pos];
 
     /* We do the computation using doubles to avoid numerical precision errors. */
-    double4x3 strokemat4x3 = double4x3(expand_4x2_mat(strokemat));
+    const double4x3 strokemat4x3 = double4x3(expand_4x2_mat(strokemat));
 
     /*
      * We want to solve for `texture_matrix` in the equation: `texspace = texture_matrix *
@@ -766,7 +766,7 @@ TreeNode::TreeNode()
   this->parent = nullptr;
 
   this->GreasePencilLayerTreeNode::name = nullptr;
-  this->flag = 0;
+  this->flag = GP_LAYER_TREE_NODE_HIDE_MASKS;
   this->color[0] = this->color[1] = this->color[2] = 0;
 }
 
@@ -880,6 +880,7 @@ Layer::Layer()
   this->frames_storage.values = nullptr;
   this->frames_storage.flag = 0;
 
+  this->blend_mode = GP_LAYER_BLEND_NONE;
   this->opacity = 1.0f;
 
   this->parent = nullptr;

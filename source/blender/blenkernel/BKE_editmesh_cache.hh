@@ -18,21 +18,24 @@ namespace blender::bke {
 
 struct EditMeshData {
   /** when set, \a vertexNos, faceNos are lazy initialized */
-  Array<float3> vertexCos;
+  Array<float3> vert_positions;
 
-  /** lazy initialize (when \a vertexCos is set) */
-  Array<float3> vertexNos;
-  Array<float3> faceNos;
-  /** also lazy init but don't depend on \a vertexCos */
-  Array<float3> faceCos;
+  /** lazy initialize (when \a vert_positions is set) */
+  Array<float3> vert_normals;
+  Array<float3> face_normals;
+  /** also lazy init but don't depend on \a vert_positions */
+  Array<float3> face_centers;
 };
 
 }  // namespace blender::bke
 
-void BKE_editmesh_cache_ensure_face_normals(BMEditMesh &em, blender::bke::EditMeshData &emd);
-void BKE_editmesh_cache_ensure_vert_normals(BMEditMesh &em, blender::bke::EditMeshData &emd);
+blender::Span<blender::float3> BKE_editmesh_cache_ensure_face_normals(
+    BMEditMesh &em, blender::bke::EditMeshData &emd);
+blender::Span<blender::float3> BKE_editmesh_cache_ensure_vert_normals(
+    BMEditMesh &em, blender::bke::EditMeshData &emd);
 
-void BKE_editmesh_cache_ensure_face_centers(BMEditMesh &em, blender::bke::EditMeshData &emd);
+blender::Span<blender::float3> BKE_editmesh_cache_ensure_face_centers(
+    BMEditMesh &em, blender::bke::EditMeshData &emd);
 
 std::optional<blender::Bounds<blender::float3>> BKE_editmesh_cache_calc_minmax(
     const BMEditMesh &em, const blender::bke::EditMeshData &emd);
