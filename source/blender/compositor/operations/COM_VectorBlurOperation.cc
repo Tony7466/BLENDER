@@ -29,6 +29,12 @@ VectorBlurOperation::VectorBlurOperation()
   settings_ = nullptr;
 }
 
+/* Returns the input velocity that has the larger magnitude. */
+static float2 max_velocity(const float2 &a, const float2 &b)
+{
+  return math::length_squared(a) > math::length_squared(b) ? a : b;
+}
+
 /* Reduces each 32x32 block of velocity pixels into a single velocity whose magnitude is largest.
  * Each of the previous and next velocities are reduces independently. */
 static MemoryBuffer compute_max_tile_velocity(MemoryBuffer *velocity_buffer)
@@ -50,15 +56,8 @@ static MemoryBuffer compute_max_tile_velocity(MemoryBuffer *velocity_buffer)
           for (int i = 0; i < tile_size.x; i++) {
             int2 sub_texel = texel * tile_size + int2(i, j);
             const float4 velocity = velocity_buffer->get_elem_clamped(sub_texel.x, sub_texel.y);
-
-            if (math::length_squared(velocity.xy()) > math::length_squared(max_previous_velocity))
-            {
-              max_previous_velocity = velocity.xy();
-            }
-
-            if (math::length_squared(velocity.zw()) > math::length_squared(max_next_velocity)) {
-              max_next_velocity = velocity.zw();
-            }
+            max_previous_velocity = max_velocity(velocity.xy(), max_previous_velocity);
+            max_next_velocity = max_velocity(velocity.zw(), max_next_velocity);
           }
         }
 
@@ -133,6 +132,8 @@ static MemoryBuffer dilate_max_velocity(MemoryBuffer &max_tile_velocity, float s
 {
   const int2 size = int2(max_tile_velocity.get_width(), max_tile_velocity.get_height());
   MemoryBuffer output(DataType::Color, size.x, size.y);
+  const float4 zero_value = float4(0.0f);
+  output.fill(output.get_rect(), zero_value);
 
   for (const int64_t y : IndexRange(size.y)) {
     for (const int64_t x : IndexRange(size.x)) {
@@ -150,7 +151,9 @@ static MemoryBuffer dilate_max_velocity(MemoryBuffer &max_tile_velocity, float s
           for (int i = 0; i < motion_rect.extent.x; i++) {
             int2 tile = motion_rect.bottom_left + int2(i, j);
             if (is_inside_motion_line(tile, motion_line)) {
-              copy_v4_v4(output.get_elem(tile.x, tile.y), max_motion);
+              float *pixel = output.get_elem(tile.x, tile.y);
+              copy_v2_v2(pixel, max_velocity(pixel, max_motion.xy()));
+              copy_v2_v2(pixel + 2, max_velocity(pixel + 2, max_motion.zw()));
             }
           }
         }
@@ -165,7 +168,9 @@ static MemoryBuffer dilate_max_velocity(MemoryBuffer &max_tile_velocity, float s
           for (int i = 0; i < motion_rect.extent.x; i++) {
             int2 tile = motion_rect.bottom_left + int2(i, j);
             if (is_inside_motion_line(tile, motion_line)) {
-              copy_v4_v4(output.get_elem(tile.x, tile.y), max_motion);
+              float *pixel = output.get_elem(tile.x, tile.y);
+              copy_v2_v2(pixel, max_velocity(pixel, max_motion.xy()));
+              copy_v2_v2(pixel + 2, max_velocity(pixel + 2, max_motion.zw()));
             }
           }
         }
