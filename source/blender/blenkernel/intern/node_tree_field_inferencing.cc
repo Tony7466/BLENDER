@@ -960,8 +960,8 @@ static bool verify_field_inferencing_csp_result(
       continue;
     }
     auto log_error = [&](StringRef message) {
-      const std::string socket_address = std::string(socket->owner_node().name) + ":" +
-                                         socket->identifier;
+      const std::string socket_address = std::string(socket->owner_node().name) +
+                                         (socket->is_output() ? "|>" : "<|") + socket->identifier;
       std::cout << "  [Error] " << socket_address << ": " << message << std::endl;
       error = true;
     };
@@ -1146,11 +1146,31 @@ static void solve_field_inferencing_constraints(
 
       const OutputFieldDependency &field_dependency =
           inferencing_interface.outputs[output_socket->index()];
-      if (field_dependency.field_type() == OutputSocketFieldType::FieldSource) {
-        constraints.add_unary(var, [](const int value) { return value == DomainValue::Field; });
-      }
-      if (field_dependency.field_type() == OutputSocketFieldType::None) {
-        constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
+      switch (field_dependency.field_type()) {
+        /* Fixed single value output. */
+        case OutputSocketFieldType::None:
+          constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
+          break;
+        /* Fixed field source output. */
+        case OutputSocketFieldType::FieldSource:
+          constraints.add_unary(var, [](const int value) { return value == DomainValue::Field; });
+          break;
+        /* Internal dependency on one or more inputs. */
+        case OutputSocketFieldType::DependentField:
+        case OutputSocketFieldType::PartiallyDependent:
+          for (const bNodeSocket *input_socket :
+               gather_input_socket_dependencies(field_dependency, *node))
+          {
+            if (!input_socket->is_available()) {
+              continue;
+            }
+            const int input_var = variables.get_socket_variable(*input_socket);
+            /* The output must be a field if the input it depends on is a field. */
+            constraints.add_binary(var, input_var, [](const int value_dst, const int value_src) {
+              return value_dst == DomainValue::Field || value_src == DomainValue::Single;
+            });
+          }
+          break;
       }
 
       /* The output must be a single value when it is connected to any input that does
@@ -1164,7 +1184,6 @@ static void solve_field_inferencing_constraints(
         }
       }
 
-      /* TODO not sure if this is already covered by other constraints? */
       // if (state.requires_single) {
       //   bool any_input_is_field_implicitly = false;
       //   const Vector<const bNodeSocket *> connected_inputs = gather_input_socket_dependencies(
