@@ -511,6 +511,14 @@ static int collection_exporter_remove_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int collection_exporter_remove_invoke(bContext *C,
+                                             wmOperator *op,
+                                             const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(
+      C, op, IFACE_("Remove exporter?"), nullptr, IFACE_("Delete"), ALERT_ICON_NONE, false);
+}
+
 void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
 {
   /* identifiers */
@@ -519,13 +527,14 @@ void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
   ot->idname = "COLLECTION_OT_exporter_remove";
 
   /* api callbacks */
+  ot->invoke = collection_exporter_remove_invoke;
   ot->exec = collection_exporter_remove_exec;
   ot->poll = collection_exporter_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
+  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Exporter index", 0, INT_MAX);
 }
 
 static int collection_exporter_export(bContext *C, CollectionExport *data, Collection *collection)
