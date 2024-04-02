@@ -12,8 +12,8 @@ namespace blender::compositor {
 class VectorBlurOperation : public NodeOperation {
  private:
   static constexpr int IMAGE_INPUT_INDEX = 0;
-  static constexpr int Z_INPUT_INDEX = 1;
-  static constexpr int SPEED_INPUT_INDEX = 2;
+  static constexpr int DEPTH_INPUT_INDEX = 1;
+  static constexpr int VELOCITY_INPUT_INDEX = 2;
 
   const NodeBlurData *settings_;
 

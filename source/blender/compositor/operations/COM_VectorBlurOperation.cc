@@ -232,7 +232,7 @@ struct Accumulator {
   float3 weight;
 };
 
-static void gather_sample(MemoryBuffer *input_buffer,
+static void gather_sample(MemoryBuffer *image_buffer,
                           MemoryBuffer *depth_buffer,
                           MemoryBuffer *velocity_buffer,
                           int2 size,
@@ -251,7 +251,7 @@ static void gather_sample(MemoryBuffer *input_buffer,
   float2 sample_motion = (next) ? sample_vectors.zw() : sample_vectors.xy();
   float sample_motion_len = math::length(sample_motion);
   float sample_depth = depth_buffer->texture_bilinear_extend(sample_uv).x;
-  float4 sample_color = input_buffer->texture_bilinear_extend(sample_uv);
+  float4 sample_color = image_buffer->texture_bilinear_extend(sample_uv);
 
   float2 direct_weights = sample_weights(
       center_depth, sample_depth, center_motion_len, sample_motion_len, offset_len);
@@ -268,7 +268,7 @@ static void gather_sample(MemoryBuffer *input_buffer,
   accum.weight += weights;
 }
 
-static void gather_blur(MemoryBuffer *input_buffer,
+static void gather_blur(MemoryBuffer *image_buffer,
                         MemoryBuffer *depth_buffer,
                         MemoryBuffer *velocity_buffer,
                         int2 size,
@@ -299,7 +299,7 @@ static void gather_blur(MemoryBuffer *input_buffer,
   int i;
   float t, inc = 1.0f / float(samples_count);
   for (i = 0, t = ofs * inc; i < samples_count; i++, t += inc) {
-    gather_sample(input_buffer,
+    gather_sample(image_buffer,
                   depth_buffer,
                   velocity_buffer,
                   size,
@@ -321,7 +321,7 @@ static void gather_blur(MemoryBuffer *input_buffer,
     /* Also sample in center motion direction.
      * Allow recovering motion where there is conflicting
      * motion between foreground and background. */
-    gather_sample(input_buffer,
+    gather_sample(image_buffer,
                   depth_buffer,
                   velocity_buffer,
                   size,
@@ -336,7 +336,7 @@ static void gather_blur(MemoryBuffer *input_buffer,
   }
 }
 
-static void motion_blur(MemoryBuffer *input_buffer,
+static void motion_blur(MemoryBuffer *image_buffer,
                         MemoryBuffer *depth_buffer,
                         MemoryBuffer *velocity_buffer,
                         MemoryBuffer *max_velocity_buffer,
@@ -344,7 +344,7 @@ static void motion_blur(MemoryBuffer *input_buffer,
                         int samples_count,
                         float shutter_speed)
 {
-  const int2 size = int2(input_buffer->get_width(), input_buffer->get_height());
+  const int2 size = int2(image_buffer->get_width(), image_buffer->get_height());
   threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
     for (const int64_t y : sub_y_range) {
       for (const int64_t x : IndexRange(size.x)) {
@@ -355,7 +355,7 @@ static void motion_blur(MemoryBuffer *input_buffer,
         float center_depth = *depth_buffer->get_elem(x, y);
         float4 center_motion = float4(velocity_buffer->get_elem(x, y)) *
                                float4(float2(shutter_speed), float2(-shutter_speed));
-        float4 center_color = input_buffer->get_elem(x, y);
+        float4 center_color = image_buffer->get_elem(x, y);
 
         /* Randomize tile boundary to avoid ugly discontinuities. Randomize 1/4th of the tile.
          * Note this randomize only in one direction but in practice it's enough. */
@@ -372,7 +372,7 @@ static void motion_blur(MemoryBuffer *input_buffer,
         accum.bg = float4(0.0f);
         accum.fg = float4(0.0f);
         /* First linear gather. time = [T - delta, T] */
-        gather_blur(input_buffer,
+        gather_blur(image_buffer,
                     depth_buffer,
                     velocity_buffer,
                     size,
@@ -386,7 +386,7 @@ static void motion_blur(MemoryBuffer *input_buffer,
                     shutter_speed,
                     accum);
         /* Second linear gather. time = [T, T + delta] */
-        gather_blur(input_buffer,
+        gather_blur(image_buffer,
                     depth_buffer,
                     velocity_buffer,
                     size,
@@ -429,19 +429,39 @@ void VectorBlurOperation::update_memory_buffer(MemoryBuffer *output,
                                                const rcti & /*area*/,
                                                Span<MemoryBuffer *> inputs)
 {
-  MemoryBuffer *input_buffer = inputs[IMAGE_INPUT_INDEX];
-  MemoryBuffer *depth_buffer = inputs[Z_INPUT_INDEX];
-  MemoryBuffer *velocity_buffer = inputs[SPEED_INPUT_INDEX];
+  MemoryBuffer *image = inputs[IMAGE_INPUT_INDEX];
+  MemoryBuffer *depth = inputs[DEPTH_INPUT_INDEX];
+  MemoryBuffer *velocity = inputs[VELOCITY_INPUT_INDEX];
+
+  const bool image_needs_inflation = image->is_a_single_elem();
+  const bool depth_needs_inflation = depth->is_a_single_elem();
+  const bool velocity_needs_inflation = velocity->is_a_single_elem();
+
+  MemoryBuffer *image_buffer = image_needs_inflation ? image->inflate() : image;
+  MemoryBuffer *depth_buffer = depth_needs_inflation ? depth->inflate() : depth;
+  MemoryBuffer *velocity_buffer = velocity_needs_inflation ? velocity->inflate() : velocity;
 
   MemoryBuffer max_tile_velocity = compute_max_tile_velocity(velocity_buffer);
   MemoryBuffer max_velocity = dilate_max_velocity(max_tile_velocity, settings_->fac);
-  motion_blur(input_buffer,
+  motion_blur(image_buffer,
               depth_buffer,
               velocity_buffer,
               &max_velocity,
               output,
               settings_->samples,
               settings_->fac);
+
+  if (image_needs_inflation) {
+    delete image_buffer;
+  }
+
+  if (depth_needs_inflation) {
+    delete depth_buffer;
+  }
+
+  if (velocity_needs_inflation) {
+    delete velocity_buffer;
+  }
 }
 
 void VectorBlurOperation::get_area_of_interest(const int /*input_idx*/,
