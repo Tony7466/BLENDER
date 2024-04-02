@@ -69,8 +69,8 @@ void icon_draw_rect_input(
       ;
 
   if ((event_type >= EVT_AKEY) && (event_type <= EVT_ZKEY)) {
-  const char str[2] = { char('A' + (event_type - EVT_AKEY)), '\0' };
-  icon_draw_rect_input_text(&rect, color, str, 13.0f, 0.0f);
+    const char str[2] = {char('A' + (event_type - EVT_AKEY)), '\0'};
+    icon_draw_rect_input_text(&rect, color, str, 13.0f, 0.0f);
   }
   else if ((event_type >= EVT_F1KEY) && (event_type <= EVT_F24KEY)) {
     char str[4];
@@ -80,7 +80,7 @@ void icon_draw_rect_input(
   else if (event_type == EVT_LEFTSHIFTKEY) { /* Right Shift has already been converted to left. */
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_UPWARDS_WHITE_ARROW, 14.0f, 0.0f);
   }
-  else if (event_type == EVT_LEFTCTRLKEY) {/* Right Ctrl has already been converted to left. */
+  else if (event_type == EVT_LEFTCTRLKEY) { /* Right Ctrl has already been converted to left. */
     if (platform == MACOS) {
       icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_UP_ARROWHEAD, 21.0f, -8.0f);
     }
@@ -102,7 +102,7 @@ void icon_draw_rect_input(
     }
     else if (platform == MSWIN) {
       icon_draw_rect_input_text(
-        &rect, color, BLI_STR_UTF8_BLACK_DIAMOND_MINUS_WHITE_X, 12.0f, 1.5f);
+          &rect, color, BLI_STR_UTF8_BLACK_DIAMOND_MINUS_WHITE_X, 12.0f, 1.5f);
     }
     else {
       icon_draw_rect_input_text(&rect, color, "OS", 10.0f, 0.0f);
@@ -126,7 +126,7 @@ void icon_draw_rect_input(
   else if (event_type == EVT_ESCKEY) {
     if (platform == MACOS) {
       icon_draw_rect_input_text(
-        &rect, color, BLI_STR_UTF8_BROKEN_CIRCLE_WITH_NORTHWEST_ARROW, 16.0f, 0.0f);
+          &rect, color, BLI_STR_UTF8_BROKEN_CIRCLE_WITH_NORTHWEST_ARROW, 16.0f, 0.0f);
     }
     else {
       icon_draw_rect_input_text(&rect, color, "Esc", 9.0f, 0.0f);
