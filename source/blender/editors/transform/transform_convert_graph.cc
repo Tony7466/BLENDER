@@ -889,7 +889,7 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
-  blender::threading::parallel_for(fcurves.index_range(), 1, [&](const blender::IndexRange range) {
+  blender::threading::parallel_for(fcurves.index_range(), 8, [&](const blender::IndexRange range) {
     for (const int i : range) {
       FCurve *fcu = fcurves[i];
 
