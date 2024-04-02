@@ -348,7 +348,7 @@ bool CurvesEditHints::is_valid() const
 
 std::optional<Span<float3>> CurvesEditHints::positions() const
 {
-  if (!this->positions_data.sharing_info.has_value()) {
+  if (!this->positions_data.has_value()) {
     return std::nullopt;
   }
   const int points_num = this->curves_id_orig.geometry.wrap().points_num();
@@ -357,7 +357,7 @@ std::optional<Span<float3>> CurvesEditHints::positions() const
 
 std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
 {
-  if (!this->positions_data.sharing_info.has_value()) {
+  if (!this->positions_data.has_value()) {
     return std::nullopt;
   }
 

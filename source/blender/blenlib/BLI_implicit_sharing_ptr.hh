@@ -189,7 +189,7 @@ class ImplicitSharingPtrAndData {
     this->data = nullptr;
   }
 
-  bool has_value()
+  bool has_value() const
   {
     return this->sharing_info.has_value();
   }
