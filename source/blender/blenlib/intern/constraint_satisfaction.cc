@@ -84,7 +84,10 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
   /* TODO sorting the worklist could have significant impact on performance
    * by reducing unnecessary repetition of constraints.
    * Using the topological sorting of sockets should make a decent "preconditioner".
-   * This is similar to what the current R-L/L-R solver does. */
+   * This is similar to what the current R-L/L-R solver does.
+   * Nice overview of possible optimizations, depending on the problem to solve:
+   * https://ics.uci.edu/~kkask/Fall-2018%20CS271/slides/05-constraint-satisfaction.pdf
+   */
   struct BinaryKey {
     VariableIndex source;
     VariableIndex target;

@@ -1081,6 +1081,49 @@ static void solve_field_inferencing_constraints(
         *group_output_socket, interface_by_node, result);
     inferencing_interface.outputs[group_output_socket->index()] = std::move(field_dependency);
   }
+
+  /* Perform old propagation method as well to verify the result. */
+  const bool compare_propagation = true;
+  if (compare_propagation) {
+    /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
+    Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
+
+    propagate_data_requirements_from_right_to_left(
+        tree, interface_by_node, field_state_by_socket_id);
+    determine_group_input_states(tree, inferencing_interface, field_state_by_socket_id);
+    propagate_field_status_from_left_to_right(tree, interface_by_node, field_state_by_socket_id);
+    determine_group_output_states(
+        tree, inferencing_interface, interface_by_node, field_state_by_socket_id);
+
+    auto log_error = [](const bNodeSocket &socket, StringRef message) {
+      const std::string socket_address = std::string(socket.owner_node().name) + ":" + socket.name;
+      std::cout << socket_address << ": " << message << std::endl;
+    };
+    std::cout << "Update tree " << tree.id.name << std::endl;
+    for (const bNodeSocket *socket : tree.all_sockets()) {
+      const int var_index = socket_vars[socket->index_in_tree()];
+      const BitSpan state = result[var_index];
+      const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
+      if (old_state.is_always_single) {
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+          log_error(*socket, "Should only be single value");
+        }
+      }
+      if (!old_state.is_single) {
+        if (state[DomainValue::Single] || !state[DomainValue::Field]) {
+          log_error(*socket, "Should only be field");
+        }
+      }
+      if (old_state.requires_single) {
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+          log_error(*socket, "Should only be single value");
+        }
+      }
+      if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
+        log_error(*socket, "Should be both single value and field");
+      }
+    }
+  }
 }
 
 template <typename Logger>
