@@ -1377,7 +1377,6 @@ static void pchan_draw_data_init(bPoseChannel *pchan)
     pchan->draw_data = static_cast<bPoseChannelDrawData *>(
         MEM_mallocN(sizeof(*pchan->draw_data) + sizeof(Mat4) * pchan->bone->segments, __func__));
     pchan->draw_data->bbone_matrix_len = pchan->bone->segments;
-    pchan->draw_data->wire_width = 2;
   }
 }
 

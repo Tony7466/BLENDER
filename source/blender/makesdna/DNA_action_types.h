@@ -186,7 +186,6 @@ typedef enum eMotionPaths_BakeFlag {
 typedef struct bPoseChannelDrawData {
   float solid_color[4];
   float wire_color[4];
-  float wire_width;
 
   int bbone_matrix_len;
   /* keep last */
