@@ -792,10 +792,6 @@ static void sculpt_vertex_neighbors_get_grids(SculptSession *ss,
       sculpt_vertex_neighbor_add(iter, BKE_pbvh_make_vref(v), v);
     }
   }
-
-  if (neighbors.coords != neighbors.coords_fixed) {
-    MEM_freeN(neighbors.coords);
-  }
 }
 
 void SCULPT_vertex_neighbors_get(SculptSession *ss,

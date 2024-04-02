@@ -979,6 +979,15 @@ void BKE_subdiv_ccg_topology_counters(const SubdivCCG &subdiv_ccg,
 /** \name Neighbors
  * \{ */
 
+SubdivCCGNeighbors::~SubdivCCGNeighbors()
+{
+  /* If enough elements are requested when initializing the struct,
+   * the coords pointer is put on the heap, ensure it is cleaned up here. */
+  if (this->coords != this->coords_fixed) {
+    MEM_SAFE_FREE(this->coords);
+  }
+}
+
 void BKE_subdiv_ccg_print_coord(const char *message, const SubdivCCGCoord &coord)
 {
   printf("%s: grid index: %d, coord: (%d, %d)\n", message, coord.grid_index, coord.x, coord.y);
