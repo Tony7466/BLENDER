@@ -193,6 +193,12 @@ VolumeResolveSample volume_resolve(vec3 ndc_P, sampler3D transmittance_tx, sampl
 {
   vec3 coord = screen_to_volume(ndc_P);
 
+  /* Volumes objects have the same aliasing problems has shadow maps.
+   * To fix this we need a quantization bias (the size of a step in Z) and a slope bias
+   * (multiplied by the size of a froxel in 2D). */
+  coord.z -= uniform_buf.volumes.inv_tex_size.z;
+  /* TODO(fclem): Slope bias. */
+
   VolumeResolveSample volume;
   volume.scattering = texture(scattering_tx, coord).rgb;
   volume.transmittance = texture(transmittance_tx, coord).rgb;
