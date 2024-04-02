@@ -62,8 +62,12 @@ void VolumeModule::init()
   data_.light_clamp = scene_eval->eevee.volumetric_light_clamp;
 }
 
-void VolumeModule::begin_sync()
+void VolumeModule::begin_sync() {}
+
+void VolumeModule::end_sync()
 {
+  enabled_ = inst_.world.has_volume() || inst_.pipelines.volume.is_enabled();
+
   const Scene *scene_eval = inst_.scene;
 
   /* Negate clip values (View matrix forward vector is -Z). */
@@ -91,11 +95,6 @@ void VolumeModule::begin_sync()
     data_.depth_far = integration_end;
     data_.depth_distribution = 0.0f; /* Unused. */
   }
-}
-
-void VolumeModule::end_sync()
-{
-  enabled_ = inst_.world.has_volume() || inst_.pipelines.volume.is_enabled();
 
   if (!enabled_) {
     occupancy_tx_.free();
