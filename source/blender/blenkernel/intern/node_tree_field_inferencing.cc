@@ -1153,13 +1153,13 @@ static void solve_field_inferencing_constraints(
         constraints.add_unary(var, [](const int value) { return value == DomainValue::Single; });
       }
 
-      /* The output is required to be a single value when it is connected to any input that does
+      /* The output must be a single value when it is connected to any input that does
        * not support fields. */
-      for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
-        if (target_socket->is_available()) {
+      for (const bNodeSocket *src_socket : output_socket->directly_linked_sockets()) {
+        if (src_socket->is_available()) {
           constraints.add_binary(
-              var, target_socket->index_in_tree(), [](int value_a, int value_b) {
-                return value_a == DomainValue::Single || value_b == DomainValue::Field;
+              var, src_socket->index_in_tree(), [](int value_dst, int value_src) {
+                return value_dst == DomainValue::Single || value_src == DomainValue::Field;
               });
         }
       }
@@ -1214,6 +1214,16 @@ static void solve_field_inferencing_constraints(
       if (field_type == InputSocketFieldType::None) {
         constraints.add_unary(input_socket->index_in_tree(),
                               [](int value) { return value == DomainValue::Single; });
+      }
+
+      /* The input must be a field value when it is connected to any output that can't be a single value. */
+      for (const bNodeSocket *src_socket : input_socket->directly_linked_sockets()) {
+        if (src_socket->is_available()) {
+          constraints.add_binary(
+              var, src_socket->index_in_tree(), [](int value_dst, int value_src) {
+                return value_dst == DomainValue::Field || value_src == DomainValue::Single;
+              });
+        }
       }
     }
 
