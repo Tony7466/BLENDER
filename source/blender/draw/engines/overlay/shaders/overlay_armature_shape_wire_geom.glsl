@@ -21,7 +21,7 @@ void do_vertex(vec4 color, vec4 pos, float coord, vec2 offset)
 
 void main()
 {
-  vec2 ss_pos[2];
+  vec2 screen_space_pos[2];
 
   /* Clip line against near plane to avoid deformed lines. */
   vec4 pos0 = gl_in[0].gl_Position;
@@ -42,10 +42,10 @@ void main()
     pos0 -= pos01 * (1.0 - ofs);
   }
 
-  ss_pos[0] = pos0.xy / pos0.w;
-  ss_pos[1] = pos1.xy / pos1.w;
+  screen_space_pos[0] = pos0.xy / pos0.w;
+  screen_space_pos[1] = pos1.xy / pos1.w;
 
-  vec2 line = ss_pos[0] - ss_pos[1];
+  vec2 line = screen_space_pos[0] - screen_space_pos[1];
   line = abs(line) * sizeViewport.xy;
 
   float half_size = max(geometry_in[0].wire_width, 1.0);
