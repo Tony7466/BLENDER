@@ -750,6 +750,8 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_armature_shape_solid_frag.glsl
   engines/overlay/shaders/overlay_armature_shape_solid_vert.glsl
   engines/overlay/shaders/overlay_armature_shape_wire_vert.glsl
+  engines/overlay/shaders/overlay_armature_shape_wire_frag.glsl
+  engines/overlay/shaders/overlay_armature_shape_wire_geom.glsl
   engines/overlay/shaders/overlay_armature_sphere_outline_vert.glsl
   engines/overlay/shaders/overlay_armature_sphere_solid_frag.glsl
   engines/overlay/shaders/overlay_armature_sphere_solid_vert.glsl
@@ -757,7 +759,6 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_armature_stick_vert.glsl
   engines/overlay/shaders/overlay_armature_wire_frag.glsl
   engines/overlay/shaders/overlay_armature_wire_vert.glsl
-  engines/overlay/shaders/overlay_armature_wire_geom.glsl
   engines/overlay/shaders/overlay_background_frag.glsl
   engines/overlay/shaders/overlay_clipbound_vert.glsl
   engines/overlay/shaders/overlay_common_lib.glsl
