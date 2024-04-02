@@ -10,7 +10,6 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-#include <stdio.h>
 
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
