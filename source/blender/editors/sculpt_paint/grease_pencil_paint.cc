@@ -622,7 +622,7 @@ void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Dr
   if (points_to_remove > 0) {
     curves.resize(curves.points_num() - points_to_remove, curves.curves_num());
     curves.offsets_for_write().last() = curves.points_num();
-    points = drawing.strokes().points_by_curve()[stroke_index];
+    points = points.drop_back(points_to_remove);
   }
 
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
