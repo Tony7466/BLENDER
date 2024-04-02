@@ -7,7 +7,6 @@
 
 void main()
 {
-  lineOutput = vec4(0.0);
   fragColor = vec4(finalColor.rgb, finalColor.a * alpha);
   select_id_output(select_id);
 }

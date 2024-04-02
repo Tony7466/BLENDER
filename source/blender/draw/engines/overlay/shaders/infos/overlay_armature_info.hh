@@ -138,18 +138,12 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_solid_clipped)
 
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_iface, "geometry_in")
     .smooth(Type::VEC4, "finalColor")
+    .flat(Type::FLOAT, "wire_width")
     .smooth(Type::VEC4, "finalColorOuter_")
     .smooth(Type::UINT, "selectOverride_");
 
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_iface, "geometry_out")
-    .smooth(Type::VEC4, "finalColor");
-
-GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_flat_iface, "geometry_flat_out")
-    .flat(Type::VEC4, "finalColorOuter");
-
-GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_noperspective_iface,
-                          "geometry_noperspective_out")
-    .no_perspective(Type::FLOAT, "edgeCoord");
+    .flat(Type::VEC4, "finalColor");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .do_static_compilation(true)
@@ -157,12 +151,11 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::VEC3, "nor")
     /* Per instance. */
-    .vertex_in(2, Type::MAT4, "inst_obmat")
+    .vertex_in(2, Type::FLOAT, "wire_width")
+    .vertex_in(3, Type::MAT4, "inst_obmat")
     .vertex_out(overlay_armature_shape_wire_iface)
     .vertex_source("overlay_armature_shape_wire_vert.glsl")
     .geometry_out(overlay_armature_shape_wire_geom_iface)
-    .geometry_out(overlay_armature_shape_wire_geom_flat_iface)
-    .geometry_out(overlay_armature_shape_wire_geom_noperspective_iface)
     .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
     .geometry_source("overlay_armature_shape_wire_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
