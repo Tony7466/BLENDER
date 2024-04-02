@@ -200,6 +200,13 @@ struct ImageFrameRange {
 
   /* Temporary data. */
   ListBase frames;
+
+  /** Sequencese filename head. */
+  char head[FILE_MAX];
+  /** Sequencese digits size. */
+  int digits;
+  /** Sequencese filename tail. */
+  char tail[FILE_MAX];
 };
 
 /**
