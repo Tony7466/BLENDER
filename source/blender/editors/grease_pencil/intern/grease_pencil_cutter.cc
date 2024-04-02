@@ -30,35 +30,54 @@
 namespace blender::ed::greasepencil {
 
 /**
- * Structure used by the cutter tool, describing a curve segment (a point range in a curve)
- * that needs to be removed from the curve.
+ * Structure for accessing the outer ends (start and end) of a cutter segment.
+ */
+enum class SegmentRangeIndex : uint8_t { Start, End };
+
+template<typename T> struct SegmentRange {
+  T start;
+  T end;
+
+  T &operator[](const SegmentRangeIndex index)
+  {
+    return index == SegmentRangeIndex::Start ? start : end;
+  }
+};
+
+/**
+ * Structure describing a curve segment (a point range in a curve) that needs to be removed from
+ * the curve.
  */
 struct CutterSegment {
   /* Curve index. */
   int curve;
+
   /* Point range of the segment: starting point and end point. Matches the point offsets
    * in a CurvesGeometry. */
-  int point_range[2];
-  /* Intersection factor (0..1) of the intersection between:
-   * - point start - 1 and point start
-   * - point end and point end + 1
+  SegmentRange<int> point_range;
+
+  /* The normalized distance where the cutter segment is intersected by another curve.
+   * For the outer ends of the cutter segment the intersection distance is given between:
+   * - [start point - 1] and [start point]
+   * - [end point] and [end point + 1]
    */
-  float intersection_factor[2];
-  /* Intersection flag: true if point start/end is the result of an intersection
-   * and false if the point is the outer end of a curve. */
-  bool is_intersected[2] = {false};
+  SegmentRange<float> intersection_distance;
+
+  /* Intersection flag: true if the start/end point of the segment is the result of an
+   * intersection, false if the point is the outer end of a curve. */
+  SegmentRange<bool> is_intersected;
 };
 
 /**
- * Structure used by the cutter tool, describing:
- * - a collection of cutter segments
- * - a flag for all curves affected by the lasso tool
+ * Structure describing:
+ * - A collection of cutter segments.
+ * - A flag for all curves affected by the lasso tool.
  */
 struct CutterSegments {
   /* Collection of cutter segments: parts of curves between other curves, to be removed from the
    * geometry. */
   Vector<CutterSegment> segments;
-  /* Flag for curves: true if a curve is (partially) inside a lasso area. */
+  /* Flag for curves: true if a curve is (partially) inside the cutter lasso area. */
   Array<bool> curve_in_lasso_area;
 
   /* Check if a curve point is already stored in a curve segment. */
@@ -67,9 +86,9 @@ struct CutterSegments {
     if (!this->curve_in_lasso_area[curve]) {
       return false;
     }
-    for (auto &segment : this->segments) {
-      if (segment.curve == curve && point >= segment.point_range[0] &&
-          point <= segment.point_range[1])
+    for (const CutterSegment &segment : this->segments) {
+      if (segment.curve == curve && point >= segment.point_range.start &&
+          point <= segment.point_range.end)
       {
         return true;
       }
@@ -77,15 +96,15 @@ struct CutterSegments {
     return false;
   }
 
-  /* Create a cutter segment with a point range of one point. */
+  /* Create a initial cutter segment with a point range of one point. */
   CutterSegment *create_segment(const int curve, const int point)
   {
     this->curve_in_lasso_area[curve] = true;
 
     CutterSegment segment{};
     segment.curve = curve;
-    segment.point_range[0] = point;
-    segment.point_range[1] = point;
+    segment.point_range.start = point;
+    segment.point_range.end = point;
 
     this->segments.append(std::move(segment));
 
@@ -102,26 +121,27 @@ struct CutterSegments {
       CutterSegment a = this->segments.pop_last();
 
       bool merged = false;
-      for (auto &b : merged_segments) {
+      for (CutterSegment &b : merged_segments) {
         if (a.curve != b.curve) {
           continue;
         }
         /* The segments overlap when the points ranges have overlap or are exactly adjacent. */
-        if ((a.point_range[0] <= b.point_range[1] && a.point_range[1] >= b.point_range[0]) ||
-            (a.point_range[1] == b.point_range[0] - 1) ||
-            (b.point_range[1] == a.point_range[0] - 1))
+        if ((a.point_range.start <= b.point_range.end &&
+             a.point_range.end >= b.point_range.start) ||
+            (a.point_range.end == b.point_range.start - 1) ||
+            (b.point_range.end == a.point_range.start - 1))
         {
           /* Merge the point ranges and related intersection data. */
-          const bool take_start_a = a.point_range[0] < b.point_range[0];
-          const bool take_end_a = a.point_range[1] > b.point_range[1];
-          b.point_range[0] = take_start_a ? a.point_range[0] : b.point_range[0];
-          b.point_range[1] = take_end_a ? a.point_range[1] : b.point_range[1];
-          b.is_intersected[0] = take_start_a ? a.is_intersected[0] : b.is_intersected[0];
-          b.is_intersected[1] = take_end_a ? a.is_intersected[1] : b.is_intersected[1];
-          b.intersection_factor[0] = take_start_a ? a.intersection_factor[0] :
-                                                    b.intersection_factor[0];
-          b.intersection_factor[1] = take_end_a ? a.intersection_factor[1] :
-                                                  b.intersection_factor[1];
+          const bool take_start_a = a.point_range.start < b.point_range.start;
+          const bool take_end_a = a.point_range.end > b.point_range.end;
+          b.point_range.start = take_start_a ? a.point_range.start : b.point_range.start;
+          b.point_range.end = take_end_a ? a.point_range.end : b.point_range.end;
+          b.is_intersected.start = take_start_a ? a.is_intersected.start : b.is_intersected.start;
+          b.is_intersected.end = take_end_a ? a.is_intersected.end : b.is_intersected.end;
+          b.intersection_distance.start = take_start_a ? a.intersection_distance.start :
+                                                         b.intersection_distance.start;
+          b.intersection_distance.end = take_end_a ? a.intersection_distance.end :
+                                                     b.intersection_distance.end;
           merged = true;
           break;
         }
@@ -137,9 +157,7 @@ struct CutterSegments {
 
 /* When looking for intersections, we need a little padding, otherwise we could miss curves
  * that intersect for the eye, but not in hard numbers. */
-static constexpr int INTERSECTION_PADDING = 1;
-static constexpr int FLOAT_TO_INT_PADDING = 1;
-static constexpr int RCTI_PADDING = INTERSECTION_PADDING + FLOAT_TO_INT_PADDING;
+static constexpr int BBOX_PADDING = 2;
 
 /* When creating new intersection points, we don't want them too close to their neighbour,
  * because that clutters the geometry. This threshold defines what 'too close' is. */
@@ -200,7 +218,7 @@ static bool get_intersections_of_segment_with_curves(const int point_a,
   std::mutex mutex;
   const OffsetIndices<int> points_by_curve = src.points_by_curve();
   const VArray<bool> is_cyclic = src.cyclic();
-  bool intersected = false;
+  std::atomic<bool> intersected = false;
 
   /* Get coordinates of segment a-b. */
   const float2 co_a = screen_space_positions[point_a];
@@ -209,7 +227,7 @@ static bool get_intersections_of_segment_with_curves(const int point_a,
   BLI_rcti_init_minmax(&bbox_ab);
   BLI_rcti_do_minmax_v(&bbox_ab, int2(co_a));
   BLI_rcti_do_minmax_v(&bbox_ab, int2(co_b));
-  BLI_rcti_pad(&bbox_ab, RCTI_PADDING, RCTI_PADDING);
+  BLI_rcti_pad(&bbox_ab, BBOX_PADDING, BBOX_PADDING);
 
   /* Loop all curves, looking for intersecting segments. */
   threading::parallel_for(src.curves_range(), 512, [&](const IndexRange curves) {
@@ -248,14 +266,14 @@ static bool get_intersections_of_segment_with_curves(const int point_a,
         BLI_rcti_init_minmax(&bbox_cd);
         BLI_rcti_do_minmax_v(&bbox_cd, int2(co_c));
         BLI_rcti_do_minmax_v(&bbox_cd, int2(co_d));
-        BLI_rcti_pad(&bbox_cd, RCTI_PADDING, RCTI_PADDING);
+        BLI_rcti_pad(&bbox_cd, BBOX_PADDING, BBOX_PADDING);
         if (!BLI_rcti_isect(&bbox_ab, &bbox_cd, nullptr)) {
           continue;
         }
 
         /* Add some padding to the line segment c-d, otherwise we could just miss an
          * intersection. */
-        const float2 padding_cd = math::normalize(co_d - co_c) * INTERSECTION_PADDING;
+        const float2 padding_cd = math::normalize(co_d - co_c);
         const float2 padded_c = co_c - padding_cd;
         const float2 padded_d = co_d + padding_cd;
 
@@ -267,13 +285,14 @@ static bool get_intersections_of_segment_with_curves(const int point_a,
 
           /* Calculate the intersection factor. This is the normalized distance (0..1) of the
            * intersection point on line segment a-b, measured from point a. */
-          const float distance = get_intersection_distance_of_segments(co_a, co_b, co_c, co_d);
+          const float normalized_distance = get_intersection_distance_of_segments(
+              co_a, co_b, co_c, co_d);
 
           /* In this case, only the intersection factor has to be stored. The curve point data
            * itself is irrelevant. */
           std::lock_guard lock{mutex};
-          *r_distance_min = math::min(distance, *r_distance_min);
-          *r_distance_max = math::max(distance, *r_distance_max);
+          *r_distance_min = math::min(normalized_distance, *r_distance_min);
+          *r_distance_max = math::max(normalized_distance, *r_distance_max);
         }
       }
     }
@@ -284,9 +303,9 @@ static bool get_intersections_of_segment_with_curves(const int point_a,
 
 /**
  * Expand a cutter segment of one point by walking along the curve in both directions.
- * A cutter segments ends at an intersection with another curve, or at the end of the curve.
+ * A cutter segments ends at an intersection with another curve, or at the outer end of the curve.
  */
-static void expand_cutter_segment(CutterSegment *segment,
+static void expand_cutter_segment(CutterSegment &segment,
                                   const bke::CurvesGeometry &src,
                                   const Span<float2> screen_space_positions,
                                   const Span<rcti> screen_space_bbox,
@@ -295,20 +314,21 @@ static void expand_cutter_segment(CutterSegment *segment,
 {
   const OffsetIndices<int> points_by_curve = src.points_by_curve();
   const VArray<bool> is_cyclic = src.cyclic();
-  const int curve = segment->curve;
+  const int curve = segment.curve;
   const int point_first = points_by_curve[curve].first();
   const int point_last = points_by_curve[curve].last();
   const int8_t directions[2] = {-1, 1};
 
-  /* Walk along curve in both directions. */
+  /* Walk along the curve in both directions. */
   for (const int8_t direction : directions) {
-    const int8_t point_range_index = (direction == 1) ? 1 : 0;
-    int point_a = segment->point_range[point_range_index];
+    const SegmentRangeIndex outer_point = (direction == 1) ? SegmentRangeIndex::End :
+                                                             SegmentRangeIndex::Start;
+    int point_a = segment.point_range[outer_point];
 
     bool intersected = false;
-    segment->is_intersected[point_range_index] = false;
+    segment.is_intersected[outer_point] = false;
 
-    /* Walk along curve points. */
+    /* Walk along the curve points. */
     while ((direction == 1 && point_a < point_last) || (direction == -1 && point_a > point_first))
     {
 
@@ -317,14 +337,15 @@ static void expand_cutter_segment(CutterSegment *segment,
                                    (direction == 1 && point_b == point_last);
 
       /* Expand segment point range. */
-      segment->point_range[point_range_index] = point_a;
+      segment.point_range[outer_point] = point_a;
 
       /* Check for intersections with other curves. For consistency in the intersection factor,
        * we always inspect the line segment a-b in ascending point order. */
-      float distance_min = FLT_MAX, distance_max = -FLT_MAX;
+      float distance_min = FLT_MAX;
+      float distance_max = -FLT_MAX;
       intersected = get_intersections_of_segment_with_curves((direction == 1 ? point_a : point_b),
                                                              (direction == 1 ? point_b : point_a),
-                                                             segment->curve,
+                                                             curve,
                                                              src,
                                                              screen_space_positions,
                                                              screen_space_bbox,
@@ -340,14 +361,14 @@ static void expand_cutter_segment(CutterSegment *segment,
         break;
       }
 
-      /* When we hit an intersection, store the intersection factor. Potentially, line segment
+      /* When we hit an intersection, store the intersection distance. Potentially, line segment
        * a-b can be intersected by multiple curves, so we want to fetch the first intersection
-       * point we bumped into. In forward direction this is the minimum distance factor, in
-       * backward direction the maximum. */
+       * point we bumped into. In forward direction this is the minimum distance, in backward
+       * direction the maximum. */
       if (intersected) {
-        segment->is_intersected[point_range_index] = true;
-        segment->intersection_factor[point_range_index] = (direction == 1) ? distance_min :
-                                                                             distance_max;
+        segment.is_intersected[outer_point] = true;
+        segment.intersection_distance[outer_point] = (direction == 1) ? distance_min :
+                                                                        distance_max;
         break;
       }
 
@@ -358,10 +379,10 @@ static void expand_cutter_segment(CutterSegment *segment,
     /* Adjust point range at curve ends. */
     if (!intersected) {
       if (direction == -1) {
-        segment->point_range[0] = point_first;
+        segment.point_range.start = point_first;
       }
       else {
-        segment->point_range[1] = point_last;
+        segment.point_range.end = point_last;
       }
     }
   }
@@ -369,12 +390,12 @@ static void expand_cutter_segment(CutterSegment *segment,
   /* When a curve end is reached and the curve is cyclic, we add an extra cutter segment for the
    * cyclic second part. */
   if (check_cyclic && is_cyclic[curve] &&
-      (!segment->is_intersected[0] || !segment->is_intersected[1]) &&
-      !(!segment->is_intersected[0] && !segment->is_intersected[1]))
+      (!segment.is_intersected.start || !segment.is_intersected.end) &&
+      !(!segment.is_intersected.start && !segment.is_intersected.end))
   {
     /* Create extra cutter segment. */
     CutterSegment *new_segment;
-    if (!segment->is_intersected[0]) {
+    if (!segment.is_intersected.start) {
       new_segment = cutter_segments->create_segment(curve, point_last);
     }
     else {
@@ -383,7 +404,7 @@ static void expand_cutter_segment(CutterSegment *segment,
 
     /* And expand this extra segment. */
     expand_cutter_segment(
-        new_segment, src, screen_space_positions, screen_space_bbox, false, cutter_segments);
+        *new_segment, src, screen_space_positions, screen_space_bbox, false, cutter_segments);
   }
 }
 
@@ -403,7 +424,8 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
   const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
 
   CutterSegments cutter_segments;
-  cutter_segments.curve_in_lasso_area = Array<bool>(src_curves_num, false);
+  cutter_segments.curve_in_lasso_area.reinitialize(src_curves_num);
+  cutter_segments.curve_in_lasso_area.fill(false);
 
   rcti bbox_lasso;
   BLI_lasso_boundbox(&bbox_lasso, mcoords);
@@ -437,7 +459,7 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
         /* Expand the cutter segment in both directions until an intersection is found or the end
          * of the curve is reached. */
         expand_cutter_segment(
-            segment, src, screen_space_positions, screen_space_bbox, true, &cutter_segments);
+            *segment, src, screen_space_positions, screen_space_bbox, true, &cutter_segments);
       }
     }
   }
@@ -486,29 +508,29 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
    * We avoid inserting a new point very close to the adjacent one, because that's just adding
    * clutter to the geometry.
    */
-  for (const auto &cutter_segment : cutter_segments.segments) {
+  for (const CutterSegment &cutter_segment : cutter_segments.segments) {
     /* Intersection at cutter segment start. */
-    if (cutter_segment.is_intersected[0] &&
-        cutter_segment.intersection_factor[0] > DISTANCE_FACTOR_THRESHOLD)
+    if (cutter_segment.is_intersected.start &&
+        cutter_segment.intersection_distance.start > DISTANCE_FACTOR_THRESHOLD)
     {
-      const int src_point = cutter_segment.point_range[0] - 1;
+      const int src_point = cutter_segment.point_range.start - 1;
       Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
       dst_points.append(
-          {src_point, src_point + 1, cutter_segment.intersection_factor[0], false, false});
+          {src_point, src_point + 1, cutter_segment.intersection_distance.start, false, false});
     }
     /* Intersection at cutter segment end. */
-    if (cutter_segment.is_intersected[1]) {
-      const int src_point = cutter_segment.point_range[1];
-      if (cutter_segment.intersection_factor[1] < (1.0f - DISTANCE_FACTOR_THRESHOLD)) {
+    if (cutter_segment.is_intersected.end) {
+      const int src_point = cutter_segment.point_range.end;
+      if (cutter_segment.intersection_distance.end < (1.0f - DISTANCE_FACTOR_THRESHOLD)) {
         Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
         dst_points.append(
-            {src_point, src_point + 1, cutter_segment.intersection_factor[1], false, true});
+            {src_point, src_point + 1, cutter_segment.intersection_distance.end, false, true});
       }
       else {
         /* Mark the 'is_cut' flag on the next point, because a new curve is starting here after
          * the removed cutter segment. */
         Vector<PointTransferData> &dst_points = src_to_dst_points[src_point + 1];
-        for (auto &dst_point : dst_points) {
+        for (PointTransferData &dst_point : dst_points) {
           if (dst_point.is_src_point) {
             dst_point.is_cut = true;
           }
@@ -568,7 +590,7 @@ static bool execute_cutter_on_drawing(const int layer_index,
       }
 
       /* Add some padding, otherwise we could just miss intersections. */
-      BLI_rcti_pad(bbox, RCTI_PADDING, RCTI_PADDING);
+      BLI_rcti_pad(bbox, BBOX_PADDING, BBOX_PADDING);
     }
   });
 
