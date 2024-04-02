@@ -166,16 +166,16 @@ void icon_draw_rect_input(
     const char str[] = BLI_STR_UTF8_OPEN_BOX;
     icon_draw_rect_input_text(&rect, color, str, 20.0f, 2.0f);
   }
-  else if ((event_type == BUTTON4MOUSE)) {
+  else if (event_type == BUTTON4MOUSE) {
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "4", 12.0f, 0.0f);
   }
-  else if ((event_type == BUTTON5MOUSE)) {
+  else if (event_type == BUTTON5MOUSE) {
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "5", 12.0f, 0.0f);
   }
-  else if ((event_type == BUTTON6MOUSE)) {
+  else if (event_type == BUTTON6MOUSE) {
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "6", 12.0f, 0.0f);
   }
-  else if ((event_type == BUTTON7MOUSE)) {
+  else if (event_type == BUTTON7MOUSE) {
     icon_draw_rect_input_text(&rect, color, BLI_STR_UTF8_BLACK_VERTICAL_ELLIPSE "7", 12.0f, 0.0f);
   }
   else if (event_type == TABLET_STYLUS) {
@@ -193,15 +193,15 @@ void icon_draw_rect_input(
     SNPRINTF(str, "%s%i", BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH, event_type - EVT_PAD0);
     icon_draw_rect_input_text(&rect, color, str, 9.0f, 0.0f);
   }
-  else if ((event_type == EVT_PADASTERKEY)) {
+  else if (event_type == EVT_PADASTERKEY) {
     icon_draw_rect_input_text(
         &rect, color, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "6", 9.0f, 0.0f);
   }
-  else if ((event_type == EVT_PADSLASHKEY)) {
+  else if (event_type == EVT_PADSLASHKEY) {
     icon_draw_rect_input_text(
         &rect, color, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "/", 9.0f, 0.0f);
   }
-  else if ((event_type == EVT_PADMINUS)) {
+  else if (event_type == EVT_PADMINUS) {
     icon_draw_rect_input_text(
         &rect, color, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "-", 9.0f, 0.0f);
   }
@@ -213,14 +213,14 @@ void icon_draw_rect_input(
         8.0f,
         0.0f);
   }
-  else if ((event_type == EVT_PADPLUSKEY)) {
+  else if (event_type == EVT_PADPLUSKEY) {
     icon_draw_rect_input_text(
         &rect, color, BLI_STR_UTF8_SQUARE_WITH_ORTHOGONAL_CROSSHATCH "+", 9.0f, 0.0f);
   }
-  else if ((event_type == EVT_PAUSEKEY)) {
+  else if (event_type == EVT_PAUSEKEY) {
     icon_draw_rect_input_text(&rect, color, "Pause", 5.0f, 0.0f);
   }
-  else if ((event_type == EVT_INSERTKEY)) {
+  else if (event_type == EVT_INSERTKEY) {
     icon_draw_rect_input_text(&rect, color, "Insert", 5.5f, 0.0f);
   }
   else if (event_type == EVT_UNKNOWNKEY) {
