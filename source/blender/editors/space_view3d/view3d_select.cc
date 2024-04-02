@@ -3110,7 +3110,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, &curves_ob);
           const IndexMask elements(curves.attributes().domain_size(selection_domain));
-          const ed::curves::SelectionRangeFn range_consumer =
+          const auto range_consumer =
               [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
                 IndexMask mask = elements.slice_content(range);
 
