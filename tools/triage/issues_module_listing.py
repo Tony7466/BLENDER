@@ -22,6 +22,7 @@ class ModuleInfo:
     labelid: str
     buglist: list[str] = dataclasses.field(default_factory=list)
 
+# Label names and IDs are taken from https://projects.blender.org/blender/blender/labels.
 modules = {
     "Module/Animation & Rigging" : ModuleInfo(name="Animation & Rigging", labelid="268"),
     "Module/Core" : ModuleInfo(name="Core", labelid="269"),
@@ -39,6 +40,7 @@ modules = {
 }
 
 base_url = "https://projects.blender.org/blender/blender/issues?q=&type=all&sort=&state=open&labels="
+total_url = "https://projects.blender.org/blender/blender/issues?q=&type=all&sort=&state=open&labels=285%2c-297%2c-298%2c-299%2c-301"
 
 severity_labelid = {
     "Low": "286",
@@ -47,7 +49,6 @@ severity_labelid = {
     "Unbreak Now!": "288"
 }
 
-uncategorized_reports = list()
 
 def compile_list(severity: str) -> None:
 
@@ -59,11 +60,13 @@ def compile_list(severity: str) -> None:
         verbose=True,
     )
 
+    uncategorized_reports = []
+
     for issue in issues_json:
         html_url = issue["html_url"]
         number = issue["number"]
 
-        # Check reports module assignement and fill in data
+        # Check reports module assignment and fill in data.
         for label_iter in issue["labels"]:
             label = label_iter["name"]
             if label not in modules:
@@ -74,35 +77,35 @@ def compile_list(severity: str) -> None:
     else:
         uncategorized_reports.append(f"[#{number}]({html_url})")
 
-    # Calculate total
-    total = 0
-    for module in modules:
-        total += len(modules[module].buglist)
+    uncategorized_reports = (', '.join(uncategorized_reports))
 
     # Print statistics
     print(f"Open {severity} Priority bugs as of {date.today()}:\n")
 
-    uncategorized_list = (', '.join(uncategorized_reports))
+    total = 0
     for module in modules.values():
+        total += len(module.buglist)
         str_list = (', '.join(module.buglist))
         full_url = base_url + severity_labelid[severity] + "%2c" + module.labelid
+        buglist_len = len(module.buglist)
         if not module.buglist or severity != 'High':
-            print(f"- [{module.name}]({full_url}): *{str(len(module.buglist))}*")
+            print(f"- [{module.name}]({full_url}): *{buglist_len}*")
         else:
-            print(f"- [{module.name}]({full_url}): *{str(len(module.buglist))}* _{str_list}_")
+            print(f"- [{module.name}]({full_url}): *{buglist_len}* _{str_list}_")
 
     print()
-    print("Total: " + str(total))
+    print(f"[Total]({total_url}): {total}")
 
     print()
-    print(f"Uncategorized: {uncategorized_list}")
+    print(f"Uncategorized: {uncategorized_reports}")
 
 
 def main() -> None:
 
     parser = argparse.ArgumentParser(
         description="Print statistics on open bug reports per module",
-        epilog="This script is used to help module teams")
+        epilog="This script is used to help module teams",
+    )
 
     parser.add_argument(
         "--severity",
@@ -110,7 +113,9 @@ def main() -> None:
         default="High",
         type=str,
         required=False,
-        help="Severity of reports (Low, Normal, High, Unbreak Now!")
+        choices=severity_labelid.keys(),
+        help="Severity of reports (Low, Normal, High, Unbreak Now!",
+    )
 
     args = parser.parse_args()
         
