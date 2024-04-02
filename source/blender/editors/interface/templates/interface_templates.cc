@@ -6176,6 +6176,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
+      /* Icon and text separately are closer together with aligned layout. */
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
       uiItemL(row, msg ? msg : "", ICON_NONE);
     }
@@ -6417,11 +6418,15 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
+
+    /* Icon and text separately is closer together with aligned layout. */
     uiItemL(layout, "", icon);
     if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      /* Mouse icons are left-aliged. Everything else needs a bit of space here. */
       uiItemS_ex(layout, 0.6f);
     }
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    /* Separate items with some extra space. */
     uiItemS_ex(layout, 0.7f);
     ok = true;
   }
