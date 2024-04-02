@@ -11,7 +11,7 @@
 #include "usd_reader_mesh.hh"
 #include "usd_reader_nurbs.hh"
 #include "usd_reader_pointinstancer.hh"
-#include "usd_reader_points.h"
+#include "usd_reader_points.hh"
 #include "usd_reader_prim.hh"
 #include "usd_reader_shape.hh"
 #include "usd_reader_skeleton.hh"
