@@ -3,3 +3,4 @@ Referenced by issue #116130, Mirrored custom normals broken again
 Referenced by commit 65274dc096605c67e087260f0e3009f39b570868, Fix #116130: Mirrored custom normals broken again
 Referenced by issue #116532, Sculpt: Performance regression when using Cloth Filter
 Referenced by issue #120179, Assert failure after Sculpt Trim operation
+Referenced by commit 768c68f19b82c311fd67544f45e3edfd514b4075, Fix #120179: Assert failure after sculpt trim operation
