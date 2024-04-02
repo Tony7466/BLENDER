@@ -1477,3 +1477,65 @@ TEST(BLI_string, bounded_strcpy)
     EXPECT_STREQ(str, "Hello, ");
   }
 }
+
+/* -------------------------------------------------------------------- */
+/** \name Get first un-escaped quote in the string
+ *
+ * #BLI_str_escape_find_quote, #BLI_str_escape_find_quote_with.
+ * \{ */
+struct StringEscapeFindQuoteInput {
+  const char *text;
+  const char quote_character;
+  int expect_offset;
+  bool expect_null;
+};
+
+class StringEscapeFindQuote : public testing::Test {
+ protected:
+  StringEscapeFindQuote() = default;
+
+  using EscapeFindQuoteArray = vector<StringEscapeFindQuoteInput>;
+
+  void testEscapeFindQuote(const EscapeFindQuoteArray &items)
+  {
+    for (const auto &item : items) {
+      if (item.expect_null) {
+        EXPECT_EQ(BLI_str_escape_find_quote_with(item.text, item.quote_character), nullptr);
+      }
+      else {
+        EXPECT_EQ(BLI_str_escape_find_quote_with(item.text, item.quote_character),
+                  item.text + item.expect_offset);
+      }
+    }
+  }
+};
+
+TEST_F(StringEscapeFindQuote, Simple)
+{
+  /* NOTE: clang-tidy `modernize-raw-string-literal` is disabled as it causes errors with MSVC.
+   * TODO: investigate resolving with `/Zc:preprocessor` flag. */
+
+  EscapeFindQuoteArray can_find = {
+      {"ABC\"", '"', 3, false},
+      {"ABC\"123", '"', 3, false},
+      {"ABC'123", '\'', 3, false},
+      {"\"123", '"', 0, false},
+      {"'123", '\'', 0, false},
+      {"ABC`", '`', 3, false},
+      {"`", '`', 0, false},
+      {"'", '\'', 0, false},
+      {"?", '?', 0, false},
+  };
+
+  EscapeFindQuoteArray can_not_find = {
+      {"ABC\"", '\'', 0, true},
+      {"ABC'", '"', 0, true},
+      {"123", '"', 0, true},
+      {"123", '\'', 0, true},
+  };
+
+  testEscapeFindQuote(can_find);
+  testEscapeFindQuote(can_not_find);
+}
+
+/** \} */
