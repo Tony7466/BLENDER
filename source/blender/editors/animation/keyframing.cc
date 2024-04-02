@@ -247,8 +247,12 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static bool is_keyable_type(IDProperty *prop)
+static bool is_keyable_type(IDProperty *prop, const PropertyRNA *property_rna)
 {
+  if (RNA_property_is_runtime(property_rna)) {
+    return false;
+  }
+
   if (ELEM(prop->type,
            eIDPropertyType::IDP_BOOLEAN,
            eIDPropertyType::IDP_INT,
@@ -325,12 +329,19 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     if (properties) {
       LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
-        if (!is_keyable_type(prop)) {
-          continue;
-        }
         char name_escaped[MAX_IDPROP_NAME * 2];
         BLI_str_escape(name_escaped, prop->name, sizeof(name_escaped));
-        paths.append(fmt::format("[\"{}\"]", name_escaped));
+        std::string path = fmt::format("[\"{}\"]", name_escaped);
+        PointerRNA resolved_ptr;
+        PropertyRNA *resolved_prop;
+        const bool resolved_path = RNA_path_resolve_property(
+            ptr, path.c_str(), &resolved_ptr, &resolved_prop);
+        if (!resolved_path) {
+          continue;
+        }
+        if (is_keyable_type(prop, resolved_prop)) {
+          paths.append(path);
+        }
       }
     }
   }
