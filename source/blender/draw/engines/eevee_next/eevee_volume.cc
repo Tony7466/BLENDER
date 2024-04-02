@@ -76,6 +76,14 @@ void VolumeModule::end_sync()
   float integration_start = scene_eval->eevee.volumetric_start;
   float integration_end = scene_eval->eevee.volumetric_end;
 
+  std::optional<Bounds<float>> volume_bounds = inst_.pipelines.volume.object_integration_range();
+
+  if (volume_bounds && !inst_.world.has_volume()) {
+    /* Restrict integration range to the object volume range. This increases precision. */
+    integration_start = math::max(integration_start, -volume_bounds.value().max);
+    integration_end = math::min(integration_end, -volume_bounds.value().min);
+  }
+
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * math::max(1.0f - sample_distribution, 1e-2f);
@@ -89,11 +97,8 @@ void VolumeModule::end_sync()
   }
   else {
     /* FIXME: This is not working in camera view. */
-    integration_start = math::min(integration_end, clip_start);
-    integration_end = math::max(-integration_end, clip_end);
-
-    data_.depth_near = integration_start;
-    data_.depth_far = integration_end;
+    data_.depth_near = -integration_start;
+    data_.depth_far = -integration_end;
     data_.depth_distribution = 0.0f; /* Unused. */
   }
 
