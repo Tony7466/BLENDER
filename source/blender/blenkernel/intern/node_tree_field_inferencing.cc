@@ -736,8 +736,7 @@ static void add_node_type_constraints(const bNodeTree &tree,
       }
       const int var_a = input_inputs[i]->index_in_tree();
       const int var_b = output_inputs[i]->index_in_tree();
-      constraints.add_binary(var_a, var_b, shared_field_type_constraint);
-      constraints.add_binary(var_b, var_a, shared_field_type_constraint);
+      constraints.add_binary_symmetric(var_a, var_b, shared_field_type_constraint);
     }
     for (const int i : input_outputs.index_range()) {
       if (!input_outputs[i]->is_available() || !output_outputs[i]->is_available()) {
@@ -745,8 +744,7 @@ static void add_node_type_constraints(const bNodeTree &tree,
       }
       const int var_a = input_outputs[i]->index_in_tree();
       const int var_b = output_outputs[i]->index_in_tree();
-      constraints.add_binary(var_a, var_b, shared_field_type_constraint);
-      constraints.add_binary(var_b, var_a, shared_field_type_constraint);
+      constraints.add_binary_symmetric(var_a, var_b, shared_field_type_constraint);
     }
   };
 
