@@ -125,13 +125,12 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
     return;
   }
 
-  const VArray<bool> cyclic_values = curves.cyclic();
-  const bool is_cyclic = cyclic_values.is_empty() ? false : cyclic_values.first();
   if (array_utils::booleans_mix_calc(curves.cyclic()) == array_utils::BooleanMix::Mixed) {
     CLOG_WARN(&LOG, "Cannot export mixed cyclic and non-cyclic curves in the same Curves object");
     return;
   }
 
+  const bool is_cyclic = curves.cyclic().first();
   Alembic::AbcGeom::BasisType curve_basis = Alembic::AbcGeom::kNoBasis;
   Alembic::AbcGeom::CurveType curve_type = Alembic::AbcGeom::kVariableOrder;
   Alembic::AbcGeom::CurvePeriodicity periodicity = is_cyclic ? Alembic::AbcGeom::kPeriodic :
@@ -189,9 +188,9 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
        *   control point 1(+ width), right handle 1, left handle 2,
        *   control point 2(+ width), ...
        * ] */
-      for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
+      for (const int i_point : points.drop_back(1)) {
         verts.push_back(to_yup_V3f(positions[i_point]));
-        widths.push_back(radii[last_point_index] * 2.0f);
+        widths.push_back(radii[i_point] * 2.0f);
 
         verts.push_back(to_yup_V3f(handles_r[i_point]));
         verts.push_back(to_yup_V3f(handles_l[i_point + 1]));
