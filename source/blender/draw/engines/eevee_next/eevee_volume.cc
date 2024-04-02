@@ -78,18 +78,19 @@ void VolumeModule::end_sync()
 
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
-    sample_distribution = 4.0f * std::max(1.0f - sample_distribution, 1e-2f);
+    sample_distribution = 4.0f * math::max(1.0f - sample_distribution, 1e-2f);
 
-    float near = integration_start = std::min(-integration_start, clip_start - 1e-4f);
-    float far = integration_end = std::min(-integration_end, near - 1e-4f);
+    float near = math::min(-integration_start, clip_start + 1e-4f);
+    float far = math::max(-integration_end, clip_end - 1e-4f);
 
     data_.depth_near = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
     data_.depth_far = (1.0f - data_.depth_near) / near;
     data_.depth_distribution = sample_distribution;
   }
   else {
-    integration_start = std::min(integration_end, clip_start);
-    integration_end = std::max(-integration_end, clip_end);
+    /* FIXME: This is not working in camera view. */
+    integration_start = math::min(integration_end, clip_start);
+    integration_end = math::max(-integration_end, clip_end);
 
     data_.depth_near = integration_start;
     data_.depth_far = integration_end;
