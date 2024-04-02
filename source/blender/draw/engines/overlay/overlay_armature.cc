@@ -907,6 +907,8 @@ static void drw_shgroup_bone_custom_mesh_wire(const ArmatureDrawContext *ctx,
     mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
     inst_data.color_a = encode_2f_to_float(color[0], color[1]);
+    /* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down.
+     * Keep in sync with the max value of RNA. */
     inst_data.color_b = encode_2f_to_float(color[2], wire_width / 16.0);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }

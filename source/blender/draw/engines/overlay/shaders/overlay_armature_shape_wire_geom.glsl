@@ -48,7 +48,8 @@ void main()
   vec2 line = screen_space_pos[0] - screen_space_pos[1];
   line = abs(line) * sizeViewport.xy;
 
-  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to change as well. */
+  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
+   * change as well. */
   float wire_width = geometry_in[0].wire_width * 16.0;
   float half_size = max(wire_width / 2.0, 0.5);
 
@@ -62,10 +63,10 @@ void main()
   bool horizontal = line.x > line.y;
   if (horizontal) {
     edge_ofs[0] = 0.0;
-  }else{
+  }
+  else {
     edge_ofs[1] = 0.0;
-  } 
-
+  }
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
