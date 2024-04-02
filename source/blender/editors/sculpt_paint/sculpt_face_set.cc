@@ -491,6 +491,7 @@ void do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 /** \name Global Mesh Operators
  * Operators that work on the mesh as a whole.
  * \{ */
+
 static void face_sets_update(Object &object,
                              const Span<PBVHNode *> nodes,
                              const FunctionRef<void(Span<int>, MutableSpan<int>)> calc_face_sets)
