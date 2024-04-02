@@ -468,6 +468,7 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
+  BKE_layer_collection_sync(CTX_data_scene(C), CTX_data_view_layer(C));
 
   return OPERATOR_FINISHED;
 }
@@ -507,6 +508,7 @@ static int collection_exporter_remove_exec(bContext *C, wmOperator *op)
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
+  BKE_layer_collection_sync(CTX_data_scene(C), CTX_data_view_layer(C));
 
   return OPERATOR_FINISHED;
 }

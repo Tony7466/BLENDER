@@ -264,7 +264,7 @@ class TOPBAR_MT_file(Menu):
         layout.menu("TOPBAR_MT_file_export", icon='EXPORT')
         row = layout.row()
         row.operator("wm.collection_export_all")
-        row.enabled = any(len(coll.exporters) > 0 for coll in bpy.data.collections)
+        row.enabled = context.view_layer.has_export_collections
 
         layout.separator()
 
