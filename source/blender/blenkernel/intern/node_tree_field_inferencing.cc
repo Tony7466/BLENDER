@@ -1060,6 +1060,29 @@ static bool verify_field_inferencing_csp_result(
   return error;
 }
 
+static void update_socket_shapes(const bNodeTree &tree,
+                                 const NodeTreeVariables &variables,
+                                 const BitGroupVector<> csp_result)
+{
+  auto get_shape_for_state = [](const BitSpan state) {
+    return state[DomainValue::Field] ?
+               (state[DomainValue::Single] ? SOCK_DISPLAY_SHAPE_DIAMOND_DOT :
+                                             SOCK_DISPLAY_SHAPE_DIAMOND) :
+               SOCK_DISPLAY_SHAPE_CIRCLE;
+  };
+
+  for (const bNodeSocket *socket : tree.all_input_sockets()) {
+    const int var = variables.get_socket_variable(*socket);
+    const BitSpan state = csp_result[var];
+    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(state);
+  }
+  for (const bNodeSocket *socket : tree.all_sockets()) {
+    const int var = variables.get_socket_variable(*socket);
+    const BitSpan state = csp_result[var];
+    const_cast<bNodeSocket *>(socket)->display_shape = get_shape_for_state(state);
+  }
+}
+
 template<typename Logger>
 static void solve_field_inferencing_constraints(
     const bNodeTree &tree,
@@ -1202,6 +1225,11 @@ static void solve_field_inferencing_constraints(
   BitGroupVector<> result = csp::solve_constraints_with_logger(
       constraints, variables.num_vars(), NumDomainValues, logger);
 
+  /* Perform old propagation method as well to verify the result. */
+  if (true) {
+    verify_field_inferencing_csp_result(tree, interface_by_node, result);
+  }
+
   /* Setup inferencing interface for the tree. */
   for (const int i : tree.interface_inputs().index_range()) {
     const int var = variables.tree_input_vars[i];
@@ -1231,10 +1259,7 @@ static void solve_field_inferencing_constraints(
     inferencing_interface.outputs[group_output_socket->index()] = std::move(field_dependency);
   }
 
-  /* Perform old propagation method as well to verify the result. */
-  if (true) {
-    verify_field_inferencing_csp_result(tree, interface_by_node, result);
-  }
+  update_socket_shapes(tree, variables, result);
 }
 
 template <typename Logger>
