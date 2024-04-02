@@ -114,7 +114,7 @@ def main() -> None:
         type=str,
         required=False,
         choices=severity_labelid.keys(),
-        help="Severity of reports (Low, Normal, High, Unbreak Now!",
+        help="Severity level of reports",
     )
 
     args = parser.parse_args()
