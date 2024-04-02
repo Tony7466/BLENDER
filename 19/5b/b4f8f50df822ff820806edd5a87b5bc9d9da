@@ -2,3 +2,4 @@ Referenced by issue #71244, Renaming an ID through RNA does not consistently inc
 Referenced by issue #119139, WIP: Allow name-swapping when renaming IDs from the UI
 Referenced by issue #119955, Blender 4.1 changed behaviour for renaming objects when name already is used
 Referenced by issue #120058, Regression: Undoing a rename while in edit mode crashes Blender
+Referenced by pull request #120099, Fix #120058: Crash on undo rename in edit mode
