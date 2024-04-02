@@ -934,7 +934,7 @@ gpu::VertBuf *DRW_cache_grease_pencil_color_buffer_get(const Scene *scene, Objec
   return cache->vbo_col;
 }
 
-GPUBatch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *ob)
+gpu::Batch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *ob)
 {
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
@@ -943,7 +943,7 @@ GPUBatch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *
   return cache->edit_points;
 }
 
-GPUBatch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object *ob)
+gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object *ob)
 {
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
   GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
