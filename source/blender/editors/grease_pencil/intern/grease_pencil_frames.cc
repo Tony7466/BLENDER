@@ -553,19 +553,10 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   }
 
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS |
-                      ANIMFILTER_FOREDIT);
+                      ANIMFILTER_FOREDIT | ANIMFILTER_SEL);
 
-  /* If certain channels are selected, only paste to the selected ones.
-   * Otherwise, paste to all channel. */
-  if (ANIM_animdata_filter(ac,
-                           &anim_data,
-                           eAnimFilter_Flags(filter | ANIMFILTER_SEL),
-                           ac->data,
-                           eAnimCont_Types(ac->datatype)) == 0)
-  {
-    ANIM_animdata_filter(
-        ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
-  }
+  ANIM_animdata_filter(
+      ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* Check if single channel in buffer (disregard names if so). */
   const bool from_single_channel = copy_buffer.size() == 1;
