@@ -140,11 +140,11 @@ void icon_draw_rect_input(
   }
   else if (event_type == EVT_PAGEUPKEY) {
     const char str[] = "P" BLI_STR_UTF8_UPWARDS_ARROW;
-    icon_draw_rect_input_text(&rect, color, "P", str, 10.0f, 0.0f);
+    icon_draw_rect_input_text(&rect, color, str, 10.0f, 0.0f);
   }
   else if (event_type == EVT_PAGEDOWNKEY) {
     const char str[] = "P" BLI_STR_UTF8_DOWNWARDS_ARROW;
-    icon_draw_rect_input_text(&rect, color, "P", str, 10.0f, 0.0f);
+    icon_draw_rect_input_text(&rect, color, str, 10.0f, 0.0f);
   }
   else if (event_type == EVT_LEFTARROWKEY) {
     const char str[] = BLI_STR_UTF8_LEFTWARDS_ARROW;
