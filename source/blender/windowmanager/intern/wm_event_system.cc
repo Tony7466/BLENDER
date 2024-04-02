@@ -37,7 +37,7 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
@@ -59,7 +59,7 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "RNA_access.hh"
 
@@ -1376,8 +1376,7 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
     op->properties = IDP_CopyProperty(static_cast<const IDProperty *>(properties->data));
   }
   else {
-    IDPropertyTemplate val = {0};
-    op->properties = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
+    op->properties = blender::bke::idprop::create_group("wmOperatorProperties").release();
   }
   *op->ptr = RNA_pointer_create(&wm->id, ot->srna, op->properties);
 
@@ -1969,16 +1968,17 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
                                                       const wmEvent *event,
                                                       const char *drawstr)
 {
-  int flag = ot->flag;
+  bool depends_on_cursor = WM_operator_depends_on_cursor(*C, *ot, properties);
 
   LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-    wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
-    if (otm != nullptr) {
-      flag |= otm->flag;
+    if (wmOperatorType *otm = WM_operatortype_find(macro->idname, false)) {
+      if (WM_operator_depends_on_cursor(*C, *otm, properties)) {
+        depends_on_cursor = true;
+      }
     }
   }
 
-  if (!WM_operator_depends_on_cursor(*C, *ot, properties)) {
+  if (!depends_on_cursor) {
     WM_operator_name_call_ptr(C, ot, opcontext, properties, event);
     return;
   }
