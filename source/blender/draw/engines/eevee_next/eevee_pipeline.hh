@@ -341,6 +341,15 @@ class DeferredPipeline {
  *
  * \{ */
 
+struct VolumeObjectBounds {
+  /* Screen 2D bounds for layer intersection check. */
+  std::optional<Bounds<float2>> screen_bounds;
+  /* Combined bounds in Z. Allow tighter integration bounds. */
+  std::optional<Bounds<float>> z_range;
+
+  VolumeObjectBounds(const Camera &camera, Object *ob);
+};
+
 /**
  * A volume layer contains a list of non-overlapping volume objects.
  */
@@ -360,9 +369,9 @@ class VolumeLayer {
   PassMain::Sub *occupancy_ps_;
   PassMain::Sub *material_ps_;
   /* List of bounds from all objects contained inside this pass. */
-  Vector<Bounds<float2>> object_bounds_;
+  Vector<std::optional<Bounds<float2>>> object_bounds_;
   /* Combined bounds from object_bounds_. */
-  std::optional<Bounds<float2>> combined_bounds_;
+  std::optional<Bounds<float2>> combined_screen_bounds_;
 
  public:
   VolumeLayer(Instance &inst) : inst_(inst)
@@ -378,9 +387,9 @@ class VolumeLayer {
                               GPUMaterial *gpumat);
 
   /* Return true if the given bounds overlaps any of the contained object in this layer. */
-  bool bounds_overlaps(const Bounds<float2> &object_aabb) const;
+  bool bounds_overlaps(const VolumeObjectBounds &object_aabb) const;
 
-  void add_object_bound(const Bounds<float2> &object_aabb);
+  void add_object_bound(const VolumeObjectBounds &object_aabb);
 
   void sync();
   void render(View &view, Texture &occupancy_tx);
@@ -392,6 +401,8 @@ class VolumePipeline {
 
   Vector<std::unique_ptr<VolumeLayer>> layers_;
 
+  /* Combined bounds in Z. Allow tighter integration bounds. */
+  std::optional<Bounds<float>> object_integration_range_;
   /* True if any volume (any object type) creates a volume draw-call. Enables the volume module. */
   bool enabled_ = false;
   /* Aggregated properties of all volume objects. */
@@ -409,6 +420,8 @@ class VolumePipeline {
    * Returns nullptr if the object is not visible at all.
    */
   VolumeLayer *register_and_get_layer(Object *ob);
+
+  std::optional<Bounds<float>> object_integration_range() const;
 
   bool is_enabled() const
   {
@@ -435,14 +448,6 @@ class VolumePipeline {
 
   /* Returns true if any volume layer uses the hist list. */
   bool use_hit_list() const;
-
- private:
-  /**
-   * Returns Axis aligned bounding box in screen space.
-   * Used for frustum culling and volumes overlapping detection.
-   * Represents min and max grid corners covered by a volume.
-   */
-  Bounds<float2> grid_aabb_from_object(Object *ob);
 };
 
 /** \} */

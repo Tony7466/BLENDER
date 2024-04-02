@@ -931,7 +931,7 @@ void DeferredPipeline::render(View &main_view,
 void VolumeLayer::sync()
 {
   object_bounds_.clear();
-  combined_bounds_ = std::nullopt;
+  combined_screen_bounds_ = std::nullopt;
   use_hit_list = false;
   is_empty = true;
   finalized = false;
@@ -998,26 +998,25 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
   return pass;
 }
 
-bool VolumeLayer::bounds_overlaps(const Bounds<float2> &object_aabb) const
+bool VolumeLayer::bounds_overlaps(const VolumeObjectBounds &object_bounds) const
 {
-  if (combined_bounds_.has_value() &&
-      bounds::intersect(object_aabb, combined_bounds_.value()).has_value())
-  {
+  /* First check the biggest area. */
+  if (bounds::intersect(object_bounds.screen_bounds, combined_screen_bounds_)) {
     return true;
   }
-
-  for (const Bounds<float2> &other_aabb : object_bounds_) {
-    if (bounds::intersect(object_aabb, other_aabb).has_value()) {
+  /* Check against individual bounds to try to squeeze the new object between them. */
+  for (const std::optional<Bounds<float2>> &other_aabb : object_bounds_) {
+    if (bounds::intersect(object_bounds.screen_bounds, other_aabb)) {
       return true;
     }
   }
   return false;
 }
 
-void VolumeLayer::add_object_bound(const Bounds<float2> &object_aabb)
+void VolumeLayer::add_object_bound(const VolumeObjectBounds &object_bounds)
 {
-  object_bounds_.append(object_aabb);
-  combined_bounds_ = bounds::merge(combined_bounds_, std::optional<Bounds<float2>>(object_aabb));
+  object_bounds_.append(object_bounds.screen_bounds);
+  combined_screen_bounds_ = bounds::merge(combined_screen_bounds_, object_bounds.screen_bounds);
 }
 
 void VolumeLayer::render(View &view, Texture &occupancy_tx)
@@ -1047,6 +1046,7 @@ void VolumeLayer::render(View &view, Texture &occupancy_tx)
 
 void VolumePipeline::sync()
 {
+  object_integration_range_ = std::nullopt;
   enabled_ = false;
   has_scatter_ = false;
   has_absorption_ = false;
@@ -1064,9 +1064,8 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
   }
 }
 
-Bounds<float2> VolumePipeline::grid_aabb_from_object(Object *ob)
+VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
 {
-  const Camera &camera = inst_.camera;
   /* TODO(fclem): For panoramic camera, we will have to do this check for each cubeface. */
   const float4x4 &view_matrix = camera.data_get().viewmat;
   /* Note in practice we only care about the projection type since we only care about 2D overlap,
@@ -1078,35 +1077,42 @@ Bounds<float2> VolumePipeline::grid_aabb_from_object(Object *ob)
   BoundBox bb;
   BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
 
-  std::array<float2, 8> ss_bb;
-  int i = 0;
+  screen_bounds = std::nullopt;
+  z_range = std::nullopt;
+
   for (float3 l_corner : bb.vec) {
     float3 ws_corner = math::transform_point(ob->object_to_world(), l_corner);
     /* Split view and projection for percision. */
     float3 vs_corner = math::transform_point(view_matrix, ws_corner);
     float3 ss_corner = math::project_point(projection_matrix, vs_corner);
-    /* TODO: This is ill defined if crossing the nearplane. */
-    ss_bb[i++] = ss_corner.xy();
+    /* FIXME: This is ill defined if crossing the nearplane. */
+    screen_bounds = bounds::min_max(screen_bounds, ss_corner.xy());
+    z_range = bounds::min_max(z_range, vs_corner.z);
   }
-  Bounds<float2> result = bounds::min_max(Span<float2>(ss_bb)).value();
-  return result;
 }
 
 VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
 {
-  Bounds<float2> object_aabb = grid_aabb_from_object(ob);
+  VolumeObjectBounds object_bounds(inst_.camera, ob);
+  object_integration_range_ = bounds::merge(object_integration_range_, object_bounds.z_range);
+
   enabled_ = true;
   /* Do linear search in all layers in order. This can be optimized. */
   for (auto &layer : layers_) {
-    if (!layer->bounds_overlaps(object_aabb)) {
-      layer->add_object_bound(object_aabb);
+    if (!layer->bounds_overlaps(object_bounds)) {
+      layer->add_object_bound(object_bounds);
       return layer.get();
     }
   }
   /* No non-overlapping layer found. Create new one. */
   int64_t index = layers_.append_and_get_index(std::make_unique<VolumeLayer>(inst_));
-  (*layers_[index]).add_object_bound(object_aabb);
+  (*layers_[index]).add_object_bound(object_bounds);
   return layers_[index].get();
+}
+
+std::optional<Bounds<float>> VolumePipeline::object_integration_range() const
+{
+  return object_integration_range_;
 }
 
 bool VolumePipeline::use_hit_list() const
