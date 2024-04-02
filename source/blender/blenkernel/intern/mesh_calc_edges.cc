@@ -53,7 +53,7 @@ static void add_existing_edges_to_hash_maps(const Mesh &mesh,
   threading::parallel_for_each(edge_maps, [&](EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
     for (const int2 &edge : edges) {
-      OrderedEdge ordered_edge(edge[0], edge[1]);
+      const OrderedEdge ordered_edge(edge[0], edge[1]);
       /* Only add the edge when it belongs into this map. */
       if (task_index == (parallel_mask & edge_hash_2(ordered_edge))) {
         edge_map.add_new(ordered_edge, {&edge});
@@ -78,7 +78,7 @@ static void add_face_edges_to_hash_maps(const Mesh &mesh,
         const int vert_prev = corner_verts[bke::mesh::face_corner_prev(face, corner)];
         /* Can only be the same when the mesh data is invalid. */
         if (vert_prev != vert) {
-          OrderedEdge ordered_edge(vert_prev, vert);
+          const OrderedEdge ordered_edge(vert_prev, vert);
           /* Only add the edge when it belongs into this map. */
           if (task_index == (parallel_mask & edge_hash_2(ordered_edge))) {
             edge_map.lookup_or_add(ordered_edge, {nullptr});
@@ -137,7 +137,7 @@ static void update_edge_indices_in_face_loops(const OffsetIndices<int> faces,
 
         int edge_index;
         if (vert_prev != vert) {
-          OrderedEdge ordered_edge{vert_prev, vert};
+          const OrderedEdge ordered_edge(vert_prev, vert);
           /* Double lookup: First find the map that contains the edge, then lookup the edge. */
           const EdgeMap &edge_map = edge_maps[parallel_mask & edge_hash_2(ordered_edge)];
           edge_index = edge_map.lookup(ordered_edge).index;
