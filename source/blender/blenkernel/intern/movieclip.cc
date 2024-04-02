@@ -65,7 +65,7 @@
 
 #include "DRW_engine.hh"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "BLO_read_write.hh"
 
@@ -91,7 +91,7 @@ static void movie_clip_copy_data(Main * /*bmain*/,
   MovieClip *movie_clip_dst = (MovieClip *)id_dst;
   const MovieClip *movie_clip_src = (const MovieClip *)id_src;
 
-  /* We never handle user-count here for own data. */
+  /* We never handle user-count here for owned data. */
   const int flag_subdata = flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
 
   movie_clip_dst->anim = nullptr;

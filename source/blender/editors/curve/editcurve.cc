@@ -54,7 +54,7 @@
 #include "ED_transform_snap_object_context.hh"
 #include "ED_view3d.hh"
 
-#include "curve_intern.h"
+#include "curve_intern.hh"
 
 extern "C" {
 #include "curve_fit_nd.h"
@@ -1391,7 +1391,7 @@ static int separate_exec(bContext *C, wmOperator *op)
     /* Take into account user preferences for duplicating actions. */
     const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
 
-    newbase = ED_object_add_duplicate(bmain, scene, view_layer, oldbase, dupflag);
+    newbase = blender::ed::object::add_duplicate(bmain, scene, view_layer, oldbase, dupflag);
     DEG_relations_tag_update(bmain);
 
     newob = newbase->object;
@@ -1463,13 +1463,11 @@ void CURVE_OT_separate(wmOperatorType *ot)
   ot->description = "Separate selected points from connected unselected points into a new object";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = separate_exec;
   ot->poll = ED_operator_editsurfcurve;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */
@@ -2700,7 +2698,7 @@ static int set_radius_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -2817,7 +2815,7 @@ static int smooth_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -3160,7 +3158,7 @@ static int curve_smooth_radius_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -3209,7 +3207,7 @@ static int curve_smooth_tilt_exec(bContext *C, wmOperator *op)
 
   for (Object *obedit : objects) {
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -4053,7 +4051,7 @@ static int curve_normals_make_consistent_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 
@@ -4983,7 +4981,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
 
     BKE_view_layer_synced_ensure(vc.scene, vc.view_layer);
     if (BKE_view_layer_active_base_get(vc.view_layer) != basact) {
-      ED_object_base_activate(C, basact);
+      blender::ed::object::base_activate(C, basact);
     }
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT | ID_RECALC_SYNC_TO_EVAL);
@@ -6980,7 +6978,7 @@ int ED_curve_join_objects_exec(bContext *C, wmOperator *op)
           }
         }
 
-        ED_object_base_free_and_unlink(bmain, scene, ob_iter);
+        blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
       }
     }
   }
@@ -7029,7 +7027,7 @@ static int clear_tilt_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    if (blender::ed::object::shape_key_report_if_locked(obedit, op->reports)) {
       continue;
     }
 

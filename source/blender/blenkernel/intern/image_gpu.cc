@@ -26,9 +26,9 @@
 #include "BKE_image_partial_update.hh"
 #include "BKE_main.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_capabilities.hh"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 using namespace blender::bke::image::partial_update;
 
@@ -457,9 +457,7 @@ static ImageGPUTextures image_get_gpu_texture(Image *ima,
 
       if (GPU_mipmap_enabled()) {
         GPU_texture_update_mipmap_chain(*tex);
-        if (ima) {
-          ima->gpuflag |= IMA_GPU_MIPMAP_COMPLETE;
-        }
+        ima->gpuflag |= IMA_GPU_MIPMAP_COMPLETE;
         GPU_texture_mipmap_mode(*tex, true, true);
       }
       else {

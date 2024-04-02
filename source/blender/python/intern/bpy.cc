@@ -28,12 +28,13 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "WM_api.hh" /* For #WM_ghost_backend */
 
 #include "bpy.h"
 #include "bpy_app.h"
+#include "bpy_cli_command.h"
 #include "bpy_driver.h"
 #include "bpy_library.h"
 #include "bpy_operator.h"
@@ -222,7 +223,7 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
       {BLENDER_USER_DATAFILES, "DATAFILES"},
       {BLENDER_USER_CONFIG, "CONFIG"},
       {BLENDER_USER_SCRIPTS, "SCRIPTS"},
-      {BLENDER_USER_AUTOSAVE, "AUTOSAVE"},
+      {BLENDER_USER_EXTENSIONS, "EXTENSIONS"},
       {0, nullptr},
   };
   PyC_StringEnum type = {type_items};
@@ -733,6 +734,10 @@ void BPy_init_modules(bContext *C)
 
   PYMODULE_ADD_METHOD(mod, &meth_bpy_owner_id_get);
   PYMODULE_ADD_METHOD(mod, &meth_bpy_owner_id_set);
+
+  /* Register command functions. */
+  PYMODULE_ADD_METHOD(mod, &BPY_cli_command_register_def);
+  PYMODULE_ADD_METHOD(mod, &BPY_cli_command_unregister_def);
 
 #undef PYMODULE_ADD_METHOD
 

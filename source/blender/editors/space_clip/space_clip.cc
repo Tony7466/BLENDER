@@ -40,7 +40,7 @@
 
 #include "IMB_imbuf.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -53,7 +53,7 @@
 
 #include "RNA_access.hh"
 
-#include "clip_intern.h" /* own include */
+#include "clip_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -657,7 +657,7 @@ static void clip_main_region_init(wmWindowManager *wm, ARegion *region)
   wmKeyMap *keymap;
 
   /* NOTE: don't use `UI_view2d_region_reinit(&region->v2d, ...)`
-   * since the space clip manages own v2d in #movieclip_main_area_set_view2d */
+   * since the space clip manages its own v2d in #movieclip_main_area_set_view2d */
 
   /* mask polls mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);

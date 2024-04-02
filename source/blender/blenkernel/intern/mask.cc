@@ -136,7 +136,6 @@ static void mask_blend_write(BlendWriter *writer, ID *id, const void *id_address
 static void mask_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Mask *mask = (Mask *)id;
-  BLO_read_data_address(reader, &mask->adt);
 
   BLO_read_list(reader, &mask->masklayers);
 
@@ -1509,7 +1508,7 @@ void BKE_mask_parent_init(MaskParent *parent)
   parent->id_type = ID_MC;
 }
 
-/* *** own animation/shape-key implementation ***
+/* *** animation/shape-key implementation ***
  * BKE_mask_layer_shape_XXX */
 
 int BKE_mask_layer_shape_totvert(MaskLayer *masklay)

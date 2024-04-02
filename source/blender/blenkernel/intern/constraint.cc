@@ -58,7 +58,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
@@ -210,9 +210,9 @@ void BKE_constraints_clear_evalob(bConstraintOb *cob)
 
   /* calculate delta of constraints evaluation */
   invert_m4_m4(imat, cob->startmat);
-  /* XXX This would seem to be in wrong order. However, it does not work in 'right' order -
-   *     would be nice to understand why premul is needed here instead of usual postmul?
-   *     In any case, we **do not get a delta** here (e.g. startmat & matrix having same location,
+  /* XXX This would seem to be in wrong order. However, it does not work in 'right' order - would
+   *     be nice to understand why pre-multiply is needed here instead of usual post-multiply?
+   *     In any case, we *do not get a delta* here (e.g. startmat & matrix having same location,
    *     still gives a 'delta' with non-null translation component :/ ). */
   mul_m4_m4m4(delta, cob->matrix, imat);
 
@@ -518,7 +518,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
   /* when not in EditMode, use the 'final' evaluated mesh, depsgraph
    * ensures we build with CD_MDEFORMVERT layer
    */
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   BMEditMesh *em = BKE_editmesh_from_object(ob);
   float plane[3];
   float imat[3][3], tmat[3][3];
@@ -553,11 +553,11 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
       }
     }
   }
-  else if (me_eval) {
-    const blender::Span<blender::float3> positions = me_eval->vert_positions();
-    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
+  else if (mesh_eval) {
+    const blender::Span<blender::float3> positions = mesh_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = mesh_eval->vert_normals();
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
-        CustomData_get_layer(&me_eval->vert_data, CD_MDEFORMVERT));
+        CustomData_get_layer(&mesh_eval->vert_data, CD_MDEFORMVERT));
 
     /* check that dvert is a valid pointers (just in case) */
     if (dvert) {

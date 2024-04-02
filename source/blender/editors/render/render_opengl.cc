@@ -67,9 +67,9 @@
 
 #include "SEQ_render.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_matrix.h"
-#include "GPU_viewport.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_matrix.hh"
+#include "GPU_viewport.hh"
 
 #include "render_intern.hh"
 
@@ -616,6 +616,7 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
     case ID_SCR: /* Screen */
     case ID_GR:  /* Group */
     case ID_AC:  /* bAction */
+    case ID_AN:  /* Animation */
     case ID_BR:  /* Brush */
     case ID_WM:  /* WindowManager */
     case ID_LS:  /* FreestyleLineStyle */

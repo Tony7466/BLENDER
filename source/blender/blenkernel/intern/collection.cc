@@ -23,7 +23,7 @@
 
 #include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -1239,8 +1239,8 @@ static void collection_gobject_assert_internal_consistency(Collection *collectio
   }
 }
 
-static Collection *collection_parent_editable_find_recursive(const ViewLayer *view_layer,
-                                                             Collection *collection)
+Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
+                                                          Collection *collection)
 {
   if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
       (view_layer == nullptr || BKE_view_layer_has_collection(view_layer, collection)))
@@ -1265,7 +1265,7 @@ static Collection *collection_parent_editable_find_recursive(const ViewLayer *vi
       }
       return collection_parent->collection;
     }
-    Collection *editable_collection = collection_parent_editable_find_recursive(
+    Collection *editable_collection = BKE_collection_parent_editable_find_recursive(
         view_layer, collection_parent->collection);
     if (editable_collection != nullptr) {
       return editable_collection;
@@ -1359,8 +1359,6 @@ bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Objec
     return false;
   }
 
-  const int id_create_flag = (collection->id.tag & LIB_TAG_NO_MAIN) ? LIB_ID_CREATE_NO_MAIN : 0;
-
   /* Only case where this pointer can be nullptr is when scene itself is linked, this case should
    * never be reached. */
   BLI_assert(collection != nullptr);
@@ -1368,6 +1366,7 @@ bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Objec
     return false;
   }
 
+  const int id_create_flag = (collection->id.tag & LIB_TAG_NO_MAIN) ? LIB_ID_CREATE_NO_MAIN : 0;
   if (!collection_object_add(bmain, collection, ob, nullptr, id_create_flag, true)) {
     return false;
   }
@@ -1393,7 +1392,7 @@ bool BKE_collection_viewlayer_object_add(Main *bmain,
     return false;
   }
 
-  collection = collection_parent_editable_find_recursive(view_layer, collection);
+  collection = BKE_collection_parent_editable_find_recursive(view_layer, collection);
 
   if (collection == nullptr) {
     return false;

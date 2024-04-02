@@ -936,6 +936,18 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  /* gpencil sculpt */
+  static const EnumPropertyItem prop_pinch_items[] = {
+      {0, "ADD", ICON_ADD, "Pinch", "Add effect of brush"},
+      {BRUSH_DIR_IN, "SUBTRACT", ICON_REMOVE, "Inflate", "Subtract effect of brush"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  static const EnumPropertyItem prop_twist_items[] = {
+      {0, "ADD", ICON_ADD, "Counter-Clockwise", "Add effect of brush"},
+      {BRUSH_DIR_IN, "SUBTRACT", ICON_REMOVE, "Clockwise", "Subtract effect of brush"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   Brush *me = (Brush *)(ptr->data);
 
   switch (mode) {
@@ -1000,6 +1012,25 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
         default:
           return rna_enum_dummy_DEFAULT_items;
       }
+    case PaintMode::SculptGPencil:
+      switch (me->gpencil_sculpt_tool) {
+        case GPSCULPT_TOOL_THICKNESS:
+        case GPSCULPT_TOOL_STRENGTH:
+          return prop_direction_items;
+        case GPSCULPT_TOOL_TWIST:
+          return prop_twist_items;
+        case GPSCULPT_TOOL_PINCH:
+          return prop_pinch_items;
+        default:
+          return rna_enum_dummy_DEFAULT_items;
+      }
+    case PaintMode::WeightGPencil:
+      switch (me->gpencil_weight_tool) {
+        case GPWEIGHT_TOOL_DRAW:
+          return prop_direction_items;
+        default:
+          return rna_enum_dummy_DEFAULT_items;
+      }
     default:
       return rna_enum_dummy_DEFAULT_items;
   }
@@ -1056,7 +1087,7 @@ static void rna_BrushGpencilSettings_default_eraser_update(Main *bmain,
 {
   ToolSettings *ts = scene->toolsettings;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_cur = paint->brush;
+  Brush *brush_cur = BKE_paint_brush(paint);
 
   /* disable default eraser in all brushes */
   for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
@@ -1096,7 +1127,7 @@ static void rna_BrushGpencilSettings_eraser_mode_update(Main * /*bmain*/,
 {
   ToolSettings *ts = scene->toolsettings;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
 
   /* set eraser icon */
   if ((brush) && (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
@@ -1428,14 +1459,14 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   PropertyRNA *prop;
 
   /* modes */
-  static EnumPropertyItem gppaint_mode_types_items[] = {
+  static const EnumPropertyItem gppaint_mode_types_items[] = {
       {GPPAINT_MODE_STROKE, "STROKE", 0, "Stroke", "Vertex Color affects to Stroke only"},
       {GPPAINT_MODE_FILL, "FILL", 0, "Fill", "Vertex Color affects to Fill only"},
       {GPPAINT_MODE_BOTH, "BOTH", 0, "Stroke & Fill", "Vertex Color affects to Stroke and Fill"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
+  static const EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
       {GP_STROKE_CAP_ROUND, "ROUND", ICON_GP_CAPS_ROUND, "Round", ""},
       {GP_STROKE_CAP_FLAT, "FLAT", ICON_GP_CAPS_FLAT, "Flat", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1974,13 +2005,6 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(prop, "Outline", "Convert stroke to perimeter");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-  prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_bitflag_sdna(prop, nullptr, "sculpt_flag");
-  RNA_def_property_enum_items(prop, prop_direction_items);
-  RNA_def_property_ui_text(prop, "Direction", "");
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
   prop = RNA_def_property(srna, "use_edit_position", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
