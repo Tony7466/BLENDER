@@ -19,6 +19,7 @@
 #include "eevee_pipeline.hh"
 
 #include "eevee_volume.hh"
+#include <iostream>
 
 namespace blender::eevee {
 
@@ -250,6 +251,13 @@ void VolumeModule::draw_prepass(View &view)
                                  math::projection::perspective_infinite(
                                      left, right, bottom, top, near) :
                                  math::projection::orthographic_infinite(left, right, bottom, top);
+
+  /* Anti-Aliasing / Super-Sampling jitter. */
+  float2 jitter = (inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U) - 0.5f) * data_.inv_tex_size.xy();
+  /* Convert to NDC. */
+  jitter *= 2.0;
+
+  winmat_infinite = math::projection::translate(winmat_infinite, jitter);
 
   View volume_view = {"Volume View"};
   volume_view.sync(view.viewmat(), winmat_infinite);
