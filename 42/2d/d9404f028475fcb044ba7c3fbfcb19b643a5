@@ -1,1 +1,1 @@
-Referenced by issue #120077, Regression: Artifacts in video output
+Referenced by issue #120077, 4.1 regression: Artifacts in video output caused by threaded YUV conversion
