@@ -2112,7 +2112,7 @@ void NLA_OT_make_single_user(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Make Single User";
   ot->idname = "NLA_OT_make_single_user";
-  ot->description = "Make selected strip(s) a single user";
+  ot->description = "Make linked action local to each strip";
 
   /* api callbacks */
   ot->invoke = nlaedit_make_single_user_invoke;
