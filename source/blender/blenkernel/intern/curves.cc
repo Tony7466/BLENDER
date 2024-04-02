@@ -355,19 +355,6 @@ std::optional<Span<float3>> CurvesEditHints::positions() const
   return Span(static_cast<const float3 *>(this->positions_data.data), points_num);
 }
 
-class ArrayImplicitSharing : public ImplicitSharingInfo {
- public:
-  GArray<> data;
-
-  ArrayImplicitSharing(const CPPType &type, const int size) : data(type, size) {}
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_delete(this);
-  }
-};
-
 std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
 {
   if (!this->positions_data.sharing_info.has_value()) {
@@ -380,9 +367,7 @@ std::optional<MutableSpan<float3>> CurvesEditHints::positions_for_write()
     data.sharing_info->tag_ensured_mutable();
   }
   else {
-    ArrayImplicitSharing *new_sharing_info = MEM_new<ArrayImplicitSharing>(
-        __func__, CPPType::get<float3>(), points_num);
-    new_sharing_info->data.as_mutable_span().copy_from(*this->positions());
+    auto *new_sharing_info = new ImplicitSharedValue<Array<float3>>(*this->positions());
     data.sharing_info = ImplicitSharingPtr<ImplicitSharingInfo>(new_sharing_info);
     data.data = new_sharing_info->data.data();
   }

@@ -8,10 +8,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_implicit_sharing.hh"
-#include "BLI_implicit_sharing_ptr.hh"
 
-namespace blender {
-namespace implicit_sharing {
+namespace blender::implicit_sharing {
 
 class MEMFreeImplicitSharing : public ImplicitSharingInfo {
  public:
@@ -107,48 +105,4 @@ void *resize_trivial_array_impl(void *old_data,
 
 }  // namespace detail
 
-}  // namespace implicit_sharing
-
-ImplicitSharingPtrAndData::ImplicitSharingPtrAndData(
-    ImplicitSharingPtr<ImplicitSharingInfo> sharing_info, const void *data)
-    : sharing_info(std::move(sharing_info)), data(data)
-{
-}
-
-ImplicitSharingPtrAndData::ImplicitSharingPtrAndData(const ImplicitSharingPtrAndData &other)
-    : sharing_info(other.sharing_info), data(other.data)
-{
-}
-
-ImplicitSharingPtrAndData::ImplicitSharingPtrAndData(ImplicitSharingPtrAndData &&other)
-    : sharing_info(std::move(other.sharing_info)), data(std::exchange(other.data, nullptr))
-{
-}
-
-ImplicitSharingPtrAndData &ImplicitSharingPtrAndData::operator=(
-    const ImplicitSharingPtrAndData &other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) ImplicitSharingPtrAndData(other);
-  return *this;
-}
-
-ImplicitSharingPtrAndData &ImplicitSharingPtrAndData::operator=(ImplicitSharingPtrAndData &&other)
-{
-  if (this == &other) {
-    return *this;
-  }
-  std::destroy_at(this);
-  new (this) ImplicitSharingPtrAndData(std::move(other));
-  return *this;
-}
-
-ImplicitSharingPtrAndData::~ImplicitSharingPtrAndData()
-{
-  this->data = nullptr;
-}
-
-}  // namespace blender
+}  // namespace blender::implicit_sharing

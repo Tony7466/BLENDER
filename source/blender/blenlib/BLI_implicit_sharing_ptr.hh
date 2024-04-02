@@ -8,6 +8,9 @@
  * \ingroup bli
  */
 
+#include <memory>
+#include <utility>
+
 #include "BLI_implicit_sharing.hh"
 #include "BLI_struct_equality_utils.hh"
 
@@ -146,13 +149,50 @@ class ImplicitSharingPtrAndData {
   const void *data = nullptr;
 
   ImplicitSharingPtrAndData() = default;
-  ImplicitSharingPtrAndData(ImplicitSharingPtr<ImplicitSharingInfo> sharing_info,
-                            const void *data);
-  ImplicitSharingPtrAndData(const ImplicitSharingPtrAndData &other);
-  ImplicitSharingPtrAndData(ImplicitSharingPtrAndData &&other);
-  ImplicitSharingPtrAndData &operator=(const ImplicitSharingPtrAndData &other);
-  ImplicitSharingPtrAndData &operator=(ImplicitSharingPtrAndData &&other);
-  ~ImplicitSharingPtrAndData();
+  ImplicitSharingPtrAndData(ImplicitSharingPtr<ImplicitSharingInfo> sharing_info, const void *data)
+      : sharing_info(std::move(sharing_info)), data(data)
+  {
+  }
+
+  ImplicitSharingPtrAndData(const ImplicitSharingPtrAndData &other)
+      : sharing_info(other.sharing_info), data(other.data)
+  {
+  }
+
+  ImplicitSharingPtrAndData(ImplicitSharingPtrAndData &&other)
+      : sharing_info(std::move(other.sharing_info)), data(std::exchange(other.data, nullptr))
+  {
+  }
+
+  ImplicitSharingPtrAndData &operator=(const ImplicitSharingPtrAndData &other)
+  {
+    if (this == &other) {
+      return *this;
+    }
+    std::destroy_at(this);
+    new (this) ImplicitSharingPtrAndData(other);
+    return *this;
+  }
+
+  ImplicitSharingPtrAndData &operator=(ImplicitSharingPtrAndData &&other)
+  {
+    if (this == &other) {
+      return *this;
+    }
+    std::destroy_at(this);
+    new (this) ImplicitSharingPtrAndData(std::move(other));
+    return *this;
+  }
+
+  ~ImplicitSharingPtrAndData()
+  {
+    this->data = nullptr;
+  }
+
+  bool has_value()
+  {
+    return this->sharing_info.has_value();
+  }
 };
 
 }  // namespace blender

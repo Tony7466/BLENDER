@@ -40,19 +40,6 @@ void GeometryComponentEditData::clear()
   grease_pencil_edit_hints_.reset();
 }
 
-class ArrayImplicitSharing : public ImplicitSharingInfo {
- public:
-  GArray<> data;
-
-  ArrayImplicitSharing(const CPPType &type, const int size) : data(type, size) {}
-
- private:
-  void delete_self_with_data() override
-  {
-    MEM_delete(this);
-  }
-};
-
 static ImplicitSharingPtrAndData save_shared_attribute(const GAttributeReader &attribute)
 {
   if (attribute.sharing_info && attribute.varray.is_span()) {
@@ -60,8 +47,7 @@ static ImplicitSharingPtrAndData save_shared_attribute(const GAttributeReader &a
     attribute.sharing_info->add_user();
     return {ImplicitSharingPtr(attribute.sharing_info), data};
   }
-  ArrayImplicitSharing *data = MEM_new<ArrayImplicitSharing>(
-      __func__, attribute.varray.type(), attribute.varray.size());
+  auto *data = new ImplicitSharedValue<GArray<>>(attribute.varray.type(), attribute.varray.size());
   attribute.varray.materialize(data->data.data());
   return {ImplicitSharingPtr<ImplicitSharingInfo>(data), data->data.data()};
 }
