@@ -964,13 +964,13 @@ static bool verify_field_inferencing_csp_result(
     auto log_error = [&](StringRef message) {
       const std::string socket_address = std::string(socket->owner_node().name) + ":" +
                                          socket->identifier;
-      std::cout << socket_address << ": " << message << std::endl;
+      std::cout << "  [Error] " << socket_address << ": " << message << std::endl;
       error = true;
     };
     const int var = variables.get_socket_variable(*socket);
     const BitSpan state = csp_result[var];
     if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
-      log_error("ERROR: neither single value nor field");
+      log_error("Neither single value nor field");
       continue;
     }
     const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
@@ -999,13 +999,13 @@ static bool verify_field_inferencing_csp_result(
 
   for (const int i : tree.interface_inputs().index_range()) {
     auto log_error = [&](StringRef message) {
-      std::cout << tree.interface_inputs()[i]->identifier << ": " << message << std::endl;
+      std::cout << "  [Error] " << tree.interface_inputs()[i]->identifier << ": " << message << std::endl;
       error = true;
     };
     const int var = variables.tree_input_vars[i];
     const BitSpan state = csp_result[var];
     if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
-      log_error("ERROR: neither single value nor field");
+      log_error("Neither single value nor field");
       continue;
     }
     const InputSocketFieldType &old_state = tmp_inferencing_interface->inputs[i];
@@ -1025,13 +1025,14 @@ static bool verify_field_inferencing_csp_result(
   }
   for (const int i : tree.interface_outputs().index_range()) {
     auto log_error = [&](StringRef message) {
-      std::cout << tree.interface_outputs()[i]->identifier << ": " << message << std::endl;
+      std::cout << "  [Error] " << tree.interface_outputs()[i]->identifier << ": " << message
+                << std::endl;
       error = true;
     };
     const int var = variables.tree_output_vars[i];
     const BitSpan state = csp_result[var];
     if (!state[DomainValue::Single] && !state[DomainValue::Field]) {
-      log_error("ERROR: neither single value nor field");
+      log_error("Neither single value nor field");
       continue;
     }
     const OutputFieldDependency &old_state = tmp_inferencing_interface->outputs[i];
@@ -1055,6 +1056,9 @@ static bool verify_field_inferencing_csp_result(
     }
   }
 
+  if (!error) {
+    std::cout << "  OK!" << std::endl;
+  }
   return error;
 }
 
