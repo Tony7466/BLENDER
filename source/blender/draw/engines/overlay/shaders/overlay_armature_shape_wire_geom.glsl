@@ -48,23 +48,30 @@ void main()
   vec2 line = screen_space_pos[0] - screen_space_pos[1];
   line = abs(line) * sizeViewport.xy;
 
-  float half_size = max(geometry_in[0].wire_width, 1.0);
+  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to change as well. */
+  float wire_width = geometry_in[0].wire_width * 16.0;
+  float half_size = max(wire_width / 2.0, 0.5);
 
   if (do_smooth_wire) {
     /* Add 1px for AA */
     half_size += 0.5;
   }
 
-  vec3 edge_ofs = vec3(half_size * sizeViewportInv, 0.0);
+  vec2 edge_ofs = half_size * sizeViewportInv;
 
   bool horizontal = line.x > line.y;
-  edge_ofs = (horizontal) ? edge_ofs.zyz : edge_ofs.xzz;
+  if (horizontal) {
+    edge_ofs[0] = 0.0;
+  }else{
+    edge_ofs[1] = 0.0;
+  } 
+
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
-  do_vertex(geometry_in[0].finalColor, pos0, half_size, edge_ofs.xy);
-  do_vertex(geometry_in[0].finalColor, pos0, -half_size, -edge_ofs.xy);
+  do_vertex(geometry_in[0].finalColor, pos0, half_size, edge_ofs);
+  do_vertex(geometry_in[0].finalColor, pos0, -half_size, -edge_ofs);
 
   view_clipping_distances_set(gl_in[1]);
   vec4 final_color = (geometry_in[0].selectOverride_ == 0u) ? geometry_in[1].finalColor :

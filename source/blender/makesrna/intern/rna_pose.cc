@@ -1166,8 +1166,8 @@ static void rna_def_pose_channel(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "custom_shape_wire_width");
   RNA_def_property_ui_text(
       prop, "Custom Shape Wire Width", "Adjust the line thickness of custom shapes");
-  RNA_def_property_range(prop, 0.0f, 10.0f);
-  RNA_def_property_ui_range(prop, 0, 10.0f, 1, 1);
+  RNA_def_property_range(prop, 1.0f, 16.0f);
+  RNA_def_property_ui_range(prop, 1.0f, 10.0f, 1, 1);
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
 
   prop = RNA_def_property(srna, "color", PROP_POINTER, PROP_NONE);
