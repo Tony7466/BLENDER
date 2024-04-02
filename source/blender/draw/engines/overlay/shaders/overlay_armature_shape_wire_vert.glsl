@@ -15,7 +15,7 @@ void main()
 
   geometry_in.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
   geometry_in.finalColor.a = 1.0;
-  geometry_in.wire_width = wire_width;
+  geometry_in.wire_width = bone_color.a;
 
   view_clipping_distances(world_pos);
 }
