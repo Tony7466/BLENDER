@@ -886,6 +886,123 @@ static OutputFieldDependency find_group_output_dependencies(
   return OutputFieldDependency::ForPartiallyDependentField(std::move(linked_input_indices));
 }
 
+/* Verify inferencing result by comparing to the old propagation method. */
+static bool verify_field_inferencing_csp_result(
+    const bNodeTree &tree,
+    const Span<const FieldInferencingInterface *> interface_by_node,
+    const BitGroupVector<> csp_result)
+{
+  const IndexRange socket_vars = tree.all_sockets().index_range();
+  const IndexRange tree_input_vars = socket_vars.after(tree.interface_inputs().size());
+  const IndexRange tree_output_vars = tree_input_vars.after(tree.interface_outputs().size());
+
+  /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
+  Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
+
+  /* Temp local inferencing interface to avoid overwriting the actual interface.
+   * The propagation method directly writes to the interface. */
+  std::unique_ptr<FieldInferencingInterface> tmp_inferencing_interface =
+      std::make_unique<FieldInferencingInterface>();
+  tmp_inferencing_interface->inputs.resize(tree.interface_inputs().size(),
+                                           InputSocketFieldType::IsSupported);
+  tmp_inferencing_interface->outputs.resize(tree.interface_outputs().size(),
+                                            OutputFieldDependency::ForDataSource());
+
+  propagate_data_requirements_from_right_to_left(
+      tree, interface_by_node, field_state_by_socket_id);
+  determine_group_input_states(tree, *tmp_inferencing_interface, field_state_by_socket_id);
+  propagate_field_status_from_left_to_right(tree, interface_by_node, field_state_by_socket_id);
+  determine_group_output_states(
+      tree, *tmp_inferencing_interface, interface_by_node, field_state_by_socket_id);
+
+  std::cout << "Verify field type inferencing for tree " << tree.id.name << std::endl;
+  bool error = false;
+  for (const bNodeSocket *socket : tree.all_sockets()) {
+    if (!socket->is_available()) {
+      continue;
+    }
+    auto log_error = [&](StringRef message) {
+      const std::string socket_address = std::string(socket->owner_node().name) + ":" +
+                                         socket->identifier;
+      std::cout << socket_address << ": " << message << std::endl;
+      error = true;
+    };
+    const int var_index = socket_vars[socket->index_in_tree()];
+    const BitSpan state = csp_result[var_index];
+    const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
+    if (old_state.is_always_single) {
+      if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+        log_error("Should only be single value");
+      }
+    }
+    if (!old_state.is_single) {
+      if (state[DomainValue::Single] || !state[DomainValue::Field]) {
+        log_error("Should only be field");
+      }
+    }
+    if (old_state.requires_single) {
+      if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+        log_error("Should only be single value");
+      }
+    }
+    if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
+      log_error("Should be both single value and field");
+    }
+  }
+
+  for (const int i : tree.interface_inputs().index_range()) {
+    auto log_error = [&](StringRef message) {
+      std::cout << tree.interface_inputs()[i]->identifier << ": " << message << std::endl;
+      error = true;
+    };
+    const int var_index = tree_input_vars[i];
+    const BitSpan state = csp_result[var_index];
+    const InputSocketFieldType &old_state = tmp_inferencing_interface->inputs[i];
+    switch (old_state) {
+      case InputSocketFieldType::None:
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+          log_error("Should only be single value");
+        }
+        break;
+      case InputSocketFieldType::IsSupported:
+      case InputSocketFieldType::Implicit:
+        if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
+          log_error("Should be both single value and field");
+        }
+        break;
+    }
+  }
+  for (const int i : tree.interface_outputs().index_range()) {
+    auto log_error = [&](StringRef message) {
+      std::cout << tree.interface_outputs()[i]->identifier << ": " << message << std::endl;
+      error = true;
+    };
+    const int var_index = tree_output_vars[i];
+    const BitSpan state = csp_result[var_index];
+    const OutputFieldDependency &old_state = tmp_inferencing_interface->outputs[i];
+    switch (old_state.field_type()) {
+      case OutputSocketFieldType::None:
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
+          log_error("Should only be single value");
+        }
+        break;
+      case OutputSocketFieldType::FieldSource:
+        if (state[DomainValue::Single] || !state[DomainValue::Field]) {
+          log_error("Should only be field");
+        }
+        break;
+      case OutputSocketFieldType::DependentField:
+      case OutputSocketFieldType::PartiallyDependent:
+        if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
+          log_error("Should be both single value and field");
+        }
+        break;
+    }
+  }
+
+  return error;
+}
+
 template<typename Logger>
 static void solve_field_inferencing_constraints(
     const bNodeTree &tree,
@@ -1083,46 +1200,8 @@ static void solve_field_inferencing_constraints(
   }
 
   /* Perform old propagation method as well to verify the result. */
-  const bool compare_propagation = true;
-  if (compare_propagation) {
-    /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
-    Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
-
-    propagate_data_requirements_from_right_to_left(
-        tree, interface_by_node, field_state_by_socket_id);
-    determine_group_input_states(tree, inferencing_interface, field_state_by_socket_id);
-    propagate_field_status_from_left_to_right(tree, interface_by_node, field_state_by_socket_id);
-    determine_group_output_states(
-        tree, inferencing_interface, interface_by_node, field_state_by_socket_id);
-
-    auto log_error = [](const bNodeSocket &socket, StringRef message) {
-      const std::string socket_address = std::string(socket.owner_node().name) + ":" + socket.name;
-      std::cout << socket_address << ": " << message << std::endl;
-    };
-    std::cout << "Update tree " << tree.id.name << std::endl;
-    for (const bNodeSocket *socket : tree.all_sockets()) {
-      const int var_index = socket_vars[socket->index_in_tree()];
-      const BitSpan state = result[var_index];
-      const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
-      if (old_state.is_always_single) {
-        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
-          log_error(*socket, "Should only be single value");
-        }
-      }
-      if (!old_state.is_single) {
-        if (state[DomainValue::Single] || !state[DomainValue::Field]) {
-          log_error(*socket, "Should only be field");
-        }
-      }
-      if (old_state.requires_single) {
-        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
-          log_error(*socket, "Should only be single value");
-        }
-      }
-      if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
-        log_error(*socket, "Should be both single value and field");
-      }
-    }
+  if (true) {
+    verify_field_inferencing_csp_result(tree, interface_by_node, result);
   }
 }
 
