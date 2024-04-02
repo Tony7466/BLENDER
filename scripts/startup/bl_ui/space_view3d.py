@@ -596,7 +596,6 @@ class _draw_tool_settings_context_mode:
 
         tool_settings = context.tool_settings
         paint = tool_settings.gpencil_paint
-        ups = tool_settings.unified_paint_settings
 
         brush = paint.brush
         if brush is None:
@@ -617,25 +616,7 @@ class _draw_tool_settings_context_mode:
             UnifiedPaintPanel.prop_unified_color(row, context, brush, "color", text="")
 
         from bl_ui.properties_paint_common import (
-            brush_basic__draw_color_selector,
             brush_basic_grease_pencil_paint_settings,
-        )
-
-        size = "size"
-        size_owner = ups if ups.use_unified_size else brush
-        if size_owner.use_locked_size == 'SCENE':
-            size = "unprojected_radius"
-
-        UnifiedPaintPanel.prop_unified(
-            layout,
-            context,
-            brush,
-            size,
-            unified_name="use_unified_size",
-            pressure_name="use_pressure_size",
-            text="Radius",
-            slider=True,
-            header=True,
         )
 
         brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)

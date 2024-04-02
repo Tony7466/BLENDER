@@ -1397,13 +1397,21 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
     if gp_settings is None:
         return
 
+    tool_settings = context.tool_settings
+    ups = tool_settings.unified_paint_settings
+
     grease_pencil_tool = brush.gpencil_tool
+
+    size = "size"
+    size_owner = ups if ups.use_unified_size else brush
+    if size_owner.use_locked_size == 'SCENE':
+        size = "unprojected_radius"
 
     UnifiedPaintPanel.prop_unified(
         layout,
         context,
         brush,
-        "size",
+        size,
         unified_name="use_unified_size",
         pressure_name="use_pressure_size",
         text="Radius",
