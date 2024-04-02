@@ -50,6 +50,9 @@ float view_z_to_volume_z(float depth)
 vec3 volume_to_screen(vec3 coord)
 {
   coord.z = volume_z_to_view_z(coord.z);
+  /* FIXME: This uses either the infinite matrix or the view matrix.
+   * Which is a problem since both do not line up.
+   * Also it is not known if infinite matrix is invertible. */
   coord.z = drw_depth_view_to_screen(coord.z);
   coord.xy /= uniform_buf.volumes.coord_scale;
   return coord;
@@ -58,6 +61,9 @@ vec3 volume_to_screen(vec3 coord)
 vec3 screen_to_volume(vec3 coord)
 {
   coord.xy *= uniform_buf.volumes.coord_scale;
+  /* FIXME: This uses either the infinite matrix or the view matrix.
+   * Which is a problem since both do not line up.
+   * Also it is not known if infinite matrix is invertible. */
   coord.z = drw_depth_screen_to_view(coord.z);
   coord.z = view_z_to_volume_z(coord.z);
   return coord;
