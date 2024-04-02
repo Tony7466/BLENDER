@@ -60,9 +60,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "filelist.hh"
 
@@ -289,7 +289,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
       char size[16];
       BLI_filelist_entry_size_to_string(nullptr, file->size, false, size);
       if (file->size < 10000) {
-        char size_full[16];
+        char size_full[BLI_STR_FORMAT_UINT64_GROUPED_SIZE];
         BLI_str_format_uint64_grouped(size_full, file->size);
         UI_tooltip_text_field_add(
             tip,
@@ -309,11 +309,18 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
   }
 
   if (thumb && params->display != FILE_IMGDISPLAY) {
+    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+
+    uiTooltipImage image_data;
     float scale = (96.0f * UI_SCALE_FAC) / float(std::max(thumb->x, thumb->y));
-    short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
-    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
-    UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
-    UI_tooltip_image_field_add(tip, thumb, size);
+    image_data.ibuf = thumb;
+    image_data.width = short(float(thumb->x) * scale);
+    image_data.height = short(float(thumb->y) * scale);
+    image_data.border = true;
+    image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
+    image_data.premultiplied = true;
+    UI_tooltip_image_field_add(tip, image_data);
   }
 
   if (thumb && free_imbuf) {
