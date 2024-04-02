@@ -358,8 +358,9 @@ static void motion_blur(MemoryBuffer *input_buffer,
         int2 tile = (texel + int2(rand * 2.0f - 1.0f * float(MOTION_BLUR_TILE_SIZE) * 0.25f)) /
                     MOTION_BLUR_TILE_SIZE;
 
+        /* No need to multiply by the shutter speed and invert the next velocities since this was
+         * already done in dilate_max_velocity. */
         float4 max_motion = max_velocity_buffer->get_elem(tile.x, tile.y);
-        max_motion *= float4(float2(shutter_speed), float2(-shutter_speed));
 
         Accumulator accum;
         accum.weight = float3(0.0f, 0.0f, 1.0f);
