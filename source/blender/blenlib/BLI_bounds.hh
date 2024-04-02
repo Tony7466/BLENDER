@@ -42,6 +42,16 @@ template<typename T>
   return std::nullopt;
 }
 
+template<typename T>
+[[nodiscard]] inline std::optional<Bounds<T>> min_max(const std::optional<Bounds<T>> &a,
+                                                      const T &b)
+{
+  if (a.has_value()) {
+    return merge(*a, {b, b});
+  }
+  return Bounds<T>{b, b};
+}
+
 /**
  * Find the smallest and largest values element-wise in the span.
  */
@@ -122,9 +132,14 @@ template<typename T, typename RadiusT>
  * Returns no box if there are no overlap.
  */
 template<typename T>
-[[nodiscard]] inline std::optional<Bounds<T>> intersect(const Bounds<T> &a, const Bounds<T> &b)
+[[nodiscard]] inline std::optional<Bounds<T>> intersect(const std::optional<Bounds<T>> &a,
+                                                        const std::optional<Bounds<T>> &b)
 {
-  const Bounds<T> result{math::max(a.min, b.min), math::min(a.max, b.max)};
+  if (!a.has_value() || !b.has_value()) {
+    return std::nullopt;
+  }
+  const Bounds<T> result{math::max(a.value().min, b.value().min),
+                         math::min(a.value().max, b.value().max)};
   if (result.is_empty()) {
     return std::nullopt;
   }
