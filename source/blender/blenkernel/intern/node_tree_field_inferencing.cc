@@ -934,16 +934,19 @@ static bool verify_field_inferencing_csp_result(
       if (!state[DomainValue::Single] || state[DomainValue::Field]) {
         log_error("Should only be single value");
       }
+      continue;
     }
     if (!old_state.is_single) {
       if (state[DomainValue::Single] || !state[DomainValue::Field]) {
         log_error("Should only be field");
       }
+      continue;
     }
     if (old_state.requires_single) {
       if (!state[DomainValue::Single] || state[DomainValue::Field]) {
         log_error("Should only be single value");
       }
+      continue;
     }
     if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
       log_error("Should be both single value and field");
