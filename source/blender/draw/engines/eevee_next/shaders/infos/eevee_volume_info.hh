@@ -59,7 +59,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
     .define("VOLUME_LIGHTING")
     .define("VOLUME_IRRADIANCE")
     .define("VOLUME_SHADOW")
-    .sampler(0, ImageType::FLOAT_3D, "extinction_tx")
+    .sampler(9, ImageType::FLOAT_3D, "extinction_tx")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_occupancy_convert)
