@@ -100,7 +100,8 @@ void main()
   scattering += light_scattering * s_scattering;
 #endif
 
-  if (true) {
+#if 0 /* TODO */
+ {
     /* Temporal reprojection. */
     vec3 uvw_history = volume_history_position_get(froxel);
     vec4 scattering_history = texture(scattering_history_tx, uvw_history);
@@ -109,6 +110,7 @@ void main()
     scattering = mix(scattering, scattering_history.rgb, history_opacity);
     extinction = mix(extinction, extinction_history.rgb, history_opacity);
   }
+#endif
 
   /* Catch NaNs. */
   if (any(isnan(scattering)) || any(isnan(extinction))) {
