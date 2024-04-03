@@ -506,7 +506,8 @@ static void grease_pencil_primitive_init_curves(PrimitiveToolOperation &ptd)
     end_caps.finish();
   }
 
-  cyclic.span.last() = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
+  const bool is_cyclic = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
+  cyclic.span.last() = is_cyclic;
   materials.span.last() = ptd.material_index;
   hardnesses.span.last() = ptd.hardness;
 
