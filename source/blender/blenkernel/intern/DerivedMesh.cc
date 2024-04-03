@@ -89,10 +89,10 @@ using blender::bke::MeshComponent;
 #endif
 
 namespace blender::bke {
+
 static void mesh_init_origspace(Mesh *mesh);
+
 }
-static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final);
-static void editbmesh_calc_modifier_final_normals_or_defer(Mesh *mesh_final);
 
 /* -------------------------------------------------------------------- */
 
@@ -241,7 +241,7 @@ void DM_release(DerivedMesh *dm)
   MEM_SAFE_FREE(dm->face_offsets);
 }
 
-void BKE_mesh_runtime_eval_to_meshkey(Mesh *me_deformed, Mesh *mesh, KeyBlock *kb)
+void BKE_mesh_runtime_eval_to_meshkey(const Mesh *me_deformed, Mesh *mesh, KeyBlock *kb)
 {
   /* Just a shallow wrapper around #BKE_keyblock_convert_from_mesh,
    * that ensures both evaluated mesh and original one has same number of vertices. */
@@ -467,16 +467,6 @@ static void mesh_calc_finalize(const Mesh *mesh_input, Mesh *mesh_eval)
   mesh_eval->runtime->edit_mesh = mesh_input->runtime->edit_mesh;
 }
 
-void BKE_mesh_wrapper_deferred_finalize_mdata(Mesh *mesh_eval)
-{
-  if (mesh_eval->runtime->wrapper_type_finalize & (1 << ME_WRAPPER_TYPE_BMESH)) {
-    editbmesh_calc_modifier_final_normals(mesh_eval);
-    mesh_eval->runtime->wrapper_type_finalize = eMeshWrapperType(
-        mesh_eval->runtime->wrapper_type_finalize & ~(1 << ME_WRAPPER_TYPE_BMESH));
-  }
-  BLI_assert(mesh_eval->runtime->wrapper_type_finalize == 0);
-}
-
 namespace blender::bke {
 
 /**
@@ -527,15 +517,20 @@ static void set_rest_position(Mesh &mesh)
   }
 }
 
-static void save_deform_mesh(GeometrySet &geometry_set)
+static MeshEditHints &geometry_mesh_edit_hints_ensure(GeometrySet &geometry)
 {
-  if (const Mesh *mesh = geometry_set.get_mesh()) {
-    auto &edit_data = geometry_set.get_component_for_write<GeometryComponentEditData>();
-    if (!edit_data.mesh_edit_hints_) {
-      edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
-    }
-    BLI_assert(!edit_data.mesh_edit_hints_->mesh_cage);
-    edit_data.mesh_edit_hints_->mesh_deform = geometry_set.get_component_ptr<MeshComponent>();
+  auto &edit_data = geometry.get_component_for_write<GeometryComponentEditData>();
+  if (!edit_data.mesh_edit_hints_) {
+    edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
+  }
+  return *edit_data.mesh_edit_hints_;
+}
+
+static void save_deform_mesh(GeometrySet &geometry)
+{
+  if (const Mesh *mesh = geometry.get_mesh()) {
+    MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
+    edit_data.mesh_deform = geometry.get_component_ptr<MeshComponent>();
   }
 }
 
@@ -554,8 +549,6 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
 
   BLI_assert((mesh_input->id.tag & LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT) == 0);
 
-  /* The result of calculating all leading deform modifiers. */
-  Mesh *mesh_deform = nullptr;
   /* Mesh with constructive modifiers but no deformation applied. Tracked
    * along with final mesh if undeformed / orco coordinates are requested
    * for texturing. */
@@ -852,8 +845,8 @@ static GeometrySet mesh_calc_modifiers(Depsgraph *depsgraph,
 
   /* Remove temporary data layer only needed for modifier evaluation.
    * Save some memory, and ensure GPU subdivision does not need to deal with this. */
-  if (geometry_set.has_mesh()) {
-    if (CustomData_has_layer(&geometry_set.get_mesh()->vert_data, CD_CLOTH_ORCO)) {
+  if (const Mesh *meah_read = geometry_set.get_mesh()) {
+    if (CustomData_has_layer(&meah_read->vert_data, CD_CLOTH_ORCO)) {
       Mesh *mesh = geometry_set.get_mesh_for_write();
       CustomData_free_layers(&mesh->vert_data, CD_CLOTH_ORCO, mesh->verts_num);
     }
@@ -886,36 +879,6 @@ bool editbmesh_modifier_is_enabled(const Scene *scene,
 
 namespace blender::bke {
 
-static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
-{
-  switch (mesh_final->runtime->wrapper_type) {
-    case ME_WRAPPER_TYPE_SUBD:
-    case ME_WRAPPER_TYPE_MDATA:
-      break;
-    case ME_WRAPPER_TYPE_BMESH: {
-      BMEditMesh &em = *mesh_final->runtime->edit_mesh;
-      blender::bke::EditMeshData &emd = *mesh_final->runtime->edit_data;
-      if (!emd.vert_positions.is_empty()) {
-        BKE_editmesh_cache_ensure_vert_normals(em, emd);
-        BKE_editmesh_cache_ensure_face_normals(em, emd);
-      }
-      return;
-    }
-  }
-}
-
-static void editbmesh_calc_modifier_final_normals_or_defer(Mesh *mesh_final)
-{
-  if (mesh_final->runtime->wrapper_type != ME_WRAPPER_TYPE_MDATA) {
-    /* Generated at draw time. */
-    mesh_final->runtime->wrapper_type_finalize = eMeshWrapperType(
-        1 << mesh_final->runtime->wrapper_type);
-    return;
-  }
-
-  editbmesh_calc_modifier_final_normals(mesh_final);
-}
-
 static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
 {
   switch (mesh->runtime->wrapper_type) {
@@ -933,6 +896,7 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
   return {};
 }
 
+// TODO: Make generic mesh copy handle all this.
 static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
 {
   Mesh *result = BKE_mesh_copy_for_eval(&mesh);
@@ -948,15 +912,11 @@ static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
   return result;
 }
 
-static void save_cage_mesh(GeometrySet &geometry_set)
+static void save_cage_mesh(GeometrySet &geometry)
 {
-  if (const Mesh *mesh = geometry_set.get_mesh()) {
-    auto &edit_data = geometry_set.get_component_for_write<GeometryComponentEditData>();
-    if (!edit_data.mesh_edit_hints_) {
-      edit_data.mesh_edit_hints_ = std::make_unique<MeshEditHints>();
-    }
-    BLI_assert(!edit_data.mesh_edit_hints_->mesh_cage);
-    edit_data.mesh_edit_hints_->mesh_cage = geometry_set.get_component_ptr<MeshComponent>();
+  if (const Mesh *mesh = geometry.get_mesh()) {
+    MeshEditHints &edit_data = geometry_mesh_edit_hints_ensure(geometry);
+    edit_data.mesh_cage = geometry.get_component_ptr<MeshComponent>();
   }
 }
 
@@ -1124,16 +1084,6 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
     BKE_id_free(nullptr, mesh_orco);
   }
 
-  /* Compute normals. */
-  if (geometry_set.get_mesh()->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
-    if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
-      editbmesh_calc_modifier_final_normals_or_defer(mesh);
-    }
-  }
-  if (mesh_cage) {
-    editbmesh_calc_modifier_final_normals_or_defer(mesh_cage);
-  }
-
   return geometry_set;
 }
 
@@ -1157,7 +1107,7 @@ static void mesh_build_data(Depsgraph *depsgraph,
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
 
   GeometrySet geometry_set = mesh_calc_modifiers(
-      depsgraph, scene, ob, true, need_mapping, dataMask, true, true);
+      depsgraph, scene, ob, true, need_mapping, dataMask, true);
 
   const Mesh *mesh_eval = geometry_set.get_mesh();
 
@@ -1195,12 +1145,13 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
   Mesh *mesh = static_cast<Mesh *>(obedit->data);
   GeometrySet geometry_set = editbmesh_calc_modifiers(depsgraph, scene, obedit, em, dataMask);
 
-  Mesh *mesh_final = geometry_set.get_mesh_for_write();
+  Mesh *mesh_final = const_cast<Mesh *>(geometry_set.get_mesh());
 
   /* The modifier stack result is expected to share edit mesh pointer with the input.
    * This is similar `mesh_calc_finalize()`. */
-  BKE_mesh_free_editmesh(mesh_final);
-  BKE_mesh_free_editmesh(me_cage);
+  // TODO: Need to figure this out.
+  // BKE_mesh_free_editmesh(mesh_final);
+  // BKE_mesh_free_editmesh(me_cage);
   mesh_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = em;
 
   /* Object has edit_mesh but is not in edit mode (object shares mesh datablock with another object
@@ -1221,8 +1172,6 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
    * different topology than the evaluated mesh. */
   BLI_assert(mesh->key == nullptr || DEG_is_evaluated_id(&mesh->key->id));
   mesh_final->key = mesh->key;
-
-  obedit->runtime->editmesh_eval_cage = me_cage;
 
   obedit->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 
@@ -1353,7 +1302,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
   CustomData_MeshMasks cddata_masks = *dataMask;
   object_get_datamask(depsgraph, ob, &cddata_masks, &need_mapping);
 
-  if (!ob->runtime->mesh_deform_eval ||
+  if (!BKE_object_get_mesh_deform_eval(ob) ||
       !CustomData_MeshMasks_are_matching(&(ob->runtime->last_data_mask), &cddata_masks) ||
       (need_mapping && !ob->runtime->last_need_mapping))
   {
@@ -1362,7 +1311,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
         depsgraph, scene, ob, &cddata_masks, need_mapping || ob->runtime->last_need_mapping);
   }
 
-  return ob->runtime->mesh_deform_eval;
+  return const_cast<Mesh *>(BKE_object_get_mesh_deform_eval(ob));
 }
 
 Mesh *mesh_create_eval_final(Depsgraph *depsgraph,
@@ -1417,13 +1366,13 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
    */
   object_get_datamask(depsgraph, obedit, &cddata_masks, nullptr);
 
-  if (!obedit->runtime->editmesh_eval_cage ||
+  if (!BKE_object_get_editmesh_eval_cage(obedit) ||
       !CustomData_MeshMasks_are_matching(&(obedit->runtime->last_data_mask), &cddata_masks))
   {
     editbmesh_build_data(depsgraph, scene, obedit, em, &cddata_masks);
   }
 
-  return obedit->runtime->editmesh_eval_cage;
+  return const_cast<Mesh *>(BKE_object_get_editmesh_eval_cage(obedit));
 }
 
 Mesh *editbmesh_get_eval_cage_from_orig(Depsgraph *depsgraph,
