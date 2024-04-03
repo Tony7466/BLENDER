@@ -223,8 +223,8 @@ void mesh_calc_edges(Mesh &mesh, bool keep_existing_edges, const bool select_new
       if (!original_edges.is_empty()) {
         calc_edges::deselect_known_edges(
             edge_offsets, edge_maps, parallel_mask, original_edges, select_edge.span);
-        select_edge.finish();
       }
+      select_edge.finish();
     }
   }
 
