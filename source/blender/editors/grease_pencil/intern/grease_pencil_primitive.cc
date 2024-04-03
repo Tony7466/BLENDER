@@ -1217,6 +1217,8 @@ static void grease_pencil_primitive_operator_update(PrimitiveToolOperation &ptd,
       break;
     }
     case OperatorMode::IDLE: {
+      /* Do nothing. */
+      break;
     }
   }
 }
