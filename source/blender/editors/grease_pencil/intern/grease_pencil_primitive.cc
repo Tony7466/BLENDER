@@ -49,46 +49,46 @@
 namespace blender::ed::greasepencil {
 
 enum class PrimitiveType : int8_t {
-  LINE = 0,
-  POLYLINE = 1,
-  ARC = 2,
-  CURVE = 3,
-  BOX = 4,
-  CIRCLE = 5,
+  Line = 0,
+  Polyline = 1,
+  Arc = 2,
+  Curve = 3,
+  Box = 4,
+  Circle = 5,
 };
 
 enum class OperatorMode : int8_t {
-  IDLE = 0,
-  EXTRUDING = 1,
+  Idle = 0,
+  Extruding = 1,
   /* Set the active control point to the mouse. */
-  GRAB = 2,
+  Grab = 2,
   /* Move the active control point. */
-  DRAG = 3,
+  Drag = 3,
   /* Move all control points. */
-  DRAG_ALL = 4,
+  DragAll = 4,
   /* Rotate all control points. */
-  ROTATE_ALL = 5,
+  RotateAll = 5,
   /* Scale all control points. */
-  SCALE_ALL = 6,
+  ScaleAll = 6,
 };
 
 enum class ControlPointType : int8_t {
   /* The points that are at the end of segments. */
-  JOIN_POINT = 0,
+  JoinPoint = 0,
   /* The points inside of the segments not including the end points. */
-  HANDLE_POINT = 1,
+  HandlePoint = 1,
 };
 
 enum class ModelKeyMode : int8_t {
-  CANCEL = 1,
-  CONFIRM,
-  EXTRUDE,
-  PANNING,
-  GRAB,
-  ROTATE,
-  SCALE,
-  INCREASE_SUBDIVISION,
-  DECREASE_SUBDIVISION,
+  Cancel = 1,
+  Confirm,
+  Extrude,
+  Panning,
+  Grab,
+  Rotate,
+  Scale,
+  IncreaseSubdivision,
+  DecreaseSubdivision,
 };
 
 static constexpr float ui_primary_point_draw_size_px = 8.0f;
@@ -137,16 +137,16 @@ struct PrimitiveToolOperation {
 static int control_points_per_segment(const PrimitiveToolOperation &ptd)
 {
   switch (ptd.type) {
-    case PrimitiveType::POLYLINE:
-    case PrimitiveType::LINE: {
+    case PrimitiveType::Polyline:
+    case PrimitiveType::Line: {
       return 1;
     }
-    case PrimitiveType::BOX:
-    case PrimitiveType::CIRCLE:
-    case PrimitiveType::ARC: {
+    case PrimitiveType::Box:
+    case PrimitiveType::Circle:
+    case PrimitiveType::Arc: {
       return 2;
     }
-    case PrimitiveType::CURVE: {
+    case PrimitiveType::Curve: {
       return 3;
     }
   }
@@ -158,15 +158,15 @@ static int control_points_per_segment(const PrimitiveToolOperation &ptd)
 static ControlPointType get_control_point_type(const PrimitiveToolOperation &ptd, const int point)
 {
   BLI_assert(point != -1);
-  if (ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
-    return ControlPointType::JOIN_POINT;
+  if (ELEM(ptd.type, PrimitiveType::Circle, PrimitiveType::Box)) {
+    return ControlPointType::JoinPoint;
   }
 
   const int num_shared_points = control_points_per_segment(ptd);
   if (math::mod(point, num_shared_points) == 0) {
-    return ControlPointType::JOIN_POINT;
+    return ControlPointType::JoinPoint;
   }
-  return ControlPointType::HANDLE_POINT;
+  return ControlPointType::HandlePoint;
 }
 
 static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
@@ -192,7 +192,7 @@ static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
     return;
   }
 
-  if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
+  if (ELEM(ptd.type, PrimitiveType::Box, PrimitiveType::Circle)) {
     colors.fill(color_gizmo_primary);
     sizes.fill(size_primary);
 
@@ -207,7 +207,7 @@ static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
     for (const int i : colors.index_range()) {
       const ControlPointType control_point_type = get_control_point_type(ptd, i);
 
-      if (control_point_type == ControlPointType::JOIN_POINT) {
+      if (control_point_type == ControlPointType::JoinPoint) {
         colors[i] = color_gizmo_b;
         sizes[i] = size_tertiary;
       }
@@ -216,7 +216,7 @@ static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
     colors.last() = color_gizmo_primary;
     sizes.last() = size_primary;
 
-    if (ELEM(ptd.type, PrimitiveType::LINE, PrimitiveType::POLYLINE)) {
+    if (ELEM(ptd.type, PrimitiveType::Line, PrimitiveType::Polyline)) {
       colors.last(1) = color_gizmo_secondary;
       sizes.last(1) = size_primary;
     }
@@ -292,8 +292,8 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
   }
 
   switch (ptd.type) {
-    case PrimitiveType::LINE:
-    case PrimitiveType::POLYLINE: {
+    case PrimitiveType::Line:
+    case PrimitiveType::Polyline: {
       for (const int i : new_positions.index_range().drop_back(1)) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
         const int point = int(i / (subdivision + 1));
@@ -303,7 +303,7 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
       new_positions.last() = control_points.last();
       return;
     }
-    case PrimitiveType::ARC: {
+    case PrimitiveType::Arc: {
       const int num_shared_points = control_points_per_segment(ptd);
       const int num_segments = ptd.segments;
       for (const int segment_i : IndexRange(num_segments)) {
@@ -320,7 +320,7 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
       new_positions.last() = control_points.last();
       return;
     }
-    case PrimitiveType::CURVE: {
+    case PrimitiveType::Curve: {
       const int num_shared_points = control_points_per_segment(ptd);
       const int num_segments = ptd.segments;
 
@@ -342,7 +342,7 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
       new_positions.last() = control_points.last();
       return;
     }
-    case PrimitiveType::CIRCLE: {
+    case PrimitiveType::Circle: {
       const float2 center = control_points[control_point_center];
       const float2 offset = control_points[control_point_first] - center;
       for (const int i : new_positions.index_range()) {
@@ -352,7 +352,7 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
       }
       return;
     }
-    case PrimitiveType::BOX: {
+    case PrimitiveType::Box: {
       const float2 center = control_points[control_point_center];
       const float2 offset = control_points[control_point_first] - center;
       /*
@@ -401,16 +401,16 @@ static int grease_pencil_primitive_curve_points_number(PrimitiveToolOperation &p
   const int subdivision = ptd.subdivision;
 
   switch (ptd.type) {
-    case PrimitiveType::POLYLINE:
-    case PrimitiveType::CURVE:
-    case PrimitiveType::LINE:
-    case PrimitiveType::CIRCLE:
-    case PrimitiveType::ARC: {
+    case PrimitiveType::Polyline:
+    case PrimitiveType::Curve:
+    case PrimitiveType::Line:
+    case PrimitiveType::Circle:
+    case PrimitiveType::Arc: {
       const int join_points = ptd.segments + 1;
       return join_points + subdivision * ptd.segments;
       break;
     }
-    case PrimitiveType::BOX: {
+    case PrimitiveType::Box: {
       return 4 + subdivision * 4;
       break;
     }
@@ -501,7 +501,7 @@ static void grease_pencil_primitive_init_curves(PrimitiveToolOperation &ptd)
     end_caps.finish();
   }
 
-  const bool is_cyclic = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
+  const bool is_cyclic = ELEM(ptd.type, PrimitiveType::Box, PrimitiveType::Circle);
   cyclic.span.last() = is_cyclic;
   materials.span.last() = ptd.material_index;
   hardnesses.span.last() = ptd.hardness;
@@ -542,27 +542,27 @@ static void grease_pencil_primitive_status_indicators(bContext *C,
   std::string header;
 
   switch (ptd.type) {
-    case PrimitiveType::LINE: {
+    case PrimitiveType::Line: {
       header += RPT_("Line: ");
       break;
     }
-    case (PrimitiveType::POLYLINE): {
+    case (PrimitiveType::Polyline): {
       header += RPT_("Polyline: ");
       break;
     }
-    case (PrimitiveType::BOX): {
+    case (PrimitiveType::Box): {
       header += RPT_("Rectangle: ");
       break;
     }
-    case (PrimitiveType::CIRCLE): {
+    case (PrimitiveType::Circle): {
       header += RPT_("Circle: ");
       break;
     }
-    case (PrimitiveType::ARC): {
+    case (PrimitiveType::Arc): {
       header += RPT_("Arc: ");
       break;
     }
-    case (PrimitiveType::CURVE): {
+    case (PrimitiveType::Curve): {
       header += RPT_("Curve: ");
       break;
     }
@@ -573,12 +573,12 @@ static void grease_pencil_primitive_status_indicators(bContext *C,
   };
 
   header += fmt::format(IFACE_("{}: confirm, {}: cancel, Shift: align"),
-                        get_modal_key_str(ModelKeyMode::CONFIRM),
-                        get_modal_key_str(ModelKeyMode::CANCEL));
+                        get_modal_key_str(ModelKeyMode::Confirm),
+                        get_modal_key_str(ModelKeyMode::Cancel));
 
   header += fmt::format(IFACE_(", {}/{}: adjust subdivisions: {}"),
-                        get_modal_key_str(ModelKeyMode::INCREASE_SUBDIVISION),
-                        get_modal_key_str(ModelKeyMode::DECREASE_SUBDIVISION),
+                        get_modal_key_str(ModelKeyMode::IncreaseSubdivision),
+                        get_modal_key_str(ModelKeyMode::DecreaseSubdivision),
                         int(ptd.subdivision));
 
   if (ptd.segments == 1) {
@@ -586,18 +586,18 @@ static void grease_pencil_primitive_status_indicators(bContext *C,
   }
 
   if (ELEM(ptd.type,
-           PrimitiveType::LINE,
-           PrimitiveType::POLYLINE,
-           PrimitiveType::ARC,
-           PrimitiveType::CURVE))
+           PrimitiveType::Line,
+           PrimitiveType::Polyline,
+           PrimitiveType::Arc,
+           PrimitiveType::Curve))
   {
-    header += fmt::format(IFACE_(", {}: extrude"), get_modal_key_str(ModelKeyMode::EXTRUDE));
+    header += fmt::format(IFACE_(", {}: extrude"), get_modal_key_str(ModelKeyMode::Extrude));
   }
 
   header += fmt::format(IFACE_(", {}: grab, {}: rotate, {}: scale"),
-                        get_modal_key_str(ModelKeyMode::GRAB),
-                        get_modal_key_str(ModelKeyMode::ROTATE),
-                        get_modal_key_str(ModelKeyMode::SCALE));
+                        get_modal_key_str(ModelKeyMode::Grab),
+                        get_modal_key_str(ModelKeyMode::Rotate),
+                        get_modal_key_str(ModelKeyMode::Scale));
 
   ED_workspace_status_text(C, header.c_str());
 }
@@ -668,7 +668,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   grease_pencil_primitive_save(ptd);
 
-  ptd.mode = OperatorMode::EXTRUDING;
+  ptd.mode = OperatorMode::Extruding;
   ptd.segments++;
   ptd.control_points.append_n_times(pos, control_points_per_segment(ptd));
   ptd.active_control_point_index = -1;
@@ -788,10 +788,10 @@ static void grease_pencil_primitive_extruding_update(PrimitiveToolOperation &ptd
   float2 offset = dif;
 
   if (event->modifier & KM_SHIFT) {
-    if (ptd.type == PrimitiveType::BOX) {
+    if (ptd.type == PrimitiveType::Box) {
       offset = snap_diagonals_box(dif);
     }
-    else if (ptd.type == PrimitiveType::CIRCLE) {
+    else if (ptd.type == PrimitiveType::Circle) {
       offset = snap_diagonals(dif);
     }
     else { /* Line, Polyline, Arc and Curve. */
@@ -839,7 +839,7 @@ static void grease_pencil_primitive_grab_update(PrimitiveToolOperation &ptd, con
   const float3 pos = ptd.placement.project(float2(event->mval));
   ptd.control_points[ptd.active_control_point_index] = pos;
 
-  if (!ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
+  if (!ELEM(ptd.type, PrimitiveType::Circle, PrimitiveType::Box)) {
     return;
   }
 
@@ -878,7 +878,7 @@ static void grease_pencil_primitive_drag_update(PrimitiveToolOperation &ptd, con
 
 static float2 primitive_center_of_mass(const PrimitiveToolOperation &ptd)
 {
-  if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
+  if (ELEM(ptd.type, PrimitiveType::Box, PrimitiveType::Circle)) {
     return ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.temp_control_points[control_point_center], ptd.projection);
   }
@@ -958,7 +958,7 @@ static int primitive_check_ui_hover(const PrimitiveToolOperation &ptd, const wmE
 
     /* Save the closest handle point. */
     if (distance_squared < closest_distance_squared &&
-        control_point_type == ControlPointType::HANDLE_POINT &&
+        control_point_type == ControlPointType::HandlePoint &&
         distance_squared < ui_point_max_hit_size_px * ui_point_max_hit_size_px)
     {
       closest_point = point;
@@ -979,7 +979,7 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
 {
   wmWindow *win = CTX_wm_window(C);
 
-  if (ptd.mode != OperatorMode::IDLE) {
+  if (ptd.mode != OperatorMode::Idle) {
     WM_cursor_modal_set(win, WM_CURSOR_CROSS);
     return;
   }
@@ -987,7 +987,7 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
   const int ui_id = primitive_check_ui_hover(ptd, event);
   ptd.active_control_point_index = ui_id;
   if (ui_id == -1) {
-    if (ptd.type == PrimitiveType::POLYLINE) {
+    if (ptd.type == PrimitiveType::Polyline) {
       WM_cursor_modal_set(win, WM_CURSOR_CROSS);
       return;
     }
@@ -1006,22 +1006,22 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
                                                    const wmEvent *event)
 {
   switch (event->val) {
-    case int(ModelKeyMode::CANCEL): {
+    case int(ModelKeyMode::Cancel): {
       grease_pencil_primitive_undo_curves(ptd);
       grease_pencil_primitive_exit(C, op);
 
       return OPERATOR_CANCELLED;
     }
-    case int(ModelKeyMode::CONFIRM): {
+    case int(ModelKeyMode::Confirm): {
       grease_pencil_primitive_exit(C, op);
 
       return OPERATOR_FINISHED;
     }
-    case int(ModelKeyMode::EXTRUDE): {
-      if (ptd.mode == OperatorMode::IDLE &&
-          ELEM(ptd.type, PrimitiveType::LINE, PrimitiveType::ARC, PrimitiveType::CURVE))
+    case int(ModelKeyMode::Extrude): {
+      if (ptd.mode == OperatorMode::Idle &&
+          ELEM(ptd.type, PrimitiveType::Line, PrimitiveType::Arc, PrimitiveType::Curve))
       {
-        ptd.mode = OperatorMode::EXTRUDING;
+        ptd.mode = OperatorMode::Extruding;
         grease_pencil_primitive_save(ptd);
 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
@@ -1036,10 +1036,10 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
         return OPERATOR_RUNNING_MODAL;
       }
 
-      if (ptd.type == PrimitiveType::POLYLINE &&
-          ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING))
+      if (ptd.type == PrimitiveType::Polyline &&
+          ELEM(ptd.mode, OperatorMode::Idle, OperatorMode::Extruding))
       {
-        ptd.mode = OperatorMode::EXTRUDING;
+        ptd.mode = OperatorMode::Extruding;
         grease_pencil_primitive_save(ptd);
 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
@@ -1063,41 +1063,41 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
 
       return OPERATOR_RUNNING_MODAL;
     }
-    case int(ModelKeyMode::GRAB): {
-      if (ptd.mode == OperatorMode::IDLE) {
+    case int(ModelKeyMode::Grab): {
+      if (ptd.mode == OperatorMode::Idle) {
         ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::DRAG_ALL;
+        ptd.mode = OperatorMode::DragAll;
 
         grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
-    case int(ModelKeyMode::ROTATE): {
-      if (ptd.mode == OperatorMode::IDLE) {
+    case int(ModelKeyMode::Rotate): {
+      if (ptd.mode == OperatorMode::Idle) {
         ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::ROTATE_ALL;
+        ptd.mode = OperatorMode::RotateAll;
 
         grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
-    case int(ModelKeyMode::SCALE): {
-      if (ptd.mode == OperatorMode::IDLE) {
+    case int(ModelKeyMode::Scale): {
+      if (ptd.mode == OperatorMode::Idle) {
         ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::SCALE_ALL;
+        ptd.mode = OperatorMode::ScaleAll;
 
         grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
-    case int(ModelKeyMode::INCREASE_SUBDIVISION): {
+    case int(ModelKeyMode::IncreaseSubdivision): {
       if (event->val != KM_RELEASE) {
         ptd.subdivision++;
         RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
       }
       return OPERATOR_RUNNING_MODAL;
     }
-    case int(ModelKeyMode::DECREASE_SUBDIVISION): {
+    case int(ModelKeyMode::DecreaseSubdivision): {
       if (event->val != KM_RELEASE) {
         ptd.subdivision--;
         ptd.subdivision = std::max(ptd.subdivision, 0);
@@ -1113,24 +1113,24 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
 static int grease_pencil_primitive_mouse_event(PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   if (event->val == KM_RELEASE && ELEM(ptd.mode,
-                                       OperatorMode::GRAB,
-                                       OperatorMode::DRAG,
-                                       OperatorMode::EXTRUDING,
-                                       OperatorMode::DRAG_ALL,
-                                       OperatorMode::ROTATE_ALL,
-                                       OperatorMode::SCALE_ALL))
+                                       OperatorMode::Grab,
+                                       OperatorMode::Drag,
+                                       OperatorMode::Extruding,
+                                       OperatorMode::DragAll,
+                                       OperatorMode::RotateAll,
+                                       OperatorMode::ScaleAll))
   {
-    ptd.mode = OperatorMode::IDLE;
+    ptd.mode = OperatorMode::Idle;
     return OPERATOR_RUNNING_MODAL;
   }
 
-  if (ptd.mode == OperatorMode::IDLE && event->val == KM_PRESS) {
+  if (ptd.mode == OperatorMode::Idle && event->val == KM_PRESS) {
     const int ui_id = primitive_check_ui_hover(ptd, event);
     ptd.active_control_point_index = ui_id;
     if (ui_id == -1) {
-      if (ptd.type != PrimitiveType::POLYLINE) {
+      if (ptd.type != PrimitiveType::Polyline) {
         ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::DRAG_ALL;
+        ptd.mode = OperatorMode::DragAll;
 
         grease_pencil_primitive_save(ptd);
 
@@ -1140,16 +1140,16 @@ static int grease_pencil_primitive_mouse_event(PrimitiveToolOperation &ptd, cons
     else {
       const ControlPointType control_point_type = get_control_point_type(ptd, ui_id);
 
-      if (control_point_type == ControlPointType::JOIN_POINT) {
+      if (control_point_type == ControlPointType::JoinPoint) {
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
-        ptd.mode = OperatorMode::GRAB;
+        ptd.mode = OperatorMode::Grab;
 
         grease_pencil_primitive_save(ptd);
       }
-      else if (control_point_type == ControlPointType::HANDLE_POINT) {
+      else if (control_point_type == ControlPointType::HandlePoint) {
         ptd.start_position_2d = float2(event->mval);
-        ptd.mode = OperatorMode::DRAG;
+        ptd.mode = OperatorMode::Drag;
 
         grease_pencil_primitive_save(ptd);
       }
@@ -1158,10 +1158,10 @@ static int grease_pencil_primitive_mouse_event(PrimitiveToolOperation &ptd, cons
     }
   }
 
-  if (ptd.type == PrimitiveType::POLYLINE && ptd.mode == OperatorMode::IDLE &&
+  if (ptd.type == PrimitiveType::Polyline && ptd.mode == OperatorMode::Idle &&
       event->val == KM_PRESS)
   {
-    ptd.mode = OperatorMode::EXTRUDING;
+    ptd.mode = OperatorMode::Extruding;
     grease_pencil_primitive_save(ptd);
 
     ptd.start_position_2d = ED_view3d_project_float_v2_m4(
@@ -1187,31 +1187,31 @@ static void grease_pencil_primitive_operator_update(PrimitiveToolOperation &ptd,
                                                     const wmEvent *event)
 {
   switch (ptd.mode) {
-    case OperatorMode::EXTRUDING: {
+    case OperatorMode::Extruding: {
       grease_pencil_primitive_extruding_update(ptd, event);
       break;
     }
-    case OperatorMode::GRAB: {
+    case OperatorMode::Grab: {
       grease_pencil_primitive_grab_update(ptd, event);
       break;
     }
-    case OperatorMode::DRAG: {
+    case OperatorMode::Drag: {
       grease_pencil_primitive_drag_update(ptd, event);
       break;
     }
-    case OperatorMode::DRAG_ALL: {
+    case OperatorMode::DragAll: {
       grease_pencil_primitive_drag_all_update(ptd, event);
       break;
     }
-    case OperatorMode::SCALE_ALL: {
+    case OperatorMode::ScaleAll: {
       grease_pencil_primitive_scale_all_update(ptd, event);
       break;
     }
-    case OperatorMode::ROTATE_ALL: {
+    case OperatorMode::RotateAll: {
       grease_pencil_primitive_rotate_all_update(ptd, event);
       break;
     }
-    case OperatorMode::IDLE: {
+    case OperatorMode::Idle: {
       /* Do nothing. */
       break;
     }
@@ -1247,14 +1247,14 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
         break;
       }
 
-      if (ptd.mode == OperatorMode::IDLE) {
+      if (ptd.mode == OperatorMode::Idle) {
         grease_pencil_primitive_undo_curves(ptd);
         grease_pencil_primitive_exit(C, op);
 
         return OPERATOR_CANCELLED;
       }
       else {
-        ptd.mode = OperatorMode::IDLE;
+        ptd.mode = OperatorMode::Idle;
 
         grease_pencil_primitive_load(ptd);
         break;
@@ -1286,12 +1286,12 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
                                                  const PrimitiveType default_type)
 {
   static const EnumPropertyItem grease_pencil_primitive_type[] = {
-      {int(PrimitiveType::BOX), "BOX", 0, "Box", ""},
-      {int(PrimitiveType::LINE), "LINE", 0, "Line", ""},
-      {int(PrimitiveType::POLYLINE), "POLYLINE", 0, "Polyline", ""},
-      {int(PrimitiveType::CIRCLE), "CIRCLE", 0, "Circle", ""},
-      {int(PrimitiveType::ARC), "ARC", 0, "Arc", ""},
-      {int(PrimitiveType::CURVE), "CURVE", 0, "Curve", ""},
+      {int(PrimitiveType::Box), "BOX", 0, "Box", ""},
+      {int(PrimitiveType::Line), "LINE", 0, "Line", ""},
+      {int(PrimitiveType::Polyline), "POLYLINE", 0, "Polyline", ""},
+      {int(PrimitiveType::Circle), "CIRCLE", 0, "Circle", ""},
+      {int(PrimitiveType::Arc), "ARC", 0, "Arc", ""},
+      {int(PrimitiveType::Curve), "CURVE", 0, "Curve", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1328,7 +1328,7 @@ static void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties and Flags. */
-  grease_pencil_primitive_common_props(ot, 6, PrimitiveType::LINE);
+  grease_pencil_primitive_common_props(ot, 6, PrimitiveType::Line);
 }
 
 static void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
@@ -1347,7 +1347,7 @@ static void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties. */
-  grease_pencil_primitive_common_props(ot, 6, PrimitiveType::POLYLINE);
+  grease_pencil_primitive_common_props(ot, 6, PrimitiveType::Polyline);
 }
 
 static void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
@@ -1366,7 +1366,7 @@ static void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties. */
-  grease_pencil_primitive_common_props(ot, 62, PrimitiveType::ARC);
+  grease_pencil_primitive_common_props(ot, 62, PrimitiveType::Arc);
 }
 
 static void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
@@ -1385,7 +1385,7 @@ static void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties. */
-  grease_pencil_primitive_common_props(ot, 62, PrimitiveType::CURVE);
+  grease_pencil_primitive_common_props(ot, 62, PrimitiveType::Curve);
 }
 
 static void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
@@ -1404,7 +1404,7 @@ static void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties. */
-  grease_pencil_primitive_common_props(ot, 3, PrimitiveType::BOX);
+  grease_pencil_primitive_common_props(ot, 3, PrimitiveType::Box);
 }
 
 static void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
@@ -1423,7 +1423,7 @@ static void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* Properties. */
-  grease_pencil_primitive_common_props(ot, 94, PrimitiveType::CIRCLE);
+  grease_pencil_primitive_common_props(ot, 94, PrimitiveType::Circle);
 }
 
 }  // namespace blender::ed::greasepencil
@@ -1443,19 +1443,19 @@ void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
 {
   using namespace blender::ed::greasepencil;
   static const EnumPropertyItem modal_items[] = {
-      {int(ModelKeyMode::CANCEL), "CANCEL", 0, "Cancel", ""},
-      {int(ModelKeyMode::CONFIRM), "CONFIRM", 0, "Confirm", ""},
-      {int(ModelKeyMode::PANNING), "PANNING", 0, "Panning", ""},
-      {int(ModelKeyMode::EXTRUDE), "EXTRUDE", 0, "Extrude", ""},
-      {int(ModelKeyMode::GRAB), "GRAB", 0, "Grab", ""},
-      {int(ModelKeyMode::ROTATE), "ROTATE", 0, "Rotate", ""},
-      {int(ModelKeyMode::SCALE), "SCALE", 0, "Scale", ""},
-      {int(ModelKeyMode::INCREASE_SUBDIVISION),
+      {int(ModelKeyMode::Cancel), "CANCEL", 0, "Cancel", ""},
+      {int(ModelKeyMode::Confirm), "CONFIRM", 0, "Confirm", ""},
+      {int(ModelKeyMode::Panning), "PANNING", 0, "Panning", ""},
+      {int(ModelKeyMode::Extrude), "EXTRUDE", 0, "Extrude", ""},
+      {int(ModelKeyMode::Grab), "GRAB", 0, "Grab", ""},
+      {int(ModelKeyMode::Rotate), "ROTATE", 0, "Rotate", ""},
+      {int(ModelKeyMode::Scale), "SCALE", 0, "Scale", ""},
+      {int(ModelKeyMode::IncreaseSubdivision),
        "INCREASE_SUBDIVISION",
        0,
        "increase_subdivision",
        ""},
-      {int(ModelKeyMode::DECREASE_SUBDIVISION),
+      {int(ModelKeyMode::DecreaseSubdivision),
        "DECREASE_SUBDIVISION",
        0,
        "decrease_subdivision",
