@@ -1004,7 +1004,7 @@ BLI_INLINE void subdiv_ccg_neighbors_init(SubdivCCGNeighbors &neighbors,
                                           const int num_duplicates)
 {
   const int size = num_unique + num_duplicates;
-  neighbors.coords = blender::Array<SubdivCCGCoord, 256>(size);
+  neighbors.coords.reinitialize(size);
   neighbors.num_duplicates = num_duplicates;
 }
 
