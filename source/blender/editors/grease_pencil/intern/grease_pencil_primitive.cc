@@ -429,11 +429,11 @@ static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
 {
   bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
 
-  const int last_points = curves.points_by_curve()[curves.curves_range().last()].size();
+  const int last_points_num = curves.points_by_curve()[curves.curves_range().last()].size();
 
   int new_points_num = grease_pencil_primitive_curve_points_number(ptd);
 
-  curves.resize(curves.points_num() - last_points + new_points_num, curves.curves_num());
+  curves.resize(curves.points_num() - last_points_num + new_points_num, curves.curves_num());
   curves.offsets_for_write().last() = curves.points_num();
   const IndexRange curve_points = curves.points_by_curve()[curves.curves_range().last()];
 
