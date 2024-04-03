@@ -8,3 +8,4 @@ Referenced by issue #114963, 4.0.0 - Image Editor - Paint - Bucket Tool - Fill d
 Referenced by commit 7f33a743d8956dd48f626b4a7ba2b7b1e96141ad, Fix #114963: Image Editor - Fill Tool doesn't work as expected
 Referenced by pull request #120214, Fix #120113: crash reading large jpeg
 Referenced by issue #120113, Crash when reading large JPEG
+Referenced by commit 8af4c72ddde07c1ba1a589a1235152bfecc355c4, Fix #120113: crash reading large jpeg
