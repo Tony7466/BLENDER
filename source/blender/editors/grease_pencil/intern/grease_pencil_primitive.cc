@@ -155,16 +155,15 @@ static int control_points_per_segment(const PrimitiveToolOperation &ptd)
   return 0;
 }
 
-static ControlPointType get_control_point_type(const PrimitiveToolOperation &ptd,
-                                               const int point_id)
+static ControlPointType get_control_point_type(const PrimitiveToolOperation &ptd, const int point)
 {
-  BLI_assert(point_id != -1);
+  BLI_assert(point != -1);
   if (ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
     return ControlPointType::JOIN_POINT;
   }
 
   const int num_shared_points = control_points_per_segment(ptd);
-  if (math::mod(point_id, num_shared_points) == 0) {
+  if (math::mod(point, num_shared_points) == 0) {
     return ControlPointType::JOIN_POINT;
   }
   return ControlPointType::HANDLE_POINT;
@@ -245,14 +244,14 @@ static void draw_control_points(PrimitiveToolOperation &ptd)
   Array<float> sizes(ptd.control_points.size());
   control_point_colors_and_sizes(ptd, colors, sizes);
 
-  for (const int point_id : ptd.control_points.index_range()) {
-    const float3 point = ptd.control_points[point_id];
-    const ColorGeometry4f color = colors[point_id];
-    const float size = sizes[point_id];
+  for (const int point : ptd.control_points.index_range()) {
+    const float3 point3d = ptd.control_points[point];
+    const ColorGeometry4f color = colors[point];
+    const float size = sizes[point];
 
     immAttr4f(col3d, color[0], color[1], color[2], color[3]);
     immAttr1f(siz3d, size * 2.0f);
-    immVertex3fv(pos3d, point);
+    immVertex3fv(pos3d, point3d);
   }
 
   immEnd();
@@ -297,10 +296,9 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
     case PrimitiveType::POLYLINE: {
       for (const int i : new_positions.index_range().drop_back(1)) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
-        const int point_id = int(i / (subdivision + 1));
-        const int point_next_id = point_id + 1;
-        new_positions[i] = math::interpolate(
-            control_points[point_id], control_points[point_next_id], t);
+        const int point = int(i / (subdivision + 1));
+        const int point_next = point + 1;
+        new_positions[i] = math::interpolate(control_points[point], control_points[point_next], t);
       }
       new_positions.last() = control_points.last();
       return;
@@ -377,9 +375,9 @@ static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
       const float2 corners[4] = {A, B, C, D};
       for (const int i : new_positions.index_range()) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
-        const int point_id = int(i / (subdivision + 1));
-        const int point_next_id = math::mod(point_id + 1, 4);
-        new_positions[i] = math::interpolate(corners[point_id], corners[point_next_id], t);
+        const int point = int(i / (subdivision + 1));
+        const int point_next = math::mod(point + 1, 4);
+        new_positions[i] = math::interpolate(corners[point], corners[point_next], t);
       }
       return;
     }
@@ -450,21 +448,21 @@ static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
   const ToolSettings *ts = ptd.vc.scene->toolsettings;
   const GP_Sculpt_Settings *gset = &ts->gp_sculpt;
 
-  for (const int point_id : curve_points.index_range()) {
+  for (const int point : curve_points.index_range()) {
     float pressure = 1.0f;
     /* Apply pressure curve. */
     if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
-      const float t = point_id / float(new_points_num - 1);
+      const float t = point / float(new_points_num - 1);
       pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, t);
     }
 
     const float radius = ed::greasepencil::radius_from_input_sample(
-        pressure, positions_3d[point_id], ptd.vc, ptd.brush, ptd.vc.scene, ptd.settings);
+        pressure, positions_3d[point], ptd.vc, ptd.brush, ptd.vc.scene, ptd.settings);
     const float opacity = ed::greasepencil::opacity_from_input_sample(
         pressure, ptd.brush, ptd.vc.scene, ptd.settings);
 
-    new_radii[point_id] = radius;
-    new_opacities[point_id] = opacity;
+    new_radii[point] = radius;
+    new_opacities[point] = opacity;
   }
 
   ptd.drawing->tag_topology_changed();
@@ -851,13 +849,13 @@ static void grease_pencil_primitive_grab_update(PrimitiveToolOperation &ptd, con
     return;
   }
 
-  const int other_point_id = ptd.active_control_point_index == control_point_first ?
-                                 control_point_last :
-                                 control_point_first;
+  const int other_point = ptd.active_control_point_index == control_point_first ?
+                              control_point_last :
+                              control_point_first;
 
   /* Get the location of the other control point.*/
   const float2 other_point_2d = ED_view3d_project_float_v2_m4(
-      ptd.vc.region, ptd.temp_control_points[other_point_id], ptd.projection);
+      ptd.vc.region, ptd.temp_control_points[other_point], ptd.projection);
 
   /* Set the center point to between the first and last point. */
   ptd.control_points[control_point_center] = ptd.placement.project(
@@ -946,24 +944,24 @@ static int primitive_check_ui_hover(const PrimitiveToolOperation &ptd, const wmE
   int closest_point = -1;
 
   for (const int i : ptd.control_points.index_range()) {
-    const int point_id = (ptd.control_points.size() - 1) - i;
+    const int point = (ptd.control_points.size() - 1) - i;
     const float2 pos_proj = ED_view3d_project_float_v2_m4(
-        ptd.vc.region, ptd.control_points[point_id], ptd.projection);
+        ptd.vc.region, ptd.control_points[point], ptd.projection);
     const float radius_sq = ui_point_hit_size_px * ui_point_hit_size_px;
     const float distance_squared = math::distance_squared(pos_proj, float2(event->mval));
     /* If the mouse is over a control point. */
     if (distance_squared <= radius_sq) {
-      return point_id;
+      return point;
     }
 
-    const ControlPointType control_point_type = get_control_point_type(ptd, point_id);
+    const ControlPointType control_point_type = get_control_point_type(ptd, point);
 
     /* Save the closest handle point. */
     if (distance_squared < closest_distance_squared &&
         control_point_type == ControlPointType::HANDLE_POINT &&
         distance_squared < ui_point_max_hit_size_px * ui_point_max_hit_size_px)
     {
-      closest_point = point_id;
+      closest_point = point;
       closest_distance_squared = distance_squared;
     }
   }
