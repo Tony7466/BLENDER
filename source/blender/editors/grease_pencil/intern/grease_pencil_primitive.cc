@@ -264,7 +264,7 @@ static void draw_control_points(PrimitiveToolOperation &ptd)
 
 static void grease_pencil_primitive_draw(const bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
-  PrimitiveToolOperation &ptd = *((PrimitiveToolOperation *)arg);
+  PrimitiveToolOperation &ptd = *reinterpret_cast<PrimitiveToolOperation *>(arg);
   draw_control_points(ptd);
 }
 
@@ -1224,7 +1224,7 @@ static void grease_pencil_primitive_operator_update(PrimitiveToolOperation &ptd,
 /* Modal handler: Events handling during interactive part. */
 static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  PrimitiveToolOperation &ptd = *((PrimitiveToolOperation *)op->customdata);
+  PrimitiveToolOperation &ptd = *reinterpret_cast<PrimitiveToolOperation *>(op->customdata);
 
   ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
   grease_pencil_primitive_cursor_update(C, ptd, event);
