@@ -1177,7 +1177,6 @@ static Mesh *ico_sphere(const int side_verts, const float radius, const Attribut
   if (uv_map_id) {
     SpanAttributeWriter<float2> uv_map = attributes.lookup_or_add_for_write_only_span<float2>(
         uv_map_id, AttrDomain::Corner);
-    uv_map.span.fill(float2(0.0f));
     uv_vert_positions(base_edge_edges_num,
                       faces_of_edge_range,
                       faces_of_face_range,
