@@ -4,3 +4,4 @@ Referenced by commit d3504a6bab5bbeed5fc6d4bfd8f0db84c129c8c1, Fix #119907: Acti
 Referenced by issue #119936, !!Crash!! when left-clicking in masking tab with no selected points in MovieClipEditor/ImageEditor
 Referenced by pull request #119956, Fix #119936: Crash selecting in mask editor
 Referenced by commit e9dc9ef9a202b1fc8dba8217a65edac2c81f7694, Fix #119936: Crash selecting in mask editor
+Referenced by issue #120200, Sculpting is extremely slow when a Modifier is present with a driver added
