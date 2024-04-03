@@ -1290,9 +1290,6 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
                                                  const int default_subdiv,
                                                  const PrimitiveType default_type)
 {
-  /* Flags. */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
-
   static const EnumPropertyItem grease_pencil_primitive_type[] = {
       {int(PrimitiveType::BOX), "BOX", 0, "Box", ""},
       {int(PrimitiveType::LINE), "LINE", 0, "Line", ""},
@@ -1332,6 +1329,9 @@ static void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
   /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::LINE);
 }
@@ -1348,7 +1348,10 @@ static void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
-  /* Properties and Flags. */
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* Properties. */
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::POLYLINE);
 }
 
@@ -1364,7 +1367,10 @@ static void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
-  /* Properties and Flags. */
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* Properties. */
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::ARC);
 }
 
@@ -1380,7 +1386,10 @@ static void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
-  /* Properties and Flags. */
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* Properties. */
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::CURVE);
 }
 
@@ -1396,7 +1405,10 @@ static void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
-  /* Properties and Flags. */
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* Properties. */
   grease_pencil_primitive_common_props(ot, 3, PrimitiveType::BOX);
 }
 
@@ -1412,7 +1424,10 @@ static void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
   ot->modal = grease_pencil_primitive_modal;
   ot->cancel = grease_pencil_primitive_cancel;
 
-  /* Properties and Flags. */
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
+
+  /* Properties. */
   grease_pencil_primitive_common_props(ot, 94, PrimitiveType::CIRCLE);
 }
 
