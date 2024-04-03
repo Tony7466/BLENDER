@@ -501,20 +501,30 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
  * \{ */
 
 struct VolumesInfoData {
-  float2 coord_scale;
-  float2 viewport_size_inv;
+  /* Convert volume frustum UV(+ linear Z) coordinates into previous frame UV(+ linear Z). */
+  float4x4 history_matrix;
+  /* Size of the froxel grid texture. */
   packed_int3 tex_size;
+  /* Maximum light intensity during volume lighting evaluation. */
   float light_clamp;
+  /* Inverse of size of the froxel grid. */
   packed_float3 inv_tex_size;
-  int tile_size;
-  int tile_size_lod;
+  /* Maximum light intensity during volume lighting evaluation. */
   float shadow_steps;
+  /* 2D scaling factor to make froxel squared. */
+  float2 coord_scale;
+  /* Extent and inverse extent of the main shading view (render extent, not film extent). */
+  float2 main_view_extent;
+  float2 main_view_extent_inv;
+  /* Size in main view pixels of one froxel in XY. */
+  int tile_size;
+  /* Hi-Z LOD to use during volume shadow tagging. */
+  int tile_size_lod;
+  /* Depth to froxel mapping. */
   float depth_near;
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 

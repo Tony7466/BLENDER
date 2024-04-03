@@ -89,8 +89,8 @@ void main()
   }
   LIGHT_FOREACH_END
 
-  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(uniform_buf.volumes.tex_size.xy) /
-               uniform_buf.volumes.viewport_size_inv;
+  vec2 pixel = ((vec2(froxel.xy) + 0.5) * uniform_buf.volumes.inv_tex_size.xy) *
+               uniform_buf.volumes.main_view_extent;
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
     light_scattering += volume_scatter_light_eval(false, P, V, l_idx, s_anisotropy);
@@ -99,6 +99,16 @@ void main()
 
   scattering += light_scattering * s_scattering;
 #endif
+
+  if (true) {
+    /* Temporal reprojection. */
+    vec3 uvw_history = volume_history_position_get(froxel);
+    vec4 scattering_history = texture(scattering_history_tx, uvw_history);
+    vec4 extinction_history = texture(extinction_history_tx, uvw_history);
+    float history_opacity = 0.95 * scattering_history.a;
+    scattering = mix(scattering, scattering_history.rgb, history_opacity);
+    extinction = mix(extinction, extinction_history.rgb, history_opacity);
+  }
 
   /* Catch NaNs. */
   if (any(isnan(scattering)) || any(isnan(extinction))) {

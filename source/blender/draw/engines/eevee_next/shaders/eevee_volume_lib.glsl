@@ -69,6 +69,21 @@ vec3 screen_to_volume(vec3 coord)
   return coord;
 }
 
+/* Returns the uvw (normalized coordinate) of a froxel in the previous frame.
+ * If no history exists, it will return out of bounds sampling coordinates. */
+vec3 volume_history_position_get(ivec3 froxel)
+{
+  /* We can't reproject by a simple matrix multiplication. We first need to remap to the view Z,
+   * then transform, then remap back to Volume range. */
+  vec3 uvw = (vec3(froxel) + 0.5) * uniform_buf.volumes.inv_tex_size;
+  uvw.z = volume_z_to_view_z(uvw.z);
+
+  vec3 uvw_history = transform_point(uniform_buf.volumes.history_matrix, uvw);
+  /* TODO(fclem): For now assume same distribution settings. */
+  uvw_history.z = view_z_to_volume_z(uvw_history.z);
+  return uvw_history;
+}
+
 float volume_phase_function_isotropic()
 {
   return 1.0 / (4.0 * M_PI);

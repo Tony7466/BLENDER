@@ -45,7 +45,8 @@ void VolumeModule::init()
   tex_size = math::min(tex_size, max_size);
 
   data_.coord_scale = float2(extent) / float2(tile_size * tex_size);
-  data_.viewport_size_inv = 1.0f / float2(extent);
+  data_.main_view_extent = float2(extent);
+  data_.main_view_extent_inv = 1.0f / float2(extent);
 
   /* TODO: compute snap to maxZBuffer for clustered rendering. */
   if (data_.tex_size != tex_size) {
@@ -109,8 +110,10 @@ void VolumeModule::end_sync()
     prop_extinction_tx_.free();
     prop_emission_tx_.free();
     prop_phase_tx_.free();
-    scatter_tx_.free();
-    extinction_tx_.free();
+    scatter_tx_.current().free();
+    scatter_tx_.previous().free();
+    extinction_tx_.current().free();
+    extinction_tx_.previous().free();
     integrated_scatter_tx_.free();
     integrated_transmit_tx_.free();
 
@@ -171,8 +174,12 @@ void VolumeModule::end_sync()
   front_depth_tx_.ensure_2d(GPU_DEPTH24_STENCIL8, data_.tex_size.xy(), front_depth_usage);
   occupancy_fb_.ensure(GPU_ATTACHMENT_TEXTURE(front_depth_tx_));
 
-  scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  scatter_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  extinction_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  extinction_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+
+  data_.history_matrix = float4x4::identity();
 
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
@@ -189,6 +196,12 @@ void VolumeModule::end_sync()
   occupancy.hit_depth_tx_ = hit_depth_tx_;
   occupancy.hit_count_tx_ = hit_count_tx_;
 
+  /* Use custom sampler to simplify and speedup the shader.
+   * - Set extend mode to clamp to border color to reject samples with invalid re-projection.
+   * - Set filtering mode to none to avoid over-blur during re-projection. */
+  const GPUSamplerState history_sampler = {GPU_SAMPLER_FILTERING_DEFAULT,
+                                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
+                                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER};
   scatter_ps_.init();
   scatter_ps_.shader_set(
       inst_.shaders.static_shader_get(use_lights_ ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
@@ -202,8 +215,10 @@ void VolumeModule::end_sync()
   scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
   scatter_ps_.bind_image("in_emission_img", &prop_emission_tx_);
   scatter_ps_.bind_image("in_phase_img", &prop_phase_tx_);
-  scatter_ps_.bind_image("out_scattering_img", &scatter_tx_);
-  scatter_ps_.bind_image("out_extinction_img", &extinction_tx_);
+  scatter_ps_.bind_texture("scattering_history_tx", &scatter_tx_.current(), history_sampler);
+  scatter_ps_.bind_texture("extinction_history_tx", &extinction_tx_.current(), history_sampler);
+  scatter_ps_.bind_image("out_scattering_img", &scatter_tx_.current());
+  scatter_ps_.bind_image("out_extinction_img", &extinction_tx_.current());
   scatter_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   /* Sync with the property pass. */
   scatter_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
@@ -212,8 +227,8 @@ void VolumeModule::end_sync()
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
   integration_ps_.bind_resources(inst_.uniform_data);
-  integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
-  integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
+  integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_.current());
+  integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_.current());
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
   integration_ps_.bind_image("out_transmittance_img", &integrated_transmit_tx_);
   /* Sync with the scatter pass. */
@@ -247,17 +262,16 @@ void VolumeModule::draw_prepass(View &view)
   float4x4 winmat = view.winmat();
   projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
 
-  float4x4 winmat_infinite = view.is_persp() ?
-                                 math::projection::perspective_infinite(
-                                     left, right, bottom, top, near) :
-                                 math::projection::orthographic_infinite(left, right, bottom, top);
-
+  /* Create an infinite projection matrix to avoid far clipping plane clipping the object. This
+   * way, surfaces that are further away than the far clip plane will still be voxelized.*/
+  float4x4 winmat_infinite;
+  winmat_infinite = view.is_persp() ?
+                        math::projection::perspective_infinite(left, right, bottom, top, near) :
+                        math::projection::orthographic_infinite(left, right, bottom, top);
   /* Anti-Aliasing / Super-Sampling jitter. */
   float2 jitter = (inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U) - 0.5f) * data_.inv_tex_size.xy();
-  /* Convert to NDC. */
-  jitter *= 2.0;
-
-  winmat_infinite = math::projection::translate(winmat_infinite, jitter);
+  /* Time 2 to convert to NDC. */
+  winmat_infinite = math::projection::translate(winmat_infinite, 2.0 * jitter);
 
   View volume_view = {"Volume View"};
   volume_view.sync(view.viewmat(), winmat_infinite);

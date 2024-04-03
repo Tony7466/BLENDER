@@ -79,8 +79,8 @@ class VolumeModule {
 
   /* Light Scattering. */
   PassSimple scatter_ps_ = {"Volumes.Scatter"};
-  Texture scatter_tx_;
-  Texture extinction_tx_;
+  SwapChain<Texture, 2> scatter_tx_;
+  SwapChain<Texture, 2> extinction_tx_;
 
   /* Volume Integration */
   PassSimple integration_ps_ = {"Volumes.Integration"};

@@ -41,8 +41,8 @@ void main()
     return;
   }
 
-  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(uniform_buf.volumes.tex_size.xy) /
-               uniform_buf.volumes.viewport_size_inv;
+  vec2 pixel = ((vec2(froxel.xy) + vec2(0.5)) / vec2(uniform_buf.volumes.tex_size.xy)) *
+               uniform_buf.volumes.main_view_extent;
 
   int bias = uniform_buf.volumes.tile_size_lod;
   shadow_tag_usage(vP, P, drw_world_incident_vector(P), 0.01, length(vP), pixel, bias);
