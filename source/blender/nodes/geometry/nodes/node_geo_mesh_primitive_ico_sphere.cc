@@ -19,6 +19,7 @@
 #include "BLI_math_base.h"
 #include "BLI_math_base.hh"
 #include "BLI_math_euler.hh"
+#include "BLI_math_numbers.hh"
 #include "BLI_math_quaternion.hh"
 #include "BLI_math_rotation.hh"
 #include "BLI_math_rotation_types.hh"
@@ -288,7 +289,7 @@ static Span<float3> base_ico_sphere_positions()
     MutableSpan<float3> bottom_latitude = positions_span.drop_back(1).take_back(
         latitude_verts_num);
 
-    const constexpr float step = M_PI / latitude_verts_num * 2.0f;
+    const constexpr float step = math::numbers::pi / latitude_verts_num * 2.0f;
     const float3 base_vector(1.0f, 0.0f, 0.0f);
     for (const int i : IndexRange(latitude_verts_num)) {
       const math::EulerXYZ rotation(0.0f, -latitude, i * step);
