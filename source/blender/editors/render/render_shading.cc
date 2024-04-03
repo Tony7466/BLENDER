@@ -32,7 +32,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_appdir.hh"
 #include "BKE_blender_copybuffer.hh"
@@ -124,7 +124,7 @@ static bool object_array_for_shading_edit_mode_enabled_filter(const Object *ob, 
 
 static Vector<Object *> object_array_for_shading_edit_mode_enabled(bContext *C)
 {
-  return ED_object_array_in_mode_or_selected(
+  return blender::ed::object::objects_in_mode_or_selected(
       C, object_array_for_shading_edit_mode_enabled_filter, C);
 }
 
@@ -141,7 +141,7 @@ static bool object_array_for_shading_edit_mode_disabled_filter(const Object *ob,
 
 static Vector<Object *> object_array_for_shading_edit_mode_disabled(bContext *C)
 {
-  return ED_object_array_in_mode_or_selected(
+  return blender::ed::object::objects_in_mode_or_selected(
       C, object_array_for_shading_edit_mode_disabled_filter, C);
 }
 
@@ -172,7 +172,7 @@ static bool object_materials_supported_poll_ex(bContext *C, const Object *ob)
 
 static bool object_materials_supported_poll(bContext *C)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   return object_materials_supported_poll_ex(C, ob);
 }
 
@@ -185,7 +185,7 @@ static bool object_materials_supported_poll(bContext *C)
 static int material_slot_add_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
 
   if (!ob) {
     return OPERATOR_CANCELLED;
@@ -229,7 +229,7 @@ void OBJECT_OT_material_slot_add(wmOperatorType *ot)
 
 static int material_slot_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
 
   if (!ob) {
     return OPERATOR_CANCELLED;
@@ -532,7 +532,7 @@ void OBJECT_OT_material_slot_deselect(wmOperatorType *ot)
 static int material_slot_copy_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   Material ***matar_obdata;
 
   if (!ob || !(matar_obdata = BKE_object_material_array_p(ob))) {
@@ -592,7 +592,7 @@ void OBJECT_OT_material_slot_copy(wmOperatorType *ot)
 
 static int material_slot_move_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
 
   uint *slot_remap;
   int index_pair[2];
@@ -1046,7 +1046,7 @@ static int view_layer_add_aov_exec(bContext *C, wmOperator * /*op*/)
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1098,7 +1098,7 @@ static int view_layer_remove_aov_exec(bContext *C, wmOperator * /*op*/)
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1150,7 +1150,7 @@ static int view_layer_add_lightgroup_exec(bContext *C, wmOperator *op)
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1200,7 +1200,7 @@ static int view_layer_remove_lightgroup_exec(bContext *C, wmOperator * /*op*/)
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1265,7 +1265,7 @@ static int view_layer_add_used_lightgroups_exec(bContext *C, wmOperator * /*op*/
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1309,7 +1309,7 @@ static int view_layer_remove_unused_lightgroups_exec(bContext *C, wmOperator * /
     ntreeCompositUpdateRLayers(scene->nodetree);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(CTX_data_main(C));
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
 
@@ -1525,7 +1525,7 @@ static blender::Vector<Object *> lightprobe_cache_irradiance_volume_subset_get(b
   auto irradiance_volume_setup = [&](Object *ob) {
     BKE_lightprobe_cache_free(ob);
     BKE_lightprobe_cache_create(ob);
-    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SHADING);
     probes.append(ob);
   };
 
@@ -1642,6 +1642,8 @@ static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
+  G.is_break = false;
+
   blender::Vector<Object *> probes = lightprobe_cache_irradiance_volume_subset_get(C, op);
 
   /* TODO: abort if selected engine is not eevee. */
@@ -1649,7 +1651,8 @@ static int lightprobe_cache_bake_exec(bContext *C, wmOperator *op)
   /* Do the job. */
   wmJobWorkerStatus worker_status = {};
   EEVEE_NEXT_lightbake_job(rj, &worker_status);
-  /* Free baking data. Result is already stored in the scene data. */
+  /* Move baking data to original object and then free it. */
+  EEVEE_NEXT_lightbake_update(rj);
   EEVEE_NEXT_lightbake_job_data_free(rj);
 
   return OPERATOR_FINISHED;
@@ -1729,7 +1732,7 @@ static int light_cache_free_exec(bContext *C, wmOperator * /*op*/)
 
   EEVEE_lightcache_info_update(&scene->eevee);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
@@ -1765,10 +1768,10 @@ static int lightprobe_cache_free_exec(bContext *C, wmOperator *op)
       continue;
     }
     BKE_lightprobe_cache_free(object);
-    DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
+    DEG_id_tag_update(&object->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SHADING);
   }
 
-  WM_event_add_notifier(C, NC_OBJECT | ND_OB_SHADING, scene);
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, scene);
 
   return OPERATOR_FINISHED;
 }
@@ -1962,7 +1965,7 @@ static int freestyle_module_remove_exec(bContext *C, wmOperator * /*op*/)
 
   BKE_freestyle_module_delete(&view_layer->freestyle_config, module);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
   return OPERATOR_FINISHED;
@@ -1992,7 +1995,7 @@ static int freestyle_module_move_exec(bContext *C, wmOperator *op)
   int dir = RNA_enum_get(op->ptr, "direction");
 
   if (BKE_freestyle_module_move(&view_layer->freestyle_config, module, dir)) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
   }
 
@@ -2048,7 +2051,7 @@ static int freestyle_lineset_add_exec(bContext *C, wmOperator * /*op*/)
 
   BKE_freestyle_lineset_add(bmain, &view_layer->freestyle_config, nullptr);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
   return OPERATOR_FINISHED;
@@ -2122,7 +2125,7 @@ static int freestyle_lineset_paste_exec(bContext *C, wmOperator * /*op*/)
 
   FRS_paste_active_lineset(&view_layer->freestyle_config);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
   return OPERATOR_FINISHED;
@@ -2156,7 +2159,7 @@ static int freestyle_lineset_remove_exec(bContext *C, wmOperator * /*op*/)
 
   FRS_delete_active_lineset(&view_layer->freestyle_config);
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
 
   return OPERATOR_FINISHED;
@@ -2190,7 +2193,7 @@ static int freestyle_lineset_move_exec(bContext *C, wmOperator *op)
   int dir = RNA_enum_get(op->ptr, "direction");
 
   if (FRS_move_active_lineset(&view_layer->freestyle_config, dir)) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, scene);
   }
 
@@ -3013,7 +3016,7 @@ static int paste_material_exec(bContext *C, wmOperator *op)
    * Always call instead of checking when it *might* be needed. */
   DEG_relations_tag_update(bmain);
 
-  DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_MATERIAL | ND_SHADING_LINKS, ma);
 
   return OPERATOR_FINISHED;

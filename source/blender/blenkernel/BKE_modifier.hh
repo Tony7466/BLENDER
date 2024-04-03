@@ -200,8 +200,8 @@ struct ModifierTypeInfo {
   /********************* Deform modifier functions *********************/
 
   /**
-   * Apply a deformation to the positions in the \a vertexCos array. If the \a mesh argument is
-   * non-null, if will contain proper (not wrapped) mesh data. The \a vertexCos array may or may
+   * Apply a deformation to the positions in the \a positions array. If the \a mesh argument is
+   * non-null, if will contain proper (not wrapped) mesh data. The \a positions array may or may
    * not be the same as the mesh's position attribute.
    */
   void (*deform_verts)(ModifierData *md,
@@ -588,7 +588,7 @@ void BKE_modifier_deform_vertsEM(ModifierData *md,
 /**
  * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,
  * e.g. second operand for boolean modifier.
- * Note that modifiers in stack always get fully evaluated COW ID pointers,
+ * Note that modifiers in stack always get fully evaluated ID pointers,
  * never original ones. Makes things simpler.
  */
 Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval);

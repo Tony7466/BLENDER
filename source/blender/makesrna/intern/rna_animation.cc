@@ -12,6 +12,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_listbase_wrapper.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
@@ -51,6 +52,12 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
+    {0,
+     "INSERTKEY_XYZ_TO_RGB",
+     0,
+     "XYZ=RGB Colors (ignored)",
+     "This flag is no longer in use, and is here so that code that uses it doesn't break. The "
+     "XYZ=RGB coloring is determined by the animation preferences"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -66,6 +73,12 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
      0,
      "Visual Keying",
      "Insert keyframes based on 'visual transforms'"},
+    {0,
+     "INSERTKEY_XYZ_TO_RGB",
+     0,
+     "XYZ=RGB Colors (ignored)",
+     "This flag is no longer in use, and is here so that code that uses it doesn't break. The "
+     "XYZ=RGB coloring is determined by the animation preferences"},
     {INSERTKEY_REPLACE,
      "INSERTKEY_REPLACE",
      0,
@@ -91,9 +104,9 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 
 #  include "BLI_math_base.h"
 
-#  include "BKE_anim_data.h"
+#  include "BKE_anim_data.hh"
 #  include "BKE_animsys.h"
-#  include "BKE_fcurve.h"
+#  include "BKE_fcurve.hh"
 #  include "BKE_nla.h"
 
 #  include "DEG_depsgraph.hh"
@@ -119,7 +132,7 @@ static void rna_AnimData_dependency_update(Main *bmain, Scene *scene, PointerRNA
   rna_AnimData_update(bmain, scene, ptr);
 }
 
-static int rna_AnimData_action_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_AnimData_action_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   AnimData *adt = (AnimData *)ptr->data;
   return BKE_animdata_action_editable(adt) ? PROP_EDITABLE : PropertyFlag(0);
@@ -177,6 +190,34 @@ bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
 
   anim_data_dst->flag = (anim_data_dst->flag & ~ADT_NLA_EDIT_ON) |
                         (anim_data_src->flag & ADT_NLA_EDIT_ON);
+
+  if (!(anim_data_dst->flag & ADT_NLA_EDIT_ON)) {
+    /* If tweak mode is not enabled, there's nothing left to do. */
+    return true;
+  }
+
+  if (!anim_data_src->act_track || !anim_data_src->actstrip) {
+    /* If there is not enough information to find the active track/strip, don't bother. */
+    return true;
+  }
+
+  /* AnimData::act_track and AnimData::actstrip are not directly exposed to RNA as editable &
+   * overridable, so the override doesn't contain this info. Reconstruct the pointers by name. */
+  for (NlaTrack *track : blender::ListBaseWrapper<NlaTrack>(anim_data_dst->nla_tracks)) {
+    if (!STREQ(track->name, anim_data_src->act_track->name)) {
+      continue;
+    }
+
+    NlaStrip *strip = BKE_nlastrip_find_by_name(track, anim_data_src->actstrip->name);
+    if (!strip) {
+      continue;
+    }
+
+    anim_data_dst->act_track = track;
+    anim_data_dst->actstrip = strip;
+    break;
+  }
+
   return true;
 }
 
@@ -381,7 +422,7 @@ static StructRNA *rna_ksPath_id_typef(PointerRNA *ptr)
   return ID_code_to_RNA_type(ksp->idtype);
 }
 
-static int rna_ksPath_id_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_ksPath_id_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   KS_Path *ksp = (KS_Path *)ptr->data;
   return (ksp->idtype) ? PROP_EDITABLE : PropertyFlag(0);
@@ -478,7 +519,7 @@ static void rna_KeyingSet_name_set(PointerRNA *ptr, const char *value)
   STRNCPY(ks->name, value);
 }
 
-static int rna_KeyingSet_active_ksPath_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_KeyingSet_active_ksPath_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   KeyingSet *ks = (KeyingSet *)ptr->data;
 
@@ -625,7 +666,7 @@ static NlaTrack *rna_NlaTrack_new(ID *id, AnimData *adt, Main *bmain, bContext *
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 
   return new_track;
 }
@@ -646,7 +687,7 @@ static void rna_NlaTrack_remove(
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 }
 
 static PointerRNA rna_NlaTrack_active_get(PointerRNA *ptr)
@@ -738,8 +779,8 @@ bool rna_AnimaData_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &
   IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
 
   BLI_assert(len_dst == len_src && (!ptr_storage || len_dst == len_storage) && len_dst == 0);
-  BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
-             "Unsupported RNA override operation on animdata pointer");
+  BLI_assert_msg(opop->operation == LIBOVERRIDE_OP_REPLACE,
+                 "Unsupported RNA override operation on animdata pointer");
   UNUSED_VARS_NDEBUG(ptr_storage, len_dst, len_src, len_storage, opop);
 
   /* AnimData is a special case, since you cannot edit/replace it, it's either existent or not.
@@ -800,8 +841,8 @@ bool rna_NLA_tracks_override_apply(Main *bmain, RNAPropertyOverrideApplyContext 
   PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
   IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
 
-  BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
-             "Unsupported RNA override operation on constraints collection");
+  BLI_assert_msg(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER,
+                 "Unsupported RNA override operation on constraints collection");
 
   AnimData *anim_data_dst = (AnimData *)ptr_dst->data;
   AnimData *anim_data_src = (AnimData *)ptr_src->data;

@@ -24,7 +24,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_object.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_inline.hh"
@@ -42,7 +42,7 @@ namespace blender::draw {
 
 int mesh_render_mat_len_get(const Object *object, const Mesh *mesh)
 {
-  if (mesh->edit_mesh != nullptr) {
+  if (mesh->runtime->edit_mesh != nullptr) {
     const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
     if (editmesh_eval_final != nullptr) {
       return std::max<int>(1, editmesh_eval_final->totcol);
@@ -272,7 +272,7 @@ static void extract_range_iter_looptri_bm(void *__restrict userdata,
   void *extract_data = tls->userdata_chunk;
   const MeshRenderData &mr = *data->mr;
   BMLoop **elt = ((BMLoop * (*)[3]) data->elems)[iter];
-  BLI_assert(iter < mr.edit_bmesh->tottri);
+  BLI_assert(iter < mr.edit_bmesh->looptris.size());
   for (const ExtractorRunData &run_data : data->extractors) {
     run_data.extractor->iter_looptri_bm(
         mr, elt, iter, POINTER_OFFSET(extract_data, run_data.data_offset));
@@ -398,26 +398,26 @@ BLI_INLINE void extract_task_range_run_iter(const MeshRenderData &mr,
   int stop;
   switch (iter_type) {
     case MR_ITER_CORNER_TRI:
-      range_data.elems = is_mesh ? mr.corner_tris.data() : (void *)mr.edit_bmesh->looptris;
+      range_data.elems = is_mesh ? mr.corner_tris.data() : (void *)mr.edit_bmesh->looptris.data();
       func = is_mesh ? extract_range_iter_corner_tri_mesh : extract_range_iter_looptri_bm;
-      stop = mr.tri_len;
+      stop = mr.corner_tris_num;
       break;
     case MR_ITER_POLY:
       range_data.elems = is_mesh ? mr.faces.data().data() : (void *)mr.bm->ftable;
       func = is_mesh ? extract_range_iter_face_mesh : extract_range_iter_face_bm;
-      stop = mr.face_len;
+      stop = mr.faces_num;
       break;
     case MR_ITER_LOOSE_EDGE:
       range_data.loose_elems = mr.loose_edges.data();
       range_data.elems = is_mesh ? mr.edges.data() : (void *)mr.bm->etable;
       func = is_mesh ? extract_range_iter_loose_edge_mesh : extract_range_iter_loose_edge_bm;
-      stop = mr.edge_loose_len;
+      stop = mr.loose_edges_num;
       break;
     case MR_ITER_LOOSE_VERT:
       range_data.loose_elems = mr.loose_verts.data();
       range_data.elems = is_mesh ? mr.vert_positions.data() : (void *)mr.bm->vtable;
       func = is_mesh ? extract_range_iter_loose_vert_mesh : extract_range_iter_loose_vert_bm;
-      stop = mr.vert_loose_len;
+      stop = mr.loose_verts_num;
       break;
     default:
       BLI_assert(false);
@@ -572,7 +572,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                         const bool is_editmode,
                                         const bool is_paint_mode,
                                         const bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         const bool do_final,
                                         const bool do_uvedit,
                                         const Scene *scene,
@@ -627,8 +627,8 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
     } \
   } while (0)
 
-  EXTRACT_ADD_REQUESTED(vbo, pos_nor);
-  EXTRACT_ADD_REQUESTED(vbo, lnor);
+  EXTRACT_ADD_REQUESTED(vbo, pos);
+  EXTRACT_ADD_REQUESTED(vbo, nor);
   EXTRACT_ADD_REQUESTED(vbo, uv);
   EXTRACT_ADD_REQUESTED(vbo, tan);
   EXTRACT_ADD_REQUESTED(vbo, sculpt_data);
@@ -653,6 +653,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
     EXTRACT_ADD_REQUESTED(vbo, attr[i]);
   }
   EXTRACT_ADD_REQUESTED(vbo, attr_viewer);
+  EXTRACT_ADD_REQUESTED(vbo, vnor);
 
   EXTRACT_ADD_REQUESTED(ibo, tris);
   if (DRW_ibo_requested(mbuflist->ibo.lines_loose)) {
@@ -692,18 +693,25 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
   }
 
 #ifdef DEBUG_TIME
-  double rdata_start = BLI_check_seconds_timer();
+  double rdata_start = BLI_time_now_seconds();
 #endif
 
-  MeshRenderData *mr = mesh_render_data_create(
-      object, mesh, is_editmode, is_paint_mode, is_mode_active, obmat, do_final, do_uvedit, ts);
-  mr->use_hide = use_hide;
+  MeshRenderData *mr = mesh_render_data_create(object,
+                                               mesh,
+                                               is_editmode,
+                                               is_paint_mode,
+                                               is_mode_active,
+                                               object_to_world,
+                                               do_final,
+                                               do_uvedit,
+                                               use_hide,
+                                               ts);
   mr->use_subsurf_fdots = mr->mesh && !mr->mesh->runtime->subsurf_face_dot_tags.is_empty();
   mr->use_final_mesh = do_final;
   mr->use_simplify_normals = (scene->r.mode & R_SIMPLIFY) && (scene->r.mode & R_SIMPLIFY_NORMALS);
 
 #ifdef DEBUG_TIME
-  double rdata_end = BLI_check_seconds_timer();
+  double rdata_end = BLI_time_now_seconds();
 #endif
 
   eMRIterType iter_type = extractors.iter_types();
@@ -713,7 +721,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
       task_graph, *mr, mbc, iter_type, data_flag);
 
   /* Simple heuristic. */
-  const bool use_thread = (mr->loop_len + mr->loop_loose_len) > MIN_RANGE_LEN;
+  const bool use_thread = (mr->corners_num + mr->loose_indices_num) > MIN_RANGE_LEN;
 
   if (use_thread) {
     /* First run the requested extractors that do not support asynchronous ranges. */
@@ -757,7 +765,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 
 #ifdef DEBUG_TIME
   BLI_task_graph_work_and_wait(task_graph);
-  double end = BLI_check_seconds_timer();
+  double end = BLI_time_now_seconds();
 
   static double avg = 0;
   static double avg_fps = 0;
@@ -808,11 +816,11 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   EXTRACT_ADD_REQUESTED(ibo, tris);
 
   /* Orcos are extracted at the same time as positions. */
-  if (DRW_vbo_requested(mbuflist->vbo.pos_nor) || DRW_vbo_requested(mbuflist->vbo.orco)) {
-    extractors.append(&extract_pos_nor);
+  if (DRW_vbo_requested(mbuflist->vbo.pos) || DRW_vbo_requested(mbuflist->vbo.orco)) {
+    extractors.append(&extract_pos);
   }
 
-  EXTRACT_ADD_REQUESTED(vbo, lnor);
+  EXTRACT_ADD_REQUESTED(vbo, nor);
   for (int i = 0; i < GPU_MAX_ATTR; i++) {
     EXTRACT_ADD_REQUESTED(vbo, attr[i]);
   }

@@ -23,8 +23,8 @@
 
 #include "GPU_material.hh"
 
-#include "draw_common.h"
-#include "draw_manager.h"
+#include "draw_common_c.hh"
+#include "draw_manager_c.hh"
 
 #include "draw_common.hh"
 
@@ -129,7 +129,7 @@ static DRWShadingGroup *drw_volume_object_grids_init(Object *ob,
 
   grp = DRW_shgroup_create_sub(grp);
 
-  volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world);
+  volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world().ptr());
   volume_infos.color_mul = float4(1.0f);
   volume_infos.temperature_mul = 1.0f;
   volume_infos.temperature_bias = 0.0f;
@@ -197,7 +197,7 @@ static DRWShadingGroup *drw_volume_object_mesh_init(Scene *scene,
       return nullptr;
     }
 
-    if (fds->fluid && (fds->type == FLUID_DOMAIN_TYPE_GAS)) {
+    if (fds->type == FLUID_DOMAIN_TYPE_GAS) {
       DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
     }
 
@@ -305,7 +305,7 @@ PassType *volume_object_grids_init(PassType &ps,
   Volume *volume = (Volume *)ob->data;
   BKE_volume_load(volume, G.main);
 
-  volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world);
+  volume_infos.density_scale = BKE_volume_density_scale(volume, ob->object_to_world().ptr());
   volume_infos.color_mul = float4(1.0f);
   volume_infos.temperature_mul = 1.0f;
   volume_infos.temperature_bias = 0.0f;
@@ -384,7 +384,7 @@ PassType *drw_volume_object_mesh_init(PassType &ps,
       return nullptr;
     }
 
-    if (fds->fluid && (fds->type == FLUID_DOMAIN_TYPE_GAS)) {
+    if (fds->type == FLUID_DOMAIN_TYPE_GAS) {
       DRW_smoke_ensure(fmd, fds->flags & FLUID_DOMAIN_USE_NOISE);
     }
 

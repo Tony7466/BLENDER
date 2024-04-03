@@ -10,7 +10,6 @@
 #include "BLI_function_ref.hh"
 #include "BLI_stack.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "NOD_geometry_nodes_lazy_function.hh"
 
@@ -136,7 +135,7 @@ static void update_directly_linked_links_and_sockets(const bNodeTree &ntree)
       std::sort(socket->runtime->directly_linked_links.begin(),
                 socket->runtime->directly_linked_links.end(),
                 [&](const bNodeLink *a, const bNodeLink *b) {
-                  return a->multi_input_socket_index > b->multi_input_socket_index;
+                  return a->multi_input_sort_id > b->multi_input_sort_id;
                 });
     }
   }

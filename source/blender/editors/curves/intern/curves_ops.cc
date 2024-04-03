@@ -280,7 +280,15 @@ static void try_convert_single_object(Object &curves_ob,
     *r_could_not_convert_some_curves = true;
   }
 
-  const int hair_num = curves.curves_num();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  IndexMaskMemory memory;
+  const IndexMask multi_point_curves = IndexMask::from_predicate(
+      curves.curves_range(), GrainSize(4096), memory, [&](const int curve_i) {
+        return points_by_curve[curve_i].size() > 1;
+      });
+
+  const int hair_num = multi_point_curves.size();
+
   if (hair_num == 0) {
     return;
   }
@@ -327,11 +335,9 @@ static void try_convert_single_object(Object &curves_ob,
   const bke::CurvesSurfaceTransforms transforms{curves_ob, &surface_ob};
 
   const MFace *mfaces = (const MFace *)CustomData_get_layer(&surface_me.fdata_legacy, CD_MFACE);
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float3> positions = surface_me.vert_positions();
 
-  for (const int new_hair_i : IndexRange(hair_num)) {
-    const int curve_i = new_hair_i;
+  multi_point_curves.foreach_index([&](const int curve_i, const int new_hair_i) {
     const IndexRange points = points_by_curve[curve_i];
 
     const float3 &root_pos_cu = positions_cu[points.first()];
@@ -382,7 +388,7 @@ static void try_convert_single_object(Object &curves_ob,
       key.time = 100.0f * key_fac;
       key.weight = 1.0f - key_fac;
     }
-  }
+  });
 
   particle_system->particles = particles.data();
   particle_system->totpart = particles.size();
@@ -390,7 +396,7 @@ static void try_convert_single_object(Object &curves_ob,
   particle_system->recalc |= ID_RECALC_PSYS_RESET;
 
   DEG_id_tag_update(&surface_ob.id, ID_RECALC_GEOMETRY);
-  DEG_id_tag_update(&settings.id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&settings.id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static int curves_convert_to_particle_system_exec(bContext *C, wmOperator *op)
@@ -479,7 +485,7 @@ static bke::CurvesGeometry particles_to_curves(Object &object, ParticleSystem &p
   bke::CurvesGeometry curves(points_num, curves_num);
   curves.offsets_for_write().copy_from(curve_offsets);
 
-  const float4x4 object_to_world_mat(object.object_to_world);
+  const float4x4 &object_to_world_mat = object.object_to_world();
   const float4x4 world_to_object_mat = math::invert(object_to_world_mat);
 
   MutableSpan<float3> positions = curves.positions_for_write();
@@ -518,7 +524,7 @@ static int curves_convert_from_particle_system_exec(bContext *C, wmOperator * /*
   Scene &scene = *CTX_data_scene(C);
   ViewLayer &view_layer = *CTX_data_view_layer(C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
-  Object *ob_from_orig = ED_object_active_context(C);
+  Object *ob_from_orig = object::context_active_object(C);
   ParticleSystem *psys_orig = static_cast<ParticleSystem *>(
       CTX_data_pointer_get_type(C, "particle_system", &RNA_ParticleSystem).data);
   if (psys_orig == nullptr) {
@@ -542,7 +548,7 @@ static int curves_convert_from_particle_system_exec(bContext *C, wmOperator * /*
 
   Object *ob_new = BKE_object_add(&bmain, &scene, &view_layer, OB_CURVES, psys_eval->name);
   Curves *curves_id = static_cast<Curves *>(ob_new->data);
-  BKE_object_apply_mat4(ob_new, ob_from_orig->object_to_world, true, false);
+  BKE_object_apply_mat4(ob_new, ob_from_orig->object_to_world().ptr(), true, false);
   curves_id->geometry.wrap() = particles_to_curves(*ob_from_eval, *psys_eval);
 
   DEG_relations_tag_update(&bmain);
@@ -553,7 +559,7 @@ static int curves_convert_from_particle_system_exec(bContext *C, wmOperator * /*
 
 static bool curves_convert_from_particle_system_poll(bContext *C)
 {
-  return ED_object_active_context(C) != nullptr;
+  return blender::ed::object::context_active_object(C) != nullptr;
 }
 
 }  // namespace convert_from_particle_system
@@ -800,26 +806,29 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
      *
      * This would be unnecessary if the active attribute were stored as a string on the ID. */
     std::string active_attribute;
-    if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
+    const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id);
+    if (layer) {
       active_attribute = layer->name;
     }
+    for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+      if (const GVArray src = *attributes.lookup(selection_name, domain)) {
+        const CPPType &type = src.type();
+        void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
+        src.materialize(dst);
 
-    if (const GVArray src = *attributes.lookup(".selection", domain)) {
-      const CPPType &type = src.type();
-      void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-      src.materialize(dst);
-
-      attributes.remove(".selection");
-      if (!attributes.add(".selection",
-                          domain,
-                          bke::cpp_type_to_custom_data_type(type),
-                          bke::AttributeInitMoveArray(dst)))
-      {
-        MEM_freeN(dst);
+        attributes.remove(selection_name);
+        if (!attributes.add(selection_name,
+                            domain,
+                            bke::cpp_type_to_custom_data_type(type),
+                            bke::AttributeInitMoveArray(dst)))
+        {
+          MEM_freeN(dst);
+        }
       }
     }
-
-    BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    if (!active_attribute.empty()) {
+      BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    }
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
      * attribute for now. */
@@ -1180,11 +1189,18 @@ static int surface_set_exec(bContext *C, wmOperator *op)
         &missing_uvs);
 
     /* Add deformation modifier if necessary. */
-    blender::ed::curves::ensure_surface_deformation_node_exists(*C, curves_ob);
+    ensure_surface_deformation_node_exists(*C, curves_ob);
 
     curves_id.surface = &new_surface_ob;
-    ED_object_parent_set(
-        op->reports, C, scene, &curves_ob, &new_surface_ob, PAR_OBJECT, false, true, nullptr);
+    object::parent_set(op->reports,
+                       C,
+                       scene,
+                       &curves_ob,
+                       &new_surface_ob,
+                       object::PAR_OBJECT,
+                       false,
+                       true,
+                       nullptr);
 
     DEG_id_tag_update(&curves_ob.id, ID_RECALC_TRANSFORM);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &curves_id);
@@ -1323,11 +1339,8 @@ static void CURVES_OT_tilt_clear(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-}  // namespace blender::ed::curves
-
-void ED_operatortypes_curves()
+void operatortypes_curves()
 {
-  using namespace blender::ed::curves;
   WM_operatortype_append(CURVES_OT_attribute_set);
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
@@ -1347,7 +1360,7 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_tilt_clear);
 }
 
-void ED_operatormacros_curves()
+void operatormacros_curves()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -1373,10 +1386,11 @@ void ED_operatormacros_curves()
   RNA_boolean_set(otmacro->ptr, "mirror", false);
 }
 
-void ED_keymap_curves(wmKeyConfig *keyconf)
+void keymap_curves(wmKeyConfig *keyconf)
 {
-  using namespace blender::ed::curves;
   /* Only set in editmode curves, by space_view3d listener. */
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = editable_curves_in_edit_mode_poll;
 }
+
+}  // namespace blender::ed::curves

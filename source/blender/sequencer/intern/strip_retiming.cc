@@ -18,30 +18,14 @@
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "BKE_fcurve.h"
-#include "BKE_movieclip.h"
-#include "BKE_scene.hh"
 #include "BKE_sound.h"
 
-#include "DNA_anim_types.h"
-#include "DNA_sound_types.h"
-
-#include "IMB_imbuf.hh"
-
-#include "RNA_prototypes.h"
-
-#include "SEQ_channels.hh"
-#include "SEQ_iterator.hh"
-#include "SEQ_relations.hh"
-#include "SEQ_render.hh"
 #include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
-#include "SEQ_transform.hh"
 
 #include "sequencer.hh"
 #include "strip_time.hh"
-#include "utils.hh"
 
 using blender::MutableSpan;
 
@@ -636,7 +620,7 @@ class RetimingRange {
 
   /* Create new range representing overlap of 2 ranges.
    * Returns overlapping range. */
-  RetimingRange operator*(const RetimingRange rhs_range)
+  RetimingRange operator*(const RetimingRange &rhs_range)
   {
     RetimingRange new_range = RetimingRange(0, 0, 0, LINEAR);
 
@@ -748,7 +732,7 @@ class RetimingRangeData {
     }
   }
 
-  RetimingRangeData &operator*=(const RetimingRangeData rhs)
+  RetimingRangeData &operator*=(const RetimingRangeData &rhs)
   {
     if (ranges.is_empty()) {
       for (const RetimingRange &rhs_range : rhs.ranges) {

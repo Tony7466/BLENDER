@@ -13,7 +13,6 @@
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.hh"
 #include "BKE_unit.hh"
 
 #include "ED_screen.hh"
@@ -118,7 +117,7 @@ static void applyPushPull(TransInfo *t)
 
   t->values_final[0] = distance;
 
-  /* header print for NumInput */
+  /* Header print for NumInput. */
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
 
@@ -127,7 +126,7 @@ static void applyPushPull(TransInfo *t)
     SNPRINTF(str, IFACE_("Push/Pull: %s%s %s"), c, t->con.text, t->proptext);
   }
   else {
-    /* default header print */
+    /* Default header print. */
     SNPRINTF(str, IFACE_("Push/Pull: %.4f%s %s"), distance, t->con.text, t->proptext);
   }
 

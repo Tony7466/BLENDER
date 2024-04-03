@@ -13,10 +13,10 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
+#include "GPU_uniform_buffer.hh"
 
 #include "gpu_shader_create_info.hh"
 
@@ -34,9 +34,8 @@ namespace blender::realtime_compositor {
  * OCIO Color Space Conversion Shader Key.
  */
 
-OCIOColorSpaceConversionShaderKey::OCIOColorSpaceConversionShaderKey(std::string source,
-                                                                     std::string target,
-                                                                     std::string config_cache_id)
+OCIOColorSpaceConversionShaderKey::OCIOColorSpaceConversionShaderKey(
+    const std::string &source, const std::string &target, const std::string &config_cache_id)
     : source(source), target(target), config_cache_id(config_cache_id)
 {
 }

@@ -35,7 +35,7 @@
 #endif
 
 #include "BKE_armature.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_main.hh"
@@ -120,7 +120,7 @@ int RNA_property_override_flag(PropertyRNA *prop)
   return rna_ensure_property(prop)->flag_override;
 }
 
-bool RNA_property_overridable_get(PointerRNA *ptr, PropertyRNA *prop)
+bool RNA_property_overridable_get(const PointerRNA *ptr, PropertyRNA *prop)
 {
   if (prop->magic == RNA_MAGIC) {
     /* Special handling for insertions of constraints or modifiers... */
@@ -658,7 +658,7 @@ bool RNA_struct_override_matches(Main *bmain,
   if (!root_path) {
     _delta_time_diffing = 0.0f;
     _num_delta_time_diffing = 0;
-    _timeit_time_global = BLI_check_seconds_timer();
+    _timeit_time_global = BLI_time_now_seconds();
   }
 #endif
 
@@ -793,7 +793,7 @@ bool RNA_struct_override_matches(Main *bmain,
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
     if (!root_path) {
-      _timeit_time_diffing = BLI_check_seconds_timer();
+      _timeit_time_diffing = BLI_time_now_seconds();
     }
 #endif
 
@@ -810,7 +810,7 @@ bool RNA_struct_override_matches(Main *bmain,
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
     if (!root_path) {
-      const float _delta_time = float(BLI_check_seconds_timer() - _timeit_time_diffing);
+      const float _delta_time = float(BLI_time_now_seconds() - _timeit_time_diffing);
       _delta_time_diffing += _delta_time;
       _num_delta_time_diffing++;
     }
@@ -936,7 +936,7 @@ bool RNA_struct_override_matches(Main *bmain,
 
 #ifdef DEBUG_OVERRIDE_TIMEIT
   if (!root_path) {
-    const float _delta_time = float(BLI_check_seconds_timer() - _timeit_time_global);
+    const float _delta_time = float(BLI_time_now_seconds() - _timeit_time_global);
     _sum_time_global += _delta_time;
     _num_time_global++;
     _sum_time_diffing += _delta_time_diffing;
@@ -1103,9 +1103,7 @@ static void rna_property_override_collection_subitem_name_index_lookup(
   RNA_POINTER_INVALIDATE(r_ptr_item_name);
   RNA_POINTER_INVALIDATE(r_ptr_item_index);
 
-  PointerRNA collection_ptr_type;
-  RNA_property_collection_type_get(ptr, prop, &collection_ptr_type);
-  const bool do_id_pointer = item_id && RNA_struct_is_ID(collection_ptr_type.type);
+  const bool do_id_pointer = item_id && RNA_struct_is_ID(RNA_property_pointer_type(ptr, prop));
 
   const int item_name_len = item_name ? int(strlen(item_name)) : 0;
 

@@ -13,7 +13,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 #define SH_CASTER_ALLOC_CHUNK 32
 
@@ -163,7 +163,7 @@ void EEVEE_shadows_caster_register(EEVEE_ViewLayerData *sldata, Object *ob)
   for (int i = 0; i < 8; i++) {
     float vec[3];
     copy_v3_v3(vec, bb.vec[i]);
-    mul_m4_v3(ob->object_to_world, vec);
+    mul_m4_v3(ob->object_to_world().ptr(), vec);
     minmax_v3v3_v3(min, max, vec);
   }
 
@@ -246,7 +246,7 @@ void EEVEE_shadows_update(EEVEE_ViewLayerData *sldata, EEVEE_Data *vedata)
     sldata->shadow_fb = GPU_framebuffer_create("shadow_fb");
   }
 
-  /* Gather all light own update bits. to avoid costly intersection check. */
+  /* Gather all the light's own update bits. to avoid costly intersection check. */
   for (int j = 0; j < linfo->cube_len; j++) {
     const EEVEE_Light *evli = linfo->light_data + linfo->shadow_cube_light_indices[j];
     /* Setup shadow cube in UBO and tag for update if necessary. */

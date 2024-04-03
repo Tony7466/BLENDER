@@ -22,11 +22,8 @@
 
 #include "BKE_callbacks.hh"
 #include "BKE_context.hh"
-#include "BKE_global.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_layer.hh"
-#include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_tracking.h"
@@ -43,9 +40,9 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -54,9 +51,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.hh"
-
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************* */
 /* 'Globals' and Defines */
@@ -2151,7 +2146,7 @@ static void annotation_draw_apply_event(
     }
   }
 
-  p->curtime = BLI_check_seconds_timer();
+  p->curtime = BLI_time_now_seconds();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;

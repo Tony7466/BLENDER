@@ -16,7 +16,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "UI_resources.hh"
 
@@ -45,7 +45,7 @@ void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata)
 
 /* Just convert the CPU cache to GPU cache. */
 /* T0D0(fclem) This should go into a draw_cache_impl_motionpath. */
-static GPUVertBuf *mpath_vbo_get(bMotionPath *mpath)
+static blender::gpu::VertBuf *mpath_vbo_get(bMotionPath *mpath)
 {
   if (!mpath->points_vbo) {
     GPUVertFormat format = {0};
@@ -62,7 +62,7 @@ static GPUVertBuf *mpath_vbo_get(bMotionPath *mpath)
   return mpath->points_vbo;
 }
 
-static GPUBatch *mpath_batch_line_get(bMotionPath *mpath)
+static blender::gpu::Batch *mpath_batch_line_get(bMotionPath *mpath)
 {
   if (!mpath->batch_line) {
     mpath->batch_line = GPU_batch_create(GPU_PRIM_LINE_STRIP, mpath_vbo_get(mpath), nullptr);
@@ -70,7 +70,7 @@ static GPUBatch *mpath_batch_line_get(bMotionPath *mpath)
   return mpath->batch_line;
 }
 
-static GPUBatch *mpath_batch_points_get(bMotionPath *mpath)
+static blender::gpu::Batch *mpath_batch_points_get(bMotionPath *mpath)
 {
   if (!mpath->batch_points) {
     mpath->batch_points = GPU_batch_create(GPU_PRIM_POINTS, mpath_vbo_get(mpath), nullptr);
@@ -93,7 +93,7 @@ static void motion_path_get_frame_range_to_draw(bAnimVizSettings *avs,
   }
   else {
     start = avs->path_sf;
-    end = avs->path_ef;
+    end = avs->path_ef + 1;
   }
 
   if (start > end) {
@@ -144,13 +144,21 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   if (len == 0) {
     return;
   }
+
+  /* Avoid 0 size allocations. Current code to calculate motion paths should
+   * sanitize this already [see animviz_verify_motionpaths()], we might however
+   * encounter an older file where this was still possible. */
+  if (mpath->length == 0) {
+    return;
+  }
+
   int start_index = sfra - mpath->start_frame;
 
   float camera_matrix[4][4];
   Object *motion_path_camera = get_camera_for_motion_path(
       draw_ctx, eMotionPath_BakeFlag(avs->path_bakeflag));
   if (motion_path_camera) {
-    copy_m4_m4(camera_matrix, motion_path_camera->object_to_world);
+    copy_m4_m4(camera_matrix, motion_path_camera->object_to_world().ptr());
   }
   else {
     unit_m4(camera_matrix);
@@ -205,9 +213,8 @@ static void motion_path_cache(OVERLAY_Data *vedata,
       float3 vert_coordinate;
       copy_v3_v3(vert_coordinate, mpv->co);
       if (cam_eval) {
-        /* Projecting the point into world space from the cameras pov. */
-        vert_coordinate = math::transform_point(float4x4(cam_eval->object_to_world),
-                                                vert_coordinate);
+        /* Projecting the point into world space from the camera's POV. */
+        vert_coordinate = math::transform_point(cam_eval->object_to_world(), vert_coordinate);
       }
 
       if ((show_keyframes && show_keyframes_no && is_keyframe) || (show_frame_no && (i == 0))) {

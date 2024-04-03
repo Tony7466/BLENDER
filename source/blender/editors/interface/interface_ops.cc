@@ -17,7 +17,6 @@
 #include "DNA_modifier_types.h" /* for handling geometry nodes properties */
 #include "DNA_object_types.h"   /* for OB_DATA_SUPPORT_ID */
 #include "DNA_screen_types.h"
-#include "DNA_text_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
@@ -27,8 +26,6 @@
 #include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_global.hh"
-#include "BKE_idprop.h"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -38,7 +35,6 @@
 #include "BKE_node.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include "BKE_text.h"
 
 #include "IMB_colormanagement.hh"
 
@@ -46,11 +42,10 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.hh"
 
+#include "UI_abstract_view.hh"
 #include "UI_interface.hh"
 
 #include "interface_intern.hh"
@@ -66,10 +61,8 @@
 #include "ED_keyframing.hh"
 
 /* only for UI_OT_editsource */
-#include "BKE_main.hh"
 #include "BLI_ghash.h"
 #include "ED_screen.hh"
-#include "ED_text.hh"
 
 using namespace blender::ui;
 
@@ -825,7 +818,7 @@ static int override_idtemplate_make_exec(bContext *C, wmOperator * /*op*/)
 
   /* 'Security' extra tagging, since this process may also affect the owner ID and not only the
    * used ID, relying on the property update code only is not always enough. */
-  DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS | ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
   WM_event_add_notifier(C, NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
@@ -952,7 +945,7 @@ static int override_idtemplate_clear_exec(bContext *C, wmOperator * /*op*/)
 
   /* 'Security' extra tagging, since this process may also affect the owner ID and not only the
    * used ID, relying on the property update code only is not always enough. */
-  DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS | ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
   WM_event_add_notifier(C, NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
@@ -1022,52 +1015,46 @@ static void override_idtemplate_menu()
 #define NOT_NULL(assignment) ((assignment) != nullptr)
 #define NOT_RNA_NULL(assignment) ((assignment).data != nullptr)
 
-static void ui_context_selected_bones_via_pose(bContext *C, ListBase *r_lb)
+static void ui_context_selected_bones_via_pose(bContext *C, blender::Vector<PointerRNA> *r_lb)
 {
-  ListBase lb;
-  lb = CTX_data_collection_get(C, "selected_pose_bones");
+  blender::Vector<PointerRNA> lb = CTX_data_collection_get(C, "selected_pose_bones");
 
-  if (!BLI_listbase_is_empty(&lb)) {
-    LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
-      bPoseChannel *pchan = static_cast<bPoseChannel *>(link->ptr.data);
-      link->ptr = RNA_pointer_create(link->ptr.owner_id, &RNA_Bone, pchan->bone);
+  if (!lb.is_empty()) {
+    for (PointerRNA &ptr : lb) {
+      bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr.data);
+      ptr = RNA_pointer_create(ptr.owner_id, &RNA_Bone, pchan->bone);
     }
   }
 
-  *r_lb = lb;
+  *r_lb = std::move(lb);
 }
 
-static void ui_context_fcurve_modifiers_via_fcurve(bContext *C, ListBase *r_lb, FModifier *source)
+static void ui_context_fcurve_modifiers_via_fcurve(bContext *C,
+                                                   blender::Vector<PointerRNA> *r_lb,
+                                                   FModifier *source)
 {
-  ListBase /* CollectionPointerLink */ fcurve_links;
+  blender::Vector<PointerRNA> fcurve_links;
   fcurve_links = CTX_data_collection_get(C, "selected_editable_fcurves");
-  if (BLI_listbase_is_empty(&fcurve_links)) {
+  if (fcurve_links.is_empty()) {
     return;
   }
-  LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, &fcurve_links) {
-    FCurve *fcu = static_cast<FCurve *>(link->ptr.data);
-    bool found_modifier = false;
+  r_lb->clear();
+  for (const PointerRNA &ptr : fcurve_links) {
+    FCurve *fcu = static_cast<FCurve *>(ptr.data);
     LISTBASE_FOREACH (FModifier *, mod, &fcu->modifiers) {
       if (STREQ(mod->name, source->name) && mod->type == source->type) {
-        link->ptr = RNA_pointer_create(link->ptr.owner_id, &RNA_FModifier, mod);
-        found_modifier = true;
+        r_lb->append(RNA_pointer_create(ptr.owner_id, &RNA_FModifier, mod));
         /* Since names are unique it is safe to break here. */
         break;
       }
     }
-    if (!found_modifier) {
-      /* FCurves that don't have a modifier named the same must be removed to avoid segfaults. */
-      BLI_freelinkN(&fcurve_links, link);
-    }
   }
-
-  *r_lb = fcurve_links;
 }
 
 bool UI_context_copy_to_selected_list(bContext *C,
                                       PointerRNA *ptr,
                                       PropertyRNA *prop,
-                                      ListBase *r_lb,
+                                      blender::Vector<PointerRNA> *r_lb,
                                       bool *r_use_path_from_id,
                                       std::optional<std::string> *r_path)
 {
@@ -1140,7 +1127,8 @@ bool UI_context_copy_to_selected_list(bContext *C,
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_BoneColor)) {
     /* Get the things that own the bone color (bones, pose bones, or edit bones). */
-    ListBase list_of_things = {}; /* First this will be bones, then gets remapped to colors. */
+    /* First this will be bones, then gets remapped to colors. */
+    blender::Vector<PointerRNA> list_of_things = {};
     switch (GS(ptr->owner_id->name)) {
       case ID_OB:
         list_of_things = CTX_data_collection_get(C, "selected_pose_bones");
@@ -1164,7 +1152,9 @@ bool UI_context_copy_to_selected_list(bContext *C,
         printf("BoneColor is unexpectedly owned by %s '%s'\n",
                BKE_idtype_idcode_to_name(GS(ptr->owner_id->name)),
                ptr->owner_id->name + 2);
-        BLI_assert(!"expected BoneColor to be owned by the Armature (bone & edit bone) or the Object (pose bone)");
+        BLI_assert_msg(false,
+                       "expected BoneColor to be owned by the Armature "
+                       "(bone & edit bone) or the Object (pose bone)");
         return false;
     }
 
@@ -1219,7 +1209,7 @@ bool UI_context_copy_to_selected_list(bContext *C,
     *r_path = path_from_bone;
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_Node) || RNA_struct_is_a(ptr->type, &RNA_NodeSocket)) {
-    ListBase lb = {nullptr, nullptr};
+    blender::Vector<PointerRNA> lb;
     std::optional<std::string> path;
     bNode *node = nullptr;
 
@@ -1244,15 +1234,13 @@ bool UI_context_copy_to_selected_list(bContext *C,
     /* Now filter by type */
     if (node) {
       lb = CTX_data_collection_get(C, "selected_nodes");
-
-      LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, &lb) {
-        bNode *node_data = static_cast<bNode *>(link->ptr.data);
-
+      lb.remove_if([&](const PointerRNA &link) {
+        bNode *node_data = static_cast<bNode *>(link.data);
         if (node_data->type != node->type) {
-          BLI_remlink(&lb, link);
-          MEM_freeN(link);
+          return true;
         }
-      }
+        return false;
+      });
     }
 
     *r_lb = lb;
@@ -1269,38 +1257,36 @@ bool UI_context_copy_to_selected_list(bContext *C,
     else if (OB_DATA_SUPPORT_ID(GS(id->name))) {
       /* check we're using the active object */
       const short id_code = GS(id->name);
-      ListBase lb = CTX_data_collection_get(C, "selected_editable_objects");
+      blender::Vector<PointerRNA> lb = CTX_data_collection_get(C, "selected_editable_objects");
       const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
 
       /* de-duplicate obdata */
-      if (!BLI_listbase_is_empty(&lb)) {
-        LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
-          Object *ob = (Object *)link->ptr.owner_id;
-          if (ob->data) {
-            ID *id_data = static_cast<ID *>(ob->data);
+      if (!lb.is_empty()) {
+        for (const PointerRNA &ob_ptr : lb) {
+          Object *ob = (Object *)ob_ptr.owner_id;
+          if (ID *id_data = static_cast<ID *>(ob->data)) {
             id_data->tag |= LIB_TAG_DOIT;
           }
         }
 
-        LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, &lb) {
-          Object *ob = (Object *)link->ptr.owner_id;
+        blender::Vector<PointerRNA> new_lb;
+        for (const PointerRNA &link : lb) {
+          Object *ob = (Object *)link.owner_id;
           ID *id_data = static_cast<ID *>(ob->data);
-
           if ((id_data == nullptr) || (id_data->tag & LIB_TAG_DOIT) == 0 ||
               ID_IS_LINKED(id_data) || (GS(id_data->name) != id_code))
           {
-            BLI_remlink(&lb, link);
-            MEM_freeN(link);
+            continue;
           }
-          else {
-            /* Avoid prepending 'data' to the path. */
-            link->ptr = RNA_id_pointer_create(id_data);
-          }
+          /* Avoid prepending 'data' to the path. */
+          new_lb.append(RNA_id_pointer_create(id_data));
 
           if (id_data) {
             id_data->tag &= ~LIB_TAG_DOIT;
           }
         }
+
+        lb = std::move(new_lb);
       }
 
       *r_lb = lb;
@@ -1346,48 +1332,42 @@ bool UI_context_copy_to_selected_list(bContext *C,
   if (ensure_list_items_contain_prop) {
     if (is_rna) {
       const char *prop_id = RNA_property_identifier(prop);
-      LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
-        if ((ptr->type != link->ptr.type) &&
-            (RNA_struct_type_find_property(link->ptr.type, prop_id) != prop))
+      r_lb->remove_if([&](const PointerRNA &link) {
+        if ((ptr->type != link.type) &&
+            (RNA_struct_type_find_property(link.type, prop_id) != prop))
         {
-          BLI_remlink(r_lb, link);
-          MEM_freeN(link);
+          return true;
         }
-      }
+        return false;
+      });
     }
     else {
       const bool prop_is_array = RNA_property_array_check(prop);
       const int prop_array_len = prop_is_array ? RNA_property_array_length(ptr, prop) : -1;
       const PropertyType prop_type = RNA_property_type(prop);
-      LISTBASE_FOREACH_MUTABLE (CollectionPointerLink *, link, r_lb) {
+      r_lb->remove_if([&](PointerRNA &link) {
         PointerRNA lptr;
         PropertyRNA *lprop = nullptr;
         RNA_path_resolve_property(
-            &link->ptr, r_path->has_value() ? r_path->value().c_str() : nullptr, &lptr, &lprop);
+            &link, r_path->has_value() ? r_path->value().c_str() : nullptr, &lptr, &lprop);
 
-        bool remove = false;
         if (lprop == nullptr) {
-          remove = true;
+          return true;
         }
-        else if (!RNA_property_is_idprop(lprop)) {
-          remove = true;
+        if (!RNA_property_is_idprop(lprop)) {
+          return true;
         }
-        else if (prop_type != RNA_property_type(lprop)) {
-          remove = true;
+        if (prop_type != RNA_property_type(lprop)) {
+          return true;
         }
-        else if (prop_is_array != RNA_property_array_check(lprop)) {
-          remove = true;
+        if (prop_is_array != RNA_property_array_check(lprop)) {
+          return true;
         }
-        else if (prop_is_array && (prop_array_len != RNA_property_array_length(&link->ptr, lprop)))
-        {
-          remove = true;
+        if (prop_is_array && (prop_array_len != RNA_property_array_length(&link, lprop))) {
+          return true;
         }
-
-        if (remove) {
-          BLI_remlink(r_lb, link);
-          MEM_freeN(link);
-        }
-      }
+        return false;
+      });
     }
   }
 
@@ -1511,16 +1491,16 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
   bool success = false;
   std::optional<std::string> path;
   bool use_path_from_id;
-  ListBase lb = {nullptr};
+  blender::Vector<PointerRNA> lb;
 
   if (UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
-    LISTBASE_FOREACH (CollectionPointerLink *, link, &lb) {
-      if (link->ptr.data == ptr.data) {
+    for (PointerRNA &link : lb) {
+      if (link.data == ptr.data) {
         continue;
       }
 
       if (!UI_context_copy_to_selected_check(&ptr,
-                                             &link->ptr,
+                                             &link,
                                              prop,
                                              path.has_value() ? path->c_str() : nullptr,
                                              use_path_from_id,
@@ -1540,8 +1520,6 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
       }
     }
   }
-
-  BLI_freelistN(&lb);
 
   return success;
 }
@@ -1623,7 +1601,7 @@ static bool jump_to_target_ptr(bContext *C, PointerRNA ptr, const bool poll)
     base = BKE_view_layer_base_find(view_layer, (Object *)ptr.owner_id);
   }
   else if (OB_DATA_SUPPORT_ID(id_type)) {
-    base = ED_object_find_first_by_data_id(scene, view_layer, ptr.owner_id);
+    base = blender::ed::object::find_first_by_data_id(scene, view_layer, ptr.owner_id);
   }
 
   bool ok = false;
@@ -1638,10 +1616,10 @@ static bool jump_to_target_ptr(bContext *C, PointerRNA ptr, const bool poll)
     const bool reveal_hidden = true;
     /* Select and activate the target. */
     if (target_type == &RNA_Bone) {
-      ok = ED_object_jump_to_bone(C, base->object, bone_name, reveal_hidden);
+      ok = blender::ed::object::jump_to_bone(C, base->object, bone_name, reveal_hidden);
     }
     else if (target_type == &RNA_Object) {
-      ok = ED_object_jump_to_object(C, base->object, reveal_hidden);
+      ok = blender::ed::object::jump_to_object(C, base->object, reveal_hidden);
     }
     else {
       BLI_assert(0);
@@ -2413,16 +2391,16 @@ static bool ui_view_focused_poll(bContext *C)
   if (!region) {
     return false;
   }
-  const uiViewHandle *view = UI_region_view_find_at(region, win->eventstate->xy, 0);
+  const blender::ui::AbstractView *view = UI_region_view_find_at(region, win->eventstate->xy, 0);
   return view != nullptr;
 }
 
 static int ui_view_start_filter_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   const ARegion *region = CTX_wm_region(C);
-  const uiViewHandle *hovered_view = UI_region_view_find_at(region, event->xy, 0);
+  const blender::ui::AbstractView *hovered_view = UI_region_view_find_at(region, event->xy, 0);
 
-  if (!UI_view_begin_filtering(C, hovered_view)) {
+  if (!hovered_view->begin_filtering(*C)) {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
@@ -2509,16 +2487,16 @@ static bool ui_view_item_rename_poll(bContext *C)
   if (region == nullptr) {
     return false;
   }
-  const uiViewItemHandle *active_item = UI_region_views_find_active_item(region);
-  return active_item != nullptr && UI_view_item_can_rename(active_item);
+  const blender::ui::AbstractViewItem *active_item = UI_region_views_find_active_item(region);
+  return active_item != nullptr && UI_view_item_can_rename(*active_item);
 }
 
 static int ui_view_item_rename_exec(bContext *C, wmOperator * /*op*/)
 {
   ARegion *region = CTX_wm_region(C);
-  uiViewItemHandle *active_item = UI_region_views_find_active_item(region);
+  blender::ui::AbstractViewItem *active_item = UI_region_views_find_active_item(region);
 
-  UI_view_item_begin_rename(active_item);
+  UI_view_item_begin_rename(*active_item);
   ED_region_tag_redraw(region);
 
   return OPERATOR_FINISHED;

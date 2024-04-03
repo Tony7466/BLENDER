@@ -13,9 +13,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_ghash.h"
 #include "BLI_hash_md5.hh"
-#include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
@@ -25,7 +23,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.hh"
-#include "BKE_camera.h"
 #include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -39,9 +36,7 @@
 #include "IMB_imbuf_types.hh"
 #include "IMB_openexr.hh"
 
-#include "GPU_texture.h"
-
-#include "RE_engine.h"
+#include "GPU_texture.hh"
 
 #include "render_result.h"
 #include "render_types.h"
@@ -268,7 +263,7 @@ RenderPass *render_layer_add_pass(RenderResult *rr,
 }
 
 RenderResult *render_result_new(Render *re,
-                                rcti *partrct,
+                                const rcti *partrct,
                                 const char *layername,
                                 const char *viewname)
 {
@@ -987,13 +982,15 @@ bool render_result_exr_file_read_path(RenderResult *rr,
   return true;
 }
 
-#define FILE_CACHE_MAX (FILE_MAXFILE + FILE_MAXFILE + MAX_ID_NAME + 100)
+#define FILE_CACHE_MAX (FILE_MAXDIR + FILE_MAXFILE + MAX_ID_NAME + 100)
 
 static void render_result_exr_file_cache_path(Scene *sce,
                                               const char *root,
                                               char r_path[FILE_CACHE_MAX])
 {
-  char filename_full[FILE_MAX + MAX_ID_NAME + 100], filename[FILE_MAXFILE], dirname[FILE_MAXDIR];
+  char filename_full[FILE_MAXFILE + MAX_ID_NAME + 100];
+  char filename[FILE_MAXFILE];
+  char dirname[FILE_MAXDIR];
   char path_digest[16] = {0};
   char path_hexdigest[33];
 
@@ -1011,23 +1008,26 @@ static void render_result_exr_file_cache_path(Scene *sce,
   BLI_hash_md5_to_hexdigest(path_digest, path_hexdigest);
 
   /* Default to *non-volatile* temp dir. */
+  char root_buf[FILE_MAX];
   if (*root == '\0') {
     root = BKE_tempdir_base();
+  }
+  else if (BLI_path_is_rel(root)) {
+    STRNCPY(root_buf, root);
+    BLI_path_abs(root_buf, dirname);
+    root = root_buf;
   }
 
   SNPRINTF(filename_full, "cached_RR_%s_%s_%s.exr", filename, sce->id.name + 2, path_hexdigest);
 
   BLI_path_join(r_path, FILE_CACHE_MAX, root, filename_full);
-  if (BLI_path_is_rel(r_path)) {
-    BLI_path_abs(r_path, dirname);
-  }
 }
 
 void render_result_exr_file_cache_write(Render *re)
 {
   RenderResult *rr = re->result;
   char str[FILE_CACHE_MAX];
-  char *root = U.render_cachedir;
+  const char *root = U.render_cachedir;
 
   render_result_passes_allocated_ensure(rr);
 
@@ -1041,7 +1041,7 @@ bool render_result_exr_file_cache_read(Render *re)
 {
   /* File path to cache. */
   char filepath[FILE_CACHE_MAX] = "";
-  char *root = U.render_cachedir;
+  const char *root = U.render_cachedir;
   render_result_exr_file_cache_path(re->scene, root, filepath);
 
   printf("read exr cache file: %s\n", filepath);

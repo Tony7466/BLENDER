@@ -25,10 +25,10 @@
 #include "DNA_lightprobe_types.h"
 
 #include "eevee_lightcache.h"
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1380,7 +1380,7 @@ void EEVEE_lightbake_update(void *custom_data)
 
   EEVEE_lightcache_info_update(&lbake->scene->eevee);
 
-  DEG_id_tag_update(&scene_orig->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene_orig->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static bool lightbake_do_sample(EEVEE_LightBake *lbake,
@@ -1453,7 +1453,7 @@ void EEVEE_lightbake_job(void *custom_data, wmJobWorkerStatus *worker_status)
    * because this step is locking at this moment. */
   /* TODO: remove this. */
   if (lbake->delay) {
-    BLI_sleep_ms(lbake->delay);
+    BLI_time_sleep_ms(lbake->delay);
   }
 
   /* Render world irradiance and reflection first */

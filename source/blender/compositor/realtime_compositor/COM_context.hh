@@ -11,8 +11,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_domain.hh"
 #include "COM_render_context.hh"
@@ -111,6 +111,10 @@ class Context {
    * the current render. It might be null if the compositor is not being evaluated as part of a
    * render pipeline. */
   virtual RenderContext *render_context() const;
+
+  /* Returns true if the compositor evaluation is canceled and that the evaluator should stop
+   * executing as soon as possible. */
+  virtual bool is_canceled() const;
 
   /* Get the size of the compositing region. See get_compositing_region(). The output size is
    * sanitized such that it is at least 1 in both dimensions. However, the developer is expected to

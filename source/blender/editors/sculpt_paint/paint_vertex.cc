@@ -47,6 +47,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.hh"
 
@@ -60,6 +61,8 @@
 #include "ED_image.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_object_vgroup.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
@@ -180,8 +183,8 @@ bool test_brush_angle_falloff(const Brush &brush,
 
 bool use_normal(const VPaint *vp)
 {
-  return ((vp->paint.brush->flag & BRUSH_FRONTFACE) != 0) ||
-         ((vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
+  return ((brush->flag & BRUSH_FRONTFACE) != 0) || ((brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 }
 
 bool brush_use_accumulate_ex(const Brush *brush, const int ob_mode)
@@ -193,7 +196,8 @@ bool brush_use_accumulate_ex(const Brush *brush, const int ob_mode)
 
 bool brush_use_accumulate(const VPaint *vp)
 {
-  return brush_use_accumulate_ex(vp->paint.brush, vp->paint.runtime.ob_mode);
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
+  return brush_use_accumulate_ex(brush, vp->paint.runtime.ob_mode);
 }
 
 void init_stroke(Depsgraph *depsgraph, Object *ob)
@@ -332,7 +336,7 @@ void mode_enter_generic(
 
     /* weight paint specific */
     ED_mesh_mirror_spatial_table_end(ob);
-    ED_vgroup_sync_from_pose(ob);
+    blender::ed::object::vgroup_sync_from_pose(ob);
   }
   else {
     BLI_assert(0);
@@ -350,7 +354,7 @@ void mode_enter_generic(
   vwpaint::init_session(depsgraph, scene, ob, mode_flag);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
@@ -398,7 +402,7 @@ void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
   BKE_object_free_derived_caches(ob);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 bool mode_toggle_poll_test(bContext *C)
@@ -477,7 +481,7 @@ void update_cache_invariants(
   }
 
   copy_v2_v2(cache->mouse, cache->initial_mouse);
-  const Brush *brush = vp->paint.brush;
+  const Brush *brush = BKE_paint_brush(&vp->paint);
   /* Truly temporary data that isn't stored in properties */
   cache->vc = vc;
   cache->brush = brush;
@@ -486,10 +490,10 @@ void update_cache_invariants(
   /* cache projection matrix */
   cache->projection_mat = ED_view3d_ob_project_mat_get(cache->vc->rv3d, ob);
 
-  invert_m4_m4(ob->world_to_object, ob->object_to_world);
+  invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
   copy_m3_m4(mat, cache->vc->rv3d->viewinv);
   mul_m3_v3(mat, view_dir);
-  copy_m3_m4(mat, ob->world_to_object);
+  copy_m3_m4(mat, ob->world_to_object().ptr());
   mul_m3_v3(mat, view_dir);
   normalize_v3_v3(cache->true_view_normal, view_dir);
 
@@ -609,7 +613,7 @@ bool vertex_paint_mode_poll(bContext *C)
     return false;
   }
 
-  if (!mesh->attributes().contains(mesh->active_color_attribute)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -666,7 +670,7 @@ static Color vpaint_blend(const VPaint *vp,
 {
   using Value = typename Traits::ValueType;
 
-  const Brush *brush = vp->paint.brush;
+  const Brush *brush = BKE_paint_brush_for_read(&vp->paint);
   const IMB_BlendMode blend = (IMB_BlendMode)brush->blend;
 
   const Color color_blend = BLI_mix_colors<Color, Traits>(blend, color_curr, color_paint, alpha);
@@ -818,7 +822,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
+    if (!blender::ed::object::mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -943,9 +947,10 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
   vpd->domain = domain;
 
   vpd->vc = ED_view3d_viewcontext_init(C, depsgraph);
+
   vwpaint::view_angle_limits_init(&vpd->normal_angle_precalc,
-                                  vp->paint.brush->falloff_angle,
-                                  (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+                                  brush->falloff_angle,
+                                  (brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
   vpd->paintcol = vpaint_get_current_col(
       scene, vp, (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT));
@@ -991,8 +996,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 
   const std::optional<bke::AttributeMetaData> meta_data = *mesh->attributes().lookup_meta_data(
       mesh->active_color_attribute);
-
-  if (!meta_data) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -1921,7 +1925,7 @@ static void vpaint_stroke_update_step(bContext *C,
   ED_view3d_init_mats_rv3d(ob, vc->rv3d);
 
   /* load projection matrix */
-  mul_m4_m4m4(mat, vc->rv3d->persmat, ob->object_to_world);
+  mul_m4_m4m4(mat, vc->rv3d->persmat, ob->object_to_world().ptr());
 
   swap_m4m4(vc->rv3d->persmat, mat);
 
@@ -1931,14 +1935,15 @@ static void vpaint_stroke_update_step(bContext *C,
 
   BKE_mesh_batch_cache_dirty_tag((Mesh *)ob->data, BKE_MESH_BATCH_DIRTY_ALL);
 
-  if (vp->paint.brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
+  Brush *brush = BKE_paint_brush(&vp->paint);
+  if (brush->vertexpaint_tool == VPAINT_TOOL_SMEAR) {
     vpd->smear.color_prev = vpd->smear.color_curr;
   }
 
   /* Calculate pivot for rotation around selection if needed.
    * also needed for "Frame Selected" on last stroke. */
   float loc_world[3];
-  mul_v3_m4v3(loc_world, ob->object_to_world, ss->cache->true_location);
+  mul_v3_m4v3(loc_world, ob->object_to_world().ptr(), ss->cache->true_location);
   vwpaint::last_stroke_update(scene, loc_world);
 
   ED_region_tag_redraw(vc->region);
@@ -2137,8 +2142,8 @@ static void fill_mesh_color(Mesh &mesh,
                             const bool use_face_sel,
                             const bool affect_alpha)
 {
-  if (mesh.edit_mesh) {
-    BMesh *bm = mesh.edit_mesh->bm;
+  if (BMEditMesh *em = mesh.runtime->edit_mesh) {
+    BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
     const AttrDomain domain = BKE_id_attribute_domain(&mesh.id, layer);
@@ -2196,7 +2201,7 @@ static bool paint_object_attributes_active_color_fill_ex(Object *ob,
   fill_mesh_color(
       *mesh, fill_color, mesh->active_color_attribute, use_vert_sel, use_face_sel, affect_alpha);
 
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_SYNC_TO_EVAL);
 
   /* NOTE: Original mesh is used for display, so tag it directly here. */
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);

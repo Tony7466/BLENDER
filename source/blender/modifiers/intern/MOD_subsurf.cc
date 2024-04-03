@@ -26,14 +26,13 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_scene.hh"
-#include "BKE_screen.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_deform.hh"
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
-#include "BKE_subsurf.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -48,8 +47,6 @@
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
-
-#include "BLO_read_write.hh"
 
 #include "intern/CCGSubSurf.h"
 
@@ -243,7 +240,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     /* Same check as in `DRW_mesh_batch_cache_create_requested` to keep both code coherent. The
      * difference is that here we do not check for the final edit mesh pointer as it is not yet
      * assigned at this stage of modifier stack evaluation. */
-    const bool is_editmode = (mesh->edit_mesh != nullptr);
+    const bool is_editmode = (mesh->runtime->edit_mesh != nullptr);
     const int required_mode = BKE_subsurf_modifier_eval_required_mode(is_render_mode, is_editmode);
     if (BKE_subsurf_modifier_can_do_gpu_subdiv(scene, ctx->object, mesh, smd, required_mode)) {
       subdiv_cache_mesh_wrapper_settings(ctx, mesh, smd, runtime_data);
