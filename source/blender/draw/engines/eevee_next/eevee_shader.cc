@@ -518,7 +518,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           info.sampler(sampler_slot--, ImageType::FLOAT_3D, input.name, Frequency::BATCH);
         }
         info.vertex_inputs_.clear();
-        /* Volume materials require these for loading the grid attributes. */
+        /* Volume materials require these for loading the grid attributes from smoke sims. */
         info.additional_info("draw_volume_infos");
         if (ob_info_index == -1) {
           info.additional_info("draw_object_infos_new");
