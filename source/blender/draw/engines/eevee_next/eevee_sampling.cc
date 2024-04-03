@@ -157,7 +157,15 @@ void Sampling::step()
     data_.dimensions[SAMPLING_RAYTRACE_U] = r[0];
     data_.dimensions[SAMPLING_RAYTRACE_V] = r[1];
     data_.dimensions[SAMPLING_RAYTRACE_W] = r[2];
-    /* TODO de-correlate. */
+  }
+  {
+    uint64_t sample_volume = sample_;
+    if (interactive_mode()) {
+      sample_volume = sample_volume % interactive_sample_volume_;
+    }
+    double3 r, offset = {0, 0, 0};
+    uint3 primes = {2, 3, 5};
+    BLI_halton_3d(primes, offset, sample_volume, r);
     data_.dimensions[SAMPLING_VOLUME_U] = r[0];
     data_.dimensions[SAMPLING_VOLUME_V] = r[1];
     data_.dimensions[SAMPLING_VOLUME_W] = r[2];
