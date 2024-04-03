@@ -155,11 +155,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        blender::bke::CurvesGeometry &curves,
                                        const blender::float4x4 &matrix,
                                        std::optional<blender::MutableSpan<float>> value_attribute,
-                                       const blender::IndexMask &selected_indices,
+                                       const blender::Span<blender::IndexMask> selected_indices,
                                        bool use_proportional_edit,
                                        const blender::IndexMask &affected_curves,
                                        bool use_connected_only,
-                                       int trans_data_offset);
+                                       int trans_data_offset,
+                                       const blender::IndexMask &bezier_curves);
 
 /* `transform_convert_action.cc` */
 

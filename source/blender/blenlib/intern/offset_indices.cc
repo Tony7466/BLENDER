@@ -64,6 +64,20 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
       });
 }
 
+OffsetIndices<int> expand_selected_offsets(const OffsetIndices<int> src_offsets,
+                                           const IndexMask &selection,
+                                           const int multiplier,
+                                           MutableSpan<int> dst_offsets)
+{
+  int offset = 0;
+  for (const int i : src_offsets.index_range()) {
+    dst_offsets[i] = offset;
+    offset += src_offsets[i].size() * (selection.contains(i) ? multiplier : 1);
+  }
+  dst_offsets.last() = offset;
+  return OffsetIndices<int>(dst_offsets);
+}
+
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
                                            const int start_offset,

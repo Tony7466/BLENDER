@@ -110,22 +110,24 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
                                           curves,
                                           layer_space_to_world_space,
                                           value_attribute,
-                                          points,
+                                          Span(&points, 1),
                                           true,
                                           affected_strokes,
                                           use_connected_only,
-                                          layer_points_offset);
+                                          layer_points_offset,
+                                          IndexMask());
       }
       else {
         curve_populate_trans_data_structs(tc,
                                           curves,
                                           layer_space_to_world_space,
                                           value_attribute,
-                                          points,
+                                          Span(&points, 1),
                                           false,
                                           {},
                                           use_connected_only,
-                                          layer_points_offset);
+                                          layer_points_offset,
+                                          IndexMask());
       }
 
       layer_points_offset += points.size();
