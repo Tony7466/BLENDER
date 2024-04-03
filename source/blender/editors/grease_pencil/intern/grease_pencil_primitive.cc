@@ -716,7 +716,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
                                                float4(0.0f);
   srgb_to_linearrgb_v4(ptd.vertex_color, ptd.vertex_color);
 
-  /* TODO: Add UI. */
+  /* TODO: Add UI for hardness. */
   ptd.hardness = 1.0f;
 
   BLI_assert(grease_pencil->has_active_layer());
