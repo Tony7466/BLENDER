@@ -215,8 +215,8 @@ void VolumeModule::end_sync()
   scatter_ps_.bind_texture("extinction_tx", &prop_extinction_tx_);
   scatter_ps_.bind_image("in_emission_img", &prop_emission_tx_);
   scatter_ps_.bind_image("in_phase_img", &prop_phase_tx_);
-  scatter_ps_.bind_texture("scattering_history_tx", &scatter_tx_.current(), history_sampler);
-  scatter_ps_.bind_texture("extinction_history_tx", &extinction_tx_.current(), history_sampler);
+  scatter_ps_.bind_texture("scattering_history_tx", &scatter_tx_.previous(), history_sampler);
+  scatter_ps_.bind_texture("extinction_history_tx", &extinction_tx_.previous(), history_sampler);
   scatter_ps_.bind_image("out_scattering_img", &scatter_tx_.current());
   scatter_ps_.bind_image("out_extinction_img", &extinction_tx_.current());
   scatter_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
@@ -288,6 +288,8 @@ void VolumeModule::draw_compute(View &view)
   if (!enabled_) {
     return;
   }
+  scatter_tx_.swap();
+  extinction_tx_.swap();
 
   inst_.manager->submit(scatter_ps_, view);
   inst_.manager->submit(integration_ps_, view);
