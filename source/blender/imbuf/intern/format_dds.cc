@@ -212,7 +212,7 @@ static void FlipDXTCImage(ImBuf *ibuf)
   }
   /* Height must be a power-of-two: not because something within DXT/S3TC
    * needs it. Only because we want to flip the image upside down, by
-   * swapping and flipping block rows, and that in general case (w/ mipmaps)
+   * swapping and flipping block rows, and that in general case (with mipmaps)
    * is only possible for POT height. */
   if (!is_power_of_2_i(height)) {
     return;
