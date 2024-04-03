@@ -1,3 +1,4 @@
 Referenced by issue #119239, Regression: Crash when using extrude mesh geometry node
 Referenced by issue #119259, EEVEE-NEXT : AREA LIGHT : SHADOW BROKEN WHEN USING AREA LIGHT
 Referenced by issue #119250, Regression: Python: World matrix for newly created objects is not identity
+Referenced by issue #120231, Crash on `bpy.ops.uv.pack_islands` for bad geometry with `shape_method='CONVEX'`
