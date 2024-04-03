@@ -9,7 +9,6 @@
  * scattered back to the viewer and the amount of transmittance. */
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
 
 void main()
@@ -26,8 +25,6 @@ void main()
   vec3 transmittance = vec3(1.0);
 
   /* Compute view ray. */
-  /* Note that we don't jitter the ray here. This is for simplicity.
-   * It might be noticeable for low amount of steps. */
   vec2 uvs = (vec2(texel) + vec2(0.5)) / vec2(tex_size.xy);
   vec3 ss_cell = volume_to_screen(vec3(uvs, 1e-5));
   vec3 view_cell = drw_point_screen_to_view(ss_cell);
