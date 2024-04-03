@@ -32,6 +32,7 @@
 #include "BKE_report.hh"
 
 #include "BLI_map.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
@@ -245,6 +246,8 @@ void import_skeleton_curves(Main *bmain,
 
   const pxr::UsdSkelTopology &skel_topology = skel_query.GetTopology();
 
+  pxr::VtVec3hArray bind_xform_scales(bind_xforms.size());
+
   pxr::VtMatrix4dArray joint_local_bind_xforms(bind_xforms.size());
   for (int i = 0; i < bind_xforms.size(); ++i) {
     const int parent_id = skel_topology.GetParent(i);
@@ -258,6 +261,17 @@ void import_skeleton_curves(Main *bmain,
       /* This is the root joint. */
       joint_local_bind_xforms[i] = bind_xforms[i];
     }
+
+    pxr::GfVec3f t;
+    pxr::GfQuatf qrot;
+    pxr::GfVec3h s;
+    static pxr::GfVec3h UNIT_SCALE(1.0);
+    static const double HALF_EPSILON = 1e-2;
+    if (!pxr::UsdSkelDecomposeTransform(bind_xforms[i], &t, &qrot, &s) || pxr::GfIsClose(s, UNIT_SCALE, HALF_EPSILON)) {
+      bind_xform_scales[i] = UNIT_SCALE;
+      continue;
+    }
+    bind_xform_scales[i] = s;
   }
 
   /* Set the curve samples. */
@@ -288,6 +302,11 @@ void import_skeleton_curves(Main *bmain,
         CLOG_WARN(&LOG, "Error decomposing matrix on frame %f", frame);
         continue;
       }
+
+      /* Adjust the translation to take the bone bind matrix scale. */
+      t[0] *= bind_xform_scales[i][0];
+      t[1] *= bind_xform_scales[i][1];
+      t[2] *= bind_xform_scales[i][2];
 
       const float re = qrot.GetReal();
       const pxr::GfVec3f &im = qrot.GetImaginary();
@@ -793,6 +812,7 @@ void import_skeleton(Main *bmain,
 
     float mat4[4][4];
     mat.Get(mat4);
+    normalize_m4(mat4);
 
     pxr::GfVec3f head(0.0f, 0.0f, 0.0f);
     pxr::GfVec3f tail(0.0f, 1.0f, 0.0f);
