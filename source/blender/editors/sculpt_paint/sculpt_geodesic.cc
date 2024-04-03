@@ -235,15 +235,15 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
  Use it in places where the writting order is not important and
  can tolerate some collission in writting data */
-template<typename T> class UnorderedParallelStorage {
- public:
+template<typename T> class UnorderedParallelVector {
+ private:
   int num_threads;
   std::vector<std::vector<T>> data_heads;
 
  public:
-  UnorderedParallelStorage(size_t SIZE, int threads = 4)
+  UnorderedParallelVector(size_t SIZE, int threads = 4) : num_threads(threads)
   {
-    num_threads = threads;
+    num_threads = std::max(1, threads);
     data_heads.reserve(num_threads);
     const int chunk_size = SIZE / num_threads + 1;
     for (size_t i = 0; i < num_threads; ++i) {
@@ -254,8 +254,8 @@ template<typename T> class UnorderedParallelStorage {
 
   void push_back(T value)
   {
-    size_t head_id = std::hash<std::thread::id>{}(std::this_thread::get_id()) %
-                     num_threads; /* Assign a writing head based on thread ID */
+    /* Assign a writing head based on thread ID */
+    size_t head_id = std::hash<std::thread::id>{}(std::this_thread::get_id()) % num_threads;
     data_heads[head_id].push_back(value);
   }
 
@@ -279,22 +279,84 @@ template<typename T> class UnorderedParallelStorage {
       data_heads[i].clear();
     }
   }
-};
 
-static void reduce_and_reset_flag(UnorderedParallelStorage<int> &source,
-                                  std::vector<int> &target,
-                                  BitVector<> &edge_tag)
-{
-  target.clear();
-  for (int j = 0; j < source.num_threads; ++j) {
-    for (int i = 0; i < source.data_heads[j].size(); ++i) {
-      const int edge = source.data_heads[j][i];
-      edge_tag[edge].reset();
-      target.push_back(edge);
+  class iterator {
+   private:
+    UnorderedParallelVector *ptr;
+    size_t col, row;
+
+   public:
+    iterator(UnorderedParallelVector *pv, size_t r, size_t c) : ptr(pv), col(c), row(r) {}
+
+    /* Prefix increment operator (++it) */
+    iterator &operator++()
+    {
+      ++col;
+      if (col >= ptr->data_heads[row].size()) {
+        col = 0;
+        /* interleaved buffers can be empty */
+        do {
+          ++row;
+        } while (row < ptr->num_threads && ptr->data_heads[row].empty());
+
+        if (row >= ptr->num_threads) {
+          row = ptr->num_threads - 1;
+        }
+      }
+      return *this;
     }
-    source.data_heads[j].clear();
+
+    /* Postfix increment operator (it++) */
+    iterator operator++(int)
+    {
+      iterator temp = *this;
+      ++(*this);
+      return temp;
+    }
+
+    /* Dereference operator */
+    int &operator*() const
+    {
+      return ptr->data_heads[row][col];
+    }
+
+    bool operator==(const iterator &other) const
+    {
+      return ptr == other.ptr && row == other.row && col == other.col;
+    }
+
+    bool operator!=(const iterator &other) const
+    {
+      return !(*this == other);
+    }
+  };
+
+  iterator begin()
+  {
+    /* go forward checking the storage vectors sizes */
+    int front_index = 0;
+    while (this->data_heads[front_index].size() == 0) {
+      ++front_index;
+    }
+    if (front_index >= num_threads) {
+      return end();
+    }
+    return iterator(this, front_index, 0);
   }
-}
+
+  iterator end()
+  {
+    /* go backwards checking the storage vectors sizes */
+    int back_index = num_threads - 1;
+    while (back_index > 0 && this->data_heads[back_index].size() == 0) {
+      --back_index;
+    }
+    if (back_index <= 0 && this->data_heads[0].size() == 0) {
+      return iterator(this, 0, 0);
+    }
+    return iterator(this, back_index, this->data_heads[back_index].size() - 1);
+  }
+};
 
 static float *geodesic_mesh_create_parallel(Object *ob,
                                             GSet *initial_verts,
@@ -362,15 +424,13 @@ static float *geodesic_mesh_create_parallel(Object *ob,
     }
   }
 
-  std::atomic<size_t> writting_head(0);
-    std::vector<int> queue, queue_next;
+  std::vector<int> queue;
   queue.reserve(totedge);
-  queue_next.resize(totedge);
+  UnorderedParallelVector<int> queue_next(totedge, std::thread::hardware_concurrency() / 2);
 
   /* Add edges adjacent to an initial vertex to the queue.
    Since initial vertex are few only, iterating over its neighbour edges
    instead of over all edges scales better as mesh edge count increases */
-
   GSetIterator gs_iter;
   GSET_ITER (gs_iter, initial_verts) {
     const int seed_vert = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
@@ -423,19 +483,18 @@ static float *geodesic_mesh_create_parallel(Object *ob,
             }
 
             edge_tag[e_other].set();
-            size_t pos = writting_head.fetch_add(1, std::memory_order_relaxed);
-            queue_next[pos] = e_other;
+            queue_next.push_back(e_other);
           }
         }
       }
     });
 
     queue.clear();
-    for (size_t i = 0; i < writting_head; ++i) {
-      edge_tag[queue_next[i]].reset();
-      queue.push_back(queue_next[i]);
+    for (auto it = queue_next.begin(); it != queue_next.end(); ++it) {
+      edge_tag[*it].reset();
+      queue.push_back(*it);
     }
-    writting_head = 0;
+    queue_next.clear();
   }
 
   return dists;
