@@ -778,7 +778,7 @@ static void sculpt_vertex_neighbors_get_grids(SculptSession *ss,
   iter->neighbors = iter->neighbors_fixed;
   iter->neighbor_indices = iter->neighbor_indices_fixed;
 
-  for (int i = 0; i < neighbors.size; i++) {
+  for (const int i : neighbors.coords.index_range()) {
     int v = neighbors.coords[i].grid_index * key->grid_area +
             neighbors.coords[i].y * key->grid_size + neighbors.coords[i].x;
 
