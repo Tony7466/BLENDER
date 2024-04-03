@@ -280,9 +280,9 @@ static void grease_pencil_primitive_load(PrimitiveToolOperation &ptd)
   array_utils::copy(ptd.temp_control_points.as_span(), ptd.control_points.as_mutable_span());
 }
 
-static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
-                                                    Span<float2> control_points,
-                                                    MutableSpan<float2> new_positions)
+static void primitive_calulate_curve_positions(PrimitiveToolOperation &ptd,
+                                               Span<float2> control_points,
+                                               MutableSpan<float2> new_positions)
 {
   const int subdivision = ptd.subdivision;
   const int new_points_num = new_positions.size();
@@ -395,7 +395,7 @@ static void primitive_calulate_curve_positions_2d(PrimitiveToolOperation &ptd,
         ptd.vc.region, ptd.control_points[i], ptd.projection);
   }
 
-  primitive_calulate_curve_positions_exec(ptd, control_points_2d, new_positions);
+  primitive_calulate_curve_positions(ptd, control_points_2d, new_positions);
 }
 
 static int grease_pencil_primitive_curve_points_number(PrimitiveToolOperation &ptd)
