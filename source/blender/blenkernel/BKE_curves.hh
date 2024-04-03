@@ -450,7 +450,6 @@ class CurvesEditHints {
   /**
    * Evaluated positions for the points in #curves_orig. If this is empty, the positions from the
    * evaluated #Curves should be used if possible.
-   * \todo Use implicit sharing
    */
   std::optional<Array<float3>> positions;
   /**

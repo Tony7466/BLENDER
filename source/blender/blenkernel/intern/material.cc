@@ -735,7 +735,7 @@ static const ID *get_evaluated_object_data_with_materials(Object *ob)
     const Mesh *mesh = static_cast<const Mesh *>(ob->data);
     const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
     if (mesh->runtime->edit_mesh && editmesh_eval_final) {
-      data = const_cast<ID *>(&editmesh_eval_final->id);
+      data = &editmesh_eval_final->id;
     }
   }
   return data;

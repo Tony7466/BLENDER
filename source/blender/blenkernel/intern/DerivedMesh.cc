@@ -1152,13 +1152,17 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
   // TODO: Need to figure this out.
   // BKE_mesh_free_editmesh(mesh_final);
   // BKE_mesh_free_editmesh(me_cage);
-  mesh_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = em;
+  // mesh_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = em;
 
   /* Object has edit_mesh but is not in edit mode (object shares mesh datablock with another object
    * with is in edit mode).
    * Convert edit mesh to mesh until the draw manager can draw mesh wrapper which is not in the
    * edit mode. */
   if (!(obedit->mode & OB_MODE_EDIT)) {
+    if (BKE_object_get_editmesh_eval_cage(obedit) == BKE_object_get_editmesh_eval_final(obedit)) {
+    }
+    else {
+    }
     BKE_mesh_wrapper_ensure_mdata(mesh_final);
     if (mesh_final != me_cage) {
       BKE_mesh_wrapper_ensure_mdata(me_cage);
@@ -1171,7 +1175,9 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
    * Note that this causes a potential inconsistency, as the shapekey may have a
    * different topology than the evaluated mesh. */
   BLI_assert(mesh->key == nullptr || DEG_is_evaluated_id(&mesh->key->id));
-  mesh_final->key = mesh->key;
+  if (mesh->key) {
+    mesh_final->key = mesh->key;
+  }
 
   obedit->runtime->geometry_set_eval = new GeometrySet(std::move(geometry_set));
 
