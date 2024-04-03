@@ -34,79 +34,6 @@ namespace blender::ed::sculpt_paint::greasepencil {
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
 static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
-static float calc_brush_radius(ViewContext *vc,
-                               const Brush *brush,
-                               const Scene *scene,
-                               const float3 location)
-{
-  if (!BKE_brush_use_locked_size(scene, brush)) {
-    return paint_calc_object_space_radius(vc, location, BKE_brush_size_get(scene, brush));
-  }
-  return BKE_brush_unprojected_radius_get(scene, brush);
-}
-
-float radius_from_input_sample(const float pressure,
-                               const float3 location,
-                               ViewContext vc,
-                               const Brush *brush,
-                               const Scene *scene,
-                               const BrushGpencilSettings *settings)
-{
-  float radius = calc_brush_radius(&vc, brush, scene, location);
-  if (BKE_brush_use_size_pressure(brush)) {
-    radius *= BKE_curvemapping_evaluateF(settings->curve_sensitivity, 0, pressure);
-  }
-  return radius;
-}
-
-float opacity_from_input_sample(const float pressure,
-                                const Brush *brush,
-                                const Scene *scene,
-                                const BrushGpencilSettings *settings)
-{
-  float opacity = BKE_brush_alpha_get(scene, brush);
-  if (BKE_brush_use_alpha_pressure(brush)) {
-    opacity *= BKE_curvemapping_evaluateF(settings->curve_strength, 0, pressure);
-  }
-  return opacity;
-}
-
-int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
-{
-  const Scene *scene = CTX_data_scene(C);
-  const Object *object = CTX_data_active_object(C);
-  if (!object || object->type != OB_GREASE_PENCIL) {
-    return OPERATOR_CANCELLED;
-  }
-
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  if (!grease_pencil.has_active_layer()) {
-    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
-    return OPERATOR_CANCELLED;
-  }
-
-  const Paint *paint = BKE_paint_get_active_from_context(C);
-  const Brush *brush = BKE_paint_brush_for_read(paint);
-  if (brush == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
-
-  if (!active_layer.is_editable()) {
-    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Ensure a drawing at the current keyframe. */
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
-    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-    return OPERATOR_CANCELLED;
-  }
-
-  return OPERATOR_RUNNING_MODAL;
-}
-
 template<typename T>
 static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
 {
@@ -255,14 +182,14 @@ struct PaintOperationExecutor {
     const float2 start_coords = start_sample.mouse_position;
     ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
                                                 CTX_data_depsgraph_pointer(&C));
-    const float start_radius = radius_from_input_sample(
+    const float start_radius = ed::greasepencil::radius_from_input_sample(
         start_sample.pressure,
         self.placement_.project(start_sample.mouse_position),
         vc,
         brush_,
         scene_,
         settings_);
-    const float start_opacity = opacity_from_input_sample(
+    const float start_opacity = ed::greasepencil::opacity_from_input_sample(
         start_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
@@ -419,14 +346,14 @@ struct PaintOperationExecutor {
     const float2 coords = extension_sample.mouse_position;
     ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
                                                 CTX_data_depsgraph_pointer(&C));
-    const float radius = radius_from_input_sample(
+    const float radius = ed::greasepencil::radius_from_input_sample(
         extension_sample.pressure,
         self.placement_.project(extension_sample.mouse_position),
         vc,
         brush_,
         scene_,
         settings_);
-    const float opacity = opacity_from_input_sample(
+    const float opacity = ed::greasepencil::opacity_from_input_sample(
         extension_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
 

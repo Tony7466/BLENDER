@@ -29,6 +29,7 @@ struct Scene;
 struct UndoType;
 struct ViewDepths;
 struct View3D;
+struct ViewContext;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
@@ -177,6 +178,18 @@ bool editable_grease_pencil_poll(bContext *C);
 bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+
+float opacity_from_input_sample(const float pressure,
+                                const Brush *brush,
+                                const Scene *scene,
+                                const BrushGpencilSettings *settings);
+float radius_from_input_sample(const float pressure,
+                               const float3 location,
+                               ViewContext vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const BrushGpencilSettings *settings);
+int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;

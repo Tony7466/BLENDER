@@ -46,8 +46,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "grease_pencil_intern.hh"
-
 namespace blender::ed::greasepencil {
 
 enum class PrimitiveType : int8_t {
@@ -461,9 +459,9 @@ static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
       pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, t);
     }
 
-    const float radius = ed::sculpt_paint::greasepencil::radius_from_input_sample(
+    const float radius = ed::greasepencil::radius_from_input_sample(
         pressure, positions_3d[point_id], ptd.vc, ptd.brush, ptd.vc.scene, ptd.settings);
-    const float opacity = ed::sculpt_paint::greasepencil::opacity_from_input_sample(
+    const float opacity = ed::greasepencil::opacity_from_input_sample(
         pressure, ptd.brush, ptd.vc.scene, ptd.settings);
 
     new_radii[point_id] = radius;
@@ -620,7 +618,7 @@ static void grease_pencil_primitive_update_view(bContext *C, PrimitiveToolOperat
 /* Invoke handler: Initialize the operator. */
 static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  int return_value = ed::sculpt_paint::greasepencil::grease_pencil_draw_operator_invoke(C, op);
+  int return_value = ed::greasepencil::grease_pencil_draw_operator_invoke(C, op);
   if (return_value != OPERATOR_RUNNING_MODAL) {
     return return_value;
   }
