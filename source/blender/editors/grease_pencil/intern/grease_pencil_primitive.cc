@@ -1483,6 +1483,4 @@ void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_curve");
   WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_box");
   WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_circle");
-
-  return;
 }
