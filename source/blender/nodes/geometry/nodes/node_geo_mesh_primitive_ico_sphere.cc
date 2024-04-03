@@ -190,6 +190,7 @@ static constexpr int Right = 2;
  * levels is equal to length of side and equal to size of base side exactly. This is equilateral
  * triangle. Total size of sum of all levels is total size of triangle. All parametrs of triangle
  * can be known in O(1) and without random memory access.
+ * See: https://en.wikipedia.org/wiki/Triangular_number
  */
 class TriangleRange {
  private:
