@@ -56,7 +56,6 @@ bool asset_edit_id_is_editable(const ID &id);
 std::optional<std::string> asset_edit_id_save_as(Main &global_main,
                                                  const ID &id,
                                                  StringRef name,
-                                                 std::optional<AssetMetaData *> new_meta_data,
                                                  const bUserAssetLibrary &user_library,
                                                  ReportList &reports);
 

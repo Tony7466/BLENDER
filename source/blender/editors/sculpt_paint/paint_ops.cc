@@ -923,17 +923,16 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
 
-  AssetMetaData *new_meta_data = BKE_asset_metadata_copy(brush->id.asset_data);
-
+  AssetMetaData &meta_data = *brush->id.asset_data;
   if (catalog_path[0]) {
     const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(
         *library, catalog_path);
-    new_meta_data->catalog_id = catalog.catalog_id;
-    STRNCPY(new_meta_data->catalog_simple_name, catalog.simple_name.c_str());
+    meta_data.catalog_id = catalog.catalog_id;
+    STRNCPY(meta_data.catalog_simple_name, catalog.simple_name.c_str());
   }
 
   const std::optional<std::string> final_full_asset_filepath = bke::asset_edit_id_save_as(
-      *bmain, brush->id, name, new_meta_data, *user_library, *op->reports);
+      *bmain, brush->id, name, *user_library, *op->reports);
   if (!final_full_asset_filepath) {
     return OPERATOR_CANCELLED;
   }
@@ -1111,31 +1110,33 @@ static int brush_asset_edit_metadata_exec(bContext *C, wmOperator *op)
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
 
-  AssetMetaData *new_meta_data = BKE_asset_metadata_copy(brush->id.asset_data);
-  MEM_SAFE_FREE(new_meta_data->author);
-  new_meta_data->author = RNA_string_get_alloc(op->ptr, "author", nullptr, 0, nullptr);
-  MEM_SAFE_FREE(new_meta_data->description);
-  new_meta_data->description = RNA_string_get_alloc(op->ptr, "description", nullptr, 0, nullptr);
+  AssetMetaData &meta_data = *brush->id.asset_data;
+  MEM_SAFE_FREE(meta_data.author);
+  meta_data.author = RNA_string_get_alloc(op->ptr, "author", nullptr, 0, nullptr);
+  MEM_SAFE_FREE(meta_data.description);
+  meta_data.description = RNA_string_get_alloc(op->ptr, "description", nullptr, 0, nullptr);
 
   if (catalog_path[0]) {
     const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(
         *library, catalog_path);
-    new_meta_data->catalog_id = catalog.catalog_id;
-    STRNCPY(new_meta_data->catalog_simple_name, catalog.simple_name.c_str());
+    meta_data.catalog_id = catalog.catalog_id;
+    STRNCPY(meta_data.catalog_simple_name, catalog.simple_name.c_str());
   }
 
-  const std::optional<std::string> final_full_asset_filepath = bke::asset_edit_id_save_as(
-      *bmain,
-      brush->id,
-      brush->id.name + 2,
-      new_meta_data,
-      *library_ref_to_user_library(library_ref),
-      *op->reports);
-  if (!final_full_asset_filepath) {
+  if (!bke::asset_edit_id_save(*bmain, brush->id, *op->reports)) {
     return OPERATOR_CANCELLED;
   }
 
-  library->catalog_service().write_to_disk(*final_full_asset_filepath);
+  char asset_full_path_buffer[FILE_MAX_LIBEXTRA];
+  char *file_path = nullptr;
+  AS_asset_full_path_explode_from_weak_ref(
+      &brush_weak_ref, asset_full_path_buffer, &file_path, nullptr, nullptr);
+  if (!file_path) {
+    BLI_assert_unreachable();
+    return OPERATOR_CANCELLED;
+  }
+
+  library->catalog_service().write_to_disk(file_path);
 
   refresh_asset_library(C, library_ref);
   WM_main_add_notifier(NC_ASSET | ND_ASSET_LIST | NA_EDITED, nullptr);

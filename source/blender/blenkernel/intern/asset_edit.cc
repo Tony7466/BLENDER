@@ -194,7 +194,6 @@ static bool asset_write_in_library(Main *bmain,
                                    const ID &id_const,
                                    const StringRef name,
                                    const StringRefNull filepath,
-                                   const std::optional<AssetMetaData *> new_meta_data,
                                    std::string &final_full_file_path,
                                    ReportList &reports)
 {
@@ -224,7 +223,7 @@ static bool asset_write_in_library(Main *bmain,
   const int prev_tag = id.tag;
   const int prev_us = id.us;
   const std::string prev_name = id.name + 2;
-  /* TODO: Remove library overrides stuff now that they are unuse dfor brush assets. */
+  /* TODO: Remove library overrides stuff now that they are not used for brush assets. */
   IDOverrideLibrary *prev_liboverride = id.override_library;
   const int write_flags = 0; /* Could use #G_FILE_COMPRESS ? */
   const eBLO_WritePathRemap remap_mode = BLO_WRITE_PATH_REMAP_RELATIVE;
@@ -236,12 +235,6 @@ static bool asset_write_in_library(Main *bmain,
   id.us = 1;
   BLI_strncpy(id.name + 2, name.data(), std::min(sizeof(id.name) - 2, size_t(name.size())));
   id.override_library = nullptr;
-
-  if (new_meta_data) {
-    /* TODO: Consider just doing this outside of this function. */
-    BKE_asset_metadata_free(&id.asset_data);
-    id.asset_data = *new_meta_data;
-  }
 
   BKE_blendfile_write_partial_tag_ID(&id, true);
 
@@ -371,13 +364,11 @@ static AssetEditBlend &asset_edit_blend_file_ensure(const StringRef filepath)
   return asset_edit_blend_get_all().last();
 }
 
-std::optional<std::string> asset_edit_id_save_as(
-    Main &global_main,
-    const ID &id,
-    const StringRef name,
-    const std::optional<AssetMetaData *> new_meta_data,
-    const bUserAssetLibrary &user_library,
-    ReportList &reports)
+std::optional<std::string> asset_edit_id_save_as(Main &global_main,
+                                                 const ID &id,
+                                                 const StringRef name,
+                                                 const bUserAssetLibrary &user_library,
+                                                 ReportList &reports)
 {
   const std::string filepath = asset_blendfile_path_for_save(
       user_library, name, GS(id.name), reports);
@@ -387,7 +378,7 @@ std::optional<std::string> asset_edit_id_save_as(
 
   std::string final_full_asset_filepath;
   const bool success = asset_write_in_library(
-      asset_main, id, name, filepath, new_meta_data, final_full_asset_filepath, reports);
+      asset_main, id, name, filepath, final_full_asset_filepath, reports);
   if (!success) {
     BKE_report(&reports, RPT_ERROR, "Failed to write to asset library");
     return std::nullopt;
@@ -410,7 +401,6 @@ bool asset_edit_id_save(Main & /*global_main*/, const ID &id, ReportList &report
                                               id,
                                               id.name + 2,
                                               asset_blend->filepath.c_str(),
-                                              std::nullopt,
                                               final_full_asset_filepath,
                                               reports);
 
