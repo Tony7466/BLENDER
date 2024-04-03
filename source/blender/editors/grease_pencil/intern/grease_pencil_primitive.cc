@@ -431,7 +431,7 @@ static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
 
   const int last_points_num = curves.points_by_curve()[curves.curves_range().last()].size();
 
-  int new_points_num = grease_pencil_primitive_curve_points_number(ptd);
+  const int new_points_num = grease_pencil_primitive_curve_points_number(ptd);
 
   curves.resize(curves.points_num() - last_points_num + new_points_num, curves.curves_num());
   curves.offsets_for_write().last() = curves.points_num();
@@ -450,8 +450,8 @@ static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
 
   new_vertex_colors.fill(ColorGeometry4f(ptd.vertex_color));
 
-  ToolSettings *ts = ptd.vc.scene->toolsettings;
-  GP_Sculpt_Settings *gset = &ts->gp_sculpt;
+  const ToolSettings *ts = ptd.vc.scene->toolsettings;
+  const GP_Sculpt_Settings *gset = &ts->gp_sculpt;
 
   for (const int point_id : curve_points.index_range()) {
     float pressure = 1.0f;
@@ -841,7 +841,7 @@ static void grease_pencil_primitive_drag_all_update(PrimitiveToolOperation &ptd,
 static void grease_pencil_primitive_grab_update(PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   BLI_assert(ptd.active_control_point_index != -1);
-  float3 pos = ptd.placement.project(float2(event->mval));
+  const float3 pos = ptd.placement.project(float2(event->mval));
   ptd.control_points[ptd.active_control_point_index] = pos;
 
   if (!ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
@@ -877,7 +877,7 @@ static void grease_pencil_primitive_drag_update(PrimitiveToolOperation &ptd, con
   const float2 start_pos2 = ED_view3d_project_float_v2_m4(
       ptd.vc.region, ptd.temp_control_points[ptd.active_control_point_index], ptd.projection);
 
-  float3 pos = ptd.placement.project(start_pos2 + dif);
+  const float3 pos = ptd.placement.project(start_pos2 + dif);
   ptd.control_points[ptd.active_control_point_index] = pos;
 }
 
@@ -918,7 +918,7 @@ static void grease_pencil_primitive_rotate_all_update(PrimitiveToolOperation &pt
     const float s = math::sin(rotation);
     const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
     const float2 pos2 = rot * dif + center_of_mass;
-    float3 pos = ptd.placement.project(pos2);
+    const float3 pos = ptd.placement.project(pos2);
     ptd.control_points[point_index] = pos;
   }
 }
@@ -938,7 +938,7 @@ static void grease_pencil_primitive_scale_all_update(PrimitiveToolOperation &ptd
         ptd.vc.region, ptd.temp_control_points[point_index], ptd.projection);
 
     const float2 pos2 = (start_pos2 - center_of_mass) * scale + center_of_mass;
-    float3 pos = ptd.placement.project(pos2);
+    const float3 pos = ptd.placement.project(pos2);
     ptd.control_points[point_index] = pos;
   }
 }
