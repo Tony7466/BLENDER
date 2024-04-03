@@ -975,6 +975,7 @@ bool vert_has_unique_face_set(SculptSession *ss, PBVHVertRef vertex);
 bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object);
 int ensure_face_sets_bmesh(Object &object);
 Array<int> duplicate_face_sets(const Mesh &mesh);
+Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> prev_face_sets);
 
 }
 

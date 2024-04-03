@@ -738,17 +738,11 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   }
 
   const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan<bool> hide_poly = *attributes.lookup_or_default<bool>(
+  const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", bke::AttrDomain::Face, false);
 
   const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
-  Set<int> hidden_face_sets;
-
-  for (const int i : hide_poly.index_range()) {
-    if (hide_poly[i]) {
-      hidden_face_sets.add(prev_face_sets[i]);
-    }
-  }
+  Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, prev_face_sets);
 
   int next_face_set = 1;
 
@@ -810,6 +804,18 @@ Array<int> duplicate_face_sets(const Mesh &mesh)
   return face_sets;
 }
 
+Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> prev_face_sets)
+{
+  Set<int> hidden_face_sets;
+  for (const int i : hide_poly.index_range()) {
+    if (hide_poly[i]) {
+      hidden_face_sets.add(prev_face_sets[i]);
+    }
+  }
+
+  return hidden_face_sets;
+}
+
 static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
@@ -865,12 +871,8 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
       const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
           ".hide_poly", bke::AttrDomain::Face, false);
       const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
-      Set<int> hidden_face_sets;
-      for (const int i : hide_poly.index_range()) {
-        if (hide_poly[i]) {
-          hidden_face_sets.add(prev_face_sets[i]);
-        }
-      }
+      Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, prev_face_sets);
+
       int prev_material = material_indices[0];
       int material_face_set = 1;
       for (const int i : IndexRange(mesh->faces_num)) {
