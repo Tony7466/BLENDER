@@ -280,10 +280,9 @@ static void grease_pencil_primitive_load(PrimitiveToolOperation &ptd)
   array_utils::copy(ptd.temp_control_points.as_span(), ptd.control_points.as_mutable_span());
 }
 
-template<typename T>
 static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
-                                                    Span<T> control_points,
-                                                    MutableSpan<T> new_positions)
+                                                    Span<float2> control_points,
+                                                    MutableSpan<float2> new_positions)
 {
   const int subdivision = ptd.subdivision;
   const int new_points_num = new_positions.size();
@@ -310,13 +309,13 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       const int num_shared_points = control_points_per_segment(ptd);
       const int num_segments = ptd.segments;
       for (const int segment_i : IndexRange(num_segments)) {
-        const T A = control_points[num_shared_points * segment_i + 0];
-        const T B = control_points[num_shared_points * segment_i + 1];
-        const T C = control_points[num_shared_points * segment_i + 2];
+        const float2 A = control_points[num_shared_points * segment_i + 0];
+        const float2 B = control_points[num_shared_points * segment_i + 1];
+        const float2 C = control_points[num_shared_points * segment_i + 2];
         for (const int i : IndexRange(subdivision + 1)) {
           const float t = i / float(subdivision + 1);
-          const T AB = math::interpolate(A, B, t);
-          const T BC = math::interpolate(B, C, t);
+          const float2 AB = math::interpolate(A, B, t);
+          const float2 BC = math::interpolate(B, C, t);
           new_positions[i + segment_i * (subdivision + 1)] = math::interpolate(AB, BC, t);
         }
       }
@@ -328,17 +327,17 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       const int num_segments = ptd.segments;
 
       for (const int segment_i : IndexRange(num_segments)) {
-        const T A = control_points[num_shared_points * segment_i + 0];
-        const T B = control_points[num_shared_points * segment_i + 1];
-        const T C = control_points[num_shared_points * segment_i + 2];
-        const T D = control_points[num_shared_points * segment_i + 3];
+        const float2 A = control_points[num_shared_points * segment_i + 0];
+        const float2 B = control_points[num_shared_points * segment_i + 1];
+        const float2 C = control_points[num_shared_points * segment_i + 2];
+        const float2 D = control_points[num_shared_points * segment_i + 3];
         for (const int i : IndexRange(subdivision + 1)) {
           const float t = i / float(subdivision + 1);
-          const T AB = math::interpolate(A, B, t);
-          const T BC = math::interpolate(B, C, t);
-          const T CD = math::interpolate(C, D, t);
-          const T ABBC = math::interpolate(AB, BC, t);
-          const T BCCD = math::interpolate(BC, CD, t);
+          const float2 AB = math::interpolate(A, B, t);
+          const float2 BC = math::interpolate(B, C, t);
+          const float2 CD = math::interpolate(C, D, t);
+          const float2 ABBC = math::interpolate(AB, BC, t);
+          const float2 BCCD = math::interpolate(BC, CD, t);
           new_positions[i + segment_i * (subdivision + 1)] = math::interpolate(ABBC, BCCD, t);
         }
       }
@@ -346,8 +345,8 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       return;
     }
     case PrimitiveType::CIRCLE: {
-      const T center = control_points[control_point_center];
-      const T offset = control_points[control_point_first] - center;
+      const float2 center = control_points[control_point_center];
+      const float2 offset = control_points[control_point_first] - center;
       for (const int i : new_positions.index_range()) {
         const float t = i / float(new_points_num);
         const float a = t * math::numbers::pi * 2.0f;
@@ -356,8 +355,8 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       return;
     }
     case PrimitiveType::BOX: {
-      const T center = control_points[control_point_center];
-      const T offset = control_points[control_point_first] - center;
+      const float2 center = control_points[control_point_center];
+      const float2 offset = control_points[control_point_first] - center;
       /*
        * Calculate the 4 corners of the box.
        * Here's a diagram.
@@ -371,11 +370,11 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
        * +-----------+
        *
        */
-      const T A = center + offset * float2(1.0f, 1.0f);
-      const T B = center + offset * float2(-1.0f, 1.0f);
-      const T C = center + offset * float2(-1.0f, -1.0f);
-      const T D = center + offset * float2(1.0f, -1.0f);
-      const T corners[4] = {A, B, C, D};
+      const float2 A = center + offset * float2(1.0f, 1.0f);
+      const float2 B = center + offset * float2(-1.0f, 1.0f);
+      const float2 C = center + offset * float2(-1.0f, -1.0f);
+      const float2 D = center + offset * float2(1.0f, -1.0f);
+      const float2 corners[4] = {A, B, C, D};
       for (const int i : new_positions.index_range()) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
         const int point_id = int(i / (subdivision + 1));
@@ -396,7 +395,7 @@ static void primitive_calulate_curve_positions_2d(PrimitiveToolOperation &ptd,
         ptd.vc.region, ptd.control_points[i], ptd.projection);
   }
 
-  primitive_calulate_curve_positions_exec<float2>(ptd, control_points_2d, new_positions);
+  primitive_calulate_curve_positions_exec(ptd, control_points_2d, new_positions);
 }
 
 static int grease_pencil_primitive_curve_points_number(PrimitiveToolOperation &ptd)
