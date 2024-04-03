@@ -93,10 +93,7 @@ static void serialize_and_initialize_deduplicated_edges(
 
     const Span<OrderedEdge> task_edges = edge_map.as_span();
     MutableSpan<int2> result_edges = new_edges.slice(edge_offsets[task_index]);
-    std::transform(task_edges.begin(),
-                   task_edges.end(),
-                   result_edges.begin(),
-                   [](const OrderedEdge edge) -> int2 { return int2(edge.v_low, edge.v_high); });
+    result_edges.copy_from(task_edges.cast<int2>());
   });
 }
 
