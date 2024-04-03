@@ -57,7 +57,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static Bounds<float3> calculate_bounds_ico_sphere(const float radius, const int subdivisions)
 {
-  const float delta_phi = (2.0f * M_PI) / 5.0f;
+  const float delta_phi = (2.0f * math::numbers::pi) / 5.0f;
   const float theta = std::cos(std::atan(0.5f));
   const float ro = radius * std::sin(delta_phi);
 
@@ -416,7 +416,7 @@ static Span<float2> base_face_uv_positions()
     static constexpr int top_latitude_line = 2;
     static constexpr int top_line = 3;
 
-    static const float face_hight = math::sin(M_PI / 3.0f);
+    static const float face_hight = math::sin(math::numbers::pi / 3.0f);
 
     for (const int i : IndexRange(latitude_verts_num)) {
       const float half_next_i = float(i) + 0.5f;
