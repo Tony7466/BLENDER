@@ -1412,7 +1412,7 @@ TEST_F(StringEscape, Simple)
   const CompareWordsArray equal{
       {"", ""},
       {"/", "/"},
-      {"'", "'"},
+      {"'", "\\'"},
       {"?", "?"},
   };
 
@@ -1433,6 +1433,16 @@ TEST_F(StringEscape, Simple)
       {"\"\"\"", "\\\"\\\"\\\""},
       /* NOLINTNEXTLINE: modernize-raw-string-literal. */
       {"\\\\\\", "\\\\\\\\\\\\"},
+
+      /* NOLINTNEXTLINE: modernize-raw-string-literal. */
+      {"'\\", "\\'\\\\"},
+      /* NOLINTNEXTLINE: modernize-raw-string-literal. */
+      {"\\'", "\\\\\\'"},
+      /* NOLINTNEXTLINE: modernize-raw-string-literal. */
+      {"'\\'", "\\'\\\\\\'"},
+
+      /* NOLINTNEXTLINE: modernize-raw-string-literal. */
+      {"'''", "\\'\\'\\'"},
   };
 
   testEscapeWords(equal);
@@ -1499,13 +1509,10 @@ class StringEscapeFindQuote : public testing::Test {
   void testEscapeFindQuote(const EscapeFindQuoteArray &items)
   {
     for (const auto &item : items) {
-      if (item.expect_null) {
-        EXPECT_EQ(BLI_str_escape_find_quote_with(item.text, item.quote_character), nullptr);
-      }
-      else {
-        EXPECT_EQ(BLI_str_escape_find_quote_with(item.text, item.quote_character),
-                  item.text + item.expect_offset);
-      }
+      const char *expect = item.expect_null ? nullptr : item.text + item.expect_offset;
+      EXPECT_EQ(BLI_str_escape_find_quote_with(item.text, item.quote_character), expect)
+          << "text={" << item.text << "}, quote_character=" << item.quote_character
+          << ", offset=" << item.expect_offset << ", null=" << item.expect_null;
     }
   }
 };

@@ -342,7 +342,7 @@ size_t BLI_str_escape(char *__restrict dst, const char *__restrict src, const si
   size_t len = 0;
   for (; (len < dst_maxncpy) && (*src != '\0'); dst++, src++, len++) {
     char c = *src;
-    if (ELEM(c, '\\', '"') ||                       /* Use as-is. */
+    if (ELEM(c, '\\', '"', '\'') ||                       /* Use as-is. */
         ((c == '\t') && ((void)(c = 't'), true)) || /* Tab. */
         ((c == '\n') && ((void)(c = 'n'), true)) || /* Newline. */
         ((c == '\r') && ((void)(c = 'r'), true)) || /* Carriage return. */
@@ -373,6 +373,7 @@ BLI_INLINE bool str_unescape_pair(char c_next, char *r_out)
   }
   switch (c_next) {
     CASE_PAIR('"', '"');   /* Quote. */
+    CASE_PAIR('\'', '\''); /* Single quote. */
     CASE_PAIR('\\', '\\'); /* Backslash. */
     CASE_PAIR('t', '\t');  /* Tab. */
     CASE_PAIR('n', '\n');  /* Newline. */
