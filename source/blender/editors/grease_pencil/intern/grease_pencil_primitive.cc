@@ -428,7 +428,6 @@ static int grease_pencil_primitive_curve_points_number(PrimitiveToolOperation &p
 static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
 {
   bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   const int last_points = curves.points_by_curve()[curves.curves_range().last()].size();
 
