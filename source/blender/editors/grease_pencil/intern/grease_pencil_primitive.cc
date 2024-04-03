@@ -120,7 +120,7 @@ struct PrimitiveToolOperation {
   int subdivision;
   float4x4 projection;
   /* Helper class to project screen space coordinates to 3D. */
-  ed::greasepencil::DrawingPlacement placement;
+  DrawingPlacement placement;
 
   bke::greasepencil::Drawing *drawing;
   BrushGpencilSettings *settings;
@@ -650,7 +650,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(vc.obact->data);
 
   /* Initialize helper class for projecting screen space coordinates. */
-  ed::greasepencil::DrawingPlacement placement = ed::greasepencil::DrawingPlacement(
+  DrawingPlacement placement = DrawingPlacement(
       *vc.scene, *vc.region, *view3d, *vc.obact, *grease_pencil->get_active_layer());
   if (placement.use_project_to_surface()) {
     placement.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
