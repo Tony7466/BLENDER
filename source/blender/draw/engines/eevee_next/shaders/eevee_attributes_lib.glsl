@@ -13,10 +13,18 @@
 
 #define EEVEE_ATTRIBUTE_LIB
 
+/* All attributes are loaded in order. This allow us to use a global counter to retrieve the
+ * correct grid xform. */
+/* TODO(fclem): This is very dangerous as it requires a reset for each time `attrib_load` is
+ * called. Instead, the right attribute index should be passed to attr_load_* functions. */
+int g_attr_id = 0;
+
 /* Point clouds and curves are not compatible with volume grids.
  * They will fallback to their own attributes loading. */
 #if defined(MAT_VOLUME) && !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
-#  define GRID_ATTRIBUTES
+#  if defined(OBINFO_LIB) && !defined(MAT_GEOM_WORLD)
+#    define GRID_ATTRIBUTES
+#  endif
 
 /* -------------------------------------------------------------------- */
 /** \name Volume
@@ -25,20 +33,15 @@
  * Per grid transform order is following loading order.
  * \{ */
 
-#  if defined(MAT_GEOM_WORLD)
-vec3 g_wP = vec3(0.0);
-#  else
+#  ifdef GRID_ATTRIBUTES
 vec3 g_lP = vec3(0.0);
+#  else
+vec3 g_wP = vec3(0.0);
 #  endif
-/* All attributes are loaded in order. This allow us to use a global counter to retrieve the
- * correct grid xform. */
-/* TODO(fclem): This is very dangerous as it requires a reset for each time `attrib_load` is
- * called. Instead, the right attribute index should be passed to attr_load_* functions. */
-int g_attr_id = 0;
 
 vec3 grid_coordinates()
 {
-#  ifdef OBINFO_LIB
+#  ifdef GRID_ATTRIBUTES
   vec3 co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
 #  else
   /* Only for test shaders. All the runtime shaders require `draw_object_infos` and
@@ -52,12 +55,10 @@ vec3 grid_coordinates()
 vec3 attr_load_orco(sampler3D tex)
 {
   g_attr_id += 1;
-#  ifdef OBINFO_LIB
+#  ifdef GRID_ATTRIBUTES
   return OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
-#  elif defined(MAT_GEOM_WORLD)
-  return g_wP;
 #  else
-  return vec3(0.0);
+  return g_wP;
 #  endif
 }
 vec4 attr_load_tangent(sampler3D tex)

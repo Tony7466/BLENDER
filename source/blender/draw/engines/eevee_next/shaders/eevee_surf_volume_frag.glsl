@@ -48,11 +48,11 @@ VolumeProperties eval_froxel(ivec3 froxel, float jitter)
   /* TODO(fclem): Wrong with the infinite matrix. */
   vec3 vP = get_view_space_from_depth(ss_P.xy, ss_P.z);
   vec3 wP = point_view_to_world(vP);
-#ifdef GRID_ATTRIBUTES
-#  if defined(MAT_GEOM_WORLD)
-  g_wP = wP;
-#  else
+#if !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
+#  ifdef GRID_ATTRIBUTES
   g_lP = point_world_to_object(wP);
+#  else
+  g_wP = wP;
 #  endif
   /* TODO(fclem): This is very dangerous as it requires a reset for each time `attrib_load` is
    * called. Instead, the right attribute index should be passed to attr_load_* functions. */
