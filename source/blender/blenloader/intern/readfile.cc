@@ -228,7 +228,7 @@ void BLO_reportf_wrap(BlendFileReadReport *reports, eReportType type, const char
 /* for reporting linking messages */
 static const char *library_parent_filepath(Library *lib)
 {
-  return lib->parent ? lib->parent->runtime.filepath_abs : "<direct>";
+  return lib->runtime.parent ? lib->runtime.parent->runtime.filepath_abs : "<direct>";
 }
 
 /** \} */
@@ -2309,7 +2309,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
   BLI_addtail(fd->mainlist, newmain);
   newmain->curlib = lib;
 
-  lib->parent = nullptr;
+  lib->runtime.parent = nullptr;
 
   id_us_ensure_real(&lib->id);
 }
@@ -3991,7 +3991,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
       // if (G.debug & G_DEBUG) printf("expand_doit: other lib %s\n", lib->filepath);
 
       /* for outliner dependency only */
-      libmain->curlib->parent = mainvar->curlib;
+      libmain->curlib->runtime.parent = mainvar->curlib;
     }
     else {
       /* Convert any previously read weak link to regular link

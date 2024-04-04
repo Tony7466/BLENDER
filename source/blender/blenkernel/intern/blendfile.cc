@@ -974,8 +974,9 @@ static void setup_app_data(bContext *C,
                          BKE_idtype_idcode_to_name(GS(id_iter->name)),
                          id_iter->name + 2,
                          id_iter->lib->runtime.filepath_abs,
-                         id_iter->lib->parent ? id_iter->lib->parent->runtime.filepath_abs :
-                                                "<direct>");
+                         id_iter->lib->runtime.parent ?
+                             id_iter->lib->runtime.parent->runtime.filepath_abs :
+                             "<direct>");
       }
     }
     FOREACH_MAIN_ID_END;

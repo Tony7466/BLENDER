@@ -605,7 +605,7 @@ static int wm_lib_relocate_invoke(bContext *C, wmOperator *op, const wmEvent * /
   lib = (Library *)BKE_libblock_find_name(CTX_data_main(C), ID_LI, lib_name);
 
   if (lib) {
-    if (lib->parent) {
+    if (lib->runtime.parent) {
       BKE_reportf(op->reports,
                   RPT_ERROR_INVALID_INPUT,
                   "Cannot relocate indirectly linked library '%s'",
@@ -692,7 +692,7 @@ static int wm_lib_relocate_exec_do(bContext *C, wmOperator *op, bool do_reload)
     flag |= FILE_RELPATH;
   }
 
-  if (lib->parent && !do_reload) {
+  if (lib->runtime.parent && !do_reload) {
     BKE_reportf(op->reports,
                 RPT_ERROR_INVALID_INPUT,
                 "Cannot relocate indirectly linked library '%s'",

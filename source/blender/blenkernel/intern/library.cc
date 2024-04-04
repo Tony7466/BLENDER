@@ -51,7 +51,7 @@ static void library_free_data(ID *id)
 static void library_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Library *lib = (Library *)id;
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lib->parent, IDWALK_CB_NEVER_SELF);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lib->runtime.parent, IDWALK_CB_NEVER_SELF);
 }
 
 static void library_foreach_path(ID *id, BPathForeachPathData *bpath_data)
@@ -75,8 +75,6 @@ static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
 {
   Library *lib = (Library *)id;
   memset(&lib->runtime, 0, sizeof(lib->runtime));
-  /* This is runtime data. */
-  lib->parent = nullptr;
 }
 
 IDTypeInfo IDType_ID_LI = {
@@ -168,7 +166,7 @@ static void rebuild_hierarchy_best_parent_find(Main *bmain,
           do_break = true;
           break;
         }
-        if (!from_id_lib->parent) {
+        if (!from_id_lib->runtime.parent) {
           rebuild_hierarchy_best_parent_find(bmain, directly_used_libs, from_id_lib);
         }
         if (!best_parent_lib ||
@@ -198,11 +196,11 @@ static void rebuild_hierarchy_best_parent_find(Main *bmain,
    * library, its indirect dependency is still around, but none of its linked IDs are used by local
    * data. */
   if (best_parent_lib) {
-    lib->parent = best_parent_lib;
+    lib->runtime.parent = best_parent_lib;
     lib->runtime.temp_index = best_parent_lib->runtime.temp_index + 1;
   }
   else {
-    lib->parent = nullptr;
+    lib->runtime.parent = nullptr;
     lib->runtime.temp_index = 0;
     directly_used_libs.add(lib);
   }
@@ -228,7 +226,7 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
     for (MainIDRelationsEntryItem *item = entry->from_ids; item; item = item->next) {
       if (!ID_IS_LINKED(item->id_pointer.from)) {
         directly_used_libs.add(id_iter->lib);
-        id_iter->lib->parent = nullptr;
+        id_iter->lib->runtime.parent = nullptr;
         break;
       }
     }
@@ -244,14 +242,14 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
 
     /* Assume existing parent is still valid, since it was not cleared in previous loop above.
      * Just compute 'hierarchy value' in temp index, if needed. */
-    if (lib_iter->parent) {
+    if (lib_iter->runtime.parent) {
       if (lib_iter->runtime.temp_index > 0) {
         continue;
       }
       blender::Vector<Library *> parent_libraries;
       for (Library *parent_lib_iter = lib_iter;
            parent_lib_iter && parent_lib_iter->runtime.temp_index == 0;
-           parent_lib_iter = parent_lib_iter->parent)
+           parent_lib_iter = parent_lib_iter->runtime.parent)
       {
         parent_libraries.append(parent_lib_iter);
       }
@@ -279,7 +277,7 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
       continue;
     }
 
-    if (lib_iter->parent) {
+    if (lib_iter->runtime.parent) {
       BLI_assert(lib_iter->runtime.temp_index > 0);
     }
     else {

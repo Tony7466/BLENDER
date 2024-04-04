@@ -259,7 +259,7 @@ void id_lib_extern(ID *id)
       id->tag &= ~LIB_TAG_INDIRECT;
       id->flag &= ~LIB_INDIRECT_WEAK_LINK;
       id->tag |= LIB_TAG_EXTERN;
-      id->lib->parent = nullptr;
+      id->lib->runtime.parent = nullptr;
     }
   }
 }

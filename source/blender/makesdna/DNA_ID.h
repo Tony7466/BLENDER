@@ -538,6 +538,9 @@ typedef struct Library_Runtime {
   /* Used for efficient calculations of unique names. */
   struct UniqueName_Map *name_map;
 
+  /** Set for indirectly linked libraries, used in the outliner and while reading. */
+  struct Library *parent;
+
   /**
    * Run-time only, absolute file-path (set on read).
    * This is only for convenience, `filepath` is the real path
@@ -565,9 +568,6 @@ typedef struct Library {
   struct FileData *filedata;
   /** Path name used for reading, can be relative and edited in the outliner. */
   char filepath[1024];
-
-  /** Set for indirectly linked libraries, used in the outliner and while reading. */
-  struct Library *parent;
 
   struct PackedFile *packedfile;
 
