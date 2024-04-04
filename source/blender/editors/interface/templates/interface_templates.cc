@@ -4606,7 +4606,6 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    bool select_draw = true;
     for (CurveMapPoint *cmp : cmps) {
       const bool auto_anim_vec = ((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
                                  ((cmp->flag & CUMA_HANDLE_VECTOR) == false);
