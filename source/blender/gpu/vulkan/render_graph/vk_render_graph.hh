@@ -29,7 +29,7 @@
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
 #include "vk_nodes.hh"
-#include "vk_render_graph_types.hh"
+#include "vk_types.hh"
 #include "vk_resources.hh"
 #include "vk_scheduler.hh"
 

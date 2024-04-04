@@ -275,6 +275,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_resources.hh
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh
+  vulkan/render_graph/vk_types.hh
   vulkan/vk_render_graph_list.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh

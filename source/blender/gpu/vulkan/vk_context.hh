@@ -12,7 +12,7 @@
 
 #include "GHOST_Types.h"
 
-#include "render_graph/vk_render_graph_types.hh"
+#include "render_graph/vk_types.hh"
 #include "vk_command_buffers.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
