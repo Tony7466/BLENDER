@@ -228,7 +228,7 @@ void BLO_reportf_wrap(BlendFileReadReport *reports, eReportType type, const char
 /* for reporting linking messages */
 static const char *library_parent_filepath(Library *lib)
 {
-  return lib->parent ? lib->parent->filepath_abs : "<direct>";
+  return lib->parent ? lib->parent->runtime.filepath_abs : "<direct>";
 }
 
 /** \} */
@@ -529,7 +529,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   //  printf("blo_find_main: converted to %s\n", filepath_abs);
 
   LISTBASE_FOREACH (Main *, m, mainlist) {
-    const char *libname = (m->curlib) ? m->curlib->filepath_abs : m->filepath;
+    const char *libname = (m->curlib) ? m->curlib->runtime.filepath_abs : m->filepath;
 
     if (BLI_path_cmp(filepath_abs, libname) == 0) {
       if (G.debug & G_DEBUG) {
@@ -554,7 +554,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   id_us_ensure_real(&lib->id);
 
   STRNCPY(lib->filepath, filepath);
-  STRNCPY(lib->filepath_abs, filepath_abs);
+  STRNCPY(lib->runtime.filepath_abs, filepath_abs);
 
   m->curlib = lib;
 
@@ -2258,25 +2258,25 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
 {
   Main *newmain;
 
-  /* Make sure we have full path in lib->filepath_abs */
+  /* Make sure we have full path in lib->runtime.filepath_abs */
   /* NOTE: Since existing libraries are searched by their absolute path, this has to be generated
    * before the lookup below. Otherwise, in case the stored absolute filepath is not 'correct' (may
    * be empty, or have been stored in a different 'relative path context'), the comparison below
    * will always fail, leading to creating duplicates IDs of a same library. */
   /* TODO: May be worth checking whether comparison below could use `lib->filepath` instead? */
-  STRNCPY(lib->filepath_abs, lib->filepath);
-  BLI_path_abs(lib->filepath_abs, fd->relabase);
-  BLI_path_normalize(lib->filepath_abs);
+  STRNCPY(lib->runtime.filepath_abs, lib->filepath);
+  BLI_path_abs(lib->runtime.filepath_abs, fd->relabase);
+  BLI_path_normalize(lib->runtime.filepath_abs);
 
   /* check if the library was already read */
   LISTBASE_FOREACH (Main *, newmain, fd->mainlist) {
     if (newmain->curlib) {
-      if (BLI_path_cmp(newmain->curlib->filepath_abs, lib->filepath_abs) == 0) {
+      if (BLI_path_cmp(newmain->curlib->runtime.filepath_abs, lib->runtime.filepath_abs) == 0) {
         BLO_reportf_wrap(fd->reports,
                          RPT_WARNING,
                          RPT_("Library '%s', '%s' had multiple instances, save and reload!"),
                          lib->filepath,
-                         lib->filepath_abs);
+                         lib->runtime.filepath_abs);
 
         change_link_placeholder_to_real_ID_pointer(fd->mainlist, fd, lib, newmain->curlib);
         // change_link_placeholder_to_real_ID_pointer_fd(fd, lib, newmain->curlib);
@@ -2299,7 +2299,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
   }
 
   //  printf("direct_link_library: filepath %s\n", lib->filepath);
-  //  printf("direct_link_library: filepath_abs %s\n", lib->filepath_abs);
+  //  printf("direct_link_library: filepath_abs %s\n", lib->runtime.filepath_abs);
 
   BlendDataReader reader = {fd};
   BKE_packedfile_blend_read(&reader, &lib->packedfile);
@@ -2327,7 +2327,7 @@ static void fix_relpaths_library(const char *basepath, Main *main)
        * link into an unsaved blend file. See #27405.
        * The remap relative option will make it relative again on save - campbell */
       if (BLI_path_is_rel(lib->filepath)) {
-        STRNCPY(lib->filepath, lib->filepath_abs);
+        STRNCPY(lib->filepath, lib->runtime.filepath_abs);
       }
     }
   }
@@ -2337,7 +2337,7 @@ static void fix_relpaths_library(const char *basepath, Main *main)
        * relative to the blend file since indirectly linked libraries will be
        * relative to their direct linked library. */
       if (BLI_path_is_rel(lib->filepath)) { /* if this is relative to begin with? */
-        STRNCPY(lib->filepath, lib->filepath_abs);
+        STRNCPY(lib->filepath, lib->runtime.filepath_abs);
         BLI_path_rel(lib->filepath, basepath);
       }
     }
@@ -2621,7 +2621,7 @@ static bool read_libblock_undo_restore_library(
                 2,
                 "    compare with %s -> match (existing libpath: %s)",
                 libmain->curlib ? libmain->curlib->id.name : "<none>",
-                libmain->curlib ? libmain->curlib->filepath_abs : "<none>");
+                libmain->curlib ? libmain->curlib->runtime.filepath_abs : "<none>");
       /* In case of a library, we need to re-add its main to fd->mainlist,
        * because if we have later a missing ID_LINK_PLACEHOLDER,
        * we need to get the correct lib it is linked to!
@@ -3974,7 +3974,7 @@ static void expand_doit_library(void *fdhandle, Main *mainvar, void *old)
                        RPT_WARNING,
                        RPT_("LIB: Data refers to main .blend file: '%s' from %s"),
                        idname,
-                       mainvar->curlib->filepath_abs);
+                       mainvar->curlib->runtime.filepath_abs);
       return;
     }
 
@@ -4324,7 +4324,7 @@ static void library_link_end(Main *mainl, FileData **fd, const int flag)
   /* make the lib path relative if required */
   if (flag & FILE_RELPATH) {
     /* use the full path, this could have been read by other library even */
-    STRNCPY(curlib->filepath, curlib->filepath_abs);
+    STRNCPY(curlib->filepath, curlib->runtime.filepath_abs);
 
     /* uses current .blend file as reference */
     BLI_path_rel(curlib->filepath, BKE_main_blendfile_path_from_global());
@@ -4490,7 +4490,7 @@ static void read_library_linked_id(
                           "non-linkable data type"),
                      BKE_idtype_idcode_to_name(GS(id->name)),
                      id->name + 2,
-                     mainvar->curlib->filepath_abs,
+                     mainvar->curlib->runtime.filepath_abs,
                      library_parent_filepath(mainvar->curlib));
   }
 
@@ -4508,7 +4508,7 @@ static void read_library_linked_id(
               "LIB: %s: '%s' missing from '%s', parent '%s'",
               BKE_idtype_idcode_to_name(GS(id->name)),
               id->name + 2,
-              mainvar->curlib->filepath_abs,
+              mainvar->curlib->runtime.filepath_abs,
               library_parent_filepath(mainvar->curlib));
     basefd->reports->count.missing_linked_id++;
 
@@ -4625,17 +4625,17 @@ static FileData *read_library_file_data(FileData *basefd,
     fd = blo_filedata_from_memory(pf->data, pf->size, basefd->reports);
 
     /* Needed for library_append and read_libraries. */
-    STRNCPY(fd->relabase, mainptr->curlib->filepath_abs);
+    STRNCPY(fd->relabase, mainptr->curlib->runtime.filepath_abs);
   }
   else {
     /* Read file on disk. */
     BLO_reportf_wrap(basefd->reports,
                      RPT_INFO,
                      RPT_("Read library:  '%s', '%s', parent '%s'"),
-                     mainptr->curlib->filepath_abs,
+                     mainptr->curlib->runtime.filepath_abs,
                      mainptr->curlib->filepath,
                      library_parent_filepath(mainptr->curlib));
-    fd = blo_filedata_from_file(mainptr->curlib->filepath_abs, basefd->reports);
+    fd = blo_filedata_from_file(mainptr->curlib->runtime.filepath_abs, basefd->reports);
   }
 
   if (fd) {
@@ -4671,8 +4671,10 @@ static FileData *read_library_file_data(FileData *basefd,
   }
 
   if (fd == nullptr) {
-    BLO_reportf_wrap(
-        basefd->reports, RPT_INFO, RPT_("Cannot find lib '%s'"), mainptr->curlib->filepath_abs);
+    BLO_reportf_wrap(basefd->reports,
+                     RPT_INFO,
+                     RPT_("Cannot find lib '%s'"),
+                     mainptr->curlib->runtime.filepath_abs);
     basefd->reports->count.missing_libraries++;
   }
 

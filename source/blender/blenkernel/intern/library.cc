@@ -118,11 +118,11 @@ void BKE_library_filepath_set(Main *bmain, Library *lib, const char *filepath)
     STRNCPY(lib->filepath, filepath);
   }
 
-  STRNCPY(lib->filepath_abs, filepath);
+  STRNCPY(lib->runtime.filepath_abs, filepath);
 
   /* Not essential but set `filepath_abs` is an absolute copy of value which
    * is more useful if its kept in sync. */
-  if (BLI_path_is_rel(lib->filepath_abs)) {
+  if (BLI_path_is_rel(lib->runtime.filepath_abs)) {
     /* NOTE(@ideasman42): the file may be unsaved, in this case, setting the
      * `filepath_abs` on an indirectly linked path is not allowed from the
      * outliner, and its not really supported but allow from here for now
@@ -131,7 +131,7 @@ void BKE_library_filepath_set(Main *bmain, Library *lib, const char *filepath)
     /* Never make paths relative to parent lib - reading code (blenloader) always set *all*
      * `lib->filepath` relative to current main, not to their parent for indirectly linked ones. */
     const char *blendfile_path = BKE_main_blendfile_path(bmain);
-    BLI_path_abs(lib->filepath_abs, blendfile_path);
+    BLI_path_abs(lib->runtime.filepath_abs, blendfile_path);
   }
 }
 

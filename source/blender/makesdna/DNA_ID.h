@@ -537,6 +537,16 @@ typedef struct ID {
 typedef struct Library_Runtime {
   /* Used for efficient calculations of unique names. */
   struct UniqueName_Map *name_map;
+
+  /**
+   * Run-time only, absolute file-path (set on read).
+   * This is only for convenience, `filepath` is the real path
+   * used on file read but in some cases its useful to access the absolute one.
+   *
+   * Use #BKE_library_filepath_set() rather than setting `filepath`
+   * directly and it will be kept in sync - campbell
+   */
+  char filepath_abs[1024];
 } Library_Runtime;
 
 /**
@@ -548,16 +558,6 @@ typedef struct Library {
   struct FileData *filedata;
   /** Path name used for reading, can be relative and edited in the outliner. */
   char filepath[1024];
-
-  /**
-   * Run-time only, absolute file-path (set on read).
-   * This is only for convenience, `filepath` is the real path
-   * used on file read but in some cases its useful to access the absolute one.
-   *
-   * Use #BKE_library_filepath_set() rather than setting `filepath`
-   * directly and it will be kept in sync - campbell
-   */
-  char filepath_abs[1024];
 
   /** Set for indirectly linked libraries, used in the outliner and while reading. */
   struct Library *parent;
@@ -660,9 +660,9 @@ typedef struct PreviewImage {
   ((GS((id)->name) != ID_SCR) && (GS((id)->name) != ID_WM) && (GS((id)->name) != ID_WS))
 
 #define ID_BLEND_PATH(_bmain, _id) \
-  ((_id)->lib ? (_id)->lib->filepath_abs : BKE_main_blendfile_path((_bmain)))
+  ((_id)->lib ? (_id)->lib->runtime.filepath_abs : BKE_main_blendfile_path((_bmain)))
 #define ID_BLEND_PATH_FROM_GLOBAL(_id) \
-  ((_id)->lib ? (_id)->lib->filepath_abs : BKE_main_blendfile_path_from_global())
+  ((_id)->lib ? (_id)->lib->runtime.filepath_abs : BKE_main_blendfile_path_from_global())
 
 #define ID_MISSING(_id) ((((const ID *)(_id))->tag & LIB_TAG_MISSING) != 0)
 
