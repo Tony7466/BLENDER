@@ -35,7 +35,7 @@
 
 #include "WM_api.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "render_types.h"
 
@@ -272,8 +272,8 @@ class Context : public realtime_compositor::Context {
 
     Image *image = BKE_image_ensure_viewer(G.main, IMA_TYPE_COMPOSITE, "Viewer Node");
     const float2 translation = domain.transformation.location();
-    image->offset_x = int(translation.x);
-    image->offset_y = int(translation.y);
+    image->runtime.backdrop_offset[0] = translation.x;
+    image->runtime.backdrop_offset[1] = translation.y;
 
     return viewer_output_texture_;
   }
@@ -508,13 +508,6 @@ class RealtimeCompositor {
      * to avoid them blocking each other. */
     BLI_assert(!BLI_thread_is_main() || G.background);
 
-    /* The realtime compositor uses GPU module and does not rely on the draw manager, or its global
-     * state. This means that activation of GPU context does not require lock of the main thread.
-     *
-     * However, while this has been tested on Linux and works well, on macOS it causes to
-     * spontaneous invalid colors in the composite output. The Windows has not been extensively
-     * tested yet. */
-#if defined(__linux__) || defined(_WIN32)
     if (G.background) {
       /* In the background mode the system context of the render engine might be nullptr, which
        * forces some code paths which more tightly couple it with the draw manager.
@@ -529,9 +522,6 @@ class RealtimeCompositor {
     GPU_render_begin();
     WM_system_gpu_context_activate(re_system_gpu_context);
     GPU_context_active_set(static_cast<GPUContext *>(re_blender_gpu_context));
-#else
-    DRW_render_context_enable(&render_);
-#endif
 
     context_->update_input_data(input_data);
 
@@ -546,14 +536,10 @@ class RealtimeCompositor {
     context_->viewer_output_to_viewer_image();
     texture_pool_->free_unused_and_reset();
 
-#if defined(__linux__) || defined(_WIN32)
     GPU_flush();
     GPU_render_end();
     GPU_context_active_set(nullptr);
     WM_system_gpu_context_release(re_system_gpu_context);
-#else
-    DRW_render_context_disable(&render_);
-#endif
   }
 };
 
