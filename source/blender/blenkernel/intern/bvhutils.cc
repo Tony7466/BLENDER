@@ -781,7 +781,7 @@ BVHTree *bvhtree_from_mesh_corner_tris_ex(BVHTreeFromMesh *data,
   return tree;
 }
 
-static BitVector<> loose_verts_no_hidden_map_get(const Mesh &mesh, int *r_corner_tris_active_len)
+static BitVector<> loose_verts_no_hidden_map_get(const Mesh &mesh, int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -815,12 +815,12 @@ static BitVector<> loose_verts_no_hidden_map_get(const Mesh &mesh, int *r_corner
     }
   }
 
-  *r_corner_tris_active_len = count;
+  *r_elem_active_len = count;
 
   return verts_mask;
 }
 
-static BitVector<> loose_edges_no_hidden_map_get(const Mesh &mesh, int *r_corner_tris_active_len)
+static BitVector<> loose_edges_no_hidden_map_get(const Mesh &mesh, int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -856,7 +856,7 @@ static BitVector<> loose_edges_no_hidden_map_get(const Mesh &mesh, int *r_corner
     }
   }
 
-  *r_corner_tris_active_len = count;
+  *r_elem_active_len = count;
 
   return edge_mask;
 }
