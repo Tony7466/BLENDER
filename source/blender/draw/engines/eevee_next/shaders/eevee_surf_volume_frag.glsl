@@ -54,6 +54,9 @@ VolumeProperties eval_froxel(ivec3 froxel, float jitter)
 #  else
   g_lP = point_world_to_object(wP);
 #  endif
+  /* TODO(fclem): This is very dangerous as it requires a reset for each time `attrib_load` is
+   * called. Instead, the right attribute index should be passed to attr_load_* functions. */
+  g_attr_id = 0;
 #endif
 
   g_data = init_globals(wP);

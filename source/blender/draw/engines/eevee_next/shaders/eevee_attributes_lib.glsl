@@ -32,6 +32,8 @@ vec3 g_lP = vec3(0.0);
 #  endif
 /* All attributes are loaded in order. This allow us to use a global counter to retrieve the
  * correct grid xform. */
+/* TODO(fclem): This is very dangerous as it requires a reset for each time `attrib_load` is
+ * called. Instead, the right attribute index should be passed to attr_load_* functions. */
 int g_attr_id = 0;
 
 vec3 grid_coordinates()
