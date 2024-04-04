@@ -35,6 +35,29 @@ static float2 max_velocity(const float2 &a, const float2 &b)
   return math::length_squared(a) > math::length_squared(b) ? a : b;
 }
 
+/* Identical to motion_blur_tile_indirection_pack_payload, encodes the value and its texel such
+ * that the integer length of the value is encoded in the most significant bits, then the x value
+ * of the texel are encoded in the middle bits, then the y value of the texel is stored in the
+ * least significant bits. */
+static uint32_t velocity_atomic_max_value(const float2 &value, const int2 &texel)
+{
+  const uint32_t length_bits = math::min(uint32_t(math::ceil(math::length(value))), 0x3FFFu);
+  return (length_bits << 18u) | ((texel.x & 0x1FFu) << 9u) | (texel.y & 0x1FFu);
+}
+
+/* Returns the input velocity that has the larger integer magnitude, and if equal the larger x
+ * texel coordinates, and if equal, the larger y texel coordinates. It might be weird that we use
+ * an approximate comparison, but this is used for compatibility with the GPU code, which uses
+ * atomic integer operations, hence the limited precision. See  velocity_atomic_max_value for more
+ * information. */
+static float2 max_velocity_approximate(const float2 &a,
+                                       const float2 &b,
+                                       const int2 &a_texel,
+                                       const int2 &b_texel)
+{
+  return velocity_atomic_max_value(a, a_texel) > velocity_atomic_max_value(b, b_texel) ? a : b;
+}
+
 /* Reduces each 32x32 block of velocity pixels into a single velocity whose magnitude is largest.
  * Each of the previous and next velocities are reduces independently. */
 static MemoryBuffer compute_max_tile_velocity(MemoryBuffer *velocity_buffer)
@@ -152,8 +175,9 @@ static MemoryBuffer dilate_max_velocity(MemoryBuffer &max_tile_velocity, float s
             int2 tile = motion_rect.bottom_left + int2(i, j);
             if (is_inside_motion_line(tile, motion_line)) {
               float *pixel = output.get_elem(tile.x, tile.y);
-              copy_v2_v2(pixel, max_velocity(pixel, max_motion.xy()));
-              copy_v2_v2(pixel + 2, max_velocity(pixel + 2, max_motion.zw()));
+              copy_v2_v2(pixel + 2,
+                         max_velocity_approximate(pixel + 2, max_motion.zw(), tile, src_tile));
+              copy_v2_v2(pixel, max_velocity_approximate(pixel, max_motion.xy(), tile, src_tile));
             }
           }
         }
@@ -169,8 +193,9 @@ static MemoryBuffer dilate_max_velocity(MemoryBuffer &max_tile_velocity, float s
             int2 tile = motion_rect.bottom_left + int2(i, j);
             if (is_inside_motion_line(tile, motion_line)) {
               float *pixel = output.get_elem(tile.x, tile.y);
-              copy_v2_v2(pixel, max_velocity(pixel, max_motion.xy()));
-              copy_v2_v2(pixel + 2, max_velocity(pixel + 2, max_motion.zw()));
+              copy_v2_v2(pixel, max_velocity_approximate(pixel, max_motion.xy(), tile, src_tile));
+              copy_v2_v2(pixel + 2,
+                         max_velocity_approximate(pixel + 2, max_motion.zw(), tile, src_tile));
             }
           }
         }
