@@ -14,6 +14,16 @@
 #include "vk_resources.hh"
 #include "vk_types.hh"
 
+#include "nodes/vk_blit_image_node.hh"
+#include "nodes/vk_clear_color_image_node.hh"
+#include "nodes/vk_copy_buffer_node.hh"
+#include "nodes/vk_copy_buffer_to_image_node.hh"
+#include "nodes/vk_copy_image_node.hh"
+#include "nodes/vk_copy_image_to_buffer_node.hh"
+#include "nodes/vk_fill_buffer_node.hh"
+#include "nodes/vk_synchronization_node.hh"
+#include "nodes/vk_unused_node.hh"
+
 namespace blender::gpu::render_graph {
 
 class VKCommandBuilder;
@@ -40,53 +50,16 @@ class VKNodes {
 
     Type type;
     union {
-      struct {
-        VkImage vk_image;
-        VkClearColorValue vk_clear_color_value;
-        VkImageSubresourceRange vk_image_subresource_range;
-      } clear_color_image;
-
-      struct {
-        VkBuffer vk_buffer;
-        VkDeviceSize size;
-        uint32_t data;
-      } fill_buffer;
-
-      struct {
-        VkBuffer src_buffer;
-        VkBuffer dst_buffer;
-        VkBufferCopy region;
-      } copy_buffer;
-
-      struct {
-        VkImage src_image;
-        VkImage dst_image;
-        VkImageCopy region;
-      } copy_image;
-
-      struct {
-        VkImage src_image;
-        VkBuffer dst_buffer;
-        VkBufferImageCopy region;
-      } copy_image_to_buffer;
-
-      struct {
-        VkBuffer src_buffer;
-        VkImage dst_image;
-        VkBufferImageCopy region;
-      } copy_buffer_to_image;
-
-      struct {
-        VkImage src_image;
-        VkImage dst_image;
-        VkImageBlit region;
-        VkFilter filter;
-      } blit_image;
-
-      struct {
-      } synchronization;
-
-      VKDispatchNode dispatch;
+      VKBlitImageNode::Data blit_image;
+      VKClearColorImageNode::Data clear_color_image;
+      VKCopyBufferNode::Data copy_buffer;
+      VKCopyBufferToImageNode::Data copy_buffer_to_image;
+      VKCopyImageNode::Data copy_image;
+      VKCopyImageToBufferNode::Data copy_image_to_buffer;
+      VKDispatchNode::Data dispatch;
+      VKFillBufferNode::Data fill_buffer;
+      VKSynchronizationNode::Data synchronization;
+      VKUnusedNode::Data unused;
     };
   };
 

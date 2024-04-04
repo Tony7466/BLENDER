@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_utility_mixins.hh"
+#include "nodes/vk_dispatch_node.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -29,27 +30,6 @@ struct VKResourceBarrierState {
   VkPipelineStageFlags read_stages = VK_PIPELINE_STAGE_NONE;
   /* Current image layout of the image resource. */
   VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-};
-
-/**
- * Container for storing shader descriptor set and push constants.
- */
-struct VKPipelineData {
-  VkPipeline vk_pipeline;
-  VkPipelineLayout vk_pipeline_layout;
-  VkDescriptorSet vk_descriptor_set;
-  uint32_t push_constants_size;
-  const void *push_constants_data;
-};
-
-/**
- * Data kept inside a dispatch node.
- */
-struct VKDispatchNode {
-  VKPipelineData pipeline_data;
-  uint32_t group_count_x;
-  uint32_t group_count_y;
-  uint32_t group_count_z;
 };
 
 constexpr VkAccessFlags VK_ACCESS_READ_MASK = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
@@ -94,7 +74,7 @@ struct VKResourceAccessInfo : NonCopyable {
  * All information to add a dispatch node.
  */
 struct VKDispatchInfo : NonCopyable {
-  VKDispatchNode dispatch_node;
+  VKDispatchNode::Data dispatch_node;
   VKResourceAccessInfo resources;
 };
 
