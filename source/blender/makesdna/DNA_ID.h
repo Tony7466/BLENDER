@@ -538,6 +538,8 @@ typedef struct Library_Runtime {
   /* Used for efficient calculations of unique names. */
   struct UniqueName_Map *name_map;
 
+  struct FileData *filedata;
+
   /** Set for indirectly linked libraries, used in the outliner and while reading. */
   struct Library *parent;
 
@@ -565,7 +567,7 @@ typedef struct Library_Runtime {
  */
 typedef struct Library {
   ID id;
-  struct FileData *filedata;
+
   /** Path name used for reading, can be relative and edited in the outliner. */
   char filepath[1024];
 
