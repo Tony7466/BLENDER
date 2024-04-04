@@ -262,6 +262,15 @@ void VolumeModule::draw_prepass(View &view)
   float4x4 winmat = view.winmat();
   projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
 
+  /* Just like up-sampling matrix computation, we have to be careful to where to put the bounds of
+   * our froxel volume so that a 2D pixel covers exactly the number of pixel in a tile. */
+  float2 render_size = float2(right - left, top - bottom);
+  float2 volume_size = render_size * float2(data_.tex_size.xy() * data_.tile_size) /
+                       float2(inst_.film.render_extent_get());
+  /* Change to the padded extends. */
+  right = left + volume_size.x;
+  top = bottom + volume_size.y;
+
   /* Create an infinite projection matrix to avoid far clipping plane clipping the object. This
    * way, surfaces that are further away than the far clip plane will still be voxelized.*/
   float4x4 winmat_infinite;
@@ -269,9 +278,13 @@ void VolumeModule::draw_prepass(View &view)
                         math::projection::perspective_infinite(left, right, bottom, top, near) :
                         math::projection::orthographic_infinite(left, right, bottom, top);
   /* Anti-Aliasing / Super-Sampling jitter. */
-  float2 jitter = (inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U) - 0.5f) * data_.inv_tex_size.xy();
+  float2 jitter = inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U);
+  /* Wrap to keep first sample centered (0,0) and scale to convert to NDC. */
+  jitter = math::fract(jitter + 0.5f) * 2.0f - 1.0f;
+  /* Convert to pixel size. */
+  jitter *= data_.inv_tex_size.xy();
   /* Time 2 to convert to NDC. */
-  winmat_infinite = math::projection::translate(winmat_infinite, 2.0 * jitter);
+  winmat_infinite = math::projection::translate(winmat_infinite, jitter);
 
   View volume_view = {"Volume View"};
   volume_view.sync(view.viewmat(), winmat_infinite);
