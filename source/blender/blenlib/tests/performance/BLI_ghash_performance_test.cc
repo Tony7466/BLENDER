@@ -9,18 +9,19 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_fileops.h"
 #include "BLI_ghash.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
-#include "BLI_time_utildefines.h"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
-/* Using http://corpora.uni-leipzig.de/downloads/eng_wikipedia_2010_1M-text.tar.gz
+/* Using https://downloads.wortschatz-leipzig.de/corpora/eng_wikipedia_2010_1M.tar.gz
  * (1 million of words, about 122MB of text) from
- * http://corpora.informatik.uni-leipzig.de/download.html */
+ * https://wortschatz.uni-leipzig.de/en/download/English
+ * Otherwise a small `words10k` corpus is used. */
 #if 0
-#  define TEXT_CORPUS_PATH \
-    "/path/to/Téléchargements/eng_wikipedia_2010_1M-text/eng_wikipedia_2010_1M-sentences.txt"
+#  define TEXT_CORPUS_PATH "../../../../../eng_wikipedia_2010_1M-sentences.txt"
 #endif
 
 /* Resizing the hash has a huge cost over global filling operation! */
@@ -30,68 +31,58 @@
 // #define GHASH_RUN_BIG
 
 /* Size of 'small case' ghash (number of entries). */
-#define TESTCASE_SIZE_SMALL 17
+static constexpr size_t TESTCASE_SIZE_SMALL = 17;
 
-#define PRINTF_GHASH_STATS(_gh) \
-  { \
-    double q, lf, var, pempty, poverloaded; \
-    int bigb; \
-    q = BLI_ghash_calc_quality_ex((_gh), &lf, &var, &pempty, &poverloaded, &bigb); \
-    printf( \
-        "GHash stats (%u entries):\n\t" \
-        "Quality (the lower the better): %f\n\tVariance (the lower the better): %f\n\tLoad: " \
-        "%f\n\t" \
-        "Empty buckets: %.2f%%\n\tOverloaded buckets: %.2f%% (biggest bucket: %d)\n", \
-        BLI_ghash_len(_gh), \
-        q, \
-        var, \
-        lf, \
-        pempty * 100.0, \
-        poverloaded * 100.0, \
-        bigb); \
-  } \
-  void(0)
+static void print_ghash_stats(GHash *gh)
+{
+  double lf, var, pempty, poverloaded;
+  int bigb;
+  double q = BLI_ghash_calc_quality_ex(gh, &lf, &var, &pempty, &poverloaded, &bigb);
+  printf(
+      "GHash stats (%u entries):\n\t"
+      "Quality (the lower the better): %f\n\tVariance (the lower the better): %f\n\tLoad: "
+      "%f\n\t"
+      "Empty buckets: %.2f%%\n\tOverloaded buckets: %.2f%% (biggest bucket: %d)\n",
+      BLI_ghash_len(gh),
+      q,
+      var,
+      lf,
+      pempty * 100.0,
+      poverloaded * 100.0,
+      bigb);
+}
 
 /* Str: whole text, lines and words from a 'corpus' text. */
+
+static char *read_text_corpus()
+{
+  char *data = nullptr;
+
+#ifdef TEXT_CORPUS_PATH
+  size_t data_size;
+  data = static_cast<char *>(BLI_file_read_text_as_mem(TEXT_CORPUS_PATH, 1, &data_size));
+  if (data != nullptr) {
+    data[data_size] = 0;
+  }
+#endif
+
+  if (data == nullptr) {
+    data = BLI_strdup(words10k);
+  }
+  return data;
+}
 
 static void str_ghash_tests(GHash *ghash, const char *id)
 {
   printf("\n========== STARTING %s ==========\n", id);
 
-#ifdef TEXT_CORPUS_PATH
-  size_t data_size = 0;
-  char *data;
-  {
-    struct stat st;
-    if (stat(TEXT_CORPUS_PATH, &st) == 0)
-      data_size = st.st_size;
-  }
-  if (data_size != 0) {
-    FILE *f = fopen(TEXT_CORPUS_PATH, "r");
-
-    data = (char *)MEM_mallocN(data_size + 1, __func__);
-    if (fread(data, sizeof(*data), data_size, f) != data_size) {
-      printf("ERROR in reading file %s!", TEXT_CORPUS_PATH);
-      MEM_freeN(data);
-      data = BLI_strdup(words10k);
-    }
-    data[data_size] = '\0';
-    fclose(f);
-  }
-  else {
-    data = BLI_strdup(words10k);
-  }
-#else
-  char *data = BLI_strdup(words10k);
-#endif
+  char *data = read_text_corpus();
   char *data_p = BLI_strdup(data);
   char *data_w = BLI_strdup(data);
   char *data_bis = BLI_strdup(data);
 
   {
-    char *p, *w, *c_p, *c_w;
-
-    TIMEIT_START(string_insert);
+    SCOPED_TIMER("string_insert");
 
 #ifdef GHASH_RESERVE
     BLI_ghash_reserve(ghash, strlen(data) / 32); /* rough estimation... */
@@ -99,6 +90,7 @@ static void str_ghash_tests(GHash *ghash, const char *id)
 
     BLI_ghash_insert(ghash, data, POINTER_FROM_INT(data[0]));
 
+    char *p, *w, *c_p, *c_w;
     for (p = c_p = data_p, w = c_w = data_w; *c_w; c_w++, c_p++) {
       if (*c_p == '.') {
         *c_p = *c_w = '\0';
@@ -119,21 +111,17 @@ static void str_ghash_tests(GHash *ghash, const char *id)
         w = c_w + 1;
       }
     }
-
-    TIMEIT_END(string_insert);
   }
 
-  PRINTF_GHASH_STATS(ghash);
+  print_ghash_stats(ghash);
 
   {
-    char *p, *w, *c;
-    void *v;
+    SCOPED_TIMER("string_lookup");
 
-    TIMEIT_START(string_lookup);
-
-    v = BLI_ghash_lookup(ghash, data_bis);
+    void *v = BLI_ghash_lookup(ghash, data_bis);
     EXPECT_EQ(POINTER_AS_INT(v), data_bis[0]);
 
+    char *p, *w, *c;
     for (p = w = c = data_bis; *c; c++) {
       if (*c == '.') {
         *c = '\0';
@@ -150,8 +138,6 @@ static void str_ghash_tests(GHash *ghash, const char *id)
         w = c + 1;
       }
     }
-
-    TIMEIT_END(string_lookup);
   }
 
   BLI_ghash_free(ghash, nullptr, nullptr);
@@ -184,9 +170,8 @@ static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
   printf("\n========== STARTING %s ==========\n", id);
 
   {
+    SCOPED_TIMER("int_insert");
     uint i = count;
-
-    TIMEIT_START(int_insert);
 
 #ifdef GHASH_RESERVE
     BLI_ghash_reserve(ghash, count);
@@ -195,37 +180,28 @@ static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
     while (i--) {
       BLI_ghash_insert(ghash, POINTER_FROM_UINT(i), POINTER_FROM_UINT(i));
     }
-
-    TIMEIT_END(int_insert);
   }
 
-  PRINTF_GHASH_STATS(ghash);
+  print_ghash_stats(ghash);
 
   {
+    SCOPED_TIMER("int_lookup");
     uint i = count;
-
-    TIMEIT_START(int_lookup);
 
     while (i--) {
       void *v = BLI_ghash_lookup(ghash, POINTER_FROM_UINT(i));
       EXPECT_EQ(POINTER_AS_UINT(v), i);
     }
-
-    TIMEIT_END(int_lookup);
   }
 
   {
-    void *k, *v;
-
-    TIMEIT_START(int_pop);
-
+    SCOPED_TIMER("int_pop");
     GHashIterState pop_state = {0};
 
+    void *k, *v;
     while (BLI_ghash_pop(ghash, &pop_state, &k, &v)) {
       EXPECT_EQ(k, v);
     }
-
-    TIMEIT_END(int_pop);
   }
   EXPECT_EQ(BLI_ghash_len(ghash), 0);
 
@@ -285,7 +261,7 @@ static void randint_ghash_tests(GHash *ghash, const char *id, const uint count)
   }
 
   {
-    TIMEIT_START(int_insert);
+    SCOPED_TIMER("int_insert");
 
 #ifdef GHASH_RESERVE
     BLI_ghash_reserve(ghash, count);
@@ -294,21 +270,17 @@ static void randint_ghash_tests(GHash *ghash, const char *id, const uint count)
     for (i = count, dt = data; i--; dt++) {
       BLI_ghash_insert(ghash, POINTER_FROM_UINT(*dt), POINTER_FROM_UINT(*dt));
     }
-
-    TIMEIT_END(int_insert);
   }
 
-  PRINTF_GHASH_STATS(ghash);
+  print_ghash_stats(ghash);
 
   {
-    TIMEIT_START(int_lookup);
+    SCOPED_TIMER("int_lookup");
 
     for (i = count, dt = data; i--; dt++) {
       void *v = BLI_ghash_lookup(ghash, POINTER_FROM_UINT(*dt));
       EXPECT_EQ(POINTER_AS_UINT(v), *dt);
     }
-
-    TIMEIT_END(int_lookup);
   }
 
   BLI_ghash_free(ghash, nullptr, nullptr);
@@ -397,7 +369,7 @@ static void int4_ghash_tests(GHash *ghash, const char *id, const uint count)
   }
 
   {
-    TIMEIT_START(int_v4_insert);
+    SCOPED_TIMER("int_v4_insert");
 
 #ifdef GHASH_RESERVE
     BLI_ghash_reserve(ghash, count);
@@ -406,21 +378,17 @@ static void int4_ghash_tests(GHash *ghash, const char *id, const uint count)
     for (i = count, dt = data; i--; dt++) {
       BLI_ghash_insert(ghash, *dt, POINTER_FROM_UINT(i));
     }
-
-    TIMEIT_END(int_v4_insert);
   }
 
-  PRINTF_GHASH_STATS(ghash);
+  print_ghash_stats(ghash);
 
   {
-    TIMEIT_START(int_v4_lookup);
+    SCOPED_TIMER("int_v4_lookup");
 
     for (i = count, dt = data; i--; dt++) {
       void *v = BLI_ghash_lookup(ghash, (void *)(*dt));
       EXPECT_EQ(POINTER_AS_UINT(v), i);
     }
-
-    TIMEIT_END(int_v4_lookup);
   }
 
   BLI_ghash_free(ghash, nullptr, nullptr);
@@ -518,27 +486,24 @@ static void multi_small_ghash_tests(GHash *ghash, const char *id, const uint cou
 
   RNG *rng = BLI_rng_new(1);
 
-  TIMEIT_START(multi_small_ghash);
-
-  uint i = count;
-  while (i--) {
-    const int count = 1 + (BLI_rng_get_int(rng) % TESTCASE_SIZE_SMALL) *
-                              (!(i % 100) ? 100 : (!(i % 10) ? 10 : 1));
-    multi_small_ghash_tests_one(ghash, rng, count);
+  {
+    SCOPED_TIMER("multi_small_ghash");
+    uint i = count;
+    while (i--) {
+      const int count = 1 + (BLI_rng_get_int(rng) % TESTCASE_SIZE_SMALL) *
+                                (!(i % 100) ? 100 : (!(i % 10) ? 10 : 1));
+      multi_small_ghash_tests_one(ghash, rng, count);
+    }
   }
-
-  TIMEIT_END(multi_small_ghash);
-
-  TIMEIT_START(multi_small2_ghash);
-
-  uint i = count;
-  while (i--) {
-    const int count = 1 + (BLI_rng_get_int(rng) % TESTCASE_SIZE_SMALL) / 2 *
-                              (!(i % 100) ? 100 : (!(i % 10) ? 10 : 1));
-    multi_small_ghash_tests_one(ghash, rng, count);
+  {
+    SCOPED_TIMER("multi_small2_ghash");
+    uint i = count;
+    while (i--) {
+      const int count = 1 + (BLI_rng_get_int(rng) % TESTCASE_SIZE_SMALL) / 2 *
+                                (!(i % 100) ? 100 : (!(i % 10) ? 10 : 1));
+      multi_small_ghash_tests_one(ghash, rng, count);
+    }
   }
-
-  TIMEIT_END(multi_small2_ghash);
 
   BLI_ghash_free(ghash, nullptr, nullptr);
   BLI_rng_free(rng);
