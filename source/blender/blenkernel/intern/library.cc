@@ -164,7 +164,7 @@ static void rebuild_hierarchy_best_parent_find(Main *bmain,
         }
         if (directly_used_libs.contains(from_id_lib)) {
           /* Found the first best possible candidate, no need to search further. */
-          BLI_assert(best_parent_lib == nullptr || best_parent_lib->temp_index > 0);
+          BLI_assert(best_parent_lib == nullptr || best_parent_lib->runtime.temp_index > 0);
           best_parent_lib = from_id_lib;
           do_break = true;
           break;
@@ -172,9 +172,11 @@ static void rebuild_hierarchy_best_parent_find(Main *bmain,
         if (!from_id_lib->parent) {
           rebuild_hierarchy_best_parent_find(bmain, directly_used_libs, from_id_lib);
         }
-        if (!best_parent_lib || best_parent_lib->temp_index > from_id_lib->temp_index) {
+        if (!best_parent_lib ||
+            best_parent_lib->runtime.temp_index > from_id_lib->runtime.temp_index)
+        {
           best_parent_lib = from_id_lib;
-          if (best_parent_lib->temp_index == 0) {
+          if (best_parent_lib->runtime.temp_index == 0) {
             /* Found the first best possible candidate, no need to search further. */
             BLI_assert(directly_used_libs.contains(best_parent_lib));
             do_break = true;
@@ -198,11 +200,11 @@ static void rebuild_hierarchy_best_parent_find(Main *bmain,
    * data. */
   if (best_parent_lib) {
     lib->parent = best_parent_lib;
-    lib->temp_index = best_parent_lib->temp_index + 1;
+    lib->runtime.temp_index = best_parent_lib->runtime.temp_index + 1;
   }
   else {
     lib->parent = nullptr;
-    lib->temp_index = 0;
+    lib->runtime.temp_index = 0;
     directly_used_libs.add(lib);
   }
 }
@@ -218,7 +220,7 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
     if (!ID_IS_LINKED(id_iter)) {
       continue;
     }
-    id_iter->lib->temp_index = 0;
+    id_iter->lib->runtime.temp_index = 0;
     if (directly_used_libs.contains(id_iter->lib)) {
       continue;
     }
@@ -237,29 +239,29 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
   LISTBASE_FOREACH (Library *, lib_iter, &bmain->libraries) {
     /* A directly used library. */
     if (directly_used_libs.contains(lib_iter)) {
-      BLI_assert(lib_iter->temp_index == 0);
+      BLI_assert(lib_iter->runtime.temp_index == 0);
       continue;
     }
 
     /* Assume existing parent is still valid, since it was not cleared in previous loop above.
      * Just compute 'hierarchy value' in temp index, if needed. */
     if (lib_iter->parent) {
-      if (lib_iter->temp_index > 0) {
+      if (lib_iter->runtime.temp_index > 0) {
         continue;
       }
       blender::Vector<Library *> parent_libraries;
       for (Library *parent_lib_iter = lib_iter;
-           parent_lib_iter && parent_lib_iter->temp_index == 0;
+           parent_lib_iter && parent_lib_iter->runtime.temp_index == 0;
            parent_lib_iter = parent_lib_iter->parent)
       {
         parent_libraries.append(parent_lib_iter);
       }
-      int parent_temp_index = parent_libraries.last()->temp_index + int(parent_libraries.size()) -
-                              1;
+      int parent_temp_index = parent_libraries.last()->runtime.temp_index +
+                              int(parent_libraries.size()) - 1;
       for (Library *parent_lib_iter : parent_libraries) {
         BLI_assert(parent_lib_iter != parent_libraries.last() ||
-                   parent_lib_iter->temp_index == parent_temp_index);
-        parent_lib_iter->temp_index = parent_temp_index--;
+                   parent_lib_iter->runtime.temp_index == parent_temp_index);
+        parent_lib_iter->runtime.temp_index = parent_temp_index--;
       }
       continue;
     }
@@ -274,15 +276,15 @@ void BKE_library_main_rebuild_hierarchy(Main *bmain)
   LISTBASE_FOREACH (Library *, lib_iter, &bmain->libraries) {
     /* A directly used library. */
     if (directly_used_libs.contains(lib_iter)) {
-      BLI_assert(lib_iter->temp_index == 0);
+      BLI_assert(lib_iter->runtime.temp_index == 0);
       continue;
     }
 
     if (lib_iter->parent) {
-      BLI_assert(lib_iter->temp_index > 0);
+      BLI_assert(lib_iter->runtime.temp_index > 0);
     }
     else {
-      BLI_assert(lib_iter->temp_index == 0);
+      BLI_assert(lib_iter->runtime.temp_index == 0);
       rebuild_hierarchy_best_parent_find(bmain, directly_used_libs, lib_iter);
     }
   }

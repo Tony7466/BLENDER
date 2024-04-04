@@ -365,11 +365,11 @@ static void split_libdata(ListBase *lb_src, Main **lib_main_array, const uint li
     idnext = static_cast<ID *>(id->next);
 
     if (id->lib) {
-      if ((uint(id->lib->temp_index) < lib_main_array_len) &&
+      if ((uint(id->lib->runtime.temp_index) < lib_main_array_len) &&
           /* this check should never fail, just in case 'id->lib' is a dangling pointer. */
-          (lib_main_array[id->lib->temp_index]->curlib == id->lib))
+          (lib_main_array[id->lib->runtime.temp_index]->curlib == id->lib))
       {
-        Main *mainvar = lib_main_array[id->lib->temp_index];
+        Main *mainvar = lib_main_array[id->lib->runtime.temp_index];
         ListBase *lb_dst = which_libbase(mainvar, GS(id->name));
         BLI_remlink(lb_src, id);
         BLI_addtail(lb_dst, id);
@@ -412,7 +412,7 @@ void blo_split_main(ListBase *mainlist, Main *main)
     libmain->has_forward_compatibility_issues = !MAIN_VERSION_FILE_OLDER_OR_EQUAL(
         libmain, BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
     BLI_addtail(mainlist, libmain);
-    lib->temp_index = i;
+    lib->runtime.temp_index = i;
     lib_main_array[i] = libmain;
   }
 

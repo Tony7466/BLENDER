@@ -547,6 +547,10 @@ typedef struct Library_Runtime {
    * directly and it will be kept in sync - campbell
    */
   char filepath_abs[1024];
+
+  /** Temp data needed by read/write code, and lib-override recursive re-synchronized. */
+  int temp_index;
+  char _pad[4];
 } Library_Runtime;
 
 /**
@@ -565,10 +569,8 @@ typedef struct Library {
   struct PackedFile *packedfile;
 
   ushort tag;
-  char _pad_0[6];
+  char _pad_0[2];
 
-  /** Temp data needed by read/write code, and lib-override recursive re-synchronized. */
-  int temp_index;
   /** See BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION, needed for do_versions. */
   short versionfile, subversionfile;
 
