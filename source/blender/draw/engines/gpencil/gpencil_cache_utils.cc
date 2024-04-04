@@ -40,7 +40,7 @@
 GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd,
                                           Object *ob,
                                           const bool is_stroke_order_3d,
-                                          const std::optional<blender::Bounds<float3>> bounds)
+                                          const blender::Bounds<float3> bounds)
 {
   using namespace blender;
   GPENCIL_tObject *tgp_ob = static_cast<GPENCIL_tObject *>(BLI_memblock_alloc(pd->gp_object_pool));
@@ -69,8 +69,8 @@ GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd,
    * strokes not aligned with the object axes. Maybe we could try to
    * compute the minimum axis of all strokes. But this would be more
    * computationally heavy and should go into the GPData evaluation. */
-  float3 size = (bounds->max - bounds->min) * 0.5f;
-  float3 center = math::midpoint(bounds->min, bounds->max);
+  float3 size = (bounds.max - bounds.min) * 0.5f;
+  float3 center = math::midpoint(bounds.min, bounds.max);
   /* Convert bbox to matrix */
   float mat[4][4];
   unit_m4(mat);
@@ -259,6 +259,49 @@ static void gpencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd
   }
 
   *r_alpha *= pd->xray_alpha;
+}
+
+static float4 grease_pencil_layer_final_tint_and_alpha_get(const GPENCIL_PrivateData *pd,
+                                                           const GreasePencil &grease_pencil,
+                                                           const int onion_id,
+                                                           float *r_alpha)
+{
+  const bool use_onion = (onion_id != 0);
+  if (use_onion) {
+    const bool use_onion_custom_col = (grease_pencil.onion_skinning_settings.flag &
+                                       GP_ONION_SKINNING_USE_CUSTOM_COLORS) != 0;
+    const bool use_onion_fade = (grease_pencil.onion_skinning_settings.flag &
+                                 GP_ONION_SKINNING_USE_FADE) != 0;
+    const bool use_next_col = onion_id > 0;
+
+    const float onion_factor = grease_pencil.onion_skinning_settings.opacity;
+    const float3 color_next(grease_pencil.onion_skinning_settings.color_after);
+    const float3 color_prev(grease_pencil.onion_skinning_settings.color_before);
+
+    const float4 onion_col_custom = (use_onion_custom_col) ?
+                                        (use_next_col ? float4(color_next, 1.0f) :
+                                                        float4(color_prev, 1.0f)) :
+                                        float4(U.gpencil_new_layer_col);
+
+    *r_alpha = use_onion_fade ? (1.0f / abs(onion_id)) : 0.5f;
+    *r_alpha *= onion_factor;
+    *r_alpha = (onion_factor > 0.0f) ? clamp_f(*r_alpha, 0.1f, 1.0f) :
+                                       clamp_f(*r_alpha, 0.01f, 1.0f);
+    *r_alpha *= pd->xray_alpha;
+
+    return onion_col_custom;
+  }
+
+  /* Layer tint is not a property in GPv3 anymore. It's only used for onion skinning. The previous
+   * property is replaced by a tint modifier during conversion. */
+  float4 layer_tint(0.0f);
+  if (GPENCIL_SIMPLIFY_TINT(pd->scene)) {
+    layer_tint[3] = 0.0f;
+  }
+  *r_alpha = 1.0f;
+  *r_alpha *= pd->xray_alpha;
+
+  return layer_tint;
 }
 
 /* Random color by layer. */
@@ -473,7 +516,7 @@ GPENCIL_tLayer *gpencil_layer_cache_get(GPENCIL_tObject *tgp_ob, int number)
 GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
                                               const Object *ob,
                                               const blender::bke::greasepencil::Layer &layer,
-                                              std::optional<int> /*onion_id*/,
+                                              const int onion_id,
                                               GPENCIL_tObject *tgp_ob)
 
 {
@@ -501,10 +544,9 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   float thickness_scale = (is_screenspace) ? -1.0f : 1.0f / 1000.0f;
   float layer_opacity = grease_pencil_layer_final_opacity_get(pd, ob, grease_pencil, layer);
 
-  float4 layer_tint(0.0f);
   float layer_alpha = pd->xray_alpha;
-  /* TODO: Onion skinning! */
-  // gpencil_layer_final_tint_and_alpha_get(pd, gpd, gpl, gpf, layer_tint, &layer_alpha);
+  const float4 layer_tint = grease_pencil_layer_final_tint_and_alpha_get(
+      pd, grease_pencil, onion_id, &layer_alpha);
 
   /* Create the new layer descriptor. */
   GPENCIL_tLayer *tgp_layer = static_cast<GPENCIL_tLayer *>(BLI_memblock_alloc(pd->gp_layer_pool));
