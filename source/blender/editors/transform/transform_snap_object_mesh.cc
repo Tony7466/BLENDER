@@ -424,9 +424,13 @@ eSnapMode snap_edge_points_mesh(SnapObjectContext *sctx,
   return elem;
 }
 
-static eSnapMode mesh_snap_mode_supported(const Mesh *mesh)
+static eSnapMode mesh_snap_mode_supported(const Mesh *mesh, const bool use_hide)
 {
-  eSnapMode snap_mode_supported = mesh->loose_verts().count ? SCE_SNAP_TO_POINT : SCE_SNAP_TO_NONE;
+  /* When considering hidden geometry, we still cannot obtain the number of loose verts until
+   * computing #BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN. Therefore, consider #SCE_SNAP_TO_POINT supported
+   * even if the mesh has no loose vertices in this case. */
+  eSnapMode snap_mode_supported = (use_hide || mesh->loose_verts().count) ? SCE_SNAP_TO_POINT :
+                                                                            SCE_SNAP_TO_NONE;
   if (mesh->faces_num) {
     snap_mode_supported |= SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_NEAREST | SNAP_TO_EDGE_ELEMENTS;
   }
@@ -455,7 +459,8 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
     }
   }
 
-  snap_to &= mesh_snap_mode_supported(mesh_eval) & (SNAP_TO_EDGE_ELEMENTS | SCE_SNAP_TO_POINT);
+  snap_to &= mesh_snap_mode_supported(mesh_eval, use_hide) &
+             (SNAP_TO_EDGE_ELEMENTS | SCE_SNAP_TO_POINT);
   if (snap_to == SCE_SNAP_TO_NONE) {
     return SCE_SNAP_TO_NONE;
   }
@@ -464,10 +469,18 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
   snap_object_data_mesh_get(mesh_eval, use_hide, &treedata);
 
   BVHTree *bvhtree[2] = {nullptr};
-  bvhtree[0] = BKE_bvhtree_from_mesh_get(&treedata_dummy, mesh_eval, BVHTREE_FROM_LOOSEEDGES, 2);
+  bvhtree[0] = BKE_bvhtree_from_mesh_get(&treedata_dummy,
+                                         mesh_eval,
+                                         use_hide ? BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN :
+                                                    BVHTREE_FROM_LOOSEEDGES,
+                                         2);
   BLI_assert(treedata_dummy.cached);
   if (snap_to & SCE_SNAP_TO_POINT) {
-    bvhtree[1] = BKE_bvhtree_from_mesh_get(&treedata_dummy, mesh_eval, BVHTREE_FROM_LOOSEVERTS, 2);
+    bvhtree[1] = BKE_bvhtree_from_mesh_get(&treedata_dummy,
+                                           mesh_eval,
+                                           use_hide ? BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN :
+                                                      BVHTREE_FROM_LOOSEVERTS,
+                                           2);
     BLI_assert(treedata_dummy.cached);
   }
 
