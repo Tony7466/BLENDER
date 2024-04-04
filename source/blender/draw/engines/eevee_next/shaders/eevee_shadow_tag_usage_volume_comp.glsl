@@ -41,7 +41,7 @@ void main()
     return;
   }
 
-  vec2 pixel = ((vec2(froxel.xy) + vec2(0.5)) / vec2(uniform_buf.volumes.tex_size.xy)) *
+  vec2 pixel = ((vec2(froxel.xy) + 0.5) * uniform_buf.volumes.inv_tex_size.xy) *
                uniform_buf.volumes.main_view_extent;
 
   int bias = uniform_buf.volumes.tile_size_lod;
