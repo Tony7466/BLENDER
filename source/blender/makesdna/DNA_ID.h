@@ -540,9 +540,6 @@ typedef struct Library_Runtime {
 
   struct FileData *filedata;
 
-  /** Set for indirectly linked libraries, used in the outliner and while reading. */
-  struct Library *parent;
-
   /**
    * Run-time only, absolute file-path (set on read).
    * This is only for convenience, `filepath` is the real path
@@ -552,6 +549,9 @@ typedef struct Library_Runtime {
    * directly and it will be kept in sync - campbell
    */
   char filepath_abs[1024];
+
+  /** Set for indirectly linked libraries, used in the outliner and while reading. */
+  struct Library *parent;
 
   /** #eLibrary_Tag. */
   ushort tag;
@@ -567,21 +567,19 @@ typedef struct Library_Runtime {
  */
 typedef struct Library {
   ID id;
-
   /** Path name used for reading, can be relative and edited in the outliner. */
   char filepath[1024];
 
   struct PackedFile *packedfile;
 
-  char _pad_0[4];
-
   /** See BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION, needed for do_versions. */
   short versionfile, subversionfile;
+  char _pad[4];
 
   struct Library_Runtime runtime;
 } Library;
 
-/** #Library.tag */
+/** #Library.runtime.tag */
 enum eLibrary_Tag {
   /* Automatic recursive resync was needed when linking/loading data from that library. */
   LIBRARY_TAG_RESYNC_REQUIRED = 1 << 0,
