@@ -9,7 +9,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKUnusedNode {
+struct VKUnusedNode : NonCopyable {
   struct Data {};
 };
 }  // namespace blender::gpu::render_graph

@@ -9,7 +9,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKCopyBufferToImageNode {
+struct VKCopyBufferToImageNode:NonCopyable {
   struct Data {
     VkBuffer src_buffer;
     VkImage dst_image;

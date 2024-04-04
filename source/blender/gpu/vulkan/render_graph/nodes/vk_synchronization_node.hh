@@ -9,7 +9,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKSynchronizationNode {
+struct VKSynchronizationNode:NonCopyable {
   struct Data {};
 };
 }  // namespace blender::gpu::render_graph

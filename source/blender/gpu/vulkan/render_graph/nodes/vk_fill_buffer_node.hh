@@ -9,7 +9,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKFillBufferNode {
+struct VKFillBufferNode:NonCopyable {
   struct Data {
     VkBuffer vk_buffer;
     VkDeviceSize size;

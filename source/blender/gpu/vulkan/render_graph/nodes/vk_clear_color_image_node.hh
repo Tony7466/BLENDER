@@ -9,7 +9,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKClearColorImageNode {
+struct VKClearColorImageNode:NonCopyable {
   struct Data {
     VkImage vk_image;
     VkClearColorValue vk_clear_color_value;

@@ -142,7 +142,8 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodes::Node::Type::BLIT_IMAGE: {
-      build_node_blit_image(render_graph, node_handle, node);
+      build_node<VKBlitImageNode, VKBlitImageNode::Data>(
+          render_graph, *render_graph.command_buffer_, node_handle, node.blit_image);
       break;
     }
 
@@ -255,25 +256,6 @@ void VKCommandBuilder::build_node_copy_image_to_buffer(VKRenderGraph &render_gra
                                                      node.copy_image_to_buffer.dst_buffer,
                                                      1,
                                                      &node.copy_image_to_buffer.region);
-}
-
-void VKCommandBuilder::build_node_blit_image(VKRenderGraph &render_graph,
-                                             NodeHandle node_handle,
-                                             const VKNodes::Node &node)
-{
-  BLI_assert(node.type == VKNodes::Node::Type::BLIT_IMAGE);
-
-  reset_barriers();
-  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  send_pipeline_barriers(render_graph);
-
-  render_graph.command_buffer_->blit_image(node.blit_image.src_image,
-                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                           node.blit_image.dst_image,
-                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                           1,
-                                           &node.blit_image.region,
-                                           node.blit_image.filter);
 }
 
 void VKCommandBuilder::build_node_synchronization(VKRenderGraph &render_graph,

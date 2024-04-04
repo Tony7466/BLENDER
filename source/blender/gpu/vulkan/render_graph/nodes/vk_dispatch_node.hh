@@ -10,7 +10,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKDispatchNode {
+struct VKDispatchNode:NonCopyable {
   struct Data {
     VKPipelineData pipeline_data;
     uint32_t group_count_x;

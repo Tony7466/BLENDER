@@ -105,9 +105,6 @@ class VKCommandBuilder {
   void build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
                                        NodeHandle node_handle,
                                        const VKNodes::Node &node);
-  void build_node_blit_image(VKRenderGraph &render_graph,
-                             NodeHandle node_handle,
-                             const VKNodes::Node &node);
   void build_node_synchronization(VKRenderGraph &render_graph,
                                   NodeHandle node_handle,
                                   const VKNodes::Node &node);
@@ -145,6 +142,25 @@ class VKCommandBuilder {
   void add_image_write_barriers(VKRenderGraph &render_graph,
                                 NodeHandle node_handle,
                                 VkPipelineStageFlags node_stages);
+
+  template<typename NodeClass, typename NodeClassData>
+  void build_node(VKRenderGraph &render_graph,
+                  VKCommandBufferInterface &command_buffer,
+                  NodeHandle node_handle,
+                  const NodeClassData &node_data)
+  {
+    if (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
+      reset_barriers();
+      if (NodeClass::uses_image_resources) {
+        add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+      }
+      if (NodeClass::uses_buffer_resources) {
+        add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+      }
+      send_pipeline_barriers(render_graph);
+    }
+    NodeClass::build_commands(command_buffer, node_data);
+  }
 };
 
 }  // namespace blender::gpu::render_graph
