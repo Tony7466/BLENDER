@@ -81,10 +81,7 @@ ccl_device_inline float bump_shadowing_term(ccl_private const ShaderData &sd,
     return 0.0f;
   }
 
-  /* When bump map correction is not used do not do smoothing, let the normal to be the one which
-   * artists desires it to be via shader configuration.
-   * Effectively, when bump map correction is not used only scale shading to 0 when the normal
-   * points inside of the mesh, which is not well supported by functionality like light trees. */
+  /* When bump map correction is not used do skip the smoothing. */
   if ((sd.flag & SD_USE_BUMP_MAP_CORRECTION) == 0) {
     return 1.0f;
   }
