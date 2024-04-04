@@ -606,6 +606,8 @@ struct BoxSelectUserData {
   int edge_style;
   int face_style;
   bool check_mesh_direction;
+  blender::BitVector<> visited_face;
+  blender::BitVector<> front_face;
 
   /* runtime */
   bool is_done;
@@ -624,6 +626,8 @@ struct LassoSelectUserData {
   int edge_style;
   int face_style;
   bool check_mesh_direction;
+  blender::BitVector<> visited_face;
+  blender::BitVector<> front_face;
 
   /* runtime */
   int pass;
@@ -642,6 +646,8 @@ struct CircleSelectUserData {
   int edge_style;
   int face_style;
   bool check_mesh_direction;
+  blender::BitVector<> visited_face;
+  blender::BitVector<> front_face;
 
   /* runtime */
   bool is_changed;
@@ -649,14 +655,14 @@ struct CircleSelectUserData {
 
 void edbm_vert_orientation(const BMVert *eve, float normal[3], float plane[3], float meshmat[3][3])
 {
-  float vec[3] = {};
+  float vec[3] = {0.0, 0.0, 0.0};
   float tangent[3] = {0.0f, 0.0f, 1.0f};
   copy_v3_v3(normal, eve->no);
 
   if (eve->e) {
-    float v1co[3] = {eve->e->v1->co[0], eve->e->v1->co[1], eve->e->v1->co[2]};
-    float v2co[3] = {eve->e->v2->co[0], eve->e->v2->co[1], eve->e->v2->co[2]};
-    sub_v3_v3v3(plane, v2co, v1co);
+    float vert1v3[3] = {eve->e->v1->co[0], eve->e->v1->co[1], eve->e->v1->co[2]};
+    float vert2v3[3] = {eve->e->v2->co[0], eve->e->v2->co[1], eve->e->v2->co[2]};
+    sub_v3_v3v3(plane, vert2v3, vert1v3);
   }
   else {
     if (eve->no[0] < 0.5f) {
@@ -682,166 +688,165 @@ void edbm_vert_orientation(const BMVert *eve, float normal[3], float plane[3], f
   cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
 }
 
-void edbm_edge_orientation(const BMEdge *eed, float normal[3], float plane[3])
+void edbm_edge_orientation(const BMEdge *eed, float normal[3], float plane[3], float meshmat[3][3])
 {
-  float eed_plane[3] = {};
-  float vec[3] = {};
+  float eed_plane[3], vec[3];
   add_v3_v3v3(normal, eed->v1->no, eed->v2->no);
   sub_v3_v3v3(eed_plane, eed->v2->co, eed->v1->co);
   cross_v3_v3v3(vec, normal, eed_plane);
   cross_v3_v3v3(normal, eed_plane, vec);
   normalize_v3(normal);
 
-  if (BM_edge_is_boundary(eed)) {
-    sub_v3_v3v3(plane, eed->l->v->co, eed->l->next->v->co);
-  }
-  else {
-    if (eed->v2->co[1] > eed->v1->co[1]) {
-      sub_v3_v3v3(plane, eed->v2->co, eed->v1->co);
+  if (plane != nullptr && meshmat != nullptr) {
+    if (BM_edge_is_boundary(eed)) {
+      sub_v3_v3v3(plane, eed->l->v->co, eed->l->next->v->co);
     }
     else {
-      sub_v3_v3v3(plane, eed->v1->co, eed->v2->co);
+      if (eed->v2->co[1] > eed->v1->co[1]) {
+        sub_v3_v3v3(plane, eed->v2->co, eed->v1->co);
+      }
+      else {
+        sub_v3_v3v3(plane, eed->v1->co, eed->v2->co);
+      }
     }
+    normalize_v3(plane);
   }
-  normalize_v3(plane);
 }
 
-bool edbm_normal_facing_viewport(ViewContext *vc,
-                                 struct BMVert *eve,
-                                 struct BMEdge *eed,
-                                 struct BMFace *efa,
-                                 bool use_direction)
+bool edbm_mesh_facing_viewport(ViewContext *vc,
+                               struct BMFace *efa,
+                               struct BMEdge *eed,
+                               struct BMVert *eve)
 {
   ToolSettings *ts = vc->scene->toolsettings;
-  float normal[3], plane[3], meshcol3[3], viewcol3[3], meshmat[3][3];
-  int direction = eve != nullptr ? ts->viewport_facing_select_vert :
-                  eed != nullptr ? ts->viewport_facing_select_edge :
-                                   ts->viewport_facing_select_face;
-  bool backface = use_direction && (direction == 4 || direction == 8);
-
-  if (eve != nullptr) {
-    edbm_vert_orientation(eve, normal, plane, meshmat);
-  }
-  else {
-    if (eed != nullptr) {
-      edbm_edge_orientation(eed, normal, plane);
-    }
-    else if (efa != nullptr) {
-      copy_v3_v3(normal, efa->no);
-      BM_face_calc_tangent_auto(efa, plane);
-    }
-    normalize_v3_v3(meshmat[2], normal);
-    negate_v3_v3(meshmat[1], plane);
-
-    if (is_zero_v3(meshmat[1])) {
-      meshmat[1][2] = 1.0f;
-    }
-    cross_v3_v3v3(meshmat[0], meshmat[2], meshmat[1]);
-    cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
-    normalize_v3(meshmat[1]);
-  }
-  normalize_m3(meshmat);
-  invert_m3(meshmat);
-  meshcol3[0] = meshmat[0][2];
-  meshcol3[1] = meshmat[1][2];
-  meshcol3[2] = meshmat[2][2];
-  viewcol3[0] = vc->rv3d->viewmat[0][2];
-  viewcol3[1] = vc->rv3d->viewmat[1][2];
-  viewcol3[2] = vc->rv3d->viewmat[2][2];
-
+  const bool face = efa != nullptr;
+  const bool edge = eed != nullptr;
+  const bool vert = eve != nullptr;
+  const bool persp = vc->rv3d->is_persp;
+  float view[3], mesh_co[3], mesh_no[3];
   bool mesh_facing = false;
-  if (backface) {
-    mesh_facing = dot_v3v3(meshcol3, viewcol3) < -ts->viewport_facing_select_threshold;
+
+  for (int i = 0; i < 3; i++) {
+    if (persp) {
+      view[i] = vc->rv3d->viewinv[3][i];
+    }
+    else {
+      view[i] = vc->rv3d->viewmat[i][2];
+    }
+  }
+
+  if (persp) {
+    if (face) {
+      BMIter iter;
+      BMVert *eve;
+      int vcount = 0;
+      mesh_no[0] = efa->no[0];
+      mesh_no[1] = efa->no[1];
+      mesh_no[2] = efa->no[2];
+
+      if (efa->len == 3) {
+        float tri[3][3];
+        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
+          tri[vcount][0] = eve->co[0];
+          tri[vcount][1] = eve->co[1];
+          tri[vcount][2] = eve->co[2];
+          vcount++;
+        }
+        mid_v3_v3v3v3(mesh_co, tri[0], tri[1], tri[2]);
+      }
+      else if (efa->len == 4) {
+        float quad[4][3];
+        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
+          quad[vcount][0] = eve->co[0];
+          quad[vcount][1] = eve->co[1];
+          quad[vcount][2] = eve->co[2];
+          vcount++;
+        }
+        mid_v3_v3v3v3v3(mesh_co, quad[0], quad[1], quad[2], quad[3]);
+      }
+      else {
+        float(*ngon)[3] = static_cast<float(*)[3]>(
+            MEM_mallocN(sizeof(float) * 3 * efa->len, __func__));
+        BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
+          ngon[vcount][0] = eve->co[0];
+          ngon[vcount][1] = eve->co[1];
+          ngon[vcount][2] = eve->co[2];
+          vcount++;
+        }
+        mid_v3_v3_array(mesh_co, ngon, efa->len);
+        MEM_freeN(ngon);
+      }
+    }
+    else if (edge) {
+      edbm_edge_orientation(eed, mesh_no, nullptr, nullptr);
+      mid_v3_v3v3(mesh_co, eed->v1->co, eed->v2->co);
+    }
+    else if (vert) {
+      for (int i = 0; i < 3; i++) {
+        mesh_no[i] = eve->no[i];
+        mesh_co[i] = eve->co[i];
+      }
+    }
+
+    mesh_co[0] -= view[0];
+    mesh_co[1] -= view[1];
+    mesh_co[2] -= view[2];
+    normalize_v3(mesh_co);
   }
   else {
-    mesh_facing = dot_v3v3(meshcol3, viewcol3) > ts->viewport_facing_select_threshold;
+    float plane[3], meshmat[3][3];
+
+    if (vert) {
+      edbm_vert_orientation(eve, mesh_no, plane, meshmat);
+    }
+    else {
+      if (edge) {
+        edbm_edge_orientation(eed, mesh_no, plane, meshmat);
+      }
+      else if (face) {
+        copy_v3_v3(mesh_no, efa->no);
+        BM_face_calc_tangent_auto(efa, plane);
+      }
+      normalize_v3_v3(meshmat[2], mesh_no);
+      negate_v3_v3(meshmat[1], plane);
+
+      if (is_zero_v3(meshmat[1])) {
+        meshmat[1][2] = 1.0f;
+      }
+
+      cross_v3_v3v3(meshmat[0], meshmat[2], meshmat[1]);
+      cross_v3_v3v3(meshmat[1], meshmat[2], meshmat[0]);
+      normalize_v3(meshmat[1]);
+    }
+
+    normalize_m3(meshmat);
+    invert_m3(meshmat);
+    mesh_no[0] = meshmat[0][2];
+    mesh_no[1] = meshmat[1][2];
+    mesh_no[2] = meshmat[2][2];
   }
+
+  if (persp) {
+    mesh_facing = dot_v3v3(mesh_no, mesh_co) < 0.0f;
+  }
+  else {
+    mesh_facing = dot_v3v3(mesh_no, view) > 0.0f;
+  }
+
   return mesh_facing;
 }
 
-bool edbm_facing_viewport_precheck(ToolSettings *ts, int style, bool xray)
+bool edbm_check_mesh_facing(ToolSettings *ts, bool zbuf)
 {
-  if (!ts->viewport_facing_select) {
-    return false;
-  }
-  const bool mode_match = xray ? ts->viewport_facing_select_mode == 1 ||
-                                     ts->viewport_facing_select_mode == 4 :
-                                 ts->viewport_facing_select_mode < 4;
-  const bool check_mesh_facing = mode_match && style > 0 && style < 16;
-  return check_mesh_facing;
+  const bool mode_match = zbuf ? ts->backface_select && (ts->backface_select_mode == 2 ||
+                                                         ts->backface_select_mode == 8) :
+                                 ts->backface_select && (ts->backface_select_mode == 4 ||
+                                                         ts->backface_select_mode == 8);
+
+  return mode_match;
 }
 
-bool edbm_facing_viewport(ViewContext *vc, BMVert *eve, BMEdge *eed, BMFace *efa, int style)
-{
-  BMIter iter;
-  bool mesh_facing = false;
-  if (eve != nullptr) {
-    /* viewport-facing or rear-facing vert */
-    mesh_facing = edbm_normal_facing_viewport(vc, eve, nullptr, nullptr, true);
-    if (!mesh_facing && eve->e && eve->e->l && (style == 2 || style == 8)) {
-      BM_ITER_ELEM (efa, &iter, eve, BM_FACES_OF_VERT) {
-        const bool eve_efa_facing = edbm_normal_facing_viewport(vc, nullptr, nullptr, efa, false);
-        /* vert of a viewport-facing face */
-        if (style == 2) {
-          if (eve_efa_facing) {
-            mesh_facing = true;
-            break;
-          }
-        }
-        /* vert of a rear-facing face */
-        else if (!eve_efa_facing) {
-          mesh_facing = true;
-          break;
-        }
-      }
-    }
-  }
-  else if (eed != nullptr) {
-    /* viewport-facing or rear-facing edge */
-    mesh_facing = edbm_normal_facing_viewport(vc, nullptr, eed, nullptr, true);
-    if (!mesh_facing && eed->l && (style == 2 || style == 8)) {
-      BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
-        const bool eed_efa_facing = edbm_normal_facing_viewport(vc, nullptr, nullptr, efa, false);
-        /* edge of a viewport-facing face */
-        if (style == 2) {
-          if (eed_efa_facing) {
-            mesh_facing = true;
-            break;
-          }
-        }
-        /* edge of a rear-facing face */
-        else if (!eed_efa_facing) {
-          mesh_facing = true;
-          break;
-        }
-      }
-    }
-  }
-  else if (efa != nullptr) {
-    /* viewport-facing or rear-facing face */
-    mesh_facing = edbm_normal_facing_viewport(vc, nullptr, nullptr, efa, true);
-    if (!mesh_facing && (style == 2 || style == 8)) {
-      BM_ITER_ELEM (eve, &iter, efa, BM_VERTS_OF_FACE) {
-        const bool efa_eve_facing = edbm_normal_facing_viewport(vc, eve, nullptr, nullptr, false);
-        /* face has a viewport-facing vert */
-        if (style == 2) {
-          if (efa_eve_facing) {
-            mesh_facing = true;
-            break;
-          }
-        }
-        /* face has a rear-facing vert */
-        else if (!efa_eve_facing) {
-          mesh_facing = true;
-          break;
-        }
-      }
-    }
-  }
-  return mesh_facing;
-}
-
-static void mesh_filter(
+static void face_filter(
     ViewContext *vc, void *box_data, void *lasso_data, void *circle_data, eSelectOp sel_op)
 {
   BMVert *eve;
@@ -855,15 +860,15 @@ static void mesh_filter(
   const bool enclose = box   ? data->face_style == 4 :
                        lasso ? ldata->face_style == 4 :
                                cdata->face_style == 4;
-  const bool check_direction = box   ? data->check_mesh_direction :
-                               lasso ? ldata->check_mesh_direction :
-                                       cdata->check_mesh_direction;
-  int totvert = bm->totvert;
+  const bool check_mesh_facing = box   ? data->check_mesh_direction :
+                                 lasso ? ldata->check_mesh_direction :
+                                         cdata->check_mesh_direction;
+  const int totvert = bm->totvert;
   float v1co[2], v2co[2];
-  float(*vco)[2] = static_cast<float(*)[2]>(MEM_mallocN(sizeof(int) * 2 * totvert, __func__));
+  float(*vco)[2] = static_cast<float(*)[2]>(MEM_mallocN(sizeof(float) * 2 * totvert, __func__));
 
   /* store 2d vert co */
-  for (int i = 0; i < bm->totvert; i++) {
+  for (int i = 0; i < totvert; i++) {
     eve = BM_vert_at_index(vc->em->bm, i);
     if (ED_view3d_project_float_object(
             vc->region, eve->co, v1co, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB) ==
@@ -882,7 +887,6 @@ static void mesh_filter(
   for (int i = 0; i < bm->totface; i++) {
     BMFace *efa = BM_face_at_index(vc->em->bm, i);
     bool inside = false;
-    bool mesh_facing = true;
 
     if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
       BMLoop *l_first, *l_iter;
@@ -891,38 +895,17 @@ static void mesh_filter(
       BLI_rctf_init_minmax(face);
       bool skip = false;
 
-      /* out of range check */
-      if (bm->totvert > totvert) {
-        MEM_freeN(vco);
-        totvert = bm->totvert;
-        vco = static_cast<float(*)[2]>(MEM_mallocN(sizeof(float) * 2 * totvert, __func__));
-
-        for (int i = 0; i < bm->totvert; i++) {
-          eve = BM_vert_at_index(vc->em->bm, i);
-          if (ED_view3d_project_float_object(
-                  vc->region, eve->co, v1co, V3D_PROJ_TEST_CLIP_NEAR | V3D_PROJ_TEST_CLIP_BB) ==
-              V3D_PROJ_RET_OK)
-          {
-            vco[i][0] = v1co[0];
-            vco[i][1] = v1co[1];
-          }
-          else {
-            vco[i][0] = 0.0f;
-            vco[i][1] = 0.0f;
-          }
-        }
-      }
-
       /* skip invalid */
       l_iter = l_first = BM_FACE_FIRST_LOOP(efa);
       do {
-        if (vco[BM_elem_index_get(l_iter->v)][0] == 0.0f &&
-            vco[BM_elem_index_get(l_iter->v)][1] == 0.0f)
-        {
+        const int index = BM_elem_index_get(l_iter->v);
+
+        if (index > totvert || index < 0 || (vco[index][0] == 0.0f && vco[index][1] == 0.0f)) {
           skip = true;
           break;
         }
-        BLI_rctf_do_minmax_v(face, vco[BM_elem_index_get(l_iter->v)]);
+
+        BLI_rctf_do_minmax_v(face, vco[index]);
       } while ((l_iter = l_iter->next) != l_first);
 
       /* skip non-intersect, not enough on its own, selects too many things */
@@ -931,7 +914,7 @@ static void mesh_filter(
             lasso && !BLI_rctf_isect(face, ldata->rect_fl, nullptr) ||
             circle && !BLI_rctf_isect_circle(face, cdata->mval_fl, cdata->radius))
         {
-          skip ^= true;
+          skip = true;
         }
       }
 
@@ -939,8 +922,9 @@ static void mesh_filter(
         l_iter = l_first = BM_FACE_FIRST_LOOP(efa);
         if (circle && enclose) {
           do {
-            v1co[0] = vco[BM_elem_index_get(l_iter->v)][0];
-            v1co[1] = vco[BM_elem_index_get(l_iter->v)][1];
+            const int index = BM_elem_index_get(l_iter->v);
+            v1co[0] = vco[index][0];
+            v1co[1] = vco[index][1];
             inside = len_squared_v2v2(cdata->mval_fl, v1co) <= cdata->radius_squared;
 
             if (!inside) {
@@ -950,10 +934,12 @@ static void mesh_filter(
         }
         else {
           do {
-            v1co[0] = vco[BM_elem_index_get(l_iter->e->v1)][0];
-            v1co[1] = vco[BM_elem_index_get(l_iter->e->v1)][1];
-            v2co[0] = vco[BM_elem_index_get(l_iter->e->v2)][0];
-            v2co[1] = vco[BM_elem_index_get(l_iter->e->v2)][1];
+            const int index1 = BM_elem_index_get(l_iter->e->v1);
+            const int index2 = BM_elem_index_get(l_iter->e->v2);
+            v1co[0] = vco[index1][0];
+            v1co[1] = vco[index1][1];
+            v2co[0] = vco[index2][0];
+            v2co[1] = vco[index2][1];
 
             if (box) {
               inside = enclose ? edge_fully_inside_rect(data->rect_fl, v1co, v2co) :
@@ -1004,8 +990,9 @@ static void mesh_filter(
           if (efa->len == 3) {
             float tri[3][2];
             do {
-              tri[vcount][0] = vco[BM_elem_index_get(l_iter->v)][0];
-              tri[vcount][1] = vco[BM_elem_index_get(l_iter->v)][1];
+              const int index = BM_elem_index_get(l_iter->v);
+              tri[vcount][0] = vco[index][0];
+              tri[vcount][1] = vco[index][1];
               vcount++;
             } while ((l_iter = l_iter->next) != l_first);
 
@@ -1014,8 +1001,9 @@ static void mesh_filter(
           else if (efa->len == 4) {
             float quad[4][2];
             do {
-              quad[vcount][0] = vco[BM_elem_index_get(l_iter->v)][0];
-              quad[vcount][1] = vco[BM_elem_index_get(l_iter->v)][1];
+              const int index = BM_elem_index_get(l_iter->v);
+              quad[vcount][0] = vco[index][0];
+              quad[vcount][1] = vco[index][1];
               vcount++;
             } while ((l_iter = l_iter->next) != l_first);
 
@@ -1025,8 +1013,9 @@ static void mesh_filter(
             float(*ngon)[2] = static_cast<float(*)[2]>(
                 MEM_mallocN(sizeof(float) * 2 * efa->len, __func__));
             do {
-              ngon[vcount][0] = vco[BM_elem_index_get(l_iter->v)][0];
-              ngon[vcount][1] = vco[BM_elem_index_get(l_iter->v)][1];
+              const int index = BM_elem_index_get(l_iter->v);
+              ngon[vcount][0] = vco[index][0];
+              ngon[vcount][1] = vco[index][1];
               vcount++;
             } while ((l_iter = l_iter->next) != l_first);
 
@@ -1035,16 +1024,14 @@ static void mesh_filter(
           }
         }
 
-        if (inside && check_direction) {
-          mesh_facing = edbm_facing_viewport(
-              vc, nullptr, nullptr, efa, vc->scene->toolsettings->viewport_facing_select_face);
+        if (inside && check_mesh_facing) {
+          inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
         }
       }
     }
 
     const bool is_select = BM_elem_flag_test(efa, BM_ELEM_SELECT);
-    const int sel_op_result = ED_select_op_action_deselected(
-        sel_op, is_select, inside && mesh_facing);
+    const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, inside);
 
     if (sel_op_result != -1) {
       BM_face_select_set(vc->em->bm, efa, sel_op_result);
@@ -1164,12 +1151,21 @@ static bool edbm_backbuf_check_and_select_verts(ViewContext *vc,
                                                 BMEditMesh *em,
                                                 const eSelectOp sel_op)
 {
-  ToolSettings *ts = vc->scene->toolsettings;
   BMVert *eve;
   BMIter iter;
+  ToolSettings *ts = vc->scene->toolsettings;
+  const int totface = em->bm->totface;
+  const bool check_mesh_facing = ts->backface_select && ts->backface_select_mode == 8;
+  blender::BitVector<> visited_face;
+  blender::BitVector<> front_face;
   bool changed = false;
-  const int style = ts->viewport_facing_select_vert;
-  const bool check_mesh_facing = edbm_facing_viewport_precheck(ts, style, false);
+
+  if (check_mesh_facing) {
+    blender::BitVector<> vtmp(totface);
+    blender::BitVector<> ftmp(totface);
+    visited_face = vtmp;
+    front_face = ftmp;
+  }
 
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
@@ -1178,16 +1174,48 @@ static bool edbm_backbuf_check_and_select_verts(ViewContext *vc,
   }
 
   index -= 1;
+
   BM_ITER_MESH (eve, &iter, em->bm, BM_VERTS_OF_MESH) {
     if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
       const bool is_select = BM_elem_flag_test(eve, BM_ELEM_SELECT);
-      const bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
-      bool mesh_facing = true;
+      bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
+
       if (is_inside && check_mesh_facing) {
-        mesh_facing = edbm_facing_viewport(vc, eve, nullptr, nullptr, style);
+        is_inside = false;
+
+        if (eve->e && eve->e->l) {
+          BMIter fiter;
+          BMFace *efa;
+          BM_ITER_ELEM (efa, &fiter, eve, BM_FACES_OF_VERT) {
+            if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+              const int index = BM_elem_index_get(efa);
+              if (!(index < 0 || index > totface)) {
+                if (visited_face[index]) {
+                  if (front_face[index]) {
+                    is_inside = true;
+                    break;
+                  }
+                }
+                else {
+                  visited_face[index].set(true);
+                  is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+                  if (is_inside) {
+                    front_face[index].set(true);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        /* use vert normals */
+        else {
+          is_inside = edbm_mesh_facing_viewport(vc, nullptr, nullptr, eve);
+        }
       }
-      const int sel_op_result = ED_select_op_action_deselected(
-          sel_op, is_select, is_inside && mesh_facing);
+
+      const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         BM_vert_select_set(em->bm, eve, sel_op_result);
         changed = true;
@@ -1206,12 +1234,12 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
                                                 const eSelectOp sel_op)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
-  ToolSettings *ts = data->vc->scene->toolsettings;
+  ViewContext *vc = data->vc;
+  ToolSettings *ts = vc->scene->toolsettings;
   BMEdge *eed;
   BMIter iter;
   bool changed = false;
-  const int style = ts->viewport_facing_select_edge;
-  const bool check_mesh_facing = edbm_facing_viewport_precheck(ts, style, false);
+  const bool check_mesh_facing = edbm_check_mesh_facing(ts, true);
 
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_EDGE);
@@ -1223,20 +1251,51 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
   BM_ITER_MESH (eed, &iter, em->bm, BM_EDGES_OF_MESH) {
     if (!BM_elem_flag_test(eed, BM_ELEM_HIDDEN)) {
       const bool is_select = BM_elem_flag_test(eed, BM_ELEM_SELECT);
-      const bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
-      bool enclose_edge = true;
-      bool mesh_facing = true;
+      bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
 
-      if (data->edge_style == 4 && is_inside) {
-        enclose_edge = edbm_circle_enclose_mesh(eed, nullptr, data);
+      /* enclose */
+      if (is_inside && data->edge_style == 4) {
+        is_inside = edbm_circle_enclose_mesh(eed, nullptr, data);
       }
 
-      if (check_mesh_facing && is_inside) {
-        mesh_facing = edbm_facing_viewport(data->vc, nullptr, eed, nullptr, style);
+      if (is_inside && check_mesh_facing) {
+        is_inside = false;
+
+        if (eed->l) {
+          const int totface = vc->em->bm->totface;
+          BMIter iter;
+          BMFace *efa;
+
+          BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+            if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+              const int index = BM_elem_index_get(efa);
+              if (!(index < 0 || index > totface)) {
+                if (data->visited_face[index]) {
+                  if (data->front_face[index]) {
+                    is_inside = true;
+                    break;
+                  }
+                }
+                else {
+                  data->visited_face[index].set(true);
+                  is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+                  if (is_inside) {
+                    data->front_face[index].set(true);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+        /* use edge normals */
+        else {
+          is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+        }
       }
 
-      const int sel_op_result = ED_select_op_action_deselected(
-          sel_op, is_select, is_inside && enclose_edge && mesh_facing);
+      const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         BM_edge_select_set(em->bm, eed, sel_op_result);
         changed = true;
@@ -1264,8 +1323,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
   BMVert *eve;
   rctf rectf;
   bool changed = false;
-  const int style = ts->viewport_facing_select_face;
-  const bool check_mesh_facing = edbm_facing_viewport_precheck(ts, style, false);
+  const bool check_mesh_facing = edbm_check_mesh_facing(ts, true);
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   LassoSelectUserData *ldata = static_cast<LassoSelectUserData *>(lasso_data);
   CircleSelectUserData *cdata = static_cast<CircleSelectUserData *>(circle_data);
@@ -1276,45 +1334,44 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
     BLI_rctf_rcti_copy(&rectf, rect);
   }
 
-  if (index == 0 || vindex == 0) {
+  if (index == 0) {
     return false;
   }
 
   index -= 1;
   vindex -= 1;
+
   BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
     if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
       const bool is_select = BM_elem_flag_test(efa, BM_ELEM_SELECT);
-      const bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
-      bool enclose_face = true;
-      bool center_face = true;
-      bool mesh_facing = true;
+      bool is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, index);
 
       if (face_style > 2 && is_inside) {
+        /* enclose */
         if (face_style == 4) {
           if (cdata != nullptr) {
-            enclose_face = edbm_circle_enclose_mesh(nullptr, efa, cdata);
+            is_inside = edbm_circle_enclose_mesh(nullptr, efa, cdata);
           }
           else {
             BM_ITER_ELEM (eve, &viter, efa, BM_VERTS_OF_FACE) {
-              enclose_face = BLI_BITMAP_TEST_BOOL(select_bitmap, vindex + BM_elem_index_get(eve));
-              if (!enclose_face) {
+              is_inside = BLI_BITMAP_TEST_BOOL(select_bitmap, vindex + BM_elem_index_get(eve));
+              if (!is_inside) {
                 break;
               }
             }
           }
         }
+        /* center */
         else {
-          center_face = edbm_center_face(vc, efa, &rectf, ldata, cdata);
+          is_inside = edbm_center_face(vc, efa, &rectf, ldata, cdata);
         }
       }
 
-      if (check_mesh_facing && is_inside) {
-        mesh_facing = edbm_facing_viewport(vc, nullptr, nullptr, efa, style);
+      if (is_inside && check_mesh_facing) {
+        is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
       }
 
-      const int sel_op_result = ED_select_op_action_deselected(
-          sel_op, is_select, is_inside && enclose_face && center_face && mesh_facing);
+      const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         BM_face_select_set(em->bm, efa, sel_op_result);
         changed = true;
@@ -1797,23 +1854,50 @@ static void do_lasso_select_mesh__doSelectVert(void *user_data,
                                                int /*index*/)
 {
   LassoSelectUserData *data = static_cast<LassoSelectUserData *>(user_data);
+  ViewContext *vc = data->vc;
   const bool is_select = BM_elem_flag_test(eve, BM_ELEM_SELECT);
-  const bool is_inside =
-      (BLI_rctf_isect_pt_v(data->rect_fl, screen_co) &&
-       BLI_lasso_is_point_inside(
-           data->mcoords, data->mcoords_len, screen_co[0], screen_co[1], IS_CLIPPED));
-  bool mesh_facing = true;
+  bool is_inside = (BLI_rctf_isect_pt_v(data->rect_fl, screen_co) &&
+                    BLI_lasso_is_point_inside(
+                        data->mcoords, data->mcoords_len, screen_co[0], screen_co[1], IS_CLIPPED));
 
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       eve,
-                                       nullptr,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_vert);
+    is_inside = false;
+
+    if (eve->e && eve->e->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eve, BM_FACES_OF_VERT) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use vert normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, nullptr, eve);
+    }
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_vert_select_set(data->vc->em->bm, eve, sel_op_result);
     data->is_changed = true;
@@ -1833,31 +1917,59 @@ static void do_lasso_select_mesh__doSelectEdge_pass0(void *user_data,
   LassoSelectUserData_ForMeshEdge *data_for_edge = static_cast<LassoSelectUserData_ForMeshEdge *>(
       user_data);
   LassoSelectUserData *data = data_for_edge->data;
+  ViewContext *vc = data->vc;
   bool is_visible = true;
-  bool mesh_facing = true;
   if (data_for_edge->backbuf_offset) {
     uint bitmap_inedx = data_for_edge->backbuf_offset + index - 1;
     is_visible = BLI_BITMAP_TEST_BOOL(data_for_edge->esel->select_bitmap, bitmap_inedx);
   }
 
   const bool is_select = BM_elem_flag_test(eed, BM_ELEM_SELECT);
-  const bool is_inside =
-      (is_visible && edge_fully_inside_rect(data->rect_fl, screen_co_a, screen_co_b) &&
-       BLI_lasso_is_point_inside(
-           data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), IS_CLIPPED) &&
-       BLI_lasso_is_point_inside(
-           data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), IS_CLIPPED));
+  bool is_inside = (is_visible &&
+                    edge_fully_inside_rect(data->rect_fl, screen_co_a, screen_co_b) &&
+                    BLI_lasso_is_point_inside(
+                        data->mcoords, data->mcoords_len, UNPACK2(screen_co_a), IS_CLIPPED) &&
+                    BLI_lasso_is_point_inside(
+                        data->mcoords, data->mcoords_len, UNPACK2(screen_co_b), IS_CLIPPED));
 
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       eed,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_edge);
+    is_inside = false;
+
+    if (eed->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use edge normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+    }
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
     data->is_done = true;
@@ -1873,29 +1985,58 @@ static void do_lasso_select_mesh__doSelectEdge_pass1(void *user_data,
   LassoSelectUserData_ForMeshEdge *data_for_edge = static_cast<LassoSelectUserData_ForMeshEdge *>(
       user_data);
   LassoSelectUserData *data = data_for_edge->data;
+  ViewContext *vc = data->vc;
   bool is_visible = true;
-  bool mesh_facing = true;
   if (data_for_edge->backbuf_offset) {
     uint bitmap_inedx = data_for_edge->backbuf_offset + index - 1;
     is_visible = BLI_BITMAP_TEST_BOOL(data_for_edge->esel->select_bitmap, bitmap_inedx);
   }
 
   const bool is_select = BM_elem_flag_test(eed, BM_ELEM_SELECT);
-  const bool is_inside = (is_visible && BLI_lasso_is_edge_inside(data->mcoords,
-                                                                 data->mcoords_len,
-                                                                 UNPACK2(screen_co_a),
-                                                                 UNPACK2(screen_co_b),
-                                                                 IS_CLIPPED,
-                                                                 false));
+  bool is_inside = (is_visible && BLI_lasso_is_edge_inside(data->mcoords,
+                                                           data->mcoords_len,
+                                                           UNPACK2(screen_co_a),
+                                                           UNPACK2(screen_co_b),
+                                                           IS_CLIPPED,
+                                                           false));
+
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       eed,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_edge);
+    is_inside = false;
+
+    if (eed->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use edge normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+    }
   }
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
     data->is_changed = true;
@@ -1908,23 +2049,17 @@ static void do_lasso_select_mesh__doSelectFace(void *user_data,
                                                int /*index*/)
 {
   LassoSelectUserData *data = static_cast<LassoSelectUserData *>(user_data);
+  ViewContext *vc = data->vc;
   const bool is_select = BM_elem_flag_test(efa, BM_ELEM_SELECT);
-  const bool is_inside =
-      (BLI_rctf_isect_pt_v(data->rect_fl, screen_co) &&
-       BLI_lasso_is_point_inside(
-           data->mcoords, data->mcoords_len, screen_co[0], screen_co[1], IS_CLIPPED));
-  bool mesh_facing = true;
+  bool is_inside = (BLI_rctf_isect_pt_v(data->rect_fl, screen_co) &&
+                    BLI_lasso_is_point_inside(
+                        data->mcoords, data->mcoords_len, screen_co[0], screen_co[1], IS_CLIPPED));
 
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       nullptr,
-                                       efa,
-                                       data->vc->scene->toolsettings->viewport_facing_select_face);
+    is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_face_select_set(data->vc->em->bm, efa, sel_op_result);
     data->is_changed = true;
@@ -1991,15 +2126,24 @@ static bool do_lasso_select_mesh(ViewContext *vc,
     }
   }
 
+  if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+
+    if (data.check_mesh_direction) {
+      const int totface = vc->em->bm->totface;
+      blender::BitVector<> visited_face(totface);
+      blender::BitVector<> front_face(totface);
+      data.visited_face = visited_face;
+      data.front_face = front_face;
+    }
+  }
+
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
           vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_vert, true);
-
       mesh_foreachScreenVert(
           vc, do_lasso_select_mesh__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
     }
@@ -2015,12 +2159,6 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_NEAR |
                                    (use_zbuf ? (eV3DProjTest)0 : V3D_PROJ_TEST_CLIP_BB);
-
-    data.check_mesh_direction = use_zbuf ?
-                                    edbm_facing_viewport_precheck(
-                                        ts, ts->viewport_facing_select_edge, false) :
-                                    data.check_mesh_direction = edbm_facing_viewport_precheck(
-                                        ts, ts->viewport_facing_select_edge, true);
 
     /* Fully inside */
     if (data.edge_style != 2) {
@@ -2050,9 +2188,6 @@ static bool do_lasso_select_mesh(ViewContext *vc,
                                                              nullptr);
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_face, true);
-
       /* center */
       if (data.face_style == 1 || data.face_style == 8) {
         mesh_foreachScreenFace(
@@ -2060,7 +2195,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
       }
       /* touch & enclose */
       else {
-        mesh_filter(vc, nullptr, &data, nullptr, sel_op);
+        face_filter(vc, nullptr, &data, nullptr, sel_op);
       }
     }
   }
@@ -4922,19 +5057,48 @@ static void do_mesh_box_select__doSelectVert(void *user_data,
                                              int /*index*/)
 {
   BoxSelectUserData *data = static_cast<BoxSelectUserData *>(user_data);
+  ViewContext *vc = data->vc;
   const bool is_select = BM_elem_flag_test(eve, BM_ELEM_SELECT);
-  const bool is_inside = BLI_rctf_isect_pt_v(data->rect_fl, screen_co);
-  bool mesh_facing = true;
+  bool is_inside = BLI_rctf_isect_pt_v(data->rect_fl, screen_co);
+
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       eve,
-                                       nullptr,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_vert);
+    is_inside = false;
+
+    if (eve->e && eve->e->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eve, BM_FACES_OF_VERT) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use vert normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, nullptr, eve);
+    }
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_vert_select_set(data->vc->em->bm, eve, sel_op_result);
     data->is_changed = true;
@@ -4957,29 +5121,56 @@ static void do_mesh_box_select__doSelectEdge_pass0(void *user_data,
   BoxSelectUserData_ForMeshEdge *data_for_edge = static_cast<BoxSelectUserData_ForMeshEdge *>(
       user_data);
   BoxSelectUserData *data = data_for_edge->data;
+  ViewContext *vc = data->vc;
   bool is_visible = true;
-  bool mesh_facing = true;
   if (data_for_edge->backbuf_offset) {
     uint bitmap_inedx = data_for_edge->backbuf_offset + index - 1;
     is_visible = BLI_BITMAP_TEST_BOOL(data_for_edge->esel->select_bitmap, bitmap_inedx);
   }
 
   const bool is_select = BM_elem_flag_test(eed, BM_ELEM_SELECT);
-  const bool is_inside = (is_visible &&
-                          edge_fully_inside_rect(data->rect_fl, screen_co_a, screen_co_b));
+  bool is_inside = (is_visible && edge_fully_inside_rect(data->rect_fl, screen_co_a, screen_co_b));
 
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       eed,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_edge);
+    is_inside = false;
+
+    if (eed->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use edge normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+    }
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
-    BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
+    BM_edge_select_set(vc->em->bm, eed, sel_op_result);
     data->is_done = true;
     data->is_changed = true;
   }
@@ -4996,27 +5187,56 @@ static void do_mesh_box_select__doSelectEdge_pass1(void *user_data,
   BoxSelectUserData_ForMeshEdge *data_for_edge = static_cast<BoxSelectUserData_ForMeshEdge *>(
       user_data);
   BoxSelectUserData *data = data_for_edge->data;
+  ViewContext *vc = data->vc;
   bool is_visible = true;
-  bool mesh_facing = true;
   if (data_for_edge->backbuf_offset) {
     uint bitmap_inedx = data_for_edge->backbuf_offset + index - 1;
     is_visible = BLI_BITMAP_TEST_BOOL(data_for_edge->esel->select_bitmap, bitmap_inedx);
   }
 
   const bool is_select = BM_elem_flag_test(eed, BM_ELEM_SELECT);
-  const bool is_inside = (is_visible && edge_inside_rect(data->rect_fl, screen_co_a, screen_co_b));
+  bool is_inside = (is_visible && edge_inside_rect(data->rect_fl, screen_co_a, screen_co_b));
+
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       eed,
-                                       nullptr,
-                                       data->vc->scene->toolsettings->viewport_facing_select_edge);
+    is_inside = false;
+
+    if (eed->l) {
+      const int totface = vc->em->bm->totface;
+      BMIter iter;
+      BMFace *efa;
+
+      BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+        if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+          const int index = BM_elem_index_get(efa);
+          if (!(index < 0 || index > totface)) {
+            if (data->visited_face[index]) {
+              if (data->front_face[index]) {
+                is_inside = true;
+                break;
+              }
+            }
+            else {
+              data->visited_face[index].set(true);
+              is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+              if (is_inside) {
+                data->front_face[index].set(true);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    /* use edge normals */
+    else {
+      is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+    }
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
-    BM_edge_select_set(data->vc->em->bm, eed, sel_op_result);
+    BM_edge_select_set(vc->em->bm, eed, sel_op_result);
     data->is_changed = true;
   }
 }
@@ -5027,22 +5247,17 @@ static void do_mesh_box_select__doSelectFace(void *user_data,
                                              int /*index*/)
 {
   BoxSelectUserData *data = static_cast<BoxSelectUserData *>(user_data);
+  ViewContext *vc = data->vc;
   const bool is_select = BM_elem_flag_test(efa, BM_ELEM_SELECT);
-  const bool is_inside = BLI_rctf_isect_pt_v(data->rect_fl, screen_co);
-  bool mesh_facing = true;
+  bool is_inside = BLI_rctf_isect_pt_v(data->rect_fl, screen_co);
 
   if (is_inside && data->check_mesh_direction) {
-    mesh_facing = edbm_facing_viewport(data->vc,
-                                       nullptr,
-                                       nullptr,
-                                       efa,
-                                       data->vc->scene->toolsettings->viewport_facing_select_face);
+    is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
   }
 
-  const int sel_op_result = ED_select_op_action_deselected(
-      data->sel_op, is_select, is_inside && mesh_facing);
+  const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
-    BM_face_select_set(data->vc->em->bm, efa, sel_op_result);
+    BM_face_select_set(vc->em->bm, efa, sel_op_result);
     data->is_changed = true;
   }
 }
@@ -5103,15 +5318,24 @@ static bool do_mesh_box_select(ViewContext *vc,
     }
   }
 
+  if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+
+    if (data.check_mesh_direction) {
+      const int totface = vc->em->bm->totface;
+      blender::BitVector<> visited_face(totface);
+      blender::BitVector<> front_face(totface);
+      data.visited_face = visited_face;
+      data.front_face = front_face;
+    }
+  }
+
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
           vc, esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_vert, true);
-
       mesh_foreachScreenVert(
           vc, do_mesh_box_select__doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
     }
@@ -5128,11 +5352,6 @@ static bool do_mesh_box_select(ViewContext *vc,
     const eV3DProjTest clip_flag = V3D_PROJ_TEST_CLIP_NEAR |
                                    (use_zbuf ? (eV3DProjTest)0 : V3D_PROJ_TEST_CLIP_BB);
 
-    data.check_mesh_direction = use_zbuf ?
-                                    edbm_facing_viewport_precheck(
-                                        ts, ts->viewport_facing_select_edge, false) :
-                                    data.check_mesh_direction = edbm_facing_viewport_precheck(
-                                        ts, ts->viewport_facing_select_edge, true);
     /* Fully inside */
     if (data.edge_style != 2) {
       mesh_foreachScreenEdge_clip_bb_segment(
@@ -5161,9 +5380,6 @@ static bool do_mesh_box_select(ViewContext *vc,
                                                              nullptr);
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_face, true);
-
       /* center */
       if (data.face_style == 1 || data.face_style == 8) {
         mesh_foreachScreenFace(
@@ -5171,7 +5387,7 @@ static bool do_mesh_box_select(ViewContext *vc,
       }
       /* touch & enclose */
       else {
-        mesh_filter(vc, &data, nullptr, nullptr, sel_op);
+        face_filter(vc, &data, nullptr, nullptr, sel_op);
       }
     }
   }
@@ -5804,20 +6020,50 @@ static void mesh_circle_doSelectVert(void *user_data,
                                      int /*index*/)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(user_data);
+  ViewContext *vc = data->vc;
 
   if (len_squared_v2v2(data->mval_fl, screen_co) <= data->radius_squared) {
-    bool mesh_facing = true;
-    data->is_changed = true;
+    bool is_inside = true;
+
     if (data->check_mesh_direction) {
-      mesh_facing = edbm_facing_viewport(
-          data->vc,
-          eve,
-          nullptr,
-          nullptr,
-          data->vc->scene->toolsettings->viewport_facing_select_vert);
+      is_inside = false;
+
+      if (eve->e && eve->e->l) {
+        const int totface = vc->em->bm->totface;
+        BMIter iter;
+        BMFace *efa;
+
+        BM_ITER_ELEM (efa, &iter, eve, BM_FACES_OF_VERT) {
+          if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+            const int index = BM_elem_index_get(efa);
+            if (!(index < 0 || index > totface)) {
+              if (data->visited_face[index]) {
+                if (data->front_face[index]) {
+                  is_inside = true;
+                  break;
+                }
+              }
+              else {
+                data->visited_face[index].set(true);
+                is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+                if (is_inside) {
+                  data->front_face[index].set(true);
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+      /* use vert normals */
+      else {
+        is_inside = edbm_mesh_facing_viewport(vc, nullptr, nullptr, eve);
+      }
     }
-    if (mesh_facing) {
-      BM_vert_select_set(data->vc->em->bm, eve, data->select);
+
+    if (is_inside) {
+      BM_vert_select_set(vc->em->bm, eve, data->select);
       data->is_changed = true;
     }
   }
@@ -5829,25 +6075,54 @@ static void mesh_circle_doSelectEdge(void *user_data,
                                      int /*index*/)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(user_data);
-  bool enclose_edge = true;
-  bool mesh_facing = true;
+  ViewContext *vc = data->vc;
 
   if (edge_inside_circle(data->mval_fl, data->radius, screen_co_a, screen_co_b)) {
+    bool is_inside = true;
+
     if (data->edge_style == 4) {
-      enclose_edge = edbm_circle_enclose_mesh(eed, nullptr, data);
+      is_inside = edbm_circle_enclose_mesh(eed, nullptr, data);
     }
 
-    if (data->check_mesh_direction) {
-      mesh_facing = edbm_facing_viewport(
-          data->vc,
-          nullptr,
-          eed,
-          nullptr,
-          data->vc->scene->toolsettings->viewport_facing_select_edge);
+    if (is_inside && data->check_mesh_direction) {
+      is_inside = false;
+
+      if (eed->l) {
+        const int totface = vc->em->bm->totface;
+        BMIter iter;
+        BMFace *efa;
+
+        BM_ITER_ELEM (efa, &iter, eed, BM_FACES_OF_EDGE) {
+          if (!BM_elem_flag_test(efa, BM_ELEM_HIDDEN)) {
+            const int index = BM_elem_index_get(efa);
+            if (!(index < 0 || index > totface)) {
+              if (data->visited_face[index]) {
+                if (data->front_face[index]) {
+                  is_inside = true;
+                  break;
+                }
+              }
+              else {
+                data->visited_face[index].set(true);
+                is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
+
+                if (is_inside) {
+                  data->front_face[index].set(true);
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+      /* use edge normals */
+      else {
+        is_inside = edbm_mesh_facing_viewport(vc, nullptr, eed, nullptr);
+      }
     }
 
-    if (enclose_edge && mesh_facing) {
-      BM_edge_select_set(data->vc->em->bm, eed, data->select);
+    if (is_inside) {
+      BM_edge_select_set(vc->em->bm, eed, data->select);
       data->is_changed = true;
     }
   }
@@ -5859,20 +6134,17 @@ static void mesh_circle_doSelectFace(void *user_data,
                                      int /*index*/)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(user_data);
-  bool mesh_facing = true;
+  ViewContext *vc = data->vc;
 
   if (len_squared_v2v2(data->mval_fl, screen_co) <= data->radius_squared) {
+    bool is_inside = true;
+
     if (data->check_mesh_direction) {
-      mesh_facing = edbm_facing_viewport(
-          data->vc,
-          nullptr,
-          nullptr,
-          efa,
-          data->vc->scene->toolsettings->viewport_facing_select_face);
+      is_inside = edbm_mesh_facing_viewport(vc, efa, nullptr, nullptr);
     }
 
-    if (mesh_facing) {
-      BM_face_select_set(data->vc->em->bm, efa, data->select);
+    if (is_inside) {
+      BM_face_select_set(vc->em->bm, efa, data->select);
       data->is_changed = true;
     }
   }
@@ -5929,6 +6201,18 @@ static bool mesh_circle_select(ViewContext *vc,
     }
   }
 
+  if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+
+    if (data.check_mesh_direction) {
+      const int totface = vc->em->bm->totface;
+      blender::BitVector<> visited_face(totface);
+      blender::BitVector<> front_face(totface);
+      data.visited_face = visited_face;
+      data.front_face = front_face;
+    }
+  }
+
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       if (esel->select_bitmap != nullptr) {
@@ -5937,9 +6221,6 @@ static bool mesh_circle_select(ViewContext *vc,
       }
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_vert, true);
-
       mesh_foreachScreenVert(vc, mesh_circle_doSelectVert, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
     }
   }
@@ -5952,9 +6233,6 @@ static bool mesh_circle_select(ViewContext *vc,
       }
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_edge, true);
-
       mesh_foreachScreenEdge_clip_bb_segment(
           vc,
           mesh_circle_doSelectEdge,
@@ -5979,16 +6257,13 @@ static bool mesh_circle_select(ViewContext *vc,
       }
     }
     else {
-      data.check_mesh_direction = edbm_facing_viewport_precheck(
-          ts, ts->viewport_facing_select_face, true);
-
       /* center */
       if (data.face_style == 1 || data.face_style == 8) {
         mesh_foreachScreenFace(vc, mesh_circle_doSelectFace, &data, V3D_PROJ_TEST_CLIP_DEFAULT);
       }
       /* touch & enclose */
       else {
-        mesh_filter(vc, nullptr, nullptr, &data, sel_op);
+        face_filter(vc, nullptr, nullptr, &data, sel_op);
       }
     }
   }

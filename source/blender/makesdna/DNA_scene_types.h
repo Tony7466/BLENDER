@@ -1600,15 +1600,9 @@ typedef struct ToolSettings {
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
 
-  /* Mesh Normal Direction Select */
-  char viewport_facing_select;
-  char viewport_facing_select_mode;
-  float viewport_facing_select_threshold;
-  char viewport_facing_select_vert;
-  char viewport_facing_select_edge;
-  char viewport_facing_select_face;
-
-  /* X-Ray Options */
+  /* LCB Options */
+  char backface_select;
+  char backface_select_mode;
   char xray_button;
   char auto_xray;
   char auto_xray_button;
@@ -1626,13 +1620,9 @@ typedef struct ToolSettings {
   char select_through_lasso;
   char select_through_circle;
   char wireless_touch_object;
-
-  /* Combine shading and xray header buttons */
   char shrink_shading_header;
-
-  /* Square Select option for Circle */
   char square_select;
-  char _pad0[2];
+  char _pad0[1];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -2484,38 +2474,12 @@ typedef enum eSnapTransformMode {
   SCE_SNAP_TRANSFORM_MODE_SCALE = (1 << 2),
 } eSnapTransformMode;
 
-/** #Viewport-facing select mode */
+/** #Ignore backface select mode */
 enum {
-  VIEWPORT_FACING_SELECT_BOTH = (1 << 0),
-  VIEWPORT_FACING_SELECT_NEAR = (1 << 1),
-  VIEWPORT_FACING_SELECT_XRAY = (1 << 2),
-};
-
-/** #Viewport-facing select vert */
-enum {
-  VIEWPORT_FACING_SELECT_FRONT_VERTS = (1 << 0),
-  VIEWPORT_FACING_SELECT_FRONT_VERTS_FACE = (1 << 1),
-  VIEWPORT_FACING_SELECT_REAR_VERTS = (1 << 2),
-  VIEWPORT_FACING_SELECT_REAR_VERTS_FACE = (1 << 3),
-  VIEWPORT_FACING_SELECT_ALL_VERTS = (1 << 4),
-};
-
-/** #Viewport-facing select edge */
-enum {
-  VIEWPORT_FACING_SELECT_FRONT_EDGES = (1 << 0),
-  VIEWPORT_FACING_SELECT_FRONT_EDGES_FACE = (1 << 1),
-  VIEWPORT_FACING_SELECT_REAR_EDGES = (1 << 2),
-  VIEWPORT_FACING_SELECT_REAR_EDGES_FACE = (1 << 3),
-  VIEWPORT_FACING_SELECT_ALL_EDGES = (1 << 4),
-};
-
-/** #Viewport-facing select face */
-enum {
-  VIEWPORT_FACING_SELECT_FRONT_FACES = (1 << 0),
-  VIEWPORT_FACING_SELECT_FRONT_FACES_VERT = (1 << 1),
-  VIEWPORT_FACING_SELECT_REAR_FACES = (1 << 2),
-  VIEWPORT_FACING_SELECT_REAR_FACES_VERT = (1 << 3),
-  VIEWPORT_FACING_SELECT_ALL_FACES = (1 << 4),
+  BACKFACE_DEFAULT = (1 << 0),
+  BACKFACE_NEAR = (1 << 1),
+  BACKFACE_XRAY = (1 << 2),
+  BACKFACE_NONE = (1 << 3),
 };
 
 /** #Object select style */
