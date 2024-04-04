@@ -16,7 +16,7 @@
 
 namespace blender::gpu::render_graph {
 
-class VKRenderGraphCommandBuilder;
+class VKCommandBuilder;
 struct VKDispatchInfo;
 
 using NodeHandle = uint64_t;
@@ -183,4 +183,4 @@ class VKRenderGraphNodes {
   void free_data(Node &node);
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

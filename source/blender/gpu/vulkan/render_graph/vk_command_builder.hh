@@ -14,7 +14,7 @@
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
 
-class VKRenderGraphCommandBuilder {
+class VKCommandBuilder {
  private:
   Vector<NodeHandle> selected_nodes_;
   /**
@@ -39,7 +39,7 @@ class VKRenderGraphCommandBuilder {
   VkPipelineStageFlags dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
 
  public:
-  VKRenderGraphCommandBuilder();
+  VKCommandBuilder();
 
   /**
    * Reset the command builder.
@@ -149,4 +149,4 @@ class VKRenderGraphCommandBuilder {
                                 VkPipelineStageFlags node_stages);
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

@@ -16,7 +16,7 @@
 
 namespace blender::gpu::render_graph {
 
-class VKRenderGraphCommandBuilder;
+class VKCommandBuilder;
 
 using ResourceHandle = uint64_t;
 using ResourceVersion = uint64_t;
@@ -114,7 +114,7 @@ class VKRenderGraphResources {
   ResourceHandle get_image_handle(VkImage vk_image) const;
   ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 
-  friend class VKRenderGraphCommandBuilder;
+  friend class VKCommandBuilder;
 
  private:
   /**
@@ -127,4 +127,4 @@ class VKRenderGraphResources {
   static VersionedResource get_and_increase_version(ResourceHandle handle, Resource &resource);
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

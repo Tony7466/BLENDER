@@ -26,7 +26,7 @@
 
 #include "vk_common.hh"
 
-#include "vk_render_graph_command_builder.hh"
+#include "vk_command_builder.hh"
 #include "vk_render_graph_commands.hh"
 #include "vk_render_graph_nodes.hh"
 #include "vk_render_graph_resources.hh"
@@ -38,7 +38,7 @@ namespace blender::gpu::render_graph {
 class VKRenderGraph : public NonCopyable {
   VKRenderGraphResources resources_;
   VKRenderGraphNodes nodes_;
-  VKRenderGraphCommandBuilder command_builder_;
+  VKCommandBuilder command_builder_;
 
   std::unique_ptr<VKRenderGraphScheduler> scheduler_;
   std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer_;
@@ -121,8 +121,8 @@ class VKRenderGraph : public NonCopyable {
    */
   void add_resources(NodeHandle node_handle, const VKResourceAccessInfo &resources);
 
-  friend class VKRenderGraphCommandBuilder;
+  friend class VKCommandBuilder;
   friend class Sequential;
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph
