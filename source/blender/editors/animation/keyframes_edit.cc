@@ -1426,6 +1426,9 @@ KeyframeEditFunc ANIM_editkeyframes_keytype(const eBezTriple_KeyframeType keyfra
     case BEZT_KEYTYPE_KEYFRAME:
       return set_keytype_keyframe;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 /* ------- */
