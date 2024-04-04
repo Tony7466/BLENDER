@@ -58,7 +58,7 @@ void settings_set_all_catalog_active(AssetShelfSettings &settings);
 bool settings_is_active_catalog(const AssetShelfSettings &settings,
                                 const asset_system::AssetCatalogPath &path);
 bool settings_is_all_catalog_active(const AssetShelfSettings &settings);
-void settings_clear_enabled_catalogs(const AssetShelf &shelf);
+void settings_clear_enabled_catalogs(AssetShelf &shelf);
 bool settings_is_catalog_path_enabled(const AssetShelf &shelf,
                                       const asset_system::AssetCatalogPath &path);
 void settings_set_catalog_path_enabled(const AssetShelf &shelf,

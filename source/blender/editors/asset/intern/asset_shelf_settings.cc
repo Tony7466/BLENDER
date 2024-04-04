@@ -20,6 +20,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
+#include "BKE_asset.hh"
 #include "BKE_preferences.h"
 
 #include "asset_shelf.hh"
@@ -37,6 +38,12 @@ AssetShelfSettings::AssetShelfSettings(const AssetShelfSettings &other)
   operator=(other);
 }
 
+static void settings_free_enabled_catalogs(AssetShelfSettings &settings)
+{
+  BKE_asset_catalog_path_list_free(settings.enabled_catalog_paths);
+  BLI_assert(BLI_listbase_is_empty(&settings.enabled_catalog_paths));
+}
+
 AssetShelfSettings &AssetShelfSettings::operator=(const AssetShelfSettings &other)
 {
   /* Start with a shallow copy. */
@@ -47,11 +54,15 @@ AssetShelfSettings &AssetShelfSettings::operator=(const AssetShelfSettings &othe
   if (active_catalog_path) {
     active_catalog_path = BLI_strdup(other.active_catalog_path);
   }
+  settings_free_enabled_catalogs(*this);
+  enabled_catalog_paths = BKE_asset_catalog_path_list_duplicate(other.enabled_catalog_paths);
+
   return *this;
 }
 
 AssetShelfSettings::~AssetShelfSettings()
 {
+  settings_free_enabled_catalogs(*this);
   MEM_delete(active_catalog_path);
 }
 
@@ -60,11 +71,14 @@ namespace blender::ed::asset::shelf {
 void settings_blend_write(BlendWriter *writer, const AssetShelfSettings &settings)
 {
   BLO_write_struct(writer, AssetShelfSettings, &settings);
+
+  BKE_asset_catalog_path_list_blend_write(writer, settings.enabled_catalog_paths);
   BLO_write_string(writer, settings.active_catalog_path);
 }
 
 void settings_blend_read_data(BlendDataReader *reader, AssetShelfSettings &settings)
 {
+  BKE_asset_catalog_path_list_blend_read_data(reader, settings.enabled_catalog_paths);
   BLO_read_data_address(reader, &settings.active_catalog_path);
 }
 
@@ -92,8 +106,9 @@ bool settings_is_all_catalog_active(const AssetShelfSettings &settings)
   return !settings.active_catalog_path || !settings.active_catalog_path[0];
 }
 
-void settings_clear_enabled_catalogs(const AssetShelf &shelf)
+void settings_clear_enabled_catalogs(AssetShelf &shelf)
 {
+  settings_free_enabled_catalogs(shelf.settings);
   BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(&U, shelf.idname);
 }
 
@@ -124,8 +139,8 @@ void settings_foreach_enabled_catalog_path(
     return;
   }
 
-  LISTBASE_FOREACH (LinkData *, path_link, &pref_settings->enabled_catalog_paths) {
-    fn(asset_system::AssetCatalogPath((char *)path_link->data));
+  LISTBASE_FOREACH (AssetCatalogPathLink *, path_link, &pref_settings->enabled_catalog_paths) {
+    fn(asset_system::AssetCatalogPath(path_link->path));
   }
 }
 
