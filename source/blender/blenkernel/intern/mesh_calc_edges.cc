@@ -29,23 +29,29 @@ static uint64_t edge_hash_2(const OrderedEdge &edge)
   return edge.v_low;
 }
 
+using EdgeMap = VectorSet<OrderedEdge,
+                          DefaultProbingStrategy,
+                          DefaultHash<OrderedEdge>,
+                          DefaultEquality<OrderedEdge>,
+                          SimpleVectorSetSlot<OrderedEdge, int>,
+                          GuardedAllocator>;
+
 static void reserve_hash_maps(const Mesh &mesh,
                               const bool keep_existing_edges,
-                              MutableSpan<VectorSet<OrderedEdge>> edge_maps)
+                              MutableSpan<EdgeMap> edge_maps)
 {
   const int totedge_guess = std::max(keep_existing_edges ? mesh.edges_num : 0, mesh.faces_num * 2);
-  threading::parallel_for_each(edge_maps, [&](VectorSet<OrderedEdge> &edge_map) {
-    edge_map.reserve(totedge_guess / edge_maps.size());
-  });
+  threading::parallel_for_each(
+      edge_maps, [&](EdgeMap &edge_map) { edge_map.reserve(totedge_guess / edge_maps.size()); });
 }
 
 static void add_existing_edges_to_hash_maps(const Mesh &mesh,
                                             const uint32_t parallel_mask,
-                                            MutableSpan<VectorSet<OrderedEdge>> edge_maps)
+                                            MutableSpan<EdgeMap> edge_maps)
 {
   /* Assume existing edges are valid. */
   const Span<int2> edges = mesh.edges();
-  threading::parallel_for_each(edge_maps, [&](VectorSet<OrderedEdge> &edge_map) {
+  threading::parallel_for_each(edge_maps, [&](EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
     for (const int2 edge : edges) {
       const OrderedEdge ordered_edge(edge);
@@ -59,11 +65,11 @@ static void add_existing_edges_to_hash_maps(const Mesh &mesh,
 
 static void add_face_edges_to_hash_maps(const Mesh &mesh,
                                         const uint32_t parallel_mask,
-                                        MutableSpan<VectorSet<OrderedEdge>> edge_maps)
+                                        MutableSpan<EdgeMap> edge_maps)
 {
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  threading::parallel_for_each(edge_maps, [&](VectorSet<OrderedEdge> &edge_map) {
+  threading::parallel_for_each(edge_maps, [&](EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
     for (const int face_i : faces.index_range()) {
       const IndexRange face = faces[face_i];
@@ -83,23 +89,21 @@ static void add_face_edges_to_hash_maps(const Mesh &mesh,
   });
 }
 
-static void serialize_and_initialize_deduplicated_edges(
-    const OffsetIndices<int> edge_offsets,
-    MutableSpan<VectorSet<OrderedEdge>> edge_maps,
-    MutableSpan<int2> new_edges)
+static void serialize_and_initialize_deduplicated_edges(const OffsetIndices<int> edge_offsets,
+                                                        MutableSpan<EdgeMap> edge_maps,
+                                                        MutableSpan<int2> new_edges)
 {
-  threading::parallel_for_each(edge_maps, [&](const VectorSet<OrderedEdge> &edge_map) {
+  threading::parallel_for_each(edge_maps, [&](const EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
 
-    const Span<OrderedEdge> task_edges = edge_map.as_span();
     MutableSpan<int2> result_edges = new_edges.slice(edge_offsets[task_index]);
-    result_edges.copy_from(task_edges.cast<int2>());
+    result_edges.copy_from(edge_map.as_span().cast<int2>());
   });
 }
 
 static void update_edge_indices_in_face_loops(const OffsetIndices<int> faces,
                                               const Span<int> corner_verts,
-                                              const Span<VectorSet<OrderedEdge>> edge_maps,
+                                              const Span<EdgeMap> edge_maps,
                                               const uint32_t parallel_mask,
                                               const OffsetIndices<int> edge_offsets,
                                               MutableSpan<int> corner_edges)
@@ -120,7 +124,7 @@ static void update_edge_indices_in_face_loops(const OffsetIndices<int> faces,
 
         const OrderedEdge ordered_edge(vert_prev, vert);
         const int task_index = parallel_mask & edge_hash_2(ordered_edge);
-        const VectorSet<OrderedEdge> &edge_map = edge_maps[task_index];
+        const EdgeMap &edge_map = edge_maps[task_index];
         const int edge_i = edge_map.index_of(ordered_edge);
         const int edge_index = edge_offsets[task_index][edge_i];
         corner_edges[corner] = edge_index;
@@ -141,14 +145,13 @@ static int get_parallel_maps_count(const Mesh &mesh)
   return power_of_2_min_i(std::min(8, system_thread_count));
 }
 
-static void clear_hash_tables(MutableSpan<VectorSet<OrderedEdge>> edge_maps)
+static void clear_hash_tables(MutableSpan<EdgeMap> edge_maps)
 {
-  threading::parallel_for_each(
-      edge_maps, [](VectorSet<OrderedEdge> &edge_map) { edge_map.clear_and_shrink(); });
+  threading::parallel_for_each(edge_maps, [](EdgeMap &edge_map) { edge_map.clear_and_shrink(); });
 }
 
 static void deselect_known_edges(const OffsetIndices<int> edge_offsets,
-                                 const Span<VectorSet<OrderedEdge>> edge_maps,
+                                 const Span<EdgeMap> edge_maps,
                                  const uint32_t parallel_mask,
                                  const Span<int2> known_edges,
                                  MutableSpan<bool> selection)
@@ -157,7 +160,7 @@ static void deselect_known_edges(const OffsetIndices<int> edge_offsets,
     for (const int2 original_edge : known_edges.slice(range)) {
       const OrderedEdge ordered_edge(original_edge);
       const int task_index = parallel_mask & edge_hash_2(ordered_edge);
-      const VectorSet<OrderedEdge> &edge_map = edge_maps[task_index];
+      const EdgeMap &edge_map = edge_maps[task_index];
       const int edge_i = edge_map.index_of(ordered_edge);
       const int edge_index = edge_offsets[task_index][edge_i];
       selection[edge_index] = false;
@@ -174,7 +177,7 @@ void mesh_calc_edges(Mesh &mesh, bool keep_existing_edges, const bool select_new
   const int parallel_maps = calc_edges::get_parallel_maps_count(mesh);
   BLI_assert(is_power_of_2_i(parallel_maps));
   const uint32_t parallel_mask = uint32_t(parallel_maps) - 1;
-  Array<VectorSet<OrderedEdge>> edge_maps(parallel_maps);
+  Array<calc_edges::EdgeMap> edge_maps(parallel_maps);
   calc_edges::reserve_hash_maps(mesh, keep_existing_edges, edge_maps);
 
   /* Add all edges. */
