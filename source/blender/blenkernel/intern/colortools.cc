@@ -930,6 +930,34 @@ void BKE_curvemapping_premultiply(CurveMapping *cumap, bool restore)
 }
 
 /* ************************ more CurveMapping calls *************** */
+void BKE_curvemap_shift(CurveMapping *cumap)
+{
+  CurveMap *cuma = cumap->cm + cumap->cur;
+  CurveMapPoint *cmp = cuma->curve;
+
+  /* unmodified center */
+  float center_x_pre = 0.0f;
+  float center_y_pre = 0.0f;
+  int n = 0;
+  for (int i = 0; i < cuma->totpoint; i++) {
+    if (cmp[i].flag & CUMA_SELECT) {
+      center_x_pre += cmp[i].x;
+      center_y_pre += cmp[i].y;
+      n++;
+    }
+  }
+  if (n > 0) {
+    center_x_pre /= n;
+    center_y_pre /= n;
+  }
+
+  for (int i = 0; i < cuma->totpoint; i++) {
+    if (cmp[i].flag & CUMA_SELECT) {
+      cmp[i].x += cuma->center_x - center_x_pre;
+      cmp[i].y += cuma->center_y - center_y_pre;
+    }
+  }
+}
 
 void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
 {

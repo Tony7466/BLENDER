@@ -48,6 +48,8 @@ typedef struct CurveMap {
   float ext_in[2], ext_out[2];
   /** Actual curve. */
   CurveMapPoint *curve;
+  /** Center of selected points */
+  float center_x, center_y;
   /** Display and evaluate table. */
   CurveMapPoint *table;
 

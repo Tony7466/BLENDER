@@ -60,6 +60,10 @@ void BKE_curvemap_remove(CurveMap *cuma, short flag);
 bool BKE_curvemap_remove_point(CurveMap *cuma, CurveMapPoint *cmp);
 CurveMapPoint *BKE_curvemap_insert(CurveMap *cuma, float x, float y);
 /**
+ * Shift specified point from center.
+ */
+void BKE_curvemap_shift(CurveMapping *cumap);
+/**
  * \param type: #eBezTriple_Handle
  */
 void BKE_curvemap_handle_set(CurveMap *cuma, int type);

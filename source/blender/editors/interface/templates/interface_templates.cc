@@ -4558,7 +4558,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
-  Vector<CurveMapPoint*> cmps{};
+  Vector<CurveMapPoint *> cmps{};
   bool point_last_or_first = false;
   for (int i = 0; i < cm->totpoint; i++) {
     const bool selected = cm->curve[i].flag & CUMA_SELECT;
@@ -4570,7 +4570,9 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
   }
 
-  if (cmps.size() == 1) {
+  if (!cmps.is_empty()) {
+    CurveMap *active_cm = cumap->cm + cumap->cur;
+
     rctf bounds;
     if (cumap->flag & CUMA_DO_CLIP) {
       bounds = cumap->clipr;
@@ -4654,6 +4656,10 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
 
     /* Curve handle position */
+    active_cm->center_x = 0.0f;
+    for (auto cmp : cmps)
+      active_cm->center_x += cmp->x;
+    active_cm->center_x /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4662,17 +4668,22 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &cmps[0]->x,
+                   &active_cm->center_x,
                    bounds.xmin,
                    bounds.xmax,
                    "");
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
+      BKE_curvemap_shift(cumap);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
 
+    active_cm->center_y = 0.0f;
+    for (auto cmp : cmps)
+      active_cm->center_y += cmp->y;
+    active_cm->center_y /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4681,13 +4692,14 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &cmps[0]->y,
+                   &active_cm->center_y,
                    bounds.ymin,
                    bounds.ymax,
                    "");
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
+      BKE_curvemap_shift(cumap);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
