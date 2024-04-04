@@ -281,6 +281,7 @@ void ED_view3d_smooth_view_ex(
 
   /* Skip smooth viewing for external render engine draw. */
   if (smooth_viewtx && !(v3d->shading.type == OB_RENDER && rv3d->view_render)) {
+
     /* original values */
     if (sview->camera_old) {
       Object *ob_camera_old_eval = DEG_get_evaluated_object(depsgraph, sview->camera_old);
