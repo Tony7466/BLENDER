@@ -11,10 +11,14 @@
 
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
+#include "BLI_map.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_rand.h"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
+
+using namespace blender;
 
 /* Using https://downloads.wortschatz-leipzig.de/corpora/eng_wikipedia_2010_1M.tar.gz
  * (1 million of words, about 122MB of text) from
@@ -25,7 +29,7 @@
 #endif
 
 /* Resizing the hash has a huge cost over global filling operation! */
-// #define GHASH_RESERVE
+static constexpr bool GHASH_RESERVE = false;
 
 /* Run the longest tests! */
 // #define GHASH_RUN_BIG
@@ -84,9 +88,9 @@ static void str_ghash_tests(GHash *ghash, const char *id)
   {
     SCOPED_TIMER("string_insert");
 
-#ifdef GHASH_RESERVE
-    BLI_ghash_reserve(ghash, strlen(data) / 32); /* rough estimation... */
-#endif
+    if (GHASH_RESERVE) {
+      BLI_ghash_reserve(ghash, strlen(data) / 32); /* rough estimation... */
+    }
 
     BLI_ghash_insert(ghash, data, POINTER_FROM_INT(data[0]));
 
@@ -149,6 +153,76 @@ static void str_ghash_tests(GHash *ghash, const char *id)
   printf("========== ENDED %s ==========\n\n", id);
 }
 
+template<typename MapType> static void str_map_tests(MapType &map, const char *id)
+{
+  printf("\n========== STARTING %s ==========\n", id);
+
+  char *data = read_text_corpus();
+  char *data_p = BLI_strdup(data);
+  char *data_w = BLI_strdup(data);
+  char *data_bis = BLI_strdup(data);
+
+  {
+    SCOPED_TIMER("string_insert");
+
+    if (GHASH_RESERVE) {
+      map.reserve(strlen(data) / 32); /* rough estimation... */
+    }
+
+    map.add_new(StringRef(data), data[0]);
+
+    char *p, *w, *c_p, *c_w;
+    for (p = c_p = data_p, w = c_w = data_w; *c_w; c_w++, c_p++) {
+      if (*c_p == '.') {
+        *c_p = *c_w = '\0';
+        map.add(StringRef(p), p[0]);
+        map.add(StringRef(w), w[0]);
+        p = c_p + 1;
+        w = c_w + 1;
+      }
+      else if (*c_w == ' ') {
+        *c_w = '\0';
+        map.add(StringRef(w), w[0]);
+        w = c_w + 1;
+      }
+    }
+  }
+
+  map.print_stats("map");
+
+  {
+    SCOPED_TIMER("string_lookup");
+
+    int v = map.lookup(StringRef(data_bis));
+    EXPECT_EQ(v, data_bis[0]);
+
+    char *p, *w, *c;
+    for (p = w = c = data_bis; *c; c++) {
+      if (*c == '.') {
+        *c = '\0';
+        v = map.lookup(StringRef(w));
+        EXPECT_EQ(v, w[0]);
+        v = map.lookup(StringRef(p));
+        EXPECT_EQ(v, p[0]);
+        p = w = c + 1;
+      }
+      else if (*c == ' ') {
+        *c = '\0';
+        v = map.lookup(StringRef(w));
+        EXPECT_EQ(v, w[0]);
+        w = c + 1;
+      }
+    }
+  }
+
+  MEM_freeN(data);
+  MEM_freeN(data_p);
+  MEM_freeN(data_w);
+  MEM_freeN(data_bis);
+
+  printf("========== ENDED %s ==========\n\n", id);
+}
+
 TEST(ghash, TextGHash)
 {
   GHash *ghash = BLI_ghash_new(BLI_ghashutil_strhash_p, BLI_ghashutil_strcmp, __func__);
@@ -163,6 +237,12 @@ TEST(ghash, TextMurmur2a)
   str_ghash_tests(ghash, "StrGHash - Murmur");
 }
 
+TEST(ghash, TextMap)
+{
+  Map<StringRef, int64_t> map;
+  str_map_tests(map, "StrMap - DefaultHash");
+}
+
 /* Int: uniform 100M first integers. */
 
 static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
@@ -173,9 +253,9 @@ static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
     SCOPED_TIMER("int_insert");
     uint i = count;
 
-#ifdef GHASH_RESERVE
-    BLI_ghash_reserve(ghash, count);
-#endif
+    if (GHASH_RESERVE) {
+      BLI_ghash_reserve(ghash, count);
+    }
 
     while (i--) {
       BLI_ghash_insert(ghash, POINTER_FROM_UINT(i), POINTER_FROM_UINT(i));
@@ -206,6 +286,48 @@ static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
   EXPECT_EQ(BLI_ghash_len(ghash), 0);
 
   BLI_ghash_free(ghash, nullptr, nullptr);
+
+  printf("========== ENDED %s ==========\n\n", id);
+}
+
+template<typename MapType>
+static void int_map_tests(MapType &map, const char *id, const uint count)
+{
+  printf("\n========== STARTING %s ==========\n", id);
+
+  {
+    SCOPED_TIMER("int_insert");
+    uint i = count;
+
+    if (GHASH_RESERVE) {
+      map.reserve(count);
+    }
+
+    while (i--) {
+      map.add_new(i, i);
+    }
+  }
+
+  map.print_stats("map");
+
+  {
+    SCOPED_TIMER("int_lookup");
+    uint i = count;
+    while (i--) {
+      int v = map.lookup(i);
+      EXPECT_EQ(v, i);
+    }
+  }
+
+  {
+    SCOPED_TIMER("int_pop");
+    uint i = count;
+    while (i--) {
+      int v = map.pop(i);
+      EXPECT_EQ(v, i);
+    }
+  }
+  EXPECT_EQ(map.size(), 0);
 
   printf("========== ENDED %s ==========\n\n", id);
 }
@@ -242,33 +364,43 @@ TEST(ghash, IntMurmur2a100000000)
 }
 #endif
 
+TEST(ghash, IntMap12000)
+{
+  Map<int, int> map;
+  int_map_tests(map, "IntMap - DefaultHash - 12000", 12000);
+}
+
+#ifdef GHASH_RUN_BIG
+TEST(ghash, IntMap100000000)
+{
+  Map<int, int> map;
+  int_map_tests(map, "IntMap - DefaultHash - 100000000", 100000000);
+}
+#endif
+
 /* Int: random 50M integers. */
 
 static void randint_ghash_tests(GHash *ghash, const char *id, const uint count)
 {
   printf("\n========== STARTING %s ==========\n", id);
 
-  uint *data = (uint *)MEM_mallocN(sizeof(*data) * size_t(count), __func__);
-  uint *dt;
-  uint i;
-
+  Array<uint> data(count);
   {
     RNG *rng = BLI_rng_new(1);
-    for (i = count, dt = data; i--; dt++) {
-      *dt = BLI_rng_get_uint(rng);
+    for (uint i = 0; i < count; i++) {
+      data[i] = BLI_rng_get_uint(rng);
     }
     BLI_rng_free(rng);
   }
 
   {
     SCOPED_TIMER("int_insert");
-
-#ifdef GHASH_RESERVE
-    BLI_ghash_reserve(ghash, count);
-#endif
-
-    for (i = count, dt = data; i--; dt++) {
-      BLI_ghash_insert(ghash, POINTER_FROM_UINT(*dt), POINTER_FROM_UINT(*dt));
+    if (GHASH_RESERVE) {
+      BLI_ghash_reserve(ghash, count);
+    }
+    for (uint i = 0; i < count; i++) {
+      uint dt = data[i];
+      BLI_ghash_insert(ghash, POINTER_FROM_UINT(dt), POINTER_FROM_UINT(dt));
     }
   }
 
@@ -276,15 +408,53 @@ static void randint_ghash_tests(GHash *ghash, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_lookup");
-
-    for (i = count, dt = data; i--; dt++) {
-      void *v = BLI_ghash_lookup(ghash, POINTER_FROM_UINT(*dt));
-      EXPECT_EQ(POINTER_AS_UINT(v), *dt);
+    for (uint i = 0; i < count; i++) {
+      uint dt = data[i];
+      void *v = BLI_ghash_lookup(ghash, POINTER_FROM_UINT(dt));
+      EXPECT_EQ(POINTER_AS_UINT(v), dt);
     }
   }
 
   BLI_ghash_free(ghash, nullptr, nullptr);
-  MEM_freeN(data);
+
+  printf("========== ENDED %s ==========\n\n", id);
+}
+
+template<typename MapType>
+static void randint_map_tests(MapType &map, const char *id, const uint count)
+{
+  printf("\n========== STARTING %s ==========\n", id);
+
+  Array<uint> data(count);
+  {
+    RNG *rng = BLI_rng_new(1);
+    for (uint i = 0; i < count; i++) {
+      data[i] = BLI_rng_get_uint(rng);
+    }
+    BLI_rng_free(rng);
+  }
+
+  {
+    SCOPED_TIMER("int_insert");
+    if (GHASH_RESERVE) {
+      map.reserve(count);
+    }
+    for (uint i = 0; i < count; i++) {
+      uint dt = data[i];
+      map.add_new(dt, dt);
+    }
+  }
+
+  map.print_stats("map");
+
+  {
+    SCOPED_TIMER("int_lookup");
+    for (uint i = 0; i < count; i++) {
+      uint dt = data[i];
+      int v = map.lookup(dt);
+      EXPECT_EQ(v, dt);
+    }
+  }
 
   printf("========== ENDED %s ==========\n\n", id);
 }
@@ -321,6 +491,20 @@ TEST(ghash, IntRandMurmur2a50000000)
 }
 #endif
 
+TEST(ghash, IntRandMap12000)
+{
+  Map<int, int> map;
+  randint_map_tests(map, "RandIntMap - DefaultHash - 12000", 12000);
+}
+
+#ifdef GHASH_RUN_BIG
+TEST(ghash, IntRandMap50000000)
+{
+  Map<int, int> map;
+  randint_map_tests(map, "RandIntMap - DefaultHash - 50000000", 50000000);
+}
+#endif
+
 static uint ghashutil_tests_nohash_p(const void *p)
 {
   return POINTER_AS_UINT(p);
@@ -331,7 +515,7 @@ static bool ghashutil_tests_cmp_p(const void *a, const void *b)
   return a != b;
 }
 
-TEST(ghash, Int4NoHash12000)
+TEST(ghash, IntRandNoHash12000)
 {
   GHash *ghash = BLI_ghash_new(ghashutil_tests_nohash_p, ghashutil_tests_cmp_p, __func__);
 
@@ -339,7 +523,7 @@ TEST(ghash, Int4NoHash12000)
 }
 
 #ifdef GHASH_RUN_BIG
-TEST(ghash, Int4NoHash50000000)
+TEST(ghash, IntRandNoHash50000000)
 {
   GHash *ghash = BLI_ghash_new(ghashutil_tests_nohash_p, ghashutil_tests_cmp_p, __func__);
 
@@ -353,30 +537,27 @@ static void int4_ghash_tests(GHash *ghash, const char *id, const uint count)
 {
   printf("\n========== STARTING %s ==========\n", id);
 
-  void *data_v = MEM_mallocN(sizeof(uint[4]) * size_t(count), __func__);
-  uint(*data)[4] = (uint(*)[4])data_v;
-  uint(*dt)[4];
-  uint i, j;
+  Array<uint4> data(count);
 
   {
     RNG *rng = BLI_rng_new(1);
-    for (i = count, dt = data; i--; dt++) {
-      for (j = 4; j--;) {
-        (*dt)[j] = BLI_rng_get_uint(rng);
+    for (uint i = 0; i < count; i++) {
+      uint4 v;
+      for (int j = 0; j < 4; j++) {
+        v[j] = BLI_rng_get_uint(rng);
       }
+      data[i] = v;
     }
     BLI_rng_free(rng);
   }
 
   {
     SCOPED_TIMER("int_v4_insert");
-
-#ifdef GHASH_RESERVE
-    BLI_ghash_reserve(ghash, count);
-#endif
-
-    for (i = count, dt = data; i--; dt++) {
-      BLI_ghash_insert(ghash, *dt, POINTER_FROM_UINT(i));
+    if (GHASH_RESERVE) {
+      BLI_ghash_reserve(ghash, count);
+    }
+    for (uint i = 0; i < count; i++) {
+      BLI_ghash_insert(ghash, &data[i], POINTER_FROM_UINT(i));
     }
   }
 
@@ -384,15 +565,55 @@ static void int4_ghash_tests(GHash *ghash, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_v4_lookup");
-
-    for (i = count, dt = data; i--; dt++) {
-      void *v = BLI_ghash_lookup(ghash, (void *)(*dt));
+    for (uint i = 0; i < count; i++) {
+      void *v = BLI_ghash_lookup(ghash, &data[i]);
       EXPECT_EQ(POINTER_AS_UINT(v), i);
     }
   }
 
   BLI_ghash_free(ghash, nullptr, nullptr);
-  MEM_freeN(data);
+
+  printf("========== ENDED %s ==========\n\n", id);
+}
+
+template<typename MapType>
+static void int4_map_tests(MapType &map, const char *id, const uint count)
+{
+  printf("\n========== STARTING %s ==========\n", id);
+
+  Array<uint4> data(count);
+
+  {
+    RNG *rng = BLI_rng_new(1);
+    for (uint i = 0; i < count; i++) {
+      uint4 v;
+      for (int j = 0; j < 4; j++) {
+        v[j] = BLI_rng_get_uint(rng);
+      }
+      data[i] = v;
+    }
+    BLI_rng_free(rng);
+  }
+
+  {
+    SCOPED_TIMER("int_v4_insert");
+    if (GHASH_RESERVE) {
+      map.reserve(count);
+    }
+    for (uint i = 0; i < count; i++) {
+      map.add_new(data[i], i);
+    }
+  }
+
+  map.print_stats("map");
+
+  {
+    SCOPED_TIMER("int_v4_lookup");
+    for (uint i = 0; i < count; i++) {
+      int v = map.lookup(data[i]);
+      EXPECT_EQ(POINTER_AS_UINT(v), i);
+    }
+  }
 
   printf("========== ENDED %s ==========\n\n", id);
 }
@@ -433,20 +654,17 @@ TEST(ghash, Int4Murmur2a20000000)
 }
 #endif
 
-/* GHash inthash_v2 tests */
-TEST(ghash, Int2NoHash12000)
+TEST(ghash, Int4Map2000)
 {
-  GHash *ghash = BLI_ghash_new(ghashutil_tests_nohash_p, ghashutil_tests_cmp_p, __func__);
-
-  randint_ghash_tests(ghash, "RandIntGHash - No Hash - 12000", 12000);
+  Map<uint4, int> map;
+  int4_map_tests(map, "Int4Map - DefaultHash - 2000", 2000);
 }
 
 #ifdef GHASH_RUN_BIG
-TEST(ghash, Int2NoHash50000000)
+TEST(ghash, Int4Map20000000)
 {
-  GHash *ghash = BLI_ghash_new(ghashutil_tests_nohash_p, ghashutil_tests_cmp_p, __func__);
-
-  randint_ghash_tests(ghash, "RandIntGHash - No Hash - 50000000", 50000000);
+  Map<uint4, int> map;
+  int4_map_tests(map, "Int4Map - DefaultHash - 20000000", 20000000);
 }
 #endif
 
@@ -463,9 +681,9 @@ static void multi_small_ghash_tests_one(GHash *ghash, RNG *rng, const uint count
     *dt = BLI_rng_get_uint(rng);
   }
 
-#ifdef GHASH_RESERVE
-  BLI_ghash_reserve(ghash, count);
-#endif
+  if (GHASH_RESERVE) {
+    BLI_ghash_reserve(ghash, count);
+  }
 
   for (i = count, dt = data; i--; dt++) {
     BLI_ghash_insert(ghash, POINTER_FROM_UINT(*dt), POINTER_FROM_UINT(*dt));
