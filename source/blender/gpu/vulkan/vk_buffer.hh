@@ -14,7 +14,9 @@
 
 namespace blender::gpu {
 class VKContext;
+namespace render_graph {
 class VKRenderGraph;
+}
 
 /**
  * Class for handing vulkan buffers (allocation/updating/binding).
@@ -36,7 +38,7 @@ class VKBuffer {
               GPUUsageType usage,
               VkBufferUsageFlags buffer_usage,
               bool is_host_visible = true);
-  void clear(VKRenderGraph &render_graph, uint32_t clear_value);
+  void clear(render_graph::VKRenderGraph &render_graph, uint32_t clear_value);
   void update(const void *data) const;
   void flush() const;
   void read(void *data) const;

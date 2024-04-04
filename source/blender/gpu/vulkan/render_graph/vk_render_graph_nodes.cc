@@ -8,7 +8,7 @@
 
 #include "vk_render_graph_nodes.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 NodeHandle VKRenderGraphNodes::add_clear_image_node(
     VkImage vk_image,
@@ -216,6 +216,7 @@ void VKRenderGraphNodes::free_data(Node &node)
     case Node::Type::COPY_IMAGE:
     case Node::Type::COPY_IMAGE_TO_BUFFER:
     case Node::Type::COPY_BUFFER_TO_IMAGE:
+    case Node::Type::BLIT_IMAGE:
     case Node::Type::SYNCHRONIZATION:
       break;
   }

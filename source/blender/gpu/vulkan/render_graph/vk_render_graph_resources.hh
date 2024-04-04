@@ -14,7 +14,7 @@
 #include "vk_common.hh"
 #include "vk_render_graph_list.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 class VKRenderGraphCommandBuilder;
 

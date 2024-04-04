@@ -10,7 +10,7 @@
 
 #include "BLI_index_range.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 /* -------------------------------------------------------------------- */
 /** \name Adding resources

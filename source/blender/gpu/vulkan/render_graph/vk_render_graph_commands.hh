@@ -10,7 +10,7 @@
 
 #include "vk_common.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 class VKRenderGraphCommandBuffer {
  public:
   VKRenderGraphCommandBuffer() {}

@@ -29,7 +29,7 @@ void VKBatch::draw_setup()
   VKIndexBuffer *index_buffer = index_buffer_get();
   const bool draw_indexed = index_buffer != nullptr;
   state_manager.apply_state();
-  VKResourceAccessInfo resource_access_info = {};
+  render_graph::VKResourceAccessInfo resource_access_info = {};
   BLI_assert_unreachable();
   state_manager.apply_bindings(context, resource_access_info);
   /*

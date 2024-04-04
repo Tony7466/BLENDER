@@ -23,7 +23,7 @@ VKStorageBuffer::VKStorageBuffer(int size, GPUUsageType usage, const char *name)
 void VKStorageBuffer::update(const void *data)
 {
   ensure_allocated();
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   staging_buffer.host_buffer_get().update(data);
   staging_buffer.copy_to_device(render_graph);
@@ -64,7 +64,7 @@ void VKStorageBuffer::try_add_to_descriptor_set(
       data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
     data.descriptor_set.bind(*this, *location);
-    VKBufferAccess buffer_access = {};
+    render_graph::VKBufferAccess buffer_access = {};
     buffer_access.vk_buffer = buffer_.vk_handle();
     buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);
     data.resource_access_info.buffers.append(buffer_access);
@@ -79,7 +79,7 @@ void VKStorageBuffer::unbind()
 void VKStorageBuffer::clear(uint32_t clear_value)
 {
   ensure_allocated();
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   buffer_.clear(render_graph, clear_value);
 }
 
@@ -95,7 +95,7 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
   region.dstOffset = dst_offset;
   region.size = copy_size;
 
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   render_graph.add_copy_buffer_node(src_vertex_buffer.vk_handle(), buffer_.vk_handle(), region);
 }
 
@@ -107,7 +107,7 @@ void VKStorageBuffer::async_flush_to_host()
 void VKStorageBuffer::read(void *data)
 {
   ensure_allocated();
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(render_graph);
   render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());

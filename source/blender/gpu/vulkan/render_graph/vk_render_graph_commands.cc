@@ -10,7 +10,7 @@
 #include "vk_backend.hh"
 #include "vk_memory.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 VKCommandBufferWrapper::VKCommandBufferWrapper()
 {
   vk_command_pool_create_info_ = {};

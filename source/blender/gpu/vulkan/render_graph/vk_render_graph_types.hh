@@ -10,7 +10,7 @@
 
 #include "BLI_utility_mixins.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 /**
  * State of a resource for pipeline barrier building.

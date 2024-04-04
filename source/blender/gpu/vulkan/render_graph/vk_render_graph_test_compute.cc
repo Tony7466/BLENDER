@@ -6,7 +6,7 @@
 
 #include "vk_render_graph_test_types.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 TEST(vk_render_graph, dispatch_read_back)
 {

@@ -28,7 +28,7 @@ VKStagingBuffer::VKStagingBuffer(const VKBuffer &device_buffer, Direction direct
   host_buffer_.create(device_buffer.size_in_bytes(), GPU_USAGE_STREAM, usage, true);
 }
 
-void VKStagingBuffer::copy_to_device(VKRenderGraph &render_graph)
+void VKStagingBuffer::copy_to_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
   VkBufferCopy vk_buffer_copy = {};
@@ -39,7 +39,7 @@ void VKStagingBuffer::copy_to_device(VKRenderGraph &render_graph)
       host_buffer_.vk_handle(), device_buffer_.vk_handle(), vk_buffer_copy);
 }
 
-void VKStagingBuffer::copy_from_device(VKRenderGraph &render_graph)
+void VKStagingBuffer::copy_from_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
   VkBufferCopy vk_buffer_copy = {};

@@ -15,7 +15,10 @@
 namespace blender::gpu {
 class VKDescriptorSetTracker;
 class VKShaderInterface;
+
+namespace render_graph {
 struct VKResourceAccessInfo;
+}
 
 /**
  * When applying the bindings many data is repeatably being retrieved.
@@ -25,11 +28,11 @@ struct VKResourceAccessInfo;
 struct AddToDescriptorSetData : NonCopyable {
   VKDescriptorSetTracker &descriptor_set;
   const VKShaderInterface &shader_interface;
-  VKResourceAccessInfo &resource_access_info;
+  render_graph::VKResourceAccessInfo &resource_access_info;
 
   AddToDescriptorSetData(VKDescriptorSetTracker &descriptor_set,
                          const VKShaderInterface &shader_interface,
-                         VKResourceAccessInfo &resource_access_info)
+                         render_graph::VKResourceAccessInfo &resource_access_info)
       : descriptor_set(descriptor_set),
         shader_interface(shader_interface),
         resource_access_info(resource_access_info)

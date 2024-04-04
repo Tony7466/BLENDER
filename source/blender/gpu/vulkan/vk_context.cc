@@ -200,7 +200,7 @@ void VKContext::bind_compute_pipeline()
   }
 }
 
-void VKContext::update_pipeline_data(VKPipelineData &pipeline_data)
+void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data)
 {
   VKShader &vk_shader = unwrap(*shader);
   pipeline_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
@@ -235,7 +235,7 @@ void VKContext::update_dispatch_info()
   dispatch_info_.dispatch_node.pipeline_data.vk_pipeline = vk_pipeline;
 }
 
-VKDispatchInfo &VKContext::update_and_get_dispatch_info()
+render_graph::VKDispatchInfo &VKContext::update_and_get_dispatch_info()
 {
   VKShader *shader = unwrap(this->shader);
   VKPipeline &pipeline = shader->pipeline_get();

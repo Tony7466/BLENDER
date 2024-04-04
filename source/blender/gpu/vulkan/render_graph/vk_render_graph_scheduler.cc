@@ -11,7 +11,7 @@
 
 #include "BLI_index_range.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 void Sequential::select_nodes_for_image(const VKRenderGraph &render_graph,
                                         VkImage vk_image,

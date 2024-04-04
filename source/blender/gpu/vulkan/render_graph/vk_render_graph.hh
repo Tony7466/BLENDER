@@ -33,7 +33,7 @@
 #include "vk_render_graph_scheduler.hh"
 #include "vk_render_graph_types.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 class VKRenderGraph : public NonCopyable {
   VKRenderGraphResources resources_;

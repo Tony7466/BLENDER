@@ -8,12 +8,12 @@
 
 #include <sstream>
 
+#include "render_graph/vk_render_graph_commands.hh"
+#include "render_graph/vk_render_graph_scheduler.hh"
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_device.hh"
 #include "vk_memory.hh"
-#include "vk_render_graph_commands.hh"
-#include "vk_render_graph_scheduler.hh"
 #include "vk_state_manager.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
@@ -30,7 +30,8 @@ extern "C" char datatoc_glsl_shader_defines_glsl[];
 namespace blender::gpu {
 
 VKDevice::VKDevice()
-    : render_graph_(std::make_unique<VKCommandBufferWrapper>(), std::make_unique<Sequential>())
+    : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(),
+                    std::make_unique<render_graph::Sequential>())
 {
 }
 

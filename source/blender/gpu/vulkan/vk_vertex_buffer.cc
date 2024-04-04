@@ -75,7 +75,7 @@ void VKVertexBuffer::try_add_to_descriptor_set(
   else {
     data.descriptor_set.bind_as_ssbo(*this, *location);
   }
-  VKBufferAccess buffer_access = {};
+  render_graph::VKBufferAccess buffer_access = {};
   buffer_access.vk_buffer = buffer_.vk_handle();
   buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, *location);
   data.resource_access_info.buffers.append(buffer_access);
@@ -98,7 +98,7 @@ void VKVertexBuffer::read(void *data) const
     return;
   }
 
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(render_graph);
   render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());
@@ -153,7 +153,7 @@ void VKVertexBuffer::upload_data_direct(const VKBuffer &host_buffer)
   }
 }
 
-void VKVertexBuffer::upload_data_via_staging_buffer(VKRenderGraph &render_graph)
+void VKVertexBuffer::upload_data_via_staging_buffer(render_graph::VKRenderGraph &render_graph)
 {
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   upload_data_direct(staging_buffer.host_buffer_get());
@@ -175,7 +175,7 @@ void VKVertexBuffer::upload_data()
       upload_data_direct(buffer_);
     }
     else {
-      VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+      render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
       upload_data_via_staging_buffer(render_graph);
     }
     if (usage_ == GPU_USAGE_STATIC) {

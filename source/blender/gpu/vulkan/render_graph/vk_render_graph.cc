@@ -8,7 +8,7 @@
 
 #include "vk_render_graph.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 VKRenderGraph::VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
                              std::unique_ptr<VKRenderGraphScheduler> scheduler)

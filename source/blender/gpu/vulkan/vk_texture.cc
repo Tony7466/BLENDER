@@ -245,7 +245,7 @@ void VKTexture::read_sub(
   buffer_image_copy.imageSubresource.layerCount = layers.size();
 
   VKDevice &device = VKBackend::get().device_get();
-  VKRenderGraph &render_graph = device.render_graph_get();
+  render_graph::VKRenderGraph &render_graph = device.render_graph_get();
   render_graph.add_copy_image_to_buffer_node(
       vk_image_handle(), staging_buffer.vk_handle(), buffer_image_copy);
   render_graph.submit_buffer_for_read_back(staging_buffer.vk_handle());
@@ -529,7 +529,7 @@ bool VKTexture::allocate()
     return false;
   }
   device.render_graph_get().add_image(
-      vk_image_, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+      vk_image_, VK_IMAGE_LAYOUT_UNDEFINED, render_graph::ResourceOwner::APPLICATION);
   debug::object_label(vk_image_, name_);
 
   return result == VK_SUCCESS;
@@ -551,7 +551,7 @@ void VKTexture::try_add_to_descriptor_set(AddToDescriptorSetData &data,
       const VKSampler &sampler = device.samplers().get(sampler_state);
       data.descriptor_set.bind(*this, *location, sampler);
     }
-    VKImageAccess image_access = {};
+    render_graph::VKImageAccess image_access = {};
     image_access.vk_image = vk_image_handle();
     image_access.vk_access_flags = data.shader_interface.access_mask(bind_type, *location);
     data.resource_access_info.images.append(image_access);

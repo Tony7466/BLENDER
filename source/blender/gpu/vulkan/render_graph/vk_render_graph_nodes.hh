@@ -14,7 +14,7 @@
 #include "vk_render_graph_resources.hh"
 #include "vk_render_graph_types.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 class VKRenderGraphCommandBuilder;
 struct VKDispatchInfo;

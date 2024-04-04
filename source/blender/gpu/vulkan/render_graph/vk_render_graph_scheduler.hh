@@ -15,7 +15,7 @@
 
 // TODO: Decide if scheduler is a better name... but scheduling is part of the command builder as
 // well....
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 class VKRenderGraph;
 
 class VKRenderGraphScheduler {

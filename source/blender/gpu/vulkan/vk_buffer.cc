@@ -114,7 +114,7 @@ void VKBuffer::flush() const
   vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
 }
 
-void VKBuffer::clear(VKRenderGraph &render_graph, uint32_t clear_value)
+void VKBuffer::clear(render_graph::VKRenderGraph &render_graph, uint32_t clear_value)
 {
   render_graph.add_fill_buffer_node(vk_buffer_, size_in_bytes_, clear_value);
 }

@@ -140,11 +140,11 @@ void VKBackend::samplers_update()
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   VKContext &context = *VKContext::get();
-  VKDispatchInfo &dispatch_info = context.update_and_get_dispatch_info();
+  render_graph::VKDispatchInfo &dispatch_info = context.update_and_get_dispatch_info();
   dispatch_info.dispatch_node.group_count_x = groups_x_len;
   dispatch_info.dispatch_node.group_count_y = groups_y_len;
   dispatch_info.dispatch_node.group_count_z = groups_z_len;
-  VKRenderGraph &render_graph = device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = device_get().render_graph_get();
   render_graph.add_dispatch_node(dispatch_info);
 }
 
@@ -152,7 +152,7 @@ void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
   BLI_assert(indirect_buf);
   VKContext &context = *VKContext::get();
-  VKResourceAccessInfo resource_access_info = {};
+  render_graph::VKResourceAccessInfo resource_access_info = {};
   BLI_assert_unreachable();
   context.state_manager_get().apply_bindings(context, resource_access_info);
   context.bind_compute_pipeline();

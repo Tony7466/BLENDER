@@ -63,7 +63,7 @@ class VKVertexBuffer : public VertBuf, public VKBindableResource {
   void allocate();
 
   void upload_data_direct(const VKBuffer &host_buffer);
-  void upload_data_via_staging_buffer(VKRenderGraph &render_graph);
+  void upload_data_via_staging_buffer(render_graph::VKRenderGraph &render_graph);
 
   /* VKTexture requires access to `buffer_` to convert a vertex buffer to a texture. */
   friend class VKTexture;

@@ -29,7 +29,8 @@ void VKStateManager::apply_state()
   }
 }
 
-void VKStateManager::apply_bindings(VKContext &context, VKResourceAccessInfo &resource_access_info)
+void VKStateManager::apply_bindings(VKContext &context,
+                                    render_graph::VKResourceAccessInfo &resource_access_info)
 {
   VKShader *shader = unwrap(context.shader);
   if (shader == nullptr) {

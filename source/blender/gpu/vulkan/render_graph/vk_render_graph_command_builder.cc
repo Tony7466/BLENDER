@@ -9,7 +9,7 @@
 #include "vk_render_graph_command_builder.hh"
 #include "vk_render_graph.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 VKRenderGraphCommandBuilder::VKRenderGraphCommandBuilder()
 {

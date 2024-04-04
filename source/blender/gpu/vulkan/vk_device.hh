@@ -11,13 +11,13 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
+#include "render_graph/vk_render_graph.hh"
 #include "vk_buffer.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 #include "vk_descriptor_set_layouts.hh"
 #include "vk_pipelines.hh"
-#include "vk_render_graph.hh"
 #include "vk_samplers.hh"
 #include "vk_timeline_semaphore.hh"
 
@@ -66,7 +66,7 @@ class VKDevice : public NonCopyable {
   VKSamplers samplers_;
   VKPipelines pipelines_;
   VKDescriptorSetLayouts descriptor_set_layouts_;
-  VKRenderGraph render_graph_;
+  render_graph::VKRenderGraph render_graph_;
 
   /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
   VKTimelineSemaphore timeline_semaphore_;
@@ -194,7 +194,7 @@ class VKDevice : public NonCopyable {
   {
     return samplers_;
   }
-  VKRenderGraph &render_graph_get()
+  render_graph::VKRenderGraph &render_graph_get()
   {
     return render_graph_;
   }

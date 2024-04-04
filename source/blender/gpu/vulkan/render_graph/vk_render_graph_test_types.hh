@@ -10,7 +10,7 @@
 #include "vk_render_graph.hh"
 #include "vk_to_string.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 class CommandBufferLog : public VKRenderGraphCommandBuffer {
   Vector<std::string> &log_;

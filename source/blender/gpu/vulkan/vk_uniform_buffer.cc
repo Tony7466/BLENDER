@@ -24,7 +24,7 @@ void VKUniformBuffer::update(const void *data)
     buffer_.update(data);
   }
   else {
-    VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+    render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
     VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
     staging_buffer.host_buffer_get().update(data);
     staging_buffer.copy_to_device(render_graph);
@@ -52,7 +52,7 @@ void VKUniformBuffer::clear_to_zero()
   if (!buffer_.is_allocated()) {
     allocate();
   }
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   buffer_.clear(render_graph, 0);
 }
 
@@ -82,7 +82,7 @@ void VKUniformBuffer::try_add_to_descriptor_set(
     else {
       data.descriptor_set.bind_as_ssbo(*this, *location);
     }
-    VKBufferAccess buffer_access = {};
+    render_graph::VKBufferAccess buffer_access = {};
     buffer_access.vk_buffer = buffer_.vk_handle();
     buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, *location);
     data.resource_access_info.buffers.append(buffer_access);
