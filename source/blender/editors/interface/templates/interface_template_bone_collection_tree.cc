@@ -24,6 +24,8 @@
 
 #include "WM_api.hh"
 
+#include "interface_intern.hh"
+
 #include <fmt/format.h>
 
 namespace blender::ui::bonecollections {
@@ -229,16 +231,22 @@ class BoneCollectionItem : public AbstractTreeViewItem {
      * assigned to. And this happens for each redraw of each bone collection in the armature. */
     {
       int icon;
+      const char *tip = nullptr;
       if (ANIM_armature_bonecoll_contains_active_bone(&armature_, &bone_collection_)) {
         icon = ICON_LAYER_ACTIVE;
+        tip = TIP_("Active");
       }
       else if (has_any_selected_bones_) {
         icon = ICON_LAYER_USED;
+        tip = TIP_("Selected");
       }
       else {
         icon = ICON_BLANK1;
       }
       uiItemL(sub, "", icon);
+      uiBlock *block = uiLayoutGetBlock(sub);
+      uiBut *but = ui_but_last(block);
+      but->tip = tip;
     }
 
     /* Visibility eye icon. */
