@@ -32,6 +32,7 @@ struct View3D;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
+class CurvesGeometry;
 }
 }  // namespace blender
 
@@ -55,6 +56,7 @@ void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
+
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
@@ -263,5 +265,12 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   int samples_max,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
+
+void clipboard_free();
+const bke::CurvesGeometry &clipboard_curves();
+void clipboard_paste_strokes(Main &bmain,
+                             Object &object,
+                             bke::greasepencil::Drawing &drawing,
+                             bool paste_on_back);
 
 }  // namespace blender::ed::greasepencil
