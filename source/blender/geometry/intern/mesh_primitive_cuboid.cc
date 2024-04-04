@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_timeit.hh"
-
 #include "BKE_attribute.hh"
 #include "BKE_mesh.hh"
 
@@ -383,10 +381,7 @@ Mesh *create_cuboid_mesh(const float3 &size,
   calculate_positions(config, positions);
   offset_indices::fill_constant_group_size(4, 0, mesh->face_offsets_for_write());
   calculate_corner_verts(config, corner_verts);
-  {
-    SCOPED_TIMER_AVERAGED("mesh_calc_edges");
-    bke::mesh_calc_edges(*mesh, false, false);
-  }
+  bke::mesh_calc_edges(*mesh, false, false);
 
   if (uv_id) {
     calculate_uvs(config, mesh, uv_id);
