@@ -243,9 +243,8 @@ class BoneCollectionItem : public AbstractTreeViewItem {
       else {
         icon = ICON_BLANK1;
       }
-      uiItemL(sub, "", icon);
-      uiBlock *block = uiLayoutGetBlock(sub);
-      uiBut *but = ui_but_last(block);
+      uiBut *but = uiItemL_ex(sub, "", icon, false, false);
+      but->type = UI_BTYPE_BUT;
       but->tip = tip;
     }
 
