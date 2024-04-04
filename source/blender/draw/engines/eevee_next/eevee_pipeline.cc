@@ -1072,7 +1072,7 @@ VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
    * and this is independant of FOV. */
   const float4x4 &projection_matrix = camera.data_get().winmat;
 
-  const Bounds<float3> bounds = BKE_object_boundbox_get(ob).value_or(Bounds(float3(0)));
+  const Bounds<float3> bounds = BKE_object_boundbox_get(ob).value_or(Bounds(float3(0.0f)));
 
   BoundBox bb;
   BKE_boundbox_init_from_minmax(&bb, bounds.min, bounds.max);
@@ -1085,9 +1085,17 @@ VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
     /* Split view and projection for percision. */
     float3 vs_corner = math::transform_point(view_matrix, ws_corner);
     float3 ss_corner = math::project_point(projection_matrix, vs_corner);
-    /* FIXME: This is ill defined if crossing the nearplane. */
-    screen_bounds = bounds::min_max(screen_bounds, ss_corner.xy());
+
     z_range = bounds::min_max(z_range, vs_corner.z);
+    if (vs_corner.z < 0.0f) {
+      screen_bounds = bounds::min_max(screen_bounds, ss_corner.xy());
+    }
+    else {
+      /* If the object is crossing the z=0 plane, we can't determine its 2D bounds easily.
+       * In this case, consider the object covering the whole screen.
+       * Still continue the loop for the Z range. */
+      screen_bounds = Bounds<float2>(float2(-1.0f), float2(1.0f));
+    }
   }
 }
 
