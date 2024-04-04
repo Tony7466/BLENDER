@@ -1134,6 +1134,8 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   }
 
   if (sce->nodetree) {
+    /* Set deprecated chunksize for forward compatibility. */
+    sce->nodetree->chunksize = 256;
     BLO_write_init_id_buffer_from_id(
         temp_embedded_id_buffer, &sce->nodetree->id, BLO_write_is_undo(writer));
     BLO_write_struct_at_address(writer,
