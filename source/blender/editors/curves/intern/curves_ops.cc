@@ -1379,6 +1379,45 @@ static void CURVES_OT_curve_type_set(wmOperatorType *ot)
       ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
 }
 
+namespace curve_type_set {
+
+static int exec(bContext *C, wmOperator *op)
+{
+  const CurveType dst_type = CurveType(RNA_enum_get(op->ptr, "type"));
+
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    IndexMaskMemory memory;
+    const IndexMask selection = retrieve_selected_curves(*curves_id, memory);
+    if (selection.is_empty()) {
+      continue;
+    }
+
+    curves = geometry::convert_curves(curves, selection, dst_type, {});
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace curve_type_set
+
+static void CURVES_OT_curve_type_set(wmOperatorType *ot)
+{
+  ot->name = "Set Curve Type";
+  ot->idname = __func__;
+  ot->description = "Set type of selected curves";
+
+  ot->exec = curve_type_set::exec;
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
+}
+
 void operatortypes_curves()
 {
   WM_operatortype_append(CURVES_OT_attribute_set);
@@ -1398,6 +1437,7 @@ void operatortypes_curves()
   WM_operatortype_append(CURVES_OT_delete);
   WM_operatortype_append(CURVES_OT_duplicate);
   WM_operatortype_append(CURVES_OT_tilt_clear);
+  WM_operatortype_append(CURVES_OT_cyclic_toggle);
   WM_operatortype_append(CURVES_OT_curve_type_set);
 }
 
