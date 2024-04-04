@@ -179,7 +179,7 @@ static void modify_stroke_color(Object &ob,
 
   /* Common input color and base factor calculation. */
   auto get_material_color = [&](const int64_t curve_i) {
-    const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
+    const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i] + 1);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
     return (gp_style ? ColorGeometry4f(gp_style->stroke_rgba) :
                        ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
