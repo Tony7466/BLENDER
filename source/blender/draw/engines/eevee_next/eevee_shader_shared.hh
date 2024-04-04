@@ -791,14 +791,14 @@ static inline bool is_local_light(eLightType type)
   float influence_radius_invsqr_surface; \
   float influence_radius_invsqr_volume; \
   /** --- Shadow Data --- */ \
+  /** Shift to apply to the light origin to get the shadow projection origin. */ \
+  packed_float3 shadow_projection_shift; \
   /** Other parts of the perspective matrix. Assumes symmetric frustum. */ \
   float clip_side; \
   /** Number of allocated tilemap for this local light. */ \
   int tilemaps_count; \
   /** Scaling factor to the light shape for shadow ray casting. */ \
-  float shadow_scale; \
-  /** Shift to apply to the light origin to get the shadow projection origin. */ \
-  packed_float3 shadow_projection_shift;
+  float shadow_scale;
 
 /* Untyped local light data. Gets reinterpreted to LightSpotData and LightAreaData.
  * Allow access to local light common data without casting. */
@@ -1019,9 +1019,9 @@ static inline LightSpotData light_local_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   return data;
 }
@@ -1033,9 +1033,9 @@ static inline LightSpotData light_spot_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT(radius, _pad1)
   SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
@@ -1052,9 +1052,9 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
   return data;
@@ -1064,10 +1064,8 @@ static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_BEGIN(LightSunData, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, radius_squared)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(
-      clipmap_base_offset_neg, shadow_scale, shadow_projection_shift.x)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(
-      clipmap_base_offset_pos, shadow_projection_shift.y, shadow_projection_shift.z)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, shadow_projection_shift.z, clip_side)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, tilemaps_count, shadow_scale)
   SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
   SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
   SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)

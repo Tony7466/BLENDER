@@ -342,7 +342,6 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   compute_projection_boundaries(light_radius_, shadow_radius_, max_distance_, near, far, side);
 
   float3 origin_shift = float3(0.0f);
-
   if (light.do_jittering) {
     /* TODO: de-correlate. */
     float3 random = sampling.rng_3d_get(SAMPLING_SHADOW_U);
