@@ -34,6 +34,9 @@ namespace blender::ed::sculpt_paint {
 /** \name Common Paint Operator Functions
  * \{ */
 
+    case GPAINT_TOOL_TINT:
+      operation = greasepencil::new_tint_operation().release();
+      break;
 static bool stroke_get_location(bContext * /*C*/,
                                 float out[3],
                                 const float mouse[2],
@@ -401,7 +404,7 @@ static int grease_pencil_draw_mode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = ob->mode == OB_MODE_PAINT_GREASE_PENCIL;
 
   if (is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, OB_MODE_PAINT_GREASE_PENCIL, op->reports)) {
+    if (!object::mode_compat_set(C, ob, OB_MODE_PAINT_GREASE_PENCIL, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
