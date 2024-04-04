@@ -298,8 +298,10 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (sock->is_logically_linked()) {
       const bNodeSocket *from_socket = sock->logically_linked_sockets()[0];
-      nodeModifySocketTypeStatic(ntree, node, sock, from_socket->type, 0);
-      BKE_ntree_update_tag_socket_property(ntree, sock);
+      if (sock->type != from_socket->type) {
+        nodeModifySocketTypeStatic(ntree, node, sock, from_socket->type, 0);
+        BKE_ntree_update_tag_socket_property(ntree, sock);
+      }
     }
   }
 }
