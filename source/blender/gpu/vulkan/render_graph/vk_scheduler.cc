@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "vk_render_graph_scheduler.hh"
+#include "vk_scheduler.hh"
 #include "vk_render_graph.hh"
 
 #include "BLI_index_range.hh"

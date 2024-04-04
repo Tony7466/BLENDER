@@ -9,7 +9,7 @@
 #include <sstream>
 
 #include "render_graph/vk_command_buffer_wrapper.hh"
-#include "render_graph/vk_render_graph_scheduler.hh"
+#include "render_graph/vk_scheduler.hh"
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_device.hh"

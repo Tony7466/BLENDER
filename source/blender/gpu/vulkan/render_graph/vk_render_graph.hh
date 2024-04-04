@@ -29,9 +29,9 @@
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
 #include "vk_nodes.hh"
-#include "vk_render_graph_scheduler.hh"
 #include "vk_render_graph_types.hh"
 #include "vk_resources.hh"
+#include "vk_scheduler.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -40,7 +40,7 @@ class VKRenderGraph : public NonCopyable {
   VKNodes nodes_;
   VKCommandBuilder command_builder_;
 
-  std::unique_ptr<VKRenderGraphScheduler> scheduler_;
+  std::unique_ptr<VKScheduler> scheduler_;
   std::unique_ptr<VKCommandBufferInterface> command_buffer_;
 
   /**
@@ -50,7 +50,7 @@ class VKRenderGraph : public NonCopyable {
 
  public:
   VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                std::unique_ptr<VKRenderGraphScheduler> sorting_strategy);
+                std::unique_ptr<VKScheduler> sorting_strategy);
 
   /** Free all resources held by the render graph. */
   void deinit();

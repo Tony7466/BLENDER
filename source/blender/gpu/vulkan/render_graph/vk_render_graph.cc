@@ -11,7 +11,7 @@
 namespace blender::gpu::render_graph {
 
 VKRenderGraph::VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                             std::unique_ptr<VKRenderGraphScheduler> scheduler)
+                             std::unique_ptr<VKScheduler> scheduler)
     : scheduler_(std::move(scheduler)), command_buffer_(std::move(command_buffer))
 {
 }

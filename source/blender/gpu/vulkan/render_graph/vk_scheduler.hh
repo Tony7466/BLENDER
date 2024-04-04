@@ -18,9 +18,9 @@
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
 
-class VKRenderGraphScheduler {
+class VKScheduler {
  public:
-  virtual ~VKRenderGraphScheduler() = default;
+  virtual ~VKScheduler() = default;
   virtual void select_nodes_for_image(const VKRenderGraph &render_graph,
                                       VkImage vk_image,
                                       Vector<NodeHandle> &r_selected_nodes) = 0;
@@ -36,7 +36,7 @@ class VKRenderGraphScheduler {
  * There are cases where the nodes needs to be reordered for example when performing a
  * data transfer operation during rendering. This is not allowed by Vulkan.
  */
-class Sequential : public VKRenderGraphScheduler {
+class Sequential : public VKScheduler {
  public:
   /**
    * Select all nodes to the last access (read or write) of the given image.
