@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2023-2024 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -29,10 +29,10 @@ using namespace blender;
 #endif
 
 /* Resizing the hash has a huge cost over global filling operation! */
-static constexpr bool GHASH_RESERVE = false;
+static constexpr bool USE_RESERVE_COUNT = false;
 
 /* Run the longest tests! */
-// #define GHASH_RUN_BIG
+// #define USE_BIG_TESTS
 
 /* Size of 'small case' ghash (number of entries). */
 static constexpr size_t TESTCASE_SIZE_SMALL = 17;
@@ -88,7 +88,7 @@ static void str_ghash_tests(GHash *ghash, const char *id)
   {
     SCOPED_TIMER("string_insert");
 
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       BLI_ghash_reserve(ghash, strlen(data) / 32); /* rough estimation... */
     }
 
@@ -165,7 +165,7 @@ template<typename MapType> static void str_map_tests(MapType &map, const char *i
   {
     SCOPED_TIMER("string_insert");
 
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       map.reserve(strlen(data) / 32); /* rough estimation... */
     }
 
@@ -253,7 +253,7 @@ static void int_ghash_tests(GHash *ghash, const char *id, const uint count)
     SCOPED_TIMER("int_insert");
     uint i = count;
 
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       BLI_ghash_reserve(ghash, count);
     }
 
@@ -299,7 +299,7 @@ static void int_map_tests(MapType &map, const char *id, const uint count)
     SCOPED_TIMER("int_insert");
     uint i = count;
 
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       map.reserve(count);
     }
 
@@ -339,7 +339,7 @@ TEST(ghash, IntGHash12000)
   int_ghash_tests(ghash, "IntGHash - GHash - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntGHash100000000)
 {
   GHash *ghash = BLI_ghash_new(BLI_ghashutil_inthash_p, BLI_ghashutil_intcmp, __func__);
@@ -355,7 +355,7 @@ TEST(ghash, IntMurmur2a12000)
   int_ghash_tests(ghash, "IntGHash - Murmur - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntMurmur2a100000000)
 {
   GHash *ghash = BLI_ghash_new(BLI_ghashutil_inthash_p_murmur, BLI_ghashutil_intcmp, __func__);
@@ -370,7 +370,7 @@ TEST(ghash, IntMap12000)
   int_map_tests(map, "IntMap - DefaultHash - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntMap100000000)
 {
   Map<int, int> map;
@@ -395,7 +395,7 @@ static void randint_ghash_tests(GHash *ghash, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_insert");
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       BLI_ghash_reserve(ghash, count);
     }
     for (uint i = 0; i < count; i++) {
@@ -436,7 +436,7 @@ static void randint_map_tests(MapType &map, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_insert");
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       map.reserve(count);
     }
     for (uint i = 0; i < count; i++) {
@@ -466,7 +466,7 @@ TEST(ghash, IntRandGHash12000)
   randint_ghash_tests(ghash, "RandIntGHash - GHash - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntRandGHash50000000)
 {
   GHash *ghash = BLI_ghash_new(BLI_ghashutil_inthash_p, BLI_ghashutil_intcmp, __func__);
@@ -482,7 +482,7 @@ TEST(ghash, IntRandMurmur2a12000)
   randint_ghash_tests(ghash, "RandIntGHash - Murmur - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntRandMurmur2a50000000)
 {
   GHash *ghash = BLI_ghash_new(BLI_ghashutil_inthash_p_murmur, BLI_ghashutil_intcmp, __func__);
@@ -497,7 +497,7 @@ TEST(ghash, IntRandMap12000)
   randint_map_tests(map, "RandIntMap - DefaultHash - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntRandMap50000000)
 {
   Map<int, int> map;
@@ -522,7 +522,7 @@ TEST(ghash, IntRandNoHash12000)
   randint_ghash_tests(ghash, "RandIntGHash - No Hash - 12000", 12000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, IntRandNoHash50000000)
 {
   GHash *ghash = BLI_ghash_new(ghashutil_tests_nohash_p, ghashutil_tests_cmp_p, __func__);
@@ -553,7 +553,7 @@ static void int4_ghash_tests(GHash *ghash, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_v4_insert");
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       BLI_ghash_reserve(ghash, count);
     }
     for (uint i = 0; i < count; i++) {
@@ -597,7 +597,7 @@ static void int4_map_tests(MapType &map, const char *id, const uint count)
 
   {
     SCOPED_TIMER("int_v4_insert");
-    if (GHASH_RESERVE) {
+    if (USE_RESERVE_COUNT) {
       map.reserve(count);
     }
     for (uint i = 0; i < count; i++) {
@@ -626,7 +626,7 @@ TEST(ghash, Int4GHash2000)
   int4_ghash_tests(ghash, "Int4GHash - GHash - 2000", 2000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, Int4GHash20000000)
 {
   GHash *ghash = BLI_ghash_new(
@@ -644,7 +644,7 @@ TEST(ghash, Int4Murmur2a2000)
   int4_ghash_tests(ghash, "Int4GHash - Murmur - 2000", 2000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, Int4Murmur2a20000000)
 {
   GHash *ghash = BLI_ghash_new(
@@ -660,7 +660,7 @@ TEST(ghash, Int4Map2000)
   int4_map_tests(map, "Int4Map - DefaultHash - 2000", 2000);
 }
 
-#ifdef GHASH_RUN_BIG
+#ifdef USE_BIG_TESTS
 TEST(ghash, Int4Map20000000)
 {
   Map<uint4, int> map;
@@ -681,7 +681,7 @@ static void multi_small_ghash_tests_one(GHash *ghash, RNG *rng, const uint count
     *dt = BLI_rng_get_uint(rng);
   }
 
-  if (GHASH_RESERVE) {
+  if (USE_RESERVE_COUNT) {
     BLI_ghash_reserve(ghash, count);
   }
 
