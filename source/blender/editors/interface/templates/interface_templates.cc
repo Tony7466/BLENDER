@@ -4558,20 +4558,19 @@ static void curvemap_buttons_layout(uiLayout *layout,
   curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
-  int i;
-  CurveMapPoint *cmp = nullptr;
+  Vector<CurveMapPoint*> cmps{};
   bool point_last_or_first = false;
-  for (i = 0; i < cm->totpoint; i++) {
-    if (cm->curve[i].flag & CUMA_SELECT) {
-      cmp = &cm->curve[i];
-      break;
+  for (int i = 0; i < cm->totpoint; i++) {
+    const bool selected = cm->curve[i].flag & CUMA_SELECT;
+    if (selected) {
+      cmps.append(&cm->curve[i]);
+    }
+    if (ELEM(i, 0, cm->totpoint - 1) && selected) {
+      point_last_or_first = true;
     }
   }
-  if (ELEM(i, 0, cm->totpoint - 1)) {
-    point_last_or_first = true;
-  }
 
-  if (cmp) {
+  if (cmps.size() == 1) {
     rctf bounds;
     if (cumap->flag & CUMA_DO_CLIP) {
       bounds = cumap->clipr;
@@ -4604,8 +4603,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmp->flag & CUMA_HANDLE_VECTOR) == false))
+    if (((cmps[0]->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
+        ((cmps[0]->flag & CUMA_HANDLE_VECTOR) == false))
     {
       bt->flag |= UI_SELECT_DRAW;
     }
@@ -4628,7 +4627,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (cmp->flag & CUMA_HANDLE_VECTOR) {
+    if (cmps[0]->flag & CUMA_HANDLE_VECTOR) {
       bt->flag |= UI_SELECT_DRAW;
     }
 
@@ -4650,7 +4649,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (cmp->flag & CUMA_HANDLE_AUTO_ANIM) {
+    if (cmps[0]->flag & CUMA_HANDLE_AUTO_ANIM) {
       bt->flag |= UI_SELECT_DRAW;
     }
 
@@ -4663,7 +4662,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &cmp->x,
+                   &cmps[0]->x,
                    bounds.xmin,
                    bounds.xmax,
                    "");
@@ -4682,7 +4681,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &cmp->y,
+                   &cmps[0]->y,
                    bounds.ymin,
                    bounds.ymax,
                    "");
