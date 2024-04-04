@@ -548,9 +548,12 @@ typedef struct Library_Runtime {
    */
   char filepath_abs[1024];
 
+  /** #eLibrary_Tag. */
+  ushort tag;
+  char _pad[2];
+
   /** Temp data needed by read/write code, and lib-override recursive re-synchronized. */
   int temp_index;
-  char _pad[4];
 } Library_Runtime;
 
 /**
@@ -568,8 +571,7 @@ typedef struct Library {
 
   struct PackedFile *packedfile;
 
-  ushort tag;
-  char _pad_0[2];
+  char _pad_0[4];
 
   /** See BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION, needed for do_versions. */
   short versionfile, subversionfile;

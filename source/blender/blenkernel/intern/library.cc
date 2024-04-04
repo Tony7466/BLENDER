@@ -77,7 +77,6 @@ static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
   memset(&lib->runtime, 0, sizeof(lib->runtime));
   /* This is runtime data. */
   lib->parent = nullptr;
-  lib->tag = 0;
 }
 
 IDTypeInfo IDType_ID_LI = {

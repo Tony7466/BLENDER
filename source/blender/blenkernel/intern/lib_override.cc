@@ -3395,7 +3395,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
         BLI_ghashIterator_getValue(id_roots_iter));
 
     if (ID_IS_LINKED(id_root)) {
-      id_root->lib->tag |= LIBRARY_TAG_RESYNC_REQUIRED;
+      id_root->lib->runtime.tag |= LIBRARY_TAG_RESYNC_REQUIRED;
     }
 
     CLOG_INFO(&LOG_RESYNC,
@@ -3709,7 +3709,7 @@ void BKE_lib_override_library_main_resync(Main *bmain,
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (library->tag & LIBRARY_TAG_RESYNC_REQUIRED) {
+    if (library->runtime.tag & LIBRARY_TAG_RESYNC_REQUIRED) {
       CLOG_INFO(&LOG_RESYNC,
                 2,
                 "library '%s' contains some linked overrides that required recursive resync, "
