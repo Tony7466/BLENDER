@@ -26,6 +26,7 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_scene.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_ccg.hh"
@@ -64,15 +65,6 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
-}
-
-static bool depends_on_normals(ModifierData *md)
-{
-  SubsurfModifierData *smd = (SubsurfModifierData *)md;
-  if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
-    return true;
-  }
-  return false;
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -239,7 +231,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     /* Same check as in `DRW_mesh_batch_cache_create_requested` to keep both code coherent. The
      * difference is that here we do not check for the final edit mesh pointer as it is not yet
      * assigned at this stage of modifier stack evaluation. */
-    const bool is_editmode = (mesh->edit_mesh != nullptr);
+    const bool is_editmode = (mesh->runtime->edit_mesh != nullptr);
     const int required_mode = BKE_subsurf_modifier_eval_required_mode(is_render_mode, is_editmode);
     if (BKE_subsurf_modifier_can_do_gpu_subdiv(scene, ctx->object, mesh, smd, required_mode)) {
       subdiv_cache_mesh_wrapper_settings(ctx, mesh, smd, runtime_data);
@@ -506,7 +498,7 @@ ModifierTypeInfo modifierType_Subsurf = {
     /*is_disabled*/ is_disabled,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
-    /*depends_on_normals*/ depends_on_normals,
+    /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ nullptr,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ free_runtime_data,

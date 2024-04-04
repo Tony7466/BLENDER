@@ -64,6 +64,7 @@
 #include "UI_resources.hh"
 
 #include "GEO_reverse_uv_sampler.hh"
+#include "GEO_set_curve_type.hh"
 
 /**
  * The code below uses a suffix naming convention to indicate the coordinate space:
@@ -524,7 +525,7 @@ static int curves_convert_from_particle_system_exec(bContext *C, wmOperator * /*
   Scene &scene = *CTX_data_scene(C);
   ViewLayer &view_layer = *CTX_data_view_layer(C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
-  Object *ob_from_orig = ED_object_active_context(C);
+  Object *ob_from_orig = object::context_active_object(C);
   ParticleSystem *psys_orig = static_cast<ParticleSystem *>(
       CTX_data_pointer_get_type(C, "particle_system", &RNA_ParticleSystem).data);
   if (psys_orig == nullptr) {
@@ -559,7 +560,7 @@ static int curves_convert_from_particle_system_exec(bContext *C, wmOperator * /*
 
 static bool curves_convert_from_particle_system_poll(bContext *C)
 {
-  return ED_object_active_context(C) != nullptr;
+  return blender::ed::object::context_active_object(C) != nullptr;
 }
 
 }  // namespace convert_from_particle_system
@@ -806,26 +807,29 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
      *
      * This would be unnecessary if the active attribute were stored as a string on the ID. */
     std::string active_attribute;
-    if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
+    const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id);
+    if (layer) {
       active_attribute = layer->name;
     }
+    for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+      if (const GVArray src = *attributes.lookup(selection_name, domain)) {
+        const CPPType &type = src.type();
+        void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
+        src.materialize(dst);
 
-    if (const GVArray src = *attributes.lookup(".selection", domain)) {
-      const CPPType &type = src.type();
-      void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-      src.materialize(dst);
-
-      attributes.remove(".selection");
-      if (!attributes.add(".selection",
-                          domain,
-                          bke::cpp_type_to_custom_data_type(type),
-                          bke::AttributeInitMoveArray(dst)))
-      {
-        MEM_freeN(dst);
+        attributes.remove(selection_name);
+        if (!attributes.add(selection_name,
+                            domain,
+                            bke::cpp_type_to_custom_data_type(type),
+                            bke::AttributeInitMoveArray(dst)))
+        {
+          MEM_freeN(dst);
+        }
       }
     }
-
-    BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    if (!active_attribute.empty()) {
+      BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+    }
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
      * attribute for now. */
@@ -1186,11 +1190,18 @@ static int surface_set_exec(bContext *C, wmOperator *op)
         &missing_uvs);
 
     /* Add deformation modifier if necessary. */
-    blender::ed::curves::ensure_surface_deformation_node_exists(*C, curves_ob);
+    ensure_surface_deformation_node_exists(*C, curves_ob);
 
     curves_id.surface = &new_surface_ob;
-    ED_object_parent_set(
-        op->reports, C, scene, &curves_ob, &new_surface_ob, PAR_OBJECT, false, true, nullptr);
+    object::parent_set(op->reports,
+                       C,
+                       scene,
+                       &curves_ob,
+                       &new_surface_ob,
+                       object::PAR_OBJECT,
+                       false,
+                       true,
+                       nullptr);
 
     DEG_id_tag_update(&curves_ob.id, ID_RECALC_TRANSFORM);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &curves_id);
@@ -1329,11 +1340,91 @@ static void CURVES_OT_tilt_clear(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-}  // namespace blender::ed::curves
+namespace cyclic_toggle {
 
-void ED_operatortypes_curves()
+static int exec(bContext *C, wmOperator * /*op*/)
 {
-  using namespace blender::ed::curves;
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    IndexMaskMemory memory;
+    const IndexMask selection = retrieve_selected_curves(*curves_id, memory);
+    if (selection.is_empty()) {
+      continue;
+    }
+
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+    bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
+        "cyclic", bke::AttrDomain::Curve);
+    selection.foreach_index(GrainSize(4096),
+                            [&](const int i) { cyclic.span[i] = !cyclic.span[i]; });
+    cyclic.finish();
+
+    if (!cyclic.span.as_span().contains(true)) {
+      attributes.remove("cyclic");
+    }
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace cyclic_toggle
+
+static void CURVES_OT_cyclic_toggle(wmOperatorType *ot)
+{
+  ot->name = "Toggle Cyclic";
+  ot->idname = __func__;
+  ot->description = "Make active curve closed/opened loop";
+
+  ot->exec = cyclic_toggle::exec;
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+namespace curve_type_set {
+
+static int exec(bContext *C, wmOperator *op)
+{
+  const CurveType dst_type = CurveType(RNA_enum_get(op->ptr, "type"));
+
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    IndexMaskMemory memory;
+    const IndexMask selection = retrieve_selected_curves(*curves_id, memory);
+    if (selection.is_empty()) {
+      continue;
+    }
+
+    curves = geometry::convert_curves(curves, selection, dst_type, {});
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace curve_type_set
+
+static void CURVES_OT_curve_type_set(wmOperatorType *ot)
+{
+  ot->name = "Set Curve Type";
+  ot->idname = __func__;
+  ot->description = "Set type of selected curves";
+
+  ot->exec = curve_type_set::exec;
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
+}
+
+void operatortypes_curves()
+{
   WM_operatortype_append(CURVES_OT_attribute_set);
   WM_operatortype_append(CURVES_OT_convert_to_particle_system);
   WM_operatortype_append(CURVES_OT_convert_from_particle_system);
@@ -1351,9 +1442,11 @@ void ED_operatortypes_curves()
   WM_operatortype_append(CURVES_OT_delete);
   WM_operatortype_append(CURVES_OT_duplicate);
   WM_operatortype_append(CURVES_OT_tilt_clear);
+  WM_operatortype_append(CURVES_OT_cyclic_toggle);
+  WM_operatortype_append(CURVES_OT_curve_type_set);
 }
 
-void ED_operatormacros_curves()
+void operatormacros_curves()
 {
   wmOperatorType *ot;
   wmOperatorTypeMacro *otmacro;
@@ -1379,10 +1472,11 @@ void ED_operatormacros_curves()
   RNA_boolean_set(otmacro->ptr, "mirror", false);
 }
 
-void ED_keymap_curves(wmKeyConfig *keyconf)
+void keymap_curves(wmKeyConfig *keyconf)
 {
-  using namespace blender::ed::curves;
   /* Only set in editmode curves, by space_view3d listener. */
   wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Curves", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = editable_curves_in_edit_mode_poll;
 }
+
+}  // namespace blender::ed::curves
