@@ -76,4 +76,4 @@ TEST(vk_render_graph, clear_and_present)
       log[2]);
 }
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

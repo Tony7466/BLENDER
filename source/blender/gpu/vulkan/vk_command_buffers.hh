@@ -90,9 +90,15 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   [[deprecated]] void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */
-  [[deprecated]] void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
-  [[deprecated]] void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
-  [[deprecated]] void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
+  [[deprecated]] void copy(VKBuffer &dst_buffer,
+                           VKTexture &src_texture,
+                           Span<VkBufferImageCopy> regions);
+  [[deprecated]] void copy(VKTexture &dst_texture,
+                           VKBuffer &src_buffer,
+                           Span<VkBufferImageCopy> regions);
+  [[deprecated]] void copy(VKTexture &dst_texture,
+                           VKTexture &src_texture,
+                           Span<VkImageCopy> regions);
   [[deprecated]] void copy(const VKBuffer &dst_buffer,
                            VkBuffer src_buffer,
                            Span<VkBufferCopy> regions);

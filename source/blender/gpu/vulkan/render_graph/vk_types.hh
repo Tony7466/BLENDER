@@ -98,4 +98,4 @@ struct VKDispatchInfo : NonCopyable {
   VKResourceAccessInfo resources;
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

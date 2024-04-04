@@ -291,4 +291,4 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
   EXPECT_EQ("dispatch(group_count_x=2, group_count_y=2, group_count_z=2)", log[6]);
 }
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

@@ -299,4 +299,4 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
       ")",
       log[5]);
 }
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

@@ -325,4 +325,4 @@ void VKCommandBufferWrapper::end_render_pass()
 {
   vkCmdEndRenderPass(vk_command_buffer_);
 }
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph
