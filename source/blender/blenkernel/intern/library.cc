@@ -74,7 +74,7 @@ static void library_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
 {
   Library *lib = (Library *)id;
-  lib->runtime.name_map = nullptr;
+  memset(&lib->runtime, 0, sizeof(lib->runtime));
   /* This is runtime data. */
   lib->parent = nullptr;
   lib->tag = 0;
