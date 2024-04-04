@@ -15,6 +15,9 @@
 
 #include "COM_VectorBlurOperation.h"
 
+/* This is identical to the compositor implementation in compositor_motion_blur_info.hh and its
+ * related files with the necessary adjustments to make it work for the CPU. */
+
 #define MOTION_BLUR_TILE_SIZE 32
 #define DEPTH_SCALE 100.0f
 
