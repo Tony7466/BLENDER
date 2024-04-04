@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "vk_render_graph_commands.hh"
+#include "vk_command_buffer_wrapper.hh"
 #include "vk_backend.hh"
 #include "vk_memory.hh"
 

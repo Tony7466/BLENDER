@@ -12,7 +12,7 @@
 
 namespace blender::gpu::render_graph {
 
-class CommandBufferLog : public VKRenderGraphCommandBuffer {
+class CommandBufferLog : public VKCommandBufferInterface {
   Vector<std::string> &log_;
   bool is_recording_ = false;
   bool is_cpu_synchronizing_ = false;
@@ -428,4 +428,4 @@ template<typename VKObjectType> union VkHandle {
   }
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

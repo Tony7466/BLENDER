@@ -10,7 +10,7 @@
 
 namespace blender::gpu::render_graph {
 
-VKRenderGraph::VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
+VKRenderGraph::VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
                              std::unique_ptr<VKRenderGraphScheduler> scheduler)
     : scheduler_(std::move(scheduler)), command_buffer_(std::move(command_buffer))
 {
@@ -253,4 +253,4 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
 
 /** \} */
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

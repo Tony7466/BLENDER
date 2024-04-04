@@ -26,8 +26,8 @@
 
 #include "vk_common.hh"
 
+#include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
-#include "vk_render_graph_commands.hh"
 #include "vk_render_graph_nodes.hh"
 #include "vk_render_graph_resources.hh"
 #include "vk_render_graph_scheduler.hh"
@@ -41,7 +41,7 @@ class VKRenderGraph : public NonCopyable {
   VKCommandBuilder command_builder_;
 
   std::unique_ptr<VKRenderGraphScheduler> scheduler_;
-  std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer_;
+  std::unique_ptr<VKCommandBufferInterface> command_buffer_;
 
   /**
    * Mutex locks adding new commands to a render graph that is being submitted.
@@ -49,7 +49,7 @@ class VKRenderGraph : public NonCopyable {
   std::mutex mutex_;
 
  public:
-  VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
+  VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
                 std::unique_ptr<VKRenderGraphScheduler> sorting_strategy);
 
   /** Free all resources held by the render graph. */

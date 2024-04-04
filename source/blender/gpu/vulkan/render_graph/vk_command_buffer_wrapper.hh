@@ -11,10 +11,10 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-class VKRenderGraphCommandBuffer {
+class VKCommandBufferInterface {
  public:
-  VKRenderGraphCommandBuffer() {}
-  virtual ~VKRenderGraphCommandBuffer() = default;
+  VKCommandBufferInterface() {}
+  virtual ~VKCommandBufferInterface() = default;
 
   virtual void begin_recording() = 0;
   virtual void end_recording() = 0;
@@ -119,7 +119,7 @@ class VKRenderGraphCommandBuffer {
   virtual void end_render_pass() = 0;
 };
 
-class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
+class VKCommandBufferWrapper : public VKCommandBufferInterface {
  private:
   VkCommandPoolCreateInfo vk_command_pool_create_info_;
   VkCommandBufferAllocateInfo vk_command_buffer_allocate_info_;
@@ -236,4 +236,4 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
   void end_render_pass() override;
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph
