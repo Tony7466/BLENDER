@@ -559,8 +559,10 @@ ShadowEvalResult shadow_eval(LightData light,
     lP = light_world_to_local(light, P);
   }
   else {
-    lP = light_world_to_local(light, P - light._position) -
-         light_local_data_get(light).shadow_projection_shift;
+    lP = light_world_to_local(light, P - light._position);
+    lP -= vec3(light_local_data_get(light).shadow_projection_shift_x,
+               light_local_data_get(light).shadow_projection_shift_y,
+               light_local_data_get(light).shadow_projection_shift_z);
   }
   vec3 lNg = light_world_to_local(light, Ng);
 
