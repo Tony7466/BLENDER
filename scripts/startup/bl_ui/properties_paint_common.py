@@ -1391,7 +1391,7 @@ def brush_basic_gpencil_paint_settings(layout, context, brush, *, compact=False)
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
 
 
-def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=False, props=None):
+def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=False):
     gp_settings = brush.gpencil_settings
     tool = context.workspace.tools.from_space_view3d_mode(context.mode, create=False)
     if gp_settings is None:
