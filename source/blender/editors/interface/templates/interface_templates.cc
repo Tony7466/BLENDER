@@ -4663,6 +4663,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
 
     /* Curve handle position */
     active_cm->center_x = 0.0f;
+    for (CurveMapPoint *cmp : cmps)
       active_cm->center_x += cmp->x;
     active_cm->center_x /= cmps.size();
     bt = uiDefButF(block,
