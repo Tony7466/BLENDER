@@ -136,6 +136,7 @@ void BKE_asset_catalog_path_list_free(ListBase &catalog_path_list)
     MEM_delete(catalog_path->path);
     BLI_freelinkN(&catalog_path_list, catalog_path);
   }
+  BLI_assert(BLI_listbase_is_empty(&catalog_path_list));
 }
 
 ListBase BKE_asset_catalog_path_list_duplicate(const ListBase &catalog_path_list)
