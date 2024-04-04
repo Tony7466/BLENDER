@@ -1806,8 +1806,7 @@ char *BKE_object_data_editmode_flush_ptr_get(ID *id)
   const short type = GS(id->name);
   switch (type) {
     case ID_ME: {
-      BMEditMesh *em = ((Mesh *)id)->runtime->edit_mesh;
-      if (em != nullptr) {
+      if (BMEditMesh *em = ((Mesh *)id)->runtime->edit_mesh.get()) {
         return &em->needs_flush_to_id;
       }
       break;
@@ -3087,7 +3086,7 @@ static void give_parvert(const Object *par, int nr, float vec[3])
 
   if (par->type == OB_MESH) {
     const Mesh *mesh = (const Mesh *)par->data;
-    const BMEditMesh *em = mesh->runtime->edit_mesh;
+    const BMEditMesh *em = mesh->runtime->edit_mesh.get();
     const Mesh *mesh_eval = (em) ? BKE_object_get_editmesh_eval_final(par) :
                                    BKE_object_get_evaluated_mesh(par);
 

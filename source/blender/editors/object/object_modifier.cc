@@ -2689,7 +2689,7 @@ void OBJECT_OT_multires_rebuild_subdiv(wmOperatorType *ot)
 static void modifier_skin_customdata_delete(Object *ob)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BM_data_layer_free(em->bm, &em->bm->vdata, CD_MVERT_SKIN);
   }
   else {

@@ -1094,9 +1094,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
        * cage mesh isn't modified anymore. */
       mesh_final = BKE_mesh_copy_for_eval(mesh_final);
       if (mesh_cage->runtime->edit_mesh) {
-        mesh_final->runtime->edit_mesh = static_cast<BMEditMesh *>(
-            MEM_dupallocN(mesh_cage->runtime->edit_mesh));
-        mesh_final->runtime->edit_mesh->is_shallow_copy = true;
+        mesh_final->runtime->edit_mesh = mesh_cage->runtime->edit_mesh;
         mesh_final->runtime->is_original_bmesh = true;
         if (mesh_cage->runtime->edit_data) {
           mesh_final->runtime->edit_data = std::make_unique<blender::bke::EditMeshData>(
@@ -1288,7 +1286,6 @@ static void mesh_build_data(Depsgraph *depsgraph,
 static void editbmesh_build_data(Depsgraph *depsgraph,
                                  const Scene *scene,
                                  Object *obedit,
-                                 BMEditMesh *em,
                                  CustomData_MeshMasks *dataMask)
 {
   Mesh *mesh = static_cast<Mesh *>(obedit->data);
@@ -1296,14 +1293,20 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
   Mesh *me_final;
   GeometrySet *non_mesh_components;
 
-  editbmesh_calc_modifiers(
-      depsgraph, scene, obedit, em, dataMask, &me_cage, &me_final, &non_mesh_components);
+  editbmesh_calc_modifiers(depsgraph,
+                           scene,
+                           obedit,
+                           mesh->runtime->edit_mesh.get(),
+                           dataMask,
+                           &me_cage,
+                           &me_final,
+                           &non_mesh_components);
 
   /* The modifier stack result is expected to share edit mesh pointer with the input.
    * This is similar `mesh_calc_finalize()`. */
   BKE_mesh_free_editmesh(me_final);
   BKE_mesh_free_editmesh(me_cage);
-  me_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = em;
+  me_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = mesh->runtime->edit_mesh;
 
   /* Object has edit_mesh but is not in edit mode (object shares mesh datablock with another object
    * with is in edit mode).
@@ -1407,14 +1410,13 @@ void makeDerivedMesh(Depsgraph *depsgraph,
    * `edit_mesh` pointer with the input. For example, if the object is first evaluated in the
    * object mode, and then user in another scene moves object to edit mode. */
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
 
   bool need_mapping;
   CustomData_MeshMasks cddata_masks = *dataMask;
   object_get_datamask(depsgraph, ob, &cddata_masks, &need_mapping);
 
-  if (em) {
-    editbmesh_build_data(depsgraph, scene, ob, em, &cddata_masks);
+  if (mesh->runtime->edit_mesh) {
+    editbmesh_build_data(depsgraph, scene, ob, &cddata_masks);
   }
   else {
     mesh_build_data(depsgraph, scene, ob, &cddata_masks, need_mapping);
@@ -1428,7 +1430,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
                            Object *ob,
                            const CustomData_MeshMasks *dataMask)
 {
-  BMEditMesh *em = ((Mesh *)ob->data)->runtime->edit_mesh;
+  BMEditMesh *em = ((Mesh *)ob->data)->runtime->edit_mesh.get();
   if (em != nullptr) {
     /* There is no such a concept as deformed mesh in edit mode.
      * Explicitly disallow this request so that the evaluated result is not modified with evaluated
@@ -1502,7 +1504,7 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
 Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
                               const Scene *scene,
                               Object *obedit,
-                              BMEditMesh *em,
+                              BMEditMesh * /*em*/,
                               const CustomData_MeshMasks *dataMask)
 {
   CustomData_MeshMasks cddata_masks = *dataMask;
@@ -1515,7 +1517,7 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
   if (!obedit->runtime->editmesh_eval_cage ||
       !CustomData_MeshMasks_are_matching(&(obedit->runtime->last_data_mask), &cddata_masks))
   {
-    editbmesh_build_data(depsgraph, scene, obedit, em, &cddata_masks);
+    editbmesh_build_data(depsgraph, scene, obedit, &cddata_masks);
   }
 
   return obedit->runtime->editmesh_eval_cage;
