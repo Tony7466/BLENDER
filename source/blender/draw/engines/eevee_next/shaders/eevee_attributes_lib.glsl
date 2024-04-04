@@ -37,11 +37,7 @@ int g_attr_id = 0;
 vec3 grid_coordinates()
 {
 #  ifdef OBINFO_LIB
-  vec3 co = OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
-  /* Optional per-grid transform. */
-  if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
-    co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
-  }
+  vec3 co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
 #  else
   /* Only for test shaders. All the runtime shaders require `draw_object_infos` and
    * `draw_volume_infos`. */
