@@ -1340,12 +1340,10 @@ static void CURVES_OT_tilt_clear(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-namespace curve_type_set {
+namespace cyclic_toggle {
 
-static int exec(bContext *C, wmOperator *op)
+static int exec(bContext *C, wmOperator * /*op*/)
 {
-  const CurveType dst_type = CurveType(RNA_enum_get(op->ptr, "type"));
-
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     IndexMaskMemory memory;
@@ -1354,7 +1352,17 @@ static int exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    curves = geometry::convert_curves(curves, selection, dst_type, {});
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+    bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
+        "cyclic", bke::AttrDomain::Curve);
+    selection.foreach_index(GrainSize(4096),
+                            [&](const int i) { cyclic.span[i] = !cyclic.span[i]; });
+    cyclic.finish();
+
+    if (!cyclic.span.as_span().contains(true)) {
+      attributes.remove("cyclic");
+    }
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
@@ -1362,21 +1370,18 @@ static int exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-}  // namespace curve_type_set
+}  // namespace cyclic_toggle
 
-static void CURVES_OT_curve_type_set(wmOperatorType *ot)
+static void CURVES_OT_cyclic_toggle(wmOperatorType *ot)
 {
-  ot->name = "Set Curve Type";
+  ot->name = "Toggle Cyclic";
   ot->idname = __func__;
-  ot->description = "Set type of selected curves";
+  ot->description = "Make active curve closed/opened loop";
 
-  ot->exec = curve_type_set::exec;
+  ot->exec = cyclic_toggle::exec;
   ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-
-  ot->prop = RNA_def_enum(
-      ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
 }
 
 namespace curve_type_set {
