@@ -1834,10 +1834,6 @@ static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore
       int i;
       PointerRNA *link;
       for (i = 0, link = lb.data(); i < selctx_data->elems_len; i++, link++) {
-        if (i >= selctx_data->elems_len) {
-          break;
-        }
-
         if (!UI_context_copy_to_selected_check(&ptr,
                                                link,
                                                prop,
@@ -4993,7 +4989,7 @@ static float ui_numedit_apply_snapf(
     float fac = 1.0f;
 
     if (ui_but_is_unit(but)) {
-      UnitSettings *unit = but->block->unit;
+      const UnitSettings *unit = but->block->unit;
       const int unit_type = RNA_SUBTYPE_UNIT_VALUE(UI_but_unit_type_get(but));
 
       if (BKE_unit_is_valid(unit->system, unit_type)) {
@@ -5016,7 +5012,7 @@ static float ui_numedit_apply_snapf(
     /* snapping by 10's for float buttons is quite annoying (location, scale...),
      * but allow for rotations */
     if (softrange >= 21.0f) {
-      UnitSettings *unit = but->block->unit;
+      const UnitSettings *unit = but->block->unit;
       const int unit_type = UI_but_unit_type_get(but);
       if ((unit_type == PROP_UNIT_ROTATION) && (unit->system_rotation != USER_UNIT_ROT_RADIANS)) {
         /* Pass (degrees). */
@@ -6014,7 +6010,7 @@ static int ui_do_but_SCROLL(
       button_activate_state(C, but, BUTTON_STATE_EXIT);
     }
     else if (event->type == MOUSEMOVE) {
-      const bool is_motion = (event->type == MOUSEMOVE);
+      const bool is_motion = true;
       if (ui_numedit_but_SLI(
               but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false))
       {
@@ -6287,7 +6283,7 @@ static void ui_palette_set_active(uiButColor *color_but)
 {
   if (color_but->is_pallete_color) {
     Palette *palette = (Palette *)color_but->rnapoin.owner_id;
-    PaletteColor *color = static_cast<PaletteColor *>(color_but->rnapoin.data);
+    const PaletteColor *color = static_cast<const PaletteColor *>(color_but->rnapoin.data);
     palette->active_color = BLI_findindex(&palette->colors, color);
   }
 }

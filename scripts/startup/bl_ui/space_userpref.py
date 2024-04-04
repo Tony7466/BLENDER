@@ -409,27 +409,27 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
         flow = layout.grid_flow(row_major=False, columns=0, even_columns=True, even_rows=False, align=True)
 
         datablock_types = (
-            ("use_duplicate_action", "Action", 'ACTION', ''),
-            ("use_duplicate_armature", "Armature", 'OUTLINER_DATA_ARMATURE', ''),
-            ("use_duplicate_camera", "Camera", 'OUTLINER_DATA_CAMERA', ''),
-            ("use_duplicate_curve", "Curve", 'OUTLINER_DATA_CURVE', ''),
-            ("use_duplicate_curves", "Curves", 'OUTLINER_DATA_CURVES', ''),
-            ("use_duplicate_grease_pencil", "Grease Pencil", 'OUTLINER_OB_GREASEPENCIL', ''),
-            ("use_duplicate_lattice", "Lattice", 'OUTLINER_DATA_LATTICE', ''),
+            ("use_duplicate_action", "Action", 'ACTION', ""),
+            ("use_duplicate_armature", "Armature", 'OUTLINER_DATA_ARMATURE', ""),
+            ("use_duplicate_camera", "Camera", 'OUTLINER_DATA_CAMERA', ""),
+            ("use_duplicate_curve", "Curve", 'OUTLINER_DATA_CURVE', ""),
+            ("use_duplicate_curves", "Curves", 'OUTLINER_DATA_CURVES', ""),
+            ("use_duplicate_grease_pencil", "Grease Pencil", 'OUTLINER_OB_GREASEPENCIL', ""),
+            ("use_duplicate_lattice", "Lattice", 'OUTLINER_DATA_LATTICE', ""),
             (None, None, None, None),
-            ("use_duplicate_light", "Light", 'OUTLINER_DATA_LIGHT', ''),
-            ("use_duplicate_lightprobe", "Light Probe", 'OUTLINER_DATA_LIGHTPROBE', ''),
-            ("use_duplicate_material", "Material", 'MATERIAL_DATA', ''),
-            ("use_duplicate_mesh", "Mesh", 'OUTLINER_DATA_MESH', ''),
-            ("use_duplicate_metaball", "Metaball", 'OUTLINER_DATA_META', ''),
-            ("use_duplicate_node_tree", "Node Tree", 'NODETREE', ''),
-            ("use_duplicate_particle", "Particle", 'PARTICLES', ''),
+            ("use_duplicate_light", "Light", 'OUTLINER_DATA_LIGHT', ""),
+            ("use_duplicate_lightprobe", "Light Probe", 'OUTLINER_DATA_LIGHTPROBE', ""),
+            ("use_duplicate_material", "Material", 'MATERIAL_DATA', ""),
+            ("use_duplicate_mesh", "Mesh", 'OUTLINER_DATA_MESH', ""),
+            ("use_duplicate_metaball", "Metaball", 'OUTLINER_DATA_META', ""),
+            ("use_duplicate_node_tree", "Node Tree", 'NODETREE', ""),
+            ("use_duplicate_particle", "Particle", 'PARTICLES', ""),
             (None, None, None, None),
-            ("use_duplicate_pointcloud", "Point Cloud", 'OUTLINER_DATA_POINTCLOUD', ''),
-            ("use_duplicate_speaker", "Speaker", 'OUTLINER_DATA_SPEAKER', ''),
-            ("use_duplicate_surface", "Surface", 'OUTLINER_DATA_SURFACE', ''),
-            ("use_duplicate_text", "Text", 'OUTLINER_DATA_FONT', ''),
-            ("use_duplicate_volume", "Volume", 'OUTLINER_DATA_VOLUME', 'i18n_contexts.id_id'),
+            ("use_duplicate_pointcloud", "Point Cloud", 'OUTLINER_DATA_POINTCLOUD', ""),
+            ("use_duplicate_speaker", "Speaker", 'OUTLINER_DATA_SPEAKER', ""),
+            ("use_duplicate_surface", "Surface", 'OUTLINER_DATA_SURFACE', ""),
+            ("use_duplicate_text", "Text", 'OUTLINER_DATA_FONT', ""),
+            ("use_duplicate_volume", "Volume", 'OUTLINER_DATA_VOLUME', "i18n_contexts.id_id"),
         )
 
         col = flow.column()
@@ -671,8 +671,8 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
         import sys
         return sys.platform[:3] == "win"
 
-    def draw_centered(self, _context, layout):
-        if _context.preferences.system.is_microsoft_store_install:
+    def draw_centered(self, context, layout):
+        if context.preferences.system.is_microsoft_store_install:
             layout.label(text="Microsoft Store installation")
             layout.label(text="Use Windows 'Default Apps' to associate with blend files")
         else:
@@ -1581,7 +1581,6 @@ class USERPREF_PT_file_paths_asset_libraries(FilePathsPanel, Panel):
         layout.prop(active_library, "path")
         layout.prop(active_library, "import_method", text="Import Method")
         layout.prop(active_library, "use_relative_path")
-        layout.prop(active_library, "is_default")
 
 
 class USERPREF_UL_asset_libraries(UIList):
@@ -2727,7 +2726,7 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
 # Class Registration
 
 # Order of registration defines order in UI,
-# so dynamically generated classes are 'injected' in the intended order.
+# so dynamically generated classes are "injected" in the intended order.
 classes = (
     USERPREF_PT_theme_user_interface,
     *ThemeGenericClassGenerator.generate_panel_classes_for_wcols(),

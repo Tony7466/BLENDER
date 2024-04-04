@@ -2733,7 +2733,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
     PointerRNA op_ptr;
     uiLayout *row;
 
-    block->ui_operator = op;
+    UI_block_set_active_operator(block, op, false);
 
     row = uiLayoutRow(layout, true);
     uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE);
@@ -6182,11 +6182,14 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
-      uiItemL(row, msg ? msg : "", (ICON_MOUSE_LMB + i));
+      /* Icon and text separately are closer together with aligned layout. */
+      uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemL(row, msg ? msg : "", ICON_NONE);
     }
 
     if (msg_drag) {
-      uiItemL(row, msg_drag, (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, msg_drag, ICON_NONE);
     }
 
     /* Use trick with empty string to keep icons in same position. */
@@ -6457,13 +6460,23 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
-    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
+
+    /* Icon and text separately is closer together with aligned layout. */
+    uiItemL(layout, "", icon);
+    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      /* Mouse icons are left-aligned. Everything else needs a bit of space here. */
+      uiItemS_ex(layout, 0.6f);
+    }
+    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    /* Separate items with some extra space. */
+    uiItemS_ex(layout, 0.7f);
     ok = true;
   }
   else if (text_fallback) {
     const char *event_text = WM_key_event_string(kmi->type, true);
     uiItemL(layout, event_text, ICON_NONE);
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemS_ex(layout, 0.5f);
     ok = true;
   }
   return ok;
