@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "vk_render_graph_resources.hh"
+#include "vk_resources.hh"
 
 #include "BLI_index_range.hh"
 
@@ -16,9 +16,7 @@ namespace blender::gpu::render_graph {
 /** \name Adding resources
  * \{ */
 
-void VKRenderGraphResources::add_image(VkImage vk_image,
-                                       VkImageLayout vk_image_layout,
-                                       ResourceOwner owner)
+void VKResources::add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner)
 {
   BLI_assert_msg(!image_resources_.contains(vk_image),
                  "Image resource is added twice to the render graph.");
@@ -33,7 +31,7 @@ void VKRenderGraphResources::add_image(VkImage vk_image,
   resource.version = 0;
 }
 
-void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
+void VKResources::add_buffer(VkBuffer vk_buffer)
 {
   BLI_assert_msg(!buffer_resources_.contains(vk_buffer),
                  "Buffer resource is added twice to the render graph.");
@@ -54,13 +52,13 @@ void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
 /** \name Remove resources
  * \{ */
 
-void VKRenderGraphResources::remove_buffer(VkBuffer vk_buffer)
+void VKResources::remove_buffer(VkBuffer vk_buffer)
 {
   ResourceHandle handle = buffer_resources_.pop(vk_buffer);
   resources_.free(handle);
 }
 
-void VKRenderGraphResources::remove_image(VkImage vk_image)
+void VKResources::remove_image(VkImage vk_image)
 {
   ResourceHandle handle = image_resources_.pop(vk_image);
   resources_.free(handle);
@@ -68,17 +66,16 @@ void VKRenderGraphResources::remove_image(VkImage vk_image)
 
 /** \} */
 
-ResourceHandle VKRenderGraphResources::get_image_handle(VkImage vk_image) const
+ResourceHandle VKResources::get_image_handle(VkImage vk_image) const
 {
   return image_resources_.lookup(vk_image);
 }
-ResourceHandle VKRenderGraphResources::get_buffer_handle(VkBuffer vk_buffer) const
+ResourceHandle VKResources::get_buffer_handle(VkBuffer vk_buffer) const
 {
   return buffer_resources_.lookup(vk_buffer);
 }
 
-VersionedResource VKRenderGraphResources::get_version(ResourceHandle handle,
-                                                      const Resource &resource)
+VersionedResource VKResources::get_version(ResourceHandle handle, const Resource &resource)
 {
   VersionedResource result;
   result.handle = handle;
@@ -86,40 +83,39 @@ VersionedResource VKRenderGraphResources::get_version(ResourceHandle handle,
   return result;
 }
 
-VersionedResource VKRenderGraphResources::get_and_increase_version(ResourceHandle handle,
-                                                                   Resource &resource)
+VersionedResource VKResources::get_and_increase_version(ResourceHandle handle, Resource &resource)
 {
   VersionedResource result = get_version(handle, resource);
   resource.version += 1;
   return result;
 }
 
-VersionedResource VKRenderGraphResources::get_image_and_increase_version(VkImage vk_image)
+VersionedResource VKResources::get_image_and_increase_version(VkImage vk_image)
 {
   ResourceHandle handle = get_image_handle(vk_image);
   Resource &resource = resources_.get(handle);
   return get_and_increase_version(handle, resource);
 }
 
-VersionedResource VKRenderGraphResources::get_buffer_and_increase_version(VkBuffer vk_buffer)
+VersionedResource VKResources::get_buffer_and_increase_version(VkBuffer vk_buffer)
 {
   ResourceHandle handle = get_buffer_handle(vk_buffer);
   Resource &resource = resources_.get(handle);
   return get_and_increase_version(handle, resource);
 }
 
-VersionedResource VKRenderGraphResources::get_buffer(VkBuffer vk_buffer) const
+VersionedResource VKResources::get_buffer(VkBuffer vk_buffer) const
 {
   ResourceHandle handle = get_buffer_handle(vk_buffer);
   const Resource &resource = resources_.get(handle);
   return get_version(handle, resource);
 }
 
-VersionedResource VKRenderGraphResources::get_image(VkImage vk_image) const
+VersionedResource VKResources::get_image(VkImage vk_image) const
 {
   ResourceHandle handle = get_image_handle(vk_image);
   const Resource &resource = resources_.get(handle);
   return get_version(handle, resource);
 }
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

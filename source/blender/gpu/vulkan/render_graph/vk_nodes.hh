@@ -11,8 +11,8 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_render_graph_resources.hh"
 #include "vk_render_graph_types.hh"
+#include "vk_resources.hh"
 
 namespace blender::gpu::render_graph {
 

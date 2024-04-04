@@ -43,7 +43,7 @@ enum class ResourceOwner {
   SWAP_CHAIN,
 };
 
-class VKRenderGraphResources {
+class VKResources {
   /**
    * A render resource can be a buffer or an image that needs to be tracked during rendering.
    *
