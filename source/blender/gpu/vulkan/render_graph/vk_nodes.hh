@@ -21,7 +21,7 @@ struct VKDispatchInfo;
 
 using NodeHandle = uint64_t;
 
-class VKRenderGraphNodes {
+class VKNodes {
 
  public:
   struct Node {

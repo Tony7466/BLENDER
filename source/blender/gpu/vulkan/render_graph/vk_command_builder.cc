@@ -85,7 +85,7 @@ void VKCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image
     return;
   }
   for (NodeHandle node_handle : selected_nodes_) {
-    VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
+    VKNodes::Node &node = render_graph.nodes_.get(node_handle);
     build_node(render_graph, node_handle, node);
   }
 }
@@ -98,61 +98,61 @@ void VKCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buf
     return;
   }
   for (NodeHandle node_handle : selected_nodes_) {
-    VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
+    VKNodes::Node &node = render_graph.nodes_.get(node_handle);
     build_node(render_graph, node_handle, node);
   }
 }
 
 void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                   NodeHandle node_handle,
-                                  const VKRenderGraphNodes::Node &node)
+                                  const VKNodes::Node &node)
 {
   switch (node.type) {
-    case VKRenderGraphNodes::Node::Type::UNUSED: {
+    case VKNodes::Node::Type::UNUSED: {
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE: {
+    case VKNodes::Node::Type::CLEAR_COLOR_IMAGE: {
       build_node_clear_color_image(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::FILL_BUFFER: {
+    case VKNodes::Node::Type::FILL_BUFFER: {
       build_node_fill_buffer(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::COPY_BUFFER: {
+    case VKNodes::Node::Type::COPY_BUFFER: {
       build_node_copy_buffer(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::COPY_BUFFER_TO_IMAGE: {
+    case VKNodes::Node::Type::COPY_BUFFER_TO_IMAGE: {
       build_node_copy_buffer_to_image(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::COPY_IMAGE: {
+    case VKNodes::Node::Type::COPY_IMAGE: {
       build_node_copy_image(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::COPY_IMAGE_TO_BUFFER: {
+    case VKNodes::Node::Type::COPY_IMAGE_TO_BUFFER: {
       build_node_copy_image_to_buffer(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::BLIT_IMAGE: {
+    case VKNodes::Node::Type::BLIT_IMAGE: {
       build_node_blit_image(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::SYNCHRONIZATION: {
+    case VKNodes::Node::Type::SYNCHRONIZATION: {
       build_node_synchronization(render_graph, node_handle, node);
       break;
     }
 
-    case VKRenderGraphNodes::Node::Type::DISPATCH: {
+    case VKNodes::Node::Type::DISPATCH: {
       build_node_dispatch(render_graph, node_handle, node);
       break;
     }
@@ -161,9 +161,9 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
                                                     NodeHandle node_handle,
-                                                    const VKRenderGraphNodes::Node &node)
+                                                    const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE);
+  BLI_assert(node.type == VKNodes::Node::Type::CLEAR_COLOR_IMAGE);
   reset_barriers();
   add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   send_pipeline_barriers(render_graph);
@@ -178,9 +178,9 @@ void VKCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
                                               NodeHandle node_handle,
-                                              const VKRenderGraphNodes::Node &node)
+                                              const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
+  BLI_assert(node.type == VKNodes::Node::Type::FILL_BUFFER);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -192,9 +192,9 @@ void VKCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_graph,
                                               NodeHandle node_handle,
-                                              const VKRenderGraphNodes::Node &node)
+                                              const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_BUFFER);
+  BLI_assert(node.type == VKNodes::Node::Type::COPY_BUFFER);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -206,9 +206,9 @@ void VKCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_copy_buffer_to_image(VKRenderGraph &render_graph,
                                                        NodeHandle node_handle,
-                                                       const VKRenderGraphNodes::Node &node)
+                                                       const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_BUFFER_TO_IMAGE);
+  BLI_assert(node.type == VKNodes::Node::Type::COPY_BUFFER_TO_IMAGE);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -224,9 +224,9 @@ void VKCommandBuilder::build_node_copy_buffer_to_image(VKRenderGraph &render_gra
 
 void VKCommandBuilder::build_node_copy_image(VKRenderGraph &render_graph,
                                              NodeHandle node_handle,
-                                             const VKRenderGraphNodes::Node &node)
+                                             const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_IMAGE);
+  BLI_assert(node.type == VKNodes::Node::Type::COPY_IMAGE);
 
   reset_barriers();
   add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -242,9 +242,9 @@ void VKCommandBuilder::build_node_copy_image(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
                                                        NodeHandle node_handle,
-                                                       const VKRenderGraphNodes::Node &node)
+                                                       const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_IMAGE_TO_BUFFER);
+  BLI_assert(node.type == VKNodes::Node::Type::COPY_IMAGE_TO_BUFFER);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -260,9 +260,9 @@ void VKCommandBuilder::build_node_copy_image_to_buffer(VKRenderGraph &render_gra
 
 void VKCommandBuilder::build_node_blit_image(VKRenderGraph &render_graph,
                                              NodeHandle node_handle,
-                                             const VKRenderGraphNodes::Node &node)
+                                             const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::BLIT_IMAGE);
+  BLI_assert(node.type == VKNodes::Node::Type::BLIT_IMAGE);
 
   reset_barriers();
   add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -279,9 +279,9 @@ void VKCommandBuilder::build_node_blit_image(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_synchronization(VKRenderGraph &render_graph,
                                                   NodeHandle node_handle,
-                                                  const VKRenderGraphNodes::Node &node)
+                                                  const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::SYNCHRONIZATION);
+  BLI_assert(node.type == VKNodes::Node::Type::SYNCHRONIZATION);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
@@ -291,9 +291,9 @@ void VKCommandBuilder::build_node_synchronization(VKRenderGraph &render_graph,
 
 void VKCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
                                            NodeHandle node_handle,
-                                           const VKRenderGraphNodes::Node &node)
+                                           const VKNodes::Node &node)
 {
-  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::DISPATCH);
+  BLI_assert(node.type == VKNodes::Node::Type::DISPATCH);
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
@@ -407,9 +407,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
                                                 NodeHandle node_handle,
                                                 VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphNodes::ResourceUsage &usage :
-       render_graph.nodes_.get_read_resources(node_handle))
-  {
+  for (const VKNodes::ResourceUsage &usage : render_graph.nodes_.get_read_resources(node_handle)) {
     const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
@@ -448,9 +446,7 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
                                                  NodeHandle node_handle,
                                                  VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphNodes::ResourceUsage usage :
-       render_graph.nodes_.get_write_resources(node_handle))
-  {
+  for (const VKNodes::ResourceUsage usage : render_graph.nodes_.get_write_resources(node_handle)) {
     const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
@@ -511,9 +507,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
                                                NodeHandle node_handle,
                                                VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphNodes::ResourceUsage &usage :
-       render_graph.nodes_.get_read_resources(node_handle))
-  {
+  for (const VKNodes::ResourceUsage &usage : render_graph.nodes_.get_read_resources(node_handle)) {
     const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
@@ -559,9 +553,7 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
                                                 NodeHandle node_handle,
                                                 VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphNodes::ResourceUsage usage :
-       render_graph.nodes_.get_write_resources(node_handle))
-  {
+  for (const VKNodes::ResourceUsage usage : render_graph.nodes_.get_write_resources(node_handle)) {
     const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);

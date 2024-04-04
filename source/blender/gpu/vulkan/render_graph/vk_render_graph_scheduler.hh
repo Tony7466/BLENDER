@@ -11,7 +11,7 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_render_graph_nodes.hh"
+#include "vk_nodes.hh"
 
 // TODO: Decide if scheduler is a better name... but scheduling is part of the command builder as
 // well....
@@ -57,4 +57,4 @@ class Sequential : public VKRenderGraphScheduler {
   void select_all_nodes(const VKRenderGraph &render_graph, Vector<NodeHandle> &r_selected_nodes);
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

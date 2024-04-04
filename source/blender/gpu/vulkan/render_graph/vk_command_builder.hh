@@ -9,7 +9,7 @@
 #pragma once
 
 #include "vk_common.hh"
-#include "vk_render_graph_nodes.hh"
+#include "vk_nodes.hh"
 
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
@@ -86,36 +86,34 @@ class VKCommandBuilder {
                                           VkImageLayout vk_image_layout);
 
  private:
-  void build_node(VKRenderGraph &render_graph,
-                  NodeHandle node_handle,
-                  const VKRenderGraphNodes::Node &node);
+  void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);
   void build_node_clear_color_image(VKRenderGraph &render_graph,
                                     NodeHandle node_handle,
-                                    const VKRenderGraphNodes::Node &node);
+                                    const VKNodes::Node &node);
   void build_node_fill_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
-                              const VKRenderGraphNodes::Node &node);
+                              const VKNodes::Node &node);
   void build_node_copy_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
-                              const VKRenderGraphNodes::Node &node);
+                              const VKNodes::Node &node);
   void build_node_copy_buffer_to_image(VKRenderGraph &render_graph,
                                        NodeHandle node_handle,
-                                       const VKRenderGraphNodes::Node &node);
+                                       const VKNodes::Node &node);
   void build_node_copy_image(VKRenderGraph &render_graph,
                              NodeHandle node_handle,
-                             const VKRenderGraphNodes::Node &node);
+                             const VKNodes::Node &node);
   void build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
                                        NodeHandle node_handle,
-                                       const VKRenderGraphNodes::Node &node);
+                                       const VKNodes::Node &node);
   void build_node_blit_image(VKRenderGraph &render_graph,
                              NodeHandle node_handle,
-                             const VKRenderGraphNodes::Node &node);
+                             const VKNodes::Node &node);
   void build_node_synchronization(VKRenderGraph &render_graph,
                                   NodeHandle node_handle,
-                                  const VKRenderGraphNodes::Node &node);
+                                  const VKNodes::Node &node);
   void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
-                           const VKRenderGraphNodes::Node &node);
+                           const VKNodes::Node &node);
 
   void reset_barriers();
   void send_pipeline_barriers(VKRenderGraph &render_graph);

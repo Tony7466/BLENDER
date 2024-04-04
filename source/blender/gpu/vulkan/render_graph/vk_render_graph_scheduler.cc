@@ -34,11 +34,10 @@ void Sequential::select_all_nodes(const VKRenderGraph &render_graph,
 {
   NodeHandle node_handle = 0;
 
-  for (const std::optional<VKRenderGraphNodes::Node> &optional_node : render_graph.nodes_.nodes())
-  {
+  for (const std::optional<VKNodes::Node> &optional_node : render_graph.nodes_.nodes()) {
     if (optional_node.has_value()) {
-      const VKRenderGraphNodes::Node &node = *optional_node;
-      if (node.type != VKRenderGraphNodes::Node::Type::UNUSED) {
+      const VKNodes::Node &node = *optional_node;
+      if (node.type != VKNodes::Node::Type::UNUSED) {
         r_selected_nodes.append(node_handle);
       }
     }
@@ -46,4 +45,4 @@ void Sequential::select_all_nodes(const VKRenderGraph &render_graph,
   }
 }
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph
