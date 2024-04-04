@@ -445,13 +445,13 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
 
   bke::FileHandlerType *fh = bke::file_handler_find(name);
   if (!fh) {
-    BKE_reportf(op->reports, RPT_ERROR, "File handler '%s' not found'", name);
+    BKE_reportf(op->reports, RPT_ERROR, "File handler '%s' not found", name);
     return OPERATOR_CANCELLED;
   }
 
   if (!WM_operatortype_find(fh->export_operator, true)) {
     BKE_reportf(
-        op->reports, RPT_ERROR, "File handler operator '%s' not found'", fh->export_operator);
+        op->reports, RPT_ERROR, "File handler operator '%s' not found", fh->export_operator);
     return OPERATOR_CANCELLED;
   }
 
@@ -543,16 +543,22 @@ void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Exporter index", 0, INT_MAX);
 }
 
-static int collection_exporter_export(bContext *C, CollectionExport *data, Collection *collection)
+static int collection_exporter_export(bContext *C,
+                                      wmOperator *op,
+                                      CollectionExport *data,
+                                      Collection *collection)
 {
   using namespace blender;
   bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
   if (!fh) {
+    BKE_reportf(op->reports, RPT_ERROR, "File handler '%s' not found", data->fh_idname);
     return OPERATOR_CANCELLED;
   }
 
   wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
   if (!ot) {
+    BKE_reportf(
+        op->reports, RPT_ERROR, "File handler operator '%s' not found", fh->export_operator);
     return OPERATOR_CANCELLED;
   }
 
@@ -560,19 +566,31 @@ static int collection_exporter_export(bContext *C, CollectionExport *data, Colle
   /* TODO: Cascade settings down from parent collections(?) */
   IDProperty *op_props = IDP_CopyProperty(data->export_properties);
   PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, op_props);
+  const char *collection_name = collection->id.name + 2;
 
-  /* Ensure we have a filepath set. Generate a default path if not. */
+  /* Ensure we have a valid filepath set. Create one if the user has not specified anything yet. */
   char filepath[FILE_MAX];
   RNA_string_get(&properties, "filepath", filepath);
-  if (strlen(filepath) == 0) {
-    STRNCPY(filepath, fh->generate_default_path(collection->id.name + 2).c_str());
+  if (!filepath[0]) {
+    BLI_path_join(
+        filepath, sizeof(filepath), "//", fh->get_default_filename(collection_name).c_str());
+  }
+  else {
+    char filename[FILENAME_MAX];
+    BLI_path_split_file_part(filepath, filename, sizeof(filename));
+    if (!filename[0] || !BLI_path_extension(filename)) {
+      BKE_reportf(op->reports, RPT_ERROR, "File path '%s' is not a valid file", filepath);
+
+      IDP_FreeProperty(op_props);
+      return OPERATOR_CANCELLED;
+    }
   }
 
   const Main *bmain = CTX_data_main(C);
   BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
 
   RNA_string_set(&properties, "filepath", filepath);
-  RNA_string_set(&properties, "collection", collection->id.name + 2);
+  RNA_string_set(&properties, "collection", collection_name);
   int op_result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &properties, nullptr);
 
   IDP_FreeProperty(op_props);
@@ -590,7 +608,7 @@ static int collection_exporter_export_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  return collection_exporter_export(C, data, collection);
+  return collection_exporter_export(C, op, data, collection);
 }
 
 void COLLECTION_OT_exporter_export(wmOperatorType *ot)
@@ -610,12 +628,12 @@ void COLLECTION_OT_exporter_export(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Exporter index", 0, INT_MAX);
 }
 
-static int collection_export(bContext *C, Collection *collection)
+static int collection_export(bContext *C, wmOperator *op, Collection *collection)
 {
   ListBase *exporters = &collection->exporters;
 
   LISTBASE_FOREACH (CollectionExport *, data, exporters) {
-    if (collection_exporter_export(C, data, collection) != OPERATOR_FINISHED) {
+    if (collection_exporter_export(C, op, data, collection) != OPERATOR_FINISHED) {
       /* Do not continue calling exporters if we encounter one that fails. */
       return OPERATOR_CANCELLED;
     }
@@ -624,10 +642,10 @@ static int collection_export(bContext *C, Collection *collection)
   return OPERATOR_FINISHED;
 }
 
-static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
+static int collection_io_export_all_exec(bContext *C, wmOperator *op)
 {
   Collection *collection = CTX_data_collection(C);
-  return collection_export(C, collection);
+  return collection_export(C, op, collection);
 }
 
 void COLLECTION_OT_export_all(wmOperatorType *ot)
@@ -645,19 +663,21 @@ void COLLECTION_OT_export_all(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int collection_export_recursive(bContext *C, LayerCollection *layer_collection)
+static int collection_export_recursive(bContext *C,
+                                       wmOperator *op,
+                                       LayerCollection *layer_collection)
 {
   /* Skip collections which have been Excluded in the View Layer. */
   if (layer_collection->flag & LAYER_COLLECTION_EXCLUDE) {
     return OPERATOR_FINISHED;
   }
 
-  if (collection_export(C, layer_collection->collection) != OPERATOR_FINISHED) {
+  if (collection_export(C, op, layer_collection->collection) != OPERATOR_FINISHED) {
     return OPERATOR_CANCELLED;
   }
 
   LISTBASE_FOREACH (LayerCollection *, child, &layer_collection->layer_collections) {
-    if (collection_export_recursive(C, child) != OPERATOR_FINISHED) {
+    if (collection_export_recursive(C, op, child) != OPERATOR_FINISHED) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -665,11 +685,11 @@ static int collection_export_recursive(bContext *C, LayerCollection *layer_colle
   return OPERATOR_FINISHED;
 }
 
-static int wm_collection_export_all_exec(bContext *C, wmOperator * /*op*/)
+static int wm_collection_export_all_exec(bContext *C, wmOperator *op)
 {
   ViewLayer *view_layer = CTX_data_view_layer(C);
   LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
-    if (collection_export_recursive(C, layer_collection) != OPERATOR_FINISHED) {
+    if (collection_export_recursive(C, op, layer_collection) != OPERATOR_FINISHED) {
       return OPERATOR_CANCELLED;
     }
   }
