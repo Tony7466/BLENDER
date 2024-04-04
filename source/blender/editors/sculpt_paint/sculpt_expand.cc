@@ -6,10 +6,8 @@
  * \ingroup edsculpt
  */
 
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -48,6 +46,9 @@
 #include "IMB_imbuf.hh"
 
 #include "bmesh.hh"
+
+#include <chrono>
+#include <iostream>
 
 #define TICK_START auto tic = std::chrono::steady_clock::now();
 #define TICK tic = std::chrono::steady_clock::now();

@@ -8,10 +8,6 @@
 
 #include <cmath>
 #include <cstdlib>
-
-#include <functional>
-#include <mutex>
-#include <tbb/concurrent_vector.h>
 #include <thread>
 
 #include "MEM_guardedalloc.h"
