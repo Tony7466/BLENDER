@@ -31,7 +31,7 @@ static void extract_mesh_analysis_init(const MeshRenderData &mr,
                                        void *buf,
                                        void * /*tls_data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "weight", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
@@ -397,14 +397,6 @@ static void statvis_calc_distort(const MeshRenderData &mr, float *r_distort)
     BMesh *bm = em->bm;
     BMFace *f;
 
-    if (!mr.bm_vert_coords.is_empty()) {
-      BKE_editmesh_cache_ensure_face_normals(*em, *mr.edit_data);
-
-      /* Most likely this is already valid, ensure just in case.
-       * Needed for #BM_loop_calc_face_normal_safe_vcos. */
-      BM_mesh_elem_index_ensure(em->bm, BM_VERT);
-    }
-
     int l_index = 0;
     int f_index = 0;
     BM_ITER_MESH_INDEX (f, &iter, bm, BM_FACES_OF_MESH, f_index) {
@@ -594,7 +586,7 @@ static void extract_analysis_iter_finish_mesh(const MeshRenderData &mr,
                                               void *buf,
                                               void * /*data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   BLI_assert(mr.edit_bmesh);
 
   float *l_weight = (float *)GPU_vertbuf_get_data(vbo);
