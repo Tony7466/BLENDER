@@ -53,6 +53,7 @@ set(SRC
   grease_pencil_sculpt_strength.cc
   grease_pencil_sculpt_thickness.cc
   grease_pencil_sculpt_twist.cc
+  grease_pencil_tint.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.cc

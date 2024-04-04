@@ -29,7 +29,7 @@
 #include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh_types.hh"
@@ -604,8 +604,8 @@ void update_list_orig_pointers(const ListBase *listbase_orig,
     element_orig = element_orig->next;
   }
 
-  BLI_assert((element_orig == nullptr && element_cow == nullptr) ||
-             !"list of pointers of different sizes, unable to reliably set orig pointer");
+  BLI_assert_msg(element_orig == nullptr && element_cow == nullptr,
+                 "list of pointers of different sizes, unable to reliably set orig pointer");
 }
 
 void update_particle_system_orig_pointers(const Object *object_orig, Object *object_cow)
