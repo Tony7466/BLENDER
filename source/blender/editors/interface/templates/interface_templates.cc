@@ -4605,10 +4605,12 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (((cmps[0]->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
-        ((cmps[0]->flag & CUMA_HANDLE_VECTOR) == false))
-    {
-      bt->flag |= UI_SELECT_DRAW;
+
+    bool select_draw = true;
+    for (CurveMapPoint *cmp : cmps) {
+      const bool auto_anim_vec = ((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
+                                 ((cmp->flag & CUMA_HANDLE_VECTOR) == false);
+      bt->flag |= UI_SELECT_DRAW && auto_anim_vec;
     }
 
     bt = uiDefIconBut(block,
@@ -4629,8 +4631,10 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (cmps[0]->flag & CUMA_HANDLE_VECTOR) {
-      bt->flag |= UI_SELECT_DRAW;
+
+    for (CurveMapPoint *cmp : cmps) {
+      const bool vec = (cmp->flag & CUMA_HANDLE_VECTOR);
+      bt->flag |= UI_SELECT_DRAW && vec;
     }
 
     bt = uiDefIconBut(block,
@@ -4651,13 +4655,14 @@ static void curvemap_buttons_layout(uiLayout *layout,
       BKE_curvemapping_changed(cumap, false);
       rna_update_cb(C, cb);
     });
-    if (cmps[0]->flag & CUMA_HANDLE_AUTO_ANIM) {
-      bt->flag |= UI_SELECT_DRAW;
+
+    for (CurveMapPoint *cmp : cmps) {
+      const bool auto_anim = (cmp->flag & CUMA_HANDLE_AUTO_ANIM);
+      bt->flag |= UI_SELECT_DRAW && auto_anim;
     }
 
     /* Curve handle position */
     active_cm->center_x = 0.0f;
-    for (auto cmp : cmps)
       active_cm->center_x += cmp->x;
     active_cm->center_x /= cmps.size();
     bt = uiDefButF(block,
@@ -4681,7 +4686,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     });
 
     active_cm->center_y = 0.0f;
-    for (auto cmp : cmps)
+    for (CurveMapPoint *cmp : cmps)
       active_cm->center_y += cmp->y;
     active_cm->center_y /= cmps.size();
     bt = uiDefButF(block,
