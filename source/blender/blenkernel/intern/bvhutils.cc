@@ -781,9 +781,9 @@ BVHTree *bvhtree_from_mesh_corner_tris_ex(BVHTreeFromMesh *data,
   return tree;
 }
 
-static BitSpan loose_verts_no_hidden_map_get(const Mesh &mesh,
-                                             BitVector<> &r_mask,
-                                             int *r_elem_active_len)
+static BitSpan loose_verts_no_hidden_mask_get(const Mesh &mesh,
+                                              BitVector<> &r_mask,
+                                              int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -822,9 +822,9 @@ static BitSpan loose_verts_no_hidden_map_get(const Mesh &mesh,
   return r_mask;
 }
 
-static BitSpan loose_edges_no_hidden_map_get(const Mesh &mesh,
-                                             BitVector<> &r_mask,
-                                             int *r_elem_active_len)
+static BitSpan loose_edges_no_hidden_mask_get(const Mesh &mesh,
+                                              BitVector<> &r_mask,
+                                              int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -946,7 +946,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
       BitSpan mask = {};
       BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN) {
-        mask = loose_verts_no_hidden_map_get(*mesh, mask_stack, &mask_bits_act_len);
+        mask = loose_verts_no_hidden_mask_get(*mesh, mask_stack, &mask_bits_act_len);
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseVertCache &loose_verts = mesh->loose_verts();
@@ -964,7 +964,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
       BitSpan mask = {};
       BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN) {
-        mask = loose_edges_no_hidden_map_get(*mesh, mask_stack, &mask_bits_act_len);
+        mask = loose_edges_no_hidden_mask_get(*mesh, mask_stack, &mask_bits_act_len);
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseEdgeCache &loose_edges = mesh->loose_edges();
