@@ -2445,8 +2445,7 @@ void legacy_gpencil_object(Main &bmain, Object &object)
 void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
 {
   /* Allows to convert a legacy GPencil data only once, in case it's used by several objects. */
-  blender::Map<bGPdata *, GreasePencil *> legacy_to_greasepencil_data;
-
+  Map<bGPdata *, GreasePencil *> legacy_to_greasepencil_data;
   LISTBASE_FOREACH (Object *, object, &bmain.objects) {
     if (object->type != OB_GPENCIL_LEGACY) {
       continue;
@@ -2456,11 +2455,16 @@ void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
 
   /* Potential other usages of legacy bGPdata IDs also need to be remapped to their matching new
    * GreasePencil counterparts. */
-  blender::bke::id::IDRemapper gpd_remapper;
+  bke::id::IDRemapper gpd_remapper;
   /* Allow remapping from legacy bGPdata IDs to new GreasePencil ones. */
   gpd_remapper.allow_idtype_mismatch = true;
 
   LISTBASE_FOREACH (bGPdata *, legacy_gpd, &bmain.gpencils) {
+    /* Some `bGPdata` is still used as annotations. These should stay `bGPdata` and therefore be
+     * skipped for remapping. */
+    if ((legacy_gpd->flag & GP_DATA_ANNOTATIONS) != 0) {
+      continue;
+    }
     GreasePencil *new_grease_pencil = legacy_to_greasepencil_data.lookup_default(legacy_gpd,
                                                                                  nullptr);
     if (!new_grease_pencil) {
