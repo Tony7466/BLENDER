@@ -1,3 +1,4 @@
 Referenced by issue #116307, Regression: Crash with data transfer modifier in 4.0
 Referenced by issue #117338, Regression: Texture Painting: Subdiv modifier breaks texture color sampling
 Referenced by pull request #120259, Fix #117338: Texture paint sampling broken with modifiers
+Referenced by commit 3ed4e51437f1074402e35dd3b8a39af7948da595, Fix #117338: Texture paint sampling broken with modifiers
