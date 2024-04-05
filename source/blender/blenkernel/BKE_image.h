@@ -153,6 +153,12 @@ bool BKE_image_has_ibuf(struct Image *ima, struct ImageUser *iuser);
 struct ImBuf *BKE_image_acquire_ibuf(struct Image *ima, struct ImageUser *iuser, void **r_lock);
 void BKE_image_release_ibuf(struct Image *ima, struct ImBuf *ibuf, void *lock);
 
+/**
+ * Return image buffer of preview for given image
+ * width_r & *height_r are optional and return the _original size_ of the image.
+ */
+struct ImBuf *BKE_image_preview(struct Image *ima, short max, short *width_r, short *height_r);
+
 struct ImagePool *BKE_image_pool_new(void);
 void BKE_image_pool_free(struct ImagePool *pool);
 struct ImBuf *BKE_image_pool_acquire_ibuf(struct Image *ima,

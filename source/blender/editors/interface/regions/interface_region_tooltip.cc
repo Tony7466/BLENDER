@@ -51,6 +51,7 @@
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1519,26 +1520,22 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
   }
 
-  void *lock;
-  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+  short w;
+  short h;
+  ImBuf *ibuf = BKE_image_preview(ima, 200.0f * UI_SCALE_FAC, &w, &h);
 
   if (ibuf) {
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-    float scale = (200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
     uiTooltipImage image_data;
-    image_data.width = int(float(ibuf->x) * scale);
-    image_data.height = int(float(ibuf->y) * scale);
+    image_data.width = int(ibuf->x);
+    image_data.height = int(ibuf->y);
     image_data.ibuf = ibuf;
     image_data.border = true;
     image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
     image_data.premultiplied = true;
     UI_tooltip_image_field_add(data, image_data);
-    UI_tooltip_text_field_add(data,
-                              fmt::format("{} \u00D7 {}", ibuf->x, ibuf->y),
-                              {},
-                              UI_TIP_STYLE_NORMAL,
-                              UI_TIP_LC_NORMAL);
-    BKE_image_release_ibuf(ima, ibuf, lock);
+    UI_tooltip_text_field_add(
+        data, fmt::format("{} \u00D7 {}", w, h), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
   }
 }
 
@@ -1549,52 +1546,21 @@ static void ui_tooltip_from_vfont(VFont *font, uiTooltipData *data)
     return;
   }
 
-  int font_id = (font->filepath[0] != '<') ? BLF_load(font->filepath) : 0;
-
   float color[4];
   const uiWidgetColors *theme = ui_tooltip_get_theme();
   rgba_uchar_to_float(color, theme->text);
-  BLF_buffer_col(font_id, color);
-
-  int width = 200 * UI_SCALE_FAC;
-  BLF_size(font_id, 50.0f);
-  float name_w;
-  float name_h;
-  BLF_width_and_height(font_id, font->id.name + 2, MAX_ID_NAME, &name_w, &name_h);
-  float scale = float(width) / name_w;
-  BLF_size(font_id, scale * 50.0f);
-  name_w *= scale;
-  name_h *= scale;
-
-  int height = int(name_h * 1.3f);
-  ImBuf *ibuf = IMB_allocImBuf(width, height, 32, IB_rect | IB_metadata);
-
-  BLF_buffer(font_id,
-             ibuf->float_buffer.data,
-             ibuf->byte_buffer.data,
-             width,
-             height,
-             ibuf->channels,
-             nullptr);
-
-  BLF_position(font_id, 0.0f, height - name_h, 0.0f);
-  BLF_draw_buffer(font_id, font->id.name + 2, MAX_ID_NAME);
-
-  uiTooltipImage image_data;
-  image_data.width = width;
-  image_data.height = height;
-  image_data.ibuf = ibuf;
-  image_data.border = false;
-  image_data.background = uiTooltipImageBackground::None;
-  image_data.premultiplied = false;
-  image_data.text_color = true;
-  UI_tooltip_image_field_add(data, image_data);
-
-  BLF_buffer(font_id, nullptr, nullptr, 0, 0, 0, nullptr);
-  IMB_freeImBuf(ibuf);
-
-  if (font_id != 0) {
-    BLF_unload_id(font_id);
+  ImBuf *ibuf = IMB_font_preview(font->filepath, 200 * UI_SCALE_FAC, color);
+  if (ibuf) {
+    uiTooltipImage image_data;
+    image_data.width = ibuf->x;
+    image_data.height = ibuf->y;
+    image_data.ibuf = ibuf;
+    image_data.border = false;
+    image_data.background = uiTooltipImageBackground::None;
+    image_data.premultiplied = false;
+    image_data.text_color = true;
+    UI_tooltip_image_field_add(data, image_data);
+    IMB_freeImBuf(ibuf);
   }
 }
 
