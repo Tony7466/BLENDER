@@ -8,6 +8,7 @@
 
 #include "vk_texture.hh"
 
+#include "render_graph/nodes/vk_clear_color_image_node.hh"
 #include "vk_buffer.hh"
 #include "vk_context.hh"
 #include "vk_data_conversion.hh"
@@ -167,14 +168,16 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
   BLI_assert(!is_texture_view());
 
-  VkClearColorValue clear_color = to_vk_clear_color_value(format, data);
-  VkImageSubresourceRange range = {0};
-  range.aspectMask = to_vk_image_aspect_flag_bits(device_format_);
-  range.levelCount = VK_REMAINING_MIP_LEVELS;
-  range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  render_graph::VKClearColorImageNode::Data clear_color_image = {};
+  clear_color_image.vk_image = vk_image_;
+  clear_color_image.vk_clear_color_value = to_vk_clear_color_value(format, data);
+  clear_color_image.vk_image_subresource_range.aspectMask = to_vk_image_aspect_flag_bits(
+      device_format_);
+  clear_color_image.vk_image_subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
+  clear_color_image.vk_image_subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_clear_image_node(vk_image_, clear_color, range);
+  device.render_graph_get().add_clear_image_node(clear_color_image);
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,

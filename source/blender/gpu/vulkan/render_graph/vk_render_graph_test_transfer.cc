@@ -123,12 +123,18 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   color_black.float32[1] = 0.0f;
   color_black.float32[2] = 0.0f;
   color_black.float32[3] = 1.0f;
-  VkImageSubresourceRange range = {};
   VkImageCopy vk_image_copy = {};
   VkBufferImageCopy vk_buffer_image_copy = {};
 
-  render_graph.add_clear_image_node(src_image, color_white, range);
-  render_graph.add_clear_image_node(dst_image, color_black, range);
+  VKClearColorImageNode::Data clear_color_image_src = {};
+  clear_color_image_src.vk_image = src_image;
+  clear_color_image_src.vk_clear_color_value = color_white;
+  VKClearColorImageNode::Data clear_color_image_dst = {};
+  clear_color_image_dst.vk_image = dst_image;
+  clear_color_image_dst.vk_clear_color_value = color_black;
+
+  render_graph.add_clear_image_node(clear_color_image_src);
+  render_graph.add_clear_image_node(clear_color_image_dst);
   render_graph.add_copy_image_node(src_image, dst_image, vk_image_copy);
   render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);
   render_graph.submit_buffer_for_read_back(staging_buffer);
@@ -231,11 +237,13 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
   color_black.float32[1] = 0.0f;
   color_black.float32[2] = 0.0f;
   color_black.float32[3] = 1.0f;
-  VkImageSubresourceRange range = {};
   VkImageBlit vk_image_blit = {};
   VkBufferImageCopy vk_buffer_image_copy = {};
+  VKClearColorImageNode::Data clear_color_image_src = {};
+  clear_color_image_src.vk_image = src_image;
+  clear_color_image_src.vk_clear_color_value = color_black;
 
-  render_graph.add_clear_image_node(src_image, color_black, range);
+  render_graph.add_clear_image_node(clear_color_image_src);
   VKBlitImageNode::Data blit_image = {src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR};
   render_graph.add_blit_image_node(blit_image);
   render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);

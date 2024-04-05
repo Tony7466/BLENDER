@@ -85,9 +85,10 @@ class VKRenderGraph : public NonCopyable {
     NodeClass::build_resource_dependencies(resources_, resource_dependencies_, handle, node_data);
   }
 
-  void add_clear_image_node(VkImage vk_image,
-                            VkClearColorValue &vk_clear_color_value,
-                            VkImageSubresourceRange &vk_image_subresource_range);
+  void add_clear_image_node(const VKClearColorImageNode::Data &clear_color_image)
+  {
+    add_node<VKClearColorImageNode, VKClearColorImageNode::Data>(clear_color_image);
+  }
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
   void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
   void add_copy_buffer_to_image_node(VkBuffer src_buffer,

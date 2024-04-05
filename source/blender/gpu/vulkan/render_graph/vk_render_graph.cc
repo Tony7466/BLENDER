@@ -66,18 +66,6 @@ void VKRenderGraph::remove_image(VkImage vk_image)
 /** \name Add Node
  * \{ */
 
-void VKRenderGraph::add_clear_image_node(VkImage vk_image,
-                                         VkClearColorValue &vk_clear_color_value,
-                                         VkImageSubresourceRange &vk_image_subresource_range)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_clear_image_node(
-      vk_image, vk_clear_color_value, vk_image_subresource_range);
-
-  VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
-  resource_dependencies_.add_write_resource(
-      handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-}
 
 void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
 {

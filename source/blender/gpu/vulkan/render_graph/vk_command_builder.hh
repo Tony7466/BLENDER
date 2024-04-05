@@ -87,9 +87,6 @@ class VKCommandBuilder {
 
  private:
   void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);
-  void build_node_clear_color_image(VKRenderGraph &render_graph,
-                                    NodeHandle node_handle,
-                                    const VKNodes::Node &node);
   void build_node_fill_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
                               const VKNodes::Node &node);
@@ -149,12 +146,12 @@ class VKCommandBuilder {
                   NodeHandle node_handle,
                   const NodeClassData &node_data)
   {
-    if (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
+    if constexpr (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
       reset_barriers();
-      if (NodeClass::uses_image_resources) {
+      if constexpr (NodeClass::uses_image_resources) {
         add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
       }
-      if (NodeClass::uses_buffer_resources) {
+      if constexpr (NodeClass::uses_buffer_resources) {
         add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
       }
       send_pipeline_barriers(render_graph);

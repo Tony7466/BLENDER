@@ -10,21 +10,6 @@
 
 namespace blender::gpu::render_graph {
 
-NodeHandle VKNodes::add_clear_image_node(VkImage vk_image,
-                                         VkClearColorValue &vk_clear_color_value,
-                                         VkImageSubresourceRange &vk_image_subresource_range)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::CLEAR_COLOR_IMAGE;
-  node.clear_color_image.vk_image = vk_image;
-  node.clear_color_image.vk_clear_color_value = vk_clear_color_value;
-  node.clear_color_image.vk_image_subresource_range = vk_image_subresource_range;
-
-  return handle;
-}
 
 NodeHandle VKNodes::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
 {

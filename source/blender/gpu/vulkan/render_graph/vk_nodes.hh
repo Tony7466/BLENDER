@@ -29,9 +29,6 @@ class VKNodes {
   VKRenderGraphList<NodeHandle, Node> nodes_;
 
  public:
-  NodeHandle add_clear_image_node(VkImage vk_image,
-                                  VkClearColorValue &vk_clear_color_value,
-                                  VkImageSubresourceRange &vk_image_subresource_range);
   NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
   NodeHandle add_copy_buffer_node(VkBuffer src_buffer,
                                   VkBuffer dst_buffer,

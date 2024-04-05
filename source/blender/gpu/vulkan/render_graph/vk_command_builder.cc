@@ -112,7 +112,8 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::CLEAR_COLOR_IMAGE: {
-      build_node_clear_color_image(render_graph, node_handle, node);
+      build_node<VKClearColorImageNode, VKClearColorImageNode::Data>(
+          render_graph, *render_graph.command_buffer_, node_handle, node.clear_color_image);
       break;
     }
 
@@ -157,23 +158,6 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
       break;
     }
   }
-}
-
-void VKCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
-                                                    NodeHandle node_handle,
-                                                    const VKNodes::Node &node)
-{
-  BLI_assert(node.type == VKNodeType::CLEAR_COLOR_IMAGE);
-  reset_barriers();
-  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  send_pipeline_barriers(render_graph);
-
-  render_graph.command_buffer_->clear_color_image(
-      node.clear_color_image.vk_image,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      &node.clear_color_image.vk_clear_color_value,
-      1,
-      &node.clear_color_image.vk_image_subresource_range);
 }
 
 void VKCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,

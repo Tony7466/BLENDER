@@ -43,9 +43,9 @@ TEST(vk_render_graph, clear_and_present)
                              std::make_unique<Sequential>());
   render_graph.add_image(back_buffer, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, ResourceOwner::SWAP_CHAIN);
 
-  VkClearColorValue color = {};
-  VkImageSubresourceRange range = {};
-  render_graph.add_clear_image_node(back_buffer, color, range);
+  VKClearColorImageNode::Data clear_color_image = {};
+  clear_color_image.vk_image = back_buffer;
+  render_graph.add_clear_image_node(clear_color_image);
 
   render_graph.submit_for_present(back_buffer);
 
