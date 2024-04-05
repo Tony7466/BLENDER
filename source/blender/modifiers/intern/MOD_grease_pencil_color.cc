@@ -139,6 +139,8 @@ static void modify_fill_color(Object &ob,
                               Drawing &drawing,
                               const IndexMask &curves_mask)
 {
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const bke::AttributeAccessor attributes = curves.attributes();
   /* Fill color per stroke. */
   MutableSpan<ColorGeometry4f> fill_colors = drawing.fill_colors_for_write();
   const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
