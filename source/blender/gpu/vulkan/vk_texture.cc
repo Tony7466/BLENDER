@@ -313,22 +313,25 @@ void VKTexture::update_sub(
   convert_host_to_device(
       staging_buffer.mapped_memory_get(), data, sample_len, format, format_, device_format_);
 
-  VkBufferImageCopy region = {};
-  region.imageExtent.width = extent.x;
-  region.imageExtent.height = extent.y;
-  region.imageExtent.depth = extent.z;
-  region.bufferRowLength = context.state_manager_get().texture_unpack_row_length_get();
-  region.imageOffset.x = offset[0];
-  region.imageOffset.y = offset[1];
-  region.imageOffset.z = offset[2];
-  region.imageSubresource.aspectMask = to_vk_image_aspect_single_bit(
+  render_graph::VKCopyBufferToImageNode::Data copy_buffer_to_image = {};
+  copy_buffer_to_image.src_buffer = staging_buffer.vk_handle();
+  copy_buffer_to_image.dst_image = vk_image_handle();
+
+  copy_buffer_to_image.region.imageExtent.width = extent.x;
+  copy_buffer_to_image.region.imageExtent.height = extent.y;
+  copy_buffer_to_image.region.imageExtent.depth = extent.z;
+  copy_buffer_to_image.region.bufferRowLength =
+      context.state_manager_get().texture_unpack_row_length_get();
+  copy_buffer_to_image.region.imageOffset.x = offset[0];
+  copy_buffer_to_image.region.imageOffset.y = offset[1];
+  copy_buffer_to_image.region.imageOffset.z = offset[2];
+  copy_buffer_to_image.region.imageSubresource.aspectMask = to_vk_image_aspect_single_bit(
       to_vk_image_aspect_flag_bits(device_format_), false);
-  region.imageSubresource.mipLevel = mip;
-  region.imageSubresource.layerCount = layers;
+  copy_buffer_to_image.region.imageSubresource.mipLevel = mip;
+  copy_buffer_to_image.region.imageSubresource.layerCount = layers;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_copy_buffer_to_image_node(
-      staging_buffer.vk_handle(), vk_image_handle(), region);
+  device.render_graph_get().add_node(copy_buffer_to_image);
 }
 
 void VKTexture::update_sub(int /*offset*/[3],
@@ -381,18 +384,19 @@ bool VKTexture::init_internal(VertBuf *vbo)
   }
 
   VKVertexBuffer *vertex_buffer = unwrap(vbo);
-
-  VkBufferImageCopy region = {};
-  region.imageExtent.width = w_;
-  region.imageExtent.height = 1;
-  region.imageExtent.depth = 1;
-  region.imageSubresource.aspectMask = to_vk_image_aspect_flag_bits(device_format_);
-  region.imageSubresource.mipLevel = 0;
-  region.imageSubresource.layerCount = 1;
+  render_graph::VKCopyBufferToImageNode::Data copy_buffer_to_image = {};
+  copy_buffer_to_image.src_buffer = vertex_buffer->vk_handle();
+  copy_buffer_to_image.dst_image = vk_image_handle();
+  copy_buffer_to_image.region.imageExtent.width = w_;
+  copy_buffer_to_image.region.imageExtent.height = 1;
+  copy_buffer_to_image.region.imageExtent.depth = 1;
+  copy_buffer_to_image.region.imageSubresource.aspectMask = to_vk_image_aspect_flag_bits(
+      device_format_);
+  copy_buffer_to_image.region.imageSubresource.mipLevel = 0;
+  copy_buffer_to_image.region.imageSubresource.layerCount = 1;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_copy_buffer_to_image_node(
-      vertex_buffer->vk_handle(), vk_image_handle(), region);
+  device.render_graph_get().add_node(copy_buffer_to_image);
 
   return true;
 }

@@ -91,20 +91,6 @@ void VKRenderGraph::add_copy_image_node(VkImage src_image,
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 }
 
-void VKRenderGraph::add_copy_buffer_to_image_node(VkBuffer src_buffer,
-                                                  VkImage dst_image,
-                                                  const VkBufferImageCopy &region)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_copy_buffer_to_image_node(src_buffer, dst_image, region);
-
-  VersionedResource src_resource = resources_.get_buffer(src_buffer);
-  VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
-  resource_dependencies_.add_read_resource(
-      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
-  resource_dependencies_.add_write_resource(
-      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-}
 void VKRenderGraph::add_copy_image_to_buffer_node(VkImage src_image,
                                                   VkBuffer dst_buffer,
                                                   const VkBufferImageCopy &region)

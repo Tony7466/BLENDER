@@ -94,14 +94,15 @@ class VKRenderGraph : public NonCopyable {
   {
     add_node<VKCopyBufferNode, VKCopyBufferNode::Data>(copy_buffer);
   }
-  void add_copy_buffer_to_image_node(VkBuffer src_buffer,
-                                     VkImage dst_image,
-                                     const VkBufferImageCopy &region);
+  void add_node(const VKCopyBufferToImageNode::Data &copy_buffer_to_image)
+  {
+    add_node<VKCopyBufferToImageNode, VKCopyBufferToImageNode::Data>(copy_buffer_to_image);
+  }
   void add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
   void add_copy_image_to_buffer_node(VkImage src_image,
                                      VkBuffer dst_buffer,
                                      const VkBufferImageCopy &region);
-  void add_node(VKBlitImageNode::Data &blit_image)
+  void add_node(const VKBlitImageNode::Data &blit_image)
   {
     add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);
   }

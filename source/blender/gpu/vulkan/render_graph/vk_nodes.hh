@@ -31,9 +31,6 @@ class VKNodes {
  public:
   NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
   NodeHandle add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
-  NodeHandle add_copy_buffer_to_image_node(VkBuffer src_buffer,
-                                           VkImage dst_image,
-                                           const VkBufferImageCopy &region);
   NodeHandle add_copy_image_to_buffer_node(VkImage src_image,
                                            VkBuffer dst_buffer,
                                            const VkBufferImageCopy &region);

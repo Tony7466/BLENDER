@@ -90,9 +90,6 @@ class VKCommandBuilder {
   void build_node_fill_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
                               const VKNodes::Node &node);
-  void build_node_copy_buffer_to_image(VKRenderGraph &render_graph,
-                                       NodeHandle node_handle,
-                                       const VKNodes::Node &node);
   void build_node_copy_image(VKRenderGraph &render_graph,
                              NodeHandle node_handle,
                              const VKNodes::Node &node);
