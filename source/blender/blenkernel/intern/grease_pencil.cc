@@ -684,13 +684,15 @@ MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
 VArray<ColorGeometry4f> Drawing::fill_colors() const
 {
   return *this->strokes().attributes().lookup_or_default<ColorGeometry4f>(
-      ATTR_FILL_COLOR, AttrDomain::Curve, ColorGeometry4f(0.0f));
+      ATTR_FILL_COLOR, AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 MutableSpan<ColorGeometry4f> Drawing::fill_colors_for_write()
 {
-  return get_mutable_attribute<ColorGeometry4f>(
-      this->strokes_for_write(), AttrDomain::Curve, ATTR_FILL_COLOR, ColorGeometry4f(0.0f));
+  return get_mutable_attribute<ColorGeometry4f>(this->strokes_for_write(),
+                                                AttrDomain::Curve,
+                                                ATTR_FILL_COLOR,
+                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void Drawing::tag_texture_matrices_changed()
