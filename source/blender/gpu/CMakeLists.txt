@@ -222,6 +222,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_command_buffer_wrapper.cc
   vulkan/render_graph/vk_command_builder.cc
   vulkan/render_graph/vk_nodes.cc
+  vulkan/render_graph/vk_resource_dependencies.cc
   vulkan/render_graph/vk_resources.cc
   vulkan/render_graph/vk_scheduler.cc
   vulkan/render_graph/vk_render_graph.cc
@@ -283,6 +284,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_command_buffer_wrapper.hh
   vulkan/render_graph/vk_command_builder.hh
   vulkan/render_graph/vk_nodes.hh
+  vulkan/render_graph/vk_resource_dependencies.hh
   vulkan/render_graph/vk_resources.hh
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh

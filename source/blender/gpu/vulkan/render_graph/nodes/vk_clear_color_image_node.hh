@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#pragma once
+
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {

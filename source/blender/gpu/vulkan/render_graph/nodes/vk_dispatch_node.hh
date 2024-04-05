@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#pragma once
+
 #include "vk_types_pipeline.hh"
 #include "vk_common.hh"
 

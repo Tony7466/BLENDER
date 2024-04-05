@@ -11,83 +11,23 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
+#include "vk_node_data.hh"
 #include "vk_resources.hh"
 #include "vk_types.hh"
-
-#include "nodes/vk_blit_image_node.hh"
-#include "nodes/vk_clear_color_image_node.hh"
-#include "nodes/vk_copy_buffer_node.hh"
-#include "nodes/vk_copy_buffer_to_image_node.hh"
-#include "nodes/vk_copy_image_node.hh"
-#include "nodes/vk_copy_image_to_buffer_node.hh"
-#include "nodes/vk_fill_buffer_node.hh"
-#include "nodes/vk_synchronization_node.hh"
-#include "nodes/vk_unused_node.hh"
 
 namespace blender::gpu::render_graph {
 
 class VKCommandBuilder;
 struct VKDispatchInfo;
 
-using NodeHandle = uint64_t;
-
 class VKNodes {
 
  public:
-  struct Node {
-    enum class Type {
-      UNUSED,
-      CLEAR_COLOR_IMAGE,
-      FILL_BUFFER,
-      COPY_BUFFER,
-      COPY_IMAGE,
-      COPY_IMAGE_TO_BUFFER,
-      COPY_BUFFER_TO_IMAGE,
-      BLIT_IMAGE,
-      DISPATCH,
-      SYNCHRONIZATION,
-    };
-
-    Type type;
-    union {
-      VKBlitImageNode::Data blit_image;
-      VKClearColorImageNode::Data clear_color_image;
-      VKCopyBufferNode::Data copy_buffer;
-      VKCopyBufferToImageNode::Data copy_buffer_to_image;
-      VKCopyImageNode::Data copy_image;
-      VKCopyImageToBufferNode::Data copy_image_to_buffer;
-      VKDispatchNode::Data dispatch;
-      VKFillBufferNode::Data fill_buffer;
-      VKSynchronizationNode::Data synchronization;
-      VKUnusedNode::Data unused;
-    };
-  };
-
-  struct ResourceUsage {
-    /**
-     * Which resource is being accessed.
-     */
-    VersionedResource resource;
-
-    /**
-     * How is the resource being accessed.
-     */
-    VkAccessFlags vk_access_flags;
-
-    /**
-     * When resource is an image, which layout should the image be using.
-     */
-    VkImageLayout vk_image_layout;
-  };
-
-  struct NodeResources {
-    Vector<ResourceUsage> resources;
-  };
+  // TODO: Replace all occurrences with VKNodeData.
+  using Node = VKNodeData;
 
  private:
   VKRenderGraphList<NodeHandle, Node> nodes_;
-  Vector<NodeResources> read_resources_per_node_;
-  Vector<NodeResources> write_resources_per_node_;
 
  public:
   NodeHandle add_clear_image_node(VkImage vk_image,
@@ -104,21 +44,19 @@ class VKNodes {
   NodeHandle add_copy_image_to_buffer_node(VkImage src_image,
                                            VkBuffer dst_buffer,
                                            const VkBufferImageCopy &region);
-  NodeHandle add_blit_image_node(VkImage src_image,
-                                 VkImage dst_image,
-                                 const VkImageBlit &region,
-                                 VkFilter filter);
   NodeHandle add_synchronization_node();
   NodeHandle add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
-  void add_read_resource(NodeHandle handle,
-                         VersionedResource resource_handle,
-                         VkAccessFlags vk_access_flags,
-                         VkImageLayout vk_image_layout);
-  void add_write_resource(NodeHandle handle,
-                          VersionedResource resource_handle,
-                          VkAccessFlags vk_access_flags,
-                          VkImageLayout vk_image_layout);
+  template<typename NodeClass, typename NodeClassData>
+  NodeHandle add_node(NodeClassData &node_data)
+  {
+    NodeHandle node_handle = allocate();
+    Node &node = nodes_.get(node_handle);
+    BLI_assert(node.type == VKNodeType::UNUSED);
+    node.type = NodeClass::node_type;
+    NodeClass::set_node_data(node, node_data);
+    return node_handle;
+  }
 
   void remove_nodes(Span<NodeHandle> node_handles);
 
@@ -140,19 +78,11 @@ class VKNodes {
     return nodes_.size();
   }
 
-  Span<ResourceUsage> get_write_resources(NodeHandle node_handle)
-  {
-    return write_resources_per_node_[node_handle].resources;
-  }
-
-  Span<ResourceUsage> get_read_resources(NodeHandle node_handle)
-  {
-    return read_resources_per_node_[node_handle].resources;
-  }
-
  private:
+  /**
+   * Allocate a new node handle.
+   */
   NodeHandle allocate();
-  void ensure_vector_sizes();
   void free_data(Node &node);
 };
 

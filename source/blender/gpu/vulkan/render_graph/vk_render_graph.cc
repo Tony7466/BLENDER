@@ -75,7 +75,7 @@ void VKRenderGraph::add_clear_image_node(VkImage vk_image,
       vk_image, vk_clear_color_value, vk_image_subresource_range);
 
   VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 }
 
@@ -85,7 +85,7 @@ void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, 
   NodeHandle handle = nodes_.add_fill_buffer_node(vk_buffer, size, data);
 
   VersionedResource resource = resources_.get_buffer_and_increase_version(vk_buffer);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
@@ -98,9 +98,9 @@ void VKRenderGraph::add_copy_image_node(VkImage src_image,
 
   VersionedResource src_resource = resources_.get_image(src_image);
   VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
-  nodes_.add_read_resource(
+  resource_dependencies_.add_read_resource(
       handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 }
 
@@ -113,9 +113,9 @@ void VKRenderGraph::add_copy_buffer_to_image_node(VkBuffer src_buffer,
 
   VersionedResource src_resource = resources_.get_buffer(src_buffer);
   VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
-  nodes_.add_read_resource(
+  resource_dependencies_.add_read_resource(
       handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 }
 void VKRenderGraph::add_copy_image_to_buffer_node(VkImage src_image,
@@ -127,9 +127,9 @@ void VKRenderGraph::add_copy_image_to_buffer_node(VkImage src_image,
 
   VersionedResource src_resource = resources_.get_image(src_image);
   VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
-  nodes_.add_read_resource(
+  resource_dependencies_.add_read_resource(
       handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
@@ -142,26 +142,18 @@ void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
 
   VersionedResource src_resource = resources_.get_buffer(src_buffer);
   VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
-  nodes_.add_read_resource(
+  resource_dependencies_.add_read_resource(
       handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
-  nodes_.add_write_resource(
+  resource_dependencies_.add_write_resource(
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
-void VKRenderGraph::add_blit_image_node(VkImage src_image,
-                                        VkImage dst_image,
-                                        const VkImageBlit &region,
-                                        VkFilter filter)
+void VKRenderGraph::add_blit_image_node(VKBlitImageNode::Data &blit_image)
 {
   std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_blit_image_node(src_image, dst_image, region, filter);
-
-  VersionedResource src_resource = resources_.get_image(src_image);
-  VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
-  nodes_.add_read_resource(
-      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  nodes_.add_write_resource(
-      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  NodeHandle handle = nodes_.add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);
+  VKBlitImageNode::build_resource_dependencies(
+      resources_, resource_dependencies_, handle, blit_image);
 }
 
 void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
@@ -176,7 +168,8 @@ void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout
   std::scoped_lock lock(mutex_);
   NodeHandle handle = nodes_.add_synchronization_node();
   VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
-  nodes_.add_write_resource(handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, vk_image_layout);
+  resource_dependencies_.add_write_resource(
+      handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, vk_image_layout);
 }
 
 void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)
@@ -186,14 +179,15 @@ void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo 
     VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       VersionedResource versioned_resource = resources_.get_buffer(buffer_access.vk_buffer);
-      nodes_.add_read_resource(handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
+      resource_dependencies_.add_read_resource(
+          handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
     VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
       VersionedResource versioned_resource = resources_.get_buffer_and_increase_version(
           buffer_access.vk_buffer);
-      nodes_.add_write_resource(
+      resource_dependencies_.add_write_resource(
           handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
   }
@@ -202,7 +196,7 @@ void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo 
     VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       VersionedResource versioned_resource = resources_.get_image(image_access.vk_image);
-      nodes_.add_read_resource(
+      resource_dependencies_.add_read_resource(
           handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
@@ -211,7 +205,7 @@ void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo 
       VersionedResource versioned_resource = resources_.get_image_and_increase_version(
           image_access.vk_image);
       /* Extract the correct layout to use from the access flags. */
-      nodes_.add_write_resource(
+      resource_dependencies_.add_write_resource(
           handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
   }

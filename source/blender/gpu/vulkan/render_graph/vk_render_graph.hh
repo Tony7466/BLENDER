@@ -29,6 +29,7 @@
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
 #include "vk_nodes.hh"
+#include "vk_resource_dependencies.hh"
 #include "vk_resources.hh"
 #include "vk_scheduler.hh"
 #include "vk_types.hh"
@@ -37,6 +38,7 @@ namespace blender::gpu::render_graph {
 
 class VKRenderGraph : public NonCopyable {
   VKResources resources_;
+  VKResourceDependencies resource_dependencies_;
   VKNodes nodes_;
   VKCommandBuilder command_builder_;
 
@@ -87,10 +89,7 @@ class VKRenderGraph : public NonCopyable {
   void add_copy_image_to_buffer_node(VkImage src_image,
                                      VkBuffer dst_buffer,
                                      const VkBufferImageCopy &region);
-  void add_blit_image_node(VkImage src_image,
-                           VkImage dst_image,
-                           const VkImageBlit &region,
-                           VkFilter filter);
+  void add_blit_image_node(VKBlitImageNode::Data &blit_image);
   void add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout);
   void add_dispatch_node(const VKDispatchInfo &dispatch_info);
 

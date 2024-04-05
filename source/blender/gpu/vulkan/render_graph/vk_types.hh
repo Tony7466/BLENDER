@@ -78,4 +78,22 @@ struct VKDispatchInfo : NonCopyable {
   VKResourceAccessInfo resources;
 };
 
+enum class VKNodeType {
+  UNUSED,
+  CLEAR_COLOR_IMAGE,
+  FILL_BUFFER,
+  COPY_BUFFER,
+  COPY_IMAGE,
+  COPY_IMAGE_TO_BUFFER,
+  COPY_BUFFER_TO_IMAGE,
+  BLIT_IMAGE,
+  DISPATCH,
+  SYNCHRONIZATION,
+};
+
+/**
+ * Index of a VKNodeData inside the render graph.
+ */
+using NodeHandle = uint64_t;
+
 }  // namespace blender::gpu::render_graph

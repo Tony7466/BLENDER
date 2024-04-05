@@ -236,7 +236,8 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
   VkBufferImageCopy vk_buffer_image_copy = {};
 
   render_graph.add_clear_image_node(src_image, color_black, range);
-  render_graph.add_blit_image_node(src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR);
+  VKBlitImageNode::Data blit_image = {src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR};
+  render_graph.add_blit_image_node(blit_image);
   render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);
   render_graph.submit_buffer_for_read_back(staging_buffer);
 

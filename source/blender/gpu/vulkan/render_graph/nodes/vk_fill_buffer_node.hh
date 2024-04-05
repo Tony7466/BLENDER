@@ -6,10 +6,12 @@
  * \ingroup gpu
  */
 
+#pragma once
+
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
-struct VKFillBufferNode:NonCopyable {
+struct VKFillBufferNode : NonCopyable {
   struct Data {
     VkBuffer vk_buffer;
     VkDeviceSize size;

@@ -35,7 +35,7 @@ template<typename Handle, typename Item> class VKRenderGraphList {
       items_.append_n_times(std::nullopt, grow_size_);
     }
     Item new_item = {};
-    items_[handle] = new_item;
+    items_[handle] = std::move(new_item);
     mark_filled(handle);
     return handle;
   }

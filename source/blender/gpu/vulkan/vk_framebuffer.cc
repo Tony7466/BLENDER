@@ -13,6 +13,8 @@
 #include "vk_state_manager.hh"
 #include "vk_texture.hh"
 
+#include "render_graph/nodes/vk_blit_image_node.hh"
+
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -303,7 +305,12 @@ static void blit_aspect(VKTexture &dst_texture,
     return;
   }
 
-  VkImageBlit image_blit = {};
+  render_graph::VKBlitImageNode::Data image_blit_data = {};
+  image_blit_data.src_image = src_texture.vk_image_handle();
+  image_blit_data.dst_image = dst_texture.vk_image_handle();
+  image_blit_data.filter = VK_FILTER_NEAREST;
+
+  VkImageBlit &image_blit = image_blit_data.region;
   image_blit.srcSubresource.aspectMask = image_aspect;
   image_blit.srcSubresource.mipLevel = 0;
   image_blit.srcSubresource.baseArrayLayer = 0;
@@ -329,8 +336,7 @@ static void blit_aspect(VKTexture &dst_texture,
   image_blit.dstOffsets[1].z = 1;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_blit_image_node(
-      src_texture.vk_image_handle(), dst_texture.vk_image_handle(), image_blit, VK_FILTER_NEAREST);
+  device.render_graph_get().add_blit_image_node(image_blit_data);
 }
 
 void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
