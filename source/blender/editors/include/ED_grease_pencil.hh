@@ -268,9 +268,14 @@ IndexMask polyline_detect_corners(Span<float2> points,
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
-void clipboard_paste_strokes(Main &bmain,
-                             Object &object,
-                             bke::greasepencil::Drawing &drawing,
-                             bool paste_on_back);
+/**
+ * Paste curves from the clipboard into the drawing.
+ * \param paste_back Render behind existing curves by inserting curves at the front.
+ * \return Index range of the new curves in the drawing after pasting.
+ */
+IndexRange clipboard_paste_strokes(Main &bmain,
+                                   Object &object,
+                                   bke::greasepencil::Drawing &drawing,
+                                   bool paste_back);
 
 }  // namespace blender::ed::greasepencil

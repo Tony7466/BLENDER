@@ -29,29 +29,22 @@ class SmoothOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool SmoothOperation::on_stroke_extended_drawing(
-    const bContext &C,
-    bke::greasepencil::Drawing &drawing,
-    int /*frame_number*/,
-    const ed::greasepencil::DrawingPlacement & /*placement*/,
+bool SmoothOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
     const IndexMask &point_selection,
     Span<float2> view_positions,
     const InputSample &extension_sample)
 {
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
@@ -60,7 +53,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
   const VArray<float> influences = VArray<float>::ForFunc(
       view_positions.size(), [&](const int64_t point_) {
         return brush_influence(
-            *CTX_data_scene(&C), brush, view_positions[point_], extension_sample);
+            *CTX_data_scene(&params.context), brush, view_positions[point_], extension_sample);
       });
   Array<bool> selection_array(curves.points_num());
   point_selection.to_bools(selection_array);
@@ -78,11 +71,11 @@ bool SmoothOperation::on_stroke_extended_drawing(
                                      false,
                                      false,
                                      positions);
-    drawing.tag_positions_changed();
+    params.drawing.tag_positions_changed();
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
-    MutableSpan<float> opacities = drawing.opacities_for_write();
+    MutableSpan<float> opacities = params.drawing.opacities_for_write();
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
                                      selection_varray,
@@ -95,7 +88,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
-    const MutableSpan<float> radii = drawing.radii_for_write();
+    const MutableSpan<float> radii = params.drawing.radii_for_write();
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
                                      selection_varray,

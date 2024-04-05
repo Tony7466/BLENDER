@@ -22,28 +22,22 @@ class PushOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool PushOperation::on_stroke_extended_drawing(const bContext &C,
-                                               bke::greasepencil::Drawing &drawing,
-                                               int /*frame_number*/,
-                                               const ed::greasepencil::DrawingPlacement &placement,
+bool PushOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                                const IndexMask &point_selection,
                                                Span<float2> view_positions,
                                                const InputSample &extension_sample)
 {
-  const Scene &scene = *CTX_data_scene(&C);
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Scene &scene = *CTX_data_scene(&params.context);
+  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
 
   const float2 mouse_delta = this->mouse_delta(extension_sample);
@@ -55,10 +49,10 @@ bool PushOperation::on_stroke_extended_drawing(const bContext &C,
       return;
     }
 
-    positions[point_i] = placement.project(co + mouse_delta * influence);
+    positions[point_i] = params.placement.project(co + mouse_delta * influence);
   });
 
-  drawing.tag_positions_changed();
+  params.drawing.tag_positions_changed();
   return true;
 }
 

@@ -7,6 +7,9 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
 
+#include "GEO_join_geometries.hh"
+
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -16,50 +19,52 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
+#include <iostream>
+
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class CloneOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool CloneOperation::on_stroke_extended_drawing(
-    const bContext &C,
-    bke::greasepencil::Drawing &drawing,
-    int /*frame_number*/,
-    const ed::greasepencil::DrawingPlacement &placement,
-    const IndexMask &point_selection,
-    Span<float2> view_positions,
-    const InputSample &extension_sample)
+bool CloneOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
+                                                const IndexMask & /*point_selection*/,
+                                                Span<float2> /*view_positions*/,
+                                                const InputSample &extension_sample)
 {
-  const Scene &scene = *CTX_data_scene(&C);
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
-  const Brush &brush = *BKE_paint_brush(&paint);
+  Main &bmain = *CTX_data_main(&params.context);
+  Object &object = *CTX_data_active_object(&params.context);
+  float2 ob_center;
+  ED_view3d_project_float_object(&params.region, float3(0), ob_center, V3D_PROJ_TEST_NOP);
+  const float2 &mouse_delta = extension_sample.mouse_position - ob_center;
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
+      bmain, object, params.drawing, false);
+  if (pasted_curves.is_empty()) {
+    return false;
+  }
+
+  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
+  const OffsetIndices<int> pasted_points_by_curve = curves.points_by_curve().slice(pasted_curves);
+  const IndexRange pasted_points = IndexRange::from_begin_size(
+      pasted_points_by_curve[0].start(),
+      pasted_points_by_curve.total_size() - pasted_points_by_curve[0].start());
+
+  Array<float2> view_positions = calculate_view_positions(params, pasted_points);
   MutableSpan<float3> positions = curves.positions_for_write();
-
-  const float2 mouse_delta = this->mouse_delta(extension_sample);
-
-  point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
-    const float2 &co = view_positions[point_i];
-    const float influence = brush_influence(scene, brush, co, extension_sample);
-    if (influence <= 0.0f) {
-      return;
+  threading::parallel_for(pasted_points, 4096, [&](const IndexRange range) {
+    for (const int point_i : range) {
+      positions[point_i] = params.placement.project(view_positions[point_i] + mouse_delta);
     }
-
-    positions[point_i] = placement.project(co + mouse_delta * influence);
   });
+  params.drawing.tag_positions_changed();
 
-  drawing.tag_positions_changed();
   return true;
 }
 

@@ -24,10 +24,7 @@ class TwistOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
@@ -40,21 +37,17 @@ static float2 rotate_by_angle(const float2 &vec, const float angle)
   return float2(vec.x * cos_angle - vec.y * sin_angle, vec.x * sin_angle + vec.y * cos_angle);
 }
 
-bool TwistOperation::on_stroke_extended_drawing(
-    const bContext &C,
-    bke::greasepencil::Drawing &drawing,
-    int /*frame_number*/,
-    const ed::greasepencil::DrawingPlacement &placement,
-    const IndexMask &point_selection,
-    Span<float2> view_positions,
-    const InputSample &extension_sample)
+bool TwistOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
+                                                const IndexMask &point_selection,
+                                                Span<float2> view_positions,
+                                                const InputSample &extension_sample)
 {
-  const Scene &scene = *CTX_data_scene(&C);
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Scene &scene = *CTX_data_scene(&params.context);
+  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const bool invert = this->is_inverted(brush);
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
 
   const float2 mouse_pos = extension_sample.mouse_position;
@@ -67,10 +60,11 @@ bool TwistOperation::on_stroke_extended_drawing(
     }
 
     const float angle = DEG2RADF(invert ? -1.0f : 1.0f) * influence;
-    positions[point_i] = placement.project(rotate_by_angle(co - mouse_pos, angle) + mouse_pos);
+    positions[point_i] = params.placement.project(rotate_by_angle(co - mouse_pos, angle) +
+                                                  mouse_pos);
   });
 
-  drawing.tag_positions_changed();
+  params.drawing.tag_positions_changed();
   return true;
 }
 

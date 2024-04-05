@@ -26,36 +26,29 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool ThicknessOperation::on_stroke_extended_drawing(
-    const bContext &C,
-    bke::greasepencil::Drawing &drawing,
-    int /*frame_number*/,
-    const ed::greasepencil::DrawingPlacement & /*placement*/,
+bool ThicknessOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
     const IndexMask &point_selection,
     const Span<float2> view_positions,
     const InputSample &extension_sample)
 {
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const bool invert = this->is_inverted(brush);
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   BLI_assert(view_positions.size() == curves.points_num());
-  MutableSpan<float> radii = drawing.radii_for_write();
+  MutableSpan<float> radii = params.drawing.radii_for_write();
 
   point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
     float &radius = radii[point_i];
     const float influence = brush_influence(
-        *CTX_data_scene(&C), brush, view_positions[point_i], extension_sample);
+        *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
     /* Factor 1/1000 is used to map arbitrary influence value to a sensible radius. */
     const float delta_radius = (invert ? -influence : influence) * 0.001f;
     radius = std::max(radius + delta_radius, 0.0f);

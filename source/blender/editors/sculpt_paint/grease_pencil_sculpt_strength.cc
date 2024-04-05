@@ -24,35 +24,28 @@ class StrengthOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const bContext &C,
-                                  bke::greasepencil::Drawing &drawing,
-                                  int frame_number,
-                                  const ed::greasepencil::DrawingPlacement &placement,
+  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
                                   const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool StrengthOperation::on_stroke_extended_drawing(
-    const bContext &C,
-    bke::greasepencil::Drawing &drawing,
-    int /*frame_number*/,
-    const ed::greasepencil::DrawingPlacement & /*placement*/,
+bool StrengthOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
     const IndexMask &point_selection,
     const Span<float2> view_positions,
     const InputSample &extension_sample)
 {
-  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const bool invert = this->is_inverted(brush);
 
-  BLI_assert(view_positions.size() == drawing.strokes().points_num());
-  MutableSpan<float> opacities = drawing.opacities_for_write();
+  BLI_assert(view_positions.size() == params.drawing.strokes().points_num());
+  MutableSpan<float> opacities = params.drawing.opacities_for_write();
 
   point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
     float &opacity = opacities[point_i];
     const float influence = brush_influence(
-        *CTX_data_scene(&C), brush, view_positions[point_i], extension_sample);
+        *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
     /* Brush influence mapped to opacity by a factor of 0.125. */
     const float delta_opacity = (invert ? -influence : influence) * 0.125f;
     opacity = math::clamp(opacity + delta_opacity, 0.0f, 1.0f);

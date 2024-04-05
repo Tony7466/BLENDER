@@ -56,15 +56,12 @@ class GrabOperation : public GreasePencilStrokeOperationCommon {
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
-
-  float3 mouse_delta_in_layer_space(const bContext &C,
-                                    const InputSample &input_sample,
-                                    const bke::greasepencil::Layer &layer) const;
 };
 
 void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
   const ARegion &region = *CTX_wm_region(&C);
+  const View3D &view3d = *CTX_wm_view3d(&C);
   const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   const Scene &scene = *CTX_data_scene(&C);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
@@ -86,23 +83,25 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
     PointWeights &data = this->drawing_data[i];
 
     const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
-    const bke::CurvesGeometry &curves = info.drawing.strokes();
     const int drawing_index = layer.drawing_index_at(info.frame_number);
     BLI_assert(drawing_index >= 0);
     BLI_assert(grease_pencil.get_drawing_at(layer, info.frame_number) == &info.drawing);
 
+    ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
+    GreasePencilStrokeParams params = {C,
+                                       region,
+                                       ob_eval,
+                                       ob_orig,
+                                       layer,
+                                       info.layer_index,
+                                       info.frame_number,
+                                       std::move(placement),
+                                       info.drawing};
+
     IndexMaskMemory selection_memory;
     IndexMask selection = selection_mask(scene, ob_eval, info.drawing, selection_memory);
 
-    Array<float2> view_positions(curves.points_num());
-    calculate_view_positions(region,
-                             ob_eval,
-                             ob_orig,
-                             layer,
-                             info.layer_index,
-                             info.frame_number,
-                             selection,
-                             view_positions);
+    Array<float2> view_positions = calculate_view_positions(params, selection);
 
     /* Cache points under brush influence. */
     Vector<float> weights;

@@ -70,15 +70,22 @@ float brush_influence(const Scene &scene,
 /* True if influence of the brush should be inverted. */
 bool is_brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
 
+/* Common parameters for stroke callbacks that can be passed to utility functions. */
+struct GreasePencilStrokeParams {
+  const bContext &context;
+  const ARegion &region;
+  Object &ob_eval;
+  Object &ob_orig;
+  const bke::greasepencil::Layer &layer;
+  int layer_index;
+  int frame_number;
+  ed::greasepencil::DrawingPlacement placement;
+  bke::greasepencil::Drawing &drawing;
+};
+
 /* Project points from layer space into 2D view space. */
-void calculate_view_positions(const ARegion &region,
-                              Object &ob_eval,
-                              Object &ob_orig,
-                              const bke::greasepencil::Layer &layer,
-                              int layer_index,
-                              int frame_number,
-                              const IndexMask &selection,
-                              MutableSpan<float2> view_positions);
+Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
+                                       const IndexMask &selection);
 
 /* Stroke operation base class that performs various common initializations. */
 class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
@@ -108,10 +115,7 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 
   /* Extend the stroke in a drawing using projected 2D coordinates.
    * This is an optional function that has all common data set up in advance. */
-  virtual bool on_stroke_extended_drawing(const bContext & /*C*/,
-                                          bke::greasepencil::Drawing & /*drawing*/,
-                                          int /*frame_number*/,
-                                          const DrawingPlacement & /*placement*/,
+  virtual bool on_stroke_extended_drawing(const GreasePencilStrokeParams& /*params*/,
                                           const IndexMask & /*point_selection*/,
                                           Span<float2> /*view_positions*/,
                                           const InputSample & /*extension_sample*/)

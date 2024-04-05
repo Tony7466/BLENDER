@@ -2429,27 +2429,29 @@ static Array<int> clipboard_materials_remap(Main &bmain, Object &object)
   return clipboard_material_remap;
 }
 
-void clipboard_paste_strokes(Main &bmain,
-                             Object &object,
-                             bke::greasepencil::Drawing &drawing,
-                             const bool paste_on_back)
+IndexRange clipboard_paste_strokes(Main &bmain,
+                                   Object &object,
+                                   bke::greasepencil::Drawing &drawing,
+                                   const bool paste_back)
 {
   const bke::CurvesGeometry &clipboard_curves = ed::greasepencil::clipboard_curves();
 
   /* Get a list of all materials in the scene. */
-  Array<int> clipboard_material_remap = ed::greasepencil::clipboard_materials_remap(bmain, object);
+  const Array<int> clipboard_material_remap = ed::greasepencil::clipboard_materials_remap(bmain,
+                                                                                          object);
 
   /* Get the index range of the pasted curves in the target layer. */
-  IndexRange pasted_curves_range = paste_on_back ? IndexRange(0, clipboard_curves.curves_num()) :
-                                                   IndexRange(drawing.strokes().curves_num(),
-                                                              clipboard_curves.curves_num());
+  const IndexRange pasted_curves_range = paste_back ?
+                                             IndexRange(0, clipboard_curves.curves_num()) :
+                                             IndexRange(drawing.strokes().curves_num(),
+                                                        clipboard_curves.curves_num());
 
   /* Append the geometry from the clipboard to the target layer. */
   Curves *clipboard_id = bke::curves_new_nomain(clipboard_curves);
   Curves *target_id = curves_new_nomain(std::move(drawing.strokes_for_write()));
-  Array<bke::GeometrySet> geometry_sets = {
-      bke::GeometrySet::from_curves(paste_on_back ? clipboard_id : target_id),
-      bke::GeometrySet::from_curves(paste_on_back ? target_id : clipboard_id)};
+  const Array<bke::GeometrySet> geometry_sets = {
+      bke::GeometrySet::from_curves(paste_back ? clipboard_id : target_id),
+      bke::GeometrySet::from_curves(paste_back ? target_id : clipboard_id)};
   bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
   drawing.strokes_for_write() = std::move(joined_curves.get_curves_for_write()->geometry.wrap());
 
@@ -2465,6 +2467,8 @@ void clipboard_paste_strokes(Main &bmain,
   }
 
   drawing.tag_topology_changed();
+
+  return pasted_curves_range;
 }
 
 }  // namespace blender::ed::greasepencil
