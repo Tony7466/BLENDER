@@ -42,11 +42,8 @@ float volume_z_to_view_z(float z)
 
 /* View space Z to volume froxel texture normalized linear Z.
  * Not dependant on projection matrix (as long as drw_view_is_perspective is consistent). */
-float view_z_to_volume_z(float depth)
+float view_z_to_volume_z(float depth, float near, float far, float distribution)
 {
-  float near = uniform_buf.volumes.depth_near;
-  float far = uniform_buf.volumes.depth_far;
-  float distribution = uniform_buf.volumes.depth_distribution;
   if (drw_view_is_perspective()) {
     /* Exponential distribution. */
     return distribution * log2(depth * far + near);
@@ -55,6 +52,13 @@ float view_z_to_volume_z(float depth)
     /* Linear distribution. */
     return (depth - near) / (far - near);
   }
+}
+float view_z_to_volume_z(float depth)
+{
+  return view_z_to_volume_z(depth,
+                            uniform_buf.volumes.depth_near,
+                            uniform_buf.volumes.depth_far,
+                            uniform_buf.volumes.depth_distribution);
 }
 
 /* Jittered volume texture normalized coordinates to view space position. */
@@ -106,18 +110,32 @@ vec3 volume_screen_to_resolve(vec3 coord)
   return coord;
 }
 
-/* Returns the uvw (normalized coordinate) of a froxel in the previous frame.
- * If no history exists, it will return out of bounds sampling coordinates. */
-vec3 volume_history_position_get(ivec3 froxel)
+/* Returns the uvw (normalized coordinate) of a froxel in the previous frame. */
+vec3 volume_history_uvw_get(ivec3 froxel)
 {
+  mat4x4 wininv = uniform_buf.volumes.wininv_stable;
+  mat4x4 winmat = uniform_buf.volumes.winmat_stable;
   /* We can't reproject by a simple matrix multiplication. We first need to remap to the view Z,
    * then transform, then remap back to Volume range. */
   vec3 uvw = (vec3(froxel) + 0.5) * uniform_buf.volumes.inv_tex_size;
-  uvw.z = volume_z_to_view_z(uvw.z);
+  float view_z = volume_z_to_view_z(uvw.z);
+  /* We need to recover the NDC position for correct perspective divide. */
+  float ndc_z = drw_perspective_divide(winmat * vec4(0.0, 0.0, view_z, 1.0)).z;
+  vec2 ndc_xy = drw_screen_to_ndc(uvw.xy);
+  /* NDC to view. */
+  vec3 vs_P = drw_perspective_divide(wininv * vec4(ndc_xy, ndc_z, 1.0)).xyz;
 
-  vec3 uvw_history = transform_point(uniform_buf.volumes.history_matrix, uvw);
-  /* TODO(fclem): For now assume same distribution settings. */
-  uvw_history.z = view_z_to_volume_z(uvw_history.z);
+  /* Transform to previous camera view space. */
+  vec3 vs_P_history = transform_point(uniform_buf.volumes.curr_view_to_past_view, vs_P);
+  /* View to NDC. */
+  vec3 ndc_P_history = drw_perspective_divide(uniform_buf.volumes.history_winmat_stable *
+                                              vec4(vs_P, 1.0));
+  vec3 uvw_history;
+  uvw_history.xy = drw_ndc_to_screen(ndc_P_history.xy);
+  uvw_history.z = view_z_to_volume_z(vs_P_history.z,
+                                     uniform_buf.volumes.history_depth_near,
+                                     uniform_buf.volumes.history_depth_far,
+                                     uniform_buf.volumes.history_depth_distribution);
   return uvw_history;
 }
 

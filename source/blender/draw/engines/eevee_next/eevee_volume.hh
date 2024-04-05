@@ -96,6 +96,9 @@ class VolumeModule {
 
   View volume_view = {"Volume View"};
 
+  float4x4 history_viewmat_ = float4x4::zero();
+  bool valid_history_ = false;
+
  public:
   VolumeModule(Instance &inst, VolumesInfoData &data) : inst_(inst), data_(data)
   {
@@ -127,9 +130,9 @@ class VolumeModule {
   void end_sync();
 
   /* Render material properties. */
-  void draw_prepass(View &view);
+  void draw_prepass(View &main_view);
   /* Compute scattering and integration. */
-  void draw_compute(View &view);
+  void draw_compute(View &main_view);
   /* Final image compositing. */
   void draw_resolve(View &view);
 

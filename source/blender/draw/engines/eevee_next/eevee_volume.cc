@@ -52,14 +52,11 @@ void VolumeModule::init()
   if (data_.tex_size != tex_size) {
     data_.tex_size = tex_size;
     data_.inv_tex_size = 1.0f / float3(tex_size);
+    valid_history_ = false;
   }
 
-  if ((scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) == 0) {
-    data_.shadow_steps = 0;
-  }
-  else {
-    data_.shadow_steps = float(scene_eval->eevee.volumetric_shadow_samples);
-  }
+  const bool shadow_enabled = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) != 0;
+  data_.shadow_steps = (shadow_enabled) ? scene_eval->eevee.volumetric_shadow_samples : 0;
 
   data_.light_clamp = scene_eval->eevee.volumetric_light_clamp;
 }
@@ -132,6 +129,9 @@ void VolumeModule::end_sync()
     occupancy.occupancy_tx_ = nullptr;
     occupancy.hit_depth_tx_ = nullptr;
     occupancy.hit_count_tx_ = nullptr;
+
+    /* Avoid undefined re-projection behavior. */
+    valid_history_ = false;
     return;
   }
 
@@ -181,8 +181,6 @@ void VolumeModule::end_sync()
   extinction_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-
-  data_.history_matrix = float4x4::identity();
 
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
@@ -253,18 +251,24 @@ void VolumeModule::end_sync()
   resolve_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
-void VolumeModule::draw_prepass(View &view)
+void VolumeModule::draw_prepass(View &main_view)
 {
   if (!enabled_) {
     return;
   }
 
-  DRW_stats_group_start("Volumes");
-  inst_.pipelines.world_volume.render(view);
+  /* In interactive mode, use the 5% blend of new frame. For static / render mode. */
+  /* TODO(fclem): Count how many frames are already reprojected and use this as starting point for
+   * the static mode. */
+  float history_opacity = inst_.sampling.interactive_mode() ?
+                              0.95f :
+                              1.0f / (inst_.sampling.sample_index_sequential() + 2.0);
+  /* Setting opacity to 0.0 will bypass any sampling of history buffer.
+   * Allowing us to skip the 3D texture clear. */
+  data_.history_opacity = (valid_history_) ? history_opacity : 0.0f;
 
   float left, right, bottom, top, near, far;
-  const float4x4 winmat_view = view.winmat();
-  projmat_dimensions(winmat_view.ptr(), &left, &right, &bottom, &top, &near, &far);
+  projmat_dimensions(main_view.winmat().ptr(), &left, &right, &bottom, &top, &near, &far);
 
   /* Just like up-sampling matrix computation, we have to be careful to where to put the bounds of
    * our froxel volume so that a 2D pixel covers exactly the number of pixel in a tile. */
@@ -275,18 +279,20 @@ void VolumeModule::draw_prepass(View &view)
   right = left + volume_size.x;
   top = bottom + volume_size.y;
 
-  /* TODO(fclem): These new matrices are created from the jittered main view matrix. It should be
-   * better to create them from the non-jittered one to avoid over-blurring. */
   float4x4 winmat_infinite, winmat_finite;
   /* Create an infinite projection matrix to avoid far clipping plane clipping the object. This
    * way, surfaces that are further away than the far clip plane will still be voxelized.*/
-  winmat_infinite = view.is_persp() ?
+  winmat_infinite = main_view.is_persp() ?
                         math::projection::perspective_infinite(left, right, bottom, top, near) :
                         math::projection::orthographic_infinite(left, right, bottom, top);
   /* We still need a bounded projection matrix to get correct froxel location. */
-  winmat_finite = view.is_persp() ?
+  winmat_finite = main_view.is_persp() ?
                       math::projection::perspective(left, right, bottom, top, near, far) :
                       math::projection::orthographic(left, right, bottom, top, near, far);
+  /* Save non-jittered finite matrix for re-projection. */
+  data_.wininv_stable = winmat_finite;
+  data_.winmat_stable = math::invert(winmat_finite);
+
   /* Anti-Aliasing / Super-Sampling jitter. */
   float2 jitter = inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U);
   /* Wrap to keep first sample centered (0,0) and scale to convert to NDC. */
@@ -299,9 +305,16 @@ void VolumeModule::draw_prepass(View &view)
 
   data_.winmat_finite = winmat_finite;
   data_.wininv_finite = math::invert(winmat_finite);
+
+  /* Compute re-projection matrix. */
+  data_.curr_view_to_past_view = history_viewmat_ * main_view.viewinv();
+
   inst_.uniform_data.push_update();
 
-  volume_view.sync(view.viewmat(), winmat_infinite);
+  DRW_stats_group_start("Volumes");
+  inst_.pipelines.world_volume.render(main_view);
+
+  volume_view.sync(main_view.viewmat(), winmat_infinite);
 
   if (inst_.pipelines.volume.is_enabled()) {
     occupancy_fb_.bind();
@@ -310,7 +323,7 @@ void VolumeModule::draw_prepass(View &view)
   DRW_stats_group_end();
 }
 
-void VolumeModule::draw_compute(View &view)
+void VolumeModule::draw_compute(View &main_view)
 {
   if (!enabled_) {
     return;
@@ -318,8 +331,16 @@ void VolumeModule::draw_compute(View &view)
   scatter_tx_.swap();
   extinction_tx_.swap();
 
-  inst_.manager->submit(scatter_ps_, view);
-  inst_.manager->submit(integration_ps_, view);
+  inst_.manager->submit(scatter_ps_, main_view);
+  inst_.manager->submit(integration_ps_, main_view);
+
+  /* Copy history data. */
+  history_viewmat_ = main_view.viewmat();
+  data_.history_depth_near = data_.depth_near;
+  data_.history_depth_far = data_.depth_far;
+  data_.history_depth_distribution = data_.depth_distribution;
+  data_.history_winmat_stable = data_.winmat_stable;
+  valid_history_ = true;
 }
 
 void VolumeModule::draw_resolve(View &view)
