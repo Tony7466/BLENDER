@@ -1094,12 +1094,7 @@ static void editbmesh_calc_modifiers(Depsgraph *depsgraph,
        * cage mesh isn't modified anymore. */
       mesh_final = BKE_mesh_copy_for_eval(mesh_final);
       if (mesh_cage->runtime->edit_mesh) {
-        mesh_final->runtime->edit_mesh = mesh_cage->runtime->edit_mesh;
         mesh_final->runtime->is_original_bmesh = true;
-        if (mesh_cage->runtime->edit_data) {
-          mesh_final->runtime->edit_data = std::make_unique<blender::bke::EditMeshData>(
-              *mesh_cage->runtime->edit_data);
-        }
       }
     }
 
@@ -1301,12 +1296,6 @@ static void editbmesh_build_data(Depsgraph *depsgraph,
                            &me_cage,
                            &me_final,
                            &non_mesh_components);
-
-  /* The modifier stack result is expected to share edit mesh pointer with the input.
-   * This is similar `mesh_calc_finalize()`. */
-  BKE_mesh_free_editmesh(me_final);
-  BKE_mesh_free_editmesh(me_cage);
-  me_final->runtime->edit_mesh = me_cage->runtime->edit_mesh = mesh->runtime->edit_mesh;
 
   /* Object has edit_mesh but is not in edit mode (object shares mesh datablock with another object
    * with is in edit mode).

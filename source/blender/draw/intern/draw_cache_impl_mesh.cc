@@ -1333,8 +1333,9 @@ static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me
 #endif
 
 void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
-                                           Object *ob,
+                                           Object *object_eval,
                                            Mesh *mesh,
+                                           Object *object_orig,
                                            const Scene *scene,
                                            const bool is_paint_mode,
                                            const bool use_hide)
@@ -1374,16 +1375,19 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
 #endif
 
   /* Sanity check. */
-  if ((mesh->runtime->edit_mesh != nullptr) && (ob->mode & OB_MODE_EDIT)) {
-    BLI_assert(BKE_object_get_editmesh_eval_final(ob) != nullptr);
+  if ((mesh->runtime->edit_mesh != nullptr) && (object_eval->mode & OB_MODE_EDIT)) {
+    BLI_assert(BKE_object_get_editmesh_eval_final(object_eval) != nullptr);
   }
 
-  const bool is_editmode = (mesh->runtime->edit_mesh != nullptr) &&
-                           (BKE_object_get_editmesh_eval_final(ob) != nullptr) &&
-                           DRW_object_is_in_edit_mode(ob);
+  const bool is_editmode =
+      (mesh->runtime->edit_mesh != nullptr) &&
+      (BKE_object_get_editmesh_eval_final(object_eval) != nullptr) &&
+      DRW_object_is_in_edit_mode(object_eval) && object_orig && object_orig->type == OB_MESH &&
+      mesh->runtime->edit_mesh.get() ==
+          static_cast<const Mesh *>(object_orig->data)->runtime->edit_mesh.get();
 
   /* This could be set for paint mode too, currently it's only used for edit-mode. */
-  const bool is_mode_active = is_editmode && DRW_object_is_in_edit_mode(ob);
+  const bool is_mode_active = is_editmode && DRW_object_is_in_edit_mode(object_eval);
 
   DRWBatchFlag batch_requested = cache.batch_requested;
   cache.batch_requested = (DRWBatchFlag)0;
@@ -1392,8 +1396,8 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     /* Check vertex weights. */
     if ((cache.batch.surface_weights != nullptr) && (ts != nullptr)) {
       DRW_MeshWeightState wstate;
-      BLI_assert(ob->type == OB_MESH);
-      drw_mesh_weight_state_extract(ob, mesh, ts, is_paint_mode, &wstate);
+      BLI_assert(object_eval->type == OB_MESH);
+      drw_mesh_weight_state_extract(object_eval, mesh, ts, is_paint_mode, &wstate);
       mesh_batch_cache_check_vertex_group(cache, &wstate);
       drw_mesh_weight_state_copy(&cache.weight_state, &wstate);
       drw_mesh_weight_state_clear(&wstate);
@@ -1407,8 +1411,9 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     /* Modifiers will only generate an orco layer if the mesh is deformed. */
     if (cache.cd_needed.orco != 0) {
       /* Orco is always extracted from final mesh. */
-      const Mesh *me_final = (mesh->runtime->edit_mesh) ? BKE_object_get_editmesh_eval_final(ob) :
-                                                          mesh;
+      const Mesh *me_final = (mesh->runtime->edit_mesh) ?
+                                 BKE_object_get_editmesh_eval_final(object_eval) :
+                                 mesh;
       if (CustomData_get_layer(&me_final->vert_data, CD_ORCO) == nullptr) {
         /* Skip orco calculation */
         cache.cd_needed.orco = 0;
@@ -1503,18 +1508,18 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
    * Normal updates should be part of the brush loop and only run during the stroke when the
    * brush needs to sample the surface. The drawing code should only update the normals
    * per redraw when smooth shading is enabled. */
-  const bool do_update_sculpt_normals = ob->sculpt && ob->sculpt->pbvh;
+  const bool do_update_sculpt_normals = object_eval->sculpt && object_eval->sculpt->pbvh;
   if (do_update_sculpt_normals) {
-    Mesh *mesh = static_cast<Mesh *>(ob->data);
-    bke::pbvh::update_normals(*ob->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
+    Mesh *mesh = static_cast<Mesh *>(object_eval->data);
+    bke::pbvh::update_normals(*object_eval->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
   }
 
   cache.batch_ready |= batch_requested;
 
   bool do_cage = false, do_uvcage = false;
   if (is_editmode && is_mode_active) {
-    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
-    const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object_eval);
+    const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(object_eval);
 
     do_cage = editmesh_eval_final != editmesh_eval_cage;
     do_uvcage = !(editmesh_eval_final->runtime->is_original_bmesh &&
@@ -1665,7 +1670,9 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   if (DRW_batch_requested(cache.batch.edit_triangles, GPU_PRIM_TRIS)) {
     DRW_ibo_request(cache.batch.edit_triangles, &mbuflist->ibo.tris);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.pos);
-    DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
+    if (!is_editmode) {
+      DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
+    }
   }
   assert_deps_valid(
       MBC_EDIT_VERTICES,
@@ -1673,14 +1680,18 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   if (DRW_batch_requested(cache.batch.edit_vertices, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache.batch.edit_vertices, &mbuflist->ibo.points);
     DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.pos);
-    DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.edit_data);
+    if (!is_editmode) {
+      DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.edit_data);
+    }
   }
   assert_deps_valid(MBC_EDIT_EDGES,
                     {BUFFER_INDEX(ibo.lines), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.edit_data)});
   if (DRW_batch_requested(cache.batch.edit_edges, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache.batch.edit_edges, &mbuflist->ibo.lines);
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.pos);
-    DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
+    if (!is_editmode) {
+      DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
+    }
   }
   assert_deps_valid(MBC_EDIT_VNOR,
                     {BUFFER_INDEX(ibo.points), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.vnor)});
@@ -1867,12 +1878,12 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     mesh_buffer_cache_create_requested(task_graph,
                                        cache,
                                        cache.uv_cage,
-                                       ob,
+                                       object_eval,
                                        mesh,
                                        is_editmode,
                                        is_paint_mode,
                                        is_mode_active,
-                                       ob->object_to_world(),
+                                       object_eval->object_to_world(),
                                        false,
                                        true,
                                        scene,
@@ -1884,12 +1895,12 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     mesh_buffer_cache_create_requested(task_graph,
                                        cache,
                                        cache.cage,
-                                       ob,
+                                       object_eval,
                                        mesh,
                                        is_editmode,
                                        is_paint_mode,
                                        is_mode_active,
-                                       ob->object_to_world(),
+                                       object_eval->object_to_world(),
                                        false,
                                        false,
                                        scene,
@@ -1898,14 +1909,14 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   }
 
   if (do_subdivision) {
-    DRW_create_subdivision(ob,
+    DRW_create_subdivision(object_eval,
                            mesh,
                            cache,
                            &cache.final,
                            is_editmode,
                            is_paint_mode,
                            is_mode_active,
-                           ob->object_to_world(),
+                           object_eval->object_to_world(),
                            true,
                            false,
                            do_cage,
@@ -1921,12 +1932,12 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   mesh_buffer_cache_create_requested(task_graph,
                                      cache,
                                      cache.final,
-                                     ob,
+                                     object_eval,
                                      mesh,
                                      is_editmode,
                                      is_paint_mode,
                                      is_mode_active,
-                                     ob->object_to_world(),
+                                     object_eval->object_to_world(),
                                      true,
                                      false,
                                      scene,

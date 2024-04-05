@@ -279,7 +279,7 @@ static void extract_edit_data_iter_subdiv_bm(const DRWSubdivCache &subdiv_cache,
       }
     }
 
-    if (edge_origindex != -1) {
+    if (edge_origindex != -1 && mr.bm) {
       /* NOTE: #subdiv_loop_edge_index already has the origindex layer baked in. */
       const BMEdge *eed = BM_edge_at_index(mr.bm, edge_origindex);
       mesh_render_data_edge_flag(mr, eed, edit_loop_data);
