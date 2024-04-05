@@ -19,7 +19,6 @@
 #include "nodes/vk_dispatch_node.hh"
 #include "nodes/vk_fill_buffer_node.hh"
 #include "nodes/vk_synchronization_node.hh"
-#include "nodes/vk_unused_node.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -38,7 +37,6 @@ struct VKNodeData {
     VKDispatchNode::Data dispatch;
     VKFillBufferNode::Data fill_buffer;
     VKSynchronizationNode::Data synchronization;
-    VKUnusedNode::Data unused;
   };
 };
 
