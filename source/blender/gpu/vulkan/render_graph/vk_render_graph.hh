@@ -77,6 +77,14 @@ class VKRenderGraph : public NonCopyable {
   // TODO: add test case to check if resources are reset when deleted.
   void remove_image(VkImage vk_image);
 
+  template<typename NodeClass, typename NodeClassData>
+  void add_node(const NodeClassData &node_data)
+  {
+    std::scoped_lock lock(mutex_);
+    NodeHandle handle = nodes_.add_node<NodeClass, NodeClassData>(node_data);
+    NodeClass::build_resource_dependencies(resources_, resource_dependencies_, handle, node_data);
+  }
+
   void add_clear_image_node(VkImage vk_image,
                             VkClearColorValue &vk_clear_color_value,
                             VkImageSubresourceRange &vk_image_subresource_range);
@@ -89,7 +97,10 @@ class VKRenderGraph : public NonCopyable {
   void add_copy_image_to_buffer_node(VkImage src_image,
                                      VkBuffer dst_buffer,
                                      const VkBufferImageCopy &region);
-  void add_blit_image_node(VKBlitImageNode::Data &blit_image);
+  void add_blit_image_node(VKBlitImageNode::Data &blit_image)
+  {
+    add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);
+  }
   void add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout);
   void add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 

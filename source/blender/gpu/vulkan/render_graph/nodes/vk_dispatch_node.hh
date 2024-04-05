@@ -41,7 +41,10 @@ struct VKDispatchNode : NonCopyable {
     NOT_YET_IMPLEMENTED
   }
 
-  template<typename Node> static void free_data(Node & /*node*/) {}
+  template<typename Node> static void free_data(Node &node)
+  {
+    vk_pipeline_free_data(node.dispatch.pipeline_data);
+  }
 
   static void build_resource_dependencies(VKResources & /*resources*/,
                                           VKResourceDependencies & /*dependencies*/,

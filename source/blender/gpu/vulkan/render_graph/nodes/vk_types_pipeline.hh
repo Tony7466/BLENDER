@@ -24,4 +24,9 @@ struct VKPipelineData {
   const void *push_constants_data;
 };
 
+BLI_INLINE void vk_pipeline_free_data(VKPipelineData &data)
+{
+  MEM_SAFE_FREE(data.push_constants_data);
+}
+
 }  // namespace blender::gpu::render_graph

@@ -47,7 +47,7 @@ class VKNodes {
   NodeHandle add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 
   template<typename NodeClass, typename NodeClassData>
-  NodeHandle add_node(NodeClassData &node_data)
+  NodeHandle add_node(const NodeClassData &node_data)
   {
     NodeHandle node_handle = allocate();
     Node &node = nodes_.get(node_handle);

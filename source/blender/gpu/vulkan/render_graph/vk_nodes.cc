@@ -127,11 +127,6 @@ static void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
   }
 }
 
-static void free_shader_data(VKPipelineData &data)
-{
-  MEM_SAFE_FREE(data.push_constants_data);
-}
-
 NodeHandle VKNodes::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
 {
   NodeHandle handle = allocate();
@@ -158,7 +153,7 @@ void VKNodes::free_data(Node &node)
 {
   switch (node.type) {
     case VKNodeType::DISPATCH:
-      free_shader_data(node.dispatch.pipeline_data);
+      VKDispatchNode::free_data(node);
       break;
 
     case VKNodeType::UNUSED:

@@ -148,14 +148,6 @@ void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
 }
 
-void VKRenderGraph::add_blit_image_node(VKBlitImageNode::Data &blit_image)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);
-  VKBlitImageNode::build_resource_dependencies(
-      resources_, resource_dependencies_, handle, blit_image);
-}
-
 void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
 {
   std::scoped_lock lock(mutex_);
