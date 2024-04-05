@@ -850,17 +850,17 @@ struct LightSunData {
   float _pad1;
   float _pad2;
 
-  float _pad3;
-  float _pad4;
   /** --- Shadow Data --- */
   /** Offset of the LOD min in LOD min tile units. Split positive and negative for bit-shift. */
   int2 clipmap_base_offset_neg;
-
   int2 clipmap_base_offset_pos;
+
   /** Angle covered by the light shape for shadow ray casting. */
   float shadow_angle;
   /** Trace distance around the shading point. */
   float shadow_trace_distance;
+  float _pad3;
+  float _pad4;
 
   /** Offset to convert from world units to tile space of the clipmap_lod_max. */
   float2 clipmap_origin;
@@ -940,10 +940,12 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #ifdef GPU_SHADER
 #  define CHECK_TYPE_PAIR(a, b)
 #  define CHECK_TYPE(a, b)
+#  define INT_AS_FLOAT intBitsToFloat
 #  define FLOAT_AS_INT floatBitsToInt
 #  define TYPECAST_NOOP
 
 #else /* C++ */
+#  define INT_AS_FLOAT int_as_float
 #  define FLOAT_AS_INT float_as_int
 #  define TYPECAST_NOOP
 #endif
@@ -999,6 +1001,7 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #define SAFE_ASSIGN_FLOAT2(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float2, b);
 #define SAFE_ASSIGN_FLOAT3(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float3, b);
 #define SAFE_ASSIGN_INT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, int, b);
+#define SAFE_ASSIGN_INT_AS_FLOAT(a, b) SAFE_ASSIGN(a, INT_AS_FLOAT, int, b);
 #define SAFE_ASSIGN_FLOAT_AS_INT(a, b) SAFE_ASSIGN(a, FLOAT_AS_INT, float, b);
 #define SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(a, b, c) \
   SAFE_ASSIGN_FLOAT_AS_INT(a.x, b); \
@@ -1019,9 +1022,9 @@ static inline LightSpotData light_local_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   return data;
 }
@@ -1033,9 +1036,9 @@ static inline LightSpotData light_spot_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT(radius, _pad1)
   SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
@@ -1052,9 +1055,9 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
   SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT3(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
   return data;
@@ -1064,10 +1067,11 @@ static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_BEGIN(LightSunData, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, radius_squared)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, shadow_projection_shift.z, clip_side)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, tilemaps_count, shadow_scale)
-  SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
-  SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(
+      clipmap_base_offset_neg, shadow_projection_shift.x, shadow_projection_shift.y)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, shadow_projection_shift.z, clip_side)
+  SAFE_ASSIGN_INT_AS_FLOAT(shadow_angle, tilemaps_count)
+  SAFE_ASSIGN_FLOAT(shadow_trace_distance, shadow_scale)
   SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_min, _pad4)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_max, _pad5)
