@@ -939,9 +939,11 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
     case BVHTREE_FROM_LOOSEVERTS:
     case BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN: {
       int mask_bits_act_len = -1;
-      BitVector<> mask = {};
+      BitSpan mask = {};
+      BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN) {
-        mask = loose_verts_no_hidden_map_get(*mesh, &mask_bits_act_len);
+        mask_stack = loose_verts_no_hidden_map_get(*mesh, &mask_bits_act_len);
+        mask = mask_stack;
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseVertCache &loose_verts = mesh->loose_verts();
@@ -956,9 +958,11 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
     case BVHTREE_FROM_LOOSEEDGES:
     case BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN: {
       int mask_bits_act_len = -1;
-      BitVector<> mask = {};
+      BitSpan mask = {};
+      BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN) {
-        mask = loose_edges_no_hidden_map_get(*mesh, &mask_bits_act_len);
+        mask_stack = loose_edges_no_hidden_map_get(*mesh, &mask_bits_act_len);
+        mask = mask_stack;
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseEdgeCache &loose_edges = mesh->loose_edges();
