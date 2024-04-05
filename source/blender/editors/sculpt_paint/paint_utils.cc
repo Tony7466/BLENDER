@@ -216,7 +216,6 @@ static blender::float2 imapaint_pick_uv(const Mesh *mesh_eval,
   const int *material_indices = (const int *)CustomData_get_layer_named(
       &mesh_eval->face_data, CD_PROP_INT32, "material_index");
 
-  /* test all faces in the derivedmesh with the original index of the picked face */
   /* face means poly here, not triangle, indeed */
   const int face_i = tri_faces[tri_index];
 
