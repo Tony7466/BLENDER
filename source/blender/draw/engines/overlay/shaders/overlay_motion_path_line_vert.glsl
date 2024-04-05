@@ -44,14 +44,13 @@ void main()
       interp.color.rgb = customColor * 0.25;
     }
     else {
-      /* black - before frameCurrent */
       if (selected) {
-        intensity = calc_intensity(frameStart, frame, frameCurrent, 0.25, 0.75);
+        intensity = calc_intensity(frameStart, frame, frameCurrent, 0.0, 1.0);
       }
       else {
-        intensity = calc_intensity(frameStart, frame, frameCurrent, 0.68, 0.92);
+        intensity = calc_intensity(frameStart, frame, frameCurrent, 0.0, 1.0);
       }
-      interp.color.rgb = mix(colorWire.rgb, blend_base, intensity);
+      interp.color.rgb = colorBeforeFrame.rgb;
     }
   }
   else if (frame > frameCurrent) {
@@ -60,15 +59,14 @@ void main()
       interp.color.rgb = customColor;
     }
     else {
-      /* blue - after frameCurrent */
       if (selected) {
-        intensity = calc_intensity(frameCurrent, frame, frameEnd, 0.25, 0.75);
+        intensity = calc_intensity(frameCurrent, frame, frameEnd, 0.0, 1.0);
       }
       else {
-        intensity = calc_intensity(frameCurrent, frame, frameEnd, 0.68, 0.92);
+        intensity = calc_intensity(frameCurrent, frame, frameEnd, 0.0, 1.0);
       }
 
-      interp.color.rgb = mix(colorBonePose.rgb, blend_base, intensity);
+      interp.color.rgb = colorAfterFrame.rgb;
     }
   }
   else {
@@ -77,14 +75,13 @@ void main()
       interp.color.rgb = customColor * 0.5;
     }
     else {
-      /* green - on frameCurrent */
       if (selected) {
         intensity = 0.92f;
       }
       else {
         intensity = 0.75f;
       }
-      interp.color.rgb = mix(colorBackground.rgb, blend_base, intensity);
+      interp.color.rgb = blend_base;
     }
   }
 
