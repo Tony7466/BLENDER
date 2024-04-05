@@ -479,6 +479,8 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   float disk_shape_angle_;
   /** Maximum distance a shadow map ray can be travel. */
   float trace_distance_;
+  /** Light radius * shadow softness */
+  float shadow_radius_;
 
  public:
   ShadowDirectional(ShadowModule &module) : shadows_(module){};
@@ -496,7 +498,8 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   void sync(const float4x4 &object_mat,
             float min_resolution,
             float shadow_disk_angle,
-            float trace_distance);
+            float trace_distance,
+            float shadow_radius);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -506,7 +509,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, const Camera &camera, float lod_bias);
+  void end_sync(Light &light, const Camera &camera, float lod_bias, Sampling &sampling);
 
   /* Return coverage of the whole tile-map in world unit. */
   static float coverage_get(int lvl)

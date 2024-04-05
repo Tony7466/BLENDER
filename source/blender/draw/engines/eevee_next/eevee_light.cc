@@ -87,11 +87,16 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
+    float softness = la->shadow_softness_factor;
+    if (this->do_jittering) {
+      softness *= la->shadow_jitter_overblur;
+    }
     if (is_sun_light(this->type)) {
       this->directional->sync(this->object_mat,
                               1.0f,
-                              la->sun_angle * la->shadow_softness_factor,
-                              la->shadow_trace_distance);
+                              la->sun_angle * softness,
+                              la->shadow_trace_distance,
+                              this->sun.radius * la->shadow_softness_factor);
     }
     else {
       /* Reuse shape radius as near clip plane. */
@@ -106,10 +111,6 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
          * the effective resolution of shadow-maps.
          * So we use the original light radius instead. */
         shadow_radius = la->shadow_softness_factor * la->radius;
-      }
-      float softness = la->shadow_softness_factor;
-      if (this->do_jittering) {
-        softness *= la->shadow_jitter_overblur;
       }
       this->punctual->sync(this->type,
                            this->object_mat,

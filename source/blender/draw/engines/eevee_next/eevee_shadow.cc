@@ -638,7 +638,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
 void ShadowDirectional::sync(const float4x4 &object_mat,
                              float min_resolution,
                              float shadow_disk_angle,
-                             float trace_distance)
+                             float trace_distance,
+                             float shadow_radius)
 {
   object_mat_ = object_mat;
   /* Clear embedded custom data. */
@@ -650,6 +651,7 @@ void ShadowDirectional::sync(const float4x4 &object_mat,
   min_resolution_ = min_resolution;
   disk_shape_angle_ = min_ff(shadow_disk_angle, DEG2RADF(179.9f)) / 2.0f;
   trace_distance_ = trace_distance;
+  shadow_radius_ = shadow_radius;
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_bias)
@@ -674,8 +676,21 @@ void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_
   levels_range = isect_range;
 }
 
-void ShadowDirectional::end_sync(Light &light, const Camera &camera, float lod_bias)
+void ShadowDirectional::end_sync(Light &light,
+                                 const Camera &camera,
+                                 float lod_bias,
+                                 Sampling &sampling)
 {
+  if (light.do_jittering) {
+    /* TODO: de-correlate. */
+    float2 random = sampling.rng_2d_get(SAMPLING_SHADOW_U);
+    float2 r_disk = sampling.sample_disk(random) * shadow_radius_;
+    float3 jitter = object_mat_.x_axis() * r_disk.x + object_mat_.y_axis() * r_disk.y;
+    object_mat_[2] += float4(jitter, 0.0f);
+    object_mat_ = math::orthogonalize(object_mat_, math::Axis::Z);
+    light.object_mat = object_mat_;
+  }
+
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
   IndexRange levels_new = directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE ?
                               cascade_level_range(camera, lod_bias) :
@@ -968,7 +983,7 @@ void ShadowModule::end_sync()
       light.tilemap_index = LIGHT_NO_SHADOW;
     }
     else if (light.directional != nullptr) {
-      light.directional->end_sync(light, inst_.camera, light.lod_bias);
+      light.directional->end_sync(light, inst_.camera, light.lod_bias, inst_.sampling);
     }
     else if (light.punctual != nullptr) {
       light.punctual->end_sync(light, light.lod_bias, inst_.sampling);
