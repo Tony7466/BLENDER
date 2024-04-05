@@ -8,11 +8,14 @@
  * Task parallel range functions.
  */
 
+#include <iostream>
+
 #include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
+#include "BLI_binary_search.hh"
 #include "BLI_lazy_threading.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_task.h"
@@ -220,6 +223,61 @@ void parallel_for_weighted_impl(
         function(actual_range);
       }
     });
+  });
+}
+
+void parallel_for_weighted_impl(const IndexRange range,
+                                const int64_t grain_size,
+                                const FunctionRef<void(IndexRange)> function,
+                                const FunctionRef<int64_t(IndexRange)> task_sizes_fn)
+{
+  /* Shouldn't be too small, because then there is more overhead when the individual tasks are
+   * small. Also shouldn't be too large because then the serial code to split up tasks causes extra
+   * overhead. */
+  const int64_t outer_grain_size = std::min<int64_t>(grain_size, 512);
+  threading::parallel_for(range, outer_grain_size, [&](const IndexRange sub_range) {
+    Vector<int64_t, 256> offsets_vec;
+    offsets_vec.append(sub_range.start());
+
+    IndexRange next_range = sub_range;
+    // std::cout << "next_range: " << next_range << ";\n";
+    while (!next_range.is_empty()) {
+      const int64_t size_of_current_segment = binary_search::find_predicate_begin(
+          next_range.begin(), next_range.end(), [&](const int64_t i) {
+            const IndexRange slice = IndexRange::from_begin_end_inclusive(next_range.first(), i);
+            return task_sizes_fn(slice) > grain_size;
+          });
+      offsets_vec.append(next_range[size_of_current_segment] + 1);
+      // std::cout << " + size_of_current_segment: " << size_of_current_segment << ";\n";
+      next_range = next_range.drop_front(size_of_current_segment + 1);
+      // std::cout << " < next_range: " << next_range << ";\n";
+    }
+    if (offsets_vec.last() < sub_range.last()) {
+      offsets_vec.append(sub_range.size());
+      // std::cout << "    offsets_vec.append: " << sub_range.size() << ";\n";
+    }
+
+    /*
+    std::cout << "offsets: ";
+    for (const int v : offsets_vec) {
+      std::cout << v << ", ";
+    }
+    std::cout << ";\n";
+    */
+
+    const OffsetIndices<int64_t> offsets = offsets_vec.as_span();
+
+    /* Run the dynamically split tasks in parallel. */
+    std::atomic<int64_t> check = 0;
+    threading::parallel_for(offsets.index_range(), 1, [&](const IndexRange offsets_range) {
+      for (const int64_t i : offsets_range) {
+        // std::cout << offsets[i] << ", ";
+        function(offsets[i]);
+        check += task_sizes_fn(offsets[i]);
+      }
+      // std::cout << ";\n";
+    });
+    BLI_assert(check == task_sizes_fn(range));
   });
 }
 

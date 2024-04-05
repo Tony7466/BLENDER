@@ -2,7 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include <atomic>
+
+#include "BLI_timeit.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_instances.hh"
@@ -32,6 +36,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Group ID").field_on_all().hide_value();
   b.add_input<decl::Float>("Sort Weight").field_on_all().hide_value();
 
+  b.add_input<decl::Bool>("New");
+
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
@@ -49,6 +55,7 @@ static void grouped_sort(const OffsetIndices<int> offsets,
                          const Span<float> weights,
                          MutableSpan<int> indices)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   const auto comparator = [&](const int index_a, const int index_b) {
     const float weight_a = weights[index_a];
     const float weight_b = weights[index_b];
@@ -65,6 +72,41 @@ static void grouped_sort(const OffsetIndices<int> offsets,
       parallel_sort(group.begin(), group.end(), comparator);
     }
   });
+}
+
+static void grouped_sort_new(const OffsetIndices<int> offsets,
+                             const Span<float> weights,
+                             MutableSpan<int> indices)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  const auto comparator = [&](const int index_a, const int index_b) {
+    const float weight_a = weights[index_a];
+    const float weight_b = weights[index_b];
+    if (UNLIKELY(weight_a == weight_b)) {
+      /* Approach to make it stable. */
+      return index_a < index_b;
+    }
+    return weight_a < weight_b;
+  };
+
+  /*
+  std::cout << "offsets: ";
+  for (const int v : offsets.data()) {
+    std::cout << v << ", ";
+  }
+  std::cout << ";\n";
+  */
+
+  threading::parallel_for_weighted(
+      offsets.index_range(),
+      1024,
+      [&](const IndexRange range) {
+        for (const int group_index : range) {
+          MutableSpan<int> group = indices.slice(offsets[group_index]);
+          parallel_sort(group.begin(), group.end(), comparator);
+        }
+      },
+      [&](const IndexRange range) -> int64_t { return offsets[range].size(); });
 }
 
 static void find_points_by_group_index(const Span<int> indices,
@@ -123,7 +165,8 @@ static std::optional<Array<int>> sorted_indices(const fn::FieldContext &field_co
                                                 const int domain_size,
                                                 const Field<bool> selection_field,
                                                 const Field<int> group_id_field,
-                                                const Field<float> weight_field)
+                                                const Field<float> weight_field,
+                                                const bool is_new)
 {
   if (domain_size == 0) {
     return std::nullopt;
@@ -151,7 +194,12 @@ static std::optional<Array<int>> sorted_indices(const fn::FieldContext &field_co
     mask.to_indices<int>(gathered_indices);
     Array<float> weight_span(domain_size);
     array_utils::copy(weight, mask, weight_span.as_mutable_span());
-    grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
+    if (is_new) {
+      grouped_sort_new(Span({0, int(mask.size())}), weight_span, gathered_indices);
+    }
+    else {
+      grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
+    }
   }
   else {
     Array<int> gathered_group_id(mask.size());
@@ -162,7 +210,12 @@ static std::optional<Array<int>> sorted_indices(const fn::FieldContext &field_co
     if (!weight.is_single()) {
       Array<float> weight_span(mask.size());
       array_utils::gather(weight, mask, weight_span.as_mutable_span());
-      grouped_sort(offsets_to_sort.as_span(), weight_span, gathered_indices);
+      if (is_new) {
+        grouped_sort_new(offsets_to_sort.as_span(), weight_span, gathered_indices);
+      }
+      else {
+        grouped_sort(offsets_to_sort.as_span(), weight_span, gathered_indices);
+      }
     }
     parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
   }
@@ -199,6 +252,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<float> weight_field = params.extract_input<Field<float>>("Sort Weight");
   const bke::AttrDomain domain = bke::AttrDomain(params.node().custom1);
 
+  const bool is_new = params.extract_input<bool>("New");
+
   const bke::AnonymousAttributePropagationInfo propagation_info =
       params.get_output_propagation_info("Geometry");
 
@@ -213,7 +268,8 @@ static void node_geo_exec(GeoNodeExecParams params)
               instances->instances_num(),
               selection_field,
               group_id_field,
-              weight_field))
+              weight_field,
+              is_new))
       {
         bke::Instances *result = geometry::reorder_instaces(
             *instances, *indices, propagation_info);
@@ -239,7 +295,8 @@ static void node_geo_exec(GeoNodeExecParams params)
             src_component->attribute_domain_size(domain),
             selection_field,
             group_id_field,
-            weight_field);
+            weight_field,
+            is_new);
         if (!indices.has_value()) {
           continue;
         }

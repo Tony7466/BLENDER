@@ -73,6 +73,10 @@ void parallel_for_weighted_impl(IndexRange range,
                                 int64_t grain_size,
                                 FunctionRef<void(IndexRange)> function,
                                 FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn);
+void parallel_for_weighted_impl(IndexRange range,
+                                int64_t grain_size,
+                                FunctionRef<void(IndexRange)> function,
+                                FunctionRef<int64_t(IndexRange)> task_sizes_fn);
 void memory_bandwidth_bound_task_impl(FunctionRef<void()> function);
 }  // namespace detail
 
@@ -102,7 +106,12 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
  *
  * \param task_size_fn: Gets the task index as input and computes that tasks size.
  * \param grain_size: Determines approximately how large a combined task should be. For example, if
- * the grain size is 100, then 5 tasks of size 20 fit into it.
+ * the grain size is 100, then 5 tasks of size 20 fit into it. For different use cases, there can
+ * be different signatures:
+ *  - `int64_t (int64_t element)`
+ *  - `int64_t (IndexRange elements)`
+ * If Weight of each element is known as prefix sum, it's better to retrieve total weight of range
+ * instead of do this per each element.
  */
 template<typename Function, typename TaskSizeFn>
 inline void parallel_for_weighted(IndexRange range,
@@ -113,14 +122,27 @@ inline void parallel_for_weighted(IndexRange range,
   if (range.is_empty()) {
     return;
   }
-  detail::parallel_for_weighted_impl(
-      range, grain_size, function, [&](const IndexRange sub_range, MutableSpan<int64_t> r_sizes) {
-        for (const int64_t i : sub_range.index_range()) {
-          const int64_t task_size = task_size_fn(sub_range[i]);
-          BLI_assert(task_size >= 0);
-          r_sizes[i] = task_size;
-        }
-      });
+  if constexpr (std::is_invocable_r_v<int64_t, TaskSizeFn, int64_t>) {
+    detail::parallel_for_weighted_impl(
+        range,
+        grain_size,
+        function,
+        [&](const IndexRange sub_range, MutableSpan<int64_t> r_sizes) {
+          for (const int64_t i : sub_range.index_range()) {
+            const int64_t task_size = task_size_fn(sub_range[i]);
+            BLI_assert(task_size >= 0);
+            r_sizes[i] = task_size;
+          }
+        });
+  }
+  else {
+    detail::parallel_for_weighted_impl(
+        range, grain_size, function, [&](const IndexRange sub_range) -> int64_t {
+          const int64_t range_total = task_size_fn(sub_range);
+          BLI_assert(range_total >= 0);
+          return range_total;
+        });
+  }
 }
 
 /**
