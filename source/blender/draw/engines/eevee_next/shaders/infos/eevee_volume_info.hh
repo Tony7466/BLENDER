@@ -81,6 +81,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_occupancy_convert)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
     .additional_info("eevee_shared", "eevee_global_ubo", "draw_view")
+    .additional_info("eevee_sampling_data")
     .compute_source("eevee_volume_integration_comp.glsl")
     .local_group_size(VOLUME_INTEGRATION_GROUP_SIZE, VOLUME_INTEGRATION_GROUP_SIZE, 1)
     /* Inputs. */

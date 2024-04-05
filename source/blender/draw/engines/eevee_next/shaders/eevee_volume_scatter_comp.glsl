@@ -68,7 +68,7 @@ void main()
 
   float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
   float jitter = volume_froxel_jitter(froxel.xy, offset);
-  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
+  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, 0.5 - jitter)) * uniform_buf.volumes.inv_tex_size;
   vec3 vP = volume_jitter_to_view(uvw);
   vec3 P = drw_point_view_to_world(vP);
   vec3 V = drw_world_incident_vector(P);

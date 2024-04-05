@@ -49,7 +49,7 @@ void main()
 
   float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
   float jitter = volume_froxel_jitter(texel, offset) * uniform_buf.volumes.inv_tex_size.z;
-  float volume_z = view_z_to_volume_z(vPz) - jitter;
+  float volume_z = view_z_to_volume_z(vPz) + jitter;
 
   if (use_fast_method) {
     OccupancyBits occupancy_bits = occupancy_from_depth(volume_z, uniform_buf.volumes.tex_size.z);

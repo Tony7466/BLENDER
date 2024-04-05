@@ -42,7 +42,7 @@ struct VolumeProperties {
 
 VolumeProperties eval_froxel(ivec3 froxel, float jitter)
 {
-  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
+  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, 0.5 - jitter)) * uniform_buf.volumes.inv_tex_size;
 
   vec3 vP = volume_jitter_to_view(uvw);
   vec3 wP = point_view_to_world(vP);

@@ -230,6 +230,7 @@ void VolumeModule::end_sync()
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
   integration_ps_.bind_resources(inst_.uniform_data);
+  integration_ps_.bind_resources(inst_.sampling);
   integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_.current());
   integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_.current());
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
