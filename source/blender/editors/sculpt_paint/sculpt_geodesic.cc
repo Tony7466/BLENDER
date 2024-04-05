@@ -209,9 +209,9 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
             edge_tag[e_other].set();
 
-            /* technique to minimize collission in hash tables
-             * can also be used to avoid parallel data storage
-             * race collisions */
+            /* Open addressing with linear probing that minimizes
+             * collission in hash tables can also be used to avoid
+             * parallel data storage collisions */
             size_t idx = e_other % new_size;
             while (queue_next[idx] != UNASSIGNED) {
               ++idx;
