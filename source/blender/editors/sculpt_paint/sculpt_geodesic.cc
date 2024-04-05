@@ -94,6 +94,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   const Span<int> corner_edges = mesh->corner_edges();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
   float *dists = static_cast<float *>(MEM_malloc_arrayN(totvert, sizeof(float), __func__));
 
   if (ss->edge_to_face_map.is_empty()) {
@@ -147,8 +148,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   queue.reserve(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
-   Since initial vertex are few only, iterating over its neighbour edges
-   instead of over all edges scales better as mesh edge count increases */
+   * Since initial vertex are few only, iterating over its neighbour edges
+   * instead of over all edges scales better as mesh edge count increases */
   GSetIterator gs_iter;
   GSET_ITER (gs_iter, initial_verts) {
     const int seed_vert = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
@@ -164,8 +165,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   }
 
   /* queue and queue_next should not differ by a huge amount of size
- since they are an advancing front in the mesh hence no need
- to allocate much more memmory and keep the iteration range smaller  */
+   * since they are an advancing front in the mesh hence no need
+   * to allocate much more memmory and keep the iteration range smaller */
   size_t new_size = 4 * queue.size();
   queue_next.resize(new_size, UNASSIGNED);
 
@@ -208,8 +209,9 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
             edge_tag[e_other].set();
 
-            /* algorithm to minimize collission in hash tables
-             can be used to minimize parallel data storage */
+            /* technique to minimize collission in hash tables
+             * can also be used to avoid parallel data storage
+             * race collisions */
             size_t idx = e_other % new_size;
             while (queue_next[idx] != UNASSIGNED) {
               ++idx;

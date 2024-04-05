@@ -1464,7 +1464,7 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
   }
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS) {
-    /* Face sets needs to be restored their initial state on each iteration as they overwrite
+    /* Face sets needs to be restored their initial state on each iteration as the overwrite
      * existing data. */
     sculpt_expand_face_sets_restore(*ob, expand_cache);
   }
