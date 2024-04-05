@@ -9,7 +9,6 @@
 #pragma once
 
 #include "BLI_utility_mixins.hh"
-#include "nodes/vk_dispatch_node.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -70,13 +69,6 @@ struct VKResourceAccessInfo : NonCopyable {
   }
 };
 
-/**
- * All information to add a dispatch node.
- */
-struct VKDispatchInfo : NonCopyable {
-  VKDispatchNode::Data dispatch_node;
-  VKResourceAccessInfo resources;
-};
 
 enum class VKNodeType {
   UNUSED,

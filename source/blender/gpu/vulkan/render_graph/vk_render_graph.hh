@@ -91,7 +91,7 @@ class VKRenderGraph : public NonCopyable {
                                      const VkBufferImageCopy &region);
   void add_blit_image_node(VKBlitImageNode::Data &blit_image);
   void add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout);
-  void add_dispatch_node(const VKDispatchInfo &dispatch_info);
+  void add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.

@@ -13,6 +13,8 @@
 namespace blender::gpu::render_graph {
 /**
  * Container for storing shader descriptor set and push constants.
+ *
+ * Compute and graphic shaders use the same structure to setup the pipeline for execution.
  */
 struct VKPipelineData {
   VkPipeline vk_pipeline;

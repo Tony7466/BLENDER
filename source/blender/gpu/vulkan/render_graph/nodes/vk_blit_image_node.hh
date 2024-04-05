@@ -15,11 +15,6 @@
 
 namespace blender::gpu::render_graph {
 struct VKBlitImageNode : NonCopyable {
-  static constexpr bool uses_image_resources = true;
-  static constexpr bool uses_buffer_resources = false;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::BLIT_IMAGE;
-
   /**
    * Information stored inside the render graph node.
    */
@@ -30,10 +25,17 @@ struct VKBlitImageNode : NonCopyable {
     VkFilter filter;
   };
 
+  static constexpr bool uses_image_resources = true;
+  static constexpr bool uses_buffer_resources = false;
+  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+  static constexpr VKNodeType node_type = VKNodeType::BLIT_IMAGE;
+
   template<typename Node> static void set_node_data(Node &node, const Data &data)
   {
     node.blit_image = data;
   }
+
+  template<typename Node> static void free_data(Node & /*node*/) {}
 
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,

@@ -18,7 +18,6 @@
 namespace blender::gpu::render_graph {
 
 class VKCommandBuilder;
-struct VKDispatchInfo;
 
 class VKNodes {
 
@@ -45,7 +44,7 @@ class VKNodes {
                                            VkBuffer dst_buffer,
                                            const VkBufferImageCopy &region);
   NodeHandle add_synchronization_node();
-  NodeHandle add_dispatch_node(const VKDispatchInfo &dispatch_info);
+  NodeHandle add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 
   template<typename NodeClass, typename NodeClassData>
   NodeHandle add_node(NodeClassData &node_data)

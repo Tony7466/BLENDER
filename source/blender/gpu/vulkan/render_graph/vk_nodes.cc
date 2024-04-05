@@ -132,7 +132,7 @@ static void free_shader_data(VKPipelineData &data)
   MEM_SAFE_FREE(data.push_constants_data);
 }
 
-NodeHandle VKNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
+NodeHandle VKNodes::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
 {
   NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);

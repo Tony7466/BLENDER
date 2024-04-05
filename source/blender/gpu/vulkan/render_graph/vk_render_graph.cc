@@ -156,7 +156,7 @@ void VKRenderGraph::add_blit_image_node(VKBlitImageNode::Data &blit_image)
       resources_, resource_dependencies_, handle, blit_image);
 }
 
-void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
+void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
 {
   std::scoped_lock lock(mutex_);
   NodeHandle handle = nodes_.add_dispatch_node(dispatch_info);

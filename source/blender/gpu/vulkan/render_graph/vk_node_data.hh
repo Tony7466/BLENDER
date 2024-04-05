@@ -16,6 +16,7 @@
 #include "nodes/vk_copy_buffer_to_image_node.hh"
 #include "nodes/vk_copy_image_node.hh"
 #include "nodes/vk_copy_image_to_buffer_node.hh"
+#include "nodes/vk_dispatch_node.hh"
 #include "nodes/vk_fill_buffer_node.hh"
 #include "nodes/vk_synchronization_node.hh"
 #include "nodes/vk_unused_node.hh"
