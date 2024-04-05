@@ -37,7 +37,6 @@
 /* Mostly initialization functions. */
 #include "BKE_appdir.hh"
 #include "BKE_blender.hh"
-#include "BKE_blender_cli_command.hh"
 #include "BKE_brush.hh"
 #include "BKE_cachefile.hh"
 #include "BKE_callbacks.hh"
@@ -116,12 +115,13 @@
 /** \name Local Application State
  * \{ */
 
-/* written to by 'creator_args.c' */
+/* Written to by `creator_args.cc`. */
 ApplicationState app_state = []() {
   ApplicationState app_state{};
   app_state.signal.use_crash_handler = true;
   app_state.signal.use_abort_handler = true;
   app_state.exit_code_on_error.python = 0;
+  app_state.main_arg_deferred = nullptr;
   return app_state;
 }();
 
@@ -290,8 +290,6 @@ int main(int argc,
   int argv_num;
 #endif
 
-  /* --- end declarations --- */
-
   /* Ensure we free data on early-exit. */
   CreatorAtExitData app_init_data = {nullptr};
   BKE_blender_atexit_register(callback_main_atexit, &app_init_data);
@@ -315,7 +313,7 @@ int main(int argc,
   /* Win32 Unicode Arguments. */
   {
     /* NOTE: Can't use `guardedalloc` allocation here, as it's not yet initialized
-     * (it depends on the arguments passed in, which is what we're getting here!) */
+     * (it depends on the arguments passed in, which is what we're getting here!). */
     wchar_t **argv_16 = CommandLineToArgvW(GetCommandLineW(), &argc);
     argv = static_cast<char **>(malloc(argc * sizeof(char *)));
     for (argv_num = 0; argv_num < argc; argv_num++) {
@@ -323,7 +321,7 @@ int main(int argc,
     }
     LocalFree(argv_16);
 
-    /* free on early-exit */
+    /* Free on early-exit. */
     app_init_data.argv = argv;
     app_init_data.argv_num = argv_num;
   }
@@ -342,7 +340,7 @@ int main(int argc,
         MEM_use_guarded_allocator();
         break;
       }
-      if (STREQ(argv[i], "--")) {
+      if (STR_ELEM(argv[i], "--", "--command")) {
         break;
       }
     }
@@ -401,7 +399,7 @@ int main(int argc,
   main_callback_setup();
 
 #if defined(__APPLE__) && !defined(WITH_PYTHON_MODULE) && !defined(WITH_HEADLESS)
-  /* Patch to ignore argument finder gives us (PID?) */
+  /* Patch to ignore argument finder gives us (PID?). */
   if (argc == 2 && STRPREFIX(argv[1], "-psn_")) {
     static char firstfilebuf[512];
 
@@ -441,9 +439,9 @@ int main(int argc,
 
   BKE_callback_global_init();
 
-/* First test for background-mode (#Global.background) */
+/* First test for background-mode (#Global.background). */
 #ifndef WITH_PYTHON_MODULE
-  ba = BLI_args_create(argc, (const char **)argv); /* skip binary path */
+  ba = BLI_args_create(argc, (const char **)argv); /* Skip binary path. */
 
   /* Ensure we free on early exit. */
   app_init_data.ba = ba;
@@ -538,7 +536,7 @@ int main(int argc,
   FRS_set_context(C);
 #endif
 
-/* OK we are ready for it */
+/* OK we are ready for it. */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */
   BLI_args_parse(ba, ARG_PASS_FINAL, main_args_handle_load_file, C);
@@ -568,16 +566,9 @@ int main(int argc,
 #ifndef WITH_PYTHON_MODULE
   if (G.background) {
     int exit_code;
-    if (app_state.command.argv) {
-      const char *id = app_state.command.argv[0];
-      if (STREQ(id, "help")) {
-        BKE_blender_cli_command_print_help();
-        exit_code = EXIT_SUCCESS;
-      }
-      else {
-        exit_code = BKE_blender_cli_command_exec(
-            C, id, app_state.command.argc - 1, app_state.command.argv + 1);
-      }
+    if (app_state.main_arg_deferred != nullptr) {
+      exit_code = main_arg_handle_deferred();
+      MEM_freeN(app_state.main_arg_deferred);
     }
     else {
       exit_code = G.is_break ? EXIT_FAILURE : EXIT_SUCCESS;
@@ -586,6 +577,9 @@ int main(int argc,
     WM_exit(C, exit_code);
   }
   else {
+    /* Not supported, although it could be made to work if needed. */
+    BLI_assert(app_state.main_arg_deferred == nullptr);
+
     /* Shows the splash as needed. */
     WM_init_splash_on_startup(C);
 
