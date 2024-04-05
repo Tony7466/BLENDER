@@ -7,6 +7,7 @@
  * - uniform_buf.volumes
  */
 
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
@@ -14,6 +15,13 @@
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
+
+/* Per froxel jitter to break slices and flickering.
+ * Wrapped so that changing it is easier. */
+float volume_froxel_jitter(ivec2 froxel, float offset)
+{
+  return interlieved_gradient_noise(vec2(froxel), 0.0, offset);
+}
 
 /* Volume froxel texture normalized linear Z to view space Z.
  * Not dependant on projection matrix (as long as drw_view_is_perspective is consistent). */

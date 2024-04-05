@@ -105,7 +105,7 @@ void main()
 {
   ivec3 froxel = ivec3(ivec2(gl_FragCoord.xy), 0);
   float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
-  float jitter = interlieved_gradient_noise(vec2(froxel.xy), 0.0, offset);
+  float jitter = volume_froxel_jitter(froxel.xy, offset);
 
 #ifdef VOLUME_HOMOGENOUS
   /* Homogenous volumes only evaluate properties at volume entrance and write the same values for
