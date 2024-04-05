@@ -1,2 +1,3 @@
 Referenced by issue #119831, Vertex weights menu cannot be operated by mouse dragging
 Referenced by issue #120309, Remove Vertex Group Button doesnt work anymore in 4.1
+Referenced by commit 61b28227bbb3517ca2cd6d0ca1b20844b8f1b43c, Fix #120309: Remove from Vertex Group operator broken
