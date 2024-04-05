@@ -407,8 +407,8 @@ void blo_split_main(ListBase *mainlist, Main *main)
   {
     Main *libmain = BKE_main_new();
     libmain->curlib = lib;
-    libmain->versionfile = lib->versionfile;
-    libmain->subversionfile = lib->subversionfile;
+    libmain->versionfile = lib->runtime.versionfile;
+    libmain->subversionfile = lib->runtime.subversionfile;
     libmain->has_forward_compatibility_issues = !MAIN_VERSION_FILE_OLDER_OR_EQUAL(
         libmain, BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
     BLI_addtail(mainlist, libmain);
@@ -449,8 +449,8 @@ static void read_file_version(FileData *fd, Main *main)
     }
   }
   if (main->curlib) {
-    main->curlib->versionfile = main->versionfile;
-    main->curlib->subversionfile = main->subversionfile;
+    main->curlib->runtime.versionfile = main->versionfile;
+    main->curlib->runtime.subversionfile = main->subversionfile;
   }
 }
 
@@ -4668,8 +4668,8 @@ static FileData *read_library_file_data(FileData *basefd,
     mainptr->curlib->runtime.filedata = nullptr;
     mainptr->curlib->id.tag |= LIB_TAG_MISSING;
     /* Set lib version to current main one... Makes assert later happy. */
-    mainptr->versionfile = mainptr->curlib->versionfile = mainl->versionfile;
-    mainptr->subversionfile = mainptr->curlib->subversionfile = mainl->subversionfile;
+    mainptr->versionfile = mainptr->curlib->runtime.versionfile = mainl->versionfile;
+    mainptr->subversionfile = mainptr->curlib->runtime.subversionfile = mainl->subversionfile;
   }
 
   if (fd == nullptr) {
