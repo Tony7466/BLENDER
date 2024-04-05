@@ -781,13 +781,15 @@ BVHTree *bvhtree_from_mesh_corner_tris_ex(BVHTreeFromMesh *data,
   return tree;
 }
 
-static BitVector<> loose_verts_no_hidden_map_get(const Mesh &mesh, int *r_elem_active_len)
+static BitSpan loose_verts_no_hidden_map_get(const Mesh &mesh,
+                                             BitVector<> &r_mask,
+                                             int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
 
   int count = mesh.verts_num;
-  BitVector<> verts_mask(count, true);
+  r_mask.resize(count, true);
 
   AttributeAccessor attributes = mesh.attributes();
   const Span<int2> &edges = mesh.edges();
@@ -801,32 +803,34 @@ static BitVector<> loose_verts_no_hidden_map_get(const Mesh &mesh, int *r_elem_a
       continue;
     }
     for (const int vert_index : {edges[i][0], edges[i][1]}) {
-      if (verts_mask[vert_index]) {
-        verts_mask[vert_index].reset();
+      if (r_mask[vert_index]) {
+        r_mask[vert_index].reset();
         count--;
       }
     }
   }
 
-  for (const int vert_index : verts_mask.index_range()) {
-    if (verts_mask[vert_index] && hide_vert[vert_index]) {
-      verts_mask[vert_index].reset();
+  for (const int vert_index : r_mask.index_range()) {
+    if (r_mask[vert_index] && hide_vert[vert_index]) {
+      r_mask[vert_index].reset();
       count--;
     }
   }
 
   *r_elem_active_len = count;
 
-  return verts_mask;
+  return r_mask;
 }
 
-static BitVector<> loose_edges_no_hidden_map_get(const Mesh &mesh, int *r_elem_active_len)
+static BitSpan loose_edges_no_hidden_map_get(const Mesh &mesh,
+                                             BitVector<> &r_mask,
+                                             int *r_elem_active_len)
 {
   using namespace blender;
   using namespace blender::bke;
 
   int count = mesh.edges_num;
-  BitVector<> edge_mask(count, true);
+  r_mask.resize(count, true);
 
   AttributeAccessor attributes = mesh.attributes();
   const OffsetIndices<int> &faces = mesh.faces();
@@ -842,23 +846,23 @@ static BitVector<> loose_edges_no_hidden_map_get(const Mesh &mesh, int *r_elem_a
     }
     for (const int corner_index : faces[i]) {
       const int edge_index = corner_edges[corner_index];
-      if (edge_mask[edge_index]) {
-        edge_mask[edge_index].reset();
+      if (r_mask[edge_index]) {
+        r_mask[edge_index].reset();
         count--;
       }
     }
   }
 
-  for (const int edge_index : edge_mask.index_range()) {
-    if (edge_mask[edge_index] && hide_edge[edge_index]) {
-      edge_mask[edge_index].reset();
+  for (const int edge_index : r_mask.index_range()) {
+    if (r_mask[edge_index] && hide_edge[edge_index]) {
+      r_mask[edge_index].reset();
       count--;
     }
   }
 
   *r_elem_active_len = count;
 
-  return edge_mask;
+  return r_mask;
 }
 
 static BitVector<> corner_tris_no_hidden_map_get(const blender::OffsetIndices<int> faces,
@@ -942,8 +946,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
       BitSpan mask = {};
       BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN) {
-        mask_stack = loose_verts_no_hidden_map_get(*mesh, &mask_bits_act_len);
-        mask = mask_stack;
+        mask = loose_verts_no_hidden_map_get(*mesh, mask_stack, &mask_bits_act_len);
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseVertCache &loose_verts = mesh->loose_verts();
@@ -961,8 +964,7 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
       BitSpan mask = {};
       BitVector<> mask_stack;
       if (bvh_cache_type == BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN) {
-        mask_stack = loose_edges_no_hidden_map_get(*mesh, &mask_bits_act_len);
-        mask = mask_stack;
+        mask = loose_edges_no_hidden_map_get(*mesh, mask_stack, &mask_bits_act_len);
       }
       else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
         const LooseEdgeCache &loose_edges = mesh->loose_edges();
