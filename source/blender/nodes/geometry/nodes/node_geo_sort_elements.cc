@@ -66,14 +66,6 @@ static void grouped_sort_by_element(const OffsetIndices<int> offsets,
     return weight_a < weight_b;
   };
 
-  /*
-  std::cout << "offsets: ";
-  for (const int v : offsets.data()) {
-    std::cout << v << ", ";
-  }
-  std::cout << ";\n";
-  */
-
   threading::parallel_for_weighted(
       offsets.index_range(),
       1024,
@@ -100,14 +92,6 @@ static void grouped_sort_by_range(const OffsetIndices<int> offsets,
     }
     return weight_a < weight_b;
   };
-
-  /*
-  std::cout << "offsets: ";
-  for (const int v : offsets.data()) {
-    std::cout << v << ", ";
-  }
-  std::cout << ";\n";
-  */
 
   threading::parallel_for_weighted(
       offsets.index_range(),
