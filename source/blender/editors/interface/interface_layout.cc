@@ -3297,8 +3297,12 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
   return but;
 }
 
-uiBut *uiItemL_ex(
-    uiLayout *layout, const char *name, int icon, const bool highlight, const bool redalert)
+uiBut *uiItemL_ex(uiLayout *layout,
+                  const char *name,
+                  int icon,
+                  const bool highlight,
+                  const bool redalert,
+                  const char *tip)
 {
   uiBut *but = uiItemL_(layout, name, icon);
 
@@ -3309,6 +3313,12 @@ uiBut *uiItemL_ex(
 
   if (redalert) {
     UI_but_flag_enable(but, UI_BUT_REDALERT);
+  }
+
+  if (tip) {
+    /* UI_BTYPE_LABEL doesn't show tooltips. */
+    but->type = UI_BTYPE_BUT;
+    but->tip = tip;
   }
 
   return but;

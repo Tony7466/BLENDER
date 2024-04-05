@@ -24,8 +24,6 @@
 
 #include "WM_api.hh"
 
-#include "interface_intern.hh"
-
 #include <fmt/format.h>
 
 namespace blender::ui::bonecollections {
@@ -243,9 +241,7 @@ class BoneCollectionItem : public AbstractTreeViewItem {
       else {
         icon = ICON_BLANK1;
       }
-      uiBut *but = uiItemL_ex(sub, "", icon, false, false);
-      but->type = UI_BTYPE_BUT;
-      but->tip = tip;
+      uiBut *but = uiItemL_ex(sub, "", icon, false, false, tip);
     }
 
     /* Visibility eye icon. */

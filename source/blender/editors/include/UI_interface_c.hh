@@ -2925,7 +2925,12 @@ struct uiPropertySplitWrapper {
 uiPropertySplitWrapper uiItemPropertySplitWrapperCreate(uiLayout *parent_layout);
 
 void uiItemL(uiLayout *layout, const char *name, int icon); /* label */
-uiBut *uiItemL_ex(uiLayout *layout, const char *name, int icon, bool highlight, bool redalert);
+uiBut *uiItemL_ex(uiLayout *layout,
+                  const char *name,
+                  int icon,
+                  bool highlight,
+                  bool redalert,
+                  const char *tip = nullptr);
 /**
  * Helper to add a label and creates a property split layout if needed.
  */
