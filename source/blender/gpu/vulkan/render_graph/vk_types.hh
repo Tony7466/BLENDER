@@ -69,7 +69,6 @@ struct VKResourceAccessInfo : NonCopyable {
   }
 };
 
-
 enum class VKNodeType {
   UNUSED,
   CLEAR_COLOR_IMAGE,

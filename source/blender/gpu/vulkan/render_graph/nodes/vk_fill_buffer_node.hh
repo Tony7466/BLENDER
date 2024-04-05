@@ -42,6 +42,5 @@ struct VKFillBufferNode : NonCopyable {
   {
     NOT_YET_IMPLEMENTED
   }
-
 };
 }  // namespace blender::gpu::render_graph

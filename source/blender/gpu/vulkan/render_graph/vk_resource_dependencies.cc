@@ -11,9 +11,9 @@
 namespace blender::gpu::render_graph {
 
 void VKResourceDependencies::add_read_resource(NodeHandle handle,
-                                VersionedResource resource_handle,
-                                VkAccessFlags vk_access_flags,
-                                VkImageLayout vk_image_layout)
+                                               VersionedResource resource_handle,
+                                               VkAccessFlags vk_access_flags,
+                                               VkImageLayout vk_image_layout)
 {
   ResourceUsage usage = {};
   usage.resource = resource_handle;
@@ -24,9 +24,9 @@ void VKResourceDependencies::add_read_resource(NodeHandle handle,
 }
 
 void VKResourceDependencies::add_write_resource(NodeHandle handle,
-                                 VersionedResource resource_handle,
-                                 VkAccessFlags vk_access_flags,
-                                 VkImageLayout vk_image_layout)
+                                                VersionedResource resource_handle,
+                                                VkAccessFlags vk_access_flags,
+                                                VkImageLayout vk_image_layout)
 {
   ResourceUsage usage = {};
   usage.resource = resource_handle;
@@ -35,7 +35,6 @@ void VKResourceDependencies::add_write_resource(NodeHandle handle,
   ensure_vector_sizes(handle);
   write_resources_per_node_[handle].resources.append(usage);
 }
-
 
 void VKResourceDependencies::remove_nodes(Span<NodeHandle> node_handles)
 {

@@ -10,7 +10,6 @@
 
 namespace blender::gpu::render_graph {
 
-
 NodeHandle VKNodes::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
 {
   NodeHandle handle = allocate();

@@ -48,7 +48,6 @@ struct VKClearColorImageNode : NonCopyable {
                                      &data.vk_clear_color_value,
                                      1,
                                      &data.vk_image_subresource_range);
-
   }
 };
 }  // namespace blender::gpu::render_graph
