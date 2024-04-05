@@ -263,7 +263,7 @@ void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, g
 
 struct PBVHBatch {
   Vector<int> vbos;
-  GPUBatch *tris = nullptr, *lines = nullptr;
+  gpu::Batch *tris = nullptr, *lines = nullptr;
   int tris_count = 0, lines_count = 0;
   /* Coarse multi-resolution, will use full-sized VBOs only index buffer changes. */
   bool is_coarse = false;
@@ -1053,10 +1053,12 @@ struct PBVHBatches {
 
   void create_index_faces(const PBVH_GPU_Args &args)
   {
-    const bke::AttributeAccessor attributes = args.mesh->attributes();
-    const VArray material_indices = *attributes.lookup_or_default<int>(
-        "material_index", bke::AttrDomain::Face, 0);
-    material_index = material_indices[args.tri_faces[args.prim_indices.first()]];
+    if (!args.prim_indices.is_empty()) {
+      const bke::AttributeAccessor attributes = args.mesh->attributes();
+      const VArray material_indices = *attributes.lookup_or_default<int>(
+          "material_index", bke::AttrDomain::Face, 0);
+      material_index = material_indices[args.tri_faces[args.prim_indices.first()]];
+    }
 
     const Span<int2> edges = args.mesh->edges();
 
@@ -1144,8 +1146,10 @@ struct PBVHBatches {
     const BitGroupVector<> &grid_hidden = args.subdiv_ccg->grid_hidden;
     const Span<int> grid_to_face_map = args.subdiv_ccg->grid_to_face_map;
 
-    material_index = material_indices[BKE_subdiv_ccg_grid_to_face_index(
-        *args.subdiv_ccg, args.grid_indices.first())];
+    if (!args.grid_indices.is_empty()) {
+      material_index = material_indices[BKE_subdiv_ccg_grid_to_face_index(
+          *args.subdiv_ccg, args.grid_indices.first())];
+    }
 
     needs_tri_index = true;
     int gridsize = args.ccg_key.grid_size;
@@ -1400,20 +1404,20 @@ void node_free(PBVHBatches *batches)
   delete batches;
 }
 
-GPUBatch *tris_get(PBVHBatches *batches,
-                   const Span<AttributeRequest> attrs,
-                   const PBVH_GPU_Args &args,
-                   bool do_coarse_grids)
+gpu::Batch *tris_get(PBVHBatches *batches,
+                     const Span<AttributeRequest> attrs,
+                     const PBVH_GPU_Args &args,
+                     bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
   PBVHBatch &batch = batches->ensure_batch(attrs, args, do_coarse_grids);
   return batch.tris;
 }
 
-GPUBatch *lines_get(PBVHBatches *batches,
-                    const Span<AttributeRequest> attrs,
-                    const PBVH_GPU_Args &args,
-                    bool do_coarse_grids)
+gpu::Batch *lines_get(PBVHBatches *batches,
+                      const Span<AttributeRequest> attrs,
+                      const PBVH_GPU_Args &args,
+                      bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
   PBVHBatch &batch = batches->ensure_batch(attrs, args, do_coarse_grids);
