@@ -4558,7 +4558,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   curve_but->gradient_type = bg;
 
   /* Sliders for selected curve point. */
-  Vector<CurveMapPoint *> cmps{};
+  Vector<CurveMapPoint *> cmps;
   bool point_last_or_first = false;
   for (int i = 0; i < cm->totpoint; i++) {
     const bool selected = cm->curve[i].flag & CUMA_SELECT;
@@ -4662,8 +4662,9 @@ static void curvemap_buttons_layout(uiLayout *layout,
 
     /* Curve handle position */
     active_cm->center_x = 0.0f;
-    for (CurveMapPoint *cmp : cmps)
+    for (const CurveMapPoint* cmp : cmps) {
       active_cm->center_x += cmp->x;
+    }
     active_cm->center_x /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
@@ -4686,8 +4687,9 @@ static void curvemap_buttons_layout(uiLayout *layout,
     });
 
     active_cm->center_y = 0.0f;
-    for (CurveMapPoint *cmp : cmps)
+    for (const CurveMapPoint* cmp : cmps) {
       active_cm->center_y += cmp->y;
+    }
     active_cm->center_y /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
