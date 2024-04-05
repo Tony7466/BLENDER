@@ -6154,7 +6154,7 @@ void SCULPT_topology_islands_ensure(Object *ob)
 
     stack.clear();
     stack.append(vertex);
-    visit.add_new(vertex);
+    visit.add(vertex);
 
     while (stack.size()) {
       PBVHVertRef vertex2 = stack.pop_last();
