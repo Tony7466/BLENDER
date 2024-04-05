@@ -370,7 +370,7 @@ void UI_view_item_begin_rename(AbstractViewItem &item)
   item.begin_renaming();
 }
 
-void UI_view_item_cancel_rename(blender::ui::AbstractViewItem& item)
+void UI_view_item_cancel_rename(blender::ui::AbstractViewItem &item)
 {
   item.end_renaming();
 }
