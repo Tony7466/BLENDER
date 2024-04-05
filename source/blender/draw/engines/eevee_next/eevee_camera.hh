@@ -114,7 +114,7 @@ class Camera {
 
   /**
    * Getters
-   **/
+   */
   const CameraData &data_get() const
   {
     BLI_assert(data_.initialized);

@@ -823,12 +823,19 @@ Layer &TreeNode::as_layer()
   return *reinterpret_cast<Layer *>(this);
 }
 
-LayerGroup *TreeNode::parent_group() const
+const LayerGroup *TreeNode::parent_group() const
 {
   return (this->parent) ? &this->parent->wrap() : nullptr;
 }
-
-TreeNode *TreeNode::parent_node() const
+LayerGroup *TreeNode::parent_group()
+{
+  return (this->parent) ? &this->parent->wrap() : nullptr;
+}
+const TreeNode *TreeNode::parent_node() const
+{
+  return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
+}
+TreeNode *TreeNode::parent_node()
 {
   return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
 }
@@ -932,7 +939,7 @@ Layer::Layer(const Layer &other) : Layer()
   /* Note: We do not duplicate the frame storage since it is only needed for writing to file. */
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
-  /* Tag the frames map, so the frame storage is recreated once the DNA is saved.*/
+  /* Tag the frames map, so the frame storage is recreated once the DNA is saved. */
   this->tag_frames_map_changed();
 
   /* TODO: what about masks cache? */
