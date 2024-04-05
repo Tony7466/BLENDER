@@ -357,12 +357,12 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
           *ctx.object, tmd, curves, curves_mask, drawing.vertex_colors_for_write());
       break;
     case MOD_GREASE_PENCIL_COLOR_FILL:
-      modify_fill_color(*ctx.object, tmd, curves, curves_mask);
+      modify_fill_color(*ctx.object, tmd, drawing, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_BOTH:
       modify_stroke_color(
           *ctx.object, tmd, curves, curves_mask, drawing.vertex_colors_for_write());
-      modify_fill_color(*ctx.object, tmd, curves, curves_mask);
+      modify_fill_color(*ctx.object, tmd, drawing, curves_mask);
       break;
     case MOD_GREASE_PENCIL_COLOR_HARDNESS:
       BLI_assert_unreachable();
