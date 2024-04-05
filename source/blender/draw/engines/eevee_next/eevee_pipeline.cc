@@ -1087,14 +1087,14 @@ VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
     float3 ss_corner = math::project_point(projection_matrix, vs_corner);
 
     z_range = bounds::min_max(z_range, vs_corner.z);
-    if (vs_corner.z < 0.0f) {
-      screen_bounds = bounds::min_max(screen_bounds, ss_corner.xy());
-    }
-    else {
+    if (camera.is_perspective() && vs_corner.z >= 1.0e-8f) {
       /* If the object is crossing the z=0 plane, we can't determine its 2D bounds easily.
        * In this case, consider the object covering the whole screen.
        * Still continue the loop for the Z range. */
       screen_bounds = Bounds<float2>(float2(-1.0f), float2(1.0f));
+    }
+    else {
+      screen_bounds = bounds::min_max(screen_bounds, ss_corner.xy());
     }
   }
 }

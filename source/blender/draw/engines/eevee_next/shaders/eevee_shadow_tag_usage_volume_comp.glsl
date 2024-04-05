@@ -32,7 +32,7 @@ void main()
   float jitter = interlieved_gradient_noise(vec2(froxel.xy), 0.0, offset);
 
   vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
-  vec3 ss_P = volume_to_screen(uvw);
+  vec3 ss_P = volume_resolve_to_screen(uvw);
   vec3 vP = drw_point_screen_to_view(vec3(ss_P.xy, ss_P.z));
   vec3 P = drw_point_view_to_world(vP);
 

@@ -43,10 +43,8 @@ struct VolumeProperties {
 VolumeProperties eval_froxel(ivec3 froxel, float jitter)
 {
   vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, jitter)) * uniform_buf.volumes.inv_tex_size;
-  vec3 ss_P = volume_to_screen(uvw);
 
-  /* TODO(fclem): Wrong with the infinite matrix. */
-  vec3 vP = get_view_space_from_depth(ss_P.xy, ss_P.z);
+  vec3 vP = volume_jitter_to_view(uvw);
   vec3 wP = point_view_to_world(vP);
 #if !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
 #  ifdef GRID_ATTRIBUTES
@@ -127,7 +125,6 @@ void main()
     for (int i = 0; i < 32; i++) {
       froxel.z = j * 32 + i;
 
-      /* TODO(fclem): Limit processing range to bounding box to avoid processing other objects. */
       if (froxel.z >= imageSize(out_scattering_img).z) {
         break;
       }

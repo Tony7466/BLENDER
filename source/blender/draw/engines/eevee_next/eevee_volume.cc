@@ -78,6 +78,10 @@ void VolumeModule::end_sync()
   float integration_start = scene_eval->eevee.volumetric_start;
   float integration_end = scene_eval->eevee.volumetric_end;
 
+  if (!inst_.camera.is_camera_object() && inst_.camera.is_orthographic()) {
+    integration_start = -integration_end;
+  }
+
   std::optional<Bounds<float>> volume_bounds = inst_.pipelines.volume.object_integration_range();
 
   if (volume_bounds && !inst_.world.has_volume()) {
@@ -86,21 +90,20 @@ void VolumeModule::end_sync()
     integration_end = math::min(integration_end, -volume_bounds.value().min);
   }
 
+  float near = math::min(-integration_start, clip_start + 1e-4f);
+  float far = math::max(-integration_end, clip_end - 1e-4f);
+
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
     sample_distribution = 4.0f * math::max(1.0f - sample_distribution, 1e-2f);
-
-    float near = math::min(-integration_start, clip_start + 1e-4f);
-    float far = math::max(-integration_end, clip_end - 1e-4f);
 
     data_.depth_near = (far - near * exp2(1.0f / sample_distribution)) / (far - near);
     data_.depth_far = (1.0f - data_.depth_near) / near;
     data_.depth_distribution = sample_distribution;
   }
   else {
-    /* FIXME: This is not working in camera view. */
-    data_.depth_near = -integration_start;
-    data_.depth_far = -integration_end;
+    data_.depth_near = near;
+    data_.depth_far = far;
     data_.depth_distribution = 0.0f; /* Unused. */
   }
 
@@ -259,8 +262,8 @@ void VolumeModule::draw_prepass(View &view)
   inst_.pipelines.world_volume.render(view);
 
   float left, right, bottom, top, near, far;
-  float4x4 winmat = view.winmat();
-  projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
+  const float4x4 winmat_view = view.winmat();
+  projmat_dimensions(winmat_view.ptr(), &left, &right, &bottom, &top, &near, &far);
 
   /* Just like up-sampling matrix computation, we have to be careful to where to put the bounds of
    * our froxel volume so that a 2D pixel covers exactly the number of pixel in a tile. */
@@ -271,22 +274,32 @@ void VolumeModule::draw_prepass(View &view)
   right = left + volume_size.x;
   top = bottom + volume_size.y;
 
+  /* TODO(fclem): These new matrices are created from the jittered main view matrix. It should be
+   * better to create them from the non-jittered one to avoid over-blurring. */
+  float4x4 winmat_infinite, winmat_finite;
   /* Create an infinite projection matrix to avoid far clipping plane clipping the object. This
    * way, surfaces that are further away than the far clip plane will still be voxelized.*/
-  float4x4 winmat_infinite;
   winmat_infinite = view.is_persp() ?
                         math::projection::perspective_infinite(left, right, bottom, top, near) :
                         math::projection::orthographic_infinite(left, right, bottom, top);
+  /* We still need a bounded projection matrix to get correct froxel location. */
+  winmat_finite = view.is_persp() ?
+                      math::projection::perspective(left, right, bottom, top, near, far) :
+                      math::projection::orthographic(left, right, bottom, top, near, far);
   /* Anti-Aliasing / Super-Sampling jitter. */
   float2 jitter = inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U);
   /* Wrap to keep first sample centered (0,0) and scale to convert to NDC. */
   jitter = math::fract(jitter + 0.5f) * 2.0f - 1.0f;
   /* Convert to pixel size. */
   jitter *= data_.inv_tex_size.xy();
-  /* Time 2 to convert to NDC. */
+  /* Apply jitter to both matrices. */
   winmat_infinite = math::projection::translate(winmat_infinite, jitter);
+  winmat_finite = math::projection::translate(winmat_finite, jitter);
 
-  View volume_view = {"Volume View"};
+  data_.winmat_finite = winmat_finite;
+  data_.wininv_finite = math::invert(winmat_finite);
+  inst_.uniform_data.push_update();
+
   volume_view.sync(view.viewmat(), winmat_infinite);
 
   if (inst_.pipelines.volume.is_enabled()) {

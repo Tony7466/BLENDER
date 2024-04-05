@@ -94,6 +94,8 @@ class VolumeModule {
   Texture dummy_scatter_tx_;
   Texture dummy_transmit_tx_;
 
+  View volume_view = {"Volume View"};
+
  public:
   VolumeModule(Instance &inst, VolumesInfoData &data) : inst_(inst), data_(data)
   {

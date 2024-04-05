@@ -501,6 +501,11 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
  * \{ */
 
 struct VolumesInfoData {
+  /* During object voxelization, we need to use an infinite projection matrix to avoid clipping
+   * faces. But they cannot be used for recovering the view position from froxel position as they
+   * are not invertible. We store the finite projection matrix and use it for this purpose. */
+  float4x4 winmat_finite;
+  float4x4 wininv_finite;
   /* Convert volume frustum UV(+ linear Z) coordinates into previous frame UV(+ linear Z). */
   float4x4 history_matrix;
   /* Size of the froxel grid texture. */
