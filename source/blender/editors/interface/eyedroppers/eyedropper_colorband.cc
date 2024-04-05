@@ -38,11 +38,6 @@
 
 #include "eyedropper_intern.hh"
 
-struct Colorband_RNAUpdateCb {
-  PointerRNA ptr;
-  PropertyRNA *prop;
-};
-
 struct EyedropperColorband {
   int event_xy_last[2];
   /* Alpha is currently fixed at 1.0, may support in future. */
@@ -85,12 +80,6 @@ static bool eyedropper_colorband_init(bContext *C, wmOperator *op)
     else {
       /* When invoked from a button it's in custom_data field. */
       band = (ColorBand *)but->custom_data;
-    }
-
-    if (band) {
-      rna_update_ptr = ((Colorband_RNAUpdateCb *)but->func_argN)->ptr;
-      rna_update_prop = ((Colorband_RNAUpdateCb *)but->func_argN)->prop;
-      is_undo = UI_but_flag_is_set(but, UI_BUT_UNDO);
     }
   }
 
