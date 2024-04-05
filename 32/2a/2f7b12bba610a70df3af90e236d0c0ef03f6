@@ -1,1 +1,1 @@
-Referenced by pull request #120299, Cycles: Properly default to Metal-RT off unless GPU is a M3 or newer
+Referenced by pull request #120299, Cycles: Default to Metal-RT off unless the device is a M3 or newer
