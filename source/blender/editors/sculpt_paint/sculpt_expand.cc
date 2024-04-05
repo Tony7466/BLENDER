@@ -610,6 +610,7 @@ static float *sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertR
       const float *co = SCULPT_vertex_co_get(ss, symm_vertex);
       tbb::parallel_for(0, totvert, [&](int i) {
         PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+
         dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
       });
     }
@@ -2124,7 +2125,6 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   /* Do nothing when the mesh has 0 vertices. */
   const int totvert = SCULPT_vertex_count_get(ss);
   if (totvert == 0) {
-    // sculpt_expand_cache_free(ss); not needed
     return OPERATOR_CANCELLED;
   }
 
