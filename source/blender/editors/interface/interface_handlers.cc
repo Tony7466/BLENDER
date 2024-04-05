@@ -3728,6 +3728,10 @@ static void ui_do_but_textedit(
           }
         }
 
+        blender::ui::AbstractViewItem *view_item = UI_region_views_find_active_item(
+            data->region);
+        UI_view_item_cancel_rename(*view_item);
+
 #ifdef WITH_INPUT_IME
         /* skips button handling since it is not wanted */
         if (is_ime_composing) {

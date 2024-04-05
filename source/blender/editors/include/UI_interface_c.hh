@@ -3361,6 +3361,7 @@ bool UI_view_item_matches(const blender::ui::AbstractViewItem &a,
  */
 bool UI_view_item_can_rename(const blender::ui::AbstractViewItem &item);
 void UI_view_item_begin_rename(blender::ui::AbstractViewItem &item);
+void UI_view_item_cancel_rename(blender::ui::AbstractViewItem &item);
 
 bool UI_view_item_supports_drag(const blender::ui::AbstractViewItem &item);
 /**

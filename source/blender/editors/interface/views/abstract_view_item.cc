@@ -370,6 +370,11 @@ void UI_view_item_begin_rename(AbstractViewItem &item)
   item.begin_renaming();
 }
 
+void UI_view_item_cancel_rename(blender::ui::AbstractViewItem& item)
+{
+  item.end_renaming();
+}
+
 bool UI_view_item_supports_drag(const AbstractViewItem &item)
 {
   return item.create_drag_controller() != nullptr;
