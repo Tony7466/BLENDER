@@ -40,11 +40,9 @@ void main()
 
   if (frame < frameCurrent) {
     if (use_custom_color) {
-      /* Custom color: previous frames color is darker than current frame */
       interp.color.rgb = customColorPre;
     }
     else {
-      /* black - before frameCurrent */
       if (selected) {
         intensity = calc_intensity(frameStart, frame, frameCurrent, 0.25, 0.75);
       }
@@ -56,11 +54,9 @@ void main()
   }
   else if (frame > frameCurrent) {
     if (use_custom_color) {
-      /* Custom color: next frames color is equal to user selected color */
       interp.color.rgb = customColorPost;
     }
     else {
-      /* blue - after frameCurrent */
       if (selected) {
         intensity = calc_intensity(frameCurrent, frame, frameEnd, 0.25, 0.75);
       }
@@ -72,11 +68,11 @@ void main()
     }
   }
   else {
+    /* Current Frame. */
     if (use_custom_color) {
       interp.color.rgb = colorCurrentFrame.rgb;
     }
     else {
-      /* green - on frameCurrent */
       if (selected) {
         intensity = 0.92f;
       }

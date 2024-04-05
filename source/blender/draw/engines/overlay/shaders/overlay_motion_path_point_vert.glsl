@@ -33,7 +33,7 @@ void main()
       /* Bias more to get these on top of regular points */
       gl_Position.z -= 1e-4;
     }
-    /* Draw big green dot where the current frame is.
+    /* Draw special dot where the current frame is.
      * NOTE: this is only done when keyframes are shown, since this adds similar types of clutter
      */
     if (frame == frameCurrent) {
@@ -42,11 +42,14 @@ void main()
       /* Bias more to get these on top of keyframes */
       gl_Position.z -= 1e-4;
     }
-    if (use_custom_color) {
-      if (frame < frameCurrent) {
+    else if (frame < frameCurrent) {
+      if (use_custom_color) {
         finalColor = vec4(customColorPre, 1.0);
       }
-      else if (frame > frameCurrent) {
+    }
+    else {
+      /* frame > frameCurrent */
+      if (use_custom_color) {
         finalColor = vec4(customColorPost, 1.0);
       }
     }
