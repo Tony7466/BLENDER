@@ -214,10 +214,15 @@ void ED_screen_draw_edges(wmWindow *win)
   }
 }
 
-void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
+void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir)
 {
-  const eScreenDir dir = area_getorientation(sa1, sa2);
-  if (dir == SCREEN_DIR_NONE) {
+  if (dir == SCREEN_DIR_NONE || !sa2) {
+    /* Darken source if docking. Done here because might be a different window. */
+    rctf rect;
+    BLI_rctf_rcti_copy(&rect, &sa1->totrct);
+    float darken[4] = {0.0f, 0.0f, 0.0f, 0.8f};
+    UI_draw_roundbox_corner_set(UI_CNR_ALL);
+    UI_draw_roundbox_4fv_ex(&rect, darken, nullptr, 1.0f, nullptr, U.pixelsize, 6 * U.pixelsize);
     return;
   }
 
@@ -233,32 +238,15 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
   combined.ymax = vertical ? std::max(sa1->totrct.ymax, sa2->totrct.ymax) :
                              std::min(sa1->totrct.ymax, sa2->totrct.ymax);
 
-  uint pos_id = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  /* Highlight source (sa1) within combined area. */
-  immUniformColor4fv(blender::float4{1.0f, 1.0f, 1.0f, 0.10f});
-  immRectf(pos_id,
-           std::max(float(sa1->totrct.xmin), combined.xmin),
-           std::max(float(sa1->totrct.ymin), combined.ymin),
-           std::min(float(sa1->totrct.xmax), combined.xmax),
-           std::min(float(sa1->totrct.ymax), combined.ymax));
-
-  /* Highlight destination (sa2) within combined area. */
-  immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.25f});
-  immRectf(pos_id,
-           std::max(float(sa2->totrct.xmin), combined.xmin),
-           std::max(float(sa2->totrct.ymin), combined.ymin),
-           std::min(float(sa2->totrct.xmax), combined.xmax),
-           std::min(float(sa2->totrct.ymax), combined.ymax));
-
   int offset1;
   int offset2;
   area_getoffsets(sa1, sa2, dir, &offset1, &offset2);
   if (offset1 < 0 || offset2 > 0) {
     /* Show partial areas that will be closed. */
+    uint pos_id = GPU_vertformat_attr_add(
+        immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    GPU_blend(GPU_BLEND_ALPHA);
     immUniformColor4fv(blender::float4{0.0f, 0.0f, 0.0f, 0.8f});
     if (vertical) {
       if (sa1->totrct.xmin < combined.xmin) {
@@ -288,65 +276,102 @@ void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2)
         immRectf(pos_id, sa2->totrct.xmin, sa2->totrct.ymax, sa2->totrct.xmax, combined.ymax);
       }
     }
+    immUnbindProgram();
+    GPU_blend(GPU_BLEND_NONE);
   }
-
-  immUnbindProgram();
-  GPU_blend(GPU_BLEND_NONE);
 
   /* Outline the combined area. */
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
-  UI_draw_roundbox_4fv(&combined, false, 7 * U.pixelsize, blender::float4{1.0f, 1.0f, 1.0f, 0.8f});
+  float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+  float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
+  UI_draw_roundbox_4fv_ex(&combined, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
+}
+
+void screen_draw_dock_preview(const struct wmWindow * /* win */,
+                              struct ScrArea *area,
+                              eAreaDockTarget dock_target,
+                              float factor)
+{
+  rctf dest;
+  BLI_rctf_rcti_copy(&dest, &area->totrct);
+
+  if (dock_target == DOCKING_RIGHT) {
+    dest.xmin = std::min(dest.xmin + area->winx * (1.0f - factor),
+                         dest.xmax - AREAMINX * UI_SCALE_FAC);
+  }
+  else if (dock_target == DOCKING_LEFT) {
+    dest.xmax = std::max(dest.xmax - area->winx * (1.0f - factor),
+                         dest.xmin + AREAMINX * UI_SCALE_FAC);
+  }
+  else if (dock_target == DOCKING_TOP) {
+    dest.ymin = std::min(dest.ymin + area->winy * (1.0f - factor),
+                         dest.ymax - HEADERY * UI_SCALE_FAC);
+  }
+  else if (dock_target == DOCKING_BOTTOM) {
+    dest.ymax = std::max(dest.ymax - area->winy * (1.0f - factor),
+                         dest.ymin + HEADERY * UI_SCALE_FAC);
+  }
+
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
+  float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+  UI_draw_roundbox_4fv_ex(&dest,
+                          (dock_target == DOCKING_NONE) ? nullptr : inner,
+                          nullptr,
+                          1.0f,
+                          outline,
+                          U.pixelsize,
+                          6 * U.pixelsize);
 }
 
 void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const float fac)
 {
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  float outline[4] = {1.0f, 1.0f, 1.0f, 0.4f};
+  float inner[4] = {1.0f, 1.0f, 1.0f, 0.15f};
+  float border[4];
+  UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, border);
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
 
-  /* Split-point. */
-  GPU_blend(GPU_BLEND_ALPHA);
+  rctf rect;
+  BLI_rctf_rcti_copy(&rect, &area->totrct);
 
-  immUniformColor4ub(255, 255, 255, 100);
+  if (fac < 0.0001 || fac > 0.9999) {
+    /* Highlight the entire area. */
+    UI_draw_roundbox_4fv_ex(&rect, inner, nullptr, 1.0f, outline, U.pixelsize, 7 * U.pixelsize);
+    return;
+  }
 
-  immBegin(GPU_PRIM_LINES, 2);
+  float x = (1 - fac) * rect.xmin + fac * rect.xmax;
+  float y = (1 - fac) * rect.ymin + fac * rect.ymax;
+  CLAMP(x, rect.xmin + (AREAMINX * UI_SCALE_FAC), rect.xmax - (AREAMINX * UI_SCALE_FAC));
+  CLAMP(y, rect.ymin + (HEADERY * UI_SCALE_FAC), rect.ymax - (HEADERY * UI_SCALE_FAC));
+  float half_line_width = 2.0f * U.pixelsize;
 
+  /* Outlined rectangle to left/above split position. */
+  rect.xmax = (dir_axis == SCREEN_AXIS_V) ? x - half_line_width : rect.xmax;
+  rect.ymax = (dir_axis == SCREEN_AXIS_H) ? y - half_line_width : rect.ymax;
+
+  UI_draw_roundbox_4fv_ex(&rect, inner, nullptr, 1.0f, outline, U.pixelsize, 7 * U.pixelsize);
+
+  /* Outlined rectangle to right/below split position. */
   if (dir_axis == SCREEN_AXIS_H) {
-    const float y = (1 - fac) * area->totrct.ymin + fac * area->totrct.ymax;
-
-    immVertex2f(pos, area->totrct.xmin, y);
-    immVertex2f(pos, area->totrct.xmax, y);
-
-    immEnd();
-
-    immUniformColor4ub(0, 0, 0, 100);
-
-    immBegin(GPU_PRIM_LINES, 2);
-
-    immVertex2f(pos, area->totrct.xmin, y + 1);
-    immVertex2f(pos, area->totrct.xmax, y + 1);
-
-    immEnd();
+    rect.ymin = y + half_line_width;
+    rect.ymax = area->totrct.ymax;
   }
   else {
-    BLI_assert(dir_axis == SCREEN_AXIS_V);
-    const float x = (1 - fac) * area->totrct.xmin + fac * area->totrct.xmax;
-
-    immVertex2f(pos, x, area->totrct.ymin);
-    immVertex2f(pos, x, area->totrct.ymax);
-
-    immEnd();
-
-    immUniformColor4ub(0, 0, 0, 100);
-
-    immBegin(GPU_PRIM_LINES, 2);
-
-    immVertex2f(pos, x + 1, area->totrct.ymin);
-    immVertex2f(pos, x + 1, area->totrct.ymax);
-
-    immEnd();
+    rect.xmin = x + half_line_width;
+    rect.xmax = area->totrct.xmax;
   }
+  UI_draw_roundbox_4fv_ex(&rect, inner, nullptr, 1.0f, outline, U.pixelsize, 7 * U.pixelsize);
 
-  GPU_blend(GPU_BLEND_NONE);
-
-  immUnbindProgram();
+  /* Darken the split position itself. */
+  if (dir_axis == SCREEN_AXIS_H) {
+    rect.ymin = y - half_line_width;
+    rect.ymax = y + half_line_width;
+  }
+  else {
+    rect.xmin = x - half_line_width;
+    rect.xmax = x + half_line_width;
+  }
+  UI_draw_roundbox_4fv(&rect, true, 0.0f, border);
 }

@@ -47,6 +47,15 @@ enum eScreenAxis {
   SCREEN_AXIS_V = 'v',
 };
 
+enum eAreaDockTarget {
+  DOCKING_NONE = 0,
+  DOCKING_RIGHT,  /* Right diagonal quadrant of area. */
+  DOCKING_LEFT,   /* Left diagonal quadrant of area. */
+  DOCKING_TOP,    /* Top diagonal quadrant of area. */
+  DOCKING_BOTTOM, /* Bottom diagonal quadrant of area. */
+  DOCKING_CENTER, /* Middle portion of area. */
+};
+
 #define AZONESPOTW UI_HEADER_OFFSET         /* width of corner #AZone - max */
 #define AZONESPOTH (0.6f * U.widget_unit)   /* height of corner #AZone */
 #define AZONEFADEIN (5.0f * U.widget_unit)  /* when #AZone is totally visible */
@@ -79,8 +88,12 @@ void region_toggle_hidden(bContext *C, ARegion *region, bool do_fade);
  * \param sa1: Area from which the resultant originates.
  * \param sa2: Target area that will be replaced.
  */
-void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2);
+void screen_draw_join_highlight(ScrArea *sa1, ScrArea *sa2, eScreenDir dir);
 void screen_draw_split_preview(ScrArea *area, eScreenAxis dir_axis, float fac);
+void screen_draw_dock_preview(const wmWindow *win,
+                              ScrArea *area,
+                              eAreaDockTarget dock_target,
+                              float fac);
 
 /* `screen_edit.cc` */
 
