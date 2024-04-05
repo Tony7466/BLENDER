@@ -1,2 +1,3 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by pull request #120300, Fix #120012: 3D Viewport sidebar not updating when playback stops
+Referenced by commit 5f23e0fa8de1b174fbeeed7c43c3669d7cf674e3, Fix #120012: 3D Viewport sidebar not updating when playback stops
