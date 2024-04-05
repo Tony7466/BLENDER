@@ -398,9 +398,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   as_int.f = far;
   light.clip_far = as_int.i;
   light.local.clip_side = side;
-  light.local.shadow_projection_shift_x = origin_shift.x;
-  light.local.shadow_projection_shift_y = origin_shift.y;
-  light.local.shadow_projection_shift_z = origin_shift.z;
+  light.local.shadow_projection_shift = origin_shift;
   light.local.shadow_scale = softness_factor_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {

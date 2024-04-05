@@ -90,9 +90,7 @@ void shadow_tag_usage_tilemap_punctual(
   }
 
   vec3 lP = light_world_to_local(light, P - light._position);
-  lP -= vec3(light_local_data_get(light).shadow_projection_shift_x,
-             light_local_data_get(light).shadow_projection_shift_y,
-             light_local_data_get(light).shadow_projection_shift_z);
+  lP -= light_local_data_get(light).shadow_projection_shift;
 
   float dist_to_light = max(length(lP) - radius, 1e-5);
   if (dist_to_light > light_local_data_get(light).influence_radius_max) {

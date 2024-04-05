@@ -31,9 +31,8 @@ void set_clipmap_base_offset(inout LightData light, ivec2 clipmap_base_offset)
 {
   /* WATCH: Can get out of sync with light_sun_data_get(). */
   light.do_not_access_directly.shadow_scale = intBitsToFloat(0);
-  light.do_not_access_directly.shadow_projection_shift_x = intBitsToFloat(0);
-  light.do_not_access_directly.shadow_projection_shift_y = intBitsToFloat(clipmap_base_offset.x);
-  light.do_not_access_directly.shadow_projection_shift_z = intBitsToFloat(clipmap_base_offset.y);
+  light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(
+      ivec3(0, clipmap_base_offset));
 }
 
 void main()
