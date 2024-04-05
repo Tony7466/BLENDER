@@ -698,11 +698,6 @@ void Drawing::tag_texture_matrices_changed()
   this->runtime->curve_texture_matrices.tag_dirty();
 }
 
-void Drawing::tag_texture_matrices_changed()
-{
-  this->runtime->curve_texture_matrices.tag_dirty();
-}
-
 void Drawing::tag_positions_changed()
 {
   this->strokes_for_write().tag_positions_changed();
