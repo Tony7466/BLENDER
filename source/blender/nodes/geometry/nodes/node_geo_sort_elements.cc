@@ -51,9 +51,9 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = int(bke::AttrDomain::Point);
 }
 
-static void grouped_sort(const OffsetIndices<int> offsets,
-                         const Span<float> weights,
-                         MutableSpan<int> indices)
+static void grouped_sort_by_element(const OffsetIndices<int> offsets,
+                                    const Span<float> weights,
+                                    MutableSpan<int> indices)
 {
   SCOPED_TIMER_AVERAGED(__func__);
   const auto comparator = [&](const int index_a, const int index_b) {
@@ -66,17 +66,29 @@ static void grouped_sort(const OffsetIndices<int> offsets,
     return weight_a < weight_b;
   };
 
-  threading::parallel_for(offsets.index_range(), 250, [&](const IndexRange range) {
-    for (const int group_index : range) {
-      MutableSpan<int> group = indices.slice(offsets[group_index]);
-      parallel_sort(group.begin(), group.end(), comparator);
-    }
-  });
+  /*
+  std::cout << "offsets: ";
+  for (const int v : offsets.data()) {
+    std::cout << v << ", ";
+  }
+  std::cout << ";\n";
+  */
+
+  threading::parallel_for_weighted(
+      offsets.index_range(),
+      1024,
+      [&](const IndexRange range) {
+        for (const int group_index : range) {
+          MutableSpan<int> group = indices.slice(offsets[group_index]);
+          parallel_sort(group.begin(), group.end(), comparator);
+        }
+      },
+      [&](const int64_t element) -> int64_t { return offsets[element].size(); });
 }
 
-static void grouped_sort_new(const OffsetIndices<int> offsets,
-                             const Span<float> weights,
-                             MutableSpan<int> indices)
+static void grouped_sort_by_range(const OffsetIndices<int> offsets,
+                                  const Span<float> weights,
+                                  MutableSpan<int> indices)
 {
   SCOPED_TIMER_AVERAGED(__func__);
   const auto comparator = [&](const int index_a, const int index_b) {
@@ -195,10 +207,10 @@ static std::optional<Array<int>> sorted_indices(const fn::FieldContext &field_co
     Array<float> weight_span(domain_size);
     array_utils::copy(weight, mask, weight_span.as_mutable_span());
     if (is_new) {
-      grouped_sort_new(Span({0, int(mask.size())}), weight_span, gathered_indices);
+      grouped_sort_by_range(Span({0, int(mask.size())}), weight_span, gathered_indices);
     }
     else {
-      grouped_sort(Span({0, int(mask.size())}), weight_span, gathered_indices);
+      grouped_sort_by_element(Span({0, int(mask.size())}), weight_span, gathered_indices);
     }
   }
   else {
@@ -211,10 +223,10 @@ static std::optional<Array<int>> sorted_indices(const fn::FieldContext &field_co
       Array<float> weight_span(mask.size());
       array_utils::gather(weight, mask, weight_span.as_mutable_span());
       if (is_new) {
-        grouped_sort_new(offsets_to_sort.as_span(), weight_span, gathered_indices);
+        grouped_sort_by_range(offsets_to_sort.as_span(), weight_span, gathered_indices);
       }
       else {
-        grouped_sort(offsets_to_sort.as_span(), weight_span, gathered_indices);
+        grouped_sort_by_element(offsets_to_sort.as_span(), weight_span, gathered_indices);
       }
     }
     parallel_transform<int>(gathered_indices, 2048, [&](const int pos) { return mask[pos]; });
