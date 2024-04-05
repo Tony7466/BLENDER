@@ -128,7 +128,7 @@ static void rna_DynamicPaintSurfaces_changeFormat(Main *bmain, Scene *scene, Poi
 {
   DynamicPaintSurface *surface = (DynamicPaintSurface *)ptr->data;
 
-  /* Only MOD_DPAINT_SURFACE_F_VERTEX supports MOD_DPAINT_SURFACE_T_WEIGHT. */
+  /* Only #MOD_DPAINT_SURFACE_F_VERTEX supports #MOD_DPAINT_SURFACE_T_WEIGHT. */
   if (surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ &&
       surface->type == MOD_DPAINT_SURFACE_T_WEIGHT)
   {
