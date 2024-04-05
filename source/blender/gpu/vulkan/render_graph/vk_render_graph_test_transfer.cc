@@ -42,11 +42,15 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   render_graph.add_buffer(buffer);
   render_graph.add_fill_buffer_node(buffer, 1024, 42);
   render_graph.add_buffer(staging_buffer);
-  VkBufferCopy region = {};
-  region.srcOffset = 0;
-  region.dstOffset = 0;
-  region.size = 1024;
-  render_graph.add_copy_buffer_node(buffer, staging_buffer, region);
+
+  VKCopyBufferNode::Data copy_buffer = {};
+  copy_buffer.src_buffer = buffer;
+  copy_buffer.dst_buffer = staging_buffer;
+  copy_buffer.region.srcOffset = 0;
+  copy_buffer.region.dstOffset = 0;
+  copy_buffer.region.size = 1024;
+  render_graph.add_node(copy_buffer);
+
   render_graph.submit_buffer_for_read_back(staging_buffer);
 
   EXPECT_EQ(3, log.size());
@@ -133,8 +137,8 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   clear_color_image_dst.vk_image = dst_image;
   clear_color_image_dst.vk_clear_color_value = color_black;
 
-  render_graph.add_clear_image_node(clear_color_image_src);
-  render_graph.add_clear_image_node(clear_color_image_dst);
+  render_graph.add_node(clear_color_image_src);
+  render_graph.add_node(clear_color_image_dst);
   render_graph.add_copy_image_node(src_image, dst_image, vk_image_copy);
   render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);
   render_graph.submit_buffer_for_read_back(staging_buffer);
@@ -243,9 +247,9 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
   clear_color_image_src.vk_image = src_image;
   clear_color_image_src.vk_clear_color_value = color_black;
 
-  render_graph.add_clear_image_node(clear_color_image_src);
+  render_graph.add_node(clear_color_image_src);
   VKBlitImageNode::Data blit_image = {src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR};
-  render_graph.add_blit_image_node(blit_image);
+  render_graph.add_node(blit_image);
   render_graph.add_copy_image_to_buffer_node(dst_image, staging_buffer, vk_buffer_image_copy);
   render_graph.submit_buffer_for_read_back(staging_buffer);
 

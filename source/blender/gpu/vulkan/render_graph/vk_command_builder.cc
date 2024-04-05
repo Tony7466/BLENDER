@@ -123,7 +123,8 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::COPY_BUFFER: {
-      build_node_copy_buffer(render_graph, node_handle, node);
+      build_node<VKCopyBufferNode, VKCopyBufferNode::Data>(
+          render_graph, *render_graph.command_buffer_, node_handle, node.copy_buffer);
       break;
     }
 
@@ -172,20 +173,6 @@ void VKCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
 
   render_graph.command_buffer_->fill_buffer(
       node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
-}
-
-void VKCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_graph,
-                                              NodeHandle node_handle,
-                                              const VKNodes::Node &node)
-{
-  BLI_assert(node.type == VKNodeType::COPY_BUFFER);
-
-  reset_barriers();
-  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
-  send_pipeline_barriers(render_graph);
-
-  render_graph.command_buffer_->copy_buffer(
-      node.copy_buffer.src_buffer, node.copy_buffer.dst_buffer, 1, &node.copy_buffer.region);
 }
 
 void VKCommandBuilder::build_node_copy_buffer_to_image(VKRenderGraph &render_graph,

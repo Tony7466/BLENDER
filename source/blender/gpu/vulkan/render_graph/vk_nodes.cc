@@ -25,22 +25,6 @@ NodeHandle VKNodes::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, 
   return handle;
 }
 
-NodeHandle VKNodes::add_copy_buffer_node(VkBuffer src_buffer,
-                                         VkBuffer dst_buffer,
-                                         const VkBufferCopy &region)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::COPY_BUFFER;
-  node.copy_buffer.src_buffer = src_buffer;
-  node.copy_buffer.dst_buffer = dst_buffer;
-  node.copy_buffer.region = region;
-
-  return handle;
-}
-
 NodeHandle VKNodes::add_copy_image_node(VkImage src_image,
                                         VkImage dst_image,
                                         const VkImageCopy &region)

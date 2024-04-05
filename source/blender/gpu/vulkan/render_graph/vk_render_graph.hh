@@ -85,12 +85,15 @@ class VKRenderGraph : public NonCopyable {
     NodeClass::build_resource_dependencies(resources_, resource_dependencies_, handle, node_data);
   }
 
-  void add_clear_image_node(const VKClearColorImageNode::Data &clear_color_image)
+  void add_node(const VKClearColorImageNode::Data &clear_color_image)
   {
     add_node<VKClearColorImageNode, VKClearColorImageNode::Data>(clear_color_image);
   }
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
-  void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
+  void add_node(const VKCopyBufferNode::Data &copy_buffer)
+  {
+    add_node<VKCopyBufferNode, VKCopyBufferNode::Data>(copy_buffer);
+  }
   void add_copy_buffer_to_image_node(VkBuffer src_buffer,
                                      VkImage dst_image,
                                      const VkBufferImageCopy &region);
@@ -98,7 +101,7 @@ class VKRenderGraph : public NonCopyable {
   void add_copy_image_to_buffer_node(VkImage src_image,
                                      VkBuffer dst_buffer,
                                      const VkBufferImageCopy &region);
-  void add_blit_image_node(VKBlitImageNode::Data &blit_image)
+  void add_node(VKBlitImageNode::Data &blit_image)
   {
     add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);
   }

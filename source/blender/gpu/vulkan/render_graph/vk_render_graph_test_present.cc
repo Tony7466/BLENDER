@@ -45,7 +45,7 @@ TEST(vk_render_graph, clear_and_present)
 
   VKClearColorImageNode::Data clear_color_image = {};
   clear_color_image.vk_image = back_buffer;
-  render_graph.add_clear_image_node(clear_color_image);
+  render_graph.add_node(clear_color_image);
 
   render_graph.submit_for_present(back_buffer);
 

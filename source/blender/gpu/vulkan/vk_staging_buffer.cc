@@ -7,10 +7,10 @@
  */
 
 #include "vk_staging_buffer.hh"
+#include "render_graph/nodes/vk_copy_buffer_node.hh"
 #include "vk_backend.hh"
 #include "vk_command_buffers.hh"
 #include "vk_context.hh"
-
 namespace blender::gpu {
 
 VKStagingBuffer::VKStagingBuffer(const VKBuffer &device_buffer, Direction direction)
@@ -31,23 +31,25 @@ VKStagingBuffer::VKStagingBuffer(const VKBuffer &device_buffer, Direction direct
 void VKStagingBuffer::copy_to_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
-  VkBufferCopy vk_buffer_copy = {};
-  vk_buffer_copy.srcOffset = 0;
-  vk_buffer_copy.dstOffset = 0;
-  vk_buffer_copy.size = device_buffer_.size_in_bytes();
-  render_graph.add_copy_buffer_node(
-      host_buffer_.vk_handle(), device_buffer_.vk_handle(), vk_buffer_copy);
+  render_graph::VKCopyBufferNode::Data copy_buffer = {};
+  copy_buffer.src_buffer = host_buffer_.vk_handle();
+  copy_buffer.dst_buffer = device_buffer_.vk_handle();
+  copy_buffer.region.srcOffset = 0;
+  copy_buffer.region.dstOffset = 0;
+  copy_buffer.region.size = device_buffer_.size_in_bytes();
+  render_graph.add_node(copy_buffer);
 }
 
 void VKStagingBuffer::copy_from_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
-  VkBufferCopy vk_buffer_copy = {};
-  vk_buffer_copy.srcOffset = 0;
-  vk_buffer_copy.dstOffset = 0;
-  vk_buffer_copy.size = device_buffer_.size_in_bytes();
-  render_graph.add_copy_buffer_node(
-      device_buffer_.vk_handle(), host_buffer_.vk_handle(), vk_buffer_copy);
+  render_graph::VKCopyBufferNode::Data copy_buffer = {};
+  copy_buffer.src_buffer = device_buffer_.vk_handle();
+  copy_buffer.dst_buffer = host_buffer_.vk_handle();
+  copy_buffer.region.srcOffset = 0;
+  copy_buffer.region.dstOffset = 0;
+  copy_buffer.region.size = device_buffer_.size_in_bytes();
+  render_graph.add_node(copy_buffer);
 }
 
 void VKStagingBuffer::free()

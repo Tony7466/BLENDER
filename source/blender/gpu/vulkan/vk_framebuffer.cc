@@ -336,7 +336,7 @@ static void blit_aspect(VKTexture &dst_texture,
   image_blit.dstOffsets[1].z = 1;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_blit_image_node(image_blit_data);
+  device.render_graph_get().add_node(image_blit_data);
 }
 
 void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,

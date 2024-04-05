@@ -177,7 +177,7 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
   clear_color_image.vk_image_subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_clear_image_node(clear_color_image);
+  device.render_graph_get().add_node(clear_color_image);
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
