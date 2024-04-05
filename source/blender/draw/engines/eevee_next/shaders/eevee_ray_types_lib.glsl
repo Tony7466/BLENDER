@@ -81,3 +81,17 @@ ScreenSpaceRay raytrace_screenspace_ray_create(Ray ray, vec2 pixel_size, float t
   raytrace_screenspace_ray_finalize(ssray, pixel_size);
   return ssray;
 }
+
+/**
+ * Model sub-surface ray interaction with a sphere of the given diameter tangent to the shading
+ * point. This allows to model 2 refraction events quite cheaply.
+ * `out_P` is the intersection point with the sphere.
+ * Everything is relative to the entrance shading point.
+ */
+void raytrace_thickness_sphere_intersect(
+    float diameter, vec3 N, vec3 L, out vec3 out_N, out vec3 out_P)
+{
+  float cos_alpha = dot(L, -N);
+  out_P = L * (cos_alpha * diameter);
+  out_N = normalize(N + L * (cos_alpha * 2.0));
+}
