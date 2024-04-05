@@ -37,8 +37,6 @@ class RandomizeOperation : public GreasePencilStrokeOperationCommon {
   unsigned int unique_seed() const;
 
   bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const IndexMask &point_selection,
-                                  Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
@@ -53,8 +51,6 @@ unsigned int RandomizeOperation::unique_seed() const
 }
 
 bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                                    const IndexMask &point_selection,
-                                                    const Span<float2> view_positions,
                                                     const InputSample &extension_sample)
 {
   const Scene &scene = *CTX_data_scene(&params.context);
@@ -63,6 +59,13 @@ bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokePara
   const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
   const unsigned int seed = this->unique_seed();
 
+  IndexMaskMemory selection_memory;
+  const IndexMask selection = point_selection_mask(params, selection_memory);
+  if (selection.is_empty()) {
+    return false;
+  }
+
+  Array<float2> view_positions = calculate_view_positions(params, selection);
   bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
@@ -74,7 +77,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokePara
     const float2 forward = math::normalize(this->mouse_delta(extension_sample));
     const float2 sideways = float2(-forward.y, forward.x);
 
-    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
       if (influence <= 0.0f) {
@@ -89,7 +92,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokePara
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
     MutableSpan<float> opacities = params.drawing.opacities_for_write();
-    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
       if (influence <= 0.0f) {
@@ -102,7 +105,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokePara
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
     const MutableSpan<float> radii = params.drawing.radii_for_write();
-    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
       if (influence <= 0.0f) {
@@ -118,7 +121,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(const GreasePencilStrokePara
     /* TODO stroke_u attribute not used yet. */
     bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
         "rotation", bke::AttrDomain::Point);
-    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
       if (influence <= 0.0f) {

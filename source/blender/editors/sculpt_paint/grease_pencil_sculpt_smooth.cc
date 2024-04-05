@@ -30,20 +30,23 @@ class SmoothOperation : public GreasePencilStrokeOperationCommon {
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const IndexMask &point_selection,
-                                  Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
 bool SmoothOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-    const IndexMask &point_selection,
-    Span<float2> view_positions,
     const InputSample &extension_sample)
 {
   Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
 
+  IndexMaskMemory selection_memory;
+  const IndexMask selection = point_selection_mask(params, selection_memory);
+  if (selection.is_empty()) {
+    return false;
+  }
+
+  Array<float2> view_positions = calculate_view_positions(params, selection);
   bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -56,7 +59,7 @@ bool SmoothOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams 
             *CTX_data_scene(&params.context), brush, view_positions[point_], extension_sample);
       });
   Array<bool> selection_array(curves.points_num());
-  point_selection.to_bools(selection_array);
+  selection.to_bools(selection_array);
   const VArray<bool> selection_varray = VArray<bool>::ForSpan(selection_array);
 
   bool changed = false;

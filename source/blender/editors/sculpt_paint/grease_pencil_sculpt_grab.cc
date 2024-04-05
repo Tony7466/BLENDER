@@ -99,7 +99,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                                        info.drawing};
 
     IndexMaskMemory selection_memory;
-    IndexMask selection = selection_mask(scene, ob_eval, info.drawing, selection_memory);
+    IndexMask selection = point_selection_mask(params, selection_memory);
 
     Array<float2> view_positions = calculate_view_positions(params, selection);
 

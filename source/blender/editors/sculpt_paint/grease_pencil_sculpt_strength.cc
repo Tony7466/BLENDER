@@ -25,24 +25,26 @@ class StrengthOperation : public GreasePencilStrokeOperationCommon {
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const IndexMask &point_selection,
-                                  Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
 bool StrengthOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-    const IndexMask &point_selection,
-    const Span<float2> view_positions,
     const InputSample &extension_sample)
 {
   Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
   const bool invert = this->is_inverted(brush);
 
-  BLI_assert(view_positions.size() == params.drawing.strokes().points_num());
+  IndexMaskMemory selection_memory;
+  const IndexMask selection = point_selection_mask(params, selection_memory);
+  if (selection.is_empty()) {
+    return false;
+  }
+
+  Array<float2> view_positions = calculate_view_positions(params, selection);
   MutableSpan<float> opacities = params.drawing.opacities_for_write();
 
-  point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
     float &opacity = opacities[point_i];
     const float influence = brush_influence(
         *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);

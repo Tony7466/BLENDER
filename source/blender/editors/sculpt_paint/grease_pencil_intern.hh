@@ -40,12 +40,6 @@ float3 mouse_delta_in_world_space(const bContext &C,
 /* Get list of drawings the tool should be operating on. */
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C);
 
-/* Point index mask for a drawing based on selection tool settings. */
-IndexMask selection_mask(const Scene &scene,
-                         Object &object,
-                         const bke::greasepencil::Drawing &drawing,
-                         IndexMaskMemory &memory);
-
 /* Make sure the brush has all necessary grease pencil settings. */
 void init_brush(Brush &brush);
 
@@ -83,6 +77,9 @@ struct GreasePencilStrokeParams {
   bke::greasepencil::Drawing &drawing;
 };
 
+/* Point index mask for a drawing based on selection tool settings. */
+IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory);
+
 /* Project points from layer space into 2D view space. */
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection);
@@ -113,11 +110,8 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
-  /* Extend the stroke in a drawing using projected 2D coordinates.
-   * This is an optional function that has all common data set up in advance. */
+  /* Extend the stroke in a single drawing. */
   virtual bool on_stroke_extended_drawing(const GreasePencilStrokeParams& /*params*/,
-                                          const IndexMask & /*point_selection*/,
-                                          Span<float2> /*view_positions*/,
                                           const InputSample & /*extension_sample*/)
   {
     return false;

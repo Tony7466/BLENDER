@@ -78,18 +78,6 @@ Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bCont
   return ed::greasepencil::retrieve_editable_drawings(scene, grease_pencil);
 }
 
-IndexMask selection_mask(const Scene &scene,
-                         Object &object,
-                         const bke::greasepencil::Drawing &drawing,
-                         IndexMaskMemory &memory)
-{
-  const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
-      eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
-  return (is_masking ?
-              ed::greasepencil::retrieve_editable_and_selected_points(object, drawing, memory) :
-              drawing.strokes().points_range());
-}
-
 void init_brush(Brush &brush)
 {
   if (brush.gpencil_settings == nullptr) {
@@ -195,6 +183,16 @@ bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
   return invert;
 }
 
+IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory)
+{
+  const Scene &scene = *CTX_data_scene(&params.context);
+  const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
+      eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
+  return (is_masking ? ed::greasepencil::retrieve_editable_and_selected_points(
+                           params.ob_eval, params.drawing, memory) :
+                       params.drawing.strokes().points_range());
+}
+
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection)
 {
@@ -233,27 +231,6 @@ void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
   this->prev_mouse_position = start_sample.mouse_position;
 }
 
-static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
-                             const GreasePencilStrokeParams &params,
-                             const InputSample &extension_sample)
-{
-  using namespace blender::bke::greasepencil;
-
-  const Scene &scene = *CTX_data_scene(&params.context);
-
-  IndexMaskMemory selection_memory;
-  const IndexMask selection = selection_mask(
-      scene, params.ob_eval, params.drawing, selection_memory);
-  if (selection.is_empty()) {
-    return false;
-  }
-
-  /* Evaluated geometry. */
-  Array<float2> view_positions = calculate_view_positions(params, selection);
-
-  return op.on_stroke_extended_drawing(params, selection, view_positions, extension_sample);
-}
-
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
                                                            const InputSample &extension_sample)
 {
@@ -284,7 +261,15 @@ void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
                                        std::move(placement),
                                        info.drawing};
 
-    if (apply_to_drawing(*this, params, extension_sample)) {
+    //IndexMaskMemory selection_memory;
+    //const IndexMask selection = selection_mask(params, selection_memory);
+    //if (selection.is_empty()) {
+    //  return false;
+    //}
+
+    ///* Evaluated geometry. */
+    //Array<float2> view_positions = calculate_view_positions(params, selection);
+    if (this->on_stroke_extended_drawing(params, extension_sample)) {
       changed = true;
     }
   });

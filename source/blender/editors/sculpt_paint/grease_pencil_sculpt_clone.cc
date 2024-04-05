@@ -28,14 +28,10 @@ class CloneOperation : public GreasePencilStrokeOperationCommon {
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const IndexMask &point_selection,
-                                  Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
 bool CloneOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                                const IndexMask & /*point_selection*/,
-                                                Span<float2> /*view_positions*/,
                                                 const InputSample &extension_sample)
 {
   Main &bmain = *CTX_data_main(&params.context);

@@ -23,26 +23,29 @@ class PushOperation : public GreasePencilStrokeOperationCommon {
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const IndexMask &point_selection,
-                                  Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
 bool PushOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                               const IndexMask &point_selection,
-                                               Span<float2> view_positions,
                                                const InputSample &extension_sample)
 {
   const Scene &scene = *CTX_data_scene(&params.context);
   Paint &paint = *BKE_paint_get_active_from_context(&params.context);
   const Brush &brush = *BKE_paint_brush(&paint);
 
+  IndexMaskMemory selection_memory;
+  const IndexMask selection = point_selection_mask(params, selection_memory);
+  if (selection.is_empty()) {
+    return false;
+  }
+
+  Array<float2> view_positions = calculate_view_positions(params, selection);
   bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
 
   const float2 mouse_delta = this->mouse_delta(extension_sample);
 
-  point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
     const float2 &co = view_positions[point_i];
     const float influence = brush_influence(scene, brush, co, extension_sample);
     if (influence <= 0.0f) {
