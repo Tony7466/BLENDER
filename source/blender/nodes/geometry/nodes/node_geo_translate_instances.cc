@@ -63,6 +63,7 @@ static void register_node()
       &ntype, GEO_NODE_TRANSLATE_INSTANCES, "Translate Instances", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.deprecation_notice = N_("Use the \"Transform Instances\" node instead");
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(register_node)

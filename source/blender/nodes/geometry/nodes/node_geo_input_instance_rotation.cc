@@ -55,6 +55,7 @@ static void node_register()
       &ntype, GEO_NODE_INPUT_INSTANCE_ROTATION, "Instance Rotation", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.deprecation_notice = N_("Use the \"Instance Transform\" node instead");
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
