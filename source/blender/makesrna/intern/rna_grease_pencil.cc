@@ -474,12 +474,12 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
-  prop = RNA_def_property(srna, "lock_material", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(
-      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_LOCK_MATERIAL);
+  prop = RNA_def_property(srna, "use_locked_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
-      prop, "Disallow Locked Materials Editing", "Avoids editing locked materials in the layer");
+      prop, "Use Locked Materials Editing", "Allow editing locked materials in the layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 }
 

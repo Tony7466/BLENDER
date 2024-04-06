@@ -241,7 +241,7 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING = (1 << 5),
   GP_LAYER_TREE_NODE_EXPANDED = (1 << 6),
   GP_LAYER_TREE_NODE_HIDE_MASKS = (1 << 7),
-  GP_LAYER_TREE_NODE_LOCK_MATERIAL = (1 << 8),
+  GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL = (1 << 8),
 } GreasePencilLayerTreeNodeFlag;
 
 struct GreasePencilLayerTreeGroup;

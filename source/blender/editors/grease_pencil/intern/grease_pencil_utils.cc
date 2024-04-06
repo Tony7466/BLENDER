@@ -568,7 +568,7 @@ IndexMask retrieve_editable_strokes(Object &object,
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
         return editable_material_indices.contains(material_index) ||
-               !(layer.as_node().flag & GP_LAYER_TREE_NODE_LOCK_MATERIAL);
+               (layer.as_node().flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
       });
 }
 
@@ -639,7 +639,7 @@ IndexMask retrieve_editable_points(Object &object,
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
         const int material_index = materials[point_i];
         return editable_material_indices.contains(material_index) ||
-               !(layer.as_node().flag & GP_LAYER_TREE_NODE_LOCK_MATERIAL);
+               (layer.as_node().flag & GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
       });
 }
 

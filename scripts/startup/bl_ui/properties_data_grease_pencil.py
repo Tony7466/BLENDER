@@ -104,7 +104,7 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
 
         layout.separator()
         layout.prop(grease_pencil, "use_autolock_layers", text="Autolock Inactive Layers")
-        layout.prop(layer, "lock_material")
+        layout.prop(layer, "use_locked_material")
 
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
