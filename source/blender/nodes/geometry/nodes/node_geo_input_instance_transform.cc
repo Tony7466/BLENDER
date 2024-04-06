@@ -2,6 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_geometry_fields.hh"
+
+#include "NOD_socket_search_link.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_input_instance_transform_cc {
@@ -28,7 +32,8 @@ static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_INPUT_INSTANCE_TRANSFORM, "Instance Transform", NODE_CLASS_INPUT);
+  geo_node_type_base(
+      &ntype, GEO_NODE_INPUT_INSTANCE_TRANSFORM, "Instance Transform", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = search_link_ops;
   ntype.declare = node_declare;

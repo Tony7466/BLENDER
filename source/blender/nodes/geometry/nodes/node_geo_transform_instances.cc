@@ -2,11 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_matrix.hh"
-#include "BLI_math_rotation.hh"
-#include "BLI_task.hh"
+#include "BKE_geometry_fields.hh"
+#include "BKE_geometry_set.hh"
+#include "BKE_instances.hh"
 
-#include "GEO_transform.hh"
+#include "BLI_math_matrix.hh"
+
+#include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
 
