@@ -130,6 +130,7 @@ typedef enum GeometryNodeDefaultInputType {
   GEO_NODE_DEFAULT_FIELD_INPUT_ID_INDEX_FIELD = 2,
   GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL_FIELD = 3,
   GEO_NODE_DEFAULT_FIELD_INPUT_POSITION_FIELD = 4,
+  GEO_NODE_DEFAULT_FIELD_INPUT_TRANSFORM = 5,
 } GeometryNodeDefaultInputType;
 
 typedef struct bNodeTreeInterfacePanel {
