@@ -10,6 +10,8 @@
 
 #include "NOD_socket_search_link.hh"
 
+#include "FN_field.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_transform_instances_cc {
@@ -18,6 +20,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Instances");
   b.add_input<decl::Matrix>("Transform").implicit_field_on_all(implicit_field_inputs::transform);
+  b.add_input<decl::Matrix>("To Apply").field_on_all();
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_output<decl::Geometry>("Instances").propagate_all();
 }
@@ -32,8 +35,15 @@ static void search_link_ops(GatherLinkSearchOpParams &params)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Instances");
-  const Field<float4x4> transform_field = params.extract_input<Field<float4x4>>("Transform");
+  Field<float4x4> transform_field = params.extract_input<Field<float4x4>>("Transform");
+  Field<float4x4> transformation_field = params.extract_input<Field<float4x4>>("To Apply");
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+
+  static const auto apply_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
+      "Apply Transform", [](float4x4 a, float4x4 b) { return a * b; });
+
+  const Field<float4x4> transform_field_to_stor(FieldOperation::Create(
+      apply_fn, {std::move(transform_field), std::move(transformation_field)}));
 
   if (bke::Instances *instances = geometry_set.get_instances_for_write()) {
     const bke::InstancesFieldContext context(*instances);
@@ -42,7 +52,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                        "instance_transform",
                                        bke::AttrDomain::Instance,
                                        selection_field,
-                                       transform_field);
+                                       transform_field_to_stor);
   }
 
   params.set_output("Instances", std::move(geometry_set));
