@@ -440,14 +440,6 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
                                       N_("The position from the context")};
       RNA_enum_item_add(&items, &items_count, &position);
     }
-    else if (type->type == SOCK_MATRIX) {
-      const EnumPropertyItem normal{GEO_NODE_DEFAULT_FIELD_INPUT_TRANSFORM,
-                                    "TRANSFORM",
-                                    0,
-                                    N_("Transform"),
-                                    N_("Transformation of instances")};
-      RNA_enum_item_add(&items, &items_count, &normal);
-    }
   }
 
   RNA_enum_item_end(&items, &items_count);
