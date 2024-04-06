@@ -35,7 +35,10 @@ void main()
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
   noise = fract(noise + sampling_rng_2D_get(SAMPLING_RAYTRACE_U));
 
-  BsdfSample samp = ray_generate_direction(noise.xy, closure, V);
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+
+  BsdfSample samp = ray_generate_direction(noise.xy, closure, V, gbuf.thickness);
 
   /* Store inverse pdf to speedup denoising.
    * Limit to the smallest non-0 value that the format can encode.

@@ -57,6 +57,17 @@ void main()
   ray.origin = P;
   ray.direction = ray_data.xyz;
 
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+  if (gbuf.thickness > 0.0) {
+    /* The ray direction is already accounting for 2 transmission events. Only change its origin.
+     * Skip the volume inside the object. */
+    // vec3 exit_N, exit_P;
+    // raytrace_thickness_sphere_intersect(
+    //     gbuf.thickness, gbuf.surface_N, ray.direction, exit_N, exit_P);
+    // ray.origin += exit_P;
+  }
+
   vec3 radiance = vec3(0.0);
   float noise_offset = sampling_rng_1D_get(SAMPLING_RAYTRACE_W);
   float rand_trace = interlieved_gradient_noise(vec2(texel), 5.0, noise_offset);
@@ -98,27 +109,6 @@ void main()
     }
   }
   else if (trace_refraction) {
-    GBufferReader gbuf = gbuffer_read(
-        gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-    if (gbuf.thickness > 0.0) {
-      /* The ray direction is already accounting for 2 transmission event. Only change its origin.
-       * In practice this means skipping the volume inside the object.
-       * To do this, we use the main transmission direction and intersect with the sphere tangent
-       * to the shading point with `thickness` diameter. */
-      vec3 vN = transform_direction(drw_view.viewmat, gbuf.surface_N);
-      vec3 exit_vN, exit_vP;
-      raytrace_thickness_sphere_intersect(
-          gbuf.thickness, vN, ray_view.direction, exit_vN, exit_vP);
-      ray_view.direction = refract(ray_view.direction, -exit_vN, 1.45);
-      ray_view.origin += exit_vP;
-
-      vec3 exit_N, exit_P;
-      raytrace_thickness_sphere_intersect(
-          gbuf.thickness, gbuf.surface_N, ray.direction, exit_N, exit_P);
-      ray.direction = refract(ray.direction, -exit_N, 1.45);
-      ray.origin += exit_P;
-    }
-
     hit = raytrace_screen(uniform_buf.raytrace,
                           uniform_buf.hiz,
                           hiz_back_tx,

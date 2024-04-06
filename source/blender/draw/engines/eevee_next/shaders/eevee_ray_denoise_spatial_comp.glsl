@@ -19,9 +19,21 @@
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
+
+vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
+{
+  /* Reusing same thing as lightprobe_reflection_dominant_dir for now with the roughness mapped to
+   * reflection roughness. */
+  float m = square(roughness);
+  vec3 R = refract(-V, N, 1.0 / ior);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(-N, R, fac));
+}
 
 float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V)
 {
@@ -120,6 +132,24 @@ void main()
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
+
+  if (closure.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
+    GBufferReader gbuf = gbuffer_read(
+        gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+
+    if (gbuf.thickness > 0.0) {
+      float ior = to_closure_refraction(closure).ior;
+      float roughness = to_closure_refraction(closure).roughness;
+      vec3 transmit_dir = refraction_dominant_dir(closure.N, V, ior, roughness);
+
+      vec3 exit_P;
+      raytrace_thickness_sphere_intersect(
+          gbuf.thickness, closure.N, transmit_dir, closure.N, exit_P);
+      closure.N = -closure.N;
+      closure.data.y = 1.0 / ior;
+      V = -transmit_dir;
+    }
+  }
 
   /* Compute filter size and needed sample count */
   float apparent_roughness = closure_apparent_roughness_get(closure);

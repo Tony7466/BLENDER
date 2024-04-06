@@ -27,8 +27,19 @@ bool is_singular_ray(float roughness)
   return roughness < BSDF_ROUGHNESS_THRESHOLD;
 }
 
+vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
+{
+  /* Reusing same thing as lightprobe_reflection_dominant_dir for now with the roughness mapped to
+   * reflection roughness. */
+  float m = square(roughness);
+  vec3 R = refract(-V, N, 1.0 / ior);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
+  return normalize(mix(-N, R, fac));
+}
+
 /* Returns view-space ray. */
-BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V)
+BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, float thickness)
 {
   vec3 random_point_on_cylinder = sample_cylinder(noise);
   /* Bias the rays so we never get really high energy rays almost parallel to the surface. */
@@ -70,14 +81,27 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V)
       break;
     }
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      if (is_singular_ray(to_closure_refraction(cl).roughness)) {
-        samp.direction = refract(-V, cl.N, 1.0 / to_closure_refraction(cl).ior);
+      float ior = to_closure_refraction(cl).ior;
+      float roughness = to_closure_refraction(cl).roughness;
+      if (thickness > 0.0) {
+        vec3 transmit_dir = refraction_dominant_dir(cl.N, V, ior, roughness);
+
+        vec3 exit_P;
+        raytrace_thickness_sphere_intersect(thickness, cl.N, transmit_dir, cl.N, exit_P);
+        cl.N = -cl.N;
+        ior = 1.0 / ior;
+        V = -transmit_dir;
+        world_to_tangent = from_up_axis(cl.N);
+      }
+
+      if (is_singular_ray(roughness)) {
+        samp.direction = refract(-V, cl.N, 1.0 / ior);
         samp.pdf = 1.0;
       }
       else {
         samp.direction = sample_ggx_refract(random_point_on_cylinder,
-                                            square(to_closure_refraction(cl).roughness),
-                                            to_closure_refraction(cl).ior,
+                                            square(roughness),
+                                            ior,
                                             V,
                                             world_to_tangent[2],
                                             world_to_tangent[1],
