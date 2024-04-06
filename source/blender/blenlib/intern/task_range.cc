@@ -232,6 +232,7 @@ void parallel_for_weighted_impl(const IndexRange range,
                                 const FunctionRef<int64_t(IndexRange)> task_sizes_fn)
 {
   Vector<int64_t, 256> offsets_vec;
+  offsets_vec.append(0);
 
   IndexRange next_range = range;
   while (!next_range.is_empty()) {
