@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_math_quaternion.hh"
 #include "BLI_math_euler.hh"
+#include "BLI_math_quaternion.hh"
 
 #include "NOD_socket_search_link.hh"
 
@@ -26,8 +26,11 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const bNode &bnode = builder.node();
   const NodeInputRotation &node_storage = *static_cast<const NodeInputRotation *>(bnode.storage);
-  const math::EulerXYZ euler_rotation(node_storage.rotation_euler[0], node_storage.rotation_euler[1], node_storage.rotation_euler[2]);
-  builder.construct_and_set_matching_fn<mf::CustomMF_Constant<math::Quaternion>>(math::to_quaternion(euler_rotation));
+  const math::EulerXYZ euler_rotation(node_storage.rotation_euler[0],
+                                      node_storage.rotation_euler[1],
+                                      node_storage.rotation_euler[2]);
+  builder.construct_and_set_matching_fn<mf::CustomMF_Constant<math::Quaternion>>(
+      math::to_quaternion(euler_rotation));
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -43,7 +46,8 @@ static void node_register()
   fn_node_type_base(&ntype, GEO_NODE_INPUT_ROTATION, "Rotation", 0);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype, "NodeInputRotation", node_free_standard_storage, node_copy_standard_storage);
+  node_type_storage(
+      &ntype, "NodeInputRotation", node_free_standard_storage, node_copy_standard_storage);
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
