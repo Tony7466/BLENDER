@@ -477,6 +477,9 @@ DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display t
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
 
+DefNode(GeometryNode, GEO_NODE_TRANSFORM_INSTANCES, 0, "TRANSFORM_INSTANCES", TransformInstances, "Transform Instances", "")
+DefNode(GeometryNode, GEO_NODE_INPUT_INSTANCE_TRANSFORM, 0, "INPUT_INSTANCE_TRANSFORM", InstanceTransform, "Instance Transform", "")
+
 /* undefine macros */
 #undef DefNode
 
