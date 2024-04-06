@@ -298,6 +298,20 @@ class NODE_MT_geometry_node_GEO_INPUT_SCENE(Menu):
         node_add_menu.draw_assets_for_catalog(layout, "Input/Scene")
 
 
+class NODE_MT_geometry_node_GEO_INSTANCE_DEPRECATED(Menu):
+    bl_idname = "NODE_MT_geometry_node_GEO_INSTANCE_DEPRECATED"
+    bl_label = "Deprecated"
+
+    def draw(self, _context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
+        node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
+        node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
+        layout.separator()
+        node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceRotation")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceScale")
+
+
 class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_INSTANCE"
     bl_label = "Instances"
@@ -308,18 +322,10 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInstancesToPoints")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeRealizeInstances")
-        if context.preferences.experimental.use_new_matrix_socket:
-            node_add_menu.add_node_type(layout, "GeometryNodeTransformInstances")
-        else:
-            node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
-            node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
-            node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
+        node_add_menu.add_node_type(layout, "GeometryNodeTransformInstances")
         layout.separator()
-        if context.preferences.experimental.use_new_matrix_socket:
-            node_add_menu.add_node_type(layout, "GeometryNodeInstanceTransform")
-        else:
-            node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceRotation")
-            node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceScale")
+        node_add_menu.add_node_type(layout, "GeometryNodeInstanceTransform")
+        layout.menu("NODE_MT_geometry_node_GEO_INSTANCE_DEPRECATED")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -800,6 +806,7 @@ classes = (
     NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS,
     NODE_MT_geometry_node_GEO_GEOMETRY_SAMPLE,
     NODE_MT_geometry_node_GEO_INSTANCE,
+    NODE_MT_geometry_node_GEO_INSTANCE_DEPRECATED,
     NODE_MT_geometry_node_GEO_MESH,
     NODE_MT_geometry_node_GEO_MESH_READ,
     NODE_MT_geometry_node_GEO_MESH_SAMPLE,
