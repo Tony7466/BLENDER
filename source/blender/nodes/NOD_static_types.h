@@ -358,6 +358,7 @@ DefNode(GeometryNode, GEO_NODE_INPUT_INDEX, 0, "INDEX", InputIndex, "Index", "Re
 DefNode(GeometryNode, GEO_NODE_INPUT_INSTANCE_ROTATION, 0, "INPUT_INSTANCE_ROTATION", InputInstanceRotation, "Instance Rotation", "Retrieve the rotation of each instance in the geometry")
 DefNode(GeometryNode, GEO_NODE_INPUT_INSTANCE_SCALE, 0, "INPUT_INSTANCE_SCALE", InputInstanceScale, "Instance Scale", "Retrieve the scale of each instance in the geometry")
 DefNode(GeometryNode, GEO_NODE_INPUT_MATERIAL_INDEX, 0, "INPUT_MATERIAL_INDEX", InputMaterialIndex, "Material Index", "Retrieve the index of the material used for each element in the geometry's list of materials")
+DefNode(GeometryNode, GEO_NODE_INPUT_INSTANCE_TRANSFORM, 0, "INPUT_INSTANCE_TRANSFORM", InstanceTransform, "Instance Transform", "")
 DefNode(GeometryNode, GEO_NODE_INPUT_MATERIAL, def_geo_input_material, "INPUT_MATERIAL", InputMaterial, "Material", "Output a single material")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_ANGLE, 0, "MESH_EDGE_ANGLE", InputMeshEdgeAngle, "Edge Angle", "Calculate the surface area of each face in a mesh")
 DefNode(GeometryNode, GEO_NODE_INPUT_MESH_EDGE_NEIGHBORS, 0, "MESH_EDGE_NEIGHBORS",InputMeshEdgeNeighbors, "Edge Neighbors", "Retrieve the number of faces that use each edge as one of their sides")
@@ -468,6 +469,7 @@ DefNode(GeometryNode, GEO_NODE_TOOL_SELECTION, 0, "TOOL_SELECTION", ToolSelectio
 DefNode(GeometryNode, GEO_NODE_TOOL_SET_FACE_SET, 0, "TOOL_SET_FACE_SET", ToolSetFaceSet, "Set Face Set", "Set sculpt face set values for faces")
 DefNode(GeometryNode, GEO_NODE_TOOL_SET_SELECTION, 0, "TOOL_SELECTION_SET", ToolSetSelection, "Set Selection", "Set selection of the edited geometry, for tool execution")
 DefNode(GeometryNode, GEO_NODE_TRANSFORM_GEOMETRY, 0, "TRANSFORM_GEOMETRY", Transform, "Transform Geometry", "Translate, rotate or scale the geometry")
+DefNode(GeometryNode, GEO_NODE_TRANSFORM_INSTANCES, 0, "TRANSFORM_INSTANCES", TransformInstances, "Transform Instances", "")
 DefNode(GeometryNode, GEO_NODE_TRANSLATE_INSTANCES, 0, "TRANSLATE_INSTANCES",TranslateInstances, "Translate Instances", "Move top-level geometry instances in local or global space")
 DefNode(GeometryNode, GEO_NODE_TRIANGULATE, 0, "TRIANGULATE", Triangulate, "Triangulate", "Convert all faces in a mesh to triangular faces")
 DefNode(GeometryNode, GEO_NODE_TRIM_CURVE, 0, "TRIM_CURVE", TrimCurve, "Trim Curve", "Shorten curves by removing portions at the start or end")
@@ -476,9 +478,6 @@ DefNode(GeometryNode, GEO_NODE_UV_UNWRAP, 0, "UV_UNWRAP", UVUnwrap, "UV Unwrap",
 DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display the input data in the Spreadsheet Editor")
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
-
-DefNode(GeometryNode, GEO_NODE_TRANSFORM_INSTANCES, 0, "TRANSFORM_INSTANCES", TransformInstances, "Transform Instances", "")
-DefNode(GeometryNode, GEO_NODE_INPUT_INSTANCE_TRANSFORM, 0, "INPUT_INSTANCE_TRANSFORM", InstanceTransform, "Instance Transform", "")
 
 /* undefine macros */
 #undef DefNode

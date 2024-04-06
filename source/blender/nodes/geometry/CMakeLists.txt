@@ -94,6 +94,7 @@ set(SRC
   nodes/node_geo_input_index.cc
   nodes/node_geo_input_instance_rotation.cc
   nodes/node_geo_input_instance_scale.cc
+  nodes/node_geo_input_instance_transform.cc
   nodes/node_geo_input_material.cc
   nodes/node_geo_input_material_index.cc
   nodes/node_geo_input_mesh_edge_angle.cc
@@ -197,6 +198,7 @@ set(SRC
   nodes/node_geo_tool_set_face_set.cc
   nodes/node_geo_tool_set_selection.cc
   nodes/node_geo_transform_geometry.cc
+  nodes/node_geo_transform_instances.cc
   nodes/node_geo_translate_instances.cc
   nodes/node_geo_triangulate.cc
   nodes/node_geo_uv_pack_islands.cc
@@ -204,9 +206,6 @@ set(SRC
   nodes/node_geo_viewer.cc
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
-
-  nodes/node_geo_input_instance_transform.cc
-  nodes/node_geo_transform_instances.cc
 
   node_geometry_tree.cc
   node_geometry_util.cc
