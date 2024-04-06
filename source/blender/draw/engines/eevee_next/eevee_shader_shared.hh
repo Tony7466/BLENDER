@@ -501,73 +501,37 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
  * \{ */
 
 struct VolumesInfoData {
-  float2 coord_scale;
-  float2 viewport_size_inv;
+  /* During object voxelization, we need to use an infinite projection matrix to avoid clipping
+   * faces. But they cannot be used for recovering the view position from froxel position as they
+   * are not invertible. We store the finite projection matrix and use it for this purpose. */
+  float4x4 winmat_finite;
+  float4x4 wininv_finite;
+  /* Convert volume frustum UV(+ linear Z) coordinates into previous frame UV(+ linear Z). */
+  float4x4 history_matrix;
+  /* Size of the froxel grid texture. */
   packed_int3 tex_size;
+  /* Maximum light intensity during volume lighting evaluation. */
   float light_clamp;
+  /* Inverse of size of the froxel grid. */
   packed_float3 inv_tex_size;
-  int tile_size;
-  int tile_size_lod;
+  /* Maximum light intensity during volume lighting evaluation. */
   float shadow_steps;
+  /* 2D scaling factor to make froxel squared. */
+  float2 coord_scale;
+  /* Extent and inverse extent of the main shading view (render extent, not film extent). */
+  float2 main_view_extent;
+  float2 main_view_extent_inv;
+  /* Size in main view pixels of one froxel in XY. */
+  int tile_size;
+  /* Hi-Z LOD to use during volume shadow tagging. */
+  int tile_size_lod;
+  /* Depth to froxel mapping. */
   float depth_near;
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
-
-/* Volume slice to view space depth. */
-static inline float volume_z_to_view_z(
-    float near, float far, float distribution, bool is_persp, float z)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return (exp2(z / distribution) - near) / far;
-  }
-  else {
-    /* Linear distribution. */
-    return near + (far - near) * z;
-  }
-}
-
-static inline float view_z_to_volume_z(
-    float near, float far, float distribution, bool is_persp, float depth)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return distribution * log2(depth * far + near);
-  }
-  else {
-    /* Linear distribution. */
-    return (depth - near) * distribution;
-  }
-}
-
-static inline float3 screen_to_volume(float4x4 projection_matrix,
-                                      float near,
-                                      float far,
-                                      float distribution,
-                                      float2 coord_scale,
-                                      float3 coord)
-{
-  bool is_persp = projection_matrix[3][3] == 0.0;
-
-  /* get_view_z_from_depth */
-  float d = 2.0 * coord.z - 1.0;
-  if (is_persp) {
-    coord.z = -projection_matrix[3][2] / (d + projection_matrix[2][2]);
-  }
-  else {
-    coord.z = (d - projection_matrix[3][2]) / projection_matrix[2][2];
-  }
-
-  coord.z = view_z_to_volume_z(near, far, distribution, is_persp, coord.z);
-  coord.x *= coord_scale.x;
-  coord.y *= coord_scale.y;
-  return coord;
-}
 
 /** \} */
 
@@ -793,12 +757,12 @@ static inline bool is_local_light(eLightType type)
   /** --- Shadow Data --- */ \
   /** Other parts of the perspective matrix. Assumes symmetric frustum. */ \
   float clip_side; \
+  /** Number of allocated tilemap for this local light. */ \
+  int tilemaps_count; \
   /** Scaling factor to the light shape for shadow ray casting. */ \
   float shadow_scale; \
   /** Shift to apply to the light origin to get the shadow projection origin. */ \
-  float shadow_projection_shift; \
-  /** Number of allocated tilemap for this local light. */ \
-  int tilemaps_count;
+  float shadow_projection_shift;
 
 /* Untyped local light data. Gets reinterpreted to LightSpotData and LightAreaData.
  * Allow access to local light common data without casting. */
@@ -861,12 +825,11 @@ struct LightSunData {
 
   float _pad3;
   float _pad4;
-  float _pad5;
-  float _pad6;
-
   /** --- Shadow Data --- */
-  /** Offset of the LOD min in LOD min tile units. */
-  int2 clipmap_base_offset;
+  /** Offset of the LOD min in LOD min tile units. Split positive and negative for bit-shift. */
+  int2 clipmap_base_offset_neg;
+
+  int2 clipmap_base_offset_pos;
   /** Angle covered by the light shape for shadow ray casting. */
   float shadow_angle;
   /** Trace distance around the shading point. */
@@ -1073,7 +1036,8 @@ static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_BEGIN(LightSunData, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, radius_squared)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset, _pad0_reserved, _pad1_reserved)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, shadow_scale, shadow_projection_shift)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, _pad0_reserved, _pad1_reserved)
   SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
   SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
   SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)
@@ -1231,8 +1195,6 @@ struct ShadowTileData {
   uint3 page;
   /** Page index inside pages_cached_buf. Only valid if `is_cached` is true. */
   uint cache_index;
-  /** LOD pointed to LOD 0 tile page. (cube-map only). */
-  uint lod;
   /** If the tile is needed for rendering. */
   bool is_used;
   /** True if an update is needed. This persists even if the tile gets unused. */
@@ -1279,8 +1241,7 @@ static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
   ShadowTileData tile;
   tile.page = shadow_page_unpack(data);
   /* -- 12 bits -- */
-  BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
-  tile.lod = (data >> 12u) & 7u;
+  /* Unused bits. */
   /* -- 15 bits -- */
   BLI_STATIC_ASSERT(SHADOW_MAX_PAGE <= 4096, "Update page packing")
   tile.cache_index = (data >> 15u) & 4095u;
@@ -1299,7 +1260,6 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   /* NOTE: Page might be set to invalid values for tracking invalid usages.
    * So we have to mask the result. */
   data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
-  data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
   data |= (tile.is_allocated ? uint(SHADOW_IS_ALLOCATED) : 0);
@@ -1307,6 +1267,89 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   data |= (tile.is_rendered ? uint(SHADOW_IS_RENDERED) : 0);
   data |= (tile.do_update ? uint(SHADOW_DO_UPDATE) : 0);
   return data;
+}
+
+/**
+ * Decoded tile data structure.
+ * Similar to ShadowTileData, this one is only used for rendering and packed into `tilemap_tx`.
+ * This allow to reuse some bits for other purpose.
+ */
+struct ShadowSamplingTile {
+  /** Page inside the virtual shadow map atlas. */
+  uint3 page;
+  /** LOD pointed to LOD 0 tile page. */
+  uint lod;
+  /** Offset to the texel position to align with the LOD page start. (directional only). */
+  uint2 lod_offset;
+  /** If the tile is needed for rendering. */
+  bool is_valid;
+};
+/** \note Stored packed as a uint. */
+#define ShadowSamplingTilePacked uint
+
+/* NOTE: Trust the input to be in valid range [0, (1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1].
+ * Maximum LOD level index we can store is SHADOW_TILEMAP_MAX_CLIPMAP_LOD,
+ * so we need SHADOW_TILEMAP_MAX_CLIPMAP_LOD bits to store the offset in each dimension.
+ * Result fits into SHADOW_TILEMAP_MAX_CLIPMAP_LOD * 2 bits. */
+static inline uint shadow_lod_offset_pack(uint2 ofs)
+{
+  BLI_STATIC_ASSERT(SHADOW_TILEMAP_MAX_CLIPMAP_LOD <= 8, "Update page packing")
+  return ofs.x | (ofs.y << SHADOW_TILEMAP_MAX_CLIPMAP_LOD);
+}
+static inline uint2 shadow_lod_offset_unpack(uint data)
+{
+  return (uint2(data) >> uint2(0, SHADOW_TILEMAP_MAX_CLIPMAP_LOD)) &
+         uint2((1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1);
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
+{
+  ShadowSamplingTile tile;
+  tile.page = shadow_page_unpack(data);
+  /* -- 12 bits -- */
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  tile.lod = (data >> 12u) & 15u;
+  /* -- 16 bits -- */
+  tile.lod_offset = shadow_lod_offset_unpack(data >> 16u);
+  /* -- 32 bits -- */
+  tile.is_valid = data != 0u;
+#ifndef GPU_SHADER
+  /* Make tests pass on CPU but it is not required for proper rendering. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 0;
+  }
+#endif
+  return tile;
+}
+
+static inline ShadowSamplingTilePacked shadow_sampling_tile_pack(ShadowSamplingTile tile)
+{
+  if (!tile.is_valid) {
+    return 0u;
+  }
+  /* Tag a valid tile of LOD0 valid by setting their offset to 1.
+   * This doesn't change the sampling and allows to use of all bits for data.
+   * This makes sure no valid packed tile is 0u. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 1;
+  }
+  uint data = shadow_page_pack(tile.page);
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  data |= (tile.lod & 15u) << 12u;
+  data |= shadow_lod_offset_pack(tile.lod_offset) << 16u;
+  return data;
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_create(ShadowTileData tile_data, uint lod)
+{
+  ShadowSamplingTile tile;
+  tile.page = tile_data.page;
+  tile.lod = lod;
+  tile.lod_offset = uint2(0, 0); /* Computed during tilemap amend phase. */
+  /* At this point, it should be the case that all given tiles that have been tagged as used are
+   * ready for sampling. Otherwise tile_data should be SHADOW_NO_DATA. */
+  tile.is_valid = tile_data.is_used;
+  return tile;
 }
 
 struct ShadowSceneData {

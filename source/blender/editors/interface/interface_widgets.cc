@@ -2568,9 +2568,7 @@ static void widget_state(uiWidgetType *wt, const uiWidgetStateInfo *state, eUIEm
 
     copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
 
-    if (state->but_flag & UI_SELECT) {
-      std::swap(wt->wcol.shadetop, wt->wcol.shadedown);
-    }
+    std::swap(wt->wcol.shadetop, wt->wcol.shadedown);
   }
   else {
     if (state->but_flag & UI_BUT_ACTIVE_DEFAULT) {
@@ -2780,6 +2778,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
     /* Inactive. */
     if (state->but_flag & UI_HOVER) {
       color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+      copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
       wt->wcol.inner[3] = 255;
     }
     color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
