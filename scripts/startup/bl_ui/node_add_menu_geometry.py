@@ -302,18 +302,24 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_INSTANCE"
     bl_label = "Instances"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeInstanceOnPoints")
         node_add_menu.add_node_type(layout, "GeometryNodeInstancesToPoints")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeRealizeInstances")
-        node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
-        node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
-        node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
+        if context.preferences.experimental.use_new_matrix_socket:
+            node_add_menu.add_node_type(layout, "GeometryNodeTransformInstances")
+        else:
+            node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
+            node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
+            node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceRotation")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceScale")
+        if context.preferences.experimental.use_new_matrix_socket:
+            node_add_menu.add_node_type(layout, "GeometryNodeInstanceTransform")
+        else:
+            node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceRotation")
+            node_add_menu.add_node_type(layout, "GeometryNodeInputInstanceScale")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
