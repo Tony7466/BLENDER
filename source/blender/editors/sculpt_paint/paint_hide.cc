@@ -617,9 +617,9 @@ static void invert_visibility_mesh(Object &object, const Span<PBVHNode *> nodes)
 
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    Vector<int> &faces = all_index_data.local();
     for (PBVHNode *node : nodes.slice(range)) {
       undo::push_node(&object, node, undo::Type::HideFace);
-      Vector<int> faces = all_index_data.local();
       bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, faces);
       for (const int face : faces) {
         hide_poly.span[face] = !hide_poly.span[face];
