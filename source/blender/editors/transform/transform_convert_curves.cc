@@ -226,6 +226,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const blender::IndexMask &bezier_curves)
 {
   using namespace blender;
+  /* Term layer in function is used to refer Bezier curve points, left and right handles as layers
+   * 0, 1 and 2 respectively. For given Bezier curve in layers with points [P0, P1, P2], left
+   * handles [L0, L1, L2] and [R0, R1, R2] flattened  version version will be [L0, P0, R0, L1, P1,
+   * R1, L2, P2, R2]. */
+  static const Array<int> layer_shift_in_bezier = {1, 0, 2};
+  static const Array<int> layer_shift_in_others = {0};
 
   const std::array<MutableSpan<float3>, 3> positions_per_layer{
       curves.positions_for_write(),
@@ -271,19 +277,18 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
 
         IndexRange layers_range = IndexRange(curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1);
 
-        for (const int layer : layers_range) {
-          const int layer_offset = layer * points.size();
-
-          all_curve_positions.as_mutable_span()
-              .slice(layer_offset, points.size())
-              .copy_from(positions_per_layer[layer].slice(points));
-        }
+        Span<int> layer_shift = (curve_types[curve_i] == CURVE_TYPE_BEZIER) ?
+                                    layer_shift_in_bezier :
+                                    layer_shift_in_others;
 
         for (const int layer : layers_range) {
-          const int layer_offset = layer * points.size();
           for (const int i : points.index_range()) {
             const int point_in_layer_i = points[i];
-            const int point_i = all_curve_points[layer_offset + i];
+            const int flat_i = layer_shift[layer] + layers_range.size() * i;
+            const int point_i = all_curve_points[flat_i];
+
+            all_curve_positions[flat_i] = positions_per_layer[layer][point_in_layer_i];
+
             TransData &td = tc.data[point_i + trans_data_offset];
             float3 *elem = &positions_per_layer[layer][point_in_layer_i];
 
@@ -293,7 +298,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
 
             td.flag = 0;
             if (selected_indices[layer].contains(point_in_layer_i)) {
-              closest_distances[i] = 0.0f;
+              closest_distances[flat_i] = 0.0f;
               td.flag = TD_SELECTED;
             }
 
