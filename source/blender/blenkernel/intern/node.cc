@@ -60,7 +60,6 @@
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image_format.h"
@@ -320,9 +319,9 @@ static void ntree_free_data(ID *id)
 static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket *sock)
 {
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-      data,
-      IDP_foreach_property(
-          sock->prop, IDP_TYPE_FILTER_ID, BKE_lib_query_idpropertiesForeachIDLink_callback, data));
+      data, IDP_foreach_property(sock->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+        BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+      }));
 
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
@@ -384,11 +383,9 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_ID(data, node->id, IDWALK_CB_USER);
 
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-        data,
-        IDP_foreach_property(node->prop,
-                             IDP_TYPE_FILTER_ID,
-                             BKE_lib_query_idpropertiesForeachIDLink_callback,
-                             data));
+        data, IDP_foreach_property(node->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+          BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+        }));
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
     }
@@ -2927,7 +2924,7 @@ bNodeLink *nodeAddLink(
   }
 
   if (link != nullptr && link->tosock->is_multi_input()) {
-    link->multi_input_socket_index = node_count_links(ntree, link->tosock) - 1;
+    link->multi_input_sort_id = node_count_links(ntree, link->tosock) - 1;
   }
 
   return link;
@@ -2993,10 +2990,10 @@ static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     /* We only need to adjust those with a greater index, because the others will have the same
      * index. */
-    if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
+    if (link->tosock != sock || link->multi_input_sort_id <= deleted_index) {
       continue;
     }
-    link->multi_input_socket_index -= 1;
+    link->multi_input_sort_id -= 1;
   }
 }
 
@@ -3022,7 +3019,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     if (fromlink == nullptr) {
       if (link->tosock->is_multi_input()) {
         blender::bke::adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       nodeRemLink(ntree, link);
       continue;
@@ -3035,7 +3032,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
             link_to_compare->tosock == link->tosock)
         {
           blender::bke::adjust_multi_input_indices_after_removed_link(
-              ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+              ntree, link_to_compare->tosock, link_to_compare->multi_input_sort_id);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);
         }
       }
@@ -3422,7 +3419,7 @@ void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
       /* Only bother adjusting if the socket is not on the node we're deleting. */
       if (link->tonode != node && link->tosock->is_multi_input()) {
         adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       LISTBASE_FOREACH (const bNodeSocket *, sock, lb) {
         if (link->fromsock == sock || link->tosock == sock) {
@@ -4187,7 +4184,7 @@ static blender::Set<int> get_known_node_types_set()
 static bool can_read_node_type(const int type)
 {
   /* Can always read custom node types. */
-  if (type == NODE_CUSTOM) {
+  if (ELEM(type, NODE_CUSTOM, NODE_CUSTOM_GROUP)) {
     return true;
   }
 
@@ -4410,6 +4407,8 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataTy
   switch (type) {
     case CD_PROP_FLOAT:
       return SOCK_FLOAT;
+    case CD_PROP_INT8:
+      return SOCK_INT;
     case CD_PROP_INT32:
       return SOCK_INT;
     case CD_PROP_FLOAT3:

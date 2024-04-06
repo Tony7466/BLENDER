@@ -4,7 +4,7 @@
 
 /** \file
  * \ingroup DNA
- * \brief ID and Library types, which are fundamental for sdna.
+ * \brief ID and Library types, which are fundamental for SDNA.
  */
 
 #pragma once
@@ -452,9 +452,9 @@ typedef struct ID_Runtime {
   ID_Runtime_Remap remap;
 } ID_Runtime;
 
-/* There's a nasty circular dependency here.... 'void *' to the rescue! I
- * really wonder why this is needed. */
 typedef struct ID {
+  /* There's a nasty circular dependency here.... 'void *' to the rescue! I
+   * really wonder why this is needed. */
   void *next, *prev;
   struct ID *newid;
 
@@ -540,8 +540,7 @@ typedef struct Library_Runtime {
 } Library_Runtime;
 
 /**
- * For each library file used, a Library struct is added to Main
- * WARNING: `readfile.cc`, expand_doit() reads this struct without DNA check!
+ * For each library file used, a Library struct is added to Main.
  */
 typedef struct Library {
   ID id;
@@ -1008,7 +1007,7 @@ enum {
    *
    * \todo Make it a RESET_AFTER_USE too.
    */
-  LIB_TAG_DOIT = 1 << 31,
+  LIB_TAG_DOIT = 1u << 31,
 };
 
 /**
