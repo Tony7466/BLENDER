@@ -95,7 +95,7 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)
 vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 V, float thickness)
 {
   if (thickness > 0.0) {
-    return spherical_harmonics_L0_evaluate(cl.N, samp.volume_irradiance.L0).rgb;
+    return spherical_harmonics_L0_evaluate(-cl.N, samp.volume_irradiance.L0).rgb;
   }
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(-cl.N, samp.volume_irradiance);
   return radiance_sh;
