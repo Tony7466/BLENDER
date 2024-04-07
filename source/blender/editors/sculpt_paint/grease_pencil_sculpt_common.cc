@@ -183,6 +183,34 @@ bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
   return invert;
 }
 
+GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
+    const bContext &C,
+    const ARegion &region,
+    const int layer_index,
+    const int frame_number,
+    bke::greasepencil::Drawing &drawing)
+{
+  const Scene &scene = *CTX_data_scene(&C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  const View3D &view3d = *CTX_wm_view3d(&C);
+  Object &ob_orig = *CTX_data_active_object(&C);
+  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+
+  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
+  ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
+
+  return {C,
+          region,
+          ob_eval,
+          ob_orig,
+          layer,
+          layer_index,
+          frame_number,
+          std::move(placement),
+          drawing};
+}
+
 IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory)
 {
   const Scene &scene = *CTX_data_scene(&params.context);
@@ -193,12 +221,17 @@ IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMask
                        params.drawing.strokes().points_range());
 }
 
+bke::crazyspace::GeometryDeformation get_drawing_deformation(
+    const GreasePencilStrokeParams &params)
+{
+  return bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+      &params.ob_eval, params.ob_orig, params.layer_index, params.frame_number);
+}
+
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection)
 {
-  bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-          &params.ob_eval, params.ob_orig, params.layer_index, params.frame_number);
+  bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
 
   Array<float2> view_positions(deformation.positions.size());
 
@@ -223,12 +256,32 @@ float2 GreasePencilStrokeOperationCommon::mouse_delta(const InputSample &input_s
 void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
                                                         const InputSample &start_sample)
 {
+  using namespace blender::bke::greasepencil;
+
+  const ARegion &region = *CTX_wm_region(&C);
+  Object &ob_orig = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   Brush &brush = *BKE_paint_brush(&paint);
 
   init_brush(brush);
 
   this->prev_mouse_position = start_sample.mouse_position;
+
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+        C, region, info.layer_index, info.frame_number, info.drawing);
+    if (this->on_stroke_begin_drawing(params, start_sample)) {
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
@@ -236,39 +289,15 @@ void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
 {
   using namespace blender::bke::greasepencil;
 
-  /* Important: accessing region in worker threads will return null,
-   * this has to be done on the main thread. */
-  const Scene &scene = *CTX_data_scene(&C);
-  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   const ARegion &region = *CTX_wm_region(&C);
-  const View3D &view3d = *CTX_wm_view3d(&C);
   Object &ob_orig = *CTX_data_active_object(&C);
-  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
 
   std::atomic<bool> changed = false;
   const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    const Layer &layer = *grease_pencil.layers()[info.layer_index];
-    ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
-    GreasePencilStrokeParams params = {C,
-                                       region,
-                                       ob_eval,
-                                       ob_orig,
-                                       layer,
-                                       info.layer_index,
-                                       info.frame_number,
-                                       std::move(placement),
-                                       info.drawing};
-
-    //IndexMaskMemory selection_memory;
-    //const IndexMask selection = selection_mask(params, selection_memory);
-    //if (selection.is_empty()) {
-    //  return false;
-    //}
-
-    ///* Evaluated geometry. */
-    //Array<float2> view_positions = calculate_view_positions(params, selection);
+    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+        C, region, info.layer_index, info.frame_number, info.drawing);
     if (this->on_stroke_extended_drawing(params, extension_sample)) {
       changed = true;
     }

@@ -75,10 +75,21 @@ struct GreasePencilStrokeParams {
   int frame_number;
   ed::greasepencil::DrawingPlacement placement;
   bke::greasepencil::Drawing &drawing;
+
+  /* Note: accessing region in worker threads will return null,
+   * this has to be done on the main thread and passed explicitly. */
+  static GreasePencilStrokeParams from_context(const bContext &C,
+                                               const ARegion &region,
+                                               int layer_index,
+                                               int frame_number,
+                                               bke::greasepencil::Drawing &drawing);
 };
 
 /* Point index mask for a drawing based on selection tool settings. */
 IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory);
+
+bke::crazyspace::GeometryDeformation get_drawing_deformation(
+    const GreasePencilStrokeParams &params);
 
 /* Project points from layer space into 2D view space. */
 Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
@@ -110,6 +121,12 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
+  /* Start a stroke in a single drawing. */
+  virtual bool on_stroke_begin_drawing(const GreasePencilStrokeParams & /*params*/,
+                                       const InputSample & /*start_sample*/)
+  {
+    return false;
+  }
   /* Extend the stroke in a single drawing. */
   virtual bool on_stroke_extended_drawing(const GreasePencilStrokeParams& /*params*/,
                                           const InputSample & /*extension_sample*/)
