@@ -36,13 +36,13 @@
 
 #include "interface_intern.hh"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
-#include "GPU_state.h"
+#include "GPU_batch.hh"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_platform.hh"
+#include "GPU_state.hh"
 
 #ifdef WITH_INPUT_IME
 #  include "WM_types.hh"
@@ -383,7 +383,7 @@ static const uint g_shape_preset_hold_action_face[2][3] = {{2, 0, 1}, {3, 5, 4}}
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #GPUBatch Creation
+/** \name #gpu::Batch Creation
  *
  * In order to speed up UI drawing we create some batches that are then
  * modified by specialized shaders to draw certain elements really fast.
@@ -392,8 +392,8 @@ static const uint g_shape_preset_hold_action_face[2][3] = {{2, 0, 1}, {3, 5, 4}}
  * \{ */
 
 static struct {
-  GPUBatch *roundbox_widget;
-  GPUBatch *roundbox_shadow;
+  blender::gpu::Batch *roundbox_widget;
+  blender::gpu::Batch *roundbox_shadow;
 
   /* TODO: remove. */
   GPUVertFormat format;
@@ -439,10 +439,10 @@ static uint32_t set_roundbox_vertex(GPUVertBufRaw *vflag_step,
   return *data;
 }
 
-GPUBatch *ui_batch_roundbox_widget_get()
+blender::gpu::Batch *ui_batch_roundbox_widget_get()
 {
   if (g_ui_batch_cache.roundbox_widget == nullptr) {
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
+    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
 
     GPU_vertbuf_data_alloc(vbo, 12);
 
@@ -465,12 +465,12 @@ GPUBatch *ui_batch_roundbox_widget_get()
   return g_ui_batch_cache.roundbox_widget;
 }
 
-GPUBatch *ui_batch_roundbox_shadow_get()
+blender::gpu::Batch *ui_batch_roundbox_shadow_get()
 {
   if (g_ui_batch_cache.roundbox_shadow == nullptr) {
     uint32_t last_data;
     GPUVertBufRaw vflag_step;
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
+    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(vflag_format());
     const int vcount = (WIDGET_SIZE_MAX + 1) * 2 + 2 + WIDGET_SIZE_MAX;
     GPU_vertbuf_data_alloc(vbo, vcount);
     GPU_vertbuf_attr_get_raw_data(vbo, g_ui_batch_cache.vflag_id, &vflag_step);
@@ -1044,7 +1044,7 @@ static void widgetbase_set_uniform_colors_ubv(uiWidgetBase *wtb,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Widget Base Drawing #GPUBatch Cache
+/** \name Widget Base Drawing #gpu::Batch Cache
  * \{ */
 
 /* keep in sync with shader */
@@ -1066,7 +1066,7 @@ void UI_widgetbase_draw_cache_flush()
     return;
   }
 
-  GPUBatch *batch = ui_batch_roundbox_widget_get();
+  blender::gpu::Batch *batch = ui_batch_roundbox_widget_get();
   if (g_widget_base_batch.count == 1) {
     /* draw single */
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
@@ -1139,7 +1139,7 @@ static void draw_widgetbase_batch(uiWidgetBase *wtb)
     const float checker_params[3] = {
         UI_ALPHA_CHECKER_DARK / 255.0f, UI_ALPHA_CHECKER_LIGHT / 255.0f, 8.0f};
     /* draw single */
-    GPUBatch *batch = ui_batch_roundbox_widget_get();
+    blender::gpu::Batch *batch = ui_batch_roundbox_widget_get();
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_BASE);
     GPU_batch_uniform_4fv_array(
         batch, "parameters", MAX_WIDGET_PARAMETERS, (float(*)[4]) & wtb->uniform_params);
@@ -1323,9 +1323,8 @@ static void widget_draw_icon(
   }
   else if (but->type == UI_BTYPE_LABEL) {
     /* extra feature allows more alpha blending */
-    if (but->a1 == 1.0f) {
-      alpha *= but->a2;
-    }
+    const uiButLabel *but_label = reinterpret_cast<const uiButLabel *>(but);
+    alpha *= but_label->alpha_factor;
   }
   else if (ELEM(but->type, UI_BTYPE_BUT, UI_BTYPE_DECORATOR)) {
     uiWidgetStateInfo state = {0};
@@ -2569,9 +2568,7 @@ static void widget_state(uiWidgetType *wt, const uiWidgetStateInfo *state, eUIEm
 
     copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
 
-    if (state->but_flag & UI_SELECT) {
-      std::swap(wt->wcol.shadetop, wt->wcol.shadedown);
-    }
+    std::swap(wt->wcol.shadetop, wt->wcol.shadedown);
   }
   else {
     if (state->but_flag & UI_BUT_ACTIVE_DEFAULT) {
@@ -2781,6 +2778,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
     /* Inactive. */
     if (state->but_flag & UI_HOVER) {
       color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+      copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
       wt->wcol.inner[3] = 255;
     }
     color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
@@ -3389,7 +3387,8 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 /** Separator line. */
 static void ui_draw_separator(const uiWidgetColors *wcol, uiBut *but, const rcti *rect)
 {
-  const bool vertical = but->a1 == 1.0f;
+  const uiButSeparatorLine *but_line = static_cast<uiButSeparatorLine *>(but);
+  const bool vertical = but_line->is_vertical;
   const int mid = vertical ? BLI_rcti_cent_x(rect) : BLI_rcti_cent_y(rect);
   const uchar col[4] = {
       wcol->text[0],
@@ -3692,10 +3691,13 @@ static void widget_scroll(uiBut *but,
                           int /*roundboxalign*/,
                           const float /*zoom*/)
 {
+  const uiButScrollBar *but_scroll = reinterpret_cast<const uiButScrollBar *>(but);
+  const float height = but_scroll->visual_height;
+
   /* calculate slider part */
   const float value = float(ui_but_value_get(but));
 
-  const float size = max_ff((but->softmax + but->a1 - but->softmin), 2.0f);
+  const float size = max_ff((but->softmax + height - but->softmin), 2.0f);
 
   /* position */
   rcti rect1 = *rect;
@@ -3706,7 +3708,7 @@ static void widget_scroll(uiBut *but,
   if (horizontal) {
     const float fac = BLI_rcti_size_x(rect) / size;
     rect1.xmin = rect1.xmin + ceilf(fac * (value - but->softmin));
-    rect1.xmax = rect1.xmin + ceilf(fac * (but->a1 - but->softmin));
+    rect1.xmax = rect1.xmin + ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_y(rect);
@@ -3723,7 +3725,7 @@ static void widget_scroll(uiBut *but,
   else {
     const float fac = BLI_rcti_size_y(rect) / size;
     rect1.ymax = rect1.ymax - ceilf(fac * (value - but->softmin));
-    rect1.ymin = rect1.ymax - ceilf(fac * (but->a1 - but->softmin));
+    rect1.ymin = rect1.ymax - ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_x(rect);
@@ -5333,17 +5335,10 @@ void ui_draw_popover_back(ARegion *region, uiStyle * /*style*/, uiBlock *block, 
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_BACK);
 
-  if (block) {
-    float mval_origin[2] = {float(block->bounds_offset[0]), float(block->bounds_offset[1])};
-    ui_window_to_block_fl(region, block, &mval_origin[0], &mval_origin[1]);
-    ui_draw_popover_back_impl(
-        wt->wcol_theme, rect, block->direction, U.widget_unit / block->aspect, mval_origin);
-  }
-  else {
-    const float zoom = 1.0f / block->aspect;
-    wt->state(wt, &STATE_INFO_NULL, UI_EMBOSS_UNDEFINED);
-    wt->draw_block(&wt->wcol, rect, 0, 0, zoom);
-  }
+  float mval_origin[2] = {float(block->bounds_offset[0]), float(block->bounds_offset[1])};
+  ui_window_to_block_fl(region, block, &mval_origin[0], &mval_origin[1]);
+  ui_draw_popover_back_impl(
+      wt->wcol_theme, rect, block->direction, U.widget_unit / block->aspect, mval_origin);
 
   ui_draw_clip_tri(block, rect, wt);
 }

@@ -102,7 +102,7 @@ static std::ostream &operator<<(std::ostream &os, const Edge &e)
   return os;
 }
 
-static std::ostream &operator<<(std::ostream &os, const Span<int> &a)
+static std::ostream &operator<<(std::ostream &os, const Span<int> a)
 {
   for (int i : a.index_range()) {
     os << a[i];
@@ -1908,7 +1908,7 @@ struct ComponentContainer {
  */
 static Vector<ComponentContainer> find_component_containers(int comp,
                                                             const Span<Vector<int>> components,
-                                                            const Array<int> &ambient_cell,
+                                                            const Span<int> ambient_cell,
                                                             const IMesh &tm,
                                                             const PatchesInfo &pinfo,
                                                             const TriMeshTopology &tmtopo,
@@ -2705,7 +2705,7 @@ static bool raycast_test_remove(BoolOpType op, Array<int> &winding, int shape, b
 }
 
 /** Add triangle a flipped version of tri to out_faces. */
-static void raycast_add_flipped(Vector<Face *> &out_faces, Face &tri, IMeshArena *arena)
+static void raycast_add_flipped(Vector<Face *> &out_faces, const Face &tri, IMeshArena *arena)
 {
 
   Array<const Vert *> flipped_vs = {tri[0], tri[2], tri[1]};

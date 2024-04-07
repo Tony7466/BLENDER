@@ -530,32 +530,19 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
   return socket;
 }
 
-static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
-    ID *id,
-    bNodeTreeInterface *interface,
-    Main *bmain,
-    ReportList *reports,
-    const char *name,
-    const char *description,
-    bool default_closed,
-    bNodeTreeInterfacePanel *parent)
+static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(ID *id,
+                                                                     bNodeTreeInterface *interface,
+                                                                     Main *bmain,
+                                                                     ReportList *reports,
+                                                                     const char *name,
+                                                                     const char *description,
+                                                                     bool default_closed)
 {
-  if (parent != nullptr) {
-    if (!interface->find_item(parent->item)) {
-      BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
-      return nullptr;
-    }
-    if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
-      BKE_report(reports, RPT_WARNING, "Parent panel does not allow child panels");
-      return nullptr;
-    }
-  }
-
   NodeTreeInterfacePanelFlag flag = NodeTreeInterfacePanelFlag(0);
   SET_FLAG_FROM_TEST(flag, default_closed, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 
   bNodeTreeInterfacePanel *panel = interface->add_panel(
-      name ? name : "", description ? description : "", flag, parent);
+      name ? name : "", description ? description : "", flag, nullptr);
 
   if (panel == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create panel");
@@ -904,12 +891,6 @@ const EnumPropertyItem *RNA_node_tree_interface_socket_menu_itemf(bContext * /*C
   return RNA_node_enum_definition_itemf(*data->enum_items, r_free);
 }
 
-static void rna_NodeTreeInterfaceSocket_idname_set(PointerRNA *ptr, const char *value)
-{
-  bNodeTreeInterfaceSocket &socket = *static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  socket.set_socket_type(value);
-}
-
 #else
 
 static void rna_def_node_interface_item(BlenderRNA *brna)
@@ -1063,8 +1044,6 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, nullptr, "socket_type");
   RNA_def_property_flag(prop, PROP_REGISTER);
   RNA_def_property_ui_text(prop, "Socket Type Name", "Name of the socket type");
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_idname_set");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
   func = RNA_def_function(srna, "draw", nullptr);
   RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
@@ -1186,11 +1165,6 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_boolean(
       func, "default_closed", false, "Default Closed", "Panel is closed by default on new nodes");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_pointer(func,
-                  "parent",
-                  "NodeTreeInterfacePanel",
-                  "Parent",
-                  "Add panel as a child of the parent panel");
   /* return value */
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfacePanel", "Panel", "New panel");
   RNA_def_function_return(func, parm);

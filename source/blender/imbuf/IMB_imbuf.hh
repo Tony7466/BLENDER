@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include "../gpu/GPU_texture.h"
+#include "../gpu/GPU_texture.hh"
 
 #include "BLI_utildefines.h"
 
@@ -60,8 +60,8 @@ struct GSet;
 struct ImageFormatData;
 struct Stereo3dFormat;
 
-void IMB_init(void);
-void IMB_exit(void);
+void IMB_init();
+void IMB_exit();
 
 ImBuf *IMB_ibImageFromMemory(const unsigned char *mem,
                              size_t size,
@@ -117,6 +117,21 @@ ImBuf *IMB_allocFromBuffer(const uint8_t *byte_buffer,
  */
 void IMB_assign_byte_buffer(ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
 void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, ImBufOwnership ownership);
+
+/**
+ * Assign the content and the color space of the corresponding buffer the data from the given
+ * buffer.
+ *
+ * \note Does not modify the topology (width, height, number of channels)
+ * or the mipmaps in any way.
+ *
+ * \note The ownership of the data in the source buffer is ignored.
+ */
+void IMB_assign_byte_buffer(ImBuf *ibuf, const ImBufByteBuffer &buffer, ImBufOwnership ownership);
+void IMB_assign_float_buffer(ImBuf *ibuf,
+                             const ImBufFloatBuffer &buffer,
+                             ImBufOwnership ownership);
+void IMB_assign_dds_data(ImBuf *ibuf, const DDSData &data, ImBufOwnership ownership);
 
 /**
  * Make corresponding buffers available for modification.
@@ -333,7 +348,6 @@ void IMB_close_anim(ImBufAnim *anim);
 void IMB_close_anim_proxies(ImBufAnim *anim);
 bool IMB_anim_can_produce_frames(const ImBufAnim *anim);
 
-int ismovie(const char *filepath);
 int IMB_anim_get_image_width(ImBufAnim *anim);
 int IMB_anim_get_image_height(ImBufAnim *anim);
 bool IMB_get_gop_decode_time(ImBufAnim *anim);
@@ -397,11 +411,11 @@ bool IMB_ispic_type_matches(const char *filepath, int filetype);
 int IMB_ispic_type_from_memory(const unsigned char *buf, size_t buf_size);
 int IMB_ispic_type(const char *filepath);
 
-enum class ImbAnimType { NotAnim, Sequence, Movie, Ffmpeg };
-
+/**
+ * Test if the file is a video file (known format, has a video stream and
+ * supported video codec).
+ */
 bool IMB_isanim(const char *filepath);
-
-ImbAnimType imb_get_anim_type(const char *filepath);
 
 /**
  * Test if color-space conversions of pixels in buffer need to take into account alpha.
@@ -675,8 +689,8 @@ void IMB_transform(const ImBuf *src,
 
 /* FFMPEG */
 
-void IMB_ffmpeg_init(void);
-const char *IMB_ffmpeg_last_error(void);
+void IMB_ffmpeg_init();
+const char *IMB_ffmpeg_last_error();
 
 GPUTexture *IMB_create_gpu_texture(const char *name,
                                    ImBuf *ibuf,

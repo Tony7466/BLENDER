@@ -10,15 +10,18 @@
 
 #include <mutex>
 
+#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_texture.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_texture.hh"
+#include "GPU_vertex_buffer.hh"
 
 struct ColorManagedDisplay;
 struct FontBLF;
-struct GPUBatch;
-struct GPUVertBuf;
+namespace blender::gpu {
+class Batch;
+class VertBuf;
+}  // namespace blender::gpu
 struct GPUVertBufRaw;
 
 #include FT_MULTIPLE_MASTERS_H /* Variable font support. */
@@ -92,8 +95,8 @@ inline ft_pix ft_pix_from_float(float v)
 struct BatchBLF {
   /** Can only batch glyph from the same font. */
   FontBLF *font;
-  GPUBatch *batch;
-  GPUVertBuf *verts;
+  blender::gpu::Batch *batch;
+  blender::gpu::VertBuf *verts;
   GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
       glyph_mode_step;
   unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
@@ -116,6 +119,19 @@ struct KerningCacheBLF {
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 };
 
+struct GlyphCacheKey {
+  uint charcode;
+  uint8_t subpixel;
+  friend bool operator==(const GlyphCacheKey &a, const GlyphCacheKey &b)
+  {
+    return a.charcode == b.charcode && a.subpixel == b.subpixel;
+  }
+  uint64_t hash() const
+  {
+    return blender::get_default_hash(charcode, subpixel);
+  }
+};
+
 struct GlyphCacheBLF {
   /** Font size. */
   float size;
@@ -132,7 +148,7 @@ struct GlyphCacheBLF {
   int fixed_width;
 
   /** The glyphs. */
-  ListBase bucket[257];
+  blender::Map<GlyphCacheKey, std::unique_ptr<GlyphBLF>> glyphs;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
@@ -145,9 +161,6 @@ struct GlyphCacheBLF {
 };
 
 struct GlyphBLF {
-  GlyphBLF *next;
-  GlyphBLF *prev;
-
   /** The character, as UTF-32. */
   unsigned int c;
 
@@ -192,6 +205,8 @@ struct GlyphBLF {
   int pos[2];
 
   GlyphCacheBLF *glyph_cache;
+
+  ~GlyphBLF();
 };
 
 struct FontBufInfoBLF {

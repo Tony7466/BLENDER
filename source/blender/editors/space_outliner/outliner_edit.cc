@@ -71,6 +71,8 @@
 #include "tree/tree_element_rna.hh"
 #include "tree/tree_iterator.hh"
 
+#include "wm_window.hh"
+
 using namespace blender::ed::outliner;
 
 namespace blender::ed::outliner {
@@ -103,7 +105,7 @@ static int outliner_highlight_update_invoke(bContext *C, wmOperator * /*op*/, co
     return OPERATOR_PASS_THROUGH;
   }
 
-  /* Drag and drop does own highlighting. */
+  /* Drag and drop does its own highlighting. */
   wmWindowManager *wm = CTX_wm_manager(C);
   if (wm->drags.first) {
     return OPERATOR_PASS_THROUGH;
@@ -294,7 +296,7 @@ void OUTLINER_OT_item_openclose(wmOperatorType *ot)
   ot->invoke = outliner_item_openclose_invoke;
   ot->modal = outliner_item_openclose_modal;
 
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   RNA_def_boolean(ot->srna, "all", false, "All", "Close or open all items");
 }
@@ -374,8 +376,7 @@ void item_rename_fn(bContext *C,
                     Scene * /*scene*/,
                     TreeElement *te,
                     TreeStoreElem * /*tsep*/,
-                    TreeStoreElem *tselem,
-                    void * /*user_data*/)
+                    TreeStoreElem *tselem)
 {
   ARegion *region = CTX_wm_region(C);
   do_item_rename(region, te, tselem, reports);
@@ -444,7 +445,7 @@ void OUTLINER_OT_item_rename(wmOperatorType *ot)
 
   ot->invoke = outliner_item_rename_invoke;
 
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -521,8 +522,7 @@ void id_delete_tag_fn(bContext *C,
                       Scene * /*scene*/,
                       TreeElement *te,
                       TreeStoreElem * /*tsep*/,
-                      TreeStoreElem *tselem,
-                      void * /*user_data*/)
+                      TreeStoreElem *tselem)
 {
   id_delete_tag(C, reports, te, tselem);
 }
@@ -596,7 +596,7 @@ void OUTLINER_OT_id_delete(wmOperatorType *ot)
   ot->description = "Delete the ID under cursor";
 
   ot->invoke = outliner_id_delete_invoke;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -693,7 +693,7 @@ static int outliner_id_remap_invoke(bContext *C, wmOperator *op, const wmEvent *
     outliner_id_remap_find_tree_element(C, op, &space_outliner->tree, fmval[1]);
   }
 
-  return WM_operator_props_dialog_popup(C, op, 400);
+  return WM_operator_props_dialog_popup(C, op, 400, IFACE_("Remap Data ID"), IFACE_("Remap"));
 }
 
 static const EnumPropertyItem *outliner_id_itemf(bContext *C,
@@ -735,7 +735,7 @@ void OUTLINER_OT_id_remap(wmOperatorType *ot)
   /* callbacks */
   ot->invoke = outliner_id_remap_invoke;
   ot->exec = outliner_id_remap_exec;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -766,8 +766,7 @@ void id_remap_fn(bContext *C,
                  Scene * /*scene*/,
                  TreeElement * /*te*/,
                  TreeStoreElem * /*tsep*/,
-                 TreeStoreElem *tselem,
-                 void * /*user_data*/)
+                 TreeStoreElem *tselem)
 {
   wmOperatorType *ot = WM_operatortype_find("OUTLINER_OT_id_remap", false);
   PointerRNA op_props;
@@ -996,7 +995,7 @@ void OUTLINER_OT_lib_relocate(wmOperatorType *ot)
   ot->description = "Relocate the library under cursor";
 
   ot->invoke = outliner_lib_relocate_invoke;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1007,8 +1006,7 @@ void lib_relocate_fn(bContext *C,
                      Scene * /*scene*/,
                      TreeElement *te,
                      TreeStoreElem * /*tsep*/,
-                     TreeStoreElem *tselem,
-                     void * /*user_data*/)
+                     TreeStoreElem *tselem)
 {
   /* XXX: This does not work with several items
    * (it is only called once in the end, due to the 'deferred'
@@ -1053,7 +1051,7 @@ void OUTLINER_OT_lib_reload(wmOperatorType *ot)
   ot->description = "Reload the library under cursor";
 
   ot->invoke = outliner_lib_reload_invoke;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -1064,8 +1062,7 @@ void lib_reload_fn(bContext *C,
                    Scene * /*scene*/,
                    TreeElement *te,
                    TreeStoreElem * /*tsep*/,
-                   TreeStoreElem *tselem,
-                   void * /*user_data*/)
+                   TreeStoreElem *tselem)
 {
   wmOperatorType *ot = WM_operatortype_find("WM_OT_lib_reload", false);
 
@@ -1183,7 +1180,7 @@ void OUTLINER_OT_expanded_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_toggle_expanded_exec;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* no undo or registry, UI option */
 }
@@ -1385,7 +1382,7 @@ void OUTLINER_OT_show_active(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_show_active_exec;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 }
 
 /** \} */
@@ -1424,7 +1421,7 @@ void OUTLINER_OT_scroll_page(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_scroll_page_exec;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* properties */
   prop = RNA_def_boolean(ot->srna, "up", false, "Up", "Scroll up one page");
@@ -1496,7 +1493,7 @@ void OUTLINER_OT_show_one_level(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_one_level_exec;
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* no undo or registry, UI option */
 
@@ -1589,7 +1586,8 @@ void OUTLINER_OT_show_hierarchy(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_show_hierarchy_exec;
-  ot->poll = ED_operator_outliner_active; /* TODO: shouldn't be allowed in RNA views... */
+  /* TODO: shouldn't be allowed in RNA views... */
+  ot->poll = ED_operator_region_outliner_active;
 
   /* no undo or registry, UI option */
 }
@@ -1799,7 +1797,7 @@ static void do_outliner_drivers_editop(SpaceOutliner *space_outliner,
     PropertyRNA *prop = te_rna ? te_rna->get_property_rna() : nullptr;
 
     /* check if RNA-property described by this selected element is an animatable prop */
-    if (prop && RNA_property_animateable(&ptr, prop)) {
+    if (prop && RNA_property_anim_editable(&ptr, prop)) {
       /* get id + path + index info from the selected element */
       tree_element_to_path(te, tselem, &id, &path, &array_index, &flag, &groupmode);
     }
@@ -1990,7 +1988,7 @@ static void do_outliner_keyingset_editop(SpaceOutliner *space_outliner,
     const TreeElementRNACommon *te_rna = tree_element_cast<TreeElementRNACommon>(te);
     PointerRNA ptr = te_rna->get_pointer_rna();
     if (te_rna && te_rna->get_property_rna() &&
-        RNA_property_animateable(&ptr, te_rna->get_property_rna()))
+        RNA_property_anim_editable(&ptr, te_rna->get_property_rna()))
     {
       /* get id + path + index info from the selected element */
       tree_element_to_path(te, tselem, &id, &path, &array_index, &flag, &groupmode);
@@ -2163,7 +2161,10 @@ static int unused_message_popup_width_compute(bContext *C)
   /* Computation of unused data amounts, with all options ON.
    * Used to estimate the maximum required width for the dialog. */
   Main *bmain = CTX_data_main(C);
-  LibQueryUnusedIDsData data = {true, true, true, {}, {}, {}};
+  LibQueryUnusedIDsData data;
+  data.do_local_ids = true;
+  data.do_linked_ids = true;
+  data.do_recursive = true;
   BKE_lib_query_unused_ids_amounts(bmain, data);
 
   std::string unused_message = "";
@@ -2342,6 +2343,55 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
                   "Recursive Delete",
                   "Recursively check for indirectly unused data-blocks, ensuring that no orphaned "
                   "data-blocks remain after execution");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Manage Orphan Data-Blocks Operator
+ * \{ */
+
+static int outliner_orphans_manage_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+{
+  const int sizex = int(450.0f * UI_SCALE_FAC);
+  const int sizey = int(450.0f * UI_SCALE_FAC);
+  const rcti window_rect = {
+      /*xmin*/ event->xy[0],
+      /*xmax*/ event->xy[0] + sizex,
+      /*ymin*/ event->xy[1],
+      /*ymax*/ event->xy[1] + sizey,
+  };
+
+  if (WM_window_open(C,
+                     IFACE_("Manage Unused Data"),
+                     &window_rect,
+                     SPACE_OUTLINER,
+                     false,
+                     false,
+                     true,
+                     WIN_ALIGN_LOCATION_CENTER,
+                     nullptr,
+                     nullptr) != nullptr)
+  {
+    SpaceOutliner *soutline = CTX_wm_space_outliner(C);
+    soutline->outlinevis = SO_ID_ORPHANS;
+    return OPERATOR_FINISHED;
+  }
+  return OPERATOR_CANCELLED;
+}
+
+void OUTLINER_OT_orphans_manage(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->idname = "OUTLINER_OT_orphans_manage";
+  ot->name = "Manage Unused Data";
+  ot->description = "Open a window to manage unused data";
+
+  /* callbacks */
+  ot->invoke = outliner_orphans_manage_invoke;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;
 }
 
 /** \} */
