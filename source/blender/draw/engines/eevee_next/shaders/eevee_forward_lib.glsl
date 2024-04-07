@@ -24,7 +24,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
 
   ClosureLightStack stack;
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT; i++) {
-    stack.cl[i] = closure_light_new(g_closure_get(i), V);
+    stack.cl[i] = closure_light_new(g_closure_get(i), V, thickness);
   }
 
 #ifndef SKIP_LIGHT_EVAL

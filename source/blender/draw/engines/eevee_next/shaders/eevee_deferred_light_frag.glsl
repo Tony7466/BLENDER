@@ -29,7 +29,7 @@ void main()
 
   ClosureLightStack stack;
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
-    stack.cl[i] = closure_light_new(gbuffer_closure_get(gbuf, i), V);
+    stack.cl[i] = closure_light_new(gbuffer_closure_get(gbuf, i), V, gbuf.thickness);
   }
 
   /* TODO(fclem): Split thickness computation. */
@@ -51,6 +51,35 @@ void main()
     stack.cl[gbuf.closure_count] = cl_light;
   }
 #endif
+
+  if (thickness > 0.0) {
+    ClosureUndetermined cl = gbuffer_closure_get(gbuf, 0);
+    /* TODO(fclem): Split the transmission evaluation to its own shader as we are modifying P for
+     * every closures now. */
+    switch (cl.type) {
+      case CLOSURE_BSSRDF_BURLEY_ID:
+      case CLOSURE_BSDF_DIFFUSE_ID:
+      case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
+        ClosureRefraction cl_refract = to_closure_refraction(cl);
+        vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
+        vec3 exit_N, exit_P;
+        raytrace_thickness_sphere_intersect(thickness, Ng, L, exit_N, exit_P);
+        P += exit_P;
+        break;
+      }
+      case CLOSURE_BSDF_TRANSLUCENT_ID:
+        /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
+         * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
+         * a unique position on the sphere and use the light vector as normal. */
+        P += -cl.N * thickness * 0.5;
+        break;
+      case CLOSURE_NONE_ID:
+        /* TODO(fclem): Assert. */
+        break;
+    }
+  }
 
   light_eval(stack, P, Ng, V, vPz, thickness);
 

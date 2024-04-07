@@ -95,6 +95,8 @@ void light_shadow_mask(vec3 P, vec3 Ng, float vPz, float thickness, out uint sha
 struct ClosureLight {
   /* Shading normal. */
   vec3 N;
+  /* Offset to apply to the shading point for subsurface lighting. */
+  vec3 P_offset;
   /* LTC matrix. */
   vec4 ltc_mat;
   /* Enum (used as index) telling how to treat the lighting. */
@@ -106,13 +108,14 @@ struct ClosureLight {
   vec3 light_unshadowed;
 };
 
-ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
+ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V, float thickness)
 {
   ClosureLight cl_light;
   cl_light.N = cl.N;
   cl_light.ltc_mat = LTC_LAMBERT_MAT;
   cl_light.type = LIGHT_DIFFUSE;
   cl_light.light_shadowed = vec3(0.0);
+  cl_light.light_unshadowed = vec3(0.0);
   cl_light.subsurface = false;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
@@ -128,6 +131,15 @@ ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       ClosureRefraction cl_refract = to_closure_refraction(cl);
+      if (thickness > 0.0) {
+        vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
+        vec3 P_offset;
+        raytrace_thickness_sphere_intersect(thickness, cl.N, L, cl.N, P_offset);
+        cl.N = -cl.N;
+        cl_refract.ior = 1.0 / cl_refract.ior;
+        V = -L;
+      }
+
       vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
       float roughness = refraction_roughness_remapping(cl_refract.roughness, cl_refract.ior);
       cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), roughness);
@@ -158,6 +170,9 @@ void light_eval_single_closure(LightData light,
                                float shadow)
 {
   if (light.power[cl.type] > 0.0) {
+    if (thickness > 0.0 /* && is_translucent */) {
+      cl.N = lv.L;
+    }
     float ltc_result = light_ltc(utility_tx, light, cl.N, V, lv, cl.ltc_mat);
     vec3 out_radiance = light.color * light.power[cl.type] * ltc_result;
     float attenuation_sided = (cl.subsurface) ? attenuation.y : attenuation.x;
@@ -189,7 +204,11 @@ void light_eval_single(uint l_idx,
 
   bool use_subsurface = thickness > 0.0;
   LightVector lv = light_vector_get(light, is_directional, P);
-  vec2 attenuation = light_attenuation_surface(light, is_directional, Ng, lv);
+  vec2 attenuation = vec2(1.0);
+  light_attenuation_surface(light, is_directional, Ng, lv);
+  if (thickness > 0.0 /* && is_translucent */) {
+    attenuation.y = M_1_PI;
+  }
   if (reduce_max(attenuation) < LIGHT_ATTENUATION_THRESHOLD) {
     return;
   }
@@ -199,6 +218,24 @@ void light_eval_single(uint l_idx,
     shadow = shadow_unpack(packed_shadows, ray_count, shift);
     shift += ray_count;
 #else
+    if (thickness > 0.0 /* && is_translucent */) {
+      float radius = thickness * 0.5;
+      /* Disk rotated towards light vector. */
+      vec3 right, up;
+      make_orthonormal_basis(lv.L, right, up);
+
+#  ifdef GPU_FRAGMENT_SHADER
+      vec2 pixel = floor(gl_FragCoord.xy);
+#  elif defined(GPU_COMPUTE_SHADER)
+      vec2 pixel = vec2(gl_GlobalInvocationID.xy);
+#  endif
+      vec3 blue_noise_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
+      vec2 random_2d = fract(blue_noise_3d.xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
+      random_2d = sample_disk(random_2d);
+      random_2d *= radius;
+      P += right * random_2d.x + up * random_2d.y;
+      P += lv.L * radius;
+    }
     ShadowEvalResult result = shadow_eval(
         light, is_directional, P, Ng, thickness, ray_count, ray_step_count);
     shadow = result.light_visibilty;
