@@ -2438,6 +2438,35 @@ static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
  * \{ */
 static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *op)
 {
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const float threshold = RNA_float_get(op->ptr, "threshold");
+  const bool use_unselected = RNA_boolean_get(op->ptr, "use_unselected");
+
+  bool changed = false;
+
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::greasepencil::Drawing &drawing = info.drawing;
+    IndexMaskMemory memory;
+    IndexMask points = use_unselected ?
+                           ed::greasepencil::retrieve_editable_points(*object, drawing, memory) :
+                           ed::greasepencil::retrieve_editable_and_selected_points(
+                               *object, drawing, memory);
+    if (points.is_empty()) {
+      return;
+    }
+    const bke::CurvesGeometry &curves = drawing.strokes();
+    drawing.strokes_for_write() = curves_merge_by_distance(curves, threshold, points, {});
+    drawing.tag_topology_changed();
+    changed = true;
+  });
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
   return OPERATOR_FINISHED;
 }
 
@@ -2459,6 +2488,13 @@ static void GREASE_PENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot)
   /* Merge parameters. */
   prop = RNA_def_float(ot->srna, "threshold", 0.001f, 0.0f, 100.0f, "Threshold", "", 0.0f, 100.0f);
   /* Avoid re-using last var. */
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "use_unselected",
+                         false,
+                         "Unselected",
+                         "Use whole stroke, not only selected points");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
