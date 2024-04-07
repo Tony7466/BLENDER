@@ -1067,6 +1067,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
         case TEX_NODE_CURVE_RGB:
         case TEX_NODE_CURVE_TIME: {
           BKE_curvemapping_blend_read(reader, static_cast<CurveMapping *>(node->storage));
+          for (int i = 0; i < 4; i++) {
+            auto runtime = static_cast<CurveMapping*>(node->storage)->cm[i].runtime;
+            if(runtime == nullptr)
+              static_cast<CurveMapping*>(node->storage)->cm[i].runtime = static_cast<CurveMapRuntime*>(
+                MEM_callocN(sizeof(CurveMapRuntime), "curve runtime"));
+          }
           break;
         }
         case SH_NODE_SCRIPT: {

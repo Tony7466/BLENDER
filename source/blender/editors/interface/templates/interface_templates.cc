@@ -4661,11 +4661,11 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
 
     /* Curve handle position */
-    active_cm->center_x = 0.0f;
-    for (const CurveMapPoint* cmp : cmps) {
-      active_cm->center_x += cmp->x;
+    active_cm->runtime->center_x = 0.0f;
+    for (const CurveMapPoint *cmp : cmps) {
+      active_cm->runtime->center_x += cmp->x;
     }
-    active_cm->center_x /= cmps.size();
+    active_cm->runtime->center_x /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4674,7 +4674,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &active_cm->center_x,
+                   &active_cm->runtime->center_x,
                    bounds.xmin,
                    bounds.xmax,
                    "");
@@ -4686,11 +4686,11 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    active_cm->center_y = 0.0f;
-    for (const CurveMapPoint* cmp : cmps) {
-      active_cm->center_y += cmp->y;
+    active_cm->runtime->center_y = 0.0f;
+    for (const CurveMapPoint *cmp : cmps) {
+      active_cm->runtime->center_y += cmp->y;
     }
-    active_cm->center_y /= cmps.size();
+    active_cm->runtime->center_y /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4699,7 +4699,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &active_cm->center_y,
+                   &active_cm->runtime->center_y,
                    bounds.ymin,
                    bounds.ymax,
                    "");

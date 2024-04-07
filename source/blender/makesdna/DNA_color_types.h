@@ -27,6 +27,12 @@ typedef struct CurveMapPoint {
   short flag, shorty;
 } CurveMapPoint;
 
+typedef struct CurveMapRuntime {
+  /** Temp storage for multiple selections operation. */
+  /** Center of selected points */
+  float center_x, center_y;
+} CurveMapRuntime;
+
 /** #CurveMapPoint.flag */
 enum {
   CUMA_SELECT = (1 << 0),
@@ -48,8 +54,6 @@ typedef struct CurveMap {
   float ext_in[2], ext_out[2];
   /** Actual curve. */
   CurveMapPoint *curve;
-  /** Center of selected points */
-  float center_x, center_y;
   /** Display and evaluate table. */
   CurveMapPoint *table;
 
@@ -60,6 +64,8 @@ typedef struct CurveMap {
   float premul_ext_out[2];
   short default_handle_type;
   char _pad[6];
+
+  CurveMapRuntime *runtime;
 } CurveMap;
 
 typedef struct CurveMapping {
