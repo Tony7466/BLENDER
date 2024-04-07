@@ -92,8 +92,11 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)
   return radiance_sh;
 }
 
-vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 V)
+vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 V, float thickness)
 {
+  if (thickness > 0.0) {
+    return spherical_harmonics_L0_evaluate(cl.N, samp.volume_irradiance.L0).rgb;
+  }
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(-cl.N, samp.volume_irradiance);
   return radiance_sh;
 }
@@ -150,13 +153,16 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureRefraction cl, vec3 P, vec3 V
   return mix(radiance_cube, radiance_sh, fac);
 }
 
-void lightprobe_eval(
-    LightProbeSample samp, ClosureUndetermined cl, vec3 P, vec3 V, inout vec3 radiance)
+void lightprobe_eval(LightProbeSample samp,
+                     ClosureUndetermined cl,
+                     vec3 P,
+                     vec3 V,
+                     float thickness,
+                     inout vec3 radiance)
 {
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      /* TODO: Support in ray tracing first. Otherwise we have a discrepancy. */
-      radiance += lightprobe_eval(samp, to_closure_translucent(cl), P, V);
+      radiance += lightprobe_eval(samp, to_closure_translucent(cl), P, V, thickness);
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
       /* TODO: Support translucency in ray tracing first. Otherwise we have a discrepancy. */
