@@ -19,7 +19,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_duplilist.hh"
 #include "BKE_gpencil_geom_legacy.h"
@@ -41,7 +41,7 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_transform_snap_object_context.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* Check frame_end is always > start frame! */
 static void gpencil_bake_set_frame_end(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)

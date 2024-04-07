@@ -20,7 +20,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_main.hh"
 #include "BKE_scene.hh"
 
@@ -28,8 +28,8 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_batch.hh"
+#include "GPU_vertex_buffer.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_keylist.hh"
