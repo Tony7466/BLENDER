@@ -4382,6 +4382,18 @@ static void curvemap_buttons_redraw(bContext &C)
   ED_region_tag_redraw(CTX_wm_region(&C));
 }
 
+static void curvemap_runtime_update(CurveMap *cm, const Vector<CurveMapPoint *> &cmps)
+{
+  cm->runtime->center_x = 0.0f;
+  cm->runtime->center_y = 0.0f;
+  for (const CurveMapPoint *cmp : cmps) {
+    cm->runtime->center_x += cmp->x;
+    cm->runtime->center_y += cmp->y;
+  }
+  cm->runtime->center_x /= cmps.size();
+  cm->runtime->center_y /= cmps.size();
+}
+
 /**
  * \note Still unsure how this call evolves.
  *
@@ -4661,11 +4673,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
 
     /* Curve handle position */
-    active_cm->runtime->center_x = 0.0f;
-    for (const CurveMapPoint *cmp : cmps) {
-      active_cm->runtime->center_x += cmp->x;
-    }
-    active_cm->runtime->center_x /= cmps.size();
+    curvemap_runtime_update(active_cm, cmps);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4686,11 +4694,6 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    active_cm->runtime->center_y = 0.0f;
-    for (const CurveMapPoint *cmp : cmps) {
-      active_cm->runtime->center_y += cmp->y;
-    }
-    active_cm->runtime->center_y /= cmps.size();
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,

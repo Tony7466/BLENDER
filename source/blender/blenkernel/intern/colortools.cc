@@ -116,10 +116,10 @@ void BKE_curvemapping_free_data(CurveMapping *cumap)
       MEM_freeN(cumap->cm[a].premultable);
       cumap->cm[a].premultable = nullptr;
     }
-//     if (cumap->cm[a].runtime) {
-//       MEM_freeN(cumap->cm[a].runtime);
-//       cumap->cm[a].runtime = nullptr;
-//     }
+    //     if (cumap->cm[a].runtime) {
+    //       MEM_freeN(cumap->cm[a].runtime);
+    //       cumap->cm[a].runtime = nullptr;
+    //     }
   }
 }
 
@@ -1360,6 +1360,16 @@ void BKE_curvemapping_init(CurveMapping *cumap)
     if (cumap->cm[a].table == nullptr) {
       curvemap_make_table(cumap, cumap->cm + a);
     }
+  }
+}
+
+static void bke_curvemapping_runtime_init(CurveMapping *cumap)
+{
+  if (cumap == nullptr) {
+    return;
+  }
+
+  for (int a = 0; a < CM_TOT; a++) {
     if (cumap->cm[a].runtime == nullptr) {
       cumap->cm[a].runtime = static_cast<CurveMapRuntime *>(
           MEM_callocN(sizeof(CurveMapRuntime), "curve runtime"));
@@ -1428,6 +1438,8 @@ void BKE_curvemapping_blend_read(BlendDataReader *reader, CurveMapping *cumap)
     cumap->cm[a].premultable = nullptr;
     cumap->cm[a].runtime = nullptr;
   }
+
+  bke_curvemapping_runtime_init(cumap);
 }
 
 /* ***************** Histogram **************** */
