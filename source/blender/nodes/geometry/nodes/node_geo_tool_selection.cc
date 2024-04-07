@@ -11,6 +11,7 @@ namespace blender::nodes::node_geo_tool_selection_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Bool>("Selection").field_source();
+  b.add_output<decl::Float>("Float").field_source();
 }
 
 class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
@@ -48,6 +49,30 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
   }
 };
 
+class ToolFloatFieldInput final : public bke::GeometryFieldInput {
+ public:
+  ToolFloatFieldInput() : bke::GeometryFieldInput(CPPType::get<bool>(), "Operator Selection")
+  {
+    category_ = Category::NamedAttribute;
+  }
+
+  GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
+                                 const IndexMask & /*mask*/) const final
+  {
+    const AttrDomain domain = context.domain();
+    const AttributeAccessor attributes = *context.attributes();
+    switch (context.type()) {
+      case GeometryComponent::Type::Curve:
+      case GeometryComponent::Type::PointCloud:
+        return *attributes.lookup_or_default<float>(".selection", domain, true);
+      case GeometryComponent::Type::Mesh:
+        return *attributes.lookup_or_default<float>(".sculpt_mask", domain, true);
+      default:
+        return {};
+    }
+  }
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   if (!check_tool_context_and_error(params)) {
@@ -55,9 +80,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   if (params.user_data()->call_data->operator_data->mode == OB_MODE_OBJECT) {
     params.set_output("Selection", true);
+    params.set_output("Float", false);
   }
   else {
     params.set_output("Selection", Field<bool>(std::make_shared<ToolSelectionFieldInput>()));
+    if (params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT) {
+      params.set_output("Float", Field<float>(std::make_shared<ToolFloatFieldInput>()));
+    }
+    else {
+      params.set_output("Float", false);
+    }
   }
 }
 

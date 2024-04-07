@@ -5333,6 +5333,21 @@ static void def_sh_tex_wireframe(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_tool_set_selection(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "boolean", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "custom2", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "Boolean",
+      " Inverts the selection mask, selecting unmasked areas and deselecting masked areas");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_UNIT);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+
 static void def_sh_tex_pointdensity(StructRNA *srna)
 {
   PropertyRNA *prop;
