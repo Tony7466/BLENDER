@@ -27,41 +27,50 @@ class CloneOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const InputSample &extension_sample) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
 
-bool CloneOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                                const InputSample &extension_sample)
+void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
-  Main &bmain = *CTX_data_main(&params.context);
-  Object &object = *CTX_data_active_object(&params.context);
-  float2 ob_center;
-  ED_view3d_project_float_object(&params.region, float3(0), ob_center, V3D_PROJ_TEST_NOP);
-  const float2 &mouse_delta = extension_sample.mouse_position - ob_center;
+  this->init_stroke(C, start_sample);
+}
 
-  const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
-      bmain, object, params.drawing, false);
-  if (pasted_curves.is_empty()) {
-    return false;
-  }
+void CloneOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+    Main &bmain = *CTX_data_main(&params.context);
+    Object &object = *CTX_data_active_object(&params.context);
+    float2 ob_center;
+    ED_view3d_project_float_object(&params.region, float3(0), ob_center, V3D_PROJ_TEST_NOP);
+    const float2 &mouse_delta = extension_sample.mouse_position - ob_center;
 
-  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
-  const OffsetIndices<int> pasted_points_by_curve = curves.points_by_curve().slice(pasted_curves);
-  const IndexRange pasted_points = IndexRange::from_begin_size(
-      pasted_points_by_curve[0].start(),
-      pasted_points_by_curve.total_size() - pasted_points_by_curve[0].start());
-
-  Array<float2> view_positions = calculate_view_positions(params, pasted_points);
-  MutableSpan<float3> positions = curves.positions_for_write();
-  threading::parallel_for(pasted_points, 4096, [&](const IndexRange range) {
-    for (const int point_i : range) {
-      positions[point_i] = params.placement.project(view_positions[point_i] + mouse_delta);
+    const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
+        bmain, object, params.drawing, false);
+    if (pasted_curves.is_empty()) {
+      return false;
     }
-  });
-  params.drawing.tag_positions_changed();
 
-  return true;
+    bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
+    const OffsetIndices<int> pasted_points_by_curve = curves.points_by_curve().slice(
+        pasted_curves);
+    const IndexRange pasted_points = IndexRange::from_begin_size(
+        pasted_points_by_curve[0].start(),
+        pasted_points_by_curve.total_size() - pasted_points_by_curve[0].start());
+
+    Array<float2> view_positions = calculate_view_positions(params, pasted_points);
+    MutableSpan<float3> positions = curves.positions_for_write();
+    threading::parallel_for(pasted_points, 4096, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        positions[point_i] = params.placement.project(view_positions[point_i] + mouse_delta);
+      }
+    });
+    params.drawing.tag_positions_changed();
+
+    return true;
+  });
+  this->stroke_extended(extension_sample);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(const BrushStrokeMode stroke_mode)

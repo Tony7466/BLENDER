@@ -248,69 +248,55 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
   return view_positions;
 }
 
+bool GreasePencilStrokeOperationCommon::is_inverted(const Brush &brush) const
+{
+  return is_brush_inverted(brush, this->stroke_mode);
+}
+
 float2 GreasePencilStrokeOperationCommon::mouse_delta(const InputSample &input_sample) const
 {
   return input_sample.mouse_position - this->prev_mouse_position;
 }
 
-void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
-                                                        const InputSample &start_sample)
+void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
+    const bContext &C, FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const
 {
   using namespace blender::bke::greasepencil;
 
   const ARegion &region = *CTX_wm_region(&C);
   Object &ob_orig = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+        C, region, info.layer_index, info.frame_number, info.drawing);
+    if (fn(params)) {
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+}
+
+void GreasePencilStrokeOperationCommon::init_stroke(const bContext &C,
+                                                    const InputSample &start_sample)
+{
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   Brush &brush = *BKE_paint_brush(&paint);
 
   init_brush(brush);
 
   this->prev_mouse_position = start_sample.mouse_position;
-
-  std::atomic<bool> changed = false;
-  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, info.layer_index, info.frame_number, info.drawing);
-    if (this->on_stroke_begin_drawing(params, start_sample)) {
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
-  }
 }
 
-void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
-                                                           const InputSample &extension_sample)
+void GreasePencilStrokeOperationCommon::stroke_extended(const InputSample &extension_sample)
 {
-  using namespace blender::bke::greasepencil;
-
-  const ARegion &region = *CTX_wm_region(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
-
-  std::atomic<bool> changed = false;
-  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, info.layer_index, info.frame_number, info.drawing);
-    if (this->on_stroke_extended_drawing(params, extension_sample)) {
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
-  }
-
   this->prev_mouse_position = extension_sample.mouse_position;
 }
-
-void GreasePencilStrokeOperationCommon::on_stroke_done(const bContext & /*C*/) {}
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

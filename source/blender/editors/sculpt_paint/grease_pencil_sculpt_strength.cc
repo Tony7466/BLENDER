@@ -24,36 +24,44 @@ class StrengthOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const InputSample &extension_sample) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
 
-bool StrengthOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-    const InputSample &extension_sample)
+void StrengthOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
-  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-  const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = this->is_inverted(brush);
+  this->init_stroke(C, start_sample);
+}
 
-  IndexMaskMemory selection_memory;
-  const IndexMask selection = point_selection_mask(params, selection_memory);
-  if (selection.is_empty()) {
-    return false;
-  }
+void StrengthOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
+    const Brush &brush = *BKE_paint_brush(&paint);
+    const bool invert = this->is_inverted(brush);
 
-  Array<float2> view_positions = calculate_view_positions(params, selection);
-  MutableSpan<float> opacities = params.drawing.opacities_for_write();
+    IndexMaskMemory selection_memory;
+    const IndexMask selection = point_selection_mask(params, selection_memory);
+    if (selection.is_empty()) {
+      return false;
+    }
 
-  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
-    float &opacity = opacities[point_i];
-    const float influence = brush_influence(
-        *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
-    /* Brush influence mapped to opacity by a factor of 0.125. */
-    const float delta_opacity = (invert ? -influence : influence) * 0.125f;
-    opacity = math::clamp(opacity + delta_opacity, 0.0f, 1.0f);
+    Array<float2> view_positions = calculate_view_positions(params, selection);
+    MutableSpan<float> opacities = params.drawing.opacities_for_write();
+
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      float &opacity = opacities[point_i];
+      const float influence = brush_influence(
+          *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
+      /* Brush influence mapped to opacity by a factor of 0.125. */
+      const float delta_opacity = (invert ? -influence : influence) * 0.125f;
+      opacity = math::clamp(opacity + delta_opacity, 0.0f, 1.0f);
+    });
+
+    return true;
   });
-
-  return true;
+  this->stroke_extended(extension_sample);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_strength_operation(

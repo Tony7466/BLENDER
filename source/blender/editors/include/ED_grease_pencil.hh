@@ -33,7 +33,7 @@ namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
 class CurvesGeometry;
-}
+}  // namespace bke
 }  // namespace blender
 
 enum {

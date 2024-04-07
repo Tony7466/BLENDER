@@ -53,15 +53,57 @@ class GrabOperation : public GreasePencilStrokeOperationCommon {
   /* Cached point data for each affected drawing. */
   Array<PointWeights> drawing_data;
 
+  void foreach_grabbed_drawing(const bContext &C,
+                               FunctionRef<bool(const GreasePencilStrokeParams &params,
+                                                const IndexMask &mask,
+                                                Span<float> weights)> fn) const;
+
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
-  void on_stroke_done(const bContext &C) override;
-
-  bool move_grabbed_points(const GreasePencilStrokeParams &params,
-                           IndexMask selection,
-                           Span<float> weights,
-                           const InputSample &extension_sample) const;
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
+
+void GrabOperation::foreach_grabbed_drawing(
+    const bContext &C,
+    FunctionRef<bool(
+        const GreasePencilStrokeParams &params, const IndexMask &mask, Span<float> weights)> fn)
+    const
+{
+  const ARegion &region = *CTX_wm_region(&C);
+  Object &ob_orig = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+
+  bool changed = false;
+  threading::parallel_for_each(this->drawing_data.index_range(), [&](const int i) {
+    const PointWeights &data = this->drawing_data[i];
+    if (data.point_mask.is_empty()) {
+      return;
+    }
+    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[data.layer_index];
+    /* If a new frame is created, could be impossible find the stroke. */
+    const int drawing_index = layer.drawing_index_at(data.frame_number);
+    if (drawing_index < 0) {
+      return;
+    }
+    GreasePencilDrawingBase &drawing_base = *grease_pencil.drawing(drawing_index);
+    if (drawing_base.type != GP_DRAWING) {
+      return;
+    }
+    bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<GreasePencilDrawing &>(drawing_base).wrap();
+
+    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+        C, region, data.layer_index, data.frame_number, drawing);
+    if (fn(params, data.point_mask, data.weights)) {
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+}
 
 void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
@@ -140,82 +182,43 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
 void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  const ARegion &region = *CTX_wm_region(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
-
-  const float2 mouse_delta_win = extension_sample.mouse_position - this->prev_mouse_position;
-
-  bool changed = false;
-
-  threading::parallel_for_each(this->drawing_data.index_range(), [&](const int i) {
-    const PointWeights &data = this->drawing_data[i];
-    if (data.point_mask.is_empty()) {
-      return;
-    }
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[data.layer_index];
-    /* If a new frame is created, could be impossible find the stroke. */
-    const int drawing_index = layer.drawing_index_at(data.frame_number);
-    if (drawing_index < 0) {
-      return;
-    }
-    GreasePencilDrawingBase &drawing_base = *grease_pencil.drawing(drawing_index);
-    if (drawing_base.type != GP_DRAWING) {
-      return;
-    }
-    bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing &>(drawing_base).wrap();
-
-    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, data.layer_index, data.frame_number, drawing);
-
-    this->move_grabbed_points(params, data.point_mask, data.weights, extension_sample);
-
-    changed = true;
-  });
-
-  if (changed) {
-    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
-  }
-
-  this->prev_mouse_position = extension_sample.mouse_position;
-}
-
-bool GrabOperation::move_grabbed_points(const GreasePencilStrokeParams &params,
-                                        IndexMask selection,
-                                        const Span<float> weights,
-                                        const InputSample &extension_sample) const
-{
-  const RegionView3D &rv3d = *CTX_wm_region_view3d(&params.context);
-
-  /* Crazyspace deformation. */
-  bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
-
-  /* Transform mouse delta into layer space. */
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   const float2 mouse_delta_win = this->mouse_delta(extension_sample);
-  const float3 layer_origin = params.layer.to_world_space(params.ob_eval).location();
-  const float zfac = ED_view3d_calc_zfac(&rv3d, layer_origin);
-  float3 mouse_delta;
-  ED_view3d_win_to_delta(&params.region, mouse_delta_win, zfac, mouse_delta);
 
-  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
-  MutableSpan<float3> positions = curves.positions_for_write();
-  selection.foreach_index(GrainSize(1024), [&](const int point_i, const int index) {
-    /* Translate the point with the influence factor. */
-    const float3 new_pos_layer = deformation.positions[point_i] + mouse_delta * weights[index];
-    const float3 new_pos_world = math::transform_point(params.layer.to_world_space(params.ob_eval),
-                                                       new_pos_layer);
-    float2 new_pos_view;
-    ED_view3d_project_float_global(&params.region, new_pos_world, new_pos_view, V3D_PROJ_TEST_NOP);
-    positions[point_i] = params.placement.project(new_pos_view);
-  });
+  this->foreach_grabbed_drawing(
+      C,
+      [&](const GreasePencilStrokeParams &params,
+          const IndexMask &mask,
+          const Span<float> weights) {
+        /* Crazyspace deformation. */
+        bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
 
-  params.drawing.tag_positions_changed();
-  return true;
+        /* Transform mouse delta into layer space. */
+        const float2 mouse_delta_win = this->mouse_delta(extension_sample);
+        const float3 layer_origin = params.layer.to_world_space(params.ob_eval).location();
+        const float zfac = ED_view3d_calc_zfac(&rv3d, layer_origin);
+        float3 mouse_delta;
+        ED_view3d_win_to_delta(&params.region, mouse_delta_win, zfac, mouse_delta);
+
+        bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
+        MutableSpan<float3> positions = curves.positions_for_write();
+        mask.foreach_index(GrainSize(1024), [&](const int point_i, const int index) {
+          /* Translate the point with the influence factor. */
+          const float3 new_pos_layer = deformation.positions[point_i] +
+                                       mouse_delta * weights[index];
+          const float3 new_pos_world = math::transform_point(
+              params.layer.to_world_space(params.ob_eval), new_pos_layer);
+          float2 new_pos_view;
+          ED_view3d_project_float_global(
+              &params.region, new_pos_world, new_pos_view, V3D_PROJ_TEST_NOP);
+          positions[point_i] = params.placement.project(new_pos_view);
+        });
+
+        params.drawing.tag_positions_changed();
+        return true;
+      });
+  this->stroke_extended(extension_sample);
 }
-
-void GrabOperation::on_stroke_done(const bContext & /*C*/) {}
 
 std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation(const BrushStrokeMode stroke_mode)
 {

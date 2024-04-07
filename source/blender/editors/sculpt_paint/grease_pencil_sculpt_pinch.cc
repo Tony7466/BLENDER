@@ -22,44 +22,52 @@ class PinchOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const InputSample &extension_sample) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
 
-bool PinchOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                                const InputSample &extension_sample)
+void PinchOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
-  const Scene &scene = *CTX_data_scene(&params.context);
-  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-  const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = this->is_inverted(brush);
+  this->init_stroke(C, start_sample);
+}
 
-  IndexMaskMemory selection_memory;
-  const IndexMask selection = point_selection_mask(params, selection_memory);
-  if (selection.is_empty()) {
-    return false;
-  }
+void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+    const Scene &scene = *CTX_data_scene(&params.context);
+    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
+    const Brush &brush = *BKE_paint_brush(&paint);
+    const bool invert = this->is_inverted(brush);
 
-  Array<float2> view_positions = calculate_view_positions(params, selection);
-  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
-  MutableSpan<float3> positions = curves.positions_for_write();
-
-  const float2 target = extension_sample.mouse_position;
-
-  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
-    const float2 &co = view_positions[point_i];
-    const float influence = brush_influence(scene, brush, co, extension_sample);
-    if (influence <= 0.0f) {
-      return;
+    IndexMaskMemory selection_memory;
+    const IndexMask selection = point_selection_mask(params, selection_memory);
+    if (selection.is_empty()) {
+      return false;
     }
 
-    const float scale_offset = influence * influence / 25.0f;
-    const float scale = invert ? 1.0 + scale_offset : 1.0f - scale_offset;
-    positions[point_i] = params.placement.project(target + (co - target) * scale);
-  });
+    Array<float2> view_positions = calculate_view_positions(params, selection);
+    bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
+    MutableSpan<float3> positions = curves.positions_for_write();
 
-  params.drawing.tag_positions_changed();
-  return true;
+    const float2 target = extension_sample.mouse_position;
+
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      const float2 &co = view_positions[point_i];
+      const float influence = brush_influence(scene, brush, co, extension_sample);
+      if (influence <= 0.0f) {
+        return;
+      }
+
+      const float scale_offset = influence * influence / 25.0f;
+      const float scale = invert ? 1.0 + scale_offset : 1.0f - scale_offset;
+      positions[point_i] = params.placement.project(target + (co - target) * scale);
+    });
+
+    params.drawing.tag_positions_changed();
+    return true;
+  });
+  this->stroke_extended(extension_sample);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_pinch_operation(const BrushStrokeMode stroke_mode)

@@ -2199,7 +2199,8 @@ static struct Clipboard {
   int materials_in_source_num;
 } *grease_pencil_clipboard = nullptr;
 
-Clipboard &ensure_grease_pencil_clipboard() {
+Clipboard &ensure_grease_pencil_clipboard()
+{
   if (grease_pencil_clipboard == nullptr) {
     grease_pencil_clipboard = MEM_new<Clipboard>(__func__);
   }

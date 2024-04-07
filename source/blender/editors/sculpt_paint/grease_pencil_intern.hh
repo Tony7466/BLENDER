@@ -110,29 +110,14 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   {
   }
 
-  bool is_inverted(const Brush &brush) const
-  {
-    return is_brush_inverted(brush, this->stroke_mode);
-  }
-
+  bool is_inverted(const Brush &brush) const;
   float2 mouse_delta(const InputSample &input_sample) const;
 
-  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
-  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
-  void on_stroke_done(const bContext &C) override;
+  void init_stroke(const bContext &C, const InputSample &start_sample);
+  void stroke_extended(const InputSample &extension_sample);
 
-  /* Start a stroke in a single drawing. */
-  virtual bool on_stroke_begin_drawing(const GreasePencilStrokeParams & /*params*/,
-                                       const InputSample & /*start_sample*/)
-  {
-    return false;
-  }
-  /* Extend the stroke in a single drawing. */
-  virtual bool on_stroke_extended_drawing(const GreasePencilStrokeParams& /*params*/,
-                                          const InputSample & /*extension_sample*/)
-  {
-    return false;
-  }
+  void foreach_editable_drawing(
+      const bContext &C, FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const;
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();

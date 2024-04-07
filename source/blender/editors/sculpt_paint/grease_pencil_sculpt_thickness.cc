@@ -26,39 +26,47 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
-  bool on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-                                  const InputSample &extension_sample) override;
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
 
-bool ThicknessOperation::on_stroke_extended_drawing(const GreasePencilStrokeParams &params,
-    const InputSample &extension_sample)
+void ThicknessOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
-  Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-  const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = this->is_inverted(brush);
+  this->init_stroke(C, start_sample);
+}
 
-  IndexMaskMemory selection_memory;
-  const IndexMask selection = point_selection_mask(params, selection_memory);
-  if (selection.is_empty()) {
-    return false;
-  }
+void ThicknessOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
+    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
+    const Brush &brush = *BKE_paint_brush(&paint);
+    const bool invert = this->is_inverted(brush);
 
-  Array<float2> view_positions = calculate_view_positions(params, selection);
-  bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
-  BLI_assert(view_positions.size() == curves.points_num());
-  MutableSpan<float> radii = params.drawing.radii_for_write();
+    IndexMaskMemory selection_memory;
+    const IndexMask selection = point_selection_mask(params, selection_memory);
+    if (selection.is_empty()) {
+      return false;
+    }
 
-  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
-    float &radius = radii[point_i];
-    const float influence = brush_influence(
-        *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
-    /* Factor 1/1000 is used to map arbitrary influence value to a sensible radius. */
-    const float delta_radius = (invert ? -influence : influence) * 0.001f;
-    radius = std::max(radius + delta_radius, 0.0f);
+    Array<float2> view_positions = calculate_view_positions(params, selection);
+    bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
+    BLI_assert(view_positions.size() == curves.points_num());
+    MutableSpan<float> radii = params.drawing.radii_for_write();
+
+    selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      float &radius = radii[point_i];
+      const float influence = brush_influence(
+          *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
+      /* Factor 1/1000 is used to map arbitrary influence value to a sensible radius. */
+      const float delta_radius = (invert ? -influence : influence) * 0.001f;
+      radius = std::max(radius + delta_radius, 0.0f);
+    });
+
+    curves.tag_radii_changed();
+    return true;
   });
-
-  curves.tag_radii_changed();
-  return true;
+  this->stroke_extended(extension_sample);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(
