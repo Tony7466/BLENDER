@@ -92,7 +92,8 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
       float ior = to_closure_refraction(cl).ior;
       float roughness = to_closure_refraction(cl).roughness;
       if (thickness > 0.0) {
-        vec3 transmit_dir = refraction_dominant_dir(cl.N, V, ior, roughness);
+        float apparent_roughness = refraction_roughness_remapping(roughness, ior);
+        vec3 transmit_dir = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
 
         vec3 exit_P;
         raytrace_thickness_sphere_intersect(thickness, cl.N, transmit_dir, cl.N, exit_P);

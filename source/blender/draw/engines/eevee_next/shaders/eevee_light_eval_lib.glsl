@@ -131,6 +131,8 @@ ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V, float thickness)
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       ClosureRefraction cl_refract = to_closure_refraction(cl);
+      cl_refract.roughness = refraction_roughness_remapping(cl_refract.roughness, cl_refract.ior);
+
       if (thickness > 0.0) {
         vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
         vec3 P_offset;
@@ -141,8 +143,7 @@ ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V, float thickness)
       }
 
       vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
-      float roughness = refraction_roughness_remapping(cl_refract.roughness, cl_refract.ior);
-      cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), roughness);
+      cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), cl_refract.roughness);
       cl_light.N = -cl.N;
       cl_light.type = LIGHT_SPECULAR;
       cl_light.subsurface = true;
