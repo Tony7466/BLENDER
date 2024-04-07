@@ -268,8 +268,7 @@ static void *md5_read_ctx(const md5_ctx *ctx, void *resbuf)
   return resbuf;
 }
 
-/*
-Top level public functions. */
+/* Top level public functions. */
 
 int BLI_hash_md5_stream(FILE *stream, void *resblock)
 {
@@ -286,7 +285,7 @@ int BLI_hash_md5_stream(FILE *stream, void *resblock)
   len[1] = 0;
 
   /* Iterate over full file contents. */
-  while (1) {
+  while (true) {
     /* We read the file in blocks of BLOCKSIZE bytes.
      * One call of the computation function processes the whole buffer
      * so that with the next round of the loop another block can be read.

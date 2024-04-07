@@ -66,10 +66,10 @@ void main()
   vec3 extinction = imageLoad(in_extinction_img, froxel).rgb;
   vec3 s_scattering = imageLoad(in_scattering_img, froxel).rgb;
 
-  vec3 jitter = sampling_rng_3D_get(SAMPLING_VOLUME_U);
-  vec3 volume_screen = volume_to_screen((vec3(froxel) + jitter) *
-                                        uniform_buf.volumes.inv_tex_size);
-  vec3 vP = drw_point_screen_to_view(volume_screen);
+  float offset = sampling_rng_1D_get(SAMPLING_VOLUME_W);
+  float jitter = volume_froxel_jitter(froxel.xy, offset);
+  vec3 uvw = (vec3(froxel) + vec3(0.5, 0.5, 0.5 - jitter)) * uniform_buf.volumes.inv_tex_size;
+  vec3 vP = volume_jitter_to_view(uvw);
   vec3 P = drw_point_view_to_world(vP);
   vec3 V = drw_world_incident_vector(P);
 
@@ -78,21 +78,37 @@ void main()
   float s_anisotropy = phase.x / max(1.0, phase.y);
 
 #ifdef VOLUME_LIGHTING
-  scattering += volume_irradiance(P) * s_scattering * volume_phase_function_isotropic();
+  SphericalHarmonicL1 phase_sh = volume_phase_function_as_sh_L1(V, s_anisotropy);
+  SphericalHarmonicL1 volume_radiance_sh = lightprobe_irradiance_sample(P);
+
+  vec3 light_scattering = spherical_harmonics_dot(volume_radiance_sh, phase_sh).xyz;
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    scattering += volume_scatter_light_eval(true, P, V, l_idx, s_anisotropy) * s_scattering;
+    light_scattering += volume_scatter_light_eval(true, P, V, l_idx, s_anisotropy);
   }
   LIGHT_FOREACH_END
 
-  vec2 pixel = (vec2(froxel.xy) + vec2(0.5)) / vec2(uniform_buf.volumes.tex_size.xy) /
-               uniform_buf.volumes.viewport_size_inv;
+  vec2 pixel = ((vec2(froxel.xy) + 0.5) * uniform_buf.volumes.inv_tex_size.xy) *
+               uniform_buf.volumes.main_view_extent;
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vP.z, l_idx) {
-    scattering += volume_scatter_light_eval(false, P, V, l_idx, s_anisotropy) * s_scattering;
+    light_scattering += volume_scatter_light_eval(false, P, V, l_idx, s_anisotropy);
   }
   LIGHT_FOREACH_END
 
+  scattering += light_scattering * s_scattering;
+#endif
+
+#if 0 /* TODO */
+ {
+    /* Temporal reprojection. */
+    vec3 uvw_history = volume_history_position_get(froxel);
+    vec4 scattering_history = texture(scattering_history_tx, uvw_history);
+    vec4 extinction_history = texture(extinction_history_tx, uvw_history);
+    float history_opacity = 0.95 * scattering_history.a;
+    scattering = mix(scattering, scattering_history.rgb, history_opacity);
+    extinction = mix(extinction, extinction_history.rgb, history_opacity);
+  }
 #endif
 
   /* Catch NaNs. */

@@ -54,9 +54,9 @@
 
 #include "ANIM_keyframing.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -68,7 +68,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************* */
 /* 'Globals' and Defines */
@@ -302,7 +302,7 @@ static bool gpencil_draw_poll(bContext *C)
     }
 
     ToolSettings *ts = CTX_data_scene(C)->toolsettings;
-    if (!ts->gp_paint->paint.brush) {
+    if (!BKE_paint_brush(&ts->gp_paint->paint)) {
       CTX_wm_operator_poll_msg_set(C, "Grease Pencil has no active paint tool");
       return false;
     }
@@ -1420,7 +1420,7 @@ static bool gpencil_stroke_eraser_is_occluded(
   if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) & (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
     gp_settings = eraser->gpencil_settings;
   }
 
@@ -1812,7 +1812,7 @@ static void gpencil_stroke_doeraser(tGPsdata *p)
     use_pressure = bool(brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) & (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
     use_pressure = bool(eraser->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = eraser->gpencil_settings;
   }
@@ -1919,7 +1919,7 @@ static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
 {
   Brush *brush_dft = nullptr;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_prev = paint->brush;
+  Brush *brush_prev = BKE_paint_brush(paint);
   for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
        brush = static_cast<Brush *>(brush->id.next))
   {
@@ -1989,30 +1989,33 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
 
   Paint *paint = &ts->gp_paint->paint;
   bool changed = false;
+  Brush *brush = BKE_paint_brush(paint);
+
   /* if not exist, create a new one */
-  if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
+  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
     /* create new brushes */
     BKE_brush_gpencil_paint_presets(bmain, ts, true);
     changed = true;
+    brush = BKE_paint_brush(paint);
   }
   /* Be sure curves are initialized. */
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_sensitivity);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_strength);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_jitter);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_pressure);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_strength);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_uv);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_hue);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_saturation);
-  BKE_curvemapping_init(paint->brush->gpencil_settings->curve_rand_value);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_jitter);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
   /* Assign to temp #tGPsdata */
-  p->brush = paint->brush;
-  if (paint->brush->gpencil_tool != GPAINT_TOOL_ERASE) {
+  p->brush = BKE_paint_brush(paint);
+  if (p->brush->gpencil_tool != GPAINT_TOOL_ERASE) {
     p->eraser = gpencil_get_default_eraser(p->bmain, ts);
   }
   else {
-    p->eraser = paint->brush;
+    p->eraser = p->brush;
   }
   /* set new eraser as default */
   gpencil_set_default_eraser(p->bmain, p->eraser);
@@ -2022,7 +2025,7 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
 
   /* Need this update to synchronize brush with draw manager. */
   if (changed) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -2188,7 +2191,7 @@ static void gpencil_session_cleanup(tGPsdata *p)
   gpd->runtime.sbuffer_size = 0;
   gpd->runtime.sbuffer_sflag = 0;
   /* This update is required for update-on-write because the sbuffer data is not longer overwritten
-   * by a copy-on-write. */
+   * by a copy-on-evaluation. */
   ED_gpencil_sbuffer_update_eval(gpd, p->ob_eval);
   p->inittime = 0.0;
 }
@@ -3719,7 +3722,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       p->paintmode = GP_PAINTMODE_DRAW;
       WM_cursor_modal_restore(p->win);
       ED_gpencil_toggle_brush_cursor(C, true, nullptr);
-      DEG_id_tag_update(&p->scene->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&p->scene->id, ID_RECALC_SYNC_TO_EVAL);
     }
     else {
       return OPERATOR_RUNNING_MODAL;

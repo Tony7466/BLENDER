@@ -24,7 +24,7 @@
 #include "BKE_animsys.h"
 #include "BKE_collection.hh"
 #include "BKE_freestyle.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
@@ -431,9 +431,7 @@ static void layer_aov_copy_data(ViewLayer *view_layer_dst,
                                 ListBase *aovs_dst,
                                 const ListBase *aovs_src)
 {
-  if (aovs_src != nullptr) {
-    BLI_duplicatelist(aovs_dst, aovs_src);
-  }
+  BLI_duplicatelist(aovs_dst, aovs_src);
 
   ViewLayerAOV *aov_dst = static_cast<ViewLayerAOV *>(aovs_dst->first);
   const ViewLayerAOV *aov_src = static_cast<const ViewLayerAOV *>(aovs_src->first);
@@ -1470,14 +1468,14 @@ void BKE_main_collection_sync_remap(const Main *bmain)
       view_layer_bases_hash_create(view_layer, true);
     }
 
-    DEG_id_tag_update_ex((Main *)bmain, &scene->master_collection->id, ID_RECALC_COPY_ON_WRITE);
-    DEG_id_tag_update_ex((Main *)bmain, &scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update_ex((Main *)bmain, &scene->master_collection->id, ID_RECALC_SYNC_TO_EVAL);
+    DEG_id_tag_update_ex((Main *)bmain, &scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   for (Collection *collection = static_cast<Collection *>(bmain->collections.first); collection;
        collection = static_cast<Collection *>(collection->id.next))
   {
-    DEG_id_tag_update_ex((Main *)bmain, &collection->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update_ex((Main *)bmain, &collection->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   BKE_main_collection_sync(bmain);

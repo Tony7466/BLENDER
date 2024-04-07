@@ -34,7 +34,7 @@
 #  include "BKE_global.hh"
 #  include "BKE_image.h"
 #  include "BKE_scene.hh"
-#  include "BKE_writeavi.h"
+#  include "BKE_writemovie.hh"
 
 #  include "DEG_depsgraph_query.hh"
 
@@ -157,7 +157,7 @@ static void rna_Scene_ray_cast(Scene *scene,
                                                      r_location,
                                                      r_normal,
                                                      r_index,
-                                                     r_ob,
+                                                     (const Object **)(r_ob),
                                                      (float(*)[4])r_obmat);
 
   ED_transform_snap_object_context_destroy(sctx);

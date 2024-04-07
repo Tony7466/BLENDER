@@ -40,7 +40,7 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 #include "gpencil_trace.h"
 
 struct TraceJob {
@@ -276,7 +276,7 @@ static void trace_end_job(void *customdata)
     DEG_relations_tag_update(trace_job->bmain);
 
     DEG_id_tag_update(&trace_job->scene->id, ID_RECALC_SELECT);
-    DEG_id_tag_update(&trace_job->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&trace_job->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_OBJECT | NA_ADDED, nullptr);
     WM_main_add_notifier(NC_SCENE | ND_OB_ACTIVE, trace_job->scene);
@@ -337,7 +337,7 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   trace_initialize_job_data(job);
 
   /* Back to active base. */
-  ED_object_base_activate(job->C, job->base_active);
+  blender::ed::object::base_activate(job->C, job->base_active);
 
   if ((job->image->source == IMA_SRC_FILE) || (job->frame_num > 0)) {
     wmJobWorkerStatus worker_status = {};

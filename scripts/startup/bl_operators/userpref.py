@@ -427,9 +427,9 @@ class PREFERENCES_OT_keyconfig_remove(Operator):
 # Add-on Operators
 
 class PREFERENCES_OT_addon_enable(Operator):
-    """Enable an add-on"""
+    """Turn on this extension"""
     bl_idname = "preferences.addon_enable"
-    bl_label = "Enable Add-on"
+    bl_label = "Enable Extension"
 
     module: StringProperty(
         name="Module",
@@ -443,9 +443,13 @@ class PREFERENCES_OT_addon_enable(Operator):
 
         def err_cb(ex):
             import traceback
+            traceback.print_exc()
+
+            # The full trace-back in the UI is unwieldy and associated with unhandled exceptions.
+            # Only show a single exception instead of the full trace-back,
+            # developers can debug using information printed in the console.
             nonlocal err_str
-            err_str = traceback.format_exc()
-            print(err_str)
+            err_str = str(ex)
 
         mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
 
@@ -473,9 +477,9 @@ class PREFERENCES_OT_addon_enable(Operator):
 
 
 class PREFERENCES_OT_addon_disable(Operator):
-    """Disable an add-on"""
+    """Turn off this extension"""
     bl_idname = "preferences.addon_disable"
-    bl_label = "Disable Add-on"
+    bl_label = "Disable Extension"
 
     module: StringProperty(
         name="Module",
@@ -670,7 +674,7 @@ class PREFERENCES_OT_addon_install(Operator):
         # check to see if the file is in compressed format (.zip)
         if zipfile.is_zipfile(pyfile):
             try:
-                file_to_extract = zipfile.ZipFile(pyfile, 'r')
+                file_to_extract = zipfile.ZipFile(pyfile, "r")
             except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}
@@ -922,7 +926,7 @@ class PREFERENCES_OT_app_template_install(Operator):
         # check to see if the file is in compressed format (.zip)
         if zipfile.is_zipfile(filepath):
             try:
-                file_to_extract = zipfile.ZipFile(filepath, 'r')
+                file_to_extract = zipfile.ZipFile(filepath, "r")
             except BaseException:
                 traceback.print_exc()
                 return {'CANCELLED'}

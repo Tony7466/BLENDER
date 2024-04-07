@@ -59,6 +59,9 @@ static void reorder_attributes_group_to_group(
         if (meta_data.domain != domain) {
           return true;
         }
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
         const GVArray src = *src_attributes.lookup(id, domain);
         bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
             id, domain, meta_data.data_type);
@@ -271,7 +274,7 @@ static void copy_and_reorder_instaces(
   BLI_assert(src_instances.references() == dst_instances.references());
 
   const Span<float4x4> old_transforms = src_instances.transforms();
-  MutableSpan<float4x4> new_transforms = dst_instances.transforms();
+  MutableSpan<float4x4> new_transforms = dst_instances.transforms_for_write();
   array_utils::gather(old_transforms, old_by_new_map, new_transforms);
 }
 

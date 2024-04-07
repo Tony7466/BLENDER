@@ -7,9 +7,11 @@
  */
 
 #include <cstdio>
-#include <exception>
 #include <memory>
+#include <system_error>
 
+#include "BKE_context.hh"
+#include "BKE_report.hh"
 #include "BKE_scene.hh"
 
 #include "BLI_path_util.h"
@@ -259,10 +261,11 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
   }
   catch (const std::system_error &ex) {
     print_exception_error(ex);
+    BKE_reportf(export_params.reports, RPT_ERROR, "OBJ Export: Cannot open file '%s'", filepath);
     return;
   }
   if (!frame_writer) {
-    BLI_assert(!"File should be writable by now.");
+    BLI_assert_msg(false, "File should be writable by now.");
     return;
   }
   std::unique_ptr<MTLWriter> mtl_writer = nullptr;
@@ -272,6 +275,10 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
     }
     catch (const std::system_error &ex) {
       print_exception_error(ex);
+      BKE_reportf(export_params.reports,
+                  RPT_WARNING,
+                  "OBJ Export: Cannot create mtl file for '%s'",
+                  filepath);
     }
   }
 
@@ -310,7 +317,7 @@ bool append_frame_to_filename(const char *filepath, const int frame, char *r_fil
 
 void exporter_main(bContext *C, const OBJExportParams &export_params)
 {
-  ED_object_mode_set(C, OB_MODE_OBJECT);
+  ed::object::mode_set(C, OB_MODE_OBJECT);
   OBJDepsgraph obj_depsgraph(C, export_params.export_eval_mode);
   Scene *scene = DEG_get_input_scene(obj_depsgraph.get());
   const char *filepath = export_params.filepath;

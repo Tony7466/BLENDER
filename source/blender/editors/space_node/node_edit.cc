@@ -57,7 +57,7 @@
 
 #include "UI_view2d.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 #include "GPU_material.hh"
 
 #include "IMB_imbuf_types.hh"
@@ -506,7 +506,7 @@ void ED_node_tree_propagate_change(const bContext *C, Main *bmain, bNodeTree *ro
   NodeTreeUpdateExtraParams params = {nullptr};
   params.tree_changed_fn = [](ID *id, bNodeTree *ntree, void * /*user_data*/) {
     blender::ed::space_node::send_notifiers_after_tree_change(id, ntree);
-    DEG_id_tag_update(&ntree->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ntree->id, ID_RECALC_SYNC_TO_EVAL);
   };
   params.tree_output_changed_fn = [](ID * /*id*/, bNodeTree *ntree, void * /*user_data*/) {
     DEG_id_tag_update(&ntree->id, ID_RECALC_NTREE_OUTPUT);
@@ -1421,7 +1421,7 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
       newlink->tosock = socket_map.lookup(link->tosock);
 
       if (link->tosock->flag & SOCK_MULTI_INPUT) {
-        newlink->multi_input_socket_index = link->multi_input_socket_index;
+        newlink->multi_input_sort_id = link->multi_input_sort_id;
       }
 
       if (link->fromnode && (link->fromnode->flag & NODE_SELECT)) {
@@ -1477,6 +1477,7 @@ static int node_duplicate_exec(bContext *C, wmOperator *op)
     nodeSetSelected(dst_node, true);
   }
 
+  tree_draw_order_update(*snode->edittree);
   ED_node_tree_propagate_change(C, bmain, snode->edittree);
   return OPERATOR_FINISHED;
 }

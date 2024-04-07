@@ -323,7 +323,7 @@ static std::optional<std::string> rna_GPencilLayer_path(const PointerRNA *ptr)
   return fmt::format("layers[\"{}\"]", name_esc);
 }
 
-static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_GPencilLayer_active_frame_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
 
@@ -756,8 +756,7 @@ static void rna_GPencil_stroke_point_add(
     /* Calc geometry data. */
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
@@ -819,7 +818,7 @@ static void rna_GPencil_stroke_point_pop(ID *id,
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
@@ -832,8 +831,7 @@ static void rna_GPencil_stroke_point_update(ID *id, bGPDstroke *stroke)
   if (stroke) {
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }
@@ -913,7 +911,7 @@ static void rna_GPencil_stroke_remove(ID *id,
   BKE_gpencil_free_stroke(stroke);
   RNA_POINTER_INVALIDATE(stroke_ptr);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -931,7 +929,7 @@ static void rna_GPencil_stroke_close(ID *id,
 
   BKE_gpencil_stroke_close(stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -2446,9 +2444,9 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   PropertyRNA *prop;
   FunctionRNA *func;
 
-  static float default_1[4] = {0.6f, 0.6f, 0.6f, 0.5f};
-  static float onion_dft1[3] = {0.145098f, 0.419608f, 0.137255f}; /* green */
-  static float onion_dft2[3] = {0.125490f, 0.082353f, 0.529412f}; /* blue */
+  static const float default_1[4] = {0.6f, 0.6f, 0.6f, 0.5f};
+  static const float onion_dft1[3] = {0.145098f, 0.419608f, 0.137255f}; /* green */
+  static const float onion_dft2[3] = {0.125490f, 0.082353f, 0.529412f}; /* blue */
 
   static const EnumPropertyItem stroke_thickness_items[] = {
       {0, "WORLDSPACE", 0, "World Space", "Set stroke thickness relative to the world space"},

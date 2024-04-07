@@ -8,13 +8,20 @@
 
 #pragma once
 
-#include "GPU_texture.h"
-#include "GPU_vertex_buffer.h"
+#include <mutex>
+
+#include "BLI_map.hh"
+#include "BLI_vector.hh"
+
+#include "GPU_texture.hh"
+#include "GPU_vertex_buffer.hh"
 
 struct ColorManagedDisplay;
 struct FontBLF;
-struct GPUBatch;
-struct GPUVertBuf;
+namespace blender::gpu {
+class Batch;
+class VertBuf;
+}  // namespace blender::gpu
 struct GPUVertBufRaw;
 
 #include FT_MULTIPLE_MASTERS_H /* Variable font support. */
@@ -88,8 +95,8 @@ inline ft_pix ft_pix_from_float(float v)
 struct BatchBLF {
   /** Can only batch glyph from the same font. */
   FontBLF *font;
-  GPUBatch *batch;
-  GPUVertBuf *verts;
+  blender::gpu::Batch *batch;
+  blender::gpu::VertBuf *verts;
   GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
       glyph_mode_step;
   unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
@@ -112,10 +119,20 @@ struct KerningCacheBLF {
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 };
 
-struct GlyphCacheBLF {
-  GlyphCacheBLF *next;
-  GlyphCacheBLF *prev;
+struct GlyphCacheKey {
+  uint charcode;
+  uint8_t subpixel;
+  friend bool operator==(const GlyphCacheKey &a, const GlyphCacheKey &b)
+  {
+    return a.charcode == b.charcode && a.subpixel == b.subpixel;
+  }
+  uint64_t hash() const
+  {
+    return blender::get_default_hash(charcode, subpixel);
+  }
+};
 
+struct GlyphCacheBLF {
   /** Font size. */
   float size;
 
@@ -131,7 +148,7 @@ struct GlyphCacheBLF {
   int fixed_width;
 
   /** The glyphs. */
-  ListBase bucket[257];
+  blender::Map<GlyphCacheKey, std::unique_ptr<GlyphBLF>> glyphs;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
@@ -139,12 +156,11 @@ struct GlyphCacheBLF {
   int bitmap_len;
   int bitmap_len_landed;
   int bitmap_len_alloc;
+
+  ~GlyphCacheBLF();
 };
 
 struct GlyphBLF {
-  GlyphBLF *next;
-  GlyphBLF *prev;
-
   /** The character, as UTF-32. */
   unsigned int c;
 
@@ -189,6 +205,8 @@ struct GlyphBLF {
   int pos[2];
 
   GlyphCacheBLF *glyph_cache;
+
+  ~GlyphBLF();
 };
 
 struct FontBufInfoBLF {
@@ -361,7 +379,7 @@ struct FontBLF {
    * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
    * Use blf_glyph_cache_acquire(font) and blf_glyph_cache_release(font) to access cache!
    */
-  ListBase cache;
+  blender::Vector<std::unique_ptr<GlyphCacheBLF>> cache;
 
   /** Cache of unscaled kerning values. Will be NULL if font does not have kerning. */
   KerningCacheBLF *kerning_cache;
@@ -385,5 +403,5 @@ struct FontBLF {
   FontBufInfoBLF buf_info;
 
   /** Mutex lock for glyph cache. */
-  ThreadMutex glyph_cache_mutex;
+  std::mutex glyph_cache_mutex;
 };

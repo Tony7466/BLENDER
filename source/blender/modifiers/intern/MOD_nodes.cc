@@ -118,17 +118,11 @@ static void init_data(ModifierData *md)
 
 static void find_used_ids_from_settings(const NodesModifierSettings &settings, Set<ID *> &ids)
 {
-  IDP_foreach_property(
-      settings.properties,
-      IDP_TYPE_FILTER_ID,
-      [](IDProperty *property, void *user_data) {
-        Set<ID *> *ids = (Set<ID *> *)user_data;
-        ID *id = IDP_Id(property);
-        if (id != nullptr) {
-          ids->add(id);
-        }
-      },
-      &ids);
+  IDP_foreach_property(settings.properties, IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
+    if (ID *id = IDP_Id(property)) {
+      ids.add(id);
+    }
+  });
 }
 
 /* We don't know exactly what attributes from the other object we will need. */
@@ -268,21 +262,9 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   walk(user_data, ob, (ID **)&nmd->node_group, IDWALK_CB_USER);
 
-  struct ForeachSettingData {
-    IDWalkFunc walk;
-    void *user_data;
-    Object *ob;
-  } settings = {walk, user_data, ob};
-
-  IDP_foreach_property(
-      nmd->settings.properties,
-      IDP_TYPE_FILTER_ID,
-      [](IDProperty *id_prop, void *user_data) {
-        ForeachSettingData *settings = (ForeachSettingData *)user_data;
-        settings->walk(
-            settings->user_data, settings->ob, (ID **)&id_prop->data.pointer, IDWALK_CB_USER);
-      },
-      &settings);
+  IDP_foreach_property(nmd->settings.properties, IDP_TYPE_FILTER_ID, [&](IDProperty *id_prop) {
+    walk(user_data, ob, (ID **)&id_prop->data.pointer, IDWALK_CB_USER);
+  });
 
   for (NodesModifierBake &bake : MutableSpan(nmd->bakes, nmd->bakes_num)) {
     for (NodesModifierDataBlock &data_block : MutableSpan(bake.data_blocks, bake.data_blocks_num))
@@ -330,14 +312,10 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd)
   }
 
   IDProperty *old_properties = nmd->settings.properties;
-  {
-    IDPropertyTemplate idprop = {0};
-    nmd->settings.properties = IDP_New(IDP_GROUP, &idprop, "Nodes Modifier Settings");
-  }
+  nmd->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
   IDProperty *new_properties = nmd->settings.properties;
 
-  nodes::update_input_properties_from_node_tree(
-      *nmd->node_group, old_properties, false, *new_properties);
+  nodes::update_input_properties_from_node_tree(*nmd->node_group, old_properties, *new_properties);
   nodes::update_output_properties_from_node_tree(
       *nmd->node_group, old_properties, *new_properties);
 
@@ -558,7 +536,18 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
       if (lf_zone_node == nullptr) {
         return;
       }
+      const lf::FunctionNode *lf_simulation_output_node =
+          lf_graph_info->mapping.possible_side_effect_node_map.lookup_default(
+              simulation_zone->output_node, nullptr);
+      if (lf_simulation_output_node == nullptr) {
+        return;
+      }
       local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
+      /* By making the simulation output node a side-effect-node, we can ensure that the simulation
+       * runs when it contains an active viewer. */
+      local_side_effect_nodes.nodes_by_context.add(compute_context_generic->hash(),
+                                                   lf_simulation_output_node);
+
       current_zone = simulation_zone;
     }
     else if (const auto *compute_context = dynamic_cast<const bke::RepeatZoneComputeContext *>(
@@ -910,7 +899,7 @@ struct BakeFrameIndices {
 };
 
 static BakeFrameIndices get_bake_frame_indices(
-    const Span<std::unique_ptr<bake::FrameCache>> &frame_caches, const SubFrame frame)
+    const Span<std::unique_ptr<bake::FrameCache>> frame_caches, const SubFrame frame)
 {
   BakeFrameIndices frame_indices;
   if (!frame_caches.is_empty()) {
@@ -1921,7 +1910,7 @@ static void add_attribute_search_button(const bContext &C,
                                  0.0f,
                                  socket.description);
 
-  const Object *object = ED_object_context(&C);
+  const Object *object = ed::object::context_object(&C);
   BLI_assert(object != nullptr);
   if (object == nullptr) {
     return;
@@ -2225,7 +2214,7 @@ static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd
   std::sort(sorted_used_attribute.begin(),
             sorted_used_attribute.end(),
             [](const NameWithUsage &a, const NameWithUsage &b) {
-              return BLI_strcasecmp_natural(a.name.c_str(), b.name.c_str()) <= 0;
+              return BLI_strcasecmp_natural(a.name.c_str(), b.name.c_str()) < 0;
             });
 
   for (const NameWithUsage &attribute : sorted_used_attribute) {
@@ -2293,16 +2282,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropDecorate(layout, false);
 
   if (!(nmd->flag & NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR)) {
-    uiTemplateID(layout,
-                 C,
-                 ptr,
-                 "node_group",
-                 "node.new_geometry_node_group_assign",
-                 nullptr,
-                 nullptr,
-                 0,
-                 false,
-                 nullptr);
+    const char *newop = (nmd->node_group == nullptr) ? "node.new_geometry_node_group_assign" :
+                                                       "object.geometry_node_tree_copy_assign";
+    uiTemplateID(layout, C, ptr, "node_group", newop, nullptr, nullptr, 0, false, nullptr);
   }
 
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {

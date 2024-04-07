@@ -36,7 +36,7 @@
 #include "ED_physics.hh"
 #include "ED_screen.hh"
 
-#include "physics_intern.h"
+#include "physics_intern.hh"
 
 /* ********************************************** */
 /* Helper API's for RigidBody Constraint Editing */
@@ -61,7 +61,7 @@ static bool ED_operator_rigidbody_con_active_poll(bContext *C)
   }
 
   if (ED_operator_object_active_editable(C)) {
-    Object *ob = ED_object_active_context(C);
+    Object *ob = blender::ed::object::context_active_object(C);
     return (ob && ob->rigidbody_constraint);
   }
   return false;
@@ -100,7 +100,7 @@ bool ED_rigidbody_constraint_add(
 
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
-  DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_SYNC_TO_EVAL);
 
   return true;
 }

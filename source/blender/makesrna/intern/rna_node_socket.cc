@@ -45,7 +45,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 
 #  include "DNA_material_types.h"
 
-#  include "BKE_node.h"
+#  include "BKE_node.hh"
 #  include "BKE_node_enum.hh"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_update.hh"
@@ -264,6 +264,10 @@ static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
   bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
   bNode *node;
   nodeFindNode(ntree, sock, &node, nullptr);
+  if (node->type != NODE_CUSTOM) {
+    /* Can't change the socket type on built-in nodes like this. */
+    return;
+  }
   nodeModifySocketTypeStatic(ntree, node, sock, value, 0);
 }
 
@@ -485,7 +489,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
       {SOCK_DISPLAY_SHAPE_DIAMOND_DOT, "DIAMOND_DOT", 0, "Diamond with inner dot", ""},
       {0, nullptr, 0, nullptr, nullptr}};
 
-  static float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   srna = RNA_def_struct(brna, "NodeSocket", nullptr);
   RNA_def_struct_ui_text(srna, "Node Socket", "Input or output socket of a node");
@@ -670,7 +674,7 @@ static void rna_def_node_socket_standard(BlenderRNA *brna)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  static float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   srna = RNA_def_struct(brna, "NodeSocketStandard", "NodeSocket");
   RNA_def_struct_sdna(srna, "bNodeSocket");

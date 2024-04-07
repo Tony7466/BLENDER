@@ -101,6 +101,7 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
   simage->uv_opacity = 1.0f;
+  simage->stretch_opacity = 1.0f;
   simage->overlay.flag = SI_OVERLAY_SHOW_OVERLAYS | SI_OVERLAY_SHOW_GRID_BACKGROUND;
 
   BKE_imageuser_default(&simage->iuser);
@@ -1003,6 +1004,14 @@ static void image_header_region_listener(const wmRegionListenerParams *params)
         ED_region_tag_redraw(region);
       }
       break;
+    case NC_GPENCIL:
+      if (wmn->data & ND_GPENCIL_EDITMODE) {
+        ED_region_tag_redraw(region);
+      }
+      else if (wmn->action == NA_EDITED) {
+        ED_region_tag_redraw(region);
+      }
+      break;
   }
 }
 
@@ -1016,9 +1025,9 @@ static void image_id_remap(ScrArea * /*area*/,
     return;
   }
 
-  mappings.apply((ID **)&simg->image, ID_REMAP_APPLY_ENSURE_REAL);
-  mappings.apply((ID **)&simg->gpd, ID_REMAP_APPLY_UPDATE_REFCOUNT);
-  mappings.apply((ID **)&simg->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&simg->image), ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&simg->gpd), ID_REMAP_APPLY_UPDATE_REFCOUNT);
+  mappings.apply(reinterpret_cast<ID **>(&simg->mask_info.mask), ID_REMAP_APPLY_ENSURE_REAL);
 }
 
 static void image_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -1077,6 +1086,7 @@ static void image_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink 
   sima->scopes.waveform_2 = nullptr;
   sima->scopes.waveform_3 = nullptr;
   sima->scopes.vecscope = nullptr;
+  sima->scopes.vecscope_rgb = nullptr;
   sima->scopes.ok = 0;
 
 /* WARNING: gpencil data is no longer stored directly in sima after 2.5

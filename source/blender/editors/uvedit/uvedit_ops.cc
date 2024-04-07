@@ -33,7 +33,8 @@
 #include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_node.h"
+#include "BKE_mesh_types.hh"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -1208,7 +1209,7 @@ static int uv_pin_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
-      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SYNC_TO_EVAL);
     }
   }
 
@@ -1665,7 +1666,7 @@ static int uv_seams_from_islands_exec(bContext *C, wmOperator *op)
 
   for (Object *ob : objects) {
     Mesh *mesh = (Mesh *)ob->data;
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
     BMesh *bm = em->bm;
     BMIter iter;
 
@@ -1769,7 +1770,7 @@ static int uv_mark_seam_exec(bContext *C, wmOperator *op)
 
   for (Object *ob : objects) {
     Mesh *mesh = (Mesh *)ob->data;
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
     BMesh *bm = em->bm;
 
     if (synced_selection && (bm->totedgesel == 0)) {

@@ -30,7 +30,6 @@ struct FieldInferencingInterface;
 class NodeDeclaration;
 struct GeometryNodesLazyFunctionGraphInfo;
 namespace anonymous_attribute_lifetime {
-struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
@@ -187,7 +186,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * data. It has to be updated when the node declaration changes. Access can be allowed by using
    * #AllowUsingOutdatedInfo.
    */
-  const SocketDeclarationHandle *declaration = nullptr;
+  const nodes::SocketDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -254,7 +253,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
    * intended to change though. Especially when nodes become more dynamic with respect to how many
    * sockets they have.
    */
-  NodeDeclarationHandle *declaration = nullptr;
+  nodes::NodeDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -479,6 +478,11 @@ inline const bNode *bNodeTree::group_output_node() const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return this->runtime->group_output_node;
+}
+
+inline blender::Span<bNode *> bNodeTree::group_input_nodes()
+{
+  return this->nodes_by_type("NodeGroupInput");
 }
 
 inline blender::Span<const bNode *> bNodeTree::group_input_nodes() const

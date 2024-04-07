@@ -77,6 +77,12 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   /* Do not allow in DynTopo just yet. */
   if (!ss || (ss && ss->bm)) {
     return OPERATOR_FINISHED;
@@ -175,6 +181,12 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
   const float dist = RNA_float_get(op->ptr, "merge_tolerance");
 
   if (!pbvh) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -419,7 +431,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
   ensure_valid_pivot(ob, scene);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_enter(bContext *C, Depsgraph *depsgraph, ReportList *reports)
@@ -473,7 +485,7 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
   BKE_object_free_derived_caches(ob);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_exit(bContext *C, Depsgraph *depsgraph)
@@ -502,7 +514,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
+    if (!object::mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -1294,7 +1306,6 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(SCULPT_OT_symmetrize);
   WM_operatortype_append(dyntopo::SCULPT_OT_detail_flood_fill);
   WM_operatortype_append(dyntopo::SCULPT_OT_sample_detail_size);
-  WM_operatortype_append(dyntopo::SCULPT_OT_set_detail_size);
   WM_operatortype_append(filter::SCULPT_OT_mesh_filter);
   WM_operatortype_append(mask::SCULPT_OT_mask_filter);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
@@ -1304,11 +1315,11 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_init);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_edit);
   WM_operatortype_append(cloth::SCULPT_OT_cloth_filter);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_project_line_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_lasso_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_lasso_gesture);
+  WM_operatortype_append(project::SCULPT_OT_project_line_gesture);
 
   WM_operatortype_append(SCULPT_OT_sample_color);
   WM_operatortype_append(color::SCULPT_OT_color_filter);

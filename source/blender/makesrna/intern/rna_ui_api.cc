@@ -37,6 +37,7 @@ const EnumPropertyItem rna_enum_icon_items[] = {
 
 #  include "DNA_asset_types.h"
 
+#  include "ED_asset_filter.hh"
 #  include "ED_geometry.hh"
 #  include "ED_node.hh"
 #  include "ED_object.hh"
@@ -720,7 +721,7 @@ static void rna_uiTemplateAssetView(uiLayout *layout,
                                     const char *drag_opname,
                                     PointerRNA *r_drag_op_properties)
 {
-  AssetFilterSettings filter_settings{};
+  blender::ed::asset::AssetFilterSettings filter_settings{};
   filter_settings.id_types = filter_id_types ? filter_id_types : FILTER_ID_ALL;
 
   uiTemplateAssetView(layout,
@@ -1095,7 +1096,7 @@ void RNA_api_ui_layout(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const float node_socket_color_default[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   /* simple layout specifiers */
   func = RNA_def_function(srna, "row", "rna_uiLayoutRowWithHeading");
