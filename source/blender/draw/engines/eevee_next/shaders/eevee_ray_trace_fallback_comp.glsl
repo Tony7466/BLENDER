@@ -10,6 +10,7 @@
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
 
@@ -42,12 +43,32 @@ void main()
   ray.origin = P;
   ray.direction = ray_data.xyz;
 
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+  if (gbuf.thickness > 0.0) {
+    uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
+    ClosureType closure_type = gbuffer_closure_type_get_by_bin(gbuf_header, closure_index);
+    if (closure_type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
+      /* The ray direction is already accounting for 2 transmission events. Only change its origin.
+       * Skip the volume inside the object. */
+      vec3 exit_N, exit_P;
+      raytrace_thickness_sphere_intersect(
+          gbuf.thickness, gbuf.surface_N, ray.direction, exit_N, exit_P);
+      ray.origin += exit_P;
+    }
+    else if (closure_type == CLOSURE_BSDF_TRANSLUCENT_ID) {
+      /* Ray direction is distributed on the whole sphere. */
+      ray.origin += (ray.direction - gbuf.surface_N) * gbuf.thickness * 0.5;
+    }
+  }
+
   /* Using ray direction as geometric normal to bias the sampling position.
    * This is faster than loading the gbuffer again and averages between reflected and normal
    * direction over many rays. */
   vec3 Ng = ray.direction;
-  LightProbeSample samp = lightprobe_load(P, Ng, V);
-  vec3 radiance = lightprobe_eval_direction(samp, P, ray.direction, safe_rcp(ray_pdf_inv));
+  LightProbeSample samp = lightprobe_load(ray.origin, Ng, V);
+  vec3 radiance = lightprobe_eval_direction(
+      samp, ray.origin, ray.direction, safe_rcp(ray_pdf_inv));
   /* Set point really far for correct reprojection of background. */
   float hit_time = 1000.0;
 
