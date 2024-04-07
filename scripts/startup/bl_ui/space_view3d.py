@@ -8292,6 +8292,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
+            col.operator("grease_pencil.stroke_merge_by_distance", text="Merge by Distance")
             col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
             # Removal Operators
@@ -8337,6 +8338,7 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
+            col.operator("grease_pencil.stroke_merge_by_distance", text="Merge by Distance")
             col.operator("grease_pencil.separate", text="Separate").mode = 'SELECTED'
 
 

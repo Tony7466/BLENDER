@@ -2433,6 +2433,37 @@ static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Merge Stroke Operator
+ * \{ */
+static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *op)
+{
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Merge by Distance";
+  ot->idname = "GREASE_PENCIL_OT_stroke_merge_by_distance";
+  ot->description = "Merge points by distance";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_stroke_merge_by_distance_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Merge parameters. */
+  prop = RNA_def_float(ot->srna, "threshold", 0.001f, 0.0f, 100.0f, "Threshold", "", 0.0f, 100.0f);
+  /* Avoid re-using last var. */
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -2459,4 +2490,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
   WM_operatortype_append(GREASE_PENCIL_OT_copy);
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_merge_by_distance);
 }
