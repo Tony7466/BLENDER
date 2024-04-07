@@ -95,6 +95,10 @@ struct SpaceType {
   /** Refresh context, called after file-reads, #ED_area_tag_refresh(). */
   void (*refresh)(const bContext *C, ScrArea *area);
 
+  /* Default status bar display when idle. */
+  void (*status_bar)(
+      const bContext *C, wmWindow *win, ScrArea *area, ARegion *region, uiLayout *layout);
+
   /* after a spacedata copy, an init should result in exact same situation */
   SpaceLink *(*duplicate)(SpaceLink *sl);
 

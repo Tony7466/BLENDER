@@ -6163,6 +6163,27 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
+  bScreen *screen = CTX_wm_screen(C);
+  ARegion *region = screen->active_region;
+  ScrArea *area = nullptr;
+
+  if (region) {
+    ED_screen_areas_iter (win, screen, area_iter) {
+      LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
+        if (region == region_iter) {
+          area = area_iter;
+          break;
+        }
+      }
+    }
+
+    if (area && area->type->status_bar) {
+      uiLayout *row = uiLayoutRow(layout, true);
+      area->type->status_bar(C, win, area, region, row);
+      return;
+    }
+  }
+
   /* Otherwise should cursor keymap status. */
   for (int i = 0; i < 3; i++) {
     uiLayout *box = uiLayoutRow(layout, false);

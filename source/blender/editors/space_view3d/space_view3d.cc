@@ -2097,6 +2097,95 @@ static void view3d_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BKE_viewer_path_blend_write(writer, &v3d->viewer_path);
 }
 
+static void view3d_status_bar(
+    const bContext *C, wmWindow *win, ScrArea *area, ARegion *region, uiLayout *layout)
+{
+  RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  Scene *scene = WM_window_get_active_scene(win);
+  ViewLayer *view_layer = WM_window_get_active_view_layer(win);
+  View3D *v3d = static_cast<View3D *>(area->spacedata.first);
+
+  BKE_view_layer_synced_ensure(scene, view_layer);
+  Object *ob = BKE_view_layer_active_object_get(view_layer);
+  Object *obedit = OBEDIT_FROM_OBACT(ob);
+  eObjectMode object_mode = ob ? (eObjectMode)ob->mode : eObjectMode::OB_MODE_OBJECT;
+
+  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
+  uiItemL(layout, "Rotate View", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", ICON_EVENT_SHIFT);
+  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
+  uiItemL(layout, "Pan", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", ICON_EVENT_CTRL);
+  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
+  uiItemL(layout, "Zoom", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", UI_icon_from_event_type(LEFTMOUSE, KM_CLICK));
+  uiItemL(layout, "Select", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_GKEY, KM_ANY));
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, "Move", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_RKEY, KM_ANY));
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, "Rotate", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_SKEY, KM_ANY));
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, "Scale", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  if (obedit) {
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_EKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Extrude", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_XKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Delete", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+
+    uiItemL(layout, "", ICON_EVENT_TAB);
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Object Mode", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+  }
+  else {
+    uiItemL(layout, "", ICON_EVENT_SHIFT);
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_AKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Add", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_XKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Delete", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+
+    uiItemL(layout, "", ICON_EVENT_TAB);
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, "Edit Mode", ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+  }
+  uiItemL(layout, "", UI_icon_from_event_type(RIGHTMOUSE, KM_CLICK));
+  uiItemL(layout, "Options", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_F3KEY, KM_ANY));
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, "Search", ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+}
+
 void ED_spacetype_view3d()
 {
   using namespace blender::ed;
@@ -2123,6 +2212,7 @@ void ED_spacetype_view3d()
   st->blend_read_data = view3d_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = view3d_space_blend_write;
+  st->status_bar = view3d_status_bar;
 
   /* regions: main window */
   art = MEM_cnew<ARegionType>("spacetype view3d main region");
