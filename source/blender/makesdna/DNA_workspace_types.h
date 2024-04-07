@@ -149,6 +149,10 @@ typedef struct WorkSpace {
    * spreadsheet and viewport do this).
    */
   ViewerPath viewer_path;
+
+  void (*status_cb)(const struct bContext *C, struct uiLayout *layout, void *user_data);
+  void *status_cb_data;
+
 } WorkSpace;
 
 /**

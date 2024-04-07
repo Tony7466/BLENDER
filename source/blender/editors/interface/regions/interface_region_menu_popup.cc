@@ -385,6 +385,45 @@ static void ui_block_free_func_POPUP(void *arg_pup)
   MEM_delete(pup);
 }
 
+static void ui_popup_menu_space_search_status_cb(const bContext *C,
+                                                 uiLayout *layout,
+                                                 void *user_data)
+{
+  MenuType *mt = static_cast<MenuType *>(user_data);
+  const bool search_type = (mt && (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)));
+  const bool search_space = (!mt || (!search_type && mt && mt->idname[0]));
+
+  uiItemL(layout, "", UI_icon_from_event_type(LEFTMOUSE, KM_CLICK));
+  uiItemL(layout, IFACE_("Select"), ICON_NONE);
+  uiItemL(layout, "", UI_icon_from_event_type(RIGHTMOUSE, KM_CLICK));
+  uiItemL(layout, IFACE_("Options"), ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
+  if (search_space) {
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_SPACEKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, IFACE_("Search"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+  }
+  else if (search_type) {
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_AKEY, KM_ANY));
+    uiItemL(layout, ("-"), ICON_NONE);
+    uiItemL(layout, "", UI_icon_from_event_type(EVT_ZKEY, KM_ANY));
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, IFACE_("Search"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+  }
+
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_UPARROWKEY, KM_ANY));
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_DOWNARROWKEY, KM_ANY));
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_LEFTARROWKEY, KM_ANY));
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_RIGHTARROWKEY, KM_ANY));
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_RETKEY, KM_ANY));
+  uiItemL(layout, "", UI_icon_from_event_type(EVT_ESCKEY, KM_ANY));
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, IFACE_("Keyboard Navigation"), ICON_NONE);
+}
+
 static uiPopupBlockHandle *ui_popup_menu_create(
     bContext *C,
     ARegion *butregion,
@@ -403,7 +442,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
+      ED_workspace_status_text(C, ui_popup_menu_space_search_status_cb, nullptr);
     }
   }
 
@@ -610,12 +649,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 
-  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-    ED_workspace_status_text(C, IFACE_("Type to search..."));
-  }
-  else if (mt->idname[0]) {
-    ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
-  }
+  ED_workspace_status_text(C, ui_popup_menu_space_search_status_cb, mt);
 }
 
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)

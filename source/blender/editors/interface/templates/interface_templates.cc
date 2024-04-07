@@ -6154,8 +6154,9 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   WorkSpace *workspace = CTX_wm_workspace(C);
 
   /* Workspace status text has priority. */
-  if (workspace->status_text) {
-    uiItemL(layout, workspace->status_text, ICON_NONE);
+  if (workspace->status_cb) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    workspace->status_cb(C, row, workspace->status_cb_data);
     return;
   }
 

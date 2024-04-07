@@ -449,6 +449,11 @@ bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_ol
 bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *C) ATTR_NONNULL();
 
 void ED_workspace_status_text(bContext *C, const char *str);
+void ED_workspace_status_text(bContext *C,
+                              void (*status_cb)(const bContext *C,
+                                                uiLayout *layout,
+                                                void *user_data),
+                              void *user_data);
 
 void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
 

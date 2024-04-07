@@ -116,6 +116,8 @@ static void workspace_blend_read_data(BlendDataReader *reader, ID *id)
   }
 
   workspace->status_text = nullptr;
+  workspace->status_cb = nullptr;
+  workspace->status_cb_data = nullptr;
 
   /* Do not keep the scene reference when appending a workspace. Setting a scene for a workspace is
    * a convenience feature, but the workspace should never truly depend on scene data. */

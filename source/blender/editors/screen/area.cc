@@ -834,9 +834,48 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
-void ED_workspace_status_text(bContext *C, const char *str)
+static void ed_workspace_simple_text_status_cb(const bContext *C,
+                                               uiLayout *layout,
+                                               void *user_data)
+{
+  uiItemL(layout, static_cast<char *>(user_data), ICON_NONE);
+}
+
+void ED_workspace_status_text(bContext *C,
+                              void (*status_cb)(const bContext *C,
+                                                uiLayout *layout,
+                                                void *user_data),
+                              void *user_data)
 {
   wmWindow *win = CTX_wm_window(C);
+  WorkSpace *workspace = CTX_wm_workspace(C);
+
+  /* Can be nullptr when running operators in background mode. */
+  if (workspace == nullptr) {
+    return;
+  }
+
+  if (status_cb) {
+    workspace->status_cb = status_cb;
+    workspace->status_cb_data = user_data;
+  }
+  else {
+    workspace->status_cb = nullptr;
+    workspace->status_cb_data = nullptr;
+    MEM_SAFE_FREE(workspace->status_text);
+  }
+
+  /* Redraw status bar. */
+  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
+    if (area->spacetype == SPACE_STATUSBAR) {
+      ED_area_tag_redraw(area);
+      break;
+    }
+  }
+}
+
+void ED_workspace_status_text(bContext *C, const char *str)
+{
   WorkSpace *workspace = CTX_wm_workspace(C);
 
   /* Can be nullptr when running operators in background mode. */
@@ -849,17 +888,10 @@ void ED_workspace_status_text(bContext *C, const char *str)
       workspace->status_text = static_cast<char *>(MEM_mallocN(UI_MAX_DRAW_STR, "headerprint"));
     }
     BLI_strncpy(workspace->status_text, str, UI_MAX_DRAW_STR);
+    ED_workspace_status_text(C, ed_workspace_simple_text_status_cb, workspace->status_text);
   }
   else {
-    MEM_SAFE_FREE(workspace->status_text);
-  }
-
-  /* Redraw status bar. */
-  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-    if (area->spacetype == SPACE_STATUSBAR) {
-      ED_area_tag_redraw(area);
-      break;
-    }
+    ED_workspace_status_text(C, nullptr, nullptr);
   }
 }
 
