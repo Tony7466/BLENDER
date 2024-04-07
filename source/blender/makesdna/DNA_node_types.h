@@ -431,6 +431,7 @@ typedef struct bNode {
   blender::StringRefNull label_or_name() const;
   bool is_muted() const;
   bool is_reroute() const;
+  bool is_dangling_reroute() const;
   bool is_frame() const;
   bool is_group() const;
   bool is_group_input() const;

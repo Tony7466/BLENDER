@@ -624,8 +624,9 @@ class NodeTreeMainUpdater {
   const bNodeLink *first_non_dangling_link(const bNodeTree &ntree,
                                            const Span<const bNodeLink *> links) const
   {
+    ntree.ensure_topology_cache();
     for (const bNodeLink *link : links) {
-      if (!bke::nodeIsDanglingReroute(&ntree, link->fromnode)) {
+      if (!link->fromnode->is_dangling_reroute()) {
         return link;
       }
     }
