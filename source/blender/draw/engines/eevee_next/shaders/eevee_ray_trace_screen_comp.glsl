@@ -60,12 +60,18 @@ void main()
   GBufferReader gbuf = gbuffer_read(
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
   if (gbuf.thickness > 0.0) {
-    /* The ray direction is already accounting for 2 transmission events. Only change its origin.
-     * Skip the volume inside the object. */
-    // vec3 exit_N, exit_P;
-    // raytrace_thickness_sphere_intersect(
-    //     gbuf.thickness, gbuf.surface_N, ray.direction, exit_N, exit_P);
-    // ray.origin += exit_P;
+    if (closure_type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
+      /* The ray direction is already accounting for 2 transmission events. Only change its origin.
+       * Skip the volume inside the object. */
+      vec3 exit_N, exit_P;
+      raytrace_thickness_sphere_intersect(
+          gbuf.thickness, gbuf.surface_N, ray.direction, exit_N, exit_P);
+      ray.origin += exit_P;
+    }
+    else if (closure_type == CLOSURE_BSDF_TRANSLUCENT_ID) {
+      /* Ray direction is distributed on the whole sphere. */
+      ray.origin += (ray.direction - gbuf.surface_N) * gbuf.thickness * 0.5;
+    }
   }
 
   vec3 radiance = vec3(0.0);

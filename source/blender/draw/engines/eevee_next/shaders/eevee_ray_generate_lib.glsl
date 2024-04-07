@@ -50,11 +50,19 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
   BsdfSample samp;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
-                                                -world_to_tangent[2],
-                                                world_to_tangent[1],
-                                                world_to_tangent[0],
-                                                samp.pdf);
+      if (thickness > 0.0) {
+        /* When modeling object thickness as a sphere, the outgoing rays are distributed uniformly
+         * over the sphere. We don't need the RAY_BIAS in this case. */
+        samp.direction = sample_sphere(noise);
+        samp.pdf = sample_pdf_uniform_sphere();
+      }
+      else {
+        samp.direction = sample_cosine_hemisphere(random_point_on_cylinder,
+                                                  -world_to_tangent[2],
+                                                  world_to_tangent[1],
+                                                  world_to_tangent[0],
+                                                  samp.pdf);
+      }
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID:

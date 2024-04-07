@@ -35,10 +35,13 @@ vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
   return normalize(mix(-N, R, fac));
 }
 
-float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V)
+float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
+      if (thickness > 0.0) {
+        return 1.0;
+      }
       return bsdf_lambert(-cl.N, L);
     case CLOSURE_BSSRDF_BURLEY_ID:
     case CLOSURE_BSDF_DIFFUSE_ID:
@@ -133,11 +136,10 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  if (closure.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
-    GBufferReader gbuf = gbuffer_read(
-        gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
-    if (gbuf.thickness > 0.0) {
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
+  if (gbuf.thickness > 0.0) {
+    if (closure.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
       float ior = to_closure_refraction(closure).ior;
       float roughness = to_closure_refraction(closure).roughness;
       vec3 transmit_dir = refraction_dominant_dir(closure.N, V, ior, roughness);
@@ -148,6 +150,8 @@ void main()
       closure.N = -closure.N;
       closure.data.y = 1.0 / ior;
       V = -transmit_dir;
+    }
+    else if (closure.type == CLOSURE_BSDF_TRANSLUCENT_ID) {
     }
   }
 
@@ -192,7 +196,7 @@ void main()
 
     /* Slide 54. */
     /* TODO(fclem): Apparently, ratio estimator should be pdf_bsdf / pdf_ray. */
-    float weight = bxdf_eval(closure, ray_direction, V) * ray_pdf_inv;
+    float weight = bxdf_eval(closure, ray_direction, V, gbuf.thickness) * ray_pdf_inv;
 
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
