@@ -197,6 +197,16 @@ ccl_device void osl_closure_transparent_setup(KernelGlobals kg,
   bsdf_transparent_setup(sd, rgb_to_spectrum(weight), path_flag);
 }
 
+ccl_device void osl_closure_portal_bsdf_setup(KernelGlobals kg,
+                                              ccl_private ShaderData *sd,
+                                              uint32_t path_flag,
+                                              float3 weight,
+                                              ccl_private const PortalBSDFClosure *closure,
+                                              float3 *layer_albedo)
+{
+  bsdf_portal_setup(sd, rgb_to_spectrum(weight), path_flag, closure->position, closure->direction);
+}
+
 /* MaterialX closures */
 ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,

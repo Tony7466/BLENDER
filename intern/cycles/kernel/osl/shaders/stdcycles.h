@@ -63,4 +63,7 @@ closure color hair_huang(normal N,
 closure color henyey_greenstein(float g) BUILTIN;
 closure color absorption() BUILTIN;
 
+// Portal
+closure color portal_bsdf(vector position, vector direction) BUILTIN;
+
 #endif /* CCL_STDOSL_H */
