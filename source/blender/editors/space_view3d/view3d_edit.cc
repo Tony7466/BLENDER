@@ -1488,3 +1488,185 @@ void VIEW3D_OT_toggle_facedots(wmOperatorType *ot)
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cycle Object Mode
+ * \{ */
+
+static int cycle_object_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  if (ts->object_select_mode == 2) {
+    if (ts->object_cycle_origin) {
+      ts->object_select_mode = 4;
+    }
+    else if (ts->object_cycle_touch) {
+      ts->object_select_mode = 1;
+    }
+  }
+  else if (ts->object_select_mode == 4) {
+    if (ts->object_cycle_touch) {
+      ts->object_select_mode = 1;
+    }
+    else if (ts->object_cycle_enclose) {
+      ts->object_select_mode = 2;
+    }
+  }
+  else {
+    if (ts->object_cycle_enclose) {
+      ts->object_select_mode = 2;
+    }
+    else if (ts->object_cycle_origin) {
+      ts->object_select_mode = 4;
+    }
+    else {
+      ts->object_select_mode = 1;
+    }
+  }
+
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_cycle_object(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cycle Object";
+  ot->idname = "VIEW3D_OT_cycle_object";
+  ot->description = "Change to the next object selection mode with box, lasso, and circle select";
+  /* api callbacks */
+  ot->exec = cycle_object_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cycle Face Mode
+ * \{ */
+
+static int cycle_face_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  if (ts->face_select_mode == 2) {
+    if (ts->face_cycle_enclose) {
+      ts->face_select_mode = 4;
+    }
+    else if (ts->face_cycle_center) {
+      ts->face_select_mode = 8;
+    }
+    else if (ts->face_cycle_default) {
+      ts->face_select_mode = 1;
+    }
+  }
+  else if (ts->face_select_mode == 4) {
+    if (ts->face_cycle_center) {
+      ts->face_select_mode = 8;
+    }
+    else if (ts->face_cycle_default) {
+      ts->face_select_mode = 1;
+    }
+    else if (ts->face_cycle_touch) {
+      ts->face_select_mode = 2;
+    }
+  }
+  else if (ts->face_select_mode == 8) {
+    if (ts->face_cycle_default) {
+      ts->face_select_mode = 1;
+    }
+    else if (ts->face_cycle_touch) {
+      ts->face_select_mode = 2;
+    }
+    else if (ts->face_cycle_enclose) {
+      ts->face_select_mode = 4;
+    }
+  }
+  else {
+    if (ts->face_cycle_touch) {
+      ts->face_select_mode = 2;
+    }
+    else if (ts->face_cycle_enclose) {
+      ts->face_select_mode = 4;
+    }
+    else if (ts->face_cycle_center) {
+      ts->face_select_mode = 8;
+    }
+    else {
+      ts->face_select_mode = 1;
+    }
+  }
+
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_cycle_face(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cycle Face";
+  ot->idname = "VIEW3D_OT_cycle_face";
+  ot->description = "Change to the next face selection mode with box, lasso, and circle select";
+  /* api callbacks */
+  ot->exec = cycle_face_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Cycle Edge Mode
+ * \{ */
+
+static int cycle_edge_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  ToolSettings *ts = CTX_data_tool_settings(C);
+
+  if (ts->edge_select_mode == 2) {
+    if (ts->edge_cycle_enclose) {
+      ts->edge_select_mode = 4;
+    }
+    else if (ts->edge_cycle_default) {
+      ts->edge_select_mode = 1;
+    }
+  }
+  else if (ts->edge_select_mode == 4) {
+    if (ts->edge_cycle_default) {
+      ts->edge_select_mode = 1;
+    }
+    else if (ts->edge_cycle_touch) {
+      ts->edge_select_mode = 2;
+    }
+  }
+  else {
+    if (ts->edge_cycle_touch) {
+      ts->edge_select_mode = 2;
+    }
+    else if (ts->edge_cycle_enclose) {
+      ts->edge_select_mode = 4;
+    }
+    else {
+      ts->edge_select_mode = 1;
+    }
+  }
+
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+void VIEW3D_OT_cycle_edge(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cycle Edge";
+  ot->idname = "VIEW3D_OT_cycle_edge";
+  ot->description = "Change to the next edge selection mode with box, lasso, and circle select";
+  /* api callbacks */
+  ot->exec = cycle_edge_exec;
+  ot->poll = ED_operator_view3d_active;
+}
+
+/** \} */

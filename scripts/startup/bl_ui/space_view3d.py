@@ -783,8 +783,46 @@ class VIEW3D_HT_header(Header):
         )
         del act_mode_item
 
-        layout.template_header_3D_mode()
+        if object_mode == 'EDIT' or object_mode == 'OBJECT':
+            row = layout.row(align=True)
+            row.template_header_3D_mode()
 
+            if object_mode == 'OBJECT':
+                if tool_settings.object_select_mode == 'ENCLOSE':
+                    objicon = 'OBJECT_ENCLOSE'
+                elif tool_settings.object_select_mode == 'ORIGIN':
+                    objicon = 'LIGHTPROBE_SPHERE'
+                else:
+                    objicon = 'OBJECT_TOUCH'
+                row.active = tool_settings.select_header
+                row.operator("view3d.cycle_object", text="", icon=objicon)
+            else:
+                if tool_settings.select_header:
+                    if tool_settings.face_button:
+                        if tool_settings.face_select_mode == 'TOUCH':
+                            facicon = 'FACE_TOUCH'
+                        elif tool_settings.face_select_mode == 'ENCLOSE':
+                            facicon = 'FACE_ENCLOSE'
+                        elif tool_settings.face_select_mode == 'CENTER':
+                            facicon = 'LIGHTPROBE_PLANE'
+                        else:
+                            facicon = 'FACE_DEFAULT'
+                        row.operator("view3d.cycle_face", text="", icon=facicon)
+                    if tool_settings.edge_button:
+                        if tool_settings.edge_select_mode == 'TOUCH':
+                            edgicon = 'EDGE_TOUCH'
+                        elif tool_settings.edge_select_mode == 'ENCLOSE':
+                            edgicon = 'EDGE_ENCLOSE'
+                        else:
+                            edgicon = 'EDGE_DEFAULT'
+                        row.operator("view3d.cycle_edge", text="", icon=edgicon)
+                    if tool_settings.backface_button:
+                        row.prop(tool_settings, "backface_select", text="", icon='NORMALS_FACE')
+
+            row.popover(panel="VIEW3D_PT_drag_select", text="")
+        else:
+            layout.template_header_3D_mode()
+        
         # Contains buttons like Mode, Pivot, Layer, Mesh Select Mode...
         if obj:
             # Particle edit
@@ -1060,42 +1098,43 @@ class VIEW3D_HT_header(Header):
         row = layout.row(align=True)
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
-        if object_mode in 'EDIT' or object_mode in 'OBJECT':
-            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
-            _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
+        if object_mode == 'EDIT' or object_mode == 'OBJECT':
+            if tool_settings.xray_header:
+                from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+                _cls = ToolSelectPanelHelper._tool_class_from_space_type('VIEW_3D')
 
-            if tool_settings.workspace_tool_type == 'FALLBACK':
-                tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
-            else:
-                tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
+                if tool_settings.workspace_tool_type == 'FALLBACK':
+                    tool = _cls._tool_get_by_id_active(context, _cls.tool_fallback_id)[0].idname
+                else:
+                    tool = ToolSelectPanelHelper.tool_active_from_context(context).idname
 
-            if object_mode in 'EDIT':
-                mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
-                mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
-            elif object_mode in 'OBJECT':
-                mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
-                mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
-            else:
-                mode_match_auto_xray = False
-                mode_match_select_through = False
+                if object_mode in 'EDIT':
+                    mode_match_auto_xray = tool_settings.auto_xray_edit and tool_settings.auto_xray
+                    mode_match_select_through = tool_settings.select_through_edit and tool_settings.select_through
+                elif object_mode in 'OBJECT':
+                    mode_match_auto_xray = tool_settings.auto_xray_object and tool_settings.auto_xray
+                    mode_match_select_through = tool_settings.select_through_object and tool_settings.select_through
+                else:
+                    mode_match_auto_xray = False
+                    mode_match_select_through = False
 
-            if tool == "builtin.select_box":
-                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
-                depress_select_through = mode_match_select_through and tool_settings.select_through_box
-            elif tool == "builtin.select_lasso":
-                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
-                depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
-            elif tool == "builtin.select_circle":
-                depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
-                depress_select_through = mode_match_select_through and tool_settings.select_through_circle
-            else:
-                depress_auto_xray = False
-                depress_select_through = False
+                if tool == "builtin.select_box":
+                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_box
+                    depress_select_through = mode_match_select_through and tool_settings.select_through_box
+                elif tool == "builtin.select_lasso":
+                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_lasso
+                    depress_select_through = mode_match_select_through and tool_settings.select_through_lasso
+                elif tool == "builtin.select_circle":
+                    depress_auto_xray = mode_match_auto_xray and tool_settings.auto_xray_circle
+                    depress_select_through = mode_match_select_through and tool_settings.select_through_circle
+                else:
+                    depress_auto_xray = False
+                    depress_select_through = False
 
-            if tool_settings.auto_xray_button:
-                row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
-            if tool_settings.select_through_button:
-                row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
+                if tool_settings.auto_xray_button:
+                    row.operator("view3d.toggle_auto_xray", text="", icon='AUTO_XRAY', depress=depress_auto_xray)
+                if tool_settings.select_through_button:
+                    row.operator("view3d.toggle_select_through", text="", icon='SELECT_THROUGH', depress=depress_select_through)
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.
@@ -1105,8 +1144,10 @@ class VIEW3D_HT_header(Header):
             draw_depressed = shading.show_xray_wireframe
         else:
             draw_depressed = shading.show_xray
-
-        if tool_settings.xray_button or not tool_settings.auto_xray_button and not tool_settings.select_through_button:
+        if tool_settings.xray_header:
+            if tool_settings.xray_button or not tool_settings.auto_xray_button and not tool_settings.select_through_button:
+                row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
+        else:
             row.operator("view3d.toggle_xray", text="", icon='XRAY', depress=draw_depressed)
         row.popover(panel="VIEW3D_PT_xray", text="")
 
@@ -6557,9 +6598,10 @@ class VIEW3D_PT_shading(Panel):
         tool_settings = _context.tool_settings
         shading = VIEW3D_PT_shading.get_shading(_context)
 
-        layout.prop(tool_settings, "shrink_shading_header")
+        row = layout.row(align=True)
+        row.prop(tool_settings, "shrink_shading_header", toggle=True)
         if tool_settings.shrink_shading_header:
-            layout.prop(shading, "type", text="", expand=True)
+            row.prop(shading, "type", text="", expand=True)
 
 
 class VIEW3D_PT_shading_lighting(Panel):
@@ -6936,6 +6978,69 @@ class VIEW3D_PT_gizmo_display(Panel):
         col.prop(view, "show_gizmo_camera_dof_distance", text="Focus Distance")
 
 
+class VIEW3D_PT_drag_select(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Drag Select Settings"
+    bl_ui_units_x = 12
+
+    def draw(self, context):
+        obj = context.active_object
+        object_mode = 'OBJECT' if obj is None else obj.mode
+        tool_settings = context.tool_settings
+        layout = self.layout
+        layout.label(text="Drag Select Settings")
+
+        row = layout.row(align=True)
+        row.prop(tool_settings, "blank_text", text="Selection Control", emboss=False)
+        if tool_settings.select_header:
+            row.prop(tool_settings, "select_header", text="Header", toggle=True)
+            if object_mode == 'OBJECT':
+                row = layout.row(align=True)
+                row.prop(tool_settings, "blank_text", text="Object Select", emboss=False)
+                row.prop(tool_settings, "object_select_mode", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "blank_text", text="Object Header Button Modes", emboss=False)
+                row = layout.row(align=True)
+                row.prop(tool_settings, "object_cycle_touch", toggle=True)
+                row.prop(tool_settings, "object_cycle_enclose", toggle=True)
+                row.prop(tool_settings, "object_cycle_origin", toggle=True)
+            else:
+                row = layout.row(align=True)
+                row.prop(tool_settings, "blank_text", text="Face Select", emboss=False)
+                row.prop(tool_settings, "face_select_mode", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "blank_text", text="Edge Select", emboss=False)
+                row.prop(tool_settings, "edge_select_mode", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "backface_select", toggle=True)
+                if tool_settings.backface_select:
+                    row.prop(tool_settings, "backface_select_mode", text="")
+                row = layout.row(align=True)
+                row.prop(tool_settings, "blank_text", text="Header Buttons", emboss=False)
+                row = layout.row(align=True)
+                row.prop(tool_settings, "face_button", toggle=True)
+                row.prop(tool_settings, "edge_button", toggle=True)
+                row.prop(tool_settings, "backface_button", toggle=True)
+                if tool_settings.face_button:
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "blank_text", text="Face Header Button Modes", emboss=False)
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "face_cycle_default", toggle=True)
+                    row.prop(tool_settings, "face_cycle_touch", toggle=True)
+                    row.prop(tool_settings, "face_cycle_enclose", toggle=True)
+                    row.prop(tool_settings, "face_cycle_center", toggle=True)
+                if tool_settings.edge_button:
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "blank_text", text="Edge Header Button Modes", emboss=False)
+                    row = layout.row(align=True)
+                    row.prop(tool_settings, "edge_cycle_default", toggle=True)
+                    row.prop(tool_settings, "edge_cycle_touch", toggle=True)
+                    row.prop(tool_settings, "edge_cycle_enclose", toggle=True)
+        else:
+            row.prop(tool_settings, "select_header", text="Keymap", toggle=True)
+
+
 class VIEW3D_PT_xray(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
@@ -6943,87 +7048,64 @@ class VIEW3D_PT_xray(Panel):
     bl_ui_units_x = 14
 
     def draw(self, context):
+        tool_settings = context.tool_settings
+        shading = VIEW3D_PT_shading.get_shading(context)
         layout = self.layout
         layout.label(text="X-Ray Settings")
-        shading = VIEW3D_PT_shading.get_shading(context)
 
-        col = layout.column()
-        row = col.row(align=True)
+        row = layout.row(align=True)
         if shading.type == 'WIREFRAME':
-            row.prop(shading, "show_xray_wireframe", text="")
-            sub = row.row()
-            sub.active = shading.show_xray_wireframe
-            sub.prop(shading, "xray_alpha_wireframe", text="X-Ray Wireframe")
+            row.prop(shading, "show_xray_wireframe", text="X-Ray Wireframe", toggle=True)
+            if shading.show_xray_wireframe:
+                row.prop(shading, "xray_alpha_wireframe", text="")
         elif shading.type == 'SOLID':
-            row.prop(shading, "show_xray", text="")
-            sub = row.row()
-            sub.active = shading.show_xray
-            sub.prop(shading, "xray_alpha", text="X-Ray Solid")
-
-
-class VIEW3D_PT_auto_xray(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Automatic X-Ray"
-    bl_parent_id = 'VIEW3D_PT_xray'
-
-    def draw(self, context):
-        layout = self.layout
-        tool_settings = context.tool_settings
-
+            row.prop(shading, "show_xray", text="X-Ray Solid", toggle=True)
+            if shading.show_xray:
+                row.prop(shading, "xray_alpha", text="")
         row = layout.row(align=True)
-        row.prop(tool_settings, "auto_xray")
-        sub = row.row(align=True)
-        sub.active = tool_settings.auto_xray
-        sub.prop(tool_settings, "auto_xray_object")
-        sub.prop(tool_settings, "auto_xray_edit")
-        row = layout.row(align=True)
-        sub = row.row(align=True)
-        sub.active = tool_settings.auto_xray
-        sub.prop(tool_settings, "auto_xray_box", toggle=True)
-        sub.prop(tool_settings, "auto_xray_lasso", toggle=True)
-        sub.prop(tool_settings, "auto_xray_circle", toggle=True)
+        row.prop(tool_settings, "blank_text", text="X-Ray Control", emboss=False)
+        if tool_settings.xray_header:
+            row.prop(tool_settings, "xray_header", text="Header", toggle=True)
 
+            row = layout.row(align=True)
+            row.prop(tool_settings, "blank_text", text="Automatic X-Ray", emboss=False)
+            row = layout.row(align=True)
+            row.prop(tool_settings, "auto_xray")
+            sub = row.row(align=True)
+            sub.active = tool_settings.auto_xray
+            sub.prop(tool_settings, "auto_xray_object")
+            sub.prop(tool_settings, "auto_xray_edit")
+            row = layout.row(align=True)
+            sub = row.row(align=True)
+            sub.active = tool_settings.auto_xray
+            sub.prop(tool_settings, "auto_xray_box", toggle=True)
+            sub.prop(tool_settings, "auto_xray_lasso", toggle=True)
+            sub.prop(tool_settings, "auto_xray_circle", toggle=True)
 
-class VIEW3D_PT_select_through(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Select Through"
-    bl_parent_id = 'VIEW3D_PT_xray'
+            row = layout.row(align=True)
+            row.prop(tool_settings, "blank_text", text="Select Through", emboss=False)
+            row = layout.row(align=True)
+            row.prop(tool_settings, "select_through")
+            sub = row.row(align=True)
+            sub.active = tool_settings.select_through
+            sub.prop(tool_settings, "select_through_object")
+            sub.prop(tool_settings, "select_through_edit")
+            row = layout.row(align=True)
+            sub = row.row(align=True)
+            sub.active = tool_settings.select_through
+            sub.prop(tool_settings, "select_through_box", toggle=True)
+            sub.prop(tool_settings, "select_through_lasso", toggle=True)
+            sub.prop(tool_settings, "select_through_circle", toggle=True)
 
-    def draw(self, context):
-        layout = self.layout
-        tool_settings = context.tool_settings
+            row = layout.row(align=True)
+            row.prop(tool_settings, "blank_text", text="Header Buttons", emboss=False)
+            row = layout.row(align=True)
+            row.prop(tool_settings, "auto_xray_button", toggle=True)
+            row.prop(tool_settings, "select_through_button", toggle=True)
+            row.prop(tool_settings, "xray_button", toggle=True)
 
-        row = layout.row(align=True)
-        row.prop(tool_settings, "select_through")
-        sub = row.row(align=True)
-        sub.active = tool_settings.select_through
-        sub.prop(tool_settings, "select_through_object")
-        sub.prop(tool_settings, "select_through_edit")
-        row = layout.row(align=True)
-        sub = row.row(align=True)
-        sub.active = tool_settings.select_through
-        sub.prop(tool_settings, "select_through_box", toggle=True)
-        sub.prop(tool_settings, "select_through_lasso", toggle=True)
-        sub.prop(tool_settings, "select_through_circle", toggle=True)
-
-
-class VIEW3D_PT_xray_buttons(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_label = "Header Buttons"
-    bl_parent_id = 'VIEW3D_PT_xray'
-
-    def draw(self, context):
-        layout = self.layout
-        tool_settings = context.tool_settings
-
-        row = layout.row(align=True)
-        row.prop(tool_settings, "auto_xray_button", toggle=True)
-        row.prop(tool_settings, "select_through_button", toggle=True)
-        row.prop(tool_settings, "xray_button", toggle=True)
-
+        else:
+            row.prop(tool_settings, "xray_header", text="Keymap", toggle=True)
 
 class VIEW3D_PT_overlay(Panel):
     bl_space_type = 'VIEW_3D'
@@ -9203,10 +9285,8 @@ classes = (
     VIEW3D_PT_shading_render_pass,
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
+    VIEW3D_PT_drag_select,
     VIEW3D_PT_xray,
-    VIEW3D_PT_auto_xray,
-    VIEW3D_PT_select_through,
-    VIEW3D_PT_xray_buttons,
     VIEW3D_PT_overlay,
     VIEW3D_PT_overlay_guides,
     VIEW3D_PT_overlay_object,

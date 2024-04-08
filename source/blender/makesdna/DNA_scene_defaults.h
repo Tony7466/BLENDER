@@ -421,7 +421,20 @@
     .select_through_box = true, \
     .select_through_lasso = true, \
     .select_through_circle = true, \
-    .backface_select_mode = 1, \
+    .object_cycle_touch = true, \
+    .object_cycle_enclose = true, \
+    .object_cycle_origin = true, \
+    .face_cycle_default = true, \
+    .face_cycle_touch = true, \
+    .face_cycle_enclose = true, \
+    .face_cycle_center = true, \
+    .edge_cycle_default = true, \
+    .edge_cycle_touch = true, \
+    .edge_cycle_enclose = true, \
+    .object_select_mode = 1, \
+    .face_select_mode = 1, \
+    .edge_select_mode = 1, \
+    .backface_select_mode = 2, \
   }
 
 #define _DNA_DEFAULT_Sculpt \

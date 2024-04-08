@@ -226,6 +226,9 @@ void view3d_operatortypes()
   WM_operatortype_append(VIEW3D_OT_toggle_auto_xray);
   WM_operatortype_append(VIEW3D_OT_toggle_select_through);
   WM_operatortype_append(VIEW3D_OT_toggle_facedots);
+  WM_operatortype_append(VIEW3D_OT_cycle_object);
+  WM_operatortype_append(VIEW3D_OT_cycle_face);
+  WM_operatortype_append(VIEW3D_OT_cycle_edge);
 
   WM_operatortype_append(VIEW3D_OT_ruler_add);
   WM_operatortype_append(VIEW3D_OT_ruler_remove);

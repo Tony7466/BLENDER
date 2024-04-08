@@ -3186,36 +3186,88 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem object_select_items[] = {
+      {OBJECT_TOUCH,
+       "TOUCH",
+       ICON_OBJECT_TOUCH,
+       "Touch",
+       "Select objects that are touched by the selection area"},
+      {OBJECT_ENCLOSE,
+       "ENCLOSE",
+       ICON_OBJECT_ENCLOSE,
+       "Enclose",
+       "Select objects that are fully inside the selection area"},
+      {OBJECT_ORIGIN,
+       "ORIGIN",
+       ICON_LIGHTPROBE_SPHERE,
+       "Origin",
+       "Select objects if their origin is touched by the selection area"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem face_select_items[] = {
+      {FACE_DEFAULT,
+       "DEFAULT",
+       ICON_FACE_DEFAULT,
+       "Default",
+       "Select faces that are touched by the selection area in Near Select. Select faces if their "
+       "center is touched by the selection area in X-Ray and Select Through"},
+      {FACE_TOUCH,
+       "TOUCH",
+       ICON_FACE_TOUCH,
+       "Touch",
+       "Select faces that are touched by the selection area"},
+      {FACE_ENCLOSE,
+       "ENCLOSE",
+       ICON_FACE_ENCLOSE,
+       "Enclose",
+       "Select faces that are fully inside the selection area"},
+      {FACE_CENTER,
+       "CENTER",
+       ICON_LIGHTPROBE_PLANE,
+       "Center",
+       "Select faces if their center is touched by the selection area"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem edge_select_items[] = {
+      {EDGE_DEFAULT,
+       "DEFAULT",
+       ICON_EDGE_DEFAULT,
+       "Default",
+       "Select edges that are fully inside the selection area. If no edges are fully inside, "
+       "select edges that are touched by the selection area"},
+      {EDGE_TOUCH,
+       "TOUCH",
+       ICON_EDGE_TOUCH,
+       "Touch",
+       "Select edges that are touched by the selection area"},
+      {EDGE_ENCLOSE,
+       "ENCLOSE",
+       ICON_EDGE_ENCLOSE,
+       "Enclose",
+       "Select edges that are fully inside the selection area"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   static const EnumPropertyItem backface_select_items[] = {
       {BACKFACE_NEAR,
        "NEAR",
        0,
        "Fix Near",
-       "Ignore backfacing mesh when not using X-Ray or Select Through, verts don't need "
-       "filtering"},
+       "Ignore backfacing mesh when not using X-Ray or Select Through, verts won't be filtered"},
       {BACKFACE_XRAY,
        "XRAY",
        0,
        "Front X-Ray",
        "Ignore backfacing mesh in X-Ray and Select Through"},
-      {BACKFACE_NONE, "NONE", 0, "Zero Backface", "Don't select backfacing mesh"},
+      {BACKFACE_NONE, "NONE", 0, "No Backface", "Don't select backfacing mesh"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
   srna = RNA_def_struct(brna, "ToolSettings", nullptr);
   RNA_def_struct_path_func(srna, "rna_ToolSettings_path");
   RNA_def_struct_ui_text(srna, "Tool Settings", "");
-
-  /* Ignore Backface Select */
-  prop = RNA_def_property(srna, "backface_select", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "backface_select", 0);
-  RNA_def_property_ui_text(
-      prop, "Backface Filter", "Select mesh based on the direction of their normals");
-
-  prop = RNA_def_property(srna, "backface_select_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "backface_select_mode");
-  RNA_def_property_enum_items(prop, backface_select_items);
-  RNA_def_property_ui_text(prop, "Mode", "Backface Filter Method");
 
   prop = RNA_def_property(srna, "sculpt", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Sculpt");
@@ -4091,14 +4143,131 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       prop,
       "Shrink Header",
       "Combine the four Shading Header buttons into one button that also toggles X-Ray");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
-  /* X-Ray header button */
+  /* Blank Text, for ui formatting */
+  prop = RNA_def_property(srna, "blank_text", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "blank_text", 0);
+  RNA_def_property_ui_text(prop, "", "");
+
+  /* Drag Select Options */
+  prop = RNA_def_property(srna, "select_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "select_header", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Selection Control",
+      "Use either the header or keymap to control additional selection options");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "object_select_mode");
+  RNA_def_property_enum_items(prop, object_select_items);
+  RNA_def_property_ui_text(prop, "Object", "Object Select Style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "face_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "face_select_mode");
+  RNA_def_property_enum_items(prop, face_select_items);
+  RNA_def_property_ui_text(prop, "Face", "Face Select Style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "edge_select_mode");
+  RNA_def_property_enum_items(prop, edge_select_items);
+  RNA_def_property_ui_text(prop, "Edge", "Edge Select Style");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "backface_select", 0);
+  RNA_def_property_ui_text(
+      prop, "Backface Filter", "Select mesh based on the direction of their normals");
+
+  prop = RNA_def_property(srna, "backface_select_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "backface_select_mode");
+  RNA_def_property_enum_items(prop, backface_select_items);
+  RNA_def_property_ui_text(prop, "Mode", "Backface Filter Style");
+
+  prop = RNA_def_property(srna, "face_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Face", "Show header button that cycles through face selection modes");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "edge_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Edge", "Show header button that cycles through edge selection modes");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "backface_button", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "backface_button", 0);
+  RNA_def_property_ui_text(
+      prop, "Backface", "Show header button that toggles the backface filter");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "object_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "Object header button will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "Object header button will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "object_cycle_origin", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "object_cycle_origin", 0);
+  RNA_def_property_ui_text(
+      prop, "Origin", "Object header button will include origin mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_default", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "Face header button will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "Face header button will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "Face header button will include enclose mode in its cycle");
+
+  prop = RNA_def_property(srna, "face_cycle_center", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "face_cycle_center", 0);
+  RNA_def_property_ui_text(
+      prop, "Center", "Face header button will include center mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_default", 0);
+  RNA_def_property_ui_text(
+      prop, "Default", "Edge header button will include default mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_touch", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_touch", 0);
+  RNA_def_property_ui_text(
+      prop, "Touch", "Edge header button will include touch mode in its cycle");
+
+  prop = RNA_def_property(srna, "edge_cycle_enclose", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "edge_cycle_enclose", 0);
+  RNA_def_property_ui_text(
+      prop, "Enclose", "Edge header button will include enclose mode in its cycle");
+
+  /* X-Ray Options */
+  prop = RNA_def_property(srna, "xray_header", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "xray_header", 0);
+  RNA_def_property_ui_text(prop,
+                           "X-Ray Control",
+                           "Use either the header or keymap to control additional X-Ray options");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
   prop = RNA_def_property(srna, "xray_button", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "xray_button", 0);
   RNA_def_property_ui_text(prop, "X-Ray", "Show button for X-Ray in viewport header");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
-  /* Auto X-Ray */
   prop = RNA_def_property(srna, "auto_xray", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "auto_xray", 0);
   RNA_def_property_ui_text(prop, "Enable", "Transparent scene display during drag select");
@@ -4140,7 +4309,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Circle", "Transparent scene display during circle select");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 
-  /* Select Through */
   prop = RNA_def_property(srna, "select_through", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "select_through", 0);
   RNA_def_property_ui_text(

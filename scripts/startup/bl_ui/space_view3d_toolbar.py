@@ -231,30 +231,6 @@ class VIEW3D_PT_tools_meshedit_options_uvs(View3DPanel, Panel):
         layout.prop(tool_settings, "use_edge_path_live_unwrap")
 
 
-class VIEW3D_PT_tools_meshedit_options_select(View3DPanel, Panel):
-    bl_category = "Tool"
-    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
-    bl_label = "Drag Select"
-    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
-
-    @classmethod
-    def poll(cls, context):
-        return context.active_object      
-
-    def draw(self, context):
-        layout = self.layout
-
-        tool_settings = context.tool_settings
-
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        col = layout.column()
-        self.layout.prop(tool_settings, "backface_select")
-        if tool_settings.backface_select:
-            self.layout.prop(tool_settings, "backface_select_mode")
-
-
 # ********** default tools for editmode_armature ****************
 
 
@@ -2522,7 +2498,6 @@ classes = (
     VIEW3D_PT_tools_meshedit_options,
     VIEW3D_PT_tools_meshedit_options_transform,
     VIEW3D_PT_tools_meshedit_options_uvs,
-    VIEW3D_PT_tools_meshedit_options_select,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
 

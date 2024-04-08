@@ -100,6 +100,41 @@ static void gesture_toggle_xray(bContext *C)
   ts->auto_xray_reset ^= true;
 }
 
+static void gesture_auto_xray(bContext *C,
+                              View3D *v3d,
+                              ToolSettings *ts,
+                              wmOperator *op,
+                              const bool mesh,
+                              const bool lasso,
+                              const bool circle)
+{
+  if (!v3d || XRAY_FLAG_ENABLED(v3d)) {
+    return;
+  }
+
+  bool auto_xray = false;
+
+  if (ts->xray_header) {
+    if (ts->auto_xray && mesh && ts->auto_xray_edit ||
+        ts->auto_xray && !mesh && ts->auto_xray_object)
+    {
+      auto_xray = lasso ? ts->auto_xray_lasso : circle ? ts->auto_xray_circle : ts->auto_xray_box;
+    }
+  }
+  else {
+    const int mode = RNA_enum_get(op->ptr, "auto_xray");
+    auto_xray = mesh ? mode == 4 || mode == 8 : mode == 2 || mode == 8;
+  }
+
+  if (ts->auto_xray_reset) {
+    ts->auto_xray_reset ^= true;
+  }
+
+  if (auto_xray) {
+    gesture_toggle_xray(C);
+  }
+}
+
 static int UNUSED_FUNCTION(gesture_modal_state_from_operator)(wmOperator *op)
 {
   PropertyRNA *prop;
@@ -185,19 +220,7 @@ int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   const bool wait_for_input = !WM_event_is_mouse_drag_or_press(event) &&
                               RNA_boolean_get(op->ptr, "wait_for_input");
 
-  const bool auto_xray = ts->auto_xray && ts->auto_xray_box ?
-                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                             false;
-
-  if (ts->auto_xray_reset) {
-    ts->auto_xray_reset ^= true;
-  }
-
-  if (v3d && auto_xray) {
-    if (!XRAY_FLAG_ENABLED(v3d)) {
-      gesture_toggle_xray(C);
-    }
-  }
+  gesture_auto_xray(C, v3d, ts, op, obedit, false, false);
 
   if (wait_for_input) {
     op->customdata = WM_gesture_new(win, region, event, WM_GESTURE_CROSS_RECT);
@@ -336,19 +359,7 @@ int WM_gesture_circle_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   Object *obedit = CTX_data_edit_object(C);
   ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
-  const bool auto_xray = ts->auto_xray && ts->auto_xray_circle ?
-                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                             false;
-
-  if (ts->auto_xray_reset) {
-    ts->auto_xray_reset ^= true;
-  }
-
-  if (v3d && auto_xray) {
-    if (!XRAY_FLAG_ENABLED(v3d)) {
-      gesture_toggle_xray(C);
-    }
-  }
+  gesture_auto_xray(C, v3d, ts, op, obedit, false, true);
 
   if (ts->square_select) {
     op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_SQUARE);
@@ -555,19 +566,7 @@ int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   Object *obedit = CTX_data_edit_object(C);
   ToolSettings *ts = static_cast<ToolSettings *>(win->scene->toolsettings);
 
-  const bool auto_xray = ts->auto_xray && ts->auto_xray_lasso ?
-                             obedit ? ts->auto_xray_edit : ts->auto_xray_object :
-                             false;
-
-  if (ts->auto_xray_reset) {
-    ts->auto_xray_reset ^= true;
-  }
-
-  if (v3d && auto_xray) {
-    if (!XRAY_FLAG_ENABLED(v3d)) {
-      gesture_toggle_xray(C);
-    }
-  }
+  gesture_auto_xray(C, v3d, ts, op, obedit, true, false);
 
   op->customdata = WM_gesture_new(win, CTX_wm_region(C), event, WM_GESTURE_LASSO);
 

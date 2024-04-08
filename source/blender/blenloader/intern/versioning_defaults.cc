@@ -407,7 +407,20 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   ts->select_through_box = true;
   ts->select_through_lasso = true;
   ts->select_through_circle = true;
-  ts->backface_select_mode = 1;
+  ts->object_cycle_touch = true;
+  ts->object_cycle_enclose = true;
+  ts->object_cycle_origin = true;
+  ts->face_cycle_default = true;
+  ts->face_cycle_touch = true;
+  ts->face_cycle_enclose = true;
+  ts->face_cycle_center = true;
+  ts->edge_cycle_default = true;
+  ts->edge_cycle_touch = true;
+  ts->edge_cycle_enclose = true;
+  ts->object_select_mode = 1;
+  ts->face_select_mode = 1;
+  ts->edge_select_mode = 1;
+  ts->backface_select_mode = 2;
 }
 
 void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)

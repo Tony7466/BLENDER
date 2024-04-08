@@ -836,17 +836,109 @@ bool edbm_mesh_facing_viewport(ViewContext *vc,
   return mesh_facing;
 }
 
-bool edbm_check_mesh_facing(ToolSettings *ts, bool zbuf)
+bool edbm_check_mesh_facing(ToolSettings *ts, wmOperator *op, const bool zbuf)
 {
-  const bool mode_match = zbuf ? ts->backface_select && (ts->backface_select_mode == 2 ||
-                                                         ts->backface_select_mode == 8) :
-                                 ts->backface_select && (ts->backface_select_mode == 4 ||
-                                                         ts->backface_select_mode == 8);
+  bool check_facing = false;
 
-  return mode_match;
+  if (ts->select_header) {
+    check_facing = zbuf ? ts->backface_select &&
+                              (ts->backface_select_mode == 2 || ts->backface_select_mode == 8) :
+                          ts->backface_select &&
+                              (ts->backface_select_mode == 4 || ts->backface_select_mode == 8);
+  }
+  else {
+    const int mode = RNA_enum_get(op->ptr, "backface_filter");
+    check_facing = zbuf ? mode == 2 || mode == 8 : mode == 4 || mode == 8;
+  }
+
+  return check_facing;
 }
 
-static void face_filter(
+int object_style(ToolSettings *ts, wmOperator *op)
+{
+  int type = 0;
+
+  if (ts->select_header) {
+    type = ts->object_select_mode;
+  }
+  else {
+    type = RNA_enum_get(op->ptr, "object_type");
+  }
+
+  if (type == 0) {
+    type = 1;
+  }
+
+  return type;
+}
+
+int face_style(ToolSettings *ts, wmOperator *op)
+{
+  int type = 0;
+
+  if (ts->select_header) {
+    type = ts->face_select_mode;
+  }
+  else {
+    type = RNA_enum_get(op->ptr, "face_type");
+  }
+
+  if (type == 0) {
+    type = 1;
+  }
+
+  return type;
+}
+
+int edge_style(ToolSettings *ts, wmOperator *op)
+{
+  int type = 0;
+
+  if (ts->select_header) {
+    type = ts->edge_select_mode;
+  }
+  else {
+    type = RNA_enum_get(op->ptr, "edge_type");
+  }
+
+  if (type == 0) {
+    type = 1;
+  }
+
+  return type;
+}
+
+bool drag_select_through(View3D *v3d,
+                         ToolSettings *ts,
+                         wmOperator *op,
+                         const bool mesh,
+                         const bool lasso,
+                         const bool circle)
+{
+  if (XRAY_FLAG_ENABLED(v3d)) {
+    return true;
+  }
+
+  bool select_through = false;
+
+  if (ts->xray_header) {
+    if (ts->select_through && mesh && ts->select_through_edit ||
+        ts->select_through && !mesh && ts->select_through_object)
+    {
+      select_through = lasso  ? ts->select_through_lasso :
+                       circle ? ts->select_through_circle :
+                                ts->select_through_box;
+    }
+  }
+  else {
+    const int mode = RNA_enum_get(op->ptr, "select_through");
+    select_through = mesh ? mode == 4 || mode == 8 : mode == 2 || mode == 8;
+  }
+
+  return select_through;
+}
+
+void face_filter(
     ViewContext *vc, void *box_data, void *lasso_data, void *circle_data, eSelectOp sel_op)
 {
   BMVert *eve;
@@ -1231,6 +1323,7 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
                                                 Depsgraph *depsgraph,
                                                 Object *ob,
                                                 BMEditMesh *em,
+                                                wmOperator *op,
                                                 const eSelectOp sel_op)
 {
   CircleSelectUserData *data = static_cast<CircleSelectUserData *>(userData);
@@ -1239,7 +1332,7 @@ static bool edbm_backbuf_check_and_select_edges(void *userData,
   BMEdge *eed;
   BMIter iter;
   bool changed = false;
-  const bool check_mesh_facing = edbm_check_mesh_facing(ts, true);
+  const bool check_mesh_facing = edbm_check_mesh_facing(ts, op, true);
 
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_EDGE);
@@ -1311,6 +1404,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
                                                 Depsgraph *depsgraph,
                                                 Object *ob,
                                                 BMEditMesh *em,
+                                                wmOperator *op,
                                                 const eSelectOp sel_op,
                                                 const rcti *rect,
                                                 const int face_style,
@@ -1323,7 +1417,7 @@ static bool edbm_backbuf_check_and_select_faces(ViewContext *vc,
   BMVert *eve;
   rctf rectf;
   bool changed = false;
-  const bool check_mesh_facing = edbm_check_mesh_facing(ts, true);
+  const bool check_mesh_facing = edbm_check_mesh_facing(ts, op, true);
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   LassoSelectUserData *ldata = static_cast<LassoSelectUserData *>(lasso_data);
   CircleSelectUserData *cdata = static_cast<CircleSelectUserData *>(circle_data);
@@ -1601,8 +1695,8 @@ static bool do_lasso_select_objects(ViewContext *vc,
   ToolSettings *ts = vc->scene->toolsettings;
   bool changed = false;
   float region_co[2];
-  const int object_style = RNA_enum_get(op->ptr, "object_type");
-  const bool wireless_touch = ts->wireless_touch_object && object_style == 1 &&
+  const int object_type = object_style(ts, op);
+  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
@@ -1617,7 +1711,7 @@ static bool do_lasso_select_objects(ViewContext *vc,
         bool is_inside = false;
         if (base->object->type == OB_MESH) {
           is_inside = object_filter(
-              vc, base, object_style, mcoords, mcoords_len, nullptr, nullptr, false);
+              vc, base, object_type, mcoords, mcoords_len, nullptr, nullptr, false);
         }
         else {
           is_inside = (ED_view3d_project_base(vc->region, base, region_co) == -V3D_PROJ_RET_OK) &&
@@ -1647,13 +1741,10 @@ static bool do_lasso_select_objects(ViewContext *vc,
     rcti rect;
     blender::Vector<Base *> bases;
     BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
-    const bool select_through = XRAY_FLAG_ENABLED(v3d) ||
-                                (ts->select_through && ts->select_through_object &&
-                                 ts->select_through_lasso);
     const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(vc->scene,
                                                                                    vc->obact);
 
-    if (select_through) {
+    if (drag_select_through(v3d, ts, op, false, true, false)) {
       hits = view3d_opengl_select(vc, &buffer, &rect, VIEW3D_SELECT_PICK_ALL, select_filter);
     }
     else {
@@ -1697,10 +1788,10 @@ static bool do_lasso_select_objects(ViewContext *vc,
       if (BASE_SELECTABLE(v3d, base)) {
         const bool is_select = base->flag & BASE_SELECTED;
         bool is_inside = false;
-        if (base->object->type == OB_MESH && (object_style == 1 || object_style == 2)) {
+        if (base->object->type == OB_MESH && (object_type == 1 || object_type == 2)) {
           is_inside = base->object->id.tag & LIB_TAG_DOIT &&
                       object_filter(
-                          vc, base, object_style, mcoords, mcoords_len, nullptr, nullptr, false);
+                          vc, base, object_type, mcoords, mcoords_len, nullptr, nullptr, false);
         }
         else {
           is_inside = base->object->id.tag & LIB_TAG_DOIT &&
@@ -2076,20 +2167,15 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   LassoSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
   rcti rect;
+  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
   /* set editmesh */
   vc->em = BKE_editmesh_from_object(vc->obedit);
 
   BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
 
-  view3d_userdata_lassoselect_init(&data,
-                                   vc,
-                                   &rect,
-                                   mcoords,
-                                   mcoords_len,
-                                   sel_op,
-                                   RNA_enum_get(op->ptr, "edge_type"),
-                                   RNA_enum_get(op->ptr, "face_type"));
+  view3d_userdata_lassoselect_init(
+      &data, vc, &rect, mcoords, mcoords_len, sel_op, mesh_type[0], mesh_type[1]);
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -2103,9 +2189,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool select_through = ts->select_through && ts->select_through_edit &&
-                              ts->select_through_lasso;
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
+  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, true, false);
 
   EditSelectBuf_Cache *esel = static_cast<EditSelectBuf_Cache *>(wm_userdata->data);
   if (use_zbuf) {
@@ -2127,7 +2211,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -2181,6 +2265,7 @@ static bool do_lasso_select_mesh(ViewContext *vc,
                                                              vc->depsgraph,
                                                              vc->obedit,
                                                              vc->em,
+                                                             op,
                                                              sel_op,
                                                              &rect,
                                                              data.face_style,
@@ -5270,13 +5355,9 @@ static bool do_mesh_box_select(ViewContext *vc,
 {
   BoxSelectUserData data;
   ToolSettings *ts = vc->scene->toolsettings;
+  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
-  view3d_userdata_boxselect_init(&data,
-                                 vc,
-                                 rect,
-                                 sel_op,
-                                 RNA_enum_get(op->ptr, "edge_type"),
-                                 RNA_enum_get(op->ptr, "face_type"));
+  view3d_userdata_boxselect_init(&data, vc, rect, sel_op, mesh_type[0], mesh_type[1]);
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     if (vc->em->bm->totvertsel) {
@@ -5290,11 +5371,7 @@ static bool do_mesh_box_select(ViewContext *vc,
 
   GPU_matrix_set(vc->rv3d->viewmat);
 
-  const bool select_through = square ? ts->select_through && ts->select_through_edit &&
-                                           ts->select_through_circle :
-                                       ts->select_through && ts->select_through_edit &&
-                                           ts->select_through_box;
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
+  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, false, square);
 
   if (use_zbuf) {
     /* for near enclose face */
@@ -5319,7 +5396,7 @@ static bool do_mesh_box_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -5373,6 +5450,7 @@ static bool do_mesh_box_select(ViewContext *vc,
                                                              vc->depsgraph,
                                                              vc->obedit,
                                                              vc->em,
+                                                             op,
                                                              sel_op,
                                                              rect,
                                                              data.face_style,
@@ -5562,29 +5640,22 @@ static bool do_object_box_select(bContext *C,
   int hits = 0;
   bool changed = false;
   float region_co[2];
-  const int object_style = RNA_enum_get(op->ptr, "object_type");
-  const bool wireless_touch = ts->wireless_touch_object && object_style == 1 &&
+  const int object_type = object_style(ts, op);
+  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
-  bool select_through;
   bool select;
   int select_flag;
 
   if (square) {
-    select_through = XRAY_FLAG_ENABLED(vc->v3d) ||
-                     ts->select_through && ts->select_through_object && ts->select_through_circle;
     select = (sel_op != SEL_OP_SUB);
     select_flag = select ? BASE_SELECTED : 0;
-  }
-  else {
-    select_through = XRAY_FLAG_ENABLED(vc->v3d) ||
-                     ts->select_through && ts->select_through_object && ts->select_through_box;
   }
 
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     changed |= object_deselect_all_visible(vc->scene, vc->view_layer, vc->v3d);
   }
 
-  if (select_through) {
+  if (drag_select_through(v3d, ts, op, false, false, square)) {
     hits = view3d_opengl_select(vc, &buffer, rect, VIEW3D_SELECT_ALL, select_filter);
   }
   else {
@@ -5627,10 +5698,10 @@ static bool do_object_box_select(bContext *C,
       if (square) {
         if (BASE_SELECTABLE(v3d, base) && ((base->flag & BASE_SELECTED) != select_flag)) {
           const bool is_select = base->flag & BASE_SELECTED;
-          const bool is_inside =
-              base->object->type == OB_MESH ?
-                  object_filter(vc, base, object_style, nullptr, 0, rectf, nullptr, true) :
-                  base->object->id.tag & LIB_TAG_DOIT;
+          const bool is_inside = base->object->type == OB_MESH ?
+                                     object_filter(
+                                         vc, base, object_type, nullptr, 0, rectf, nullptr, true) :
+                                     base->object->id.tag & LIB_TAG_DOIT;
           const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
           if (sel_op_result != -1) {
             ED_object_base_select(base, sel_op_result ? BA_SELECT : BA_DESELECT);
@@ -5643,7 +5714,7 @@ static bool do_object_box_select(bContext *C,
           const bool is_select = base->flag & BASE_SELECTED;
           const bool is_inside =
               base->object->type == OB_MESH ?
-                  object_filter(vc, base, object_style, nullptr, 0, rectf, nullptr, false) :
+                  object_filter(vc, base, object_type, nullptr, 0, rectf, nullptr, false) :
                   base->object->id.tag & LIB_TAG_DOIT;
           const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
           if (sel_op_result != -1) {
@@ -5660,14 +5731,14 @@ static bool do_object_box_select(bContext *C,
         if (BASE_SELECTABLE(v3d, base) && ((base->flag & BASE_SELECTED) != select_flag)) {
           const bool is_select = base->flag & BASE_SELECTED;
           bool is_inside = false;
-          if (base->object->type != OB_MESH || object_style < 2) {
+          if (base->object->type != OB_MESH || object_type < 2) {
             is_inside = base->object->id.tag & LIB_TAG_DOIT;
           }
           else {
-            if (object_style == 2 && base->object->id.tag & LIB_TAG_DOIT) {
-              is_inside = object_filter(vc, base, object_style, nullptr, 0, rectf, nullptr, true);
+            if (object_type == 2 && base->object->id.tag & LIB_TAG_DOIT) {
+              is_inside = object_filter(vc, base, object_type, nullptr, 0, rectf, nullptr, true);
             }
-            else if (object_style == 4 && base->object->id.tag & LIB_TAG_DOIT) {
+            else if (object_type == 4 && base->object->id.tag & LIB_TAG_DOIT) {
               is_inside = (ED_view3d_project_base(vc->region, base, region_co) ==
                            V3D_PROJ_RET_OK) &&
                           BLI_rctf_isect_pt_v(rectf, region_co);
@@ -5684,14 +5755,14 @@ static bool do_object_box_select(bContext *C,
         if (BASE_SELECTABLE(v3d, base)) {
           const bool is_select = base->flag & BASE_SELECTED;
           bool is_inside = false;
-          if (base->object->type != OB_MESH || object_style < 2) {
+          if (base->object->type != OB_MESH || object_type < 2) {
             is_inside = base->object->id.tag & LIB_TAG_DOIT;
           }
           else {
-            if (object_style == 2 && base->object->id.tag & LIB_TAG_DOIT) {
-              is_inside = object_filter(vc, base, object_style, nullptr, 0, rectf, nullptr, true);
+            if (object_type == 2 && base->object->id.tag & LIB_TAG_DOIT) {
+              is_inside = object_filter(vc, base, object_type, nullptr, 0, rectf, nullptr, true);
             }
-            else if (object_style == 4 && base->object->id.tag & LIB_TAG_DOIT) {
+            else if (object_type == 4 && base->object->id.tag & LIB_TAG_DOIT) {
               is_inside = (ED_view3d_project_base(vc->region, base, region_co) ==
                            V3D_PROJ_RET_OK) &&
                           BLI_rctf_isect_pt_v(rectf, region_co);
@@ -6160,6 +6231,7 @@ static bool mesh_circle_select(ViewContext *vc,
   ToolSettings *ts = vc->scene->toolsettings;
   CircleSelectUserData data;
   vc->em = BKE_editmesh_from_object(vc->obedit);
+  const int mesh_type[2] = {edge_style(ts, op), face_style(ts, op)};
 
   bool changed = false;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
@@ -6175,17 +6247,9 @@ static bool mesh_circle_select(ViewContext *vc,
 
   ED_view3d_init_mats_rv3d(vc->obedit, vc->rv3d); /* for foreach's screen/vert projection */
 
-  view3d_userdata_circleselect_init(&data,
-                                    vc,
-                                    select,
-                                    mval,
-                                    rad,
-                                    RNA_enum_get(op->ptr, "edge_type"),
-                                    RNA_enum_get(op->ptr, "face_type"));
+  view3d_userdata_circleselect_init(&data, vc, select, mval, rad, mesh_type[0], mesh_type[1]);
 
-  const bool select_through = ts->select_through && ts->select_through_edit &&
-                              ts->select_through_circle;
-  const bool use_zbuf = !XRAY_FLAG_ENABLED(vc->v3d) && !select_through;
+  const bool use_zbuf = !drag_select_through(vc->v3d, ts, op, true, false, true);
 
   if (use_zbuf) {
     if (wm_userdata->data == nullptr) {
@@ -6202,7 +6266,7 @@ static bool mesh_circle_select(ViewContext *vc,
   }
 
   if (ts->selectmode & SCE_SELECT_EDGE || !use_zbuf) {
-    data.check_mesh_direction = edbm_check_mesh_facing(ts, use_zbuf);
+    data.check_mesh_direction = edbm_check_mesh_facing(ts, op, use_zbuf);
 
     if (data.check_mesh_direction) {
       const int totface = vc->em->bm->totface;
@@ -6229,7 +6293,7 @@ static bool mesh_circle_select(ViewContext *vc,
     if (use_zbuf) {
       if (esel->select_bitmap != nullptr) {
         changed |= edbm_backbuf_check_and_select_edges(
-            &data, esel, vc->depsgraph, vc->obedit, vc->em, select ? SEL_OP_ADD : SEL_OP_SUB);
+            &data, esel, vc->depsgraph, vc->obedit, vc->em, op, select ? SEL_OP_ADD : SEL_OP_SUB);
       }
     }
     else {
@@ -6249,6 +6313,7 @@ static bool mesh_circle_select(ViewContext *vc,
                                                        vc->depsgraph,
                                                        vc->obedit,
                                                        vc->em,
+                                                       op,
                                                        select ? SEL_OP_ADD : SEL_OP_SUB,
                                                        nullptr,
                                                        data.face_style,
@@ -6937,8 +7002,8 @@ static bool object_circle_select(
   const int circle_data[3] = {mval[0], mval[1], int(rad)};
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
   float radius_squared = rad * rad;
-  const int object_style = RNA_enum_get(op->ptr, "object_type");
-  const bool wireless_touch = ts->wireless_touch_object && object_style == 1 &&
+  const int object_type = object_style(ts, op);
+  const bool wireless_touch = ts->wireless_touch_object && object_type == 1 &&
                               v3d->shading.type == OB_WIRE && XRAY_FLAG_ENABLED(v3d);
   const bool select = (sel_op != SEL_OP_SUB);
   const int select_flag = select ? BASE_SELECTED : 0;
@@ -6953,7 +7018,7 @@ static bool object_circle_select(
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
       if (BASE_SELECTABLE(v3d, base) && ((base->flag & BASE_SELECTED) != select_flag)) {
         if (base->object->type == OB_MESH) {
-          if (object_filter(vc, base, object_style, nullptr, 0, nullptr, circle_data, false)) {
+          if (object_filter(vc, base, object_type, nullptr, 0, nullptr, circle_data, false)) {
             ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
             changed = true;
           }
@@ -6976,9 +7041,6 @@ static bool object_circle_select(
   }
   else {
     GPUSelectBuffer buffer;
-    const bool select_through = XRAY_FLAG_ENABLED(v3d) ||
-                                (ts->select_through && ts->select_through_object &&
-                                 ts->select_through_circle);
     BKE_object_update_select_id(CTX_data_main(vc->C));
     int hits = 0;
     int point[4][2] = {};
@@ -7008,7 +7070,7 @@ static bool object_circle_select(
 
     const eV3DSelectObjectFilter select_filter = ED_view3d_select_filter_from_mode(scene,
                                                                                    vc->obact);
-    if (select_through) {
+    if (drag_select_through(v3d, ts, op, false, false, true)) {
       hits = view3d_opengl_select(vc, &buffer, &rect, VIEW3D_SELECT_ALL, select_filter);
     }
     else {
@@ -7049,10 +7111,10 @@ static bool object_circle_select(
       if (BASE_SELECTABLE(v3d, base) && ((base->flag & BASE_SELECTED) != select_flag)) {
         const bool is_select = base->flag & BASE_SELECTED;
         bool is_inside = false;
-        if (base->object->type == OB_MESH && (object_style == 1 || object_style == 2)) {
+        if (base->object->type == OB_MESH && (object_type == 1 || object_type == 2)) {
           is_inside = base->object->id.tag & LIB_TAG_DOIT ?
                           object_filter(
-                              vc, base, object_style, nullptr, 0, nullptr, circle_data, false) ?
+                              vc, base, object_type, nullptr, 0, nullptr, circle_data, false) ?
                           true :
                           false :
                           false;

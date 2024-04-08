@@ -1600,10 +1600,9 @@ typedef struct ToolSettings {
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
 
-  /* LCB Options */
-  char backface_select;
-  char backface_select_mode;
+  /** LCB Options */
   char xray_button;
+  char xray_header;
   char auto_xray;
   char auto_xray_button;
   char auto_xray_reset;
@@ -1620,9 +1619,29 @@ typedef struct ToolSettings {
   char select_through_lasso;
   char select_through_circle;
   char wireless_touch_object;
-  char shrink_shading_header;
   char square_select;
-  char _pad0[1];
+  char shrink_shading_header;
+  char select_header;
+  char object_select_mode;
+  char face_select_mode;
+  char edge_select_mode;
+  char backface_select;
+  char backface_select_mode;
+  char face_button;
+  char edge_button;
+  char backface_button;
+  char object_cycle_touch;
+  char object_cycle_enclose;
+  char object_cycle_origin;
+  char face_cycle_default;
+  char face_cycle_touch;
+  char face_cycle_enclose;
+  char face_cycle_center;
+  char edge_cycle_default;
+  char edge_cycle_touch;
+  char edge_cycle_enclose;
+  char blank_text;
+  char _pad0[6];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
