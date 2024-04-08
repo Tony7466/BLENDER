@@ -48,6 +48,7 @@ class VKRenderGraph : public NonCopyable {
   /**
    * Mutex locks adding new commands to a render graph that is being submitted.
    */
+  // TODO: should be moved to `device.resources`.
   std::mutex mutex_;
 
  public:
@@ -119,7 +120,6 @@ class VKRenderGraph : public NonCopyable {
   {
     add_node<VKBlitImageNode, VKBlitImageNode::CreateInfo>(blit_image);
   }
-  void add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout);
   void add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 
   /**

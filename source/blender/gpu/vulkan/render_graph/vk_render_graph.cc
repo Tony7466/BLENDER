@@ -73,14 +73,6 @@ void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch
   add_resources(handle, dispatch_info.resources);
 }
 
-void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout)
-{
-  VKSynchronizationNode::CreateInfo synchronization = {};
-  synchronization.vk_image = vk_image;
-  synchronization.vk_image_layout = vk_image_layout;
-  add_node<VKSynchronizationNode, VKSynchronizationNode::CreateInfo>(synchronization);
-}
-
 void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)
 {
   // TODO: validate. resources should be unique (merged).
@@ -126,9 +118,11 @@ void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo 
 
 void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
 {
-  /* Needs to be executed before the scoped lock as add_ensure_image_layout_node also locks the
-   * mutex. */
-  add_ensure_image_layout_node(vk_swapchain_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  /* Needs to be executed at forehand as `add_node` also locks the mutex. */
+  VKSynchronizationNode::CreateInfo synchronization = {};
+  synchronization.vk_image = vk_swapchain_image;
+  synchronization.vk_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  add_node<VKSynchronizationNode, VKSynchronizationNode::CreateInfo>(synchronization);
 
   std::scoped_lock lock(mutex_);
   command_builder_.reset(*this);
