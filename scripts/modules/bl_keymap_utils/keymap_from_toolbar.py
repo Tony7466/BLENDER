@@ -172,8 +172,7 @@ def generate(context, space_type, *, use_fallback_keys=True, use_reset=True):
             if kmi_found is None:
                 if item.data_block:
                     # PAINT_OT_brush_select
-                    ob = context.active_object
-                    mode = ob.mode
+                    mode = context.active_object.mode
                     # See: BKE_paint_get_tool_prop_id_from_paintmode
                     if space_type == 'IMAGE_EDITOR':
                         if context.space_data.mode == 'PAINT':
