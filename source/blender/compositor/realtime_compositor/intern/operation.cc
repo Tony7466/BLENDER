@@ -9,8 +9,6 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_state.hh"
-
 #include "COM_context.hh"
 #include "COM_conversion_operation.hh"
 #include "COM_domain.hh"
@@ -41,8 +39,6 @@ void Operation::evaluate()
   release_inputs();
 
   release_unneeded_results();
-
-  GPU_finish();
 }
 
 Result &Operation::get_result(StringRef identifier)
