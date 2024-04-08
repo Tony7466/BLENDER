@@ -431,6 +431,7 @@ typedef struct bNode {
   blender::StringRefNull label_or_name() const;
   bool is_muted() const;
   bool is_reroute() const;
+  /* This node is reroute which is not logically connected to any source of value. */
   bool is_dangling_reroute() const;
   bool is_frame() const;
   bool is_group() const;
