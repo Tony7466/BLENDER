@@ -7,7 +7,6 @@
  */
 
 #include "BLI_index_mask.hh"
-#include "BLI_kdtree.h"
 
 #include "BLT_translation.hh"
 
@@ -17,7 +16,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_curves_utils.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
