@@ -166,10 +166,10 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
 
   float sum_sample_weight = 0.0f;
   for (int i = 0; i < sd->num_closure; i++) {
-    ccl_private const ShaderClosure *other_sc = &sd->closure[i];
+    ccl_private const ShaderClosure *sc = &sd->closure[i];
 
-    if (CLOSURE_IS_BSDF_OR_BSSRDF(other_sc->type)) {
-      sum_sample_weight += other_sc->sample_weight;
+    if (CLOSURE_IS_BSDF_OR_BSSRDF(sc->type)) {
+      sum_sample_weight += sc->sample_weight;
     }
   }
   if (sum_sample_weight <= 0.0f) {
@@ -192,8 +192,8 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
 #endif
 
-  INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight / sc->sample_weight *
-                                                     sum_sample_weight;
+  const float pick_pdf = pc->sample_weight / sum_sample_weight;
+  INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight / pick_pdf;
 
   int label = LABEL_TRANSMIT | LABEL_PORTAL;
   path_state_next(kg, state, label, sd->flag);
