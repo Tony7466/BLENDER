@@ -8102,7 +8102,7 @@ def km_grease_pencil_primitive_tool_modal_map(params):
     items = []
     keymap = (
         "Primitive Tool Modal Map",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW', "modal": True},
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
         {"items": items},
     )
 
