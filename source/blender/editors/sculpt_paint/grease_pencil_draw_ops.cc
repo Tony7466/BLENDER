@@ -34,9 +34,6 @@ namespace blender::ed::sculpt_paint {
 /** \name Common Paint Operator Functions
  * \{ */
 
-    case GPAINT_TOOL_TINT:
-      operation = greasepencil::new_tint_operation().release();
-      break;
 static bool stroke_get_location(bContext * /*C*/,
                                 float out[3],
                                 const float mouse[2],
@@ -124,7 +121,7 @@ static GreasePencilStrokeOperation *grease_pencil_brush_stroke_operation(bContex
     case GPAINT_TOOL_FILL:
       return nullptr;
     case GPAINT_TOOL_TINT:
-      return nullptr;
+      return greasepencil::new_tint_operation().release();
   }
   return nullptr;
 }
