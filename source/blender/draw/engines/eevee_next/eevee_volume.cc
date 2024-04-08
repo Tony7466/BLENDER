@@ -278,7 +278,7 @@ void VolumeModule::draw_prepass(View &main_view)
     history_frame_count_ = 0;
   }
   /* Interactive mode accumulate samples using exponential average.
-   * We reuse the history to when we go into static mode.
+   * We still reuse the history when we go into static mode.
    * However, using re-projection for static mode will show the precision limit of RG11B10 format.
    * So we clamp it to the exponential frame count in any case. */
   history_frame_count_ = math::min(history_frame_count_, exponential_frame_count);
