@@ -27,11 +27,11 @@ typedef struct CurveMapPoint {
   short flag, shorty;
 } CurveMapPoint;
 
-typedef struct CurveMapRuntime {
+typedef struct CurveMap_Runtime {
   /** Temp storage for multiple selections operation. */
   /** Center of selected points */
   float center_x, center_y;
-} CurveMapRuntime;
+} CurveMap_Runtime;
 
 /** #CurveMapPoint.flag */
 enum {
@@ -65,7 +65,7 @@ typedef struct CurveMap {
   short default_handle_type;
   char _pad[6];
 
-  CurveMapRuntime *runtime;
+  CurveMap_Runtime runtime;
 } CurveMap;
 
 typedef struct CurveMapping {

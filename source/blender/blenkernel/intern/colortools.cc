@@ -80,9 +80,6 @@ void BKE_curvemapping_set_defaults(CurveMapping *cumap,
     cumap->cm[a].curve[1].x = maxx;
     cumap->cm[a].curve[1].y = maxy;
     cumap->cm[a].curve[1].flag |= default_handle_type;
-
-    cumap->cm[a].runtime = static_cast<CurveMapRuntime *>(
-        MEM_callocN(sizeof(CurveMapRuntime), "curve runtime"));
   }
 
   cumap->changed_timestamp = 0;
@@ -116,10 +113,6 @@ void BKE_curvemapping_free_data(CurveMapping *cumap)
       MEM_freeN(cumap->cm[a].premultable);
       cumap->cm[a].premultable = nullptr;
     }
-    //     if (cumap->cm[a].runtime) {
-    //       MEM_freeN(cumap->cm[a].runtime);
-    //       cumap->cm[a].runtime = nullptr;
-    //     }
   }
 }
 
@@ -960,8 +953,8 @@ void BKE_curvemap_shift(CurveMapping *cumap)
 
   for (int i = 0; i < cuma->totpoint; i++) {
     if (cmp[i].flag & CUMA_SELECT) {
-      cmp[i].x += cuma->runtime->center_x - center_x_pre;
-      cmp[i].y += cuma->runtime->center_y - center_y_pre;
+      cmp[i].x += cuma->runtime.center_x - center_x_pre;
+      cmp[i].y += cuma->runtime.center_y - center_y_pre;
     }
   }
 }
@@ -1363,20 +1356,6 @@ void BKE_curvemapping_init(CurveMapping *cumap)
   }
 }
 
-static void bke_curvemapping_runtime_init(CurveMapping *cumap)
-{
-  if (cumap == nullptr) {
-    return;
-  }
-
-  for (int a = 0; a < CM_TOT; a++) {
-    if (cumap->cm[a].runtime == nullptr) {
-      cumap->cm[a].runtime = static_cast<CurveMapRuntime *>(
-          MEM_callocN(sizeof(CurveMapRuntime), "curve runtime"));
-    }
-  }
-}
-
 void BKE_curvemapping_table_F(const CurveMapping *cumap, float **array, int *size)
 {
   int a;
@@ -1436,10 +1415,7 @@ void BKE_curvemapping_blend_read(BlendDataReader *reader, CurveMapping *cumap)
     BLO_read_data_address(reader, &cumap->cm[a].curve);
     cumap->cm[a].table = nullptr;
     cumap->cm[a].premultable = nullptr;
-    cumap->cm[a].runtime = nullptr;
   }
-
-  bke_curvemapping_runtime_init(cumap);
 }
 
 /* ***************** Histogram **************** */

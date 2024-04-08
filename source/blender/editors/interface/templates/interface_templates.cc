@@ -4384,14 +4384,14 @@ static void curvemap_buttons_redraw(bContext &C)
 
 static void curvemap_runtime_update(CurveMap *cm, const Vector<CurveMapPoint *> &cmps)
 {
-  cm->runtime->center_x = 0.0f;
-  cm->runtime->center_y = 0.0f;
+  cm->runtime.center_x = 0.0f;
+  cm->runtime.center_y = 0.0f;
   for (const CurveMapPoint *cmp : cmps) {
-    cm->runtime->center_x += cmp->x;
-    cm->runtime->center_y += cmp->y;
+    cm->runtime.center_x += cmp->x;
+    cm->runtime.center_y += cmp->y;
   }
-  cm->runtime->center_x /= cmps.size();
-  cm->runtime->center_y /= cmps.size();
+  cm->runtime.center_x /= cmps.size();
+  cm->runtime.center_y /= cmps.size();
 }
 
 /**
@@ -4682,7 +4682,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &active_cm->runtime->center_x,
+                   &active_cm->runtime.center_x,
                    bounds.xmin,
                    bounds.xmax,
                    "");
@@ -4702,7 +4702,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   &active_cm->runtime->center_y,
+                   &active_cm->runtime.center_y,
                    bounds.ymin,
                    bounds.ymax,
                    "");
