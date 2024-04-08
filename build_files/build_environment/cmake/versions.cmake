@@ -869,3 +869,9 @@ set(PYBIND11_URI https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND1
 set(PYBIND11_HASH ce07bfd5089245da7807b3faf6cbc878)
 set(PYBIND11_HASH_TYPE MD5)
 set(PYBIND11_FILE pybind-v${PYBIND11_VERSION}.tar.gz)
+
+set(HIPRT_VERSION 2.3.7df94af)
+set(HIPRT_URI https://github.com/GPUOpen-LibrariesAndSDKs/HIPRTSDK/releases/tag/${HIPRT_VERSION}.zip)
+set(HIPRT_HASH 813aa5ed29e24693f8d1edf9bc13b38cad5d2928)
+set(HIPRT_HASH_TYPE MD5)
+set(HIPRT_FILE hiprt-${HIPRT_VERSION}.zip)

@@ -51,7 +51,7 @@ bool HIPRTDeviceQueue::enqueue(DeviceKernel kernel,
 
   DeviceKernelArguments args_copy = args;
   args_copy.add(DeviceKernelArguments::HIPRT_GLOBAL_STACK,
-                (void *)(& hiprt_device_->global_stack_buffer),
+                (void *)(&hiprt_device_->global_stack_buffer),
                 sizeof(hiprtGlobalStackBuffer));
 
   /* Compute kernel launch parameters. */

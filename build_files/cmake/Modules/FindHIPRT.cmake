@@ -4,7 +4,7 @@
 
 # Find HIPRT SDK. This module defines:
 #   HIPRT_INCLUDE_DIR, path to HIPRT include directory
-#   HIPRT_BITCODE, bitcode file with ray-tracing functionality
+#   HIPRT_DYNAMIC_LIB, dynamic library with ray-tracing functionality
 #   HIPRT_FOUND, if SDK found
 
 if(NOT (DEFINED HIPRT_ROOT_DIR))
@@ -22,8 +22,8 @@ elseif(DEFINED ENV{HIP_PATH})
 endif()
 
 set(_hiprt_SEARCH_DIRS
-  ${HIPRT_ROOT_DIR}
-)
+ ${HIPRT_ROOT_DIR}
+ /opt/lib/hiprt)
 
 find_path(HIPRT_INCLUDE_DIR
   NAMES
@@ -38,21 +38,33 @@ if(HIPRT_INCLUDE_DIR)
     REGEX "^#define HIPRT_VERSION_STR[ \t]\".*\"$")
   string(REGEX MATCHALL "[0-9]+[.0-9]+" _hiprt_version ${_hiprt_version})
 
-  find_file(HIPRT_BITCODE
-    NAMES
-      hiprt${_hiprt_version}_6.0_amd_lib_win.bc # this has to be handled automatically, should not hardcode rcom version
-    HINTS
-      ${HIPRT_ROOT_DIR}/bin
-      ${HIPRT_ROOT_DIR}/dist/bin/Release
-    NO_DEFAULT_PATH
-  )
+  set(HIPRT_VERSION  ${_hiprt_version})
+ endif()
 
-  unset(_hiprt_version)
+if(WIN32)
+ set(HIPRT_DYNAMIC_LIB hiprt${HIPRT_VERSION}64.dll)
+else()
+ set(HIPRT_DYNAMIC_LIB hiprt${HIPRT_VERSION}64.so)
 endif()
 
+find_path(HIPRT_LIB_DIR
+  NAMES
+    hiprt${_hiprt_version}64.dll
+  HINTS
+    ${_hiprt_SEARCH_DIRS}
+  PATH_SUFFIXES
+   bin
+)
+
+if(HIPRT_LIB_DIR)
+ set(HIPRT_DYNAMIC_LIB_PATH
+ ${HIPRT_LIB_DIR}/bin/${HIPRT_DYNAMIC_LIB}})
+endif()
+
+unset(_hiprt_version)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(HIPRT DEFAULT_MSG
-  HIPRT_INCLUDE_DIR HIPRT_BITCODE)
+  HIPRT_INCLUDE_DIR HIPRT_DYNAMIC_LIB_PATH)
 
 mark_as_advanced(
   HIPRT_INCLUDE_DIR

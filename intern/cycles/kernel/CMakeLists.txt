@@ -690,12 +690,16 @@ endif()
 # HIP RT module
 
 if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
+
   set(hiprt_sources device/hiprt/kernel.cpp
     ${SRC_KERNEL_HEADERS}
     ${SRC_KERNEL_DEVICE_GPU_HEADERS}
     ${SRC_KERNEL_DEVICE_HIPRT_HEADERS}
     ${SRC_UTIL_HEADERS})
-  set(bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
+  set(cycles_bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.bc)
+  set(sdk_bitcode_file ${CMAKE_CURRENT_BINARY_DIR}/hiprt${HIPRT_VERSION}_${HIP_VERSION_SHORT}_amd_lib.bc)
+  set(bvh_file ${CMAKE_CURRENT_BINARY_DIR}/hiprt${HIPRT_VERSION}_${HIP_VERSION_SHORT}_amd.hipfb)
+  set(bvh_file_oro ${CMAKE_CURRENT_BINARY_DIR}/oro_compiled_kernels.hipfb)
   set(hiprt_file ${CMAKE_CURRENT_BINARY_DIR}/kernel_rt_gfx.hipfb)
   set(hiprt_file_compressed ${hiprt_file}.zst)
   set(kernel_sources ${hiprt_sources})
@@ -708,12 +712,79 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
   else()
     set(hiprt_compile_command ${HIP_HIPCC_EXECUTABLE})
     set(hiprt_compile_flags)
+    #set(hiprt_compile_flags -mcode-object-version=4)
   endif()
   set(target_gpus)
   foreach(arch ${CYCLES_HIP_BINARIES_ARCH})
     list(APPEND target_gpus "--offload-arch=${arch}")
   endforeach()
-  set(hiprt_compile_flags
+  if(WITH_CYCLES_DEBUG)
+    set(hiprt_compile_flags ${hiprt_compile_flags} -D WITH_CYCLES_DEBUG)
+  endif()
+
+  set(hiprt_compile_flags_bvh
+    ${hiprt_compile_flags}
+    ${target_gpus}
+    ${HIP_HIPCC_FLAGS}
+    -x hip
+    ${HIPRT_INCLUDE_DIR}/hiprt/impl/hiprt_kernels.h
+    ${flags}
+    -D HIPRT_BITCODE_LINKING
+    -std=c++17
+    -mllvm
+    -amdgpu-early-inline-all=false
+    -mllvm
+    -amdgpu-function-calls=true
+    --genco
+    -I ${HIPRT_INCLUDE_DIR}
+    -Wno-parentheses-equality
+    -Wno-unused-value
+    -ffast-math
+    -o ${bvh_file})
+
+  set(hiprt_compile_flags_bvh_oro
+    ${hiprt_compile_flags}
+    ${target_gpus}
+    ${HIP_HIPCC_FLAGS}
+    -x hip
+    ${HIPRT_INCLUDE_DIR}/orochi/ParallelPrimitives/RadixSortKernels.h
+    ${flags}
+    -D HIPRT_BITCODE_LINKING
+    -std=c++17
+    -mllvm
+    -amdgpu-early-inline-all=false
+    -mllvm
+    -amdgpu-function-calls=true
+    --genco
+    -I ${HIPRT_INCLUDE_DIR}/orochi
+    -include hip/hip_runtime.h
+    -Wno-parentheses-equality
+    -Wno-unused-value
+    -ffast-math
+    -o ${bvh_file_oro})
+
+  set(hiprt_compile_flags_sdk_bc
+    ${hiprt_compile_flags}
+    ${target_gpus}
+    ${HIP_HIPCC_FLAGS}
+    ${flags}
+    -x hip
+    ${HIPRT_INCLUDE_DIR}/hiprt/impl/hiprt_kernels_bitcode.h
+    -O3
+    -D HIPRT_BITCODE_LINKING
+    -std=c++17
+    -fgpu-rdc
+    -c
+    --gpu-bundle-output
+    -emit-llvm
+    -I ${HIPRT_INCLUDE_DIR}
+    -I ${HIPRT_INCLUDE_DIR}/orochi
+    -Wno-parentheses-equality
+    -Wno-unused-value
+    -ffast-math
+    -o ${sdk_bitcode_file})
+
+  set(hiprt_compile_flags_cycles_bc
     ${hiprt_compile_flags}
     ${target_gpus}
     ${HIP_HIPCC_FLAGS}
@@ -734,30 +805,56 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     -Wno-parentheses-equality
     -Wno-unused-value
     -ffast-math
-    -o ${bitcode_file})
-  if(WITH_CYCLES_DEBUG)
-    set(hiprt_compile_flags ${hiprt_compile_flags} -D WITH_CYCLES_DEBUG)
-  endif()
+    -o ${cycles_bitcode_file})
+
   add_custom_command(
-    OUTPUT  ${bitcode_file}
-    COMMAND ${hiprt_compile_command} ${hiprt_compile_flags}
+    OUTPUT  ${cycles_bitcode_file}
+    COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_cycles_bc}
     DEPENDS ${kernel_sources})
-  if(WIN32)
-    set(hiprt_link_command ${CMAKE_COMMAND})
-    set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
-      ${HIP_LINKER_EXECUTABLE})
-  else()
-    # not implemented yet
-  endif()
+
+  add_custom_command(
+    OUTPUT  ${sdk_bitcode_file}
+    COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_sdk_bc}
+    DEPENDS ${HIPRT_INCLUDE_DIR}/hiprt/impl/hiprt_kernels_bitcode.h)
+
+
+  add_custom_command(
+    OUTPUT  ${bvh_file}
+    COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_bvh}
+    DEPENDS ${HIPRT_INCLUDE_DIR}/hiprt/impl/hiprt_kernels.h)
+
+  add_custom_command(
+    OUTPUT  ${bvh_file_oro}
+    COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_bvh_oro}
+    DEPENDS ${HIPRT_INCLUDE_DIR}/orochi/ParallelPrimitives/RadixSortKernels.h)
+
+
+
+  set(hiprt_link_command ${CMAKE_COMMAND})
+  set(hiprt_link_flags   -E env "HIP_PATH=${HIP_ROOT_DIR}"
+    ${HIP_LINKER_EXECUTABLE})
+
   set(hiprt_link_flags
     ${hiprt_link_flags}
     ${target_gpus}
     -fgpu-rdc
+    -mcode-object-version=4
     --hip-link
     --cuda-device-only
-    ${bitcode_file}
-    ${HIPRT_BITCODE}
+    ${cycles_bitcode_file}
+    ${sdk_bitcode_file}
     -o ${hiprt_file})
+ add_custom_command(
+   OUTPUT  ${hiprt_file}
+   COMMAND ${hiprt_link_command} ${hiprt_link_flags}
+   DEPENDS ${cycles_bitcode_file} ${sdk_bitcode_file})
+
+ delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file}"  ${CYCLES_INSTALL_PATH}/lib)
+ delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file}"     ${CMAKE_INSTALL_PREFIX})
+ delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${bvh_file_oro}" ${CMAKE_INSTALL_PREFIX})
+ delayed_install("${HIPRT_INCLUDE_DIR}/bin"   "${HIPRT_DYNAMIC_LIB}"    ${CMAKE_INSTALL_PREFIX})
+ add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file} ${bvh_file} ${bvh_file_oro})
+ cycles_set_solution_folder(cycles_kernel_hiprt)
   add_custom_command(
     OUTPUT  ${hiprt_file}
     COMMAND ${hiprt_link_command} ${hiprt_link_flags}

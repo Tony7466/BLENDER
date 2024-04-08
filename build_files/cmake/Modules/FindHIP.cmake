@@ -95,6 +95,7 @@ if(HIP_HIPCC_EXECUTABLE)
 
   # Construct full semantic version.
   set(HIP_VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_PATCH}")
+  set(HIP_VERSION_SHORT "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}")
   unset(_hip_version_raw)
   unset(_hipcc_executable)
 endif()
