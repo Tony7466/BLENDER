@@ -608,10 +608,12 @@ static float *sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertR
         ob, symm_it, v);
     if (symm_vertex.i != SCULPT_EXPAND_VERTEX_NONE) {
       const float *co = SCULPT_vertex_co_get(ss, symm_vertex);
-      tbb::parallel_for(0, totvert, [&](int i) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+      threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
+        for (const int i : range) {
+          PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
-        dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
+          dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
+        }
       });
     }
   }
