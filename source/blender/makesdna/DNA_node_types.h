@@ -431,8 +431,6 @@ typedef struct bNode {
   blender::StringRefNull label_or_name() const;
   bool is_muted() const;
   bool is_reroute() const;
-  /* This node is reroute which is not logically connected to any source of value. */
-  bool is_dangling_reroute() const;
   bool is_frame() const;
   bool is_group() const;
   bool is_group_input() const;
@@ -440,6 +438,9 @@ typedef struct bNode {
   const blender::nodes::NodeDeclaration *declaration() const;
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
+
+  /* This node is reroute which is not logically connected to any source of value. */
+  bool is_dangling_reroute() const;
 
   /* True if the socket is visible and has a valid location. The icon may not be visible. */
   bool is_socket_drawn(const bNodeSocket &socket) const;

@@ -710,12 +710,6 @@ inline bool bNode::is_reroute() const
   return this->type == NODE_REROUTE;
 }
 
-inline bool bNode::is_dangling_reroute() const
-{
-  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
-  return this->runtime->is_dangling_reroute;
-}
-
 inline bool bNode::is_frame() const
 {
   return this->type == NODE_FRAME;
@@ -739,6 +733,12 @@ inline bool bNode::is_group_output() const
 inline blender::Span<bNodeLink> bNode::internal_links() const
 {
   return this->runtime->internal_links;
+}
+
+inline bool bNode::is_dangling_reroute() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->is_dangling_reroute;
 }
 
 inline bool bNode::is_socket_drawn(const bNodeSocket &socket) const
