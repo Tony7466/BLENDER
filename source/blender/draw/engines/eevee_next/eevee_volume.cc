@@ -274,6 +274,11 @@ void VolumeModule::draw_prepass(View &main_view)
     }
   }
 
+  if (inst_.is_image_render()) {
+    /* Disable reprojection for rendering. */
+    valid_history_ = 0;
+  }
+
   if (!valid_history_) {
     history_frame_count_ = 0;
   }
@@ -285,7 +290,7 @@ void VolumeModule::draw_prepass(View &main_view)
 
   /* In interactive mode, use exponential average (fixed ratio).
    * For static / render mode use simple average (moving ratio). */
-  float history_opacity = exponential_frame_count / (exponential_frame_count + 1.0f);
+  float history_opacity = history_frame_count_ / (history_frame_count_ + 1.0f);
 
   /* Setting opacity to 0.0 will bypass any sampling of history buffer.
    * Allowing us to skip the 3D texture clear. */
