@@ -64,6 +64,10 @@ bool BKE_curveprofile_move_point(struct CurveProfile *profile,
                                  bool snap,
                                  const float delta[2]);
 
+void BKE_curveprofile_translate_selection(struct CurveProfile *profile,
+                                          const float delta_x,
+                                          const float delta_y);
+
 /**
  * Removes a specific point from the path of control points.
  * \note Requires #BKE_curveprofile_update call after.
@@ -113,6 +117,10 @@ void BKE_curveprofile_reset_view(struct CurveProfile *profile);
  * \note Requires #BKE_curveprofile_update call after.
  */
 void BKE_curveprofile_reset(struct CurveProfile *profile);
+/**
+ * Shift specified point from center.
+ */
+void BKE_curveprofile_shift_center(struct CurveProfile *profile);
 
 int BKE_curveprofile_table_size(const struct CurveProfile *profile);
 
@@ -137,6 +145,7 @@ enum {
  * Controls removing doubles and clipping.
  */
 void BKE_curveprofile_update(struct CurveProfile *profile, int update_flags);
+void BKE_curveprofile_runtime_update(struct CurveProfile *profile);
 
 /**
  * Does a single evaluation along the profile's path.
@@ -150,6 +159,9 @@ void BKE_curveprofile_evaluate_length_portion(const struct CurveProfile *profile
                                               float length_portion,
                                               float *x_out,
                                               float *y_out);
+void BKE_curveprofile_get_selection_center(const struct CurveProfile *profile,
+                                           float *center_x_out,
+                                           float *center_y_out);
 
 void BKE_curveprofile_blend_write(struct BlendWriter *writer, const struct CurveProfile *profile);
 /**

@@ -930,33 +930,52 @@ void BKE_curvemapping_premultiply(CurveMapping *cumap, bool restore)
 }
 
 /* ************************ more CurveMapping calls *************** */
-void BKE_curvemap_shift(CurveMapping *cumap)
+void BKE_curvemap_runtime_update(CurveMap *cuma)
 {
-  CurveMap *cuma = cumap->cm + cumap->cur;
-  CurveMapPoint *cmp = cuma->curve;
+  BKE_curvemap_get_selection_center(cuma, &cuma->runtime.center_x, &cuma->runtime.center_y);
+}
 
-  /* unmodified center */
-  float center_x_pre = 0.0f;
-  float center_y_pre = 0.0f;
+void BKE_curvemap_get_selection_center(CurveMap *cuma, float *center_x_out, float *center_y_out)
+{
   int n = 0;
+  *center_x_out = 0.0f;
+  *center_y_out = 0.0f;
+
   for (int i = 0; i < cuma->totpoint; i++) {
-    if (cmp[i].flag & CUMA_SELECT) {
-      center_x_pre += cmp[i].x;
-      center_y_pre += cmp[i].y;
+    CurveMapPoint *pt = &cuma->curve[i];
+    if (pt->flag & CUMA_SELECT) {
+      *center_x_out += pt->x;
+      *center_y_out += pt->y;
       n++;
     }
   }
   if (n > 0) {
-    center_x_pre /= n;
-    center_y_pre /= n;
+    *center_x_out /= n;
+    *center_y_out /= n;
   }
+}
 
+void BKE_translate_selection(CurveMap *cuma, const float delta_x, const float delta_y)
+{
   for (int i = 0; i < cuma->totpoint; i++) {
-    if (cmp[i].flag & CUMA_SELECT) {
-      cmp[i].x += cuma->runtime.center_x - center_x_pre;
-      cmp[i].y += cuma->runtime.center_y - center_y_pre;
+    CurveMapPoint *pt = &cuma->curve[i];
+    if (pt->flag & CUMA_SELECT) {
+      pt->x += delta_x;
+      pt->y += delta_y;
     }
   }
+}
+
+void BKE_curvemap_shift_center(CurveMapping *cumap)
+{
+  CurveMap *cuma = cumap->cm + cumap->cur;
+
+  /* unmodified center */
+  float center_x_pre = 0.0f;
+  float center_y_pre = 0.0f;
+  BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
+  BKE_translate_selection(
+      cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
 }
 
 void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)

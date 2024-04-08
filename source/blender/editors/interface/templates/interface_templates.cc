@@ -4382,18 +4382,6 @@ static void curvemap_buttons_redraw(bContext &C)
   ED_region_tag_redraw(CTX_wm_region(&C));
 }
 
-static void curvemap_runtime_update(CurveMap *cm, const Vector<CurveMapPoint *> &cmps)
-{
-  cm->runtime.center_x = 0.0f;
-  cm->runtime.center_y = 0.0f;
-  for (const CurveMapPoint *cmp : cmps) {
-    cm->runtime.center_x += cmp->x;
-    cm->runtime.center_y += cmp->y;
-  }
-  cm->runtime.center_x /= cmps.size();
-  cm->runtime.center_y /= cmps.size();
-}
-
 /**
  * \note Still unsure how this call evolves.
  *
@@ -4673,7 +4661,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
 
     /* Curve handle position */
-    curvemap_runtime_update(active_cm, cmps);
+    BKE_curvemap_runtime_update(active_cm);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4689,7 +4677,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      BKE_curvemap_shift(cumap);
+      BKE_curvemap_shift_center(cumap);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -4709,7 +4697,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      BKE_curvemap_shift(cumap);
+      BKE_curvemap_shift_center(cumap);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -5153,36 +5141,21 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
            1.0f,
            "");
 
-  /* Position sliders for (first) selected point */
-  int i;
-  float *selection_x, *selection_y;
+  /* Position sliders for all selected points */
+  Vector<CurveProfilePoint *> cfps;
   bool point_last_or_first = false;
-  CurveProfilePoint *point = nullptr;
-  for (i = 0; i < profile->path_len; i++) {
-    if (profile->path[i].flag & PROF_SELECT) {
-      point = &profile->path[i];
-      selection_x = &point->x;
-      selection_y = &point->y;
-      break;
+  for (int i = 0; i < profile->path_len; i++) {
+    if (profile->path[i].flag & (PROF_SELECT | PROF_H1_SELECT | PROF_H2_SELECT)) {
+      cfps.append(&profile->path[i]);
+      if (ELEM(i, 0, profile->path_len - 1) && profile->path[i].flag & PROF_SELECT) {
+        point_last_or_first = true;
+      }
     }
-    if (profile->path[i].flag & PROF_H1_SELECT) {
-      point = &profile->path[i];
-      selection_x = &point->h1_loc[0];
-      selection_y = &point->h1_loc[1];
-    }
-    else if (profile->path[i].flag & PROF_H2_SELECT) {
-      point = &profile->path[i];
-      selection_x = &point->h2_loc[0];
-      selection_y = &point->h2_loc[1];
-    }
-  }
-  if (ELEM(i, 0, profile->path_len - 1)) {
-    point_last_or_first = true;
   }
 
-  /* Selected point data */
-  rctf bounds;
-  if (point) {
+  /* Selected points data */
+  if (!cfps.is_empty()) {
+    rctf bounds;
     if (profile->flag & PROF_USE_CLIP) {
       bounds = profile->clip_rect;
     }
@@ -5193,7 +5166,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
 
     row = uiLayoutRow(layout, true);
 
-    PointerRNA point_ptr = RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, point);
+    PointerRNA point_ptr = RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, cfps[0]);
     PropertyRNA *prop_handle_type = RNA_struct_find_property(&point_ptr, "handle_type_1");
     uiItemFullR(row,
                 &point_ptr,
@@ -5205,6 +5178,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                 ICON_NONE);
 
     /* Position */
+    BKE_curveprofile_runtime_update(profile);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -5213,13 +5187,14 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   selection_x,
+                   &profile->runtime.center_x,
                    bounds.xmin,
                    bounds.xmax,
                    "");
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [profile, cb](bContext &C) {
+      BKE_curveprofile_shift_center(profile);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });
@@ -5234,13 +5209,14 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
                    UI_UNIT_Y,
-                   selection_y,
+                   &profile->runtime.center_y,
                    bounds.ymin,
                    bounds.ymax,
                    "");
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [profile, cb](bContext &C) {
+      BKE_curveprofile_shift_center(profile);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });

@@ -194,6 +194,37 @@ bool BKE_curveprofile_move_point(CurveProfile *profile,
   return false;
 }
 
+void BKE_curveprofile_translate_selection(struct CurveProfile *profile,
+                                          const float delta_x,
+                                          const float delta_y)
+{
+  for (int i = 0; i < profile->path_len; i++) {
+    CurveProfilePoint *pt = &profile->path[i];
+    if (pt->flag & PROF_SELECT) {
+      pt->x += delta_x;
+      pt->y += delta_y;
+    }
+    if (pt->flag & PROF_H1_SELECT) {
+      pt->h1_loc[0] += delta_x;
+      pt->h1_loc[1] += delta_y;
+    }
+    if (pt->flag & PROF_H2_SELECT) {
+      pt->h2_loc[0] += delta_x;
+      pt->h2_loc[1] += delta_y;
+    }
+  }
+}
+
+void BKE_curveprofile_shift_center(CurveProfile *profile)
+{
+  /* unmodified center */
+  float center_x_pre = 0.0f;
+  float center_y_pre = 0.0f;
+  BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
+  BKE_curveprofile_translate_selection(
+      profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
+}
+
 bool BKE_curveprofile_remove_point(CurveProfile *profile, CurveProfilePoint *point)
 {
   /* Must have 2 points minimum. */
@@ -1017,6 +1048,45 @@ void BKE_curveprofile_update(CurveProfile *profile, const int update_flags)
   /* Store a table of samples for the segment locations for a preview and the table's user. */
   if (profile->segments_len > 0) {
     curveprofile_make_segments_table(profile);
+  }
+}
+
+void BKE_curveprofile_runtime_update(struct CurveProfile *profile)
+{
+  BKE_curveprofile_get_selection_center(
+      profile, &profile->runtime.center_x, &profile->runtime.center_y);
+}
+
+void BKE_curveprofile_get_selection_center(const struct CurveProfile *profile,
+                                           float *center_x_out,
+                                           float *center_y_out)
+{
+  int n = 0;
+  *center_x_out = 0.0f;
+  *center_y_out = 0.0f;
+
+  for (int i = 0; i < profile->path_len; i++) {
+    CurveProfilePoint *pt = &profile->path[i];
+    if (pt->flag & PROF_SELECT) {
+      *center_x_out += pt->x;
+      *center_y_out += pt->y;
+      n++;
+    }
+    if (pt->flag & PROF_H1_SELECT) {
+      *center_x_out += pt->h1_loc[0];
+      *center_y_out += pt->h1_loc[1];
+      n++;
+    }
+    if (pt->flag & PROF_H2_SELECT) {
+      *center_x_out += pt->h2_loc[0];
+      *center_y_out += pt->h2_loc[1];
+      n++;
+    }
+  }
+
+  if (n > 0) {
+    *center_x_out /= n;
+    *center_y_out /= n;
   }
 }
 
