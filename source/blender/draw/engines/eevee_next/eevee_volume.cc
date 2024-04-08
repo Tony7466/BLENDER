@@ -47,13 +47,8 @@ void VolumeModule::init()
   data_.coord_scale = float2(extent) / float2(tile_size * tex_size);
   data_.main_view_extent = float2(extent);
   data_.main_view_extent_inv = 1.0f / float2(extent);
-
-  /* TODO: compute snap to maxZBuffer for clustered rendering. */
-  if (data_.tex_size != tex_size) {
-    data_.tex_size = tex_size;
-    data_.inv_tex_size = 1.0f / float3(tex_size);
-    valid_history_ = false;
-  }
+  data_.tex_size = tex_size;
+  data_.inv_tex_size = 1.0f / float3(tex_size);
 
   const bool shadow_enabled = (scene_eval->eevee.flag & SCE_EEVEE_VOLUMETRIC_SHADOWS) != 0;
   data_.shadow_steps = (shadow_enabled) ? scene_eval->eevee.volumetric_shadow_samples : 0;
@@ -80,7 +75,6 @@ void VolumeModule::end_sync()
   }
 
   std::optional<Bounds<float>> volume_bounds = inst_.pipelines.volume.object_integration_range();
-
   if (volume_bounds && !inst_.world.has_volume()) {
     /* Restrict integration range to the object volume range. This increases precision. */
     integration_start = math::max(integration_start, -volume_bounds.value().max);
@@ -89,6 +83,13 @@ void VolumeModule::end_sync()
 
   float near = math::min(-integration_start, clip_start + 1e-4f);
   float far = math::max(-integration_end, clip_end - 1e-4f);
+
+  if (assign_if_different(history_camera_is_perspective_, inst_.camera.is_perspective())) {
+    /* Currently, the re-projection uses the same path for volume_z_to_view_z conversion for both
+     * the current view and the history view. Moreover, re-projecting in this huge change is more
+     * detrimental than anything. */
+    valid_history_ = false;
+  }
 
   if (inst_.camera.is_perspective()) {
     float sample_distribution = scene_eval->eevee.volumetric_sample_distribution;
@@ -177,10 +178,15 @@ void VolumeModule::end_sync()
   front_depth_tx_.ensure_2d(GPU_DEPTH24_STENCIL8, data_.tex_size.xy(), front_depth_usage);
   occupancy_fb_.ensure(GPU_ATTACHMENT_TEXTURE(front_depth_tx_));
 
-  scatter_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  extinction_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
-  extinction_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  bool created = false;
+  created |= scatter_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  created |= extinction_tx_.current().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  created |= scatter_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+  created |= extinction_tx_.previous().ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
+
+  if (created) {
+    valid_history_ = false;
+  }
 
   integrated_scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   integrated_transmit_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
@@ -197,12 +203,12 @@ void VolumeModule::end_sync()
   occupancy.hit_depth_tx_ = hit_depth_tx_;
   occupancy.hit_count_tx_ = hit_count_tx_;
 
-  /* Use custom sampler to simplify and speedup the shader.
-   * - Set extend mode to clamp to border color to reject samples with invalid re-projection.
-   * - Set filtering mode to none to avoid over-blur during re-projection. */
-  const GPUSamplerState history_sampler = {GPU_SAMPLER_FILTERING_DEFAULT,
-                                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
-                                           GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER};
+  /* Set extend mode to extend and reject invalid samples in the shader.
+   * This avoids some black rim artifacts near the edge of the re-projected volume.
+   * Filter linear to avoid sharp artifacts during re-projection. */
+  const GPUSamplerState history_sampler = {GPU_SAMPLER_FILTERING_LINEAR,
+                                           GPU_SAMPLER_EXTEND_MODE_EXTEND,
+                                           GPU_SAMPLER_EXTEND_MODE_EXTEND};
   scatter_ps_.init();
   scatter_ps_.shader_set(
       inst_.shaders.static_shader_get(use_lights_ ? VOLUME_SCATTER_WITH_LIGHTS : VOLUME_SCATTER));
@@ -257,12 +263,30 @@ void VolumeModule::draw_prepass(View &main_view)
     return;
   }
 
-  /* In interactive mode, use the 5% blend of new frame. For static / render mode. */
-  /* TODO(fclem): Count how many frames are already reprojected and use this as starting point for
-   * the static mode. */
-  float history_opacity = inst_.sampling.interactive_mode() ?
-                              0.95f :
-                              1.0f / (inst_.sampling.sample_index_sequential() + 2.0);
+  /* Number of frame to consider for blending with exponential (infinite) average. */
+  int exponential_frame_count = 16;
+  if (!inst_.is_image_render()) {
+    if (inst_.is_transforming()) {
+      /* Improve responsiveness of volume if we are transforming them. */
+      /* TODO(fclem): This is too general as it will be triggered even for non volume object.
+       * Instead, we should tag which areas of the volume that need increased responsiveness. */
+      exponential_frame_count = 3;
+    }
+  }
+
+  if (!valid_history_) {
+    history_frame_count_ = 0;
+  }
+  /* Interactive mode accumulate samples using exponential average.
+   * We reuse the history to when we go into static mode.
+   * However, using re-projection for static mode will show the precision limit of RG11B10 format.
+   * So we clamp it to the exponential frame count in any case. */
+  history_frame_count_ = math::min(history_frame_count_, exponential_frame_count);
+
+  /* In interactive mode, use exponential average (fixed ratio).
+   * For static / render mode use simple average (moving ratio). */
+  float history_opacity = exponential_frame_count / (exponential_frame_count + 1.0f);
+
   /* Setting opacity to 0.0 will bypass any sampling of history buffer.
    * Allowing us to skip the 3D texture clear. */
   data_.history_opacity = (valid_history_) ? history_opacity : 0.0f;
@@ -290,8 +314,8 @@ void VolumeModule::draw_prepass(View &main_view)
                       math::projection::perspective(left, right, bottom, top, near, far) :
                       math::projection::orthographic(left, right, bottom, top, near, far);
   /* Save non-jittered finite matrix for re-projection. */
-  data_.wininv_stable = winmat_finite;
-  data_.winmat_stable = math::invert(winmat_finite);
+  data_.winmat_stable = winmat_finite;
+  data_.wininv_stable = math::invert(winmat_finite);
 
   /* Anti-Aliasing / Super-Sampling jitter. */
   float2 jitter = inst_.sampling.rng_2d_get(SAMPLING_VOLUME_U);
@@ -341,6 +365,7 @@ void VolumeModule::draw_compute(View &main_view)
   data_.history_depth_distribution = data_.depth_distribution;
   data_.history_winmat_stable = data_.winmat_stable;
   valid_history_ = true;
+  history_frame_count_ += 1;
 }
 
 void VolumeModule::draw_resolve(View &view)

@@ -110,7 +110,8 @@ vec3 volume_screen_to_resolve(vec3 coord)
   return coord;
 }
 
-/* Returns the uvw (normalized coordinate) of a froxel in the previous frame. */
+/* Returns the uvw (normalized coordinate) of a froxel in the previous frame.
+ * Returns vec3(-1) if history is unavailable. */
 vec3 volume_history_uvw_get(ivec3 froxel)
 {
   mat4x4 wininv = uniform_buf.volumes.wininv_stable;
@@ -118,24 +119,34 @@ vec3 volume_history_uvw_get(ivec3 froxel)
   /* We can't reproject by a simple matrix multiplication. We first need to remap to the view Z,
    * then transform, then remap back to Volume range. */
   vec3 uvw = (vec3(froxel) + 0.5) * uniform_buf.volumes.inv_tex_size;
-  float view_z = volume_z_to_view_z(uvw.z);
+  vec3 ndc_P = drw_screen_to_ndc(uvw);
   /* We need to recover the NDC position for correct perspective divide. */
-  float ndc_z = drw_perspective_divide(winmat * vec4(0.0, 0.0, view_z, 1.0)).z;
-  vec2 ndc_xy = drw_screen_to_ndc(uvw.xy);
+  float view_z = volume_z_to_view_z(uvw.z);
+  ndc_P.z = drw_perspective_divide(winmat * vec4(0.0, 0.0, view_z, 1.0)).z;
   /* NDC to view. */
-  vec3 vs_P = drw_perspective_divide(wininv * vec4(ndc_xy, ndc_z, 1.0)).xyz;
+  vec3 vs_P = project_point(wininv, ndc_P);
 
   /* Transform to previous camera view space. */
   vec3 vs_P_history = transform_point(uniform_buf.volumes.curr_view_to_past_view, vs_P);
+
   /* View to NDC. */
-  vec3 ndc_P_history = drw_perspective_divide(uniform_buf.volumes.history_winmat_stable *
-                                              vec4(vs_P, 1.0));
+  vec4 hs_P_history = uniform_buf.volumes.history_winmat_stable * vec4(vs_P_history, 1.0);
+  vec3 ndc_P_history = drw_perspective_divide(hs_P_history);
+
+  if (hs_P_history.w < 0.0 || any(greaterThan(abs(ndc_P_history.xy), vec2(1.0)))) {
+    return vec3(-1.0);
+  }
+
   vec3 uvw_history;
   uvw_history.xy = drw_ndc_to_screen(ndc_P_history.xy);
   uvw_history.z = view_z_to_volume_z(vs_P_history.z,
                                      uniform_buf.volumes.history_depth_near,
                                      uniform_buf.volumes.history_depth_far,
                                      uniform_buf.volumes.history_depth_distribution);
+
+  if (uvw_history.z < 0.0 || uvw_history.z > 1.0) {
+    return vec3(-1.0);
+  }
   return uvw_history;
 }
 

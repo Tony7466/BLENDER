@@ -97,6 +97,12 @@ class VolumeModule {
   View volume_view = {"Volume View"};
 
   float4x4 history_viewmat_ = float4x4::zero();
+  /* Number of re-projected frame into the volume history.
+   * Allows continuous integration between interactive and static mode. */
+  int history_frame_count_ = 0;
+  /* Used to detect change in camera projection type. */
+  bool history_camera_is_perspective_ = false;
+  /* Must be set to false on every event that makes the history invalid to sample. */
   bool valid_history_ = false;
 
  public:
