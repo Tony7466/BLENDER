@@ -75,9 +75,6 @@ class VKCommandBuilder {
 
  private:
   void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);
-  void build_node_dispatch(VKRenderGraph &render_graph,
-                           NodeHandle node_handle,
-                           const VKNodes::Node &node);
 
   void reset_barriers();
   void send_pipeline_barriers(VKRenderGraph &render_graph);
