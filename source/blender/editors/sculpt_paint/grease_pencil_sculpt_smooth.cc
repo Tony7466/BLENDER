@@ -61,8 +61,11 @@ void SmoothOperation::on_stroke_extended(const bContext &C, const InputSample &e
 
     const VArray<float> influences = VArray<float>::ForFunc(
         view_positions.size(), [&](const int64_t point_) {
-          return brush_influence(
-              *CTX_data_scene(&params.context), brush, view_positions[point_], extension_sample);
+          return brush_influence(*CTX_data_scene(&params.context),
+                                 brush,
+                                 view_positions[point_],
+                                 extension_sample,
+                                 params.multi_frame_falloff);
         });
     Array<bool> selection_array(curves.points_num());
     selection.to_bools(selection_array);

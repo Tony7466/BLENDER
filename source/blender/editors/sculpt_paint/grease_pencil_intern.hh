@@ -59,7 +59,7 @@ float brush_influence(const Scene &scene,
                       const Brush &brush,
                       const float2 &co,
                       const InputSample &sample,
-                      float multi_frame_falloff = 1.0f);
+                      float multi_frame_falloff);
 
 /* True if influence of the brush should be inverted. */
 bool is_brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
@@ -73,6 +73,7 @@ struct GreasePencilStrokeParams {
   const bke::greasepencil::Layer &layer;
   int layer_index;
   int frame_number;
+  float multi_frame_falloff;
   ed::greasepencil::DrawingPlacement placement;
   bke::greasepencil::Drawing &drawing;
 
@@ -82,6 +83,7 @@ struct GreasePencilStrokeParams {
                                                const ARegion &region,
                                                int layer_index,
                                                int frame_number,
+                                               float multi_frame_falloff,
                                                bke::greasepencil::Drawing &drawing);
 };
 

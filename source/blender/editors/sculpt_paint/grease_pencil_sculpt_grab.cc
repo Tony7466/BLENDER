@@ -91,7 +91,7 @@ void GrabOperation::foreach_grabbed_drawing(
         reinterpret_cast<GreasePencilDrawing &>(drawing_base).wrap();
 
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, data.layer_index, data.frame_number, drawing);
+        C, region, data.layer_index, data.frame_number, data.multi_frame_falloff, drawing);
     if (fn(params, data.point_mask, data.weights)) {
       changed = true;
     }
@@ -140,6 +140,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                                        layer,
                                        info.layer_index,
                                        info.frame_number,
+                                       info.multi_frame_falloff,
                                        std::move(placement),
                                        info.drawing};
 

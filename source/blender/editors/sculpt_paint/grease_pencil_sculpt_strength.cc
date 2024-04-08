@@ -51,8 +51,11 @@ void StrengthOperation::on_stroke_extended(const bContext &C, const InputSample 
 
     selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       float &opacity = opacities[point_i];
-      const float influence = brush_influence(
-          *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
+      const float influence = brush_influence(*CTX_data_scene(&params.context),
+                                              brush,
+                                              view_positions[point_i],
+                                              extension_sample,
+                                              params.multi_frame_falloff);
       /* Brush influence mapped to opacity by a factor of 0.125. */
       const float delta_opacity = (invert ? -influence : influence) * 0.125f;
       opacity = std::clamp(opacity + delta_opacity, 0.0f, 1.0f);

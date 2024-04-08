@@ -188,6 +188,7 @@ GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
     const ARegion &region,
     const int layer_index,
     const int frame_number,
+    const float multi_frame_falloff,
     bke::greasepencil::Drawing &drawing)
 {
   const Scene &scene = *CTX_data_scene(&C);
@@ -207,6 +208,7 @@ GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
           layer,
           layer_index,
           frame_number,
+          multi_frame_falloff,
           std::move(placement),
           drawing};
 }
@@ -274,7 +276,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, info.layer_index, info.frame_number, info.drawing);
+        C, region, info.layer_index, info.frame_number, info.multi_frame_falloff, info.drawing);
     if (fn(params)) {
       changed = true;
     }
