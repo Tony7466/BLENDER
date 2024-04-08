@@ -241,7 +241,7 @@ void VKTexture::read_sub(
 
   staging_buffer.create(device_memory_size, GPU_USAGE_DYNAMIC, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-  render_graph::VKCopyImageToBufferNode::Data copy_image_to_buffer;
+  render_graph::VKCopyImageToBufferNode::Data copy_image_to_buffer = {};
   copy_image_to_buffer.src_image = vk_image_handle();
   copy_image_to_buffer.dst_buffer = staging_buffer.vk_handle();
   copy_image_to_buffer.region.imageOffset.x = region[0];
