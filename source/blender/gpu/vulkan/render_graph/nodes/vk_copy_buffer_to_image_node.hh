@@ -38,7 +38,8 @@ struct VKCopyBufferToImageNode : NonCopyable {
                                           const CreateInfo &create_info)
   {
     VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
-    VersionedResource dst_resource = resources.get_image_and_increase_version(create_info.dst_image);
+    VersionedResource dst_resource = resources.get_image_and_increase_version(
+        create_info.dst_image);
     dependencies.add_read_resource(
         node_handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
     dependencies.add_write_resource(node_handle,

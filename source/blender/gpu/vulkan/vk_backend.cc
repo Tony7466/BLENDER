@@ -145,7 +145,7 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   dispatch_info.dispatch_node.group_count_y = groups_y_len;
   dispatch_info.dispatch_node.group_count_z = groups_z_len;
   render_graph::VKRenderGraph &render_graph = device_get().render_graph_get();
-  render_graph.add_dispatch_node(dispatch_info);
+  render_graph.add_node(dispatch_info);
 }
 
 void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)

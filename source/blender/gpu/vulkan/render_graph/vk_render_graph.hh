@@ -120,7 +120,10 @@ class VKRenderGraph : public NonCopyable {
   {
     add_node<VKBlitImageNode, VKBlitImageNode::CreateInfo>(blit_image);
   }
-  void add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
+  void add_node(const VKDispatchNode::CreateInfo &dispatch)
+  {
+    add_node<VKDispatchNode, VKDispatchNode::CreateInfo>(dispatch);
+  }
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.

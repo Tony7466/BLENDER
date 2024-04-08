@@ -48,27 +48,6 @@ constexpr VkAccessFlags VK_ACCESS_WRITE_MASK = VK_ACCESS_SHADER_WRITE_BIT |
                                                VK_ACCESS_TRANSFER_WRITE_BIT |
                                                VK_ACCESS_HOST_WRITE_BIT;
 
-struct VKImageAccess {
-  VkImage vk_image;
-  VkAccessFlags vk_access_flags;
-};
-
-struct VKBufferAccess {
-  VkBuffer vk_buffer;
-  VkAccessFlags vk_access_flags;
-};
-
-struct VKResourceAccessInfo : NonCopyable {
-  Vector<VKBufferAccess> buffers;
-  Vector<VKImageAccess> images;
-
-  void clear()
-  {
-    buffers.clear();
-    images.clear();
-  }
-};
-
 enum class VKNodeType {
   UNUSED,
   CLEAR_COLOR_IMAGE,

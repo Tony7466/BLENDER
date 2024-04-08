@@ -24,6 +24,28 @@ struct VKPipelineData {
   const void *push_constants_data;
 };
 
+struct VKBoundPipeline {
+  VkPipeline vk_pipeline;
+  VkDescriptorSet vk_descriptor_set;
+};
+struct VKBoundPipelines {
+  VKBoundPipeline compute;
+  VKBoundPipeline graphics;
+};
+
+// TODO: This is a copy constructor in disguise.
+BLI_INLINE void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
+{
+  dst.push_constants_data = nullptr;
+  dst.push_constants_size = src.push_constants_size;
+  if (src.push_constants_size) {
+    BLI_assert(src.push_constants_data);
+    void *data = MEM_mallocN(src.push_constants_size, __func__);
+    memcpy(data, src.push_constants_data, src.push_constants_size);
+    dst.push_constants_data = data;
+  }
+}
+
 BLI_INLINE void vk_pipeline_free_data(VKPipelineData &data)
 {
   MEM_SAFE_FREE(data.push_constants_data);

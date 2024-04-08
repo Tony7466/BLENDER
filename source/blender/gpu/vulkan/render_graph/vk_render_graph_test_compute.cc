@@ -29,7 +29,7 @@ TEST(vk_render_graph, dispatch_read_back)
   dispatch_info.dispatch_node.group_count_y = 1;
   dispatch_info.dispatch_node.group_count_z = 1;
   dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-  render_graph.add_dispatch_node(dispatch_info);
+  render_graph.add_node(dispatch_info);
   render_graph.submit_buffer_for_read_back(buffer);
   EXPECT_EQ(3, log.size());
   EXPECT_EQ("bind_pipeline(pipeline_bind_point=VK_PIPELINE_BIND_POINT_COMPUTE, pipeline=0x2)",
@@ -66,7 +66,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   {
     VKDispatchNode::CreateInfo dispatch_info = {};
@@ -77,7 +77,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   render_graph.submit_buffer_for_read_back(buffer);
   EXPECT_EQ(5, log.size());
@@ -126,7 +126,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   {
     VKDispatchNode::CreateInfo dispatch_info = {};
@@ -137,7 +137,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   render_graph.submit_buffer_for_read_back(buffer);
   EXPECT_EQ(6, log.size());
@@ -189,7 +189,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   {
     VKDispatchNode::CreateInfo dispatch_info = {};
@@ -200,7 +200,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   render_graph.submit_buffer_for_read_back(buffer);
   EXPECT_EQ(6, log.size());
@@ -252,7 +252,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   {
     VKDispatchNode::CreateInfo dispatch_info = {};
@@ -263,7 +263,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
-    render_graph.add_dispatch_node(dispatch_info);
+    render_graph.add_node(dispatch_info);
   }
   render_graph.submit_buffer_for_read_back(buffer);
   EXPECT_EQ(7, log.size());

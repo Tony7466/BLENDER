@@ -65,8 +65,7 @@ void VKCommandBuilder::reset(VKRenderGraph &render_graph)
   }
 
   // Reset pipelines
-  active_compute_pipeline_ = VK_NULL_HANDLE;
-  active_compute_descriptor_set_ = VK_NULL_HANDLE;
+  active_pipelines = {};
 }
 
 void VKCommandBuilder::remove_resource(ResourceHandle handle)
@@ -160,49 +159,14 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::DISPATCH: {
-      build_node_dispatch(render_graph, node_handle, node);
+      build_node<VKDispatchNode, VKDispatchNode::Data>(render_graph,
+                                                       *render_graph.command_buffer_,
+                                                       node_handle,
+                                                       node.dispatch,
+                                                       active_pipelines);
       break;
     }
   }
-}
-
-void VKCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
-                                           NodeHandle node_handle,
-                                           const VKNodes::Node &node)
-{
-  BLI_assert(node.type == VKNodeType::DISPATCH);
-
-  reset_barriers();
-  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-  send_pipeline_barriers(render_graph);
-
-  const VKPipelineData &pipeline_data = node.dispatch.pipeline_data;
-  if (assign_if_different(active_compute_pipeline_, pipeline_data.vk_pipeline)) {
-    render_graph.command_buffer_->bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                active_compute_pipeline_);
-  }
-
-  if (assign_if_different(active_compute_descriptor_set_, pipeline_data.vk_descriptor_set)) {
-    render_graph.command_buffer_->bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                       pipeline_data.vk_pipeline_layout,
-                                                       0,
-                                                       1,
-                                                       &pipeline_data.vk_descriptor_set,
-                                                       0,
-                                                       nullptr);
-  }
-
-  if (pipeline_data.push_constants_size) {
-    render_graph.command_buffer_->push_constants(pipeline_data.vk_pipeline_layout,
-                                                 VK_SHADER_STAGE_COMPUTE_BIT,
-                                                 0,
-                                                 pipeline_data.push_constants_size,
-                                                 pipeline_data.push_constants_data);
-  }
-
-  render_graph.command_buffer_->dispatch(
-      node.dispatch.group_count_x, node.dispatch.group_count_y, node.dispatch.group_count_z);
 }
 
 /* -------------------------------------------------------------------- */

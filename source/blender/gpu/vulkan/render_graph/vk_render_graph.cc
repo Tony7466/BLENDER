@@ -63,56 +63,6 @@ void VKRenderGraph::remove_image(VkImage vk_image)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Add Node
- * \{ */
-
-void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_dispatch_node(dispatch_info);
-  add_resources(handle, dispatch_info.resources);
-}
-
-void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)
-{
-  // TODO: validate. resources should be unique (merged).
-  for (const VKBufferAccess &buffer_access : resources.buffers) {
-    VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
-    if (read_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources_.get_buffer(buffer_access.vk_buffer);
-      resource_dependencies_.add_read_resource(
-          handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
-    }
-
-    VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
-    if (write_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources_.get_buffer_and_increase_version(
-          buffer_access.vk_buffer);
-      resource_dependencies_.add_write_resource(
-          handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
-    }
-  }
-
-  for (const VKImageAccess &image_access : resources.images) {
-    VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
-    if (read_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources_.get_image(image_access.vk_image);
-      resource_dependencies_.add_read_resource(
-          handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    }
-
-    VkAccessFlags write_access = image_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
-    if (write_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources_.get_image_and_increase_version(
-          image_access.vk_image);
-      /* Extract the correct layout to use from the access flags. */
-      resource_dependencies_.add_write_resource(
-          handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    }
-  }
-}
-
-/* -------------------------------------------------------------------- */
 /** \name Submit graph
  * \{ */
 

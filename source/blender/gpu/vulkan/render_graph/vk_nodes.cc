@@ -10,31 +10,6 @@
 
 namespace blender::gpu::render_graph {
 
-static void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
-{
-  dst.push_constants_data = nullptr;
-  dst.push_constants_size = src.push_constants_size;
-  if (src.push_constants_size) {
-    BLI_assert(src.push_constants_data);
-    void *data = MEM_mallocN(src.push_constants_size, __func__);
-    memcpy(data, src.push_constants_data, src.push_constants_size);
-    dst.push_constants_data = data;
-  }
-}
-
-NodeHandle VKNodes::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::DISPATCH;
-  node.dispatch = dispatch_info.dispatch_node;
-  localize_shader_data(node.dispatch.pipeline_data, dispatch_info.dispatch_node.pipeline_data);
-
-  return handle;
-}
-
 void VKNodes::remove_nodes(Span<NodeHandle> node_handles)
 {
   for (NodeHandle node_handle : node_handles) {

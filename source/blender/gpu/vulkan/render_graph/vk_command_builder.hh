@@ -32,8 +32,7 @@ class VKCommandBuilder {
   /** Template image memory barrier. */
   VkImageMemoryBarrier vk_image_memory_barrier_;
 
-  VkPipeline active_compute_pipeline_ = VK_NULL_HANDLE;
-  VkDescriptorSet active_compute_descriptor_set_ = VK_NULL_HANDLE;
+  VKBoundPipelines active_pipelines;
 
   VkPipelineStageFlags src_stage_mask_ = VK_PIPELINE_STAGE_NONE;
   VkPipelineStageFlags dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
@@ -128,6 +127,26 @@ class VKCommandBuilder {
       send_pipeline_barriers(render_graph);
     }
     NodeClass::build_commands(command_buffer, node_data);
+  }
+
+  template<typename NodeClass, typename NodeClassData>
+  void build_node(VKRenderGraph &render_graph,
+                  VKCommandBufferInterface &command_buffer,
+                  NodeHandle node_handle,
+                  const NodeClassData &node_data,
+                  VKBoundPipelines &r_bound_pipelines)
+  {
+    if constexpr (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
+      reset_barriers();
+      if constexpr (NodeClass::uses_image_resources) {
+        add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+      }
+      if constexpr (NodeClass::uses_buffer_resources) {
+        add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+      }
+      send_pipeline_barriers(render_graph);
+    }
+    NodeClass::build_commands(command_buffer, node_data, r_bound_pipelines);
   }
 };
 

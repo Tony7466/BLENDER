@@ -37,7 +37,7 @@ struct VKFillBufferNode : NonCopyable {
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo  &create_info)
+                                          const CreateInfo &create_info)
   {
     VersionedResource resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
     dependencies.add_write_resource(

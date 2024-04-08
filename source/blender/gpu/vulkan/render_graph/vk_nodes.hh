@@ -29,8 +29,6 @@ class VKNodes {
   VKRenderGraphList<NodeHandle, Node> nodes_;
 
  public:
-  NodeHandle add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
-
   template<typename NodeClass, typename NodeCreateInfo>
   NodeHandle add_node(const NodeCreateInfo &create_info)
   {
