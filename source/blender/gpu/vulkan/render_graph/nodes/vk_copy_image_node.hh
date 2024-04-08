@@ -26,21 +26,38 @@ struct VKCopyImageNode : NonCopyable {
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::COPY_IMAGE;
 
-  template<typename Node> static void set_node_data(Node & /*node*/, const Data & /*data*/) {}
+  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  {
+    node.copy_image = data;
+  }
 
   template<typename Node> static void free_data(Node & /*node*/) {}
 
-  static void build_resource_dependencies(VKResources & /*resources*/,
-                                          VKResourceDependencies & /*dependencies*/,
-                                          NodeHandle /*node_handle*/,
-                                          const Data & /*data*/)
+  static void build_resource_dependencies(VKResources &resources,
+                                          VKResourceDependencies &dependencies,
+                                          NodeHandle node_handle,
+                                          const Data &data)
   {
-    NOT_YET_IMPLEMENTED
+    VersionedResource src_resource = resources.get_image(data.src_image);
+    VersionedResource dst_resource = resources.get_image_and_increase_version(data.dst_image);
+    dependencies.add_read_resource(node_handle,
+                                   src_resource,
+                                   VK_ACCESS_TRANSFER_READ_BIT,
+                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    dependencies.add_write_resource(node_handle,
+                                    dst_resource,
+                                    VK_ACCESS_TRANSFER_WRITE_BIT,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface & /*command_buffer*/, const Data & /*data*/)
+  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
   {
-    NOT_YET_IMPLEMENTED
+    command_buffer.copy_image(data.src_image,
+                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              data.dst_image,
+                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              1,
+                              &data.region);
   }
 };
 }  // namespace blender::gpu::render_graph

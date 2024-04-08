@@ -10,63 +10,6 @@
 
 namespace blender::gpu::render_graph {
 
-NodeHandle VKNodes::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::FILL_BUFFER;
-  node.fill_buffer.vk_buffer = vk_buffer;
-  node.fill_buffer.size = size;
-  node.fill_buffer.data = data;
-
-  return handle;
-}
-
-NodeHandle VKNodes::add_copy_image_node(VkImage src_image,
-                                        VkImage dst_image,
-                                        const VkImageCopy &region)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::COPY_IMAGE;
-  node.copy_image.src_image = src_image;
-  node.copy_image.dst_image = dst_image;
-  node.copy_image.region = region;
-
-  return handle;
-}
-
-NodeHandle VKNodes::add_copy_image_to_buffer_node(VkImage src_image,
-                                                  VkBuffer dst_buffer,
-                                                  const VkBufferImageCopy &region)
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::COPY_IMAGE_TO_BUFFER;
-  node.copy_image_to_buffer.src_image = src_image;
-  node.copy_image_to_buffer.dst_buffer = dst_buffer;
-  node.copy_image_to_buffer.region = region;
-
-  return handle;
-}
-
-NodeHandle VKNodes::add_synchronization_node()
-{
-  NodeHandle handle = allocate();
-  Node &node = nodes_.get(handle);
-  BLI_assert(node.type == VKNodeType::UNUSED);
-
-  node.type = VKNodeType::SYNCHRONIZATION;
-
-  return handle;
-}
-
 static void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
 {
   dst.push_constants_data = nullptr;

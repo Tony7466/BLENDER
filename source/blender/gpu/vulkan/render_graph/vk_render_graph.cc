@@ -66,46 +66,6 @@ void VKRenderGraph::remove_image(VkImage vk_image)
 /** \name Add Node
  * \{ */
 
-void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_fill_buffer_node(vk_buffer, size, data);
-
-  VersionedResource resource = resources_.get_buffer_and_increase_version(vk_buffer);
-  resource_dependencies_.add_write_resource(
-      handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
-}
-
-void VKRenderGraph::add_copy_image_node(VkImage src_image,
-                                        VkImage dst_image,
-                                        const VkImageCopy &region)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_copy_image_node(src_image, dst_image, region);
-
-  VersionedResource src_resource = resources_.get_image(src_image);
-  VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
-  resource_dependencies_.add_read_resource(
-      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  resource_dependencies_.add_write_resource(
-      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-}
-
-void VKRenderGraph::add_copy_image_to_buffer_node(VkImage src_image,
-                                                  VkBuffer dst_buffer,
-                                                  const VkBufferImageCopy &region)
-{
-  std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_copy_image_to_buffer_node(src_image, dst_buffer, region);
-
-  VersionedResource src_resource = resources_.get_image(src_image);
-  VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
-  resource_dependencies_.add_read_resource(
-      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  resource_dependencies_.add_write_resource(
-      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
-}
-
 void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info)
 {
   std::scoped_lock lock(mutex_);
@@ -116,7 +76,9 @@ void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch
 void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout)
 {
   std::scoped_lock lock(mutex_);
-  NodeHandle handle = nodes_.add_synchronization_node();
+  VKSynchronizationNode::Data synchronization = {};
+  NodeHandle handle = nodes_.add_node<VKSynchronizationNode, VKSynchronizationNode::Data>(
+      synchronization);
   VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
   resource_dependencies_.add_write_resource(
       handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, vk_image_layout);
@@ -176,7 +138,11 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   command_buffer_->begin_recording();
   command_builder_.build_image(*this, vk_swapchain_image);
   command_buffer_->end_recording();
-  /* TODO: Can we implement gpu synchronization when presenting? */
+  /* TODO: It is better to create and return a semaphore. this semaphore can be passed in the
+   * swapchain to ensure GPU synchronization. This also require a second semaphore to pause drawing
+   * until the swapchain has completed its drawing phase.
+   *
+   * Currently using CPU synchronization for safety. */
   command_buffer_->submit_with_cpu_synchronization();
   command_builder_.update_state_after_submission(*this);
   command_buffer_->wait_for_cpu_synchronization();
@@ -188,7 +154,6 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   command_builder_.reset(*this);
   command_buffer_->begin_recording();
   command_builder_.build_buffer(*this, vk_buffer);
-  // TODO: add sync?
   command_buffer_->end_recording();
   command_buffer_->submit_with_cpu_synchronization();
   command_builder_.update_state_after_submission(*this);

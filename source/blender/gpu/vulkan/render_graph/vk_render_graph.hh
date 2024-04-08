@@ -77,6 +77,10 @@ class VKRenderGraph : public NonCopyable {
   // TODO: add test case to check if resources are reset when deleted.
   void remove_image(VkImage vk_image);
 
+ private:
+  /**
+   * Add a node to the render graph.
+   */
   template<typename NodeClass, typename NodeClassData>
   void add_node(const NodeClassData &node_data)
   {
@@ -85,11 +89,15 @@ class VKRenderGraph : public NonCopyable {
     NodeClass::build_resource_dependencies(resources_, resource_dependencies_, handle, node_data);
   }
 
+ public:
   void add_node(const VKClearColorImageNode::Data &clear_color_image)
   {
     add_node<VKClearColorImageNode, VKClearColorImageNode::Data>(clear_color_image);
   }
-  void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
+  void add_node(const VKFillBufferNode::Data &fill_buffer)
+  {
+    add_node<VKFillBufferNode, VKFillBufferNode::Data>(fill_buffer);
+  }
   void add_node(const VKCopyBufferNode::Data &copy_buffer)
   {
     add_node<VKCopyBufferNode, VKCopyBufferNode::Data>(copy_buffer);
@@ -98,10 +106,14 @@ class VKRenderGraph : public NonCopyable {
   {
     add_node<VKCopyBufferToImageNode, VKCopyBufferToImageNode::Data>(copy_buffer_to_image);
   }
-  void add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
-  void add_copy_image_to_buffer_node(VkImage src_image,
-                                     VkBuffer dst_buffer,
-                                     const VkBufferImageCopy &region);
+  void add_node(const VKCopyImageNode::Data &copy_image_to_buffer)
+  {
+    add_node<VKCopyImageNode, VKCopyImageNode::Data>(copy_image_to_buffer);
+  }
+  void add_node(const VKCopyImageToBufferNode::Data &copy_image_to_buffer)
+  {
+    add_node<VKCopyImageToBufferNode, VKCopyImageToBufferNode::Data>(copy_image_to_buffer);
+  }
   void add_node(const VKBlitImageNode::Data &blit_image)
   {
     add_node<VKBlitImageNode, VKBlitImageNode::Data>(blit_image);

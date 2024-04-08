@@ -26,21 +26,26 @@ struct VKFillBufferNode : NonCopyable {
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::FILL_BUFFER;
 
-  template<typename Node> static void set_node_data(Node & /*node*/, const Data & /*data*/) {}
+  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  {
+    node.fill_buffer = data;
+  }
 
   template<typename Node> static void free_data(Node & /*node*/) {}
 
-  static void build_resource_dependencies(VKResources & /*resources*/,
-                                          VKResourceDependencies & /*dependencies*/,
-                                          NodeHandle /*node_handle*/,
-                                          const Data & /*data*/)
+  static void build_resource_dependencies(VKResources &resources,
+                                          VKResourceDependencies &dependencies,
+                                          NodeHandle node_handle,
+                                          const Data &data)
   {
-    NOT_YET_IMPLEMENTED
+    VersionedResource resource = resources.get_buffer_and_increase_version(data.vk_buffer);
+    dependencies.add_write_resource(
+        node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 
-  static void build_commands(VKCommandBufferInterface & /*command_buffer*/, const Data & /*data*/)
+  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
   {
-    NOT_YET_IMPLEMENTED
+    command_buffer.fill_buffer(data.vk_buffer, 0, data.size, data.data);
   }
 };
 }  // namespace blender::gpu::render_graph

@@ -143,17 +143,19 @@ void VKTexture::generate_mipmap()
 
 void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspect)
 {
-  VkImageCopy region = {};
-  region.srcSubresource.aspectMask = vk_image_aspect;
-  region.srcSubresource.mipLevel = 0;
-  region.srcSubresource.layerCount = vk_layer_count(1);
-  region.dstSubresource.aspectMask = vk_image_aspect;
-  region.dstSubresource.mipLevel = 0;
-  region.dstSubresource.layerCount = vk_layer_count(1);
-  region.extent = vk_extent_3d(0);
+  render_graph::VKCopyImageNode::Data copy_image = {};
+  copy_image.src_image = vk_image_handle();
+  copy_image.dst_image = dst_texture.vk_image_handle();
+  copy_image.region.srcSubresource.aspectMask = vk_image_aspect;
+  copy_image.region.srcSubresource.mipLevel = 0;
+  copy_image.region.srcSubresource.layerCount = vk_layer_count(1);
+  copy_image.region.dstSubresource.aspectMask = vk_image_aspect;
+  copy_image.region.dstSubresource.mipLevel = 0;
+  copy_image.region.dstSubresource.layerCount = vk_layer_count(1);
+  copy_image.region.extent = vk_extent_3d(0);
 
   VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_copy_image_node(vk_image_, dst_texture.vk_image_, region);
+  device.render_graph_get().add_node(copy_image);
 }
 
 void VKTexture::copy_to(Texture *tex)
@@ -239,23 +241,24 @@ void VKTexture::read_sub(
 
   staging_buffer.create(device_memory_size, GPU_USAGE_DYNAMIC, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-  VkBufferImageCopy buffer_image_copy = {};
-  buffer_image_copy.imageOffset.x = region[0];
-  buffer_image_copy.imageOffset.y = region[1];
-  buffer_image_copy.imageOffset.z = region[2];
-  buffer_image_copy.imageExtent.width = region[3];
-  buffer_image_copy.imageExtent.height = region[4];
-  buffer_image_copy.imageExtent.depth = region[5];
-  buffer_image_copy.imageSubresource.aspectMask = to_vk_image_aspect_single_bit(
+  render_graph::VKCopyImageToBufferNode::Data copy_image_to_buffer;
+  copy_image_to_buffer.src_image = vk_image_handle();
+  copy_image_to_buffer.dst_buffer = staging_buffer.vk_handle();
+  copy_image_to_buffer.region.imageOffset.x = region[0];
+  copy_image_to_buffer.region.imageOffset.y = region[1];
+  copy_image_to_buffer.region.imageOffset.z = region[2];
+  copy_image_to_buffer.region.imageExtent.width = region[3];
+  copy_image_to_buffer.region.imageExtent.height = region[4];
+  copy_image_to_buffer.region.imageExtent.depth = region[5];
+  copy_image_to_buffer.region.imageSubresource.aspectMask = to_vk_image_aspect_single_bit(
       to_vk_image_aspect_flag_bits(device_format_), false);
-  buffer_image_copy.imageSubresource.mipLevel = mip;
-  buffer_image_copy.imageSubresource.baseArrayLayer = layers.start();
-  buffer_image_copy.imageSubresource.layerCount = layers.size();
+  copy_image_to_buffer.region.imageSubresource.mipLevel = mip;
+  copy_image_to_buffer.region.imageSubresource.baseArrayLayer = layers.start();
+  copy_image_to_buffer.region.imageSubresource.layerCount = layers.size();
 
   VKDevice &device = VKBackend::get().device_get();
   render_graph::VKRenderGraph &render_graph = device.render_graph_get();
-  render_graph.add_copy_image_to_buffer_node(
-      vk_image_handle(), staging_buffer.vk_handle(), buffer_image_copy);
+  render_graph.add_node(copy_image_to_buffer);
   render_graph.submit_buffer_for_read_back(staging_buffer.vk_handle());
 
   convert_device_to_host(
