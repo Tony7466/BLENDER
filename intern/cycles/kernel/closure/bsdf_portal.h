@@ -41,4 +41,13 @@ ccl_device void bsdf_portal_setup(ccl_private ShaderData *sd,
   }
 }
 
+ccl_device Spectrum bsdf_portal_eval(ccl_private const ShaderClosure *sc,
+                                     const float3 wi,
+                                     const float3 wo,
+                                     ccl_private float *pdf)
+{
+  *pdf = 0.0f;
+  return zero_spectrum();
+}
+
 CCL_NAMESPACE_END

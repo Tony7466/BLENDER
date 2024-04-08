@@ -297,9 +297,6 @@ ccl_device_inline void bsdf_roughness_eta(const KernelGlobals kg,
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_TRANSPARENT_ID:
-      *roughness = zero_float2();
-      *eta = 1.0f;
-      break;
     case CLOSURE_BSDF_PORTAL_ID:
       *roughness = zero_float2();
       *eta = 1.0f;
@@ -501,8 +498,10 @@ ccl_device_inline
       eval = bsdf_translucent_eval(sc, sd->wi, wo, pdf);
       break;
     case CLOSURE_BSDF_TRANSPARENT_ID:
-    case CLOSURE_BSDF_PORTAL_ID:
       eval = bsdf_transparent_eval(sc, sd->wi, wo, pdf);
+      break;
+    case CLOSURE_BSDF_PORTAL_ID:
+      eval = bsdf_portal_eval(sc, sd->wi, wo, pdf);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
