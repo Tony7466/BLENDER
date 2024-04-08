@@ -45,8 +45,6 @@ class GrabOperation : public GreasePencilStrokeOperationCommon {
     IndexMask point_mask;
     /* Influence weights for grabbed points. */
     Vector<float> weights;
-    /* Rotation of the original point. */
-    Vector<float> rotations;
 
     IndexMaskMemory memory;
   };
@@ -161,8 +159,6 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                                                 view_positions,
                                                 weights,
                                                 data.memory);
-    /* TODO */
-    Vector<float> rotations(point_mask.size(), 0.0f);
 
     if (point_mask.is_empty()) {
       /* Set empty point mask to skip. */
@@ -176,14 +172,12 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                         layer.to_object_space(ob_eval);
     data.point_mask = std::move(point_mask);
     data.weights = std::move(weights);
-    data.rotations = std::move(rotations);
   });
 }
 
 void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
   const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
-  const float2 mouse_delta_win = this->mouse_delta(extension_sample);
 
   this->foreach_grabbed_drawing(
       C,
