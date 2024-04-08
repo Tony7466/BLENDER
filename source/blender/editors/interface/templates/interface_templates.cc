@@ -4606,7 +4606,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    for (CurveMapPoint *cmp : cmps) {
+    for (const CurveMapPoint *cmp : cmps) {
       const bool auto_anim_vec = ((cmp->flag & CUMA_HANDLE_AUTO_ANIM) == false) &&
                                  ((cmp->flag & CUMA_HANDLE_VECTOR) == false);
       bt->flag |= UI_SELECT_DRAW && auto_anim_vec;
@@ -4631,7 +4631,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    for (CurveMapPoint *cmp : cmps) {
+    for (const CurveMapPoint *cmp : cmps) {
       const bool vec = (cmp->flag & CUMA_HANDLE_VECTOR);
       bt->flag |= UI_SELECT_DRAW && vec;
     }
@@ -4655,7 +4655,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
       rna_update_cb(C, cb);
     });
 
-    for (CurveMapPoint *cmp : cmps) {
+    for (const CurveMapPoint *cmp : cmps) {
       const bool auto_anim = (cmp->flag & CUMA_HANDLE_AUTO_ANIM);
       bt->flag |= UI_SELECT_DRAW && auto_anim;
     }
@@ -5166,6 +5166,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
 
     row = uiLayoutRow(layout, true);
 
+    /* TODO: Buttons for multiple selections */
     PointerRNA point_ptr = RNA_pointer_create(ptr->owner_id, &RNA_CurveProfilePoint, cfps[0]);
     PropertyRNA *prop_handle_type = RNA_struct_find_property(&point_ptr, "handle_type_1");
     uiItemFullR(row,
