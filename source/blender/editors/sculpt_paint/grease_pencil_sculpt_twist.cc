@@ -7,8 +7,6 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
 
-#include "BLI_math_rotation.hh"
-#include "BLI_math_rotation_legacy.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 

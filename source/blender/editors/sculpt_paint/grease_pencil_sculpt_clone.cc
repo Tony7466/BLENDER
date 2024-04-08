@@ -7,8 +7,6 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
 
-#include "GEO_join_geometries.hh"
-
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
@@ -18,8 +16,6 @@
 
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
-
-#include <iostream>
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
@@ -35,16 +31,19 @@ class CloneOperation : public GreasePencilStrokeOperationCommon {
 void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
   this->init_stroke(C, start_sample);
-}
 
-void CloneOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
-{
+  /* Note: Only one copy is created at the beginning of each stroke.
+   * GPv2 supposedly has 2 modes:
+   * - Stamp: Clone on stroke start and then transform (the transform part doesn't work)
+   * - Continuous: Create multiple copies during the stroke (disabled)
+   *
+   * Here we only have the GPv2 behavior that actually works for now. */
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     Main &bmain = *CTX_data_main(&params.context);
     Object &object = *CTX_data_active_object(&params.context);
     float2 ob_center;
     ED_view3d_project_float_object(&params.region, float3(0), ob_center, V3D_PROJ_TEST_NOP);
-    const float2 &mouse_delta = extension_sample.mouse_position - ob_center;
+    const float2 &mouse_delta = start_sample.mouse_position - ob_center;
 
     const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
         bmain, object, params.drawing, false);
@@ -70,6 +69,11 @@ void CloneOperation::on_stroke_extended(const bContext &C, const InputSample &ex
 
     return true;
   });
+}
+
+void CloneOperation::on_stroke_extended(const bContext & /*C*/,
+                                        const InputSample &extension_sample)
+{
   this->stroke_extended(extension_sample);
 }
 

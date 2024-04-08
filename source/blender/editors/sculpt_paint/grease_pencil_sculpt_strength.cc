@@ -5,7 +5,6 @@
 #include "BLI_task.hh"
 
 #include "BKE_context.hh"
-#include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
 
@@ -56,7 +55,7 @@ void StrengthOperation::on_stroke_extended(const bContext &C, const InputSample 
           *CTX_data_scene(&params.context), brush, view_positions[point_i], extension_sample);
       /* Brush influence mapped to opacity by a factor of 0.125. */
       const float delta_opacity = (invert ? -influence : influence) * 0.125f;
-      opacity = math::clamp(opacity + delta_opacity, 0.0f, 1.0f);
+      opacity = std::clamp(opacity + delta_opacity, 0.0f, 1.0f);
     });
 
     return true;
