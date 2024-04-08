@@ -154,7 +154,8 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::SYNCHRONIZATION: {
-      build_node_synchronization(render_graph, node_handle, node);
+      build_node<VKSynchronizationNode, VKSynchronizationNode::Data>(
+          render_graph, *render_graph.command_buffer_, node_handle, node.synchronization);
       break;
     }
 
@@ -163,18 +164,6 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
       break;
     }
   }
-}
-
-void VKCommandBuilder::build_node_synchronization(VKRenderGraph &render_graph,
-                                                  NodeHandle node_handle,
-                                                  const VKNodes::Node &node)
-{
-  BLI_assert(node.type == VKNodeType::SYNCHRONIZATION);
-
-  reset_barriers();
-  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-  send_pipeline_barriers(render_graph);
 }
 
 void VKCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
@@ -214,35 +203,6 @@ void VKCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
 
   render_graph.command_buffer_->dispatch(
       node.dispatch.group_count_x, node.dispatch.group_count_y, node.dispatch.group_count_z);
-}
-
-void VKCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,
-                                           VkImage vk_image,
-                                           VkImageLayout vk_image_layout)
-{
-  ResourceHandle image_handle = render_graph.resources_.get_image_handle(vk_image);
-  VKResourceBarrierState &resource_state = resource_states_[image_handle];
-  if (resource_state.image_layout == vk_image_layout) {
-    return;
-  }
-
-  // Create and record barrier. (note is incomplete)
-  VkImageMemoryBarrier image_memory_barrier = {};
-  image_memory_barrier.image = vk_image;
-  image_memory_barrier.oldLayout = resource_state.image_layout;
-  image_memory_barrier.newLayout = vk_image_layout;
-  // TODO: should get the src stage flags from usage
-  render_graph.command_buffer_->pipeline_barrier(VK_PIPELINE_STAGE_NONE_KHR,
-                                                 VK_PIPELINE_STAGE_NONE_KHR,
-                                                 0,
-                                                 0,
-                                                 nullptr,
-                                                 0,
-                                                 nullptr,
-                                                 1,
-                                                 &image_memory_barrier);
-
-  resource_state.image_layout = vk_image_layout;
 }
 
 /* -------------------------------------------------------------------- */

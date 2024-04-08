@@ -23,7 +23,7 @@ struct VKSynchronizationNode : NonCopyable {
 
   static constexpr bool uses_image_resources = true;
   static constexpr bool uses_buffer_resources = true;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_NONE;
+  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   static constexpr VKNodeType node_type = VKNodeType::SYNCHRONIZATION;
 
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)

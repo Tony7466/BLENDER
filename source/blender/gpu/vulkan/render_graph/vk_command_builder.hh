@@ -74,22 +74,8 @@ class VKCommandBuilder {
    */
   void remove_resource(ResourceHandle handle);
 
-  /**
-   * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure
-   * the given layout.
-   *
-   * NOTE: Should only be needed to ensure the swap chain images can be presented.
-   * TODO: Migrate to a render graph node, so we can de-duplicate the code.
-   */
-  [[deprecated]] void ensure_image_layout(VKRenderGraph &render_graph,
-                                          VkImage vk_image,
-                                          VkImageLayout vk_image_layout);
-
  private:
   void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);
-  void build_node_synchronization(VKRenderGraph &render_graph,
-                                  NodeHandle node_handle,
-                                  const VKNodes::Node &node);
   void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            const VKNodes::Node &node);
