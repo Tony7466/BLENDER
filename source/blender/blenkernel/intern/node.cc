@@ -60,7 +60,6 @@
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image_format.h"
@@ -320,9 +319,9 @@ static void ntree_free_data(ID *id)
 static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket *sock)
 {
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-      data,
-      IDP_foreach_property(
-          sock->prop, IDP_TYPE_FILTER_ID, BKE_lib_query_idpropertiesForeachIDLink_callback, data));
+      data, IDP_foreach_property(sock->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+        BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+      }));
 
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
@@ -384,11 +383,9 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_ID(data, node->id, IDWALK_CB_USER);
 
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-        data,
-        IDP_foreach_property(node->prop,
-                             IDP_TYPE_FILTER_ID,
-                             BKE_lib_query_idpropertiesForeachIDLink_callback,
-                             data));
+        data, IDP_foreach_property(node->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+          BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+        }));
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
     }
@@ -978,17 +975,29 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   }
 }
 
-static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *socket_list)
+static void remove_unsupported_sockets(ListBase *sockets, ListBase *links)
 {
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, socket_list) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, sockets) {
     if (is_node_socket_supported(sock)) {
-      direct_link_node_socket(reader, sock);
+      continue;
     }
-    else {
-      /* Remove unsupported sockets. */
-      BLI_remlink(socket_list, sock);
-      MEM_SAFE_FREE(sock);
+
+    /* First remove any link pointing to the socket. */
+    if (links) {
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, links) {
+        if (link->fromsock == sock || link->tosock == sock) {
+          BLI_remlink(links, link);
+          if (link->tosock) {
+            link->tosock->link = nullptr;
+          }
+          MEM_freeN(link);
+        }
+      }
     }
+
+    BLI_remlink(sockets, sock);
+    MEM_delete(sock->runtime);
+    MEM_freeN(sock);
   }
 }
 
@@ -1160,8 +1169,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     BLO_read_data_address(reader, &node->parent);
 
-    direct_link_node_socket_list(reader, &node->inputs);
-    direct_link_node_socket_list(reader, &node->outputs);
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->inputs) {
+      direct_link_node_socket(reader, sock);
+    }
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->outputs) {
+      direct_link_node_socket(reader, sock);
+    }
 
     /* Socket storage. */
     if (node->type == CMP_NODE_OUTPUT_FILE) {
@@ -1176,8 +1189,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   /* Read legacy interface socket lists for versioning. */
   BLO_read_list(reader, &ntree->inputs_legacy);
   BLO_read_list(reader, &ntree->outputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->inputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->outputs_legacy);
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
 
   ntree->tree_interface.read_data(reader);
 
@@ -1187,6 +1204,13 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &link->fromsock);
     BLO_read_data_address(reader, &link->tosock);
   }
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    remove_unsupported_sockets(&node->inputs, &ntree->links);
+    remove_unsupported_sockets(&node->outputs, &ntree->links);
+  }
+  remove_unsupported_sockets(&ntree->inputs_legacy, nullptr);
+  remove_unsupported_sockets(&ntree->outputs_legacy, nullptr);
 
   BLO_read_data_address(reader, &ntree->geometry_node_asset_traits);
   BLO_read_data_address(reader, &ntree->nested_node_refs);
@@ -4160,7 +4184,7 @@ static blender::Set<int> get_known_node_types_set()
 static bool can_read_node_type(const int type)
 {
   /* Can always read custom node types. */
-  if (type == NODE_CUSTOM) {
+  if (ELEM(type, NODE_CUSTOM, NODE_CUSTOM_GROUP)) {
     return true;
   }
 
