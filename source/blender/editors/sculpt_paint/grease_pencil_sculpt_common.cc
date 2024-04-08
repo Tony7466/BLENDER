@@ -238,11 +238,14 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
   /* Compute screen space positions. */
   const float4x4 transform = params.layer.to_world_space(params.ob_eval);
   selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
-    ED_view3d_project_float_global(
+    eV3DProjStatus result = ED_view3d_project_float_global(
         &params.region,
         math::transform_point(transform, deformation.positions[point_i]),
         view_positions[point_i],
         V3D_PROJ_TEST_NOP);
+    if (result != V3D_PROJ_RET_OK) {
+      view_positions[point_i] = float2(0);
+    }
   });
 
   return view_positions;

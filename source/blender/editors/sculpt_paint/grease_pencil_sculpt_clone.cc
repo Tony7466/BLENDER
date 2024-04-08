@@ -28,6 +28,11 @@ class CloneOperation : public GreasePencilStrokeOperationCommon {
   void on_stroke_done(const bContext & /*C*/) override {}
 };
 
+static float2 arithmetic_mean(Span<float2> values)
+{
+  return std::accumulate(values.begin(), values.end(), float2(0)) / values.size();
+}
+
 void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
   this->init_stroke(C, start_sample);
@@ -41,9 +46,6 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     Main &bmain = *CTX_data_main(&params.context);
     Object &object = *CTX_data_active_object(&params.context);
-    float2 ob_center;
-    ED_view3d_project_float_object(&params.region, float3(0), ob_center, V3D_PROJ_TEST_NOP);
-    const float2 &mouse_delta = start_sample.mouse_position - ob_center;
 
     const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
         bmain, object, params.drawing, false);
@@ -59,6 +61,9 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
         pasted_points_by_curve.total_size() - pasted_points_by_curve[0].start());
 
     Array<float2> view_positions = calculate_view_positions(params, pasted_points);
+    const float2 center = arithmetic_mean(view_positions.as_mutable_span().slice(pasted_points));
+    const float2 &mouse_delta = start_sample.mouse_position - center;
+
     MutableSpan<float3> positions = curves.positions_for_write();
     threading::parallel_for(pasted_points, 4096, [&](const IndexRange range) {
       for (const int point_i : range) {
