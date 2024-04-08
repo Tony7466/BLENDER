@@ -3276,6 +3276,10 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
         if (!is_visible) {
           return true;
         }
+        break;
+      }
+      default: {
+        return element_should_draw_faded(tvc, te->parent, te->parent->store_elem);
       }
     }
   }
