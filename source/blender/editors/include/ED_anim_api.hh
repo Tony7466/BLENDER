@@ -169,7 +169,7 @@ struct bAnimListElem {
    */
   /** ID block that channel is attached to */
   ID *id;
-  /** source of the animation data attached to ID block (for convenience) */
+  /** source of the animation data attached to ID block */
   AnimData *adt;
 
   /**
@@ -212,6 +212,7 @@ enum eAnim_ChannelType {
   ANIMTYPE_NLACONTROLS,
   ANIMTYPE_NLACURVE,
 
+  ANIMTYPE_FILLANIM,
   ANIMTYPE_FILLACTD,
   ANIMTYPE_FILLDRIVERS,
 
@@ -271,6 +272,7 @@ enum eAnim_KeyType {
   ALE_OB,    /* Object summary */
   ALE_ACT,   /* Action summary */
   ALE_GROUP, /* Action Group summary */
+  ALE_ANIM,  /* Animation data-block summary. */
 
   ALE_GREASE_PENCIL_CEL,   /* Grease Pencil Cels. */
   ALE_GREASE_PENCIL_DATA,  /* Grease Pencil Cels summary. */

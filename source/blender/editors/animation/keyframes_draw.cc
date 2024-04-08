@@ -376,6 +376,7 @@ enum class ChannelType {
   SCENE,
   OBJECT,
   FCURVE,
+  ANIMATION,
   ACTION,
   ACTION_GROUP,
   GREASE_PENCIL_CELS,
@@ -401,6 +402,7 @@ struct ChannelListElement {
   Object *ob;
   AnimData *adt;
   FCurve *fcu;
+  Animation *anim;
   bAction *act;
   bActionGroup *agrp;
   bGPDlayer *gpl;
@@ -427,6 +429,10 @@ static void build_channel_keylist(ChannelListElement *elem, blender::float2 rang
     }
     case ChannelType::FCURVE: {
       fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag, range);
+      break;
+    }
+    case ChannelType::ANIMATION: {
+      animation_to_keylist(elem->adt, elem->anim, elem->keylist, elem->saction_flag, range);
       break;
     }
     case ChannelType::ACTION: {
@@ -694,6 +700,25 @@ void ED_add_action_group_channel(ChannelDrawList *channel_list,
       channel_list, ChannelType::ACTION_GROUP, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->agrp = agrp;
+  draw_elem->channel_locked = locked;
+}
+
+void ED_add_animation_channel(ChannelDrawList *channel_list,
+                              AnimData *adt,
+                              Animation *anim,
+                              const float ypos,
+                              const float yscale_fac,
+                              int saction_flag)
+{
+  BLI_assert(anim);
+
+  const bool locked = (anim && (ID_IS_LINKED(anim) || ID_IS_OVERRIDE_LIBRARY(anim)));
+  saction_flag &= ~SACTION_SHOW_EXTREMES;
+
+  ChannelListElement *draw_elem = channel_list_add_element(
+      channel_list, ChannelType::ANIMATION, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->adt = adt;
+  draw_elem->anim = anim;
   draw_elem->channel_locked = locked;
 }
 

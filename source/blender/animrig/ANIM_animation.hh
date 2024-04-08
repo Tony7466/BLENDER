@@ -160,6 +160,13 @@ class Animation : public ::Animation {
   /** Free all data in the `Animation`. Doesn't delete the `Animation` itself. */
   void free_data();
 
+  /* Flags access. */
+  enum class Flag : uint8_t { Expanded = (1 << 0) };
+  bool is_expanded()
+  {
+    return this->flag & uint8_t(Flag::Expanded);
+  }
+
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;
