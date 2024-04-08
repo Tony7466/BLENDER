@@ -90,7 +90,7 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
 
   VKVertexBuffer &src_vertex_buffer = *unwrap(src);
   src_vertex_buffer.upload();
-  render_graph::VKCopyBufferNode::Data copy_buffer = {};
+  render_graph::VKCopyBufferNode::CreateInfo copy_buffer = {};
   copy_buffer.src_buffer = src_vertex_buffer.vk_handle();
   copy_buffer.dst_buffer = buffer_.vk_handle();
 

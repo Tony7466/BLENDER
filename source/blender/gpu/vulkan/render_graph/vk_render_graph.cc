@@ -75,13 +75,10 @@ void VKRenderGraph::add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch
 
 void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout)
 {
-  std::scoped_lock lock(mutex_);
-  VKSynchronizationNode::Data synchronization = {};
-  NodeHandle handle = nodes_.add_node<VKSynchronizationNode, VKSynchronizationNode::Data>(
-      synchronization);
-  VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
-  resource_dependencies_.add_write_resource(
-      handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, vk_image_layout);
+  VKSynchronizationNode::CreateInfo synchronization = {};
+  synchronization.vk_image = vk_image;
+  synchronization.vk_image_layout = vk_image_layout;
+  add_node<VKSynchronizationNode, VKSynchronizationNode::CreateInfo>(synchronization);
 }
 
 void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)

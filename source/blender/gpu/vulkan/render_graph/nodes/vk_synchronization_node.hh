@@ -16,15 +16,20 @@
 namespace blender::gpu::render_graph {
 struct VKSynchronizationNode : NonCopyable {
   struct Data {};
+  struct CreateInfo {
+    VkImage vk_image;
+    VkImageLayout vk_image_layout;
+  };
 
   static constexpr bool uses_image_resources = true;
   static constexpr bool uses_buffer_resources = true;
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_NONE;
   static constexpr VKNodeType node_type = VKNodeType::SYNCHRONIZATION;
 
-  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.synchronization = data;
+    UNUSED_VARS(create_info);
+    node.synchronization = {};
   }
 
   template<typename Node> static void free_data(Node & /*node*/) {}
@@ -32,9 +37,11 @@ struct VKSynchronizationNode : NonCopyable {
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const Data &data)
+                                          const CreateInfo &create_info)
   {
-    NOT_YET_IMPLEMENTED
+    VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
+    dependencies.add_write_resource(
+        node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
   }
 
   static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)

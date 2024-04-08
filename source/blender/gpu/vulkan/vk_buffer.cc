@@ -116,7 +116,7 @@ void VKBuffer::flush() const
 
 void VKBuffer::clear(render_graph::VKRenderGraph &render_graph, uint32_t clear_value)
 {
-  render_graph::VKFillBufferNode::Data fill_buffer = {};
+  render_graph::VKFillBufferNode::CreateInfo fill_buffer = {};
   fill_buffer.vk_buffer = vk_buffer_;
   fill_buffer.size = size_in_bytes();
   fill_buffer.data = clear_value;

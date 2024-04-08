@@ -31,7 +31,7 @@ VKStagingBuffer::VKStagingBuffer(const VKBuffer &device_buffer, Direction direct
 void VKStagingBuffer::copy_to_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
-  render_graph::VKCopyBufferNode::Data copy_buffer = {};
+  render_graph::VKCopyBufferNode::CreateInfo copy_buffer = {};
   copy_buffer.src_buffer = host_buffer_.vk_handle();
   copy_buffer.dst_buffer = device_buffer_.vk_handle();
   copy_buffer.region.srcOffset = 0;
@@ -43,7 +43,7 @@ void VKStagingBuffer::copy_to_device(render_graph::VKRenderGraph &render_graph)
 void VKStagingBuffer::copy_from_device(render_graph::VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
-  render_graph::VKCopyBufferNode::Data copy_buffer = {};
+  render_graph::VKCopyBufferNode::CreateInfo copy_buffer = {};
   copy_buffer.src_buffer = device_buffer_.vk_handle();
   copy_buffer.dst_buffer = host_buffer_.vk_handle();
   copy_buffer.region.srcOffset = 0;

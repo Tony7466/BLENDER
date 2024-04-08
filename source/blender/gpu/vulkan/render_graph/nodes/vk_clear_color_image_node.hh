@@ -20,23 +20,24 @@ struct VKClearColorImageNode : NonCopyable {
     VkClearColorValue vk_clear_color_value;
     VkImageSubresourceRange vk_image_subresource_range;
   };
+  using CreateInfo = Data;
 
   static constexpr bool uses_image_resources = true;
   static constexpr bool uses_buffer_resources = false;
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::CLEAR_COLOR_IMAGE;
 
-  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.clear_color_image = data;
+    node.clear_color_image = create_info;
   }
 
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const Data &data)
+                                          const CreateInfo &create_info)
   {
-    VersionedResource resource = resources.get_image_and_increase_version(data.vk_image);
+    VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }

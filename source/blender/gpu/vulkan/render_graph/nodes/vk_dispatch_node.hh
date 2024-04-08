@@ -36,9 +36,9 @@ struct VKDispatchNode : NonCopyable {
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::DISPATCH;
 
-  template<typename Node> static void set_node_data(Node & /*node*/, const Data & /*data*/)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    NOT_YET_IMPLEMENTED
+    node.dispatch_node = create_info.dispatch_node;
   }
 
   template<typename Node> static void free_data(Node &node)
@@ -49,7 +49,7 @@ struct VKDispatchNode : NonCopyable {
   static void build_resource_dependencies(VKResources & /*resources*/,
                                           VKResourceDependencies & /*dependencies*/,
                                           NodeHandle /*node_handle*/,
-                                          const Data & /*data*/)
+                                          const CreateInfo & /*create_info*/)
   {
     NOT_YET_IMPLEMENTED
   }

@@ -24,15 +24,16 @@ struct VKBlitImageNode : NonCopyable {
     VkImageBlit region;
     VkFilter filter;
   };
+  using CreateInfo = Data;
 
   static constexpr bool uses_image_resources = true;
   static constexpr bool uses_buffer_resources = false;
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::BLIT_IMAGE;
 
-  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.blit_image = data;
+    node.blit_image = create_info;
   }
 
   template<typename Node> static void free_data(Node & /*node*/) {}
@@ -40,10 +41,11 @@ struct VKBlitImageNode : NonCopyable {
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const Data &data)
+                                          const CreateInfo &create_info)
   {
-    VersionedResource src_resource = resources.get_image(data.src_image);
-    VersionedResource dst_resource = resources.get_image_and_increase_version(data.dst_image);
+    VersionedResource src_resource = resources.get_image(create_info.src_image);
+    VersionedResource dst_resource = resources.get_image_and_increase_version(
+        create_info.dst_image);
     dependencies.add_read_resource(node_handle,
                                    src_resource,
                                    VK_ACCESS_TRANSFER_READ_BIT,

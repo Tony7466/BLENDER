@@ -20,24 +20,26 @@ struct VKCopyBufferNode : NonCopyable {
     VkBuffer dst_buffer;
     VkBufferCopy region;
   };
+  using CreateInfo = Data;
 
   static constexpr bool uses_image_resources = false;
   static constexpr bool uses_buffer_resources = true;
   static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
   static constexpr VKNodeType node_type = VKNodeType::COPY_BUFFER;
 
-  template<typename Node> static void set_node_data(Node &node, const Data &data)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.copy_buffer = data;
+    node.copy_buffer = create_info;
   }
 
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const Data &data)
+                                          const CreateInfo &create_info)
   {
-    VersionedResource src_resource = resources.get_buffer(data.src_buffer);
-    VersionedResource dst_resource = resources.get_buffer_and_increase_version(data.dst_buffer);
+    VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
+    VersionedResource dst_resource = resources.get_buffer_and_increase_version(
+        create_info.dst_buffer);
     dependencies.add_read_resource(
         node_handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
     dependencies.add_write_resource(

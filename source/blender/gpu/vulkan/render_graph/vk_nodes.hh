@@ -31,14 +31,14 @@ class VKNodes {
  public:
   NodeHandle add_dispatch_node(const VKDispatchNode::CreateInfo &dispatch_info);
 
-  template<typename NodeClass, typename NodeClassData>
-  NodeHandle add_node(const NodeClassData &node_data)
+  template<typename NodeClass, typename NodeCreateInfo>
+  NodeHandle add_node(const NodeCreateInfo &create_info)
   {
     NodeHandle node_handle = allocate();
     Node &node = nodes_.get(node_handle);
     BLI_assert(node.type == VKNodeType::UNUSED);
     node.type = NodeClass::node_type;
-    NodeClass::set_node_data(node, node_data);
+    NodeClass::set_node_data(node, create_info);
     return node_handle;
   }
 
