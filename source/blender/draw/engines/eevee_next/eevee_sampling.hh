@@ -146,12 +146,6 @@ class Sampling {
     return sample_;
   }
 
-  /* 0 based current sample. Increases sequentially in viewport and render. */
-  uint64_t sample_index_sequential() const
-  {
-    return viewport_sample_;
-  }
-
   /* Return true if we are starting a new motion blur step. We need to run sync again since
    * depsgraph was updated by MotionBlur::step(). */
   bool do_render_sync() const

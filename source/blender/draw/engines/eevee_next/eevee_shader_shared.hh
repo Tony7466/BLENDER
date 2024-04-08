@@ -937,7 +937,7 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
  * the GPU so that only lights of a certain type can read for the appropriate union member.
  * Return cross platform garbage data as some platform can return cleared memory if we early exit.
  */
-#if SAFE_UNION_ACCESS
+#ifdef SAFE_UNION_ACCESS
 #  ifdef GPU_SHADER
 #    define DATA_MEMBER do_not_access_directly
 
@@ -968,11 +968,6 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) \
     (_validity_check ? (_value) : _type(_garbage))
 #else
-#  if USE_LIGHT_UNION
-#    define DATA_MEMBER local
-#  else
-#    define DATA_MEMBER do_not_access_directly
-#  endif
 #  define SAFE_BEGIN(data_type, check) data_type data;
 #  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) _value
 #endif
