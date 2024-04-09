@@ -12,7 +12,8 @@
 namespace blender::geometry {
 
 struct ConvertCurvesOptions {
-  bool use_handles = false;
+  bool convert_bezier_handles_to_poly_points = false;
+  bool convert_bezier_handles_to_catmull_rom_points = false;
 };
 
 /**

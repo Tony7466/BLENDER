@@ -1401,7 +1401,8 @@ static int exec(bContext *C, wmOperator *op)
     }
 
     geometry::ConvertCurvesOptions options;
-    options.use_handles = use_handles;
+    options.convert_bezier_handles_to_poly_points = use_handles;
+    options.convert_bezier_handles_to_catmull_rom_points = use_handles;
     curves = geometry::convert_curves(curves, selection, dst_type, {}, options);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);

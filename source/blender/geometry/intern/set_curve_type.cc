@@ -636,7 +636,10 @@ static bke::CurvesGeometry convert_curves_to_catmull_rom_or_poly(
     const bke::AnonymousAttributePropagationInfo &propagation_info,
     const ConvertCurvesOptions &options)
 {
-  if (!options.use_handles || !src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
+  const bool use_bezier_handles = (dst_type == CURVE_TYPE_CATMULL_ROM) ?
+                                      options.convert_bezier_handles_to_catmull_rom_points :
+                                      options.convert_bezier_handles_to_poly_points;
+  if (!use_bezier_handles || !src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
     return convert_curves_trivial(src_curves, selection, dst_type);
   }
 
@@ -682,9 +685,16 @@ static bke::CurvesGeometry convert_curves_to_catmull_rom_or_poly(
        "handle_left",
        "nurbs_weight"});
 
-  auto catmull_rom_to_catmull_rom = [&](const IndexMask &selection) {};
-  auto poly_to_catmull_rom = [&](const IndexMask &selection) {};
-  auto bezier_to_catmull_rom = [&](const IndexMask &selection) {
+  auto convert_from_catmull_rom_or_poly_or_nurbs = [&](const IndexMask &selection) {
+    array_utils::copy_group_to_group(
+        src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
+    for (bke::AttributeTransferData &attribute : generic_attributes) {
+      array_utils::copy_group_to_group(
+          src_points_by_curve, dst_points_by_curve, selection, attribute.src, attribute.dst.span);
+    }
+  };
+
+  auto convert_from_bezier = [&](const IndexMask &selection) {
     const Span<float3> src_left_handles = src_curves.handle_positions_left();
     const Span<float3> src_right_handles = src_curves.handle_positions_right();
 
@@ -716,22 +726,14 @@ static bke::CurvesGeometry convert_curves_to_catmull_rom_or_poly(
       });
     }
   };
-  auto nurbs_to_catmull_rom = [&](const IndexMask &selection) {
-    array_utils::copy_group_to_group(
-        src_points_by_curve, dst_points_by_curve, selection, src_positions, dst_positions);
-    for (bke::AttributeTransferData &attribute : generic_attributes) {
-      array_utils::copy_group_to_group(
-          src_points_by_curve, dst_points_by_curve, selection, attribute.src, attribute.dst.span);
-    }
-  };
 
   bke::curves::foreach_curve_by_type(src_curves.curve_types(),
                                      src_curves.curve_type_counts(),
                                      selection,
-                                     catmull_rom_to_catmull_rom,
-                                     poly_to_catmull_rom,
-                                     bezier_to_catmull_rom,
-                                     nurbs_to_catmull_rom);
+                                     convert_from_catmull_rom_or_poly_or_nurbs,
+                                     convert_from_catmull_rom_or_poly_or_nurbs,
+                                     convert_from_bezier,
+                                     convert_from_catmull_rom_or_poly_or_nurbs);
 
   for (bke::AttributeTransferData &attribute : generic_attributes) {
     attribute.dst.finish();
