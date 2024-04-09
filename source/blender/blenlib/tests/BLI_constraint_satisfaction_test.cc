@@ -235,7 +235,7 @@ TEST(constraint_satisfaction, Sudoku)
           constraints.add_binary(var, other_var_in_col, inequality_fn);
         }
       }
-      for (const int other_row : IndexRange( int(row/3) * 3, 3)) {
+      for (const int other_row : IndexRange(int(row / 3) * 3, 3)) {
         for (const int other_col : IndexRange(int(col / 3) * 3, 3)) {
           const int other_var_in_block = other_row * 9 + other_col;
           if (other_var_in_block != var) {

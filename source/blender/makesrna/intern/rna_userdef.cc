@@ -7219,6 +7219,14 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       prop, "Extensions Development Utilities", "Developer support utilities for extensions");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "New Animation Data-block",
+      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
   prop = RNA_def_property(
       srna, "use_node_field_inferencing_constraint_solver", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_node_field_inferencing_constraint_solver", 1);

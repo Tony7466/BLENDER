@@ -28,9 +28,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
-static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
-
 using ed::greasepencil::MutableDrawingInfo;
 
 class TintOperation : public GreasePencilStrokeOperation {
@@ -104,8 +101,9 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
 
   screen_positions_per_drawing_.reinitialize(drawings_.size());
 
-  threading::parallel_for_each(drawings_.index_range(), [&](const int drawing_index) {
-    MutableDrawingInfo drawing_info = drawings_[drawing_index];
+  threading::parallel_for_each(drawings_, [&](const MutableDrawingInfo &drawing_info) {
+    const int drawing_index = (&drawing_info - drawings_.data());
+
     bke::CurvesGeometry &strokes = drawing_info.drawing.strokes_for_write();
     const Layer &layer = *grease_pencil.layers()[drawing_info.layer_index];
 
@@ -168,13 +166,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
     bke::CurvesGeometry &strokes = drawing.strokes_for_write();
 
     MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
-    bke::MutableAttributeAccessor stroke_attributes = strokes.attributes_for_write();
-    bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-        stroke_attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
-            "fill_color",
-            bke::AttrDomain::Curve,
-            bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
-                ColorGeometry4f(float4(0.0f)), strokes.curves_num())));
+    MutableSpan<ColorGeometry4f> fill_colors = drawing.fill_colors_for_write();
     OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
     const Span<float2> screen_space_positions =
@@ -217,7 +209,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
             }
           }
         }
-        if (tint_fills && !fill_colors.span.is_empty()) {
+        if (tint_fills && !fill_colors.is_empty()) {
           /* Will tint fill color when either the brush being inside the fill region or touching
            * the stroke. */
           const bool fill_effective = stroke_touched ||
@@ -227,12 +219,12 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
                                                           mouse_position);
           if (fill_effective) {
             float4 premultiplied;
-            straight_to_premul_v4_v4(premultiplied, fill_colors.span[curve]);
+            straight_to_premul_v4_v4(premultiplied, fill_colors[curve]);
             float4 rgba = float4(
                 math::interpolate(float3(premultiplied), float3(color_), fill_strength),
-                fill_colors.span[curve][3]);
+                fill_colors[curve][3]);
             rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
-            premul_to_straight_v4_v4(fill_colors.span[curve], rgba);
+            premul_to_straight_v4_v4(fill_colors[curve], rgba);
             stroke_touched = true;
           }
         }
@@ -241,11 +233,10 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
         }
       }
     });
-    fill_colors.finish();
   };
 
-  threading::parallel_for_each(drawings_.index_range(), [&](const int drawing_index) {
-    const MutableDrawingInfo &info = drawings_[drawing_index];
+  threading::parallel_for_each(drawings_, [&](const MutableDrawingInfo &info) {
+    const int drawing_index = (&info - drawings_.data());
     execute_tint_on_drawing(info.drawing, drawing_index);
   });
 

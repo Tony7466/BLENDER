@@ -840,8 +840,7 @@ static bool verify_field_inferencing_csp_result(
     const int var = variables.get_socket_variable(*socket);
     const BitSpan state = csp_result[var];
     const int num_values = int(state[DomainValue::Single]) + int(state[DomainValue::Field]);
-    if (num_values == 0)
-    {
+    if (num_values == 0) {
       log_error("No valid result");
       continue;
     }
@@ -849,28 +848,24 @@ static bool verify_field_inferencing_csp_result(
     if (use_propagation_result) {
       const SocketFieldState &old_state = field_state_by_socket_id[socket->index_in_tree()];
       if (old_state.is_always_single) {
-        if (!state[DomainValue::Single] || state[DomainValue::Field])
-        {
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
           log_error("Should only be single value");
         }
         continue;
       }
       if (!old_state.is_single) {
-        if (state[DomainValue::Single] || !state[DomainValue::Field])
-        {
+        if (state[DomainValue::Single] || !state[DomainValue::Field]) {
           log_error("Should only be field");
         }
         continue;
       }
       if (old_state.requires_single) {
-        if (!state[DomainValue::Single] || state[DomainValue::Field])
-        {
+        if (!state[DomainValue::Single] || state[DomainValue::Field]) {
           log_error("Should only be single value");
         }
         continue;
       }
-      if (!state[DomainValue::Single] || !state[DomainValue::Field])
-      {
+      if (!state[DomainValue::Single] || !state[DomainValue::Field]) {
         log_error("Should be single value or field");
       }
     }
@@ -1283,7 +1278,7 @@ static void solve_field_inferencing_constraints(
   update_socket_shapes(tree, variables, result);
 }
 
-template <typename Logger>
+template<typename Logger>
 static bool update_field_inferencing_ex(const bNodeTree &tree,
                                         const bool use_constraint_solver,
                                         Logger &logger)
@@ -1331,7 +1326,8 @@ static bool update_field_inferencing_ex(const bNodeTree &tree,
   return group_interface_changed;
 }
 
-bool update_field_inferencing(const bNodeTree &tree) {
+bool update_field_inferencing(const bNodeTree &tree)
+{
   csp::NullLogger logger;
   return update_field_inferencing_ex(
       tree, U.experimental.use_node_field_inferencing_constraint_solver, logger);
