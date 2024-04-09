@@ -1,2 +1,3 @@
 Referenced by issue #120144, Invert Visible doesn't invert Face Sets properly in Sculpt Mode
 Referenced by pull request #120160, Fix #120144: Invert Visible doesn't invert Face Sets properly
+Referenced by commit 1a37017244aed8d06ef809fa6cbdaa212c422874, Fix #120144: Invert Visible doesn't invert Face Sets properly
