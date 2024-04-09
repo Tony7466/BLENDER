@@ -47,6 +47,7 @@ bool WM_platform_assosiate_set(bool do_register, bool all_users)
         result = BLI_windows_unregister_blend_extension(false);
       }
     }
+  }
 #elif defined(__APPLE__)
   /* Pass. */
 #else
@@ -69,7 +70,7 @@ bool WM_platform_assosiate_set(bool do_register, bool all_users)
     CTX_free(C_temp);
   }
 #endif
-    return result;
-  }
+  return result;
+}
 
-  /** \} */
+/** \} */
