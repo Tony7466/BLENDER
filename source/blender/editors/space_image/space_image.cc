@@ -680,6 +680,53 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     ED_space_image_release_buffer(sima, ibuf, lock);
   }
 
+  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS && sima->flag & SI_DRAW_RENDER_SIZE) {
+    const int render_size_x = scene->r.xsch * scene->r.size * 0.01f;
+    const int render_size_y = scene->r.ysch * scene->r.size * 0.01f;
+
+    float zoomx, zoomy;
+    ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
+    int width, height;
+    ED_space_image_get_size(sima, &width, &height);
+    int center_x = width / 2;
+    int center_y = height / 2;
+
+    int x, y;
+    rcti render_region;
+    BLI_rcti_init(&render_region,
+                  0.0f + center_x,
+                  render_size_x + center_x,
+                  0.0f + center_y,
+                  render_size_y + center_y);
+    UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
+
+    ED_region_image_render_size_draw("Render Size", x, y, &render_region, zoomx, zoomy, true);
+  }
+
+  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS && sima->flag & SI_DRAW_COM_DOMAIN_SIZE) {
+
+    float zoomx, zoomy;
+    ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
+    int width, height;
+    ED_space_image_get_size(sima, &width, &height);
+    int center_x = width / 2;
+    int center_y = height / 2;
+
+    int offset_x = 0, offset_y = 0;
+    offset_x = sima->image->runtime.backdrop_offset[0];
+    offset_y = sima->image->runtime.backdrop_offset[1];
+
+    rcti domain_region;
+    BLI_rcti_init(&domain_region,
+                  0.0f + center_x + offset_x,
+                  width + center_x + offset_x,
+                  0.0f + center_y + offset_y,
+                  height + center_y + offset_y);
+    int x, y;
+    UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
+    ED_region_image_render_size_draw("Domain Size", x, y, &domain_region, zoomx, zoomy, false);
+  }
+
   /* sample line */
   UI_view2d_view_ortho(v2d);
   draw_image_sample_line(sima);

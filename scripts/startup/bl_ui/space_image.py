@@ -1709,6 +1709,8 @@ class IMAGE_PT_overlay_image(Panel):
 
         layout.active = overlay.show_overlays
         layout.prop(uvedit, "show_metadata")
+        layout.prop(uvedit, "show_render_size")
+        layout.prop(uvedit, "show_domain_size")
 
 
 # Grease Pencil properties

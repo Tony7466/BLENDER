@@ -1361,6 +1361,9 @@ typedef enum eSpaceImage_Flag {
   SI_SHOW_B = (1 << 29),
 
   SI_GRID_OVER_IMAGE = (1 << 30),
+
+  SI_DRAW_RENDER_SIZE = (1 << 31),
+  SI_DRAW_COM_DOMAIN_SIZE = (1 << 24),
 } eSpaceImage_Flag;
 
 typedef enum eSpaceImageOverlay_Flag {

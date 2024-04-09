@@ -64,6 +64,14 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *region, void *arg_
 void ED_region_image_metadata_draw(
     int x, int y, ImBuf *ibuf, const rctf *frame, float zoomx, float zoomy);
 
+void ED_region_image_render_size_draw(const char *title,
+                                      int x,
+                                      int y,
+                                      const rcti *frame,
+                                      float zoomx,
+                                      float zoomy,
+                                      bool draw_inside);
+
 /* Slider */
 
 struct tSlider;
