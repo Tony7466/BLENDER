@@ -128,7 +128,7 @@ static int convexhull_2d_sorted(const float (*points)[2], const int points_num, 
   i = minmax;
   while (++i <= maxmin) {
     /* The lower line joins `points[minmin]` with `points[maxmin]`. */
-    if (is_left(points[minmin], points[maxmin], points[i]) >= 0 && i < maxmin) {
+    if ((i < maxmin) && (is_left(points[minmin], points[maxmin], points[i]) >= 0)) {
       continue; /* Ignore `points[i]` above or on the lower line. */
     }
 
@@ -152,7 +152,7 @@ static int convexhull_2d_sorted(const float (*points)[2], const int points_num, 
   i = maxmin;
   while (--i >= minmax) {
     /* The upper line joins `points[maxmax]` with `points[minmax]`. */
-    if (is_left(points[maxmax], points[minmax], points[i]) >= 0 && i > minmax) {
+    if ((i > minmax) && (is_left(points[maxmax], points[minmax], points[i]) >= 0)) {
       continue; /* Ignore points[i] below or on the upper line. */
     }
 
@@ -481,7 +481,6 @@ static HullAngleIter convexhull_2d_angle_iter_init(const float (*points_hull)[2]
    * has a `sin` of 1.0 (which must always come first). */
   for (int axis = 0; axis < 2; axis++) {
     for (int i = 0; i < 2; i++) {
-      int count = 0;
       const int i_orig = hiter.axis[axis][i].index;
       int i_curr = i_orig, i_prev;
       /* Prevent an eternal loop (incredibly unlikely).
@@ -503,7 +502,6 @@ static HullAngleIter convexhull_2d_angle_iter_init(const float (*points_hull)[2]
         }
         i_curr = i_prev;
         hiter.axis[axis][i].index = i_curr;
-        count++;
       }
     }
   }
