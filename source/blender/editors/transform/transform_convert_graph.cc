@@ -889,28 +889,33 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
+  /* The grain size of 8 was chosen based on measured runtimes of this function. While 1 is the
+   * fastest, larger grain sizes are generally preferred and the difference between 1 and 8 was
+   * only minimal (~330ms to ~336ms). */
   blender::threading::parallel_for(fcurves.index_range(), 8, [&](const blender::IndexRange range) {
     for (const int i : range) {
       FCurve *fcu = fcurves[i];
 
-      if (fcu->bezt) {
-        BeztMap *bezm;
-
-        /* Adjust transform-data pointers. */
-        /* NOTE: none of these functions use 'use_handle', it could be removed. */
-        bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-        sort_time_beztmaps(bezm, fcu->totvert);
-        beztmap_to_data(t, fcu, bezm, fcu->totvert);
-
-        /* Free mapping stuff. */
-        MEM_freeN(bezm);
-
-        /* Re-sort actual beztriples
-         * (perhaps this could be done using the beztmaps to save time?). */
-        sort_time_fcurve(fcu);
-
-        testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
+      if (!fcu->bezt) {
+        continue;
       }
+
+      BeztMap *bezm;
+
+      /* Adjust transform-data pointers. */
+      /* NOTE: none of these functions use 'use_handle', it could be removed. */
+      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+      sort_time_beztmaps(bezm, fcu->totvert);
+      beztmap_to_data(t, fcu, bezm, fcu->totvert);
+
+      /* Free mapping stuff. */
+      MEM_freeN(bezm);
+
+      /* Re-sort actual beztriples
+       * (perhaps this could be done using the beztmaps to save time?). */
+      sort_time_fcurve(fcu);
+
+      testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
     }
   });
 }
