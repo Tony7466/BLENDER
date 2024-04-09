@@ -1,1 +1,2 @@
 Referenced by pull request #120299, Cycles: Properly default to Metal-RT off unless GPU is a M3 or newer
+Referenced by commit eff4fe24cf2fcd5f09c2a061005aeb61119ea8e1, Cycles: Properly default to Metal-RT off unless GPU is a M3 or newer
