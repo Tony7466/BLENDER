@@ -61,8 +61,9 @@ class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
   /**
    * Build the commands and add them to the command_buffer.
    */
-   void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKClearColorImageData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
+  void build_commands(VKCommandBufferInterface &command_buffer,
+                      const VKClearColorImageData &data,
+                      VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.clear_color_image(data.vk_image,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
