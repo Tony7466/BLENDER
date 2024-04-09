@@ -638,7 +638,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         break;
       }
     }
-    for (auto drawing_buffer : layer_buffer.drawing_buffers) {
+    for (DrawingBufferItem drawing_buffer : layer_buffer.drawing_buffers) {
       const int target_frame_number = drawing_buffer.frame_number + offset;
       if (layer->frames().contains(target_frame_number)) {
         layer->remove_frame(target_frame_number);
