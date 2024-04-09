@@ -5,6 +5,9 @@
 # TODO: file-type icons are currently not setup.
 # Currently `xdg-icon-resource` doesn't support SVG's, so we would need to generate PNG's.
 # Or wait until SVG's are supported, see: https://gitlab.freedesktop.org/xdg/xdg-utils/-/merge_requests/41
+#
+# NOTE: Typically this will run from Blender, you may also run this directly from Python
+# which can be useful for testing.
 
 __all__ = (
     "register",
@@ -13,6 +16,7 @@ __all__ = (
 
 import argparse
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -24,12 +28,10 @@ from typing import (
 
 VERBOSE = True
 
-# Initialize by `bpy` or command line arguments.
-BLENDER_BIN = ""
-# Set to `os.path.dirname(BLENDER_BIN)`.
-BLENDER_DIR = ""
 
-BLENDER_DESKTOP = "blender.desktop"
+# -----------------------------------------------------------------------------
+# Environment
+
 HOME_DIR = os.path.normpath(os.path.expanduser("~"))
 
 # https://wiki.archlinux.org/title/XDG_Base_Directory
@@ -38,26 +40,81 @@ XDG_DATA_HOME = os.environ.get("XDG_DATA_HOME") or os.path.join(HOME_DIR, ".loca
 
 HOMEDIR_LOCAL_BIN = os.path.join(HOME_DIR, ".local", "bin")
 
+BLENDER_ENV = "bpy" in sys.modules
+
+# -----------------------------------------------------------------------------
+# Programs
+
+# The command `xdg-mime` handles most of the file assosiation actions.
+XDG_MIME_PROG = shutil.which("xdg-mime") or ""
+
+# Initialize by `bpy` or command line arguments.
+BLENDER_BIN = ""
+# Set to `os.path.dirname(BLENDER_BIN)`.
+BLENDER_DIR = ""
+
+
+# -----------------------------------------------------------------------------
+# Path Constants
+
+# These files are included along side a portable Blender installation.
+BLENDER_DESKTOP = "blender.desktop"
+# The target binary.
+BLENDER_FILENAME = "blender"
+# The target binary (thumbnailer).
+BLENDER_THUMBNAILER_FILENAME = "blender-thumbnailer"
+
+
+# -----------------------------------------------------------------------------
+# Other Constants
+
+# The mime type Blender users.
+BLENDER_MIME = "application/x-blender"
 # Use `/usr/local` because this is not managed by the systems package manager.
 SYSTEM_PREFIX = "/usr/local"
-
-# Programs.
-XDG_MIME_PROG = shutil.which("xdg-mime") or ""
 
 
 # -----------------------------------------------------------------------------
 # Utility Functions
 
+
+# Display a short path, for nicer display only.
 def filepath_repr(filepath: str) -> str:
     if filepath.startswith(HOME_DIR):
         return "~" + filepath[len(HOME_DIR):]
     return filepath
 
 
+def system_path_contains(dirpath: str) -> bool:
+    dirpath = os.path.normpath(dirpath)
+    for path in os.environ.get("PATH", "").split(os.pathsep):
+        # `$PATH` can include relative locations.
+        path = os.path.normpath(os.path.abspath(path))
+        if path == dirpath:
+            return True
+    return False
+
+
+# When removing files to make way for newly copied file an `os.path.exists`
+# check isn't sufficient as the path may be a broken symbolic-link.
+def path_exists_or_is_link(path: str) -> bool:
+    return os.path.exists(path) or os.path.islink(path)
+
+
+def filepath_ensure_removed(path: str) -> bool:
+    if path_exists_or_is_link(path):
+        os.remove(path)
+        return True
+    return False
+
+
 # -----------------------------------------------------------------------------
 # Handle Associations
+#
+# On registration when handlers return False this causes registration to fail and unregister to be called.
+# Non fatal errors should print a message and return True instead.
 
-def handle_bin(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_bin(*, do_register: bool, all_users: bool) -> bool:
     if all_users:
         dirpath_dst = os.path.join(SYSTEM_PREFIX, "bin")
     else:
@@ -65,39 +122,38 @@ def handle_bin(*, do_unregister: bool, all_users: bool) -> bool:
 
     if VERBOSE:
         sys.stdout.write("- {:s} symbolic-links in: {:s}\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
             filepath_repr(dirpath_dst),
         ))
 
-    if not do_unregister:
-        found = False
-        for path in os.environ.get("PATH", "").split(os.pathsep):
-            # `$PATH` can include relative locations.
-            path = os.path.normpath(os.path.abspath(path))
-            if path == dirpath_dst:
-                found = True
-                break
-        if not found:
-            sys.stdout.write(
-                "The PATH environment variable doesn't contain \"{:s}\", not creating symlinks\n".format(dirpath_dst)
-            )
-            # NOTE: this is not an error, don't consider it a failure.
-            return True
+    if do_register:
+        if not all_users:
+            if not system_path_contains(dirpath_dst):
+                sys.stdout.write(
+                    "The PATH environment variable doesn't contain \"{:s}\", not creating symlinks\n".format(
+                        dirpath_dst,
+                    ))
+                # NOTE: this is not an error, don't consider it a failure.
+                return True
 
         os.makedirs(dirpath_dst, exist_ok=True)
 
     # Full path, then name to create at the destination.
     files_to_link = [
-        (BLENDER_BIN, "blender", False),
-        # Unfortunately the thumbnailer must be copied for `bwrap` to find it.
-        (os.path.join(BLENDER_DIR, "blender-thumbnailer"), "blender-thumbnailer", True),
+        (BLENDER_BIN, BLENDER_FILENAME, False),
     ]
+
+    blender_thumbnailer_src = os.path.join(BLENDER_DIR, BLENDER_THUMBNAILER_FILENAME)
+    if os.path.exists(blender_thumbnailer_src):
+        # Unfortunately the thumbnailer must be copied for `bwrap` to find it.
+        files_to_link.append((blender_thumbnailer_src, BLENDER_THUMBNAILER_FILENAME, True))
+    else:
+        sys.stdout.write("  Thumbnailer not found, skipping: \"{:s}\"\n".format(blender_thumbnailer_src))
 
     for filepath_src, filename, do_full_copy in files_to_link:
         filepath_dst = os.path.join(dirpath_dst, filename)
-        if os.path.exists(filepath_dst):
-            os.remove(filepath_dst)
-        if do_unregister:
+        filepath_ensure_removed(filepath_dst)
+        if not do_register:
             continue
 
         if not os.path.exists(filepath_src):
@@ -112,7 +168,7 @@ def handle_bin(*, do_unregister: bool, all_users: bool) -> bool:
     return True
 
 
-def handle_desktop_file(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_desktop_file(*, do_register: bool, all_users: bool) -> bool:
     # `cp ./blender.desktop ~/.local/share/applications/`
 
     filename = BLENDER_DESKTOP
@@ -129,17 +185,18 @@ def handle_desktop_file(*, do_unregister: bool, all_users: bool) -> bool:
 
     if VERBOSE:
         sys.stdout.write("- {:s} desktop-file: {:s}\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
             filepath_repr(filepath_desktop_dst),
         ))
 
-    if do_unregister:
-        if os.path.exists(filepath_desktop_dst):
-            os.remove(filepath_desktop_dst)
+    filepath_ensure_removed(filepath_desktop_dst)
+    if not do_register:
         return True
 
     if not os.path.exists(filepath_desktop_src):
-        sys.stderr.write("Desktop file not found, skipping: {:s}\n".format(filepath_desktop_src))
+        sys.stderr.write("Error: desktop file not found: {:s}\n".format(filepath_desktop_src))
+        # Unlike other missing things, this must be an error otherwise
+        # the MIME association fails which is the main purpose of registering types.
         return False
 
     os.makedirs(dirpath_dst, exist_ok=True)
@@ -154,7 +211,7 @@ def handle_desktop_file(*, do_unregister: bool, all_users: bool) -> bool:
     return True
 
 
-def handle_thumbnailer(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_thumbnailer(*, do_register: bool, all_users: bool) -> bool:
     filename = "blender.thumbnailer"
 
     if all_users:
@@ -167,16 +224,15 @@ def handle_thumbnailer(*, do_unregister: bool, all_users: bool) -> bool:
 
     if VERBOSE:
         sys.stdout.write("- {:s} thumbnailer: {:s}\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
             filepath_repr(filepath_thumbnailer_dst),
         ))
 
-    if do_unregister:
-        if os.path.exists(filepath_thumbnailer_dst):
-            os.remove(filepath_thumbnailer_dst)
+    filepath_ensure_removed(filepath_thumbnailer_dst)
+    if not do_register:
         return True
 
-    blender_thumbnailer_bin = os.path.join(BLENDER_DIR, "blender-thumbnailer")
+    blender_thumbnailer_bin = os.path.join(BLENDER_DIR, BLENDER_THUMBNAILER_FILENAME)
     if not os.path.exists(blender_thumbnailer_bin):
         sys.stderr.write("Thumbnailer not found, this may not be a portable installation: {:s}\n".format(
             blender_thumbnailer_bin,
@@ -189,7 +245,7 @@ def handle_thumbnailer(*, do_unregister: bool, all_users: bool) -> bool:
     # with wrapper that means the command *must* be in the users `$PATH`.
     # and it cannot be a SYMLINK.
     if shutil.which("bwrap") is not None:
-        command = "blender-thumbnailer"
+        command = BLENDER_THUMBNAILER_FILENAME
     else:
         command = blender_thumbnailer_bin
 
@@ -197,11 +253,11 @@ def handle_thumbnailer(*, do_unregister: bool, all_users: bool) -> bool:
         fh.write("[Thumbnailer Entry]\n")
         fh.write("TryExec={:s}\n".format(command))
         fh.write("Exec={:s} %i %o\n".format(command))
-        fh.write("MimeType=application/x-blender;\n")
+        fh.write("MimeType={:s};\n".format(BLENDER_MIME))
     return True
 
 
-def handle_mime_association_xml(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
     # `xdg-mime install x-blender.xml`
     filename = "x-blender.xml"
 
@@ -216,11 +272,11 @@ def handle_mime_association_xml(*, do_unregister: bool, all_users: bool) -> bool
 
     if VERBOSE:
         sys.stdout.write("- {:s} mime type: {:s}\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
             filepath_repr(package_xml_dst),
         ))
 
-    if do_unregister:
+    if not do_register:
         if not os.path.exists(package_xml_dst):
             return True
         # NOTE: `xdg-mime query default application/x-blender` could be used to check
@@ -236,11 +292,12 @@ def handle_mime_association_xml(*, do_unregister: bool, all_users: bool) -> bool
         return True
 
     with tempfile.TemporaryDirectory() as tempdir:
-        package_xml_src = os.path.join(tempdir, "x-blender.xml")
+        package_xml_src = os.path.join(tempdir, filename)
         with open(package_xml_src, mode="w", encoding="utf-8") as fh:
             fh.write("""<?xml version="1.0" encoding="UTF-8"?>\n""")
             fh.write("""<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">\n""")
-            fh.write("""  <mime-type type="application/x-blender">\n""")
+            fh.write("""  <mime-type type="{:s}">\n""".format(BLENDER_MIME))
+            # NOTE: not using a trailing full-stop seems to be the convention here.
             fh.write("""    <comment>Blender scene</comment>\n""")
             fh.write("""    <glob pattern="*.blend"/>\n""")
             # TODO: this doesn't seem to work, GNOME's Nautilus & KDE's Dolphin
@@ -260,29 +317,29 @@ def handle_mime_association_xml(*, do_unregister: bool, all_users: bool) -> bool
     return True
 
 
-def handle_mime_association_default(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_mime_association_default(*, do_register: bool, all_users: bool) -> bool:
     # `xdg-mime default blender.desktop application/x-blender`
 
     if VERBOSE:
         sys.stdout.write("- {:s} mime type as default\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
         ))
 
     # NOTE: there doesn't seem to be a way to reverse this action.
-    if do_unregister:
+    if not do_register:
         return True
 
     cmd = (
         XDG_MIME_PROG,
         "default",
         BLENDER_DESKTOP,
-        "application/x-blender",
+        BLENDER_MIME,
     )
     subprocess.check_output(cmd)
     return True
 
 
-def handle_icon(*, do_unregister: bool, all_users: bool) -> bool:
+def handle_icon(*, do_register: bool, all_users: bool) -> bool:
     # `cp ~/`
     filename = "blender.svg"
     if all_users:
@@ -297,18 +354,18 @@ def handle_icon(*, do_unregister: bool, all_users: bool) -> bool:
 
     if VERBOSE:
         sys.stdout.write("- {:s} icon: {:s}\n".format(
-            ("Setup", "Remove")[do_unregister],
+            ("Setup" if do_register else "Remove"),
             filepath_repr(filepath_desktop_dst),
         ))
 
-    if do_unregister:
-        if os.path.exists(filepath_desktop_dst):
-            os.remove(filepath_desktop_dst)
+    filepath_ensure_removed(filepath_desktop_dst)
+    if not do_register:
         return True
 
     if not os.path.exists(filepath_desktop_src):
-        sys.stderr.write("Icon file not found, skipping: \"{:s}\"\n".format(filepath_desktop_src))
-        return False
+        sys.stderr.write("  Icon file not found, skipping: \"{:s}\"\n".format(filepath_desktop_src))
+        # Not an error.
+        return True
 
     os.makedirs(dirpath_dst, exist_ok=True)
 
@@ -322,35 +379,54 @@ def handle_icon(*, do_unregister: bool, all_users: bool) -> bool:
 
 
 # -----------------------------------------------------------------------------
+# Escalate Privileges
+
+def main_run_as_root_if_needed(do_register: bool) -> Optional[bool]:
+    if os.geteuid() == 0:
+        # Already an admin, run this script with escalated privileges.
+        return None
+
+    prog: Optional[str] = shutil.which("pkexec")
+    if prog is None:
+        sys.stderr.write("Error: command \"pkexec\" not found\n")
+        return False
+
+    cmd = [
+        prog,
+        sys.executable,
+        # Skips users `site-packages`.
+        "-s",
+        __file__,
+        BLENDER_BIN,
+        "--action={:s}".format("register-allusers" if do_register else "unregister-allusers"),
+    ]
+    if VERBOSE:
+        sys.stdout.write("Executing: {:s}\n".format(shlex.join(cmd)))
+
+    proc = subprocess.run(cmd)
+    return proc.returncode == 0
+
+
+# -----------------------------------------------------------------------------
 # Main Registration Functions
 
-def register_impl(do_unregister: bool, all_users: bool) -> bool:
+def register_impl(do_register: bool, all_users: bool) -> bool:
     global BLENDER_BIN
     global BLENDER_DIR
 
-    if BLENDER_BIN == "":
+    if BLENDER_ENV:
         # Only use of `bpy`.
         BLENDER_BIN = os.path.normpath(__import__("bpy").app.binary_path)
 
-    BLENDER_DIR = os.path.dirname(BLENDER_BIN)
+        # Running inside Blender, detect the need for privilege escalation (which will run outside of Blender).
+        if all_users:
+            if (result := main_run_as_root_if_needed(do_register)) is not None:
+                return result
+            del result
+    else:
+        assert BLENDER_BIN != ""
 
-    if all_users:
-        # Not an admin, run this script with escalated privileges.
-        if os.geteuid() != 0:
-            prog: Optional[str] = shutil.which("pkexec")
-            if prog is None:
-                sys.stderr.write("Error: \"pkexec\" not found\n")
-                return False
-            proc = subprocess.run(
-                [
-                    prog,
-                    sys.executable,
-                    __file__,
-                    BLENDER_BIN,
-                    ("--register-allusers", "--unregister-allusers")[do_unregister],
-                ]
-            )
-            return proc.returncode == 0
+    BLENDER_DIR = os.path.dirname(BLENDER_BIN)
 
     if all_users:
         if not os.access(SYSTEM_PREFIX, os.W_OK):
@@ -360,78 +436,66 @@ def register_impl(do_unregister: bool, all_users: bool) -> bool:
             return False
 
     if VERBOSE:
-        print(("Register:", "Unregister:")[do_unregister], BLENDER_BIN)
+        sys.stdout.write("{:s}: {:s}\n".format("Register" if do_register else "Unregister", BLENDER_BIN))
 
     if XDG_MIME_PROG == "":
         sys.stderr.write("Could not find \"xdg-mime\", unable to associate mime-types\n")
         return False
 
     ok = True
-    ok &= handle_bin(do_unregister=do_unregister, all_users=all_users)
-    ok &= handle_desktop_file(do_unregister=do_unregister, all_users=all_users)
-    ok &= handle_mime_association_xml(do_unregister=do_unregister, all_users=all_users)
-    ok &= handle_mime_association_default(do_unregister=do_unregister, all_users=all_users)
-    ok &= handle_icon(do_unregister=do_unregister, all_users=all_users)
+    ok &= handle_bin(do_register=do_register, all_users=all_users)
+    ok &= handle_desktop_file(do_register=do_register, all_users=all_users)
+    ok &= handle_mime_association_xml(do_register=do_register, all_users=all_users)
+    ok &= handle_mime_association_default(do_register=do_register, all_users=all_users)
+    ok &= handle_icon(do_register=do_register, all_users=all_users)
 
     # The thumbnailer only works when installed for all users.
     if all_users:
-        ok &= handle_thumbnailer(do_unregister=do_unregister, all_users=all_users)
+        ok &= handle_thumbnailer(do_register=do_register, all_users=all_users)
+
+    # Roll back registration on failure.
+    if not ok:
+        if do_register:
+            register_impl(False, all_users)
+
     return ok
 
 
 def register(all_users: bool = False) -> bool:
-    ok = register_impl(False, all_users)
-    if not ok:
-        # Unregister if we had any errors.
-        register_impl(True, all_users)
-    return ok
-
-
-def unregister(all_users: bool = False) -> bool:
     return register_impl(True, all_users)
 
 
+def unregister(all_users: bool = False) -> bool:
+    return register_impl(False, all_users)
+
+
 # -----------------------------------------------------------------------------
-# Running directly
+# Running directly (Escalated Privileges)
 #
 # Needed when running as an administer.
+
+register_actions = {
+    "register": (True, False),
+    "unregister": (False, False),
+    "register-allusers": (True, True),
+    "unregister-allusers": (False, True),
+}
+
 
 def argparse_create() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "blender_bin",
-        metavar='INSTALL_DIR',
+        metavar="BLENDER_BIN",
         type=str,
         help="The location of Blender's binary",
     )
-    # Match blender's args.
+
     parser.add_argument(
-        "--register",
-        dest="register",
-        default=False,
-        action="store_true",
-        required=False,
-    )
-    parser.add_argument(
-        "--unregister",
-        dest="unregister",
-        default=False,
-        action="store_true",
-        required=False,
-    )
-    parser.add_argument(
-        "--register-allusers",
-        dest="register_all_users",
-        default=False,
-        action="store_true",
-        required=False,
-    )
-    parser.add_argument(
-        "--unregister-allusers",
-        dest="unregister_all_users",
-        default=False,
-        action="store_true",
-        required=False,
+        "--action",
+        choices=register_actions.keys(),
+        dest="register_action",
+        required=True,
     )
 
     return parser
@@ -442,16 +506,9 @@ def main() -> int:
     assert BLENDER_BIN == ""
     args = argparse_create().parse_args()
     BLENDER_BIN = args.blender_bin
-    if args.register:
-        do_unregister, all_users = False, False
-    elif args.unregister:
-        do_unregister, all_users = True, False
-    elif args.register_all_users:
-        do_unregister, all_users = False, True
-    elif args.unregister_all_users:
-        do_unregister, all_users = True, True
+    do_register, all_users = register_actions[args.register_action]
 
-    if not do_unregister:
+    if do_register:
         result = register(all_users=all_users)
     else:
         result = unregister(all_users=all_users)
