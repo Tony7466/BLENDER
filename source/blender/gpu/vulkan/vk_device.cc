@@ -29,12 +29,7 @@ extern "C" char datatoc_glsl_shader_defines_glsl[];
 
 namespace blender::gpu {
 
-VKDevice::VKDevice()
-    : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(),
-                    std::make_unique<render_graph::Sequential>(),
-                    resources_)
-{
-}
+VKDevice::VKDevice() {}
 
 void VKDevice::reinit()
 {
@@ -49,7 +44,6 @@ void VKDevice::deinit()
     return;
   }
 
-  render_graph_.deinit();
   timeline_semaphore_.free(*this);
   dummy_buffer_.free();
   if (dummy_color_attachment_.has_value()) {
@@ -171,7 +165,6 @@ void VKDevice::init_dummy_buffer()
   dummy_buffer_.create(sizeof(float4x4),
                        GPU_USAGE_DEVICE_ONLY,
                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  dummy_buffer_.clear(render_graph_get(), 0);
 }
 
 void VKDevice::init_dummy_color_attachment()

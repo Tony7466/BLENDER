@@ -46,6 +46,8 @@ class VKRenderGraph : public NonCopyable {
 
   /**
    * Not owning pointer to device resources.
+   *
+   * Is marked optional as device could
    */
   VKResources &resources_;
 
@@ -54,7 +56,9 @@ class VKRenderGraph : public NonCopyable {
                 std::unique_ptr<VKScheduler> sorting_strategy,
                 VKResources &resources);
 
-  /** Free all resources held by the render graph. */
+  /**
+   * Free all resources held by the render graph.
+   */
   void deinit();
 
  private:

@@ -24,7 +24,7 @@ VKStorageBuffer::VKStorageBuffer(int size, GPUUsageType usage, const char *name)
 void VKStorageBuffer::update(const void *data)
 {
   ensure_allocated();
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   staging_buffer.host_buffer_get().update(data);
   staging_buffer.copy_to_device(render_graph);
@@ -80,7 +80,7 @@ void VKStorageBuffer::unbind()
 void VKStorageBuffer::clear(uint32_t clear_value)
 {
   ensure_allocated();
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   buffer_.clear(render_graph, clear_value);
 }
 
@@ -98,7 +98,7 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
   copy_buffer.region.dstOffset = dst_offset;
   copy_buffer.region.size = copy_size;
 
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   render_graph.add_node(copy_buffer);
 }
 
@@ -110,7 +110,7 @@ void VKStorageBuffer::async_flush_to_host()
 void VKStorageBuffer::read(void *data)
 {
   ensure_allocated();
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(render_graph);
   render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());

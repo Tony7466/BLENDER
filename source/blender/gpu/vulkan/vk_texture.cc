@@ -154,8 +154,8 @@ void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspe
   copy_image.region.dstSubresource.layerCount = vk_layer_count(1);
   copy_image.region.extent = vk_extent_3d(0);
 
-  VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_node(copy_image);
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
+  render_graph.add_node(copy_image);
 }
 
 void VKTexture::copy_to(Texture *tex)
@@ -183,8 +183,8 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
   clear_color_image.vk_image_subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
   clear_color_image.vk_image_subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-  VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_node(clear_color_image);
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
+  render_graph.add_node(clear_color_image);
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
@@ -256,8 +256,7 @@ void VKTexture::read_sub(
   copy_image_to_buffer.region.imageSubresource.baseArrayLayer = layers.start();
   copy_image_to_buffer.region.imageSubresource.layerCount = layers.size();
 
-  VKDevice &device = VKBackend::get().device_get();
-  render_graph::VKRenderGraph &render_graph = device.render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   render_graph.add_node(copy_image_to_buffer);
   render_graph.submit_buffer_for_read_back(staging_buffer.vk_handle());
 
@@ -353,8 +352,8 @@ void VKTexture::update_sub(
   copy_buffer_to_image.region.imageSubresource.mipLevel = mip;
   copy_buffer_to_image.region.imageSubresource.layerCount = layers;
 
-  VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_node(copy_buffer_to_image);
+  render_graph::VKRenderGraph &render_graph = context.render_graph_get();
+  render_graph.add_node(copy_buffer_to_image);
 }
 
 void VKTexture::update_sub(int /*offset*/[3],
@@ -419,8 +418,8 @@ bool VKTexture::init_internal(VertBuf *vbo)
   copy_buffer_to_image.region.imageSubresource.mipLevel = 0;
   copy_buffer_to_image.region.imageSubresource.layerCount = 1;
 
-  VKDevice &device = VKBackend::get().device_get();
-  device.render_graph_get().add_node(copy_buffer_to_image);
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
+  render_graph.add_node(copy_buffer_to_image);
 
   return true;
 }

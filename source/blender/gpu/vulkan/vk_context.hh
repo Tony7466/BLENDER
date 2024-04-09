@@ -12,8 +12,7 @@
 
 #include "GHOST_Types.h"
 
-#include "render_graph/nodes/vk_dispatch_node.hh"
-#include "render_graph/vk_types.hh"
+#include "render_graph/vk_render_graph.hh"
 #include "vk_command_buffers.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
@@ -36,10 +35,11 @@ class VKContext : public Context, NonCopyable {
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
+  render_graph::VKRenderGraph render_graph_;
   render_graph::VKDispatchNode::CreateInfo dispatch_info_ = {};
 
  public:
-  VKContext(void *ghost_window, void *ghost_context);
+  VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources);
   virtual ~VKContext();
 
   void activate() override;
@@ -75,6 +75,11 @@ class VKContext : public Context, NonCopyable {
   static VKContext *get()
   {
     return static_cast<VKContext *>(Context::get());
+  }
+
+  render_graph::VKRenderGraph &render_graph_get()
+  {
+    return render_graph_;
   }
 
   VKCommandBuffers &command_buffers_get()

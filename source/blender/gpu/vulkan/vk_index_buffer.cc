@@ -29,7 +29,7 @@ void VKIndexBuffer::ensure_updated()
     return;
   }
 
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   staging_buffer.host_buffer_get().update(data_);
   staging_buffer.copy_to_device(render_graph);
@@ -73,7 +73,7 @@ void VKIndexBuffer::try_add_to_descriptor_set(
 
 void VKIndexBuffer::read(uint32_t *data) const
 {
-  render_graph::VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(render_graph);
   render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());

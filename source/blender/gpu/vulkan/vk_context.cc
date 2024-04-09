@@ -21,7 +21,11 @@
 
 namespace blender::gpu {
 
-VKContext::VKContext(void *ghost_window, void *ghost_context)
+VKContext::VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources)
+    : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(),
+                    std::make_unique<render_graph::Sequential>(),
+                    resources)
+
 {
   ghost_window_ = ghost_window;
   ghost_context_ = ghost_context;
@@ -42,6 +46,7 @@ VKContext::~VKContext()
     surface_texture_ = nullptr;
   }
   VKBackend::get().device_.context_unregister(*this);
+  render_graph_.deinit();
 
   delete imm;
   imm = nullptr;

@@ -144,7 +144,7 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
   dispatch_info.dispatch_node.group_count_x = groups_x_len;
   dispatch_info.dispatch_node.group_count_y = groups_y_len;
   dispatch_info.dispatch_node.group_count_z = groups_z_len;
-  render_graph::VKRenderGraph &render_graph = device_get().render_graph_get();
+  render_graph::VKRenderGraph &render_graph = context.render_graph_get();
   render_graph.add_node(dispatch_info);
 }
 
@@ -173,7 +173,7 @@ Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
     device_.init(ghost_context);
   }
 
-  VKContext *context = new VKContext(ghost_window, ghost_context);
+  VKContext *context = new VKContext(ghost_window, ghost_context, device_.resources_get());
   device_.context_register(*context);
   GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
                                       VKContext::swap_buffers_pre_callback,
