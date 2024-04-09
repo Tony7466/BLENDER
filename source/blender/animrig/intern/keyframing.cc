@@ -1164,8 +1164,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     return combined_result;
   }
 
-  if (adt->animation || !adt->action) {
-    /* TODO: This should only execute with an experimental flag enabled. */
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && (adt->animation || !adt->action)) {
     /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);
     if (anim == nullptr) {
