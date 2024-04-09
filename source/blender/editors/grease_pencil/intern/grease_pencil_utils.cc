@@ -681,7 +681,6 @@ IndexMask retrieve_editable_and_selected_strokes(Object &object,
   using namespace blender;
 
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange curves_range = drawing.strokes().curves_range();
 
   const IndexMask editable_strokes = retrieve_editable_strokes(object, drawing, memory);
   const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
@@ -694,7 +693,6 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = drawing.strokes().points_range();
 
   const IndexMask editable_points = retrieve_editable_points(object, drawing, memory);
   const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
