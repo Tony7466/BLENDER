@@ -106,7 +106,7 @@ SliderMode ED_slider_mode_get(const tSlider *slider);
 void ED_slider_unit_set(tSlider *slider, const char *unit);
 /* Set a name that will show next to the slider to indicate which property is modified currently.
  * To clear, set to an empty string. */
-void ED_slider_property_name_set(tSlider *slider, const char *prop_name);
+void ED_slider_property_label_set(tSlider *slider, const char *prop_name);
 
 /* ************** XXX OLD CRUFT WARNING ************* */
 

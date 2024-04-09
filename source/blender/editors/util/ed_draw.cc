@@ -55,7 +55,6 @@
 #define SLIDE_PIXEL_DISTANCE (300.0f * UI_SCALE_FAC)
 #define OVERSHOOT_RANGE_DELTA 0.2f
 #define SLIDER_UNIT_STRING_SIZE 64
-#define SLIDER_PROPERTY_STRING_SIZE 64
 
 struct tSlider {
   Scene *scene;
@@ -84,7 +83,7 @@ struct tSlider {
 
   /* Optional string that will display next to the slider to indicate which property is modified
    * right now. */
-  char property_name[SLIDER_PROPERTY_STRING_SIZE];
+  std::string property_label;
 
   /* What unit to add to the slider. */
   char unit_string[SLIDER_UNIT_STRING_SIZE];
@@ -230,7 +229,7 @@ static void draw_backdrop(const int fontid,
                           const uint8_t color_bg[4],
                           const short region_y_size,
                           const float base_tick_height,
-                          const char *property_name)
+                          const std::string &property_label)
 {
   float string_pixel_size[2];
   const char *percentage_string_placeholder = "000%%";
@@ -242,8 +241,8 @@ static void draw_backdrop(const int fontid,
 
   float property_name_pixel_size[2];
   BLF_width_and_height(fontid,
-                       property_name,
-                       SLIDER_PROPERTY_STRING_SIZE,
+                       property_label.c_str(),
+                       property_label.size(),
                        &property_name_pixel_size[0],
                        &property_name_pixel_size[1]);
   const float pad[2] = {(region_y_size - base_tick_height) / 2 + 12.0f * U.pixelsize,
@@ -323,7 +322,7 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                 color_bg,
                 slider->region_header->winy,
                 base_tick_height,
-                slider->property_name);
+                slider->property_label);
 
   draw_main_line(&main_line_rect, slider->factor, slider->overshoot, color_overshoot, color_line);
 
@@ -382,18 +381,18 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
       fontid, factor_string_pos_x, (region->winy / 2) - factor_string_pixel_size[1] / 2, 0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
 
-  if (slider->property_name) {
+  if (!slider->property_label.empty()) {
     float property_name_pixel_size[2];
     BLF_width_and_height(fontid,
-                         slider->property_name,
-                         sizeof(slider->property_name),
+                         slider->property_label.c_str(),
+                         sizeof(slider->property_label),
                          &property_name_pixel_size[0],
                          &property_name_pixel_size[1]);
     BLF_position(fontid,
                  main_line_rect.xmax + text_padding,
                  (region->winy / 2) - property_name_pixel_size[1] / 2,
                  0.0f);
-    BLF_draw(fontid, slider->property_name, sizeof(slider->property_name));
+    BLF_draw(fontid, slider->property_label.c_str(), sizeof(slider->property_label));
   }
 }
 
@@ -618,9 +617,9 @@ void ED_slider_unit_set(tSlider *slider, const char *unit)
   STRNCPY(slider->unit_string, unit);
 }
 
-void ED_slider_property_name_set(tSlider *slider, const char *prop_name)
+void ED_slider_property_label_set(tSlider *slider, const char *property_label)
 {
-  STRNCPY(slider->property_name, prop_name);
+  slider->property_label.assign(property_label);
 }
 
 /** \} */
