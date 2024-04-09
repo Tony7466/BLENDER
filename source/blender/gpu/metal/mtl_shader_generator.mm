@@ -22,10 +22,10 @@
 
 #include <cstring>
 
-#include "GPU_platform.h"
-#include "GPU_vertex_format.h"
+#include "GPU_platform.hh"
+#include "GPU_vertex_format.hh"
 
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #include "mtl_common.hh"
 #include "mtl_context.hh"
@@ -3166,10 +3166,11 @@ std::string MSLGeneratorInterface::generate_msl_vertex_attribute_input_populatio
           &do_attribute_conversion_on_read, this->vertex_input_attributes[attribute].type);
 
       if (do_attribute_conversion_on_read) {
-        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert" << attribute
-            << ", v_in." << this->vertex_input_attributes[attribute].name << ", "
-            << shader_stage_inst_name << "." << this->vertex_input_attributes[attribute].name
-            << ");" << std::endl;
+        BLI_assert(this->vertex_input_attributes[attribute].layout_location >= 0);
+        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert"
+            << this->vertex_input_attributes[attribute].layout_location << ", v_in."
+            << this->vertex_input_attributes[attribute].name << ", " << shader_stage_inst_name
+            << "." << this->vertex_input_attributes[attribute].name << ");" << std::endl;
       }
       else {
         out << "\t" << shader_stage_inst_name << "."

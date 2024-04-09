@@ -59,7 +59,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "graph_intern.h"
+#include "graph_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Insert Keyframes Operator
@@ -115,7 +115,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
   Scene *scene = ac->scene;
   ToolSettings *ts = scene->toolsettings;
-  eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
@@ -146,7 +145,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
 
   /* Init key-framing flag. */
-  flag = ANIM_get_keyframing_flags(scene);
+  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene);
   KeyframeSettings settings = get_keyframe_settings(true);
   settings.keyframe_type = eBezTriple_KeyframeType(ts->keyframe_type);
 
@@ -210,7 +209,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
         insert_keyframe(ac->bmain,
                         reports,
                         ale->id,
-                        nullptr,
                         ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
                         fcu->rna_path,
                         fcu->array_index,
@@ -1839,7 +1837,7 @@ static ListBase /*tEulerFilter*/ euler_filter_group_channels(
      * saves another loop over the animation data. */
     ale->update |= ANIM_UPDATE_DEFAULT;
 
-    /* Optimization: assume that xyz curves will always be stored consecutively,
+    /* Optimization: assume that XYZ curves will always be stored consecutively,
      * so if the paths or the ID's don't match up, then a curve needs to be added
      * to a new group.
      */

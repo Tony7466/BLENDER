@@ -77,8 +77,12 @@ void device_metal_info(vector<DeviceInfo> &devices)
       if (@available(macos 14.0, *)) {
         info.use_hardware_raytracing = device.supportsRaytracing;
 
-        /* Use hardware raytracing for faster rendering on architectures that support it. */
-        info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >= APPLE_M3);
+        info.use_metalrt_by_default = false;
+        if (vendor == METAL_GPU_APPLE) {
+          /* Use hardware raytracing for faster rendering on architectures that support it. */
+          info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >=
+                                         APPLE_M3);
+        }
       }
     }
 #  endif
@@ -89,7 +93,7 @@ void device_metal_info(vector<DeviceInfo> &devices)
     VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
 
     if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
-      VLOG_INFO << "Device with id \"" << info.id << "\" is supporting "
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
                 << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 }

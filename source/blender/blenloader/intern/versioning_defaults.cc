@@ -47,7 +47,7 @@
 #include "BKE_curveprofile.h"
 #include "BKE_customdata.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
@@ -200,6 +200,44 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
+
+      /* Level out the 3D Viewport camera rotation, see: #113751. */
+      constexpr float viewports_to_level[][4] = {
+          /* Animation, Modeling, Scripting, Texture Paint, UV Editing. */
+          {0x1.6e7cb8p-1, -0x1.c1747p-2, -0x1.2997dap-2, -0x1.d5d806p-2},
+          /* Layout. */
+          {0x1.6e7cb8p-1, -0x1.c17478p-2, -0x1.2997dcp-2, -0x1.d5d80cp-2},
+          /* Geometry Nodes. */
+          {0x1.6e7cb6p-1, -0x1.c17476p-2, -0x1.2997dep-2, -0x1.d5d80cp-2},
+      };
+
+      constexpr float viewports_to_clear_ofs[][4] = {
+          /* Geometry Nodes. */
+          {0x1.6e7cb6p-1, -0x1.c17476p-2, -0x1.2997dep-2, -0x1.d5d80cp-2},
+          /* Sculpting. */
+          {0x1.885b28p-1, -0x1.2d10cp-1, -0x1.42ae54p-3, -0x1.a486a2p-3},
+      };
+
+      constexpr float unified_viewquat[4] = {
+          0x1.6cbc88p-1, -0x1.c3a5c8p-2, -0x1.26413ep-2, -0x1.db430ap-2};
+
+      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+        if (region->regiontype == RGN_TYPE_WINDOW) {
+          RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+
+          for (int i = 0; i < ARRAY_SIZE(viewports_to_clear_ofs); i++) {
+            if (equals_v4v4(rv3d->viewquat, viewports_to_clear_ofs[i])) {
+              zero_v3(rv3d->ofs);
+            }
+          }
+
+          for (int i = 0; i < ARRAY_SIZE(viewports_to_level); i++) {
+            if (equals_v4v4(rv3d->viewquat, viewports_to_level[i])) {
+              copy_qt_qt(rv3d->viewquat, unified_viewquat);
+            }
+          }
+        }
+      }
     }
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);
@@ -330,10 +368,10 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   scene->eevee.flag |= SCE_EEVEE_SHADOW_SOFT;
 
   /* Default Rotate Increment. */
-  const float default_snap_angle_increment = DEG2RADF(15.0f);
+  const float default_snap_angle_increment = DEG2RADF(5.0f);
   scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
   scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
-  const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
+  const float default_snap_angle_increment_precision = DEG2RADF(1.0f);
   scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
   scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
 
@@ -543,9 +581,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
         if (layout->screen) {
           bScreen *screen = layout->screen;
           if (!STREQ(screen->id.name + 2, workspace->id.name + 2)) {
-            BKE_main_namemap_remove_name(bmain, &screen->id, screen->id.name + 2);
-            BLI_strncpy(screen->id.name + 2, workspace->id.name + 2, sizeof(screen->id.name) - 2);
-            BKE_libblock_ensure_unique_name(bmain, &screen->id);
+            BKE_libblock_rename(bmain, &screen->id, workspace->id.name + 2);
           }
         }
 
