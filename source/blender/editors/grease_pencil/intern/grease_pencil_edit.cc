@@ -2445,7 +2445,7 @@ static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *
   const float threshold = RNA_float_get(op->ptr, "threshold");
   const bool use_unselected = RNA_boolean_get(op->ptr, "use_unselected");
 
-  bool changed = false;
+  std::atomic<bool> changed = false;
 
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
@@ -2461,7 +2461,7 @@ static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *
     const bke::CurvesGeometry &curves = drawing.strokes();
     drawing.strokes_for_write() = curves_merge_by_distance(curves, threshold, points, {});
     drawing.tag_topology_changed();
-    changed = true;
+    changed.store(true, std::memory_order_relaxed);
   });
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
