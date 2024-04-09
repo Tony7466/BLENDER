@@ -380,7 +380,11 @@ def register_impl(do_unregister: bool, all_users: bool) -> bool:
 
 
 def register(all_users: bool = False) -> bool:
-    return register_impl(False, all_users)
+    ok = register_impl(False, all_users)
+    if not ok:
+        # Unregister if we had any errors.
+        register_impl(True, all_users)
+    return ok
 
 
 def unregister(all_users: bool = False) -> bool:
