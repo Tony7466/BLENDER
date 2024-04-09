@@ -381,6 +381,32 @@ inline bool topology_cache_is_available(const bNodeSocket &socket)
 namespace node_field_inferencing {
 bool update_field_inferencing(const bNodeTree &tree);
 bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath);
+
+/**
+ * This struct contains information for every socket. The values are propagated through the
+ * network.
+ */
+struct SocketFieldStateLegacy {
+  /* This socket starts a new field. */
+  bool is_field_source = false;
+  /* This socket can never become a field, because the node itself does not support it. */
+  bool is_always_single = false;
+  /* This socket is currently a single value. It could become a field though. */
+  bool is_single = true;
+  /* This socket is required to be a single value. This can be because the node itself only
+   * supports this socket to be a single value, or because a node afterwards requires this to be a
+   * single value. */
+  bool requires_single = false;
+};
+Array<SocketFieldStateLegacy> solve_field_types_legacy(
+    const bNodeTree &tree,
+    const Span<const nodes::FieldInferencingInterface *> interface_by_node,
+    nodes::FieldInferencingInterface &inferencing_interface);
+void update_field_inferencing_legacy(
+    const bNodeTree &tree,
+    Span<const nodes::FieldInferencingInterface *> interface_by_node,
+    nodes::FieldInferencingInterface &inferencing_interface);
+
 }  // namespace node_field_inferencing
 }  // namespace blender::bke
 
