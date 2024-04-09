@@ -29,16 +29,15 @@ class VKBlitImageNode : public VKNodeClass<VKNodeType::BLIT_IMAGE,
                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
                                            VKResourceType::IMAGE> {
  public:
-  template<typename Node>
-  static void set_node_data(Node &node, const VKBlitImageCreateInfo &create_info)
+  template<typename Node> void set_node_data(Node &node, const VKBlitImageCreateInfo &create_info)
   {
     node.blit_image = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKBlitImageCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKBlitImageCreateInfo &create_info) override
   {
     VersionedResource src_resource = resources.get_image(create_info.src_image);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -53,7 +52,9 @@ class VKBlitImageNode : public VKNodeClass<VKNodeType::BLIT_IMAGE,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const VKBlitImageData &data)
+  void build_commands(VKCommandBufferInterface &command_buffer,
+                      const VKBlitImageData &data,
+                      VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     command_buffer.blit_image(data.src_image,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

@@ -13,9 +13,11 @@ namespace blender::gpu::render_graph {
 static void free_data(VKNodeData &node_data)
 {
   switch (node_data.type) {
-    case VKNodeType::DISPATCH:
-      VKDispatchNode::free_data(node_data);
+    case VKNodeType::DISPATCH: {
+      VKDispatchNode node_class;
+      node_class.free_data(node_data.dispatch);
       break;
+    }
 
     case VKNodeType::UNUSED:
     case VKNodeType::CLEAR_COLOR_IMAGE:

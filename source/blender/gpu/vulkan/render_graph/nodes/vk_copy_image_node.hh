@@ -33,10 +33,10 @@ class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
     node.copy_image = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKCopyImageCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKCopyImageCreateInfo &create_info) override
   {
     VersionedResource src_resource = resources.get_image(create_info.src_image);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -51,7 +51,7 @@ class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const VKCopyImageData &data)
+  void build_commands(VKCommandBufferInterface &command_buffer, const VKCopyImageData &data,VKBoundPipelines &/*r_bound_pipelines*/)override
   {
     command_buffer.copy_image(data.src_image,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

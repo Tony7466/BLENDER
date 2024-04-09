@@ -30,10 +30,10 @@ class VKCopyBufferToImageNode
     node.copy_buffer_to_image = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKCopyBufferToImageCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKCopyBufferToImageCreateInfo &create_info) override
   {
     VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -46,8 +46,8 @@ class VKCopyBufferToImageNode
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKCopyBufferToImageData &data)
+  void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKCopyBufferToImageData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     command_buffer.copy_buffer_to_image(
         data.src_buffer, data.dst_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &data.region);

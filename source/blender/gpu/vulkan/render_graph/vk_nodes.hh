@@ -20,8 +20,6 @@ namespace blender::gpu::render_graph {
 class VKCommandBuilder;
 
 class VKNodes {
-
- public:
  private:
   VKRenderGraphList<NodeHandle, VKNodeData> nodes_;
 
@@ -32,8 +30,9 @@ class VKNodes {
     NodeHandle node_handle = allocate();
     VKNodeData &node_data = nodes_.get(node_handle);
     BLI_assert(node_data.type == VKNodeType::UNUSED);
-    node_data.type = NodeClass::node_type;
-    NodeClass::set_node_data(node_data, create_info);
+    NodeClass node_class;
+    node_data.type = node_class.node_type;
+    node_class.set_node_data(node_data, create_info);
     return node_handle;
   }
 

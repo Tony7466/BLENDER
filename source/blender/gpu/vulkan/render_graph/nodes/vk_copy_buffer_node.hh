@@ -37,10 +37,10 @@ class VKCopyBufferNode : public VKNodeClass<VKNodeType::COPY_BUFFER,
     node.copy_buffer = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKCopyBufferCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKCopyBufferCreateInfo &create_info) override
   {
     VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
     VersionedResource dst_resource = resources.get_buffer_and_increase_version(
@@ -51,8 +51,8 @@ class VKCopyBufferNode : public VKNodeClass<VKNodeType::COPY_BUFFER,
         node_handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKCopyBufferData &data)
+  void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKCopyBufferData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     command_buffer.copy_buffer(data.src_buffer, data.dst_buffer, 1, &data.region);
   }

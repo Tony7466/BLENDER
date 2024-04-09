@@ -29,18 +29,18 @@ class VKSynchronizationNode : public VKNodeClass<VKNodeType::SYNCHRONIZATION,
     node.synchronization = {};
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKSynchronizationCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKSynchronizationCreateInfo &create_info) override
   {
     VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKSynchronizationData &data)
+   void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKSynchronizationData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     UNUSED_VARS(command_buffer, data);
     /* Intentionally left empty: A pipeline barrier has already been send to the command buffer. */

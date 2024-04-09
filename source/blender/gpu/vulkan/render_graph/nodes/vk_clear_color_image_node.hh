@@ -38,18 +38,18 @@ class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
     node.clear_color_image = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKClearColorImageCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKClearColorImageCreateInfo &create_info) override
   {
     VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKClearColorImageData &data)
+   void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKClearColorImageData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     command_buffer.clear_color_image(data.vk_image,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

@@ -27,9 +27,16 @@ template<VKNodeType NodeType,
 class VKNodeClass : public NonCopyable {
  public:
   static constexpr VKNodeType node_type = NodeType;
-  static constexpr bool uses_image_resources = bool(ResourceUsages & VKResourceType::IMAGE);
-  static constexpr bool uses_buffer_resources = bool(ResourceUsages & VKResourceType::BUFFER);
   static constexpr VkPipelineStageFlags pipeline_stage = PipelineStage;
   static constexpr VKResourceType resource_usages = ResourceUsages;
+
+  virtual void build_resource_dependencies(VKResources &resources,
+                                           VKResourceDependencies &dependencies,
+                                           NodeHandle node_handle,
+                                           const NodeCreateInfo &create_info) = 0;
+
+  virtual void build_commands(VKCommandBufferInterface &command_buffer,
+                              const NodeData &data,
+                              VKBoundPipelines &r_bound_pipelines) = 0;
 };
 }  // namespace blender::gpu::render_graph

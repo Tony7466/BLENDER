@@ -123,42 +123,23 @@ class VKCommandBuilder {
   template<typename NodeClass>
   void build_pipeline_barriers(VKRenderGraph &render_graph, NodeHandle node_handle)
   {
-    if constexpr (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
-      reset_barriers();
-      if constexpr (NodeClass::uses_image_resources) {
-        add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
-      }
-      if constexpr (NodeClass::uses_buffer_resources) {
-        add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
-      }
-      send_pipeline_barriers(render_graph);
+    reset_barriers();
+    if constexpr (bool(NodeClass::resource_usages & VKResourceType::IMAGE)) {
+      add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
     }
+    if constexpr (bool(NodeClass::resource_usages & VKResourceType::BUFFER)) {
+      add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+    }
+    send_pipeline_barriers(render_graph);
   }
 
   /**
    * Build the commands for a node and record them to the given command buffer. These will include
    * pipeline barrier commands.
    *
-   * This function is for commands that doesn't require pipeline to be setup (data transfer
-   * commands).
-   */
-  template<typename NodeClass, typename NodeClassData>
-  void build_node(VKRenderGraph &render_graph,
-                  VKCommandBufferInterface &command_buffer,
-                  NodeHandle node_handle,
-                  const NodeClassData &node_data)
-  {
-    build_pipeline_barriers<NodeClass>(render_graph, node_handle);
-    NodeClass::build_commands(command_buffer, node_data);
-  }
-
-  /**
-   * Build the commands for a node and record them to the given command buffer. These will include
-   * pipeline barrier commands.
-   *
-   * This function is for commands that require pipeline to be setup (compute/graphics draw)
-   * commands. In this case the bound pipelines needs to be passed to detect changes to the
-   * pipeline that needs to be bound.
+   * The `r_bound_pipelines` is used by dispatch and draw commands to be setup the
+   * (compute/graphics draw) pipelines using as few as possible commands.
+   * Data transfer nodes should not use this parameter.
    */
   template<typename NodeClass, typename NodeClassData>
   void build_node(VKRenderGraph &render_graph,
@@ -167,8 +148,9 @@ class VKCommandBuilder {
                   const NodeClassData &node_data,
                   VKBoundPipelines &r_bound_pipelines)
   {
+    NodeClass node_class;
     build_pipeline_barriers<NodeClass>(render_graph, node_handle);
-    NodeClass::build_commands(command_buffer, node_data, r_bound_pipelines);
+    node_class.build_commands(command_buffer, node_data, r_bound_pipelines);
   }
 };
 

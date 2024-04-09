@@ -41,23 +41,23 @@ class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
     localize_shader_data(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
   }
 
-  template<typename Node> static void free_data(Node &node)
+  void free_data(VKDispatchData &data)
   {
-    vk_pipeline_free_data(node.dispatch.pipeline_data);
+    vk_pipeline_free_data(data.pipeline_data);
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKDispatchCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKDispatchCreateInfo &create_info) override
   {
     resource_access_build_dependencies(
         resources, dependencies, node_handle, create_info.resources);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
+  void build_commands(VKCommandBufferInterface &command_buffer,
                              const VKDispatchData &data,
-                             VKBoundPipelines &r_bound_pipelines)
+                             VKBoundPipelines &r_bound_pipelines) override
   {
     // TODO: introduce helper function in pipeline types.
     const VKPipelineData &pipeline_data = data.pipeline_data;

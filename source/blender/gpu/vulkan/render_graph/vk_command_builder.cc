@@ -90,20 +90,29 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::CLEAR_COLOR_IMAGE: {
-      build_node<VKClearColorImageNode, VKClearColorImageData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.clear_color_image);
+      build_node<VKClearColorImageNode, VKClearColorImageData>(render_graph,
+                                                               *render_graph.command_buffer_,
+                                                               node_handle,
+                                                               node_data.clear_color_image,
+                                                               active_pipelines);
       break;
     }
 
     case VKNodeType::FILL_BUFFER: {
-      build_node<VKFillBufferNode, VKFillBufferData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.fill_buffer);
+      build_node<VKFillBufferNode, VKFillBufferData>(render_graph,
+                                                     *render_graph.command_buffer_,
+                                                     node_handle,
+                                                     node_data.fill_buffer,
+                                                     active_pipelines);
       break;
     }
 
     case VKNodeType::COPY_BUFFER: {
-      build_node<VKCopyBufferNode, VKCopyBufferData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.copy_buffer);
+      build_node<VKCopyBufferNode, VKCopyBufferData>(render_graph,
+                                                     *render_graph.command_buffer_,
+                                                     node_handle,
+                                                     node_data.copy_buffer,
+                                                     active_pipelines);
       break;
     }
 
@@ -111,13 +120,17 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
       build_node<VKCopyBufferToImageNode, VKCopyBufferToImageData>(render_graph,
                                                                    *render_graph.command_buffer_,
                                                                    node_handle,
-                                                                   node_data.copy_buffer_to_image);
+                                                                   node_data.copy_buffer_to_image,
+                                                                   active_pipelines);
       break;
     }
 
     case VKNodeType::COPY_IMAGE: {
-      build_node<VKCopyImageNode, VKCopyImageData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.copy_image);
+      build_node<VKCopyImageNode, VKCopyImageData>(render_graph,
+                                                   *render_graph.command_buffer_,
+                                                   node_handle,
+                                                   node_data.copy_image,
+                                                   active_pipelines);
       break;
     }
 
@@ -125,19 +138,26 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
       build_node<VKCopyImageToBufferNode, VKCopyImageToBufferData>(render_graph,
                                                                    *render_graph.command_buffer_,
                                                                    node_handle,
-                                                                   node_data.copy_image_to_buffer);
+                                                                   node_data.copy_image_to_buffer,
+                                                                   active_pipelines);
       break;
     }
 
     case VKNodeType::BLIT_IMAGE: {
-      build_node<VKBlitImageNode, VKBlitImageData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.blit_image);
+      build_node<VKBlitImageNode, VKBlitImageData>(render_graph,
+                                                   *render_graph.command_buffer_,
+                                                   node_handle,
+                                                   node_data.blit_image,
+                                                   active_pipelines);
       break;
     }
 
     case VKNodeType::SYNCHRONIZATION: {
-      build_node<VKSynchronizationNode, VKSynchronizationData>(
-          render_graph, *render_graph.command_buffer_, node_handle, node_data.synchronization);
+      build_node<VKSynchronizationNode, VKSynchronizationData>(render_graph,
+                                                               *render_graph.command_buffer_,
+                                                               node_handle,
+                                                               node_data.synchronization,
+                                                               active_pipelines);
       break;
     }
 

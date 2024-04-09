@@ -29,18 +29,18 @@ class VKFillBufferNode : public VKNodeClass<VKNodeType::FILL_BUFFER,
     node.fill_buffer = create_info;
   }
 
-  static void build_resource_dependencies(VKResources &resources,
-                                          VKResourceDependencies &dependencies,
-                                          NodeHandle node_handle,
-                                          const VKFillBufferCreateInfo &create_info)
+  void build_resource_dependencies(VKResources &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const VKFillBufferCreateInfo &create_info) override
   {
     VersionedResource resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKFillBufferData &data)
+ void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKFillBufferData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {
     command_buffer.fill_buffer(data.vk_buffer, 0, data.size, data.data);
   }

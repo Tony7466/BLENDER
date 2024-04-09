@@ -70,7 +70,8 @@ class VKRenderGraph : public NonCopyable {
   {
     std::scoped_lock lock(resources_.mutex_get());
     NodeHandle handle = nodes_.add_node<NodeClass, NodeCreateInfo>(create_info);
-    NodeClass::build_resource_dependencies(
+    NodeClass node_class;
+    node_class.build_resource_dependencies(
         resources_, resource_dependencies_, handle, create_info);
   }
 
