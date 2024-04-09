@@ -1525,7 +1525,8 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
   ImBuf *ibuf = BKE_image_preview(ima, 200.0f * UI_SCALE_FAC, &w, &h);
 
   if (ibuf) {
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+    UI_tooltip_text_field_add(
+        data, fmt::format("{} \u00D7 {}", w, h), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
     uiTooltipImage image_data;
     image_data.width = int(ibuf->x);
     image_data.height = int(ibuf->y);
@@ -1533,9 +1534,9 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
     image_data.border = true;
     image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
     image_data.premultiplied = true;
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
     UI_tooltip_image_field_add(data, image_data);
-    UI_tooltip_text_field_add(
-        data, fmt::format("{} \u00D7 {}", w, h), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
   }
 }
 

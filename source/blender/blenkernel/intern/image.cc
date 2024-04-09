@@ -4808,7 +4808,7 @@ ImBuf *BKE_image_preview(struct Image *ima, short max, short *width_r, short *he
 
   if (image_ibuf) {
     preview = IMB_dupImBuf(image_ibuf);
-    float scale = (200.0f * UI_SCALE_FAC) / float(std::max(image_ibuf->x, image_ibuf->y));
+    float scale = float(max) / float(std::max(image_ibuf->x, image_ibuf->y));
     if (width_r) {
       *width_r = image_ibuf->x;
     }
