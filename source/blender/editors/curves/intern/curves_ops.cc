@@ -1571,6 +1571,7 @@ static void CURVES_OT_handle_type_set(wmOperatorType *ot)
   ot->idname = __func__;
   ot->description = "Set the handle type for bezier curves";
 
+  ot->invoke = WM_menu_invoke;
   ot->exec = set_handle_type::exec;
   ot->poll = editable_curves_in_edit_mode_poll;
 
