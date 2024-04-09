@@ -446,10 +446,10 @@ struct LayerBufferItem {
 };
 
 struct Clipboard {
-  Map<std::string, LayerBufferItem> copy_buffer;
-  int first_frame = std::numeric_limits<int>::max();
-  int last_frame = std::numeric_limits<int>::min();
-  int cfra = 0;
+  Map<std::string, LayerBufferItem> copy_buffer{};
+  int first_frame{std::numeric_limits<int>::max()};
+  int last_frame{std::numeric_limits<int>::min()};
+  int cfra{0};
 
   void clear()
   {
