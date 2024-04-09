@@ -2451,15 +2451,15 @@ static int grease_pencil_stroke_merge_by_distance_exec(bContext *C, wmOperator *
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::greasepencil::Drawing &drawing = info.drawing;
     IndexMaskMemory memory;
-    IndexMask points = use_unselected ?
-                           ed::greasepencil::retrieve_editable_points(*object, drawing, memory) :
-                           ed::greasepencil::retrieve_editable_and_selected_points(
-                               *object, drawing, memory);
+    const IndexMask points =
+        use_unselected ?
+            ed::greasepencil::retrieve_editable_points(*object, drawing, memory) :
+            ed::greasepencil::retrieve_editable_and_selected_points(*object, drawing, memory);
     if (points.is_empty()) {
       return;
     }
-    const bke::CurvesGeometry &curves = drawing.strokes();
-    drawing.strokes_for_write() = curves_merge_by_distance(curves, threshold, points, {});
+    drawing.strokes_for_write() = curves_merge_by_distance(
+        drawing.strokes(), threshold, points, {});
     drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
