@@ -751,6 +751,31 @@ static bke::CurvesGeometry convert_curves_to_catmull_rom_or_poly(
   return dst_curves;
 }
 
+/**
+ * Converts some curves to poly curves before they are converted to nurbs. This is useful because
+ * it discards the bezier/catmull-rom shape which is sometimes the desired behavior.
+ */
+static bke::CurvesGeometry convert_bezier_or_catmull_rom_to_poly_before_conversion_to_nurbs(
+    const bke::CurvesGeometry &src_curves,
+    const IndexMask &selection,
+    const ConvertCurvesOptions &options)
+{
+  const VArray<int8_t> src_curve_types = src_curves.curve_types();
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_predicate(
+      selection, GrainSize(4096), memory, [&](const int curve_i) {
+        const CurveType type = CurveType(src_curve_types[curve_i]);
+        if (!options.keep_bezier_shape_as_nurbs && type == CURVE_TYPE_BEZIER) {
+          return true;
+        }
+        if (!options.keep_catmull_rom_shape_as_nurbs && type == CURVE_TYPE_CATMULL_ROM) {
+          return true;
+        }
+        return false;
+      });
+  return convert_curves_trivial(src_curves, mask, CURVE_TYPE_POLY);
+}
+
 bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
                                    const IndexMask &selection,
                                    const CurveType dst_type,
@@ -764,8 +789,15 @@ bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
           src_curves, selection, dst_type, propagation_info, options);
     case CURVE_TYPE_BEZIER:
       return convert_curves_to_bezier(src_curves, selection, propagation_info);
-    case CURVE_TYPE_NURBS:
+    case CURVE_TYPE_NURBS: {
+      if (!options.keep_bezier_shape_as_nurbs || !options.keep_catmull_rom_shape_as_nurbs) {
+        const bke::CurvesGeometry tmp_src_curves =
+            convert_bezier_or_catmull_rom_to_poly_before_conversion_to_nurbs(
+                src_curves, selection, options);
+        return convert_curves_to_nurbs(tmp_src_curves, selection, propagation_info);
+      }
       return convert_curves_to_nurbs(src_curves, selection, propagation_info);
+    }
   }
   BLI_assert_unreachable();
   return {};
