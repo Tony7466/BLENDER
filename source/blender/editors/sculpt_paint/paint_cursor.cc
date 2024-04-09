@@ -1547,13 +1547,12 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       const ed::greasepencil::DrawingPlacement placement(
           *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
       const float radius = BKE_brush_unprojected_radius_get(pcontext->scene, brush);
-      float3 location = placement.project(float2(pcontext->x, pcontext->y));
+      const float3 location = placement.project(float2(pcontext->x, pcontext->y));
       pcontext->pixel_radius = project_brush_radius(&pcontext->vc, radius, location);
     }
 
     /* Get current drawing material. */
-    Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush);
-    if (ma) {
+    if (Material *ma = BKE_grease_pencil_object_material_from_brush_get(object, brush)) {
       MaterialGPencilStyle *gp_style = ma->gp_style;
 
       /* Follow user settings for the size of the draw cursor:
@@ -1582,8 +1581,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
   imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius, 32);
 
   /* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
-  float3 darkcolor = color * 0.40f;
-  mul_v3_v3fl(darkcolor, color, 0.40f);
+  const float3 darkcolor = color * 0.40f;
   immUniformColor4f(darkcolor.x, darkcolor.y, darkcolor.z, 0.8f);
   imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius + 1, 32);
 
