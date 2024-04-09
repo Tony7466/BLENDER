@@ -25,7 +25,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -613,6 +613,17 @@ std::string WM_operatortype_description_or_name(bContext *C,
     }
   }
   return text;
+}
+
+bool WM_operator_depends_on_cursor(bContext &C, wmOperatorType &ot, PointerRNA *properties)
+{
+  if (ot.flag & OPTYPE_DEPENDS_ON_CURSOR) {
+    return true;
+  }
+  if (ot.depends_on_cursor) {
+    return ot.depends_on_cursor(C, ot, properties);
+  }
+  return false;
 }
 
 /** \} */

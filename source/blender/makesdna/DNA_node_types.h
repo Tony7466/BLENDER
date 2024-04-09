@@ -43,15 +43,11 @@ class bNodeTreeZone;
 namespace blender::bke {
 struct RuntimeNodeEnumItems;
 }  // namespace blender::bke
-using NodeDeclarationHandle = blender::nodes::NodeDeclaration;
-using SocketDeclarationHandle = blender::nodes::SocketDeclaration;
 using bNodeTreeRuntimeHandle = blender::bke::bNodeTreeRuntime;
 using bNodeRuntimeHandle = blender::bke::bNodeRuntime;
 using bNodeSocketRuntimeHandle = blender::bke::bNodeSocketRuntime;
 using RuntimeNodeEnumItemsHandle = blender::bke::RuntimeNodeEnumItems;
 #else
-typedef struct NodeDeclarationHandle NodeDeclarationHandle;
-typedef struct SocketDeclarationHandle SocketDeclarationHandle;
 typedef struct bNodeTreeRuntimeHandle bNodeTreeRuntimeHandle;
 typedef struct bNodeRuntimeHandle bNodeRuntimeHandle;
 typedef struct bNodeSocketRuntimeHandle bNodeSocketRuntimeHandle;
@@ -443,6 +439,9 @@ typedef struct bNode {
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
 
+  /* This node is reroute which is not logically connected to any source of value. */
+  bool is_dangling_reroute() const;
+
   /* True if the socket is visible and has a valid location. The icon may not be visible. */
   bool is_socket_drawn(const bNodeSocket &socket) const;
   /* True if the socket is drawn and the icon is visible. */
@@ -589,7 +588,13 @@ typedef struct bNodeLink {
   bNodeSocket *fromsock, *tosock;
 
   int flag;
-  int multi_input_socket_index;
+  /**
+   * Determines the order in which links are connected to a multi-input socket.
+   * For historical reasons, larger ids come before lower ids.
+   * Usually, this should not be accessed directly. One can instead use e.g.
+   * `socket.directly_linked_links()` to get the links in the correct order.
+   */
+  int multi_input_sort_id;
 
 #ifdef __cplusplus
   bool is_muted() const;
@@ -679,10 +684,14 @@ typedef struct bNodeTree {
   short edit_quality;
   /** Quality setting when rendering. */
   short render_quality;
+  /** Tile size for compositor engine. */
+  int chunksize DNA_DEPRECATED;
   /** Execution mode to use for compositor engine. */
   int execution_mode;
   /** Execution mode to use for compositor engine. */
   int precision;
+
+  char _pad[4];
 
   rctf viewer_border;
 
@@ -2654,12 +2663,6 @@ typedef enum GeometryNodeProximityTargetType {
   GEO_NODE_PROX_TARGET_EDGES = 1,
   GEO_NODE_PROX_TARGET_FACES = 2,
 } GeometryNodeProximityTargetType;
-
-typedef enum GeometryNodeBooleanOperation {
-  GEO_NODE_BOOLEAN_INTERSECT = 0,
-  GEO_NODE_BOOLEAN_UNION = 1,
-  GEO_NODE_BOOLEAN_DIFFERENCE = 2,
-} GeometryNodeBooleanOperation;
 
 typedef enum GeometryNodeCurvePrimitiveCircleMode {
   GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS = 0,

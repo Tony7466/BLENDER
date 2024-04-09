@@ -11,7 +11,9 @@
 #ifndef USE_GPU_SHADER_CREATE_INFO
 #  pragma once
 
+#  include "BLI_math_bits.h"
 #  include "BLI_memory_utils.hh"
+
 #  include "DRW_gpu_wrapper.hh"
 
 #  include "draw_manager.hh"
@@ -19,7 +21,7 @@
 
 #  include "eevee_defines.hh"
 
-#  include "GPU_shader_shared.h"
+#  include "GPU_shader_shared.hh"
 
 namespace blender::eevee {
 
@@ -30,6 +32,13 @@ using namespace draw;
 
 constexpr GPUSamplerState no_filter = GPUSamplerState::default_sampler();
 constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
+#endif
+
+/* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
+#ifdef GPU_SHADER
+#  define IS_CPP 0
+#else
+#  define IS_CPP 1
 #endif
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
@@ -262,10 +271,8 @@ struct FilmData {
   int2 extent;
   /** Offset to convert from Display space to Film space, in pixels. */
   int2 offset;
-  /** Size of the render buffers when rendering the main views, in pixels. */
+  /** Size of the render buffers including overscan when rendering the main views, in pixels. */
   int2 render_extent;
-  /** Offset to convert from Film space to Render space, in pixels. */
-  int2 render_offset;
   /**
    * Sub-pixel offset applied to the window matrix.
    * NOTE: In final film pixel unit.
@@ -276,6 +283,11 @@ struct FilmData {
   float2 subpixel_offset;
   /** Scaling factor to convert texel to uvs. */
   float2 extent_inv;
+  /**
+   * Number of border pixels on all sides inside the render_extent that do not contribute to the
+   * final image.
+   */
+  int overscan;
   /** Is true if history is valid and can be sampled. Bypass history to resets accumulation. */
   bool32_t use_history;
   /** Controlled by user in lookdev mode or by render settings. */
@@ -328,6 +340,7 @@ struct FilmData {
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
   int _pad1;
+  int _pad2;
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
 BLI_STATIC_ASSERT_ALIGN(FilmData, 16)
@@ -488,73 +501,37 @@ BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
  * \{ */
 
 struct VolumesInfoData {
-  float2 coord_scale;
-  float2 viewport_size_inv;
+  /* During object voxelization, we need to use an infinite projection matrix to avoid clipping
+   * faces. But they cannot be used for recovering the view position from froxel position as they
+   * are not invertible. We store the finite projection matrix and use it for this purpose. */
+  float4x4 winmat_finite;
+  float4x4 wininv_finite;
+  /* Convert volume frustum UV(+ linear Z) coordinates into previous frame UV(+ linear Z). */
+  float4x4 history_matrix;
+  /* Size of the froxel grid texture. */
   packed_int3 tex_size;
+  /* Maximum light intensity during volume lighting evaluation. */
   float light_clamp;
+  /* Inverse of size of the froxel grid. */
   packed_float3 inv_tex_size;
-  int tile_size;
-  int tile_size_lod;
+  /* Maximum light intensity during volume lighting evaluation. */
   float shadow_steps;
+  /* 2D scaling factor to make froxel squared. */
+  float2 coord_scale;
+  /* Extent and inverse extent of the main shading view (render extent, not film extent). */
+  float2 main_view_extent;
+  float2 main_view_extent_inv;
+  /* Size in main view pixels of one froxel in XY. */
+  int tile_size;
+  /* Hi-Z LOD to use during volume shadow tagging. */
+  int tile_size_lod;
+  /* Depth to froxel mapping. */
   float depth_near;
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
-
-/* Volume slice to view space depth. */
-static inline float volume_z_to_view_z(
-    float near, float far, float distribution, bool is_persp, float z)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return (exp2(z / distribution) - near) / far;
-  }
-  else {
-    /* Linear distribution. */
-    return near + (far - near) * z;
-  }
-}
-
-static inline float view_z_to_volume_z(
-    float near, float far, float distribution, bool is_persp, float depth)
-{
-  if (is_persp) {
-    /* Exponential distribution. */
-    return distribution * log2(depth * far + near);
-  }
-  else {
-    /* Linear distribution. */
-    return (depth - near) * distribution;
-  }
-}
-
-static inline float3 screen_to_volume(float4x4 projection_matrix,
-                                      float near,
-                                      float far,
-                                      float distribution,
-                                      float2 coord_scale,
-                                      float3 coord)
-{
-  bool is_persp = projection_matrix[3][3] == 0.0;
-
-  /* get_view_z_from_depth */
-  float d = 2.0 * coord.z - 1.0;
-  if (is_persp) {
-    coord.z = -projection_matrix[3][2] / (d + projection_matrix[2][2]);
-  }
-  else {
-    coord.z = (d - projection_matrix[3][2]) / projection_matrix[2][2];
-  }
-
-  coord.z = view_z_to_volume_z(near, far, distribution, is_persp, coord.z);
-  coord.x *= coord_scale.x;
-  coord.y *= coord_scale.y;
-  return coord;
-}
 
 /** \} */
 
@@ -737,6 +714,11 @@ static inline bool is_area_light(eLightType type)
   return type >= LIGHT_RECT;
 }
 
+static inline bool is_point_light(eLightType type)
+{
+  return type >= LIGHT_OMNI_SPHERE && type <= LIGHT_SPOT_DISK;
+}
+
 static inline bool is_spot_light(eLightType type)
 {
   return type == LIGHT_SPOT_SPHERE || type == LIGHT_SPOT_DISK;
@@ -747,23 +729,138 @@ static inline bool is_sphere_light(eLightType type)
   return type == LIGHT_SPOT_SPHERE || type == LIGHT_OMNI_SPHERE;
 }
 
+static inline bool is_oriented_disk_light(eLightType type)
+{
+  return type == LIGHT_SPOT_DISK || type == LIGHT_OMNI_DISK;
+}
+
 static inline bool is_sun_light(eLightType type)
 {
   return type < LIGHT_OMNI_SPHERE;
 }
 
+static inline bool is_local_light(eLightType type)
+{
+  return type >= LIGHT_OMNI_SPHERE;
+}
+
+/* Using define because GLSL doesn't have inheritance, and encapsulation forces us to add some
+ * unneeded padding. */
+#define LOCAL_LIGHT_COMMON \
+  /** Special radius factor for point lighting (volume). */ \
+  float radius_squared; \
+  /** Maximum influence radius. Used for culling. Equal to clip far distance. */ \
+  float influence_radius_max; \
+  /** Influence radius (inverted and squared) adjusted for Surface / Volume power. */ \
+  float influence_radius_invsqr_surface; \
+  float influence_radius_invsqr_volume; \
+  /** --- Shadow Data --- */ \
+  /** Other parts of the perspective matrix. Assumes symmetric frustum. */ \
+  float clip_side; \
+  /** Number of allocated tilemap for this local light. */ \
+  int tilemaps_count; \
+  /** Scaling factor to the light shape for shadow ray casting. */ \
+  float shadow_scale; \
+  /** Shift to apply to the light origin to get the shadow projection origin. */ \
+  float shadow_projection_shift;
+
+/* Untyped local light data. Gets reinterpreted to LightSpotData and LightAreaData.
+ * Allow access to local light common data without casting. */
+struct LightLocalData {
+  LOCAL_LIGHT_COMMON
+
+  /** Padding reserved for when shadow_projection_shift will become a vec3. */
+  float _pad0_reserved;
+  float _pad1_reserved;
+  float _pad1;
+  float _pad2;
+
+  float2 _pad3;
+  float _pad4;
+  float _pad5;
+};
+BLI_STATIC_ASSERT_ALIGN(LightLocalData, 16)
+
+/* Despite the name, is also used for omni light. */
+struct LightSpotData {
+  LOCAL_LIGHT_COMMON
+
+  /** Padding reserved for when shadow_projection_shift will become a vec3. */
+  float _pad0_reserved;
+  float _pad1_reserved;
+  /** Sphere light radius. */
+  float radius;
+  /** Scale and bias to spot equation parameter. Used for adjusting the falloff. */
+  float spot_mul;
+
+  /** Inverse spot size (in X and Y axes). */
+  float2 spot_size_inv;
+  /** Spot angle tangent. */
+  float spot_tan;
+  float spot_bias;
+};
+BLI_STATIC_ASSERT(sizeof(LightSpotData) == sizeof(LightLocalData), "Data size must match")
+
+struct LightAreaData {
+  LOCAL_LIGHT_COMMON
+
+  /** Padding reserved for when shadow_projection_shift will become a vec3. */
+  float _pad0_reserved;
+  float _pad1_reserved;
+  float _pad2;
+  float _pad3;
+
+  /** Shape size. */
+  float2 size;
+  float _pad5;
+  float _pad6;
+};
+BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size must match")
+
+struct LightSunData {
+  float radius;
+  float _pad0;
+  float _pad1;
+  float _pad2;
+
+  float _pad3;
+  float _pad4;
+  /** --- Shadow Data --- */
+  /** Offset of the LOD min in LOD min tile units. Split positive and negative for bit-shift. */
+  int2 clipmap_base_offset_neg;
+
+  int2 clipmap_base_offset_pos;
+  /** Angle covered by the light shape for shadow ray casting. */
+  float shadow_angle;
+  /** Trace distance around the shading point. */
+  float shadow_trace_distance;
+
+  /** Offset to convert from world units to tile space of the clipmap_lod_max. */
+  float2 clipmap_origin;
+  /** Clip-map LOD range to avoid sampling outside of valid range. */
+  int clipmap_lod_min;
+  int clipmap_lod_max;
+};
+BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size must match")
+
+/* Enable when debugging. This is quite costly. */
+#define SAFE_UNION_ACCESS 0
+
+#if IS_CPP
+/* C++ always uses union. */
+#  define USE_LIGHT_UNION 1
+#elif defined(GPU_BACKEND_METAL) && !SAFE_UNION_ACCESS
+/* Metal supports union, but force usage of the getters if SAFE_UNION_ACCESS is enabled. */
+#  define USE_LIGHT_UNION 1
+#else
+/* Use getter functions on GPU if not supported or if SAFE_UNION_ACCESS is enabled. */
+#  define USE_LIGHT_UNION 0
+#endif
+
 struct LightData {
-  /** Normalized object matrix. Last column contains data accessible using the following macros. */
+  /** Normalized object to world matrix. */
+  /* TODO(fclem): Use float4x3. */
   float4x4 object_mat;
-  /** Packed data in the last column of the object_mat. */
-#define _area_size_x object_mat[0][3]
-#define _area_size_y object_mat[1][3]
-#define _radius _area_size_x
-#define _spot_mul object_mat[2][3]
-#define _spot_bias object_mat[3][3]
-  /** Scale to convert from world units to tile space of the clipmap_lod_max. */
-#define _clipmap_origin_x object_mat[2][3]
-#define _clipmap_origin_y object_mat[3][3]
   /** Aliases for axes. */
 #ifndef USE_GPU_SHADER_CREATE_INFO
 #  define _right object_mat[0]
@@ -776,55 +873,217 @@ struct LightData {
 #  define _back object_mat[2].xyz
 #  define _position object_mat[3].xyz
 #endif
+
   /** Power depending on shader type. Referenced by LightingType. */
   float4 power;
   /** Light Color. */
   packed_float3 color;
   /** Light Type. */
   eLightType type;
-  /** Inverse spot size (in X and Y axes). Aligned to size of float2. */
-  float2 spot_size_inv;
-  /** Punctual : Influence radius (inverted and squared) adjusted for Surface / Volume power. */
-  float influence_radius_invsqr_surface;
-  float influence_radius_invsqr_volume;
-  /** Punctual : Maximum influence radius. Used for culling. Equal to clip far distance. */
-  float influence_radius_max;
-  /** Special radius factor for point lighting. */
-  float radius_squared;
-  /** Spot angle tangent. */
-  float spot_tan;
-  /** Reuse for directional LOD bias. */
-#define _clipmap_lod_bias spot_tan
 
   /** --- Shadow Data --- */
-  /** Near clip distances. Float stored as int for atomic operations. */
+  /** Near clip distances. Float stored as orderedIntBitsToFloat for atomic operations. */
   int clip_near;
   int clip_far;
-  /** Directional : Clip-map LOD range to avoid sampling outside of valid range. */
-  int clipmap_lod_min;
-  int clipmap_lod_max;
-  /** Index of the first tile-map. */
+  /** Index of the first tile-map. Set to LIGHT_NO_SHADOW if light is not casting shadow. */
   int tilemap_index;
-  /** Directional : Offset of the LOD min in LOD min tile units. */
-  int2 clipmap_base_offset;
-  /** Punctual: Other parts of the perspective matrix. */
-  float clip_side;
-  /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
-  float shadow_projection_shift;
-  /** Scaling factor to the light shape for shadow ray casting. */
-  float shadow_shape_scale_or_angle;
-  /** Trace distance for directional lights. */
-  float shadow_trace_distance;
   /* Radius in pixels for shadow filtering. */
   float pcf_radius;
-  int _pad0;
+
+  /* Shadow Map resolution bias. */
+  float lod_bias;
+  float _pad0;
+  float _pad1;
+  float _pad2;
+
+#if USE_LIGHT_UNION
+  union {
+    LightLocalData local;
+    LightSpotData spot;
+    LightAreaData area;
+    LightSunData sun;
+  };
+#else
+  /* Use `light_*_data_get(light)` to access typed data. */
+  LightLocalData do_not_access_directly;
+#endif
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
+
+#ifdef GPU_SHADER
+#  define CHECK_TYPE_PAIR(a, b)
+#  define CHECK_TYPE(a, b)
+#  define FLOAT_AS_INT floatBitsToInt
+#  define TYPECAST_NOOP
+
+#else /* C++ */
+#  define FLOAT_AS_INT float_as_int
+#  define TYPECAST_NOOP
+#endif
+
+/* In addition to the static asserts that verify correct member assignment, also verify access on
+ * the GPU so that only lights of a certain type can read for the appropriate union member.
+ * Return cross platform garbage data as some platform can return cleared memory if we early exit.
+ */
+#if SAFE_UNION_ACCESS
+#  ifdef GPU_SHADER
+/* Should result in a beautiful zebra pattern on invalid load. */
+#    if defined(GPU_FRAGMENT_SHADER)
+#      define GARBAGE_VALUE sin(gl_FragCoord.x + gl_FragCoord.y)
+#    elif defined(GPU_COMPUTE_SHADER)
+#      define GARBAGE_VALUE \
+        sin(float(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y + gl_GlobalInvocationID.z))
+#    else
+#      define GARBAGE_VALUE sin(float(gl_VertexID))
+#    endif
+
+/* Can be set to zero if zebra creates out-of-bound accesses and crashes. At least avoid UB. */
+// #    define GARBAGE_VALUE 0.0
+
+#  else /* C++ */
+#    define GARBAGE_VALUE 0.0f
+#  endif
+
+#  define SAFE_BEGIN(data_type, check) \
+    data_type data; \
+    bool _validity_check = check; \
+    float _garbage = GARBAGE_VALUE;
+
+/* Assign garbage value if the light type check fails. */
+#  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) \
+    (_validity_check ? (_value) : _type(_garbage))
+#else
+#  define SAFE_BEGIN(data_type, check) data_type data;
+#  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) _value
+#endif
+
+#if USE_LIGHT_UNION
+#  define DATA_MEMBER local
+#else
+#  define DATA_MEMBER do_not_access_directly
+#endif
+
+#define ERROR_OFS(a, b) "Offset of " STRINGIFY(a) " mismatch offset of " STRINGIFY(b)
+
+/* This is a dangerous process, make sure to static assert every assignment. */
+#define SAFE_ASSIGN(a, reinterpret_fn, in_type, b) \
+  CHECK_TYPE_PAIR(data.a, reinterpret_fn(light.DATA_MEMBER.b)); \
+  data.a = reinterpret_fn(SAFE_ASSIGN_LIGHT_TYPE_CHECK(in_type, light.DATA_MEMBER.b)); \
+  BLI_STATIC_ASSERT(offsetof(decltype(data), a) == offsetof(LightLocalData, b), ERROR_OFS(a, b))
+
+#define SAFE_ASSIGN_FLOAT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float, b);
+#define SAFE_ASSIGN_FLOAT2(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float2, b);
+#define SAFE_ASSIGN_INT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, int, b);
+#define SAFE_ASSIGN_FLOAT_AS_INT(a, b) SAFE_ASSIGN(a, FLOAT_AS_INT, float, b);
+#define SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(a, b, c) \
+  SAFE_ASSIGN_FLOAT_AS_INT(a.x, b); \
+  SAFE_ASSIGN_FLOAT_AS_INT(a.y, c);
+
+#if !USE_LIGHT_UNION || IS_CPP
+
+/* These functions are not meant to be used in C++ code. They are only defined on the C++ side for
+ * static assertions. Hide them. */
+#  if IS_CPP
+namespace do_not_use {
+#  endif
+
+static inline LightSpotData light_local_data_get(LightData light)
+{
+  SAFE_BEGIN(LightSpotData, is_local_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  return data;
+}
+
+static inline LightSpotData light_spot_data_get(LightData light)
+{
+  SAFE_BEGIN(LightSpotData, is_spot_light(light.type) || is_point_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN_FLOAT(radius, _pad1)
+  SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
+  SAFE_ASSIGN_FLOAT2(spot_size_inv, _pad3)
+  SAFE_ASSIGN_FLOAT(spot_tan, _pad4)
+  SAFE_ASSIGN_FLOAT(spot_bias, _pad5)
+  return data;
+}
+
+static inline LightAreaData light_area_data_get(LightData light)
+{
+  SAFE_BEGIN(LightAreaData, is_area_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN_FLOAT2(size, _pad3)
+  return data;
+}
+
+static inline LightSunData light_sun_data_get(LightData light)
+{
+  SAFE_BEGIN(LightSunData, is_sun_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius, radius_squared)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, shadow_scale, shadow_projection_shift)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, _pad0_reserved, _pad1_reserved)
+  SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
+  SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
+  SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)
+  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_min, _pad4)
+  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_max, _pad5)
+  return data;
+}
+
+#  if IS_CPP
+}  // namespace do_not_use
+#  endif
+
+#endif
+
+#if USE_LIGHT_UNION
+#  define light_local_data_get(light) light.local
+#  define light_spot_data_get(light) light.spot
+#  define light_area_data_get(light) light.area
+#  define light_sun_data_get(light) light.sun
+#endif
+
+#undef DATA_MEMBER
+#undef GARBAGE_VALUE
+#undef FLOAT_AS_INT
+#undef TYPECAST_NOOP
+#undef SAFE_BEGIN
+#undef SAFE_ASSIGN_LIGHT_TYPE_CHECK
+#undef ERROR_OFS
+#undef SAFE_ASSIGN
+#undef SAFE_ASSIGN_FLOAT
+#undef SAFE_ASSIGN_FLOAT2
+#undef SAFE_ASSIGN_INT
+#undef SAFE_ASSIGN_FLOAT_AS_INT
+#undef SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE
 
 static inline int light_tilemap_max_get(LightData light)
 {
   /* This is not something we need in performance critical code. */
-  return light.tilemap_index + (light.clipmap_lod_max - light.clipmap_lod_min);
+  if (is_sun_light(light.type)) {
+    return light.tilemap_index +
+           (light_sun_data_get(light).clipmap_lod_max - light_sun_data_get(light).clipmap_lod_min);
+  }
+  return light.tilemap_index + light_local_data_get(light).tilemaps_count - 1;
 }
 
 /** \} */
@@ -939,8 +1198,6 @@ struct ShadowTileData {
   uint3 page;
   /** Page index inside pages_cached_buf. Only valid if `is_cached` is true. */
   uint cache_index;
-  /** LOD pointed to LOD 0 tile page. (cube-map only). */
-  uint lod;
   /** If the tile is needed for rendering. */
   bool is_used;
   /** True if an update is needed. This persists even if the tile gets unused. */
@@ -987,8 +1244,7 @@ static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
   ShadowTileData tile;
   tile.page = shadow_page_unpack(data);
   /* -- 12 bits -- */
-  BLI_STATIC_ASSERT(SHADOW_TILEMAP_LOD < 8, "Update page packing")
-  tile.lod = (data >> 12u) & 7u;
+  /* Unused bits. */
   /* -- 15 bits -- */
   BLI_STATIC_ASSERT(SHADOW_MAX_PAGE <= 4096, "Update page packing")
   tile.cache_index = (data >> 15u) & 4095u;
@@ -1007,7 +1263,6 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   /* NOTE: Page might be set to invalid values for tracking invalid usages.
    * So we have to mask the result. */
   data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
-  data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
   data |= (tile.is_allocated ? uint(SHADOW_IS_ALLOCATED) : 0);
@@ -1017,6 +1272,89 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   return data;
 }
 
+/**
+ * Decoded tile data structure.
+ * Similar to ShadowTileData, this one is only used for rendering and packed into `tilemap_tx`.
+ * This allow to reuse some bits for other purpose.
+ */
+struct ShadowSamplingTile {
+  /** Page inside the virtual shadow map atlas. */
+  uint3 page;
+  /** LOD pointed to LOD 0 tile page. */
+  uint lod;
+  /** Offset to the texel position to align with the LOD page start. (directional only). */
+  uint2 lod_offset;
+  /** If the tile is needed for rendering. */
+  bool is_valid;
+};
+/** \note Stored packed as a uint. */
+#define ShadowSamplingTilePacked uint
+
+/* NOTE: Trust the input to be in valid range [0, (1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1].
+ * Maximum LOD level index we can store is SHADOW_TILEMAP_MAX_CLIPMAP_LOD,
+ * so we need SHADOW_TILEMAP_MAX_CLIPMAP_LOD bits to store the offset in each dimension.
+ * Result fits into SHADOW_TILEMAP_MAX_CLIPMAP_LOD * 2 bits. */
+static inline uint shadow_lod_offset_pack(uint2 ofs)
+{
+  BLI_STATIC_ASSERT(SHADOW_TILEMAP_MAX_CLIPMAP_LOD <= 8, "Update page packing")
+  return ofs.x | (ofs.y << SHADOW_TILEMAP_MAX_CLIPMAP_LOD);
+}
+static inline uint2 shadow_lod_offset_unpack(uint data)
+{
+  return (uint2(data) >> uint2(0, SHADOW_TILEMAP_MAX_CLIPMAP_LOD)) &
+         uint2((1 << SHADOW_TILEMAP_MAX_CLIPMAP_LOD) - 1);
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_unpack(ShadowSamplingTilePacked data)
+{
+  ShadowSamplingTile tile;
+  tile.page = shadow_page_unpack(data);
+  /* -- 12 bits -- */
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  tile.lod = (data >> 12u) & 15u;
+  /* -- 16 bits -- */
+  tile.lod_offset = shadow_lod_offset_unpack(data >> 16u);
+  /* -- 32 bits -- */
+  tile.is_valid = data != 0u;
+#ifndef GPU_SHADER
+  /* Make tests pass on CPU but it is not required for proper rendering. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 0;
+  }
+#endif
+  return tile;
+}
+
+static inline ShadowSamplingTilePacked shadow_sampling_tile_pack(ShadowSamplingTile tile)
+{
+  if (!tile.is_valid) {
+    return 0u;
+  }
+  /* Tag a valid tile of LOD0 valid by setting their offset to 1.
+   * This doesn't change the sampling and allows to use of all bits for data.
+   * This makes sure no valid packed tile is 0u. */
+  if (tile.lod == 0) {
+    tile.lod_offset.x = 1;
+  }
+  uint data = shadow_page_pack(tile.page);
+  /* Max value is actually SHADOW_TILEMAP_MAX_CLIPMAP_LOD but we mask the bits. */
+  data |= (tile.lod & 15u) << 12u;
+  data |= shadow_lod_offset_pack(tile.lod_offset) << 16u;
+  return data;
+}
+
+static inline ShadowSamplingTile shadow_sampling_tile_create(ShadowTileData tile_data, uint lod)
+{
+  ShadowSamplingTile tile;
+  tile.page = tile_data.page;
+  tile.lod = lod;
+  tile.lod_offset = uint2(0, 0); /* Computed during tilemap amend phase. */
+  /* At this point, it should be the case that all given tiles that have been tagged as used are
+   * ready for sampling. Otherwise tile_data should be SHADOW_NO_DATA. */
+  tile.is_valid = tile_data.is_used;
+  return tile;
+}
+
 struct ShadowSceneData {
   /* Number of shadow rays to shoot for each light. */
   int ray_count;
@@ -1024,7 +1362,8 @@ struct ShadowSceneData {
   int step_count;
   /* Bias the shading point by using the normal to avoid self intersection. */
   float normal_bias;
-  int _pad0;
+  /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
+  float tilemap_projection_ratio;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
@@ -1100,6 +1439,16 @@ struct SphereProbeDisplayData {
   float _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SphereProbeDisplayData, 16)
+
+/* Used for sphere probe spherical harmonics extraction. Output one for each thread-group
+ * and do a sum afterward. Reduces bandwidth usage. */
+struct SphereProbeHarmonic {
+  float4 L0_M0;
+  float4 L1_Mn1;
+  float4 L1_M0;
+  float4 L1_Mp1;
+};
+BLI_STATIC_ASSERT_ALIGN(SphereProbeHarmonic, 16)
 
 /** \} */
 
@@ -1319,6 +1668,9 @@ struct RayTraceData {
   int resolution_scale;
   /** View space thickness the objects. */
   float thickness;
+  /** Scale and bias to go from horizon-trace resolution to input resolution. */
+  int2 horizon_resolution_bias;
+  int horizon_resolution_scale;
   /** Determine how fast the sample steps are getting bigger. */
   float quality;
   /** Maximum brightness during lighting evaluation. */
@@ -1504,8 +1856,7 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 #define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
 
-/* __cplusplus is true when compiling with MSL, so include if inside a shader. */
-#if !defined(__cplusplus) || defined(GPU_SHADER)
+#ifdef GPU_SHADER
 
 #  if defined(GPU_FRAGMENT_SHADER)
 #    define UTIL_TEXEL vec2(gl_FragCoord.xy)
@@ -1565,8 +1916,7 @@ float4 utility_tx_sample_lut(sampler2DArray util_tx, float cos_theta, float roug
 
 /** \} */
 
-/* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
-#if defined(__cplusplus) && !defined(GPU_SHADER)
+#if IS_CPP
 
 using AOVsInfoDataBuf = draw::StorageBuffer<AOVsInfoData>;
 using CameraDataBuf = draw::UniformBuffer<CameraData>;
@@ -1609,6 +1959,5 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using ClipPlaneBuf = draw::UniformBuffer<ClipPlaneData>;
-
 }  // namespace blender::eevee
 #endif

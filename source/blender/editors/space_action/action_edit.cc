@@ -37,6 +37,7 @@
 #include "BKE_nla.h"
 #include "BKE_report.hh"
 
+#include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
 #include "ANIM_animdata.hh"
@@ -839,7 +840,6 @@ static void insert_fcurve_key(bAnimContext *ac,
     insert_keyframe(ac->bmain,
                     reports,
                     ale->id,
-                    nullptr,
                     ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
                     fcu->rna_path,
                     fcu->array_index,
@@ -1147,6 +1147,20 @@ static int actkeys_delete_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int actkeys_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete selected keyframes?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return actkeys_delete_exec(C, op);
+}
+
 void ACTION_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1155,7 +1169,7 @@ void ACTION_OT_delete(wmOperatorType *ot)
   ot->description = "Remove all selected keyframes";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = actkeys_delete_invoke;
   ot->exec = actkeys_delete_exec;
   ot->poll = ED_operator_action_active;
 
@@ -1659,7 +1673,7 @@ void ACTION_OT_handle_type(wmOperatorType *ot)
  * \{ */
 
 /* this function is responsible for setting keyframe type for keyframes */
-static void setkeytype_action_keys(bAnimContext *ac, short mode)
+static void setkeytype_action_keys(bAnimContext *ac, eBezTriple_KeyframeType mode)
 {
   ListBase anim_data = {nullptr, nullptr};
   eAnimFilter_Flags filter;
@@ -1708,7 +1722,6 @@ static void setkeytype_action_keys(bAnimContext *ac, short mode)
 static int actkeys_keytype_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
-  short mode;
 
   /* get editor data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -1720,11 +1733,8 @@ static int actkeys_keytype_exec(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  /* get handle setting mode */
-  mode = RNA_enum_get(op->ptr, "type");
-
-  /* set handle type */
-  setkeytype_action_keys(&ac, mode);
+  const int mode = RNA_enum_get(op->ptr, "type");
+  setkeytype_action_keys(&ac, eBezTriple_KeyframeType(mode));
 
   /* set notifier that keyframe properties have changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);

@@ -25,7 +25,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_screen.hh"
 
@@ -516,7 +516,7 @@ void ui_rna_collection_search_update_fn(
           items_list.begin(),
           items_list.end(),
           [](const std::unique_ptr<CollItemSearch> &a, const std::unique_ptr<CollItemSearch> &b) {
-            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) <= 0;
+            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) < 0;
           });
       for (const int i : items_list.index_range()) {
         items_list[i]->index = i;

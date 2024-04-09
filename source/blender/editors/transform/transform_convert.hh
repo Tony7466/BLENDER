@@ -46,10 +46,11 @@ struct TransConvertTypeInfo {
 
 /**
  * Structure used for Edge Slide operation.
+ * The data is filled based on the 'transform_convert_' type.
  */
 struct TransDataEdgeSlideVert {
   TransData *td;
-  blender::float3 dir_side[2]; /* Directional vectors on the sides.*/
+  blender::float3 dir_side[2]; /* Directional vectors on the sides. */
   float edge_len;              /* Distance between vectors. */
   int loop_nr;                 /* Number that identifies the group of connected edges. */
 
@@ -61,10 +62,11 @@ struct TransDataEdgeSlideVert {
 
 /**
  * Structure used for Vert Slide operation.
+ * The data is filled based on the 'transform_convert_' type.
  */
 struct TransDataVertSlideVert {
   TransData *td;
-  blender::Span<blender::float3> co_link_orig_3d; /* Target locations.*/
+  blender::Span<blender::float3> co_link_orig_3d; /* Target locations. */
   int co_link_curr;
 
   const float *co_orig_3d() const
@@ -291,6 +293,14 @@ extern TransConvertTypeInfo TransConvertType_MeshSkin;
 /* `transform_convert_mesh_uv.cc` */
 
 extern TransConvertTypeInfo TransConvertType_MeshUV;
+
+blender::Array<TransDataVertSlideVert> transform_mesh_uv_vert_slide_data_create(
+    const TransInfo *t,
+    TransDataContainer *tc,
+    blender::Vector<blender::float3> &r_loc_dst_buffer);
+
+blender::Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(
+    const TransInfo *t, TransDataContainer *tc, int *r_group_len);
 
 /* `transform_convert_mesh_vert_cdata.cc` */
 

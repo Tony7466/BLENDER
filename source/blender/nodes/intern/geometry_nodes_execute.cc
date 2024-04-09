@@ -743,16 +743,35 @@ static void store_computed_output_attributes(
 static void store_output_attributes(bke::GeometrySet &geometry,
                                     const bNodeTree &tree,
                                     const IDProperty *properties,
-                                    Span<GMutablePointer> output_values,
-                                    const bool do_instances)
+                                    Span<GMutablePointer> output_values)
 {
   /* All new attribute values have to be computed before the geometry is actually changed. This is
    * necessary because some fields might depend on attributes that are overwritten. */
   MultiValueMap<bke::AttrDomain, OutputAttributeInfo> outputs_by_domain =
       find_output_attributes_to_store(tree, properties, output_values);
-  Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
-      geometry, outputs_by_domain, do_instances);
-  store_computed_output_attributes(geometry, attributes_to_store);
+  if (outputs_by_domain.size() == 0) {
+    return;
+  }
+  const bool only_instance_attributes = outputs_by_domain.size() == 1 &&
+                                        *outputs_by_domain.keys().begin() ==
+                                            bke::AttrDomain::Instance;
+  if (only_instance_attributes) {
+    /* No need to call #modify_geometry_sets when only adding attributes to top-level instances.
+     * This avoids some unnecessary data copies currently if some sub-geometries are not yet owned
+     * by the geometry set, i.e. they use #GeometryOwnershipType::Editable/ReadOnly. */
+    Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
+        geometry, outputs_by_domain, true);
+    store_computed_output_attributes(geometry, attributes_to_store);
+    return;
+  }
+
+  geometry.modify_geometry_sets([&](bke::GeometrySet &instance_geometry) {
+    /* Instance attributes should only be created for the top-level geometry. */
+    const bool do_instances = &geometry == &instance_geometry;
+    Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
+        instance_geometry, outputs_by_domain, do_instances);
+    store_computed_output_attributes(instance_geometry, attributes_to_store);
+  });
 }
 
 bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
@@ -848,11 +867,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
   }
 
   bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
-  output_geometry.modify_geometry_sets([&](bke::GeometrySet &geometry) {
-    /* Instance attributes should only be created for the top-level geometry. */
-    const bool do_instances = &output_geometry == &geometry;
-    store_output_attributes(geometry, btree, properties, param_outputs, do_instances);
-  });
+  store_output_attributes(output_geometry, btree, properties, param_outputs);
 
   for (const int i : IndexRange(num_outputs)) {
     if (param_set_outputs[i]) {
@@ -918,11 +933,10 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
       const std::string use_attribute_id = socket_identifier + input_use_attribute_suffix();
       const std::string attribute_name_id = socket_identifier + input_attribute_name_suffix();
 
-      IDPropertyTemplate idprop = {0};
-      IDProperty *use_attribute_prop = IDP_New(IDP_BOOLEAN, &idprop, use_attribute_id.c_str());
+      IDProperty *use_attribute_prop = bke::idprop::create_bool(use_attribute_id, false).release();
       IDP_AddToGroup(&properties, use_attribute_prop);
 
-      IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_id.c_str());
+      IDProperty *attribute_prop = bke::idprop::create(attribute_name_id, "").release();
       IDP_AddToGroup(&properties, attribute_prop);
 
       if (old_properties == nullptr) {
