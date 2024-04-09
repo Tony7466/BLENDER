@@ -3244,7 +3244,7 @@ class WM_MT_splash_quick_setup(Menu):
             layout.separator(type='LINE')
 
         if can_import:
-            layout.label(text="... Or Create New Preferences")
+            layout.label(text="Create New Preferences")
         else:
             layout.label(text="Quick Setup")
 
