@@ -78,8 +78,11 @@ def handle_bin(*, do_unregister: bool, all_users: bool) -> bool:
                 found = True
                 break
         if not found:
-            print("The PATH endearment variable doesn't contain \"{:s}\", not creating symlinks".format(dirpath_dst))
-            return False
+            sys.stdout.write(
+                "The PATH environment variable doesn't contain \"{:s}\", not creating symlinks\n".format(dirpath_dst)
+            )
+            # NOTE: this is not an error, don't consider it a failure.
+            return True
 
         os.makedirs(dirpath_dst, exist_ok=True)
 
