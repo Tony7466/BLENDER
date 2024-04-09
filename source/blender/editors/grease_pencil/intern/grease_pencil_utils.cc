@@ -12,7 +12,6 @@
 #include "BKE_material.h"
 #include "BKE_scene.hh"
 
-#include "BLI_index_mask_expression.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
 #include "BLI_vector_set.hh"
