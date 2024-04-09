@@ -59,6 +59,11 @@ void CombinedKeyingResult::add(const SingleKeyingResult result)
   result_counter[int(result)]++;
 }
 
+void CombinedKeyingResult::add_multiple(const SingleKeyingResult result, int count)
+{
+  result_counter[int(result)] += count;
+}
+
 void CombinedKeyingResult::merge(const CombinedKeyingResult &other)
 {
   for (int i = 0; i < result_counter.size(); i++) {
@@ -126,6 +131,54 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     errors.append(fmt::format("Due to the NLA stack setup, {} keyframe{} not been inserted.",
                               error_count,
                               error_count > 1 ? "s have" : " has"));
+  }
+
+  if (this->get_count(SingleKeyingResult::NO_ANIMDATA) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_ANIMDATA);
+    errors.append(
+        fmt::format("Due to missing animdata, {} keyframe{} not been inserted. "
+                    "This may be because you are trying to key a non-animatable "
+                    "data type or a library-linked datablock.",
+                    error_count,
+                    error_count > 1 ? "s have" : " has"));
+  }
+
+  if (this->get_count(SingleKeyingResult::NO_ANIMATION_DATABLOCK_OR_ACTION) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_ANIMATION_DATABLOCK_OR_ACTION);
+    errors.append(
+        fmt::format("There is no Action{} assigned, and thus {} keyframe{} not "
+                    "inserted. This may be because you are trying to key a "
+                    "non-animatable data type or a library-linked datablock.",
+                    USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) ? " or Animation" : "",
+                    error_count,
+                    error_count > 1 ? "s were" : " was"));
+  }
+
+  if (this->get_count(SingleKeyingResult::NO_VALID_LAYER) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_VALID_LAYER);
+    errors.append(
+        fmt::format("Due to there being no layer that can accept them, {} keyframe{} "
+                    "not inserted.", /* TODO: explain possible reasons why. */
+                    error_count,
+                    error_count > 1 ? "s were" : " was"));
+  }
+
+  if (this->get_count(SingleKeyingResult::NO_VALID_STRIP) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_VALID_STRIP);
+    errors.append(
+        fmt::format("Due to there being no strip that can accept them, {} keyframe{} "
+                    "not inserted.", /* TODO: explain possible reasons why. */
+                    error_count,
+                    error_count > 1 ? "s were" : " was"));
+  }
+
+  if (this->get_count(SingleKeyingResult::NO_VALID_BINDING) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
+    errors.append(
+        fmt::format("Due to a missing animation binding, {} keyframe{} not "
+                    "inserted.", /* TODO: explain possible reasons why. */
+                    error_count,
+                    error_count > 1 ? "s were" : " was"));
   }
 
   if (errors.is_empty()) {
@@ -992,32 +1045,37 @@ struct KeyInsertData {
 };
 
 /* `key_data` is expected to be in Strip space. */
-static CombinedKeyingResult insert_key_strip(KeyframeStrip &strip,
-                                             Binding &binding,
-                                             const std::string &rna_path,
-                                             const KeyInsertData &key_data,
-                                             const KeyframeSettings &key_settings)
+static SingleKeyingResult insert_key_strip(KeyframeStrip &strip,
+                                           Binding &binding,
+                                           const std::string &rna_path,
+                                           const KeyInsertData &key_data,
+                                           const KeyframeSettings &key_settings)
 {
-  strip.keyframe_insert(binding, rna_path, key_data.array_index, key_data.position, key_settings);
+  FCurve *fcurve = strip.keyframe_insert(
+      binding, rna_path, key_data.array_index, key_data.position, key_settings);
 
-  /* TODO: fill in and return combined keying result properly. */
-  return CombinedKeyingResult();
+  if (!fcurve) {
+    /* TODO: make `KeyframeStrip::keyframe_insert()` (called above)
+     * return enough info to actually choose the error variant here
+     * correctly. */
+    return SingleKeyingResult::CANNOT_CREATE_FCURVE;
+  }
+
+  return SingleKeyingResult::SUCCESS;
 }
 
-static CombinedKeyingResult insert_key_layer(Layer &layer,
-                                             Binding &binding,
-                                             const std::string &rna_path,
-                                             const KeyInsertData &key_data,
-                                             const KeyframeSettings &key_settings)
+static SingleKeyingResult insert_key_layer(Layer &layer,
+                                           Binding &binding,
+                                           const std::string &rna_path,
+                                           const KeyInsertData &key_data,
+                                           const KeyframeSettings &key_settings)
 {
   if (layer.strips().size() == 0) {
     layer.strip_add(Strip::Type::Keyframe);
   }
   Strip *strip = layer.strip(0);
   if (strip == nullptr) {
-    printf("ERROR: Strip is a null pointer");
-    /* TODO: fill in combined keying result properly. */
-    return CombinedKeyingResult();
+    return SingleKeyingResult::NO_VALID_STRIP;
   }
 
   /* TODO: morph key data based on Layer position in stack and Strip offset. */
@@ -1032,15 +1090,16 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
                                             const KeyframeSettings &key_settings)
 {
   ID *id = rna_pointer->owner_id;
+  CombinedKeyingResult combined_result;
 
   Binding *binding = anim.binding_for_id(*id);
   if (binding == nullptr) {
     binding = &anim.binding_add();
     const bool success = anim.assign_id(binding, *id);
     if (!success) {
-      printf("ERROR: Failed to assign the ID to the binding");
-      /* TODO: fill in combined keying result properly. */
-      return CombinedKeyingResult();
+      /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
+      combined_result.add_multiple(SingleKeyingResult::NO_VALID_BINDING, rna_paths.size());
+      return combined_result;
     }
   }
 
@@ -1053,12 +1112,10 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
   }
 
   if (layer == nullptr) {
-    printf("ERROR: Cannot get or create a layer");
-    /* TODO: fill in combined keying result properly. */
-    return CombinedKeyingResult();
+    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
+    combined_result.add_multiple(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
+    return combined_result;
   }
-
-  CombinedKeyingResult combined_result;
 
   for (const std::string &rna_path : rna_paths) {
     const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
@@ -1067,8 +1124,7 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
     const bool path_resolved = RNA_path_resolve_property(
         rna_pointer, rna_path.c_str(), &ptr, &prop);
     if (!path_resolved) {
-      /* TODO: maybe create a more specific enum variant for this case? */
-      combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE);
+      combined_result.add(SingleKeyingResult::INVALID_RNA_PATH);
       continue;
     }
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
@@ -1079,9 +1135,9 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
       KeyInsertData key_data;
       key_data.array_index = property_index;
       key_data.position = {scene_frame, rna_values[property_index]};
-      const CombinedKeyingResult result = insert_key_layer(
+      const SingleKeyingResult result = insert_key_layer(
           *layer, *binding, rna_path_id_to_prop.value(), key_data, key_settings);
-      combined_result.merge(result);
+      combined_result.add(result);
     }
   }
 
@@ -1098,12 +1154,14 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
 {
   ID *id = rna_pointer->owner_id;
   AnimData *adt;
+  CombinedKeyingResult combined_result;
 
   /* init animdata if none available yet */
   adt = BKE_animdata_ensure_id(id);
   if (adt == nullptr) {
-    /* TODO: fill in combined keying result properly. */
-    return CombinedKeyingResult();
+    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
+    combined_result.add_multiple(SingleKeyingResult::NO_ANIMDATA, rna_paths.size());
+    return combined_result;
   }
 
   if (adt->animation || !adt->action) {
@@ -1115,8 +1173,10 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
           "Could not insert keyframe, as this type does not support animation data (ID = "
           "%s)",
           id->name);
-      /* TODO: fill in combined keying result properly. */
-      return CombinedKeyingResult();
+      /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
+      combined_result.add_multiple(SingleKeyingResult::NO_ANIMATION_DATABLOCK_OR_ACTION,
+                                   rna_paths.size());
+      return combined_result;
     }
     KeyframeSettings key_settings;
     key_settings.keyframe_type = key_type;
@@ -1127,9 +1187,11 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   }
 
   bAction *action = id_action_ensure(bmain, id);
-  CombinedKeyingResult combined_result;
 
   if (action == nullptr) {
+    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
+    combined_result.add_multiple(SingleKeyingResult::NO_ANIMATION_DATABLOCK_OR_ACTION,
+                                 rna_paths.size());
     return combined_result;
   }
 
@@ -1152,6 +1214,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     const bool path_resolved = RNA_path_resolve_property(
         rna_pointer, rna_path.c_str(), &ptr, &prop);
     if (!path_resolved) {
+      combined_result.add(SingleKeyingResult::INVALID_RNA_PATH);
       continue;
     }
     const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,

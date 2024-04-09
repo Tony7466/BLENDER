@@ -37,6 +37,13 @@ enum class SingleKeyingResult {
   FCURVE_NOT_KEYFRAMEABLE,
   NO_KEY_NEEDED,
   UNABLE_TO_INSERT_TO_NLA_STACK,
+  /* TODO: maybe merge some of these together? */
+  NO_ANIMDATA,
+  NO_ANIMATION_DATABLOCK_OR_ACTION,
+  NO_VALID_LAYER,
+  NO_VALID_STRIP,
+  NO_VALID_BINDING,
+  INVALID_RNA_PATH,
   /* Make sure to always keep this at the end of the enum. */
   _KEYING_RESULT_MAX,
 };
@@ -55,6 +62,8 @@ class CombinedKeyingResult {
   CombinedKeyingResult();
 
   void add(const SingleKeyingResult result);
+
+  void add_multiple(const SingleKeyingResult result, int count);
 
   /* Add values of the given result to this result. */
   void merge(const CombinedKeyingResult &combined_result);
