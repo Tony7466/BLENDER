@@ -232,11 +232,11 @@ class BoneCollectionItem : public AbstractTreeViewItem {
       const char *tip = nullptr;
       if (ANIM_armature_bonecoll_contains_active_bone(&armature_, &bone_collection_)) {
         icon = ICON_LAYER_ACTIVE;
-        tip = TIP_("Active");
+        tip = TIP_("Contains the active bone");
       }
       else if (has_any_selected_bones_) {
         icon = ICON_LAYER_USED;
-        tip = TIP_("Selected");
+        tip = TIP_("Contains one or more selected bones");
       }
       else {
         icon = ICON_BLANK1;
