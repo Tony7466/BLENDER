@@ -445,11 +445,26 @@ struct LayerBufferItem {
   blender::bke::greasepencil::FramesMapKey last_frame;
 };
 
-/* Globals for copy/paste data (like for other copy/paste buffers). */
-static Map<std::string, LayerBufferItem> copy_buffer;
-static int copy_buffer_first_frame = std::numeric_limits<int>::max();
-static int copy_buffer_last_frame = std::numeric_limits<int>::min();
-static int copy_buffer_cfra = 0;
+struct Clipboard {
+  Map<std::string, LayerBufferItem> copy_buffer;
+  int first_frame = std::numeric_limits<int>::max();
+  int last_frame = std::numeric_limits<int>::min();
+  int cfra = 0;
+
+  void clear()
+  {
+    copy_buffer.clear();
+    first_frame = std::numeric_limits<int>::max();
+    last_frame = std::numeric_limits<int>::min();
+    cfra = 0;
+  }
+};
+
+static Clipboard &get_grease_pencil_keyframe_clipboard()
+{
+  static Clipboard clipboard;
+  return clipboard;
+}
 
 bool grease_pencil_copy_keyframes(bAnimContext *ac)
 {
@@ -457,10 +472,10 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
   ListBase anim_data = {nullptr, nullptr};
 
+  Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
+
   /* Clear buffer first. */
-  copy_buffer.clear();
-  copy_buffer_first_frame = std::numeric_limits<int>::max();
-  copy_buffer_last_frame = std::numeric_limits<int>::min();
+  clipboard.clear();
 
   Scene *scene = ac->scene;
 
@@ -498,26 +513,26 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
       }
     }
     if (!buf.is_empty()) {
-      BLI_assert(!copy_buffer.contains(layer->name()));
-      copy_buffer.add_new(layer->name(), {buf, layer_first_frame, layer_last_frame});
+      BLI_assert(!clipboard.copy_buffer.contains(layer->name()));
+      clipboard.copy_buffer.add_new(layer->name(), {buf, layer_first_frame, layer_last_frame});
       /* Update the range of entire copy buffer. */
-      if (layer_first_frame < copy_buffer_first_frame) {
-        copy_buffer_first_frame = layer_first_frame;
+      if (layer_first_frame < clipboard.first_frame) {
+        clipboard.first_frame = layer_first_frame;
       }
-      if (layer_last_frame > copy_buffer_last_frame) {
-        copy_buffer_last_frame = layer_last_frame;
+      if (layer_last_frame > clipboard.last_frame) {
+        clipboard.last_frame = layer_last_frame;
       }
     }
   }
 
   /* In case 'relative' paste method is used. */
-  copy_buffer_cfra = scene->r.cfra;
+  clipboard.cfra = scene->r.cfra;
 
   /* Clean up. */
   ANIM_animdata_freelist(&anim_data);
 
   /* If nothing ended up in the buffer, copy failed. */
-  return !copy_buffer.is_empty();
+  return !clipboard.copy_buffer.is_empty();
 }
 
 bool grease_pencil_paste_keyframes(bAnimContext *ac,
@@ -528,8 +543,10 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
 
   ListBase anim_data = {nullptr, nullptr};
 
+  Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
+
   /* Check if buffer is empty. */
-  if (copy_buffer.is_empty()) {
+  if (clipboard.copy_buffer.is_empty()) {
     return false;
   }
 
@@ -539,13 +556,13 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   /* Methods of offset (eKeyPasteOffset). */
   switch (offset_mode) {
     case KEYFRAME_PASTE_OFFSET_CFRA_START:
-      offset = (scene->r.cfra - copy_buffer_first_frame);
+      offset = (scene->r.cfra - clipboard.first_frame);
       break;
     case KEYFRAME_PASTE_OFFSET_CFRA_END:
-      offset = (scene->r.cfra - copy_buffer_last_frame);
+      offset = (scene->r.cfra - clipboard.last_frame);
       break;
     case KEYFRAME_PASTE_OFFSET_CFRA_RELATIVE:
-      offset = (scene->r.cfra - copy_buffer_cfra);
+      offset = (scene->r.cfra - clipboard.cfra);
       break;
     case KEYFRAME_PASTE_OFFSET_NONE:
       offset = 0;
@@ -559,7 +576,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
   /* Check if single channel in buffer (disregard names if so). */
-  const bool from_single_channel = copy_buffer.size() == 1;
+  const bool from_single_channel = clipboard.copy_buffer.size() == 1;
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     /* Only deal with GPlayers (case of calls from general dopesheet). */
@@ -569,11 +586,11 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
     const std::string layer_name = layer->name();
-    if (!from_single_channel && !copy_buffer.contains(layer_name)) {
+    if (!from_single_channel && !clipboard.copy_buffer.contains(layer_name)) {
       continue;
     }
-    LayerBufferItem layer_buffer = from_single_channel ? *copy_buffer.values().begin() :
-                                                         copy_buffer.lookup(layer_name);
+    LayerBufferItem layer_buffer = from_single_channel ? *clipboard.copy_buffer.values().begin() :
+                                                         clipboard.copy_buffer.lookup(layer_name);
     bool change = false;
 
     /* Mix mode with existing data. */
@@ -603,8 +620,8 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         }
         else {
           /* Entire range of all copied keys. */
-          frame_min = copy_buffer_first_frame + offset;
-          frame_max = copy_buffer_last_frame + offset;
+          frame_min = clipboard.first_frame + offset;
+          frame_max = clipboard.last_frame + offset;
         }
 
         /* Remove keys in range. */
