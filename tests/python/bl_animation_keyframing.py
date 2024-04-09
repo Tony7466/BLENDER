@@ -142,7 +142,7 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         _insert_from_user_preference_test({"LOCATION", "ROTATION", "SCALE"}, ["location", "rotation_euler", "scale"])
 
     def test_insert_custom_properties(self):
-        bpy.context.preferences.edit.key_insert_channels = {"LOCATION", "CUSTOM_PROPS"}
+        bpy.context.preferences.edit.key_insert_channels = {"CUSTOM_PROPS"}
         keyed_object = _create_animation_object()
 
         keyed_properties = {
@@ -169,7 +169,7 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         with bpy.context.temp_override(**_get_view3d_context()):
             bpy.ops.anim.keyframe_insert()
 
-        keyed_rna_paths = [f"[\"{repr(path)}\"]" for path in keyed_properties.keys()]
+        keyed_rna_paths = [f"[\"{bpy.utils.escape_identifier(path)}\"]" for path in keyed_properties.keys()]
         _fcurve_paths_match(keyed_object.animation_data.action.fcurves, keyed_rna_paths)
         bpy.data.objects.remove(keyed_object, do_unlink=True)
 
