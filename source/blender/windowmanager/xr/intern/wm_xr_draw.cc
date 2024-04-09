@@ -338,7 +338,6 @@ static void wm_xr_controller_aim_draw(const XrSessionSettings *settings, wmXrSes
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     GPU_blend(GPU_BLEND_ALPHA);
 
-
     LISTBASE_FOREACH (wmXrController *, controller, &state->controllers) {
       if (!controller->grip_active) {
         continue;
@@ -367,14 +366,13 @@ static void wm_xr_controller_aim_draw(const XrSessionSettings *settings, wmXrSes
     GPU_depth_test(GPU_DEPTH_NONE);
     GPU_blend(GPU_BLEND_NONE);
 
-
     LISTBASE_FOREACH (wmXrController *, controller, &state->controllers) {
       if (!controller->grip_active) {
         continue;
       }
 
       immBegin(GPU_PRIM_LINES, 6);
-      
+
       const float(*mat)[4] = controller->aim_mat;
       madd_v3_v3v3fl(x_axis, mat[3], mat[0], scale);
       madd_v3_v3v3fl(y_axis, mat[3], mat[1], scale);
