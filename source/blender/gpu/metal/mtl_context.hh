@@ -552,7 +552,7 @@ class MTLCommandBufferManager {
 
  public:
   /* Counter for active command buffers. */
-  static int num_active_cmd_bufs;
+  static std::atomic<int> num_active_cmd_bufs;
 
  private:
   /* Associated Context and properties. */

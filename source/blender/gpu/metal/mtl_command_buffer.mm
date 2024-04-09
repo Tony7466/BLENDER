@@ -20,7 +20,7 @@ using namespace blender::gpu;
 namespace blender::gpu {
 
 /* Counter for active command buffers. */
-int MTLCommandBufferManager::num_active_cmd_bufs = 0;
+std::atomic<int> MTLCommandBufferManager::num_active_cmd_bufs = 0;
 
 /* -------------------------------------------------------------------- */
 /** \name MTLCommandBuffer initialization and render coordination.

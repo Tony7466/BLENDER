@@ -38,12 +38,8 @@ using namespace blender;
 using namespace blender::gpu;
 
 /* Fire off a single dispatch per encoder. Can make debugging view clearer for texture resources
- * associated with each dispatch. */
-#if defined(NDEBUG)
-#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 0
-#else
-#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1
-#endif
+ * associated with each dispatch. NOTE: This should only be used during active debugging. */
+#define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 0
 
 /* Debug option to bind null buffer for missing UBOs.
  * Enabled by default. TODO: Ensure all required UBO bindings are present. */
@@ -2724,7 +2720,7 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
 
     /* Decrement count */
     MTLCommandBufferManager::num_active_cmd_bufs--;
-    MTL_LOG_INFO("Active command buffers: %d", MTLCommandBufferManager::num_active_cmd_bufs);
+    MTL_LOG_INFO("Active command buffers: %d", int(MTLCommandBufferManager::num_active_cmd_bufs));
 
     /* Drawable count and latency management. */
     MTLContext::max_drawables_in_flight--;
