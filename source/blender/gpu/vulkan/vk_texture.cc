@@ -143,7 +143,7 @@ void VKTexture::generate_mipmap()
 
 void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspect)
 {
-  render_graph::VKCopyImageNode::CreateInfo copy_image = {};
+  render_graph::VKCopyImageCreateInfo copy_image = {};
   copy_image.src_image = vk_image_handle();
   copy_image.dst_image = dst_texture.vk_image_handle();
   copy_image.region.srcSubresource.aspectMask = vk_image_aspect;
@@ -175,7 +175,7 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
   BLI_assert(!is_texture_view());
 
-  render_graph::VKClearColorImageNode::CreateInfo clear_color_image = {};
+  render_graph::VKClearColorImageCreateInfo clear_color_image = {};
   clear_color_image.vk_image = vk_image_;
   clear_color_image.vk_clear_color_value = to_vk_clear_color_value(format, data);
   clear_color_image.vk_image_subresource_range.aspectMask = to_vk_image_aspect_flag_bits(
@@ -241,7 +241,7 @@ void VKTexture::read_sub(
 
   staging_buffer.create(device_memory_size, GPU_USAGE_DYNAMIC, VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
-  render_graph::VKCopyImageToBufferNode::CreateInfo copy_image_to_buffer = {};
+  render_graph::VKCopyImageToBufferCreateInfo copy_image_to_buffer = {};
   copy_image_to_buffer.src_image = vk_image_handle();
   copy_image_to_buffer.dst_buffer = staging_buffer.vk_handle();
   copy_image_to_buffer.region.imageOffset.x = region[0];
@@ -335,7 +335,7 @@ void VKTexture::update_sub(
   convert_host_to_device(
       staging_buffer.mapped_memory_get(), data, sample_len, format, format_, device_format_);
 
-  render_graph::VKCopyBufferToImageNode::CreateInfo copy_buffer_to_image = {};
+  render_graph::VKCopyBufferToImageCreateInfo copy_buffer_to_image = {};
   copy_buffer_to_image.src_buffer = staging_buffer.vk_handle();
   copy_buffer_to_image.dst_image = vk_image_handle();
 
@@ -407,7 +407,7 @@ bool VKTexture::init_internal(VertBuf *vbo)
   }
 
   VKVertexBuffer *vertex_buffer = unwrap(vbo);
-  render_graph::VKCopyBufferToImageNode::CreateInfo copy_buffer_to_image = {};
+  render_graph::VKCopyBufferToImageCreateInfo copy_buffer_to_image = {};
   copy_buffer_to_image.src_buffer = vertex_buffer->vk_handle();
   copy_buffer_to_image.dst_image = vk_image_handle();
   copy_buffer_to_image.region.imageExtent.width = w_;

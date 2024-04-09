@@ -12,27 +12,26 @@
 #include "../vk_resource_dependencies.hh"
 #include "../vk_resources.hh"
 #include "vk_common.hh"
+#include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
-struct VKCopyImageToBufferNode : NonCopyable {
-  struct Data {
-    VkImage src_image;
-    VkBuffer dst_buffer;
-    VkBufferImageCopy region;
-  };
-  using CreateInfo = Data;
-
-  static constexpr bool uses_image_resources = true;
-  static constexpr bool uses_buffer_resources = true;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::COPY_IMAGE_TO_BUFFER;
-
+struct VKCopyImageToBufferData {
+  VkImage src_image;
+  VkBuffer dst_buffer;
+  VkBufferImageCopy region;
+};
+using VKCopyImageToBufferCreateInfo = VKCopyImageToBufferData;
+class VKCopyImageToBufferNode : public VKNodeClass<VKCopyImageToBufferCreateInfo,
+                                                   VKCopyImageToBufferData,
+                                                   VKNodeType::COPY_IMAGE_TO_BUFFER,
+                                                   true,
+                                                   true,
+                                                   VK_PIPELINE_STAGE_TRANSFER_BIT> {
+ public:
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_image_to_buffer = create_info;
   }
-
-  template<typename Node> static void free_data(Node & /*node*/) {}
 
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,

@@ -32,15 +32,15 @@ namespace blender::gpu::render_graph {
 struct VKNodeData {
   VKNodeType type;
   union {
-    VKBlitImageNode::Data blit_image;
-    VKClearColorImageNode::Data clear_color_image;
-    VKCopyBufferNode::Data copy_buffer;
-    VKCopyBufferToImageNode::Data copy_buffer_to_image;
-    VKCopyImageNode::Data copy_image;
-    VKCopyImageToBufferNode::Data copy_image_to_buffer;
-    VKDispatchNode::Data dispatch;
-    VKFillBufferNode::Data fill_buffer;
-    VKSynchronizationNode::Data synchronization;
+    VKBlitImageData blit_image;
+    VKClearColorImageData clear_color_image;
+    VKCopyBufferData copy_buffer;
+    VKCopyBufferToImageData copy_buffer_to_image;
+    VKCopyImageData copy_image;
+    VKCopyImageToBufferData copy_image_to_buffer;
+    VKDispatchData dispatch;
+    VKFillBufferData fill_buffer;
+    VKSynchronizationData synchronization;
   };
 };
 

@@ -36,7 +36,7 @@ class VKContext : public Context, NonCopyable {
   void *ghost_context_;
 
   render_graph::VKRenderGraph render_graph_;
-  render_graph::VKDispatchNode::CreateInfo dispatch_info_ = {};
+  render_graph::VKDispatchCreateInfo dispatch_info_ = {};
 
  public:
   VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources);
@@ -67,7 +67,7 @@ class VKContext : public Context, NonCopyable {
 
   [[deprecated]] void bind_compute_pipeline();
   void update_dispatch_info();
-  render_graph::VKDispatchNode::CreateInfo &update_and_get_dispatch_info();
+  render_graph::VKDispatchCreateInfo &update_and_get_dispatch_info();
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
   void sync_backbuffer();

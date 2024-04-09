@@ -240,7 +240,7 @@ void VKContext::update_dispatch_info()
   dispatch_info_.dispatch_node.pipeline_data.vk_pipeline = vk_pipeline;
 }
 
-render_graph::VKDispatchNode::CreateInfo &VKContext::update_and_get_dispatch_info()
+render_graph::VKDispatchCreateInfo &VKContext::update_and_get_dispatch_info()
 {
   VKShader *shader = unwrap(this->shader);
   VKPipeline &pipeline = shader->pipeline_get();

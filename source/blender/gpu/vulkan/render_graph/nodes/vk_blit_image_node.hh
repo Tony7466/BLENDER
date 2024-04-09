@@ -8,35 +8,32 @@
 
 #pragma once
 
-#include "../vk_command_buffer_wrapper.hh"
-#include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
-#include "vk_common.hh"
+#include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
-struct VKBlitImageNode : NonCopyable {
-  /**
-   * Information stored inside the render graph node.
-   */
-  struct Data {
-    VkImage src_image;
-    VkImage dst_image;
-    VkImageBlit region;
-    VkFilter filter;
-  };
-  using CreateInfo = Data;
 
-  static constexpr bool uses_image_resources = true;
-  static constexpr bool uses_buffer_resources = false;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::BLIT_IMAGE;
+/**
+ * Information stored inside the render graph node.
+ */
+struct VKBlitImageData {
+  VkImage src_image;
+  VkImage dst_image;
+  VkImageBlit region;
+  VkFilter filter;
+};
+using VKBlitImageCreateInfo = VKBlitImageData;
 
+class VKBlitImageNode : public VKNodeClass<VKBlitImageCreateInfo,
+                                           VKBlitImageData,
+                                           VKNodeType::BLIT_IMAGE,
+                                           true,
+                                           false,
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT> {
+ public:
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.blit_image = create_info;
   }
-
-  template<typename Node> static void free_data(Node & /*node*/) {}
 
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,

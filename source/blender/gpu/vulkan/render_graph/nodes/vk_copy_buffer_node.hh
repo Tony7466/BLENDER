@@ -8,25 +8,30 @@
 
 #pragma once
 
-#include "../vk_command_buffer_wrapper.hh"
-#include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
-#include "vk_common.hh"
+#include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
-struct VKCopyBufferNode : NonCopyable {
-  struct Data {
-    VkBuffer src_buffer;
-    VkBuffer dst_buffer;
-    VkBufferCopy region;
-  };
-  using CreateInfo = Data;
+/**
+ * Information stored inside the render graph node.
+ */
+struct VKCopyBufferData {
+  VkBuffer src_buffer;
+  VkBuffer dst_buffer;
+  VkBufferCopy region;
+};
 
-  static constexpr bool uses_image_resources = false;
-  static constexpr bool uses_buffer_resources = true;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::COPY_BUFFER;
+/**
+ * Information needed to create for adding a clear color image node in the render graph.
+ */
+using VKCopyBufferCreateInfo = VKCopyBufferData;
 
+class VKCopyBufferNode : public VKNodeClass<VKCopyBufferCreateInfo,
+                                            VKCopyBufferData,
+                                            VKNodeType::COPY_BUFFER,
+                                            false,
+                                            true,
+                                            VK_PIPELINE_STAGE_TRANSFER_BIT> {
+ public:
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_buffer = create_info;

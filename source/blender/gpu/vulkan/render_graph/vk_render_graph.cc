@@ -32,10 +32,10 @@ void VKRenderGraph::deinit()
 void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
 {
   /* Needs to be executed at forehand as `add_node` also locks the mutex. */
-  VKSynchronizationNode::CreateInfo synchronization = {};
+  VKSynchronizationCreateInfo synchronization = {};
   synchronization.vk_image = vk_swapchain_image;
   synchronization.vk_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-  add_node<VKSynchronizationNode, VKSynchronizationNode::CreateInfo>(synchronization);
+  add_node<VKSynchronizationNode, VKSynchronizationCreateInfo>(synchronization);
 
   std::scoped_lock lock(resources_.mutex_get());
   command_builder_.reset(*this);

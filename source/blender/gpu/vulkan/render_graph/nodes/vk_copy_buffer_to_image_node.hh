@@ -8,25 +8,22 @@
 
 #pragma once
 
-#include "../vk_command_buffer_wrapper.hh"
-#include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
-#include "vk_common.hh"
+#include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
-struct VKCopyBufferToImageNode : NonCopyable {
-  struct Data {
-    VkBuffer src_buffer;
-    VkImage dst_image;
-    VkBufferImageCopy region;
-  };
-  using CreateInfo = Data;
-
-  static constexpr bool uses_image_resources = true;
-  static constexpr bool uses_buffer_resources = true;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::COPY_BUFFER_TO_IMAGE;
-
+struct VKCopyBufferToImageData {
+  VkBuffer src_buffer;
+  VkImage dst_image;
+  VkBufferImageCopy region;
+};
+using VKCopyBufferToImageCreateInfo = VKCopyBufferToImageData;
+class VKCopyBufferToImageNode : public VKNodeClass<VKCopyBufferToImageCreateInfo,
+                                                   VKCopyBufferToImageData,
+                                                   VKNodeType::COPY_BUFFER_TO_IMAGE,
+                                                   true,
+                                                   true,
+                                                   VK_PIPELINE_STAGE_TRANSFER_BIT> {
+ public:
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_buffer_to_image = create_info;

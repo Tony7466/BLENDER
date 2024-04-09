@@ -8,25 +8,31 @@
 
 #pragma once
 
-#include "../vk_command_buffer_wrapper.hh"
-#include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
-#include "vk_common.hh"
+#include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
-struct VKClearColorImageNode : NonCopyable {
-  struct Data {
-    VkImage vk_image;
-    VkClearColorValue vk_clear_color_value;
-    VkImageSubresourceRange vk_image_subresource_range;
-  };
-  using CreateInfo = Data;
 
-  static constexpr bool uses_image_resources = true;
-  static constexpr bool uses_buffer_resources = false;
-  static constexpr VkPipelineStageFlags pipeline_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-  static constexpr VKNodeType node_type = VKNodeType::CLEAR_COLOR_IMAGE;
+/**
+ * Information stored inside the render graph node.
+ */
+struct VKClearColorImageData {
+  VkImage vk_image;
+  VkClearColorValue vk_clear_color_value;
+  VkImageSubresourceRange vk_image_subresource_range;
+};
 
+/**
+ * Information needed to create for adding a clear color image node in the render graph.
+ */
+using VKClearColorImageCreateInfo = VKClearColorImageData;
+
+class VKClearColorImageNode : public VKNodeClass<VKClearColorImageCreateInfo,
+                                                 VKClearColorImageData,
+                                                 VKNodeType::CLEAR_COLOR_IMAGE,
+                                                 true,
+                                                 false,
+                                                 VK_PIPELINE_STAGE_TRANSFER_BIT> {
+ public:
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.clear_color_image = create_info;

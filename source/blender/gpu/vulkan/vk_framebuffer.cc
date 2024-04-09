@@ -305,7 +305,7 @@ static void blit_aspect(VKTexture &dst_texture,
     return;
   }
 
-  render_graph::VKBlitImageNode::CreateInfo image_blit_data = {};
+  render_graph::VKBlitImageCreateInfo image_blit_data = {};
   image_blit_data.src_image = src_texture.vk_image_handle();
   image_blit_data.dst_image = dst_texture.vk_image_handle();
   image_blit_data.filter = VK_FILTER_NEAREST;

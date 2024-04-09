@@ -18,11 +18,11 @@ TEST(vk_render_graph, dispatch_read_back)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
   resources.add_buffer(buffer);
 
-  VKDispatchNode::CreateInfo dispatch_info = {};
+  VKDispatchCreateInfo dispatch_info = {};
   dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline;
   dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
   dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set;
@@ -55,12 +55,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
   resources.add_buffer(buffer);
 
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set;
@@ -71,7 +71,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
     render_graph.add_node(dispatch_info);
   }
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set;
@@ -116,12 +116,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
   resources.add_buffer(buffer);
 
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set_a;
@@ -132,7 +132,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
     render_graph.add_node(dispatch_info);
   }
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set_b;
@@ -180,12 +180,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
   resources.add_buffer(buffer);
 
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline_a;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set;
@@ -196,7 +196,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
     render_graph.add_node(dispatch_info);
   }
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline_b;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set;
@@ -244,12 +244,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
   resources.add_buffer(buffer);
 
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline_a;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set_a;
@@ -260,7 +260,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
     render_graph.add_node(dispatch_info);
   }
   {
-    VKDispatchNode::CreateInfo dispatch_info = {};
+    VKDispatchCreateInfo dispatch_info = {};
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline = pipeline_b;
     dispatch_info.dispatch_node.pipeline_data.vk_pipeline_layout = pipeline_layout;
     dispatch_info.dispatch_node.pipeline_data.vk_descriptor_set = descriptor_set_b;

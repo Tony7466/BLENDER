@@ -140,7 +140,7 @@ void VKBackend::samplers_update()
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   VKContext &context = *VKContext::get();
-  render_graph::VKDispatchNode::CreateInfo &dispatch_info = context.update_and_get_dispatch_info();
+  render_graph::VKDispatchCreateInfo &dispatch_info = context.update_and_get_dispatch_info();
   dispatch_info.dispatch_node.group_count_x = groups_x_len;
   dispatch_info.dispatch_node.group_count_y = groups_y_len;
   dispatch_info.dispatch_node.group_count_z = groups_z_len;
