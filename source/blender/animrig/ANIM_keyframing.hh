@@ -49,7 +49,7 @@ class CombinedKeyingResult {
  private:
   /* The index to the array maps a `SingleKeyingResult` to the number of times this result has
    * occurred. */
-  std::array<int, static_cast<size_t>(SingleKeyingResult::_KEYING_RESULT_MAX)> result_counter;
+  std::array<int, size_t(SingleKeyingResult::_KEYING_RESULT_MAX)> result_counter;
 
  public:
   CombinedKeyingResult();
