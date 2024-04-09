@@ -1535,6 +1535,8 @@ static int exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     const bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
+    const VArraySpan<bool> selection = *attributes.lookup_or_default<bool>(
+        ".selection", bke::AttrDomain::Point, true);
     const VArraySpan<bool> selection_left = *attributes.lookup_or_default<bool>(
         ".selection_handle_left", bke::AttrDomain::Point, true);
     const VArraySpan<bool> selection_right = *attributes.lookup_or_default<bool>(
@@ -1545,10 +1547,10 @@ static int exec(bContext *C, wmOperator *op)
 
     threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
       for (const int point_i : range) {
-        if (selection_left[point_i]) {
+        if (selection_left[point_i] || selection[point_i]) {
           handle_types_left[point_i] = int8_t(dst_handle_type);
         }
-        if (selection_right[point_i]) {
+        if (selection_right[point_i] || selection[point_i]) {
           handle_types_right[point_i] = int8_t(dst_handle_type);
         }
       }
