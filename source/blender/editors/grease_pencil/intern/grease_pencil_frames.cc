@@ -535,6 +535,26 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   return !clipboard.copy_buffer.is_empty();
 }
 
+int calculate_offset(const eKeyPasteOffset offset_mode, const int cfra, const Clipboard &clipboard)
+{
+  int offset = 0;
+  switch (offset_mode) {
+    case KEYFRAME_PASTE_OFFSET_CFRA_START:
+      offset = (cfra - clipboard.first_frame);
+      break;
+    case KEYFRAME_PASTE_OFFSET_CFRA_END:
+      offset = (cfra - clipboard.last_frame);
+      break;
+    case KEYFRAME_PASTE_OFFSET_CFRA_RELATIVE:
+      offset = (cfra - clipboard.cfra);
+      break;
+    case KEYFRAME_PASTE_OFFSET_NONE:
+      offset = 0;
+      break;
+  }
+  return offset;
+}
+
 bool grease_pencil_paste_keyframes(bAnimContext *ac,
                                    const eKeyPasteOffset offset_mode,
                                    const eKeyMergeMode merge_mode)
@@ -551,23 +571,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
   }
 
   Scene *scene = ac->scene;
-  int offset = 0;
-
-  /* Methods of offset (eKeyPasteOffset). */
-  switch (offset_mode) {
-    case KEYFRAME_PASTE_OFFSET_CFRA_START:
-      offset = (scene->r.cfra - clipboard.first_frame);
-      break;
-    case KEYFRAME_PASTE_OFFSET_CFRA_END:
-      offset = (scene->r.cfra - clipboard.last_frame);
-      break;
-    case KEYFRAME_PASTE_OFFSET_CFRA_RELATIVE:
-      offset = (scene->r.cfra - clipboard.cfra);
-      break;
-    case KEYFRAME_PASTE_OFFSET_NONE:
-      offset = 0;
-      break;
-  }
+  const int offset = calculate_offset(offset_mode, scene->r.cfra, clipboard);
 
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS |
                       ANIMFILTER_FOREDIT | ANIMFILTER_SEL);
