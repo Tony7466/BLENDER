@@ -100,7 +100,7 @@ class VKResources {
     }
   };
 
-  VKResourceList<ResourceHandle, Resource> resources_;
+  VKResourceHandles<ResourceHandle, Resource> resources_;
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
 

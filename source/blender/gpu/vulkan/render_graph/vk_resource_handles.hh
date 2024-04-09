@@ -13,21 +13,24 @@
 
 #include "vk_common.hh"
 
-namespace blender::gpu {
+namespace blender::gpu::render_graph {
 
 /**
  * List for working with handles and items.
  * Reference to the first empty slot is stored internally to stop iterating over all the elements.
  */
-// TODO: Also keep track of last filled position to reduce the amount of items as_span/size will
-// return
-template<typename Handle, typename Item> class VKResourceList {
+template<typename Handle, typename Item> class VKResourceHandles {
  private:
   const int64_t grow_size_ = 64;
   Handle first_empty_slot_ = 0;
   Vector<std::optional<Item>> items_;
 
  public:
+  /**
+   * Allocate a new handle.
+   *
+   * It can reuse a previous freed handle.
+   */
   Handle allocate()
   {
     Handle handle = first_empty_slot_;
@@ -90,4 +93,4 @@ template<typename Handle, typename Item> class VKResourceList {
   }
 };
 
-}  // namespace blender::gpu
+}  // namespace blender::gpu::render_graph

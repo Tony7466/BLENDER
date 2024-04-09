@@ -283,11 +283,11 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_nodes.hh
   vulkan/render_graph/vk_resource_access_info.hh
   vulkan/render_graph/vk_resource_dependencies.hh
+  vulkan/render_graph/vk_resource_handles.hh
   vulkan/render_graph/vk_resources.hh
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh
   vulkan/render_graph/vk_types.hh
-  vulkan/vk_resource_handles.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_samplers.hh
