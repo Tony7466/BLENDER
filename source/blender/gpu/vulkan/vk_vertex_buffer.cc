@@ -175,7 +175,7 @@ void VKVertexBuffer::upload_data()
       upload_data_direct(buffer_);
     }
     else {
-  render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
+      render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
       upload_data_via_staging_buffer(render_graph);
     }
     if (usage_ == GPU_USAGE_STATIC) {

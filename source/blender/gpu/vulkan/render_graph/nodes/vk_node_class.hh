@@ -15,20 +15,21 @@
 #include "vk_types_pipeline.hh"
 
 namespace blender::gpu::render_graph {
-template<typename NodeCreateInfo,
+
+enum class VKResourceType { IMAGE = (1 << 0), BUFFER = (1 << 1) };
+ENUM_OPERATORS(VKResourceType, VKResourceType::BUFFER);
+
+template<VKNodeType NodeType,
+         typename NodeCreateInfo,
          typename NodeData,
-         VKNodeType NodeType,
-         bool UseImages,
-         bool UseBuffers,
-         VkPipelineStageFlagBits PipelineStage>
+         VkPipelineStageFlagBits PipelineStage,
+         VKResourceType ResourceUsages>
 class VKNodeClass : public NonCopyable {
  public:
-  using CreateInfo = NodeCreateInfo;
-  using Data = NodeData;
-
   static constexpr VKNodeType node_type = NodeType;
-  static constexpr bool uses_image_resources = UseImages;
-  static constexpr bool uses_buffer_resources = UseBuffers;
+  static constexpr bool uses_image_resources = bool(ResourceUsages & VKResourceType::IMAGE);
+  static constexpr bool uses_buffer_resources = bool(ResourceUsages & VKResourceType::BUFFER);
   static constexpr VkPipelineStageFlags pipeline_stage = PipelineStage;
+  static constexpr VKResourceType resource_usages = ResourceUsages;
 };
 }  // namespace blender::gpu::render_graph

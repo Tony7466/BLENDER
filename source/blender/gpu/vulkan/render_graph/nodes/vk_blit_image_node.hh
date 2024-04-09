@@ -23,14 +23,14 @@ struct VKBlitImageData {
 };
 using VKBlitImageCreateInfo = VKBlitImageData;
 
-class VKBlitImageNode : public VKNodeClass<VKBlitImageCreateInfo,
+class VKBlitImageNode : public VKNodeClass<VKNodeType::BLIT_IMAGE,
+                                           VKBlitImageCreateInfo,
                                            VKBlitImageData,
-                                           VKNodeType::BLIT_IMAGE,
-                                           true,
-                                           false,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT> {
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                           VKResourceType::IMAGE> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKBlitImageCreateInfo &create_info)
   {
     node.blit_image = create_info;
   }
@@ -38,7 +38,7 @@ class VKBlitImageNode : public VKNodeClass<VKBlitImageCreateInfo,
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKBlitImageCreateInfo &create_info)
   {
     VersionedResource src_resource = resources.get_image(create_info.src_image);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -53,7 +53,7 @@ class VKBlitImageNode : public VKNodeClass<VKBlitImageCreateInfo,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
+  static void build_commands(VKCommandBufferInterface &command_buffer, const VKBlitImageData &data)
   {
     command_buffer.blit_image(data.src_image,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

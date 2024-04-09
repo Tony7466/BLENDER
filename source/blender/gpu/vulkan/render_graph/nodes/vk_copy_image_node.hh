@@ -21,14 +21,14 @@ struct VKCopyImageData {
   VkImageCopy region;
 };
 using VKCopyImageCreateInfo = VKCopyImageData;
-class VKCopyImageNode : public VKNodeClass<VKCopyImageCreateInfo,
+class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
+                                           VKCopyImageCreateInfo,
                                            VKCopyImageData,
-                                           VKNodeType::COPY_IMAGE,
-                                           true,
-                                           false,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT> {
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                           VKResourceType::IMAGE> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKCopyImageCreateInfo &create_info)
   {
     node.copy_image = create_info;
   }
@@ -36,7 +36,7 @@ class VKCopyImageNode : public VKNodeClass<VKCopyImageCreateInfo,
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKCopyImageCreateInfo &create_info)
   {
     VersionedResource src_resource = resources.get_image(create_info.src_image);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -51,7 +51,7 @@ class VKCopyImageNode : public VKNodeClass<VKCopyImageCreateInfo,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
+  static void build_commands(VKCommandBufferInterface &command_buffer, const VKCopyImageData &data)
   {
     command_buffer.copy_image(data.src_image,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

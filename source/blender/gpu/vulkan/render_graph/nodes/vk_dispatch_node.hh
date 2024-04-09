@@ -28,14 +28,14 @@ struct VKDispatchCreateInfo : NonCopyable {
   VKResourceAccessInfo resources;
 };
 
-class VKDispatchNode : public VKNodeClass<VKDispatchCreateInfo,
+class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
+                                          VKDispatchCreateInfo,
                                           VKDispatchData,
-                                          VKNodeType::DISPATCH,
-                                          true,
-                                          true,
-                                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT> {
+                                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                          VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKDispatchCreateInfo &create_info)
   {
     node.dispatch = create_info.dispatch_node;
     localize_shader_data(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
@@ -49,14 +49,14 @@ class VKDispatchNode : public VKNodeClass<VKDispatchCreateInfo,
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKDispatchCreateInfo &create_info)
   {
     resource_access_build_dependencies(
         resources, dependencies, node_handle, create_info.resources);
   }
 
   static void build_commands(VKCommandBufferInterface &command_buffer,
-                             const Data &data,
+                             const VKDispatchData &data,
                              VKBoundPipelines &r_bound_pipelines)
   {
     // TODO: introduce helper function in pipeline types.

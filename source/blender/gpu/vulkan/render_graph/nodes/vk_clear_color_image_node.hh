@@ -26,14 +26,14 @@ struct VKClearColorImageData {
  */
 using VKClearColorImageCreateInfo = VKClearColorImageData;
 
-class VKClearColorImageNode : public VKNodeClass<VKClearColorImageCreateInfo,
+class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
+                                                 VKClearColorImageCreateInfo,
                                                  VKClearColorImageData,
-                                                 VKNodeType::CLEAR_COLOR_IMAGE,
-                                                 true,
-                                                 false,
-                                                 VK_PIPELINE_STAGE_TRANSFER_BIT> {
+                                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                 VKResourceType::IMAGE> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKClearColorImageCreateInfo &create_info)
   {
     node.clear_color_image = create_info;
   }
@@ -41,14 +41,15 @@ class VKClearColorImageNode : public VKNodeClass<VKClearColorImageCreateInfo,
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKClearColorImageCreateInfo &create_info)
   {
     VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
+  static void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKClearColorImageData &data)
   {
     command_buffer.clear_color_image(data.vk_image,
                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

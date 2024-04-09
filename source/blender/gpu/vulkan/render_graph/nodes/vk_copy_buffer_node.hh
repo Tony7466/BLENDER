@@ -25,14 +25,14 @@ struct VKCopyBufferData {
  */
 using VKCopyBufferCreateInfo = VKCopyBufferData;
 
-class VKCopyBufferNode : public VKNodeClass<VKCopyBufferCreateInfo,
+class VKCopyBufferNode : public VKNodeClass<VKNodeType::COPY_BUFFER,
+                                            VKCopyBufferCreateInfo,
                                             VKCopyBufferData,
-                                            VKNodeType::COPY_BUFFER,
-                                            false,
-                                            true,
-                                            VK_PIPELINE_STAGE_TRANSFER_BIT> {
+                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                            VKResourceType::BUFFER> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKCopyBufferCreateInfo &create_info)
   {
     node.copy_buffer = create_info;
   }
@@ -40,7 +40,7 @@ class VKCopyBufferNode : public VKNodeClass<VKCopyBufferCreateInfo,
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKCopyBufferCreateInfo &create_info)
   {
     VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
     VersionedResource dst_resource = resources.get_buffer_and_increase_version(
@@ -51,7 +51,8 @@ class VKCopyBufferNode : public VKNodeClass<VKCopyBufferCreateInfo,
         node_handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
+  static void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKCopyBufferData &data)
   {
     command_buffer.copy_buffer(data.src_buffer, data.dst_buffer, 1, &data.region);
   }

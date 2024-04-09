@@ -17,14 +17,15 @@ struct VKCopyBufferToImageData {
   VkBufferImageCopy region;
 };
 using VKCopyBufferToImageCreateInfo = VKCopyBufferToImageData;
-class VKCopyBufferToImageNode : public VKNodeClass<VKCopyBufferToImageCreateInfo,
-                                                   VKCopyBufferToImageData,
-                                                   VKNodeType::COPY_BUFFER_TO_IMAGE,
-                                                   true,
-                                                   true,
-                                                   VK_PIPELINE_STAGE_TRANSFER_BIT> {
+class VKCopyBufferToImageNode
+    : public VKNodeClass<VKNodeType::COPY_BUFFER_TO_IMAGE,
+                         VKCopyBufferToImageCreateInfo,
+                         VKCopyBufferToImageData,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
-  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
+  template<typename Node>
+  static void set_node_data(Node &node, const VKCopyBufferToImageCreateInfo &create_info)
   {
     node.copy_buffer_to_image = create_info;
   }
@@ -32,7 +33,7 @@ class VKCopyBufferToImageNode : public VKNodeClass<VKCopyBufferToImageCreateInfo
   static void build_resource_dependencies(VKResources &resources,
                                           VKResourceDependencies &dependencies,
                                           NodeHandle node_handle,
-                                          const CreateInfo &create_info)
+                                          const VKCopyBufferToImageCreateInfo &create_info)
   {
     VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
     VersionedResource dst_resource = resources.get_image_and_increase_version(
@@ -45,7 +46,8 @@ class VKCopyBufferToImageNode : public VKNodeClass<VKCopyBufferToImageCreateInfo
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  static void build_commands(VKCommandBufferInterface &command_buffer, const Data &data)
+  static void build_commands(VKCommandBufferInterface &command_buffer,
+                             const VKCopyBufferToImageData &data)
   {
     command_buffer.copy_buffer_to_image(
         data.src_buffer, data.dst_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &data.region);
