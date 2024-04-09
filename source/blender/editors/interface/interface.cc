@@ -98,14 +98,14 @@ static void ui_def_but_rna__menu_type(bContext * /*C*/, uiLayout *layout, void *
 
 static void ui_but_free(const bContext *C, uiBut *but);
 
-static bool ui_but_is_unit_radians_ex(UnitSettings *unit, const int unit_type)
+static bool ui_but_is_unit_radians_ex(const UnitSettings *unit, const int unit_type)
 {
   return (unit->system_rotation == USER_UNIT_ROT_RADIANS && unit_type == PROP_UNIT_ROTATION);
 }
 
 static bool ui_but_is_unit_radians(const uiBut *but)
 {
-  UnitSettings *unit = but->block->unit;
+  const UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
 
   return ui_but_is_unit_radians_ex(unit, unit_type);
@@ -1368,7 +1368,7 @@ static std::optional<std::string> ui_but_event_property_operator_string(const bC
   int prop_index = but->rnaindex;
   if ((but->type == UI_BTYPE_BUT_MENU) && (but->block->handle != nullptr)) {
     uiBut *but_parent = but->block->handle->popup_create_vars.but;
-    if ((but->type == UI_BTYPE_BUT_MENU) && (but_parent && but_parent->rnaprop) &&
+    if ((but_parent && but_parent->rnaprop) &&
         (RNA_property_type(but_parent->rnaprop) == PROP_ENUM) &&
         ELEM(but_parent->menu_create_func,
              ui_def_but_rna__menu,
@@ -1439,11 +1439,7 @@ static std::optional<std::string> ui_but_event_property_operator_string(const bC
   }
 
   /* We have a data-path! */
-  bool found = false;
-
-  for (int data_path_index = 0; data_path_index < data_path_variations.size() && (found == false);
-       data_path_index++)
-  {
+  for (int data_path_index = 0; data_path_index < data_path_variations.size(); data_path_index++) {
     const StringRefNull data_path = data_path_variations[data_path_index];
     if (!data_path.is_empty() || (prop_enum_value_ok && prop_enum_value_id)) {
       /* Create a property to host the "data_path" property we're sending to the operators. */
@@ -2429,7 +2425,7 @@ bool ui_but_is_bool(const uiBut *but)
 
 bool ui_but_is_unit(const uiBut *but)
 {
-  UnitSettings *unit = but->block->unit;
+  const UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
 
   if (unit_type == PROP_UNIT_NONE) {
@@ -2519,10 +2515,10 @@ double ui_but_value_get(uiBut *but)
     switch (RNA_property_type(prop)) {
       case PROP_BOOLEAN:
         if (RNA_property_array_check(prop)) {
-          value = RNA_property_boolean_get_index(&but->rnapoin, prop, but->rnaindex);
+          value = double(RNA_property_boolean_get_index(&but->rnapoin, prop, but->rnaindex));
         }
         else {
-          value = RNA_property_boolean_get(&but->rnapoin, prop);
+          value = double(RNA_property_boolean_get(&but->rnapoin, prop));
         }
         break;
       case PROP_INT:
@@ -2687,7 +2683,7 @@ uiBut *ui_but_drag_multi_edit_get(uiBut *but)
 
 static double ui_get_but_scale_unit(uiBut *but, double value)
 {
-  UnitSettings *unit = but->block->unit;
+  const UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
 
   /* Time unit is a bit special, not handled by BKE_scene_unit_scale() for now. */
@@ -2704,7 +2700,7 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t str_maxncpy)
     return;
   }
 
-  UnitSettings *unit = but->block->unit;
+  const UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
   char *orig_str;
 
@@ -2722,13 +2718,11 @@ void ui_but_convert_to_unit_alt_name(uiBut *but, char *str, size_t str_maxncpy)
 static void ui_get_but_string_unit(
     uiBut *but, char *str, int str_maxncpy, double value, bool pad, int float_precision)
 {
-  UnitSettings *unit = but->block->unit;
+  const UnitSettings *unit = but->block->unit;
   const int unit_type = UI_but_unit_type_get(but);
   int precision;
 
-  if (unit->scale_length < 0.0001f) {
-    unit->scale_length = 1.0f; /* XXX do_versions */
-  }
+  BLI_assert(unit->scale_length > 0.0f);
 
   /* Use precision override? */
   if (float_precision == -1) {
@@ -3116,7 +3110,7 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
         {
           RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, nullptr);
         }
-        else if (search_but->item_active != nullptr) {
+        else if (search_but && search_but->item_active != nullptr) {
           rptr = RNA_pointer_create(nullptr,
                                     RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
                                     search_but->item_active);
@@ -3424,9 +3418,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
       ui_but_active_free(C, but);
     }
     else {
-      if (but->active) {
-        MEM_freeN(but->active);
-      }
+      MEM_freeN(but->active);
     }
   }
 
@@ -3442,6 +3434,29 @@ static void ui_but_free(const bContext *C, uiBut *but)
   MEM_delete(but);
 }
 
+static void ui_block_free_active_operator(uiBlock *block)
+{
+  if (block->ui_operator_free) {
+    /* This assumes the operator instance owns the pointer. This is not
+     * true for all operators by default, but it can be copied when needed. */
+    MEM_freeN(block->ui_operator->ptr);
+    MEM_freeN(block->ui_operator);
+  }
+
+  block->ui_operator_free = false;
+  block->ui_operator = nullptr;
+}
+
+void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool free)
+{
+  if (op != block->ui_operator) {
+    ui_block_free_active_operator(block);
+
+    block->ui_operator = op;
+    block->ui_operator_free = free;
+  }
+}
+
 void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
@@ -3451,12 +3466,14 @@ void UI_block_free(const bContext *C, uiBlock *block)
   }
 
   if (block->unit) {
-    MEM_freeN(block->unit);
+    MEM_freeN((void *)block->unit);
   }
 
   if (block->func_argN) {
     MEM_freeN(block->func_argN);
   }
+
+  ui_block_free_active_operator(block);
 
   BLI_freelistN(&block->saferct);
   BLI_freelistN(&block->color_pickers.list);
@@ -3594,9 +3611,10 @@ uiBlock *UI_block_begin(const bContext *C, ARegion *region, std::string name, eU
      */
     STRNCPY(block->display_device, scene->display_settings.display_device);
 
-    /* copy to avoid crash when scene gets deleted with ui still open */
-    block->unit = MEM_new<UnitSettings>(__func__);
-    memcpy(block->unit, &scene->unit, sizeof(scene->unit));
+    /* Copy to avoid crash when scene gets deleted with UI still open. */
+    UnitSettings *unit = MEM_new<UnitSettings>(__func__);
+    memcpy(unit, &scene->unit, sizeof(scene->unit));
+    block->unit = unit;
   }
   else {
     STRNCPY(block->display_device, IMB_colormanagement_display_get_default_name());
@@ -6421,7 +6439,7 @@ std::string UI_but_string_get_rna_label(uiBut &but)
   }
   if (but.optype) {
     PointerRNA *opptr = UI_but_operator_ptr_ensure(&but);
-    return WM_operatortype_name(but.optype, opptr).c_str();
+    return WM_operatortype_name(but.optype, opptr);
   }
   if (ELEM(but.type, UI_BTYPE_MENU, UI_BTYPE_PULLDOWN, UI_BTYPE_POPOVER)) {
     if (MenuType *mt = UI_but_menutype_get(&but)) {
@@ -6429,7 +6447,7 @@ std::string UI_but_string_get_rna_label(uiBut &but)
     }
 
     if (wmOperatorType *ot = UI_but_operatortype_get_from_enum_menu(&but, nullptr)) {
-      return WM_operatortype_name(ot, nullptr).c_str();
+      return WM_operatortype_name(ot, nullptr);
     }
 
     if (PanelType *pt = UI_but_paneltype_get(&but)) {
@@ -6494,7 +6512,7 @@ std::string UI_but_string_get_rna_tooltip(bContext &C, uiBut &but)
     }
 
     if (wmOperatorType *ot = UI_but_operatortype_get_from_enum_menu(&but, nullptr)) {
-      return WM_operatortype_description(&C, ot, nullptr).c_str();
+      return WM_operatortype_description(&C, ot, nullptr);
     }
   }
 

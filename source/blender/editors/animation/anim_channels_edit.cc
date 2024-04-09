@@ -39,6 +39,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_mask.h"
 #include "BKE_nla.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
@@ -3365,6 +3366,7 @@ static int click_select_channel_object(bContext *C,
                                        bAnimListElem *ale,
                                        const short /* eEditKeyframes_Select or -1 */ selectmode)
 {
+  using namespace blender::ed;
   Scene *scene = ac->scene;
   ViewLayer *view_layer = ac->view_layer;
   Base *base = (Base *)ale->data;
@@ -3377,7 +3379,7 @@ static int click_select_channel_object(bContext *C,
 
   if (selectmode == SELECT_INVERT) {
     /* swap select */
-    ED_object_base_select(base, BA_INVERT);
+    object::base_select(base, object::BA_INVERT);
 
     if (adt) {
       adt->flag ^= ADT_UI_SELECTED;
@@ -3393,14 +3395,14 @@ static int click_select_channel_object(bContext *C,
     BKE_view_layer_synced_ensure(scene, view_layer);
     /* TODO: should this deselect all other types of channels too? */
     LISTBASE_FOREACH (Base *, b, BKE_view_layer_object_bases_get(view_layer)) {
-      ED_object_base_select(b, BA_DESELECT);
+      object::base_select(b, object::BA_DESELECT);
       if (b->object->adt) {
         b->object->adt->flag &= ~(ADT_UI_SELECTED | ADT_UI_ACTIVE);
       }
     }
 
     /* select object now */
-    ED_object_base_select(base, BA_SELECT);
+    object::base_select(base, object::BA_SELECT);
     if (adt) {
       adt->flag |= ADT_UI_SELECTED;
     }
@@ -3410,7 +3412,7 @@ static int click_select_channel_object(bContext *C,
    *
    * Ensure we exit edit-mode on whatever object was active before
    * to avoid getting stuck there, see: #48747. */
-  ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
+  object::base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
 
   /* Similar to outliner, do not change active element when selecting elements in range. */
   if ((adt) && (adt->flag & ADT_UI_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
@@ -4575,7 +4577,7 @@ static blender::Vector<FCurve *> get_fcurves_of_property(
     const int length = RNA_property_array_length(ptr, prop);
     for (int i = 0; i < length; i++) {
       FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, path->c_str(), i, nullptr, nullptr);
+          id, anim_data, path->c_str(), i, nullptr, nullptr);
       if (fcurve != nullptr) {
         fcurves.append(fcurve);
       }
@@ -4583,7 +4585,7 @@ static blender::Vector<FCurve *> get_fcurves_of_property(
   }
   else {
     FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-        anim_data, path->c_str(), index, nullptr, nullptr);
+        id, anim_data, path->c_str(), index, nullptr, nullptr);
     if (fcurve != nullptr) {
       fcurves.append(fcurve);
     }

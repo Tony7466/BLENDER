@@ -35,6 +35,7 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_time.h"
 #include "BLI_timecode.h"
@@ -50,6 +51,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_curveprofile.h"
+#include "BKE_file_handler.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.hh"
@@ -1053,7 +1055,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         if (do_scene_obj) {
           Main *bmain = CTX_data_main(C);
           Scene *scene = CTX_data_scene(C);
-          ED_object_single_user(bmain, scene, (Object *)id);
+          blender::ed::object::object_single_user_make(bmain, scene, (Object *)id);
           WM_event_add_notifier(C, NC_WINDOW, nullptr);
           DEG_relations_tag_update(bmain);
         }
@@ -2293,7 +2295,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   ListBase *modifiers = &ob->modifiers;
 
   const bool panels_match = UI_panel_list_matches_data(region, modifiers, modifier_panel_id);
@@ -2438,10 +2440,10 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
 {
   ARegion *region = CTX_wm_region(C);
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   ListBase *constraints = {nullptr};
   if (use_bone_constraints) {
-    constraints = ED_object_pose_constraint_list(C);
+    constraints = blender::ed::object::pose_constraint_list(C);
   }
   else if (ob != nullptr) {
     constraints = &ob->constraints;
@@ -2541,7 +2543,7 @@ static void gpencil_modifier_panel_id(void *md_link, char *r_name)
 void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   ListBase *modifiers = &ob->greasepencil_modifiers;
 
   const bool panels_match = UI_panel_list_matches_data(
@@ -2615,7 +2617,7 @@ static void shaderfx_panel_id(void *fx_v, char *r_idname)
 void uiTemplateShaderFx(uiLayout * /*layout*/, bContext *C)
 {
   ARegion *region = CTX_wm_region(C);
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   ListBase *shaderfx = &ob->shader_fx;
 
   const bool panels_match = UI_panel_list_matches_data(region, shaderfx, shaderfx_panel_id);
@@ -2727,7 +2729,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
     PointerRNA op_ptr;
     uiLayout *row;
 
-    block->ui_operator = op;
+    UI_block_set_active_operator(block, op, false);
 
     row = uiLayoutRow(layout, true);
     uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE);
@@ -2962,6 +2964,89 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
   }
 }
 
+static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *properties)
+{
+  /* Copied from #wm_operator_create.
+   * Create a slimmed down operator suitable only for UI drawing. */
+  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  STRNCPY(op->idname, ot->idname);
+  op->type = ot;
+
+  /* Initialize properties but do not assume ownership of them.
+   * This "minimal" operator owns nothing. */
+  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
+  op->properties = static_cast<IDProperty *>(properties->data);
+  *op->ptr = *properties;
+
+  return op;
+}
+
+static void draw_export_controls(
+    bContext *C, uiLayout *layout, const std::string &label, int index, bool valid)
+{
+  uiItemL(layout, label.c_str(), ICON_NONE);
+  if (valid) {
+    uiItemPopoverPanel(layout, C, "WM_PT_operator_presets", "", ICON_PRESET);
+    uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_exporter_export", "index", index);
+    uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_exporter_remove", "index", index);
+  }
+}
+
+static void draw_export_properties(bContext *C,
+                                   uiLayout *layout,
+                                   wmOperator *op,
+                                   const std::string &filename)
+{
+  uiLayout *box = uiLayoutBox(layout);
+
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
+  std::string placeholder = "//" + filename;
+  uiItemFullR(
+      box, op->ptr, prop, RNA_NO_INDEX, 0, UI_ITEM_NONE, nullptr, ICON_NONE, placeholder.c_str());
+
+  template_operator_property_buts_draw_single(C, op, layout, UI_BUT_LABEL_ALIGN_NONE, 0);
+}
+
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
+{
+  Collection *collection = CTX_data_collection(C);
+  ListBase *exporters = &collection->exporters;
+
+  /* Draw all the IO handlers. */
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (CollectionExport *, data, exporters, index) {
+    using namespace blender;
+    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_CollectionExport, data);
+    PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
+
+    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+    if (!fh) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
+      draw_export_controls(C, panel.header, label, index, false);
+      continue;
+    }
+
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    if (!ot) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
+      draw_export_controls(C, panel.header, label, index, false);
+      continue;
+    }
+
+    /* Assign temporary operator to uiBlock, which takes ownership. */
+    PointerRNA properties = RNA_pointer_create(&collection->id, ot->srna, data->export_properties);
+    wmOperator *op = minimal_operator_create(ot, &properties);
+    UI_block_set_active_operator(uiLayoutGetBlock(panel.header), op, true);
+
+    /* Draw panel header and contents. */
+    std::string label(fh->label);
+    draw_export_controls(C, panel.header, label, index, true);
+    if (panel.body) {
+      draw_export_properties(C, panel.body, op, fh->get_default_filename(collection->id.name + 2));
+    }
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2972,7 +3057,8 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
 
 static void constraint_active_func(bContext * /*C*/, void *ob_v, void *con_v)
 {
-  ED_object_constraint_active_set(static_cast<Object *>(ob_v), static_cast<bConstraint *>(con_v));
+  blender::ed::object::constraint_active_set(static_cast<Object *>(ob_v),
+                                             static_cast<bConstraint *>(con_v));
 }
 
 static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v)
@@ -2981,7 +3067,7 @@ static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v
   uiLayout *row;
   bConstraint *con = (bConstraint *)con_v;
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
 
   PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_Constraint, con);
   uiLayoutSetContextPointer(layout, "constraint", &ptr);
@@ -3033,7 +3119,8 @@ static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v
               WM_OP_INVOKE_DEFAULT,
               UI_ITEM_NONE,
               &op_ptr);
-  ListBase *constraint_list = ED_object_constraint_list_from_constraint(ob, con, nullptr);
+  ListBase *constraint_list = blender::ed::object::constraint_list_from_constraint(
+      ob, con, nullptr);
   RNA_int_set(&op_ptr, "index", BLI_listbase_count(constraint_list) - 1);
   if (!con->next) {
     uiLayoutSetEnabled(row, false);
@@ -6174,11 +6261,14 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
-      uiItemL(row, msg ? msg : "", (ICON_MOUSE_LMB + i));
+      /* Icon and text separately are closer together with aligned layout. */
+      uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemL(row, msg ? msg : "", ICON_NONE);
     }
 
     if (msg_drag) {
-      uiItemL(row, msg_drag, (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, msg_drag, ICON_NONE);
     }
 
     /* Use trick with empty string to keep icons in same position. */
@@ -6413,13 +6503,23 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
-    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
+
+    /* Icon and text separately is closer together with aligned layout. */
+    uiItemL(layout, "", icon);
+    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      /* Mouse icons are left-aligned. Everything else needs a bit of space here. */
+      uiItemS_ex(layout, 0.6f);
+    }
+    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    /* Separate items with some extra space. */
+    uiItemS_ex(layout, 0.7f);
     ok = true;
   }
   else if (text_fallback) {
     const char *event_text = WM_key_event_string(kmi->type, true);
     uiItemL(layout, event_text, ICON_NONE);
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemS_ex(layout, 0.5f);
     ok = true;
   }
   return ok;

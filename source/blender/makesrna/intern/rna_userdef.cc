@@ -4660,8 +4660,8 @@ static void rna_def_userdef_solidlight(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  static float default_dir[3] = {0.0f, 0.0f, 1.0f};
-  static float default_col[3] = {0.8f, 0.8f, 0.8f};
+  static const float default_dir[3] = {0.0f, 0.0f, 1.0f};
+  static const float default_col[3] = {0.8f, 0.8f, 0.8f};
 
   srna = RNA_def_struct(brna, "UserSolidLight", nullptr);
   RNA_def_struct_sdna(srna, "SolidLight");
@@ -7217,6 +7217,14 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "New Animation Data-block",
+      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
