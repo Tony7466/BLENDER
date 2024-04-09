@@ -1537,7 +1537,7 @@ static void do_render_full_pipeline(Render *re)
   /* save render result stamp if needed */
   if (re->result != nullptr) {
     /* sequence rendering should have taken care of that already */
-    if (!(render_seq && (re->r.stamp & R_STAMP_STRIPMETA))) {
+    if (!(render_seq && (re->scene->r.stamp & R_STAMP_STRIPMETA))) {
       Object *ob_camera_eval = DEG_get_evaluated_object(re->pipeline_depsgraph, RE_GetCamera(re));
       BKE_render_result_stamp_info(re->scene, ob_camera_eval, re->result, false);
     }
@@ -1545,7 +1545,7 @@ static void do_render_full_pipeline(Render *re)
     renderresult_set_passes_metadata(re);
 
     /* stamp image info here */
-    if ((re->r.stamp & R_STAMP_ALL) && (re->r.stamp & R_STAMP_DRAW)) {
+    if ((re->scene->r.stamp & R_STAMP_ALL) && (re->scene->r.stamp & R_STAMP_DRAW)) {
       renderresult_stampinfo(re);
       re->display_update(re->result, nullptr);
     }
