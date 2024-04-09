@@ -99,8 +99,9 @@ static PyObject *pyrna_unregister_class(PyObject *self, PyObject *py_class);
 #define BPY_DOC_ID_PROP_TYPE_NOTE \
   "   .. note::\n" \
   "\n" \
-  "      Only the :class:`bpy.types.ID`, :class:`bpy.types.Bone` and\n" \
-  "      :class:`bpy.types.PoseBone` classes support custom properties.\n"
+  "      Not all classes support custom properties. :class:`bpy.types.ID`, :class:`bpy.types.Bone`,\n" \
+  "      :class:`bpy.types.BoneCollection`, and :class:`bpy.types.AssetMetaData` are examples of\n" \
+  "      classes that do.\n"
 
 int pyrna_struct_validity_check_only(const BPy_StructRNA *pysrna)
 {
