@@ -993,10 +993,10 @@ struct KeyInsertData {
 
 /* `key_data` is expected to be in Strip space. */
 static CombinedKeyingResult insert_key_strip(KeyframeStrip &strip,
-                             Binding &binding,
-                             const std::string &rna_path,
-                             const KeyInsertData &key_data,
-                             const KeyframeSettings &key_settings)
+                                             Binding &binding,
+                                             const std::string &rna_path,
+                                             const KeyInsertData &key_data,
+                                             const KeyframeSettings &key_settings)
 {
   strip.keyframe_insert(binding, rna_path, key_data.array_index, key_data.position, key_settings);
 
@@ -1005,10 +1005,10 @@ static CombinedKeyingResult insert_key_strip(KeyframeStrip &strip,
 }
 
 static CombinedKeyingResult insert_key_layer(Layer &layer,
-                             Binding &binding,
-                             const std::string &rna_path,
-                             const KeyInsertData &key_data,
-                             const KeyframeSettings &key_settings)
+                                             Binding &binding,
+                                             const std::string &rna_path,
+                                             const KeyInsertData &key_data,
+                                             const KeyframeSettings &key_settings)
 {
   if (layer.strips().size() == 0) {
     layer.strip_add(Strip::Type::Keyframe);
@@ -1025,11 +1025,11 @@ static CombinedKeyingResult insert_key_layer(Layer &layer,
 }
 
 static CombinedKeyingResult insert_key_anim(Animation &anim,
-                            PointerRNA *rna_pointer,
-                            const blender::Span<std::string> rna_paths,
-                            const float scene_frame,
-                            const eInsertKeyFlags insert_key_flags,
-                            const KeyframeSettings &key_settings)
+                                            PointerRNA *rna_pointer,
+                                            const blender::Span<std::string> rna_paths,
+                                            const float scene_frame,
+                                            const eInsertKeyFlags insert_key_flags,
+                                            const KeyframeSettings &key_settings)
 {
   ID *id = rna_pointer->owner_id;
 
@@ -1079,7 +1079,8 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
       KeyInsertData key_data;
       key_data.array_index = property_index;
       key_data.position = {scene_frame, rna_values[property_index]};
-      const CombinedKeyingResult result = insert_key_layer(*layer, *binding, rna_path_id_to_prop.value(), key_data, key_settings);
+      const CombinedKeyingResult result = insert_key_layer(
+          *layer, *binding, rna_path_id_to_prop.value(), key_data, key_settings);
       combined_result.merge(result);
     }
   }
@@ -1110,9 +1111,10 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);
     if (anim == nullptr) {
-      printf("Could not insert keyframe, as this type does not support animation data (ID = "
-             "%s)",
-             id->name);
+      printf(
+          "Could not insert keyframe, as this type does not support animation data (ID = "
+          "%s)",
+          id->name);
       /* TODO: fill in combined keying result properly. */
       return CombinedKeyingResult();
     }
@@ -1120,7 +1122,8 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     key_settings.keyframe_type = key_type;
     key_settings.handle = HD_AUTO_ANIM;
     key_settings.interpolation = BEZT_IPO_BEZ;
-    return insert_key_anim(*anim, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
+    return insert_key_anim(
+        *anim, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
   }
 
   bAction *action = id_action_ensure(bmain, id);
