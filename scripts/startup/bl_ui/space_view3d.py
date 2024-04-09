@@ -1143,6 +1143,8 @@ class VIEW3D_MT_editor_menus(Menu):
             layout.menu("VIEW3D_MT_mesh_add", text="Add", text_ctxt=i18n_contexts.operator_default)
         elif mode_string == 'EDIT_CURVE':
             layout.menu("VIEW3D_MT_curve_add", text="Add", text_ctxt=i18n_contexts.operator_default)
+        elif mode_string == "EDIT_CURVES":
+            layout.menu("VIEW3D_MT_edit_curves_add", text="Add", text_ctxt=i18n_contexts.operator_default)
         elif mode_string == 'EDIT_SURFACE':
             layout.menu("VIEW3D_MT_surface_add", text="Add", text_ctxt=i18n_contexts.operator_default)
         elif mode_string == 'EDIT_METABALL':
@@ -5900,6 +5902,15 @@ class VIEW3D_MT_edit_greasepencil_point(Menu):
         layout.operator("grease_pencil.stroke_smooth", text="Smooth")
 
 
+class VIEW3D_MT_edit_curves_add(Menu):
+    bl_label = "Add"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.label(text="test")
+
+
 class VIEW3D_MT_edit_curves(Menu):
     bl_label = "Curves"
 
@@ -9069,6 +9080,7 @@ classes = (
     VIEW3D_MT_edit_armature_delete,
     VIEW3D_MT_edit_gpencil_transform,
     VIEW3D_MT_edit_curves,
+    VIEW3D_MT_edit_curves_add,
     VIEW3D_MT_edit_curves_segments,
     VIEW3D_MT_edit_pointcloud,
     VIEW3D_MT_object_mode_pie,
