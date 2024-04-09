@@ -66,7 +66,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_key.hh"
@@ -558,8 +558,7 @@ void DepsgraphNodeBuilder::build_id(ID *id, const bool force_be_visible)
       build_action((bAction *)id);
       break;
     case ID_AN:
-      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
-      build_generic_id(id);
+      build_animation((Animation *)id);
       break;
     case ID_AR:
       build_armature((bArmature *)id);
@@ -672,16 +671,11 @@ void DepsgraphNodeBuilder::build_generic_id(ID *id)
   build_parameters(id);
 }
 
-static void build_idproperties_callback(IDProperty *id_property, void *user_data)
-{
-  DepsgraphNodeBuilder *builder = reinterpret_cast<DepsgraphNodeBuilder *>(user_data);
-  BLI_assert(id_property->type == IDP_ID);
-  builder->build_id(reinterpret_cast<ID *>(id_property->data.pointer));
-}
-
 void DepsgraphNodeBuilder::build_idproperties(IDProperty *id_property)
 {
-  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, build_idproperties_callback, this);
+  IDP_foreach_property(id_property, IDP_TYPE_FILTER_ID, [&](IDProperty *id_property) {
+    this->build_id(static_cast<ID *>(id_property->data.pointer));
+  });
 }
 
 void DepsgraphNodeBuilder::build_collection(LayerCollection *from_layer_collection,
@@ -1222,10 +1216,15 @@ void DepsgraphNodeBuilder::build_animdata(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
+  if (adt->animation != nullptr) {
+    build_animation(adt->animation);
+  }
   /* Make sure ID node exists. */
   (void)add_id_node(id);
   ID *id_cow = get_cow_id(id);
-  if (adt->action != nullptr || !BLI_listbase_is_empty(&adt->nla_tracks)) {
+  if (adt->action != nullptr || adt->animation != nullptr ||
+      !BLI_listbase_is_empty(&adt->nla_tracks))
+  {
     OperationNode *operation_node;
     /* Explicit entry operation. */
     operation_node = add_operation_node(id, NodeType::ANIMATION, OperationCode::ANIMATION_ENTRY);
@@ -1293,6 +1292,15 @@ void DepsgraphNodeBuilder::build_action(bAction *action)
   }
   build_idproperties(action->id.properties);
   add_operation_node(&action->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
+}
+
+void DepsgraphNodeBuilder::build_animation(Animation *animation)
+{
+  if (built_map_.checkIsBuiltAndTag(animation)) {
+    return;
+  }
+  build_idproperties(animation->id.properties);
+  add_operation_node(&animation->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
 }
 
 void DepsgraphNodeBuilder::build_driver(ID *id, FCurve *fcurve, int driver_index)

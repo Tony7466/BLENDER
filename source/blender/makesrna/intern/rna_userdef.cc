@@ -178,7 +178,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 
 #  include "BKE_blender.hh"
 #  include "BKE_global.hh"
-#  include "BKE_idprop.h"
+#  include "BKE_idprop.hh"
 #  include "BKE_image.h"
 #  include "BKE_main.hh"
 #  include "BKE_mesh_runtime.hh"
@@ -1072,8 +1072,8 @@ static PointerRNA rna_Addon_preferences_get(PointerRNA *ptr)
   bAddonPrefType *apt = BKE_addon_pref_type_find(addon->module, true);
   if (apt) {
     if (addon->prop == nullptr) {
-      IDPropertyTemplate val = {0};
-      addon->prop = IDP_New(IDP_GROUP, &val, addon->module); /* name is unimportant. */
+      /* name is unimportant. */
+      addon->prop = blender::bke::idprop::create_group(addon->module).release();
     }
     return rna_pointer_inherit_refine(ptr, apt->rna_ext.srna, addon->prop);
   }
@@ -4660,8 +4660,8 @@ static void rna_def_userdef_solidlight(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  static float default_dir[3] = {0.0f, 0.0f, 1.0f};
-  static float default_col[3] = {0.8f, 0.8f, 0.8f};
+  static const float default_dir[3] = {0.0f, 0.0f, 1.0f};
+  static const float default_col[3] = {0.8f, 0.8f, 0.8f};
 
   srna = RNA_def_struct(brna, "UserSolidLight", nullptr);
   RNA_def_struct_sdna(srna, "SolidLight");
@@ -7217,6 +7217,14 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "New Animation Data-block",
+      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 

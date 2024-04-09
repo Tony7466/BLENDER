@@ -70,7 +70,7 @@
 #include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_remap.hh"
@@ -1912,7 +1912,7 @@ static bool wm_file_write_check_with_report_on_failure(Main *bmain,
   }
 
   LISTBASE_FOREACH (Library *, li, &bmain->libraries) {
-    if (BLI_path_cmp(li->filepath_abs, filepath) == 0) {
+    if (BLI_path_cmp(li->runtime.filepath_abs, filepath) == 0) {
       BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
       return false;
     }
@@ -3178,6 +3178,17 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
 /** \name Reload (revert) Main .blend File Operator
  * \{ */
 
+static int wm_revert_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Revert to the Saved File"),
+                                IFACE_("Any unsaved changes will be lost."),
+                                IFACE_("Revert"),
+                                ALERT_ICON_WARNING,
+                                false);
+}
+
 static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -3209,7 +3220,7 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
   ot->idname = "WM_OT_revert_mainfile";
   ot->description = "Reload the saved file";
 
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = wm_revert_mainfile_invoke;
   ot->exec = wm_revert_mainfile_exec;
   ot->poll = wm_revert_mainfile_poll;
 

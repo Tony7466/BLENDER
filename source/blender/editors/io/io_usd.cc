@@ -215,6 +215,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
+  RNA_string_get(op->ptr, "collection", params.collection);
 
   bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
@@ -347,6 +348,9 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Visible Only",
                   "Only export visible objects. Invisible parents of exported objects are "
                   "exported as empty transforms");
+
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_boolean(
       ot->srna,
@@ -535,7 +539,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   /* Switch out of edit mode to avoid being stuck in it (#54326). */
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
-    ED_object_mode_set(C, OB_MODE_EDIT);
+    blender::ed::object::mode_set(C, OB_MODE_EDIT);
   }
 
   const bool validate_meshes = false;
@@ -832,6 +836,7 @@ void usd_file_handler_add()
   auto fh = std::make_unique<blender::bke::FileHandlerType>();
   STRNCPY(fh->idname, "IO_FH_usd");
   STRNCPY(fh->import_operator, "WM_OT_usd_import");
+  STRNCPY(fh->export_operator, "WM_OT_usd_export");
   STRNCPY(fh->label, "Universal Scene Description");
   STRNCPY(fh->file_extensions_str, ".usd;.usda;.usdc;.usdz");
   fh->poll_drop = poll_file_object_drop;
