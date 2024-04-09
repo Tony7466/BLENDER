@@ -1529,7 +1529,7 @@ namespace set_handle_type {
 
 static int exec(bContext *C, wmOperator *op)
 {
-  const HandleType dst_handle_type = BEZIER_HANDLE_AUTO;
+  const HandleType dst_handle_type = HandleType(RNA_enum_get(op->ptr, "type"));
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
@@ -1575,6 +1575,9 @@ static void CURVES_OT_handle_type_set(wmOperatorType *ot)
   ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "type", rna_enum_curves_handle_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
 }
 
 void operatortypes_curves()

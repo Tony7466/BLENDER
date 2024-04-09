@@ -25,6 +25,14 @@ const EnumPropertyItem rna_enum_curves_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_curves_handle_type_items[] = {
+    {BEZIER_HANDLE_FREE, "FREE", 0, "Free", ""},
+    {BEZIER_HANDLE_AUTO, "AUTO", 0, "Auto", ""},
+    {BEZIER_HANDLE_VECTOR, "VECTOR", 0, "Vector", ""},
+    {BEZIER_HANDLE_ALIGN, "ALIGN", 0, "Align", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_curve_normal_mode_items[] = {
     {NORMAL_MODE_MINIMUM_TWIST,
      "MINIMUM_TWIST",
