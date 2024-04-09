@@ -11,6 +11,7 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
+#include "BKE_animation.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 
@@ -72,6 +73,32 @@ bAction *id_action_ensure(Main *bmain, ID *id)
 
   /* return the action */
   return adt->action;
+}
+
+Animation *id_animation_ensure(Main *bmain, ID *id)
+{
+  BLI_assert(id != nullptr);
+
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (adt == nullptr) {
+    adt = BKE_animdata_ensure_id(id);
+  }
+
+  if (adt == nullptr) {
+    /* If still none (as not allowed to add, or ID doesn't have animdata for some reason) */
+    printf("ERROR: Couldn't add AnimData (ID = %s)\n", (id) ? (id->name) : "<None>");
+    return nullptr;
+  }
+
+  if (adt->animation != nullptr) {
+    return &adt->animation->wrap();
+  }
+
+  ::Animation *anim = BKE_animation_add(bmain, "Animation");
+
+  DEG_relations_tag_update(bmain);
+  DEG_id_tag_update(&anim->id, ID_RECALC_ANIMATION_NO_FLUSH);
+  return &anim->wrap();
 }
 
 void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)

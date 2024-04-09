@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include "ANIM_action.hh"
+#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -985,6 +986,107 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   return combined_result;
 }
 
+struct KeyInsertData {
+  float2 position;
+  int array_index;
+};
+
+/* `key_data` is expected to be in Strip space. */
+static CombinedKeyingResult insert_key_strip(KeyframeStrip &strip,
+                             Binding &binding,
+                             const std::string &rna_path,
+                             const KeyInsertData &key_data,
+                             const KeyframeSettings &key_settings)
+{
+  strip.keyframe_insert(binding, rna_path, key_data.array_index, key_data.position, key_settings);
+
+  /* TODO: fill in and return combined keying result properly. */
+  return CombinedKeyingResult();
+}
+
+static CombinedKeyingResult insert_key_layer(Layer &layer,
+                             Binding &binding,
+                             const std::string &rna_path,
+                             const KeyInsertData &key_data,
+                             const KeyframeSettings &key_settings)
+{
+  if (layer.strips().size() == 0) {
+    layer.strip_add(Strip::Type::Keyframe);
+  }
+  Strip *strip = layer.strip(0);
+  if (strip == nullptr) {
+    printf("ERROR: Strip is a null pointer");
+    /* TODO: fill in combined keying result properly. */
+    return CombinedKeyingResult();
+  }
+
+  /* TODO: morph key data based on Layer position in stack and Strip offset. */
+  return insert_key_strip(strip->as<KeyframeStrip>(), binding, rna_path, key_data, key_settings);
+}
+
+static CombinedKeyingResult insert_key_anim(Animation &anim,
+                            PointerRNA *rna_pointer,
+                            const blender::Span<std::string> rna_paths,
+                            const float scene_frame,
+                            const eInsertKeyFlags insert_key_flags,
+                            const KeyframeSettings &key_settings)
+{
+  ID *id = rna_pointer->owner_id;
+
+  Binding *binding = anim.binding_for_id(*id);
+  if (binding == nullptr) {
+    binding = &anim.binding_add();
+    const bool success = anim.assign_id(binding, *id);
+    if (!success) {
+      printf("ERROR: Failed to assign the ID to the binding");
+      /* TODO: fill in combined keying result properly. */
+      return CombinedKeyingResult();
+    }
+  }
+
+  Layer *layer;
+  if (anim.layers().size() == 0) {
+    layer = &anim.layer_add("Layer 0");
+  }
+  else {
+    layer = anim.layer(0);
+  }
+
+  if (layer == nullptr) {
+    printf("ERROR: Cannot get or create a layer");
+    /* TODO: fill in combined keying result properly. */
+    return CombinedKeyingResult();
+  }
+
+  CombinedKeyingResult combined_result;
+
+  for (const std::string &rna_path : rna_paths) {
+    const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
+    PointerRNA ptr;
+    PropertyRNA *prop = nullptr;
+    const bool path_resolved = RNA_path_resolve_property(
+        rna_pointer, rna_path.c_str(), &ptr, &prop);
+    if (!path_resolved) {
+      /* TODO: maybe create a more specific enum variant for this case? */
+      combined_result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE);
+      continue;
+    }
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
+
+    for (int property_index : rna_values.index_range()) {
+      KeyInsertData key_data;
+      key_data.array_index = property_index;
+      key_data.position = {scene_frame, rna_values[property_index]};
+      const CombinedKeyingResult result = insert_key_layer(*layer, *binding, rna_path_id_to_prop.value(), key_data, key_settings);
+      combined_result.merge(result);
+    }
+  }
+
+  return combined_result;
+}
+
 CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                     const blender::Span<std::string> rna_paths,
                                     const float scene_frame,
@@ -994,14 +1096,39 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                     const AnimationEvalContext &anim_eval_context)
 {
   ID *id = rna_pointer->owner_id;
+  AnimData *adt;
+
+  /* init animdata if none available yet */
+  adt = BKE_animdata_ensure_id(id);
+  if (adt == nullptr) {
+    /* TODO: fill in combined keying result properly. */
+    return CombinedKeyingResult();
+  }
+
+  if (adt->animation || !adt->action) {
+    /* TODO: This should only execute with an experimental flag enabled. */
+    /* TODO: Don't hardcode key settings. */
+    Animation *anim = id_animation_ensure(bmain, id);
+    if (anim == nullptr) {
+      printf("Could not insert keyframe, as this type does not support animation data (ID = "
+             "%s)",
+             id->name);
+      /* TODO: fill in combined keying result properly. */
+      return CombinedKeyingResult();
+    }
+    KeyframeSettings key_settings;
+    key_settings.keyframe_type = key_type;
+    key_settings.handle = HD_AUTO_ANIM;
+    key_settings.interpolation = BEZT_IPO_BEZ;
+    return insert_key_anim(*anim, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
+  }
+
   bAction *action = id_action_ensure(bmain, id);
   CombinedKeyingResult combined_result;
 
   if (action == nullptr) {
     return combined_result;
   }
-
-  AnimData *adt = BKE_animdata_from_id(id);
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};
