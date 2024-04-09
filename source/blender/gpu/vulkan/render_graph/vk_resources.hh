@@ -13,6 +13,7 @@
 
 #include "vk_common.hh"
 #include "vk_render_graph_list.hh"
+#include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -38,7 +39,10 @@ enum class ResourceOwner {
   /**
    * Resource is owned by the swapchain.
    *
-   * These resources cannot be destroyed and might be recreated by the swap chain at all times.
+   * These resources cannot be destroyed and could be recreated externally.
+   *
+   * Actual layout can be changed externally and therefore will be reset when building command
+   * buffers.
    */
   SWAP_CHAIN,
 };
@@ -74,6 +78,24 @@ class VKResources {
 
     /** Who owns the resource. */
     ResourceOwner owner = ResourceOwner::APPLICATION;
+
+    /**
+     * State tracking to ensure correct pipeline barriers can be created.
+     */
+    VKResourceBarrierState barrier_state;
+
+    /**
+     * Reset the image layout to its original state.
+     *
+     * The layout of swap chain images are externally managed. When they are used again we need to
+     * ensure the correct state.
+     *
+     * NOTE: Also needed when working with external memory (Cycles, OpenXR, multi device).
+     */
+    void reset_image_layout()
+    {
+      barrier_state.image_layout = vk_image_layout;
+    }
   };
 
   VKRenderGraphList<ResourceHandle, Resource> resources_;
@@ -132,6 +154,17 @@ class VKResources {
    * Return the resource handle of the given VkBuffer.
    */
   ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
+
+  /**
+   * Reset the swap chain image layouts to its original layout.
+   *
+   * The layout of swap chain images are externally managed. When they are reused we need to
+   * ensure the correct state.
+   *
+   * NOTE: This is also needed when working with external memory (Cycles, OpenXR, multi device
+   * rendering).
+   */
+  void reset_image_layouts();
 
   /**
    * Get reference to the device mutex.

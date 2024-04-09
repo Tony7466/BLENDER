@@ -17,11 +17,6 @@ class VKRenderGraph;
 class VKCommandBuilder {
  private:
   Vector<NodeHandle> selected_nodes_;
-  /**
-   * Current state of each resource during command building. It will also keep track of
-   * states/image layouts between submissions.
-   */
-  Vector<VKResourceBarrierState> resource_states_;
 
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
@@ -63,15 +58,6 @@ class VKCommandBuilder {
    */
   void update_state_after_submission(VKRenderGraph &render_graph);
 
-  /**
-   * Remove a buffer or image resource from the command builder internals.
-   *
-   * Internally the command buffer keeps track of resource states. When a resource is deleted it
-   * needs to be removed from the tracked state. New resources can reuse the same resource
-   * handle. This cannot be detected at the moment the internals are reset, so this needs to be
-   * done when the old resource is removed.
-   */
-  void remove_resource(ResourceHandle handle);
 
  private:
   void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);

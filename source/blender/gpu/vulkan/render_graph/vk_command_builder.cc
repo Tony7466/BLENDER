@@ -44,35 +44,12 @@ VKCommandBuilder::VKCommandBuilder()
 void VKCommandBuilder::reset(VKRenderGraph &render_graph)
 {
   selected_nodes_.clear();
-  const int64_t resource_len = render_graph.resources_.resources_.size();
 
-  // Reset access_masks, keep last known access masks around.
-  // NOTE: Access masks should be reset when resources are removed. Handles can be reused and
-  // that isn't take into account.
-  if (resource_states_.size() < resource_len) {
-    resource_states_.resize(resource_len);
-  }
-
-  /* Swap chain images layouts needs to be reset, otherwise the last one will be used and that
-   * might not be the correct one. For application owned resources should be undefined by default
-   * and are tracked here.
-   */
-  for (ResourceHandle image_handle : render_graph.resources_.image_resources_.values()) {
-    VKResources::Resource &resource = render_graph.resources_.resources_.get(image_handle);
-    if (resource.owner == ResourceOwner::SWAP_CHAIN) {
-      resource_states_[image_handle].image_layout = resource.vk_image_layout;
-    }
-  }
+  /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
+  render_graph.resources_.reset_image_layouts();
 
   // Reset pipelines
   active_pipelines = {};
-}
-
-void VKCommandBuilder::remove_resource(ResourceHandle handle)
-{
-  if (resource_states_.size() >= handle) {
-    resource_states_[handle] = {};
-  }
 }
 
 void VKCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
@@ -223,22 +200,20 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
        render_graph.resource_dependencies_.get_read_resources(node_handle))
   {
     const VersionedResource &versioned_resource = usage.resource;
-    const VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    VKResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_buffer == VK_NULL_HANDLE) {
       /* Ignore image resources. */
       continue;
     }
-    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
-    // If resource version has not be read, no barrier needs to be added.
-
+    VKResourceBarrierState &resource_state = resource.barrier_state;
     VkAccessFlags read_access = resource_state.read_access;
     VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
 
     if (read_access == (read_access | usage.vk_access_flags)) {
       // has already been covered in a previous call no need to add this one.
-      // TODO: we should merge all read accesses with the first available read barrier.
+      // TODO: Merge all read accesses with the first read barrier of the same version.
       continue;
     }
 
@@ -264,14 +239,13 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
        render_graph.resource_dependencies_.get_write_resources(node_handle))
   {
     const VersionedResource &versioned_resource = usage.resource;
-    const VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    VKResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_buffer == VK_NULL_HANDLE) {
       /* Ignore image resources. */
       continue;
     }
-    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
-    // If resource version has not be read, no barrier needs to be added.
+    VKResourceBarrierState &resource_state = resource.barrier_state;
     VkAccessFlags read_access = resource_state.read_access;
     VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
@@ -327,13 +301,13 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
        render_graph.resource_dependencies_.get_read_resources(node_handle))
   {
     const VersionedResource &versioned_resource = usage.resource;
-    const VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    VKResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_image == VK_NULL_HANDLE) {
       /* Ignore buffer resources. */
       continue;
     }
-    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
+    VKResourceBarrierState &resource_state = resource.barrier_state;
     // If resource version has not be read, no barrier needs to be added.
 
     VkAccessFlags read_access = resource_state.read_access;
@@ -375,13 +349,13 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
        render_graph.resource_dependencies_.get_write_resources(node_handle))
   {
     const VersionedResource &versioned_resource = usage.resource;
-    const VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    VKResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_image == VK_NULL_HANDLE) {
       /* Ignore image resources. */
       continue;
     }
-    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
+    VKResourceBarrierState &resource_state = resource.barrier_state;
     // If resource version has not be read, no barrier needs to be added.
     VkAccessFlags read_access = resource_state.read_access;
     VkAccessFlags write_access = resource_state.write_access;

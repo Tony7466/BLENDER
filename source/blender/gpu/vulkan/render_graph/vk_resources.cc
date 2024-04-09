@@ -122,4 +122,14 @@ VersionedResource VKResources::get_image(VkImage vk_image) const
   return get_version(handle, resource);
 }
 
+void VKResources::reset_image_layouts()
+{
+  for (ResourceHandle image_handle : image_resources_.values()) {
+    VKResources::Resource &resource = resources_.get(image_handle);
+    if (resource.owner == ResourceOwner::SWAP_CHAIN) {
+      resource.reset_image_layout();
+    }
+  }
+}
+
 }  // namespace blender::gpu::render_graph
