@@ -135,8 +135,9 @@ static void motion_path_cache(OVERLAY_Data *vedata,
   bool show_frame_no = (avs->path_viewflag & MOTIONPATH_VIEW_FNUMS) != 0;
   bool show_lines = (mpath->flag & MOTIONPATH_FLAG_LINES) != 0;
   float no_custom_col[3] = {-1.0f, -1.0f, -1.0f};
-  float *color_pre = (mpath->flag & MOTIONPATH_FLAG_CUSTOM) ? mpath->color : no_custom_col;
-  float *color_post = (mpath->flag & MOTIONPATH_FLAG_CUSTOM) ? mpath->color_post : no_custom_col;
+  const bool use_custom_color = mpath->flag & MOTIONPATH_FLAG_CUSTOM;
+  const float *color_pre = use_custom_color ? mpath->color : no_custom_col;
+  const float *color_post = use_custom_color ? mpath->color_post : no_custom_col;
 
   int sfra, efra, stepsize;
   motion_path_get_frame_range_to_draw(avs, mpath, cfra, &sfra, &efra, &stepsize);
