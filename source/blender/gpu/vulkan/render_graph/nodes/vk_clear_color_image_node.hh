@@ -13,7 +13,7 @@
 namespace blender::gpu::render_graph {
 
 /**
- * Information stored inside the render graph node.
+ * Information stored inside the render graph node. See `VKNodeData`.
  */
 struct VKClearColorImageData {
   VkImage vk_image;
@@ -22,7 +22,7 @@ struct VKClearColorImageData {
 };
 
 /**
- * Information needed to create for adding a clear color image node in the render graph.
+ * Information needed to add a node to the render graph.
  */
 using VKClearColorImageCreateInfo = VKClearColorImageData;
 
@@ -32,12 +32,22 @@ class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
                                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
                                                  VKResourceType::IMAGE> {
  public:
+  /**
+   * Update the node data with the data inside create_info.
+   *
+   * Has been implemented as a template to ensure all node specific data
+   * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
+   * actual node data (`VKNodeData` includes all header files.)
+   */
   template<typename Node>
   static void set_node_data(Node &node, const VKClearColorImageCreateInfo &create_info)
   {
     node.clear_color_image = create_info;
   }
 
+  /**
+   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   */
   void build_resource_dependencies(VKResources &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
@@ -48,6 +58,9 @@ class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
+  /**
+   * Build the commands and add them to the command_buffer.
+   */
    void build_commands(VKCommandBufferInterface &command_buffer,
                              const VKClearColorImageData &data,VKBoundPipelines &/*r_bound_pipelines*/) override
   {

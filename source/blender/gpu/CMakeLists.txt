@@ -257,7 +257,6 @@ set(VULKAN_SRC
   vulkan/vk_drawlist.hh
   vulkan/vk_fence.hh
   vulkan/vk_framebuffer.hh
-  vulkan/vk_handle_list.hh
   vulkan/vk_image_view.hh
   vulkan/vk_immediate.hh
   vulkan/vk_index_buffer.hh
@@ -288,6 +287,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh
   vulkan/render_graph/vk_types.hh
+  vulkan/vk_resource_handles.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_samplers.hh

@@ -15,8 +15,8 @@ namespace blender::gpu::render_graph {
 /**
  * State of a resource for pipeline barrier building.
  *
- * NOTE: write_access_ and read_access_ are mutual exclusive. Only one can be filled at a time.
- * NOTE: write_stages_ and read_stages_ are mutual exclusive. Only one can be filled at a time.
+ * NOTE: write_access and read_access are mutual exclusive.
+ * NOTE: write_stages and read_stages are mutual exclusive.
  */
 struct VKResourceBarrierState {
   /* How was the resource accessed when last written to. */
@@ -48,6 +48,15 @@ constexpr VkAccessFlags VK_ACCESS_WRITE_MASK = VK_ACCESS_SHADER_WRITE_BIT |
                                                VK_ACCESS_TRANSFER_WRITE_BIT |
                                                VK_ACCESS_HOST_WRITE_BIT;
 
+/**
+ * Enum class containing the different resource types.
+ */
+enum class VKResourceType { IMAGE = (1 << 0), BUFFER = (1 << 1) };
+ENUM_OPERATORS(VKResourceType, VKResourceType::BUFFER);
+
+/**
+ * Type of nodes of the render graph.
+ */
 enum class VKNodeType {
   UNUSED,
   CLEAR_COLOR_IMAGE,

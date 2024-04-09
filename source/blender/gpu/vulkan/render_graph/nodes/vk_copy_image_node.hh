@@ -15,24 +15,42 @@
 #include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
+/**
+ * Information stored inside the render graph node. See `VKNodeData`.
+ */
 struct VKCopyImageData {
   VkImage src_image;
   VkImage dst_image;
   VkImageCopy region;
 };
+
+/**
+ * Information needed to add a node to the render graph.
+ */
 using VKCopyImageCreateInfo = VKCopyImageData;
+
 class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
                                            VKCopyImageCreateInfo,
                                            VKCopyImageData,
                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
                                            VKResourceType::IMAGE> {
  public:
+  /**
+   * Update the node data with the data inside create_info.
+   *
+   * Has been implemented as a template to ensure all node specific data
+   * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
+   * actual node data (`VKNodeData` includes all header files.)
+   */
   template<typename Node>
   static void set_node_data(Node &node, const VKCopyImageCreateInfo &create_info)
   {
     node.copy_image = create_info;
   }
 
+  /**
+   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   */
   void build_resource_dependencies(VKResources &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
@@ -51,7 +69,12 @@ class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
-  void build_commands(VKCommandBufferInterface &command_buffer, const VKCopyImageData &data,VKBoundPipelines &/*r_bound_pipelines*/)override
+  /**
+   * Build the commands and add them to the command_buffer.
+   */
+  void build_commands(VKCommandBufferInterface &command_buffer,
+                      const VKCopyImageData &data,
+                      VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.copy_image(data.src_image,
                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
