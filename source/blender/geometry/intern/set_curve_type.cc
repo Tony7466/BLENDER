@@ -629,15 +629,35 @@ static bke::CurvesGeometry convert_curves_trivial(const bke::CurvesGeometry &src
   return dst_curves;
 }
 
+static bke::CurvesGeometry convert_curves_to_catmull_rom(
+    const bke::CurvesGeometry &src_curves,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info,
+    const ConvertCurvesOptions &options)
+{
+  return convert_curves_trivial(src_curves, selection, CURVE_TYPE_CATMULL_ROM);
+}
+
+static bke::CurvesGeometry convert_curves_to_poly(
+    const bke::CurvesGeometry &src_curves,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info,
+    const ConvertCurvesOptions &options)
+{
+  return convert_curves_trivial(src_curves, selection, CURVE_TYPE_POLY);
+}
+
 bke::CurvesGeometry convert_curves(const bke::CurvesGeometry &src_curves,
                                    const IndexMask &selection,
                                    const CurveType dst_type,
-                                   const bke::AnonymousAttributePropagationInfo &propagation_info)
+                                   const bke::AnonymousAttributePropagationInfo &propagation_info,
+                                   const ConvertCurvesOptions &options)
 {
   switch (dst_type) {
     case CURVE_TYPE_CATMULL_ROM:
+      return convert_curves_to_catmull_rom(src_curves, selection, propagation_info, options);
     case CURVE_TYPE_POLY:
-      return convert_curves_trivial(src_curves, selection, dst_type);
+      return convert_curves_to_poly(src_curves, selection, propagation_info, options);
     case CURVE_TYPE_BEZIER:
       return convert_curves_to_bezier(src_curves, selection, propagation_info);
     case CURVE_TYPE_NURBS:
