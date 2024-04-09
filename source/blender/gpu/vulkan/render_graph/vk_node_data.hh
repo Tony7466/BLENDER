@@ -24,6 +24,10 @@ namespace blender::gpu::render_graph {
 
 /**
  * Node stored inside a render graph.
+ *
+ * Node specific data in the render graph are stored in a vector to ensure that the data can be
+ * prefetched and removing a level of indirection. A consequence is that we cannot use class based
+ * nodes.
  */
 struct VKNodeData {
   VKNodeType type;

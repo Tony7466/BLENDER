@@ -34,10 +34,10 @@ void Sequential::select_all_nodes(const VKRenderGraph &render_graph,
 {
   NodeHandle node_handle = 0;
 
-  for (const std::optional<VKNodes::Node> &optional_node : render_graph.nodes_.nodes()) {
-    if (optional_node.has_value()) {
-      const VKNodes::Node &node = *optional_node;
-      if (node.type != VKNodeType::UNUSED) {
+  for (const std::optional<VKNodeData> &optional_node_data : render_graph.nodes_.nodes()) {
+    if (optional_node_data.has_value()) {
+      const VKNodeData &node_data = *optional_node_data;
+      if (node_data.type != VKNodeType::UNUSED) {
         r_selected_nodes.append(node_handle);
       }
     }

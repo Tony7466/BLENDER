@@ -14,6 +14,12 @@
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
 
+/**
+ * Build the command buffer for sending to the device queue.
+ *
+ * Determine which nodes needs to be scheduled, Then for each node generate the needed pipeline
+ * barriers and commands.
+ */
 class VKCommandBuilder {
  private:
   Vector<NodeHandle> selected_nodes_;
@@ -38,8 +44,8 @@ class VKCommandBuilder {
   /**
    * Reset the command builder.
    *
-   * Needs to be called before each build_image/buffer.
-   * Internal resources are reused to reduce memory operations.
+   * Needs to be called before each build_image/buffer. It ensures that swapchain images are reset
+   * to the correct layout and that the pipelines are reset.
    */
   void reset(VKRenderGraph &render_graph);
 
@@ -54,13 +60,31 @@ class VKCommandBuilder {
   void build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer);
 
   /**
-   * After the commands have been submitted the state needs to be updated.
+   * After the commands have been submitted the nodes that have been send to the GPU can be
+   * removed.
    */
   void update_state_after_submission(VKRenderGraph &render_graph);
 
-
  private:
-  void build_node(VKRenderGraph &render_graph, NodeHandle node_handle, const VKNodes::Node &node);
+  /**
+   * Build multiple nodes.
+   *
+   * Building happen in order provided by the `node_handles` parameter.
+   */
+  void build_nodes(VKRenderGraph &render_graph, Span<NodeHandle> node_handles);
+
+  /**
+   * Build the commands for the given node_handle and node.
+   *
+   * The dependencies of the node handle are checked and when needed a pipeline barrier will be
+   * generated and added to the command buffer.
+   *
+   * Based on the node.type the correct node class will be used for adding commands to the command
+   * buffer.
+   */
+  void build_node(VKRenderGraph &render_graph,
+                  NodeHandle node_handle,
+                  const VKNodeData &node_data);
 
   void reset_barriers();
   void send_pipeline_barriers(VKRenderGraph &render_graph);
@@ -93,11 +117,11 @@ class VKCommandBuilder {
                                 NodeHandle node_handle,
                                 VkPipelineStageFlags node_stages);
 
-  template<typename NodeClass, typename NodeClassData>
-  void build_node(VKRenderGraph &render_graph,
-                  VKCommandBufferInterface &command_buffer,
-                  NodeHandle node_handle,
-                  const NodeClassData &node_data)
+  /**
+   * Build the pipeline barrier that will be recorded before the given node handle.
+   */
+  template<typename NodeClass>
+  void build_pipeline_barriers(VKRenderGraph &render_graph, NodeHandle node_handle)
   {
     if constexpr (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
       reset_barriers();
@@ -109,9 +133,33 @@ class VKCommandBuilder {
       }
       send_pipeline_barriers(render_graph);
     }
+  }
+
+  /**
+   * Build the commands for a node and record them to the given command buffer. These will include
+   * pipeline barrier commands.
+   *
+   * This function is for commands that doesn't require pipeline to be setup (data transfer
+   * commands).
+   */
+  template<typename NodeClass, typename NodeClassData>
+  void build_node(VKRenderGraph &render_graph,
+                  VKCommandBufferInterface &command_buffer,
+                  NodeHandle node_handle,
+                  const NodeClassData &node_data)
+  {
+    build_pipeline_barriers<NodeClass>(render_graph, node_handle);
     NodeClass::build_commands(command_buffer, node_data);
   }
 
+  /**
+   * Build the commands for a node and record them to the given command buffer. These will include
+   * pipeline barrier commands.
+   *
+   * This function is for commands that require pipeline to be setup (compute/graphics draw)
+   * commands. In this case the bound pipelines needs to be passed to detect changes to the
+   * pipeline that needs to be bound.
+   */
   template<typename NodeClass, typename NodeClassData>
   void build_node(VKRenderGraph &render_graph,
                   VKCommandBufferInterface &command_buffer,
@@ -119,16 +167,7 @@ class VKCommandBuilder {
                   const NodeClassData &node_data,
                   VKBoundPipelines &r_bound_pipelines)
   {
-    if constexpr (NodeClass::uses_buffer_resources || NodeClass::uses_image_resources) {
-      reset_barriers();
-      if constexpr (NodeClass::uses_image_resources) {
-        add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
-      }
-      if constexpr (NodeClass::uses_buffer_resources) {
-        add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
-      }
-      send_pipeline_barriers(render_graph);
-    }
+    build_pipeline_barriers<NodeClass>(render_graph, node_handle);
     NodeClass::build_commands(command_buffer, node_data, r_bound_pipelines);
   }
 };

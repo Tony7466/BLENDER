@@ -43,95 +43,103 @@ VKCommandBuilder::VKCommandBuilder()
 
 void VKCommandBuilder::reset(VKRenderGraph &render_graph)
 {
-  selected_nodes_.clear();
-
   /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
   render_graph.resources_.reset_image_layouts();
 
-  // Reset pipelines
   active_pipelines = {};
+  selected_nodes_.clear();
 }
 
 void VKCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
 {
-  BLI_assert(selected_nodes_.is_empty());
+  BLI_assert_msg(selected_nodes_.is_empty(),
+                 "Incorrect state detected: instance isn't reset before building");
   render_graph.scheduler_->select_nodes_for_image(render_graph, vk_image, selected_nodes_);
   if (selected_nodes_.is_empty()) {
     return;
   }
-  for (NodeHandle node_handle : selected_nodes_) {
-    VKNodes::Node &node = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, node_handle, node);
-  }
+  build_nodes(render_graph, selected_nodes_);
 }
 
 void VKCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer)
 {
-  BLI_assert(selected_nodes_.is_empty());
+  BLI_assert_msg(selected_nodes_.is_empty(),
+                 "Incorrect state detected: instance isn't reset before building");
   render_graph.scheduler_->select_nodes_for_buffer(render_graph, vk_buffer, selected_nodes_);
   if (selected_nodes_.is_empty()) {
     return;
   }
-  for (NodeHandle node_handle : selected_nodes_) {
-    VKNodes::Node &node = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, node_handle, node);
+  build_nodes(render_graph, selected_nodes_);
+}
+
+void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph, Span<NodeHandle> nodes)
+{
+  for (NodeHandle node_handle : nodes) {
+    VKNodeData &node_data = render_graph.nodes_.get(node_handle);
+    build_node(render_graph, node_handle, node_data);
   }
 }
 
 void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                   NodeHandle node_handle,
-                                  const VKNodes::Node &node)
+                                  const VKNodeData &node_data)
 {
-  switch (node.type) {
+  switch (node_data.type) {
     case VKNodeType::UNUSED: {
       break;
     }
 
     case VKNodeType::CLEAR_COLOR_IMAGE: {
       build_node<VKClearColorImageNode, VKClearColorImageNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.clear_color_image);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.clear_color_image);
       break;
     }
 
     case VKNodeType::FILL_BUFFER: {
       build_node<VKFillBufferNode, VKFillBufferNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.fill_buffer);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.fill_buffer);
       break;
     }
 
     case VKNodeType::COPY_BUFFER: {
       build_node<VKCopyBufferNode, VKCopyBufferNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.copy_buffer);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.copy_buffer);
       break;
     }
 
     case VKNodeType::COPY_BUFFER_TO_IMAGE: {
       build_node<VKCopyBufferToImageNode, VKCopyBufferToImageNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.copy_buffer_to_image);
+          render_graph,
+          *render_graph.command_buffer_,
+          node_handle,
+          node_data.copy_buffer_to_image);
       break;
     }
 
     case VKNodeType::COPY_IMAGE: {
       build_node<VKCopyImageNode, VKCopyImageNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.copy_image);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.copy_image);
       break;
     }
 
     case VKNodeType::COPY_IMAGE_TO_BUFFER: {
       build_node<VKCopyImageToBufferNode, VKCopyImageToBufferNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.copy_image_to_buffer);
+          render_graph,
+          *render_graph.command_buffer_,
+          node_handle,
+          node_data.copy_image_to_buffer);
       break;
     }
 
     case VKNodeType::BLIT_IMAGE: {
       build_node<VKBlitImageNode, VKBlitImageNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.blit_image);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.blit_image);
       break;
     }
 
     case VKNodeType::SYNCHRONIZATION: {
       build_node<VKSynchronizationNode, VKSynchronizationNode::Data>(
-          render_graph, *render_graph.command_buffer_, node_handle, node.synchronization);
+          render_graph, *render_graph.command_buffer_, node_handle, node_data.synchronization);
       break;
     }
 
@@ -139,7 +147,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
       build_node<VKDispatchNode, VKDispatchNode::Data>(render_graph,
                                                        *render_graph.command_buffer_,
                                                        node_handle,
-                                                       node.dispatch,
+                                                       node_data.dispatch,
                                                        active_pipelines);
       break;
     }
@@ -212,8 +220,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
     VkAccessFlags wait_access = VK_ACCESS_NONE;
 
     if (read_access == (read_access | usage.vk_access_flags)) {
-      // has already been covered in a previous call no need to add this one.
-      // TODO: Merge all read accesses with the first read barrier of the same version.
+      /* Has already been covered in a previous call no need to add this one. */
       continue;
     }
 
@@ -254,7 +261,6 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
       wait_access |= read_access;
     }
     if (read_access == VK_ACCESS_NONE && write_access != VK_ACCESS_NONE) {
-      // Add write_write_buffer_barrier
       wait_access |= write_access;
     }
 
@@ -308,8 +314,6 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
-    // If resource version has not be read, no barrier needs to be added.
-
     VkAccessFlags read_access = resource_state.read_access;
     VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
@@ -317,8 +321,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     if (read_access == (read_access | usage.vk_access_flags) &&
         resource_state.image_layout == usage.vk_image_layout)
     {
-      // has already been covered in a previous call no need to add this one.
-      // TODO: we should merge all read accesses with the first available read barrier.
+      /* Has already been covered in a previous call no need to add this one. */
       continue;
     }
 
@@ -356,7 +359,6 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
-    // If resource version has not be read, no barrier needs to be added.
     VkAccessFlags read_access = resource_state.read_access;
     VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
@@ -365,7 +367,6 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
       wait_access |= read_access;
     }
     if (read_access == VK_ACCESS_NONE && write_access != VK_ACCESS_NONE) {
-      // Add write_write_buffer_barrier
       wait_access |= write_access;
     }
 
@@ -416,6 +417,7 @@ void VKCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph
 {
   render_graph.resource_dependencies_.remove_nodes(selected_nodes_);
   render_graph.nodes_.remove_nodes(selected_nodes_);
+  selected_nodes_.clear();
 }
 
 }  // namespace blender::gpu::render_graph

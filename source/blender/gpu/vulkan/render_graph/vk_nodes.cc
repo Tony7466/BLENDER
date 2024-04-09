@@ -10,20 +10,11 @@
 
 namespace blender::gpu::render_graph {
 
-void VKNodes::remove_nodes(Span<NodeHandle> node_handles)
+static void free_data(VKNodeData &node_data)
 {
-  for (NodeHandle node_handle : node_handles) {
-    Node &node = get(node_handle);
-    free_data(node);
-    nodes_.free(node_handle);
-  }
-}
-
-void VKNodes::free_data(Node &node)
-{
-  switch (node.type) {
+  switch (node_data.type) {
     case VKNodeType::DISPATCH:
-      VKDispatchNode::free_data(node);
+      VKDispatchNode::free_data(node_data);
       break;
 
     case VKNodeType::UNUSED:
@@ -38,8 +29,17 @@ void VKNodes::free_data(Node &node)
       break;
   }
 
-  memset(&node, 0, sizeof(Node));
-  node.type = VKNodeType::UNUSED;
+  memset(&node_data, 0, sizeof(VKNodeData));
+  node_data.type = VKNodeType::UNUSED;
+}
+
+void VKNodes::remove_nodes(Span<NodeHandle> node_handles)
+{
+  for (NodeHandle node_handle : node_handles) {
+    VKNodeData &node_data = get(node_handle);
+    free_data(node_data);
+    nodes_.free(node_handle);
+  }
 }
 
 NodeHandle VKNodes::allocate()

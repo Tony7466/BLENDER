@@ -22,36 +22,33 @@ class VKCommandBuilder;
 class VKNodes {
 
  public:
-  // TODO: Replace all occurrences with VKNodeData.
-  using Node = VKNodeData;
-
  private:
-  VKRenderGraphList<NodeHandle, Node> nodes_;
+  VKRenderGraphList<NodeHandle, VKNodeData> nodes_;
 
  public:
   template<typename NodeClass, typename NodeCreateInfo>
   NodeHandle add_node(const NodeCreateInfo &create_info)
   {
     NodeHandle node_handle = allocate();
-    Node &node = nodes_.get(node_handle);
-    BLI_assert(node.type == VKNodeType::UNUSED);
-    node.type = NodeClass::node_type;
-    NodeClass::set_node_data(node, create_info);
+    VKNodeData &node_data = nodes_.get(node_handle);
+    BLI_assert(node_data.type == VKNodeType::UNUSED);
+    node_data.type = NodeClass::node_type;
+    NodeClass::set_node_data(node_data, create_info);
     return node_handle;
   }
 
   void remove_nodes(Span<NodeHandle> node_handles);
 
-  Span<const std::optional<Node>> nodes() const
+  Span<const std::optional<VKNodeData>> nodes() const
   {
     return nodes_.as_span();
   }
 
-  const Node &get(NodeHandle node_handle) const
+  const VKNodeData &get(NodeHandle node_handle) const
   {
     return nodes_.get(node_handle);
   }
-  Node &get(NodeHandle node_handle)
+  VKNodeData &get(NodeHandle node_handle)
   {
     return nodes_.get(node_handle);
   }
@@ -65,7 +62,6 @@ class VKNodes {
    * Allocate a new node handle.
    */
   NodeHandle allocate();
-  void free_data(Node &node);
 };
 
 }  // namespace blender::gpu::render_graph
