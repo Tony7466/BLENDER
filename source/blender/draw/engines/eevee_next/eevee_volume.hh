@@ -51,6 +51,7 @@ class VolumeModule {
   Instance &inst_;
 
   bool enabled_;
+  bool use_reprojection_;
   bool use_lights_;
 
   VolumesInfoData &data_;

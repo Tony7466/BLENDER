@@ -54,6 +54,8 @@ void VolumeModule::init()
   data_.shadow_steps = (shadow_enabled) ? scene_eval->eevee.volumetric_shadow_samples : 0;
 
   data_.light_clamp = scene_eval->eevee.volumetric_light_clamp;
+
+  use_reprojection_ = (scene_eval->eevee.flag & SCE_EEVEE_TAA_REPROJECTION) != 0;
 }
 
 void VolumeModule::begin_sync() {}
@@ -265,18 +267,36 @@ void VolumeModule::draw_prepass(View &main_view)
 
   /* Number of frame to consider for blending with exponential (infinite) average. */
   int exponential_frame_count = 16;
-  if (!inst_.is_image_render()) {
-    if (inst_.is_transforming()) {
-      /* Improve responsiveness of volume if we are transforming them. */
-      /* TODO(fclem): This is too general as it will be triggered even for non volume object.
-       * Instead, we should tag which areas of the volume that need increased responsiveness. */
-      exponential_frame_count = 3;
-    }
-  }
-
   if (inst_.is_image_render()) {
     /* Disable reprojection for rendering. */
-    valid_history_ = 0;
+    exponential_frame_count = 0;
+  }
+  else if (!use_reprojection_) {
+    /* No re-projection if TAA is disabled. */
+    exponential_frame_count = 0;
+  }
+  else if (inst_.is_playback()) {
+    /* For now, we assume we want responsiveness for volume animation.
+     * But this makes general animation inside uniform volumes less stable.
+     * When we introduce updated volume tagging, we will be able to increase this for general
+     * playback. */
+    exponential_frame_count = 3;
+  }
+  else if (inst_.is_transforming()) {
+    /* Improve responsiveness of volume if we are transforming objects. */
+    /* TODO(fclem): This is too general as it will be triggered even for non volume object.
+     * Instead, we should tag which areas of the volume that need increased responsiveness. */
+    exponential_frame_count = 3;
+  }
+  else if (inst_.is_navigating()) {
+    /* Navigation is usually smooth because of the re-projection but we can get ghosting
+     * artifacts on lights because of voxels stretched in Z or anisotropy. */
+    exponential_frame_count = 8;
+  }
+  else if (inst_.sampling.is_reset()) {
+    /* If we are not falling in any cases above, this usually means there is a scene or object
+     * parameter update. Reset accumulation completely. */
+    exponential_frame_count = 0;
   }
 
   if (!valid_history_) {
