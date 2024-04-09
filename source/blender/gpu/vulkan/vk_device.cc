@@ -31,7 +31,8 @@ namespace blender::gpu {
 
 VKDevice::VKDevice()
     : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(),
-                    std::make_unique<render_graph::Sequential>())
+                    std::make_unique<render_graph::Sequential>(),
+                    resources_)
 {
 }
 
@@ -378,13 +379,13 @@ void VKDevice::destroy_discarded_resources()
 
   while (!discarded_images_.is_empty()) {
     std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
-    render_graph_.remove_image(image_allocation.first);
+    resources_.remove_image(image_allocation.first);
     vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
   }
 
   while (!discarded_buffers_.is_empty()) {
     std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
-    render_graph_.remove_buffer(buffer_allocation.first);
+    resources_.remove_buffer(buffer_allocation.first);
     vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
   }
 

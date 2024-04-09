@@ -92,7 +92,7 @@ bool VKBuffer::create(int64_t size_in_bytes,
     return false;
   }
 
-  device.render_graph_get().add_buffer(vk_buffer_);
+  device.resources_get().add_buffer(vk_buffer_);
 
   if (is_host_visible) {
     return map();

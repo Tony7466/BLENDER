@@ -20,6 +20,7 @@ void VKResources::add_image(VkImage vk_image, VkImageLayout vk_image_layout, Res
 {
   BLI_assert_msg(!image_resources_.contains(vk_image),
                  "Image resource is added twice to the render graph.");
+  std::scoped_lock lock(mutex_);
   ResourceHandle handle = resources_.allocate();
   Resource &resource = resources_.get(handle);
   image_resources_.add_new(vk_image, handle);
@@ -35,6 +36,7 @@ void VKResources::add_buffer(VkBuffer vk_buffer)
 {
   BLI_assert_msg(!buffer_resources_.contains(vk_buffer),
                  "Buffer resource is added twice to the render graph.");
+  std::scoped_lock lock(mutex_);
   ResourceHandle handle = resources_.allocate();
   Resource &resource = resources_.get(handle);
   buffer_resources_.add_new(vk_buffer, handle);
@@ -54,12 +56,14 @@ void VKResources::add_buffer(VkBuffer vk_buffer)
 
 void VKResources::remove_buffer(VkBuffer vk_buffer)
 {
+  std::scoped_lock lock(mutex_);
   ResourceHandle handle = buffer_resources_.pop(vk_buffer);
   resources_.free(handle);
 }
 
 void VKResources::remove_image(VkImage vk_image)
 {
+  std::scoped_lock lock(mutex_);
   ResourceHandle handle = image_resources_.pop(vk_image);
   resources_.free(handle);
 }

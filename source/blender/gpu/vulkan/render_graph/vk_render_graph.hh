@@ -37,7 +37,6 @@
 namespace blender::gpu::render_graph {
 
 class VKRenderGraph : public NonCopyable {
-  VKResources resources_;
   VKResourceDependencies resource_dependencies_;
   VKNodes nodes_;
   VKCommandBuilder command_builder_;
@@ -46,37 +45,17 @@ class VKRenderGraph : public NonCopyable {
   std::unique_ptr<VKCommandBufferInterface> command_buffer_;
 
   /**
-   * Mutex locks adding new commands to a render graph that is being submitted.
+   * Not owning pointer to device resources.
    */
-  // TODO: should be moved to `device.resources`.
-  std::mutex mutex_;
+  VKResources &resources_;
 
  public:
   VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                std::unique_ptr<VKScheduler> sorting_strategy);
+                std::unique_ptr<VKScheduler> sorting_strategy,
+                VKResources &resources);
 
   /** Free all resources held by the render graph. */
   void deinit();
-
-  /**
-   * Register a buffer resource to the render graph.
-   */
-  void add_buffer(VkBuffer vk_buffer);
-  /**
-   * Remove a buffer resource from the render graph.
-   */
-  void remove_buffer(VkBuffer vk_buffer);
-
-  /**
-   * Register an image resource to the render graph.
-   */
-  void add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner);
-
-  /**
-   * Remove an image resource from the render graph.
-   */
-  // TODO: add test case to check if resources are reset when deleted.
-  void remove_image(VkImage vk_image);
 
  private:
   /**
@@ -85,7 +64,7 @@ class VKRenderGraph : public NonCopyable {
   template<typename NodeClass, typename NodeCreateInfo>
   void add_node(const NodeCreateInfo &create_info)
   {
-    std::scoped_lock lock(mutex_);
+    std::scoped_lock lock(resources_.mutex_get());
     NodeHandle handle = nodes_.add_node<NodeClass, NodeCreateInfo>(create_info);
     NodeClass::build_resource_dependencies(
         resources_, resource_dependencies_, handle, create_info);

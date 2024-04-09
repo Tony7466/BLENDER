@@ -43,6 +43,13 @@ enum class ResourceOwner {
   SWAP_CHAIN,
 };
 
+/**
+ * Class to track resources.
+ *
+ * Resources are tracked on device level. Their are two kind of resources, namely buffers and
+ * images. Each resource can have multiple versions; every time a resource is changed (written to)
+ * a new version is tracked.
+ */
 class VKResources {
   /**
    * A render resource can be a buffer or an image that needs to be tracked during rendering.
@@ -72,6 +79,8 @@ class VKResources {
   VKRenderGraphList<ResourceHandle, Resource> resources_;
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
+
+  std::mutex mutex_;
 
  public:
   /**
@@ -103,18 +112,39 @@ class VKResources {
    * Return the current version of the resource, and increase the version.
    */
   VersionedResource get_buffer_and_increase_version(VkBuffer vk_buffer);
+
   /**
    * Return the current version of the resource.
    */
   VersionedResource get_buffer(VkBuffer vk_buffer) const;
+
   /**
-   * Return the current version of the resource.ß
+   * Return the current version of the resource.
    */
   VersionedResource get_image(VkImage vk_image) const;
+
+  /**
+   * Return the resource handle of the given VkImage.
+   */
   ResourceHandle get_image_handle(VkImage vk_image) const;
+
+  /**
+   * Return the resource handle of the given VkBuffer.
+   */
   ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 
-  friend class VKCommandBuilder;
+  /**
+   * Get reference to the device mutex.
+   *
+   * The mutex is stored in resources due to:
+   * - It protects resources and their state.
+   * - Allowing test cases to do testing without setting up a device instance which requires ghost.
+   * - Device instance isn't accessible in test cases.
+   */
+  std::mutex &mutex_get()
+  {
+    return mutex_;
+  }
 
  private:
   /**
@@ -125,6 +155,10 @@ class VKResources {
    * Get the current version of the resource and increase the version.
    */
   static VersionedResource get_and_increase_version(ResourceHandle handle, Resource &resource);
+
+  /* When a command buffer is reset the resources are re-synced. During the syncing the command
+   * builder attributes are resized to reduce reallocations. */
+  friend class VKCommandBuilder;
 };
 
 }  // namespace blender::gpu::render_graph

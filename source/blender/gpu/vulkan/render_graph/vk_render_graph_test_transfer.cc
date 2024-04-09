@@ -17,9 +17,10 @@ TEST(vk_render_graph, fill_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>());
-  render_graph.add_buffer(buffer);
+  VKResources resources;
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  resources.add_buffer(buffer);
   VKFillBufferNode::CreateInfo fill_buffer = {buffer, 1024, 42};
   render_graph.add_node(fill_buffer);
   render_graph.submit_buffer_for_read_back(buffer);
@@ -38,12 +39,13 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>());
-  render_graph.add_buffer(buffer);
+  VKResources resources;
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  resources.add_buffer(buffer);
   VKFillBufferNode::CreateInfo fill_buffer = {buffer, 1024, 42};
   render_graph.add_node(fill_buffer);
-  render_graph.add_buffer(staging_buffer);
+  resources.add_buffer(staging_buffer);
 
   VKCopyBufferNode::CreateInfo copy_buffer = {};
   copy_buffer.src_buffer = buffer;
@@ -83,9 +85,10 @@ TEST(vk_render_graph, fill_fill_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>());
-  render_graph.add_buffer(buffer);
+  VKResources resources;
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  resources.add_buffer(buffer);
   VKFillBufferNode::CreateInfo fill_buffer_1 = {buffer, 1024, 0};
   render_graph.add_node(fill_buffer_1);
   VKFillBufferNode::CreateInfo fill_buffer_2 = {buffer, 1024, 42};
@@ -116,11 +119,12 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>());
-  render_graph.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
-  render_graph.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
-  render_graph.add_buffer(staging_buffer);
+  VKResources resources;
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  resources.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  resources.add_buffer(staging_buffer);
   VkClearColorValue color_white = {};
   color_white.float32[0] = 1.0f;
   color_white.float32[1] = 1.0f;
@@ -240,11 +244,12 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
-                             std::make_unique<Sequential>());
-  render_graph.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
-  render_graph.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
-  render_graph.add_buffer(staging_buffer);
+  VKResources resources;
+  VKRenderGraph render_graph(
+      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  resources.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  resources.add_buffer(staging_buffer);
   VkClearColorValue color_black = {};
   color_black.float32[0] = 0.0f;
   color_black.float32[1] = 0.0f;
