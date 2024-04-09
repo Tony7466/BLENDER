@@ -8,6 +8,7 @@
 void do_vertex(vec4 color, vec4 pos, float coord, vec2 offset)
 {
   geometry_out.finalColor = color;
+  geometry_noperspective_out.edgeCoord = coord;
   gl_Position = pos;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
   gl_Position.xy += offset * 2.0 * pos.w;
@@ -51,6 +52,7 @@ void main()
   /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
    * change as well. */
   float wire_width = geometry_in[0].wire_width * 16.0;
+  geometry_out.wire_width = wire_width;
   float half_size = max(wire_width / 2.0, 0.5);
 
   if (do_smooth_wire) {
@@ -60,7 +62,7 @@ void main()
 
   vec2 edge_ofs = half_size * sizeViewportInv;
 
-  bool horizontal = line.x > line.y;
+  const bool horizontal = line.x > line.y;
   if (horizontal) {
     edge_ofs[0] = 0.0;
   }
@@ -77,8 +79,8 @@ void main()
   view_clipping_distances_set(gl_in[1]);
   vec4 final_color = (geometry_in[0].selectOverride_ == 0u) ? geometry_in[1].finalColor :
                                                               geometry_in[0].finalColor;
-  do_vertex(final_color, pos1, half_size, edge_ofs.xy);
-  do_vertex(final_color, pos1, -half_size, -edge_ofs.xy);
+  do_vertex(final_color, pos1, half_size, edge_ofs);
+  do_vertex(final_color, pos1, -half_size, -edge_ofs);
 
   EndPrimitive();
 }

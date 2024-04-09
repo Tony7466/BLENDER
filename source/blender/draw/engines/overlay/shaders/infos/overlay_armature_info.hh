@@ -143,11 +143,17 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_iface, "geometry_in")
     .smooth(Type::UINT, "selectOverride_");
 
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_iface, "geometry_out")
-    .flat(Type::VEC4, "finalColor");
+    .flat(Type::VEC4, "finalColor")
+    .flat(Type::FLOAT, "wire_width");
+
+GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_noperspective_iface,
+                          "geometry_noperspective_out")
+    .no_perspective(Type::FLOAT, "edgeCoord");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .do_static_compilation(true)
     .push_constant(Type::BOOL, "do_smooth_wire")
+    .sampler(0, ImageType::DEPTH_2D, "depthTex")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::VEC3, "nor")
     /* Per instance. */
@@ -155,10 +161,12 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .vertex_out(overlay_armature_shape_wire_iface)
     .vertex_source("overlay_armature_shape_wire_vert.glsl")
     .geometry_out(overlay_armature_shape_wire_geom_iface)
+    .geometry_out(overlay_armature_shape_wire_geom_noperspective_iface)
     .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
     .geometry_source("overlay_armature_shape_wire_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
-    .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .additional_info("overlay_armature_common", "draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_clipped)
     .do_static_compilation(true)

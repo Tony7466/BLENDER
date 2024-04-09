@@ -432,11 +432,16 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       else {
         cb->transp.point_outline = cb->solid.point_outline;
       }
+      DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
+      GPUTexture **depth_tex = &dtxl->depth;
+      const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
 
       sh = OVERLAY_shader_armature_shape(true);
       cb->solid.custom_outline = grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
+      DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
+      DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
       cb->solid.box_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_box_wire_get());
       cb->solid.octa_outline = BUF_INSTANCE(grp, format, DRW_cache_bone_octahedral_wire_get());
 
@@ -458,6 +463,8 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       cb->solid.custom_wire = grp = DRW_shgroup_create(sh, armature_ps);
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
       DRW_shgroup_uniform_float_copy(grp, "alpha", 1.0f);
+      DRW_shgroup_uniform_bool_copy(grp, "do_smooth_wire", do_smooth_wire);
+      DRW_shgroup_uniform_texture_ref(grp, "depthTex", depth_tex);
 
       if (use_wire_alpha) {
         cb->transp.custom_wire = grp = DRW_shgroup_create(sh, armature_ps);
