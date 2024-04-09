@@ -470,17 +470,15 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 {
   using namespace bke::greasepencil;
 
-  ListBase anim_data = {nullptr, nullptr};
-
   Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
 
   /* Clear buffer first. */
   clipboard.clear();
 
-  Scene *scene = ac->scene;
-
   /* Filter data. */
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+  ListBase anim_data = {nullptr, nullptr};
+
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
@@ -526,7 +524,7 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   }
 
   /* In case 'relative' paste method is used. */
-  clipboard.cfra = scene->r.cfra;
+  clipboard.cfra = ac->scene->r.cfra;
 
   /* Clean up. */
   ANIM_animdata_freelist(&anim_data);
@@ -561,20 +559,18 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
 {
   using namespace bke::greasepencil;
 
-  ListBase anim_data = {nullptr, nullptr};
-
-  Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
+  const Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
 
   /* Check if buffer is empty. */
   if (clipboard.copy_buffer.is_empty()) {
     return false;
   }
 
-  Scene *scene = ac->scene;
-  const int offset = calculate_offset(offset_mode, scene->r.cfra, clipboard);
+  const int offset = calculate_offset(offset_mode, ac->scene->r.cfra, clipboard);
 
   const int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS |
                       ANIMFILTER_FOREDIT | ANIMFILTER_SEL);
+  ListBase anim_data = {nullptr, nullptr};
 
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
