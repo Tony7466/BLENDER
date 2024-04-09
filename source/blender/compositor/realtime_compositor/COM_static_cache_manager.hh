@@ -9,6 +9,7 @@
 #include "COM_cached_mask.hh"
 #include "COM_cached_shader.hh"
 #include "COM_cached_texture.hh"
+#include "COM_deriche_gaussian_coefficients.hh"
 #include "COM_distortion_grid.hh"
 #include "COM_keying_screen.hh"
 #include "COM_morphological_distance_feather_weights.hh"
@@ -55,6 +56,7 @@ class StaticCacheManager {
   CachedShaderContainer cached_shaders;
   BokehKernelContainer bokeh_kernels;
   CachedImageContainer cached_images;
+  DericheGaussianCoefficientsContainer deriche_gaussian_coefficients;
 
   /* Reset the cache manager by deleting the cached resources that are no longer needed because
    * they weren't used in the last evaluation and prepare the remaining cached resources to track
