@@ -3561,6 +3561,7 @@ static void outliner_draw_hierarchy_line(
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     SpaceOutliner *space_outliner,
                                                     ListBase *lb,
+                                                    const TreeViewContext *tvc,
                                                     int startx,
                                                     const uchar col[4],
                                                     bool draw_grayed_out,
@@ -3605,18 +3606,28 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
         }
       }
 
-      outliner_draw_hierarchy_lines_recursive(
-          pos, space_outliner, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
+      outliner_draw_hierarchy_lines_recursive(pos,
+                                              space_outliner,
+                                              &te->subtree,
+                                              tvc,
+                                              startx + UI_UNIT_X,
+                                              col,
+                                              draw_grayed_out,
+                                              starty);
     }
 
     if (draw_hierarchy_line) {
+      const short alpha_fac = element_should_draw_faded(tvc, te, tselem) ? 127 : 255;
+      uchar line_color[4];
       if (color_tag != COLLECTION_COLOR_NONE) {
-        immUniformColor4ubv(btheme->collection_color[color_tag].color);
+        copy_v4_v4_uchar(line_color, btheme->collection_color[color_tag].color);
       }
       else {
-        immUniformColor4ubv(col);
+        copy_v4_v4_uchar(line_color, col);
       }
 
+      line_color[3] = alpha_fac;
+      immUniformColor4ubv(line_color);
       outliner_draw_hierarchy_line(pos, startx, y, *starty, is_object_line);
     }
   }
@@ -3624,6 +3635,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 
 static void outliner_draw_hierarchy_lines(SpaceOutliner *space_outliner,
                                           ListBase *lb,
+                                          const TreeViewContext *tvc,
                                           int startx,
                                           int *starty)
 {
@@ -3643,7 +3655,8 @@ static void outliner_draw_hierarchy_lines(SpaceOutliner *space_outliner,
 
   GPU_line_width(1.0f);
   GPU_blend(GPU_BLEND_ALPHA);
-  outliner_draw_hierarchy_lines_recursive(pos, space_outliner, lb, startx, col, false, starty);
+  outliner_draw_hierarchy_lines_recursive(
+      pos, space_outliner, lb, tvc, startx, col, false, starty);
   GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
@@ -3845,7 +3858,7 @@ static void outliner_draw_tree(bContext *C,
   /* Draw hierarchy lines for collections and object children. */
   starty = int(region->v2d.tot.ymax) - OL_Y_OFFSET;
   startx = columns_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
-  outliner_draw_hierarchy_lines(space_outliner, &space_outliner->tree, startx, &starty);
+  outliner_draw_hierarchy_lines(space_outliner, &space_outliner->tree, tvc, startx, &starty);
 
   /* Items themselves. */
   starty = int(region->v2d.tot.ymax) - UI_UNIT_Y - OL_Y_OFFSET;
