@@ -2980,18 +2980,20 @@ static bool tselem_draw_icon(uiBlock *block,
     }
   }
   else {
-    uiDefIconBut(block,
-                 UI_BTYPE_LABEL,
-                 0,
-                 data.icon,
-                 x,
-                 y,
-                 UI_UNIT_X,
-                 UI_UNIT_Y,
-                 nullptr,
-                 0.0,
-                 0.0,
-                 (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
+    uiBut *but = uiDefIconBut(
+        block,
+        UI_BTYPE_LABEL,
+        0,
+        data.icon,
+        x,
+        y,
+        UI_UNIT_X,
+        UI_UNIT_Y,
+        nullptr,
+        0.0,
+        0.0,
+        (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
+    UI_but_label_alpha_factor_set(but, alpha);
   }
 
   return true;
