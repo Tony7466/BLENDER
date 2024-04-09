@@ -1390,6 +1390,7 @@ namespace curve_type_set {
 static int exec(bContext *C, wmOperator *op)
 {
   const CurveType dst_type = CurveType(RNA_enum_get(op->ptr, "type"));
+  const bool use_handles = RNA_boolean_get(op->ptr, "use_handles");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
@@ -1399,7 +1400,9 @@ static int exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    curves = geometry::convert_curves(curves, selection, dst_type, {});
+    geometry::ConvertCurvesOptions options;
+    options.use_handles = use_handles;
+    curves = geometry::convert_curves(curves, selection, dst_type, {}, options);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
@@ -1422,6 +1425,12 @@ static void CURVES_OT_curve_type_set(wmOperatorType *ot)
 
   ot->prop = RNA_def_enum(
       ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
+
+  RNA_def_boolean(ot->srna,
+                  "use_handles",
+                  false,
+                  "Handles",
+                  "Use handles when converting Bézier curves into polygons");
 }
 
 namespace switch_direction {
