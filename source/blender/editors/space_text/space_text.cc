@@ -441,8 +441,10 @@ static void text_activate(bContext *C, struct ScrArea *area)
     if (wm->cursor_blink_timer) {
       WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
     }
-    wm->cursor_blink_timer = WM_event_timer_add_notifier(
-        wm, win, NC_TEXT | NA_CURSOR_BLINK, TEXT_CURSOR_BLINK_RATE);
+    if (U.text_cursor_blink) {
+      wm->cursor_blink_timer = WM_event_timer_add_notifier(
+          wm, win, NC_TEXT | NA_CURSOR_BLINK, TEXT_CURSOR_BLINK_RATE);
+    }
   }
 
   /* Redraw to show active text caret. */

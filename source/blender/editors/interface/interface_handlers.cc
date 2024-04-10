@@ -3421,7 +3421,10 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   if (data->wm->cursor_blink_timer) {
     WM_event_timer_remove_notifier(data->wm, win, data->wm->cursor_blink_timer);
   }
-  data->wm->cursor_blink_timer = WM_event_timer_add(data->wm, win, TIMER, TEXT_CURSOR_BLINK_RATE);
+  if (U.text_cursor_blink) {
+    data->wm->cursor_blink_timer = WM_event_timer_add(
+        data->wm, win, TIMER, TEXT_CURSOR_BLINK_RATE);
+  }
 
 #ifdef USE_DRAG_MULTINUM
   /* this can happen from multi-drag */
