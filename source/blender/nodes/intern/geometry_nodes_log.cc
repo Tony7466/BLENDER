@@ -8,9 +8,9 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
-#include "BKE_viewer_path.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
@@ -121,7 +121,7 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         {
           EditDataInfo &info = this->edit_data_info.emplace();
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
-          info.has_deformed_positions = curve_edit_hints->positions.has_value();
+          info.has_deformed_positions = curve_edit_hints->positions().has_value();
         }
         if (const bke::GizmosEditHints *gizmo_edit_hints = edit_component.gizmos_edit_hints_.get())
         {
@@ -176,13 +176,24 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
   auto store_logged_value = [&](destruct_ptr<ValueLog> value_log) {
     auto &socket_values = socket.in_out == SOCK_IN ? this->input_socket_values :
                                                      this->output_socket_values;
-    socket_values.append({node.identifier, socket.index(), std::move(value_log)});
+    socket_values.append(*this->allocator,
+                         {node.identifier, socket.index(), std::move(value_log)});
   };
 
   auto log_generic_value = [&](const CPPType &type, const void *value) {
     void *buffer = this->allocator->allocate(type.size(), type.alignment());
     type.copy_construct(value, buffer);
     store_logged_value(this->allocator->construct<GenericValueLog>(GMutablePointer{type, buffer}));
+  };
+
+  auto log_menu_value = [&](Span<bke::RuntimeNodeEnumItem> enum_items, const int identifier) {
+    for (const bke::RuntimeNodeEnumItem &item : enum_items) {
+      if (item.identifier == identifier) {
+        log_generic_value(CPPType::get<std::string>(), &item.name);
+        return;
+      }
+    }
+    log_generic_value(CPPType::get<int>(), &identifier);
   };
 
   if (type.is<bke::GeometrySet>()) {
@@ -198,7 +209,20 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
     else {
       value_variant.convert_to_single();
       const GPointer value = value_variant.get_single_ptr();
-      log_generic_value(*value.type(), value.get());
+      if (socket.type == SOCK_MENU) {
+        const bNodeSocketValueMenu &default_value =
+            *socket.default_value_typed<bNodeSocketValueMenu>();
+        if (default_value.enum_items) {
+          const int identifier = *value.get<int>();
+          log_menu_value(default_value.enum_items->items, identifier);
+        }
+        else {
+          log_generic_value(*value.type(), value.get());
+        }
+      }
+      else {
+        log_generic_value(*value.type(), value.get());
+      }
     }
   }
   else {
@@ -211,7 +235,7 @@ void GeoTreeLogger::log_viewer_node(const bNode &viewer_node, bke::GeometrySet g
   destruct_ptr<ViewerNodeLog> log = this->allocator->construct<ViewerNodeLog>();
   log->geometry = std::move(geometry);
   log->geometry.ensure_owns_direct_data();
-  this->viewer_node_logs.append({viewer_node.identifier, std::move(log)});
+  this->viewer_node_logs.append(*this->allocator, {viewer_node.identifier, std::move(log)});
 }
 
 void GeoTreeLog::ensure_node_warnings()

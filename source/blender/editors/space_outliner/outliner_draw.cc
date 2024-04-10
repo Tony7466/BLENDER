@@ -20,20 +20,19 @@
 #include "DNA_text_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_mempool.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_library.hh"
@@ -43,7 +42,7 @@
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ANIM_bone_collections.hh"
 
@@ -59,8 +58,8 @@
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
@@ -70,7 +69,6 @@
 #include "RNA_access.hh"
 
 #include "outliner_intern.hh"
-#include "tree/tree_display.hh"
 #include "tree/tree_element.hh"
 #include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_id.hh"
@@ -286,7 +284,7 @@ static void outliner_object_set_flag_recursive_fn(bContext *C,
     if (BKE_object_is_child_recursive(ob_parent, ob_iter)) {
       if (ob) {
         ptr = RNA_id_pointer_create(&ob_iter->id);
-        DEG_id_tag_update(&ob_iter->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&ob_iter->id, ID_RECALC_SYNC_TO_EVAL);
       }
       else {
         BKE_view_layer_synced_ensure(scene, view_layer);
@@ -387,7 +385,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
       RNA_property_boolean_set(&ptr, base_or_object_prop, value);
 
       if (collection) {
-        DEG_id_tag_update(&cob->ob->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&cob->ob->id, ID_RECALC_SYNC_TO_EVAL);
       }
     }
   }
@@ -409,7 +407,7 @@ static void outliner_collection_set_flag_recursive(Scene *scene,
   }
 
   if (collection) {
-    DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -681,12 +679,22 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
+  /* Unfortunately at this point, the name of the ID has already been set to its new value. Revert
+   * it to its old name, to be able to use the generic 'rename' function for IDs.
+   *
+   * NOTE: While utterly inelegant, performances are not really a concern here, so this is an
+   * acceptable solution for now. */
+  auto id_rename_helper = [bmain, tselem, oldname] {
+    std::string new_name = tselem->id->name + 2;
+    BLI_strncpy(tselem->id->name + 2, oldname, sizeof(tselem->id->name) - 2);
+    BKE_libblock_rename(bmain, tselem->id, new_name.c_str());
+  };
+
   if (ts && tselem) {
     TreeElement *te = outliner_find_tree_element(&space_outliner->tree, tselem);
 
     if (tselem->type == TSE_SOME_ID) {
-      BKE_main_namemap_remove_name(bmain, tselem->id, oldname);
-      BKE_libblock_ensure_unique_name(bmain, tselem->id);
+      id_rename_helper();
 
       WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
 
@@ -739,7 +747,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
         }
       }
 
-      DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
     }
     else {
       switch (tselem->type) {
@@ -748,15 +756,14 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           bDeformGroup *vg = static_cast<bDeformGroup *>(te->directdata);
           BKE_object_defgroup_unique_name(vg, ob);
           WM_msg_publish_rna_prop(mbus, &ob->id, vg, VertexGroup, name);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_NLA_ACTION: {
-          bAction *act = (bAction *)tselem->id;
-          BKE_main_namemap_remove_name(bmain, &act->id, oldname);
-          BKE_libblock_ensure_unique_name(bmain, &act->id);
-          WM_msg_publish_rna_prop(mbus, &act->id, &act->id, ID, name);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          /* The #tselem->id is a #bAction. */
+          id_rename_helper();
+          WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_NLA_TRACK: {
@@ -775,7 +782,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
             ED_armature_bone_rename(bmain, arm, oldname, newname);
             WM_msg_publish_rna_prop(mbus, &arm->id, ebone, EditBone, name);
             WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
-            DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+            DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           }
           break;
         }
@@ -797,7 +804,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           ED_armature_bone_rename(bmain, arm, oldname, newname);
           WM_msg_publish_rna_prop(mbus, &arm->id, bone, Bone, name);
           WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_POSE_CHANNEL: {
@@ -820,8 +827,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           ED_armature_bone_rename(bmain, static_cast<bArmature *>(ob->data), oldname, newname);
           WM_msg_publish_rna_prop(mbus, &arm->id, pchan->bone, Bone, name);
           WM_event_add_notifier(C, NC_OBJECT | ND_POSE, nullptr);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
-          DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
+          DEG_id_tag_update(&arm->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_GP_LAYER: {
@@ -838,7 +845,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           WM_msg_publish_rna_prop(mbus, &gpd->id, gpl, GPencilLayer, info);
           DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
           WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, gpd);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_GREASE_PENCIL_NODE: {
@@ -852,7 +859,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           std::string new_name(node.name());
           node.set_name(oldname);
           grease_pencil.rename_node(node, new_name);
-          DEG_id_tag_update(&grease_pencil.id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(&grease_pencil.id, ID_RECALC_SYNC_TO_EVAL);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
           break;
         }
@@ -869,17 +876,15 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           BKE_view_layer_rename(bmain, scene, view_layer, newname);
           WM_msg_publish_rna_prop(mbus, &scene->id, view_layer, ViewLayer, name);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
         case TSE_LAYER_COLLECTION: {
-          /* The ID is a #Collection, not a #LayerCollection */
-          Collection *collection = (Collection *)tselem->id;
-          BKE_main_namemap_remove_name(bmain, &collection->id, oldname);
-          BKE_libblock_ensure_unique_name(bmain, &collection->id);
-          WM_msg_publish_rna_prop(mbus, &collection->id, &collection->id, ID, name);
+          /* The #tselem->id is a #Collection, not a #LayerCollection */
+          id_rename_helper();
+          WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
-          DEG_id_tag_update(tselem->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
 
@@ -890,7 +895,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           ANIM_armature_bonecoll_name_set(arm, bcoll, bcoll->name);
           WM_msg_publish_rna_prop(mbus, &arm->id, bcoll, BoneCollection, name);
           WM_event_add_notifier(C, NC_OBJECT | ND_BONE_COLLECTION, arm);
-          DEG_id_tag_update(&arm->id, ID_RECALC_COPY_ON_WRITE);
+          DEG_id_tag_update(&arm->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
       }
@@ -1153,8 +1158,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 &layer->flag,
                                 0,
                                 0,
-                                0,
-                                0,
                                 TIP_("Use view layer for rendering"));
           UI_but_func_set(bt, restrictbutton_r_lay_fn, tselem->id, nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
@@ -1189,8 +1192,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                     -1,
                                     0,
                                     0,
-                                    0,
-                                    0,
                                     TIP_("Temporarily hide in viewport\n"
                                          "* Shift to set children"));
             UI_but_func_set(
@@ -1216,8 +1217,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   TIP_("Disable selection in viewport\n"
                                        "* Shift to set children"));
           UI_but_func_set(bt, outliner__object_set_flag_recursive_fn, ob, (char *)"hide_select");
@@ -1241,8 +1240,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   TIP_("Globally disable in viewports\n"
                                        "* Shift to set children"));
           UI_but_func_set(bt, outliner__object_set_flag_recursive_fn, ob, (void *)"hide_viewport");
@@ -1266,8 +1263,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   TIP_("Globally disable in renders\n"
                                        "* Shift to set children"));
           UI_but_func_set(bt, outliner__object_set_flag_recursive_fn, ob, (char *)"hide_render");
@@ -1296,8 +1291,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           if (!props_active.constraint_enable) {
@@ -1324,8 +1317,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           if (!props_active.modifier_show_viewport) {
@@ -1347,8 +1338,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           if (!props_active.modifier_show_render) {
@@ -1378,8 +1367,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   TIP_("Restrict visibility in the 3D View\n"
                                        "* Shift to set children"));
           UI_but_func_set(bt, restrictbutton_bone_visibility_fn, bone, nullptr);
@@ -1398,8 +1385,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 UI_UNIT_X,
                                 UI_UNIT_Y,
                                 &(bone->flag),
-                                0,
-                                0,
                                 0,
                                 0,
                                 TIP_("Restrict selection in the 3D View\n"
@@ -1426,8 +1411,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 &(ebone->flag),
                                 0,
                                 0,
-                                0,
-                                0,
                                 TIP_("Restrict visibility in the 3D View\n"
                                      "* Shift to set children"));
           UI_but_func_set(bt, restrictbutton_ebone_visibility_fn, arm, ebone);
@@ -1446,8 +1429,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 UI_UNIT_X,
                                 UI_UNIT_Y,
                                 &(ebone->flag),
-                                0,
-                                0,
                                 0,
                                 0,
                                 TIP_("Restrict selection in the 3D View\n"
@@ -1474,8 +1455,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 &gpl->flag,
                                 0,
                                 0,
-                                0,
-                                0,
                                 TIP_("Restrict visibility in the 3D View"));
           UI_but_func_set(bt, restrictbutton_gp_layer_flag_fn, id, gpl);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
@@ -1493,8 +1472,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 UI_UNIT_X,
                                 UI_UNIT_Y,
                                 &gpl->flag,
-                                0,
-                                0,
                                 0,
                                 0,
                                 TIP_("Restrict editing of strokes and keyframes in this layer"));
@@ -1531,8 +1508,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   0,
                                   0,
-                                  -1,
-                                  -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           if (node.parent_group() && node.parent_group()->is_visible()) {
@@ -1569,8 +1544,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                       -1,
                                       0,
                                       0,
-                                      0,
-                                      0,
                                       nullptr);
               UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
             }
@@ -1587,8 +1560,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                       &layer_collection_ptr,
                                       props.layer_collection_hide_viewport,
                                       -1,
-                                      0,
-                                      0,
                                       0,
                                       0,
                                       TIP_("Temporarily hide in viewport\n"
@@ -1618,8 +1589,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                       -1,
                                       0,
                                       0,
-                                      0,
-                                      0,
                                       TIP_("Mask out objects in collection from view layer\n"
                                            "* Ctrl to isolate collection\n"
                                            "* Shift to set inside collections"));
@@ -1646,8 +1615,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                   &layer_collection_ptr,
                   props.layer_collection_indirect_only,
                   -1,
-                  0,
-                  0,
                   0,
                   0,
                   TIP_("Objects in collection only contribute indirectly (through shadows and "
@@ -1679,8 +1646,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                     &collection_ptr,
                                     props.collection_hide_viewport,
                                     -1,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     TIP_("Globally disable in viewports\n"
@@ -1718,8 +1683,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                     -1,
                                     0,
                                     0,
-                                    0,
-                                    0,
                                     TIP_("Globally disable in renders\n"
                                          "* Ctrl to isolate collection\n"
                                          "* Shift to set inside collections and objects"));
@@ -1751,8 +1714,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                     &collection_ptr,
                                     props.collection_hide_select,
                                     -1,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     TIP_("Disable selection in viewport\n"
@@ -1826,8 +1787,6 @@ static void outliner_draw_userbuts(uiBlock *block,
                   nullptr,
                   0.0,
                   0.0,
-                  0,
-                  0,
                   TIP_("Number of users of this data-block"));
     UI_but_flag_enable(bt, but_flag);
 
@@ -1847,8 +1806,6 @@ static void outliner_draw_userbuts(uiBlock *block,
                           UI_UNIT_X,
                           UI_UNIT_Y,
                           &id->flag,
-                          0,
-                          0,
                           0,
                           0,
                           tip);
@@ -1887,14 +1844,12 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
       uiBut *but = uiDefBut(block,
                             UI_BTYPE_LABEL,
                             0,
-                            override_elem->rna_path.c_str(),
+                            override_elem->rna_path,
                             x + pad_x,
                             te->ys + pad_y,
                             item_max_width,
                             item_height,
                             nullptr,
-                            0.0f,
-                            0.0f,
                             0.0f,
                             0.0f,
                             "");
@@ -1910,14 +1865,12 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
         uiDefBut(block,
                  UI_BTYPE_LABEL,
                  0,
-                 op_label.c_str(),
+                 op_label,
                  x + pad_x,
                  te->ys + pad_y,
                  item_max_width,
                  item_height,
                  nullptr,
-                 0,
-                 0,
                  0,
                  0,
                  "");
@@ -2160,8 +2113,6 @@ static void outliner_buttons(const bContext *C,
                 (void *)te->name,
                 1.0,
                 float(len),
-                0,
-                0,
                 "");
   UI_but_func_rename_set(bt, namebutton_fn, tselem);
 
@@ -2221,6 +2172,24 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
     return;
   }
 
+  if (ob->mode == OB_MODE_OBJECT && BKE_object_is_in_editmode(ob)) {
+    /* Another object has our (shared) data in edit mode, so nothing we can change. */
+    uiBut *but = uiDefIconBut(block,
+                              UI_BTYPE_BUT,
+                              0,
+                              UI_icon_from_object_mode(ob_active->mode),
+                              0,
+                              te->ys,
+                              UI_UNIT_X,
+                              UI_UNIT_Y,
+                              nullptr,
+                              0.0,
+                              0.0,
+                              TIP_("Another object has this shared data in edit mode"));
+    UI_but_flag_enable(but, UI_BUT_DISABLED);
+    return;
+  }
+
   bool draw_active_icon = ob->mode == ob_active->mode;
 
   /* When not locking object modes, objects can remain in non-object modes. For modes that do not
@@ -2257,8 +2226,6 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
                             UI_UNIT_X,
                             UI_UNIT_Y,
                             nullptr,
-                            0.0,
-                            0.0,
                             0.0,
                             0.0,
                             tip);
@@ -2347,8 +2314,6 @@ static void outliner_draw_warning_tree_element(uiBlock *block,
                             UI_UNIT_X,
                             UI_UNIT_Y,
                             nullptr,
-                            0.0,
-                            0.0,
                             0.0,
                             0.0,
                             warning_msg.c_str());
@@ -2493,6 +2458,8 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_WORLD_DATA;
     case ID_AC:
       return ICON_ACTION;
+    case ID_AN:
+      return ICON_ACTION; /* TODO: give Animation its own icon. */
     case ID_NLA:
       return ICON_NLA;
     case ID_TXT: {
@@ -2515,7 +2482,7 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       if (id->tag & LIB_TAG_MISSING) {
         return ICON_LIBRARY_DATA_BROKEN;
       }
-      else if (((Library *)id)->parent) {
+      else if (((Library *)id)->runtime.parent) {
         return ICON_LIBRARY_DATA_INDIRECT;
       }
       else {
@@ -2555,6 +2522,12 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_SEQUENCE;
     case ID_PC:
       return ICON_CURVE_BEZCURVE;
+    case ID_PA:
+      return ICON_PARTICLES;
+    case ID_PAL:
+      return ICON_COLOR;
+    case ID_VF:
+      return ICON_FILE_FONT;
     default:
       return ICON_NONE;
   }
@@ -3018,8 +2991,6 @@ static bool tselem_draw_icon(uiBlock *block,
                  nullptr,
                  0.0,
                  0.0,
-                 1.0,
-                 alpha,
                  (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
   }
 
@@ -3433,16 +3404,12 @@ static void outliner_draw_tree_element(bContext *C,
 
       /* Icons a bit higher. */
       if (TSELEM_OPEN(tselem, space_outliner)) {
-        UI_icon_draw_alpha(float(icon_x) + 2 * ufac,
-                           float(*starty) + 1 * ufac,
-                           ICON_DISCLOSURE_TRI_DOWN,
-                           alpha_fac);
+        UI_icon_draw_alpha(
+            float(icon_x) + 2 * ufac, float(*starty) + 1 * ufac, ICON_DOWNARROW_HLT, alpha_fac);
       }
       else {
-        UI_icon_draw_alpha(float(icon_x) + 2 * ufac,
-                           float(*starty) + 1 * ufac,
-                           ICON_DISCLOSURE_TRI_RIGHT,
-                           alpha_fac);
+        UI_icon_draw_alpha(
+            float(icon_x) + 2 * ufac, float(*starty) + 1 * ufac, ICON_RIGHTARROW, alpha_fac);
       }
     }
     offsx += UI_UNIT_X;
@@ -3474,6 +3441,15 @@ static void outliner_draw_tree_element(bContext *C,
         UI_icon_draw_alpha(
             float(startx) + offsx + 2 * ufac, float(*starty) + 2 * ufac, lib_icon, alpha_fac);
         offsx += UI_UNIT_X + 4 * ufac;
+      }
+
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        const Collection *collection = (Collection *)tselem->id;
+        if (!BLI_listbase_is_empty(&collection->exporters)) {
+          UI_icon_draw_alpha(
+              float(startx) + offsx + 2 * ufac, float(*starty) + 2 * ufac, ICON_EXPORT, alpha_fac);
+          offsx += UI_UNIT_X + 4 * ufac;
+        }
       }
     }
     GPU_blend(GPU_BLEND_NONE);

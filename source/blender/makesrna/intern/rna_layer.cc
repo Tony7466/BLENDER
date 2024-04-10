@@ -10,7 +10,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_object.hh"
 #include "ED_render.hh"
@@ -22,7 +22,7 @@
 
 #include "RNA_define.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -35,11 +35,11 @@
 
 #  include "RNA_access.hh"
 
-#  include "BKE_idprop.h"
-#  include "BKE_layer.h"
+#  include "BKE_idprop.hh"
+#  include "BKE_layer.hh"
 #  include "BKE_mesh.hh"
-#  include "BKE_node.h"
-#  include "BKE_scene.h"
+#  include "BKE_node.hh"
+#  include "BKE_scene.hh"
 
 #  include "NOD_composite.hh"
 
@@ -118,14 +118,12 @@ size_t rna_ViewLayer_path_buffer_get(const ViewLayer *view_layer,
   return BLI_snprintf_rlen(r_rna_path, rna_path_buffer_size, "view_layers[\"%s\"]", name_esc);
 }
 
-static char *rna_ViewLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ViewLayer_path(const PointerRNA *ptr)
 {
   const ViewLayer *view_layer = (ViewLayer *)ptr->data;
   char rna_path[sizeof(view_layer->name) * 3];
-
   rna_ViewLayer_path_buffer_get(view_layer, rna_path, sizeof(rna_path));
-
-  return BLI_strdup(rna_path);
+  return rna_path;
 }
 
 static IDProperty **rna_ViewLayer_idprops(PointerRNA *ptr)
@@ -253,8 +251,9 @@ static void rna_ViewLayer_update_tagged(ID *id_ptr,
 static void rna_ObjectBase_select_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   Base *base = (Base *)ptr->data;
-  short mode = (base->flag & BASE_SELECTED) ? BA_SELECT : BA_DESELECT;
-  ED_object_base_select(base, eObjectSelect_Mode(mode));
+  short mode = (base->flag & BASE_SELECTED) ? blender::ed::object::BA_SELECT :
+                                              blender::ed::object::BA_DESELECT;
+  blender::ed::object::base_select(base, blender::ed::object::eObjectSelect_Mode(mode));
 }
 
 static void rna_ObjectBase_hide_viewport_update(bContext *C, PointerRNA * /*ptr*/)
@@ -340,7 +339,7 @@ static void rna_LayerCollection_exclude_update(Main *bmain, Scene * /*scene*/, P
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_SCENE | ND_LAYER_CONTENT, nullptr);
   if (exclude) {
-    ED_object_base_active_refresh(bmain, scene, view_layer);
+    blender::ed::object::base_active_refresh(bmain, scene, view_layer);
   }
 }
 
@@ -387,7 +386,7 @@ void rna_LayerCollection_children_begin(CollectionPropertyIterator *iter, Pointe
   rna_iterator_listbase_begin(iter, &lc->layer_collections, nullptr);
 }
 
-static bool rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, PointerRNA *r_ptr)
+static int rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, PointerRNA *r_ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   LayerCollection *lc = (LayerCollection *)ptr->data;
@@ -403,9 +402,9 @@ static bool rna_LayerCollection_children_lookupint(PointerRNA *ptr, int key, Poi
   return true;
 }
 
-static bool rna_LayerCollection_children_lookupstring(PointerRNA *ptr,
-                                                      const char *key,
-                                                      PointerRNA *r_ptr)
+static int rna_LayerCollection_children_lookupstring(PointerRNA *ptr,
+                                                     const char *key,
+                                                     PointerRNA *r_ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   LayerCollection *lc = (LayerCollection *)ptr->data;
@@ -549,7 +548,7 @@ static void rna_def_layer_objects(BlenderRNA *brna, PropertyRNA *cprop)
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_UNLINK);
   RNA_def_property_ui_text(prop, "Active Object", "Active object for this layer");
-  /* Could call: `ED_object_base_activate(C, view_layer->basact);`
+  /* Could call: `blender::ed::object::base_activate(C, view_layer->basact);`
    * but would be a bad level call and it seems the notifier is enough */
   RNA_def_property_update(prop, NC_SCENE | ND_OB_ACTIVE, nullptr);
 
@@ -659,6 +658,14 @@ void RNA_def_view_layer(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", VIEW_LAYER_RENDER);
   RNA_def_property_ui_text(prop, "Enabled", "Enable or disable rendering of this View Layer");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER, nullptr);
+
+  /* Cached flag indicating if any Collection in this ViewLayer has an Exporter set. */
+  prop = RNA_def_property(srna, "has_export_collections", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", VIEW_LAYER_HAS_EXPORT_COLLECTIONS);
+  RNA_def_property_ui_text(prop,
+                           "Has export collections",
+                           "At least one Collection in this View Layer has an exporter");
 
   prop = RNA_def_property(srna, "use_freestyle", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", VIEW_LAYER_FREESTYLE);

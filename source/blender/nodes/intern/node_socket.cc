@@ -13,6 +13,8 @@
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_euler.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -30,13 +32,13 @@
 #include "DNA_material_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
+#include "NOD_socket_declarations_geometry.hh"
 
 using namespace blender;
 using blender::bke::SocketValueVariant;
@@ -275,54 +277,6 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   }
 }
 
-/**
- * Not great to have this here, but this is only for forward compatibility, so this code shouldn't
- * in the `main` branch.
- */
-static std::optional<eNodeSocketDatatype> decl_to_data_type(const SocketDeclaration &socket_decl)
-{
-  if (dynamic_cast<const decl::Float *>(&socket_decl)) {
-    return SOCK_FLOAT;
-  }
-  else if (dynamic_cast<const decl::Int *>(&socket_decl)) {
-    return SOCK_INT;
-  }
-  else if (dynamic_cast<const decl::Bool *>(&socket_decl)) {
-    return SOCK_BOOLEAN;
-  }
-  else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
-    return SOCK_VECTOR;
-  }
-  else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
-    return SOCK_RGBA;
-  }
-  else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
-    return SOCK_ROTATION;
-  }
-  else if (dynamic_cast<const decl::String *>(&socket_decl)) {
-    return SOCK_STRING;
-  }
-  else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
-    return SOCK_IMAGE;
-  }
-  else if (dynamic_cast<const decl::Texture *>(&socket_decl)) {
-    return SOCK_TEXTURE;
-  }
-  else if (dynamic_cast<const decl::Material *>(&socket_decl)) {
-    return SOCK_MATERIAL;
-  }
-  else if (dynamic_cast<const decl::Shader *>(&socket_decl)) {
-    return SOCK_SHADER;
-  }
-  else if (dynamic_cast<const decl::Collection *>(&socket_decl)) {
-    return SOCK_COLLECTION;
-  }
-  else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
-    return SOCK_OBJECT;
-  }
-  return std::nullopt;
-}
-
 static const char *get_identifier_from_decl(const char *identifier_prefix,
                                             const bNodeSocket &socket,
                                             const Span<const SocketDeclaration *> socket_decls)
@@ -332,7 +286,7 @@ static const char *get_identifier_from_decl(const char *identifier_prefix,
   }
   for (const SocketDeclaration *socket_decl : socket_decls) {
     if (BLI_str_startswith(socket_decl->identifier.c_str(), identifier_prefix)) {
-      if (socket.type == decl_to_data_type(*socket_decl)) {
+      if (socket.type == socket_decl->socket_type) {
         return socket_decl->identifier.c_str();
       }
     }
@@ -548,8 +502,20 @@ void update_node_declaration_and_sockets(bNodeTree &ntree, bNode &node)
 
 bool socket_type_supports_fields(const eNodeSocketDatatype socket_type)
 {
-  return ELEM(
-      socket_type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_BOOLEAN, SOCK_INT, SOCK_ROTATION);
+  return ELEM(socket_type,
+              SOCK_FLOAT,
+              SOCK_VECTOR,
+              SOCK_RGBA,
+              SOCK_BOOLEAN,
+              SOCK_INT,
+              SOCK_ROTATION,
+              SOCK_MENU,
+              SOCK_MATRIX);
+}
+
+bool socket_type_supports_grids(const eNodeSocketDatatype socket_type)
+{
+  return ELEM(socket_type, SOCK_FLOAT, SOCK_VECTOR);
 }
 
 }  // namespace blender::nodes
@@ -646,6 +612,13 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
       *data = dval;
       break;
     }
+    case SOCK_MENU: {
+      bNodeSocketValueMenu *dval = MEM_cnew<bNodeSocketValueMenu>("node socket value menu");
+      dval->value = -1;
+
+      *data = dval;
+      break;
+    }
     case SOCK_OBJECT: {
       bNodeSocketValueObject *dval = MEM_cnew<bNodeSocketValueObject>("node socket value object");
       dval->value = nullptr;
@@ -687,6 +660,7 @@ void node_socket_init_default_value_data(eNodeSocketDatatype datatype, int subty
 
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
     case SOCK_SHADER:
       break;
   }
@@ -741,6 +715,12 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
       *toval = *fromval;
       break;
     }
+    case SOCK_MENU: {
+      bNodeSocketValueMenu *toval = (bNodeSocketValueMenu *)to;
+      bNodeSocketValueMenu *fromval = (bNodeSocketValueMenu *)from;
+      *toval = *fromval;
+      break;
+    }
     case SOCK_OBJECT: {
       bNodeSocketValueObject *toval = (bNodeSocketValueObject *)to;
       bNodeSocketValueObject *fromval = (bNodeSocketValueObject *)from;
@@ -779,6 +759,7 @@ void node_socket_copy_default_value_data(eNodeSocketDatatype datatype, void *to,
 
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
     case SOCK_SHADER:
       break;
   }
@@ -960,6 +941,22 @@ static bNodeSocketType *make_socket_type_rotation()
   return socktype;
 }
 
+static bNodeSocketType *make_socket_type_matrix()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<float4x4>();
+  socktype->get_base_cpp_value = [](const void * /*socket_value*/, void *r_value) {
+    *static_cast<float4x4 *>(r_value) = float4x4::identity();
+  };
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant>();
+  socktype->get_geometry_nodes_cpp_value = [](const void * /*socket_value*/, void *r_value) {
+    new (r_value) SocketValueVariant(float4x4::identity());
+  };
+  static SocketValueVariant default_value{float4x4::identity()};
+  socktype->geometry_nodes_default_cpp_value = &default_value;
+  return socktype;
+}
+
 static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_FLOAT, subtype);
@@ -1041,6 +1038,23 @@ static bNodeSocketType *make_socket_type_string()
     new (r_value) SocketValueVariant(value);
   };
   static SocketValueVariant default_value{std::string()};
+  socktype->geometry_nodes_default_cpp_value = &default_value;
+  return socktype;
+}
+
+static bNodeSocketType *make_socket_type_menu()
+{
+  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MENU, PROP_NONE);
+  socktype->base_cpp_type = &blender::CPPType::get<int>();
+  socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
+    *(int *)r_value = ((bNodeSocketValueMenu *)socket_value)->value;
+  };
+  socktype->geometry_nodes_cpp_type = &blender::CPPType::get<SocketValueVariant>();
+  socktype->get_geometry_nodes_cpp_value = [](const void *socket_value, void *r_value) {
+    const int value = ((bNodeSocketValueMenu *)socket_value)->value;
+    new (r_value) SocketValueVariant(value);
+  };
+  static SocketValueVariant default_value{0};
   socktype->geometry_nodes_default_cpp_value = &default_value;
   return socktype;
 }
@@ -1137,6 +1151,7 @@ void register_standard_node_socket_types()
 
   nodeRegisterSocketType(make_socket_type_bool());
   nodeRegisterSocketType(make_socket_type_rotation());
+  nodeRegisterSocketType(make_socket_type_matrix());
 
   nodeRegisterSocketType(make_socket_type_vector(PROP_NONE));
   nodeRegisterSocketType(make_socket_type_vector(PROP_TRANSLATION));
@@ -1149,6 +1164,8 @@ void register_standard_node_socket_types()
   nodeRegisterSocketType(make_socket_type_rgba());
 
   nodeRegisterSocketType(make_socket_type_string());
+
+  nodeRegisterSocketType(make_socket_type_menu());
 
   nodeRegisterSocketType(make_standard_socket_type(SOCK_SHADER, PROP_NONE));
 

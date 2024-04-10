@@ -252,6 +252,7 @@ DEF_ENUM(rna_enum_transform_orientation_items)
 DEF_ENUM(rna_enum_velocity_unit_items)
 
 DEF_ENUM(rna_enum_curves_type_items)
+DEF_ENUM(rna_enum_curves_handle_type_items)
 DEF_ENUM(rna_enum_curve_normal_mode_items)
 
 DEF_ENUM(rna_enum_geometry_nodes_gizmo_color_items)

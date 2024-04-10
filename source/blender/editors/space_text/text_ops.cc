@@ -22,12 +22,12 @@
 #include "BLI_string_utf8.h"
 #include "BLI_time.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_text.h"
 
 #include "WM_api.hh"
@@ -540,6 +540,17 @@ static int text_reload_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int text_reload_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Reload active text file?"),
+                                nullptr,
+                                IFACE_("Reload"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_reload(wmOperatorType *ot)
 {
   /* identifiers */
@@ -549,7 +560,7 @@ void TEXT_OT_reload(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_reload_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_reload_invoke;
   ot->poll = text_edit_poll;
 }
 
@@ -591,6 +602,17 @@ static int text_unlink_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int text_unlink_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Delete active text file?"),
+                                nullptr,
+                                IFACE_("Delete"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_unlink(wmOperatorType *ot)
 {
   /* identifiers */
@@ -600,7 +622,7 @@ void TEXT_OT_unlink(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_unlink_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_unlink_invoke;
   ot->poll = text_unlink_poll;
 
   /* flags */
@@ -1080,7 +1102,7 @@ void TEXT_OT_duplicate_line(wmOperatorType *ot)
 /** \name Copy Operator
  * \{ */
 
-static void txt_copy_clipboard(Text *text)
+static void txt_copy_clipboard(const Text *text)
 {
   char *buf;
 
@@ -1098,7 +1120,7 @@ static void txt_copy_clipboard(Text *text)
 
 static int text_copy_exec(bContext *C, wmOperator * /*op*/)
 {
-  Text *text = CTX_data_edit_text(C);
+  const Text *text = CTX_data_edit_text(C);
 
   txt_copy_clipboard(text);
 
@@ -2455,13 +2477,11 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  return WM_operator_props_dialog_popup(C, op, 200);
+  return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Jump to Line Number"));
 }
 
 void TEXT_OT_jump(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Jump";
   ot->idname = "TEXT_OT_jump";
@@ -2473,8 +2493,9 @@ void TEXT_OT_jump(wmOperatorType *ot)
   ot->poll = text_edit_poll;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXT);
+  ot->prop = RNA_def_int(
+      ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_TEXT);
 }
 
 /** \} */
@@ -3520,7 +3541,7 @@ static int text_line_number_invoke(bContext *C, wmOperator * /*op*/, const wmEve
     return OPERATOR_PASS_THROUGH;
   }
 
-  time = BLI_check_seconds_timer();
+  time = BLI_time_now_seconds();
   if (last_jump < time - 1) {
     jump_to = 0;
   }
@@ -4106,6 +4127,9 @@ static int text_jump_to_file_at_point_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "File path property not set");
     return OPERATOR_CANCELLED;
   }
+
+  /* Useful to copy-paste from the terminal. */
+  printf("%s:%d:%d\n", filepath, line_index + 1, column_index);
 
   bool success;
   if (U.text_editor[0] != '\0') {

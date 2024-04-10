@@ -8,6 +8,7 @@ import make_utils
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Iterable, TextIO, Optional, Any, Union
 
@@ -32,7 +33,7 @@ def main() -> None:
     blender_srcdir = Path(__file__).absolute().parent.parent.parent
 
     cli_parser = argparse.ArgumentParser(
-        description=f"Create a tarball of the Blender sources, optionally including sources of dependencies.",
+        description="Create a tarball of the Blender sources, optionally including sources of dependencies.",
         epilog="This script is intended to be run by `make source_archive_complete`.",
     )
     cli_parser.add_argument(
@@ -176,9 +177,14 @@ def create_tarball(
     packages_dir: Optional[Path],
 ) -> None:
     print(f'Creating archive:            "{tarball}" ...', end="", flush=True)
-    command = ["tar"]
 
     # Requires GNU `tar`, since `--transform` is used.
+    if sys.platform == "darwin":
+        # Provided by `brew install gnu-tar`.
+        command = ["gtar"]
+    else:
+        command = ["tar"]
+
     if packages_dir:
         command += ["--transform", f"s,{packages_dir}/,packages/,g"]
 

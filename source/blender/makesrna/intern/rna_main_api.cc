@@ -21,15 +21,16 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #ifdef RNA_RUNTIME
 
 #  include "BKE_action.h"
+#  include "BKE_animation.hh"
 #  include "BKE_armature.hh"
 #  include "BKE_brush.hh"
 #  include "BKE_camera.h"
-#  include "BKE_collection.h"
+#  include "BKE_collection.hh"
 #  include "BKE_curve.hh"
 #  include "BKE_curves.h"
 #  include "BKE_displist.h"
@@ -44,15 +45,15 @@
 #  include "BKE_linestyle.h"
 #  include "BKE_mask.h"
 #  include "BKE_material.h"
-#  include "BKE_mball.h"
+#  include "BKE_mball.hh"
 #  include "BKE_mesh.hh"
 #  include "BKE_movieclip.h"
-#  include "BKE_node.h"
+#  include "BKE_node.hh"
 #  include "BKE_object.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_particle.h"
 #  include "BKE_pointcloud.hh"
-#  include "BKE_scene.h"
+#  include "BKE_scene.hh"
 #  include "BKE_sound.h"
 #  include "BKE_speaker.h"
 #  include "BKE_text.h"
@@ -65,6 +66,7 @@
 #  include "DEG_depsgraph_build.hh"
 #  include "DEG_depsgraph_query.hh"
 
+#  include "DNA_anim_types.h"
 #  include "DNA_armature_types.h"
 #  include "DNA_brush_types.h"
 #  include "DNA_camera_types.h"
@@ -94,7 +96,7 @@
 #  include "ED_node.hh"
 #  include "ED_screen.hh"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -120,7 +122,7 @@ static void rna_Main_ID_remove(Main *bmain,
   if (id->tag & LIB_TAG_NO_MAIN) {
     BKE_reportf(reports,
                 RPT_ERROR,
-                "%s '%s' is outside of main database and can not be removed from it",
+                "%s '%s' is outside of main database and cannot be removed from it",
                 BKE_idtype_idcode_to_name(GS(id->name)),
                 id->name + 2);
     return;
@@ -212,7 +214,7 @@ static Object *rna_Main_objects_new(Main *bmain, ReportList *reports, const char
   if (data != nullptr && (data->tag & LIB_TAG_NO_MAIN)) {
     BKE_report(reports,
                RPT_ERROR,
-               "Can not create object in main database with an evaluated data data-block");
+               "Cannot create object in main database with an evaluated data data-block");
     return nullptr;
   }
 
@@ -635,6 +637,22 @@ static bAction *rna_Main_actions_new(Main *bmain, const char *name)
   return act;
 }
 
+#  ifdef WITH_ANIM_BAKLAVA
+static Animation *rna_Main_animations_new(Main *bmain, const char *name)
+{
+  char safe_name[MAX_ID_NAME - 2];
+  rna_idname_validate(name, safe_name);
+
+  Animation *anim = BKE_animation_add(bmain, safe_name);
+  id_fake_user_clear(&anim->id);
+  id_us_min(&anim->id);
+
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
+
+  return anim;
+}
+#  endif
+
 static ParticleSettings *rna_Main_particles_new(Main *bmain, const char *name)
 {
   char safe_name[MAX_ID_NAME - 2];
@@ -821,6 +839,9 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(speakers, speakers, ID_SPK)
 RNA_MAIN_ID_TAG_FUNCS_DEF(sounds, sounds, ID_SO)
 RNA_MAIN_ID_TAG_FUNCS_DEF(armatures, armatures, ID_AR)
 RNA_MAIN_ID_TAG_FUNCS_DEF(actions, actions, ID_AC)
+#  ifdef WITH_ANIM_BAKLAVA
+RNA_MAIN_ID_TAG_FUNCS_DEF(animations, animations, ID_AN)
+#  endif
 RNA_MAIN_ID_TAG_FUNCS_DEF(particles, particles, ID_PA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(palettes, palettes, ID_PAL)
 RNA_MAIN_ID_TAG_FUNCS_DEF(gpencils, gpencils, ID_GD_LEGACY)
@@ -1881,6 +1902,49 @@ void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_boolean(func, "value", false, "Value", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
+#  ifdef WITH_ANIM_BAKLAVA
+void RNA_def_main_animations(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "BlendDataAnimations");
+  srna = RNA_def_struct(brna, "BlendDataAnimations", nullptr);
+  RNA_def_struct_sdna(srna, "Main");
+  RNA_def_struct_ui_text(srna, "Main Animations", "Collection of animation data-blocks");
+
+  func = RNA_def_function(srna, "new", "rna_Main_animations_new");
+  RNA_def_function_ui_description(func, "Add a new animation data-block to the main database");
+  parm = RNA_def_string(func, "name", "Animation", 0, "", "Name for the new data-block");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return type */
+  parm = RNA_def_pointer(func, "animation", "Animation", "", "New animation data-block");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_Main_ID_remove");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func,
+                                  "Remove an animation data-block from the current blendfile");
+  parm = RNA_def_pointer(func, "animation", "Animation", "", "Animation to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
+  RNA_def_boolean(
+      func, "do_unlink", true, "", "Unlink all usages of this animation before deleting it");
+  RNA_def_boolean(func,
+                  "do_id_user",
+                  true,
+                  "",
+                  "Decrement user counter of all datablocks used by this animation");
+  RNA_def_boolean(
+      func, "do_ui_user", true, "", "Make sure interface does not reference this animation");
+
+  /* Defined via RNA_MAIN_LISTBASE_FUNCS_DEF. */
+  func = RNA_def_function(srna, "tag", "rna_Main_animations_tag");
+  parm = RNA_def_boolean(func, "value", false, "Value", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+#  endif
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;

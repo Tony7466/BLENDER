@@ -22,13 +22,13 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
     .fragment_source("eevee_deferred_tile_classify_frag.glsl")
     .additional_info("eevee_shared", "draw_fullscreen")
     .subpass_in(1, Type::UINT, "in_gbuffer_header", DEFERRED_GBUFFER_ROG_ID)
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .push_constant(Type::INT, "current_bit")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_tile_compact)
     .additional_info("eevee_shared")
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .vertex_source("eevee_deferred_tile_compact_vert.glsl")
     /* Reuse dummy stencil frag. */
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
@@ -49,7 +49,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_stencil)
     .sampler(0, ImageType::FLOAT_2D, "direct_radiance_tx")
     .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .push_constant(Type::INT, "closure_tile_size_shift")
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
@@ -115,6 +115,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
      * present will we instead dynamically look-up ID from the uniform buffer. */
     .specialization_constant(Type::BOOL, "render_pass_diffuse_light_enabled", true)
     .specialization_constant(Type::BOOL, "render_pass_specular_light_enabled", true)
+    .specialization_constant(Type::BOOL, "render_pass_normal_enabled", true)
     .specialization_constant(Type::BOOL, "use_combined_lightprobe_eval", false)
     .do_static_compilation(true);
 
@@ -143,7 +144,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_planar_eval)
     .early_fragment_test(true)
     /* Inputs. */
     .fragment_out(0, Type::VEC4, "out_radiance")
-    .define("REFLECTION_PROBE")
+    .define("SPHERE_PROBE")
     .define("SHADOW_SUBSURFACE")
     .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
     .additional_info("eevee_shared",

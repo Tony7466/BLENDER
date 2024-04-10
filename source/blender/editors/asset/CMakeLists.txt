@@ -26,7 +26,6 @@ set(SRC
   intern/asset_handle.cc
   intern/asset_import.cc
   intern/asset_indexer.cc
-  intern/asset_library_reference.cc
   intern/asset_library_reference_enum.cc
   intern/asset_list.cc
   intern/asset_mark_clear.cc
@@ -40,19 +39,17 @@ set(SRC
   intern/asset_temp_id_consumer.cc
   intern/asset_type.cc
 
-  ED_asset_catalog.h
   ED_asset_catalog.hh
   ED_asset_filter.hh
-  ED_asset_handle.h
+  ED_asset_handle.hh
   ED_asset_import.hh
-  ED_asset_indexer.h
-  ED_asset_library.h
-  ED_asset_list.h
+  ED_asset_indexer.hh
+  ED_asset_library.hh
   ED_asset_list.hh
-  ED_asset_mark_clear.h
-  ED_asset_shelf.h
-  ED_asset_temp_id_consumer.h
-  ED_asset_type.h
+  ED_asset_mark_clear.hh
+  ED_asset_shelf.hh
+  ED_asset_temp_id_consumer.hh
+  ED_asset_type.hh
   intern/asset_library_reference.hh
   intern/asset_shelf.hh
 )

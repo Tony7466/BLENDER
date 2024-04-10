@@ -15,17 +15,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_bitmap.h"
+#include "BLI_compiler_compat.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_rand.hh"
-#include "BLI_threads.h"
-#include "BLI_time.h"
-
-/* defines BLI_INLINE */
-#include "BLI_compiler_compat.h"
-
-#include "BLI_strict_flags.h"
 #include "BLI_sys_types.h"
+#include "BLI_threads.h"
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 extern "C" uchar BLI_noise_hash_uchar_512[512]; /* `noise.cc` */
 #define hash BLI_noise_hash_uchar_512
@@ -53,7 +50,7 @@ RNG *BLI_rng_new_srandom(uint seed)
   return rng;
 }
 
-RNG *BLI_rng_copy(RNG *rng)
+RNG *BLI_rng_copy(const RNG *rng)
 {
   return new RNG(*rng);
 }

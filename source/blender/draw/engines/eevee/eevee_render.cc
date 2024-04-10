@@ -16,7 +16,7 @@
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_object.hh"
 
 #include "BLI_rand.h"
@@ -24,16 +24,16 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_framebuffer.h"
-#include "GPU_state.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_state.hh"
 
 #include "RE_pipeline.h"
 
 #include "IMB_imbuf_types.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 bool EEVEE_render_init(EEVEE_Data *ved, RenderEngine *engine, Depsgraph *depsgraph)
 {

@@ -12,7 +12,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "BKE_image.h"
 #include "BKE_texture.h"
@@ -40,7 +40,7 @@ CachedTextureKey::CachedTextureKey(int2 size, float3 offset, float3 scale)
 
 uint64_t CachedTextureKey::hash() const
 {
-  return get_default_hash_3(size, offset, scale);
+  return get_default_hash(size, offset, scale);
 }
 
 bool operator==(const CachedTextureKey &a, const CachedTextureKey &b)

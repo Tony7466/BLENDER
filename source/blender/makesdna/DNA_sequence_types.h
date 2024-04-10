@@ -227,7 +227,7 @@ typedef struct Sequence {
 
   /** The linked "bSound" object. */
   struct bSound *sound;
-  /** Handle to #AUD_SequenceEntry*/
+  /** Handle to #AUD_SequenceEntry. */
   void *scene_sound;
   float volume;
 
@@ -836,10 +836,12 @@ typedef enum SequenceColorTag {
 
 /* Sequence->StripTransform->filter */
 enum {
+  SEQ_TRANSFORM_FILTER_AUTO = -1,
   SEQ_TRANSFORM_FILTER_NEAREST = 0,
   SEQ_TRANSFORM_FILTER_BILINEAR = 1,
-  SEQ_TRANSFORM_FILTER_NEAREST_3x3 = 2,
-  SEQ_TRANSFORM_FILTER_BICUBIC = 3,
+  SEQ_TRANSFORM_FILTER_BOX = 2,
+  SEQ_TRANSFORM_FILTER_CUBIC_BSPLINE = 3,
+  SEQ_TRANSFORM_FILTER_CUBIC_MITCHELL = 4,
 };
 
 typedef enum eSeqChannelFlag {

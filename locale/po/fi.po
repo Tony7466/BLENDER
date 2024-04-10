@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -2098,6 +2098,10 @@ msgid "Curve Length"
 msgstr "Käyrän pituus"
 
 
+msgid "Curve Radius"
+msgstr "Käyrän säde"
+
+
 msgid "Remove"
 msgstr "Poista"
 
@@ -2134,12 +2138,12 @@ msgid "Curve Strength"
 msgstr "Käyrän vahvuus"
 
 
-msgid "Direction"
-msgstr "Suunta"
-
-
 msgid "Stroke"
 msgstr "Piirto"
+
+
+msgid "Direction"
+msgstr "Suunta"
 
 
 msgid "Normal"
@@ -3126,20 +3130,12 @@ msgid "Follow Curve"
 msgstr "Seuraa käyrää"
 
 
-msgid "Curve Radius"
-msgstr "Käyrän säde"
-
-
 msgid "Camera"
 msgstr "Kamera"
 
 
 msgid "Depth Object"
 msgstr "Syvyysobjekti"
-
-
-msgid "Track"
-msgstr "Raide"
 
 
 msgid "3D Position"
@@ -4733,6 +4729,10 @@ msgid "Mirror Object"
 msgstr "Peilaa objekti"
 
 
+msgid "Track"
+msgstr "Raide"
+
+
 msgid "Show/Hide"
 msgstr "Näytä/Piilota"
 
@@ -5191,14 +5191,6 @@ msgstr "V-akseli"
 
 msgid "UV Center"
 msgstr "UV-keskus"
-
-
-msgid "UV Layer"
-msgstr "UV-taso"
-
-
-msgid "UV Layer name"
-msgstr "UV-tason nimi"
 
 
 msgid "Use Channel"
@@ -6109,10 +6101,6 @@ msgid "Curve of Point"
 msgstr "Pisteen käyrä"
 
 
-msgid "Bezier Segment"
-msgstr "Bezier-segmentti"
-
-
 msgid "Curve Circle"
 msgstr "Käyräympyrä"
 
@@ -6779,10 +6767,6 @@ msgid "Animation settings"
 msgstr "Animaatioasetukset"
 
 
-msgid "Material Groups"
-msgstr "Materiaaliryhmät"
-
-
 msgctxt "Operator"
 msgid "Delete Selected Files"
 msgstr "Poista valitut tiedostot"
@@ -7431,6 +7415,10 @@ msgid "Save Sequence"
 msgstr "Tallenna sekvenssi"
 
 
+msgid "UV Layer"
+msgstr "UV-taso"
+
+
 msgid "Column"
 msgstr "Sarake"
 
@@ -7894,6 +7882,10 @@ msgid "Before"
 msgstr "Ennen"
 
 
+msgid "No layers to add"
+msgstr "Ei lisättäviä tasoja"
+
+
 msgid "Combination"
 msgstr "Kombinaatio"
 
@@ -7912,10 +7904,6 @@ msgstr "Piirrä:"
 
 msgid "Data Source:"
 msgstr "Tietolähde:"
-
-
-msgid "No layers to add"
-msgstr "Ei lisättäviä tasoja"
 
 
 msgid "Cursor Color"
@@ -8202,16 +8190,6 @@ msgstr "Tallenna nimellä..."
 
 
 msgctxt "Operator"
-msgid "Horizontally"
-msgstr "Horisontaalisesti"
-
-
-msgctxt "Operator"
-msgid "Vertically"
-msgstr "Vertikaalisesti"
-
-
-msgctxt "Operator"
 msgid "Vertex"
 msgstr "Kärki"
 
@@ -8418,6 +8396,10 @@ msgid "Axis X"
 msgstr "X-akselit"
 
 
+msgid "Preferences:"
+msgstr "Mieltymykset:"
+
+
 msgid "Use Light"
 msgstr "Käytä valoa"
 
@@ -8432,6 +8414,10 @@ msgstr "Pöyrä"
 
 msgid "Fly/Walk"
 msgstr "Lennä/kävele"
+
+
+msgid "Error (see console)"
+msgstr "Virhe (katso konsoli)"
 
 
 msgid "Description:"
@@ -8456,22 +8442,6 @@ msgstr "Varoitus:"
 
 msgid "Internet:"
 msgstr "Internet:"
-
-
-msgid "description"
-msgstr "kuvaus"
-
-
-msgid "location"
-msgstr "sijainti"
-
-
-msgid "Preferences:"
-msgstr "Mieltymykset:"
-
-
-msgid "Error (see console)"
-msgstr "Virhe (katso konsoli)"
 
 
 msgctxt "Operator"
@@ -8520,11 +8490,6 @@ msgstr "Apina"
 
 
 msgctxt "Operator"
-msgid "Bezier"
-msgstr "Bezier"
-
-
-msgctxt "Operator"
 msgid "Path"
 msgstr "Polku"
 
@@ -8547,16 +8512,6 @@ msgstr "Tyhjä"
 msgctxt "Operator"
 msgid "Speaker"
 msgstr "Kaijutin"
-
-
-msgctxt "Operator"
-msgid "Reference"
-msgstr "Referenssi"
-
-
-msgctxt "Operator"
-msgid "Background"
-msgstr "Tausta"
 
 
 msgid "Set Pivot"
@@ -8619,6 +8574,16 @@ msgstr "Saumat"
 msgctxt "Operator"
 msgid "Lattice"
 msgstr "Säleikkö"
+
+
+msgctxt "Operator"
+msgid "Reference"
+msgstr "Referenssi"
+
+
+msgctxt "Operator"
+msgid "Background"
+msgstr "Tausta"
 
 
 msgctxt "Operator"
@@ -8783,16 +8748,8 @@ msgid "Workbench"
 msgstr "Työtila"
 
 
-msgid "Nothing selected"
-msgstr "Mitään ei ole valittu"
-
-
 msgid "y = (Ax + B)"
 msgstr "y = (Ax + B)"
-
-
-msgid "✕ (Ax + B)"
-msgstr "✕ (Ax + B)"
 
 
 msgid "Add Control Point"
@@ -8809,16 +8766,6 @@ msgstr "Erotetut luut"
 
 msgid "No pose to copy"
 msgstr "Ei kopioitavaa asentoa"
-
-
-msgctxt "Curve"
-msgid "BezierCurve"
-msgstr "Bezier-käyrä"
-
-
-msgctxt "Curve"
-msgid "BezierCircle"
-msgstr "Bezier-ympyrä"
 
 
 msgctxt "Curve"
@@ -8849,6 +8796,10 @@ msgstr "Pupillit"
 
 msgid "Grey"
 msgstr "Harnaa"
+
+
+msgid "Nothing selected"
+msgstr "Mitään ei ole valittu"
 
 
 msgid "Stroke: ON"
@@ -9247,6 +9198,10 @@ msgid "Grouping"
 msgstr "Ryhmittäminen"
 
 
+msgid "Material Groups"
+msgstr "Materiaaliryhmät"
+
+
 msgid "Data Types"
 msgstr "Tietotyypit"
 
@@ -9429,6 +9384,10 @@ msgstr "Ilman kohteita"
 
 msgid "Path is already animated"
 msgstr "Polku on jo animoitu"
+
+
+msgid "Create"
+msgstr "Luo"
 
 
 msgid "No collection selected"
@@ -10080,10 +10039,6 @@ msgid "UV Vertex"
 msgstr "UV-kärki"
 
 
-msgid "Create"
-msgstr "Luo"
-
-
 msgid "Custom Camera"
 msgstr "Mukautettu kamera"
 
@@ -10710,6 +10665,10 @@ msgid "Is Valid Offset"
 msgstr "On pätevä siirros"
 
 
+msgid "Is Valid"
+msgstr "On pätevä"
+
+
 msgid "Source Position"
 msgstr "Lähteen sijainti"
 
@@ -10728,10 +10687,6 @@ msgstr "Osuman normaali"
 
 msgid "Hit Distance"
 msgstr "Osuman etäisyys"
-
-
-msgid "Is Valid"
-msgstr "On pätevä"
 
 
 msgid "Strings"
@@ -11097,10 +11052,6 @@ msgstr "Päällä"
 
 msgid "OFF"
 msgstr "Pois päältä"
-
-
-msgid "OK?"
-msgstr "OK?"
 
 
 msgid "unsupported format"

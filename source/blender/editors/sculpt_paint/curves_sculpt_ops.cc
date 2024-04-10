@@ -46,24 +46,26 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
+
+namespace blender::ed::sculpt_paint {
 
 /* -------------------------------------------------------------------- */
 /** \name Poll Functions
  * \{ */
 
-bool CURVES_SCULPT_mode_poll(bContext *C)
+bool curves_sculpt_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
   return ob && ob->mode & OB_MODE_SCULPT_CURVES;
 }
 
-bool CURVES_SCULPT_mode_poll_view3d(bContext *C)
+bool curves_sculpt_poll_view3d(bContext *C)
 {
-  if (!CURVES_SCULPT_mode_poll(C)) {
+  if (!curves_sculpt_poll(C)) {
     return false;
   }
   if (CTX_wm_region_view3d(C) == nullptr) {
@@ -73,10 +75,6 @@ bool CURVES_SCULPT_mode_poll_view3d(bContext *C)
 }
 
 /** \} */
-
-namespace blender::ed::sculpt_paint {
-
-using blender::bke::CurvesGeometry;
 
 /* -------------------------------------------------------------------- */
 /** \name Brush Stroke Operator
@@ -205,7 +203,7 @@ static void stroke_done(const bContext *C, PaintStroke *stroke)
 static int sculpt_curves_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Scene *scene = CTX_data_scene(C);
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_SCULPT_CURVES);
+  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptCurves);
   const Brush *brush = paint ? BKE_paint_brush_for_read(paint) : nullptr;
   if (brush == nullptr) {
     return OPERATOR_CANCELLED;
@@ -290,15 +288,15 @@ static void curves_sculptmode_enter(bContext *C)
   ob->mode = OB_MODE_SCULPT_CURVES;
 
   /* Setup cursor color. BKE_paint_init() could be used, but creates an additional brush. */
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_SCULPT_CURVES);
+  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptCurves);
   copy_v3_v3_uchar(paint->paint_cursor_col, PAINT_CURSOR_SCULPT_CURVES);
   paint->paint_cursor_col[3] = 128;
 
-  ED_paint_cursor_start(&curves_sculpt->paint, CURVES_SCULPT_mode_poll_view3d);
+  ED_paint_cursor_start(&curves_sculpt->paint, curves_sculpt_poll_view3d);
   paint_init_pivot(ob, scene);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
 }
@@ -317,7 +315,7 @@ static int curves_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = ob->mode == OB_MODE_SCULPT_CURVES;
 
   if (is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
+    if (!object::mode_compat_set(C, ob, OB_MODE_SCULPT_CURVES, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -332,7 +330,7 @@ static int curves_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   WM_toolsystem_update_from_context_view3d(C);
 
   /* Necessary to change the object mode on the evaluated object. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   WM_msg_publish_rna_prop(mbus, &ob->id, ob, Object, mode);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
   return OPERATOR_FINISHED;
@@ -681,7 +679,7 @@ static void select_grow_invoke_per_curve(const Curves &curves_id,
             });
       });
 
-  float4x4 curves_to_world_mat = float4x4(curves_ob.object_to_world);
+  const float4x4 &curves_to_world_mat = curves_ob.object_to_world();
   float4x4 world_to_curves_mat = math::invert(curves_to_world_mat);
 
   const float4x4 projection = ED_view3d_ob_project_mat_get(&rv3d, &curves_ob);
@@ -1100,7 +1098,7 @@ static int min_distance_edit_modal(bContext *C, wmOperator *op, const wmEvent *e
   auto finish = [&]() {
     wmWindowManager *wm = CTX_wm_manager(C);
 
-    /* Remove own cursor. */
+    /* Remove cursor. */
     WM_paint_cursor_end(static_cast<wmPaintCursor *>(op_data.cursor));
     /* Restore original paint cursors. */
     wm->paintcursors = op_data.orig_paintcursors;

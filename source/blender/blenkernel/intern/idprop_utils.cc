@@ -17,12 +17,12 @@
 
 #include "DNA_ID.h"
 
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* -------------------------------------------------------------------- */
 /** \name IDProp Repr

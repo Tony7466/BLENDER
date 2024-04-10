@@ -11,7 +11,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_modifier_types.h"
@@ -19,26 +18,25 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_shader_fx_types.h"
-#include "DNA_text_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_armature.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_shader_fx.h"
 
 #include "DEG_depsgraph.hh"
@@ -70,7 +68,6 @@
 #include "ANIM_bone_collections.hh"
 
 #include "outliner_intern.hh"
-#include "tree/tree_display.hh"
 #include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
@@ -84,7 +81,7 @@ namespace blender::ed::outliner {
 /**
  * \note changes to selection are by convention and not essential.
  *
- * \note Handles own undo push.
+ * \note Handles its own undo push.
  */
 static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *base)
 {
@@ -93,16 +90,16 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
 
   bool changed = false;
   if (BKE_object_is_in_editmode(ob)) {
-    changed = ED_object_editmode_exit_ex(bmain, scene, ob, EM_FREEDATA);
+    changed = object::editmode_exit_ex(bmain, scene, ob, object::EM_FREEDATA);
     if (changed) {
-      ED_object_base_select(base, BA_DESELECT);
+      object::base_select(base, object::BA_DESELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
     }
   }
   else {
-    changed = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
+    changed = object::editmode_enter_ex(CTX_data_main(C), scene, ob, object::EM_NO_CONTEXT);
     if (changed) {
-      ED_object_base_select(base, BA_SELECT);
+      object::base_select(base, object::BA_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
     }
   }
@@ -117,7 +114,7 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
 /**
  * \note changes to selection are by convention and not essential.
  *
- * \note Handles own undo push.
+ * \note Handles its own undo push.
  */
 static void do_outliner_item_posemode_toggle(bContext *C, Scene *scene, Base *base)
 {
@@ -133,14 +130,14 @@ static void do_outliner_item_posemode_toggle(bContext *C, Scene *scene, Base *ba
   if (ob->mode & OB_MODE_POSE) {
     changed = ED_object_posemode_exit_ex(bmain, ob);
     if (changed) {
-      ED_object_base_select(base, BA_DESELECT);
+      object::base_select(base, object::BA_DESELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
     }
   }
   else {
     changed = ED_object_posemode_enter_ex(bmain, ob);
     if (changed) {
-      ED_object_base_select(base, BA_SELECT);
+      object::base_select(base, object::BA_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_POSE, nullptr);
     }
   }
@@ -161,14 +158,14 @@ static void do_outliner_item_posemode_toggle(bContext *C, Scene *scene, Base *ba
  * If we didn't want to touch selection we could add an option to the operators
  * not to do multi-object editing.
  *
- * \note Handles own undo push.
+ * \note Handles its own undo push.
  */
 static void do_outliner_item_mode_toggle_generic(bContext *C, TreeViewContext *tvc, Base *base)
 {
   const eObjectMode active_mode = (eObjectMode)tvc->obact->mode;
   ED_undo_group_begin(C);
 
-  if (ED_object_mode_set(C, OB_MODE_OBJECT)) {
+  if (object::mode_set(C, OB_MODE_OBJECT)) {
     BKE_view_layer_synced_ensure(tvc->scene, tvc->view_layer);
     Base *base_active = BKE_view_layer_base_find(tvc->view_layer, tvc->obact);
     if (base_active != base) {
@@ -178,7 +175,7 @@ static void do_outliner_item_mode_toggle_generic(bContext *C, TreeViewContext *t
       ED_undo_push(C, "Change Active");
 
       /* Operator call does undo push. */
-      ED_object_mode_set(C, active_mode);
+      object::mode_set(C, active_mode);
       ED_outliner_select_sync_from_object_tag(C);
     }
   }
@@ -253,7 +250,7 @@ static void do_outliner_object_select_recursive(const Scene *scene,
     if (((base->flag & BASE_ENABLED_AND_MAYBE_VISIBLE_IN_VIEWPORT) != 0) &&
         BKE_object_is_child_recursive(ob_parent, ob))
     {
-      ED_object_base_select(base, select ? BA_SELECT : BA_DESELECT);
+      object::base_select(base, select ? object::BA_SELECT : object::BA_DESELECT);
     }
   }
 }
@@ -324,6 +321,7 @@ static void tree_element_object_activate(bContext *C,
   sce = (Scene *)outliner_search_back(te, ID_SCE);
   if (sce && scene != sce) {
     WM_window_set_active_scene(CTX_data_main(C), C, CTX_wm_window(C), sce);
+    view_layer = WM_window_get_active_view_layer(CTX_wm_window(C));
     scene = sce;
   }
 
@@ -339,7 +337,7 @@ static void tree_element_object_activate(bContext *C,
         if (object_mode == OB_MODE_OBJECT) {
           Main *bmain = CTX_data_main(C);
           Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-          ED_object_mode_generic_exit(bmain, depsgraph, scene, base->object);
+          object::mode_generic_exit(bmain, depsgraph, scene, base->object);
         }
         if (!BKE_object_is_mode_compat(base->object, object_mode)) {
           base = nullptr;
@@ -352,13 +350,13 @@ static void tree_element_object_activate(bContext *C,
     if (set == OL_SETSEL_EXTEND) {
       /* swap select */
       if (base->flag & BASE_SELECTED) {
-        ED_object_base_select(base, BA_DESELECT);
+        object::base_select(base, object::BA_DESELECT);
         if (parent_tselem) {
           parent_tselem->flag &= ~TSE_SELECTED;
         }
       }
       else {
-        ED_object_base_select(base, BA_SELECT);
+        object::base_select(base, object::BA_SELECT);
         if (parent_tselem) {
           parent_tselem->flag |= TSE_SELECTED;
         }
@@ -380,7 +378,7 @@ static void tree_element_object_activate(bContext *C,
       {
         BKE_view_layer_base_deselect_all(scene, view_layer);
       }
-      ED_object_base_select(base, BA_SELECT);
+      object::base_select(base, object::BA_SELECT);
       if (parent_tselem) {
         parent_tselem->flag |= TSE_SELECTED;
       }
@@ -394,7 +392,7 @@ static void tree_element_object_activate(bContext *C,
 
     if (set != OL_SETSEL_NONE) {
       if (!recursive) {
-        ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
+        object::base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
       }
       DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -446,7 +444,7 @@ static void tree_element_camera_activate(bContext *C, Scene *scene, TreeElement 
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
 
   WM_windows_scene_data_sync(&wm->windows, scene);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_event_add_notifier(C, NC_SCENE | NA_EDITED, nullptr);
 }
@@ -532,12 +530,11 @@ static void tree_element_posechannel_activate(bContext *C,
   if (!(pchan->bone->flag & BONE_HIDDEN_P)) {
     if (set != OL_SETSEL_EXTEND) {
       /* Single select forces all other bones to get unselected. */
-      uint objects_len = 0;
-      Object **objects = BKE_object_pose_array_get_unique(
-          scene, view_layer, nullptr, &objects_len);
+      const Vector<Object *> objects = BKE_object_pose_array_get_unique(
+          scene, view_layer, nullptr);
 
-      for (uint object_index = 0; object_index < objects_len; object_index++) {
-        Object *ob_iter = BKE_object_pose_armature_get(objects[object_index]);
+      for (Object *ob : objects) {
+        Object *ob_iter = BKE_object_pose_armature_get(ob);
 
         /* Sanity checks. */
         if (ELEM(nullptr, ob_iter, ob_iter->pose, ob_iter->data)) {
@@ -552,7 +549,6 @@ static void tree_element_posechannel_activate(bContext *C,
           DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
         }
       }
-      MEM_freeN(objects);
     }
 
     if ((set == OL_SETSEL_EXTEND) && (pchan->bone->flag & BONE_SELECTED)) {
@@ -639,16 +635,14 @@ static void tree_element_ebone_activate(bContext *C,
 
   if (set == OL_SETSEL_NORMAL) {
     if (!(ebone->flag & BONE_HIDDEN_A)) {
-      uint bases_len = 0;
 
       ObjectsInModeParams ob_params{};
       ob_params.object_mode = OB_MODE_EDIT;
       ob_params.no_dup_data = true;
 
-      Base **bases = BKE_view_layer_array_from_bases_in_mode_params(
-          scene, view_layer, nullptr, &bases_len, &ob_params);
-      ED_armature_edit_deselect_all_multi_ex(bases, bases_len);
-      MEM_freeN(bases);
+      Vector<Base *> bases = BKE_view_layer_array_from_bases_in_mode_params(
+          scene, view_layer, nullptr, &ob_params);
+      ED_armature_edit_deselect_all_multi_ex(bases);
 
       tree_element_active_ebone__sel(C, arm, ebone, true);
     }
@@ -1478,11 +1472,11 @@ static void do_outliner_item_activate_tree_element(bContext *C,
       BKE_view_layer_synced_ensure(tvc->scene, tvc->view_layer);
 
       if (extend) {
-        eObjectSelect_Mode sel = BA_SELECT;
+        object::eObjectSelect_Mode sel = object::BA_SELECT;
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
           Base *base = BKE_view_layer_base_find(tvc->view_layer, object);
           if (base && (base->flag & BASE_SELECTED)) {
-            sel = BA_DESELECT;
+            sel = object::BA_DESELECT;
             break;
           }
         }
@@ -1491,7 +1485,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
         FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (gr, object) {
           Base *base = BKE_view_layer_base_find(tvc->view_layer, object);
           if (base) {
-            ED_object_base_select(base, sel);
+            object::base_select(base, sel);
           }
         }
         FOREACH_COLLECTION_OBJECT_RECURSIVE_END;
@@ -1504,7 +1498,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
           /* Object may not be in this scene */
           if (base != nullptr) {
             if ((base->flag & BASE_SELECTED) == 0) {
-              ED_object_base_select(base, BA_SELECT);
+              object::base_select(base, object::BA_SELECT);
             }
           }
         }
@@ -1813,14 +1807,13 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
      * holding CTRL or SHIFT, ignore events when the cursor is over the icon. This disambiguates
      * the case where we are recursing *and* holding CTRL or SHIFT in order to extend or range
      * select recursively. */
-    if (!recurse && (extend || use_range) &&
-        outliner_item_is_co_over_icon(activate_te, view_mval[0]))
-    {
+    if (!recurse && (extend || use_range) && is_over_icon) {
       return OPERATOR_CANCELLED;
     }
 
     if (use_range) {
-      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse, parent_collection);
+      do_outliner_range_select(
+          C, space_outliner, activate_te, extend, (recurse && is_over_icon), parent_collection);
     }
     else {
       const bool is_over_name_icons = outliner_item_is_co_over_name_icons(activate_te,
@@ -1842,7 +1835,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
       /* The recurse flag is set when the user double-clicks
        * to select everything in a collection or hierarchy. */
       if (recurse) {
-        if (outliner_item_is_co_over_icon(activate_te, view_mval[0])) {
+        if (is_over_icon) {
           /* Select or deselect object hierarchy recursively. */
           outliner_item_select(C, space_outliner, activate_te, select_flag);
           do_outliner_select_recursive(&activate_te->subtree, select, parent_collection);
@@ -1904,7 +1897,7 @@ void OUTLINER_OT_item_activate(wmOperatorType *ot)
 
   ot->invoke = outliner_item_activate_invoke;
 
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
@@ -2012,7 +2005,7 @@ void OUTLINER_OT_select_box(wmOperatorType *ot)
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
-  ot->poll = ED_operator_outliner_active;
+  ot->poll = ED_operator_region_outliner_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

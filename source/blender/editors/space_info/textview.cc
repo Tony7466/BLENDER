@@ -10,14 +10,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLI_math_color.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "DNA_userdef_types.h" /* For 'UI_SCALE_FAC' */
 

@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -47,19 +48,18 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "IMB_imbuf.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_asset.hh"
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_image_format.h"
@@ -67,6 +67,7 @@
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_interface.hh"
@@ -150,12 +151,16 @@ static void ntree_init_data(ID *id)
   ntree_set_typeinfo(ntree, nullptr);
 }
 
-static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void ntree_copy_data(Main * /*bmain*/,
+                            std::optional<Library *> /*owner_library*/,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   bNodeTree *ntree_dst = reinterpret_cast<bNodeTree *>(id_dst);
   const bNodeTree *ntree_src = reinterpret_cast<const bNodeTree *>(id_src);
 
-  /* We never handle user-count here for own data. */
+  /* We never handle user-count here for owned data. */
   const int flag_subdata = flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
 
   ntree_dst->runtime = MEM_new<bNodeTreeRuntime>(__func__);
@@ -315,9 +320,9 @@ static void ntree_free_data(ID *id)
 static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket *sock)
 {
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-      data,
-      IDP_foreach_property(
-          sock->prop, IDP_TYPE_FILTER_ID, BKE_lib_query_idpropertiesForeachIDLink_callback, data));
+      data, IDP_foreach_property(sock->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+        BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+      }));
 
   switch (eNodeSocketDatatype(sock->type)) {
     case SOCK_OBJECT: {
@@ -353,11 +358,13 @@ static void library_foreach_node_socket(LibraryForeachIDData *data, bNodeSocket 
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_INT:
     case SOCK_STRING:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_MENU:
       break;
   }
 }
@@ -377,11 +384,9 @@ static void node_foreach_id(ID *id, LibraryForeachIDData *data)
     BKE_LIB_FOREACHID_PROCESS_ID(data, node->id, IDWALK_CB_USER);
 
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-        data,
-        IDP_foreach_property(node->prop,
-                             IDP_TYPE_FILTER_ID,
-                             BKE_lib_query_idpropertiesForeachIDLink_callback,
-                             data));
+        data, IDP_foreach_property(node->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+          BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+        }));
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, library_foreach_node_socket(data, sock));
     }
@@ -702,6 +707,12 @@ static void write_node_socket_default_value(BlendWriter *writer, const bNodeSock
     case SOCK_ROTATION:
       BLO_write_struct(writer, bNodeSocketValueRotation, sock->default_value);
       break;
+    case SOCK_MENU:
+      BLO_write_struct(writer, bNodeSocketValueMenu, sock->default_value);
+      break;
+    case SOCK_MATRIX:
+      /* Matrix sockets currently have no default value. */
+      break;
     case SOCK_CUSTOM:
       /* Custom node sockets where default_value is defined uses custom properties for storage. */
       break;
@@ -790,10 +801,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         /* Not in undo case. */
         if (!BLO_write_is_undo(writer)) {
           switch (ndg->type) {
-            case 2: /* Grrrr! magic numbers :( */
+            case CMP_NODE_GLARE_STREAKS:
               ndg->angle = ndg->streaks;
               break;
-            case 0:
+            case CMP_NODE_GLARE_SIMPLE_STAR:
               ndg->angle = ndg->star_45;
               break;
             default:
@@ -853,6 +864,17 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
     }
     if (node->type == GEO_NODE_BAKE) {
       blender::nodes::BakeItemsAccessor::blend_write(writer, *node);
+    }
+    if (node->type == GEO_NODE_MENU_SWITCH) {
+      const NodeMenuSwitch &storage = *static_cast<const NodeMenuSwitch *>(node->storage);
+      BLO_write_struct_array(writer,
+                             NodeEnumItem,
+                             storage.enum_definition.items_num,
+                             storage.enum_definition.items_array);
+      for (const NodeEnumItem &item : storage.enum_definition.items()) {
+        BLO_write_string(writer, item.name);
+        BLO_write_string(writer, item.description);
+      }
     }
   }
 
@@ -922,6 +944,8 @@ static bool is_node_socket_supported(const bNodeSocket *sock)
     case SOCK_TEXTURE:
     case SOCK_MATERIAL:
     case SOCK_ROTATION:
+    case SOCK_MENU:
+    case SOCK_MATRIX:
       return true;
   }
   return false;
@@ -938,19 +962,43 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_data_address(reader, &sock->default_value);
   BLO_read_data_address(reader, &sock->default_attribute_name);
   sock->runtime = MEM_new<bNodeSocketRuntime>(__func__);
+
+  switch (eNodeSocketDatatype(sock->type)) {
+    case SOCK_MENU: {
+      bNodeSocketValueMenu &default_value = *sock->default_value_typed<bNodeSocketValueMenu>();
+      /* Clear runtime data. */
+      default_value.enum_items = nullptr;
+      default_value.runtime_flag = 0;
+      break;
+    }
+    default:
+      break;
+  }
 }
 
-static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *socket_list)
+static void remove_unsupported_sockets(ListBase *sockets, ListBase *links)
 {
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, socket_list) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, sockets) {
     if (is_node_socket_supported(sock)) {
-      direct_link_node_socket(reader, sock);
+      continue;
     }
-    else {
-      /* Remove unsupported sockets. */
-      BLI_remlink(socket_list, sock);
-      MEM_SAFE_FREE(sock);
+
+    /* First remove any link pointing to the socket. */
+    if (links) {
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, links) {
+        if (link->fromsock == sock || link->tosock == sock) {
+          BLI_remlink(links, link);
+          if (link->tosock) {
+            link->tosock->link = nullptr;
+          }
+          MEM_freeN(link);
+        }
+      }
     }
+
+    BLI_remlink(sockets, sock);
+    MEM_delete(sock->runtime);
+    MEM_freeN(sock);
   }
 }
 
@@ -1100,6 +1148,15 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
           blender::nodes::BakeItemsAccessor::blend_read_data(reader, *node);
           break;
         }
+        case GEO_NODE_MENU_SWITCH: {
+          NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node->storage);
+          BLO_read_data_address(reader, &storage.enum_definition.items_array);
+          for (const NodeEnumItem &item : storage.enum_definition.items()) {
+            BLO_read_data_address(reader, &item.name);
+            BLO_read_data_address(reader, &item.description);
+          }
+          break;
+        }
 
         default:
           break;
@@ -1113,8 +1170,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     BLO_read_data_address(reader, &node->parent);
 
-    direct_link_node_socket_list(reader, &node->inputs);
-    direct_link_node_socket_list(reader, &node->outputs);
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->inputs) {
+      direct_link_node_socket(reader, sock);
+    }
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->outputs) {
+      direct_link_node_socket(reader, sock);
+    }
 
     /* Socket storage. */
     if (node->type == CMP_NODE_OUTPUT_FILE) {
@@ -1129,8 +1190,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   /* Read legacy interface socket lists for versioning. */
   BLO_read_list(reader, &ntree->inputs_legacy);
   BLO_read_list(reader, &ntree->outputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->inputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->outputs_legacy);
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
 
   ntree->tree_interface.read_data(reader);
 
@@ -1140,6 +1205,13 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &link->fromsock);
     BLO_read_data_address(reader, &link->tosock);
   }
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    remove_unsupported_sockets(&node->inputs, &ntree->links);
+    remove_unsupported_sockets(&node->outputs, &ntree->links);
+  }
+  remove_unsupported_sockets(&ntree->inputs_legacy, nullptr);
+  remove_unsupported_sockets(&ntree->outputs_legacy, nullptr);
 
   BLO_read_data_address(reader, &ntree->geometry_node_asset_traits);
   BLO_read_data_address(reader, &ntree->nested_node_refs);
@@ -1230,6 +1302,8 @@ static AssetTypeInfo AssetType_NT = {
 IDTypeInfo IDType_ID_NT = {
     /*id_code*/ ID_NT,
     /*id_filter*/ FILTER_ID_NT,
+    /* IDProps of nodes, and #bNode.id, can use any type of ID. */
+    /*dependencies_id_types*/ FILTER_ID_ALL,
     /*main_listbase_index*/ INDEX_ID_NT,
     /*struct_size*/ sizeof(bNodeTree),
     /*name*/ "NodeTree",
@@ -1825,8 +1899,10 @@ static void socket_id_user_increment(bNodeSocket *sock)
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_INT:
     case SOCK_STRING:
+    case SOCK_MENU:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
@@ -1871,8 +1947,10 @@ static bool socket_id_user_decrement(bNodeSocket *sock)
     case SOCK_RGBA:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_INT:
     case SOCK_STRING:
+    case SOCK_MENU:
     case SOCK_CUSTOM:
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
@@ -1925,6 +2003,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_SHADER:
         case SOCK_BOOLEAN:
         case SOCK_ROTATION:
+        case SOCK_MATRIX:
         case SOCK_CUSTOM:
         case SOCK_OBJECT:
         case SOCK_IMAGE:
@@ -1932,6 +2011,7 @@ void nodeModifySocketType(bNodeTree *ntree,
         case SOCK_COLLECTION:
         case SOCK_TEXTURE:
         case SOCK_MATERIAL:
+        case SOCK_MENU:
           break;
       }
     }
@@ -2030,6 +2110,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketBool";
     case SOCK_ROTATION:
       return "NodeSocketRotation";
+    case SOCK_MATRIX:
+      return "NodeSocketMatrix";
     case SOCK_VECTOR:
       switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
@@ -2066,6 +2148,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
       return "NodeSocketTexture";
     case SOCK_MATERIAL:
       return "NodeSocketMaterial";
+    case SOCK_MENU:
+      return "NodeSocketMenu";
     case SOCK_CUSTOM:
       break;
   }
@@ -2111,6 +2195,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
       return "NodeTreeInterfaceSocketBool";
     case SOCK_ROTATION:
       return "NodeTreeInterfaceSocketRotation";
+    case SOCK_MATRIX:
+      return "NodeTreeInterfaceSocketMatrix";
     case SOCK_VECTOR:
       switch (PropertySubType(subtype)) {
         case PROP_TRANSLATION:
@@ -2147,6 +2233,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
       return "NodeTreeInterfaceSocketTexture";
     case SOCK_MATERIAL:
       return "NodeTreeInterfaceSocketMaterial";
+    case SOCK_MENU:
+      return "NodeTreeInterfaceSocketMenu";
     case SOCK_CUSTOM:
       break;
   }
@@ -2164,6 +2252,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Boolean";
     case SOCK_ROTATION:
       return "Rotation";
+    case SOCK_MATRIX:
+      return "Matrix";
     case SOCK_VECTOR:
       return "Vector";
     case SOCK_RGBA:
@@ -2184,6 +2274,8 @@ const char *nodeStaticSocketLabel(const int type, const int /*subtype*/)
       return "Texture";
     case SOCK_MATERIAL:
       return "Material";
+    case SOCK_MENU:
+      return "Menu";
     case SOCK_CUSTOM:
       break;
   }
@@ -2222,6 +2314,13 @@ static void node_socket_free(bNodeSocket *sock, const bool do_id_user)
   if (sock->default_value) {
     if (do_id_user) {
       socket_id_user_decrement(sock);
+    }
+    if (sock->type == SOCK_MENU) {
+      auto &default_value_menu = *sock->default_value_typed<bNodeSocketValueMenu>();
+      if (default_value_menu.enum_items) {
+        /* Release shared data pointer. */
+        default_value_menu.enum_items->remove_user_and_delete_if_last();
+      }
     }
     MEM_freeN(sock->default_value);
   }
@@ -2430,37 +2529,6 @@ void nodeParentsIter(bNode *node, bool (*callback)(bNode *, void *), void *userd
   }
 }
 
-bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
-{
-  ntree->ensure_topology_cache();
-  BLI_assert(node_tree_runtime::topology_cache_is_available(*ntree));
-  BLI_assert(!ntree->has_available_link_cycle());
-
-  const bNode *iter_node = node;
-  if (!iter_node->is_reroute()) {
-    return false;
-  }
-
-  while (true) {
-    const Span<const bNodeLink *> links = iter_node->input_socket(0).directly_linked_links();
-    BLI_assert(links.size() <= 1);
-    if (links.is_empty()) {
-      return true;
-    }
-    const bNodeLink &link = *links[0];
-    if (!link.is_available()) {
-      return false;
-    }
-    if (link.is_muted()) {
-      return false;
-    }
-    iter_node = link.fromnode;
-    if (!iter_node->is_reroute()) {
-      return false;
-    }
-  }
-}
-
 }  // namespace blender::bke
 
 void nodeUniqueName(bNodeTree *ntree, bNode *node)
@@ -2472,7 +2540,7 @@ void nodeUniqueName(bNodeTree *ntree, bNode *node)
 void nodeUniqueID(bNodeTree *ntree, bNode *node)
 {
   /* Use a pointer cast to avoid overflow warnings. */
-  const double time = BLI_check_seconds_timer() * 1000000.0;
+  const double time = BLI_time_now_seconds() * 1000000.0;
   blender::RandomNumberGenerator id_rng{*reinterpret_cast<const uint32_t *>(&time)};
 
   /* In the unlikely case that the random ID doesn't match, choose a new one until it does. */
@@ -2551,6 +2619,14 @@ static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src,
 
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
       socket_id_user_increment(sock_dst);
+    }
+
+    if (sock_src->type == SOCK_MENU) {
+      auto &default_value_menu = *sock_dst->default_value_typed<bNodeSocketValueMenu>();
+      if (default_value_menu.enum_items) {
+        /* Copy of shared data pointer. */
+        default_value_menu.enum_items->add_user();
+      }
     }
   }
 
@@ -2692,6 +2768,11 @@ static void *socket_value_storage(bNodeSocket &socket)
       return &socket.default_value_typed<bNodeSocketValueMaterial>()->value;
     case SOCK_ROTATION:
       return &socket.default_value_typed<bNodeSocketValueRotation>()->value_euler;
+    case SOCK_MENU:
+      return &socket.default_value_typed<bNodeSocketValueMenu>()->value;
+    case SOCK_MATRIX:
+      /* Matrix sockets currently have no default value. */
+      return nullptr;
     case SOCK_STRING:
       /* We don't want do this now! */
       return nullptr;
@@ -2813,7 +2894,7 @@ bNodeLink *nodeAddLink(
   }
 
   if (link != nullptr && link->tosock->is_multi_input()) {
-    link->multi_input_socket_index = node_count_links(ntree, link->tosock) - 1;
+    link->multi_input_sort_id = node_count_links(ntree, link->tosock) - 1;
   }
 
   return link;
@@ -2879,10 +2960,10 @@ static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     /* We only need to adjust those with a greater index, because the others will have the same
      * index. */
-    if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
+    if (link->tosock != sock || link->multi_input_sort_id <= deleted_index) {
       continue;
     }
-    link->multi_input_socket_index -= 1;
+    link->multi_input_sort_id -= 1;
   }
 }
 
@@ -2908,7 +2989,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     if (fromlink == nullptr) {
       if (link->tosock->is_multi_input()) {
         blender::bke::adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       nodeRemLink(ntree, link);
       continue;
@@ -2921,7 +3002,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
             link_to_compare->tosock == link->tosock)
         {
           blender::bke::adjust_multi_input_indices_after_removed_link(
-              ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+              ntree, link_to_compare->tosock, link_to_compare->multi_input_sort_id);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);
         }
       }
@@ -3308,7 +3389,7 @@ void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
       /* Only bother adjusting if the socket is not on the node we're deleting. */
       if (link->tonode != node && link->tosock->is_multi_input()) {
         adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       LISTBASE_FOREACH (const bNodeSocket *, sock, lb) {
         if (link->fromsock == sock || link->tosock == sock) {
@@ -4073,7 +4154,7 @@ static blender::Set<int> get_known_node_types_set()
 static bool can_read_node_type(const int type)
 {
   /* Can always read custom node types. */
-  if (type == NODE_CUSTOM) {
+  if (ELEM(type, NODE_CUSTOM, NODE_CUSTOM_GROUP)) {
     return true;
   }
 
@@ -4090,7 +4171,7 @@ static void node_replace_undefined_types(bNode *node)
     /* This type name is arbitrary, it just has to be unique enough to not match a future node
      * idname. Includes the old type identifier for debugging purposes. */
     const std::string old_idname = node->idname;
-    BLI_snprintf(node->idname, sizeof(node->idname), "Undefined[%s]", old_idname.c_str());
+    SNPRINTF(node->idname, "Undefined[%s]", old_idname.c_str());
     node->typeinfo = &NodeTypeUndefined;
   }
 }
@@ -4280,6 +4361,8 @@ std::optional<eCustomDataType> socket_type_to_custom_data_type(eNodeSocketDataty
       return CD_PROP_BOOL;
     case SOCK_ROTATION:
       return CD_PROP_QUATERNION;
+    case SOCK_MATRIX:
+      return CD_PROP_FLOAT4X4;
     case SOCK_INT:
       return CD_PROP_INT32;
     case SOCK_STRING:
@@ -4294,6 +4377,8 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataTy
   switch (type) {
     case CD_PROP_FLOAT:
       return SOCK_FLOAT;
+    case CD_PROP_INT8:
+      return SOCK_INT;
     case CD_PROP_INT32:
       return SOCK_INT;
     case CD_PROP_FLOAT3:
@@ -4308,6 +4393,8 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataTy
       return SOCK_RGBA;
     case CD_PROP_QUATERNION:
       return SOCK_ROTATION;
+    case CD_PROP_FLOAT4X4:
+      return SOCK_MATRIX;
     default:
       return std::nullopt;
   }
@@ -4342,6 +4429,9 @@ const CPPType *socket_type_to_geo_nodes_base_cpp_type(const eNodeSocketDatatype 
     case SOCK_ROTATION:
       cpp_type = &CPPType::get<math::Quaternion>();
       break;
+    case SOCK_MATRIX:
+      cpp_type = &CPPType::get<float4x4>();
+      break;
     default:
       cpp_type = slow_socket_type_to_geo_nodes_base_cpp_type(type);
       break;
@@ -4369,6 +4459,9 @@ std::optional<eNodeSocketDatatype> geo_nodes_base_cpp_type_to_socket_type(const 
   }
   if (type.is<math::Quaternion>()) {
     return SOCK_ROTATION;
+  }
+  if (type.is<float4x4>()) {
+    return SOCK_MATRIX;
   }
   if (type.is<std::string>()) {
     return SOCK_STRING;

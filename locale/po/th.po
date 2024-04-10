@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -861,6 +861,7 @@ msgid "Camera"
 msgstr "กล้อง"
 
 
+msgctxt "MovieClip"
 msgid "Track"
 msgstr "แทร็ค"
 
@@ -879,10 +880,6 @@ msgstr "ตำแหน่ง"
 
 msgid "Standard"
 msgstr "มาตรฐาน"
-
-
-msgid "Bezier"
-msgstr "เบซิเยร์"
 
 
 msgid "Depth"
@@ -1128,6 +1125,10 @@ msgid "Link"
 msgstr "เชื่อมโยง"
 
 
+msgid "Matrix"
+msgstr "เมทริกซ์"
+
+
 msgid "End"
 msgstr "สิ้นสุด"
 
@@ -1271,10 +1272,6 @@ msgid "Constant"
 msgstr "คงที่"
 
 
-msgid "Matrix"
-msgstr "เมทริกซ์"
-
-
 msgid "Step"
 msgstr "ขั้นตอน"
 
@@ -1311,6 +1308,14 @@ msgid "Grid scale"
 msgstr "ขนาดตะแกรง"
 
 
+msgid "Translation"
+msgstr "แปลภาษา"
+
+
+msgid "Repeat"
+msgstr "ทำซ้ำ"
+
+
 msgid "Red Green Blue"
 msgstr "แดง เขียน น้ำเงิน"
 
@@ -1321,6 +1326,10 @@ msgstr "แดง"
 
 msgid "B"
 msgstr "B"
+
+
+msgid "Animation"
+msgstr "แอนิเมชัน"
 
 
 msgid "Font"
@@ -1395,16 +1404,8 @@ msgid "Add Color"
 msgstr "เพิ่มสี"
 
 
-msgid "Repeat"
-msgstr "ทำซ้ำ"
-
-
 msgid "Mask Texture"
 msgstr "พื้นผิวหน้ากาก"
-
-
-msgid "Sculpt Tool"
-msgstr "เครื่องแกะสลัก"
 
 
 msgid "Grab UVs"
@@ -1912,10 +1913,6 @@ msgid "Rings"
 msgstr "แหวน"
 
 
-msgid "Animation"
-msgstr "แอนิเมชัน"
-
-
 msgid "ZIP (lossless)"
 msgstr "ZIP (ไม่สูญเสียข้อมูล)"
 
@@ -2053,6 +2050,10 @@ msgstr "ผสมสี"
 
 msgid "Pivot Point"
 msgstr "จุดหมุน"
+
+
+msgid "Track"
+msgstr "แทร็ค"
 
 
 msgid "Snap"
@@ -2530,10 +2531,6 @@ msgid "Round"
 msgstr "มน"
 
 
-msgid "Translation"
-msgstr "แปลภาษา"
-
-
 msgctxt "Operator"
 msgid "Select"
 msgstr "เลือก"
@@ -2572,22 +2569,8 @@ msgid "Duplicate"
 msgstr "ทำซ้ำ"
 
 
-msgctxt "Operator"
-msgid "Add Bezier Circle"
-msgstr "เพิ่มวงกลมเบซิเยร์"
-
-
 msgid "Enter Edit Mode"
 msgstr "เข้าสู่โหมดแก้ไข"
-
-
-msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "เพิ่มเบซิเยร์"
-
-
-msgid "Construct a Bezier Curve"
-msgstr "สร้างเส้นโค้งเบซิเยร์"
 
 
 msgctxt "Operator"
@@ -2902,10 +2885,6 @@ msgid "Add Ico Sphere"
 msgstr "เพิ่มทรงกลม Ico"
 
 
-msgid "Construct an Icosphere mesh"
-msgstr "สร้างเมชทรงกลม Ico"
-
-
 msgctxt "Operator"
 msgid "Add Monkey"
 msgstr "เพิ่มลิง"
@@ -2928,10 +2907,6 @@ msgstr "เพิ่มทอรัส"
 msgctxt "Operator"
 msgid "Add UV Sphere"
 msgstr "เพิ่มทรงกลม UV"
-
-
-msgid "Construct a UV sphere mesh"
-msgstr "สร้างเมชทรงกลม UV"
 
 
 msgid "Axis Mode"
@@ -2983,10 +2958,6 @@ msgstr "เพิ่มกล้องไปยังฉาก"
 
 msgid "Vertex Group(s)"
 msgstr "กลุ่มจุดยอด"
-
-
-msgid "Path to image file"
-msgstr "ตำแหน่งไปยังไฟล์ภาพ"
 
 
 msgid "Add an empty object to the scene"
@@ -3135,6 +3106,10 @@ msgid "Paste Pose"
 msgstr "วางท่าทาง"
 
 
+msgid "URL"
+msgstr "URL"
+
+
 msgctxt "Operator"
 msgid "Render"
 msgstr "เรนเดอร์"
@@ -3235,6 +3210,10 @@ msgid "Transformation orientation"
 msgstr "ทิศทางการแปลง"
 
 
+msgid "Snap to grid"
+msgstr "ยึดตามตาราง"
+
+
 msgid "Snap to vertices"
 msgstr "ยึดตามจุดยอด"
 
@@ -3296,6 +3275,10 @@ msgstr "หน้า"
 msgctxt "Operator"
 msgid "Zoom 2D View"
 msgstr "ซูมมุมมองสองมิติ"
+
+
+msgid "Path to image file"
+msgstr "ตำแหน่งไปยังไฟล์ภาพ"
 
 
 msgctxt "Operator"
@@ -3381,10 +3364,6 @@ msgid "Toolbar"
 msgstr "แถบเครื่องมือ"
 
 
-msgid "URL"
-msgstr "URL"
-
-
 msgid "Shapes"
 msgstr "รูปทรง"
 
@@ -3395,11 +3374,6 @@ msgstr "แสดงแปรง"
 
 msgid "Mask Display"
 msgstr "การแสดงหน้ากาก"
-
-
-msgctxt "MovieClip"
-msgid "Scene Setup"
-msgstr "การติดตั้งฉาก"
 
 
 msgid "Transparent"
@@ -3470,11 +3444,6 @@ msgstr "เมนู"
 
 msgid "Text Rendering"
 msgstr "เรนเดอร์ข้อความ"
-
-
-msgctxt "WindowManager"
-msgid "Translation"
-msgstr "แปลภาษา"
 
 
 msgid "3D Mouse Settings"
@@ -3745,11 +3714,6 @@ msgid "Mask Color"
 msgstr "สีหน้ากาก"
 
 
-msgctxt "MovieClip"
-msgid "Track"
-msgstr "แทร็ค"
-
-
 msgid "Pivot center for rotation/scaling"
 msgstr "ศูนย์หมุนสำหรับการหมุน/ย่อขยาย"
 
@@ -3886,10 +3850,6 @@ msgstr "ชนิดของส่วนประกอบที่จะยึ
 
 msgid "Snap Element"
 msgstr "ยึดตามส่วนประกอบ"
-
-
-msgid "Snap to grid"
-msgstr "ยึดตามตาราง"
 
 
 msgid "Snap Target"
@@ -4085,6 +4045,16 @@ msgid "User Communities"
 msgstr "ชุมชนผู้ใช้"
 
 
+msgctxt "Operator"
+msgid "Location"
+msgstr "ตำแหน่ง"
+
+
+msgctxt "Operator"
+msgid "Rotation"
+msgstr "หมุน"
+
+
 msgid "Frame Numbers"
 msgstr "หมายเลขเฟรม"
 
@@ -4149,14 +4119,6 @@ msgid "Date"
 msgstr "วันที่"
 
 
-msgid "CCW"
-msgstr "ทวนเข็มนาฬิกา"
-
-
-msgid "CW"
-msgstr "ตามเข็มนาฬิกา"
-
-
 msgid "Render As"
 msgstr "เรนเดอร์เป็น"
 
@@ -4179,8 +4141,8 @@ msgstr "คำนวณ"
 
 
 msgctxt "Operator"
-msgid "Location"
-msgstr "ตำแหน่ง"
+msgid "Zoom"
+msgstr "ซูม"
 
 
 msgid "Zoom %d:%d"
@@ -4358,11 +4320,6 @@ msgstr "พื้นที่จัดเก็บ"
 
 
 msgctxt "Operator"
-msgid "Zoom"
-msgstr "ซูม"
-
-
-msgctxt "Operator"
 msgid "Both"
 msgstr "ทั้งสอง"
 
@@ -4410,11 +4367,6 @@ msgstr "เรืองแสง"
 msgctxt "Operator"
 msgid "Gaussian Blur"
 msgstr "เบลอเกาส์เซียน"
-
-
-msgctxt "Operator"
-msgid "Rotation"
-msgstr "หมุน"
 
 
 msgctxt "Text"
@@ -4613,12 +4565,20 @@ msgid "Render Output"
 msgstr "ผลลัพธ์การเรนเดอร์"
 
 
+msgid "Preferences:"
+msgstr "การตั้งค่า:"
+
+
 msgid "Player"
 msgstr "ตัวเล่น"
 
 
 msgid "Missing script files"
 msgstr "ขาดไฟล์สคริปต์"
+
+
+msgid "Error (see console)"
+msgstr "ข้อผิดพลาด (ดูที่คอนโซล)"
 
 
 msgid ":"
@@ -4649,25 +4609,9 @@ msgid "Internet:"
 msgstr "อินเตอร์เน็ต:"
 
 
-msgid "description"
-msgstr "คำอธิบาย"
-
-
-msgid "location"
-msgstr "ตำแหน่ง"
-
-
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "เอกสาร"
-
-
-msgid "Preferences:"
-msgstr "การตั้งค่า:"
-
-
-msgid "Error (see console)"
-msgstr "ข้อผิดพลาด (ดูที่คอนโซล)"
 
 
 msgctxt "Operator"
@@ -4786,11 +4730,6 @@ msgstr "ลิง"
 
 
 msgctxt "Operator"
-msgid "Bezier"
-msgstr "เบซิเยร์"
-
-
-msgctxt "Operator"
 msgid "Path"
 msgstr "เส้นทาง"
 
@@ -4808,16 +4747,6 @@ msgstr "กล้อง"
 msgctxt "Operator"
 msgid "Speaker"
 msgstr "ลำโพง"
-
-
-msgctxt "Operator"
-msgid "Reference"
-msgstr "อ้างอิง"
-
-
-msgctxt "Operator"
-msgid "Background"
-msgstr "พื้นหลัง"
 
 
 msgctxt "Operator"
@@ -4967,6 +4896,16 @@ msgid "Armature"
 msgstr "โครงร่าง"
 
 
+msgctxt "Operator"
+msgid "Reference"
+msgstr "อ้างอิง"
+
+
+msgctxt "Operator"
+msgid "Background"
+msgstr "พื้นหลัง"
+
+
 msgid "Mirror Vertices"
 msgstr "สะท้อนจุดยอด"
 
@@ -5039,16 +4978,6 @@ msgstr "ตัวแปร"
 
 msgid "Key %d"
 msgstr "คีย์ %d"
-
-
-msgctxt "Curve"
-msgid "BezierCurve"
-msgstr "เส้นโค้งเบซิเยร์"
-
-
-msgctxt "Curve"
-msgid "BezierCircle"
-msgstr "วงกลมเบซิเยร์"
 
 
 msgctxt "Curve"
@@ -5345,10 +5274,6 @@ msgid "Verts:%s/%s"
 msgstr "จุดยอด:%s/%s"
 
 
-msgid "). Click here to proceed..."
-msgstr "). คลิกที่นี่เพื่อดำเนินการ..."
-
-
 msgid "(empty)"
 msgstr "(ว่างเปล่า)"
 
@@ -5545,10 +5470,6 @@ msgstr "เปิด"
 
 msgid "OFF"
 msgstr "ปิด"
-
-
-msgid "OK?"
-msgstr "ตกลง?"
 
 
 msgid "%s '%s' not found"

@@ -135,26 +135,34 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
   const float3 e1 = V[2] - V[0];
   const float3 e2 = V[2] - V[1];
   const float longest_edge_squared = max(len_squared(e0), max(len_squared(e1), len_squared(e2)));
-  const float3 N0 = cross(e0, e1);
+  float3 N0 = cross(e0, e1);
+  /* Flip normal if necessary. */
+  const int object_flag = kernel_data_fetch(object_flag, object);
+  if (object_flag & SD_OBJECT_NEGATIVE_SCALE) {
+    N0 = -N0;
+  }
+
+  /* Do not draw samples from the side without MIS. */
+  ls->shader = kernel_data_fetch(tri_shader, prim);
+  const float distance_to_plane = dot(N0, V[0] - P) / dot(N0, N0);
+  const int ls_shader_flag = kernel_data_fetch(shaders, ls->shader & SHADER_MASK).flags;
+  if (!in_volume_segment &&
+      !(ls_shader_flag & (distance_to_plane > 0 ? SD_MIS_BACK : SD_MIS_FRONT)))
+  {
+    return false;
+  }
+
   float Nl = 0.0f;
   ls->Ng = safe_normalize_len(N0, &Nl);
   const float area = 0.5f * Nl;
 
-  /* flip normal if necessary */
-  const int object_flag = kernel_data_fetch(object_flag, object);
-  if (object_flag & SD_OBJECT_NEGATIVE_SCALE) {
-    ls->Ng = -ls->Ng;
-  }
   ls->eval_fac = 1.0f;
-  ls->shader = kernel_data_fetch(tri_shader, prim);
   ls->object = object;
   ls->prim = prim;
   ls->lamp = LAMP_NONE;
   ls->shader |= SHADER_USE_MIS;
   ls->type = LIGHT_TRIANGLE;
   ls->group = object_lightgroup(kg, object);
-
-  float distance_to_plane = fabsf(dot(N0, V[0] - P) / dot(N0, N0));
 
   if (!in_volume_segment && (longest_edge_squared > distance_to_plane * distance_to_plane)) {
     /* A modified version of James Arvo, "Stratified Sampling of Spherical Triangles"
@@ -237,7 +245,7 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
     }
 
     const float t = 1.0f - u - v;
-    ls->P = u * V[0] + v * V[1] + t * V[2];
+    ls->P = t * V[0] + u * V[1] + v * V[2];
     /* compute incoming direction, distance and pdf */
     ls->D = normalize_len(ls->P - P, &ls->t);
     ls->pdf = triangle_light_pdf_area_sampling(ls->Ng, -ls->D, ls->t) / area;
@@ -261,6 +269,26 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
   return (ls->pdf > 0.0f);
 }
 
+/* Find the ray segment lit by the triangle light. */
+ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
+                                                        const float3 P,
+                                                        const float3 D,
+                                                        ccl_private float2 *t_range,
+                                                        const ccl_private LightSample *ls)
+{
+  const int shader_flag = kernel_data_fetch(shaders, ls->shader & SHADER_MASK).flags;
+  const int SD_MIS_BOTH = SD_MIS_BACK | SD_MIS_FRONT;
+  if ((shader_flag & SD_MIS_BOTH) == SD_MIS_BOTH) {
+    /* Both sides are sampled, the complete ray segment is visible. */
+    return true;
+  }
+
+  /* Only one side is sampled, intersect the ray and the triangle light plane to find the visible
+   * ray segment. Flip normal if Emission Sampling is set to back. */
+  const float3 N = ls->Ng;
+  return ray_plane_intersect((shader_flag & SD_MIS_BACK) ? -N : N, P, D, t_range);
+}
+
 template<bool in_volume_segment>
 ccl_device_forceinline bool triangle_light_tree_parameters(
     KernelGlobals kg,
@@ -273,13 +301,11 @@ ccl_device_forceinline bool triangle_light_tree_parameters(
     ccl_private float2 &distance,
     ccl_private float3 &point_to_centroid)
 {
-  if (!in_volume_segment) {
-    /* TODO: a cheap substitute for minimal distance between point and primitive. Does it
-     * worth the overhead to compute the accurate minimal distance? */
-    float min_distance;
-    point_to_centroid = safe_normalize_len(centroid - P, &min_distance);
-    distance = make_float2(min_distance, min_distance);
-  }
+  /* TODO: a cheap substitute for minimal distance between point and primitive. Does it worth the
+   * overhead to compute the accurate minimal distance? */
+  float min_distance;
+  point_to_centroid = safe_normalize_len(centroid - P, &min_distance);
+  distance = make_float2(min_distance, min_distance);
 
   cos_theta_u = FLT_MAX;
 
@@ -299,9 +325,8 @@ ccl_device_forceinline bool triangle_light_tree_parameters(
   }
 
   const bool front_facing = bcone.theta_o != 0.0f || dot(bcone.axis, point_to_centroid) < 0;
-  const bool in_volume = is_zero(N);
 
-  return (front_facing && shape_above_surface) || in_volume;
+  return front_facing && shape_above_surface;
 }
 
 CCL_NAMESPACE_END

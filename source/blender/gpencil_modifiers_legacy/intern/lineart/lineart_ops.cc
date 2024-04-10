@@ -14,11 +14,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -27,6 +27,7 @@
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
 #include "MOD_gpencil_legacy_lineart.h"
@@ -44,33 +45,34 @@ static bool lineart_mod_is_disabled(GpencilModifierData *md)
   /* Toggle on and off the baked flag as we are only interested in if something else is disabling
    * it. We can assume that the guard function has already toggled this on for all modifiers that
    * are sent here. */
-  lmd->flags &= (~LRT_GPENCIL_IS_BAKED);
+  lmd->flags &= (~MOD_LINEART_IS_BAKED);
   bool disabled = info->is_disabled(md, false);
-  lmd->flags |= LRT_GPENCIL_IS_BAKED;
+  lmd->flags |= MOD_LINEART_IS_BAKED;
 
   return disabled;
 }
 
-static void clear_strokes(Object *ob, GpencilModifierData *md, int frame)
+static bool clear_strokes(Object *ob, GpencilModifierData *md, int frame)
 {
   if (md->type != eGpencilModifierType_Lineart) {
-    return;
+    return false;
   }
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
   if (!gpl) {
-    return;
+    return false;
   }
   bGPDframe *gpf = BKE_gpencil_layer_frame_find(gpl, frame);
 
   if (!gpf) {
     /* No greasepencil frame found. */
-    return;
+    return false;
   }
 
   BKE_gpencil_layer_frame_delete(gpl, gpf);
+  return true;
 }
 
 static bool bake_strokes(Object *ob,
@@ -107,7 +109,7 @@ static bool bake_strokes(Object *ob,
     MOD_lineart_destroy_render_data(lmd);
   }
   else {
-    if (is_first || !(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+    if (is_first || !(lmd->flags & MOD_LINEART_USE_CACHE)) {
       MOD_lineart_compute_feature_lines(dg, lmd, &local_lc, !(ob->dtx & OB_DRAW_IN_FRONT));
       MOD_lineart_destroy_render_data(lmd);
     }
@@ -122,8 +124,8 @@ static bool bake_strokes(Object *ob,
       gpl,
       gpf,
       lmd->source_type,
-      lmd->source_type == LRT_SOURCE_OBJECT ? (void *)lmd->source_object :
-                                              (void *)lmd->source_collection,
+      lmd->source_type == LINEART_SOURCE_OBJECT ? (void *)lmd->source_object :
+                                                  (void *)lmd->source_collection,
       lmd->level_start,
       lmd->use_multiple_levels ? lmd->level_end : lmd->level_start,
       lmd->target_material ? BKE_gpencil_object_material_index_get(ob, lmd->target_material) : 0,
@@ -140,7 +142,7 @@ static bool bake_strokes(Object *ob,
       lmd->flags,
       lmd->calculation_flags);
 
-  if (!(lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+  if (!(lmd->flags & MOD_LINEART_USE_CACHE)) {
     /* Clear local cache. */
     if (!is_first) {
       MOD_lineart_clear_cache(&local_lc);
@@ -182,7 +184,9 @@ static bool lineart_gpencil_bake_single_target(LineartBakeJob *bj, Object *ob, i
   if (bj->overwrite_frames) {
     LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
       if (md->type == eGpencilModifierType_Lineart) {
-        clear_strokes(ob, md, frame);
+        if (clear_strokes(ob, md, frame)) {
+          touched = true;
+        }
       }
     }
   }
@@ -213,7 +217,7 @@ static void lineart_gpencil_guard_modifiers(LineartBakeJob *bj)
     LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
       if (md->type == eGpencilModifierType_Lineart) {
         LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-        lmd->flags |= LRT_GPENCIL_IS_BAKED;
+        lmd->flags |= MOD_LINEART_IS_BAKED;
       }
     }
   }
@@ -237,6 +241,7 @@ static void lineart_gpencil_bake_startjob(void *customdata, wmJobWorkerStatus *w
 
     BKE_scene_frame_set(bj->scene, frame);
     BKE_scene_graph_update_for_newframe(bj->dg);
+    DEG_graph_build_from_view_layer(bj->dg);
 
     for (LinkNode *l = bj->objects; l; l = l->next) {
       Object *ob = static_cast<Object *>(l->link);
@@ -401,7 +406,7 @@ static void lineart_gpencil_clear_strokes_exec_common(Object *ob)
 
     md->mode |= eGpencilModifierMode_Realtime | eGpencilModifierMode_Render;
 
-    lmd->flags &= (~LRT_GPENCIL_IS_BAKED);
+    lmd->flags &= (~MOD_LINEART_IS_BAKED);
   }
   DEG_id_tag_update((ID *)ob->data, ID_RECALC_GEOMETRY);
 }

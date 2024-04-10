@@ -23,7 +23,6 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_bitmap_draw_2d.h"
-#include "BLI_blenlib.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -33,15 +32,13 @@
 #include "BKE_camera.h"
 #include "BKE_context.hh"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "BIF_glutil.hh"
-
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -55,7 +52,7 @@
 
 #include "UI_resources.hh"
 
-#include "view3d_intern.h" /* own include */
+#include "view3d_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name View Data Access Utilities
@@ -287,7 +284,7 @@ void ED_view3d_clipping_calc(
   /* optionally transform to object space */
   if (ob) {
     float imat[4][4];
-    invert_m4_m4(imat, ob->object_to_world);
+    invert_m4_m4(imat, ob->object_to_world().ptr());
 
     for (int val = 0; val < 8; val++) {
       mul_m4_v3(imat, bb->vec[val]);
@@ -297,7 +294,7 @@ void ED_view3d_clipping_calc(
   /* verify if we have negative scale. doing the transform before cross
    * product flips the sign of the vector compared to doing cross product
    * before transform then, so we correct for that. */
-  int flip_sign = (ob) ? is_negative_m4(ob->object_to_world) : false;
+  int flip_sign = (ob) ? is_negative_m4(ob->object_to_world().ptr()) : false;
 
   ED_view3d_clipping_calc_from_boundbox(planes, bb, flip_sign);
 }
@@ -475,7 +472,7 @@ void ED_view3d_persp_switch_from_camera(const Depsgraph *depsgraph,
   if (v3d->camera) {
     Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, v3d->camera);
     rv3d->dist = ED_view3d_offset_distance(
-        ob_camera_eval->object_to_world, rv3d->ofs, VIEW3D_DIST_FALLBACK);
+        ob_camera_eval->object_to_world().ptr(), rv3d->ofs, VIEW3D_DIST_FALLBACK);
     ED_view3d_from_object(ob_camera_eval, rv3d->ofs, rv3d->viewquat, &rv3d->dist, nullptr);
   }
 
@@ -567,7 +564,7 @@ void ED_view3d_camera_lock_init_ex(const Depsgraph *depsgraph,
     if (calc_dist) {
       /* using a fallback dist is OK here since ED_view3d_from_object() compensates for it */
       rv3d->dist = ED_view3d_offset_distance(
-          ob_camera_eval->object_to_world, rv3d->ofs, VIEW3D_DIST_FALLBACK);
+          ob_camera_eval->object_to_world().ptr(), rv3d->ofs, VIEW3D_DIST_FALLBACK);
     }
     ED_view3d_from_object(ob_camera_eval, rv3d->ofs, rv3d->viewquat, &rv3d->dist, nullptr);
   }
@@ -602,12 +599,12 @@ bool ED_view3d_camera_lock_sync(const Depsgraph *depsgraph, View3D *v3d, RegionV
 
       ED_view3d_to_m4(view_mat, rv3d->ofs, rv3d->viewquat, rv3d->dist);
 
-      normalize_m4_m4(tmat, ob_camera_eval->object_to_world);
+      normalize_m4_m4(tmat, ob_camera_eval->object_to_world().ptr());
 
       invert_m4_m4(imat, tmat);
       mul_m4_m4m4(diff_mat, view_mat, imat);
 
-      mul_m4_m4m4(parent_mat, diff_mat, root_parent_eval->object_to_world);
+      mul_m4_m4m4(parent_mat, diff_mat, root_parent_eval->object_to_world().ptr());
 
       BKE_object_tfm_protected_backup(root_parent, &obtfm);
       BKE_object_apply_mat4(root_parent, parent_mat, true, false);
@@ -986,9 +983,9 @@ void ED_view3d_quadview_update(ScrArea *area, ARegion *region, bool do_clip)
   /* ensure locked regions have an axis, locked user views don't make much sense */
   if (viewlock & RV3D_LOCK_ROTATION) {
     int index_qsplit = 0;
-    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-      if (region->alignment == RGN_ALIGN_QSPLIT) {
-        rv3d = static_cast<RegionView3D *>(region->regiondata);
+    LISTBASE_FOREACH (ARegion *, region_iter, &area->regionbase) {
+      if (region_iter->alignment == RGN_ALIGN_QSPLIT) {
+        rv3d = static_cast<RegionView3D *>(region_iter->regiondata);
         if (rv3d->viewlock) {
           if (!RV3D_VIEW_IS_AXIS(rv3d->view) || (rv3d->view_axis_roll != RV3D_VIEW_AXIS_ROLL_0)) {
             rv3d->view = ED_view3d_lock_view_from_index(index_qsplit);
@@ -1104,20 +1101,15 @@ static float view_autodist_depth_margin(ARegion *region, const int mval[2], int 
   return depth_close;
 }
 
-bool ED_view3d_autodist(Depsgraph *depsgraph,
-                        ARegion *region,
+bool ED_view3d_autodist(ARegion *region,
                         View3D *v3d,
                         const int mval[2],
                         float mouse_worldloc[3],
-                        const bool /*alphaoverride*/,
                         const float fallback_depth_pt[3])
 {
   float depth_close;
   int margin_arr[] = {0, 2, 4};
   bool depth_ok = false;
-
-  /* Get Z Depths, needed for perspective, nice for ortho */
-  ED_view3d_depth_override(depsgraph, region, v3d, nullptr, V3D_DEPTH_NO_GPENCIL, nullptr);
 
   /* Attempt with low margin's first */
   int i = 0;
@@ -1580,9 +1572,10 @@ void ED_view3d_to_m4(float mat[4][4], const float ofs[3], const float quat[4], c
   sub_v3_v3v3(mat[3], dvec, ofs);
 }
 
-void ED_view3d_from_object(const Object *ob, float ofs[3], float quat[4], float *dist, float *lens)
+void ED_view3d_from_object(
+    const Object *ob, float ofs[3], float quat[4], const float *dist, float *lens)
 {
-  ED_view3d_from_m4(ob->object_to_world, ofs, quat, dist);
+  ED_view3d_from_m4(ob->object_to_world().ptr(), ofs, quat, dist);
 
   if (lens) {
     CameraParams params;
@@ -1631,7 +1624,7 @@ static bool view3d_camera_to_view_selected_impl(Main *bmain,
       is_ortho_camera = true;
     }
 
-    copy_m4_m4(obmat_new, camera_ob_eval->object_to_world);
+    copy_m4_m4(obmat_new, camera_ob_eval->object_to_world().ptr());
     copy_v3_v3(obmat_new[3], co);
 
     /* only touch location */
@@ -1716,13 +1709,13 @@ bool ED_view3d_depth_read_cached(const ViewDepths *vd,
                                  int margin,
                                  float *r_depth)
 {
-  BLI_assert(1.0 <= vd->depth_range[1]);
   *r_depth = 1.0f;
 
   if (!vd || !vd->depths) {
     return false;
   }
 
+  BLI_assert(1.0 <= vd->depth_range[1]);
   int x = mval[0];
   int y = mval[1];
   if (x < 0 || y < 0 || x >= vd->w || y >= vd->h) {

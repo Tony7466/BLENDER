@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "BLI_string.h"
 
@@ -22,10 +22,10 @@
 
 #include <cstring>
 
-#include "GPU_platform.h"
-#include "GPU_vertex_format.h"
+#include "GPU_platform.hh"
+#include "GPU_vertex_format.hh"
 
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #include "mtl_common.hh"
 #include "mtl_context.hh"
@@ -303,7 +303,7 @@ static void replace_outvars(std::string &str)
             /* Generate out-variable pattern for arrays, of form
              * `OUT(vec2,samples,CRYPTOMATTE_LEVELS_MAX)`
              * replacing original `out vec2 samples[SAMPLE_LEN]`
-             * using 'OUT' macro declared in mtl_shader_defines.msl*/
+             * using 'OUT' macro declared in `mtl_shader_defines.msl`. */
             char *array_end = strchr(word_base2 + len2, ']');
             if (array_end != nullptr) {
               *start = 'O';
@@ -929,9 +929,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Concatenate msl_shader_defines to provide functionality mapping
    * from GLSL to MSL. Also include additional GPU defines for
    * optional high-level feature support. */
-  std::string msl_defines_string =
-      "#define GPU_ARB_texture_cube_map_array 1\n\
-      #define GPU_ARB_shader_draw_parameters 1\n";
+  std::string msl_defines_string = "#define GPU_ARB_shader_draw_parameters 1\n";
 
   /* NOTE(Metal): textureGather appears to not function correctly on non-Apple-silicon GPUs.
    * Manifests as selection outlines not showing up (#103412). Disable texture gather if
@@ -1357,7 +1355,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
       ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
     if (msl_iface.uses_gl_FrontFacing) {
-      ss_fragment << "MTLBOOL gl_FrontFacing;" << std::endl;
+      ss_fragment << "bool gl_FrontFacing;" << std::endl;
     }
     if (msl_iface.uses_gl_PrimitiveID) {
       ss_fragment << "uint gl_PrimitiveID;" << std::endl;
@@ -1537,9 +1535,9 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
 
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
+  ss_compute << "#line 1 \"msl_wrapper_code\"\n";
 
-  ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
-                "#define GPU_ARB_shader_draw_parameters 1\n";
+  ss_compute << "#define GPU_ARB_shader_draw_parameters 1\n";
   if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
       MTLBackend::get_capabilities().supports_texture_atomics)
   {
@@ -2618,7 +2616,7 @@ std::string MSLGeneratorInterface::generate_msl_fragment_inputs_string()
   }
   if (this->uses_gl_FrontFacing) {
     out << parameter_delimiter(is_first_parameter)
-        << "\n\tconst MTLBOOL gl_FrontFacing [[front_facing]]";
+        << "\n\tconst bool gl_FrontFacing [[front_facing]]";
   }
   if (this->uses_gl_PrimitiveID) {
     out << parameter_delimiter(is_first_parameter)
@@ -2796,9 +2794,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
      * by ensuring that vertex position is consistently calculated between subsequent passes
      * with maximum precision. */
     out << "\tfloat4 _default_position_ [[position]]";
-    if (@available(macos 11.0, *)) {
-      out << " [[invariant]]";
-    }
+    out << " [[invariant]]";
     out << ";" << std::endl;
   }
   else {
@@ -2809,9 +2805,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
 
       /* Use invariance if available. See above for detail. */
       out << "\tfloat4 " << this->vertex_output_varyings[0].name << " [[position]];";
-      if (@available(macos 11.0, *)) {
-        out << " [[invariant]]";
-      }
+      out << " [[invariant]]";
       out << ";" << std::endl;
       first_attr_is_position = true;
     }
@@ -3172,10 +3166,11 @@ std::string MSLGeneratorInterface::generate_msl_vertex_attribute_input_populatio
           &do_attribute_conversion_on_read, this->vertex_input_attributes[attribute].type);
 
       if (do_attribute_conversion_on_read) {
-        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert" << attribute
-            << ", v_in." << this->vertex_input_attributes[attribute].name << ", "
-            << shader_stage_inst_name << "." << this->vertex_input_attributes[attribute].name
-            << ");" << std::endl;
+        BLI_assert(this->vertex_input_attributes[attribute].layout_location >= 0);
+        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert"
+            << this->vertex_input_attributes[attribute].layout_location << ", v_in."
+            << this->vertex_input_attributes[attribute].name << ", " << shader_stage_inst_name
+            << "." << this->vertex_input_attributes[attribute].name << ");" << std::endl;
       }
       else {
         out << "\t" << shader_stage_inst_name << "."

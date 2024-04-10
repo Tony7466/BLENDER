@@ -15,6 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_alloca.h"
+#include "BLI_bit_vector.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
@@ -23,7 +24,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_light_types.h"
@@ -36,19 +37,21 @@
 #include "DNA_world_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_nla.h"
-#include "BKE_node.h"
-#include "BKE_report.h"
+#include "BKE_node.hh"
+#include "BKE_report.hh"
 #include "BKE_texture.h"
+
+#include "ANIM_evaluation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -2849,8 +2852,9 @@ static void nlastrip_evaluate_transition(const int evaluation_mode,
       break;
     }
     case STRIP_EVAL_NOBLEND: {
-      BLI_assert( !"This case shouldn't occur. Transitions assumed to not reference other "
-"transitions. ");
+      BLI_assert_msg(false,
+                     "This case shouldn't occur. "
+                     "Transitions assumed to not reference other transitions.");
       break;
     }
   }
@@ -3672,6 +3676,11 @@ void nlasnapshot_blend_get_inverted_lower_snapshot(NlaEvalData *eval_data,
 NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
     ListBase *cache, PointerRNA *ptr, AnimData *adt, const AnimationEvalContext *anim_eval_context)
 {
+  /* The PointerRNA needs to point to an ID because animsys_evaluate_nla_for_keyframing uses
+   * F-Curve paths to resolve properties. Since F-Curve paths are always relative to the ID this
+   * would fail if the PointerRNA was e.g. a bone. */
+  BLI_assert(RNA_struct_is_ID(ptr->type));
+
   /* No remapping needed if NLA is off or no action. */
   if ((adt == nullptr) || (adt->action == nullptr) || (adt->nla_tracks.first == nullptr) ||
       (adt->flag & ADT_NLA_EVAL_OFF))
@@ -3714,34 +3723,32 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
                                            int index,
                                            const AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,
-                                           BLI_bitmap *r_successful_remaps)
+                                           blender::BitVector<> &r_successful_remaps)
 {
   const int count = values.size();
-  BLI_bitmap_set_all(r_successful_remaps, false, count);
+  r_successful_remaps.fill(false);
 
   if (r_force_all != nullptr) {
     *r_force_all = false;
   }
 
-  BLI_bitmap *remap_domain = BLI_BITMAP_NEW(count, __func__);
+  blender::BitVector remap_domain(count, false);
   for (int i = 0; i < count; i++) {
     if (!ELEM(index, i, -1)) {
       continue;
     }
 
-    BLI_BITMAP_ENABLE(remap_domain, i);
+    remap_domain[i].set();
   }
 
   /* No context means no correction. */
   if (context == nullptr || context->strip.act == nullptr) {
-    BLI_bitmap_copy_all(r_successful_remaps, remap_domain, count);
-    MEM_freeN(remap_domain);
+    r_successful_remaps = remap_domain;
     return;
   }
 
   /* If the strip is not evaluated, it is the same as zero influence. */
   if (context->eval_strip == nullptr) {
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3753,14 +3760,12 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   if (blend_mode == NLASTRIP_MODE_REPLACE && influence == 1.0f &&
       BLI_listbase_is_empty(&context->upper_estrips))
   {
-    BLI_bitmap_copy_all(r_successful_remaps, remap_domain, count);
-    MEM_freeN(remap_domain);
+    r_successful_remaps = remap_domain;
     return;
   }
 
   /* Zero influence is division by zero. */
   if (influence <= 0.0f) {
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3778,7 +3783,6 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
   if (nec->base_snapshot.length != count) {
     BLI_assert_msg(0, "invalid value count");
     nlaeval_snapshot_free_data(&blended_snapshot);
-    MEM_freeN(remap_domain);
     return;
   }
 
@@ -3795,10 +3799,12 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
 
     *r_force_all = true;
     index = -1;
-    BLI_bitmap_set_all(remap_domain, true, 4);
+    remap_domain.fill(true);
   }
 
-  BLI_bitmap_copy_all(blended_necs->remap_domain.ptr, remap_domain, count);
+  for (const int i : remap_domain.index_range()) {
+    BLI_BITMAP_SET(blended_necs->remap_domain.ptr, i, remap_domain[i]);
+  }
 
   /* Need to send id_ptr instead of prop_ptr so fcurve RNA paths resolve properly. */
   PointerRNA id_ptr = RNA_id_pointer_create(prop_ptr->owner_id);
@@ -3827,10 +3833,11 @@ void BKE_animsys_nla_remap_keyframe_values(NlaKeyframingContext *context,
     values[i] = blended_necs->values[i];
   }
 
-  BLI_bitmap_copy_all(r_successful_remaps, blended_necs->remap_domain.ptr, blended_necs->length);
+  for (int i = 0; i < blended_necs->length; i++) {
+    r_successful_remaps[i].set(BLI_BITMAP_TEST_BOOL(blended_necs->remap_domain.ptr, i));
+  }
 
   nlaeval_snapshot_free_data(&blended_snapshot);
-  MEM_freeN(remap_domain);
 }
 
 void BKE_animsys_free_nla_keyframing_context_cache(ListBase *cache)
@@ -3918,16 +3925,26 @@ void BKE_animsys_evaluate_animdata(ID *id,
    */
   /* TODO: need to double check that this all works correctly */
   if (recalc & ADT_RECALC_ANIM) {
-    /* evaluate NLA data */
-    if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
-      /* evaluate NLA-stack
-       * - active action is evaluated as part of the NLA stack as the last item
-       */
-      animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+    if (adt->animation && adt->binding_handle) {
+      /* Animation data-blocks take precedence over the old Action + NLA system. */
+      blender::animrig::evaluate_and_apply_animation(id_ptr,
+                                                     adt->animation->wrap(),
+                                                     adt->binding_handle,
+                                                     *anim_eval_context,
+                                                     flush_to_original);
     }
-    /* evaluate Active Action only */
-    else if (adt->action) {
-      animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+    else {
+      /* evaluate NLA data */
+      if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
+        /* evaluate NLA-stack
+         * - active action is evaluated as part of the NLA stack as the last item
+         */
+        animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+      }
+      /* evaluate Active Action only */
+      else if (adt->action) {
+        animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      }
     }
   }
 
@@ -4116,7 +4133,7 @@ void BKE_animsys_update_driver_array(ID *id)
   AnimData *adt = BKE_animdata_from_id(id);
 
   /* Runtime driver map to avoid O(n^2) lookups in BKE_animsys_eval_driver.
-   * Ideally the depsgraph could pass a pointer to the COW driver directly,
+   * Ideally the depsgraph could pass a pointer to the evaluated driver directly,
    * but this is difficult in the current design. */
   if (adt && adt->drivers.first) {
     BLI_assert(!adt->driver_array);
@@ -4168,7 +4185,7 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCu
 
       PathResolvedRNA anim_rna;
       if (BKE_animsys_rna_path_resolve(&id_ptr, fcu->rna_path, fcu->array_index, &anim_rna)) {
-        /* Evaluate driver, and write results to COW-domain destination */
+        /* Evaluate driver, and write results to copy-on-eval-domain destination */
         const float ctime = DEG_get_ctime(depsgraph);
         const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
             depsgraph, ctime);

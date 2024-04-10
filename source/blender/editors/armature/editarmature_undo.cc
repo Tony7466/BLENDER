@@ -22,8 +22,8 @@
 
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
-#include "BKE_layer.h"
+#include "BKE_idprop.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_undo_system.hh"
@@ -96,6 +96,11 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
   }
 
   ED_armature_ebone_listbase_temp_clear(arm->edbo);
+
+  /* Before freeing the old bone collections, copy their 'expanded' flag. This
+   * flag is not supposed to be restored with any undo steps. */
+  bonecolls_copy_expanded_flag(blender::Span(uarm->collection_array, uarm->collection_array_num),
+                               arm->collections_span());
 
   /* Copy bone collections. */
   ANIM_bonecoll_array_free(&arm->collection_array, &arm->collection_array_num, true);
@@ -216,15 +221,14 @@ static bool armature_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_
    * outside of this list will be moved out of edit-mode when reading back undo steps. */
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len = 0;
-  Object **objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer, &objects_len);
+  blender::Vector<Object *> objects = ED_undo_editmode_objects_from_view_layer(scene, view_layer);
 
   us->scene_ref.ptr = scene;
   us->elems = static_cast<ArmatureUndoStep_Elem *>(
-      MEM_callocN(sizeof(*us->elems) * objects_len, __func__));
-  us->elems_len = objects_len;
+      MEM_callocN(sizeof(*us->elems) * objects.size(), __func__));
+  us->elems_len = objects.size();
 
-  for (uint i = 0; i < objects_len; i++) {
+  for (uint i = 0; i < objects.size(); i++) {
     Object *ob = objects[i];
     ArmatureUndoStep_Elem *elem = &us->elems[i];
 
@@ -234,7 +238,6 @@ static bool armature_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_
     arm->needs_flush_to_id = 1;
     us->step.data_size += elem->data.undo_size;
   }
-  MEM_freeN(objects);
 
   bmain->is_memfile_undo_flush_needed = true;
 

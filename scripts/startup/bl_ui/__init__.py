@@ -11,6 +11,7 @@ if "bpy" in locals():
     del reload
 
 _modules = [
+    "anim",
     "asset_shelf",
     "node_add_menu",
     "node_add_menu_compositor",
@@ -60,6 +61,7 @@ _modules = [
     "properties_texture",
     "properties_world",
     "properties_collection",
+    "temp_anim_layers",
     "generic_ui_list",
 
     # Generic Space Modules
@@ -120,6 +122,7 @@ def register():
             register_class(cls)
 
     space_filebrowser.register_props()
+    temp_anim_layers.register_props()
 
     from bpy.props import (
         EnumProperty,
@@ -141,8 +144,8 @@ def register():
         items_unique = set()
 
         for mod in addon_utils.modules(refresh=False):
-            info = addon_utils.module_bl_info(mod)
-            items_unique.add(info["category"])
+            bl_info = addon_utils.module_bl_info(mod)
+            items_unique.add(bl_info["category"])
 
         items.extend([(cat, cat, "") for cat in sorted(items_unique)])
         return items

@@ -24,6 +24,17 @@ struct Collection;
 struct GHash;
 struct Object;
 struct SpaceLink;
+#ifdef __cplusplus
+namespace blender::gpu {
+class VertBuf;
+class Batch;
+}  // namespace blender::gpu
+using GPUBatchHandle = blender::gpu::Batch;
+using GPUVertBufHandle = blender::gpu::VertBuf;
+#else
+typedef struct GPUBatchHandle GPUBatchHandle;
+typedef struct GPUVertBufHandle GPUVertBufHandle;
+#endif
 
 /* ************************************************ */
 /* Visualization */
@@ -57,9 +68,9 @@ typedef struct bMotionPath {
   /** The number of cached verts. */
   int length;
 
-  /** For drawing paths, the start frame number. */
+  /** For drawing paths, the start frame number. Inclusive. */
   int start_frame;
-  /** For drawing paths, the end frame number. */
+  /** For drawing paths, the end frame number. Exclusive. */
   int end_frame;
 
   /** Optional custom color. */
@@ -70,9 +81,9 @@ typedef struct bMotionPath {
   int flag;
 
   /* Used for drawing. */
-  struct GPUVertBuf *points_vbo;
-  struct GPUBatch *batch_line;
-  struct GPUBatch *batch_points;
+  GPUVertBufHandle *points_vbo;
+  GPUBatchHandle *batch_line;
+  GPUBatchHandle *batch_points;
   void *_pad;
 } bMotionPath;
 
@@ -86,6 +97,8 @@ typedef enum eMotionPath_Flag {
   MOTIONPATH_FLAG_CUSTOM = (1 << 2),
   /* Draw lines or only points */
   MOTIONPATH_FLAG_LINES = (1 << 3),
+  /* Bake to scene camera. */
+  MOTIONPATH_FLAG_BAKE_CAMERA = (1 << 4),
 } eMotionPath_Flag;
 
 /* Visualization General --------------------------- */
@@ -111,7 +124,7 @@ typedef struct bAnimVizSettings {
   short path_bakeflag;
   char _pad[4];
 
-  /** Start and end frames of path-calculation range. */
+  /** Start and end frames of path-calculation range. Both are inclusive. */
   int path_sf, path_ef;
   /** Number of frames before/after current frame to show. */
   int path_bc, path_ac;
@@ -163,6 +176,8 @@ typedef enum eMotionPaths_BakeFlag {
   /** motion paths exist for AnimVizSettings instance - set when calc for first time,
    * and unset when clearing */
   MOTIONPATH_BAKE_HAS_PATHS = (1 << 2),
+  /* Bake the path in camera space. */
+  MOTIONPATH_BAKE_CAMERA_SPACE = (1 << 3),
 } eMotionPath_BakeFlag;
 
 /* runtime */
@@ -610,7 +625,8 @@ typedef enum eItasc_Solver {
 
 /* Groups -------------------------------------- */
 
-/* Action-Channel Group (agrp)
+/**
+ * Action-Channel Group (agrp)
  *
  * These are stored as a list per-Action, and are only used to
  * group that Action's channels in an Animation Editor.
@@ -719,7 +735,7 @@ typedef struct bAction {
   PreviewImage *preview;
 } bAction;
 
-/* Flags for the action */
+/** Flags for the action. */
 typedef enum eAction_Flags {
   /* flags for displaying in UI */
   ACT_COLLAPSED = (1 << 0),
@@ -738,7 +754,7 @@ typedef enum eAction_Flags {
 /* ************************************************ */
 /* Action/Dopesheet Editor */
 
-/* Storage for Dopesheet/Grease-Pencil Editor data */
+/** Storage for Dopesheet/Grease-Pencil Editor data. */
 typedef struct bDopeSheet {
   /** Currently ID_SCE (for Dopesheet), and ID_SC (for Grease Pencil). */
   ID *source;
@@ -761,7 +777,7 @@ typedef struct bDopeSheet {
   int renameIndex;
 } bDopeSheet;
 
-/* DopeSheet filter-flag */
+/** DopeSheet filter-flag. */
 typedef enum eDopeSheet_FilterFlag {
   /* general filtering */
   /** only include channels relating to selected data */

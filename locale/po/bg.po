@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: 2023-09-26 10:37+0000\n"
 "Last-Translator: Gilberto Rodrigues <gilbertorodrigues@outlook.com>\n"
 "Language-Team: Bulgarian <https://translate.blender.org/projects/blender-ui/ui/bg/>\n"
@@ -292,10 +292,6 @@ msgid "Poly"
 msgstr "Поли"
 
 
-msgid "Bezier"
-msgstr "Беазие"
-
-
 msgid "Split"
 msgstr "Разделяне"
 
@@ -554,10 +550,6 @@ msgstr "Макс"
 
 msgid "Layers"
 msgstr "Слоеве"
-
-
-msgid "AVI Raw"
-msgstr "AVI Суров"
 
 
 msgid "Movie"
@@ -1016,19 +1008,6 @@ msgstr "Смали/Удебели"
 
 msgid "Push/Pull"
 msgstr "Натиск/Дърпане"
-
-
-msgctxt "Operator"
-msgid "Add Bezier Circle"
-msgstr "Добави Кръг на Безие"
-
-
-msgid "Construct a Bezier Circle"
-msgstr "Конструира Кръг на Безие"
-
-
-msgid "Construct a Bezier Curve"
-msgstr "Конструира Крива на Безие"
 
 
 msgctxt "Operator"
@@ -1784,10 +1763,6 @@ msgid "Chroma Vectorscope"
 msgstr "Цветен Векторскоп"
 
 
-msgid "Bezier U"
-msgstr "Беазие U"
-
-
 msgid "Stencil"
 msgstr "Шаблон"
 
@@ -1853,12 +1828,12 @@ msgid "Layer:"
 msgstr "Слой"
 
 
-msgid "Stop this job"
-msgstr "Спри тази задача"
-
-
 msgid "%d items"
 msgstr "%d артикули"
+
+
+msgid "Stop this job"
+msgstr "Спри тази задача"
 
 
 msgid "OK"
@@ -1879,10 +1854,6 @@ msgstr "{} (String)"
 
 msgid "{} (Integer)"
 msgstr "{} (Integer)"
-
-
-msgid "OK?"
-msgstr "ОК?"
 
 
 msgid "English (English)"

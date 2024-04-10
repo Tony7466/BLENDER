@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "(b'0000000000000000000000000000000000000000')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: 2013-11-05 13:47+0600\n"
 "Last-Translator: Chyngyz Dzhumaliev <kyrgyzl10n@gmail.com>\n"
 "Language-Team: Kirghiz <kyrgyzl10n@gmail.com>\n"
@@ -550,10 +550,6 @@ msgid "Poly"
 msgstr "Полисызык"
 
 
-msgid "Bezier"
-msgstr "Безье"
-
-
 msgid "Depth"
 msgstr "Тереңдиги"
 
@@ -791,6 +787,10 @@ msgid "Operator"
 msgstr "Оператор"
 
 
+msgid "Matrix"
+msgstr "Матрица"
+
+
 msgid "End"
 msgstr "Соңу"
 
@@ -896,10 +896,6 @@ msgid "Sphere"
 msgstr "Сфера"
 
 
-msgid "Matrix"
-msgstr "Матрица"
-
-
 msgid "Catmull-Clark"
 msgstr "Катмулл-Кларк"
 
@@ -926,6 +922,10 @@ msgstr "B"
 
 msgid "Blue"
 msgstr "Көк"
+
+
+msgid "Animation"
+msgstr "Анимация"
 
 
 msgid "Brush"
@@ -1072,14 +1072,6 @@ msgid "Radiance HDR"
 msgstr "Radiance HDR"
 
 
-msgid "AVI JPEG"
-msgstr "AVI JPEG"
-
-
-msgid "AVI Raw"
-msgstr "AVI Raw"
-
-
 msgid "Movie"
 msgstr "Тасма"
 
@@ -1154,10 +1146,6 @@ msgstr "Шилтемелер"
 
 msgid "Nodes"
 msgstr "Түйүндөр"
-
-
-msgid "OpenCL"
-msgstr "OpenCL"
 
 
 msgid "Edit"
@@ -1341,10 +1329,6 @@ msgid "Operation"
 msgstr "Операция"
 
 
-msgid "Animation"
-msgstr "Анимация"
-
-
 msgid "Black"
 msgstr "Кара"
 
@@ -1379,10 +1363,6 @@ msgstr "Чычкан"
 
 msgid "Text Input"
 msgstr "Текстти киргизүү"
-
-
-msgid "Bezier Curve"
-msgstr "Безье ийриси"
 
 
 msgid "Circles"
@@ -1429,10 +1409,6 @@ msgstr "Түздөө"
 msgctxt "Operator"
 msgid "Add"
 msgstr "Кошуу"
-
-
-msgid "Tracking"
-msgstr "Трекинг"
 
 
 msgid "Node"
@@ -1830,11 +1806,6 @@ msgstr "Трекбол"
 
 
 msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "Безьени кошуу"
-
-
-msgctxt "Operator"
 msgid "Add Path"
 msgstr "Жолду кошуу"
 
@@ -2147,10 +2118,6 @@ msgid "Add Torus"
 msgstr "Торду кошуу"
 
 
-msgid "Construct a UV sphere mesh"
-msgstr "UV-сфера политорун жаратуу"
-
-
 msgid "Cursor Distance"
 msgstr "Курсор аралыгы"
 
@@ -2194,10 +2161,6 @@ msgstr "Тандалган объекттерди өчүрүү"
 
 msgid "Remove object from all scenes"
 msgstr "Объектти бардык сахналардан өчүрүү"
-
-
-msgid "Filepath"
-msgstr "Файлга жол"
 
 
 msgctxt "Operator"
@@ -2553,6 +2516,10 @@ msgid "Jump"
 msgstr "Өтүү"
 
 
+msgid "Filepath"
+msgstr "Файлга жол"
+
+
 msgctxt "Operator"
 msgid "Reload"
 msgstr "Кайтадан жүктөө"
@@ -2631,11 +2598,6 @@ msgstr "Түшүрүү"
 
 msgid "Island"
 msgstr "Арал"
-
-
-msgctxt "Operator"
-msgid "Remove Background Image"
-msgstr "Фон сүрөтүн өчүрүү"
 
 
 msgid "Save a Collada file"
@@ -3168,6 +3130,10 @@ msgid "Statistics"
 msgstr "Статистика"
 
 
+msgid "Tracking"
+msgstr "Трекинг"
+
+
 msgctxt "Operator"
 msgid "New"
 msgstr "Жаңы"
@@ -3364,6 +3330,10 @@ msgid "New Data"
 msgstr "Жаңы маалыматтар"
 
 
+msgid "Error (see console)"
+msgstr "Ката (консолду караңыз)"
+
+
 msgid "Description:"
 msgstr "Баяндамасы:"
 
@@ -3388,21 +3358,9 @@ msgid "Internet:"
 msgstr "Интернет:"
 
 
-msgid "description"
-msgstr "баяндама"
-
-
-msgid "location"
-msgstr "жайгашкан жери"
-
-
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "Документация"
-
-
-msgid "Error (see console)"
-msgstr "Ката (консолду караңыз)"
 
 
 msgctxt "Operator"
@@ -3448,11 +3406,6 @@ msgstr "Тор сызык"
 msgctxt "Operator"
 msgid "Monkey"
 msgstr "Маймыл"
-
-
-msgctxt "Operator"
-msgid "Bezier"
-msgstr "Безье"
 
 
 msgctxt "Operator"

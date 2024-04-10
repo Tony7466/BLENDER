@@ -8,6 +8,8 @@
 
 #include <cstdlib>
 
+#include "BKE_file_handler.hh"
+
 #include "DNA_collection_types.h"
 
 #include "DNA_lineart_types.h"
@@ -17,7 +19,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -39,6 +41,8 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
@@ -46,9 +50,9 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 #  include "DEG_depsgraph_build.hh"
 #  include "DEG_depsgraph_query.hh"
 
-#  include "BKE_collection.h"
-#  include "BKE_global.h"
-#  include "BKE_layer.h"
+#  include "BKE_collection.hh"
+#  include "BKE_global.hh"
+#  include "BKE_layer.hh"
 
 #  include "WM_api.hh"
 
@@ -135,7 +139,7 @@ static void rna_Collection_objects_link(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &object->id);
 }
@@ -157,7 +161,7 @@ static void rna_Collection_objects_unlink(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &object->id);
 }
@@ -171,8 +175,8 @@ static bool rna_Collection_objects_override_apply(Main *bmain,
   PointerRNA *ptr_item_src = &rnaapply_ctx.ptr_item_src;
   IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
 
-  BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
-             "Unsupported RNA override operation on collections' objects");
+  BLI_assert_msg(opop->operation == LIBOVERRIDE_OP_REPLACE,
+                 "Unsupported RNA override operation on collections' objects");
   UNUSED_VARS_NDEBUG(opop);
 
   Collection *coll_dst = (Collection *)ptr_dst->owner_id;
@@ -263,7 +267,7 @@ static void rna_Collection_children_link(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &child->id);
 }
@@ -285,7 +289,7 @@ static void rna_Collection_children_unlink(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &child->id);
 }
@@ -299,8 +303,8 @@ static bool rna_Collection_children_override_apply(Main *bmain,
   PointerRNA *ptr_item_src = &rnaapply_ctx.ptr_item_src;
   IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
 
-  BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
-             "Unsupported RNA override operation on collections' children");
+  BLI_assert_msg(opop->operation == LIBOVERRIDE_OP_REPLACE,
+                 "Unsupported RNA override operation on collections' children");
   UNUSED_VARS_NDEBUG(opop);
 
   Collection *coll_dst = (Collection *)ptr_dst->owner_id;
@@ -371,7 +375,7 @@ static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *pt
   BKE_collection_object_cache_free(bmain, collection, 0);
   BKE_main_collection_sync(bmain);
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
@@ -407,7 +411,7 @@ static void rna_Collection_instance_offset_update(Main * /*bmain*/,
   DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY);
 }
 
-static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CollectionLightLinking_path(const PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->owner_id;
   CollectionLightLinking *collection_light_linking = (CollectionLightLinking *)ptr->data;
@@ -417,7 +421,7 @@ static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
   counter = 0;
   LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
     if (&collection_object->light_linking == collection_light_linking) {
-      return BLI_sprintfN("collection_objects[%d].light_linking", counter);
+      return fmt::format("collection_objects[{}].light_linking", counter);
     }
     ++counter;
   }
@@ -425,12 +429,12 @@ static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
   counter = 0;
   LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
     if (&collection_child->light_linking == collection_light_linking) {
-      return BLI_sprintfN("collection_children[%d].light_linking", counter);
+      return fmt::format("collection_children[{}].light_linking", counter);
     }
     ++counter;
   }
 
-  return BLI_strdup("..");
+  return "..";
 }
 
 static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -442,6 +446,25 @@ static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, Po
 
   /* Tag relations for update so that an updated state of light sets is calculated. */
   DEG_relations_tag_update(bmain);
+}
+
+static PointerRNA rna_CollectionExport_export_properties_get(PointerRNA *ptr)
+{
+  const CollectionExport *data = reinterpret_cast<CollectionExport *>(ptr->data);
+
+  /* If the File Handler or Operator is missing, we allow the data to be accessible
+   * as generic ID properties. */
+  blender::bke::FileHandlerType *fh = blender::bke::file_handler_find(data->fh_idname);
+  if (!fh) {
+    return RNA_pointer_create(ptr->owner_id, &RNA_IDPropertyWrapPtr, data->export_properties);
+  }
+
+  wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+  if (!ot) {
+    return RNA_pointer_create(ptr->owner_id, &RNA_IDPropertyWrapPtr, data->export_properties);
+  }
+
+  return RNA_pointer_create(ptr->owner_id, ot->srna, data->export_properties);
 }
 
 #else
@@ -564,6 +587,29 @@ static void rna_def_collection_child(BlenderRNA *brna)
       prop, "Light Linking", "Light linking settings of the collection object");
 }
 
+static void rna_def_collection_exporter_data(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "CollectionExport", nullptr);
+  RNA_def_struct_sdna(srna, "CollectionExport");
+  RNA_def_struct_ui_text(srna, "Collection Export Data", "Exporter configured for the collection");
+
+  prop = RNA_def_property(srna, "is_open", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", IO_HANDLER_PANEL_OPEN);
+  RNA_def_property_ui_text(prop, "Is Open", "Whether the panel is expanded or closed");
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+
+  prop = RNA_def_property(srna, "export_properties", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "PropertyGroup");
+  RNA_def_property_ui_text(
+      prop, "Export Properties", "Properties associated with the configured exporter");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_CollectionExport_export_properties_get", nullptr, nullptr, nullptr);
+}
+
 void RNA_def_collections(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -649,6 +695,14 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Collection Children",
                            "Children collections their parent-collection-specific settings");
+
+  /* Export Handlers. */
+  prop = RNA_def_property(srna, "exporters", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CollectionExport");
+  RNA_def_property_collection_sdna(prop, nullptr, "exporters", nullptr);
+  RNA_def_property_ui_text(
+      prop, "Collection Export Handlers", "Export Handlers configured for the collection");
+
   /* TODO(sergey): Functions to link and unlink collections. */
 
   /* Flags */
@@ -751,6 +805,7 @@ void RNA_def_collections(BlenderRNA *brna)
   rna_def_collection_light_linking(brna);
   rna_def_collection_object(brna);
   rna_def_collection_child(brna);
+  rna_def_collection_exporter_data(brna);
 }
 
 #endif

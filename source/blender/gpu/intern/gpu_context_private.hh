@@ -12,7 +12,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "gpu_debug_private.hh"
 #include "gpu_framebuffer_private.hh"
@@ -87,7 +87,7 @@ class Context {
   virtual void debug_group_end(){};
 
   /* Returns true if capture successfully started. */
-  virtual bool debug_capture_begin() = 0;
+  virtual bool debug_capture_begin(const char *title) = 0;
   virtual void debug_capture_end() = 0;
   virtual void *debug_capture_scope_create(const char *name) = 0;
   virtual bool debug_capture_scope_begin(void *scope) = 0;

@@ -16,15 +16,13 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.hh"
-#include "BKE_screen.hh"
 
 #include "ED_image.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"

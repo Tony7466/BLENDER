@@ -8,12 +8,13 @@
 
 #include <sstream>
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "CLG_log.h"
 
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_debug.hh"
+#include "vk_to_string.hh"
 
 static CLG_LogRef LOG = {"gpu.debug.vulkan"};
 
@@ -30,16 +31,21 @@ void VKContext::debug_group_end()
   debug::pop_marker(device);
 }
 
-bool VKContext::debug_capture_begin()
+bool VKContext::debug_capture_begin(const char *title)
 {
-  return VKBackend::get().debug_capture_begin();
+  return VKBackend::get().debug_capture_begin(title);
 }
 
-bool VKBackend::debug_capture_begin()
+bool VKBackend::debug_capture_begin(const char *title)
 {
 #ifdef WITH_RENDERDOC
-  return renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
+  bool result = renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
+  if (result && title) {
+    renderdoc_api_.set_frame_capture_title(title);
+  }
+  return result;
 #else
+  UNUSED_VARS(title);
   return false;
 #endif
 }
@@ -252,12 +258,12 @@ void VKDebuggingTools::print_labels(const VkDebugUtilsMessengerCallbackDataEXT *
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
 messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-                   VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
+                   VkDebugUtilsMessageTypeFlagsEXT /*message_type*/,
                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
                    void *user_data);
 VKAPI_ATTR VkBool32 VKAPI_CALL
 messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-                   VkDebugUtilsMessageTypeFlagsEXT /* message_type*/,
+                   VkDebugUtilsMessageTypeFlagsEXT /*message_type*/,
                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
                    void *user_data)
 {

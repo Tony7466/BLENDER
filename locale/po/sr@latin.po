@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -667,14 +667,6 @@ msgid "Split Materials"
 msgstr "Razdvoj materijale"
 
 
-msgid "Bezier Curve Point"
-msgstr "Tačke bazierove krive"
-
-
-msgid "Bezier curve point with two handles"
-msgstr "Bazierova kriva sa dve ručke"
-
-
 msgid "Control Point"
 msgstr "Kontrolna tačka"
 
@@ -1271,6 +1263,10 @@ msgid "Index"
 msgstr "Indeks"
 
 
+msgid "Solo"
+msgstr "Solo"
+
+
 msgid "Visible"
 msgstr "Vidljivo"
 
@@ -1297,6 +1293,10 @@ msgstr "Ima visinu"
 
 msgid "Count"
 msgstr "Broj"
+
+
+msgid "Curve Radius"
+msgstr "Poluprečnik krive"
 
 
 msgid "Remove"
@@ -1327,24 +1327,16 @@ msgid "Vertex Color"
 msgstr "Boja temena"
 
 
-msgid "Direction"
-msgstr "Smer"
-
-
-msgid "Add effect of brush"
-msgstr "Dodaj efekat četkice"
-
-
-msgid "Subtract effect of brush"
-msgstr "Oduzmi efekat četkice"
-
-
 msgid "Dissolve"
 msgstr "Rastapanje"
 
 
 msgid "Stroke"
 msgstr "Potez"
+
+
+msgid "Direction"
+msgstr "Smer"
 
 
 msgid "Normal"
@@ -2468,10 +2460,6 @@ msgid "Follow Curve"
 msgstr "Prati krivu"
 
 
-msgid "Curve Radius"
-msgstr "Poluprečnik krive"
-
-
 msgid "Fixed Position"
 msgstr "Fiksna pozicija"
 
@@ -2484,6 +2472,7 @@ msgid "Depth Object"
 msgstr "Objekat dubine"
 
 
+msgctxt "MovieClip"
 msgid "Track"
 msgstr "Staza"
 
@@ -2860,10 +2849,6 @@ msgid "Handle Type"
 msgstr "Vrsta ručke"
 
 
-msgid "Curve interpolation at this point: Bezier or vector"
-msgstr "Podeli krivu na ovoj tački: Bazier ili vektor"
-
-
 msgid "Auto Handle"
 msgstr "Automatska ručka"
 
@@ -2926,10 +2911,6 @@ msgstr "Boja na RGB krivoj na koju se mapira bela boja"
 
 msgid "Poly"
 msgstr "Poligon"
-
-
-msgid "Bezier"
-msgstr "Bazierova kriva"
 
 
 msgid "Depth"
@@ -4357,6 +4338,10 @@ msgid "Link"
 msgstr "Veza"
 
 
+msgid "Matrix"
+msgstr "Matrica"
+
+
 msgid "Additional"
 msgstr "Dodatno"
 
@@ -5062,10 +5047,6 @@ msgid "Constant"
 msgstr "Konstantno"
 
 
-msgid "Matrix"
-msgstr "Matrica"
-
-
 msgid "Lattice Modifier"
 msgstr "Modifikator kaveza"
 
@@ -5178,6 +5159,18 @@ msgid "Grid Scale"
 msgstr "Razmera mreže"
 
 
+msgid "Translation"
+msgstr "Prelaz"
+
+
+msgid "Repeat"
+msgstr "Ponovi"
+
+
+msgid "Frame Start"
+msgstr "Početni kadar"
+
+
 msgid "R"
 msgstr "R"
 
@@ -5204,6 +5197,10 @@ msgstr "Plava"
 
 msgid "Show Line"
 msgstr "Prikaži liniju"
+
+
+msgid "Animation"
+msgstr "Animacija"
 
 
 msgid "Brush"
@@ -5418,16 +5415,20 @@ msgid "Mask Texture Overlay Alpha"
 msgstr "Maskiraj providnost preklapanja teksture"
 
 
+msgid "Add effect of brush"
+msgstr "Dodaj efekat četkice"
+
+
+msgid "Subtract effect of brush"
+msgstr "Oduzmi efekat četkice"
+
+
 msgid "Fill Threshold"
 msgstr "Prag ispune"
 
 
 msgid "Gradient Stroke Mode"
 msgstr "Mod iscrtavanja prelaza"
-
-
-msgid "Repeat"
-msgstr "Ponovi"
 
 
 msgid "Clamp"
@@ -5588,10 +5589,6 @@ msgstr "Koristi dodatnu providnost"
 
 msgid "Restore Mesh"
 msgstr "Vrati"
-
-
-msgid "Sculpt Tool"
-msgstr "Alatke vajanja"
 
 
 msgid "Relax"
@@ -6226,14 +6223,6 @@ msgid "Radiance HDR"
 msgstr "Radiance HDR"
 
 
-msgid "AVI JPEG"
-msgstr "AVI JPEG"
-
-
-msgid "AVI Raw"
-msgstr "AVI sirovo"
-
-
 msgid "Image/Movie file name"
 msgstr "Naziv datoteke slike/filma"
 
@@ -6746,10 +6735,6 @@ msgid "Node tree consisting of linked nodes used for compositing"
 msgstr "Drvo čvorova koji čine čvorovi za slaganje"
 
 
-msgid "Chunksize"
-msgstr "Veličina pločice"
-
-
 msgid "Edit Quality"
 msgstr "Kvalitet uređenja"
 
@@ -6778,20 +6763,12 @@ msgid "Low quality"
 msgstr "Nizak kvalitet"
 
 
-msgid "Tiled"
-msgstr "Popločano"
-
-
 msgid "Render Quality"
 msgstr "Kvalitet renderinga"
 
 
 msgid "Quality when rendering"
 msgstr "Kvalitet pri renderingu"
-
-
-msgid "OpenCL"
-msgstr "OpenCL"
 
 
 msgid "Two Pass"
@@ -8372,10 +8349,6 @@ msgid "iTaSC"
 msgstr "iTaSC"
 
 
-msgid "Animation"
-msgstr "Animacija"
-
-
 msgid "Simulation"
 msgstr "Simulacija"
 
@@ -8812,10 +8785,6 @@ msgid "Backbone Stretcher"
 msgstr "Nosač kičme"
 
 
-msgid "Bezier Curve"
-msgstr "Bazier kriva"
-
-
 msgid "Blueprint"
 msgstr "Šematski plan"
 
@@ -9078,6 +9047,10 @@ msgid "Select Grouped"
 msgstr "Izabrana grupa"
 
 
+msgid "Track"
+msgstr "Staza"
+
+
 msgid "Show/Hide"
 msgstr "Prikaži/sakrij"
 
@@ -9141,10 +9114,6 @@ msgstr "Matematika"
 
 msgid "Keying"
 msgstr "Zbirka tastera"
-
-
-msgid "Tracking"
-msgstr "Praćenje"
 
 
 msgid "Converter"
@@ -10027,10 +9996,6 @@ msgid "Influence of the deformation"
 msgstr "Uticaj deformacije"
 
 
-msgid "Frame Start"
-msgstr "Početni kadar"
-
-
 msgid "Add this to the start frame"
 msgstr "Dodaj ovo na početni kadar"
 
@@ -10342,14 +10307,6 @@ msgstr "V osa"
 
 msgid "UV Center"
 msgstr "UV središte"
-
-
-msgid "UV Layer"
-msgstr "UV Sloj"
-
-
-msgid "UV Layer name"
-msgstr "Ime UV sloja"
 
 
 msgid "Add Threshold"
@@ -10891,10 +10848,6 @@ msgid "NLA Track is active"
 msgstr "NLA staza je aktivna"
 
 
-msgid "Solo"
-msgstr "Solo"
-
-
 msgid "NLA Track is locked"
 msgstr "NLA staza je zaključana"
 
@@ -10991,12 +10944,12 @@ msgid "Not"
 msgstr "Ne"
 
 
-msgid "Rotation angle of the box"
-msgstr "Ugao rotacije kutije"
-
-
 msgid "Width of the box"
 msgstr "Širina kutije"
+
+
+msgid "Rotation angle of the box"
+msgstr "Ugao rotacije kutije"
 
 
 msgid "Channel Key"
@@ -11227,12 +11180,12 @@ msgid "Height of the ellipse"
 msgstr "Visina elipse"
 
 
-msgid "Rotation angle of the ellipse"
-msgstr "Ugao rotacije elipse"
-
-
 msgid "Width of the ellipse"
 msgstr "Širina elipse"
+
+
+msgid "Rotation angle of the ellipse"
+msgstr "Ugao rotacije elipse"
 
 
 msgid "Filter Type"
@@ -12827,10 +12780,6 @@ msgid "Factor to scale brush size by"
 msgstr "Faktor uvećanja veličine četkice"
 
 
-msgid "Translation"
-msgstr "Prelaz"
-
-
 msgid "Primary"
 msgstr "Primarno"
 
@@ -13701,15 +13650,6 @@ msgid "Toggle the selection"
 msgstr "Bira ili poništava izbor"
 
 
-msgctxt "Operator"
-msgid "Add Bezier Circle"
-msgstr "Dodaj bazierov krug"
-
-
-msgid "Construct a Bezier Circle"
-msgstr "Formira bazierov krug"
-
-
 msgid "Align the new object to the view"
 msgstr "Poravnaj novi objekat sa pogledom"
 
@@ -13724,15 +13664,6 @@ msgstr "Lokacija novoformiranih objekata"
 
 msgid "Rotation for the newly added object"
 msgstr "Rotacija novoformiranih objekata"
-
-
-msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "Dodaj bazierovu krivu"
-
-
-msgid "Construct a Bezier Curve"
-msgstr "Bazierova kriva"
 
 
 msgctxt "Operator"
@@ -14002,9 +13933,8 @@ msgid "Euler (ZYX)"
 msgstr "Ojler (ZYX)"
 
 
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Izvoz PLY"
+msgid "Ascii"
+msgstr "Ascii"
 
 
 msgid "Y Up"
@@ -14025,10 +13955,6 @@ msgstr "Gore po -Z"
 
 msgid "Selection Only"
 msgstr "Samo izabrano"
-
-
-msgid "Ascii"
-msgstr "Ascii"
 
 
 msgctxt "Operator"
@@ -14126,14 +14052,6 @@ msgstr "Trouglaste stranice"
 
 msgid "Convert all faces to triangles"
 msgstr "Pretvroi sve stranice u trouglove"
-
-
-msgid "Material Groups"
-msgstr "Grupa materijala"
-
-
-msgid "Smooth Groups"
-msgstr "Grupe umekšanja"
 
 
 msgid "Compress"
@@ -14892,6 +14810,10 @@ msgid "Flat"
 msgstr "Ravno"
 
 
+msgid "By Material"
+msgstr "Po materijalu"
+
+
 msgctxt "Operator"
 msgid "Select Mode"
 msgstr "Mod izabora"
@@ -14940,6 +14862,10 @@ msgstr "Kreira novu sliku"
 
 msgid "Image height"
 msgstr "Visina sliku"
+
+
+msgid "Tiled"
+msgstr "Popločano"
 
 
 msgid "Image width"
@@ -15083,11 +15009,6 @@ msgstr "Relativne putanje"
 
 msgid "Shadeless"
 msgstr "Senčenja"
-
-
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Uvoz PLY"
 
 
 msgctxt "Operator"
@@ -16093,10 +16014,6 @@ msgid "Separate selected geometry into a new mesh"
 msgstr "Izdvoj izabranu geometriju u novi meš"
 
 
-msgid "By Material"
-msgstr "Po materijalu"
-
-
 msgid "Tag Freestyle Edge Mark"
 msgstr "Označi ivicu kao slobodoručnu"
 
@@ -16723,6 +16640,10 @@ msgid "Bake image textures of selected objects"
 msgstr "Ispeci teksture izabranih objekata"
 
 
+msgid "UV Layer"
+msgstr "UV Sloj"
+
+
 msgctxt "Operator"
 msgid "Add Camera"
 msgstr "Dodaj kameru"
@@ -16761,14 +16682,6 @@ msgstr "Izbriši globalno"
 
 msgid "Remove object from all scenes"
 msgstr "Briše objekat sa svih scena"
-
-
-msgid "Filepath"
-msgstr "Putanje datoteke"
-
-
-msgid "Path to image file"
-msgstr "Putanja do datoteke slike"
 
 
 msgctxt "Operator"
@@ -17612,8 +17525,8 @@ msgid "Show vertices"
 msgstr "Prikaži temena"
 
 
-msgid "Masked"
-msgstr "Maskirano"
+msgid "Front Faces Only"
+msgstr "Samo prednje stranice"
 
 
 msgctxt "Operator"
@@ -17632,10 +17545,6 @@ msgstr "Bojenje slike"
 
 msgid "Invert the mask"
 msgstr "Izvrni masku"
-
-
-msgid "Front Faces Only"
-msgstr "Samo prednje stranice"
 
 
 msgctxt "Operator"
@@ -18010,6 +17919,10 @@ msgstr "Ciljna putanja"
 msgctxt "Operator"
 msgid "Refresh"
 msgstr "Osveži"
+
+
+msgid "URL"
+msgstr "Adresa"
 
 
 msgctxt "Operator"
@@ -19071,6 +18984,10 @@ msgid "Line number to jump to"
 msgstr "Broj linije za prebacivanje"
 
 
+msgid "Filepath"
+msgstr "Putanje datoteke"
+
+
 msgctxt "Operator"
 msgid "Line Number"
 msgstr "Broj linije"
@@ -19268,6 +19185,10 @@ msgstr "Ispravi UV-e"
 
 msgid "Correct UV coordinates when transforming"
 msgstr "Ispravi UV koordinate prilikom transformacije"
+
+
+msgid "Snap to grid"
+msgstr "Lepi za mrežu"
 
 
 msgid "Snap to vertices"
@@ -19782,21 +19703,16 @@ msgstr "Y faktor približavanja"
 
 
 msgctxt "Operator"
-msgid "Remove Background Image"
-msgstr "Ukloni pozadinsku sliku"
+msgid "Select Menu"
+msgstr "Meni izvora"
 
 
-msgid "Remove a background image from the 3D view"
-msgstr "Uklanja pozadinsku sliku iz 3D pogleda"
+msgid "Path to image file"
+msgstr "Putanja do datoteke slike"
 
 
 msgid "Background image index to remove"
 msgstr "Indeks pozadinske slike za uklanjanje "
-
-
-msgctxt "Operator"
-msgid "Select Menu"
-msgstr "Meni izvora"
 
 
 msgctxt "Operator"
@@ -20210,6 +20126,16 @@ msgstr "Otvori putanju u pregledaču datoteka"
 
 
 msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Izvoz PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Uvoz PLY"
+
+
+msgctxt "Operator"
 msgid "Add Property"
 msgstr "Dodaj osobinu"
 
@@ -20374,10 +20300,6 @@ msgstr "Izvoz u STL"
 msgctxt "Operator"
 msgid "Import STL"
 msgstr "Uvoz u STL"
-
-
-msgid "URL"
-msgstr "Adresa"
 
 
 msgid "UV Maps"
@@ -20559,11 +20481,6 @@ msgstr "2D stabilizacija"
 
 msgid "Transforms"
 msgstr "Transformacija"
-
-
-msgctxt "MovieClip"
-msgid "Scene Setup"
-msgstr "Postavke scene"
 
 
 msgid "Tracking Settings"
@@ -21365,10 +21282,6 @@ msgid "Global Undo"
 msgstr "Opšta scena"
 
 
-msgid "Automatic keyframe insertion in available F-Curves"
-msgstr "Samostalno umeći ključeve na ipo krivoj akcija"
-
-
 msgid "MPlayer"
 msgstr "MPlayer"
 
@@ -21423,10 +21336,6 @@ msgstr "Direktorijum Python skripti"
 
 msgid "The default directory to search for sounds"
 msgstr "Osnovni direktorijum sa zvucima"
-
-
-msgid "The directory for storing temporary save files"
-msgstr "Direktorijum za čuvanje privremenih datoteka"
 
 
 msgid "The default directory to search for textures"
@@ -22601,10 +22510,6 @@ msgid "Mask Strip"
 msgstr "Maskiraj traku"
 
 
-msgid "Bright"
-msgstr "Svetlina"
-
-
 msgid "Sequence Transform"
 msgstr "Transformacija sekvence"
 
@@ -22755,11 +22660,6 @@ msgstr "Ciljna grupa temena"
 
 msgid "Mass Vertex Group"
 msgstr "Masa grupe temena"
-
-
-msgctxt "MovieClip"
-msgid "Track"
-msgstr "Staza"
 
 
 msgid "2D Cursor Location"
@@ -23195,14 +23095,6 @@ msgid "Live Unwrap"
 msgstr "Rastvori UV"
 
 
-msgid "Bezier Points"
-msgstr "Bezier kriva"
-
-
-msgid "Collection of points for Bezier curves only"
-msgstr "Zbirka tačaka samo za Bazierove krive"
-
-
 msgid "Hide this curve in Edit mode"
 msgstr "Sakrij ovu krivu u režimu izmene"
 
@@ -23221,18 +23113,6 @@ msgstr "Tačaka U"
 
 msgid "Points V"
 msgstr "Tačaka V"
-
-
-msgid "The type of radius interpolation for Bezier curves"
-msgstr "Osnovni katalog sa Python skriptovima"
-
-
-msgid "Bezier U"
-msgstr "Bezier kriva U"
-
-
-msgid "Bezier V"
-msgstr "Bezier kriva V"
 
 
 msgid "NURBS weight"
@@ -23877,10 +23757,6 @@ msgstr "Zalepi za najbliži marker"
 
 msgid "Snap Element"
 msgstr "Element lepljenja"
-
-
-msgid "Snap to grid"
-msgstr "Lepi za mrežu"
 
 
 msgid "Node X"
@@ -24553,6 +24429,10 @@ msgid "Invert Selection"
 msgstr "Obrni izbor"
 
 
+msgid "Tracking"
+msgstr "Praćenje"
+
+
 msgctxt "Operator"
 msgid "New"
 msgstr "Novo"
@@ -24574,6 +24454,16 @@ msgstr "Otvori..."
 msgctxt "Operator"
 msgid "Manual"
 msgstr "Uputstvo"
+
+
+msgctxt "Operator"
+msgid "Location"
+msgstr "Lokacija"
+
+
+msgctxt "Operator"
+msgid "Rotation"
+msgstr "Okretanje"
 
 
 msgid "Unknown"
@@ -24864,11 +24754,6 @@ msgstr "Kalibracija"
 
 msgid "Track:"
 msgstr "Staze:"
-
-
-msgctxt "Operator"
-msgid "Location"
-msgstr "Lokacija"
 
 
 msgctxt "Operator"
@@ -25205,11 +25090,6 @@ msgid "Glow"
 msgstr "Sjaj"
 
 
-msgctxt "Operator"
-msgid "Rotation"
-msgstr "Okretanje"
-
-
 msgctxt "Text"
 msgid "New"
 msgstr "Novo"
@@ -25329,6 +25209,10 @@ msgid "View Name"
 msgstr "Naziv pogleda"
 
 
+msgid "Preferences:"
+msgstr "Vaša podešavanja"
+
+
 msgid "Invert Wheel Zoom Direction"
 msgstr "Obrnuti smer približavanja točkićem"
 
@@ -25363,18 +25247,6 @@ msgstr "Upozorenje:"
 
 msgid "Internet:"
 msgstr "Internet:"
-
-
-msgid "description"
-msgstr "opis"
-
-
-msgid "location"
-msgstr "lokacija"
-
-
-msgid "Preferences:"
-msgstr "Vaša podešavanja"
 
 
 msgctxt "Operator"
@@ -25500,11 +25372,6 @@ msgstr "Mreža"
 msgctxt "Operator"
 msgid "Monkey"
 msgstr "Majmun"
-
-
-msgctxt "Operator"
-msgid "Bezier"
-msgstr "Bazierova kriva"
 
 
 msgctxt "Operator"
@@ -25970,10 +25837,6 @@ msgid "Basic"
 msgstr "Osnovno"
 
 
-msgid "Nothing selected"
-msgstr "Ništa nije izabrano"
-
-
 msgid "Scene not found"
 msgstr "Brzina zvuka"
 
@@ -26008,16 +25871,6 @@ msgstr "Bez poze za kopiranje"
 
 msgid "Cannot make segment"
 msgstr "Formiraj segment"
-
-
-msgctxt "Curve"
-msgid "BezierCurve"
-msgstr "BazierKriva"
-
-
-msgctxt "Curve"
-msgid "BezierCircle"
-msgstr "BazierKrug"
 
 
 msgctxt "Curve"
@@ -26066,6 +25919,10 @@ msgstr "Tekst je previše dugačak"
 
 msgid "No active frame to delete"
 msgstr "Modifikator vrednosti F-krive"
+
+
+msgid "Nothing selected"
+msgstr "Ništa nije izabrano"
 
 
 msgid "Pin"
@@ -26140,6 +25997,10 @@ msgstr "Ukloni prečicu"
 msgctxt "Operator"
 msgid "Online Python Reference"
 msgstr "Python uputstvo na internetu"
+
+
+msgid "%d items"
+msgstr "%d stavki"
 
 
 msgid "Lightness"
@@ -26389,8 +26250,12 @@ msgid "New"
 msgstr "Novo"
 
 
-msgid "%d items"
-msgstr "%d stavki"
+msgid "Material Groups"
+msgstr "Grupa materijala"
+
+
+msgid "Smooth Groups"
+msgstr "Grupe umekšanja"
 
 
 msgctxt "Mesh"
@@ -27219,6 +27084,10 @@ msgid "Fac"
 msgstr "Strana"
 
 
+msgid "Bright"
+msgstr "Svetlina"
+
+
 msgid "Val"
 msgstr "Vr."
 
@@ -27451,10 +27320,6 @@ msgstr "Ne mogu da otvorim datoteku"
 
 msgid "Not a library"
 msgstr "Nije zbirka"
-
-
-msgid "OK?"
-msgstr "U redu?"
 
 
 msgid "unsupported format"

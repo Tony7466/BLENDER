@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: 2023-12-21 01:55+0000\n"
 "Last-Translator: Lisa <blendergirl@tutanota.com>\n"
 "Language-Team: Dutch <https://translate.blender.org/projects/blender-ui/ui/nl/>\n"
@@ -1969,6 +1969,10 @@ msgid "Lowest"
 msgstr "Laagste"
 
 
+msgid "Repeat"
+msgstr "Herhaal"
+
+
 msgid "R"
 msgstr "R"
 
@@ -1995,6 +1999,10 @@ msgstr "Blauw"
 
 msgid "Show Line"
 msgstr "Toon Lijn"
+
+
+msgid "Animation"
+msgstr "Animatie"
 
 
 msgid "Brush"
@@ -2107,10 +2115,6 @@ msgstr "Afvlakking Vorm"
 
 msgid "Projected"
 msgstr "Geprojecteerd"
-
-
-msgid "Repeat"
-msgstr "Herhaal"
 
 
 msgid "Elastic"
@@ -2608,10 +2612,6 @@ msgstr "Spiegel Y"
 
 msgid "Sharp"
 msgstr "Scherp"
-
-
-msgid "Animation"
-msgstr "Animatie"
 
 
 msgid "Simulation"
@@ -3884,11 +3884,6 @@ msgstr "Selectie Aan/Uit"
 
 
 msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "Voeg Bezier Toe"
-
-
-msgctxt "Operator"
 msgid "Add Path"
 msgstr "Voeg Pad Toe"
 
@@ -3946,11 +3941,6 @@ msgstr "Exporteer Camera & Markeringen"
 msgctxt "Operator"
 msgid "Export BVH"
 msgstr "Exporteer BVH"
-
-
-msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exporteer PLY"
 
 
 msgid "Apply Modifiers"
@@ -4492,11 +4482,6 @@ msgstr "Importeer Afbeeldingen als Vlakken"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importeer PLY"
-
-
-msgctxt "Operator"
 msgid "Import FBX"
 msgstr "Importeer FBX"
 
@@ -4933,10 +4918,6 @@ msgid "Delete selected objects"
 msgstr "Verwijder geselecteerde objecten"
 
 
-msgid "Filepath"
-msgstr "Bestandspad"
-
-
 msgctxt "Operator"
 msgid "Duplicate Objects"
 msgstr "Dupliceer Objecten"
@@ -5041,16 +5022,6 @@ msgstr "Voeg Licht Toe"
 
 msgid "Add a light object to the scene"
 msgstr "Voeg een licht object toe in de scene"
-
-
-msgctxt "Operator"
-msgid "Load Background Image"
-msgstr "Laad Achtergrondafbeelding"
-
-
-msgctxt "Operator"
-msgid "Load Reference Image"
-msgstr "Laad Voorbeeldafbeelding"
 
 
 msgid "Copy Modifiers"
@@ -5959,6 +5930,10 @@ msgid "Jump"
 msgstr "Spring"
 
 
+msgid "Filepath"
+msgstr "Bestandspad"
+
+
 msgctxt "Operator"
 msgid "Line Number"
 msgstr "Lijnnummer"
@@ -6321,6 +6296,16 @@ msgid "Open a Blender file"
 msgstr "Open een Blender Bestand"
 
 
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exporteer PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importeer PLY"
+
+
 msgid "All Types"
 msgstr "Alle Types"
 
@@ -6540,11 +6525,6 @@ msgid "Custom Shape"
 msgstr "Aangepaste Vorm"
 
 
-msgctxt "MovieClip"
-msgid "Scene Setup"
-msgstr "Scene Opstelling"
-
-
 msgid "Restrictions"
 msgstr "Beperkingen"
 
@@ -6655,11 +6635,6 @@ msgstr "Ontwikkeling"
 
 msgid "Tablet"
 msgstr "Tablet"
-
-
-msgctxt "WindowManager"
-msgid "Translation"
-msgstr "Vertaling"
 
 
 msgid "Fly & Walk"
@@ -7468,6 +7443,16 @@ msgid "Characters"
 msgstr "Karakters"
 
 
+msgctxt "Operator"
+msgid "Location"
+msgstr "Locatie"
+
+
+msgctxt "Operator"
+msgid "Rotation"
+msgstr "Rotatie"
+
+
 msgid "Frame Range Before"
 msgstr "Framebereik Voor"
 
@@ -7777,11 +7762,6 @@ msgstr "Solutie"
 
 
 msgctxt "Operator"
-msgid "Location"
-msgstr "Locatie"
-
-
-msgctxt "Operator"
 msgid "Set Floor"
 msgstr "Zet Vloer"
 
@@ -7933,11 +7913,6 @@ msgstr "Selectie"
 msgctxt "Operator"
 msgid "Save As..."
 msgstr "Opslaan Als..."
-
-
-msgctxt "Operator"
-msgid "Horizontally"
-msgstr "Horizontaal"
 
 
 msgctxt "Operator"
@@ -8100,11 +8075,6 @@ msgstr "Gloed"
 msgctxt "Operator"
 msgid "Position"
 msgstr "Positie"
-
-
-msgctxt "Operator"
-msgid "Rotation"
-msgstr "Rotatie"
 
 
 msgctxt "Operator"
@@ -8286,6 +8256,10 @@ msgid "Double Click Speed"
 msgstr "Snelheid Dubbelklik"
 
 
+msgid "Preferences:"
+msgstr "Instellingen:"
+
+
 msgid "Use Light"
 msgstr "Gebruik Licht"
 
@@ -8322,21 +8296,9 @@ msgid "Internet:"
 msgstr "Internet:"
 
 
-msgid "description"
-msgstr "beschrijving"
-
-
-msgid "location"
-msgstr "locatie"
-
-
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "Documentatie"
-
-
-msgid "Preferences:"
-msgstr "Instellingen:"
 
 
 msgctxt "Operator"
@@ -8457,11 +8419,6 @@ msgstr "Importeer OpenVDB..."
 msgctxt "Operator"
 msgid "Speaker"
 msgstr "Luidspreker"
-
-
-msgctxt "Operator"
-msgid "Background"
-msgstr "Achtergrond"
 
 
 msgctxt "Operator"
@@ -8670,6 +8627,11 @@ msgstr "Skelet"
 
 
 msgctxt "Operator"
+msgid "Background"
+msgstr "Achtergrond"
+
+
+msgctxt "Operator"
 msgid "Delete Global"
 msgstr "Verwijder Globale"
 
@@ -8844,10 +8806,6 @@ msgid "Hidden %d"
 msgstr "Verborgen %d"
 
 
-msgid "Nothing selected"
-msgstr "Niets geselecteerd"
-
-
 msgid "Delete Modifier"
 msgstr "Verwijder Aanpasser"
 
@@ -8858,16 +8816,6 @@ msgstr "Coëfficiënt"
 
 msgid "Too many points selected: %d"
 msgstr "Teveel punten geselecteerd: %d"
-
-
-msgctxt "Curve"
-msgid "BezierCurve"
-msgstr "Bezier Kromme"
-
-
-msgctxt "Curve"
-msgid "BezierCircle"
-msgstr "Bezier Cirkel"
 
 
 msgctxt "Curve"
@@ -8926,6 +8874,10 @@ msgstr "Niets om te gummen"
 
 msgid "Object created"
 msgstr "Object gecreëerd"
+
+
+msgid "Nothing selected"
+msgstr "Niets geselecteerd"
 
 
 msgid "Pin"
@@ -9574,10 +9526,6 @@ msgstr "\"%s\" Opgeslagen"
 
 msgid "Not a library"
 msgstr "Geen bibliotheek"
-
-
-msgid "OK?"
-msgstr "OK?"
 
 
 msgid "Toggle System Console"

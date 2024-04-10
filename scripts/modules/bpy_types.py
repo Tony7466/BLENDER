@@ -1044,7 +1044,12 @@ class _GenericUI:
 
     @classmethod
     def is_extended(cls):
-        return bool(getattr(cls.draw, "_draw_funcs", None))
+        draw_funcs = getattr(cls.draw, "_draw_funcs", None)
+        if draw_funcs is None:
+            return False
+        # Ignore the first item (the original draw function).
+        # This can happen when enabling then disabling add-ons.
+        return len(draw_funcs) > 1
 
     @classmethod
     def append(cls, draw_func):
@@ -1094,7 +1099,7 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
     def path_menu(self, searchpaths, operator, *,
                   props_default=None, prop_filepath="filepath",
                   filter_ext=None, filter_path=None, display_name=None,
-                  add_operator=None):
+                  add_operator=None, add_operator_props=None):
         """
         Populate a menu from a list of paths.
 
@@ -1171,6 +1176,9 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
                 props = row.operator(add_operator, text="", icon='REMOVE')
                 props.name = name
                 props.remove_name = True
+                if add_operator_props is not None:
+                    for attr, value in add_operator_props.items():
+                        setattr(props, attr, value)
 
         if add_operator:
             wm = bpy.data.window_managers[0]
@@ -1184,6 +1192,9 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
 
             props = row.operator(add_operator, text="", icon='ADD')
             props.name = wm.preset_name
+            if add_operator_props is not None:
+                for attr, value in add_operator_props.items():
+                    setattr(props, attr, value)
 
     def draw_preset(self, _context):
         """
@@ -1200,12 +1211,14 @@ class Menu(StructRNA, _GenericUI, metaclass=RNAMeta):
         ext_valid = getattr(self, "preset_extensions", {".py", ".xml"})
         props_default = getattr(self, "preset_operator_defaults", None)
         add_operator = getattr(self, "preset_add_operator", None)
+        add_operator_props = getattr(self, "preset_add_operator_properties", None)
         self.path_menu(
             bpy.utils.preset_paths(self.preset_subdir),
             self.preset_operator,
             props_default=props_default,
             filter_ext=lambda ext: ext.lower() in ext_valid,
             add_operator=add_operator,
+            add_operator_props=add_operator_props,
             display_name=lambda name: bpy.path.display_name(name, title_case=False)
         )
 
@@ -1253,10 +1266,15 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
         List of node links from or to this socket.
 
         .. note:: Takes ``O(len(nodetree.links))`` time."""
-        return tuple(
-            link for link in self.id_data.links
-            if (link.from_socket == self or
-                link.to_socket == self))
+        links = (link for link in self.id_data.links
+                 if self in (link.from_socket, link.to_socket))
+
+        if not self.is_output:
+            links = sorted(links,
+                           key=lambda link: link.multi_input_sort_id,
+                           reverse=True)
+
+        return tuple(links)
 
 
 class NodeTreeInterfaceItem(StructRNA):
@@ -1305,19 +1323,6 @@ class GeometryNode(NodeInternal):
 
 class RenderEngine(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
-
-
-class UserExtensionRepo(StructRNA):
-    __slots__ = ()
-
-    @property
-    def directory_or_default(self):
-        """Return ``directory`` or a default path derived from the users scripts path."""
-        if directory := self.directory:
-            return directory
-        import os
-        import bpy
-        return os.path.join(bpy.utils.user_resource('SCRIPTS', path="extensions"), self.module)
 
 
 class HydraRenderEngine(RenderEngine):

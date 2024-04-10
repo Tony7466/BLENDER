@@ -29,13 +29,13 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_camera.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_editlattice.h"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 
@@ -43,10 +43,11 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "BLI_sys_types.h" /* needed for intptr_t used in ED_mesh.hh */
 #include "ED_mesh.hh"
+#include "ED_object_vgroup.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -157,18 +158,18 @@ const EnumPropertyItem rna_enum_object_gpencil_type_items[] = {
     {GP_STROKE, "STROKE", ICON_STROKE, "Stroke", "Create a simple stroke with basic colors"},
     {GP_MONKEY, "MONKEY", ICON_MONKEY, "Monkey", "Construct a Suzanne grease pencil object"},
     RNA_ENUM_ITEM_SEPR,
-    {GP_LRT_SCENE,
-     "LRT_SCENE",
+    {GREASE_PENCIL_LINEART_SCENE,
+     "LINEART_SCENE",
      ICON_SCENE_DATA,
      "Scene Line Art",
      "Quickly set up line art for the entire scene"},
-    {GP_LRT_COLLECTION,
-     "LRT_COLLECTION",
+    {GREASE_PENCIL_LINEART_COLLECTION,
+     "LINEART_COLLECTION",
      ICON_OUTLINER_COLLECTION,
      "Collection Line Art",
      "Quickly set up line art for the active collection"},
-    {GP_LRT_OBJECT,
-     "LRT_OBJECT",
+    {GREASE_PENCIL_LINEART_OBJECT,
+     "LINEART_OBJECT",
      ICON_OBJECT_DATA,
      "Object Line Art",
      "Quickly set up line art for the active object"},
@@ -316,6 +317,8 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 
 #  include <algorithm>
 
+#  include <fmt/format.h>
+
 #  include "DNA_ID.h"
 #  include "DNA_constraint_types.h"
 #  include "DNA_gpencil_legacy_types.h"
@@ -328,11 +331,11 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "BKE_constraint.h"
 #  include "BKE_context.hh"
 #  include "BKE_curve.hh"
-#  include "BKE_deform.h"
+#  include "BKE_deform.hh"
 #  include "BKE_effect.h"
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 #  include "BKE_gpencil_modifier_legacy.h"
-#  include "BKE_key.h"
+#  include "BKE_key.hh"
 #  include "BKE_light_linking.h"
 #  include "BKE_material.h"
 #  include "BKE_mesh.hh"
@@ -340,7 +343,7 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 #  include "BKE_modifier.hh"
 #  include "BKE_object.hh"
 #  include "BKE_particle.h"
-#  include "BKE_scene.h"
+#  include "BKE_scene.hh"
 
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
@@ -365,7 +368,7 @@ static void rna_Object_matrix_world_update(Main *bmain, Scene *scene, PointerRNA
 {
   /* Don't use compatibility so we get predictable rotation. */
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  BKE_object_apply_mat4(ob, ob->object_to_world, false, true);
+  BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, true);
   rna_Object_internal_update(bmain, scene, ptr);
 }
 
@@ -373,7 +376,7 @@ static void rna_Object_hide_update(Main *bmain, Scene * /*scene*/, PointerRNA *p
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   BKE_main_collection_sync_remap(bmain);
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &ob->id);
 }
@@ -403,6 +406,18 @@ static void rna_GPencil_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }
+}
+
+static void rna_Object_matrix_world_get(PointerRNA *ptr, float *values)
+{
+  Object *ob = static_cast<Object *>(ptr->data);
+  std::copy_n(ob->object_to_world().base_ptr(), 16, values);
+}
+
+static void rna_Object_matrix_world_set(PointerRNA *ptr, const float *values)
+{
+  Object *ob = static_cast<Object *>(ptr->data);
+  ob->runtime->object_to_world = blender::float4x4(values);
 }
 
 static void rna_Object_matrix_local_get(PointerRNA *ptr, float values[16])
@@ -471,11 +486,11 @@ static void rna_Object_active_shape_update(Main *bmain, Scene * /*scene*/, Point
     switch (ob->type) {
       case OB_MESH: {
         Mesh *mesh = static_cast<Mesh *>(ob->data);
-        BMEditMesh *em = mesh->edit_mesh;
+        BMEditMesh *em = mesh->runtime->edit_mesh;
         int select_mode = em->selectmode;
         EDBM_mesh_load(bmain, ob);
         EDBM_mesh_make(ob, select_mode, true);
-        em = mesh->edit_mesh;
+        em = mesh->runtime->edit_mesh;
 
         DEG_id_tag_update(&mesh->id, 0);
 
@@ -643,7 +658,7 @@ static void rna_Object_parent_set(PointerRNA *ptr, PointerRNA value, ReportList 
   Object *par = static_cast<Object *>(value.data);
 
   {
-    ED_object_parent(ob, par, ob->partype, ob->parsubstr);
+    blender::ed::object::parent_set(ob, par, ob->partype, ob->parsubstr);
   }
 }
 
@@ -677,7 +692,7 @@ static bool rna_Object_parent_override_apply(Main *bmain,
 
   if (parent_src == nullptr) {
     /* The only case where we do want default behavior (with matrix reset). */
-    ED_object_parent(ob, parent_src, ob->partype, ob->parsubstr);
+    blender::ed::object::parent_set(ob, parent_src, ob->partype, ob->parsubstr);
   }
   else {
     ob->parent = parent_src;
@@ -690,12 +705,13 @@ static void rna_Object_parent_type_set(PointerRNA *ptr, int value)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
-  /* Skip if type did not change (otherwise we loose parent inverse in ED_object_parent). */
+  /* Skip if type did not change (otherwise we loose parent inverse in
+   * blender::ed::object::parent_set). */
   if (ob->partype == value) {
     return;
   }
 
-  ED_object_parent(ob, ob->parent, value, ob->parsubstr);
+  blender::ed::object::parent_set(ob, ob->parent, value, ob->parsubstr);
 }
 
 static bool rna_Object_parent_type_override_apply(Main *bmain,
@@ -778,7 +794,7 @@ static void rna_Object_parent_bone_set(PointerRNA *ptr, const char *value)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
-  ED_object_parent(ob, ob->parent, ob->partype, value);
+  blender::ed::object::parent_set(ob, ob->parent, ob->partype, value);
 }
 
 static bool rna_Object_parent_bone_override_apply(Main *bmain,
@@ -1109,8 +1125,8 @@ static void rna_Object_active_material_index_set(PointerRNA *ptr, int value)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->edit_mesh) {
-      mesh->edit_mesh->mat_nr = value;
+    if (mesh->runtime->edit_mesh) {
+      mesh->runtime->edit_mesh->mat_nr = value;
     }
   }
 }
@@ -1151,7 +1167,7 @@ static void rna_Object_active_material_set(PointerRNA *ptr,
   }
 }
 
-static int rna_Object_active_material_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_Object_active_material_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   bool is_editable;
@@ -1244,7 +1260,7 @@ static void rna_Object_dimensions_set(PointerRNA *ptr, const float *value)
   BKE_object_dimensions_set(ob, value, 0);
 }
 
-static int rna_Object_location_editable(PointerRNA *ptr, int index)
+static int rna_Object_location_editable(const PointerRNA *ptr, int index)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
@@ -1263,7 +1279,7 @@ static int rna_Object_location_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_Object_scale_editable(PointerRNA *ptr, int index)
+static int rna_Object_scale_editable(const PointerRNA *ptr, int index)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
@@ -1282,7 +1298,7 @@ static int rna_Object_scale_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_Object_rotation_euler_editable(PointerRNA *ptr, int index)
+static int rna_Object_rotation_euler_editable(const PointerRNA *ptr, int index)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
@@ -1301,7 +1317,7 @@ static int rna_Object_rotation_euler_editable(PointerRNA *ptr, int index)
   }
 }
 
-static int rna_Object_rotation_4d_editable(PointerRNA *ptr, int index)
+static int rna_Object_rotation_4d_editable(const PointerRNA *ptr, int index)
 {
   Object *ob = static_cast<Object *>(ptr->data);
 
@@ -1336,7 +1352,7 @@ static int rna_MaterialSlot_index_get(PointerRNA *ptr)
   return rna_MaterialSlot_index(ptr);
 }
 
-static int rna_MaterialSlot_material_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_MaterialSlot_material_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   const int index = rna_MaterialSlot_index(ptr);
@@ -1462,10 +1478,10 @@ static void rna_MaterialSlot_update(Main *bmain, Scene *scene, PointerRNA *ptr)
   DEG_relations_tag_update(bmain);
 }
 
-static char *rna_MaterialSlot_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_MaterialSlot_path(const PointerRNA *ptr)
 {
   int index = rna_MaterialSlot_index(ptr);
-  return BLI_sprintfN("material_slots[%d]", index);
+  return fmt::format("material_slots[{}]", index);
 }
 
 static int rna_Object_material_slots_length(PointerRNA *ptr)
@@ -1512,9 +1528,9 @@ static PointerRNA rna_Object_display_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ObjectDisplay, ptr->data);
 }
 
-static char *rna_ObjectDisplay_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ObjectDisplay_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("display");
+  return "display";
 }
 
 static PointerRNA rna_Object_active_particle_system_get(PointerRNA *ptr)
@@ -1608,7 +1624,7 @@ static bConstraint *rna_Object_constraints_new(Object *object, Main *bmain, int 
 {
   bConstraint *new_con = BKE_constraint_add_for_object(object, nullptr, type);
 
-  ED_object_constraint_tag_update(bmain, object, new_con);
+  blender::ed::object::constraint_tag_update(bmain, object, new_con);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_ADDED, object);
 
   return new_con;
@@ -1632,8 +1648,8 @@ static void rna_Object_constraints_remove(Object *object,
   BKE_constraint_remove(&object->constraints, con);
   RNA_POINTER_INVALIDATE(con_ptr);
 
-  ED_object_constraint_update(bmain, object);
-  ED_object_constraint_active_set(object, nullptr);
+  blender::ed::object::constraint_update(bmain, object);
+  blender::ed::object::constraint_active_set(object, nullptr);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, object);
 }
 
@@ -1641,8 +1657,8 @@ static void rna_Object_constraints_clear(Object *object, Main *bmain)
 {
   BKE_constraints_free(&object->constraints);
 
-  ED_object_constraint_update(bmain, object);
-  ED_object_constraint_active_set(object, nullptr);
+  blender::ed::object::constraint_update(bmain, object);
+  blender::ed::object::constraint_active_set(object, nullptr);
 
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_REMOVED, object);
 }
@@ -1659,7 +1675,7 @@ static void rna_Object_constraints_move(
     return;
   }
 
-  ED_object_constraint_tag_update(bmain, object, nullptr);
+  blender::ed::object::constraint_tag_update(bmain, object, nullptr);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT, object);
 }
 
@@ -1669,7 +1685,7 @@ static bConstraint *rna_Object_constraints_copy(Object *object, Main *bmain, Poi
   bConstraint *new_con = BKE_constraint_copy_for_object(object, con);
   new_con->flag |= CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
 
-  ED_object_constraint_tag_update(bmain, object, new_con);
+  blender::ed::object::constraint_tag_update(bmain, object, new_con);
   WM_main_add_notifier(NC_OBJECT | ND_CONSTRAINT | NA_ADDED, object);
 
   return new_con;
@@ -1725,7 +1741,7 @@ bool rna_Object_constraints_override_apply(Main *bmain,
 static ModifierData *rna_Object_modifier_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
-  ModifierData *md = ED_object_modifier_add(
+  ModifierData *md = blender::ed::object::modifier_add(
       reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_ADDED, object);
@@ -1739,7 +1755,8 @@ static void rna_Object_modifier_remove(Object *object,
                                        PointerRNA *md_ptr)
 {
   ModifierData *md = static_cast<ModifierData *>(md_ptr->data);
-  if (ED_object_modifier_remove(reports, CTX_data_main(C), CTX_data_scene(C), object, md) == false)
+  if (blender::ed::object::modifier_remove(
+          reports, CTX_data_main(C), CTX_data_scene(C), object, md) == false)
   {
     /* error is already set */
     return;
@@ -1752,7 +1769,7 @@ static void rna_Object_modifier_remove(Object *object,
 
 static void rna_Object_modifier_clear(Object *object, bContext *C)
 {
-  ED_object_modifier_clear(CTX_data_main(C), CTX_data_scene(C), object);
+  blender::ed::object::modifier_clear(CTX_data_main(C), CTX_data_scene(C), object);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
@@ -1766,7 +1783,7 @@ static void rna_Object_modifier_move(Object *object, ReportList *reports, int fr
     return;
   }
 
-  ED_object_modifier_move_to_index(reports, RPT_ERROR, object, md, to, false);
+  blender::ed::object::modifier_move_to_index(reports, RPT_ERROR, object, md, to, false);
 }
 
 static PointerRNA rna_Object_active_modifier_get(PointerRNA *ptr)
@@ -1833,7 +1850,7 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
   /* While it would be nicer to use lower-level BKE_modifier_new() here, this one is lacking
    * special-cases handling (particles and other physics modifiers mostly), so using the ED version
    * instead, to avoid duplicating code. */
-  ModifierData *mod_dst = ED_object_modifier_add(
+  ModifierData *mod_dst = blender::ed::object::modifier_add(
       nullptr, bmain, nullptr, ob_dst, mod_src->name, mod_src->type);
 
   if (mod_dst == nullptr) {
@@ -1863,7 +1880,9 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
   ParticleSystem *psys_dst = (mod_dst->type == eModifierType_ParticleSystem) ?
                                  (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys :
                                  nullptr;
+  const int persistent_uid = mod_dst->persistent_uid;
   BKE_modifier_copydata(mod_src, mod_dst);
+  mod_dst->persistent_uid = persistent_uid;
   if (mod_dst->type == eModifierType_ParticleSystem) {
     psys_dst->flag &= ~PSYS_DELETE;
     (reinterpret_cast<ParticleSystemModifierData *>(mod_dst))->psys = psys_dst;
@@ -1881,7 +1900,7 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
 static GpencilModifierData *rna_Object_greasepencil_modifier_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
-  return ED_object_gpencil_modifier_add(
+  return blender::ed::object::gpencil_modifier_add(
       reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
 }
 
@@ -1891,7 +1910,9 @@ static void rna_Object_greasepencil_modifier_remove(Object *object,
                                                     PointerRNA *gmd_ptr)
 {
   GpencilModifierData *gmd = static_cast<GpencilModifierData *>(gmd_ptr->data);
-  if (ED_object_gpencil_modifier_remove(reports, CTX_data_main(C), object, gmd) == false) {
+  if (blender::ed::object::gpencil_modifier_remove(reports, CTX_data_main(C), object, gmd) ==
+      false)
+  {
     /* error is already set */
     return;
   }
@@ -1903,7 +1924,7 @@ static void rna_Object_greasepencil_modifier_remove(Object *object,
 
 static void rna_Object_greasepencil_modifier_clear(Object *object, bContext *C)
 {
-  ED_object_gpencil_modifier_clear(CTX_data_main(C), object);
+  blender::ed::object::gpencil_modifier_clear(CTX_data_main(C), object);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
@@ -1946,7 +1967,7 @@ bool rna_Object_greasepencil_modifiers_override_apply(
   /* While it would be nicer to use lower-level BKE_modifier_new() here, this one is lacking
    * special-cases handling (particles and other physics modifiers mostly), so using the ED version
    * instead, to avoid duplicating code. */
-  GpencilModifierData *mod_dst = ED_object_gpencil_modifier_add(
+  GpencilModifierData *mod_dst = blender::ed::object::gpencil_modifier_add(
       nullptr, bmain, nullptr, ob_dst, mod_src->name, mod_src->type);
 
   BKE_gpencil_modifier_copydata(mod_src, mod_dst);
@@ -1964,7 +1985,8 @@ bool rna_Object_greasepencil_modifiers_override_apply(
 static ShaderFxData *rna_Object_shaderfx_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
-  return ED_object_shaderfx_add(reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
+  return blender::ed::object::shaderfx_add(
+      reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
 }
 
 static void rna_Object_shaderfx_remove(Object *object,
@@ -1973,7 +1995,7 @@ static void rna_Object_shaderfx_remove(Object *object,
                                        PointerRNA *gmd_ptr)
 {
   ShaderFxData *gmd = static_cast<ShaderFxData *>(gmd_ptr->data);
-  if (ED_object_shaderfx_remove(reports, CTX_data_main(C), object, gmd) == false) {
+  if (blender::ed::object::shaderfx_remove(reports, CTX_data_main(C), object, gmd) == false) {
     /* error is already set */
     return;
   }
@@ -1985,7 +2007,7 @@ static void rna_Object_shaderfx_remove(Object *object,
 
 static void rna_Object_shaderfx_clear(Object *object, bContext *C)
 {
-  ED_object_shaderfx_clear(CTX_data_main(C), object);
+  blender::ed::object::shaderfx_clear(CTX_data_main(C), object);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
@@ -2091,7 +2113,7 @@ static void rna_VertexGroup_vertex_add(ID *id,
 
   while (index_num--) {
     /* XXX: not efficient calling within loop. */
-    ED_vgroup_vert_add(ob, def, *index++, weight, assignmode);
+    blender::ed::object::vgroup_vert_add(ob, def, *index++, weight, assignmode);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -2110,7 +2132,7 @@ static void rna_VertexGroup_vertex_remove(
   }
 
   while (index_num--) {
-    ED_vgroup_vert_remove(ob, dg, *index++);
+    blender::ed::object::vgroup_vert_remove(ob, dg, *index++);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -2119,7 +2141,8 @@ static void rna_VertexGroup_vertex_remove(
 
 static float rna_VertexGroup_weight(ID *id, bDeformGroup *dg, ReportList *reports, int index)
 {
-  float weight = ED_vgroup_vert_weight(reinterpret_cast<Object *>(id), dg, index);
+  float weight = blender::ed::object::vgroup_vert_weight(
+      reinterpret_cast<Object *>(id), dg, index);
 
   if (weight < 0) {
     BKE_report(reports, RPT_ERROR, "Vertex not in group");
@@ -2174,9 +2197,9 @@ static void rna_object_lineart_update(Main * /*bmain*/, Scene * /*scene*/, Point
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, ptr->owner_id);
 }
 
-static char *rna_ObjectLineArt_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ObjectLineArt_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("lineart");
+  return "lineart";
 }
 
 static bool mesh_symmetry_get_common(PointerRNA *ptr, const eMeshSymmetryType sym)
@@ -2238,7 +2261,7 @@ static void rna_Object_mesh_symmetry_z_set(PointerRNA *ptr, bool value)
   mesh_symmetry_set_common(ptr, value, ME_SYMMETRY_Z);
 }
 
-static int rna_Object_mesh_symmetry_yz_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_Object_mesh_symmetry_yz_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   const Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   if (ob->type != OB_MESH) {
@@ -2278,9 +2301,9 @@ static PointerRNA rna_Object_light_linking_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_ObjectLightLinking, ptr->data);
 }
 
-static char *rna_ObjectLightLinking_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ObjectLightLinking_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("light_linking");
+  return "light_linking";
 }
 
 static PointerRNA rna_LightLinking_receiver_collection_get(PointerRNA *ptr)
@@ -3335,11 +3358,12 @@ static void rna_def_object(BlenderRNA *brna)
 
   /* matrix */
   prop = RNA_def_property(srna, "matrix_world", PROP_FLOAT, PROP_MATRIX);
-  RNA_def_property_float_sdna(prop, nullptr, "object_to_world");
   RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_override_clear_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_float_funcs(
+      prop, "rna_Object_matrix_world_get", "rna_Object_matrix_world_set", nullptr);
   RNA_def_property_ui_text(prop, "Matrix World", "Worldspace transformation matrix");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_matrix_world_update");
 

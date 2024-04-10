@@ -28,8 +28,9 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -1125,6 +1126,7 @@ bool BKE_mesh_validate(Mesh *mesh, const bool do_verbose, const bool cddata_chec
       &changed);
 
   if (changed) {
+    BKE_mesh_runtime_clear_cache(mesh);
     DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY_ALL_MODES);
     return true;
   }

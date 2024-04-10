@@ -12,10 +12,9 @@
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_curves.hh"
 #include "ED_node.hh"
@@ -68,17 +67,16 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
   Main *bmain = CTX_data_main(&C);
   Scene *scene = CTX_data_scene(&C);
 
-  ModifierData *md = ED_object_modifier_add(
+  ModifierData *md = object::modifier_add(
       nullptr, bmain, scene, &curves_ob, DATA_("Surface Deform"), eModifierType_Nodes);
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
   nmd.node_group = ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
 
   bNodeTree *ntree = nmd.node_group;
-  ntree->tree_interface.add_socket("Geometry",
-                                   "",
-                                   "NodeSocketGeometry",
-                                   NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
-                                   nullptr);
+  ntree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
+  ntree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_INPUT, nullptr);
   bNode *group_input = nodeAddStaticNode(&C, ntree, NODE_GROUP_INPUT);
   bNode *group_output = nodeAddStaticNode(&C, ntree, NODE_GROUP_OUTPUT);
   bNode *deform_node = nodeAddStaticNode(&C, ntree, GEO_NODE_DEFORM_CURVES_ON_SURFACE);

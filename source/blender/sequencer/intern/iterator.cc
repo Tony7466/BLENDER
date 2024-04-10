@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Authors
+ * SPDX-FileCopyrightText: 2003-2024 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -12,20 +12,15 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_set.hh"
 
-#include "BKE_scene.h"
-
+#include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 #include "SEQ_time.hh"
-#include "render.hh"
 
 using blender::VectorSet;
 
@@ -82,7 +77,7 @@ void SEQ_iterator_set_expand(const Scene *scene,
   strips.add_multiple(query_matches);
 }
 
-static void query_all_strips_recursive(ListBase *seqbase, VectorSet<Sequence *> &strips)
+static void query_all_strips_recursive(const ListBase *seqbase, VectorSet<Sequence *> &strips)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     if (seq->type == SEQ_TYPE_META) {
@@ -92,7 +87,7 @@ static void query_all_strips_recursive(ListBase *seqbase, VectorSet<Sequence *> 
   }
 }
 
-static void query_all_meta_strips_recursive(ListBase *seqbase, VectorSet<Sequence *> &strips)
+static void query_all_meta_strips_recursive(const ListBase *seqbase, VectorSet<Sequence *> &strips)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     if (seq->type == SEQ_TYPE_META) {
@@ -102,14 +97,14 @@ static void query_all_meta_strips_recursive(ListBase *seqbase, VectorSet<Sequenc
   }
 }
 
-VectorSet<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase)
+VectorSet<Sequence *> SEQ_query_all_strips_recursive(const ListBase *seqbase)
 {
   VectorSet<Sequence *> strips;
   query_all_strips_recursive(seqbase, strips);
   return strips;
 }
 
-VectorSet<Sequence *> SEQ_query_all_meta_strips_recursive(ListBase *seqbase)
+VectorSet<Sequence *> SEQ_query_all_meta_strips_recursive(const ListBase *seqbase)
 {
   VectorSet<Sequence *> strips;
   query_all_meta_strips_recursive(seqbase, strips);
@@ -157,7 +152,7 @@ static void collection_filter_channel_up_to_incl(VectorSet<Sequence *> &strips, 
 
 /* Check if seq must be rendered. This depends on whole stack in some cases, not only seq itself.
  * Order of applying these conditions is important. */
-static bool must_render_strip(VectorSet<Sequence *> &strips, Sequence *strip)
+static bool must_render_strip(const VectorSet<Sequence *> &strips, Sequence *strip)
 {
   bool seq_have_effect_in_stack = false;
   for (Sequence *strip_iter : strips) {
@@ -178,8 +173,8 @@ static bool must_render_strip(VectorSet<Sequence *> &strips, Sequence *strip)
     }
   }
 
-  /* All effects are rendered (with respect to conditions above). */
-  if ((strip->type & SEQ_TYPE_EFFECT) != 0) {
+  /* All non-generator effects are rendered (with respect to conditions above). */
+  if ((strip->type & SEQ_TYPE_EFFECT) != 0 && SEQ_effect_get_num_inputs(strip->type) != 0) {
     return true;
   }
 

@@ -8,11 +8,10 @@
 #include "BLI_array.hh"
 #include "BLI_hash.hh"
 #include "BLI_index_range.hh"
-#include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.hh"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "BKE_lib_id.hh"
 #include "BKE_mask.h"
@@ -45,7 +44,7 @@ CachedMaskKey::CachedMaskKey(int2 size,
 
 uint64_t CachedMaskKey::hash() const
 {
-  return get_default_hash_4(
+  return get_default_hash(
       size, use_feather, motion_blur_samples, float2(motion_blur_shutter, aspect_ratio));
 }
 

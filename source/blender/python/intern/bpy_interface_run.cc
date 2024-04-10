@@ -19,12 +19,11 @@
 
 #include "BKE_context.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_text.h"
 
 #include "DNA_text_types.h"
 
-#include "BPY_extern.h"
 #include "BPY_extern_run.h"
 
 #include "bpy_capi_utils.h"
@@ -222,7 +221,9 @@ static bool python_script_exec(
         }
       }
     }
-    PyErr_Print();
+    if (!reports) {
+      PyErr_Print();
+    }
     PyErr_Clear();
   }
   else {
@@ -301,7 +302,7 @@ static bool bpy_run_string_impl(bContext *C,
 
   if (retval == nullptr) {
     ok = false;
-    if (ReportList *wm_reports = CTX_wm_reports(C)) {
+    if (ReportList *wm_reports = C ? CTX_wm_reports(C) : nullptr) {
       BPy_errors_to_report(wm_reports);
     }
     PyErr_Print();

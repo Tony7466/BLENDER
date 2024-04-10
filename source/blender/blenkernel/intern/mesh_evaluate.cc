@@ -14,11 +14,8 @@
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 
-#include "BLI_alloca.h"
 #include "BLI_array_utils.hh"
-#include "BLI_bitmap.h"
 #include "BLI_index_range.hh"
 #include "BLI_math_geom.h"
 #include "BLI_span.hh"
@@ -26,9 +23,7 @@
 #include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_multires.hh"
 
 using blender::float3;
 using blender::int2;
@@ -694,7 +689,7 @@ void mesh_select_edge_flush(Mesh &mesh)
     const VArray<bool> hide_vert = *attributes.lookup_or_default<bool>(
         ".hide_vert", AttrDomain::Point, false);
     array_utils::copy(
-        *attributes.lookup_or_default<bool>(".select_vert", AttrDomain::Point, false),
+        *attributes.lookup_or_default<bool>(".select_edge", AttrDomain::Point, false),
         IndexMask::from_bools(hide_vert, memory).complement(hide_vert.index_range(), memory),
         select_vert.span);
   }
@@ -703,7 +698,7 @@ void mesh_select_edge_flush(Mesh &mesh)
     const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
         ".hide_poly", AttrDomain::Face, false);
     array_utils::copy(
-        *attributes.lookup_or_default<bool>(".select_vert", AttrDomain::Face, false),
+        *attributes.lookup_or_default<bool>(".select_edge", AttrDomain::Face, false),
         IndexMask::from_bools(hide_poly, memory).complement(hide_poly.index_range(), memory),
         select_poly.span);
   }

@@ -6,9 +6,12 @@
  * \ingroup obj
  */
 
+#include "BKE_report.hh"
+
+#include "BLI_fileops.hh"
 #include "BLI_map.hh"
-#include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -96,6 +99,7 @@ static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_gl
       blocks.last().colors.append(linear);
     }
   }
+  UNUSED_VARS(p);
 }
 
 static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices &r_global_vertices)
@@ -229,7 +233,7 @@ static void geom_add_polygon(Geometry *geom,
                              const int group_index,
                              const bool shaded_smooth)
 {
-  PolyElem curr_face;
+  FaceElem curr_face;
   curr_face.shaded_smooth = shaded_smooth;
   curr_face.material_index = material_index;
   if (group_index >= 0) {
@@ -243,10 +247,16 @@ static void geom_add_polygon(Geometry *geom,
   bool face_valid = true;
   p = drop_whitespace(p, end);
   while (p < end && face_valid) {
-    PolyCorner corner;
+    FaceCorner corner;
     bool got_uv = false, got_normal = false;
     /* Parse vertex index. */
     p = parse_int(p, end, INT32_MAX, corner.vert_index, false);
+
+    /* Skip parsing when we reach start of the comment. */
+    if (*p == '#') {
+      break;
+    }
+
     face_valid &= corner.vert_index != INT32_MAX;
     if (p < end && *p == '/') {
       /* Parse UV index. */
@@ -313,7 +323,7 @@ static void geom_add_polygon(Geometry *geom,
 
   if (face_valid) {
     geom->face_elements_.append(curr_face);
-    geom->total_loops_ += curr_face.corner_count_;
+    geom->total_corner_ += curr_face.corner_count_;
   }
   else {
     /* Remove just-added corners for the invalid face. */
@@ -441,6 +451,10 @@ OBJParser::OBJParser(const OBJImportParams &import_params, size_t read_buffer_si
   obj_file_ = BLI_fopen(import_params_.filepath, "rb");
   if (!obj_file_) {
     fprintf(stderr, "Cannot read from OBJ file:'%s'.\n", import_params_.filepath);
+    BKE_reportf(import_params_.reports,
+                RPT_ERROR,
+                "OBJ Import: Cannot open file '%s'",
+                import_params_.filepath);
     return;
   }
 }
@@ -474,7 +488,7 @@ static bool parse_keyword(const char *&p, const char *end, StringRef keyword)
 /* Special case: if there were no faces/edges in any geometries,
  * treat all the vertices as a point cloud. */
 static void use_all_vertices_if_no_faces(Geometry *geom,
-                                         const Vector<std::unique_ptr<Geometry>> &all_geometries,
+                                         const Span<std::unique_ptr<Geometry>> all_geometries,
                                          const GlobalVertices &global_vertices)
 {
   if (!global_vertices.vertices.is_empty() && geom && geom->geom_type_ == GEOM_MESH) {

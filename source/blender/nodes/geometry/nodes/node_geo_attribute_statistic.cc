@@ -11,7 +11,6 @@
 #include "UI_resources.hh"
 
 #include "BLI_array_utils.hh"
-#include "BLI_math_base_safe.h"
 
 #include "NOD_socket_search_link.hh"
 
@@ -356,7 +355,8 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_items,
                     NOD_inline_enum_accessors(custom2),
                     int(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn);
+                    enums::domain_experimental_grease_pencil_version3_fn,
+                    true);
 }
 
 static void node_register()

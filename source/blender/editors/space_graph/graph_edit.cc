@@ -21,7 +21,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -32,19 +31,19 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_nla.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_build.hh"
 
-#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
 #include "ANIM_animdata.hh"
@@ -60,7 +59,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "graph_intern.h"
+#include "graph_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Insert Keyframes Operator
@@ -116,7 +115,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   SpaceGraph *sipo = (SpaceGraph *)ac->sl;
   Scene *scene = ac->scene;
   ToolSettings *ts = scene->toolsettings;
-  eInsertKeyFlags flag = eInsertKeyFlags(0);
 
   /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
@@ -147,7 +145,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
 
   /* Init key-framing flag. */
-  flag = ANIM_get_keyframing_flags(scene);
+  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene);
   KeyframeSettings settings = get_keyframe_settings(true);
   settings.keyframe_type = eBezTriple_KeyframeType(ts->keyframe_type);
 
@@ -211,7 +209,6 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
         insert_keyframe(ac->bmain,
                         reports,
                         ale->id,
-                        nullptr,
                         ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
                         fcu->rna_path,
                         fcu->array_index,
@@ -803,6 +800,20 @@ static int graphkeys_delete_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int graphkeys_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete selected keyframes?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return graphkeys_delete_exec(C, op);
+}
+
 void GRAPH_OT_delete(wmOperatorType *ot)
 {
   /* Identifiers */
@@ -811,7 +822,7 @@ void GRAPH_OT_delete(wmOperatorType *ot)
   ot->description = "Remove all selected keyframes";
 
   /* API callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = graphkeys_delete_invoke;
   ot->exec = graphkeys_delete_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
@@ -978,13 +989,11 @@ void GRAPH_OT_keys_to_samples(wmOperatorType *ot)
       "Convert selected channels to an uneditable set of samples to save storage space";
 
   /* API callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
   ot->exec = graphkeys_keys_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 
   /* TODO: add props for start/end frames (Joshua Leung 2009) */
 }
@@ -1812,7 +1821,7 @@ static ListBase /*tEulerFilter*/ euler_filter_group_channels(
      * saves another loop over the animation data. */
     ale->update |= ANIM_UPDATE_DEFAULT;
 
-    /* Optimization: assume that xyz curves will always be stored consecutively,
+    /* Optimization: assume that XYZ curves will always be stored consecutively,
      * so if the paths or the ID's don't match up, then a curve needs to be added
      * to a new group.
      */
@@ -2646,14 +2655,14 @@ void GRAPH_OT_equalize_handles(wmOperatorType *ot)
                           prop_graphkeys_equalize_handles_sides,
                           0,
                           "Side",
-                          "Side of the keyframes' bezier handles to affect");
+                          "Side of the keyframes' Bézier handles to affect");
   RNA_def_float(ot->srna,
                 "handle_length",
                 5.0f,
                 0.1f,
                 FLT_MAX,
                 "Handle Length",
-                "Length to make selected keyframes' bezier handles",
+                "Length to make selected keyframes' Bézier handles",
                 1.0f,
                 50.0f);
   RNA_def_boolean(

@@ -43,21 +43,21 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_appdir.hh"
 #include "BKE_cloth.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_dynamicpaint.h"
 #include "BKE_fluid.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_softbody.h"
 
 #include "BLO_read_write.hh"
@@ -1320,7 +1320,7 @@ static int ptcache_path(PTCacheID *pid, char dirname[MAX_PTCACHE_PATH])
   const char *blendfile_path = BKE_main_blendfile_path_from_global();
   Library *lib = (pid->owner_id) ? pid->owner_id->lib : nullptr;
   const char *blendfile_path_lib = (lib && (pid->cache->flag & PTCACHE_IGNORE_LIBPATH) == 0) ?
-                                       lib->filepath_abs :
+                                       lib->runtime.filepath_abs :
                                        blendfile_path;
 
   if (pid->cache->flag & PTCACHE_EXTERNAL) {
@@ -3297,7 +3297,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
   char run[32], cur[32], etd[32];
   int cancel = 0;
 
-  stime = ptime = BLI_check_seconds_timer();
+  stime = ptime = BLI_time_now_seconds();
 
   for (int fr = scene->r.cfra; fr <= endframe; fr += baker->quick_step, scene->r.cfra = fr) {
     BKE_scene_graph_update_for_newframe(depsgraph);
@@ -3311,7 +3311,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
       printf("bake: frame %d :: %d\n", scene->r.cfra, endframe);
     }
     else {
-      ctime = BLI_check_seconds_timer();
+      ctime = BLI_time_now_seconds();
 
       fetd = (ctime - ptime) * (endframe - scene->r.cfra) / baker->quick_step;
 
@@ -3343,7 +3343,7 @@ void BKE_ptcache_bake(PTCacheBaker *baker)
 
   if (use_timer) {
     /* start with newline because of \r above */
-    ptcache_dt_to_str(run, sizeof(run), BLI_check_seconds_timer() - stime);
+    ptcache_dt_to_str(run, sizeof(run), BLI_time_now_seconds() - stime);
     printf("\nBake %s %s (%i frames simulated).\n",
            (cancel ? "canceled after" : "finished in"),
            run,

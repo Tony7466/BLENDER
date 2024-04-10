@@ -23,25 +23,26 @@
 #include "BKE_image.h"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
-#include "BLF_api.h"
-#include "BLT_translation.h"
+#include "BLF_api.hh"
+#include "BLT_translation.hh"
 
 #include "BIF_glutil.hh"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_batch.hh"
+#include "GPU_batch_presets.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_uniform_buffer.hh"
 
 #include "DRW_engine.hh"
 
@@ -1200,6 +1201,8 @@ static const float std_node_socket_colors[][4] = {
     {0.62, 0.31, 0.64, 1.0}, /* SOCK_TEXTURE */
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
+    {0.40, 0.40, 0.40, 1.0}, /* SOCK_MENU */
+    {0.72, 0.20, 0.52, 1.0}, /* SOCK_MATRIX */
 };
 
 /* Callback for colors that does not depend on the socket pointer argument to get the type. */
@@ -1234,6 +1237,8 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_TEXTURE>,
     std_node_socket_color_fn<SOCK_MATERIAL>,
     std_node_socket_color_fn<SOCK_ROTATION>,
+    std_node_socket_color_fn<SOCK_MENU>,
+    std_node_socket_color_fn<SOCK_MATRIX>,
 };
 
 /* draw function for file output node sockets,
@@ -1394,6 +1399,10 @@ static void std_node_socket_draw(
       uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
       break;
     }
+    case SOCK_MATRIX: {
+      uiItemL(layout, text, ICON_NONE);
+      break;
+    }
     case SOCK_RGBA: {
       if (text[0] == '\0') {
         uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
@@ -1416,6 +1425,27 @@ static void std_node_socket_draw(
         uiItemR(row, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
       }
 
+      break;
+    }
+    case SOCK_MENU: {
+      const bNodeSocketValueMenu *default_value =
+          sock->default_value_typed<bNodeSocketValueMenu>();
+      if (default_value->enum_items) {
+        if (default_value->enum_items->items.is_empty()) {
+          uiLayout *row = uiLayoutSplit(layout, 0.4f, false);
+          uiItemL(row, text, ICON_NONE);
+          uiItemL(row, "No Items", ICON_NONE);
+        }
+        else {
+          uiItemR(layout, ptr, "default_value", DEFAULT_FLAGS, "", ICON_NONE);
+        }
+      }
+      else if (default_value->has_conflict()) {
+        uiItemL(layout, IFACE_("Menu Error"), ICON_ERROR);
+      }
+      else {
+        uiItemL(layout, IFACE_("Menu Undefined"), ICON_QUESTION);
+      }
       break;
     }
     case SOCK_OBJECT: {
@@ -1549,8 +1579,13 @@ static void std_node_socket_interface_draw(ID *id,
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       break;
     }
+    case SOCK_MENU: {
+      uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
+      break;
+    }
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
       break;
 
     case SOCK_CUSTOM:
@@ -1689,8 +1724,8 @@ void draw_nodespace_back_pix(const bContext &C,
   if (ibuf) {
     /* somehow the offset has to be calculated inverse */
     wmOrtho2_region_pixelspace(&region);
-    const float offset_x = snode.xof + ima->offset_x * snode.zoom;
-    const float offset_y = snode.yof + ima->offset_y * snode.zoom;
+    const float offset_x = snode.xof + ima->runtime.backdrop_offset[0] * snode.zoom;
+    const float offset_y = snode.yof + ima->runtime.backdrop_offset[1] * snode.zoom;
     const float x = (region.winx - snode.zoom * ibuf->x) / 2 + offset_x;
     const float y = (region.winy - snode.zoom * ibuf->y) / 2 + offset_y;
 
@@ -1742,7 +1777,7 @@ static float2 socket_link_connection_location(const bNode &node,
   const float2 socket_location = socket.runtime->location;
   if (socket.is_multi_input() && socket.is_input() && !(node.flag & NODE_HIDDEN)) {
     return node_link_calculate_multi_input_position(
-        socket_location, link.multi_input_socket_index, socket.runtime->total_inputs);
+        socket_location, link.multi_input_sort_id, socket.runtime->total_inputs);
   }
   return socket_location;
 }
@@ -1829,9 +1864,9 @@ static float mute_expand_axis[3][2] = {{1.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, -0.0f}
 
 /* Is zero initialized because it is static data. */
 static struct {
-  GPUBatch *batch;        /* for batching line together */
-  GPUBatch *batch_single; /* for single line */
-  GPUVertBuf *inst_vbo;
+  gpu::Batch *batch;        /* for batching line together */
+  gpu::Batch *batch_single; /* for single line */
+  gpu::VertBuf *inst_vbo;
   uint p0_id, p1_id, p2_id, p3_id;
   uint colid_id, muted_id, start_color_id, end_color_id;
   uint dim_factor_id;
@@ -1869,7 +1904,7 @@ static void nodelink_batch_reset()
   g_batch_link.count = 0;
 }
 
-static void set_nodelink_vertex(GPUVertBuf *vbo,
+static void set_nodelink_vertex(gpu::VertBuf *vbo,
                                 uint uv_id,
                                 uint pos_id,
                                 uint exp_id,
@@ -1889,7 +1924,7 @@ static void nodelink_batch_init()
   uint uv_id = GPU_vertformat_attr_add(&format, "uv", GPU_COMP_U8, 2, GPU_FETCH_INT_TO_FLOAT_UNIT);
   uint pos_id = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   uint expand_id = GPU_vertformat_attr_add(&format, "expand", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STATIC);
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STATIC);
   int vcount = LINK_RESOL * 2; /* curve */
   vcount += 2;                 /* restart strip */
   vcount += 3 * 2;             /* arrow */
@@ -2284,7 +2319,7 @@ static void node_draw_link_bezier_ex(const SpaceNode &snode,
     node_link_data.aspect = snode.runtime->aspect;
     node_link_data.arrowSize = ARROW_SIZE;
 
-    GPUBatch *batch = g_batch_link.batch_single;
+    gpu::Batch *batch = g_batch_link.batch_single;
     GPUUniformBuf *ubo = GPU_uniformbuf_create_ex(sizeof(NodeLinkData), &node_link_data, __func__);
 
     GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODELINK);

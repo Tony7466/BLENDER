@@ -1240,7 +1240,7 @@ def _wm_doc_get_id(doc_id, *, do_url=True, url_prefix="", report=None):
 
             if rna_class is None:
                 if report is not None:
-                    report({'ERROR'}, rpt_("Type \"%s\" can not be found") % class_name)
+                    report({'ERROR'}, rpt_("Type \"%s\" cannot be found") % class_name)
                 return None
 
             # Detect if this is a inherited member and use that name instead.
@@ -1907,7 +1907,7 @@ class WM_OT_properties_edit(Operator):
 
         item = eval("context.%s" % data_path)
         if (item.id_data and item.id_data.override_library and item.id_data.override_library.reference):
-            self.report({'ERROR'}, "Properties from override data can not be edited")
+            self.report({'ERROR'}, "Properties from override data cannot be edited")
             return {'CANCELLED'}
 
         # Set operator's property type with the type of the existing property, to display the right settings.
@@ -2084,8 +2084,7 @@ class WM_OT_properties_edit_value(Operator):
         rna_item = eval("context.%s" % self.data_path)
 
         if WM_OT_properties_edit.get_property_type(rna_item, self.property_name) == 'PYTHON':
-            self.eval_string = WM_OT_properties_edit.convert_custom_property_to_string(rna_item,
-                                                                                       self.property_name)
+            self.eval_string = WM_OT_properties_edit.convert_custom_property_to_string(rna_item, self.property_name)
         else:
             self.eval_string = ""
 
@@ -2723,6 +2722,25 @@ class WM_OT_batch_rename(Operator):
             if id.library is None
         ]))
 
+    @staticmethod
+    def _selected_actions_from_outliner(context):
+        # Actions are a special case because they can be accessed directly or via animation-data.
+        from bpy.types import Action
+
+        def action_from_any_id(id_data):
+            if isinstance(id_data, Action):
+                return id_data
+            # Not all ID's have animation data.
+            if (animation_data := getattr(id_data, "animation_data", None)) is not None:
+                return animation_data.action
+            return None
+
+        return tuple(set(
+            action for id in context.selected_ids
+            if (action := action_from_any_id(id)) is not None
+            if action.library is None
+        ))
+
     @classmethod
     def _data_from_context(cls, context, data_type, only_selected, *, check_context=False):
 
@@ -2866,12 +2884,7 @@ class WM_OT_batch_rename(Operator):
                 data = (
                     (
                         # Outliner.
-                        tuple(set(
-                            action for id in context.selected_ids
-                            if (((animation_data := id.animation_data) is not None) and
-                                ((action := animation_data.action) is not None) and
-                                (action.library is None))
-                        ))
+                        cls._selected_actions_from_outliner(context)
                         if space_type == 'OUTLINER' else
                         # 3D View (default).
                         tuple(set(
@@ -2946,7 +2959,7 @@ class WM_OT_batch_rename(Operator):
                 elif method == 'SUFFIX':
                     name = name + text
                 else:
-                    assert 0
+                    assert False, "unreachable"
 
             elif ty == 'STRIP':
                 chars = action.strip_chars
@@ -2991,9 +3004,9 @@ class WM_OT_batch_rename(Operator):
                 elif method == 'TITLE':
                     name = name.title()
                 else:
-                    assert 0
+                    assert False, "unreachable"
             else:
-                assert 0
+                assert False, "unreachable"
         return name
 
     def _data_update(self, context):
@@ -3215,7 +3228,7 @@ class WM_MT_splash_quick_setup(Menu):
         can_import = bpy.types.PREFERENCES_OT_copy_prev.poll(context) and old_version
 
         if can_import:
-            layout.label(text="Import Existing Settings")
+            layout.label(text="Import Preferences From Previous Version")
             split = layout.split(factor=0.20)  # Left margin.
             split.label()
 
@@ -3223,17 +3236,15 @@ class WM_MT_splash_quick_setup(Menu):
             col = split.column()
             col.operator(
                 "preferences.copy_prev",
-                text=iface_("Load Blender %d.%d Settings", "Operator") % old_version,
-                icon='DUPLICATE',
+                text=iface_("Import Blender %d.%d Preferences", "Operator") % old_version,
+                icon='NONE',
                 translate=False,
             )
-            col.operator(
-                "wm.url_open", text="See What's New...", icon='URL',
-            ).url = "https://developer.blender.org/docs/release_notes/%d.%d" % bpy.app.version[:2]
-            col.separator(factor=2.0)
+            layout.separator()
+            layout.separator(type='LINE')
 
         if can_import:
-            layout.label(text="Create New Settings")
+            layout.label(text="Create New Preferences")
         else:
             layout.label(text="Quick Setup")
 
@@ -3248,14 +3259,22 @@ class WM_MT_splash_quick_setup(Menu):
         if bpy.app.build_options.international:
             prefs = context.preferences
             col.prop(prefs.view, "language")
-            col.separator()
+
+        # Themes.
+        sub = col.column(heading="Theme")
+        label = bpy.types.USERPREF_MT_interface_theme_presets.bl_label
+        if label == "Presets":
+            label = "Blender Dark"
+        sub.menu("USERPREF_MT_interface_theme_presets", text=label)
+
+        col.separator()
 
         # Shortcuts.
         wm = context.window_manager
         kc = wm.keyconfigs.active
         kc_prefs = kc.preferences
 
-        sub = col.column(heading="Shortcuts")
+        sub = col.column(heading="Keymap")
         text = bpy.path.display_name(kc.name)
         if not text:
             text = "Blender"
@@ -3263,25 +3282,19 @@ class WM_MT_splash_quick_setup(Menu):
 
         has_select_mouse = hasattr(kc_prefs, "select_mouse")
         if has_select_mouse:
-            col.row().prop(kc_prefs, "select_mouse", text="Select With", expand=True)
+            col.row().prop(kc_prefs, "select_mouse", text="Mouse Select", expand=True)
 
         has_spacebar_action = hasattr(kc_prefs, "spacebar_action")
         if has_spacebar_action:
-            col.row().prop(kc_prefs, "spacebar_action", text="Spacebar")
+            col.row().prop(kc_prefs, "spacebar_action", text="Spacebar Action")
 
         # Themes.
-        col.separator()
-        sub = col.column(heading="Theme")
-        label = bpy.types.USERPREF_MT_interface_theme_presets.bl_label
-        if label == "Presets":
-            label = "Blender Dark"
-        sub.menu("USERPREF_MT_interface_theme_presets", text=label)
+        sub = col.column()
+        sub.separator(factor=2)
 
         if can_import:
-            sub.label()
-            sub.operator("wm.save_userpref", text="Save New Settings", icon='CHECKMARK')
+            sub.operator("wm.save_userpref", text="Save New Preferences", icon='NONE')
         else:
-            sub.label()
             sub.operator("wm.save_userpref", text="Continue")
 
         layout.separator(factor=2.0)
@@ -3354,10 +3367,13 @@ class WM_MT_splash_about(Menu):
         col.scale_y = 0.8
         col.label(text=iface_("Version: %s") % bpy.app.version_string, translate=False)
         col.separator(factor=2.5)
-        col.label(text=iface_("Date: %s %s") % (bpy.app.build_commit_date.decode('utf-8', 'replace'),
-                                                bpy.app.build_commit_time.decode('utf-8', 'replace')), translate=False)
-        col.label(text=iface_("Hash: %s") % bpy.app.build_hash.decode('ascii'), translate=False)
-        col.label(text=iface_("Branch: %s") % bpy.app.build_branch.decode('utf-8', 'replace'), translate=False)
+        col.label(text=iface_("Date: %s %s") % (
+            bpy.app.build_commit_date.decode("utf-8", "replace"),
+            bpy.app.build_commit_time.decode("utf-8", "replace")),
+            translate=False
+        )
+        col.label(text=iface_("Hash: %s") % bpy.app.build_hash.decode("ascii"), translate=False)
+        col.label(text=iface_("Branch: %s") % bpy.app.build_branch.decode("utf-8", "replace"), translate=False)
 
         # This isn't useful information on MS-Windows or Apple systems as dynamically switching
         # between windowing systems is only supported between X11/WAYLAND.
@@ -3487,7 +3503,8 @@ class WM_MT_region_toggle_pie(Menu):
             text = enum_items[region_type].name
             attr = cls._region_info[region_type]
             value = getattr(space_data, attr)
-            props = pie.operator("wm.context_toggle", text=text, icon='CHECKBOX_HLT' if value else 'CHECKBOX_DEHLT')
+            props = pie.operator("wm.context_toggle", text=text, text_ctxt=i18n_contexts.default,
+                                 icon='CHECKBOX_HLT' if value else 'CHECKBOX_DEHLT')
             props.data_path = "space_data." + attr
 
     def draw(self, context):

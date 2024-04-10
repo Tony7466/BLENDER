@@ -13,18 +13,15 @@
 
 #include "BKE_context.hh"
 #include "BKE_modifier.hh"
-#include "BKE_object.hh"
 #include "BKE_screen.hh"
 
-#include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "ED_object.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -35,7 +32,6 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh" /* Self include */
 
 /**
@@ -44,7 +40,7 @@
  */
 static bool modifier_ui_poll(const bContext *C, PanelType * /*pt*/)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
 
   return (ob != nullptr) && (ob->type != OB_GPENCIL_LEGACY);
 }
@@ -143,6 +139,24 @@ void modifier_vgroup_ui(uiLayout *layout,
   }
 }
 
+void modifier_grease_pencil_curve_header_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiItemR(layout, ptr, "use_custom_curve", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+void modifier_grease_pencil_curve_panel_draw(const bContext * /*C*/, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false);
+}
+
 /**
  * Check whether Modifier is a simulation or not. Used for switching to the
  * physics/particles context tab.
@@ -198,7 +212,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
   uiLayout *row;
   ModifierData *md = (ModifierData *)md_v;
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_Modifier, md);
   uiLayoutSetContextPointer(layout, "modifier", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -362,8 +376,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
                                     &apply_on_spline_always_off_hack,
                                     0.0,
                                     0.0,
-                                    0.0,
-                                    0.0,
                                     RPT_("Apply on Spline"));
       UI_but_disable(but,
                      "This modifier can only deform filled curve/surface, not the control points");
@@ -386,8 +398,6 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
                                     UI_UNIT_X - 2,
                                     UI_UNIT_Y,
                                     &apply_on_spline_always_on_hack,
-                                    0.0,
-                                    0.0,
                                     0.0,
                                     0.0,
                                     RPT_("Apply on Spline"));

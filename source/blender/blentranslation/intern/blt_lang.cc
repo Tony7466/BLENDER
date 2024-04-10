@@ -18,8 +18,8 @@
 
 #include "RNA_types.hh"
 
-#include "BLT_lang.h" /* own include */
-#include "BLT_translation.h"
+#include "BLT_lang.hh" /* own include */
+#include "BLT_translation.hh"
 
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -171,7 +171,7 @@ static void fill_locales()
 }
 #endif /* WITH_INTERNATIONAL */
 
-EnumPropertyItem *BLT_lang_RNA_enum_properties()
+const EnumPropertyItem *BLT_lang_RNA_enum_properties()
 {
 #ifdef WITH_INTERNATIONAL
   return locales_menu;

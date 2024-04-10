@@ -14,6 +14,9 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "ANIM_animation.hh"
+#include "ANIM_animdata.hh"
+
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
 #include "DNA_text_types.h"
@@ -26,16 +29,19 @@
 #include "BLI_sort_utils.h"
 #include "BLI_string_utils.hh"
 
-#include "BKE_anim_data.h"
+#include "BLT_translation.hh"
+
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_global.h"
-#include "BKE_idprop.h"
+#include "BKE_global.hh"
+#include "BKE_idprop.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_nla.h"
+#include "BKE_scene.hh"
 
 #include "BLO_read_write.hh"
 
@@ -169,7 +175,7 @@ void BKE_fmodifier_name_set(FModifier *fcm, const char *name)
    * Ensure the name is unique. */
   const FModifierTypeInfo *fmi = get_fmodifier_typeinfo(fcm->type);
   ListBase list = BLI_listbase_from_link((Link *)fcm);
-  BLI_uniquename(&list, fcm, fmi->name, '.', offsetof(FModifier, name), sizeof(fcm->name));
+  BLI_uniquename(&list, fcm, DATA_(fmi->name), '.', offsetof(FModifier, name), sizeof(fcm->name));
 }
 
 void BKE_fmodifiers_foreach_id(ListBase *fmodifiers, LibraryForeachIDData *data)
@@ -182,11 +188,9 @@ void BKE_fmodifiers_foreach_id(ListBase *fmodifiers, LibraryForeachIDData *data)
         BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fcm_py->script, IDWALK_CB_NOP);
 
         BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
-            data,
-            IDP_foreach_property(fcm_py->prop,
-                                 IDP_TYPE_FILTER_ID,
-                                 BKE_lib_query_idpropertiesForeachIDLink_callback,
-                                 data));
+            data, IDP_foreach_property(fcm_py->prop, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+              BKE_lib_query_idpropertiesForeachIDLink_callback(prop, data);
+            }));
         break;
       }
       default:
@@ -238,23 +242,22 @@ FCurve *id_data_find_fcurve(
     return nullptr;
   }
 
-  char *path = RNA_path_from_ID_to_property(&ptr, prop);
-  if (path == nullptr) {
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
+  if (!path) {
     return nullptr;
   }
 
   /* FIXME: The way drivers are handled here (always nullptr-ifying `fcu`) is very weird, this
    * needs to be re-checked I think?. */
   bool is_driven = false;
-  FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(adt, path, index, nullptr, &is_driven);
+  FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(
+      id, adt, path->c_str(), index, nullptr, &is_driven);
   if (is_driven) {
     if (r_driven != nullptr) {
       *r_driven = is_driven;
     }
     fcu = nullptr;
   }
-
-  MEM_freeN(path);
 
   return fcu;
 }
@@ -345,8 +348,12 @@ int BKE_fcurves_filter(ListBase *dst, ListBase *src, const char *dataPrefix, con
   return matches;
 }
 
-FCurve *BKE_animadata_fcurve_find_by_rna_path(
-    AnimData *animdata, const char *rna_path, int rna_index, bAction **r_action, bool *r_driven)
+FCurve *BKE_animadata_fcurve_find_by_rna_path(const ID *id,
+                                              AnimData *animdata,
+                                              const char *rna_path,
+                                              int rna_index,
+                                              bAction **r_action,
+                                              bool *r_driven)
 {
   if (r_driven != nullptr) {
     *r_driven = false;
@@ -355,11 +362,24 @@ FCurve *BKE_animadata_fcurve_find_by_rna_path(
     *r_action = nullptr;
   }
 
+  /* Animation data-block takes priority over Action data-block. */
+  if (animdata->animation) {
+    /* TODO: this branch probably also needs a `Animation *r_anim` parameter for full
+     * compatibility with the Action-based uses.  Even better: change to return a
+     * result struct with all the relevant information/data. */
+    BLI_assert(id);
+    const FCurve *fcu = blender::animrig::fcurve_find_by_rna_path(
+        animdata->animation->wrap(), *id, rna_path, rna_index);
+    if (fcu) {
+      /* The new Animation data-block is stricter with const-ness than older code, hence the
+       * const_cast. */
+      return const_cast<FCurve *>(fcu);
+    }
+  }
+
+  /* Action takes priority over drivers. */
   const bool has_action_fcurves = animdata->action != nullptr &&
                                   !BLI_listbase_is_empty(&animdata->action->curves);
-  const bool has_drivers = !BLI_listbase_is_empty(&animdata->drivers);
-
-  /* Animation takes priority over drivers. */
   if (has_action_fcurves) {
     FCurve *fcu = BKE_fcurve_find(&animdata->action->curves, rna_path, rna_index);
 
@@ -372,6 +392,7 @@ FCurve *BKE_animadata_fcurve_find_by_rna_path(
   }
 
   /* If not animated, check if driven. */
+  const bool has_drivers = !BLI_listbase_is_empty(&animdata->drivers);
   if (has_drivers) {
     FCurve *fcu = BKE_fcurve_find(&animdata->drivers, rna_path, rna_index);
 
@@ -454,19 +475,19 @@ FCurve *BKE_fcurve_find_by_rna_context_ui(bContext * /*C*/,
   }
 
   /* XXX This function call can become a performance bottleneck. */
-  char *rna_path = RNA_path_from_ID_to_property(ptr, prop);
-  if (rna_path == nullptr) {
+  const std::optional<std::string> rna_path = RNA_path_from_ID_to_property(ptr, prop);
+  if (!rna_path) {
     return nullptr;
   }
 
   /* Standard F-Curve from animdata - Animation (Action) or Drivers. */
-  FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(adt, rna_path, rnaindex, r_action, r_driven);
+  FCurve *fcu = BKE_animadata_fcurve_find_by_rna_path(
+      ptr->owner_id, adt, rna_path->c_str(), rnaindex, r_action, r_driven);
 
   if (fcu != nullptr && r_animdata != nullptr) {
     *r_animdata = adt;
   }
 
-  MEM_freeN(rna_path);
   return fcu;
 }
 
@@ -1344,7 +1365,7 @@ void sort_time_fcurve(FCurve *fcu)
       if (a < (fcu->totvert - 1)) {
         /* Swap if one is after the other (and indicate that order has changed). */
         if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
-          SWAP(BezTriple, *bezt, *(bezt + 1));
+          std::swap(*bezt, *(bezt + 1));
           ok = true;
         }
       }
@@ -2583,98 +2604,108 @@ void BKE_fmodifiers_blend_read_data(BlendDataReader *reader, ListBase *fmodifier
   }
 }
 
-void BKE_fcurve_blend_write(BlendWriter *writer, ListBase *fcurves)
+void BKE_fcurve_blend_write_data(BlendWriter *writer, FCurve *fcu)
+{
+  /* curve data */
+  if (fcu->bezt) {
+    BLO_write_struct_array(writer, BezTriple, fcu->totvert, fcu->bezt);
+  }
+  if (fcu->fpt) {
+    BLO_write_struct_array(writer, FPoint, fcu->totvert, fcu->fpt);
+  }
+
+  if (fcu->rna_path) {
+    BLO_write_string(writer, fcu->rna_path);
+  }
+
+  /* driver data */
+  if (fcu->driver) {
+    ChannelDriver *driver = fcu->driver;
+
+    BLO_write_struct(writer, ChannelDriver, driver);
+
+    /* variables */
+    BLO_write_struct_list(writer, DriverVar, &driver->variables);
+    LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
+      DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
+        if (dtar->rna_path) {
+          BLO_write_string(writer, dtar->rna_path);
+        }
+      }
+      DRIVER_TARGETS_LOOPER_END;
+    }
+  }
+
+  /* write F-Modifiers */
+  BKE_fmodifiers_blend_write(writer, &fcu->modifiers);
+}
+
+void BKE_fcurve_blend_write_listbase(BlendWriter *writer, ListBase *fcurves)
 {
   BLO_write_struct_list(writer, FCurve, fcurves);
   LISTBASE_FOREACH (FCurve *, fcu, fcurves) {
-    /* curve data */
-    if (fcu->bezt) {
-      BLO_write_struct_array(writer, BezTriple, fcu->totvert, fcu->bezt);
-    }
-    if (fcu->fpt) {
-      BLO_write_struct_array(writer, FPoint, fcu->totvert, fcu->fpt);
-    }
-
-    if (fcu->rna_path) {
-      BLO_write_string(writer, fcu->rna_path);
-    }
-
-    /* driver data */
-    if (fcu->driver) {
-      ChannelDriver *driver = fcu->driver;
-
-      BLO_write_struct(writer, ChannelDriver, driver);
-
-      /* variables */
-      BLO_write_struct_list(writer, DriverVar, &driver->variables);
-      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-        DRIVER_TARGETS_USED_LOOPER_BEGIN (dvar) {
-          if (dtar->rna_path) {
-            BLO_write_string(writer, dtar->rna_path);
-          }
-        }
-        DRIVER_TARGETS_LOOPER_END;
-      }
-    }
-
-    /* write F-Modifiers */
-    BKE_fmodifiers_blend_write(writer, &fcu->modifiers);
+    BKE_fcurve_blend_write_data(writer, fcu);
   }
 }
 
-void BKE_fcurve_blend_read_data(BlendDataReader *reader, ListBase *fcurves)
+void BKE_fcurve_blend_read_data(BlendDataReader *reader, FCurve *fcu)
+{
+  /* curve data */
+  BLO_read_data_address(reader, &fcu->bezt);
+  BLO_read_data_address(reader, &fcu->fpt);
+
+  /* rna path */
+  BLO_read_data_address(reader, &fcu->rna_path);
+
+  /* group */
+  BLO_read_data_address(reader, &fcu->grp);
+
+  /* clear disabled flag - allows disabled drivers to be tried again (#32155),
+   * but also means that another method for "reviving disabled F-Curves" exists
+   */
+  fcu->flag &= ~FCURVE_DISABLED;
+
+  /* driver */
+  BLO_read_data_address(reader, &fcu->driver);
+  if (fcu->driver) {
+    ChannelDriver *driver = fcu->driver;
+
+    /* Compiled expression data will need to be regenerated
+     * (old pointer may still be set here). */
+    driver->expr_comp = nullptr;
+    driver->expr_simple = nullptr;
+
+    /* Give the driver a fresh chance - the operating environment may be different now
+     * (addons, etc. may be different) so the driver namespace may be sane now #32155. */
+    driver->flag &= ~DRIVER_FLAG_INVALID;
+
+    /* relink variables, targets and their paths */
+    BLO_read_list(reader, &driver->variables);
+    LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
+      DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
+        /* only relink the targets being used */
+        if (tarIndex < dvar->num_targets) {
+          BLO_read_data_address(reader, &dtar->rna_path);
+        }
+        else {
+          dtar->rna_path = nullptr;
+          dtar->id = nullptr;
+        }
+      }
+      DRIVER_TARGETS_LOOPER_END;
+    }
+  }
+
+  /* modifiers */
+  BLO_read_list(reader, &fcu->modifiers);
+  BKE_fmodifiers_blend_read_data(reader, &fcu->modifiers, fcu);
+}
+
+void BKE_fcurve_blend_read_data_listbase(BlendDataReader *reader, ListBase *fcurves)
 {
   /* Link F-Curve data to F-Curve again (non ID-libraries). */
   LISTBASE_FOREACH (FCurve *, fcu, fcurves) {
-    /* curve data */
-    BLO_read_data_address(reader, &fcu->bezt);
-    BLO_read_data_address(reader, &fcu->fpt);
-
-    /* rna path */
-    BLO_read_data_address(reader, &fcu->rna_path);
-
-    /* group */
-    BLO_read_data_address(reader, &fcu->grp);
-
-    /* clear disabled flag - allows disabled drivers to be tried again (#32155),
-     * but also means that another method for "reviving disabled F-Curves" exists
-     */
-    fcu->flag &= ~FCURVE_DISABLED;
-
-    /* driver */
-    BLO_read_data_address(reader, &fcu->driver);
-    if (fcu->driver) {
-      ChannelDriver *driver = fcu->driver;
-
-      /* Compiled expression data will need to be regenerated
-       * (old pointer may still be set here). */
-      driver->expr_comp = nullptr;
-      driver->expr_simple = nullptr;
-
-      /* Give the driver a fresh chance - the operating environment may be different now
-       * (addons, etc. may be different) so the driver namespace may be sane now #32155. */
-      driver->flag &= ~DRIVER_FLAG_INVALID;
-
-      /* relink variables, targets and their paths */
-      BLO_read_list(reader, &driver->variables);
-      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
-          /* only relink the targets being used */
-          if (tarIndex < dvar->num_targets) {
-            BLO_read_data_address(reader, &dtar->rna_path);
-          }
-          else {
-            dtar->rna_path = nullptr;
-            dtar->id = nullptr;
-          }
-        }
-        DRIVER_TARGETS_LOOPER_END;
-      }
-    }
-
-    /* modifiers */
-    BLO_read_list(reader, &fcu->modifiers);
-    BKE_fmodifiers_blend_read_data(reader, &fcu->modifiers, fcu);
+    BKE_fcurve_blend_read_data(reader, fcu);
   }
 }
 

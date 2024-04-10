@@ -20,7 +20,7 @@
 #ifdef UNIT_TEST
 #  define RNA_MAX_ARRAY_LENGTH 64
 #else
-#  define RNA_MAX_ARRAY_LENGTH 32
+#  define RNA_MAX_ARRAY_LENGTH 64
 #endif
 
 #define RNA_MAX_ARRAY_DIMENSION 3
@@ -111,25 +111,25 @@ PropertyRNA *RNA_def_boolean(StructOrFunctionRNA *cont,
 PropertyRNA *RNA_def_boolean_array(StructOrFunctionRNA *cont,
                                    const char *identifier,
                                    int len,
-                                   bool *default_value,
+                                   const bool *default_value,
                                    const char *ui_name,
                                    const char *ui_description);
 PropertyRNA *RNA_def_boolean_layer(StructOrFunctionRNA *cont,
                                    const char *identifier,
                                    int len,
-                                   bool *default_value,
+                                   const bool *default_value,
                                    const char *ui_name,
                                    const char *ui_description);
 PropertyRNA *RNA_def_boolean_layer_member(StructOrFunctionRNA *cont,
                                           const char *identifier,
                                           int len,
-                                          bool *default_value,
+                                          const bool *default_value,
                                           const char *ui_name,
                                           const char *ui_description);
 PropertyRNA *RNA_def_boolean_vector(StructOrFunctionRNA *cont,
                                     const char *identifier,
                                     int len,
-                                    bool *default_value,
+                                    const bool *default_value,
                                     const char *ui_name,
                                     const char *ui_description);
 
@@ -451,10 +451,10 @@ void RNA_def_property_override_funcs(PropertyRNA *prop,
                                      const char *store,
                                      const char *apply);
 
-typedef void (*RNAPropertyUpdateFunc)(Main *, Scene *, PointerRNA *);
-typedef void (*RNAPropertyUpdateFuncWithContextAndProperty)(bContext *C,
-                                                            PointerRNA *ptr,
-                                                            PropertyRNA *prop);
+using RNAPropertyUpdateFunc = void (*)(Main *, Scene *, PointerRNA *);
+using RNAPropertyUpdateFuncWithContextAndProperty = void (*)(bContext *C,
+                                                             PointerRNA *ptr,
+                                                             PropertyRNA *prop);
 
 void RNA_def_property_update_runtime(PropertyRNA *prop, RNAPropertyUpdateFunc func);
 void RNA_def_property_update_runtime_with_context_and_property(

@@ -31,7 +31,7 @@
 #include "BLI_cpp_types.hh"
 #include "BLI_dot_export.hh"
 #include "BLI_hash.h"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_lazy_threading.hh"
 #include "BLI_map.hh"
 
@@ -331,7 +331,8 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
     if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(*user_data))
     {
-      tree_logger->node_execution_times.append({node_.identifier, start_time, end_time});
+      tree_logger->node_execution_times.append(*tree_logger->allocator,
+                                               {node_.identifier, start_time, end_time});
     }
   }
 
@@ -346,7 +347,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     GField output_field{std::make_shared<AnonymousAttributeFieldInput>(
         std::move(attribute_id),
         *bsocket.typeinfo->base_cpp_type,
-        fmt::format(TIP_("{} node"), std::string_view(node_.label_or_name())))};
+        fmt::format(TIP_("{} node"), node_.label_or_name()))};
     void *r_value = params.get_output_data_ptr(lf_index);
     new (r_value) SocketValueVariant(std::move(output_field));
     params.output_set(lf_index);
@@ -396,10 +397,9 @@ class LazyFunctionForMultiInput : public LazyFunction {
     base_type_ = get_socket_cpp_type(socket);
     BLI_assert(base_type_ != nullptr);
     BLI_assert(socket.is_multi_input());
-    const bNodeTree &btree = socket.owner_tree();
     for (const bNodeLink *link : socket.directly_linked_links()) {
       if (link->is_muted() || !link->fromsock->is_available() ||
-          bke::nodeIsDanglingReroute(&btree, link->fromnode))
+          link->fromnode->is_dangling_reroute())
       {
         continue;
       }
@@ -777,9 +777,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
         continue;
       }
       const Span<const bNodeLink *> links = bsocket->directly_linked_links();
-      if (links.is_empty() ||
-          bke::nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode))
-      {
+      if (links.is_empty() || links.first()->fromnode->is_dangling_reroute()) {
         use_field_input_ = false;
         inputs_.pop_last();
         r_lf_index_by_bsocket[bsocket->index_in_tree()] = -1;
@@ -1022,8 +1020,8 @@ class LazyFunctionForBakeInputsUsage : public LazyFunction {
       this->set_default_outputs(params);
       return;
     }
-    const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(*behavior) ||
-                             std::holds_alternative<sim_output::StoreNewState>(*behavior);
+    const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(behavior->behavior) ||
+                             std::holds_alternative<sim_output::StoreNewState>(behavior->behavior);
     params.set_output(0, need_inputs);
   }
 
@@ -1763,6 +1761,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
                 user_data))
         {
           tree_logger->node_warnings.append(
+              *tree_logger->allocator,
               {repeat_output_bnode_.identifier,
                {NodeWarningType::Info, N_("Inspection index is out of range")}});
         }
@@ -2061,7 +2060,8 @@ class GeometryNodesLazyFunctionLogger : public lf::GraphExecutor::Logger {
         if (!bsockets.is_empty()) {
           const bNodeSocket &bsocket = *bsockets[0];
           const bNode &bnode = bsocket.owner_node();
-          tree_logger->debug_messages.append({bnode.identifier, thread_id_str});
+          tree_logger->debug_messages.append(*tree_logger->allocator,
+                                             {bnode.identifier, thread_id_str});
           return true;
         }
       }
@@ -3142,6 +3142,10 @@ struct GeometryNodesLazyFunctionBuilder {
         this->build_bake_node(bnode, graph_params);
         break;
       }
+      case GEO_NODE_MENU_SWITCH: {
+        this->build_menu_switch_node(bnode, graph_params);
+        break;
+      }
       default: {
         if (node_type->geometry_node_execute) {
           this->build_geometry_node(bnode, graph_params);
@@ -3632,6 +3636,9 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
+
+    mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
+
     return lf_node;
   }
 
@@ -3766,6 +3773,77 @@ struct GeometryNodesLazyFunctionBuilder {
     }
   }
 
+  void build_menu_switch_node(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    std::unique_ptr<LazyFunction> lazy_function = get_menu_switch_node_lazy_function(
+        bnode, *lf_graph_info_);
+    lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+    scope_.add(std::move(lazy_function));
+
+    int input_index = 0;
+    for (const bNodeSocket *bsocket : bnode.input_sockets()) {
+      if (bsocket->is_available()) {
+        lf::InputSocket &lf_socket = lf_node.input(input_index);
+        graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        input_index++;
+      }
+    }
+    for (const bNodeSocket *bsocket : bnode.output_sockets()) {
+      if (bsocket->is_available()) {
+        lf::OutputSocket &lf_socket = lf_node.output(0);
+        graph_params.lf_output_by_bsocket.add(bsocket, &lf_socket);
+        mapping_->bsockets_by_lf_socket_map.add(&lf_socket, bsocket);
+        break;
+      }
+    }
+
+    this->build_menu_switch_node_socket_usage(bnode, graph_params);
+  }
+
+  void build_menu_switch_node_socket_usage(const bNode &bnode, BuildGraphParams &graph_params)
+  {
+    const NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(bnode.storage);
+    const NodeEnumDefinition &enum_def = storage.enum_definition;
+
+    const bNodeSocket *switch_input_bsocket = bnode.input_sockets()[0];
+    Vector<const bNodeSocket *> input_bsockets(enum_def.items_num);
+    for (const int i : IndexRange(enum_def.items_num)) {
+      input_bsockets[i] = bnode.input_sockets()[i + 1];
+    }
+    const bNodeSocket *output_bsocket = bnode.output_sockets()[0];
+
+    lf::OutputSocket *output_is_used_socket = graph_params.usage_by_bsocket.lookup_default(
+        output_bsocket, nullptr);
+    if (output_is_used_socket == nullptr) {
+      return;
+    }
+    graph_params.usage_by_bsocket.add(switch_input_bsocket, output_is_used_socket);
+    if (switch_input_bsocket->is_directly_linked()) {
+      /* The condition input is dynamic, so the usage of the other inputs is as well. */
+      std::unique_ptr<LazyFunction> lazy_function =
+          get_menu_switch_node_socket_usage_lazy_function(bnode);
+      lf::FunctionNode &lf_node = graph_params.lf_graph.add_function(*lazy_function);
+      scope_.add(std::move(lazy_function));
+
+      graph_params.lf_inputs_by_bsocket.add(switch_input_bsocket, &lf_node.input(0));
+      for (const int i : IndexRange(enum_def.items_num)) {
+        graph_params.usage_by_bsocket.add(input_bsockets[i], &lf_node.output(i));
+      }
+    }
+    else {
+      const int condition =
+          switch_input_bsocket->default_value_typed<bNodeSocketValueMenu>()->value;
+      for (const int i : IndexRange(enum_def.items_num)) {
+        const NodeEnumItem &enum_item = enum_def.items()[i];
+        if (enum_item.identifier == condition) {
+          graph_params.usage_by_bsocket.add(input_bsockets[i], output_is_used_socket);
+          break;
+        }
+      }
+    }
+  }
+
   void build_undefined_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
     auto &lazy_function = scope_.construct<LazyFunctionForUndefinedNode>(
@@ -3792,7 +3870,7 @@ struct GeometryNodesLazyFunctionBuilder {
                                 lf::OutputSocket &from_lf_socket,
                                 BuildGraphParams &graph_params)
   {
-    if (bke::nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
+    if (from_bsocket.owner_node().is_dangling_reroute()) {
       return;
     }
 
@@ -3879,7 +3957,7 @@ struct GeometryNodesLazyFunctionBuilder {
           break;
         }
         if (multi_input_link->is_muted() || !multi_input_link->fromsock->is_available() ||
-            bke::nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
+            multi_input_link->fromnode->is_dangling_reroute())
         {
           continue;
         }

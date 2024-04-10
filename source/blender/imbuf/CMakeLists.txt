@@ -36,6 +36,7 @@ set(SRC
   intern/format_tiff.cc
   intern/imageprocess.cc
   intern/indexer.cc
+  intern/interp.cc
   intern/iris.cc
   intern/jpeg.cc
   intern/metadata.cc
@@ -58,6 +59,7 @@ set(SRC
   IMB_imbuf.hh
   IMB_imbuf_enums.h
   IMB_imbuf_types.hh
+  IMB_interp.hh
   IMB_metadata.hh
   IMB_moviecache.hh
   IMB_openexr.hh
@@ -89,15 +91,6 @@ set(LIB
 )
 
 if(WITH_IMAGE_OPENEXR)
-  # Keep until APPLE/ARM libraries are updated.
-  if(APPLE)
-    if(CMAKE_OSX_ARCHITECTURES MATCHES arm64)
-      list(APPEND INC_SYS
-        ${IMATH_INCLUDE_DIRS}
-      )
-    endif()
-  endif()
-
   list(APPEND LIB
     bf_imbuf_openexr
   )
@@ -106,6 +99,15 @@ else()
   list(APPEND SRC
     intern/openexr/openexr_stub.cpp
   )
+endif()
+
+# Keep until APPLE/ARM libraries are updated.
+if(APPLE OR WIN32)
+  if(CMAKE_OSX_ARCHITECTURES MATCHES arm64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    list(APPEND INC_SYS
+      ${IMATH_INCLUDE_DIRS}
+    )
+  endif()
 endif()
 
 if(WITH_IMAGE_OPENJPEG)
@@ -120,16 +122,6 @@ if(WITH_IMAGE_OPENJPEG)
   )
 
   add_definitions(-DWITH_OPENJPEG ${OPENJPEG_DEFINES})
-endif()
-
-if(WITH_CODEC_AVI)
-  list(APPEND INC
-    ../io/avi
-  )
-  list(APPEND LIB
-    bf_avi
-  )
-  add_definitions(-DWITH_AVI)
 endif()
 
 if(WITH_CODEC_FFMPEG)

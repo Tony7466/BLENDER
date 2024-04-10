@@ -11,7 +11,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_curves_types.h"
 
@@ -20,8 +20,32 @@
 const EnumPropertyItem rna_enum_curves_type_items[] = {
     {CURVE_TYPE_CATMULL_ROM, "CATMULL_ROM", 0, "Catmull Rom", ""},
     {CURVE_TYPE_POLY, "POLY", 0, "Poly", ""},
-    {CURVE_TYPE_BEZIER, "BEZIER", 0, "Bezier", ""},
+    {CURVE_TYPE_BEZIER, "BEZIER", 0, "Bézier", ""},
     {CURVE_TYPE_NURBS, "NURBS", 0, "NURBS", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_curves_handle_type_items[] = {
+    {BEZIER_HANDLE_FREE,
+     "FREE",
+     0,
+     "Free",
+     "The handle can be moved anywhere, and doesn't influence the point's other handle"},
+    {BEZIER_HANDLE_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "The location is automatically calculated to be smooth"},
+    {BEZIER_HANDLE_VECTOR,
+     "VECTOR",
+     0,
+     "Vector",
+     "The location is calculated to point to the next/previous control point"},
+    {BEZIER_HANDLE_ALIGN,
+     "ALIGN",
+     0,
+     "Align",
+     "The location is constrained to point in the opposite direction as the other handleW"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -47,12 +71,14 @@ const EnumPropertyItem rna_enum_curve_normal_mode_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "BLI_math_vector.h"
 #  include "BLI_offset_indices.hh"
 
 #  include "BKE_attribute.hh"
 #  include "BKE_curves.hh"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 
 #  include "DEG_depsgraph.hh"
 
@@ -209,9 +235,9 @@ static void rna_CurvePoint_radius_set(PointerRNA *ptr, float value)
   radii.varray.set(rna_CurvePoint_index_get_const(ptr), value);
 }
 
-static char *rna_CurvePoint_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CurvePoint_path(const PointerRNA *ptr)
 {
-  return BLI_sprintfN("points[%d]", rna_CurvePoint_index_get_const(ptr));
+  return fmt::format("points[{}]", rna_CurvePoint_index_get_const(ptr));
 }
 
 int rna_Curves_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -237,9 +263,9 @@ static int rna_CurveSlice_index_get(PointerRNA *ptr)
   return rna_CurveSlice_index_get_const(ptr);
 }
 
-static char *rna_CurveSlice_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CurveSlice_path(const PointerRNA *ptr)
 {
-  return BLI_sprintfN("curves[%d]", rna_CurveSlice_index_get_const(ptr));
+  return fmt::format("curves[{}]", rna_CurveSlice_index_get_const(ptr));
 }
 
 static int rna_CurveSlice_first_point_index_get(PointerRNA *ptr)
@@ -268,7 +294,7 @@ static void rna_CurveSlice_points_begin(CollectionPropertyIterator *iter, Pointe
 static void rna_Curves_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Curves *curves = rna_curves(ptr);
-  float(*positions)[3] = ED_curves_point_normals_array_create(curves);
+  float(*positions)[3] = blender::ed::curves::point_normals_array_create(curves);
   const int size = curves->geometry.point_num;
   rna_iterator_array_begin(iter, positions, sizeof(float[3]), size, true, nullptr);
 }

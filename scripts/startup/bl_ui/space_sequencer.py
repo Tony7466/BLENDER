@@ -2669,7 +2669,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                             col.prop(mod, "gamma")
                 else:
                     if mod.type == 'SOUND_EQUALIZER':
-                        eq_row = box.row()
+                        # eq_row = box.row()
                         # eq_graphs = eq_row.operator_menu_enum("sequencer.strip_modifier_equalizer_redefine", "graphs")
                         # eq_graphs.name = mod.name
                         flow = box.grid_flow(
@@ -2723,6 +2723,8 @@ class SEQUENCER_PT_annotation_onion(AnnotationOnionSkin, SequencerButtonsPanel_O
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "View"
+    bl_parent_id = "SEQUENCER_PT_annotation"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @staticmethod
     def has_preview(context):

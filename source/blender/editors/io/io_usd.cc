@@ -13,15 +13,14 @@
 #  include <cstring>
 
 #  include "BKE_context.hh"
-#  include "BKE_main.hh"
-#  include "BKE_report.h"
+#  include "BKE_file_handler.hh"
+#  include "BKE_report.hh"
 
-#  include "BLI_blenlib.h"
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  include "ED_fileselect.hh"
 #  include "ED_object.hh"
@@ -30,8 +29,6 @@
 
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
-
-#  include "RNA_enum_types.hh"
 
 #  include "UI_interface.hh"
 #  include "UI_resources.hh"
@@ -42,9 +39,12 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "io_usd.hh"
-#  include "usd.h"
+#  include "io_utils.hh"
+#  include "usd.hh"
 
 #  include <cstdio>
+
+using namespace blender::io::usd;
 
 const EnumPropertyItem rna_enum_usd_export_evaluation_mode_items[] = {
     {DAG_EVAL_RENDER,
@@ -215,6 +215,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
+  RNA_string_get(op->ptr, "collection", params.collection);
 
   bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
@@ -348,6 +349,9 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Only export visible objects. Invisible parents of exported objects are "
                   "exported as empty transforms");
 
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+
   RNA_def_boolean(
       ot->srna,
       "export_animation",
@@ -457,7 +461,7 @@ static int wm_usd_import_invoke(bContext *C, wmOperator *op, const wmEvent *even
   options->as_background_job = true;
   op->customdata = options;
 
-  return WM_operator_filesel(C, op, event);
+  return blender::ed::io::filesel_drop_import_invoke(C, op, event);
 }
 
 static int wm_usd_import_exec(bContext *C, wmOperator *op)
@@ -535,7 +539,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   /* Switch out of edit mode to avoid being stuck in it (#54326). */
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
-    ED_object_mode_set(C, OB_MODE_EDIT);
+    blender::ed::object::mode_set(C, OB_MODE_EDIT);
   }
 
   const bool validate_meshes = false;
@@ -603,7 +607,6 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-
   uiLayout *box = uiLayoutBox(layout);
   uiLayout *col = uiLayoutColumnWithHeading(box, true, IFACE_("Data Types"));
   uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -672,7 +675,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_usd_import_draw;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_USD,
@@ -826,5 +829,19 @@ void WM_OT_usd_import(wmOperatorType *ot)
       "File Name Collision",
       "Behavior when the name of an imported texture file conflicts with an existing file");
 }
+
+namespace blender::ed::io {
+void usd_file_handler_add()
+{
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_usd");
+  STRNCPY(fh->import_operator, "WM_OT_usd_import");
+  STRNCPY(fh->export_operator, "WM_OT_usd_export");
+  STRNCPY(fh->label, "Universal Scene Description");
+  STRNCPY(fh->file_extensions_str, ".usd;.usda;.usdc;.usdz");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
+}
+}  // namespace blender::ed::io
 
 #endif /* WITH_USD */

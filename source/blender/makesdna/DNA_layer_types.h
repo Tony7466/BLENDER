@@ -178,6 +178,7 @@ typedef struct ViewLayer {
   int samples;
 
   struct Material *mat_override;
+  struct World *world_override;
   /** Equivalent to datablocks ID properties. */
   struct IDProperty *id_properties;
 
@@ -274,4 +275,5 @@ enum {
   /* VIEW_LAYER_DEPRECATED  = (1 << 1), */
   VIEW_LAYER_FREESTYLE = (1 << 2),
   VIEW_LAYER_OUT_OF_SYNC = (1 << 3),
+  VIEW_LAYER_HAS_EXPORT_COLLECTIONS = (1 << 4),
 };

@@ -15,7 +15,7 @@
  * its type. Passes are shared between views.
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "DRW_render.hh"
 
 #include "eevee_instance.hh"
@@ -120,13 +120,13 @@ void ShadingView::render()
 
   /* TODO(fclem): Move it after the first prepass (and hiz update) once pipeline is stabilized. */
   inst_.lights.set_view(render_view_, extent_);
-  inst_.reflection_probes.set_view(render_view_);
+  inst_.sphere_probes.set_view(render_view_);
 
   inst_.pipelines.background.render(render_view_);
 
   inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
 
-  inst_.volume.draw_prepass(render_view_);
+  inst_.volume.draw_prepass(main_view_);
 
   /* TODO(Miguel Pozo): Deferred and forward prepass should happen before the GBuffer pass. */
   inst_.pipelines.deferred.render(main_view_,
@@ -140,7 +140,7 @@ void ShadingView::render()
 
   inst_.gbuffer.release();
 
-  inst_.volume.draw_compute(render_view_);
+  inst_.volume.draw_compute(main_view_);
 
   // inst_.lookdev.render_overlay(view_fb_);
 
@@ -151,8 +151,8 @@ void ShadingView::render()
   inst_.lights.debug_draw(render_view_, combined_fb_);
   inst_.hiz_buffer.debug_draw(render_view_, combined_fb_);
   inst_.shadows.debug_draw(render_view_, combined_fb_);
-  inst_.irradiance_cache.viewport_draw(render_view_, combined_fb_);
-  inst_.reflection_probes.viewport_draw(render_view_, combined_fb_);
+  inst_.volume_probes.viewport_draw(render_view_, combined_fb_);
+  inst_.sphere_probes.viewport_draw(render_view_, combined_fb_);
   inst_.planar_probes.viewport_draw(render_view_, combined_fb_);
 
   inst_.ambient_occlusion.render_pass(render_view_);
@@ -187,6 +187,15 @@ GPUTexture *ShadingView::render_postfx(GPUTexture *input_tx)
   }
   postfx_tx_.acquire(extent_, GPU_RGBA16F);
 
+  /* Fix a sync bug on AMD + Mesa when volume + motion blur create artifacts
+   * except if there is a clear event between them. */
+  if (inst_.volume.enabled() && inst_.motion_blur.postfx_enabled() &&
+      !inst_.depth_of_field.postfx_enabled() &&
+      GPU_type_matches_ex(GPU_DEVICE_ATI, GPU_OS_UNIX, GPU_DRIVER_OFFICIAL, GPU_BACKEND_OPENGL))
+  {
+    postfx_tx_.clear(float4(0.0f));
+  }
+
   GPUTexture *output_tx = postfx_tx_;
 
   /* Swapping is done internally. Actual output is set to the next input. */
@@ -201,10 +210,35 @@ void ShadingView::update_view()
   float4x4 viewmat = main_view_.viewmat();
   float4x4 winmat = main_view_.winmat();
 
-  /* TODO(fclem): Mixed-resolution rendering: We need to make sure we render with exactly the same
-   * distances between pixels to line up render samples and target pixels.
-   * So if the target resolution is not a multiple of the resolution divisor, we need to make the
-   * projection window bigger in the +X and +Y directions. */
+  /*
+   * Mixed resolution rendering. The center of the display pixels must align with the center of
+   * the render pixels. If they don't align, the winmat needs to be re-projected.
+   */
+  int2 scaling_factor = int2(inst_.film.scaling_factor_get());
+  int2 display_extent = inst_.film.display_extent_get();
+  int overscan = inst_.film.get_data().overscan;
+  int2 rescaled_render_extent = (extent_ - 2 * overscan) * scaling_factor;
+
+  if (rescaled_render_extent != display_extent) {
+    float left;
+    float right;
+    float bottom;
+    float top;
+    float near;
+    float far;
+    const bool is_perspective = main_view_.is_persp();
+    projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
+    float2 scale = (float2(rescaled_render_extent) / float2(display_extent));
+    right = left + ((right - left) * scale.x);
+    top = bottom + ((top - bottom) * scale.y);
+
+    if (is_perspective) {
+      winmat = math::projection::perspective(left, right, bottom, top, near, far);
+    }
+    else {
+      winmat = math::projection::orthographic(left, right, bottom, top, near, far);
+    }
+  }
 
   /* Anti-Aliasing / Super-Sampling jitter. */
   float2 jitter = inst_.film.pixel_jitter_get() / float2(extent_);
@@ -228,8 +262,7 @@ void ShadingView::update_view()
 
 void CaptureView::render_world()
 {
-  const std::optional<ReflectionProbeUpdateInfo> update_info =
-      inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::WORLD);
+  const auto update_info = inst_.sphere_probes.world_update_info_pop();
   if (!update_info.has_value()) {
     return;
   }
@@ -248,19 +281,13 @@ void CaptureView::render_world()
                                                       update_info->clipping_distances.y);
       view.sync(view_m4, win_m4);
 
-      combined_fb_.ensure(
-          GPU_ATTACHMENT_NONE,
-          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
+      combined_fb_.ensure(GPU_ATTACHMENT_NONE,
+                          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.sphere_probes.cubemap_tx_, face));
       GPU_framebuffer_bind(combined_fb_);
       inst_.pipelines.world.render(view);
     }
 
-    inst_.reflection_probes.remap_to_octahedral_projection(update_info->atlas_coord);
-    inst_.reflection_probes.update_probes_texture_mipmaps();
-  }
-
-  if (update_info->do_world_irradiance_update) {
-    inst_.reflection_probes.update_world_irradiance();
+    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord, true);
   }
 
   GPU_debug_group_end();
@@ -270,14 +297,15 @@ void CaptureView::render_probes()
 {
   Framebuffer prepass_fb;
   View view = {"Capture.View"};
-  bool do_update_mipmap_chain = false;
-  while (const std::optional<ReflectionProbeUpdateInfo> update_info =
-             inst_.reflection_probes.update_info_pop(ReflectionProbe::Type::PROBE))
-  {
+  while (const auto update_info = inst_.sphere_probes.probe_update_info_pop()) {
     GPU_debug_group_begin("Probe.Capture");
-    do_update_mipmap_chain = true;
 
-    int2 extent = int2(update_info->resolution);
+    if (!inst_.pipelines.data.is_probe_reflection) {
+      inst_.pipelines.data.is_probe_reflection = true;
+      inst_.uniform_data.push_update();
+    }
+
+    int2 extent = int2(update_info->cube_target_extent);
     inst_.render_buffers.acquire(extent);
 
     inst_.render_buffers.vector_tx.clear(float4(0.0f));
@@ -299,17 +327,15 @@ void CaptureView::render_probes()
                                                       update_info->clipping_distances.y);
       view.sync(view_m4, win_m4);
 
-      combined_fb_.ensure(
-          GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face));
+      combined_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.sphere_probes.cubemap_tx_, face));
 
-      gbuffer_fb_.ensure(
-          GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
-          GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.reflection_probes.cubemap_tx_, face),
-          GPU_ATTACHMENT_TEXTURE(inst_.gbuffer.header_tx),
-          GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.normal_tx.layer_view(0), 0),
-          GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.closure_tx.layer_view(0), 0),
-          GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.closure_tx.layer_view(1), 0));
+      gbuffer_fb_.ensure(GPU_ATTACHMENT_TEXTURE(inst_.render_buffers.depth_tx),
+                         GPU_ATTACHMENT_TEXTURE_CUBEFACE(inst_.sphere_probes.cubemap_tx_, face),
+                         GPU_ATTACHMENT_TEXTURE(inst_.gbuffer.header_tx),
+                         GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.normal_tx.layer_view(0), 0),
+                         GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.closure_tx.layer_view(0), 0),
+                         GPU_ATTACHMENT_TEXTURE_LAYER(inst_.gbuffer.closure_tx.layer_view(1), 0));
 
       GPU_framebuffer_bind(combined_fb_);
       GPU_framebuffer_clear_color_depth(combined_fb_, float4(0.0f, 0.0f, 0.0f, 1.0f), 1.0f);
@@ -319,12 +345,12 @@ void CaptureView::render_probes()
     inst_.render_buffers.release();
     inst_.gbuffer.release();
     GPU_debug_group_end();
-    inst_.reflection_probes.remap_to_octahedral_projection(update_info->atlas_coord);
+    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord, false);
   }
 
-  if (do_update_mipmap_chain) {
-    /* TODO: only update the regions that have been updated. */
-    inst_.reflection_probes.update_probes_texture_mipmaps();
+  if (inst_.pipelines.data.is_probe_reflection) {
+    inst_.pipelines.data.is_probe_reflection = false;
+    inst_.uniform_data.push_update();
   }
 }
 

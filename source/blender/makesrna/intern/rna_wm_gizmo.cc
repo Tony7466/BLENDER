@@ -17,13 +17,13 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -43,13 +43,13 @@
 
 #  include "UI_interface.hh"
 
-#  include "BKE_global.h"
-#  include "BKE_idprop.h"
+#  include "BKE_global.hh"
+#  include "BKE_idprop.hh"
 #  include "BKE_workspace.h"
 
 #  include "MEM_guardedalloc.h"
 
-#  include "GPU_state.h"
+#  include "GPU_state.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -1082,7 +1082,7 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_return(func, parm);
 
   /* wmGizmo.handler */
-  static EnumPropertyItem tweak_actions[] = {
+  static const EnumPropertyItem tweak_actions[] = {
       {WM_GIZMO_TWEAK_PRECISE, "PRECISE", 0, "Precise", ""},
       {WM_GIZMO_TWEAK_SNAP, "SNAP", 0, "Snap", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1391,7 +1391,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
 
   /* bl_options */
-  static EnumPropertyItem gizmogroup_flag_items[] = {
+  static const EnumPropertyItem gizmogroup_flag_items[] = {
       {WM_GIZMOGROUPTYPE_3D, "3D", 0, "3D", "Use in 3D viewport"},
       {WM_GIZMOGROUPTYPE_SCALE,
        "SCALE",

@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'8b1da14f0a3d')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'cb66cc3028dd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-01-22 11:04+0000\n"
+"POT-Creation-Date: 2024-04-05 01:39+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ainhize & Miriam <agoenaga006@ikasle.ehu.eus>\n"
 "Language-Team: Euskara <agoenaga006@ikasle.ehu.eus>\n"
@@ -305,12 +305,12 @@ msgid "Material"
 msgstr "Materiala"
 
 
-msgid "Direction"
-msgstr "Norabidea"
-
-
 msgid "Stroke"
 msgstr "Trazua"
+
+
+msgid "Direction"
+msgstr "Norabidea"
 
 
 msgid "Normal"
@@ -447,6 +447,10 @@ msgid "Sphere"
 msgstr "Esfera"
 
 
+msgid "Animation"
+msgstr "Animazioa"
+
+
 msgid "Sound"
 msgstr "Soinua"
 
@@ -545,10 +549,6 @@ msgstr "Y Ispilua"
 
 msgid "Mist"
 msgstr "Laino"
-
-
-msgid "Animation"
-msgstr "Animazioa"
 
 
 msgid "Owner"
