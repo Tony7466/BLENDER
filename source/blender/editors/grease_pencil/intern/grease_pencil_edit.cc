@@ -2239,8 +2239,8 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Deselect everything from visible drawings. The pasted strokes are the only ones then after the
-   * paste. That's convenient for the user. */
+  /* Deselect everything from editable drawings. The pasted strokes are the only ones then after
+   * the paste. That's convenient for the user. */
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     bke::GSpanAttributeWriter selection_in_target = ed::curves::ensure_selection_attribute(
