@@ -1510,15 +1510,40 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
 
 static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
 {
-  UI_tooltip_text_field_add(data, ima->id.name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-  UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+  std::string image_type;
+  switch (ima->source) {
+    case IMA_SRC_FILE:
+      image_type = TIP_("Single Image");
+      break;
+    case IMA_SRC_SEQUENCE:
+      image_type = TIP_("Image Sequence");
+      break;
+    case IMA_SRC_MOVIE:
+      image_type = TIP_("Movie");
+      break;
+    case IMA_SRC_GENERATED:
+      image_type = TIP_("Generated");
+      break;
+    case IMA_SRC_VIEWER:
+      image_type = TIP_("Viewer");
+      break;
+    case IMA_SRC_TILED:
+      image_type = TIP_("UDIM Tiles");
+      break;
+  }
+  UI_tooltip_text_field_add(data, image_type, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
 
   if (ima->filepath[0]) {
     char root[FILE_MAX];
     BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
     UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
   }
+
+  UI_tooltip_text_field_add(data,
+                            fmt::format(TIP_("Colorspace: {}"), ima->colorspace_settings.name),
+                            {},
+                            UI_TIP_STYLE_NORMAL,
+                            UI_TIP_LC_NORMAL);
 
   short w;
   short h;
@@ -1534,8 +1559,8 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
     image_data.border = true;
     image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
     image_data.premultiplied = true;
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_image_field_add(data, image_data);
   }
 }
@@ -1569,8 +1594,16 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
     bContext *C, const uiSearchItemTooltipData *item_tooltip_data)
 {
   uiTooltipData *data = MEM_new<uiTooltipData>(__func__);
-
   const ID_Type type_id = GS(item_tooltip_data->id->name);
+
+  UI_tooltip_text_field_add(
+      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+
+  UI_tooltip_text_field_add(data,
+                            fmt::format(TIP_("Users: {}"), item_tooltip_data->id->us),
+                            {},
+                            UI_TIP_STYLE_NORMAL,
+                            UI_TIP_LC_NORMAL);
 
   if (type_id == ID_IM) {
     ui_tooltip_from_image(reinterpret_cast<Image *>(item_tooltip_data->id), data);
@@ -1578,45 +1611,24 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
   else if (type_id == ID_VF) {
     ui_tooltip_from_vfont(reinterpret_cast<VFont *>(item_tooltip_data->id), data);
   }
-  // else if (type_id == ID_SCE) {
-  //   Scene *sc = reinterpret_cast<Scene *>(item_tooltip_data->id);
-  // }
-  // else if (type_id == ID_MC) {
-  //   MovieClip *mc = reinterpret_cast<MovieClip *>(item_tooltip_data->id);
-  // }
   else {
-    UI_tooltip_text_field_add(
-        data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+    UI_tooltip_text_field_add(data,
+                              fmt::format(TIP_("Choose {} data-block to be assigned to this user"),
+                                          RNA_struct_ui_name(item_tooltip_data->type)),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+  }
 
-    char description[UI_MAX_DRAW_STR] = {0};
-    /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
-    const char *name;
-    /** Additional info about the item (e.g. library name of a linked data-block). */
-    char hint[UI_MAX_DRAW_STR] = {0};
-
-    name = item_tooltip_data->id->name + 2;
-    SNPRINTF(description,
-             TIP_("Choose %s data-block to be assigned to this user"),
-             RNA_struct_ui_name(item_tooltip_data->type));
-    if (ID_IS_LINKED(item_tooltip_data->id)) {
-      SNPRINTF(hint,
-               TIP_("Source library: %s\n%s"),
-               item_tooltip_data->id->lib->id.name + 2,
-               item_tooltip_data->id->lib->filepath);
-    }
-
-    if (description[0]) {
-      UI_tooltip_text_field_add(
-          data, description, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, true);
-    }
-
-    if (name && name[0]) {
-      UI_tooltip_text_field_add(data, name, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, true);
-    }
-    if (hint[0]) {
-      UI_tooltip_text_field_add(data, hint, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, true);
-    }
+  /** Additional info about the item (e.g. library name of a linked data-block). */
+  if (ID_IS_LINKED(item_tooltip_data->id)) {
+    UI_tooltip_text_field_add(data,
+                              fmt::format(TIP_("Source library: {}\n{}"),
+                                          item_tooltip_data->id->lib->id.name + 2,
+                                          item_tooltip_data->id->lib->filepath),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
   }
 
   if (data->fields.is_empty()) {

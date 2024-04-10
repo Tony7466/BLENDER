@@ -49,14 +49,15 @@ bool IMB_thumb_load_font_get_hash(char *r_hash)
 ImBuf *IMB_font_preview(const char *filename, unsigned int width, float color[4])
 {
   int font_id = (filename[0] != '<') ? BLF_load(filename) : 0;
-  const char *sample = BLF_display_name_from_id(font_id);
+  const char sample[] = "ABCDEFGH\nabcdefg123";
 
   BLF_buffer_col(font_id, color);
 
   BLF_size(font_id, 50.0f);
+  BLF_enable(font_id, BLF_WORD_WRAP);
   float name_w;
   float name_h;
-  BLF_width_and_height(font_id, sample, 1024, &name_w, &name_h);
+  BLF_width_and_height(font_id, sample, sizeof(sample), &name_w, &name_h);
   float scale = float(width) / name_w;
   BLF_size(font_id, scale * 50.0f);
   name_w *= scale;
@@ -76,7 +77,7 @@ ImBuf *IMB_font_preview(const char *filename, unsigned int width, float color[4]
              ibuf->channels,
              nullptr);
 
-  BLF_position(font_id, 0.0f, height - name_h, 0.0f);
+  BLF_position(font_id, 0.0f, name_h * 0.8f, 0.0f);
   BLF_draw_buffer(font_id, sample, 1024);
 
   BLF_buffer(font_id, nullptr, nullptr, 0, 0, 0, nullptr);
