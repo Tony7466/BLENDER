@@ -39,7 +39,7 @@ void main()
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
 
   /* Direct light. */
-  light_eval(stack, P, Ng, V, vPz, gbuf.thickness);
+  light_eval(stack, P, Ng, V, vPz);
 
   /* Indirect light. */
   /* Can only load irradiance to avoid dependency loop with the reflection probe. */

@@ -146,8 +146,13 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-  /* Diffuse & SSS always use the first closure. */
+#if CLOSURE_BIN_COUNT == 1
+  /* Only one closure type is present in the whole tree. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
+#else
+  /* Use second slot so we can have diffuse + translucent without noise. */
+  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
+#endif
   return Closure(0);
 }
 
@@ -156,7 +161,7 @@ Closure closure_eval(ClosureSubsurface diffuse)
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
   cl.data.rgb = diffuse.sss_radius;
-  /* Diffuse & SSS always use the first closure. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
@@ -165,13 +170,8 @@ Closure closure_eval(ClosureTranslucent translucent)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, translucent);
-#if CLOSURE_BIN_COUNT == 1
-  /* Only one closure type is present in the whole tree. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
-#else
-  /* Use second slot so we can have diffuse + translucent without noise. */
-  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
-#endif
   return Closure(0);
 }
 
@@ -221,8 +221,7 @@ Closure closure_eval(ClosureRefraction refraction)
   closure_base_copy(cl, refraction);
   cl.data.r = refraction.roughness;
   cl.data.g = refraction.ior;
-  /* Use same slot as diffuse as mixed diffuse/refraction are not common.
-   * Allow glass material with clearcoat without noise. */
+  /* Transmission Closures are always in first bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }

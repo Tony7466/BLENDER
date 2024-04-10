@@ -29,68 +29,45 @@ void main()
 
   ClosureLightStack stack;
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
-    stack.cl[i] = closure_light_new(gbuffer_closure_get(gbuf, i), V, gbuf.thickness);
+    stack.cl[i] = closure_light_new(gbuffer_closure_get(gbuf, i), V);
   }
 
-  /* TODO(fclem): Split thickness computation. */
-  float thickness = gbuf.thickness;
-#ifdef MAT_SUBSURFACE
-  /* NOTE: BSSRDF is supposed to always be the first closure. */
-  bool has_sss = gbuffer_closure_get(gbuf, 0).type == CLOSURE_BSSRDF_BURLEY_ID;
-  if (has_sss) {
-    float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
-    thickness = (shadow_thickness != THICKNESS_NO_VALUE) ? max(shadow_thickness, gbuf.thickness) :
-                                                           gbuf.thickness;
+  /* TODO(fclem): If transmission (no SSS) is present, we could reduce LIGHT_CLOSURE_EVAL_COUNT
+   * by 1 for this evaluaiton and skip evaluating the transmission closure twice. */
+  light_eval_reflection(stack, P, Ng, V, vPz);
 
-    /* Add one translucent closure for all SSS closure. Reuse the same lighting. */
-    ClosureLight cl_light;
-    cl_light.N = -Ng;
-    cl_light.ltc_mat = LTC_LAMBERT_MAT;
-    cl_light.type = LIGHT_DIFFUSE;
-    cl_light.subsurface = true;
-    stack.cl[gbuf.closure_count] = cl_light;
-  }
-#endif
-
-  if (thickness > 0.0) {
-    ClosureUndetermined cl = gbuffer_closure_get(gbuf, 0);
-    /* TODO(fclem): Split the transmission evaluation to its own shader as we are modifying P for
-     * every closures now. */
-    switch (cl.type) {
-      case CLOSURE_BSSRDF_BURLEY_ID:
-      case CLOSURE_BSDF_DIFFUSE_ID:
-      case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-        break;
-      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-        ClosureRefraction cl_refract = to_closure_refraction(cl);
-        vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
-        vec3 exit_N, exit_P;
-        raytrace_thickness_sphere_intersect(thickness, Ng, L, exit_N, exit_P);
-        P += exit_P;
-        break;
-      }
-      case CLOSURE_BSDF_TRANSLUCENT_ID:
-        /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
-         * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
-         * a unique position on the sphere and use the light vector as normal. */
-        P += -cl.N * thickness * 0.5;
-        break;
-      case CLOSURE_NONE_ID:
-        /* TODO(fclem): Assert. */
-        break;
+#if 1 /* TODO Limit to transmission. Can bypass the check if stencil is tagged properly and use \
+         specialization constant. */
+  ClosureUndetermined cl_transmit = gbuffer_closure_get(gbuf, 0);
+  if ((cl_transmit.type == CLOSURE_BSDF_TRANSLUCENT_ID) ||
+      (cl_transmit.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) ||
+      (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID))
+  {
+#  if 1 /* TODO Limit to SSS. */
+    vec3 sss_reflect_shadowed, sss_reflect_unshadowed;
+    if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
+      sss_reflect_shadowed = stack.cl[0].light_shadowed;
+      sss_reflect_unshadowed = stack.cl[0].light_unshadowed;
     }
-  }
+#  endif
 
-  light_eval(stack, P, Ng, V, vPz, thickness);
+    vec3 P_transmit;
+    stack.cl[0] = closure_light_new(cl_transmit, V, P, gbuf.thickness, P_transmit);
 
-#ifdef MAT_SUBSURFACE
-  if (has_sss) {
-    /* Add to diffuse light for processing inside the Screen Space SSS pass.
-     * The translucent light is not outputted as a separate quantity because
-     * it is over the closure_count. */
-    vec3 sss_profile = subsurface_transmission(gbuffer_closure_get(gbuf, 0).data.rgb, thickness);
-    stack.cl[0].light_shadowed += stack.cl[gbuf.closure_count].light_shadowed * sss_profile;
-    stack.cl[0].light_unshadowed += stack.cl[gbuf.closure_count].light_unshadowed * sss_profile;
+    /* Note: Only evaluates `stack.cl[0]`. */
+    light_eval_transmission(stack, P_transmit, Ng, V, vPz);
+
+#  if 1 /* TODO Limit to SSS. */
+    if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
+      /* Apply transmission profile onto transmitted light and sum with reflected light. */
+      vec3 sss_profile = subsurface_transmission(gbuffer_closure_get(gbuf, 0).data.rgb,
+                                                 gbuf.thickness);
+      stack.cl[0].light_shadowed *= sss_profile;
+      stack.cl[0].light_unshadowed *= sss_profile;
+      stack.cl[0].light_shadowed += sss_reflect_shadowed;
+      stack.cl[0].light_unshadowed += sss_reflect_unshadowed;
+    }
+#  endif
   }
 #endif
 
@@ -111,7 +88,7 @@ void main()
 
     for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
       ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
-      lightprobe_eval(samp, cl, g_data.P, V, thickness, stack.cl[i].light_shadowed);
+      lightprobe_eval(samp, cl, g_data.P, V, gbuf.thickness, stack.cl[i].light_shadowed);
     }
   }
 

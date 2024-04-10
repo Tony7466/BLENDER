@@ -34,7 +34,7 @@ void main()
   stack.cl[1].type = LIGHT_DIFFUSE;
 
   /* Direct light. */
-  light_eval(stack, P, Ng, V, vPz, gbuf.thickness);
+  light_eval(stack, P, Ng, V, vPz);
   /* Indirect light. */
   SphericalHarmonicL1 sh = lightprobe_irradiance_sample(P, V, Ng);
 
