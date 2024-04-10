@@ -1530,6 +1530,30 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
   }
 }
 
+static void create_inspection_string_for_default_socket_value(const bNodeSocket &socket,
+                                                              std::stringstream &ss)
+{
+  if (!socket.is_input()) {
+    return;
+  }
+  if (socket.is_directly_linked()) {
+    return;
+  }
+  if (socket.flag & SOCK_HIDE_VALUE) {
+    return;
+  }
+
+  if (socket.typeinfo->base_cpp_type == nullptr) {
+    return;
+  }
+
+  const CPPType &value_type = *socket.typeinfo->base_cpp_type;
+  BUFFER_FOR_CPP_TYPE_VALUE(value_type, socket_value);
+  socket.typeinfo->get_base_cpp_value(socket.default_value, socket_value);
+  create_inspection_string_for_generic_value(socket, GPointer(value_type, socket_value), ss);
+  value_type.destruct(socket_value);
+}
+
 static std::optional<std::string> create_description_inspection_string(const bNodeSocket &socket)
 {
   if (socket.runtime->declaration == nullptr) {
@@ -1598,6 +1622,18 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
   return str;
 }
 
+static std::optional<std::string> create_default_value_inspection_string(const bNodeSocket &socket)
+{
+  std::stringstream ss;
+  create_inspection_string_for_default_socket_value(socket, ss);
+
+  std::string str = ss.str();
+  if (str.empty()) {
+    return std::nullopt;
+  }
+  return str;
+}
+
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
@@ -1625,6 +1661,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
