@@ -19,6 +19,7 @@
 #include "ANIM_keyframing.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -296,6 +297,58 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Bucket Fill Operator
+ * \{ */
+
+static int grease_pencil_fill_exec(bContext * /*C*/, wmOperator * /*op*/)
+{
+  return OPERATOR_FINISHED;
+}
+
+static void grease_pencil_fill_exit(bContext * /*C*/, wmOperator * /*op*/) {}
+
+static int grease_pencil_fill_invoke(bContext * /*C*/,
+                                     wmOperator * /*op*/,
+                                     const wmEvent * /*event*/)
+{
+  return OPERATOR_FINISHED;
+}
+
+static int grease_pencil_fill_modal(bContext * /*C*/,
+                                    wmOperator * /*op*/,
+                                    const wmEvent * /*event*/)
+{
+  return OPERATOR_FINISHED;
+}
+
+static void grease_pencil_fill_cancel(bContext *C, wmOperator *op)
+{
+  grease_pencil_fill_exit(C, op);
+}
+
+static void GREASE_PENCIL_OT_fill(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  ot->name = "Grease Pencil Fill";
+  ot->idname = "GREASE_PENCIL_OT_fill";
+  ot->description = "Fill with color the shape formed by strokes";
+
+  ot->poll = ed::greasepencil::grease_pencil_painting_poll;
+  ot->exec = grease_pencil_fill_exec;
+  ot->invoke = grease_pencil_fill_invoke;
+  ot->modal = grease_pencil_fill_modal;
+  ot->cancel = grease_pencil_fill_cancel;
+
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  prop = RNA_def_boolean(ot->srna, "on_back", false, "Draw on Back", "Send new stroke to back");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::sculpt_paint
 
 /* -------------------------------------------------------------------- */
@@ -307,6 +360,7 @@ void ED_operatortypes_grease_pencil_draw()
   using namespace blender::ed::sculpt_paint;
   WM_operatortype_append(GREASE_PENCIL_OT_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_draw_mode_toggle);
+  WM_operatortype_append(GREASE_PENCIL_OT_fill);
 }
 
 /** \} */
