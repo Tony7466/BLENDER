@@ -1580,7 +1580,7 @@ static void CURVES_OT_handle_type_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   ot->prop = RNA_def_enum(
-      ot->srna, "type", rna_enum_curves_handle_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
+      ot->srna, "type", rna_enum_curves_handle_type_items, CURVE_TYPE_POLY, "Type", nullptr);
 }
 
 void operatortypes_curves()
