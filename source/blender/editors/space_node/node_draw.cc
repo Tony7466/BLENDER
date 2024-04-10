@@ -1480,18 +1480,12 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   }
 }
 
-static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
-                                                         const nodes::decl::Geometry *socket_decl,
-                                                         const bool after_log)
+static void create_inspection_string_for_geometry_socket(std::stringstream &ss, const nodes::decl::Geometry *socket_decl)
 {
   /* If the geometry declaration is null, as is the case for input to group output,
    * or it is an output socket don't show supported types. */
   if (socket_decl == nullptr || socket_decl->in_out == SOCK_OUT) {
     return;
-  }
-
-  if (after_log) {
-    ss << ".\n\n";
   }
 
   Span<bke::GeometryComponent::Type> supported_types = socket_decl->supported_types();
@@ -1537,40 +1531,105 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
   }
 }
 
-static std::optional<std::string> create_socket_inspection_string(
-    geo_log::GeoTreeLog &geo_tree_log, const bNodeSocket &socket)
+static void create_inspection_string_for_default_socket_value(const bNodeSocket &socket, std::stringstream &ss)
+{
+  if (!socket.is_input()) {
+    return;
+  }
+  if (socket.is_directly_linked()) {
+    return;
+  }
+  if (socket.flag & SOCK_HIDE_VALUE) {
+    return;
+  }
+
+  if (socket.typeinfo->base_cpp_type == nullptr) {
+    return;
+  }
+
+  const CPPType &value_type = *socket.typeinfo->base_cpp_type;
+  BUFFER_FOR_CPP_TYPE_VALUE(value_type, socket_value);
+  socket.typeinfo->get_base_cpp_value(socket.default_value, socket_value);
+  create_inspection_string_for_generic_value(socket, GPointer(value_type, socket_value), ss);
+  value_type.destruct(socket_value);
+}
+
+static std::optional<std::string> create_description_inspection_string(const bNodeSocket &socket)
+{
+  if (socket.runtime->declaration == nullptr) {
+    return std::nullopt;
+  }
+  const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
+  blender::StringRef description = socket_decl.description;
+  if (description.is_empty()) {
+    return std::nullopt;
+  }
+  
+  return TIP_(description.data());
+}
+
+static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log, const bNodeSocket &socket)
 {
   using namespace blender::nodes::geo_eval_log;
 
+  if (geo_tree_log == nullptr) {
+    return std::nullopt;
+  }
   if (socket.typeinfo->base_cpp_type == nullptr) {
     return std::nullopt;
   }
 
-  geo_tree_log.ensure_socket_values();
-  ValueLog *value_log = geo_tree_log.find_socket_value_log(socket);
+  geo_tree_log->ensure_socket_values();
+  ValueLog *value_log = geo_tree_log->find_socket_value_log(socket);
   std::stringstream ss;
-  if (const geo_log::GenericValueLog *generic_value_log =
-          dynamic_cast<const geo_log::GenericValueLog *>(value_log))
+  if (const geo_log::GenericValueLog *generic_value_log = dynamic_cast<const geo_log::GenericValueLog *>(value_log))
   {
     create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
   }
-  else if (const geo_log::FieldInfoLog *gfield_value_log =
-               dynamic_cast<const geo_log::FieldInfoLog *>(value_log))
+  else if (const geo_log::FieldInfoLog *gfield_value_log = dynamic_cast<const geo_log::FieldInfoLog *>(value_log))
   {
     create_inspection_string_for_field_info(socket, *gfield_value_log, ss);
   }
-  else if (const geo_log::GeometryInfoLog *geo_value_log =
-               dynamic_cast<const geo_log::GeometryInfoLog *>(value_log))
+  else if (const geo_log::GeometryInfoLog *geo_value_log = dynamic_cast<const geo_log::GeometryInfoLog *>(value_log))
   {
     create_inspection_string_for_geometry_info(*geo_value_log, ss);
   }
 
-  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
-          socket.runtime->declaration))
-  {
-    const bool after_log = value_log != nullptr;
-    create_inspection_string_for_geometry_socket(ss, socket_decl, after_log);
+  std::string str = ss.str();
+  if (str.empty()) {
+    return std::nullopt;
   }
+  return str;
+}
+
+static std::optional<std::string> create_declaration_inspection_string(const bNodeSocket &socket)
+{
+  std::stringstream ss;
+  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(socket.runtime->declaration))
+  {
+    create_inspection_string_for_geometry_socket(ss, socket_decl);
+  }
+
+  if (const const nodes::SocketDeclaration * socket_decl = socket.runtime->declaration) {
+    if (socket_decl->input_field_type == nodes::InputSocketFieldType::Implicit) {
+      if (!ss.str().empty()) {
+        ss << ".\n\n";
+      }
+      ss << TIP_("Implicit field input");
+    }
+  }
+
+  std::string str = ss.str();
+  if (str.empty()) {
+    return std::nullopt;
+  }
+  return str;
+}
+
+static std::optional<std::string> create_default_value_inspection_string(const bNodeSocket &socket)
+{
+  std::stringstream ss;
+  create_inspection_string_for_default_socket_value(socket, ss);
 
   std::string str = ss.str();
   if (str.empty()) {
@@ -1581,16 +1640,7 @@ static std::optional<std::string> create_socket_inspection_string(
 
 static bool node_socket_has_tooltip(const bNodeTree &ntree, const bNodeSocket &socket)
 {
-  if (ntree.type == NTREE_GEOMETRY) {
-    return true;
-  }
-
-  if (socket.runtime->declaration != nullptr) {
-    const nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    return !socket_decl.description.empty();
-  }
-
-  return false;
+  return true;
 }
 
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
@@ -1600,19 +1650,12 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   TreeDrawContext tree_draw_ctx;
   if (snode != nullptr) {
     if (ntree.type == NTREE_GEOMETRY) {
-      tree_draw_ctx.geo_log_by_zone =
-          geo_log::GeoModifierLog::get_tree_log_by_zone_for_node_editor(*snode);
+      tree_draw_ctx.geo_log_by_zone = geo_log::GeoModifierLog::get_tree_log_by_zone_for_node_editor(*snode);
     }
   }
 
-  std::stringstream output;
-  if (socket.runtime->declaration != nullptr) {
-    const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    blender::StringRef description = socket_decl.description;
-    if (!description.is_empty()) {
-      output << TIP_(description.data());
-    }
-  }
+  bool value_is_mentioned = false;
+  Vector<std::string> inspection_strings;
 
   geo_log::GeoTreeLog *geo_tree_log = [&]() -> geo_log::GeoTreeLog * {
     const bNodeTreeZones *zones = ntree.zones();
@@ -1623,25 +1666,37 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
   }();
 
-  if (ntree.type == NTREE_GEOMETRY && geo_tree_log != nullptr) {
-    if (!output.str().empty()) {
-      output << ".\n\n";
-    }
-
-    std::optional<std::string> socket_inspection_str = create_socket_inspection_string(
-        *geo_tree_log, socket);
-    if (socket_inspection_str.has_value()) {
-      output << *socket_inspection_str;
-    }
-    else {
-      output << TIP_(
-          "Unknown socket value. Either the socket was not used or its value was not logged "
-          "during the last evaluation");
+  if (std::optional<std::string> info = create_description_inspection_string(socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+    inspection_strings.append(std::move(*info));
+    value_is_mentioned = true;
+  }
+  if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  if (!value_is_mentioned) {
+    if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
+      inspection_strings.append(std::move(*info));
     }
   }
 
-  if (output.str().empty()) {
+  std::stringstream output;
+  for (const std::string &info : inspection_strings) {
+    output << info;
+    if (&info != &inspection_strings.last()) {
+      output << ".\n\n";
+    }
+  }
+
+  if (inspection_strings.is_empty()) {
     output << bke::nodeSocketLabel(&socket);
+
+    if (ntree.type == NTREE_GEOMETRY) {
+      output << ".\n\n";
+      output << TIP_("Unknown socket value. Either the socket was not used or its value was not logged during the last evaluation");
+    }
   }
 
   return output.str();
