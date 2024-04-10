@@ -93,7 +93,7 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
   half_size = side_;
   center_offset = float2(0.0f);
 
-  if (!equals_m4m4(object_mat.ptr(), object_mat_.ptr())) {
+  if (object_mat != object_mat_) {
     object_mat = object_mat_;
     set_dirty();
   }
@@ -334,15 +334,36 @@ void ShadowPunctual::compute_projection_boundaries(float light_radius,
   }
 }
 
-void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
+void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
 {
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
+
+  if (!is_render_sync) {
+    /* Acquire missing tile-maps. */
+    while (tilemaps_.size() < tilemaps_needed_) {
+      tilemaps_.append(tilemap_pool.acquire());
+    }
+    light.tilemap_index = tilemap_pool.tilemaps_data.size();
+    for (ShadowTileMap *tilemap : tilemaps_) {
+      /* Add shadow tile-maps grouped by lights to the GPU buffer. */
+      tilemap_pool.tilemaps_data.append(*tilemap);
+    }
+
+    if (light.do_jittering) {
+      /* Just acquire the tilemaps, we must sync them at render time. */
+      return;
+    }
+  }
 
   float side, near, far;
   compute_projection_boundaries(light_radius_, shadow_radius_, max_distance_, near, far, side);
 
   float3 origin_shift = float3(0.0f);
-  if (light.do_jittering) {
+
+  if (is_render_sync) {
+    /* Render sync is only needed for jittered shadows. */
+    BLI_assert(light.do_jittering);
+    Sampling &sampling = shadows_.inst_.sampling;
     /* TODO: de-correlate. */
     float3 random = sampling.rng_3d_get(SAMPLING_SHADOW_U);
     if (is_area_light(light.type)) {
@@ -363,31 +384,22 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   }
 
   float4x4 obmat_tmp = light.object_mat;
-  obmat_tmp = obmat_tmp * math::from_location<float4x4>(origin_shift);
-
   /* Clear embedded custom data. */
   obmat_tmp[0][3] = obmat_tmp[1][3] = obmat_tmp[2][3] = 0.0f;
   obmat_tmp[3][3] = 1.0f;
+  obmat_tmp = obmat_tmp * math::from_location<float4x4>(origin_shift);
 
-  /* Acquire missing tile-maps. */
-  while (tilemaps_.size() < tilemaps_needed_) {
-    tilemaps_.append(tilemap_pool.acquire());
-  }
-
-  tilemaps_[Z_NEG]->sync_cubeface(obmat_tmp, near, far, side, Z_NEG, lod_bias);
+  tilemaps_[Z_NEG]->sync_cubeface(obmat_tmp, near, far, side, Z_NEG, light.lod_bias);
   if (tilemaps_needed_ >= 5) {
-    tilemaps_[X_POS]->sync_cubeface(obmat_tmp, near, far, side, X_POS, lod_bias);
-    tilemaps_[X_NEG]->sync_cubeface(obmat_tmp, near, far, side, X_NEG, lod_bias);
-    tilemaps_[Y_POS]->sync_cubeface(obmat_tmp, near, far, side, Y_POS, lod_bias);
-    tilemaps_[Y_NEG]->sync_cubeface(obmat_tmp, near, far, side, Y_NEG, lod_bias);
+    tilemaps_[X_POS]->sync_cubeface(obmat_tmp, near, far, side, X_POS, light.lod_bias);
+    tilemaps_[X_NEG]->sync_cubeface(obmat_tmp, near, far, side, X_NEG, light.lod_bias);
+    tilemaps_[Y_POS]->sync_cubeface(obmat_tmp, near, far, side, Y_POS, light.lod_bias);
+    tilemaps_[Y_NEG]->sync_cubeface(obmat_tmp, near, far, side, Y_NEG, light.lod_bias);
   }
   if (tilemaps_needed_ == 6) {
-    tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near, far, side, Z_POS, lod_bias);
+    tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near, far, side, Z_POS, light.lod_bias);
   }
 
-  light.tilemap_index = tilemap_pool.tilemaps_data.size();
-
-  light.local.tilemaps_count = tilemaps_needed_;
   /* TODO(fclem): `as_uint()`. */
   union {
     float f;
@@ -400,11 +412,11 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   light.local.clip_side = side;
   light.local.shadow_projection_shift = origin_shift;
   light.local.shadow_scale = softness_factor_;
+  light.local.tilemaps_count = tilemaps_needed_;
 
-  for (ShadowTileMap *tilemap : tilemaps_) {
-    /* Add shadow tile-maps grouped by lights to the GPU buffer. */
-    tilemap_pool.tilemaps_data.append(*tilemap);
-    tilemap->set_updated();
+  for (int i : IndexRange(tilemaps_needed_)) {
+    tilemap_pool.tilemaps_data[light.tilemap_index + i] = *tilemaps_[i];
+    tilemaps_[i]->set_updated();
   }
 }
 
@@ -986,7 +998,7 @@ void ShadowModule::end_sync()
       light.directional->end_sync(light, inst_.camera, light.lod_bias, inst_.sampling);
     }
     else if (light.punctual != nullptr) {
-      light.punctual->end_sync(light, light.lod_bias, inst_.sampling);
+      light.punctual->end_sync(light);
     }
     else {
       light.tilemap_index = LIGHT_NO_SHADOW;

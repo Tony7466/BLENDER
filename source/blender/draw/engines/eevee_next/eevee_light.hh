@@ -159,6 +159,8 @@ class LightModule {
   void sync_light(const Object *ob, ObjectHandle &handle);
   void end_sync();
 
+  void sync_jitter();
+
   /**
    * Update acceleration structure for the given view.
    */

@@ -510,6 +510,31 @@ void LightModule::debug_pass_sync()
   }
 }
 
+void LightModule::sync_jitter()
+{
+  if (!inst_.shadows.do_jittering()) {
+    return;
+  }
+  /* Indices inside GPU data array. */
+  int sun_lights_idx = 0;
+  int local_lights_idx = sun_lights_len_;
+  for (Light &light : light_map_.values()) {
+    int dst_idx = is_sun_light(light.type) ? sun_lights_idx++ : local_lights_idx++;
+    if (!light.do_jittering) {
+      continue;
+    }
+    if (light.directional != nullptr) {
+      // light.directional->apply_jitter(light, inst_.sampling);
+    }
+    else if (light.punctual != nullptr) {
+      light.punctual->end_sync(light, true);
+    }
+    light_buf_[dst_idx] = light;
+  }
+  light_buf_.push_update();
+  inst_.shadows.tilemap_pool.tilemaps_data.push_update();
+}
+
 void LightModule::set_view(View &view, const int2 extent)
 {
   float far_z = view.far_clip();

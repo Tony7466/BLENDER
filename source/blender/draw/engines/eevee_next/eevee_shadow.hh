@@ -448,7 +448,7 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, float lod_bias, Sampling &sampling);
+  void end_sync(Light &light, bool is_render_sync = false);
 
  private:
   /**

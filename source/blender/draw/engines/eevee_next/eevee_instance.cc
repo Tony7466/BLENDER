@@ -399,6 +399,8 @@ void Instance::render_sample()
 
   sampling.step();
 
+  lights.sync_jitter();
+
   capture_view.render_world();
   capture_view.render_probes();
 
