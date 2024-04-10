@@ -44,7 +44,7 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
   }
   grid_offset = origin_offset;
 
-  if (!equals_m4m4(object_mat.ptr(), object_mat_.ptr())) {
+  if (object_mat != object_mat_) {
     object_mat = object_mat_;
     set_dirty();
   }
@@ -538,9 +538,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
     int2 level_offset = origin_offset +
                         shadow_cascade_grid_offset(light.sun.clipmap_base_offset_pos, i);
     tilemap->sync_orthographic(object_mat_, level_offset, level, 0.0f, SHADOW_PROJECTION_CASCADE);
-
-    /* Add shadow tile-maps grouped by lights to the GPU buffer. */
-    shadows_.tilemap_pool.tilemaps_data.append(*tilemap);
+    shadows_.tilemap_pool.tilemaps_data[light.tilemap_index + i] = *tilemap;
     tilemap->set_updated();
   }
 
@@ -588,9 +586,7 @@ IndexRange ShadowDirectional::clipmap_level_range(const Camera &camera)
   return range;
 }
 
-void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
-                                                      const Camera &camera,
-                                                      float lod_bias)
+void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera &camera)
 {
   for (int lod : IndexRange(levels_range.size())) {
     ShadowTileMap *tilemap = tilemaps_[lod];
@@ -604,10 +600,8 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
     int2 level_offset = int2(math::round(light_space_camera_position / tile_size));
 
     tilemap->sync_orthographic(
-        object_mat_, level_offset, level, lod_bias, SHADOW_PROJECTION_CLIPMAP);
-
-    /* Add shadow tile-maps grouped by lights to the GPU buffer. */
-    shadows_.tilemap_pool.tilemaps_data.append(*tilemap);
+        object_mat_, level_offset, level, light.lod_bias, SHADOW_PROJECTION_CLIPMAP);
+    shadows_.tilemap_pool.tilemaps_data[light.tilemap_index + lod] = *tilemap;
     tilemap->set_updated();
   }
 
@@ -643,8 +637,6 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
 
   light.sun.clipmap_lod_min = levels_range.first();
   light.sun.clipmap_lod_max = levels_range.last();
-
-  light.lod_bias = lod_bias;
 }
 
 void ShadowDirectional::sync(const float4x4 &object_mat,
@@ -688,12 +680,50 @@ void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_
   levels_range = isect_range;
 }
 
-void ShadowDirectional::end_sync(Light &light,
-                                 const Camera &camera,
-                                 float lod_bias,
-                                 Sampling &sampling)
+void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_render_sync)
 {
-  if (light.do_jittering) {
+  ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
+  if (!is_render_sync) {
+    IndexRange levels_new = directional_distribution_type_get(camera) ==
+                                    SHADOW_PROJECTION_CASCADE ?
+                                cascade_level_range(camera, light.lod_bias) :
+                                clipmap_level_range(camera);
+
+    if (levels_range != levels_new) {
+      /* Acquire missing tile-maps. */
+      IndexRange isect_range = levels_new.intersect(levels_range);
+      int64_t before_range = isect_range.start() - levels_new.start();
+      int64_t after_range = levels_new.one_after_last() - isect_range.one_after_last();
+
+      Vector<ShadowTileMap *> cached_tilemaps = tilemaps_;
+      tilemaps_.clear();
+      for (int64_t i = 0; i < before_range; i++) {
+        tilemaps_.append(tilemap_pool.acquire());
+      }
+      /* Keep cached LOD's. */
+      tilemaps_.extend(cached_tilemaps);
+      for (int64_t i = 0; i < after_range; i++) {
+        tilemaps_.append(tilemap_pool.acquire());
+      }
+      levels_range = levels_new;
+    }
+
+    light.tilemap_index = tilemap_pool.tilemaps_data.size();
+    for (int lod : IndexRange(levels_range.size())) {
+      /* Add shadow tile-maps grouped by lights to the GPU buffer. */
+      tilemap_pool.tilemaps_data.append(*tilemaps_[lod]);
+    }
+
+    if (light.do_jittering) {
+      /* Just acquire the tilemaps, we must sync them at render time. */
+      return;
+    }
+  }
+
+  if (is_render_sync) {
+    /* Render sync is only needed for jittered shadows. */
+    BLI_assert(light.do_jittering);
+    Sampling &sampling = shadows_.inst_.sampling;
     /* TODO: de-correlate. */
     float2 random = sampling.rng_2d_get(SAMPLING_SHADOW_U);
     float2 r_disk = sampling.sample_disk(random) * shadow_radius_;
@@ -703,31 +733,6 @@ void ShadowDirectional::end_sync(Light &light,
     light.object_mat = object_mat_;
   }
 
-  ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
-  IndexRange levels_new = directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE ?
-                              cascade_level_range(camera, lod_bias) :
-                              clipmap_level_range(camera);
-
-  if (levels_range != levels_new) {
-    /* Acquire missing tile-maps. */
-    IndexRange isect_range = levels_new.intersect(levels_range);
-    int64_t before_range = isect_range.start() - levels_new.start();
-    int64_t after_range = levels_new.one_after_last() - isect_range.one_after_last();
-
-    Vector<ShadowTileMap *> cached_tilemaps = tilemaps_;
-    tilemaps_.clear();
-    for (int64_t i = 0; i < before_range; i++) {
-      tilemaps_.append(tilemap_pool.acquire());
-    }
-    /* Keep cached LOD's. */
-    tilemaps_.extend(cached_tilemaps);
-    for (int64_t i = 0; i < after_range; i++) {
-      tilemaps_.append(tilemap_pool.acquire());
-    }
-    levels_range = levels_new;
-  }
-
-  light.tilemap_index = tilemap_pool.tilemaps_data.size();
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
   light.sun.shadow_trace_distance = trace_distance_;
@@ -737,7 +742,7 @@ void ShadowDirectional::end_sync(Light &light,
     cascade_tilemaps_distribution(light, camera);
   }
   else {
-    clipmap_tilemaps_distribution(light, camera, lod_bias);
+    clipmap_tilemaps_distribution(light, camera);
   }
 }
 
@@ -995,7 +1000,7 @@ void ShadowModule::end_sync()
       light.tilemap_index = LIGHT_NO_SHADOW;
     }
     else if (light.directional != nullptr) {
-      light.directional->end_sync(light, inst_.camera, light.lod_bias, inst_.sampling);
+      light.directional->end_sync(light, inst_.camera);
     }
     else if (light.punctual != nullptr) {
       light.punctual->end_sync(light);

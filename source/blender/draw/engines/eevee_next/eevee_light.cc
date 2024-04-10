@@ -524,7 +524,7 @@ void LightModule::sync_jitter()
       continue;
     }
     if (light.directional != nullptr) {
-      // light.directional->apply_jitter(light, inst_.sampling);
+      light.directional->end_sync(light, inst_.camera, true);
     }
     else if (light.punctual != nullptr) {
       light.punctual->end_sync(light, true);

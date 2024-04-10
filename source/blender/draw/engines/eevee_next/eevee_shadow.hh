@@ -509,7 +509,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, const Camera &camera, float lod_bias, Sampling &sampling);
+  void end_sync(Light &light, const Camera &camera, bool is_render_sync = false);
 
   /* Return coverage of the whole tile-map in world unit. */
   static float coverage_get(int lvl)
@@ -530,7 +530,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   IndexRange cascade_level_range(const Camera &camera, float lod_bias);
 
   void cascade_tilemaps_distribution(Light &light, const Camera &camera);
-  void clipmap_tilemaps_distribution(Light &light, const Camera &camera, float lod_bias);
+  void clipmap_tilemaps_distribution(Light &light, const Camera &camera);
 
   void cascade_tilemaps_distribution_near_far_points(const Camera &camera,
                                                      float3 &near_point,
