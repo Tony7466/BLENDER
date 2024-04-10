@@ -51,7 +51,7 @@ void main()
     }
 #  endif
 
-    vec3 P_transmit;
+    vec3 P_transmit = vec3(0.0);
     stack.cl[0] = closure_light_new(cl_transmit, V, P, gbuf.thickness, P_transmit);
 
     /* Note: Only evaluates `stack.cl[0]`. */

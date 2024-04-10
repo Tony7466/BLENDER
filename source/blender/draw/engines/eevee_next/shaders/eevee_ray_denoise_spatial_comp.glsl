@@ -23,23 +23,14 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
-
-vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
-{
-  /* Reusing same thing as lightprobe_reflection_dominant_dir for now with the roughness mapped to
-   * reflection roughness. */
-  float m = square(roughness);
-  vec3 R = refract(-V, N, 1.0 / ior);
-  float smoothness = 1.0 - m;
-  float fac = smoothness * (sqrt(smoothness) + m);
-  return normalize(mix(-N, R, fac));
-}
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
 float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       if (thickness > 0.0) {
+        /* Uniform sphere weighting. */
         return 1.0;
       }
       return bsdf_lambert(-cl.N, L);
@@ -142,16 +133,10 @@ void main()
     if (closure.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
       float ior = to_closure_refraction(closure).ior;
       float roughness = to_closure_refraction(closure).roughness;
-      vec3 transmit_dir = refraction_dominant_dir(closure.N, V, ior, roughness);
-
-      vec3 exit_P;
-      raytrace_thickness_sphere_intersect(
-          gbuf.thickness, closure.N, transmit_dir, closure.N, exit_P);
-      closure.N = -closure.N;
+      vec3 L = refraction_dominant_dir(closure.N, V, ior, roughness);
+      closure.N = -thickness_sphere_intersect(gbuf.thickness, closure.N, L).hit_N;
       closure.data.y = 1.0 / ior;
-      V = -transmit_dir;
-    }
-    else if (closure.type == CLOSURE_BSDF_TRANSLUCENT_ID) {
+      V = -L;
     }
   }
 

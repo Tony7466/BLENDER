@@ -141,22 +141,22 @@ void main()
     vec3 L;
     switch (cl.type) {
       case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
-        L = lightprobe_reflection_dominant_dir(cl.N, V, roughness);
+        L = reflection_dominant_dir(cl.N, V, roughness);
         break;
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
         float ior = to_closure_refraction(cl).ior;
         if (gbuf.thickness > 0.0) {
-          vec3 transmit_dir = lightprobe_refraction_dominant_dir(cl.N, V, ior, roughness);
-          vec3 exit_P;
-          raytrace_thickness_sphere_intersect(gbuf.thickness, cl.N, transmit_dir, cl.N, exit_P);
-          cl.N = -cl.N;
+          vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
+          cl.N = -thickness_sphere_intersect(gbuf.thickness, cl.N, L).hit_N;
           ior = 1.0 / ior;
-          V = -transmit_dir;
+          V = -L;
         }
-        L = lightprobe_refraction_dominant_dir(cl.N, V, ior, roughness);
+        L = refraction_dominant_dir(cl.N, V, ior, roughness);
         break;
       }
       case CLOSURE_BSDF_TRANSLUCENT_ID:
+        /* Translucent BSDF with thickness is modelled as uniform sphere distribution which drops
+         * all the directional terms. */
         L = (gbuf.thickness > 0.0) ? vec3(0.0) : -N;
         break;
       default:

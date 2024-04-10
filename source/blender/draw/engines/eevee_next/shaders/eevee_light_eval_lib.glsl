@@ -17,6 +17,7 @@
 #pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
 /* If using compute, the shader should define its own pixel. */
@@ -127,21 +128,25 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
   cl_light.is_translucent_with_thickness = false;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      cl_light.N = -cl.N;
-      cl_light.is_translucent_with_thickness = thickness > 0.0;
-      cl_light.type = LIGHT_TRANSMIT;
+      if (is_transmission) {
+        cl_light.N = -cl.N;
+        cl_light.is_translucent_with_thickness = thickness > 0.0;
+        cl_light.type = LIGHT_TRANSMIT;
 
-      if (cl_light.is_translucent_with_thickness) {
-        vec2 random_2d = fract(pcg3d(P).xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
-
-        float radius = thickness * 0.5;
-        random_2d = sample_disk(random_2d) * radius;
-        /* Store random shadow position inside the normal since it has no effect. */
-        cl_light.N = vec3(random_2d, radius);
-        /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
-         * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
-         * a unique position on the sphere and use the light vector as normal. */
-        out_P = P - cl.N * thickness * 0.5;
+        if (cl_light.is_translucent_with_thickness) {
+          vec2 random_2d = pcg3d(P).xy;
+#ifdef EEVEE_SAMPLING_DATA
+          random_2d = fract(random_2d + sampling_rng_2D_get(SAMPLING_SHADOW_X));
+#endif
+          float radius = thickness * 0.5;
+          random_2d = sample_disk(random_2d) * radius;
+          /* Store random shadow position inside the normal since it has no effect. */
+          cl_light.N = vec3(random_2d, radius);
+          /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
+           * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
+           * a unique position on the sphere and use the light vector as normal. */
+          out_P = P - cl.N * thickness * 0.5;
+        }
       }
       break;
     case CLOSURE_BSSRDF_BURLEY_ID:
@@ -164,22 +169,26 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
       cl_light.type = LIGHT_SPECULAR;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
-      ClosureRefraction cl_refract = to_closure_refraction(cl);
-      cl_refract.roughness = refraction_roughness_remapping(cl_refract.roughness, cl_refract.ior);
+      if (is_transmission) {
+        ClosureRefraction cl_refract = to_closure_refraction(cl);
+        cl_refract.roughness = refraction_roughness_remapping(cl_refract.roughness,
+                                                              cl_refract.ior);
 
-      if (thickness > 0.0) {
-        vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
-        vec3 P_offset;
-        raytrace_thickness_sphere_intersect(thickness, cl.N, L, cl.N, P_offset);
-        cl.N = -cl.N;
-        cl_refract.ior = 1.0 / cl_refract.ior;
-        V = -L;
-        out_P = P + P_offset;
+        if (thickness > 0.0) {
+          vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
+
+          ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);
+          cl.N = -isect.hit_N;
+          out_P = P + isect.hit_P;
+
+          cl_refract.ior = 1.0 / cl_refract.ior;
+          V = -L;
+        }
+        vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
+        cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), cl_refract.roughness);
+        cl_light.N = -cl.N;
+        cl_light.type = LIGHT_TRANSMIT;
       }
-      vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
-      cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), cl_refract.roughness);
-      cl_light.N = -cl.N;
-      cl_light.type = LIGHT_TRANSMIT;
       break;
     }
     case CLOSURE_NONE_ID:
@@ -196,7 +205,7 @@ ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V, vec3 P, float thi
 
 ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
 {
-  vec3 unused_P, unused_out_P;
+  vec3 unused_P = vec3(0.0), unused_out_P = vec3(0.0);
   return closure_light_new_ex(cl, V, unused_P, 0.0, false, unused_out_P);
 }
 
@@ -307,20 +316,3 @@ void light_eval_reflection(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 
   }
   LIGHT_FOREACH_END
 }
-
-/* Variations that have less arguments. */
-
-#if !defined(SHADOW_DEFERRED)
-void light_eval(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz)
-{
-  light_eval(stack, P, Ng, V, vPz);
-}
-
-#  if !defined(SHADOW_SUBSURFACE) && defined(LIGHT_ITER_FORCE_NO_CULLING)
-void light_eval(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V)
-{
-  light_eval(stack, P, Ng, V, 0.0);
-}
-#  endif
-
-#endif

@@ -12,6 +12,8 @@
 
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
+#if 0 /* TODO finish */
+
 void thickness_from_shadow_single(
     uint l_idx, const bool is_directional, vec3 P, vec3 Ng, inout vec2 thickness)
 {
@@ -35,7 +37,7 @@ void thickness_from_shadow_single(
   thickness += vec2(safe_sqrt(result.occluder_distance), 1.0) * weight;
 }
 
-#define THICKNESS_NO_VALUE 1.0e6
+#  define THICKNESS_NO_VALUE 1.0e6
 /**
  * Return the apparent thickness of an object behind surface considering all shadow maps
  * available. If no shadow-map has a record of the other side of the surface, this function
@@ -60,4 +62,27 @@ float thickness_from_shadow(vec3 P, vec3 Ng, float vPz)
   LIGHT_FOREACH_END
 
   return (thickness.y > 0.0) ? square(thickness.x / thickness.y) : THICKNESS_NO_VALUE;
+}
+
+#endif
+
+struct ThicknessIsect {
+  /* Normal at the intersection point on the sphere. */
+  vec3 hit_N;
+  /* Position of the intersection point on the sphere. */
+  vec3 hit_P;
+};
+
+/**
+ * Model sub-surface ray interaction with a sphere of the given diameter tangent to the shading
+ * point. This allows to model 2 refraction events quite cheaply.
+ * Everything is relative to the entrance shading point.
+ */
+ThicknessIsect thickness_sphere_intersect(float diameter, vec3 N, vec3 L)
+{
+  ThicknessIsect isect;
+  float cos_alpha = dot(L, -N);
+  isect.hit_N = normalize(N + L * (cos_alpha * 2.0));
+  isect.hit_P = L * (cos_alpha * diameter);
+  return isect;
 }

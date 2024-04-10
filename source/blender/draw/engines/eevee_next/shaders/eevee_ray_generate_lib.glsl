@@ -13,6 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
 struct BsdfSample {
   vec3 direction;
@@ -25,17 +26,6 @@ struct BsdfSample {
 bool is_singular_ray(float roughness)
 {
   return roughness < BSDF_ROUGHNESS_THRESHOLD;
-}
-
-vec3 refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
-{
-  /* Reusing same thing as lightprobe_reflection_dominant_dir for now with the roughness mapped to
-   * reflection roughness. */
-  float m = square(roughness);
-  vec3 R = refract(-V, N, 1.0 / ior);
-  float smoothness = 1.0 - m;
-  float fac = smoothness * (sqrt(smoothness) + m);
-  return normalize(mix(-N, R, fac));
 }
 
 /* Returns view-space ray. */
@@ -93,13 +83,11 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
       float roughness = to_closure_refraction(cl).roughness;
       if (thickness > 0.0) {
         float apparent_roughness = refraction_roughness_remapping(roughness, ior);
-        vec3 transmit_dir = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
-
-        vec3 exit_P;
-        raytrace_thickness_sphere_intersect(thickness, cl.N, transmit_dir, cl.N, exit_P);
-        cl.N = -cl.N;
+        vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
+        /* NOTE(fclem): Tracing origin is modified in the trace shader. */
+        cl.N = -thickness_sphere_intersect(thickness, cl.N, L).hit_N;
         ior = 1.0 / ior;
-        V = -transmit_dir;
+        V = -L;
         world_to_tangent = from_up_axis(cl.N);
       }
 

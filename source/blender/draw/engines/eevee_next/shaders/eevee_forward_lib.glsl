@@ -28,7 +28,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
   }
 
 #ifndef SKIP_LIGHT_EVAL
-  light_eval(stack, g_data.P, g_data.Ng, V, vPz);
+  light_eval_reflection(stack, g_data.P, g_data.Ng, V, vPz);
 #endif
 
   LightProbeSample samp = lightprobe_load(g_data.P, g_data.Ng, V);
