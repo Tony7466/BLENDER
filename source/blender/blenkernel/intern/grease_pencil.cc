@@ -2261,19 +2261,20 @@ void GreasePencil::remove_drawings_with_no_users()
 
   int first_unused_drawing = -1;
   int last_used_drawing = drawings.size();
-  while (true) {
-    /* Advance head and tail iterators to the next unused/used drawing respectively. */
+  /* Advance head and tail iterators to the next unused/used drawing respectively.
+   * Returns true if an index pair was found that needs to be swapped. */
+  auto find_next_swap_index = [&]() -> bool {
     do {
       ++first_unused_drawing;
     } while (first_unused_drawing < last_used_drawing && is_drawing_used(first_unused_drawing));
     do {
       --last_used_drawing;
-    } while (last_used_drawing > first_unused_drawing && !is_drawing_used(last_used_drawing));
-    if (first_unused_drawing >= last_used_drawing) {
-      /* Everything fully compressed. */
-      break;
-    }
+    } while (first_unused_drawing < last_used_drawing && !is_drawing_used(last_used_drawing));
 
+    return first_unused_drawing < last_used_drawing;
+  };
+
+  while (find_next_swap_index()) {
     /* Found two valid iterators, now swap drawings. */
     std::swap(drawings[first_unused_drawing], drawings[last_used_drawing]);
     drawing_index_map[last_used_drawing] = first_unused_drawing;
