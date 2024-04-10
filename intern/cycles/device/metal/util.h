@@ -27,9 +27,9 @@ enum MetalGPUVendor {
 };
 
 enum AppleGPUArchitecture {
-  /* NOT_APPLE_GPU is AMD and Intel GPUs. This should remained at the start of this enum to
-     ensure that AMD/Intel GPUs don't get Apple Silicon only features enabled when using comparison
-     operators. */
+  /* NOT_APPLE_GPU represents AMD/Intel GPUs. This should remained at the start of this enum to
+   * ensure that AMD/Intel GPUs don't accidentally get Apple Silicon only features enabled when
+   * using comparison operators. */
   NOT_APPLE_GPU,
   APPLE_M1,
   APPLE_M2,
