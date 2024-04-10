@@ -4,8 +4,10 @@
 
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_material.h"
 #include "BKE_report.hh"
 
+#include "BLI_string.h"
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
@@ -18,8 +20,14 @@
 
 #include "ANIM_keyframing.hh"
 
+#include "MEM_guardedalloc.h"
+
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+
+#include "UI_interface.hh"
+
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -305,30 +313,409 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
 /** \name Bucket Fill Operator
  * \{ */
 
-static int grease_pencil_fill_exec(bContext * /*C*/, wmOperator * /*op*/)
+struct GreasePencilFillOpData {
+  GreasePencilFillOpData(bContext &C, blender::bke::greasepencil::Layer & /*layer*/)
+  {
+    using blender::bke::greasepencil::Layer;
+
+    const ToolSettings &ts = *CTX_data_tool_settings(&C);
+    const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+    // const ARegion &region = *CTX_wm_region(&C);
+
+    /* Enable custom drawing handlers to show help lines */
+    const bool do_extend = (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES);
+    const bool help_lines = do_extend ||
+                            (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_HELPLINES);
+    if (help_lines) {
+      // this->region_type = region.type;
+      // this->draw_handle_3d = ED_region_draw_cb_activate(
+      //     region.type, grease_pencil_fill_draw_3d, tgpf, REGION_DRAW_POST_VIEW);
+    }
+  }
+
+  ~GreasePencilFillOpData()
+  {
+    /* clear status message area */
+    // MEM_SAFE_FREE(tgpf->sbuffer);
+    // MEM_SAFE_FREE(tgpf->depth_arr);
+
+    /* Clean temp strokes. */
+    // stroke_array_free(tgpf);
+
+    /* Remove any temp stroke. */
+    // gpencil_delete_temp_stroke_extension(tgpf, true);
+
+    /* remove drawing handler */
+    // if (this->draw_handle_3d) {
+    //   ED_region_draw_cb_exit(this->region_type, this->draw_handle_3d);
+    // }
+
+    /* Remove depth buffer in cache. */
+    // if (tgpf->depths) {
+    //   ED_view3d_depths_free(tgpf->depths);
+    // }
+  }
+};
+
+static void grease_pencil_fill_status_indicators(bContext &C)
 {
-  return OPERATOR_FINISHED;
+  ToolSettings &ts = *CTX_data_tool_settings(&C);
+  Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+
+  const bool is_extend = (brush.gpencil_settings->fill_extend_mode == GP_FILL_EMODE_EXTEND);
+  const bool use_stroke_collide = (brush.gpencil_settings->flag & GP_BRUSH_FILL_STROKE_COLLIDE) !=
+                                  0;
+  const float fill_extend_fac = brush.gpencil_settings->fill_extend_fac;
+
+  char status_str[UI_MAX_DRAW_STR];
+  BLI_snprintf(status_str,
+               sizeof(status_str),
+               IFACE_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back, MMB Adjust Extend, S: "
+                      "Switch Mode, D: "
+                      "Stroke Collision | %s %s (%.3f)"),
+               (is_extend) ? IFACE_("Extend") : IFACE_("Radius"),
+               (is_extend && use_stroke_collide) ? IFACE_("Stroke: ON") : IFACE_("Stroke: OFF"),
+               fill_extend_fac);
+
+  ED_workspace_status_text(&C, status_str);
 }
 
-static void grease_pencil_fill_exit(bContext * /*C*/, wmOperator * /*op*/) {}
-
-static int grease_pencil_fill_invoke(bContext * /*C*/,
-                                     wmOperator * /*op*/,
-                                     const wmEvent * /*event*/)
+static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
 {
-  return OPERATOR_FINISHED;
+  using blender::bke::greasepencil::Layer;
+
+  Object &ob = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+  Layer *layer = grease_pencil.get_active_layer();
+  /* Cannot paint in locked layer. */
+  if (layer && layer->is_locked()) {
+    return false;
+  }
+
+  if (layer == nullptr) {
+    layer = &grease_pencil.add_layer("GP_Layer");
+  }
+
+  op.customdata = MEM_new<GreasePencilFillOpData>(__func__, C, *layer);
+  return true;
 }
 
-static int grease_pencil_fill_modal(bContext * /*C*/,
-                                    wmOperator * /*op*/,
-                                    const wmEvent * /*event*/)
+static void grease_pencil_fill_exit(bContext &C, wmOperator &op)
 {
-  return OPERATOR_FINISHED;
+  Object &ob = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+
+  WM_cursor_modal_restore(CTX_wm_window(&C));
+
+  if (op.customdata) {
+    MEM_delete(static_cast<GreasePencilFillOpData *>(op.customdata));
+    op.customdata = nullptr;
+  }
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+
+  WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+  WM_event_add_notifier(&C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+}
+
+static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  ToolSettings &ts = *CTX_data_tool_settings(C);
+  Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+  Object &ob = *CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+
+  /* Fill tool needs a material (cannot use default material) */
+  if (brush.gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
+    if (brush.gpencil_settings->material == nullptr) {
+      BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
+      return OPERATOR_CANCELLED;
+    }
+  }
+  else {
+    if (BKE_object_material_get(&ob, ob.actcol) == nullptr) {
+      BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  if (!grease_pencil_fill_init(*C, *op)) {
+    grease_pencil_fill_exit(*C, *op);
+    return OPERATOR_CANCELLED;
+  }
+
+  WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
+
+  grease_pencil_fill_status_indicators(*C);
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+
+  /* Add a modal handler for this operator. */
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  int estate = OPERATOR_RUNNING_MODAL;
+
+  switch (event->type) {
+    case EVT_ESCKEY:
+    case RIGHTMOUSE:
+      estate = OPERATOR_CANCELLED;
+      break;
+    case LEFTMOUSE:
+      /* TODO apply the operator. */
+      // if (!blender::animrig::is_autokey_on(tgpf->scene) && (!is_multiedit) &&
+      //     (tgpf->gpl->actframe == nullptr))
+      // {
+      //   BKE_report(op->reports, RPT_INFO, "No available frame for creating stroke");
+      //   estate = OPERATOR_CANCELLED;
+      //   break;
+      // }
+      // /* if doing a extend transform with the pen, avoid false contacts of
+      //  * the pen with the tablet. */
+      // if (tgpf->mouse_init[0] != -1.0f) {
+      //   break;
+      // }
+      // copy_v2fl_v2i(tgpf->mouse_center, event->mval);
+
+      // /* first time the event is not enabled to show help lines. */
+      // if ((tgpf->oldkey != -1) || (!help_lines)) {
+      //   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(C), RGN_TYPE_ANY, event->xy);
+      //   if (region) {
+      //     bool in_bounds = false;
+      //     /* Perform bounds check */
+      //     in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event->xy);
+
+      //     if ((in_bounds) && (region->regiontype == RGN_TYPE_WINDOW)) {
+      //       tgpf->mouse[0] = event->mval[0];
+      //       tgpf->mouse[1] = event->mval[1];
+      //       tgpf->is_render = true;
+      //       /* Define Zoom level. */
+      //       gpencil_zoom_level_set(tgpf);
+
+      //       /* Create Temp stroke. */
+      //       tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
+      //       tGPspoint point2D;
+      //       bGPDspoint *pt = &tgpf->gps_mouse->points[0];
+      //       copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
+      //       gpencil_stroke_convertcoords_tpoint(
+      //           tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
+
+      //       /* Hash of selected frames. */
+      //       GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
+
+      //       /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
+      //        * create a new frame. */
+      //       if (!is_multiedit) {
+      //         tgpf->gpf = BKE_gpencil_layer_frame_get(
+      //             tgpf->gpl,
+      //             tgpf->active_cfra,
+      //             blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
+      //                                                            GP_GETFRAME_USE_PREV);
+      //         tgpf->gpf->flag |= GP_FRAME_SELECT;
+
+      //         BLI_ghash_insert(
+      //             frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
+      //       }
+      //       else {
+      //         BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
+      //       }
+
+      //       /* Loop all frames. */
+      //       wmWindow *win = CTX_wm_window(C);
+
+      //       GHashIterator gh_iter;
+      //       int total = BLI_ghash_len(frame_list);
+      //       int i = 1;
+      //       GHASH_ITER (gh_iter, frame_list) {
+      //         /* Set active frame as current for filling. */
+      //         tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
+      //         int step = (float(i) / float(total)) * 100.0f;
+      //         WM_cursor_time(win, step);
+
+      //         if (extend_lines) {
+      //           gpencil_update_extend(tgpf);
+      //         }
+
+      //         /* Repeat loop until get something. */
+      //         tgpf->done = false;
+      //         int loop_limit = 0;
+      //         while ((!tgpf->done) && (loop_limit < 2)) {
+      //           WM_cursor_time(win, loop_limit + 1);
+      //           /* Render screen to temp image and do fill. */
+      //           gpencil_do_frame_fill(tgpf, is_inverted);
+
+      //           /* restore size */
+      //           tgpf->region->winx = short(tgpf->bwinx);
+      //           tgpf->region->winy = short(tgpf->bwiny);
+      //           tgpf->region->winrct = tgpf->brect;
+      //           if (!tgpf->done) {
+      //             /* If the zoom was not set before, avoid a loop. */
+      //             if (tgpf->zoom == 1.0f) {
+      //               loop_limit++;
+      //             }
+      //             else {
+      //               tgpf->zoom = 1.0f;
+      //               tgpf->fill_factor = max_ff(
+      //                   GPENCIL_MIN_FILL_FAC,
+      //                   min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
+      //             }
+      //           }
+      //           loop_limit++;
+      //         }
+
+      //         if (extend_lines) {
+      //           stroke_array_free(tgpf);
+      //           gpencil_delete_temp_stroke_extension(tgpf, true);
+      //         }
+
+      //         i++;
+      //       }
+      //       WM_cursor_modal_restore(win);
+      //       /* Free hash table. */
+      //       BLI_ghash_free(frame_list, nullptr, nullptr);
+
+      //       /* Free temp stroke. */
+      //       BKE_gpencil_free_stroke(tgpf->gps_mouse);
+
+      //       /* push undo data */
+      //       gpencil_undo_push(tgpf->gpd);
+
+      //       /* Save extend value for next operation. */
+      //       brush_settings->fill_extend_fac = tgpf->fill_extend_fac;
+
+      //       estate = OPERATOR_FINISHED;
+      //     }
+      //     else {
+      //       estate = OPERATOR_CANCELLED;
+      //     }
+      //   }
+      //   else {
+      //     estate = OPERATOR_CANCELLED;
+      //   }
+      // }
+      // else if (extend_lines) {
+      //   gpencil_update_extend(tgpf);
+      // }
+      // tgpf->oldkey = event->type;
+      break;
+    case EVT_SKEY:
+      // if ((show_extend) && (event->val == KM_PRESS)) {
+      //   /* Clean temp strokes. */
+      //   stroke_array_free(tgpf);
+
+      //   /* Toggle mode. */
+      //   if (tgpf->fill_extend_mode == GP_FILL_EMODE_EXTEND) {
+      //     tgpf->fill_extend_mode = GP_FILL_EMODE_RADIUS;
+      //   }
+      //   else {
+      //     tgpf->fill_extend_mode = GP_FILL_EMODE_EXTEND;
+      //   }
+      //   gpencil_delete_temp_stroke_extension(tgpf, true);
+      //   gpencil_update_extend(tgpf);
+      // }
+      break;
+    case EVT_DKEY:
+      // if ((show_extend) && (event->val == KM_PRESS)) {
+      //   tgpf->flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
+      //   /* Clean temp strokes. */
+      //   stroke_array_free(tgpf);
+      //   gpencil_delete_temp_stroke_extension(tgpf, true);
+      //   gpencil_update_extend(tgpf);
+      // }
+      break;
+    case EVT_PAGEUPKEY:
+    case WHEELUPMOUSE:
+      // if (tgpf->oldkey == 1) {
+      //   tgpf->fill_extend_fac -= (event->modifier & KM_SHIFT) ? 0.01f : 0.1f;
+      //   CLAMP_MIN(tgpf->fill_extend_fac, 0.0f);
+      //   gpencil_update_extend(tgpf);
+      // }
+      break;
+    case EVT_PAGEDOWNKEY:
+    case WHEELDOWNMOUSE:
+      // if (tgpf->oldkey == 1) {
+      //   tgpf->fill_extend_fac += (event->modifier & KM_SHIFT) ? 0.01f : 0.1f;
+      //   CLAMP_MAX(tgpf->fill_extend_fac, 10.0f);
+      //   gpencil_update_extend(tgpf);
+      // }
+      break;
+    case MIDDLEMOUSE: {
+      // if (event->val == KM_PRESS) {
+      //   /* Consider initial offset as zero position. */
+      //   copy_v2fl_v2i(tgpf->mouse_init, event->mval);
+      //   float mlen[2];
+      //   sub_v2_v2v2(mlen, tgpf->mouse_init, tgpf->mouse_center);
+
+      //   /* Offset the center a little to get enough space to reduce the extend moving the pen.
+      //   */ const float gap = 300.0f; if (len_v2(mlen) < gap) {
+      //     tgpf->mouse_center[0] -= gap;
+      //     sub_v2_v2v2(mlen, tgpf->mouse_init, tgpf->mouse_center);
+      //   }
+
+      //   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_EW_ARROW);
+
+      //   tgpf->initial_length = len_v2(mlen);
+      // }
+      // if (event->val == KM_RELEASE) {
+      //   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
+
+      //   tgpf->mouse_init[0] = -1.0f;
+      //   tgpf->mouse_init[1] = -1.0f;
+      // }
+      // /* Update cursor line. */
+      // WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+      // WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+      break;
+    }
+    case MOUSEMOVE: {
+      // if (tgpf->mouse_init[0] == -1.0f) {
+      //   break;
+      // }
+      // copy_v2fl_v2i(tgpf->mouse_pos, event->mval);
+
+      // float mlen[2];
+      // sub_v2_v2v2(mlen, tgpf->mouse_pos, tgpf->mouse_center);
+      // float delta = (len_v2(mlen) - tgpf->initial_length) * tgpf->pixel_size * 0.5f;
+      // tgpf->fill_extend_fac += delta;
+      // CLAMP(tgpf->fill_extend_fac, 0.0f, 10.0f);
+
+      // /* Update cursor line and extend lines. */
+      // WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+      // WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+
+      // gpencil_update_extend(tgpf);
+      break;
+    }
+    default:
+      break;
+  }
+  /* Process last operations before exiting. */
+  switch (estate) {
+    case OPERATOR_FINISHED:
+      grease_pencil_fill_exit(*C, *op);
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+      break;
+
+    case OPERATOR_CANCELLED:
+      grease_pencil_fill_exit(*C, *op);
+      break;
+
+    default:
+      break;
+  }
+
+  /* return status code */
+  return estate;
 }
 
 static void grease_pencil_fill_cancel(bContext *C, wmOperator *op)
 {
-  grease_pencil_fill_exit(C, op);
+  grease_pencil_fill_exit(*C, *op);
 }
 
 static void GREASE_PENCIL_OT_fill(wmOperatorType *ot)
@@ -340,7 +727,6 @@ static void GREASE_PENCIL_OT_fill(wmOperatorType *ot)
   ot->description = "Fill with color the shape formed by strokes";
 
   ot->poll = ed::greasepencil::grease_pencil_painting_poll;
-  ot->exec = grease_pencil_fill_exec;
   ot->invoke = grease_pencil_fill_invoke;
   ot->modal = grease_pencil_fill_modal;
   ot->cancel = grease_pencil_fill_cancel;
