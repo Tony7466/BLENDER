@@ -2585,7 +2585,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
       SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
       sequencer_tool_settings->snap_mode = SEQ_SNAP_TO_STRIPS | SEQ_SNAP_TO_CURRENT_FRAME |
-                                           SEQ_SNAP_TO_STRIP_HOLD;
+                                           SEQ_SNAP_TO_STRIP_HOLD | SEQ_SNAP_TO_MARKERS;
       sequencer_tool_settings->snap_distance = 15;
     }
   }
