@@ -49,8 +49,7 @@ int MetalInfo::get_apple_gpu_core_count(id<MTLDevice> device)
 
 AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 {
-  MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
-  if (vendor != METAL_GPU_APPLE) {
+  if (MetalInfo::get_device_vendor(device) != METAL_GPU_APPLE) {
     return NOT_APPLE_GPU;
   }
 
