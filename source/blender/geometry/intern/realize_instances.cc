@@ -1000,8 +1000,10 @@ static void execute_instances_tasks(
     array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
     array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
 
-    for (blender::float4x4 &transfrom : all_transforms.slice(dst_range)) {
-      transfrom *= src_base_transform;
+    for (blender::float4x4 &transform : all_transforms.slice(dst_range)) {
+      blender::float3 location = math::transform_point(src_base_transform, transform.location());
+      transform *= src_base_transform;
+      transform.location() = location;
     }
   }
 
