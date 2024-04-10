@@ -1539,10 +1539,11 @@ static void create_inspection_string_for_default_socket_value(const bNodeSocket 
   if (socket.is_directly_linked()) {
     return;
   }
-  if (socket.flag & SOCK_HIDE_VALUE) {
-    return;
+  if (const nodes::SocketDeclaration *socket_decl = socket.runtime->declaration) {
+    if (socket_decl->input_field_type == nodes::InputSocketFieldType::Implicit) {
+      return;
+    }
   }
-
   if (socket.typeinfo->base_cpp_type == nullptr) {
     return;
   }
