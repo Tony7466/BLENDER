@@ -3076,7 +3076,7 @@ static void ui_textedit_set_cursor_pos(uiBut *but, uiHandleButtonData *data, con
   /* treat 'str_last' as null terminator for str, no need to modify in-place */
   const char *str = but->editstr, *str_last;
 
-  but->is_cursor_visible = true;
+  but->is_cursor_bright = true;
 
   ui_block_to_window_fl(data->region, but->block, &startx, &starty_dummy);
 
@@ -3204,7 +3204,7 @@ static void ui_textedit_move(uiBut *but,
   const int pos_prev = but->pos;
   const bool has_sel = (but->selend - but->selsta) > 0;
 
-  but->is_cursor_visible = true;
+  but->is_cursor_bright = true;
 
   ui_but_update(but);
 
@@ -3417,7 +3417,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   MEM_SAFE_FREE(data->str);
 
-  but->is_cursor_visible = true;
+  but->is_cursor_bright = true;
   if (data->wm->cursor_blink_timer) {
     WM_event_timer_remove_notifier(data->wm, win, data->wm->cursor_blink_timer);
   }
@@ -11572,7 +11572,7 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
   if (retval == WM_UI_HANDLER_CONTINUE) {
     if (but) {
       if (event->type == TIMER) {
-        but->is_cursor_visible = !but->is_cursor_visible;
+        but->is_cursor_bright = !but->is_cursor_bright;
         ED_region_tag_redraw(region);
       }
       else {

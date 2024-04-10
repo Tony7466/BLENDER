@@ -211,7 +211,7 @@ struct SpaceText_Runtime {
   int scroll_ofs_px[2]{0, 0};
 
   bool is_area_active;
-  bool is_cursor_visible;
+  bool is_cursor_bright;
 
   /** Cache for faster drawing. */
   void *drawcache = nullptr;

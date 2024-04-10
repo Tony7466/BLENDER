@@ -132,13 +132,8 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
 
       switch (wmn->action) {
         case NA_CURSOR_BLINK:
-          st->runtime->is_cursor_visible = !st->runtime->is_cursor_visible;
-          LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-            if (region->type->regionid == RGN_TYPE_WINDOW) {
-              ED_region_tag_redraw_editor_overlays(region);
-              break;
-            }
-          }
+          st->runtime->is_cursor_bright = !st->runtime->is_cursor_bright;
+          ED_region_tag_redraw_editor_overlays(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
           break;
         case NA_EDITED:
           if (st->text) {
@@ -295,8 +290,7 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
 
 static void text_main_region_draw_overlay(const bContext *C, ARegion *region)
 {
-  SpaceText *st = CTX_wm_space_text(C);
-  draw_text_cursor(st, region);
+  draw_text_cursor(CTX_wm_space_text(C), region);
 }
 
 static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
@@ -433,7 +427,7 @@ static void text_activate(bContext *C, struct ScrArea *area)
 {
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   st->runtime->is_area_active = true;
-  st->runtime->is_cursor_visible = true;
+  st->runtime->is_cursor_bright = true;
 
   if (C) {
     wmWindow *win = CTX_wm_window(C);
@@ -455,13 +449,12 @@ static void text_deactivate(bContext *C, struct ScrArea *area)
 {
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
   st->runtime->is_area_active = false;
-  st->runtime->is_cursor_visible = false;
+  st->runtime->is_cursor_bright = false;
 
   if (C && area == CTX_wm_area(C)) {
-    wmWindow *win = CTX_wm_window(C);
     wmWindowManager *wm = CTX_wm_manager(C);
     if (wm->cursor_blink_timer) {
-      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+      WM_event_timer_remove_notifier(wm, CTX_wm_window(C), wm->cursor_blink_timer);
       wm->cursor_blink_timer = nullptr;
     }
   }

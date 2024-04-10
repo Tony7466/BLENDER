@@ -301,7 +301,7 @@ static void console_main_region_listener(const wmRegionListenerParams *params)
         }
         else if (wmn->action == NA_CURSOR_BLINK) {
           SpaceConsole *sconsole = static_cast<SpaceConsole *>(area->spacedata.first);
-          sconsole->is_cursor_visible = !bool(sconsole->is_cursor_visible);
+          sconsole->is_cursor_bright = !bool(sconsole->is_cursor_bright);
           ED_region_tag_redraw(region);
         }
         else {
@@ -353,7 +353,7 @@ static void console_activate(bContext *C, struct ScrArea *area)
 {
   SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
   sc->is_area_active = true;
-  sc->is_cursor_visible = true;
+  sc->is_cursor_bright = true;
 
   if (C) {
     wmWindow *win = CTX_wm_window(C);
@@ -375,13 +375,12 @@ static void console_deactivate(bContext *C, struct ScrArea *area)
 {
   SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
   sc->is_area_active = false;
-  sc->is_cursor_visible = false;
+  sc->is_cursor_bright = false;
 
   if (C && area == CTX_wm_area(C)) {
-    wmWindow *win = CTX_wm_window(C);
     wmWindowManager *wm = CTX_wm_manager(C);
     if (wm->cursor_blink_timer) {
-      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+      WM_event_timer_remove_notifier(wm, CTX_wm_window(C), wm->cursor_blink_timer);
       wm->cursor_blink_timer = nullptr;
     }
   }

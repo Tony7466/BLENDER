@@ -2061,7 +2061,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
 
       immUniformThemeColorAlpha(
           TH_WIDGET_TEXT_CURSOR,
-          (but->is_cursor_visible || !U.text_cursor_blink) ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY);
+          (but->is_cursor_bright || !U.text_cursor_blink) ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY);
 
       /* Shape of the cursor for drawing. */
       rcti but_cursor_shape;

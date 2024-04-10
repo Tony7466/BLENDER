@@ -1712,7 +1712,7 @@ typedef struct SpaceConsole {
   int lheight;
 
   char is_area_active;
-  char is_cursor_visible;
+  char is_cursor_bright;
   char _pad[6];
 
   /** Index into history of most recent up/down arrow keys. */

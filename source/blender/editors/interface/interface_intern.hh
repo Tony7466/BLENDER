@@ -185,7 +185,7 @@ struct uiBut {
 
   std::string drawstr;
 
-  bool is_cursor_visible = true;
+  bool is_cursor_bright = true;
 
   char *placeholder = nullptr;
 

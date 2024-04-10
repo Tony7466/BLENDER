@@ -1208,7 +1208,7 @@ void draw_text_cursor(SpaceText *st, ARegion *region)
     float color[4];
     UI_GetThemeColor4fv(TH_HILITE, color);
     if (st->runtime->is_area_active) {
-      color[3] = (st->runtime->is_cursor_visible || !U.text_cursor_blink) ?
+      color[3] = (st->runtime->is_cursor_bright || !U.text_cursor_blink) ?
                      1.0f :
                      TEXT_CURSOR_BLINK_OFF_OPACITY;
     }
@@ -1830,7 +1830,7 @@ void space_text_update_cursor_moved(bContext *C)
   ScrArea *area = CTX_wm_area(C);
   SpaceText *st = CTX_wm_space_text(C);
 
-  st->runtime->is_cursor_visible = true;
+  st->runtime->is_cursor_bright = true;
   space_text_scroll_to_cursor_with_area(st, area, true);
 }
 
