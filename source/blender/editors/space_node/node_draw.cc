@@ -1593,15 +1593,6 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
     create_inspection_string_for_geometry_socket(ss, socket_decl);
   }
 
-  if (const nodes::SocketDeclaration *socket_decl = socket.runtime->declaration) {
-    if (socket_decl->input_field_type == nodes::InputSocketFieldType::Implicit) {
-      if (!ss.str().empty()) {
-        ss << ".\n\n";
-      }
-      ss << TIP_("Implicit field input");
-    }
-  }
-
   std::string str = ss.str();
   if (str.empty()) {
     return std::nullopt;
