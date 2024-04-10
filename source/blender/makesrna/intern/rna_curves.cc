@@ -26,10 +26,26 @@ const EnumPropertyItem rna_enum_curves_type_items[] = {
 };
 
 const EnumPropertyItem rna_enum_curves_handle_type_items[] = {
-    {BEZIER_HANDLE_FREE, "FREE", 0, "Free", ""},
-    {BEZIER_HANDLE_AUTO, "AUTO", 0, "Auto", ""},
-    {BEZIER_HANDLE_VECTOR, "VECTOR", 0, "Vector", ""},
-    {BEZIER_HANDLE_ALIGN, "ALIGN", 0, "Align", ""},
+    {BEZIER_HANDLE_FREE,
+     "FREE",
+     0,
+     "Free",
+     "The handle can be moved anywhere, and doesn't influence the point's other handle"},
+    {BEZIER_HANDLE_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "The location is automatically calculated to be smooth"},
+    {BEZIER_HANDLE_VECTOR,
+     "VECTOR",
+     0,
+     "Vector",
+     "The location is calculated to point to the next/previous control point"},
+    {BEZIER_HANDLE_ALIGN,
+     "ALIGN",
+     0,
+     "Align",
+     "The location is constrained to point in the opposite direction as the other handleW"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
