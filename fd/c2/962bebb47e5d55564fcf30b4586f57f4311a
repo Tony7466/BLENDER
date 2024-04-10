@@ -1,3 +1,4 @@
 Referenced by pull request #119906, Fix #119903: Cycles compilation on device that don't use the light tree
 Referenced by issue #120046, 4.2.0 broken on Intel Mac Pro, AMD D500 GPU. Cycles > GPU Compute
 Referenced by commit 891d71a4d48b9fc9319815862c92c05e0c1b7240, Cycles: Drop noinline keyword for oneAPI device
+Referenced by pull request #120476, Fix #120046: Broken render on AMD Metal GPUs
