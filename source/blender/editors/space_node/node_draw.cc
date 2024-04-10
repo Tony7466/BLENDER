@@ -1584,11 +1584,22 @@ static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeL
 
 static std::optional<std::string> create_declaration_inspection_string(const bNodeSocket &socket)
 {
+  const nodes::SocketDeclaration *socket_decl = socket.runtime->declaration;
+  if (socket_decl == nullptr) {
+    return std::nullopt;
+  }
   std::stringstream ss;
-  if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
-          socket.runtime->declaration))
+  if (const nodes::decl::Geometry *geo_socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
+          socket_decl))
   {
-    create_inspection_string_for_geometry_socket(ss, socket_decl);
+    create_inspection_string_for_geometry_socket(ss, geo_socket_decl);
+  }
+
+  if (socket_decl->input_field_type == nodes::InputSocketFieldType::Implicit) {
+    if (!ss.str().empty()) {
+      ss << ".\n\n";
+    }
+    ss << TIP_("Implicit field input");
   }
 
   std::string str = ss.str();
