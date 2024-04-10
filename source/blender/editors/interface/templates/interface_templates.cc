@@ -4677,7 +4677,12 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      BKE_curvemap_shift_center(cumap);
+      CurveMap* cuma = cumap->cm + cumap->cur;
+      float center_x_pre = 0.0f;
+      float center_y_pre = 0.0f;
+      BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
+      BKE_translate_selection(
+        cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -4697,7 +4702,12 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      BKE_curvemap_shift_center(cumap);
+      CurveMap* cuma = cumap->cm + cumap->cur;
+      float center_x_pre = 0.0f;
+      float center_y_pre = 0.0f;
+      BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
+      BKE_translate_selection(
+        cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -5195,7 +5205,11 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [profile, cb](bContext &C) {
-      BKE_curveprofile_shift_center(profile);
+      float center_x_pre = 0.0f;
+      float center_y_pre = 0.0f;
+      BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
+      BKE_curveprofile_translate_selection(
+        profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });
@@ -5217,7 +5231,11 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [profile, cb](bContext &C) {
-      BKE_curveprofile_shift_center(profile);
+      float center_x_pre = 0.0f;
+      float center_y_pre = 0.0f;
+      BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
+      BKE_curveprofile_translate_selection(
+        profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });

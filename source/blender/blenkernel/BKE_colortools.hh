@@ -63,7 +63,6 @@ CurveMapPoint *BKE_curvemap_insert(CurveMap *cuma, float x, float y);
  * Shift specified point from center.
  */
 void BKE_translate_selection(CurveMap *cuma, const float delta_x, const float delta_y);
-void BKE_curvemap_shift_center(CurveMapping *cumap);
 /**
  * \param type: #eBezTriple_Handle
  */

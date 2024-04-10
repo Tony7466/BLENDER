@@ -215,16 +215,6 @@ void BKE_curveprofile_translate_selection(struct CurveProfile *profile,
   }
 }
 
-void BKE_curveprofile_shift_center(CurveProfile *profile)
-{
-  /* unmodified center */
-  float center_x_pre = 0.0f;
-  float center_y_pre = 0.0f;
-  BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
-  BKE_curveprofile_translate_selection(
-      profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
-}
-
 bool BKE_curveprofile_remove_point(CurveProfile *profile, CurveProfilePoint *point)
 {
   /* Must have 2 points minimum. */

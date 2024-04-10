@@ -117,10 +117,6 @@ void BKE_curveprofile_reset_view(struct CurveProfile *profile);
  * \note Requires #BKE_curveprofile_update call after.
  */
 void BKE_curveprofile_reset(struct CurveProfile *profile);
-/**
- * Shift specified point from center.
- */
-void BKE_curveprofile_shift_center(struct CurveProfile *profile);
 
 int BKE_curveprofile_table_size(const struct CurveProfile *profile);
 

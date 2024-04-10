@@ -966,18 +966,6 @@ void BKE_translate_selection(CurveMap *cuma, const float delta_x, const float de
   }
 }
 
-void BKE_curvemap_shift_center(CurveMapping *cumap)
-{
-  CurveMap *cuma = cumap->cm + cumap->cur;
-
-  /* unmodified center */
-  float center_x_pre = 0.0f;
-  float center_y_pre = 0.0f;
-  BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
-  BKE_translate_selection(
-      cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
-}
-
 void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
 {
   CurveMap *cuma = cumap->cm + cumap->cur;
