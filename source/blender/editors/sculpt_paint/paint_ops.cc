@@ -927,8 +927,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   if (catalog_path[0]) {
     const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(
         *library, catalog_path);
-    meta_data.catalog_id = catalog.catalog_id;
-    STRNCPY(meta_data.catalog_simple_name, catalog.simple_name.c_str());
+    BKE_asset_metadata_catalog_id_set(&meta_data, catalog.catalog_id, catalog.simple_name.c_str());
   }
 
   const std::optional<std::string> final_full_asset_filepath = bke::asset_edit_id_save_as(
@@ -1119,8 +1118,7 @@ static int brush_asset_edit_metadata_exec(bContext *C, wmOperator *op)
   if (catalog_path[0]) {
     const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(
         *library, catalog_path);
-    meta_data.catalog_id = catalog.catalog_id;
-    STRNCPY(meta_data.catalog_simple_name, catalog.simple_name.c_str());
+    BKE_asset_metadata_catalog_id_set(&meta_data, catalog.catalog_id, catalog.simple_name.c_str());
   }
 
   if (!bke::asset_edit_id_save(*bmain, brush->id, *op->reports)) {
