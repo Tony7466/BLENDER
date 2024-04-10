@@ -2254,8 +2254,10 @@ void GreasePencil::remove_drawings_with_no_users()
     return drawing->wrap().has_users();
   };
 
-  /* Index map to remap drawing indices in frame data. */
-  Array<int> drawing_index_map(drawings.size(), -1);
+  /* Index map to remap drawing indices in frame data.
+   * Index -1 indicates that the drawing has not been moved. */
+  constexpr const int unchanged_index = -1;
+  Array<int> drawing_index_map(drawings.size(), unchanged_index);
 
   int first_unused_drawing = -1;
   int last_used_drawing = drawings.size();
@@ -2304,7 +2306,7 @@ void GreasePencil::remove_drawings_with_no_users()
   for (Layer *layer : this->layers_for_write()) {
     for (auto [key, value] : layer->frames_for_write().items()) {
       const int new_drawing_index = drawing_index_map[value.drawing_index];
-      if (new_drawing_index >= 0) {
+      if (new_drawing_index != unchanged_index) {
         value.drawing_index = new_drawing_index;
         layer->tag_frames_map_changed();
       }
