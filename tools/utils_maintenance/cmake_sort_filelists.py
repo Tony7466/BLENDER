@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -19,7 +21,7 @@ sys.path.append(os.path.join(PWD, "modules"))
 
 from batch_edit_text import run
 
-SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", "..", ".."))))
+SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", ".."))))
 
 # TODO, move to config file
 SOURCE_DIRS = (
@@ -48,7 +50,7 @@ def sort_cmake_file_lists(fn: str, data_src: str) -> Optional[str]:
         # Headers.
         if l and os.path.isdir(os.path.join(fn_dir, l)):
             return True
-        # Libs.
+        # Libraries.
         if l.startswith(("bf_", "extern_")) and "." not in l and "/" not in l:
             return True
         return False

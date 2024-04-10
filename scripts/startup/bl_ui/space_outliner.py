@@ -1,10 +1,12 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Header, Menu, Panel
 
 from bpy.app.translations import (
     contexts as i18n_contexts,
-    pgettext_iface as iface_,
 )
 
 
@@ -98,7 +100,7 @@ class OUTLINER_MT_editor_menus(Menu):
 
 
 class OUTLINER_MT_context_menu(Menu):
-    bl_label = "Outliner Context Menu"
+    bl_label = "Outliner"
 
     @staticmethod
     def draw_common_operators(layout):
@@ -106,7 +108,7 @@ class OUTLINER_MT_context_menu(Menu):
 
         layout.separator()
 
-        layout.menu("OUTLINER_MT_liboverride")
+        layout.menu("OUTLINER_MT_liboverride", icon='LIBRARY_DATA_OVERRIDE')
 
         layout.separator()
 
@@ -138,7 +140,8 @@ class OUTLINER_MT_context_menu_view(Menu):
 
         layout.separator()
 
-        layout.operator("outliner.show_hierarchy")
+        layout.operator("outliner.expanded_toggle")
+        layout.operator("outliner.show_hierarchy", text="Show Object Hierarchy")
         layout.operator("outliner.show_one_level", text="Show One Level")
         layout.operator("outliner.show_one_level", text="Hide One Level").open = False
 
@@ -220,8 +223,7 @@ class OUTLINER_MT_collection(Menu):
 
         space = context.space_data
 
-        layout.operator("outliner.collection_new", text="New",
-                        text_ctxt=i18n_contexts.id_collection).nested = True
+        layout.operator("outliner.collection_new", text="New", text_ctxt=i18n_contexts.id_collection).nested = True
         layout.operator("outliner.collection_duplicate", text="Duplicate Collection")
         layout.operator("outliner.collection_duplicate_linked", text="Duplicate Linked")
         layout.operator("outliner.id_copy", text="Copy", icon='COPYDOWN')
@@ -342,7 +344,7 @@ class OUTLINER_MT_asset(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("asset.mark")
+        layout.operator("asset.mark", icon='ASSET_MANAGER')
         layout.operator("asset.clear", text="Clear Asset").set_fake_user = False
         layout.operator("asset.clear", text="Clear Asset (Set Fake User)").set_fake_user = True
 
@@ -484,6 +486,10 @@ class OUTLINER_PT_filter(Panel):
             row = sub.row()
             row.label(icon='CAMERA_DATA')
             row.prop(space, "use_filter_object_camera", text="Cameras")
+        if bpy.data.grease_pencils:
+            row = sub.row()
+            row.label(icon='STROKE')
+            row.prop(space, "use_filter_object_grease_pencil", text="Grease Pencil")
         row = sub.row()
         row.label(icon='EMPTY_DATA')
         row.prop(space, "use_filter_object_empty", text="Empties")

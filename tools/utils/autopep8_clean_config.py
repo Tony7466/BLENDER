@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
@@ -25,7 +27,7 @@ PATHS: Tuple[str, ...] = (
 )
 
 SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "..", ".."))))
+    os.path.join(os.path.dirname(__file__), "..", ".."))))
 
 PATHS = tuple(
     os.path.join(SOURCE_DIR, p.replace("/", os.sep))

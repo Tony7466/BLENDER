@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -38,6 +39,8 @@ class MetalDeviceQueue : public DeviceQueue {
   virtual void zero_to_device(device_memory &mem) override;
   virtual void copy_to_device(device_memory &mem) override;
   virtual void copy_from_device(device_memory &mem) override;
+
+  virtual void *native_queue() override;
 
  protected:
   void setup_capture();

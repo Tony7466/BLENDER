@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # generate svn rev-sha1 mapping
 
 import os
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
-SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(CURRENT_DIR, "..", "..", ".."))))
+SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(CURRENT_DIR, "..", ".."))))
 
 print("creating git-log of %r" % SOURCE_DIR)
 os.chdir(SOURCE_DIR)

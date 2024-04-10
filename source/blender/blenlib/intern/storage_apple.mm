@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -189,14 +190,14 @@ const char *BLI_expand_tilde(const char *path_with_tilde)
 
 char *BLI_current_working_dir(char *dir, const size_t maxncpy)
 {
-  /* Can't just copy to the *dir pointer, as [path getCString gets grumpy.*/
-  static char path_expanded[PATH_MAX];
+  /* Can't just copy to the *dir pointer, as [path getCString gets grumpy. */
+  char path_expanded[PATH_MAX];
   @autoreleasepool {
     NSString *path = [[NSFileManager defaultManager] currentDirectoryPath];
     const size_t length = maxncpy > PATH_MAX ? PATH_MAX : maxncpy;
     [path getCString:path_expanded maxLength:length encoding:NSUTF8StringEncoding];
     BLI_strncpy(dir, path_expanded, maxncpy);
-    return path_expanded;
+    return dir;
   }
 }
 

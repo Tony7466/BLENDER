@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -10,7 +12,10 @@
 
 #include "BLI_vector.hh"
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
+
+struct bContext;
+struct Collection;
 
 namespace blender::io::obj {
 
@@ -24,7 +29,7 @@ class OBJDepsgraph : NonMovable, NonCopyable {
   bool needs_free_ = false;
 
  public:
-  OBJDepsgraph(const bContext *C, eEvaluationMode eval_mode);
+  OBJDepsgraph(const bContext *C, eEvaluationMode eval_mode, Collection *collection);
   ~OBJDepsgraph();
 
   Depsgraph *get();

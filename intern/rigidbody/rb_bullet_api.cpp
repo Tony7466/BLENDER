@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_rigidbody
@@ -711,7 +712,7 @@ rbCollisionShape *RB_shape_new_cylinder(float radius, float height)
 /* Setup (Convex Hull) ------------ */
 
 rbCollisionShape *RB_shape_new_convex_hull(
-    float *verts, int stride, int count, float margin, bool *can_embed)
+    const float *verts, int stride, int count, float margin, bool *can_embed)
 {
   btConvexHullComputer hull_computer = btConvexHullComputer();
 
@@ -799,7 +800,7 @@ rbCollisionShape *RB_shape_new_trimesh(rbMeshData *mesh)
 }
 
 void RB_shape_trimesh_update(rbCollisionShape *shape,
-                             float *vertices,
+                             const float *vertices,
                              int num_verts,
                              int vert_stride,
                              const float min[3],

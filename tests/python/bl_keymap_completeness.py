@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2013-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # simple script to test 'bl_keymap_utils.keymap_hierarchy' contains correct values.
@@ -5,7 +7,7 @@
 # Needed for 'bl_keymap_utils.keymap_hierarchy' which inspects tools.
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "release", "scripts", "startup"))
+sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "scripts", "startup"))
 del sys, os
 
 from bl_keymap_utils import keymap_hierarchy

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
@@ -13,9 +14,6 @@
 #  include "util/unique_ptr.h"
 
 CCL_NAMESPACE_BEGIN
-
-/* limit to 2 MTLCompiler instances */
-int max_mtlcompiler_threads = 2;
 
 const char *kernel_type_as_string(MetalPipelineType pso_type)
 {
@@ -32,23 +30,23 @@ const char *kernel_type_as_string(MetalPipelineType pso_type)
   return "";
 }
 
-bool kernel_has_intersection(DeviceKernel device_kernel)
-{
-  return (device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_RAYTRACE ||
-          device_kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
-}
-
 struct ShaderCache {
   ShaderCache(id<MTLDevice> _mtlDevice) : mtlDevice(_mtlDevice)
   {
     /* Initialize occupancy tuning LUT. */
+
+    // TODO: Look into tuning for DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT and
+    // DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT.
+
     if (MetalInfo::get_device_vendor(mtlDevice) == METAL_GPU_APPLE) {
       switch (MetalInfo::get_apple_gpu_architecture(mtlDevice)) {
         default:
+        case APPLE_M3:
+          /* Peak occupancy is achieved through Dynamic Caching on M3 GPUs. */
+          for (size_t i = 0; i < DEVICE_KERNEL_NUM; i++) {
+            occupancy_tuning[i] = {64, 64};
+          }
+          break;
         case APPLE_M2_BIG:
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_COMPACT_SHADOW_STATES] = {384, 128};
           occupancy_tuning[DEVICE_KERNEL_INTEGRATOR_INIT_FROM_CAMERA] = {640, 128};
@@ -108,7 +106,7 @@ struct ShaderCache {
 
   friend ShaderCache *get_shader_cache(id<MTLDevice> mtlDevice);
 
-  void compile_thread_func(int thread_index);
+  void compile_thread_func();
 
   using PipelineCollection = std::vector<unique_ptr<MetalKernelPipeline>>;
 
@@ -161,25 +159,12 @@ ShaderCache::~ShaderCache()
   running = false;
   cond_var.notify_all();
 
-  int num_incomplete = int(incomplete_requests);
-  if (num_incomplete) {
-    /* Shutting down the app with incomplete shader compilation requests. Give 1 second's grace for
-     * clean shutdown. */
-    metal_printf("ShaderCache busy (incomplete_requests = %d)...\n", num_incomplete);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    num_incomplete = int(incomplete_requests);
-  }
-
-  if (num_incomplete && !MetalDeviceKernels::is_benchmark_warmup()) {
-    metal_printf("ShaderCache still busy (incomplete_requests = %d). Terminating...\n",
-                 num_incomplete);
-    std::terminate();
-  }
-
-  metal_printf("ShaderCache idle. Shutting down.\n");
+  metal_printf("Waiting for ShaderCache threads... (incomplete_requests = %d)\n",
+               int(incomplete_requests));
   for (auto &thread : compile_threads) {
     thread.join();
   }
+  metal_printf("ShaderCache shut down.\n");
 }
 
 void ShaderCache::wait_for_all()
@@ -189,7 +174,7 @@ void ShaderCache::wait_for_all()
   }
 }
 
-void ShaderCache::compile_thread_func(int thread_index)
+void ShaderCache::compile_thread_func()
 {
   while (running) {
 
@@ -276,7 +261,8 @@ bool ShaderCache::should_load_kernel(DeviceKernel device_kernel,
   if (pso_type != PSO_GENERIC) {
     /* Only specialize kernels where it can make an impact. */
     if (device_kernel < DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST ||
-        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL) {
+        device_kernel > DEVICE_KERNEL_INTEGRATOR_MEGAKERNEL)
+    {
       return false;
     }
 
@@ -309,8 +295,21 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
     /* create compiler threads on first run */
     thread_scoped_lock lock(cache_mutex);
     if (compile_threads.empty()) {
+      /* Limit to 2 MTLCompiler instances by default. In macOS >= 13.3 we can query the upper
+       * limit. */
+      int max_mtlcompiler_threads = 2;
+
+#  if defined(MAC_OS_VERSION_13_3)
+      if (@available(macOS 13.3, *)) {
+        /* Subtract one to avoid contention with the real-time GPU module. */
+        max_mtlcompiler_threads = max(2,
+                                      int([mtlDevice maximumConcurrentCompilationTaskCount]) - 1);
+      }
+#  endif
+
+      metal_printf("Spawning %d Cycles kernel compilation threads\n", max_mtlcompiler_threads);
       for (int i = 0; i < max_mtlcompiler_threads; i++) {
-        compile_threads.push_back(std::thread([&] { compile_thread_func(i); }));
+        compile_threads.push_back(std::thread([this] { this->compile_thread_func(); }));
       }
     }
   }
@@ -344,9 +343,7 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
 
   /* metalrt options */
   pipeline->use_metalrt = device->use_metalrt;
-  pipeline->metalrt_features = device->use_metalrt ?
-                                   (device->kernel_features & METALRT_FEATURE_MASK) :
-                                   0;
+  pipeline->kernel_features = device->kernel_features;
 
   {
     thread_scoped_lock lock(cache_mutex);
@@ -357,65 +354,37 @@ void ShaderCache::load_kernel(DeviceKernel device_kernel,
 
 MetalKernelPipeline *ShaderCache::get_best_pipeline(DeviceKernel kernel, const MetalDevice *device)
 {
-  /* metalrt options */
-  bool use_metalrt = device->use_metalrt;
-  bool device_metalrt_hair = use_metalrt && device->kernel_features & KERNEL_FEATURE_HAIR;
-  bool device_metalrt_hair_thick = use_metalrt &&
-                                   device->kernel_features & KERNEL_FEATURE_HAIR_THICK;
-  bool device_metalrt_pointcloud = use_metalrt &&
-                                   device->kernel_features & KERNEL_FEATURE_POINTCLOUD;
-  bool device_metalrt_motion = use_metalrt &&
-                               device->kernel_features & KERNEL_FEATURE_OBJECT_MOTION;
-
-  MetalKernelPipeline *best_pipeline = nullptr;
-  while (!best_pipeline) {
+  while (running && !device->has_error) {
+    /* Search all loaded pipelines with matching kernels_md5 checksums. */
+    MetalKernelPipeline *best_match = nullptr;
     {
       thread_scoped_lock lock(cache_mutex);
-      for (auto &pipeline : pipelines[kernel]) {
-        if (!pipeline->loaded) {
-          /* still loading - ignore */
-          continue;
-        }
-
-        bool pipeline_metalrt_hair = pipeline->metalrt_features & KERNEL_FEATURE_HAIR;
-        bool pipeline_metalrt_hair_thick = pipeline->metalrt_features & KERNEL_FEATURE_HAIR_THICK;
-        bool pipeline_metalrt_pointcloud = pipeline->metalrt_features & KERNEL_FEATURE_POINTCLOUD;
-        bool pipeline_metalrt_motion = use_metalrt &&
-                                       pipeline->metalrt_features & KERNEL_FEATURE_OBJECT_MOTION;
-
-        if (pipeline->use_metalrt != use_metalrt || pipeline_metalrt_hair != device_metalrt_hair ||
-            pipeline_metalrt_hair_thick != device_metalrt_hair_thick ||
-            pipeline_metalrt_pointcloud != device_metalrt_pointcloud ||
-            pipeline_metalrt_motion != device_metalrt_motion) {
-          /* wrong combination of metalrt options */
-          continue;
-        }
-
-        if (pipeline->pso_type != PSO_GENERIC) {
-          if (pipeline->kernels_md5 == device->kernels_md5[PSO_SPECIALIZED_INTERSECT] ||
-              pipeline->kernels_md5 == device->kernels_md5[PSO_SPECIALIZED_SHADE]) {
-            best_pipeline = pipeline.get();
+      for (auto &candidate : pipelines[kernel]) {
+        if (candidate->loaded &&
+            candidate->kernels_md5 == device->kernels_md5[candidate->pso_type])
+        {
+          /* Replace existing match if candidate is more specialized. */
+          if (!best_match || candidate->pso_type > best_match->pso_type) {
+            best_match = candidate.get();
           }
-        }
-        else if (!best_pipeline) {
-          best_pipeline = pipeline.get();
         }
       }
     }
 
-    if (!best_pipeline) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (best_match) {
+      if (best_match->usage_count == 0 && best_match->pso_type != PSO_GENERIC) {
+        metal_printf("Swapping in %s version of %s\n",
+                     kernel_type_as_string(best_match->pso_type),
+                     device_kernel_as_string(kernel));
+      }
+      best_match->usage_count += 1;
+      return best_match;
     }
-  }
 
-  if (best_pipeline->usage_count == 0 && best_pipeline->pso_type != PSO_GENERIC) {
-    metal_printf("Swapping in %s version of %s\n",
-                 kernel_type_as_string(best_pipeline->pso_type),
-                 device_kernel_as_string(kernel));
+    /* Spin until a matching kernel is loaded, or we're shutting down. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-  best_pipeline->usage_count += 1;
-
-  return best_pipeline;
+  return nullptr;
 }
 
 bool MetalKernelPipeline::should_use_binary_archive() const
@@ -436,6 +405,11 @@ bool MetalKernelPipeline::should_use_binary_archive() const
       }
     }
 
+    if (use_metalrt && device_kernel_has_intersection(device_kernel)) {
+      /* Binary linked functions aren't supported in binary archives. */
+      return false;
+    }
+
     if (pso_type == PSO_GENERIC) {
       /* Archive the generic kernels. */
       return true;
@@ -444,7 +418,8 @@ bool MetalKernelPipeline::should_use_binary_archive() const
     if ((device_kernel >= DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND &&
          device_kernel <= DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW) ||
         (device_kernel >= DEVICE_KERNEL_SHADER_EVAL_DISPLACE &&
-         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY)) {
+         device_kernel <= DEVICE_KERNEL_SHADER_EVAL_CURVE_SHADOW_TRANSPARENCY))
+    {
       /* Archive all shade kernels - they take a long time to compile. */
       return true;
     }
@@ -489,24 +464,19 @@ void MetalKernelPipeline::compile()
   const std::string function_name = std::string("cycles_metal_") +
                                     device_kernel_as_string(device_kernel);
 
-  NSString *entryPoint = [@(function_name.c_str()) copy];
-
   NSError *error = NULL;
-  if (@available(macOS 11.0, *)) {
-    MTLFunctionDescriptor *func_desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
-    func_desc.name = entryPoint;
 
-    if (pso_type != PSO_GENERIC) {
-      func_desc.constantValues = GetConstantValues(&kernel_data_);
-    }
-    else {
-      func_desc.constantValues = GetConstantValues();
-    }
+  MTLFunctionDescriptor *func_desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
+  func_desc.name = [@(function_name.c_str()) copy];
 
-    function = [mtlLibrary newFunctionWithDescriptor:func_desc error:&error];
+  if (pso_type != PSO_GENERIC) {
+    func_desc.constantValues = GetConstantValues(&kernel_data_);
+  }
+  else {
+    func_desc.constantValues = GetConstantValues();
   }
 
-  [entryPoint release];
+  function = [mtlLibrary newFunctionWithDescriptor:func_desc error:&error];
 
   if (function == nil) {
     NSString *err = [error localizedDescription];
@@ -515,84 +485,69 @@ void MetalKernelPipeline::compile()
     return;
   }
 
-  function.label = [entryPoint copy];
+  function.label = [@(function_name.c_str()) copy];
 
   if (use_metalrt) {
-    if (@available(macOS 11.0, *)) {
-      /* create the id<MTLFunction> for each intersection function */
-      const char *function_names[] = {
-          "__anyhit__cycles_metalrt_visibility_test_tri",
-          "__anyhit__cycles_metalrt_visibility_test_box",
-          "__anyhit__cycles_metalrt_shadow_all_hit_tri",
-          "__anyhit__cycles_metalrt_shadow_all_hit_box",
-          "__anyhit__cycles_metalrt_local_hit_tri",
-          "__anyhit__cycles_metalrt_local_hit_box",
-          "__anyhit__cycles_metalrt_local_hit_tri_prim",
-          "__anyhit__cycles_metalrt_local_hit_box_prim",
-          "__intersection__curve_ribbon",
-          "__intersection__curve_ribbon_shadow",
-          "__intersection__curve_all",
-          "__intersection__curve_all_shadow",
-          "__intersection__point",
-          "__intersection__point_shadow",
-      };
-      assert(sizeof(function_names) / sizeof(function_names[0]) == METALRT_FUNC_NUM);
+    /* create the id<MTLFunction> for each intersection function */
+    const char *function_names[] = {
+        "__anyhit__cycles_metalrt_visibility_test_tri",
+        "__anyhit__cycles_metalrt_visibility_test_box",
+        "__anyhit__cycles_metalrt_shadow_all_hit_tri",
+        "__anyhit__cycles_metalrt_shadow_all_hit_box",
+        "__anyhit__cycles_metalrt_volume_test_tri",
+        "__anyhit__cycles_metalrt_volume_test_box",
+        "__anyhit__cycles_metalrt_local_hit_tri",
+        "__anyhit__cycles_metalrt_local_hit_box",
+        "__anyhit__cycles_metalrt_local_hit_tri_prim",
+        "__anyhit__cycles_metalrt_local_hit_box_prim",
+        "__intersection__curve",
+        "__intersection__curve_shadow",
+        "__intersection__point",
+        "__intersection__point_shadow",
+    };
+    assert(sizeof(function_names) / sizeof(function_names[0]) == METALRT_FUNC_NUM);
 
-      MTLFunctionDescriptor *desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
-      for (int i = 0; i < METALRT_FUNC_NUM; i++) {
-        const char *function_name = function_names[i];
-        desc.name = [@(function_name) copy];
+    MTLFunctionDescriptor *desc = [MTLIntersectionFunctionDescriptor functionDescriptor];
+    for (int i = 0; i < METALRT_FUNC_NUM; i++) {
+      const char *function_name = function_names[i];
+      desc.name = [@(function_name) copy];
 
-        if (pso_type != PSO_GENERIC) {
-          desc.constantValues = GetConstantValues(&kernel_data_);
-        }
-        else {
-          desc.constantValues = GetConstantValues();
-        }
-
-        NSError *error = NULL;
-        rt_intersection_function[i] = [mtlLibrary newFunctionWithDescriptor:desc error:&error];
-
-        if (rt_intersection_function[i] == nil) {
-          NSString *err = [error localizedDescription];
-          string errors = [err UTF8String];
-
-          error_str = string_printf(
-              "Error getting intersection function \"%s\": %s", function_name, errors.c_str());
-          break;
-        }
-
-        rt_intersection_function[i].label = [@(function_name) copy];
+      if (pso_type != PSO_GENERIC) {
+        desc.constantValues = GetConstantValues(&kernel_data_);
       }
+      else {
+        desc.constantValues = GetConstantValues();
+      }
+
+      NSError *error = NULL;
+      rt_intersection_function[i] = [mtlLibrary newFunctionWithDescriptor:desc error:&error];
+
+      if (rt_intersection_function[i] == nil) {
+        NSString *err = [error localizedDescription];
+        string errors = [err UTF8String];
+
+        error_str = string_printf(
+            "Error getting intersection function \"%s\": %s", function_name, errors.c_str());
+        break;
+      }
+
+      rt_intersection_function[i].label = [@(function_name) copy];
     }
   }
 
   NSArray *table_functions[METALRT_TABLE_NUM] = {nil};
   NSArray *linked_functions = nil;
 
-  bool metalrt_hair = use_metalrt && (metalrt_features & KERNEL_FEATURE_HAIR);
-  bool metalrt_hair_thick = use_metalrt && (metalrt_features & KERNEL_FEATURE_HAIR_THICK);
-  bool metalrt_pointcloud = use_metalrt && (metalrt_features & KERNEL_FEATURE_POINTCLOUD);
-
   if (use_metalrt) {
     id<MTLFunction> curve_intersect_default = nil;
     id<MTLFunction> curve_intersect_shadow = nil;
     id<MTLFunction> point_intersect_default = nil;
     id<MTLFunction> point_intersect_shadow = nil;
-    if (metalrt_hair) {
-      /* Add curve intersection programs. */
-      if (metalrt_hair_thick) {
-        /* Slower programs for thick hair since that also slows down ribbons.
-         * Ideally this should not be needed. */
-        curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE_ALL];
-        curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_ALL_SHADOW];
-      }
-      else {
-        curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE_RIBBON];
-        curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_RIBBON_SHADOW];
-      }
+    if (kernel_features & KERNEL_FEATURE_HAIR) {
+      curve_intersect_default = rt_intersection_function[METALRT_FUNC_CURVE];
+      curve_intersect_shadow = rt_intersection_function[METALRT_FUNC_CURVE_SHADOW];
     }
-    if (metalrt_pointcloud) {
+    if (kernel_features & KERNEL_FEATURE_POINTCLOUD) {
       point_intersect_default = rt_intersection_function[METALRT_FUNC_POINT];
       point_intersect_shadow = rt_intersection_function[METALRT_FUNC_POINT_SHADOW];
     }
@@ -614,6 +569,11 @@ void MetalKernelPipeline::compile()
                              point_intersect_shadow :
                              rt_intersection_function[METALRT_FUNC_SHADOW_BOX],
                          nil];
+    table_functions[METALRT_TABLE_VOLUME] = [NSArray
+        arrayWithObjects:rt_intersection_function[METALRT_FUNC_VOLUME_TRI],
+                         rt_intersection_function[METALRT_FUNC_VOLUME_BOX],
+                         rt_intersection_function[METALRT_FUNC_VOLUME_BOX],
+                         nil];
     table_functions[METALRT_TABLE_LOCAL] = [NSArray
         arrayWithObjects:rt_intersection_function[METALRT_FUNC_LOCAL_TRI],
                          rt_intersection_function[METALRT_FUNC_LOCAL_BOX],
@@ -625,13 +585,14 @@ void MetalKernelPipeline::compile()
                          rt_intersection_function[METALRT_FUNC_LOCAL_BOX_PRIM],
                          nil];
 
-    NSMutableSet *unique_functions = [NSMutableSet
-        setWithArray:table_functions[METALRT_TABLE_DEFAULT]];
+    NSMutableSet *unique_functions = [[NSMutableSet alloc] init];
+    [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_DEFAULT]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_SHADOW]];
+    [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_VOLUME]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL]];
     [unique_functions addObjectsFromArray:table_functions[METALRT_TABLE_LOCAL_PRIM]];
 
-    if (kernel_has_intersection(device_kernel)) {
+    if (device_kernel_has_intersection(device_kernel)) {
       linked_functions = [[NSArray arrayWithArray:[unique_functions allObjects]]
           sortedArrayUsingComparator:^NSComparisonResult(id<MTLFunction> f1, id<MTLFunction> f2) {
             return [f1.label compare:f2.label];
@@ -647,28 +608,26 @@ void MetalKernelPipeline::compile()
   computePipelineStateDescriptor.buffers[1].mutability = MTLMutabilityImmutable;
   computePipelineStateDescriptor.buffers[2].mutability = MTLMutabilityImmutable;
 
-  if (@available(macos 10.14, *)) {
-    computePipelineStateDescriptor.maxTotalThreadsPerThreadgroup = threads_per_threadgroup;
-  }
+  computePipelineStateDescriptor.maxTotalThreadsPerThreadgroup = threads_per_threadgroup;
   computePipelineStateDescriptor.threadGroupSizeIsMultipleOfThreadExecutionWidth = true;
 
   computePipelineStateDescriptor.computeFunction = function;
 
-  if (@available(macOS 11.0, *)) {
-    /* Attach the additional functions to an MTLLinkedFunctions object */
-    if (linked_functions) {
-      computePipelineStateDescriptor.linkedFunctions = [[MTLLinkedFunctions alloc] init];
-      computePipelineStateDescriptor.linkedFunctions.functions = linked_functions;
-    }
-    computePipelineStateDescriptor.maxCallStackDepth = 1;
-    if (use_metalrt) {
-      computePipelineStateDescriptor.maxCallStackDepth = 8;
-    }
+  /* Attach the additional functions to an MTLLinkedFunctions object */
+  if (linked_functions) {
+    computePipelineStateDescriptor.linkedFunctions = [[MTLLinkedFunctions alloc] init];
+    computePipelineStateDescriptor.linkedFunctions.functions = linked_functions;
+  }
+  computePipelineStateDescriptor.maxCallStackDepth = 1;
+  if (use_metalrt) {
+    computePipelineStateDescriptor.maxCallStackDepth = 8;
   }
 
   MTLPipelineOption pipelineOptions = MTLPipelineOptionNone;
 
   bool use_binary_archive = should_use_binary_archive();
+  bool loading_existing_archive = false;
+  bool creating_new_archive = false;
 
   id<MTLBinaryArchive> archive = nil;
   string metalbin_path;
@@ -682,15 +641,6 @@ void MetalKernelPipeline::compile()
     local_md5.append((uint8_t *)&this->threads_per_threadgroup,
                      sizeof(this->threads_per_threadgroup));
 
-    string options;
-    if (use_metalrt && kernel_has_intersection(device_kernel)) {
-      /* incorporate any MetalRT specializations into the archive name */
-      options += string_printf(".hair_%d.hair_thick_%d.pointcloud_%d",
-                               metalrt_hair ? 1 : 0,
-                               metalrt_hair_thick ? 1 : 0,
-                               metalrt_pointcloud ? 1 : 0);
-    }
-
     /* Replace non-alphanumerical characters with underscores. */
     string device_name = [mtlDevice.name UTF8String];
     for (char &c : device_name) {
@@ -702,77 +652,123 @@ void MetalKernelPipeline::compile()
     metalbin_name = device_name;
     metalbin_name = path_join(metalbin_name, device_kernel_as_string(device_kernel));
     metalbin_name = path_join(metalbin_name, kernel_type_as_string(pso_type));
-    metalbin_name = path_join(metalbin_name, local_md5.get_hex() + options + ".bin");
+    metalbin_name = path_join(metalbin_name, local_md5.get_hex() + ".bin");
 
     metalbin_path = path_cache_get(path_join("kernels", metalbin_name));
     path_create_directories(metalbin_path);
 
-    /* Retrieve shader binary from disk, and update the file timestamp for LRU purging to work as
-     * intended. */
-    if (use_binary_archive && path_cache_kernel_exists_and_mark_used(metalbin_path)) {
-      if (@available(macOS 11.0, *)) {
-        MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
-        archiveDesc.url = [NSURL fileURLWithPath:@(metalbin_path.c_str())];
-        archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:nil];
-        [archiveDesc release];
-      }
+    /* Check if shader binary exists on disk, and if so, update the file timestamp for LRU purging
+     * to work as intended. */
+    loading_existing_archive = path_cache_kernel_exists_and_mark_used(metalbin_path);
+    creating_new_archive = !loading_existing_archive;
+
+    MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
+    if (loading_existing_archive) {
+      archiveDesc.url = [NSURL fileURLWithPath:@(metalbin_path.c_str())];
+    }
+    NSError *error = nil;
+    archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:&error];
+    if (!archive) {
+      const char *err = error ? [[error localizedDescription] UTF8String] : nullptr;
+      metal_printf("newBinaryArchiveWithDescriptor failed: %s\n", err ? err : "nil");
+    }
+    [archiveDesc release];
+
+    if (loading_existing_archive) {
+      pipelineOptions = MTLPipelineOptionFailOnBinaryArchiveMiss;
+      computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
     }
   }
 
-  __block bool creating_new_archive = false;
-  if (@available(macOS 11.0, *)) {
-    if (use_binary_archive) {
-      if (!archive) {
-        MTLBinaryArchiveDescriptor *archiveDesc = [[MTLBinaryArchiveDescriptor alloc] init];
-        archiveDesc.url = nil;
-        archive = [mtlDevice newBinaryArchiveWithDescriptor:archiveDesc error:nil];
-        creating_new_archive = true;
-      }
-      computePipelineStateDescriptor.binaryArchives = [NSArray arrayWithObjects:archive, nil];
-      pipelineOptions = MTLPipelineOptionFailOnBinaryArchiveMiss;
+  bool recreate_archive = false;
+
+  /* Lambda to do the actual pipeline compilation. */
+  auto do_compilation = [&]() {
+    __block bool compilation_finished = false;
+    __block string error_str;
+
+    if (loading_existing_archive || !DebugFlags().metal.use_async_pso_creation) {
+      /* Use the blocking variant of newComputePipelineStateWithDescriptor if an archive exists on
+       * disk. It should load almost instantaneously, and will fail gracefully when loading a
+       * corrupt archive (unlike the async variant). */
+      NSError *error = nil;
+      pipeline = [mtlDevice newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
+                                                          options:pipelineOptions
+                                                       reflection:nullptr
+                                                            error:&error];
+      const char *err = error ? [[error localizedDescription] UTF8String] : nullptr;
+      error_str = err ? err : "nil";
     }
-  }
+    else {
+      /* Use the async variant of newComputePipelineStateWithDescriptor if no archive exists on
+       * disk. This allows us to respond to app shutdown. */
+      [mtlDevice
+          newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
+                                        options:pipelineOptions
+                              completionHandler:^(id<MTLComputePipelineState> computePipelineState,
+                                                  MTLComputePipelineReflection * /*reflection*/,
+                                                  NSError *error) {
+                                pipeline = computePipelineState;
+
+                                /* Retain the pipeline so we can use it safely past the completion
+                                 * handler. */
+                                if (pipeline) {
+                                  [pipeline retain];
+                                }
+                                const char *err = error ?
+                                                      [[error localizedDescription] UTF8String] :
+                                                      nullptr;
+                                error_str = err ? err : "nil";
+
+                                compilation_finished = true;
+                              }];
+
+      /* Immediately wait for either the compilation to finish or for app shutdown. */
+      while (ShaderCache::running && !compilation_finished) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+    }
+
+    if (creating_new_archive && pipeline) {
+      /* Add pipeline into the new archive. */
+      NSError *error;
+      if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
+                                                        error:&error])
+      {
+        NSString *errStr = [error localizedDescription];
+        metal_printf("Failed to add PSO to archive:\n%s\n", errStr ? [errStr UTF8String] : "nil");
+      }
+    }
+
+    if (!pipeline) {
+      metal_printf(
+          "newComputePipelineStateWithDescriptor failed for \"%s\"%s. "
+          "Error:\n%s\n",
+          device_kernel_as_string((DeviceKernel)device_kernel),
+          (archive && !recreate_archive) ? " Archive may be incomplete or corrupt - attempting "
+                                           "recreation.." :
+                                           "",
+          error_str.c_str());
+    }
+  };
 
   double starttime = time_dt();
 
-  /* Block on load to ensure we continue with a valid kernel function */
-  if (creating_new_archive) {
-    starttime = time_dt();
-    NSError *error;
-    if (![archive addComputePipelineFunctionsWithDescriptor:computePipelineStateDescriptor
-                                                      error:&error]) {
-      NSString *errStr = [error localizedDescription];
-      metal_printf("Failed to add PSO to archive:\n%s\n", errStr ? [errStr UTF8String] : "nil");
-    }
-  }
+  do_compilation();
 
-  pipeline = [mtlDevice newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
-                                                      options:pipelineOptions
-                                                   reflection:nullptr
-                                                        error:&error];
-
-  bool recreate_archive = false;
+  /* An archive might have a corrupt entry and fail to materialize the pipeline. This shouldn't
+   * happen, but if it does we recreate it. */
   if (pipeline == nil && archive) {
-    NSString *errStr = [error localizedDescription];
-    metal_printf(
-        "Failed to create compute pipeline state \"%s\" from archive - attempting recreation... "
-        "(error: %s)\n",
-        device_kernel_as_string((DeviceKernel)device_kernel),
-        errStr ? [errStr UTF8String] : "nil");
-    pipeline = [mtlDevice newComputePipelineStateWithDescriptor:computePipelineStateDescriptor
-                                                        options:MTLPipelineOptionNone
-                                                     reflection:nullptr
-                                                          error:&error];
     recreate_archive = true;
+    pipelineOptions = MTLPipelineOptionNone;
+    path_remove(metalbin_path);
+
+    do_compilation();
   }
 
   double duration = time_dt() - starttime;
 
   if (pipeline == nil) {
-    NSString *errStr = [error localizedDescription];
-    error_str = string_printf("Failed to create compute pipeline state \"%s\", error: \n",
-                              device_kernel_as_string((DeviceKernel)device_kernel));
-    error_str += (errStr ? [errStr UTF8String] : "nil");
     metal_printf("%16s | %2d | %-55s | %7.2fs | FAILED!\n",
                  kernel_type_as_string(pso_type),
                  device_kernel,
@@ -787,17 +783,16 @@ void MetalKernelPipeline::compile()
     num_threads_per_block = std::max(num_threads_per_block, (int)pipeline.threadExecutionWidth);
   }
 
-  if (@available(macOS 11.0, *)) {
-    if (ShaderCache::running) {
-      if (creating_new_archive || recreate_archive) {
-        if (![archive serializeToURL:[NSURL fileURLWithPath:@(metalbin_path.c_str())]
-                               error:&error]) {
-          metal_printf("Failed to save binary archive, error:\n%s\n",
-                       [[error localizedDescription] UTF8String]);
-        }
-        else {
-          path_cache_kernel_mark_added_and_clear_old(metalbin_path);
-        }
+  if (ShaderCache::running) {
+    if (creating_new_archive || recreate_archive) {
+      if (![archive serializeToURL:[NSURL fileURLWithPath:@(metalbin_path.c_str())] error:&error])
+      {
+        metal_printf("Failed to save binary archive to %s, error:\n%s\n",
+                     metalbin_path.c_str(),
+                     [[error localizedDescription] UTF8String]);
+      }
+      else {
+        path_cache_kernel_mark_added_and_clear_old(metalbin_path);
       }
     }
   }
@@ -808,20 +803,18 @@ void MetalKernelPipeline::compile()
 
   if (use_metalrt && linked_functions) {
     for (int table = 0; table < METALRT_TABLE_NUM; table++) {
-      if (@available(macOS 11.0, *)) {
-        MTLIntersectionFunctionTableDescriptor *ift_desc =
-            [[MTLIntersectionFunctionTableDescriptor alloc] init];
-        ift_desc.functionCount = table_functions[table].count;
-        intersection_func_table[table] = [this->pipeline
-            newIntersectionFunctionTableWithDescriptor:ift_desc];
+      MTLIntersectionFunctionTableDescriptor *ift_desc =
+          [[MTLIntersectionFunctionTableDescriptor alloc] init];
+      ift_desc.functionCount = table_functions[table].count;
+      intersection_func_table[table] = [this->pipeline
+          newIntersectionFunctionTableWithDescriptor:ift_desc];
 
-        /* Finally write the function handles into this pipeline's table */
-        int size = (int)[table_functions[table] count];
-        for (int i = 0; i < size; i++) {
-          id<MTLFunctionHandle> handle = [pipeline
-              functionHandleWithFunction:table_functions[table][i]];
-          [intersection_func_table[table] setFunction:handle atIndex:i];
-        }
+      /* Finally write the function handles into this pipeline's table */
+      int size = (int)[table_functions[table] count];
+      for (int i = 0; i < size; i++) {
+        id<MTLFunctionHandle> handle = [pipeline
+            functionHandleWithFunction:table_functions[table][i]];
+        [intersection_func_table[table] setFunction:handle atIndex:i];
       }
     }
   }
@@ -860,16 +853,15 @@ void MetalDeviceKernels::wait_for_all()
   }
 }
 
-bool MetalDeviceKernels::any_specialization_happening_now()
+int MetalDeviceKernels::num_incomplete_specialization_requests()
 {
   /* Return true if any ShaderCaches have ongoing specialization requests (typically there will be
    * only 1). */
+  int total = 0;
   for (int i = 0; i < g_shaderCacheCount; i++) {
-    if (g_shaderCache[i].second->incomplete_specialization_requests > 0) {
-      return true;
-    }
+    total += g_shaderCache[i].second->incomplete_specialization_requests;
   }
-  return false;
+  return total;
 }
 
 int MetalDeviceKernels::get_loaded_kernel_count(MetalDevice const *device,
@@ -911,4 +903,4 @@ bool MetalDeviceKernels::is_benchmark_warmup()
 
 CCL_NAMESPACE_END
 
-#endif /* WITH_METAL*/
+#endif /* WITH_METAL */

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -23,7 +25,7 @@ sys.path.append(os.path.join(PWD, "modules"))
 
 from batch_edit_text import run
 
-SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", "..", ".."))))
+SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", ".."))))
 
 # TODO: move to configuration file.
 SOURCE_DIRS = (
@@ -60,12 +62,12 @@ def clean_structs(fn: str, data_src: str) -> Optional[str]:
             if ty in Token.Comment:  # type: ignore
                 continue
 
-        for w_match in re_words.finditer(data_src):
-            w = w_match.group(0)
-            try:
-                word_occurance[w] += 1
-            except KeyError:
-                word_occurance[w] = 1
+    for w_match in re_words.finditer(data_src):
+        w = w_match.group(0)
+        try:
+            word_occurance[w] += 1
+        except KeyError:
+            word_occurance[w] = 1
 
     lines = data_src.splitlines(keepends=True)
 

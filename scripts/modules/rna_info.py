@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # classes for extracting info from blenders internal classes
@@ -395,8 +397,10 @@ class InfoPropertyRNA:
                             type_str = (mathutils_fmt % "Euler") + " rotation" + dimension_str
                         elif self.array_length == 4:
                             type_str = (mathutils_fmt % "Quaternion") + " rotation" + dimension_str
-                    elif self.subtype in {"COORDINATES", "TRANSLATION", "DIRECTION", "VELOCITY",
-                                          "ACCELERATION", "XYZ", "XYZ_LENGTH"}:
+                    elif self.subtype in {
+                            'COORDINATES', 'TRANSLATION', 'DIRECTION', 'VELOCITY',
+                            'ACCELERATION', 'XYZ', 'XYZ_LENGTH',
+                    }:
                         if 2 <= self.array_length <= 4:
                             type_str = (mathutils_fmt % "Vector") + dimension_str
 
@@ -629,7 +633,7 @@ def BuildRNAInfo():
         except:
             return ""  # invalid id
 
-    #structs = [(base_id(rna_struct), rna_struct.identifier, rna_struct) for rna_struct in bpy.doc.structs.values()]
+    # structs = [(base_id(rna_struct), rna_struct.identifier, rna_struct) for rna_struct in bpy.doc.structs.values()]
     '''
     structs = []
     for rna_struct in bpy.doc.structs.values():
@@ -703,7 +707,7 @@ def BuildRNAInfo():
 
             # Store a list of functions, remove inherited later
             # NOT USED YET
-            ## rna_functions_dict[identifier] = get_direct_functions(rna_struct)
+            # rna_functions_dict[identifier] = get_direct_functions(rna_struct)
 
             # fill in these later
             rna_children_dict[identifier] = []
@@ -735,7 +739,7 @@ def BuildRNAInfo():
                     i += 1
 
                 if not ok:
-                    print('Dependancy "%s" could not be found for "%s"' % (identifier, rna_base))
+                    print("Dependency \"%s\" could not be found for \"%s\"" % (identifier, rna_base))
 
                 break
 
@@ -786,7 +790,7 @@ def BuildRNAInfo():
         # if rna_struct.nested:
         #     continue
 
-        #write_struct(rna_struct, '')
+        # write_struct(rna_struct, '')
         info_struct = GetInfoStructRNA(rna_struct)
         if rna_base:
             info_struct.base = GetInfoStructRNA(rna_struct_dict[rna_base])

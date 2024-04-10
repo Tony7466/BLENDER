@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_ViewerNode.h"
 
@@ -16,20 +17,18 @@ void ViewerNode::convert_to_operations(NodeConverter &converter,
                                        const CompositorContext &context) const
 {
   const bNode *editor_node = this->get_bnode();
-  bool do_output = (editor_node->flag & NODE_DO_OUTPUT_RECALC || context.is_rendering()) &&
+  bool is_active = (editor_node->flag & NODE_DO_OUTPUT_RECALC || context.is_rendering()) &&
                    (editor_node->flag & NODE_DO_OUTPUT);
   bool ignore_alpha = (editor_node->custom2 & CMP_NODE_OUTPUT_IGNORE_ALPHA) != 0;
 
   NodeInput *image_socket = this->get_input_socket(0);
   NodeInput *alpha_socket = this->get_input_socket(1);
-  NodeInput *depth_socket = this->get_input_socket(2);
   Image *image = (Image *)this->get_bnode()->id;
   ImageUser *image_user = (ImageUser *)this->get_bnode()->storage;
   ViewerOperation *viewer_operation = new ViewerOperation();
   viewer_operation->set_bnodetree(context.get_bnodetree());
   viewer_operation->set_image(image);
   viewer_operation->set_image_user(image_user);
-  viewer_operation->set_chunk_order((ChunkOrdering)editor_node->custom1);
   viewer_operation->setCenterX(editor_node->custom3);
   viewer_operation->setCenterY(editor_node->custom4);
   /* alpha socket gives either 1 or a custom alpha value if "use alpha" is enabled */
@@ -57,11 +56,10 @@ void ViewerNode::convert_to_operations(NodeConverter &converter,
   else {
     converter.map_input_socket(alpha_socket, viewer_operation->get_input_socket(1));
   }
-  converter.map_input_socket(depth_socket, viewer_operation->get_input_socket(2));
 
   converter.add_node_input_preview(image_socket);
 
-  if (do_output) {
+  if (is_active) {
     converter.register_viewer(viewer_operation);
   }
 }

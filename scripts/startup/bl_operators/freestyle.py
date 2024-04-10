@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -13,8 +15,8 @@ from bpy.props import (
 
 
 class SCENE_OT_freestyle_fill_range_by_selection(Operator):
-    """Fill the Range Min/Max entries by the min/max distance between selected mesh objects and the source object """
-    """(either a user-specified object or the active camera)"""
+    """Fill the Range Min/Max entries by the min/max distance between selected mesh objects and the source object """ \
+        """(either a user-specified object or the active camera)"""
     bl_idname = "scene.freestyle_fill_range_by_selection"
     bl_label = "Fill Range by Selection"
     bl_options = {'INTERNAL'}
@@ -54,6 +56,9 @@ class SCENE_OT_freestyle_fill_range_by_selection(Operator):
         # Find the reference object
         if m.type == 'DISTANCE_FROM_CAMERA':
             ref = scene.camera
+            if ref is None:
+                self.report({'ERROR'}, "No active camera in the scene")
+                return {'CANCELLED'}
             matrix_to_camera = ref.matrix_world.inverted()
         elif m.type == 'DISTANCE_FROM_OBJECT':
             if m.target is None:
@@ -64,7 +69,7 @@ class SCENE_OT_freestyle_fill_range_by_selection(Operator):
         else:
             self.report({'ERROR'}, "Unexpected modifier type: " + m.type)
             return {'CANCELLED'}
-        # Find selected vertices in editmesh
+        # Find selected vertices in edit-mesh.
         ob = context.active_object
         if ob.type == 'MESH' and ob.mode == 'EDIT' and ob.name != ref.name:
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -118,7 +123,7 @@ class SCENE_OT_freestyle_fill_range_by_selection(Operator):
 
 
 class SCENE_OT_freestyle_add_edge_marks_to_keying_set(Operator):
-    '''Add the data paths to the Freestyle Edge Mark property of selected edges to the active keying set'''
+    """Add the data paths to the Freestyle Edge Mark property of selected edges to the active keying set"""
     bl_idname = "scene.freestyle_add_edge_marks_to_keying_set"
     bl_label = "Add Edge Marks to Keying Set"
     bl_options = {'UNDO'}
@@ -149,7 +154,7 @@ class SCENE_OT_freestyle_add_edge_marks_to_keying_set(Operator):
 
 
 class SCENE_OT_freestyle_add_face_marks_to_keying_set(Operator):
-    '''Add the data paths to the Freestyle Face Mark property of selected polygons to the active keying set'''
+    """Add the data paths to the Freestyle Face Mark property of selected polygons to the active keying set"""
     bl_idname = "scene.freestyle_add_face_marks_to_keying_set"
     bl_label = "Add Face Marks to Keying Set"
     bl_options = {'UNDO'}

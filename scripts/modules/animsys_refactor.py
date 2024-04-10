@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -76,7 +78,7 @@ class DataPathBuilder:
                                         break
                             if type_ok:
                                 try:
-                                    #print("base." + item_new)
+                                    # print("base." + item_new)
                                     base_new = eval("base." + item_new)
                                     break  # found, don't keep looking
                                 except:

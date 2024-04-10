@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Checks for defines which aren't used anywhere.
@@ -11,7 +13,7 @@ sys.path.append(os.path.join(PWD, "..", "utils_maintenance", "modules"))
 
 from batch_edit_text import run
 
-SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", "..", ".."))))
+SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(PWD, "..", ".."))))
 
 # TODO, move to config file
 SOURCE_DIRS = (

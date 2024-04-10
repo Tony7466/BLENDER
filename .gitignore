@@ -56,6 +56,7 @@ waveletNoiseTile.bin
 # External repositories.
 /scripts/addons/
 /scripts/addons_contrib/
+/tests/benchmarks/
 
 # Ignore old submodules directories.
 # Eventually need to get rid of those, but for the first time of transition
@@ -65,3 +66,10 @@ waveletNoiseTile.bin
 /release/datafiles/locale/
 /release/scripts/addons_contrib/
 /source/tools/
+
+# Build files for VS and VS Code.
+/build/
+/out/
+CMakeSettings.json
+CMakePresets.json
+CMakeUserPresets.json

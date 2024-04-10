@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
  */
 
-#include "BLI_bitmap.h"
+#include "GPU_index_buffer.hh"
 
 #include "extract_mesh.hh"
 
@@ -14,16 +15,16 @@ namespace blender::draw {
 /** \name Extract Face-dots Indices
  * \{ */
 
-static void extract_fdots_init(const MeshRenderData *mr,
-                               MeshBatchCache * /*cache*/,
+static void extract_fdots_init(const MeshRenderData &mr,
+                               MeshBatchCache & /*cache*/,
                                void * /*buf*/,
                                void *tls_data)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(tls_data);
-  GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr->poly_len, mr->poly_len);
+  GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr.faces_num, mr.faces_num);
 }
 
-static void extract_fdots_iter_poly_bm(const MeshRenderData * /*mr*/,
+static void extract_fdots_iter_face_bm(const MeshRenderData & /*mr*/,
                                        const BMFace *f,
                                        const int f_index,
                                        void *_userdata)
@@ -37,45 +38,42 @@ static void extract_fdots_iter_poly_bm(const MeshRenderData * /*mr*/,
   }
 }
 
-static void extract_fdots_iter_poly_mesh(const MeshRenderData *mr,
-                                         const MPoly *mp,
-                                         const int mp_index,
+static void extract_fdots_iter_face_mesh(const MeshRenderData &mr,
+                                         const int face_index,
                                          void *_userdata)
 {
-  const bool hidden = mr->use_hide && mr->hide_poly && mr->hide_poly[mp - mr->mpoly];
+  const bool hidden = mr.use_hide && !mr.hide_poly.is_empty() && mr.hide_poly[face_index];
 
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  if (mr->use_subsurf_fdots) {
-    const BitSpan facedot_tags = mr->me->runtime->subsurf_face_dot_tags;
+  if (mr.use_subsurf_fdots) {
+    const BitSpan facedot_tags = mr.mesh->runtime->subsurf_face_dot_tags;
 
-    const MLoop *mloop = mr->mloop;
-    const int ml_index_end = mp->loopstart + mp->totloop;
-    for (int ml_index = mp->loopstart; ml_index < ml_index_end; ml_index += 1) {
-      const MLoop *ml = &mloop[ml_index];
-      if (facedot_tags[ml->v] && !hidden) {
-        GPU_indexbuf_set_point_vert(elb, mp_index, mp_index);
+    for (const int corner : mr.faces[face_index]) {
+      const int vert = mr.corner_verts[corner];
+      if (facedot_tags[vert] && !hidden) {
+        GPU_indexbuf_set_point_vert(elb, face_index, face_index);
         return;
       }
     }
-    GPU_indexbuf_set_point_restart(elb, mp_index);
+    GPU_indexbuf_set_point_restart(elb, face_index);
   }
   else {
     if (!hidden) {
-      GPU_indexbuf_set_point_vert(elb, mp_index, mp_index);
+      GPU_indexbuf_set_point_vert(elb, face_index, face_index);
     }
     else {
-      GPU_indexbuf_set_point_restart(elb, mp_index);
+      GPU_indexbuf_set_point_restart(elb, face_index);
     }
   }
 }
 
-static void extract_fdots_finish(const MeshRenderData * /*mr*/,
-                                 MeshBatchCache * /*cache*/,
+static void extract_fdots_finish(const MeshRenderData & /*mr*/,
+                                 MeshBatchCache & /*cache*/,
                                  void *buf,
                                  void *_userdata)
 {
   GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buf);
+  gpu::IndexBuf *ibo = static_cast<gpu::IndexBuf *>(buf);
   GPU_indexbuf_build_in_place(elb, ibo);
 }
 
@@ -83,8 +81,8 @@ constexpr MeshExtract create_extractor_fdots()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_fdots_init;
-  extractor.iter_poly_bm = extract_fdots_iter_poly_bm;
-  extractor.iter_poly_mesh = extract_fdots_iter_poly_mesh;
+  extractor.iter_face_bm = extract_fdots_iter_face_bm;
+  extractor.iter_face_mesh = extract_fdots_iter_face_mesh;
   extractor.finish = extract_fdots_finish;
   extractor.data_type = MR_DATA_NONE;
   extractor.data_size = sizeof(GPUIndexBufBuilder);
@@ -95,6 +93,6 @@ constexpr MeshExtract create_extractor_fdots()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_fdots = create_extractor_fdots();
 
-const MeshExtract extract_fdots = blender::draw::create_extractor_fdots();
+}  // namespace blender::draw
