@@ -2280,8 +2280,13 @@ void GreasePencil::remove_drawings_with_no_users()
     drawing_index_map[last_used_drawing] = first_unused_drawing;
   }
 
-  /* Free the unused drawings. */
+  /* Tail range of unused drawings that can be removed. */
   const IndexRange drawings_to_remove = drawings.index_range().drop_front(last_used_drawing + 1);
+  if (drawings_to_remove.is_empty()) {
+    return;
+  }
+
+  /* Free the unused drawings. */
   for (const int i : drawings_to_remove) {
     GreasePencilDrawingBase *unused_drawing_base = drawings[i];
     switch (unused_drawing_base->type) {
@@ -2298,10 +2303,8 @@ void GreasePencil::remove_drawings_with_no_users()
       }
     }
   }
-  if (drawings_to_remove.size() > 0) {
-    shrink_array<GreasePencilDrawingBase *>(
-        &this->drawing_array, &this->drawing_array_num, drawings_to_remove.size());
-  }
+  shrink_array<GreasePencilDrawingBase *>(
+      &this->drawing_array, &this->drawing_array_num, drawings_to_remove.size());
 
   /* Remap drawing indices in frame data. */
   for (Layer *layer : this->layers_for_write()) {
