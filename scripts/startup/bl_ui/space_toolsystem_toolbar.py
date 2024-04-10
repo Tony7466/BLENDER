@@ -1861,7 +1861,7 @@ class _defs_paint_grease_pencil:
         )
 
         brush_basic__draw_color_selector(context, layout, brush, gp_settings, props)
-        brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True, props=props)
+        brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
         return True
 
     @ToolDef.from_fn
