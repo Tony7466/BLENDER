@@ -68,7 +68,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************* */
 /* 'Globals' and Defines */
@@ -1420,7 +1420,7 @@ static bool gpencil_stroke_eraser_is_occluded(
   if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) & (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
     gp_settings = eraser->gpencil_settings;
   }
 
@@ -1812,7 +1812,7 @@ static void gpencil_stroke_doeraser(tGPsdata *p)
     use_pressure = bool(brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) & (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
     use_pressure = bool(eraser->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = eraser->gpencil_settings;
   }
@@ -2040,6 +2040,14 @@ static void gpencil_init_colors(tGPsdata *p)
 
   gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
   gpd->runtime.sbuffer_brush = brush;
+
+  /* Reduce slightly the opacity of fill to make easy fill areas while drawing. */
+  gpd->runtime.fill_opacity_fac = 0.8f;
+  if ((brush->gpencil_settings->flag & GP_BRUSH_DISSABLE_LASSO) != 0) {
+    /* Don't set it to 0 so that there is still some feedback if the material has no stroke color.
+     */
+    gpd->runtime.fill_opacity_fac = 0.1f;
+  }
 }
 
 /* (re)init new painting data */

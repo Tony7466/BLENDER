@@ -25,6 +25,30 @@ const EnumPropertyItem rna_enum_curves_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_curves_handle_type_items[] = {
+    {BEZIER_HANDLE_FREE,
+     "FREE",
+     0,
+     "Free",
+     "The handle can be moved anywhere, and doesn't influence the point's other handle"},
+    {BEZIER_HANDLE_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "The location is automatically calculated to be smooth"},
+    {BEZIER_HANDLE_VECTOR,
+     "VECTOR",
+     0,
+     "Vector",
+     "The location is calculated to point to the next/previous control point"},
+    {BEZIER_HANDLE_ALIGN,
+     "ALIGN",
+     0,
+     "Align",
+     "The location is constrained to point in the opposite direction as the other handleW"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_curve_normal_mode_items[] = {
     {NORMAL_MODE_MINIMUM_TWIST,
      "MINIMUM_TWIST",
@@ -270,7 +294,7 @@ static void rna_CurveSlice_points_begin(CollectionPropertyIterator *iter, Pointe
 static void rna_Curves_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   Curves *curves = rna_curves(ptr);
-  float(*positions)[3] = ED_curves_point_normals_array_create(curves);
+  float(*positions)[3] = blender::ed::curves::point_normals_array_create(curves);
   const int size = curves->geometry.point_num;
   rna_iterator_array_begin(iter, positions, sizeof(float[3]), size, true, nullptr);
 }
