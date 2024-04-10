@@ -1121,14 +1121,14 @@ static void rna_Object_active_material_index_set(PointerRNA *ptr, int value)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
 
-  ob->actcol = min_ii(ob->totcol, value + 1);
-  ob->actcol = max_ii(ob->actcol, 0);
+  value = std::clamp(value, 0, ob->totcol - 1);
+  ob->actcol = value + 1;
 
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
     if (mesh->runtime->edit_mesh) {
-      mesh->runtime->edit_mesh->mat_nr = ob->actcol;
+      mesh->runtime->edit_mesh->mat_nr = value;
     }
   }
 }
