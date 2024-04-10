@@ -1525,6 +1525,33 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+namespace add_circle {
+
+static int exec(bContext *C, wmOperator *op)
+{
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace add_circle
+
+static void CURVES_OT_add_circle(wmOperatorType *ot)
+{
+  ot->name = "Add Circle";
+  ot->idname = __func__;
+  ot->description = "Add new circle curve";
+
+  ot->exec = add_circle::exec;
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 void operatortypes_curves()
 {
   WM_operatortype_append(CURVES_OT_attribute_set);
@@ -1548,6 +1575,7 @@ void operatortypes_curves()
   WM_operatortype_append(CURVES_OT_curve_type_set);
   WM_operatortype_append(CURVES_OT_switch_direction);
   WM_operatortype_append(CURVES_OT_subdivide);
+  WM_operatortype_append(CURVES_OT_add_circle);
 }
 
 void operatormacros_curves()

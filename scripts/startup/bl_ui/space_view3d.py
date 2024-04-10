@@ -5908,7 +5908,7 @@ class VIEW3D_MT_edit_curves_add(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.label(text="test")
+        layout.operator("curves.add_circle", text="Circle")
 
 
 class VIEW3D_MT_edit_curves(Menu):
