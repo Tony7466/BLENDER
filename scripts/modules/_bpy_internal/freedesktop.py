@@ -276,6 +276,11 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
             filepath_repr(package_xml_dst),
         ))
 
+    env = {
+        **os.environ,
+        "XDG_DATA_DIRS": os.path.join(SYSTEM_PREFIX, "share")
+    }
+
     if not do_register:
         if not os.path.exists(package_xml_dst):
             return True
@@ -288,7 +293,7 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
             "--mode", "system" if all_users else "user",
             package_xml_dst,
         )
-        subprocess.check_output(cmd)
+        subprocess.check_output(cmd, env=env)
         return True
 
     with tempfile.TemporaryDirectory() as tempdir:
@@ -313,7 +318,7 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
             "--mode", "system" if all_users else "user",
             package_xml_src,
         )
-        subprocess.check_output(cmd)
+        subprocess.check_output(cmd, env=env)
     return True
 
 
@@ -444,10 +449,13 @@ def register_impl(do_register: bool, all_users: bool) -> bool:
 
     ok = True
     ok &= handle_bin(do_register=do_register, all_users=all_users)
+    ok &= handle_icon(do_register=do_register, all_users=all_users)
     ok &= handle_desktop_file(do_register=do_register, all_users=all_users)
     ok &= handle_mime_association_xml(do_register=do_register, all_users=all_users)
-    ok &= handle_mime_association_default(do_register=do_register, all_users=all_users)
-    ok &= handle_icon(do_register=do_register, all_users=all_users)
+
+    # NOTE: This only makes sense for users, although there may be a way to do this for all users.
+    if not all_users:
+        ok &= handle_mime_association_default(do_register=do_register, all_users=all_users)
 
     # The thumbnailer only works when installed for all users.
     if all_users:
