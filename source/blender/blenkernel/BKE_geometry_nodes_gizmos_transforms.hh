@@ -27,7 +27,7 @@ struct GeoNodesGizmoID {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(this->compute_context_hash, this->node_id);
+    return get_default_hash(this->compute_context_hash, this->node_id);
   }
 };
 

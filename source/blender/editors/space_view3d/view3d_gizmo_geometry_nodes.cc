@@ -47,7 +47,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "view3d_intern.h" /* own include */
+#include "view3d_intern.hh" /* own include */
 
 namespace blender::ed::view3d {
 namespace geo_eval_log = nodes::geo_eval_log;
@@ -629,7 +629,7 @@ static void WIDGETGROUP_geometry_nodes_refresh(const bContext *C, wmGizmoGroup *
   bNodeTree &ntree = *nmd.node_group;
   ntree.ensure_topology_cache();
 
-  const float4x4 object_to_world{ob_orig->object_to_world};
+  const float4x4 object_to_world{ob_orig->object_to_world()};
 
   /* Rebuild the set of all active gizmos, reusing gizmo data from before if possible. */
   Map<bke::GeoNodesGizmoID, std::unique_ptr<NodeGizmoData>> new_gizmo_by_node;

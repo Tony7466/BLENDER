@@ -46,7 +46,7 @@ struct InputSocketRef {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(this->input_socket, this->elem);
+    return get_default_hash(this->input_socket, this->elem);
   }
 };
 
@@ -61,7 +61,7 @@ struct ValueNodeRef {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(this->value_node, this->elem);
+    return get_default_hash(this->value_node, this->elem);
   }
 };
 
@@ -76,7 +76,7 @@ struct GroupInputRef {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(this->input_index, this->elem);
+    return get_default_hash(this->input_index, this->elem);
   }
 };
 

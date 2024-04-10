@@ -18,7 +18,7 @@
 #include "BKE_collection.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
