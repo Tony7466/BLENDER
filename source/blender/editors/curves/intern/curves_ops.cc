@@ -1527,10 +1527,43 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
 
 namespace add_circle {
 
+static CurvesGeometry generate_circle_primitive(const float radius)
+{
+  CurvesGeometry curves{4, 1};
+
+  MutableSpan<int> offsets = curves.offsets_for_write();
+  offsets[0] = 0;
+  offsets[1] = 4;
+
+  curves.fill_curve_types(CURVE_TYPE_BEZIER);
+  curves.cyclic_for_write().fill(true);
+  curves.handle_types_left_for_write().fill(BEZIER_HANDLE_AUTO);
+  curves.handle_types_right_for_write().fill(BEZIER_HANDLE_AUTO);
+  curves.resolution_for_write().fill(12);
+
+  MutableSpan<float3> positions = curves.positions_for_write();
+  positions[0] = float3(-radius, 0, 0);
+  positions[1] = float3(0, radius, 0);
+  positions[2] = float3(radius, 0, 0);
+  positions[3] = float3(0, -radius, 0);
+
+  /* Ensure these attributes exist. */
+  curves.handle_positions_left_for_write();
+  curves.handle_positions_right_for_write();
+
+  curves.calculate_bezier_auto_handles();
+
+  return curves;
+}
+
 static int exec(bContext *C, wmOperator *op)
 {
+  const float radius = RNA_float_get(op->ptr, "radius");
+
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+
+    curves = generate_circle_primitive(radius);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
@@ -1550,6 +1583,9 @@ static void CURVES_OT_add_circle(wmOperatorType *ot)
   ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  blender::ed::object::add_unit_props_radius(ot);
+  blender::ed::object::add_generic_props(ot, true);
 }
 
 void operatortypes_curves()
