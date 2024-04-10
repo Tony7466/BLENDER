@@ -7,13 +7,16 @@
  */
 
 #include "BKE_context.hh"
+#include "BKE_paint.hh"
 
+#include "DNA_brush_enums.h"
 #include "DNA_scene_types.h"
 
 #include "ED_grease_pencil.hh"
 #include "ED_screen.hh"
 
 #include "WM_api.hh"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -95,6 +98,48 @@ static void keymap_grease_pencil_paint_mode(wmKeyConfig *keyconf)
   keymap->poll = grease_pencil_painting_poll;
 }
 
+/* Enabled for all tools except the fill tool. */
+static bool keymap_grease_pencil_brush_stroke_poll(bContext *C)
+{
+  if (!grease_pencil_painting_poll(C)) {
+    return false;
+  }
+  if (!WM_toolsystem_active_tool_is_brush(C)) {
+    return false;
+  }
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
+  return brush && brush->gpencil_settings && brush->gpencil_tool != GPAINT_TOOL_FILL;
+}
+
+static void keymap_grease_pencil_brush_stroke(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(
+      keyconf, "Grease Pencil Brush Stroke", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  keymap->poll = keymap_grease_pencil_brush_stroke_poll;
+}
+
+/* Enabled only for the fill tool. */
+static bool keymap_grease_pencil_fill_tool_poll(bContext *C)
+{
+  if (!grease_pencil_painting_poll(C)) {
+    return false;
+  }
+  if (!WM_toolsystem_active_tool_is_brush(C)) {
+    return false;
+  }
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
+  return brush && brush->gpencil_settings && brush->gpencil_tool == GPAINT_TOOL_FILL;
+}
+
+static void keymap_grease_pencil_fill_tool(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(
+      keyconf, "Grease Pencil Fill Tool", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  keymap->poll = keymap_grease_pencil_fill_tool_poll;
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil()
@@ -137,4 +182,6 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   using namespace blender::ed::greasepencil;
   keymap_grease_pencil_edit_mode(keyconf);
   keymap_grease_pencil_paint_mode(keyconf);
+  keymap_grease_pencil_brush_stroke(keyconf);
+  keymap_grease_pencil_fill_tool(keyconf);
 }

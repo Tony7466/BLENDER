@@ -4567,16 +4567,6 @@ def km_grease_pencil_paint_mode(_params):
     )
 
     items.extend([
-        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
-         {"properties": [("scalar", 0.9)]}),
-        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
-         {"properties": [("scalar", 1.0 / 0.9)]}),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-         {"properties": [("mode", 'INVERT')]}),
-        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-         {"properties": [("mode", 'SMOOTH')]}),
-        *_template_paint_radial_control("gpencil_paint"),
         # Active material
         op_menu("VIEW3D_MT_greasepencil_material_active", {"type": 'U', "value": 'PRESS'}),
         # Active layer
@@ -4589,6 +4579,30 @@ def km_grease_pencil_paint_mode(_params):
 
         # Isolate Layer
         ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
+def km_grease_pencil_brush_stroke(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Brush Stroke",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         {"properties": [("mode", 'SMOOTH')]}),
+        *_template_paint_radial_control("gpencil_paint"),
     ])
 
     return keymap
@@ -4675,6 +4689,29 @@ def km_grease_pencil_edit_mode(params):
         ("grease_pencil.set_selection_mode", {"type": 'ONE', "value": 'PRESS'}, {"properties": [("mode", 'POINT')]}),
         ("grease_pencil.set_selection_mode", {"type": 'TWO', "value": 'PRESS'}, {"properties": [("mode", 'STROKE')]}),
 
+    ])
+
+    return keymap
+
+
+# Grease Pencil v3 Fill Tool
+def km_grease_pencil_fill_tool(_params):
+    items = []
+    keymap = (
+        "Grease Pencil Fill Tool",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items},
+    )
+
+    items.extend([
+        # Fill operator
+        ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+         {"properties": [("on_back", False)]}),
+        ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("on_back", False)]}),
+        # Use regular stroke operator when holding shift to draw lines.
+        ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+         None),
     ])
 
     return keymap
@@ -8630,6 +8667,8 @@ def generate_keymaps(params=None):
         # Grease Pencil v3
         km_grease_pencil_paint_mode(params),
         km_grease_pencil_edit_mode(params),
+        km_grease_pencil_brush_stroke(params),
+        km_grease_pencil_fill_tool(params),
         # Object mode.
         km_object_mode(params),
         km_object_non_modal(params),

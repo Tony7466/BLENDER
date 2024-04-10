@@ -56,6 +56,10 @@ static bool start_brush_operation(bContext &C,
     case GPAINT_TOOL_TINT:
       operation = greasepencil::new_tint_operation().release();
       break;
+    case GPAINT_TOOL_FILL:
+      /* Fill tool keymap uses the paint operator as alternative mode. */
+      operation = greasepencil::new_paint_operation().release();
+      break;
   }
 
   if (operation) {
