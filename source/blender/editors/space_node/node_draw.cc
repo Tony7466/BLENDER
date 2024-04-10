@@ -1612,8 +1612,6 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     }
   }
 
-  Vector<std::string> inspection_strings;
-
   geo_log::GeoTreeLog *geo_tree_log = [&]() -> geo_log::GeoTreeLog * {
     const bNodeTreeZones *zones = ntree.zones();
     if (!zones) {
@@ -1622,6 +1620,8 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     const bNodeTreeZone *zone = zones->get_zone_by_socket(socket);
     return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
   }();
+
+  Vector<std::string> inspection_strings;
 
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
