@@ -1121,7 +1121,7 @@ static void rna_Object_active_material_index_set(PointerRNA *ptr, int value)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
 
-  value = std::clamp(value, 0, ob->totcol - 1);
+  value = (ob->totcol > 1) ? std::clamp(value, 0, ob->totcol - 1) : 0;
   ob->actcol = value + 1;
 
   if (ob->type == OB_MESH) {
