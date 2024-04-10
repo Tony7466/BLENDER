@@ -229,9 +229,7 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
   return translation_context.data();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout);
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout);
 
 /** Return true when \a a should be behind \a b and false otherwise. */
 static bool compare_node_depth(const bNode *a, const bNode *b)
@@ -524,12 +522,12 @@ static bool node_update_basis_socket(const bContext &C,
   }
 
   if (input_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *input_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*input_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     input_socket->runtime->location = float2(round(locx), round(locy - NODE_DYS));
   }
   if (output_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *output_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*output_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     output_socket->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                               round(locy - NODE_DYS));
@@ -1230,8 +1228,7 @@ static void node_socket_draw_multi_input(uiBlock &block,
                                          const float2 draw_size,
                                          const float color[4],
                                          const float color_outline[4],
-                                         const float2 tooltip_size,
-                                         const bool has_tooltip)
+                                         const float2 tooltip_size)
 {
   /* The other sockets are drawn with the keyframe shader. There, the outline has a base
    * thickness that can be varied but always scales with the size the socket is drawn at. Using
@@ -1257,9 +1254,7 @@ static void node_socket_draw_multi_input(uiBlock &block,
                           half_outline_width * 2.0f,
                           draw_size.x - half_outline_width);
 
-  if (has_tooltip) {
-    node_socket_tooltip_set(block, index_in_tree, location, tooltip_size);
-  }
+  node_socket_tooltip_set(block, index_in_tree, location, tooltip_size);
 }
 
 static const float virtual_node_socket_outline_color[4] = {0.5, 0.5, 0.5, 1.0};
@@ -1635,11 +1630,6 @@ static std::optional<std::string> create_socket_inspection_string(
   return str;
 }
 
-static bool node_socket_has_tooltip(const bNodeTree &ntree, const bNodeSocket &socket)
-{
-  return true;
-}
-
 static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
                                                     const bNodeSocket &socket,
                                                     TreeDrawContext &tree_draw_ctx)
@@ -1699,13 +1689,8 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   return output.str();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout)
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
   uiLayoutSetTooltipFunc(
       &layout,
       [](bContext *C, void *argN, const char * /*tip*/) {
@@ -1722,10 +1707,6 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
 
 void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
-
   struct SocketTooltipData {
     const bNodeTree *ntree;
     const bNodeSocket *socket;
@@ -1779,9 +1760,7 @@ static void node_socket_draw_nested(const bContext &C,
                    size_id,
                    outline_col_id);
 
-  if (node_socket_has_tooltip(ntree, sock)) {
-    node_socket_tooltip_set(block, sock.index_in_tree(), location, float2(size, size));
-  }
+  node_socket_tooltip_set(block, sock.index_in_tree(), location, float2(size, size));
 }
 
 void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4], float scale)
@@ -2140,15 +2119,8 @@ static void node_draw_sockets(const View2D &v2d,
     const float2 location = socket->runtime->location;
     const float2 draw_size(width, height);
     const float2 tooltip_size(scale, height * 2.0f - socket_draw_size + scale);
-    const bool has_tooltip = node_socket_has_tooltip(ntree, *socket);
-    node_socket_draw_multi_input(block,
-                                 index_in_tree,
-                                 location,
-                                 draw_size,
-                                 color,
-                                 outline_color,
-                                 tooltip_size,
-                                 has_tooltip);
+    node_socket_draw_multi_input(
+        block, index_in_tree, location, draw_size, color, outline_color, tooltip_size);
   }
 }
 
