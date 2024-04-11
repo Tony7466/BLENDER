@@ -406,6 +406,12 @@ void DepsgraphNodeBuilder::begin_build()
     saved_entry_tags_.append_as(op_node);
   }
 
+  for (const OperationNode *op_node : graph_->operations) {
+    if (op_node->flag & DEPSOP_FLAG_NEEDS_UPDATE) {
+      needs_update_operations_.append_as(op_node);
+    }
+  }
+
   /* Make sure graph has no nodes left from previous state. */
   graph_->clear_all_nodes();
   graph_->operations.clear();
@@ -537,6 +543,16 @@ void DepsgraphNodeBuilder::tag_previously_tagged_nodes()
      * that originally node was explicitly tagged for user update. */
     operation_node->tag_update(graph_, DEG_UPDATE_SOURCE_USER_EDIT);
   }
+
+  /* Restore needs-update flags since the previous state of the dependency graph, ensuring the
+   * previously-skipped operations are properly re-evaluated when needed. */
+  for (const OperationKey &operation_key : needs_update_operations_) {
+    OperationNode *operation_node = find_operation_node(operation_key);
+    if (operation_node == nullptr) {
+      continue;
+    }
+    operation_node->flag |= DEPSOP_FLAG_NEEDS_UPDATE;
+  }
 }
 
 void DepsgraphNodeBuilder::end_build()
@@ -558,8 +574,7 @@ void DepsgraphNodeBuilder::build_id(ID *id, const bool force_be_visible)
       build_action((bAction *)id);
       break;
     case ID_AN:
-      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
-      build_generic_id(id);
+      build_animation((Animation *)id);
       break;
     case ID_AR:
       build_armature((bArmature *)id);
@@ -1217,10 +1232,15 @@ void DepsgraphNodeBuilder::build_animdata(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
+  if (adt->animation != nullptr) {
+    build_animation(adt->animation);
+  }
   /* Make sure ID node exists. */
   (void)add_id_node(id);
   ID *id_cow = get_cow_id(id);
-  if (adt->action != nullptr || !BLI_listbase_is_empty(&adt->nla_tracks)) {
+  if (adt->action != nullptr || adt->animation != nullptr ||
+      !BLI_listbase_is_empty(&adt->nla_tracks))
+  {
     OperationNode *operation_node;
     /* Explicit entry operation. */
     operation_node = add_operation_node(id, NodeType::ANIMATION, OperationCode::ANIMATION_ENTRY);
@@ -1288,6 +1308,15 @@ void DepsgraphNodeBuilder::build_action(bAction *action)
   }
   build_idproperties(action->id.properties);
   add_operation_node(&action->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
+}
+
+void DepsgraphNodeBuilder::build_animation(Animation *animation)
+{
+  if (built_map_.checkIsBuiltAndTag(animation)) {
+    return;
+  }
+  build_idproperties(animation->id.properties);
+  add_operation_node(&animation->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
 }
 
 void DepsgraphNodeBuilder::build_driver(ID *id, FCurve *fcurve, int driver_index)

@@ -7,6 +7,7 @@ from bpy.types import (
     Menu,
     Operator,
     OperatorFileListElement,
+    Panel,
     WindowManager,
 )
 from bpy.props import (
@@ -18,6 +19,7 @@ from bpy.app.translations import (
     pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
+from bl_ui.utils import PresetPanel
 
 
 # For preset popover menu
@@ -587,6 +589,11 @@ class RemovePresetInterfaceTheme(AddPresetBase, Operator):
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event, title="Remove Custom Theme", confirm_text="Delete")
 
+    def post_cb(self, context):
+        # Without this, the name & colors are kept after removing the theme.
+        # Even though the theme is removed from the list, it's seems like a bug to keep it displayed after removal.
+        bpy.ops.preferences.reset_default_theme()
+
 
 class SavePresetInterfaceTheme(AddPresetBase, Operator):
     """Save a custom theme in the preset list"""
@@ -748,6 +755,24 @@ class WM_MT_operator_presets(Menu):
         return AddPresetOperator.operator_path(self.operator)
 
     preset_operator = "script.execute_preset"
+
+
+class WM_PT_operator_presets(PresetPanel, Panel):
+    bl_label = "Operator Presets"
+    preset_add_operator = "wm.operator_preset_add"
+    preset_operator = "script.execute_preset"
+
+    @property
+    def preset_subdir(self):
+        return AddPresetOperator.operator_path(self.operator)
+
+    @property
+    def preset_add_operator_properties(self):
+        return {"operator": self.operator}
+
+    def draw(self, context):
+        self.operator = context.active_operator.bl_idname
+        PresetPanel.draw(self, context)
 
 
 class WM_OT_operator_presets_cleanup(Operator):
@@ -921,5 +946,6 @@ classes = (
     AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
+    WM_PT_operator_presets,
     WM_OT_operator_presets_cleanup,
 )

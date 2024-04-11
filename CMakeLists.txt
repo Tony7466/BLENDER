@@ -722,8 +722,8 @@ This option is only for debugging purposes."
   # https://www.intel.com/content/www/us/en/develop/documentation/oneapi-dpcpp-cpp-compiler-dev-guide-and-reference/top/compilation/ahead-of-time-compilation.html
   # The target architectures levels can be retrieved from `ocloc` output when running
   # `ocloc compile -device {device_id} test.c` for given GPUs PCI device IDs.
-  # 12.55.8 is for Arc Alchemist GPUs. 12.70.0 for Meteor Lake iGPUs.
-  set(CYCLES_ONEAPI_INTEL_BINARIES_ARCH 12.55.8 12.70.0 CACHE STRING "\
+  # 12.55.8 is for Arc Alchemist GPUs. 12.70.4 for Meteor Lake iGPUs.
+  set(CYCLES_ONEAPI_INTEL_BINARIES_ARCH 12.55.8 12.70.4 CACHE STRING "\
 oneAPI Intel GPU architectures to build binaries for"
   )
   set(CYCLES_ONEAPI_SYCL_TARGETS spir64 spir64_gen CACHE STRING "\
@@ -870,19 +870,29 @@ else()
 endif()
 
 # Vulkan
-if(NOT APPLE)
-  option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (experimental)" ON)
-  option(WITH_VULKAN_GUARDEDALLOC "\
-Use guardedalloc for host allocations done inside Vulkan (development option)"
-    OFF
-  )
+option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (experimental)" ON)
+option(WITH_VULKAN_GUARDEDALLOC "Use guardedalloc for host allocations done inside Vulkan (development option)"
+  OFF
+)
+mark_as_advanced(
+  WITH_VULKAN_BACKEND
+  WITH_VULKAN_GUARDEDALLOC
+)
+if(APPLE)
+  option(WITH_VULKAN_MOLTENVK "Enable Vulkan over MoltenVK (development option)" OFF)
   mark_as_advanced(
-    WITH_VULKAN_BACKEND
-    WITH_VULKAN_GUARDEDALLOC
+    WITH_VULKAN_MOLTENVK
   )
-  if(NOT WITH_EXPERIMENTAL_FEATURES)
-    set(WITH_VULKAN_BACKEND OFF)
+endif()
+
+if(APPLE AND NOT WITH_VULKAN_MOLTENVK)
+  set(WITH_VULKAN_BACKEND OFF)
+endif()
+if(NOT WITH_EXPERIMENTAL_FEATURES)
+  if (APPLE)
+    set(WITH_VULKAN_MOLTENVK OFF)
   endif()
+  set(WITH_VULKAN_BACKEND OFF)
 endif()
 
 # Metal
