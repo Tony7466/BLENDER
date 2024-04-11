@@ -6212,6 +6212,7 @@ def km_edit_curves(params):
         ("transform.transform", {"type": 'S', "value": 'PRESS', "alt": True},
          {"properties": [("mode", 'CURVE_SHRINKFATTEN')]}),
         ("curves.cyclic_toggle", {"type": 'C', "value": 'PRESS', "alt": True}, None),
+        ("curves.handle_type_set", {"type": 'V', "value": 'PRESS'}, None),
     ])
 
     return keymap

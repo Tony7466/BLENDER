@@ -1233,7 +1233,12 @@ class VIEW3D_MT_editor_menus(Menu):
         mode_string = context.mode
         edit_object = context.edit_object
         gp_edit = obj and obj.mode in {
-            'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
+            'EDIT_GPENCIL',
+            'PAINT_GPENCIL',
+            'SCULPT_GPENCIL',
+            'SCULPT_GREASE_PENCIL',
+            'WEIGHT_GPENCIL',
+            'VERTEX_GPENCIL',
         }
         tool_settings = context.tool_settings
 
@@ -1244,7 +1249,12 @@ class VIEW3D_MT_editor_menus(Menu):
             use_gpencil_masking = (tool_settings.use_gpencil_select_mask_point or
                                    tool_settings.use_gpencil_select_mask_stroke or
                                    tool_settings.use_gpencil_select_mask_segment)
-            if mode_string in {'EDIT_GPENCIL', 'VERTEX_GPENCIL'} or (mode_string in {'SCULPT_GPENCIL', 'SCULPT_GREASE_PENCIL'} and use_gpencil_masking):
+            if mode_string in {
+                'EDIT_GPENCIL',
+                'VERTEX_GPENCIL'} or (
+                mode_string in {
+                    'SCULPT_GPENCIL',
+                    'SCULPT_GREASE_PENCIL'} and use_gpencil_masking):
                 layout.menu("VIEW3D_MT_select_edit_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             if obj.type == 'MESH':
@@ -1296,6 +1306,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
             elif mode_string in {'EDIT_CURVES', 'EDIT_POINT_CLOUD'}:
+                layout.menu("VIEW3D_MT_edit_curves_control_points")
                 layout.menu("VIEW3D_MT_edit_curves_segments")
                 layout.template_node_operator_asset_root_items()
             elif mode_string == 'EDIT_GREASE_PENCIL':
@@ -6038,6 +6049,15 @@ class VIEW3D_MT_edit_curves(Menu):
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
+class VIEW3D_MT_edit_curves_control_points(Menu):
+    bl_label = "Control Points"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator_menu_enum("curves.handle_type_set", "type")
+
+
 class VIEW3D_MT_edit_curves_segments(Menu):
     bl_label = "Segments"
 
@@ -9191,6 +9211,7 @@ classes = (
     VIEW3D_MT_edit_gpencil_transform,
     VIEW3D_MT_edit_curves,
     VIEW3D_MT_edit_curves_segments,
+    VIEW3D_MT_edit_curves_control_points,
     VIEW3D_MT_edit_pointcloud,
     VIEW3D_MT_object_mode_pie,
     VIEW3D_MT_view_pie,
