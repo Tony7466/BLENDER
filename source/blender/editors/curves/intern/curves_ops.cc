@@ -1529,6 +1529,7 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+/** Add new curves primitive to an existing curves object in edit mode. */
 static void add_new_curve(bContext *C,
                           Curves &curves_id,
                           CurvesGeometry new_curves,
@@ -1537,11 +1538,13 @@ static void add_new_curve(bContext *C,
   const int new_points_num = new_curves.points_num();
   const int new_curves_num = new_curves.curves_num();
 
+  /* Create geometry sets so that generic join code can be used. */
   bke::GeometrySet old_geometry = bke::GeometrySet::from_curves(
       &curves_id, bke::GeometryOwnershipType::ReadOnly);
   bke::GeometrySet new_geometry = bke::GeometrySet::from_curves(
       bke::curves_new_nomain(std::move(new_curves)));
 
+  /* Transform primitive according to settings. */
   float3 location;
   float3 rotation;
   float3 scale;
@@ -1556,6 +1559,7 @@ static void add_new_curve(bContext *C,
   CurvesGeometry &dst_curves = curves_id.geometry.wrap();
   dst_curves = std::move(joined_curves_id->geometry.wrap());
 
+  /* Only select the new curves. */
   const bke::AttrDomain selection_domain = bke::AttrDomain(curves_id.selection_domain);
   const int new_element_num = selection_domain == bke::AttrDomain::Point ? new_points_num :
                                                                            new_curves_num;
