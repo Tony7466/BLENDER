@@ -1530,10 +1530,10 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
 }
 
 /** Add new curves primitive to an existing curves object in edit mode. */
-static void add_new_curve(bContext *C,
-                          Curves &curves_id,
-                          CurvesGeometry new_curves,
-                          wmOperator &op)
+static void append_primitive_curve(bContext *C,
+                                   Curves &curves_id,
+                                   CurvesGeometry new_curves,
+                                   wmOperator &op)
 {
   const int new_points_num = new_curves.points_num();
   const int new_curves_num = new_curves.curves_num();
@@ -1608,7 +1608,7 @@ static int exec(bContext *C, wmOperator *op)
   const float radius = RNA_float_get(op->ptr, "radius");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    add_new_curve(C, *curves_id, generate_circle_primitive(radius), *op);
+    append_primitive_curve(C, *curves_id, generate_circle_primitive(radius), *op);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
@@ -1669,7 +1669,7 @@ static int exec(bContext *C, wmOperator *op)
   const float radius = RNA_float_get(op->ptr, "radius");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    add_new_curve(C, *curves_id, generate_bezier_primitive(radius), *op);
+    append_primitive_curve(C, *curves_id, generate_bezier_primitive(radius), *op);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
