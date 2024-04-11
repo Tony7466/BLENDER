@@ -150,7 +150,7 @@ Closure closure_eval(ClosureDiffuse diffuse)
   /* Use second slot so we can have diffuse + translucent without noise. */
   closure_select(g_closure_bins[1], g_closure_rand[1], cl);
 #else
-  /* Only one closure type is present in the whole tree. */
+  /* Either is single closure or use same bin as transmission bin. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
 #endif
   return Closure(0);
