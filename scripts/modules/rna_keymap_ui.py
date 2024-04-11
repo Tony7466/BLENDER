@@ -406,12 +406,7 @@ def draw_keymaps(context, layout):
     rowsubsub = rowsub.row(align=True)
     if not ok:
         rowsubsub.alert = True
-    search_placeholder = ""
-    if spref.filter_type == 'NAME':
-        search_placeholder = iface_("Search by Name")
-    elif spref.filter_type == 'KEY':
-        search_placeholder = iface_("Search by Key-Binding")
-    rowsubsub.prop(spref, "filter_text", text="", icon='VIEWZOOM', placeholder=search_placeholder)
+    rowsubsub.prop(spref, "filter_text", text="", icon='VIEWZOOM')
 
     if not filter_text:
         # When the keyconfig defines its own preferences.
