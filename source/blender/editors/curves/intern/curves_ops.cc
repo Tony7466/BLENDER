@@ -1548,8 +1548,7 @@ static void append_primitive_curve(bContext *C,
   float3 location;
   float3 rotation;
   float3 scale;
-  ed::object::add_generic_get_opts(
-      C, &op, 'Z', location, rotation, scale, nullptr, nullptr, nullptr);
+  object::add_generic_get_opts(C, &op, 'Z', location, rotation, scale, nullptr, nullptr, nullptr);
   const float4x4 transform = math::from_loc_rot_scale<float4x4>(
       location, math::EulerXYZ(rotation), scale);
   geometry::transform_geometry(new_geometry, transform);
@@ -1625,13 +1624,12 @@ static void CURVES_OT_add_circle(wmOperatorType *ot)
   ot->description = "Add new circle curve";
 
   ot->exec = add_circle::exec;
-
   ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  blender::ed::object::add_unit_props_radius(ot);
-  blender::ed::object::add_generic_props(ot, true);
+  object::add_unit_props_radius(ot);
+  object::add_generic_props(ot, true);
 }
 
 namespace add_bezier {
@@ -1686,13 +1684,12 @@ static void CURVES_OT_add_bezier(wmOperatorType *ot)
   ot->description = "Add new bezier curve";
 
   ot->exec = add_bezier::exec;
-
   ot->poll = editable_curves_in_edit_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  blender::ed::object::add_unit_props_radius(ot);
-  blender::ed::object::add_generic_props(ot, true);
+  object::add_unit_props_radius(ot);
+  object::add_generic_props(ot, true);
 }
 
 namespace set_handle_type {
