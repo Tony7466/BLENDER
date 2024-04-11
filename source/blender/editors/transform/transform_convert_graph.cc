@@ -733,37 +733,37 @@ struct BeztMap {
 };
 
 /**
- * This function converts an FCurve's BezTriple array to a BeztMap array
- * NOTE: this allocates memory that will need to get freed later.
+ * This function converts an FCurve's BezTriple array to a BeztMap array.
  */
-static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert)
+static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
 {
-  BezTriple *bezt = bezts;
-  BezTriple *prevbezt = nullptr;
-  BeztMap *bezm, *bezms;
-  int i;
-
   /* Allocate memory for this array. */
   if (totvert == 0 || bezts == nullptr) {
-    return nullptr;
+    return blender::Vector<BeztMap>();
   }
-  bezm = bezms = static_cast<BeztMap *>(MEM_callocN(sizeof(BeztMap) * totvert, "BeztMaps"));
+  blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
 
-  /* Assign beztriples to beztmaps. */
-  for (i = 0; i < totvert; i++, bezm++, prevbezt = bezt, bezt++) {
-    bezm->bezt = bezt;
+  BezTriple *bezt = bezts;
+  BezTriple *prevbezt = nullptr;
+  int i = 0;
+  for (BeztMap &bezm : bezms) {
+    bezm.bezt = bezt;
 
-    bezm->oldIndex = i;
+    bezm.oldIndex = i;
 
-    bezm->prev_ipo = (prevbezt) ? prevbezt->ipo : bezt->ipo;
-    bezm->current_ipo = bezt->ipo;
+    bezm.prev_ipo = (prevbezt) ? prevbezt->ipo : bezt->ipo;
+    bezm.current_ipo = bezt->ipo;
+
+    prevbezt = bezt;
+    bezt++;
+    i++;
   }
 
   return bezms;
 }
 
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead. */
-static void sort_time_beztmaps(BeztMap *bezms, int totvert)
+static void sort_time_beztmaps(blender::MutableSpan<BeztMap> bezms)
 {
   BeztMap *bezm;
   int i, ok = 1;
@@ -772,8 +772,8 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert)
   while (ok) {
     ok = 0;
 
-    bezm = bezms;
-    i = totvert;
+    bezm = &bezms[0];
+    i = bezms.size();
     while (i--) {
       /* Is current bezm out of order (i.e. occurs later than next)? */
       if (i > 0) {
@@ -804,7 +804,7 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert)
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
-static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totvert)
+static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> bezms)
 {
   TransData2D *td2d;
   TransData *td;
@@ -816,8 +816,8 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
   char *adjusted = static_cast<char *>(MEM_callocN(tc->data_len, "beztmap_adjusted_map"));
 
   /* For each beztmap item, find if it is used anywhere. */
-  BeztMap *bezm = bezms;
-  for (int i = 0; i < totvert; i++, bezm++) {
+  const BeztMap *bezm = &bezms[0];
+  for (int i = 0; i < bezms.size(); i++, bezm++) {
     /* Loop through transdata, testing if we have a hit
      * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
     td2d = tc->data_2d;
@@ -900,16 +900,11 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
         continue;
       }
 
-      BeztMap *bezm;
-
       /* Adjust transform-data pointers. */
       /* NOTE: none of these functions use 'use_handle', it could be removed. */
-      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-      sort_time_beztmaps(bezm, fcu->totvert);
-      beztmap_to_data(t, fcu, bezm, fcu->totvert);
-
-      /* Free mapping stuff. */
-      MEM_freeN(bezm);
+      blender::Vector<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+      sort_time_beztmaps(bezms);
+      beztmap_to_data(t, fcu, bezms);
 
       /* Re-sort actual beztriples
        * (perhaps this could be done using the beztmaps to save time?). */
