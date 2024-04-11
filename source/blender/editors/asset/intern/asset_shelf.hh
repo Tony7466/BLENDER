@@ -59,8 +59,8 @@ bool settings_is_active_catalog(const AssetShelfSettings &settings,
                                 const asset_system::AssetCatalogPath &path);
 bool settings_is_all_catalog_active(const AssetShelfSettings &settings);
 /**
- * Clears the list of enabled catalogs in both the Preferences (if any) and the asset shelf
- * settings (if any), regardless of the #ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS flag.
+ * Clears the list of enabled catalogs in either the Preferences (if any) or the asset shelf
+ * settings (if any), depending on the #ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS flag.
  */
 void settings_clear_enabled_catalogs(AssetShelf &shelf);
 bool settings_is_catalog_path_enabled(const AssetShelf &shelf,

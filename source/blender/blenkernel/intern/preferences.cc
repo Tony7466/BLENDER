@@ -464,22 +464,4 @@ bool BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(UserDef *u
   return true;
 }
 
-void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(
-    bUserAssetShelfSettings *settings)
-{
-  BKE_asset_catalog_path_list_free(settings->enabled_catalog_paths);
-  BLI_assert(BLI_listbase_is_empty(&settings->enabled_catalog_paths));
-}
-
-void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(const UserDef *userdef,
-                                                                      const char *shelf_idname)
-{
-  bUserAssetShelfSettings *settings = BKE_preferences_asset_shelf_settings_get(userdef,
-                                                                               shelf_idname);
-  if (!settings) {
-    return;
-  }
-  BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(settings);
-}
-
 /** \} */

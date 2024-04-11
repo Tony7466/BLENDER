@@ -101,26 +101,45 @@ bool settings_is_all_catalog_active(const AssetShelfSettings &settings)
   return !settings.active_catalog_path || !settings.active_catalog_path[0];
 }
 
-void settings_clear_enabled_catalogs(AssetShelf &shelf)
-{
-  BKE_asset_catalog_path_list_free(shelf.settings.enabled_catalog_paths);
-  BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(&U, shelf.idname);
-}
-
 static bool use_enabled_catalogs_from_prefs(const AssetShelf &shelf)
 {
   return shelf.type && (shelf.type->flag & ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS);
 }
 
+static const ListBase *get_enabled_catalog_path_list(const AssetShelf &shelf)
+{
+  if (use_enabled_catalogs_from_prefs(shelf)) {
+    bUserAssetShelfSettings *pref_settings = BKE_preferences_asset_shelf_settings_get(
+        &U, shelf.idname);
+    return pref_settings ? &pref_settings->enabled_catalog_paths : nullptr;
+  }
+  return &shelf.settings.enabled_catalog_paths;
+}
+
+static ListBase *get_enabled_catalog_path_list(AssetShelf &shelf)
+{
+  return const_cast<ListBase *>(
+      get_enabled_catalog_path_list(const_cast<const AssetShelf &>(shelf)));
+}
+
+void settings_clear_enabled_catalogs(AssetShelf &shelf)
+{
+  ListBase *enabled_catalog_paths = get_enabled_catalog_path_list(shelf);
+  if (enabled_catalog_paths) {
+    BKE_asset_catalog_path_list_free(*enabled_catalog_paths);
+    BLI_assert(BLI_listbase_is_empty(enabled_catalog_paths));
+  }
+}
+
 bool settings_is_catalog_path_enabled(const AssetShelf &shelf,
                                       const asset_system::AssetCatalogPath &path)
 {
-  if (use_enabled_catalogs_from_prefs(shelf)) {
-    return BKE_preferences_asset_shelf_settings_is_catalog_path_enabled(
-        &U, shelf.idname, path.c_str());
+  const ListBase *enabled_catalog_paths = get_enabled_catalog_path_list(shelf);
+  if (!enabled_catalog_paths) {
+    return false;
   }
 
-  return BKE_asset_catalog_path_list_has_path(shelf.settings.enabled_catalog_paths, path.c_str());
+  return BKE_asset_catalog_path_list_has_path(*enabled_catalog_paths, path.c_str());
 }
 
 void settings_set_catalog_path_enabled(AssetShelf &shelf,
@@ -145,19 +164,7 @@ void settings_foreach_enabled_catalog_path(
     const AssetShelf &shelf,
     FunctionRef<void(const asset_system::AssetCatalogPath &catalog_path)> fn)
 {
-  const ListBase *enabled_catalog_paths = [&]() -> const ListBase * {
-    if (use_enabled_catalogs_from_prefs(shelf)) {
-      const bUserAssetShelfSettings *pref_settings = BKE_preferences_asset_shelf_settings_get(
-          &U, shelf.idname);
-      if (!pref_settings) {
-        return nullptr;
-      }
-      return &pref_settings->enabled_catalog_paths;
-    }
-
-    return &shelf.settings.enabled_catalog_paths;
-  }();
-
+  const ListBase *enabled_catalog_paths = get_enabled_catalog_path_list(shelf);
   if (!enabled_catalog_paths) {
     return;
   }
