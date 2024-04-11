@@ -43,20 +43,14 @@ void main()
   ray.origin = P;
   ray.direction = ray_data.xyz;
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-  if (gbuf.thickness > 0.0) {
+  /* Only closure 0 can be a transmission closure. */
+  if (closure_index == 0) {
     uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
-    ClosureType closure_type = gbuffer_closure_type_get_by_bin(gbuf_header, closure_index);
-    if (closure_type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
-      /* The ray direction is already accounting for 2 transmission events. Only change its origin.
-       * Skip the volume inside the object. */
-      ray.origin +=
-          thickness_sphere_intersect(gbuf.thickness, gbuf.surface_N, ray.direction).hit_P;
-    }
-    else if (closure_type == CLOSURE_BSDF_TRANSLUCENT_ID) {
-      /* Ray direction is distributed on the whole sphere. */
-      ray.origin += (ray.direction - gbuf.surface_N) * gbuf.thickness * 0.5;
+    float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
+    if (thickness > 0.0) {
+      vec3 surface_N = gbuffer_read_normal(gbuf_normal_tx, texel_fullres);
+      ClosureType cl_type = gbuffer_closure_type_get_by_bin(gbuf_header, closure_index);
+      ray = raytrace_thickness_ray_ammend(ray, cl_type, surface_N, thickness);
     }
   }
 

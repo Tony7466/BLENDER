@@ -53,6 +53,25 @@ float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   }
 }
 
+float transmission_thickness_amend_closure(inout ClosureUndetermined cl,
+                                           inout vec3 V,
+                                           float thickness)
+{
+  switch (cl.type) {
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
+      float ior = to_closure_refraction(cl).ior;
+      float roughness = to_closure_refraction(cl).roughness;
+      roughness = refraction_roughness_remapping(roughness, ior);
+      vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
+      cl.N = -thickness_sphere_intersect(thickness, cl.N, L).hit_N;
+      cl.data.y = 1.0 / ior;
+      V = -L;
+    } break;
+    default:
+      break;
+  }
+}
+
 /* Tag pixel radiance as invalid. */
 void invalid_pixel_write(ivec2 texel)
 {
@@ -115,8 +134,10 @@ void main()
     return;
   }
 
+  uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
+
   ClosureUndetermined closure = gbuffer_read_bin(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
+      gbuf_header, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (closure.type == CLOSURE_NONE_ID) {
     invalid_pixel_write(texel_fullres);
@@ -127,17 +148,9 @@ void main()
   vec3 P = drw_point_screen_to_world(vec3(uv, 0.5));
   vec3 V = drw_world_incident_vector(P);
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-  if (gbuf.thickness > 0.0) {
-    if (closure.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
-      float ior = to_closure_refraction(closure).ior;
-      float roughness = to_closure_refraction(closure).roughness;
-      vec3 L = refraction_dominant_dir(closure.N, V, ior, roughness);
-      closure.N = -thickness_sphere_intersect(gbuf.thickness, closure.N, L).hit_N;
-      closure.data.y = 1.0 / ior;
-      V = -L;
-    }
+  float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
+  if (thickness > 0.0) {
+    transmission_thickness_amend_closure(closure, V, thickness);
   }
 
   /* Compute filter size and needed sample count */
@@ -181,7 +194,7 @@ void main()
 
     /* Slide 54. */
     /* TODO(fclem): Apparently, ratio estimator should be pdf_bsdf / pdf_ray. */
-    float weight = bxdf_eval(closure, ray_direction, V, gbuf.thickness) * ray_pdf_inv;
+    float weight = bxdf_eval(closure, ray_direction, V, thickness) * ray_pdf_inv;
 
     radiance_accum += ray_radiance.rgb * weight;
     weight_accum += weight;
