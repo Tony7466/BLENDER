@@ -1527,7 +1527,10 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
-static void add_new_curve(Curves &curves_id, CurvesGeometry new_curves, wmOperator &op)
+static void add_new_curve(bContext *C,
+                          Curves &curves_id,
+                          CurvesGeometry new_curves,
+                          wmOperator &op)
 {
   bke::GeometrySet old_geometry = bke::GeometrySet::from_curves(
       &curves_id, bke::GeometryOwnershipType::ReadOnly);
@@ -1535,10 +1538,12 @@ static void add_new_curve(Curves &curves_id, CurvesGeometry new_curves, wmOperat
       bke::curves_new_nomain(std::move(new_curves)));
 
   float3 location;
-  RNA_float_get_array(op.ptr, "location", location);
   float3 rotation;
-  RNA_float_get_array(op.ptr, "rotation", rotation);
-  const float4x4 transform = math::from_loc_rot<float4x4>(location, math::EulerXYZ(rotation));
+  float3 scale;
+  ed::object::add_generic_get_opts(
+      C, &op, 'Z', location, rotation, scale, nullptr, nullptr, nullptr);
+  const float4x4 transform = math::from_loc_rot_scale<float4x4>(
+      location, math::EulerXYZ(rotation), scale);
   geometry::transform_geometry(new_geometry, transform);
 
   bke::GeometrySet joined_geometry = geometry::join_geometries({old_geometry, new_geometry}, {});
@@ -1582,7 +1587,7 @@ static int exec(bContext *C, wmOperator *op)
   const float radius = RNA_float_get(op->ptr, "radius");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    add_new_curve(*curves_id, generate_circle_primitive(radius), *op);
+    add_new_curve(C, *curves_id, generate_circle_primitive(radius), *op);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
