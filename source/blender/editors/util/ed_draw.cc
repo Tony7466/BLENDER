@@ -375,8 +375,7 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                        &factor_string_pixel_size[1]);
 
   const float text_padding = 12.0 * U.pixelsize;
-  const float factor_string_pos_x = main_line_rect.xmin - text_padding -
-                                    factor_string_pixel_size[0];
+  const float factor_string_pos_x = main_line_rect.xmax + text_padding;
   BLF_position(
       fontid, factor_string_pos_x, (region->winy / 2) - factor_string_pixel_size[1] / 2, 0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
@@ -389,7 +388,7 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                          &property_name_pixel_size[0],
                          &property_name_pixel_size[1]);
     BLF_position(fontid,
-                 main_line_rect.xmax + text_padding,
+                 main_line_rect.xmin - text_padding - property_name_pixel_size[0],
                  (region->winy / 2) - property_name_pixel_size[1] / 2,
                  0.0f);
     BLF_draw(fontid, slider->property_label.c_str(), sizeof(slider->property_label));
