@@ -19,13 +19,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>("Invertable").description("True if the input matrix is invertable");
 }
 
-static void search_link_ops(GatherLinkSearchOpParams &params)
-{
-  if (U.experimental.use_new_matrix_socket) {
-    nodes::search_link_ops_for_basic_node(params);
-  }
-}
-
 class InvertMatrixFunction : public mf::MultiFunction {
  public:
   InvertMatrixFunction()
@@ -73,7 +66,6 @@ static void node_register()
   static bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_INVERT_MATRIX, "Invert Matrix", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
-  ntype.gather_link_search_ops = search_link_ops;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }
