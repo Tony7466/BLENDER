@@ -146,12 +146,12 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-#if CLOSURE_BIN_COUNT == 1
-  /* Only one closure type is present in the whole tree. */
-  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
-#else
+#if defined(MAT_TRANSLUCENT) && !defined(MAT_CLEARCOAT)
   /* Use second slot so we can have diffuse + translucent without noise. */
   closure_select(g_closure_bins[1], g_closure_rand[1], cl);
+#else
+  /* Only one closure type is present in the whole tree. */
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
 #endif
   return Closure(0);
 }
@@ -198,16 +198,27 @@ Closure closure_eval(ClosureReflection reflection)
   closure_base_copy(cl, reflection);
   cl.data.r = reflection.roughness;
 
-#if CLOSURE_BIN_COUNT == 1
+#ifdef MAT_CLEARCOAT
+#  if CLOSURE_BIN_COUNT == 2
+  /* Multiple reflection closures. */
+  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(0, 1);
+#  elif CLOSURE_BIN_COUNT == 3
+  /* Multiple reflection closures and one other closure. */
+  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(1, 2);
+#  else
+#    error Clearcoat should always have at least 2 bins
+#  endif
+#else
+#  if CLOSURE_BIN_COUNT == 1
   /* Only one reflection closure is present in the whole tree. */
   closure_select(g_closure_bins[0], g_closure_rand[0], cl);
-#elif CLOSURE_BIN_COUNT == 2
-  /* Case with either only one reflection and one other closure
-   * or only multiple reflection closures. */
-  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(0, 1);
-#elif CLOSURE_BIN_COUNT == 3
-  /* Case with multiple reflection closures and one other closure. */
-  CHOOSE_MIN_WEIGHT_CLOSURE_BIN(1, 2);
+#  elif CLOSURE_BIN_COUNT == 2
+  /* Only one reflection and one other closure. */
+  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
+#  elif CLOSURE_BIN_COUNT == 3
+  /* Only one reflection and two other closures. */
+  closure_select(g_closure_bins[2], g_closure_rand[2], cl);
+#  endif
 #endif
 
 #undef CHOOSE_MIN_WEIGHT_CLOSURE_BIN
