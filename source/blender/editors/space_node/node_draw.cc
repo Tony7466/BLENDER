@@ -1538,20 +1538,12 @@ static std::optional<std::string> create_description_inspection_string(const bNo
     return std::nullopt;
   }
   const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-<<<<<<< HEAD
-  blender::StringRef description = socket_decl.description;
-=======
   blender::StringRefNull description = socket_decl.description;
->>>>>>> main
   if (description.is_empty()) {
     return std::nullopt;
   }
 
-<<<<<<< HEAD
-  return TIP_(description.data());
-=======
   return TIP_(description.c_str());
->>>>>>> main
 }
 
 static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
@@ -1599,7 +1591,8 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
     return std::nullopt;
   }
   std::stringstream ss;
-  if (const nodes::decl::Geometry *geo_socket_decl = dynamic_cast<const nodes::decl::Geometry *>(socket_decl))
+  if (const nodes::decl::Geometry *geo_socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
+          socket_decl))
   {
     create_inspection_string_for_geometry_socket(ss, geo_socket_decl);
   }
