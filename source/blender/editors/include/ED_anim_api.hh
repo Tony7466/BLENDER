@@ -406,6 +406,7 @@ ENUM_OPERATORS(eAnimFilter_Flags, ANIMFILTER_TMP_IGNORE_ONLYSEL);
 #define EXPANDED_ACTC(actc) ((actc->flag & ACT_COLLAPSED) == 0)
 /* 'Sub-AnimData' channels */
 #define EXPANDED_DRVD(adt) ((adt->flag & ADT_DRIVERS_COLLAPSED) == 0)
+#define EXPANDED_ADT(adt) ((adt->flag & ADT_UI_EXPANDED) != 0)
 
 /* Actions (also used for Dopesheet) */
 /** Action Channel Group. */

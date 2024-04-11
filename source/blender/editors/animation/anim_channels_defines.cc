@@ -1286,7 +1286,7 @@ static int acf_fillanim_setting_flag(bAnimContext * /*ac*/,
       return ADT_UI_SELECTED;
 
     case ACHANNEL_SETTING_EXPAND:
-      return int(animrig::Animation::Flag::Expanded);
+      return ADT_UI_EXPANDED;
 
     default:
       return 0;
@@ -1298,9 +1298,7 @@ static void *acf_fillanim_setting_ptr(bAnimListElem *ale,
                                       eAnimChannel_Settings setting,
                                       short *r_type)
 {
-  Animation *anim = (Animation *)ale->data;
   AnimData *adt = ale->adt;
-  BLI_assert(anim);
   BLI_assert(adt);
 
   *r_type = 0;
@@ -1310,7 +1308,7 @@ static void *acf_fillanim_setting_ptr(bAnimListElem *ale,
       return GET_ACF_FLAG_PTR(adt->flag, r_type);
 
     case ACHANNEL_SETTING_EXPAND:
-      return GET_ACF_FLAG_PTR(anim->flag, r_type);
+      return GET_ACF_FLAG_PTR(adt->flag, r_type);
 
     default:
       return nullptr;

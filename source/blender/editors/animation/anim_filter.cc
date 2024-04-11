@@ -2964,7 +2964,7 @@ static size_t animdata_filter_ds_obanim(
       { /* Keyframes from Animation. */
         type = ANIMTYPE_FILLANIM;
         cdata = adt->animation;
-        expanded = adt->animation->wrap().is_expanded();
+        expanded = EXPANDED_ADT(adt);
       });
 
   /* add object-level animation channels */
@@ -3148,7 +3148,7 @@ static size_t animdata_filter_ds_scene(
       { /* Keyframes from Animation. */
         type = ANIMTYPE_FILLANIM;
         cdata = adt->animation;
-        expanded = adt->animation->wrap().is_expanded();
+        expanded = EXPANDED_ADT(adt);
       });
 
   /* add scene-level animation channels */

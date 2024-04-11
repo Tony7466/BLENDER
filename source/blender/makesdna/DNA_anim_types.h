@@ -1224,6 +1224,10 @@ typedef enum eAnimData_Flag {
 
   /** F-Curves from this AnimData block are always visible. */
   ADT_CURVES_ALWAYS_VISIBLE = (1 << 17),
+
+  /** Animation pointer to by this AnimData block is expanded in UI. This is stored on the AnimData
+   * so that each user of the Animation can have its own expansion/contraction state. */
+  ADT_UI_EXPANDED = (1 << 18),
 } eAnimData_Flag;
 
 /* Base Struct for Anim ------------------------------------- */
