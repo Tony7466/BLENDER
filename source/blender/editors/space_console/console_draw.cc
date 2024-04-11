@@ -158,13 +158,13 @@ static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int c
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   float color[4];
-  UI_GetThemeColor4fv(TH_CONSOLE_CURSOR, color);
   if (sc->is_area_active) {
+    UI_GetThemeColor4fv(TH_CONSOLE_CURSOR, color);
     color[3] = (sc->is_cursor_bright || !U.text_cursor_blink) ? 1.0f :
                                                                 TEXT_CURSOR_BLINK_OFF_OPACITY;
   }
   else {
-    color[0] = color[1] = color[2] = color[3] = 0.5f;
+    UI_GetThemeColorBlend4f(TH_BACK, TH_CONSOLE_INPUT, 0.3f, color);
   }
   immUniformColor4fv(color);
 

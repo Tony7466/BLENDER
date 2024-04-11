@@ -186,7 +186,6 @@ struct uiBut {
   std::string drawstr;
 
   bool is_cursor_bright = true;
-
   char *placeholder = nullptr;
 
   rctf rect = {}; /* block relative coords */

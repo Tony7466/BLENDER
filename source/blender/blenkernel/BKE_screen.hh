@@ -89,10 +89,10 @@ struct SpaceType {
   /* Listeners can react to bContext changes */
   void (*listener)(const wmSpaceTypeListenerParams *params);
 
+  /* Called when the mouse moves into the area. */
+  void (*activate)(bContext *C, ScrArea *sa);
   /* called when the mouse moves out of the area */
   void (*deactivate)(bContext *C, ScrArea *area);
-  /* called when the mouse moves into the area */
-  void (*activate)(bContext *C, ScrArea *sa);
 
   /** Refresh context, called after file-reads, #ED_area_tag_refresh(). */
   void (*refresh)(const bContext *C, ScrArea *area);

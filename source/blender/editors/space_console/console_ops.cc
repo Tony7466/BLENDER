@@ -386,7 +386,6 @@ static int console_move_exec(bContext *C, wmOperator *op)
   ConsoleLine *ci = console_history_verify(C);
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
   sc->is_cursor_bright = true;
 
   int type = RNA_enum_get(op->ptr, "type");

@@ -3069,14 +3069,13 @@ static void ui_textedit_set_cursor_pos(uiBut *but, uiHandleButtonData *data, con
   /* XXX pass on as arg. */
   uiFontStyle fstyle = UI_style_get()->widget;
   const float aspect = but->block->aspect;
+  but->is_cursor_bright = true;
 
   float startx = but->rect.xmin;
   float starty_dummy = 0.0f;
   char password_str[UI_MAX_PASSWORD_STR];
   /* treat 'str_last' as null terminator for str, no need to modify in-place */
   const char *str = but->editstr, *str_last;
-
-  but->is_cursor_bright = true;
 
   ui_block_to_window_fl(data->region, but->block, &startx, &starty_dummy);
 
@@ -3203,7 +3202,6 @@ static void ui_textedit_move(uiBut *but,
   const int len = strlen(str);
   const int pos_prev = but->pos;
   const bool has_sel = (but->selend - but->selsta) > 0;
-
   but->is_cursor_bright = true;
 
   ui_but_update(but);
@@ -3417,11 +3415,11 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   MEM_SAFE_FREE(data->str);
 
-  but->is_cursor_bright = true;
   if (data->wm->cursor_blink_timer) {
     WM_event_timer_remove_notifier(data->wm, win, data->wm->cursor_blink_timer);
   }
   if (U.text_cursor_blink) {
+    but->is_cursor_bright = true;
     data->wm->cursor_blink_timer = WM_event_timer_add(
         data->wm, win, TIMER, TEXT_CURSOR_BLINK_RATE);
   }
