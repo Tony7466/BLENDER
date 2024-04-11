@@ -2549,7 +2549,7 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
  * Draw keymap items that are TFM_MODAL_AXIS_X, TFM_MODAL_AXIS_Y, TFM_MODAL_AXIS_Z
  * in a way that requires less horizontal space.
  */
-void uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi);
+bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi);
 
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,

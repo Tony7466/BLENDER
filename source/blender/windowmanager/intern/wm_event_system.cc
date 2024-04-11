@@ -6405,10 +6405,9 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
           /* Assume release events just disable something which was toggled on. */
           continue;
         }
-        if (collapse_xyz && ELEM(kmi->type, EVT_XKEY, EVT_YKEY, EVT_ZKEY)) {
-          uiTemplateEventFromKeymapItemXYZ(row, items[i].name, kmi);
+        if (collapse_xyz && uiTemplateEventFromKeymapItemXYZ(row, items[i].name, kmi)) {
           continue;
-        };
+        }
         if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {
           show_text = false;
         }

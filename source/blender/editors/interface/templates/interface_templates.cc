@@ -6486,11 +6486,15 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /** \name Event Icon Template
  * \{ */
 
-void uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi)
+bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi)
 {
+  if (!ELEM(kmi->type, EVT_XKEY, EVT_YKEY, EVT_ZKEY)) {
+    return false;
+  }
+
   if (kmi->type != EVT_ZKEY) {
     /* Swallow X and Y. */
-    return;
+    return true;
   }
 
   /* Modifier icons. */
@@ -6520,6 +6524,7 @@ void uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const 
 
   uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text.c_str()), ICON_NONE);
   uiItemS_ex(layout, 0.7f);
+  return true;
 }
 
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
