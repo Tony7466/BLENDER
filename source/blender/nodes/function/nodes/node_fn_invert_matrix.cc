@@ -53,10 +53,7 @@ class InvertMatrixFunction : public mf::MultiFunction {
       bool success;
       float4x4 inverted_matrix = math::invert(matrix, success);
       if (!out_matrices.is_empty()) {
-        if (!success) {
-          inverted_matrix = float4x4::identity();
-        }
-        out_matrices[i] = inverted_matrix;
+        out_matrices[i] = success ? inverted_matrix : float4x4::identity();
       }
       if (!out_invertable.is_empty()) {
         out_invertable[i] = success;
