@@ -733,12 +733,12 @@ struct BeztMap {
 };
 
 /**
- * This function converts an FCurve's BezTriple array to a BeztMap array.
+ * Converts an FCurve's BezTriple array to a BeztMap vector.
  */
-static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
+static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int totvert)
 {
   if (totvert == 0 || bezts == nullptr) {
-    return blender::Vector<BeztMap>();
+    return {};
   }
 
   blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
@@ -761,7 +761,7 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
 }
 
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead. */
-static void sort_time_beztmaps(blender::MutableSpan<BeztMap> bezms)
+static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 {
   BeztMap *bezm;
   bool ok = true;
@@ -799,15 +799,15 @@ static void sort_time_beztmaps(blender::MutableSpan<BeztMap> bezms)
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
-static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> bezms)
+static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztMap> bezms)
 {
   TransData2D *td2d;
   TransData *td;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  /* Used to mark whether an TransData's
-   * pointers have been fixed already, so that we don't override ones that are already done. */
+  /* Used to mark whether an TransData's pointers have been fixed already, so that we don't
+   * override ones that are already done. */
   blender::Vector<bool> adjusted(tc->data_len, false);
 
   /* For each beztmap item, find if it is used anywhere. */
