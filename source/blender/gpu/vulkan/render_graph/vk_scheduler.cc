@@ -13,24 +13,24 @@
 
 namespace blender::gpu::render_graph {
 
-void Sequential::select_nodes_for_image(const VKRenderGraph &render_graph,
-                                        VkImage vk_image,
-                                        Vector<NodeHandle> &r_selected_nodes)
+void VKScheduler::select_nodes_for_image(const VKRenderGraph &render_graph,
+                                         VkImage vk_image,
+                                         Vector<NodeHandle> &r_selected_nodes)
 {
   UNUSED_VARS(vk_image);
   select_all_nodes(render_graph, r_selected_nodes);
 }
 
-void Sequential::select_nodes_for_buffer(const VKRenderGraph &render_graph,
-                                         VkBuffer vk_buffer,
-                                         Vector<NodeHandle> &r_selected_nodes)
+void VKScheduler::select_nodes_for_buffer(const VKRenderGraph &render_graph,
+                                          VkBuffer vk_buffer,
+                                          Vector<NodeHandle> &r_selected_nodes)
 {
   UNUSED_VARS(vk_buffer);
   select_all_nodes(render_graph, r_selected_nodes);
 }
 
-void Sequential::select_all_nodes(const VKRenderGraph &render_graph,
-                                  Vector<NodeHandle> &r_selected_nodes)
+void VKScheduler::select_all_nodes(const VKRenderGraph &render_graph,
+                                   Vector<NodeHandle> &r_selected_nodes)
 {
   NodeHandle node_handle = 0;
 

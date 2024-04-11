@@ -10,6 +10,7 @@
 
 #include "vk_common.hh"
 #include "vk_nodes.hh"
+#include "vk_scheduler.hh"
 
 namespace blender::gpu::render_graph {
 class VKRenderGraph;
@@ -22,6 +23,8 @@ class VKRenderGraph;
  */
 class VKCommandBuilder {
  private:
+  VKScheduler scheduler_;
+
   Vector<NodeHandle> selected_nodes_;
 
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */

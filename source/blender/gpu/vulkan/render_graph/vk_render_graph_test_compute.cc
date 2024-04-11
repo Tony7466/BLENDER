@@ -18,8 +18,7 @@ TEST(vk_render_graph, dispatch_read_back)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(
-      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
 
   VKDispatchCreateInfo dispatch_info = {};
@@ -55,8 +54,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(
-      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
 
   {
@@ -116,8 +114,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(
-      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
 
   {
@@ -180,8 +177,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(
-      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
 
   {
@@ -244,8 +240,7 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
   VKResources resources;
-  VKRenderGraph render_graph(
-      std::make_unique<CommandBufferLog>(log), std::make_unique<Sequential>(), resources);
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
 
   {

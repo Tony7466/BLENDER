@@ -54,7 +54,7 @@ void VKCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image
 {
   BLI_assert_msg(selected_nodes_.is_empty(),
                  "Incorrect state detected: instance isn't reset before building");
-  render_graph.scheduler_->select_nodes_for_image(render_graph, vk_image, selected_nodes_);
+  scheduler_.select_nodes_for_image(render_graph, vk_image, selected_nodes_);
   if (selected_nodes_.is_empty()) {
     return;
   }
@@ -65,7 +65,7 @@ void VKCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buf
 {
   BLI_assert_msg(selected_nodes_.is_empty(),
                  "Incorrect state detected: instance isn't reset before building");
-  render_graph.scheduler_->select_nodes_for_buffer(render_graph, vk_buffer, selected_nodes_);
+  scheduler_.select_nodes_for_buffer(render_graph, vk_buffer, selected_nodes_);
   if (selected_nodes_.is_empty()) {
     return;
   }
