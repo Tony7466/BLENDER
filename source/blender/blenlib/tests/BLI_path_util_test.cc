@@ -11,7 +11,7 @@
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 
-#define DO_PERF_TESTS 1
+#define DO_PERF_TESTS 0
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -1357,10 +1357,8 @@ TEST(path_util, HasHiddenComponents)
   EXPECT_FALSE(BLI_path_has_hidden_component("a\\."));
   EXPECT_FALSE(BLI_path_has_hidden_component("a/./b"));
   EXPECT_FALSE(BLI_path_has_hidden_component("a\\.\\b"));
-
-  /* ...except if it is the first one (should this be fixed?) */
-  EXPECT_TRUE(BLI_path_has_hidden_component("./a"));
-  EXPECT_TRUE(BLI_path_has_hidden_component(".\\a"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("./a"));
+  EXPECT_FALSE(BLI_path_has_hidden_component(".\\a"));
 
   /* Does contain hidden components: */
   EXPECT_TRUE(BLI_path_has_hidden_component(".a"));
@@ -1381,11 +1379,9 @@ TEST(path_util, HasHiddenComponents)
   EXPECT_TRUE(BLI_path_has_hidden_component("a/~/c"));
   EXPECT_TRUE(BLI_path_has_hidden_component("a/b~/c"));
   EXPECT_TRUE(BLI_path_has_hidden_component("a\\b~\\c"));
-
-  /* ...except if it is the first folder (should this be fixed?) */
-  EXPECT_FALSE(BLI_path_has_hidden_component("~/b"));
-  EXPECT_FALSE(BLI_path_has_hidden_component("a~/b"));
-  EXPECT_FALSE(BLI_path_has_hidden_component("a~\\b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("~/b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a~/b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a~\\b"));
 }
 
 #if DO_PERF_TESTS

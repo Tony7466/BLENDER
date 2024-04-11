@@ -2016,39 +2016,36 @@ int BLI_path_cmp_normalized(const char *p1, const char *p2)
 
 bool BLI_path_has_hidden_component(const char *path)
 {
-  if (path[0] == '.' && !ELEM(path[1], '.', '\0')) {
-    return true; /* ignore .file */
-  }
+  bool component_start = true;
+  char cur_char = path[0];
+  char prev_char = '\0';
 
-  int len = strlen(path);
-  if ((len > 0) && (path[len - 1] == '~')) {
-    return true; /* ignore file~ */
-  }
-
-  /* path might actually be a piece of path, in which case we have to check all its parts. */
-
-  bool hidden = false;
-  char *sep = (char *)BLI_path_slash_rfind(path);
-
-  if (!hidden && sep) {
-    char tmp_path[FILE_MAX + 66];
-
-    STRNCPY(tmp_path, path);
-    sep = tmp_path + (sep - path);
-    while (sep) {
-      /* This happens when a path contains 'ALTSEP', '\' on Unix for e.g.
-       * Supporting alternate slashes in paths is a bigger task involving changes
-       * in many parts of the code, for now just prevent an assert, see #74579. */
-#if 0
-      BLI_assert(sep[1] != '\0');
-#endif
-      if (BLI_path_has_hidden_component(sep + 1)) {
-        hidden = true;
-        break;
+  while (cur_char != '\0') {
+    char next_char = path[1];
+    /* If we're at a start of path component, current is '.'
+     * and next one is not '.', end or separator: hidden. */
+    if (component_start && cur_char == '.') {
+      if (!ELEM(path[1], '.', '\0', '/', '\\')) {
+        return true;
       }
-      *sep = '\0';
-      sep = (char *)BLI_path_slash_rfind(tmp_path);
     }
+
+    component_start = ELEM(cur_char, '/', '\\');
+    /* Separator, and previous was tilde: hidden. */
+    if (component_start && prev_char == '~') {
+      return true;
+    }
+
+    path++;
+    prev_char = cur_char;
+    cur_char = next_char;
   }
-  return hidden;
+
+  /* Was a tilde right at end of path: hidden. */
+  if (prev_char == '~') {
+    return true;
+  }
+
+  /* Nothing was hidden. */
+  return false;
 }
