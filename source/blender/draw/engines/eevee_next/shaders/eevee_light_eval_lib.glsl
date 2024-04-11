@@ -55,7 +55,8 @@ void light_shadow_single(uint l_idx,
   }
 
   LightVector lv = light_vector_get(light, is_directional, P);
-  float attenuation = light_attenuation_surface(light, is_directional, is_transmission, Ng, lv);
+  float attenuation = light_attenuation_surface(
+      light, is_directional, is_transmission, false, Ng, lv);
   if (attenuation < LIGHT_ATTENUATION_THRESHOLD) {
     return;
   }
@@ -117,7 +118,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
                                   vec3 P,
                                   float thickness,
                                   const bool is_transmission,
-                                  vec3 out_P)
+                                  out vec3 out_P)
 {
   ClosureLight cl_light;
   cl_light.N = cl.N;
@@ -131,7 +132,8 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
       if (is_transmission) {
         cl_light.N = -cl.N;
         cl_light.is_translucent_with_thickness = thickness > 0.0;
-        cl_light.type = LIGHT_TRANSMIT;
+        cl_light.type = LIGHT_DIFFUSE;
+        out_P = P;
 
         if (cl_light.is_translucent_with_thickness) {
           vec2 random_2d = pcg3d(P).xy;
@@ -145,7 +147,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
           /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
            * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
            * a unique position on the sphere and use the light vector as normal. */
-          out_P = P - cl.N * thickness * 0.5;
+          out_P -= cl.N * thickness * 0.5;
         }
       }
       break;
@@ -155,7 +157,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
          * to a uniform term like the translucent BSDF. But we need to find what to do in other
          * cases. For now, approximate the transmission term as just backfacing. */
         cl_light.N = -cl.N;
-        cl_light.type = LIGHT_TRANSMIT;
+        cl_light.type = LIGHT_DIFFUSE;
         /* Lit and shadow as outside of the object. */
         out_P = P - cl.N * thickness;
         break;
@@ -170,6 +172,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
       if (is_transmission) {
+        out_P = P;
         ClosureRefraction cl_refract = to_closure_refraction(cl);
         cl_refract.roughness = refraction_roughness_remapping(cl_refract.roughness,
                                                               cl_refract.ior);
@@ -179,7 +182,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
 
           ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);
           cl.N = -isect.hit_N;
-          out_P = P + isect.hit_P;
+          out_P += isect.hit_P;
 
           cl_refract.ior = 1.0 / cl_refract.ior;
           V = -L;
@@ -187,7 +190,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
         vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
         cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), cl_refract.roughness);
         cl_light.N = -cl.N;
-        cl_light.type = LIGHT_TRANSMIT;
+        cl_light.type = LIGHT_SPECULAR;
       }
       break;
     }
@@ -198,7 +201,8 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
   return cl_light;
 }
 
-ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V, vec3 P, float thickness, vec3 out_P)
+ClosureLight closure_light_new(
+    ClosureUndetermined cl, vec3 V, vec3 P, float thickness, out vec3 out_P)
 {
   return closure_light_new_ex(cl, V, P, thickness, true, out_P);
 }
@@ -218,12 +222,7 @@ void light_eval_single_closure(LightData light,
                                const bool is_transmission)
 {
   if (light.power[cl.type] > 0.0) {
-    vec3 N = cl.N;
-    if (is_transmission && cl.is_translucent_with_thickness) {
-      N = lv.L;
-      attenuation *= M_1_PI;
-    }
-    float ltc_result = light_ltc(utility_tx, light, N, V, lv, cl.ltc_mat);
+    float ltc_result = light_ltc(utility_tx, light, cl.N, V, lv, cl.ltc_mat);
     vec3 out_radiance = light.color * light.power[cl.type] * ltc_result;
     float visibility = shadow * attenuation;
     cl.light_shadowed += visibility * out_radiance;
@@ -253,7 +252,11 @@ void light_eval_single(uint l_idx,
 
   LightVector lv = light_vector_get(light, is_directional, P);
 
-  float attenuation = light_attenuation_surface(light, is_directional, is_transmission, Ng, lv);
+  bool is_translucent_with_thickness = is_transmission &&
+                                       stack.cl[0].is_translucent_with_thickness;
+
+  float attenuation = light_attenuation_surface(
+      light, is_directional, is_transmission, is_translucent_with_thickness, Ng, lv);
   if (attenuation < LIGHT_ATTENUATION_THRESHOLD) {
     return;
   }
@@ -265,7 +268,7 @@ void light_eval_single(uint l_idx,
     shift += ray_count;
 #else
 
-    if (is_transmission && stack.cl[0].is_translucent_with_thickness) {
+    if (is_translucent_with_thickness) {
       /* Translucent doesn't use the normal for shading.
        * Instead it stores the random shadow position offsets. */
       P += from_up_axis(lv.L) * stack.cl[0].N;
@@ -275,6 +278,14 @@ void light_eval_single(uint l_idx,
         light, is_directional, is_transmission, P, Ng, ray_count, ray_step_count);
     shadow = result.light_visibilty;
 #endif
+  }
+
+  if (is_translucent_with_thickness) {
+    /* This makes the LTC compute the solid angle of the light (still with the cosine term applied
+     * but that still works great enough in practice). */
+    stack.cl[0].N = lv.L;
+    /* Adjust power because of the second lambertian distribution. */
+    attenuation *= M_1_PI;
   }
 
   /* WATCH(@fclem): Might have to manually unroll for best performance. */

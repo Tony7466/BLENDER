@@ -125,9 +125,18 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
  * L is normalized vector to light shape center.
  * Ng is ideally the geometric normal.
  */
-float light_attenuation_facing(
-    LightData light, vec3 L, float distance_to_light, vec3 Ng, const bool is_transmission)
+float light_attenuation_facing(LightData light,
+                               vec3 L,
+                               float distance_to_light,
+                               vec3 Ng,
+                               const bool is_transmission,
+                               bool is_translucent_with_thickness)
 {
+  if (is_translucent_with_thickness) {
+    /* No attenuation in this case since we integrate the whole sphere. */
+    return 1.0;
+  }
+
   float radius;
   if (is_sun_light(light.type)) {
     radius = light_sun_data_get(light).radius;
@@ -151,10 +160,12 @@ float light_attenuation_facing(
 float light_attenuation_surface(LightData light,
                                 const bool is_directional,
                                 const bool is_transmission,
+                                bool is_translucency_with_thickness,
                                 vec3 Ng,
                                 LightVector lv)
 {
-  float result = light_attenuation_facing(light, lv.L, lv.dist, Ng, is_transmission);
+  float result = light_attenuation_facing(
+      light, lv.L, lv.dist, Ng, is_transmission, is_translucency_with_thickness);
   result *= light_attenuation_common(light, is_directional, lv.L);
   if (!is_directional) {
     result *= light_influence_attenuation(

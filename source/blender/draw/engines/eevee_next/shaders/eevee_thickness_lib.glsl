@@ -25,7 +25,7 @@ void thickness_from_shadow_single(
 
   LightVector lv = light_vector_get(light, is_directional, P);
   /* Note that we reverse the surface normal to reject surfaces facing the light. */
-  float attenuation = light_attenuation_surface(light, is_directional, true, Ng, lv);
+  float attenuation = light_attenuation_surface(light, is_directional, true, false, Ng, lv);
   if ((attenuation < LIGHT_ATTENUATION_THRESHOLD)) {
     return;
   }
