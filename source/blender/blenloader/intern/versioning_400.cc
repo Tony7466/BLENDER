@@ -3109,7 +3109,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 13)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 14)) {
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (bMotionPath *mpath = ob->mpath) {
         mpath->color_post[0] = 0.1f;
