@@ -7,6 +7,7 @@
  */
 
 #include "BLI_array.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_lasso_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_rect.h"
@@ -59,23 +60,19 @@ struct CutterSegment {
 /**
  * Structure describing:
  * - A collection of cutter segments.
- * - A flag for all curves affected by the lasso tool.
  */
 struct CutterSegments {
   /* Collection of cutter segments: parts of curves between other curves, to be removed from the
    * geometry. */
   Vector<CutterSegment> segments;
-  /* Flag for curve points: true if a curve point is part of a cutter segment. */
-  Array<bool> point_is_in_segment;
 
-  /* Create a initial cutter segment with a point range of one point. */
+  /* Create an initial cutter segment with a point range of one point. */
   CutterSegment *create_segment(const int curve, const int point)
   {
     CutterSegment segment{};
     segment.curve = curve;
     segment.point_range[Side::Start] = point;
     segment.point_range[Side::End] = point;
-    this->point_is_in_segment[point] = true;
 
     this->segments.append(std::move(segment));
 
@@ -428,33 +425,27 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
   /* Expand the selected curve points to cutter segments (the part of the curve between two
    * intersections). */
   const VArray<bool> is_cyclic = src.cyclic();
-  CutterSegments cutter_segments;
-  cutter_segments.point_is_in_segment.reinitialize(src_points_num);
-  cutter_segments.point_is_in_segment.fill(false);
-  std::mutex mutex;
+  Array<bool> point_is_in_segment(src_points_num, false);
+  threading::EnumerableThreadSpecific<CutterSegments> cutter_segments_by_thread;
 
   threading::parallel_for(selected_curves.index_range(), 1, [&](const IndexRange curve_range) {
     for (const int selected_curve : curve_range) {
+      CutterSegments &thread_segments = cutter_segments_by_thread.local();
       const int src_curve = selected_curves[selected_curve];
 
       for (const int selected_point : selected_points_in_curves[selected_curve]) {
         /* Skip point when it is already part of a cutter segment. */
-        if (cutter_segments.point_is_in_segment[selected_point]) {
+        if (point_is_in_segment[selected_point]) {
           continue;
         }
 
         /* Create new cutter segment. */
-        mutex.lock();
-        CutterSegment *segment = cutter_segments.create_segment(src_curve, selected_point);
-        mutex.unlock();
+        CutterSegment *segment = thread_segments.create_segment(src_curve, selected_point);
 
-        /* Expand the cutter segment in both directions until an intersection is found or the end
-         * of the curve is reached. */
-        expand_cutter_segment(*segment,
-                              src,
-                              is_intersected_after_point,
-                              intersection_distance,
-                              cutter_segments.point_is_in_segment);
+        /* Expand the cutter segment in both directions until an intersection is found or the
+         * end of the curve is reached. */
+        expand_cutter_segment(
+            *segment, src, is_intersected_after_point, intersection_distance, point_is_in_segment);
 
         /* When the end of a curve is reached and the curve is cyclic, we add an extra cutter
          * segment for the cyclic second part. */
@@ -465,20 +456,22 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
           const int cyclic_outer_point = !segment->is_intersected[Side::Start] ?
                                              src_points_by_curve[src_curve].last() :
                                              src_points_by_curve[src_curve].first();
-          mutex.lock();
-          segment = cutter_segments.create_segment(src_curve, cyclic_outer_point);
-          mutex.unlock();
+          segment = thread_segments.create_segment(src_curve, cyclic_outer_point);
 
           /* Expand this second segment. */
           expand_cutter_segment(*segment,
                                 src,
                                 is_intersected_after_point,
                                 intersection_distance,
-                                cutter_segments.point_is_in_segment);
+                                point_is_in_segment);
         }
       }
     }
   });
+  CutterSegments cutter_segments;
+  for (CutterSegments &thread_segments : cutter_segments_by_thread) {
+    cutter_segments.segments.extend(thread_segments.segments);
+  }
 
   /* Abort when no cutter segments are found in the lasso area. */
   if (cutter_segments.segments.is_empty()) {
@@ -500,7 +493,7 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
                                                                     (src_point + 1);
 
       /* Add the source point only if it does not lie inside a cutter segment. */
-      if (!cutter_segments.point_is_in_segment[src_point]) {
+      if (!point_is_in_segment[src_point]) {
         dst_points.append({src_point, src_next_point, 0.0f, true, false});
       }
     }
