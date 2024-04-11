@@ -808,7 +808,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
 
   /* Dynamically allocate an array of chars to mark whether an TransData's
    * pointers have been fixed already, so that we don't override ones that are already done. */
-  char *adjusted = static_cast<char *>(MEM_callocN(tc->data_len, "beztmap_adjusted_map"));
+  blender::Vector<bool> adjusted(tc->data_len, false);
 
   /* For each beztmap item, find if it is used anywhere. */
   const BeztMap *bezm = &bezms[0];
@@ -819,7 +819,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
     td = tc->data;
     for (int j = 0; j < tc->data_len; j++, td2d++, td++) {
       /* Skip item if already marked. */
-      if (adjusted[j] != 0) {
+      if (adjusted[j]) {
         continue;
       }
 
@@ -832,7 +832,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
         else {
           td2d->loc2d = fcu->bezt[i].vec[0];
         }
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
       else if (td2d->loc2d == bezm->bezt->vec[2]) {
         if (bezm->swap_handles == 1) {
@@ -841,7 +841,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
         else {
           td2d->loc2d = fcu->bezt[i].vec[2];
         }
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
       else if (td2d->loc2d == bezm->bezt->vec[1]) {
         td2d->loc2d = fcu->bezt[i].vec[1];
@@ -854,7 +854,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
           td2d->h2 = fcu->bezt[i].vec[2];
         }
 
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
 
       /* The handle type pointer has to be updated too. */
@@ -870,9 +870,6 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
       }
     }
   }
-
-  /* Free temp memory used for 'adjusted' array. */
-  MEM_freeN(adjusted);
 }
 
 /* This function is called by recalc_data during the Transform loop to recalculate
