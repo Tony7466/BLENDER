@@ -1332,7 +1332,8 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
                       ((*static_cast<bool *>(socket_value)) ? TIP_("True") : TIP_("False")));
   }
   else if (socket_type.is<float4x4>()) {
-    const float4x4 &value = *static_cast<const float4x4 *>(socket_value);
+    /* Transpose to be able to print row by row. */
+    const float4x4 value = math::transpose(*static_cast<const float4x4 *>(socket_value));
     ss << value[0] << ",\n";
     ss << value[1] << ",\n";
     ss << value[2] << ",\n";
@@ -1378,8 +1379,8 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
     ss << "\n";
 
     for (const int i : input_tooltips.index_range()) {
-      const blender::StringRef tooltip = input_tooltips[i];
-      ss << fmt::format(TIP_("\u2022 {}"), TIP_(tooltip.data()));
+      const blender::StringRefNull tooltip = input_tooltips[i];
+      ss << fmt::format(TIP_("\u2022 {}"), TIP_(tooltip.c_str()));
       if (i < input_tooltips.size() - 1) {
         ss << ".\n";
       }
@@ -1461,15 +1462,16 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
-            *value_log.grease_pencil_info;
-        char line[256];
-        SNPRINTF(line,
-                 TIP_("\u2022 Grease Pencil: %s layers"),
-                 to_string(grease_pencil_info.layers_num).c_str());
-        ss << line;
-        break;
-        break;
+        if (U.experimental.use_grease_pencil_version3) {
+          const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
+              *value_log.grease_pencil_info;
+          char line[256];
+          SNPRINTF(line,
+                   TIP_("\u2022 Grease Pencil: %s layers"),
+                   to_string(grease_pencil_info.layers_num).c_str());
+          ss << line;
+          break;
+        }
       }
     }
     if (type != component_types.last()) {
@@ -1592,9 +1594,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   std::stringstream output;
   if (socket.runtime->declaration != nullptr) {
     const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    blender::StringRef description = socket_decl.description;
+    blender::StringRefNull description = socket_decl.description;
     if (!description.is_empty()) {
-      output << TIP_(description.data());
+      output << TIP_(description.c_str());
     }
   }
 
