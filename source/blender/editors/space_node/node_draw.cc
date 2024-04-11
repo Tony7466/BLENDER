@@ -58,13 +58,13 @@
 
 #include "BIF_glutil.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_viewport.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_viewport.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -225,9 +225,7 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
   return translation_context.data();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout);
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout);
 
 /** Return true when \a a should be behind \a b and false otherwise. */
 static bool compare_node_depth(const bNode *a, const bNode *b)
@@ -520,12 +518,12 @@ static bool node_update_basis_socket(const bContext &C,
   }
 
   if (input_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *input_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*input_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     input_socket->runtime->location = float2(round(locx), round(locy - NODE_DYS));
   }
   if (output_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *output_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*output_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     output_socket->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                               round(locy - NODE_DYS));
@@ -911,13 +909,8 @@ static void node_update_basis_from_declaration(
 static void node_update_basis_from_socket_lists(
     const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, const int locx, int &locy)
 {
-  const bool node_options = node.typeinfo->draw_buttons && (node.flag & NODE_OPTIONS);
-  const bool inputs_first = node.inputs.first && !(node.outputs.first || node_options);
-
-  /* Add a little bit of padding above the top socket. */
-  if (node.outputs.first || inputs_first) {
-    locy -= NODE_DYS / 2;
-  }
+  /* Space at the top. */
+  locy -= NODE_DYS / 2;
 
   /* Output sockets. */
   bool add_output_space = false;
@@ -938,7 +931,10 @@ static void node_update_basis_from_socket_lists(
     locy -= NODE_DY / 4;
   }
 
-  node_update_basis_buttons(C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+  const bool add_button_space = node_update_basis_buttons(
+      C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+
+  bool add_input_space = false;
 
   /* Input sockets. */
   for (bNodeSocket *socket : node.input_sockets()) {
@@ -949,11 +945,12 @@ static void node_update_basis_from_socket_lists(
       if (socket->next) {
         locy -= NODE_ITEM_SPACING_Y;
       }
+      add_input_space = true;
     }
   }
 
-  /* Little bit of space in end. */
-  if (node.inputs.first || (node.flag & NODE_OPTIONS) == 0) {
+  /* Little bit of padding at the bottom. */
+  if (add_input_space || add_button_space) {
     locy -= NODE_DYS / 2;
   }
 }
@@ -1580,20 +1577,6 @@ static std::optional<std::string> create_socket_inspection_string(
   return str;
 }
 
-static bool node_socket_has_tooltip(const bNodeTree &ntree, const bNodeSocket &socket)
-{
-  if (ntree.type == NTREE_GEOMETRY) {
-    return true;
-  }
-
-  if (socket.runtime->declaration != nullptr) {
-    const nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    return !socket_decl.description.empty();
-  }
-
-  return false;
-}
-
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
@@ -1648,13 +1631,8 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   return output.str();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout)
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
   uiLayoutSetTooltipFunc(
       &layout,
       [](bContext *C, void *argN, const char * /*tip*/) {
@@ -1671,10 +1649,6 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
 
 void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
-
   struct SocketTooltipData {
     const bNodeTree *ntree;
     const bNodeSocket *socket;
@@ -1727,10 +1701,6 @@ static void node_socket_draw_nested(const bContext &C,
                    shape_id,
                    size_id,
                    outline_col_id);
-
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
 
   /* Ideally sockets themselves should be buttons, but they aren't currently. So add an invisible
    * button on top of them for the tooltip. */
@@ -3045,13 +3015,16 @@ static void node_draw_basis(const bContext &C,
     }
   }
 
+  const float padding = 0.5f;
+  const float corner_radius = BASIS_RAD + padding;
   /* Header. */
   {
+    /* Add some padding to prevent transparent gaps with the outline. */
     const rctf rect = {
-        rct.xmin,
-        rct.xmax,
-        rct.ymax - NODE_DY,
-        rct.ymax,
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymax - NODE_DY - padding,
+        rct.ymax + padding,
     };
 
     float color_header[4];
@@ -3065,7 +3038,7 @@ static void node_draw_basis(const bContext &C,
     }
 
     UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
-    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color_header);
+    UI_draw_roundbox_4fv(&rect, true, corner_radius, color_header);
   }
 
   /* Show/hide icons. */
@@ -3218,7 +3191,7 @@ static void node_draw_basis(const bContext &C,
   }
 
   /* Body. */
-  const float outline_width = 1.0f;
+  const float outline_width = U.pixelsize;
   {
     /* Use warning color to indicate undefined types. */
     if (bke::node_type_is_undefined(&node)) {
@@ -3245,15 +3218,16 @@ static void node_draw_basis(const bContext &C,
       color[3] -= 0.2f;
     }
 
+    /* Add some padding to prevent transparent gaps with the outline. */
     const rctf rect = {
-        rct.xmin,
-        rct.xmax,
-        rct.ymin,
-        rct.ymax - (NODE_DY + outline_width),
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymin - padding,
+        rct.ymax - (NODE_DY + outline_width) + padding,
     };
 
     UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
-    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color);
+    UI_draw_roundbox_4fv(&rect, true, corner_radius, color);
 
     if (is_node_panels_supported(node)) {
       node_draw_panels_background(node, block);
@@ -3265,7 +3239,7 @@ static void node_draw_basis(const bContext &C,
     float color_underline[4];
 
     if (node.flag & NODE_MUTED) {
-      UI_GetThemeColor4fv(TH_WIRE, color_underline);
+      UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.05f, color_underline);
       color_underline[3] = 1.0f;
     }
     else {
@@ -3384,7 +3358,16 @@ static void node_draw_hidden(const bContext &C,
       color[3] -= 0.2f;
     }
 
-    UI_draw_roundbox_4fv(&rct, true, hiddenrad, color);
+    /* Add some padding to prevent transparent gaps with the outline. */
+    const float padding = 0.5f;
+    const rctf rect = {
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymin - padding,
+        rct.ymax + padding,
+    };
+
+    UI_draw_roundbox_4fv(&rect, true, hiddenrad + padding, color);
   }
 
   /* Title. */
@@ -3438,7 +3421,7 @@ static void node_draw_hidden(const bContext &C,
 
   /* Outline. */
   {
-    const float outline_width = 1.0f;
+    const float outline_width = U.pixelsize;
     const rctf rect = {
         rct.xmin - outline_width,
         rct.xmax + outline_width,
@@ -3460,7 +3443,7 @@ static void node_draw_hidden(const bContext &C,
     }
 
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&rect, false, hiddenrad, color_outline);
+    UI_draw_roundbox_4fv(&rect, false, hiddenrad + outline_width, color_outline);
   }
 
   if (node.flag & NODE_MUTED) {
@@ -3761,7 +3744,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
       if (line->line[0]) {
         BLF_position(fontid, x, y, 0);
         ResultBLF info;
-        BLF_draw_ex(fontid, line->line, line->len, &info);
+        BLF_draw(fontid, line->line, line->len, &info);
         y -= line_spacing * info.lines;
       }
       else {
