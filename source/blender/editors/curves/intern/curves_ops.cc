@@ -67,6 +67,7 @@
 #include "GEO_reverse_uv_sampler.hh"
 #include "GEO_set_curve_type.hh"
 #include "GEO_subdivide_curves.hh"
+#include "GEO_transform.hh"
 
 /**
  * The code below uses a suffix naming convention to indicate the coordinate space:
@@ -1532,6 +1533,13 @@ static void add_new_curve(Curves &curves_id, CurvesGeometry new_curves, wmOperat
       &curves_id, bke::GeometryOwnershipType::ReadOnly);
   bke::GeometrySet new_geometry = bke::GeometrySet::from_curves(
       bke::curves_new_nomain(std::move(new_curves)));
+
+  float3 location;
+  RNA_float_get_array(op.ptr, "location", location);
+  float3 rotation;
+  RNA_float_get_array(op.ptr, "rotation", rotation);
+  const float4x4 transform = math::from_loc_rot<float4x4>(location, math::EulerXYZ(rotation));
+  geometry::transform_geometry(new_geometry, transform);
 
   bke::GeometrySet joined_geometry = geometry::join_geometries({old_geometry, new_geometry}, {});
   Curves *joined_curves = joined_geometry.get_curves_for_write();
