@@ -2545,6 +2545,8 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const wmKeyMapItem *kmi,
                                    bool text_fallback);
 
+void uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,
                              const char *propname,

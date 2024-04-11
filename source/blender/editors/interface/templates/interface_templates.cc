@@ -6486,37 +6486,40 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /** \name Event Icon Template
  * \{ */
 
-static bool uiTemplateEventXYZ(
-    uiLayout *layout, int icon, int icon_mod[4], const char *text, const wmKeyMapItem *kmi)
+void uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi)
 {
-  if (!ELEM(icon, ICON_EVENT_X, ICON_EVENT_Y, ICON_EVENT_Z)) {
-    return false;
+  if (kmi->type != EVT_ZKEY) {
+    /* Swallow X and Y. */
+    return;
   }
 
-  if (icon != ICON_EVENT_Z) {
-    return true;
+  /* Modifier icons. */
+  if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
+    uiItemL(layout, "", ICON_EVENT_SHIFT);
+  }
+  if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
+    uiItemL(layout, "", ICON_EVENT_CTRL);
+  }
+  if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
+    uiItemL(layout, "", ICON_EVENT_ALT);
+  }
+  if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
+    uiItemL(layout, "", ICON_EVENT_OS);
   }
 
-  for (int j = 0; j < 4 && icon_mod[j]; j++) {
-    uiItemL(layout, "", icon_mod[j]);
-  }
-
+  /* All three X, Y, Z icons. */
   uiItemL(layout, "", ICON_EVENT_X);
   uiItemL(layout, "", ICON_EVENT_Y);
   uiItemL(layout, "", ICON_EVENT_Z);
-
   uiItemS_ex(layout, 0.6f);
 
-  std::string name(text);
-  int index = name.find("Z ");
+  const int index = text.find("Z ");
   if (index != std::string::npos) {
-    name.erase(index, 2);
+    text.erase(index, 2);
   }
 
-  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, name.c_str()), ICON_NONE);
+  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text.c_str()), ICON_NONE);
   uiItemS_ex(layout, 0.7f);
-
-  return true;
 }
 
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
@@ -6533,11 +6536,6 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
   const int icon = UI_icon_from_keymap_item(kmi, icon_mod);
 #endif
   if (icon != 0) {
-
-    if (uiTemplateEventXYZ(layout, icon, icon_mod, text, kmi)) {
-      return true;
-    }
-
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
