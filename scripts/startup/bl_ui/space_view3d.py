@@ -974,18 +974,7 @@ class VIEW3D_HT_header(Header):
                 row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
 
                 subrow = row.row(align=True)
-                # ??? subrow.enabled = not gpd.use_curve_edit
                 subrow.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='SEGMENT')
-
-                # Curve edit sub-mode.
-                # ??? row = layout.row(align=True)
-                # ??? row.prop(gpd, "use_curve_edit", text="", icon='IPO_BEZIER')
-                # ??? sub = row.row(align=True)
-                # ??? sub.active = gpd.use_curve_edit
-                # ??? sub.popover(
-                # ???     panel="VIEW3D_PT_gpencil_curve_edit",
-                # ???     text="Curve Editing",
-                # ??? )
 
             # Select mode for Sculpt
             if object_mode == 'SCULPT_GPENCIL':
@@ -993,33 +982,6 @@ class VIEW3D_HT_header(Header):
                 row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
-
-            # ??? # Select mode for Vertex Paint
-            # ??? if gpd.is_stroke_vertex_mode:
-            # ???     row = layout.row(align=True)
-            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_point", text="")
-            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
-            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_segment", text="")
-
-            # ??? if gpd.is_stroke_paint_mode:
-            # ???     row = layout.row(align=True)
-            # ???     row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
-
-            # ??? if (
-            # ???         gpd.use_stroke_edit_mode or
-            # ???         gpd.is_stroke_sculpt_mode or
-            # ???         gpd.is_stroke_weight_mode or
-            # ???         gpd.is_stroke_vertex_mode
-            # ??? ):
-            # ???     row = layout.row(align=True)
-            # ???     row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
-
-            # ???     sub = row.row(align=True)
-            # ???     sub.enabled = gpd.use_multiedit
-            # ???     sub.popover(
-            # ???         panel="VIEW3D_PT_gpencil_multi_frame",
-            # ???         text="Multiframe",
-            # ???     )
 
         overlay = view.overlay
 
