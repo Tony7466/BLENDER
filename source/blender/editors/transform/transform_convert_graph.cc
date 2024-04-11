@@ -806,7 +806,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  /* Dynamically allocate an array of chars to mark whether an TransData's
+  /* Used to mark whether an TransData's
    * pointers have been fixed already, so that we don't override ones that are already done. */
   blender::Vector<bool> adjusted(tc->data_len, false);
 
