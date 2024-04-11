@@ -156,11 +156,11 @@ static float get_intersection_distance_of_segments(const float2 &co_a,
   const float c2 = a2 * co_c[0] + b2 * co_c[1];
 
   const float det = float(a1 * b2 - a2 * b1);
-  BLI_assert(det != 0.0f);
+  if (det == 0.0f) {
+    return 0.0f;
+  }
 
-  float2 isect;
-  isect[0] = (b2 * c1 - b1 * c2) / det;
-  isect[1] = (a1 * c2 - a2 * c1) / det;
+  float2 isect((b2 * c1 - b1 * c2) / det, (a1 * c2 - a2 * c1) / det);
 
   /* Get normalized distance from point a to intersection point. */
   const float length_ab = math::length(co_b - co_a);
@@ -275,8 +275,84 @@ static void get_intersections_of_curve_with_curves(const int src_curve,
 }
 
 /**
- * Expand a cutter segment of one point by walking along the curve in both directions.
+ * Expand a cutter segment by walking along the curve in forward or backward direction.
  * A cutter segments ends at an intersection with another curve, or at the outer end of the curve.
+ */
+static void expand_cutter_segment_direction(CutterSegment &segment,
+                                            const int direction,
+                                            const bke::CurvesGeometry &src,
+                                            const Span<bool> is_intersected_after_point,
+                                            const Span<float2> intersection_distance,
+                                            MutableSpan<bool> point_is_in_segment)
+{
+  const OffsetIndices<int> points_by_curve = src.points_by_curve();
+  const int point_first = points_by_curve[segment.curve].first();
+  const int point_last = points_by_curve[segment.curve].last();
+
+  const Side segment_side = (direction == 1) ? Side::End : Side::Start;
+  int point_a = segment.point_range[segment_side];
+
+  bool intersected = false;
+  segment.is_intersected[segment_side] = false;
+
+  /* Walk along the curve points. */
+  while ((direction == 1 && point_a < point_last) || (direction == -1 && point_a > point_first)) {
+    const int point_b = point_a + direction;
+    const bool at_end_of_curve = (direction == -1 && point_b == point_first) ||
+                                 (direction == 1 && point_b == point_last);
+
+    /* Expand segment point range. */
+    segment.point_range[segment_side] = point_a;
+    point_is_in_segment[point_a] = true;
+
+    /* Check for intersections with other curves. The intersections were established in ascending
+     * point order, so in forward direction we look at line segment a-b, in backward direction we
+     * look at line segment b-a. */
+    const int intersection_point = direction == 1 ? point_a : point_b;
+    intersected = is_intersected_after_point[intersection_point];
+
+    /* Avoid orphaned points at the end of a curve. */
+    if (at_end_of_curve &&
+        ((direction == -1 &&
+          intersection_distance[intersection_point][Distance::Max] < DISTANCE_FACTOR_THRESHOLD) ||
+         (direction == 1 && intersection_distance[intersection_point][Distance::Min] >
+                                (1.0f - DISTANCE_FACTOR_THRESHOLD))))
+    {
+      intersected = false;
+      break;
+    }
+
+    /* When we hit an intersection, store the intersection distance. Potentially, line segment
+     * a-b can be intersected by multiple curves, so we want to fetch the first intersection
+     * point we bumped into. In forward direction this is the minimum distance, in backward
+     * direction the maximum. */
+    if (intersected) {
+      segment.is_intersected[segment_side] = true;
+      segment.intersection_distance[segment_side] =
+          (direction == 1) ? intersection_distance[intersection_point][Distance::Min] :
+                             intersection_distance[intersection_point][Distance::Max];
+      break;
+    }
+
+    /* Keep walking along curve. */
+    point_a += direction;
+  }
+
+  /* Adjust point range at curve ends. */
+  if (!intersected) {
+    if (direction == -1) {
+      segment.point_range[Side::Start] = point_first;
+      point_is_in_segment[point_first] = true;
+    }
+    else {
+      segment.point_range[Side::End] = point_last;
+      point_is_in_segment[point_last] = true;
+    }
+  }
+}
+
+/**
+ * Expand a cutter segment of one point by walking along the curve in both directions.
  */
 static void expand_cutter_segment(CutterSegment &segment,
                                   const bke::CurvesGeometry &src,
@@ -284,75 +360,14 @@ static void expand_cutter_segment(CutterSegment &segment,
                                   const Span<float2> intersection_distance,
                                   MutableSpan<bool> point_is_in_segment)
 {
-  const OffsetIndices<int> points_by_curve = src.points_by_curve();
-  const int curve = segment.curve;
-  const int point_first = points_by_curve[curve].first();
-  const int point_last = points_by_curve[curve].last();
   const int8_t directions[2] = {-1, 1};
-
-  /* Walk along the curve in both directions. */
   for (const int8_t direction : directions) {
-    const Side segment_side = (direction == 1) ? Side::End : Side::Start;
-    int point_a = segment.point_range[segment_side];
-
-    bool intersected = false;
-    segment.is_intersected[segment_side] = false;
-
-    /* Walk along the curve points. */
-    while ((direction == 1 && point_a < point_last) || (direction == -1 && point_a > point_first))
-    {
-      const int point_b = point_a + direction;
-      const bool at_end_of_curve = (direction == -1 && point_b == point_first) ||
-                                   (direction == 1 && point_b == point_last);
-
-      /* Expand segment point range. */
-      segment.point_range[segment_side] = point_a;
-      point_is_in_segment[point_a] = true;
-
-      /* Check for intersections with other curves. The intersections were established in ascending
-       * point order, so in forward direction we look at line segment a-b, in backward direction we
-       * look at line segment b-a. */
-      const int intersection_point = direction == 1 ? point_a : point_b;
-      intersected = is_intersected_after_point[intersection_point];
-
-      /* Avoid orphaned points at the end of a curve. */
-      if (at_end_of_curve &&
-          ((direction == -1 && intersection_distance[intersection_point][Distance::Max] <
-                                   DISTANCE_FACTOR_THRESHOLD) ||
-           (direction == 1 && intersection_distance[intersection_point][Distance::Min] >
-                                  (1.0f - DISTANCE_FACTOR_THRESHOLD))))
-      {
-        intersected = false;
-        break;
-      }
-
-      /* When we hit an intersection, store the intersection distance. Potentially, line segment
-       * a-b can be intersected by multiple curves, so we want to fetch the first intersection
-       * point we bumped into. In forward direction this is the minimum distance, in backward
-       * direction the maximum. */
-      if (intersected) {
-        segment.is_intersected[segment_side] = true;
-        segment.intersection_distance[segment_side] =
-            (direction == 1) ? intersection_distance[intersection_point][Distance::Min] :
-                               intersection_distance[intersection_point][Distance::Max];
-        break;
-      }
-
-      /* Keep walking along curve. */
-      point_a += direction;
-    }
-
-    /* Adjust point range at curve ends. */
-    if (!intersected) {
-      if (direction == -1) {
-        segment.point_range[Side::Start] = point_first;
-        point_is_in_segment[point_first] = true;
-      }
-      else {
-        segment.point_range[Side::End] = point_last;
-        point_is_in_segment[point_last] = true;
-      }
-    }
+    expand_cutter_segment_direction(segment,
+                                    direction,
+                                    src,
+                                    is_intersected_after_point,
+                                    intersection_distance,
+                                    point_is_in_segment);
   }
 }
 
@@ -693,7 +708,7 @@ static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<i
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
   }
 
-  return (changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED);
+  return OPERATOR_FINISHED;
 }
 
 static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
@@ -704,9 +719,7 @@ static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  const int result = stroke_cutter_execute(op, C, mcoords);
-
-  return result;
+  return stroke_cutter_execute(op, C, mcoords);
 }
 
 }  // namespace blender::ed::greasepencil
