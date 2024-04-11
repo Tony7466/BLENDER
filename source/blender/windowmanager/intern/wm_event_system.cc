@@ -6375,12 +6375,12 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
     axis_y |= STREQ(items[i].identifier, "AXIS_Y");
     axis_z |= STREQ(items[i].identifier, "AXIS_Z");
   }
+  /* Only collapse these if all three are present. */
   const bool collapse_xyz = axis_x && axis_y && axis_z;
 #endif
 
   uiLayout *row = uiLayoutRow(layout, true);
   for (int i = 0; items[i].identifier; i++) {
-    auto blah = items[i];
     if (!items[i].identifier[0]) {
       continue;
     }
@@ -6406,7 +6406,6 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
           continue;
         }
         if (collapse_xyz && ELEM(kmi->type, EVT_XKEY, EVT_YKEY, EVT_ZKEY)) {
-          /* This includes X,Y,Z so collapse them. */
           uiTemplateEventFromKeymapItemXYZ(row, items[i].name, kmi);
           continue;
         };
