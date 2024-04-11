@@ -1,0 +1,1 @@
+Referenced by pull request #120527, Fix: Properly free/allocate non-trivial shrinkwrap cache struct
