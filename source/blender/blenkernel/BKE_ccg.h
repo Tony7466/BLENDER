@@ -11,7 +11,7 @@
 /* defines BLI_INLINE */
 #include "BLI_compiler_compat.h"
 
-/* Declares `fprintf()` & `abort()`, needed for `BLI_assert`. */
+/* declares fprintf() and abort(), needed for BLI_assert */
 #include <stdio.h>
 #include <stdlib.h>
 
