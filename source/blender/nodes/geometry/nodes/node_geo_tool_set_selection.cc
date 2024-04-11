@@ -8,29 +8,44 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+#include "BKE_type_conversions.hh"
 
 #include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
+#include "DNA_node_types.h"
+
 namespace blender::nodes::node_geo_tool_set_selection_cc {
+
+enum class PatternMode {
+  Boolean = 0,
+  Float = 1
+};
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  const bNode *node = b.node_or_null();
   b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+  if (node != nullptr && node->custom2 == int(PatternMode::Float)) {
+    b.add_input<decl::Float>("Selection").default_value(true).field_on_all();
+  }
+  if (node != nullptr && node->custom2 == int(PatternMode::Boolean)) {
+    b.add_input<decl::Bool>("Selection").default_value(true).field_on_all();
+  }
   b.add_output<decl::Geometry>("Geometry");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
-  uiItemR(layout, ptr, "boolean", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "pattern_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = int16_t(AttrDomain::Point);
+  node->custom2 = int(PatternMode::Boolean);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -45,106 +60,83 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Geometry", std::move(geometry));
     return;
   }
-  const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
-  const AttrDomain domain = AttrDomain(params.node().custom1);
-  geometry.modify_geometry_sets([&](GeometrySet &geometry) {
-    if (Mesh *mesh = geometry.get_mesh_for_write()) {
-      if (params.node().custom2 &&
-          params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT)
-      {
-        Field<bool> inverted = invert_boolean_field(selection);
-        bke::try_capture_field_on_geometry(
-            geometry.get_component_for_write<MeshComponent>(), ".sculpt_mask", domain, inverted);
-      }
-      else {
-        switch (domain) {
-          case AttrDomain::Point:
-            /* Remove attributes in case they are on the wrong domain, which can happen after
-             * conversion to and from other geometry types. */
-            mesh->attributes_for_write().remove(".select_edge");
-            mesh->attributes_for_write().remove(".select_poly");
-            bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
-                                               ".select_vert",
-                                               AttrDomain::Point,
-                                               selection);
-            bke::mesh_select_vert_flush(*mesh);
-            break;
-          case AttrDomain::Edge:
-            bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
-                                               ".select_edge",
-                                               AttrDomain::Edge,
-                                               selection);
-            bke::mesh_select_edge_flush(*mesh);
-            break;
-          case AttrDomain::Face:
-            /* Remove attributes in case they are on the wrong domain, which can happen after
-             * conversion to and from other geometry types. */
-            mesh->attributes_for_write().remove(".select_vert");
-            mesh->attributes_for_write().remove(".select_edge");
-            bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
-                                               ".select_poly",
-                                               AttrDomain::Face,
-                                               selection);
-            bke::mesh_select_face_flush(*mesh);
-            break;
-          default:
-            break;
-        }
-      }
-      
-    }
-    if (geometry.has_curves()) {
-      if (ELEM(domain, AttrDomain::Point, AttrDomain::Curve)) {
-        if (params.node().custom2 &&
-            params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT)
-        {
-          if (Mesh *mesh = geometry.get_mesh_for_write()) {
-            switch (domain) {
-              case AttrDomain::Point:
-                /* Remove attributes in case they are on the wrong domain, which can happen after
-                 * conversion to and from other geometry types. */
-                mesh->attributes_for_write().remove(".select_edge");
-                mesh->attributes_for_write().remove(".select_poly");
-                bke::try_capture_field_on_geometry(
-                    geometry.get_component_for_write<MeshComponent>(),
-                    ".select_vert",
-                    AttrDomain::Point,
-                    selection);
-                bke::mesh_select_vert_flush(*mesh);
-                break;
-
-              case AttrDomain::Curve:
-                /* Remove attributes in case they are on the wrong domain, which can happen after
-                 * conversion to and from other geometry types. */
-                bke::try_capture_field_on_geometry(
-                    geometry.get_component_for_write<MeshComponent>(),
-                    ".select_edge",
-                    AttrDomain::Edge,
-                    selection);
-                bke::mesh_select_edge_flush(*mesh);
-                break;
-
-              default:
-                break;
-            }
-          }
+    const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
+    const AttrDomain domain = AttrDomain(params.node().custom1);
+    geometry.modify_geometry_sets([&](GeometrySet &geometry) {
+      if (Mesh *mesh = geometry.get_mesh_for_write()) {
+        if (params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT) {
+          Field<bool> inverted = invert_boolean_field(selection);
+          bke::try_capture_field_on_geometry(
+              geometry.get_component_for_write<MeshComponent>(), ".sculpt_mask", domain, inverted);
         }
         else {
-          bke::try_capture_field_on_geometry(
-              geometry.get_component_for_write<CurveComponent>(), ".selection", domain, selection);
+          switch (domain) {
+            case AttrDomain::Point:
+              /* Remove attributes in case they are on the wrong domain, which can happen after
+               * conversion to and from other geometry types. */
+              mesh->attributes_for_write().remove(".select_edge");
+              mesh->attributes_for_write().remove(".select_poly");
+              bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
+                                                 ".select_vert",
+                                                 AttrDomain::Point,
+                                                 selection);
+              bke::mesh_select_vert_flush(*mesh);
+              break;
+            case AttrDomain::Edge:
+              bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
+                                                 ".select_edge",
+                                                 AttrDomain::Edge,
+                                                 selection);
+              bke::mesh_select_edge_flush(*mesh);
+              break;
+            case AttrDomain::Face:
+              /* Remove attributes in case they are on the wrong domain, which can happen after
+               * conversion to and from other geometry types. */
+              mesh->attributes_for_write().remove(".select_vert");
+              mesh->attributes_for_write().remove(".select_edge");
+              bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
+                                                 ".select_poly",
+                                                 AttrDomain::Face,
+                                                 selection);
+              bke::mesh_select_face_flush(*mesh);
+              break;
+            default:
+              break;
+          }
         }
+      }
+      if (geometry.has_curves()) {
+        if (ELEM(domain, AttrDomain::Point, AttrDomain::Curve)) {
+            if (params.node().custom2 == int(PatternMode::Float)) {
+              const Field<float> selection = params.extract_input<Field<float>>("Selection");
+              bke::try_capture_field_on_geometry(
+                  geometry.get_component_for_write<CurveComponent>(),
+                  ".selection",
+                  domain,
+                  selection);
+            }
+            else {
+              bke::try_capture_field_on_geometry(
+                  geometry.get_component_for_write<CurveComponent>(),
+                  ".selection",
+                  domain,
+                  selection);
+            }
+        }
+           
+            
         
       }
-    }
-    if (geometry.has_pointcloud()) {
-      if (domain == AttrDomain::Point) {
-        bke::try_capture_field_on_geometry(geometry.get_component_for_write<PointCloudComponent>(),
-                                           ".selection",
-                                           domain,
-                                           selection);
+      if (geometry.has_pointcloud()) {
+        if (domain == AttrDomain::Point) {
+          bke::try_capture_field_on_geometry(
+              geometry.get_component_for_write<PointCloudComponent>(),
+              ".selection",
+              domain,
+              selection);
+        }
       }
-    }
-  });
+    });
   params.set_output("Geometry", std::move(geometry));
 }
 
@@ -157,6 +149,20 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_point_edge_face_curve_items,
                     NOD_inline_enum_accessors(custom1),
                     int(AttrDomain::Point));
+
+  static const EnumPropertyItem pattern_mode_items[] = {
+      {int(PatternMode::Boolean), "BOOLEAN", 0, "boolean", ""},
+      {int(PatternMode::Float), "FLOAT", 0, "float", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "pattern_mode",
+                    "Boolean/Float",
+                    "Changes the input type and type of stored attribute",
+                    pattern_mode_items,
+                    NOD_inline_enum_accessors(custom2),
+                    int(PatternMode::Boolean));
 }
 
 static void node_register()
