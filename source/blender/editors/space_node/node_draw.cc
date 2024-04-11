@@ -1665,6 +1665,67 @@ static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
   return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
 }
 
+static int64_t line_size(const StringRef string)
+{
+  return string.find_last_of("\n");
+}
+
+static Vector<std::string> lines(std::string text)
+{
+  Vector<std::string> result;
+  std::istringstream text_stream(text);
+  for (std::string line; std::getline(text_stream, line);) {
+    result.append(line);
+  }
+  return result;
+}
+
+static std::optional<std::string> create_multi_input_log_inspection_string(
+    const bNodeTree &ntree, const bNodeSocket &socket, TreeDrawContext &tree_draw_ctx)
+{
+  if (!socket.is_multi_input()) {
+    return std::nullopt;
+  }
+
+  Vector<std::string> inputs;
+
+  for (const bNodeLink *link : socket.directly_linked_links()) {
+    if (link->fromnode->is_dangling_reroute()) {
+      continue;
+    }
+    const bNodeSocket &connected_socket = *link->fromsock;
+    geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(
+        ntree, connected_socket, tree_draw_ctx);
+    std::optional<std::string> input_log = create_log_inspection_string(geo_tree_log,
+                                                                        connected_socket);
+    if (input_log.has_value()) {
+      inputs.append(std::move(*input_log));
+    }
+  }
+  if (inputs.is_empty()) {
+    return std::nullopt;
+  }
+
+  std::stringstream ss;
+  for (const int index : inputs.index_range()) {
+    const std::string &info = inputs[index];
+    ss << index + 1 << ". ";
+
+    const Vector<std::string> lines_of_info = lines(info);
+    for (const std::string &line : lines_of_info) {
+      ss << "  " << line;
+      if (&line != &lines_of_info.last()) {
+        ss << "\n";
+      }
+    }
+
+    if (&info != &inputs.last()) {
+      ss << ".\n";
+    }
+  }
+  return ss.str();
+}
+
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
@@ -1685,6 +1746,11 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  else if (std::optional<std::string> info = create_multi_input_log_inspection_string(
+               ntree, socket, tree_draw_ctx))
+  {
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
