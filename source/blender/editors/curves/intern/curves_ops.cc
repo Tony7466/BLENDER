@@ -63,6 +63,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_join_geometries.hh"
 #include "GEO_reverse_uv_sampler.hh"
 #include "GEO_set_curve_type.hh"
 #include "GEO_subdivide_curves.hh"
@@ -1525,6 +1526,18 @@ static void CURVES_OT_subdivide(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+static void add_new_curve(Curves &curves_id, CurvesGeometry new_curves, wmOperator &op)
+{
+  bke::GeometrySet old_geometry = bke::GeometrySet::from_curves(
+      &curves_id, bke::GeometryOwnershipType::ReadOnly);
+  bke::GeometrySet new_geometry = bke::GeometrySet::from_curves(
+      bke::curves_new_nomain(std::move(new_curves)));
+
+  bke::GeometrySet joined_geometry = geometry::join_geometries({old_geometry, new_geometry}, {});
+  Curves *joined_curves = joined_geometry.get_curves_for_write();
+  curves_id.geometry.wrap() = std::move(joined_curves->geometry.wrap());
+}
+
 namespace add_circle {
 
 static CurvesGeometry generate_circle_primitive(const float radius)
@@ -1561,9 +1574,7 @@ static int exec(bContext *C, wmOperator *op)
   const float radius = RNA_float_get(op->ptr, "radius");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-
-    curves = generate_circle_primitive(radius);
+    add_new_curve(*curves_id, generate_circle_primitive(radius), *op);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
