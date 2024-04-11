@@ -1604,14 +1604,14 @@ static CurvesGeometry generate_circle_primitive(const float radius)
 
 static int exec(bContext *C, wmOperator *op)
 {
+  Object *object = CTX_data_edit_object(C);
+  Curves *active_curves_id = static_cast<Curves *>(object->data);
+
   const float radius = RNA_float_get(op->ptr, "radius");
+  append_primitive_curve(C, *active_curves_id, generate_circle_primitive(radius), *op);
 
-  for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    append_primitive_curve(C, *curves_id, generate_circle_primitive(radius), *op);
-
-    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
-  }
+  DEG_id_tag_update(&active_curves_id->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, active_curves_id);
   return OPERATOR_FINISHED;
 }
 
@@ -1664,14 +1664,14 @@ static CurvesGeometry generate_bezier_primitive(const float radius)
 
 static int exec(bContext *C, wmOperator *op)
 {
+  Object *object = CTX_data_edit_object(C);
+  Curves *active_curves_id = static_cast<Curves *>(object->data);
+
   const float radius = RNA_float_get(op->ptr, "radius");
+  append_primitive_curve(C, *active_curves_id, generate_bezier_primitive(radius), *op);
 
-  for (Curves *curves_id : get_unique_editable_curves(*C)) {
-    append_primitive_curve(C, *curves_id, generate_bezier_primitive(radius), *op);
-
-    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
-  }
+  DEG_id_tag_update(&active_curves_id->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, active_curves_id);
   return OPERATOR_FINISHED;
 }
 
