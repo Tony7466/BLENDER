@@ -6,7 +6,9 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_report.hh"
+#include "BKE_screen.hh"
 
+#include "BLI_math_vector.hh"
 #include "BLI_string.h"
 #include "DEG_depsgraph_query.hh"
 
@@ -14,10 +16,13 @@
 #include "DNA_grease_pencil_types.h"
 
 #include "DNA_scene_types.h"
+#include "DNA_view3d_types.h"
+#include "DNA_windowmanager_types.h"
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "ANIM_keyframing.hh"
 
@@ -451,24 +456,21 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
  * \{ */
 
 struct GreasePencilFillOpData {
-  GreasePencilFillOpData(bContext &C, blender::bke::greasepencil::Layer & /*layer*/)
-  {
-    using blender::bke::greasepencil::Layer;
+  blender::bke::greasepencil::Layer &layer;
 
-    const ToolSettings &ts = *CTX_data_tool_settings(&C);
-    const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-    // const ARegion &region = *CTX_wm_region(&C);
+  /* Brush properties, some of these are modified by modal keys. */
+  int flag;
+  eGP_FillExtendModes fill_extend_mode;
+  float fill_extend_fac;
 
-    /* Enable custom drawing handlers to show help lines */
-    const bool do_extend = (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES);
-    const bool help_lines = do_extend ||
-                            (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_HELPLINES);
-    if (help_lines) {
-      // this->region_type = region.type;
-      // this->draw_handle_3d = ED_region_draw_cb_activate(
-      //     region.type, grease_pencil_fill_draw_3d, tgpf, REGION_DRAW_POST_VIEW);
-    }
-  }
+  /* Fill is disabled initially, only perform fill after first mouse press. */
+  bool is_fill_initialized = false;
+  /* Mouse position where fill was initialized */
+  float2 fill_mouse_pos;
+  /* Extension lines mode is enabled (middle mouse button). */
+  bool is_extension_mode = false;
+  /* Mouse position where the extension mode was enabled. */
+  float2 extension_mouse_pos;
 
   ~GreasePencilFillOpData()
   {
@@ -492,17 +494,38 @@ struct GreasePencilFillOpData {
     //   ED_view3d_depths_free(tgpf->depths);
     // }
   }
+
+  static GreasePencilFillOpData from_context(bContext &C, blender::bke::greasepencil::Layer &layer)
+  {
+    using blender::bke::greasepencil::Layer;
+
+    const ToolSettings &ts = *CTX_data_tool_settings(&C);
+    const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+    // const ARegion &region = *CTX_wm_region(&C);
+
+    /* Enable custom drawing handlers to show help lines */
+    const bool do_extend = (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES);
+    const bool help_lines = do_extend ||
+                            (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_HELPLINES);
+    if (help_lines) {
+      // this->region_type = region.type;
+      // this->draw_handle_3d = ED_region_draw_cb_activate(
+      //     region.type, grease_pencil_fill_draw_3d, tgpf, REGION_DRAW_POST_VIEW);
+    }
+
+    return {layer,
+            brush.gpencil_settings->flag,
+            eGP_FillExtendModes(brush.gpencil_settings->fill_extend_mode),
+            brush.gpencil_settings->fill_extend_fac};
+  }
 };
 
-static void grease_pencil_fill_status_indicators(bContext &C)
+static void grease_pencil_fill_status_indicators(bContext &C,
+                                                 const GreasePencilFillOpData &op_data)
 {
-  ToolSettings &ts = *CTX_data_tool_settings(&C);
-  Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-
-  const bool is_extend = (brush.gpencil_settings->fill_extend_mode == GP_FILL_EMODE_EXTEND);
-  const bool use_stroke_collide = (brush.gpencil_settings->flag & GP_BRUSH_FILL_STROKE_COLLIDE) !=
-                                  0;
-  const float fill_extend_fac = brush.gpencil_settings->fill_extend_fac;
+  const bool is_extend = (op_data.fill_extend_mode == GP_FILL_EMODE_EXTEND);
+  const bool use_stroke_collide = (op_data.flag & GP_BRUSH_FILL_STROKE_COLLIDE) != 0;
+  const float fill_extend_fac = op_data.fill_extend_fac;
 
   char status_str[UI_MAX_DRAW_STR];
   BLI_snprintf(status_str,
@@ -515,6 +538,145 @@ static void grease_pencil_fill_status_indicators(bContext &C)
                fill_extend_fac);
 
   ED_workspace_status_text(&C, status_str);
+}
+
+static void grease_pencil_update_extend(bContext &C, const GreasePencilFillOpData &op_data)
+{
+  if (op_data.fill_extend_fac > 0.0f) {
+    // if (tgpf->stroke_array == nullptr) {
+    //   gpencil_load_array_strokes(tgpf);
+    // }
+
+    // if (tgpf->fill_extend_mode == GP_FILL_EMODE_EXTEND) {
+    //   gpencil_update_extensions_line(tgpf);
+    // }
+    // else {
+    //   gpencil_delete_temp_stroke_extension(tgpf, false);
+    //   gpencil_create_extensions_radius(tgpf);
+    // }
+  }
+  grease_pencil_fill_status_indicators(C, op_data);
+  WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
+}
+
+static bool grease_pencil_enable_help_lines(bContext &C, wmOperator &op, const wmEvent &event)
+{
+  ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
+  if (!region) {
+    return false;
+  }
+  wmWindow &win = *CTX_wm_window(&C);
+  const ToolSettings &ts = *CTX_data_tool_settings(&C);
+  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+  auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
+  const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+
+  bool in_bounds = false;
+  /* Perform bounds check */
+  in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event.xy);
+
+  if (!in_bounds || region->regiontype != RGN_TYPE_WINDOW) {
+    return false;
+  }
+
+  // tgpf->mouse[0] = event->mval[0];
+  // tgpf->mouse[1] = event->mval[1];
+  // tgpf->is_render = true;
+  // /* Define Zoom level. */
+  // gpencil_zoom_level_set(tgpf);
+
+  // /* Create Temp stroke. */
+  // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
+  // tGPspoint point2D;
+  // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
+  // copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
+  // gpencil_stroke_convertcoords_tpoint(
+  //     tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
+
+  // /* Hash of selected frames. */
+  // GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
+
+  // /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
+  //  * create a new frame. */
+  // if (!is_multiedit) {
+  //   tgpf->gpf = BKE_gpencil_layer_frame_get(
+  //       tgpf->gpl,
+  //       tgpf->active_cfra,
+  //       blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
+  //       GP_GETFRAME_USE_PREV);
+  //   tgpf->gpf->flag |= GP_FRAME_SELECT;
+
+  //   BLI_ghash_insert(frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
+  // }
+  // else {
+  //   BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
+  // }
+
+  // /* Loop all frames. */
+  // wmWindow *win = CTX_wm_window(C);
+
+  // GHashIterator gh_iter;
+  // int total = BLI_ghash_len(frame_list);
+  // int i = 1;
+  // GHASH_ITER (gh_iter, frame_list) {
+  //   /* Set active frame as current for filling. */
+  //   tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
+  //   int step = (float(i) / float(total)) * 100.0f;
+  //   WM_cursor_time(win, step);
+
+  if (extend_lines) {
+    grease_pencil_update_extend(C, op_data);
+  }
+
+  //   /* Repeat loop until get something. */
+  //   tgpf->done = false;
+  //   int loop_limit = 0;
+  //   while ((!tgpf->done) && (loop_limit < 2)) {
+  //     WM_cursor_time(win, loop_limit + 1);
+  //     /* Render screen to temp image and do fill. */
+  //     gpencil_do_frame_fill(tgpf, is_inverted);
+
+  //     /* restore size */
+  //     tgpf->region->winx = short(tgpf->bwinx);
+  //     tgpf->region->winy = short(tgpf->bwiny);
+  //     tgpf->region->winrct = tgpf->brect;
+  //     if (!tgpf->done) {
+  //       /* If the zoom was not set before, avoid a loop. */
+  //       if (tgpf->zoom == 1.0f) {
+  //         loop_limit++;
+  //       }
+  //       else {
+  //         tgpf->zoom = 1.0f;
+  //         tgpf->fill_factor = max_ff(
+  //             GPENCIL_MIN_FILL_FAC,
+  //             min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
+  //       }
+  //     }
+  //     loop_limit++;
+  //   }
+
+  //   if (extend_lines) {
+  //     stroke_array_free(tgpf);
+  //     gpencil_delete_temp_stroke_extension(tgpf, true);
+  //   }
+
+  //   i++;
+  // }
+
+  WM_cursor_modal_restore(&win);
+  /* Free hash table. */
+  // BLI_ghash_free(frame_list, nullptr, nullptr);
+
+  /* Free temp stroke. */
+  // BKE_gpencil_free_stroke(tgpf->gps_mouse);
+
+  /* push undo data */
+  // gpencil_undo_push(tgpf->gpd);
+
+  /* Save extend value for next operation. */
+  brush.gpencil_settings->fill_extend_fac = op_data.fill_extend_fac;
+
+  return true;
 }
 
 static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
@@ -533,7 +695,8 @@ static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
     layer = &grease_pencil.add_layer("GP_Layer");
   }
 
-  op.customdata = MEM_new<GreasePencilFillOpData>(__func__, C, *layer);
+  op.customdata = MEM_new<GreasePencilFillOpData>(__func__,
+                                                  GreasePencilFillOpData::from_context(C, *layer));
   return true;
 }
 
@@ -548,6 +711,9 @@ static void grease_pencil_fill_exit(bContext &C, wmOperator &op)
     MEM_delete(static_cast<GreasePencilFillOpData *>(op.customdata));
     op.customdata = nullptr;
   }
+
+  /* clear status message area */
+  ED_workspace_status_text(&C, nullptr);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
@@ -580,10 +746,10 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
     grease_pencil_fill_exit(*C, *op);
     return OPERATOR_CANCELLED;
   }
+  const auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
-
-  grease_pencil_fill_status_indicators(*C);
+  grease_pencil_fill_status_indicators(*C, op_data);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
@@ -596,236 +762,138 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
 
 static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  int estate = OPERATOR_RUNNING_MODAL;
+  const bool is_ctrl_pressed = (event->modifier & KM_CTRL);
+  const bool is_shift_pressed = (event->modifier & KM_SHIFT);
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(C);
+  const ToolSettings &ts = *CTX_data_tool_settings(C);
+  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+  const Scene &scene = *CTX_data_scene(C);
+  Object &ob = *CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+  const bool is_brush_inv = brush.gpencil_settings->fill_direction == BRUSH_DIR_IN;
 
+  auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
+  const bool is_inverted = (is_brush_inv != is_ctrl_pressed);
+  const bool show_extend = ((op_data.flag & GP_BRUSH_FILL_SHOW_EXTENDLINES) && !is_inverted);
+  const bool help_lines = (((op_data.flag & GP_BRUSH_FILL_SHOW_HELPLINES) || show_extend) &&
+                           !is_inverted);
+  const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+
+  int estate = OPERATOR_RUNNING_MODAL;
   switch (event->type) {
     case EVT_ESCKEY:
     case RIGHTMOUSE:
       estate = OPERATOR_CANCELLED;
       break;
     case LEFTMOUSE:
-      /* TODO apply the operator. */
-      // if (!blender::animrig::is_autokey_on(tgpf->scene) && (!is_multiedit) &&
-      //     (tgpf->gpl->actframe == nullptr))
-      // {
-      //   BKE_report(op->reports, RPT_INFO, "No available frame for creating stroke");
-      //   estate = OPERATOR_CANCELLED;
-      //   break;
-      // }
-      // /* if doing a extend transform with the pen, avoid false contacts of
-      //  * the pen with the tablet. */
-      // if (tgpf->mouse_init[0] != -1.0f) {
-      //   break;
-      // }
-      // copy_v2fl_v2i(tgpf->mouse_center, event->mval);
+      /* Ensure a drawing at the current keyframe. */
+      if (!ed::greasepencil::ensure_active_keyframe(scene, grease_pencil)) {
+        BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+        return OPERATOR_CANCELLED;
+      }
 
-      // /* first time the event is not enabled to show help lines. */
-      // if ((tgpf->oldkey != -1) || (!help_lines)) {
-      //   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(C), RGN_TYPE_ANY, event->xy);
-      //   if (region) {
-      //     bool in_bounds = false;
-      //     /* Perform bounds check */
-      //     in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event->xy);
+      /* If doing a extend transform with the pen, avoid false contacts of
+       * the pen with the tablet. */
+      if (op_data.is_extension_mode) {
+        break;
+      }
 
-      //     if ((in_bounds) && (region->regiontype == RGN_TYPE_WINDOW)) {
-      //       tgpf->mouse[0] = event->mval[0];
-      //       tgpf->mouse[1] = event->mval[1];
-      //       tgpf->is_render = true;
-      //       /* Define Zoom level. */
-      //       gpencil_zoom_level_set(tgpf);
+      op_data.fill_mouse_pos = float2(event->mval);
 
-      //       /* Create Temp stroke. */
-      //       tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
-      //       tGPspoint point2D;
-      //       bGPDspoint *pt = &tgpf->gps_mouse->points[0];
-      //       copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
-      //       gpencil_stroke_convertcoords_tpoint(
-      //           tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
-
-      //       /* Hash of selected frames. */
-      //       GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
-
-      //       /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
-      //        * create a new frame. */
-      //       if (!is_multiedit) {
-      //         tgpf->gpf = BKE_gpencil_layer_frame_get(
-      //             tgpf->gpl,
-      //             tgpf->active_cfra,
-      //             blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
-      //                                                            GP_GETFRAME_USE_PREV);
-      //         tgpf->gpf->flag |= GP_FRAME_SELECT;
-
-      //         BLI_ghash_insert(
-      //             frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
-      //       }
-      //       else {
-      //         BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
-      //       }
-
-      //       /* Loop all frames. */
-      //       wmWindow *win = CTX_wm_window(C);
-
-      //       GHashIterator gh_iter;
-      //       int total = BLI_ghash_len(frame_list);
-      //       int i = 1;
-      //       GHASH_ITER (gh_iter, frame_list) {
-      //         /* Set active frame as current for filling. */
-      //         tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
-      //         int step = (float(i) / float(total)) * 100.0f;
-      //         WM_cursor_time(win, step);
-
-      //         if (extend_lines) {
-      //           gpencil_update_extend(tgpf);
-      //         }
-
-      //         /* Repeat loop until get something. */
-      //         tgpf->done = false;
-      //         int loop_limit = 0;
-      //         while ((!tgpf->done) && (loop_limit < 2)) {
-      //           WM_cursor_time(win, loop_limit + 1);
-      //           /* Render screen to temp image and do fill. */
-      //           gpencil_do_frame_fill(tgpf, is_inverted);
-
-      //           /* restore size */
-      //           tgpf->region->winx = short(tgpf->bwinx);
-      //           tgpf->region->winy = short(tgpf->bwiny);
-      //           tgpf->region->winrct = tgpf->brect;
-      //           if (!tgpf->done) {
-      //             /* If the zoom was not set before, avoid a loop. */
-      //             if (tgpf->zoom == 1.0f) {
-      //               loop_limit++;
-      //             }
-      //             else {
-      //               tgpf->zoom = 1.0f;
-      //               tgpf->fill_factor = max_ff(
-      //                   GPENCIL_MIN_FILL_FAC,
-      //                   min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
-      //             }
-      //           }
-      //           loop_limit++;
-      //         }
-
-      //         if (extend_lines) {
-      //           stroke_array_free(tgpf);
-      //           gpencil_delete_temp_stroke_extension(tgpf, true);
-      //         }
-
-      //         i++;
-      //       }
-      //       WM_cursor_modal_restore(win);
-      //       /* Free hash table. */
-      //       BLI_ghash_free(frame_list, nullptr, nullptr);
-
-      //       /* Free temp stroke. */
-      //       BKE_gpencil_free_stroke(tgpf->gps_mouse);
-
-      //       /* push undo data */
-      //       gpencil_undo_push(tgpf->gpd);
-
-      //       /* Save extend value for next operation. */
-      //       brush_settings->fill_extend_fac = tgpf->fill_extend_fac;
-
-      //       estate = OPERATOR_FINISHED;
-      //     }
-      //     else {
-      //       estate = OPERATOR_CANCELLED;
-      //     }
-      //   }
-      //   else {
-      //     estate = OPERATOR_CANCELLED;
-      //   }
-      // }
-      // else if (extend_lines) {
-      //   gpencil_update_extend(tgpf);
-      // }
-      // tgpf->oldkey = event->type;
+      /* First time the event is not enabled to show help lines. */
+      if (op_data.is_fill_initialized || !help_lines) {
+        estate = (grease_pencil_enable_help_lines(*C, *op, *event) ? OPERATOR_FINISHED :
+                                                                     OPERATOR_CANCELLED);
+      }
+      else if (extend_lines) {
+        grease_pencil_update_extend(*C, op_data);
+      }
+      /* Enable fill on the next confirm event. */
+      op_data.is_fill_initialized = true;
       break;
     case EVT_SKEY:
-      // if ((show_extend) && (event->val == KM_PRESS)) {
-      //   /* Clean temp strokes. */
-      //   stroke_array_free(tgpf);
+      if (show_extend && event->val == KM_PRESS) {
+        /* Clean temp strokes. */
+        // stroke_array_free(tgpf);
 
-      //   /* Toggle mode. */
-      //   if (tgpf->fill_extend_mode == GP_FILL_EMODE_EXTEND) {
-      //     tgpf->fill_extend_mode = GP_FILL_EMODE_RADIUS;
-      //   }
-      //   else {
-      //     tgpf->fill_extend_mode = GP_FILL_EMODE_EXTEND;
-      //   }
-      //   gpencil_delete_temp_stroke_extension(tgpf, true);
-      //   gpencil_update_extend(tgpf);
-      // }
+        /* Toggle mode. */
+        if (op_data.fill_extend_mode == GP_FILL_EMODE_EXTEND) {
+          op_data.fill_extend_mode = GP_FILL_EMODE_RADIUS;
+        }
+        else {
+          op_data.fill_extend_mode = GP_FILL_EMODE_EXTEND;
+        }
+        // gpencil_delete_temp_stroke_extension(tgpf, true);
+        grease_pencil_update_extend(*C, op_data);
+      }
       break;
     case EVT_DKEY:
-      // if ((show_extend) && (event->val == KM_PRESS)) {
-      //   tgpf->flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
-      //   /* Clean temp strokes. */
-      //   stroke_array_free(tgpf);
-      //   gpencil_delete_temp_stroke_extension(tgpf, true);
-      //   gpencil_update_extend(tgpf);
-      // }
+      if (show_extend && event->val == KM_PRESS) {
+        op_data.flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
+        /* Clean temp strokes. */
+        // stroke_array_free(tgpf);
+        // gpencil_delete_temp_stroke_extension(tgpf, true);
+        grease_pencil_update_extend(*C, op_data);
+      }
       break;
     case EVT_PAGEUPKEY:
     case WHEELUPMOUSE:
-      // if (tgpf->oldkey == 1) {
-      //   tgpf->fill_extend_fac -= (event->modifier & KM_SHIFT) ? 0.01f : 0.1f;
-      //   CLAMP_MIN(tgpf->fill_extend_fac, 0.0f);
-      //   gpencil_update_extend(tgpf);
-      // }
+      if (op_data.is_fill_initialized) {
+        op_data.fill_extend_fac = std::max(
+            op_data.fill_extend_fac - (is_shift_pressed ? 0.01f : 0.1f), 0.0f);
+        grease_pencil_update_extend(*C, op_data);
+      }
       break;
     case EVT_PAGEDOWNKEY:
     case WHEELDOWNMOUSE:
-      // if (tgpf->oldkey == 1) {
-      //   tgpf->fill_extend_fac += (event->modifier & KM_SHIFT) ? 0.01f : 0.1f;
-      //   CLAMP_MAX(tgpf->fill_extend_fac, 10.0f);
-      //   gpencil_update_extend(tgpf);
-      // }
+      if (op_data.is_fill_initialized) {
+        op_data.fill_extend_fac = std::min(
+            op_data.fill_extend_fac + (is_shift_pressed ? 0.01f : 0.1f), 10.0f);
+        grease_pencil_update_extend(*C, op_data);
+      }
       break;
     case MIDDLEMOUSE: {
-      // if (event->val == KM_PRESS) {
-      //   /* Consider initial offset as zero position. */
-      //   copy_v2fl_v2i(tgpf->mouse_init, event->mval);
-      //   float mlen[2];
-      //   sub_v2_v2v2(mlen, tgpf->mouse_init, tgpf->mouse_center);
-
-      //   /* Offset the center a little to get enough space to reduce the extend moving the pen.
-      //   */ const float gap = 300.0f; if (len_v2(mlen) < gap) {
-      //     tgpf->mouse_center[0] -= gap;
-      //     sub_v2_v2v2(mlen, tgpf->mouse_init, tgpf->mouse_center);
-      //   }
-
-      //   WM_cursor_set(CTX_wm_window(C), WM_CURSOR_EW_ARROW);
-
-      //   tgpf->initial_length = len_v2(mlen);
-      // }
-      // if (event->val == KM_RELEASE) {
-      //   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
-
-      //   tgpf->mouse_init[0] = -1.0f;
-      //   tgpf->mouse_init[1] = -1.0f;
-      // }
-      // /* Update cursor line. */
-      // WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
-      // WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+      if (event->val == KM_PRESS) {
+        /* Consider initial offset as zero position. */
+        op_data.is_extension_mode = true;
+        /* TODO This is the GPv2 logic and it's weird. Should be reconsidered, for now use the same
+         * method. */
+        const float2 base_pos = float2(event->mval);
+        constexpr const float gap = 300.0f;
+        op_data.extension_mouse_pos = (math::distance(base_pos, op_data.fill_mouse_pos) >= gap ?
+                                           base_pos :
+                                           base_pos - float2(gap, 0));
+        WM_cursor_set(CTX_wm_window(C), WM_CURSOR_EW_ARROW);
+      }
+      if (event->val == KM_RELEASE) {
+        WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_PAINT_BRUSH);
+        op_data.is_extension_mode = false;
+      }
+      /* Update cursor line. */
+      WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+      WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
       break;
     }
     case MOUSEMOVE: {
-      // if (tgpf->mouse_init[0] == -1.0f) {
-      //   break;
-      // }
-      // copy_v2fl_v2i(tgpf->mouse_pos, event->mval);
+      if (!op_data.is_extension_mode) {
+        break;
+      }
 
-      // float mlen[2];
-      // sub_v2_v2v2(mlen, tgpf->mouse_pos, tgpf->mouse_center);
-      // float delta = (len_v2(mlen) - tgpf->initial_length) * tgpf->pixel_size * 0.5f;
-      // tgpf->fill_extend_fac += delta;
-      // CLAMP(tgpf->fill_extend_fac, 0.0f, 10.0f);
+      const Object &ob = *CTX_data_active_object(C);
+      const float pixel_size = ED_view3d_pixel_size(&rv3d, ob.loc);
+      const float2 mouse_pos = float2(event->mval);
+      const float initial_dist = math::distance(op_data.extension_mouse_pos,
+                                                op_data.fill_mouse_pos);
+      const float current_dist = math::distance(mouse_pos, op_data.fill_mouse_pos);
 
-      // /* Update cursor line and extend lines. */
-      // WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
-      // WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+      float delta = (current_dist - initial_dist) * pixel_size * 0.5f;
+      op_data.fill_extend_fac = std::clamp(op_data.fill_extend_fac + delta, 0.0f, 10.0f);
 
-      // gpencil_update_extend(tgpf);
+      /* Update cursor line and extend lines. */
+      WM_main_add_notifier(NC_GEOM | ND_DATA, nullptr);
+      WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+
+      grease_pencil_update_extend(*C, op_data);
       break;
     }
     default:
