@@ -89,11 +89,11 @@ static void add_face_edges_to_hash_maps(const Mesh &mesh,
   });
 }
 
-static void serialize_and_initialize_deduplicated_edges(const OffsetIndices<int> edge_offsets,
-                                                        MutableSpan<EdgeMap> edge_maps,
+static void serialize_and_initialize_deduplicated_edges(MutableSpan<EdgeMap> edge_maps,
+                                                        const OffsetIndices<int> edge_offsets,
                                                         MutableSpan<int2> new_edges)
 {
-  threading::parallel_for_each(edge_maps, [&](const EdgeMap &edge_map) {
+  threading::parallel_for_each(edge_maps, [&](EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
     if (edge_offsets[task_index].is_empty()) {
       return;
@@ -200,7 +200,7 @@ void mesh_calc_edges(Mesh &mesh, bool keep_existing_edges, const bool select_new
   attributes.add<int>(".corner_edge", AttrDomain::Corner, AttributeInitConstruct());
   MutableSpan<int2> new_edges(MEM_cnew_array<int2>(edge_offsets.total_size(), __func__),
                               edge_offsets.total_size());
-  calc_edges::serialize_and_initialize_deduplicated_edges(edge_offsets, edge_maps, new_edges);
+  calc_edges::serialize_and_initialize_deduplicated_edges(edge_maps, edge_offsets, new_edges);
   calc_edges::update_edge_indices_in_face_loops(mesh.faces(),
                                                 mesh.corner_verts(),
                                                 edge_maps,
