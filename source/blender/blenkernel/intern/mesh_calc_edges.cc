@@ -95,6 +95,9 @@ static void serialize_and_initialize_deduplicated_edges(const OffsetIndices<int>
 {
   threading::parallel_for_each(edge_maps, [&](const EdgeMap &edge_map) {
     const int task_index = &edge_map - edge_maps.data();
+    if (edge_offsets[task_index].is_empty()) {
+      return;
+    }
 
     MutableSpan<int2> result_edges = new_edges.slice(edge_offsets[task_index]);
     result_edges.copy_from(edge_map.as_span().cast<int2>());
