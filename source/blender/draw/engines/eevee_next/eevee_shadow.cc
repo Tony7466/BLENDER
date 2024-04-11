@@ -389,15 +389,10 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
   obmat_tmp[3][3] = 1.0f;
   obmat_tmp = obmat_tmp * math::from_location<float4x4>(origin_shift);
 
-  tilemaps_[Z_NEG]->sync_cubeface(obmat_tmp, near, far, side, Z_NEG, light.lod_bias);
-  if (tilemaps_needed_ >= 5) {
-    tilemaps_[X_POS]->sync_cubeface(obmat_tmp, near, far, side, X_POS, light.lod_bias);
-    tilemaps_[X_NEG]->sync_cubeface(obmat_tmp, near, far, side, X_NEG, light.lod_bias);
-    tilemaps_[Y_POS]->sync_cubeface(obmat_tmp, near, far, side, Y_POS, light.lod_bias);
-    tilemaps_[Y_NEG]->sync_cubeface(obmat_tmp, near, far, side, Y_NEG, light.lod_bias);
-  }
-  if (tilemaps_needed_ == 6) {
-    tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near, far, side, Z_POS, light.lod_bias);
+  for (int i : IndexRange(tilemaps_needed_)) {
+    tilemaps_[i]->sync_cubeface(obmat_tmp, near, far, side, eCubeFace(i), light.lod_bias);
+    tilemap_pool.tilemaps_data[light.tilemap_index + i] = *tilemaps_[i];
+    tilemaps_[i]->set_updated();
   }
 
   /* TODO(fclem): `as_uint()`. */
@@ -413,11 +408,6 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
   light.local.shadow_projection_shift = origin_shift;
   light.local.shadow_scale = softness_factor_;
   light.local.tilemaps_count = tilemaps_needed_;
-
-  for (int i : IndexRange(tilemaps_needed_)) {
-    tilemap_pool.tilemaps_data[light.tilemap_index + i] = *tilemaps_[i];
-    tilemaps_[i]->set_updated();
-  }
 }
 
 /** \} */
@@ -684,10 +674,13 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
 {
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
   if (!is_render_sync) {
-    IndexRange levels_new = directional_distribution_type_get(camera) ==
-                                    SHADOW_PROJECTION_CASCADE ?
-                                cascade_level_range(camera, light.lod_bias) :
-                                clipmap_level_range(camera);
+    IndexRange levels_new;
+    if (directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE) {
+      levels_new = cascade_level_range(camera, light.lod_bias);
+    }
+    else {
+      levels_new = clipmap_level_range(camera);
+    }
 
     if (levels_range != levels_new) {
       /* Acquire missing tile-maps. */
