@@ -2313,7 +2313,8 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
        "STORE_ENABLED_CATALOGS_IN_PREFERENCES",
        0,
        "Store Enabled Catalogs in Preferences",
-       ""},
+       "Use the Preferences to store the enabled catalogs of this asset shelf, rather than "
+       "storing them in the local asset shelf settings"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
