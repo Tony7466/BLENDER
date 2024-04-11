@@ -81,7 +81,7 @@ using blender::Span;
 using blender::Vector;
 using blender::bke::AttrDomain;
 
-static void sculpt_attribute_update_refs(Object *ob, PBVHType pbvhtype);
+static void sculpt_attribute_update_refs(Object *ob);
 static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
                                                    AttrDomain domain,
                                                    eCustomDataType proptype,
@@ -1754,7 +1754,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
   BKE_pbvh_subdiv_cgg_set(ss->pbvh, ss->subdiv_ccg);
 
-  sculpt_attribute_update_refs(ob, BKE_pbvh_type(ss->pbvh));
+  sculpt_attribute_update_refs(ob);
   sculpt_update_persistent_base(ob);
 
   if (ob->type == OB_MESH) {
@@ -2211,7 +2211,7 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
   BKE_pbvh_pmap_set(pbvh, ob->sculpt->vert_to_face_map);
   ob->sculpt->pbvh = pbvh;
 
-  sculpt_attribute_update_refs(ob, BKE_pbvh_type(pbvh));
+  sculpt_attribute_update_refs(ob);
   return pbvh;
 }
 
@@ -2463,7 +2463,7 @@ static bool sculpt_attribute_create(SculptSession *ss,
   return true;
 }
 
-static bool sculpt_attr_update(Object *ob, SculptAttribute *attr, PBVHType pbvh_type)
+static bool sculpt_attr_update(Object *ob, SculptAttribute *attr)
 {
   SculptSession *ss = ob->sculpt;
   int elem_num = sculpt_attr_elem_count_get(ob, attr->domain);
@@ -2476,7 +2476,7 @@ static bool sculpt_attr_update(Object *ob, SculptAttribute *attr, PBVHType pbvh_
 
   /* Check if we are a coerced simple array and shouldn't be. */
   bad |= attr->simple_array && !attr->params.simple_array &&
-         !ELEM(pbvh_type, PBVH_GRIDS, PBVH_BMESH);
+         !ELEM(BKE_pbvh_type(ss->pbvh), PBVH_GRIDS, PBVH_BMESH);
 
   CustomData *cdata = sculpt_get_cdata(ob, attr->domain);
   if (cdata && !attr->simple_array) {
@@ -2507,7 +2507,7 @@ static bool sculpt_attr_update(Object *ob, SculptAttribute *attr, PBVHType pbvh_
                             attr->name,
                             attr,
                             &attr->params,
-                            pbvh_type,
+                            BKE_pbvh_type(ss->pbvh),
                             attr->data_for_bmesh);
   }
 
@@ -2548,17 +2548,19 @@ static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)
   return nullptr;
 }
 
-/* The PBVH is NOT guaranteed to exist at the point of this method being called. */
-static SculptAttribute *sculpt_attribute_get_ex(
-    Object *ob, PBVHType pbvhtype, AttrDomain domain, eCustomDataType proptype, const char *name)
+SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
+                                          AttrDomain domain,
+                                          eCustomDataType proptype,
+                                          const char *name)
 {
   SculptSession *ss = ob->sculpt;
+
   /* See if attribute is cached in ss->temp_attributes. */
   SculptAttribute *attr = sculpt_get_cached_layer(ss, domain, proptype, name);
 
   if (attr) {
-    if (sculpt_attr_update(ob, attr, pbvhtype)) {
-      sculpt_attribute_update_refs(ob, pbvhtype);
+    if (sculpt_attr_update(ob, attr)) {
+      sculpt_attribute_update_refs(ob);
     }
 
     return attr;
@@ -2603,17 +2605,6 @@ static SculptAttribute *sculpt_attribute_get_ex(
   return nullptr;
 }
 
-SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
-                                          AttrDomain domain,
-                                          eCustomDataType proptype,
-                                          const char *name)
-{
-  SculptSession *ss = ob->sculpt;
-  BLI_assert(ss->pbvh != nullptr);
-
-  return sculpt_attribute_get_ex(ob, BKE_pbvh_type(ss->pbvh), domain, proptype, name);
-}
-
 static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
                                                    AttrDomain domain,
                                                    eCustomDataType proptype,
@@ -2623,10 +2614,10 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
                                                    bool flat_array_for_bmesh)
 {
   SculptSession *ss = ob->sculpt;
-  SculptAttribute *attr = sculpt_attribute_get_ex(ob, pbvhtype, domain, proptype, name);
+  SculptAttribute *attr = BKE_sculpt_attribute_get(ob, domain, proptype, name);
 
   if (attr) {
-    sculpt_attr_update(ob, attr, pbvhtype);
+    sculpt_attr_update(ob, attr);
 
     /* Since "stroke_only" is not a CustomData flag we have
      * to sync its parameter setting manually. Fixes #104618.
@@ -2641,7 +2632,7 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
   /* Create attribute. */
   sculpt_attribute_create(
       ss, ob, domain, proptype, name, attr, params, pbvhtype, flat_array_for_bmesh);
-  sculpt_attribute_update_refs(ob, pbvhtype);
+  sculpt_attribute_update_refs(ob);
 
   return attr;
 }
@@ -2709,7 +2700,7 @@ void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob)
   }
 }
 
-static void sculpt_attribute_update_refs(Object *ob, PBVHType pbvhtype)
+static void sculpt_attribute_update_refs(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
@@ -2719,7 +2710,7 @@ static void sculpt_attribute_update_refs(Object *ob, PBVHType pbvhtype)
       SculptAttribute *attr = ss->temp_attributes + j;
 
       if (attr->used) {
-        sculpt_attr_update(ob, attr, pbvhtype);
+        sculpt_attr_update(ob, attr);
       }
     }
 
@@ -2813,7 +2804,7 @@ bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr)
       CustomData_free_layer(cdata, attr->proptype, totelem, layer_i);
     }
 
-    sculpt_attribute_update_refs(ob, BKE_pbvh_type(ss->pbvh));
+    sculpt_attribute_update_refs(ob);
   }
 
   attr->data = nullptr;
