@@ -83,6 +83,14 @@ void main()
 
   vec3 light_scattering = spherical_harmonics_dot(volume_radiance_sh, phase_sh).xyz;
 
+  /* Environment volume shadow. */
+  vec2 rand_2d = pcg4d(vec4(P, sampling_rng_1D_get(SAMPLING_SHADOW_U))).xy;
+  LightVector lv;
+  lv.L = normalize(sample_sphere(rand_2d) + V * s_anisotropy);
+  lv.dist = 1.0;
+  light_scattering = spherical_harmonics_evaluate(lv.L, volume_radiance_sh);
+  light_scattering *= volume_shadow(true, P, lv, extinction_tx);
+
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
     light_scattering += volume_scatter_light_eval(true, P, V, l_idx, s_anisotropy);
   }
