@@ -19,6 +19,7 @@
 #include "eevee_pipeline.hh"
 
 #include "eevee_volume.hh"
+#include <iostream>
 
 namespace blender::eevee {
 
@@ -332,7 +333,7 @@ void VolumeModule::draw_prepass(View &main_view)
    * way, surfaces that are further away than the far clip plane will still be voxelized.*/
   winmat_infinite = main_view.is_persp() ?
                         math::projection::perspective_infinite(left, right, bottom, top, near) :
-                        math::projection::orthographic_infinite(left, right, bottom, top, near);
+                        math::projection::orthographic_infinite(left, right, bottom, top);
   /* We still need a bounded projection matrix to get correct froxel location. */
   winmat_finite = main_view.is_persp() ?
                       math::projection::perspective(left, right, bottom, top, near, far) :
