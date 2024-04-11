@@ -3,3 +3,4 @@ Referenced by pull request #119625, Fix #119623: Anim: unintended API change in 
 Referenced by commit 30711d13981e445f76f7eb6ac1d3b41c0838b497, Fix #119623: Anim: unintended API change in keyframe_insert() function
 Referenced by issue #120470, Keying Sets Export to File gets error
 Referenced by pull request #120509, Fix #120470: Keying Set export fails in python
+Referenced by commit 8ea7d44e62d004978f7c592da700f11afd01cfef, Fix #120470: Keying Set export fails in python
