@@ -21,6 +21,11 @@ void main()
 
   Surfel surfel = surfel_buf[index];
 
+  /* There is no view dependent effect as we evaluate everything using diffuse. */
+  vec3 V = surfel.normal;
+  vec3 Ng = surfel.normal;
+  vec3 P = surfel.position;
+
   ClosureUndetermined cl;
   cl.N = surfel.normal;
   cl.type = CLOSURE_BSDF_DIFFUSE_ID;
@@ -28,10 +33,6 @@ void main()
   ClosureLightStack stack;
   stack.cl[0] = closure_light_new(cl, V);
 
-  /* There is no view dependent effect as we evaluate everything using diffuse. */
-  vec3 V = surfel.normal;
-  vec3 Ng = surfel.normal;
-  vec3 P = surfel.position;
   light_eval_reflection(stack, P, Ng, V, 0.0);
 
   if (capture_info_buf.capture_indirect) {
