@@ -707,7 +707,6 @@ static void initialize_cursor_info(bContext &C,
   const float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
   TrimOperation *trim_operation = (TrimOperation *)gesture_data.operation;
-  /* TODO: Remove gesture_* properties from SculptSession */
   trim_operation->initial_hit = SCULPT_cursor_geometry_info_update(&C, &sgi, mval_fl, false);
   if (trim_operation->initial_hit) {
     copy_v3_v3(trim_operation->initial_location, sgi.location);
