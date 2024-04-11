@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "BLI_assert.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -51,34 +52,6 @@ static float *initialize_buffer(uint width, uint height, DataType datatype)
       MEM_malloc_arrayN(size_t(width) * height, sizeof(float) * size, "File Output Buffer."));
 }
 
-static void write_buffer_rect(
-    rcti *rect, SocketReader *reader, float *buffer, uint width, DataType datatype)
-{
-
-  if (!buffer) {
-    return;
-  }
-  int x1 = rect->xmin;
-  int y1 = rect->ymin;
-  int x2 = rect->xmax;
-  int y2 = rect->ymax;
-
-  int size = get_channels_count(datatype);
-  int offset = (y1 * width + x1) * size;
-  for (int y = y1; y < y2; y++) {
-    for (int x = x1; x < x2; x++) {
-      float color[4];
-      reader->read_sampled(color, x, y, PixelSampler::Nearest);
-
-      for (int i = 0; i < size; i++) {
-        buffer[offset + i] = color[i];
-      }
-      offset += size;
-    }
-    offset += (width - (x2 - x1)) * size;
-  }
-}
-
 FileOutputOperation::FileOutputOperation(const CompositorContext *context,
                                          const NodeImageMultiFile *node_data,
                                          Vector<FileOutputInput> inputs)
@@ -99,17 +72,6 @@ void FileOutputOperation::init_execution()
       continue;
     }
     input.output_buffer = initialize_buffer(get_width(), get_height(), input.data_type);
-  }
-}
-
-void FileOutputOperation::execute_region(rcti *rect, uint /*tile_number*/)
-{
-  for (int i = 0; i < file_output_inputs_.size(); i++) {
-    const FileOutputInput &input = file_output_inputs_[i];
-    if (!input.image_input || !input.output_buffer) {
-      continue;
-    }
-    write_buffer_rect(rect, input.image_input, input.output_buffer, get_width(), input.data_type);
   }
 }
 
@@ -293,6 +255,10 @@ void FileOutputOperation::add_pass_for_input(realtime_compositor::FileOutput &fi
     case DataType::Value:
       file_output.add_pass(pass_name, view_name, "V", input.output_buffer);
       break;
+    case DataType::Float2:
+      /* An internal type that needn't be handled. */
+      BLI_assert_unreachable();
+      break;
   }
 }
 
@@ -310,6 +276,10 @@ void FileOutputOperation::add_view_for_input(realtime_compositor::FileOutput &fi
       break;
     case DataType::Value:
       file_output.add_view(view_name, 1, input.output_buffer);
+      break;
+    case DataType::Float2:
+      /* An internal type that needn't be handled. */
+      BLI_assert_unreachable();
       break;
   }
 }

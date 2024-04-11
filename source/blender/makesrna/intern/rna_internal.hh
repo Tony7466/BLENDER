@@ -139,6 +139,9 @@ extern BlenderRNA BLENDER_RNA;
 void RNA_def_ID(BlenderRNA *brna);
 void RNA_def_action(BlenderRNA *brna);
 void RNA_def_animation(BlenderRNA *brna);
+#ifdef WITH_ANIM_BAKLAVA
+void RNA_def_animation_id(BlenderRNA *brna);
+#endif
 void RNA_def_animviz(BlenderRNA *brna);
 void RNA_def_armature(BlenderRNA *brna);
 void RNA_def_attribute(BlenderRNA *brna);
@@ -259,7 +262,7 @@ void rna_def_mtex_common(BlenderRNA *brna,
 void rna_def_texpaint_slots(BlenderRNA *brna, StructRNA *srna);
 void rna_def_view_layer_common(BlenderRNA *brna, StructRNA *srna, bool scene);
 
-int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info);
+int rna_AssetMetaData_editable(const PointerRNA *ptr, const char **r_info);
 /**
  * \note the UI text and updating has to be set by the caller.
  */
@@ -486,6 +489,9 @@ void RNA_def_main_speakers(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_sounds(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_armatures(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop);
+#ifdef WITH_ANIM_BAKLAVA
+void RNA_def_main_animations(BlenderRNA *brna, PropertyRNA *cprop);
+#endif
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_palettes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop);
@@ -596,7 +602,7 @@ PropertyDefRNA *rna_find_struct_property_def(StructRNA *srna, PropertyRNA *prop)
 
 /* Pointer Handling */
 
-PointerRNA rna_pointer_inherit_refine(PointerRNA *ptr, StructRNA *type, void *data);
+PointerRNA rna_pointer_inherit_refine(const PointerRNA *ptr, StructRNA *type, void *data);
 
 /* Functions */
 

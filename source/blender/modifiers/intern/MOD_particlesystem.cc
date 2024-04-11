@@ -57,7 +57,7 @@ static void free_data(ModifierData *md)
   }
   psmd->totdmvert = psmd->totdmedge = psmd->totdmface = 0;
 
-  /* ED_object_modifier_remove may have freed this first before calling
+  /* blender::ed::object::modifier_remove may have freed this first before calling
    * BKE_modifier_free (which calls this function) */
   if (psmd->psys) {
     psmd->psys->flag |= PSYS_DELETE;
@@ -221,7 +221,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   ModifierData *md = (ModifierData *)ptr->data;
   ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
 
-  uiItemL(layout, RPT_("Settings are in the particle tab"), ICON_NONE);
+  uiItemL(layout, RPT_("Settings are inside the Particles tab"), ICON_NONE);
 
   if (!(ob->mode & OB_MODE_PARTICLE_EDIT)) {
     if (ELEM(psys->part->ren_as, PART_DRAW_GR, PART_DRAW_OB)) {
