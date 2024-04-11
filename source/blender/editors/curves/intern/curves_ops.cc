@@ -1628,6 +1628,67 @@ static void CURVES_OT_add_circle(wmOperatorType *ot)
   blender::ed::object::add_generic_props(ot, true);
 }
 
+namespace add_bezier {
+
+static CurvesGeometry generate_bezier_primitive(const float radius)
+{
+  CurvesGeometry curves{2, 1};
+
+  MutableSpan<int> offsets = curves.offsets_for_write();
+  offsets[0] = 0;
+  offsets[1] = 2;
+
+  curves.fill_curve_types(CURVE_TYPE_BEZIER);
+  curves.handle_types_left_for_write().fill(BEZIER_HANDLE_ALIGN);
+  curves.handle_types_right_for_write().fill(BEZIER_HANDLE_ALIGN);
+  curves.resolution_for_write().fill(12);
+
+  MutableSpan<float3> positions = curves.positions_for_write();
+  MutableSpan<float3> left_handles = curves.handle_positions_left_for_write();
+  MutableSpan<float3> right_handles = curves.handle_positions_right_for_write();
+
+  left_handles[0] = float3(-1.5f, -0.5, 0) * radius;
+  positions[0] = float3(-1.0f, 0, 0) * radius;
+  right_handles[0] = float3(-0.5f, 0.5f, 0) * radius;
+
+  left_handles[1] = float3(0, 0, 0) * radius;
+  positions[1] = float3(1.0f, 0, 0) * radius;
+  right_handles[1] = float3(2.0f, 0, 0) * radius;
+
+  return curves;
+}
+
+static int exec(bContext *C, wmOperator *op)
+{
+  const float radius = RNA_float_get(op->ptr, "radius");
+
+  for (Curves *curves_id : get_unique_editable_curves(*C)) {
+    add_new_curve(C, *curves_id, generate_bezier_primitive(radius), *op);
+
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
+  }
+  return OPERATOR_FINISHED;
+}
+
+}  // namespace add_bezier
+
+static void CURVES_OT_add_bezier(wmOperatorType *ot)
+{
+  ot->name = "Add Bezier";
+  ot->idname = __func__;
+  ot->description = "Add new bezier curve";
+
+  ot->exec = add_bezier::exec;
+
+  ot->poll = editable_curves_in_edit_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  blender::ed::object::add_unit_props_radius(ot);
+  blender::ed::object::add_generic_props(ot, true);
+}
+
 namespace set_handle_type {
 
 static int exec(bContext *C, wmOperator *op)
@@ -1710,6 +1771,7 @@ void operatortypes_curves()
   WM_operatortype_append(CURVES_OT_switch_direction);
   WM_operatortype_append(CURVES_OT_subdivide);
   WM_operatortype_append(CURVES_OT_add_circle);
+  WM_operatortype_append(CURVES_OT_add_bezier);
   WM_operatortype_append(CURVES_OT_handle_type_set);
 }
 
