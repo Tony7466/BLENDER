@@ -405,7 +405,6 @@ dict_custom = {
     "unapplied",
     "unapply",
     "unassign",
-    "unassigning",
     "unassociated",
     "unbake",
     "unbuffered",
