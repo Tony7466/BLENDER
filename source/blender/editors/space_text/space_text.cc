@@ -439,10 +439,10 @@ static void text_activate(bContext *C, struct ScrArea *area)
       wm->cursor_blink_timer = WM_event_timer_add_notifier(
           wm, win, NC_TEXT | NA_CURSOR_BLINK, TEXT_CURSOR_BLINK_RATE);
     }
-  }
 
-  /* Redraw to show active text caret. */
-  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+    /* Redraw to show active text caret. */
+    ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+  }
 }
 
 static void text_deactivate(bContext *C, struct ScrArea *area)
@@ -451,7 +451,7 @@ static void text_deactivate(bContext *C, struct ScrArea *area)
   st->runtime->is_area_active = false;
   st->runtime->is_cursor_bright = false;
 
-  if (C && area == CTX_wm_area(C)) {
+  if (C) {
     wmWindowManager *wm = CTX_wm_manager(C);
     if (wm->cursor_blink_timer) {
       WM_event_timer_remove_notifier(wm, CTX_wm_window(C), wm->cursor_blink_timer);
