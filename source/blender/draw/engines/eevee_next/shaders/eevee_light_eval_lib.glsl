@@ -95,10 +95,10 @@ void light_shadow_mask(vec3 P, vec3 Ng, float vPz, out uint shadow_bits)
 }
 
 struct ClosureLight {
-  /* Shading normal. */
-  vec3 N;
   /* LTC matrix. */
   vec4 ltc_mat;
+  /* Shading normal. */
+  vec3 N;
   /* Enum used as index to fetch which light intensity to use [0..3]. */
   LightingType type;
   /* Is a translucent BSDF with thickness greater than 0. */
