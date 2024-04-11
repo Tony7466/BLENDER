@@ -225,9 +225,7 @@ static const char *node_socket_get_translation_context(const bNodeSocket &socket
   return translation_context.data();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout);
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout);
 
 /** Return true when \a a should be behind \a b and false otherwise. */
 static bool compare_node_depth(const bNode *a, const bNode *b)
@@ -520,12 +518,12 @@ static bool node_update_basis_socket(const bContext &C,
   }
 
   if (input_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *input_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*input_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     input_socket->runtime->location = float2(round(locx), round(locy - NODE_DYS));
   }
   if (output_socket) {
-    node_socket_add_tooltip_in_node_editor(ntree, *output_socket, *row);
+    node_socket_add_tooltip_in_node_editor(*output_socket, *row);
     /* Round the socket location to stop it from jiggling. */
     output_socket->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                               round(locy - NODE_DYS));
@@ -1380,8 +1378,8 @@ static void create_inspection_string_for_field_info(const bNodeSocket &socket,
     ss << "\n";
 
     for (const int i : input_tooltips.index_range()) {
-      const blender::StringRef tooltip = input_tooltips[i];
-      ss << fmt::format(TIP_("\u2022 {}"), TIP_(tooltip.data()));
+      const blender::StringRefNull tooltip = input_tooltips[i];
+      ss << fmt::format(TIP_("\u2022 {}"), TIP_(tooltip.c_str()));
       if (i < input_tooltips.size() - 1) {
         ss << ".\n";
       }
@@ -1463,15 +1461,16 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
-            *value_log.grease_pencil_info;
-        char line[256];
-        SNPRINTF(line,
-                 TIP_("\u2022 Grease Pencil: %s layers"),
-                 to_string(grease_pencil_info.layers_num).c_str());
-        ss << line;
-        break;
-        break;
+        if (U.experimental.use_grease_pencil_version3) {
+          const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
+              *value_log.grease_pencil_info;
+          char line[256];
+          SNPRINTF(line,
+                   TIP_("\u2022 Grease Pencil: %s layers"),
+                   to_string(grease_pencil_info.layers_num).c_str());
+          ss << line;
+          break;
+        }
       }
     }
     if (type != component_types.last()) {
@@ -1579,20 +1578,6 @@ static std::optional<std::string> create_socket_inspection_string(
   return str;
 }
 
-static bool node_socket_has_tooltip(const bNodeTree &ntree, const bNodeSocket &socket)
-{
-  if (ntree.type == NTREE_GEOMETRY) {
-    return true;
-  }
-
-  if (socket.runtime->declaration != nullptr) {
-    const nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    return !socket_decl.description.empty();
-  }
-
-  return false;
-}
-
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
@@ -1608,9 +1593,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   std::stringstream output;
   if (socket.runtime->declaration != nullptr) {
     const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
-    blender::StringRef description = socket_decl.description;
+    blender::StringRefNull description = socket_decl.description;
     if (!description.is_empty()) {
-      output << TIP_(description.data());
+      output << TIP_(description.c_str());
     }
   }
 
@@ -1647,13 +1632,8 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   return output.str();
 }
 
-static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
-                                                   const bNodeSocket &sock,
-                                                   uiLayout &layout)
+static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
   uiLayoutSetTooltipFunc(
       &layout,
       [](bContext *C, void *argN, const char * /*tip*/) {
@@ -1670,10 +1650,6 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeTree &ntree,
 
 void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, uiLayout &layout)
 {
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
-
   struct SocketTooltipData {
     const bNodeTree *ntree;
     const bNodeSocket *socket;
@@ -1726,10 +1702,6 @@ static void node_socket_draw_nested(const bContext &C,
                    shape_id,
                    size_id,
                    outline_col_id);
-
-  if (!node_socket_has_tooltip(ntree, sock)) {
-    return;
-  }
 
   /* Ideally sockets themselves should be buttons, but they aren't currently. So add an invisible
    * button on top of them for the tooltip. */
