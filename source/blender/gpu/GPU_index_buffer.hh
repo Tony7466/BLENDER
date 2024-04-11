@@ -190,6 +190,13 @@ void GPU_indexbuf_build_in_place_ex(GPUIndexBufBuilder *builder,
                                     bool uses_restart_indices,
                                     blender::gpu::IndexBuf *elem);
 
+/**
+ * Fill an IBO by uploading the referenced data directly to the GPU, bypassing the separate storage
+ * in the IBO. This should be used whenever the equivalent indices already exist in a contiguous
+ * array on the CPU.
+ *
+ * \todo The optimization to avoid the local copy currently isn't implemented.
+ */
 void GPU_indexbuf_build_in_place_from_memory(blender::gpu::IndexBuf *ibo,
                                              GPUPrimType prim_type,
                                              const uint32_t *data,
