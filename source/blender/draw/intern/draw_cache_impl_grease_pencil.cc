@@ -229,7 +229,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
 
   /* Get the visible drawings. */
   const Vector<ed::greasepencil::DrawingInfo> drawings =
-      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
   const Span<const Layer *> layers = grease_pencil.layers();
 
@@ -423,7 +423,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
   /* Get the visible drawings. */
   const Vector<ed::greasepencil::DrawingInfo> drawings =
-      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, true);
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
    * offsets into the curves for the vertices and triangles. */
@@ -533,9 +533,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         "hardness", bke::AttrDomain::Curve, 1.0f);
     const VArray<float> stroke_point_aspect_ratios = *attributes.lookup_or_default<float>(
         "aspect_ratio", bke::AttrDomain::Curve, 1.0f);
-    const VArray<ColorGeometry4f> stroke_fill_colors =
-        *attributes.lookup_or_default<ColorGeometry4f>(
-            "fill_color", bke::AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    const VArray<ColorGeometry4f> stroke_fill_colors = info.drawing.fill_colors();
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
     const VArray<float> u_translations = *attributes.lookup_or_default<float>(
