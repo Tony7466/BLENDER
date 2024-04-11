@@ -2168,7 +2168,7 @@ static void rna_def_userdef_theme_spaces_asset_shelf_main(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Asset Shelf", "Settings for asset shelf");
 }
 
-static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna, const bool is_space_graph)
+static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna, const bool has_vertex_active)
 {
   PropertyRNA *prop;
 
@@ -2182,7 +2182,7 @@ static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna, const bool is_s
   RNA_def_property_ui_text(prop, "Vertex Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  if (is_space_graph) {
+  if (has_vertex_active) {
     prop = RNA_def_property(srna, "vertex_active", PROP_FLOAT, PROP_COLOR_GAMMA);
     RNA_def_property_array(prop, 3);
     RNA_def_property_ui_text(prop, "Active Vertex", "");
