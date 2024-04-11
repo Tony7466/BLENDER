@@ -264,4 +264,6 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
+bool fill_strokes(bContext &C, const ARegion &region, const IndexMask &layer_mask);
+
 }  // namespace blender::ed::greasepencil

@@ -70,7 +70,7 @@
 #define MIN_WINDOW_SIZE 128
 
 /* Set to 1 to debug filling internal image. By default, the value must be 0. */
-#define FILL_DEBUG 0
+#define FILL_DEBUG 1
 
 /* Duplicated: etempFlags */
 enum {

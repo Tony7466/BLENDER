@@ -8,6 +8,7 @@
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
+#include "BLI_index_mask.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_string.h"
 #include "DEG_depsgraph_query.hh"
@@ -559,7 +560,40 @@ static void grease_pencil_update_extend(bContext &C, const GreasePencilFillOpDat
   WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
-static bool grease_pencil_enable_help_lines(bContext &C, wmOperator &op, const wmEvent &event)
+/* Helper: Check if must skip the layer */
+static IndexMask get_fill_boundary_layers(const GreasePencil &grease_pencil,
+                                          eGP_FillLayerModes fill_layer_mode,
+                                          IndexMaskMemory &memory)
+{
+  BLI_assert(grease_pencil.has_active_layer());
+  const IndexRange all_layers = grease_pencil.layers().index_range();
+  const int active_layer_index = *grease_pencil.get_layer_index(*grease_pencil.get_active_layer());
+
+  switch (fill_layer_mode) {
+    case GP_FILL_GPLMODE_ACTIVE:
+      return IndexRange::from_single(active_layer_index);
+    case GP_FILL_GPLMODE_ABOVE:
+      return all_layers.contains(active_layer_index + 1) ?
+                 IndexRange::from_single(active_layer_index + 1) :
+                 IndexRange{};
+    case GP_FILL_GPLMODE_BELOW:
+      return all_layers.contains(active_layer_index - 1) ?
+                 IndexRange::from_single(active_layer_index - 1) :
+                 IndexRange{};
+    case GP_FILL_GPLMODE_ALL_ABOVE:
+      return all_layers.drop_front(active_layer_index + 1);
+    case GP_FILL_GPLMODE_ALL_BELOW:
+      return all_layers.take_front(active_layer_index);
+    case GP_FILL_GPLMODE_VISIBLE:
+      return IndexMask::from_predicate(
+          all_layers, GrainSize(512), memory, [&](const int layer_index) {
+            grease_pencil.layers()[layer_index]->is_visible();
+          });
+  }
+  return {};
+}
+
+static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent &event)
 {
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
   if (!region) {
@@ -568,6 +602,8 @@ static bool grease_pencil_enable_help_lines(bContext &C, wmOperator &op, const w
   wmWindow &win = *CTX_wm_window(&C);
   const ToolSettings &ts = *CTX_data_tool_settings(&C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+  Object &ob = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
   const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
 
@@ -579,13 +615,21 @@ static bool grease_pencil_enable_help_lines(bContext &C, wmOperator &op, const w
     return false;
   }
 
+  IndexMaskMemory layer_mask_memory;
+  IndexMask layer_mask = get_fill_boundary_layers(
+      grease_pencil,
+      eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode),
+      layer_mask_memory);
+
+  ed::greasepencil::fill_strokes(C, *region, layer_mask);
+
   // tgpf->mouse[0] = event->mval[0];
   // tgpf->mouse[1] = event->mval[1];
   // tgpf->is_render = true;
   // /* Define Zoom level. */
   // gpencil_zoom_level_set(tgpf);
 
-  // /* Create Temp stroke. */
+  /* Create Temp stroke. */
   // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
   // tGPspoint point2D;
   // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
@@ -802,8 +846,8 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
 
       /* First time the event is not enabled to show help lines. */
       if (op_data.is_fill_initialized || !help_lines) {
-        estate = (grease_pencil_enable_help_lines(*C, *op, *event) ? OPERATOR_FINISHED :
-                                                                     OPERATOR_CANCELLED);
+        estate = (grease_pencil_apply_fill(*C, *op, *event) ? OPERATOR_FINISHED :
+                                                              OPERATOR_CANCELLED);
       }
       else if (extend_lines) {
         grease_pencil_update_extend(*C, op_data);
