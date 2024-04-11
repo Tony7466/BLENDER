@@ -243,7 +243,7 @@ static void graph_main_region_draw(const bContext *C, ARegion *region)
 
     /* XXX(ton): the slow way to set tot rect... but for nice sliders needed. */
     get_graph_keyframe_extents(
-        &ac, &v2d->tot.xmin, &v2d->tot.xmax, &v2d->tot.ymin, &v2d->tot.ymax, false, true);
+        &ac, &v2d->tot.xmin, &v2d->tot.xmax, &v2d->tot.ymin, &v2d->tot.ymax, false, false);
     /* extra offset so that these items are visible */
     v2d->tot.xmin -= 10.0f;
     v2d->tot.xmax += 10.0f;
