@@ -296,6 +296,9 @@ void light_eval_single(uint l_idx,
 
 void light_eval_transmission(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz)
 {
+#ifdef SKIP_LIGHT_EVAL
+  return;
+#endif
   /* Packed / Decoupled shadow evaluation. Not yet implemented. */
   uint packed_shadows = 0u;
   uint shift = 0u;
@@ -313,6 +316,9 @@ void light_eval_transmission(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec
 
 void light_eval_reflection(inout ClosureLightStack stack, vec3 P, vec3 Ng, vec3 V, float vPz)
 {
+#ifdef SKIP_LIGHT_EVAL
+  return;
+#endif
   /* Packed / Decoupled shadow evaluation. Not yet implemented. */
   uint packed_shadows = 0u;
   uint shift = 0u;
