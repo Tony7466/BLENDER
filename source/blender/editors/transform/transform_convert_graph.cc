@@ -737,16 +737,16 @@ struct BeztMap {
  */
 static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
 {
-  /* Allocate memory for this array. */
   if (totvert == 0 || bezts == nullptr) {
     return blender::Vector<BeztMap>();
   }
+
   blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
 
-  BezTriple *bezt = bezts;
   BezTriple *prevbezt = nullptr;
-  int i = 0;
-  for (BeztMap &bezm : bezms) {
+  for (const int i : bezms.index_range()) {
+    BezTriple *bezt = &bezts[i];
+    BeztMap &bezm = bezms[i];
     bezm.bezt = bezt;
 
     bezm.oldIndex = i;
@@ -755,8 +755,6 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
     bezm.current_ipo = bezt->ipo;
 
     prevbezt = bezt;
-    bezt++;
-    i++;
   }
 
   return bezms;
@@ -766,20 +764,19 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, int totvert)
 static void sort_time_beztmaps(blender::MutableSpan<BeztMap> bezms)
 {
   BeztMap *bezm;
-  int i, ok = 1;
+  bool ok = true;
 
   /* Keep repeating the process until nothing is out of place anymore. */
   while (ok) {
-    ok = 0;
+    ok = false;
 
-    bezm = &bezms[0];
-    i = bezms.size();
-    while (i--) {
+    for (const int i : bezms.index_range()) {
+      bezm = &bezms[i];
       /* Is current bezm out of order (i.e. occurs later than next)? */
-      if (i > 0) {
+      if (i < bezms.size() - 1) {
         if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
           std::swap(*bezm, *(bezm + 1));
-          ok = 1;
+          ok = true;
         }
       }
 
@@ -797,8 +794,6 @@ static void sort_time_beztmaps(blender::MutableSpan<BeztMap> bezms)
           bezm->swap_handles = -1;
         }
       }
-
-      bezm++;
     }
   }
 }
@@ -886,6 +881,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
  */
 static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
+  SCOPED_TIMER_AVERAGED("remake");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
