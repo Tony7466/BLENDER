@@ -652,9 +652,6 @@ typedef struct bGPdata_Runtime {
   /** Vertex Color applied to Fill (while drawing). */
   float vert_color_fill[4];
 
-  /** Opacity for fills while drawing. */
-  float fill_opacity_fac;
-
   /** Arrow points for stroke corners. */
   float arrow_start[8];
   float arrow_end[8];
@@ -664,6 +661,7 @@ typedef struct bGPdata_Runtime {
 
   /** Number of control-points for stroke. */
   int tot_cp_points;
+  char _pad2[4];
   /** Array of control-points for stroke. */
   bGPDcontrolpoint *cp_points;
   /** Brush pointer */
