@@ -26,13 +26,12 @@ void main()
   vec3 Ng = surfel.normal;
   vec3 P = surfel.position;
 
-  ClosureUndetermined cl;
-  cl.N = surfel.normal;
-  cl.type = CLOSURE_BSDF_DIFFUSE_ID;
-
   ClosureLightStack stack;
-  stack.cl[0] = closure_light_new(cl, V);
 
+  ClosureUndetermined cl_reflect;
+  cl_reflect.N = surfel.normal;
+  cl_reflect.type = CLOSURE_BSDF_DIFFUSE_ID;
+  stack.cl[0] = closure_light_new(cl_reflect, V);
   light_eval_reflection(stack, P, Ng, V, 0.0);
 
   if (capture_info_buf.capture_indirect) {
@@ -40,10 +39,11 @@ void main()
                                                    surfel.albedo_front;
   }
 
-  V = -surfel.normal;
-  Ng = -surfel.normal;
-  stack.cl[0].N = -surfel.normal;
-  light_eval_reflection(stack, P, Ng, V, 0.0);
+  ClosureUndetermined cl_transmit;
+  cl_transmit.N = -surfel.normal;
+  cl_transmit.type = CLOSURE_BSDF_DIFFUSE_ID;
+  stack.cl[0] = closure_light_new(cl_transmit, -V);
+  light_eval_reflection(stack, P, -Ng, -V, 0.0);
 
   if (capture_info_buf.capture_indirect) {
     surfel_buf[index].radiance_direct.back.rgb += stack.cl[0].light_shadowed * surfel.albedo_back;
