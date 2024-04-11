@@ -597,15 +597,9 @@ class PREFERENCES_OT_addon_install(Operator):
     )
 
     def _target_path_items(_self, context):
-        default_item = ('DEFAULT', "Default", "")
-        if context is None:
-            return (
-                default_item,
-            )
-
         paths = context.preferences.filepaths
         return (
-            default_item,
+            ('DEFAULT', "Default", ""),
             None,
             *[(item.name, item.name, "") for index, item in enumerate(paths.script_directories) if item.directory],
         )
