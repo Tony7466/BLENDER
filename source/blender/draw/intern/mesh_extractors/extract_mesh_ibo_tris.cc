@@ -26,10 +26,11 @@ static void extract_tris_mesh(const MeshRenderData &mr, gpu::IndexBuf &ibo)
   if (!mr.face_sorted->face_tri_offsets) {
     /* There are no hidden faces and no reordering is necessary to group triangles with the same
      * material. The corner indices from #Mesh::corner_tris() can be copied directly to the GPU. */
+    BLI_assert(mr.face_sorted->visible_tris_num == corner_tris.size());
     GPU_indexbuf_build_in_place_from_memory(&ibo,
                                             GPU_PRIM_TRIS,
                                             corner_tris.cast<uint32_t>().data(),
-                                            mr.face_sorted->visible_tris_num,
+                                            corner_tris.size(),
                                             0,
                                             mr.corners_num,
                                             false);
