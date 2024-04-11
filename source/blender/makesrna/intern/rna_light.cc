@@ -317,14 +317,20 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
 
   prop = RNA_def_property(srna, "use_shadow_jittering", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "mode", LA_SHADOW_JITTER);
-  RNA_def_property_ui_text(prop, "Shadow Jittering", "Shadow Jittering (TODO)");
+  RNA_def_property_ui_text(prop,
+                           "Shadow Jittering",
+                           "Enable jittered shoft shadows (Disabled in the Viewport unless "
+                           "enabled in the Scene settings)");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
   prop = RNA_def_property(srna, "shadow_jitter_overblur", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_range(prop, 0.0f, 1.0);
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
-  RNA_def_property_ui_text(prop, "Shadow Jitter Overblur", "Shadow Jitter Overblur (TODO)");
+  RNA_def_property_ui_text(
+      prop,
+      "Shadow Jitter Overblur",
+      "Apply shadow tracing to each jittered sample to reduce under-sampling artifacts");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
