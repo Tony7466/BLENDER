@@ -1532,6 +1532,9 @@ static void add_new_curve(bContext *C,
                           CurvesGeometry new_curves,
                           wmOperator &op)
 {
+  const int new_points_num = new_curves.points_num();
+  const int new_curves_num = new_curves.curves_num();
+
   bke::GeometrySet old_geometry = bke::GeometrySet::from_curves(
       &curves_id, bke::GeometryOwnershipType::ReadOnly);
   bke::GeometrySet new_geometry = bke::GeometrySet::from_curves(
@@ -1547,8 +1550,20 @@ static void add_new_curve(bContext *C,
   geometry::transform_geometry(new_geometry, transform);
 
   bke::GeometrySet joined_geometry = geometry::join_geometries({old_geometry, new_geometry}, {});
-  Curves *joined_curves = joined_geometry.get_curves_for_write();
-  curves_id.geometry.wrap() = std::move(joined_curves->geometry.wrap());
+  Curves *joined_curves_id = joined_geometry.get_curves_for_write();
+  CurvesGeometry &dst_curves = curves_id.geometry.wrap();
+  dst_curves = std::move(joined_curves_id->geometry.wrap());
+
+  const bke::AttrDomain selection_domain = bke::AttrDomain(curves_id.selection_domain);
+  const int new_element_num = selection_domain == bke::AttrDomain::Point ? new_points_num :
+                                                                           new_curves_num;
+  foreach_selection_attribute_writer(
+      dst_curves, selection_domain, [&](bke::GSpanAttributeWriter &selection) {
+        fill_selection_false(selection.span.drop_back(new_element_num));
+        fill_selection_true(selection.span.take_back(new_element_num));
+      });
+
+  dst_curves.tag_topology_changed();
 }
 
 namespace add_circle {
