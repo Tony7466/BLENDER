@@ -57,6 +57,18 @@ static uint2 edge_from_corners(const IndexRange face, const int corner)
   return uint2(corner, corner_next);
 }
 
+static void fill_loose_lines_ibo(const int corners_num, MutableSpan<uint2> data)
+{
+  threading::memory_bandwidth_bound_task(data.size_in_bytes(), [&]() {
+    threading::parallel_for(data.index_range(), 4096, [&](const IndexRange range) {
+      for (const int loose_edge : range) {
+        const int index = corners_num + loose_edge * 2;
+        data[loose_edge] = uint2(index, index + 1);
+      }
+    });
+  });
+}
+
 void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::IndexBuf *lines_loose)
 {
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
@@ -67,80 +79,73 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
     GPU_indexbuf_init(
         &builder, GPU_PRIM_LINES, visible.size(), mr.corners_num + mr.loose_indices_num);
     MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
+    BLI_assert(data.size() == visible.size());
 
-    // const int loose_edge_start = mr.edges_num;
-    threading::memory_bandwidth_bound_task(data.size_in_bytes(), [&]() {
-      threading::parallel_for(IndexRange(visible.size()), 4096, [&](const IndexRange range) {
-        for (const int loose_edge : range) {
-          const int index = mr.corners_num + loose_edge * 2;
-          data[loose_edge] = uint2(index, index + 1);
-        }
-      });
-    });
+    fill_loose_lines_ibo(mr.corners_num, data);
 
     GPU_indexbuf_build_in_place_ex(
         &builder, 0, mr.corners_num + visible.size() * 2, false, lines_loose);
     return;
   }
 
-  if (!DRW_ibo_requested(lines_loose) && DRW_ibo_requested(lines)) {
-    IndexMaskMemory memory;
-    const IndexMask visible = calc_edge_visibility(mr, memory);
+  IndexMaskMemory memory;
+  const IndexMask visible = calc_edge_visibility(mr, memory);
 
-    GPUIndexBufBuilder builder;
-    GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible.size(), mr.corners_num);
-    MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
+  // TODO: Also add loose edges here.
 
-    const OffsetIndices faces = mr.faces;
-    const Span<int> corner_edges = mr.corner_edges;
-    if (visible.size() == mr.edges_num) {
-      /* Use separate boolean array to avoid writing to the same indices again multiple times,
-       * possibly from different threads. This is slightly beneficial because booleans are 8 times
-       * smaller than the `uint2` for each edge. */
-      Array<bool> used(mr.edges_num, false);
-      threading::memory_bandwidth_bound_task(
-          used.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
-          [&]() {
-            threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-              for (const int face_index : range) {
-                const IndexRange face = faces[face_index];
-                for (const int corner : face) {
-                  const int edge = corner_edges[corner];
-                  if (used[edge]) {
-                    continue;
-                  }
-                  data[edge] = edge_from_corners(face, corner);
-                  used[edge] = true;
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible.size(), mr.corners_num);
+  MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
+
+  const OffsetIndices faces = mr.faces;
+  const Span<int> corner_edges = mr.corner_edges;
+  if (visible.size() == mr.edges_num) {
+    /* Use separate boolean array to avoid writing to the same indices again multiple times,
+     * possibly from different threads. This is slightly beneficial because booleans are 8 times
+     * smaller than the `uint2` for each edge. */
+    Array<bool> used(mr.edges_num, false);
+    threading::memory_bandwidth_bound_task(
+        used.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
+        [&]() {
+          threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+            for (const int face_index : range) {
+              const IndexRange face = faces[face_index];
+              for (const int corner : face) {
+                const int edge = corner_edges[corner];
+                if (used[edge]) {
+                  continue;
                 }
+                data[edge] = edge_from_corners(face, corner);
+                used[edge] = true;
               }
-            });
+            }
           });
-    }
-    else {
-      Array<int> map(mr.corners_num, -1);
-      threading::memory_bandwidth_bound_task(
-          map.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
-          [&]() {
-            index_mask::build_reverse_map(visible, map.as_mutable_span());
-            threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-              for (const int face_index : range) {
-                const IndexRange face = faces[face_index];
-                for (const int corner : face) {
-                  const int edge = corner_edges[corner];
-                  if (map[edge] == -1) {
-                    continue;
-                  }
-                  data[map[edge]] = edge_from_corners(face, corner);
-                  map[edge] = -1;
-                }
-              }
-            });
-          });
-    }
-
-    GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num + visible.size() * 2, false, lines);
-    return;
+        });
   }
+  else {
+    Array<int> map(mr.corners_num, -1);
+    threading::memory_bandwidth_bound_task(
+        map.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
+        [&]() {
+          index_mask::build_reverse_map(visible, map.as_mutable_span());
+          threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+            for (const int face_index : range) {
+              const IndexRange face = faces[face_index];
+              for (const int corner : face) {
+                const int edge = corner_edges[corner];
+                if (map[edge] == -1) {
+                  continue;
+                }
+                data[map[edge]] = edge_from_corners(face, corner);
+                map[edge] = -1;
+              }
+            }
+          });
+        });
+  }
+
+  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num + visible.size() * 2, false, lines);
+  return;
 }
 
 struct MeshExtract_LinesData {
