@@ -217,7 +217,7 @@ static int weight_sample_invoke(bContext *C, wmOperator * /*op*/, const wmEvent 
   /* Collect visible drawings. */
   const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obact));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obact->data);
-  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*vc.scene, grease_pencil);
+  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*vc.scene, grease_pencil, false);
 
   /* Find stroke points closest to mouse cursor position. */
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
