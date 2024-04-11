@@ -811,8 +811,9 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, blender::Span<BeztMap> be
   blender::Vector<bool> adjusted(tc->data_len, false);
 
   /* For each beztmap item, find if it is used anywhere. */
-  const BeztMap *bezm = &bezms[0];
-  for (int i = 0; i < bezms.size(); i++, bezm++) {
+  const BeztMap *bezm;
+  for (const int i : bezms.index_range()) {
+    bezm = &bezms[i];
     /* Loop through transdata, testing if we have a hit
      * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
     td2d = tc->data_2d;
