@@ -1839,7 +1839,7 @@ class _defs_paint_grease_pencil:
             row.use_property_split = False
             row.prop(props, "flat_caps")
             row.prop(props, "active_layer")
-        
+
         return dict(
             idname="builtin.cutter",
             label="Cutter",
