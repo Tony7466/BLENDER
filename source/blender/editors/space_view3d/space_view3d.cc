@@ -410,6 +410,10 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Sculpt Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(
       wm->defaultconf, "Grease Pencil Brush Stroke", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
@@ -1714,6 +1718,9 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
       break;
     case CTX_MODE_PAINT_GREASE_PENCIL:
       ARRAY_SET_ITEMS(contexts, ".grease_pencil_paint");
+      break;
+    case CTX_MODE_SCULPT_GREASE_PENCIL:
+      ARRAY_SET_ITEMS(contexts, ".paint_common", ".grease_pencil_sculpt");
       break;
     case CTX_MODE_EDIT_POINT_CLOUD:
       ARRAY_SET_ITEMS(contexts, ".point_cloud_edit");
