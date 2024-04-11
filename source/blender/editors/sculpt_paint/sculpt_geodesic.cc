@@ -8,7 +8,6 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <thread>
 
 #include "MEM_guardedalloc.h"
 
@@ -78,9 +77,9 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   return false;
 }
 
-#define UNASSIGNED -1
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
+  const int UNASSIGNED = -1;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -119,7 +118,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
   /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
    * to define a distance to them the algorithm can stop earlier by skipping them. */
-  BitVector<> affected_vert(totvert);
+  Vector<bool> affected_vert(totvert, false);
   if (limit_radius == FLT_MAX) {
     /* In this case, no need to loop through all initial vertices to check distances as they are
      * all going to be affected. */
@@ -137,29 +136,30 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
       threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
         for (const int i : range) {
           if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
-            affected_vert[i].set();
+            affected_vert[i] = true;
           }
         }
       });
     }
   }
 
-  std::vector<int> queue, queue_next;
+  Vector<int> queue, queue_next;
   queue.reserve(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
-   * Since initial vertex are few only, iterating over its neighbour edges
-   * instead of over all edges scales better as mesh edge count increases */
+   * Since there are typically few initial vertices, iterating over its
+   * neighbour edges instead of over all edges scales better
+   * as mesh edge count increases. */
   GSetIterator gs_iter;
   GSET_ITER (gs_iter, initial_verts) {
     const int seed_vert = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
-    for (const int e : ss->vert_to_edge_map[seed_vert]) {
-      const int v1 = edges[e][0];
-      const int v2 = edges[e][1];
+    for (const int edge_index : ss->vert_to_edge_map[seed_vert]) {
+      const int v1 = edges[edge_index][0];
+      const int v2 = edges[edge_index][1];
       if ((affected_vert[v1] || affected_vert[v2]) &&
           (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
       {
-        queue.push_back(e);
+        queue.append(edge_index);
       }
     }
   }
@@ -171,11 +171,11 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   queue_next.resize(new_size, UNASSIGNED);
 
   BitVector<> edge_tag(totedge);
-  while (!queue.empty()) {
+  while (!queue.is_empty()) {
     threading::parallel_for_each(IndexRange(0, queue.size()), [&](const int val) {
-      const int e = queue[val];
-      int v1 = edges[e][0];
-      int v2 = edges[e][1];
+      const int edge_index = queue[val];
+      int v1 = edges[edge_index][0];
+      int v2 = edges[edge_index][1];
 
       if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) {
         if (dists[v1] > dists[v2]) {
@@ -185,41 +185,45 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
       }
 
-      for (const int face : ss->edge_to_face_map[e]) {
+      for (const int face : ss->edge_to_face_map[edge_index]) {
         if (!hide_poly.is_empty() && hide_poly[face]) {
           continue;
         }
-        for (const int v_other : corner_verts.slice(faces[face])) {
-          if (ELEM(v_other, v1, v2) || !sculpt_geodesic_mesh_test_dist_add(
-                                           vert_positions, v_other, v1, v2, dists, initial_verts))
+        for (const int vertex_other : corner_verts.slice(faces[face])) {
+          if (ELEM(vertex_other, v1, v2)) {
+            continue;
+          }
+          if (!sculpt_geodesic_mesh_test_dist_add(
+                  vert_positions, vertex_other, v1, v2, dists, initial_verts))
           {
             continue;
           }
 
-          for (const int e_other : ss->vert_to_edge_map[v_other]) {
-            const int ev_other = (edges[e_other][0] == v_other) ? edges[e_other][1] :
-                                                                  edges[e_other][0];
+          for (const int edge_other : ss->vert_to_edge_map[vertex_other]) {
+            const int edge_vertex_other = bke::mesh::edge_other_vert(edges[edge_other],
+                                                                     vertex_other);
 
-            if (!(affected_vert[v_other] || affected_vert[ev_other]) || e_other == e ||
-                edge_tag[e_other] ||
-                (!ss->edge_to_face_map[e_other].is_empty() && dists[ev_other] == FLT_MAX))
+            if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
+                edge_other == edge_index || edge_tag[edge_other] ||
+                (!ss->edge_to_face_map[edge_other].is_empty() &&
+                 dists[edge_vertex_other] == FLT_MAX))
             {
               continue;
             }
 
-            edge_tag[e_other].set();
+            edge_tag[edge_other].set();
 
             /* Open addressing with linear probing that minimizes
              * collission in hash tables can also be used to avoid
              * parallel data storage collisions */
-            size_t idx = e_other % new_size;
+            size_t idx = edge_other % new_size;
             while (queue_next[idx] != UNASSIGNED) {
               ++idx;
               if (idx >= new_size) {
                 idx = 0;
               }
             }
-            queue_next[idx] = e_other;
+            queue_next[idx] = edge_other;
           }
         }
       }
@@ -227,10 +231,10 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
     queue.clear();
     for (int i = 0; i < new_size; ++i) {
-      const int val = queue_next[i];
-      if (val != -1) {
-        edge_tag[val].reset();
-        queue.push_back(val);
+      const int edge_index = queue_next[i];
+      if (edge_index != -1) {
+        edge_tag[edge_index].reset();
+        queue.append(edge_index);
       }
     }
     new_size = 4 * queue.size();
@@ -320,4 +324,4 @@ float *distances_create_from_vert_and_symm(Object *ob,
   return dists;
 }
 
-} /* namespace blender::ed::sculpt_paint::geodesic */
+}  // namespace blender::ed::sculpt_paint::geodesic

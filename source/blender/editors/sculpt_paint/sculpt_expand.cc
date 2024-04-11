@@ -1399,6 +1399,25 @@ static void sculpt_expand_colors_update_task(SculptSession *ss, PBVHNode *node)
   }
 }
 
+static void sculpt_expand_flush_updates(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  SculptSession *ss = ob->sculpt;
+  switch (ss->expand_cache->target) {
+    case SCULPT_EXPAND_TARGET_MASK:
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
+      break;
+    case SCULPT_EXPAND_TARGET_FACE_SETS:
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_FACE_SET);
+      break;
+    case SCULPT_EXPAND_TARGET_COLORS:
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
+      break;
+    default:
+      break;
+  }
+}
+
 /* Store the original mesh data state in the expand cache. */
 static void sculpt_expand_original_state_store(Object *ob, Cache *expand_cache)
 {
@@ -1480,12 +1499,10 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
           sculpt_expand_mask_update_task(ss, mask_write, expand_cache->nodes[i]);
         }
       });
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
       break;
     }
     case SCULPT_EXPAND_TARGET_FACE_SETS:
       sculpt_expand_face_sets_update(*ob, expand_cache);
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_FACE_SET);
       break;
     case SCULPT_EXPAND_TARGET_COLORS:
       threading::parallel_for(expand_cache->nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1493,9 +1510,10 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
           sculpt_expand_colors_update_task(ss, expand_cache->nodes[i]);
         }
       });
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
       break;
   }
+
+  sculpt_expand_flush_updates(C);
 }
 
 /**
@@ -2124,7 +2142,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
-  /* Do nothing when the mesh has 0 vertices. */
+
   const int totvert = SCULPT_vertex_count_get(ss);
   if (totvert == 0) {
     return OPERATOR_CANCELLED;
@@ -2204,6 +2222,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
       ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
 
   sculpt_expand_check_topology_islands(ob, falloff_type);
+
   /* Initial mesh data update, resets all target data in the sculpt mesh. */
   sculpt_expand_update_for_vertex(C, ob, ss->expand_cache->initial_active_vertex);
 
