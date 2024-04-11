@@ -1245,7 +1245,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
   Text *text = st->text;
   int vcurl, vcurc, vsell, vselc;
   bool hidden = false;
-  int x, y, w, i;
+  int x, y, i;
   int offl, offc;
   const int lheight = TXT_LINE_HEIGHT(st);
 
