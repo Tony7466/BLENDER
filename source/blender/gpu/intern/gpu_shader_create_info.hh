@@ -74,7 +74,7 @@ enum class Type {
   SHORT4
 };
 
-static int to_component_count(const Type &type)
+BLI_INLINE int to_component_count(const Type &type)
 {
   switch (type) {
     case Type::FLOAT:
