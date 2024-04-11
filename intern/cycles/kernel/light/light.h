@@ -483,7 +483,7 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
     }
   }
   else if (type == LIGHT_AREA) {
-    if (!area_light_sample_from_intersection(klight, isect, ray_P, ray_D, ls)) {
+    if (!area_light_sample_from_intersection(klight, isect, ray_P, ls)) {
       return false;
     }
   }

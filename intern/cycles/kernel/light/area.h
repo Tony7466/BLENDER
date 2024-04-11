@@ -248,7 +248,8 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
                                        ccl_private float3 *light_P,
                                        ccl_private LightSample *ccl_restrict ls,
                                        const float2 rand,
-                                       bool sample_coord)
+                                       bool sample_coord,
+                                       bool has_uv = false)
 {
   float3 axis_u = klight->area.axis_u;
   float3 axis_v = klight->area.axis_v;
@@ -303,6 +304,15 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
   if (sample_coord) {
     *light_P = light_P_new;
     ls->D = normalize_len(*light_P - ray_P, &ls->t);
+  }
+  else if (has_uv) {
+    /* TODO(weizhen): check what fields of ls needs to be written, probably no need to call
+     * `area_light_eval()`. */
+    const float light_v = ls->u - 0.5f;
+    const float light_u = -(ls->v + light_v);
+    ls->P = *light_P + light_u * klight->area.len_u * klight->area.axis_u +
+            light_v * klight->area.len_v * klight->area.axis_v;
+    ls->D = normalize_len(ls->P - ray_P, &ls->t);
   }
 
   /* Convert radiant flux to radiance. */
@@ -375,6 +385,7 @@ ccl_device_forceinline void area_light_mnee_sample_update(const ccl_global Kerne
                                                           ccl_private LightSample *ls,
                                                           const float3 P)
 {
+  /* FIXME(weizhen): should probably pass `klight->co` instead of `ls->P`. */
   if (klight->area.tan_half_spread == 0) {
     /* Update position on the light to keep the direction fixed. */
     area_light_eval<false>(klight, P, &ls->P, ls, zero_float2(), true);
@@ -427,20 +438,27 @@ ccl_device_inline bool area_light_intersect(const ccl_global KernelLight *klight
                             is_ellipse);
 }
 
+ccl_device_inline bool area_light_sample_from_uv(const ccl_global KernelLight *klight,
+                                                 const float3 ray_P,
+                                                 ccl_private LightSample *ccl_restrict ls)
+{
+  ls->Ng = klight->area.dir;
+  float3 light_P = klight->co;
+  return area_light_eval<false>(klight, ray_P, &light_P, ls, zero_float2(), false, true);
+}
+
 ccl_device_inline bool area_light_sample_from_intersection(
     const ccl_global KernelLight *klight,
     ccl_private const Intersection *ccl_restrict isect,
     const float3 ray_P,
-    const float3 ray_D,
     ccl_private LightSample *ccl_restrict ls)
 {
   ls->u = isect->u;
   ls->v = isect->v;
-  ls->D = ray_D;
-  ls->Ng = klight->area.dir;
 
-  float3 light_P = klight->co;
-  return area_light_eval<false>(klight, ray_P, &light_P, ls, zero_float2(), false);
+  /* TODO(weizhen): temporarily calling this function just to make sure the implementation is
+   * correct. Should call `area_light_eval()` instead. */
+  return area_light_sample_from_uv(klight, ray_P, ls);
 }
 
 /* Returns the maximal distance between the light center and the boundary. */
