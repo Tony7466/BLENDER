@@ -231,13 +231,13 @@ static void draw_backdrop(const int fontid,
                           const float base_tick_height,
                           const std::string &property_label)
 {
-  float string_pixel_size[2];
+  float percent_string_pixel_size[2];
   const char *percentage_string_placeholder = "000%%";
   BLF_width_and_height(fontid,
                        percentage_string_placeholder,
                        sizeof(percentage_string_placeholder),
-                       &string_pixel_size[0],
-                       &string_pixel_size[1]);
+                       &percent_string_pixel_size[0],
+                       &percent_string_pixel_size[1]);
 
   float property_name_pixel_size[2];
   BLF_width_and_height(fontid,
@@ -248,8 +248,8 @@ static void draw_backdrop(const int fontid,
   const float pad[2] = {(region_y_size - base_tick_height) / 2 + 12.0f * U.pixelsize,
                         2.0f * U.pixelsize};
   rctf backdrop_rect{};
-  backdrop_rect.xmin = main_line_rect->xmin - string_pixel_size[0] - pad[0];
-  backdrop_rect.xmax = main_line_rect->xmax + property_name_pixel_size[0] + pad[0];
+  backdrop_rect.xmin = main_line_rect->xmin - property_name_pixel_size[0] - pad[0];
+  backdrop_rect.xmax = main_line_rect->xmax + percent_string_pixel_size[0] + pad[0];
   backdrop_rect.ymin = pad[1];
   backdrop_rect.ymax = region_y_size - pad[1];
   UI_draw_roundbox_3ub_alpha(&backdrop_rect, true, 4.0f, color_bg, color_bg[3]);
