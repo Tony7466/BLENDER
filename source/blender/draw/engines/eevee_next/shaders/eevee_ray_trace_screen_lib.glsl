@@ -237,8 +237,8 @@ Ray raytrace_thickness_ray_ammend(Ray ray,
       ray.origin += thickness_sphere_intersect(thickness, surface_N, ray.direction).hit_P;
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       /* Ray direction is distributed on the whole sphere.
-       * Move the ray origin to the sphere center. */
-      ray.origin += (ray.direction - surface_N) * thickness * 0.5;
+       * Move the ray origin to the sphere surface (with bias to avoid self-intersection). */
+      ray.origin += (ray.direction - surface_N) * thickness * 0.505;
       break;
     default:
       break;
