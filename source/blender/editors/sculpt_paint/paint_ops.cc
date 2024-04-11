@@ -40,6 +40,7 @@
 #include "BKE_paint.hh"
 #include "BKE_preferences.h"
 #include "BKE_report.hh"
+#include "BKE_screen.hh"
 
 #include "ED_asset_handle.hh"
 #include "ED_asset_library.hh"
@@ -866,6 +867,28 @@ static AssetLibraryReference user_library_to_library_ref(const bUserAssetLibrary
   return library_ref;
 }
 
+static void show_catalog_in_asset_shelf(const bContext &C, const StringRefNull catalog_path)
+{
+  ScrArea *area = CTX_wm_area(&C);
+  if (!area) {
+    return;
+  }
+  const ARegion *shelf_region = BKE_area_find_region_type(area, RGN_TYPE_ASSET_SHELF);
+  if (!shelf_region) {
+    return;
+  }
+  if (shelf_region->flag & RGN_FLAG_POLL_FAILED) {
+    return;
+  }
+  const RegionAssetShelf &shelf = *static_cast<const RegionAssetShelf *>(shelf_region->regiondata);
+  if (!BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+          &U, shelf.active_shelf->idname, catalog_path.c_str()))
+  {
+    return;
+  }
+  U.runtime.is_dirty = true;
+}
+
 static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -923,6 +946,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   }
 
   library->catalog_service().write_to_disk(*final_full_asset_filepath);
+  show_catalog_in_asset_shelf(*C, catalog_path);
 
   AssetWeakReference new_brush_weak_ref = brush_asset_create_weakref_hack(
       user_library, *final_full_asset_filepath);
