@@ -744,33 +744,6 @@ void RNA_parameter_dynamic_length_set_data(ParameterList *parms,
 
 int RNA_function_call(
     bContext *C, ReportList *reports, PointerRNA *ptr, FunctionRNA *func, ParameterList *parms);
-int RNA_function_call_lookup(bContext *C,
-                             ReportList *reports,
-                             PointerRNA *ptr,
-                             const char *identifier,
-                             ParameterList *parms);
-
-int RNA_function_call_direct(
-    bContext *C, ReportList *reports, PointerRNA *ptr, FunctionRNA *func, const char *format, ...)
-    ATTR_PRINTF_FORMAT(5, 6);
-int RNA_function_call_direct_lookup(bContext *C,
-                                    ReportList *reports,
-                                    PointerRNA *ptr,
-                                    const char *identifier,
-                                    const char *format,
-                                    ...) ATTR_PRINTF_FORMAT(5, 6);
-int RNA_function_call_direct_va(bContext *C,
-                                ReportList *reports,
-                                PointerRNA *ptr,
-                                FunctionRNA *func,
-                                const char *format,
-                                va_list args);
-int RNA_function_call_direct_va_lookup(bContext *C,
-                                       ReportList *reports,
-                                       PointerRNA *ptr,
-                                       const char *identifier,
-                                       const char *format,
-                                       va_list args);
 
 const char *RNA_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, int translate);
@@ -792,7 +765,7 @@ StructRNA *ID_code_to_RNA_type(short idcode);
 #if defined __GNUC__
 #  define RNA_warning(format, args...) _RNA_warning("%s: " format "\n", __func__, ##args)
 #elif defined(_MSVC_TRADITIONAL) && \
-    !_MSVC_TRADITIONAL  // The "new preprocessor" is enabled via /Zc:preprocessor
+    !_MSVC_TRADITIONAL /* The "new preprocessor" is enabled via `/Zc:preprocessor`. */
 #  define RNA_warning(format, ...) _RNA_warning("%s: " format "\n", __FUNCTION__, ##__VA_ARGS__)
 #else
 #  define RNA_warning(format, ...) _RNA_warning("%s: " format "\n", __FUNCTION__, __VA_ARGS__)

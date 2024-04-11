@@ -21,7 +21,7 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "DNA_space_types.h"
 
@@ -182,6 +182,7 @@ static void OVERLAY_cache_init(void *vedata)
       OVERLAY_edit_lattice_cache_init(data);
       break;
     case CTX_MODE_PAINT_GREASE_PENCIL:
+    case CTX_MODE_SCULPT_GREASE_PENCIL:
     case CTX_MODE_EDIT_GREASE_PENCIL:
       OVERLAY_edit_grease_pencil_cache_init(data);
       break;

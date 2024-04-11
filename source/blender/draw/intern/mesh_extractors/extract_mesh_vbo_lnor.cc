@@ -111,18 +111,36 @@ static void extract_normals_mesh(const MeshRenderData &mr, MutableSpan<GPUType> 
 template<typename GPUType>
 static void extract_paint_overlay_flags(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
-  if (mr.select_poly.is_empty() && mr.hide_poly.is_empty() && (!mr.edit_bmesh || !mr.v_origindex))
-  {
+  const bool use_face_select = (mr.mesh->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
+  Span<bool> selection;
+  if (mr.mesh->editflag & ME_EDIT_PAINT_FACE_SEL) {
+    selection = mr.select_poly;
+  }
+  else if (mr.mesh->editflag & ME_EDIT_PAINT_VERT_SEL) {
+    selection = mr.select_vert;
+  }
+  if (selection.is_empty() && mr.hide_poly.is_empty() && (!mr.edit_bmesh || !mr.v_origindex)) {
     return;
   }
   const OffsetIndices faces = mr.faces;
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-    if (!mr.select_poly.is_empty()) {
-      const Span<bool> select_poly = mr.select_poly;
-      for (const int face : range) {
-        if (select_poly[face]) {
+    if (!selection.is_empty()) {
+      if (use_face_select) {
+        for (const int face : range) {
+          if (selection[face]) {
+            for (const int corner : faces[face]) {
+              normals[corner].w = 1;
+            }
+          }
+        }
+      }
+      else {
+        const Span<int> corner_verts = mr.corner_verts;
+        for (const int face : range) {
           for (const int corner : faces[face]) {
-            normals[corner].w = 1;
+            if (selection[corner_verts[corner]]) {
+              normals[corner].w = 1;
+            }
           }
         }
       }
@@ -156,7 +174,7 @@ static void extract_lnor_init(const MeshRenderData &mr,
                               void *buf,
                               void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I10, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
@@ -221,8 +239,8 @@ static void extract_lnor_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                      void *buffer,
                                      void * /*data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos;
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buffer);
+  gpu::VertBuf *pos_nor = cache.final.buff.vbo.pos;
   BLI_assert(pos_nor);
   GPU_vertbuf_init_build_on_device(vbo, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
   draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo);
@@ -252,7 +270,7 @@ static void extract_lnor_hq_init(const MeshRenderData &mr,
                                  void *buf,
                                  void *tls_data)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_I16, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);

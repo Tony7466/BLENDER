@@ -853,21 +853,6 @@ enum {
 /** \name Render Conversion/Simplification Settings
  * \{ */
 
-/** Control render convert and shading engine. */
-typedef struct RenderProfile {
-  struct RenderProfile *next, *prev;
-  char name[32];
-
-  short particle_perc;
-  short subsurf_max;
-  short shadbufsample_max;
-  char _pad1[2];
-
-  float ao_error;
-  char _pad2[4];
-
-} RenderProfile;
-
 /* UV Paint. */
 /** #ToolSettings::uv_sculpt_settings */
 enum {
@@ -2347,7 +2332,7 @@ typedef enum eSnapFlag {
   // SCE_SNAP_PROJECT = (1 << 3), /* DEPRECATED, see #SCE_SNAP_INDIVIDUAL_PROJECT. */
   /** Was `SCE_SNAP_NO_SELF`, but self should be active. */
   SCE_SNAP_NOT_TO_ACTIVE = (1 << 4),
-  SCE_SNAP_ABS_GRID = (1 << 5),
+  /* SCE_SNAP_ABS_GRID = (1 << 5), */ /* UNUSED */
   /* Same value with different name to make it easier to understand in time based code. */
   SCE_SNAP_ABS_TIME_STEP = (1 << 5),
   SCE_SNAP_BACKFACE_CULLING = (1 << 6),

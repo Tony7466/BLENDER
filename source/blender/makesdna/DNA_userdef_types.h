@@ -55,7 +55,7 @@ typedef struct uiFont {
   struct uiFont *next, *prev;
   /** 1024 = FILE_MAX. */
   char filepath[1024];
-  /** From blfont lib. */
+  /** From BLF library. */
   short blf_id;
   /** Own id (eUIFont_ID). */
   short uifont_id;
@@ -333,10 +333,10 @@ typedef struct ThemeSpace {
   float dash_alpha;
 
   /* Syntax for text-window and nodes. */
-  unsigned char syntaxl[4], syntaxs[4]; /* in nodespace used for backdrop matte */
-  unsigned char syntaxb[4], syntaxn[4]; /* in nodespace used for color input */
-  unsigned char syntaxv[4], syntaxc[4]; /* in nodespace used for converter group */
-  unsigned char syntaxd[4], syntaxr[4]; /* in nodespace used for distort */
+  unsigned char syntaxl[4], syntaxs[4]; /* In node-space used for backdrop matte. */
+  unsigned char syntaxb[4], syntaxn[4]; /* In node-space used for color input. */
+  unsigned char syntaxv[4], syntaxc[4]; /* In node-space used for converter group. */
+  unsigned char syntaxd[4], syntaxr[4]; /* In node-space used for distort. */
 
   unsigned char line_numbers[4];
   char _pad6[3];
@@ -483,12 +483,15 @@ typedef struct ThemeStripColor {
 /**
  * A theme.
  *
- * \note Currently only a single theme is ever used at once.
+ * \note Currently only the first theme is used at once.
  * Different theme presets are stored as external files now.
  */
 typedef struct bTheme {
   struct bTheme *next, *prev;
-  char name[32];
+  /** #MAX_NAME. */
+  char name[64];
+
+  /* NOTE: Values after `name` are copied when resetting the default theme. */
 
   ThemeUI tui;
 
@@ -722,8 +725,9 @@ typedef struct UserDef_Experimental {
   char use_shader_node_previews;
   char use_extension_repos;
   char use_extension_utils;
+  char use_grease_pencil_version3_convert_on_load;
+  char use_animation_baklava;
 
-  char _pad[2];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -839,6 +843,10 @@ typedef struct UserDef {
   /** Startup application template. */
   char app_template[64];
 
+  /**
+   * A list of themes (#bTheme), the first is only used currently.
+   * But there may be multiple themes in the list.
+   */
   struct ListBase themes;
   struct ListBase uifonts;
   struct ListBase uistyles;

@@ -49,11 +49,11 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 #include "UI_resources.hh"
 
@@ -1220,6 +1220,7 @@ static bool paint_use_2d_cursor(PaintMode mode)
     case PaintMode::SculptGPencil:
     case PaintMode::WeightGPencil:
     case PaintMode::SculptCurves:
+    case PaintMode::SculptGreasePencil:
     case PaintMode::GPencil:
       return true;
     case PaintMode::Invalid:

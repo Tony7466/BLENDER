@@ -39,7 +39,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "GPU_platform.h"
+#include "GPU_platform.hh"
 
 #include "UI_interface_icons.hh"
 
@@ -178,7 +178,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 
 #  include "BKE_blender.hh"
 #  include "BKE_global.hh"
-#  include "BKE_idprop.h"
+#  include "BKE_idprop.hh"
 #  include "BKE_image.h"
 #  include "BKE_main.hh"
 #  include "BKE_mesh_runtime.hh"
@@ -189,9 +189,9 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
-#  include "GPU_capabilities.h"
+#  include "GPU_capabilities.hh"
 #  include "GPU_select.hh"
-#  include "GPU_texture.h"
+#  include "GPU_texture.hh"
 
 #  include "BLF_api.hh"
 
@@ -1021,6 +1021,13 @@ static int rna_lang_enum_properties_get_no_international(PointerRNA * /*ptr*/)
 }
 #  endif
 
+static void rna_Theme_name_set(PointerRNA *ptr, const char *value)
+{
+  bTheme *btheme = static_cast<bTheme *>(ptr->data);
+  STRNCPY_UTF8(btheme->name, value);
+  BLI_uniquename(&U.themes, btheme, "Theme", '.', offsetof(bTheme, name), sizeof(btheme->name));
+}
+
 static void rna_Addon_module_set(PointerRNA *ptr, const char *value)
 {
   bAddon *addon = (bAddon *)ptr->data;
@@ -1072,8 +1079,8 @@ static PointerRNA rna_Addon_preferences_get(PointerRNA *ptr)
   bAddonPrefType *apt = BKE_addon_pref_type_find(addon->module, true);
   if (apt) {
     if (addon->prop == nullptr) {
-      IDPropertyTemplate val = {0};
-      addon->prop = IDP_New(IDP_GROUP, &val, addon->module); /* name is unimportant. */
+      /* name is unimportant. */
+      addon->prop = blender::bke::idprop::create_group(addon->module).release();
     }
     return rna_pointer_inherit_refine(ptr, apt->rna_ext.srna, addon->prop);
   }
@@ -2168,7 +2175,7 @@ static void rna_def_userdef_theme_spaces_asset_shelf_main(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Asset Shelf", "Settings for asset shelf");
 }
 
-static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna)
+static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna, const bool has_vertex_active)
 {
   PropertyRNA *prop;
 
@@ -2182,10 +2189,12 @@ static void rna_def_userdef_theme_spaces_vertex(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Vertex Select", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "vertex_active", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Active Vertex", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+  if (has_vertex_active) {
+    prop = RNA_def_property(srna, "vertex_active", PROP_FLOAT, PROP_COLOR_GAMMA);
+    RNA_def_property_array(prop, 3);
+    RNA_def_property_ui_text(prop, "Active Vertex", "");
+    RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+  }
 
   prop = RNA_def_property(srna, "vertex_size", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 32);
@@ -2561,7 +2570,7 @@ static void rna_def_userdef_theme_space_view3d(BlenderRNA *brna)
 
   /* Mesh Object specific */
 
-  rna_def_userdef_theme_spaces_vertex(srna);
+  rna_def_userdef_theme_spaces_vertex(srna, false);
   rna_def_userdef_theme_spaces_edge(srna);
   rna_def_userdef_theme_spaces_face(srna);
 
@@ -2773,7 +2782,7 @@ static void rna_def_userdef_theme_space_graph(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  rna_def_userdef_theme_spaces_vertex(srna);
+  rna_def_userdef_theme_spaces_vertex(srna, true);
   rna_def_userdef_theme_spaces_curves(srna, false, true, true, true);
 }
 
@@ -3339,7 +3348,7 @@ static void rna_def_userdef_theme_space_image(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Grid", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  rna_def_userdef_theme_spaces_vertex(srna);
+  rna_def_userdef_theme_spaces_vertex(srna, false);
   rna_def_userdef_theme_spaces_face(srna);
 
   prop = RNA_def_property(srna, "editmesh_active", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -4287,6 +4296,7 @@ static void rna_def_userdef_themes(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "Name of the theme");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_Theme_name_set");
   RNA_def_struct_name_property(srna, prop);
   /* XXX: for now putting this in presets is silly - its just Default */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -4660,8 +4670,8 @@ static void rna_def_userdef_solidlight(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
-  static float default_dir[3] = {0.0f, 0.0f, 1.0f};
-  static float default_col[3] = {0.8f, 0.8f, 0.8f};
+  static const float default_dir[3] = {0.0f, 0.0f, 1.0f};
+  static const float default_col[3] = {0.8f, 0.8f, 0.8f};
 
   srna = RNA_def_struct(brna, "UserSolidLight", nullptr);
   RNA_def_struct_sdna(srna, "SolidLight");
@@ -7162,6 +7172,15 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_update(prop, 0, "rna_userdef_use_grease_pencil_version3_update");
 
+  prop = RNA_def_property(
+      srna, "use_grease_pencil_version3_convert_on_load", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_grease_pencil_version3_convert_on_load", 1);
+  RNA_def_property_ui_text(prop,
+                           "Grease Pencil 3.0 Automatic Conversion",
+                           "Enable automatic conversion to grease pencil 3.0 data when opening a "
+                           "blendfile (only active if 'Grease Pencil 3.0' is enabled)");
+  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
+
   prop = RNA_def_property(srna, "use_new_matrix_socket", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_new_matrix_socket", 1);
   RNA_def_property_ui_text(
@@ -7208,6 +7227,14 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
+
+  prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
+  RNA_def_property_ui_text(
+      prop,
+      "New Animation Data-block",
+      "The new 'Animation' data-block can contain the animation for multiple data-blocks at once");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 

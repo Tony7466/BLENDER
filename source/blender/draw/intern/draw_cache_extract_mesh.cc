@@ -24,7 +24,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_object.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_inline.hh"
@@ -272,7 +272,7 @@ static void extract_range_iter_looptri_bm(void *__restrict userdata,
   void *extract_data = tls->userdata_chunk;
   const MeshRenderData &mr = *data->mr;
   BMLoop **elt = ((BMLoop * (*)[3]) data->elems)[iter];
-  BLI_assert(iter < mr.edit_bmesh->tottri);
+  BLI_assert(iter < mr.edit_bmesh->looptris.size());
   for (const ExtractorRunData &run_data : data->extractors) {
     run_data.extractor->iter_looptri_bm(
         mr, elt, iter, POINTER_OFFSET(extract_data, run_data.data_offset));
@@ -398,7 +398,7 @@ BLI_INLINE void extract_task_range_run_iter(const MeshRenderData &mr,
   int stop;
   switch (iter_type) {
     case MR_ITER_CORNER_TRI:
-      range_data.elems = is_mesh ? mr.corner_tris.data() : (void *)mr.edit_bmesh->looptris;
+      range_data.elems = is_mesh ? mr.corner_tris.data() : (void *)mr.edit_bmesh->looptris.data();
       func = is_mesh ? extract_range_iter_corner_tri_mesh : extract_range_iter_looptri_bm;
       stop = mr.corner_tris_num;
       break;
@@ -611,7 +611,6 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
    */
   const bool do_hq_normals = (scene->r.perf_flag & SCE_PERF_HQ_NORMALS) != 0 ||
                              GPU_use_hq_normals_workaround();
-  const bool override_single_mat = mesh_render_mat_len_get(object, mesh) <= 1;
 
   /* Create an array containing all the extractors that needs to be executed. */
   ExtractorRunDatas extractors;
@@ -621,8 +620,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 #define EXTRACT_ADD_REQUESTED(type, name) \
   do { \
     if (DRW_##type##_requested(mbuflist->type.name)) { \
-      const MeshExtract *extractor = mesh_extract_override_get( \
-          &extract_##name, do_hq_normals, override_single_mat); \
+      const MeshExtract *extractor = mesh_extract_override_get(&extract_##name, do_hq_normals); \
       extractors.append(extractor); \
     } \
   } while (0)

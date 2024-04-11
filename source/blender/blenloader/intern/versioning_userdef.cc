@@ -28,7 +28,7 @@
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
 #include "BKE_colorband.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_keyconfig.h"
 #include "BKE_main.hh"
 #include "BKE_preferences.h"
@@ -38,7 +38,7 @@
 
 #include "BLT_translation.hh"
 
-#include "GPU_platform.h"
+#include "GPU_platform.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -140,6 +140,16 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_select);
   }
 
+  if (!USER_VERSION_ATLEAST(402, 13)) {
+    FROM_DEFAULT_V4_UCHAR(space_text.hilite);
+    FROM_DEFAULT_V4_UCHAR(space_console.console_cursor);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 14)) {
+    BLI_uniquename(
+        &userdef->themes, btheme, "Theme", '.', offsetof(bTheme, name), sizeof(btheme->name));
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
@@ -155,7 +165,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 /** #UserDef.flag */
 #define USER_LMOUSESELECT (1 << 14) /* deprecated */
 
-static void do_version_select_mouse(UserDef *userdef, wmKeyMapItem *kmi)
+static void do_version_select_mouse(const UserDef *userdef, wmKeyMapItem *kmi)
 {
   /* Remove select/action mouse from user defined keymaps. */
   enum {
