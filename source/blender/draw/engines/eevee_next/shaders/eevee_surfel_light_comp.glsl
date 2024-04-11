@@ -21,10 +21,12 @@ void main()
 
   Surfel surfel = surfel_buf[index];
 
+  ClosureUndetermined cl;
+  cl.N = surfel.normal;
+  cl.type = CLOSURE_BSDF_DIFFUSE_ID;
+
   ClosureLightStack stack;
-  stack.cl[0].N = surfel.normal;
-  stack.cl[0].ltc_mat = LTC_LAMBERT_MAT;
-  stack.cl[0].type = LIGHT_DIFFUSE;
+  stack.cl[0] = closure_light_new(cl, V);
 
   /* There is no view dependent effect as we evaluate everything using diffuse. */
   vec3 V = surfel.normal;
