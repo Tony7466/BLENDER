@@ -245,7 +245,8 @@ struct uiBut {
   uchar unit_type = 0;
   short iconadd = 0;
 
-  float menu_search_weight = 0.0f;
+  /** Affects the order if this uiBut is used in menu-search. */
+  float search_weight = 0.0f;
 
   /** #UI_BTYPE_BLOCK data */
   uiBlockCreateFunc block_create_func = nullptr;

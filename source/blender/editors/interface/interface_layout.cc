@@ -167,7 +167,8 @@ struct uiLayout {
   eUIEmbossType emboss;
   /** for fixed width or height to avoid UI size changes */
   float units[2];
-  float menu_search_weight;
+  /** Is copied to uiButs created in this layout. */
+  float search_weight;
 };
 
 struct uiLayoutItemFlow {
@@ -5276,12 +5277,12 @@ void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep)
 
 void uiLayoutSetSearchWeight(uiLayout *layout, const float weight)
 {
-  layout->menu_search_weight = weight;
+  layout->search_weight = weight;
 }
 
 float uiLayoutGetSearchWeight(uiLayout *layout)
 {
-  return layout->menu_search_weight;
+  return layout->search_weight;
 }
 
 Panel *uiLayoutGetRootPanel(uiLayout *layout)
@@ -5867,7 +5868,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
     BLI_addtail(&layout->items, bitem);
   }
   but->layout = layout;
-  but->menu_search_weight = layout->menu_search_weight;
+  but->search_weight = layout->search_weight;
 
   if (layout->context) {
     but->context = layout->context;

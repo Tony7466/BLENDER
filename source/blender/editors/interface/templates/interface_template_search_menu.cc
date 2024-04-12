@@ -176,7 +176,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
 
     item = (MenuSearch_Item *)BLI_memarena_calloc(memarena, sizeof(*item));
     item->type = MenuSearch_Item::Type::Operator;
-    item->weight = but->menu_search_weight;
+    item->weight = but->search_weight;
 
     item->op.type = but->optype;
     item->op.opcontext = but->opcontext;
@@ -220,7 +220,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
     else {
       item = (MenuSearch_Item *)BLI_memarena_calloc(memarena, sizeof(*item));
       item->type = MenuSearch_Item::Type::RNA;
-      item->weight = but->menu_search_weight;
+      item->weight = but->search_weight;
 
       item->rna.ptr = but->rnapoin;
       item->rna.prop = but->rnaprop;
