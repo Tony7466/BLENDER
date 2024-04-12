@@ -169,7 +169,6 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       value_attribute = attribute_writer.span;
     }
 
-    int64_t trans_data_offset = 0;
     Span<IndexMask> selections_per_attribute(selection_per_attribute[i].data(),
                                              selection_counts[i]);
     curve_populate_trans_data_structs(tc,
@@ -180,11 +179,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
                                       use_proportional_edit,
                                       curves.curves_range(),
                                       use_connected_only,
-                                      trans_data_offset,
+                                      0,
                                       bezier_curves[i]);
-    for (const IndexMask selection : selections_per_attribute) {
-      trans_data_offset += use_proportional_edit ? 0 : selection.size();
-    }
 
     /* TODO: This is wrong. The attribute writer should live at least as long as the span. */
     attribute_writer.finish();
