@@ -23,7 +23,7 @@ void main()
 
   ObjectBounds bounds = bounds_buf[index];
   /* Bounds are not correct as culling is disabled for these. */
-  if (bounds._inner_sphere_radius <= 0.0) {
+  if (bounds.bounding_sphere.w == -1.0 || bounds._inner_sphere_radius <= 0.0) {
     return;
   }
 
