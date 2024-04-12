@@ -128,6 +128,45 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   }
 }
 
+/* TODO(weizhen): move these radiance function to somewhere else. */
+template<typename ConstIntegratorGenericState>
+ccl_device_forceinline void radiance_eval_setup_from_reservoir(KernelGlobals kg,
+                                                               ConstIntegratorGenericState state,
+                                                               ccl_private ShaderData *sd,
+                                                               ccl_private LightSample *ls,
+                                                               const uint32_t path_flag,
+                                                               ccl_global float *ccl_restrict
+                                                                   render_buffer)
+{
+  shader_setup_from_reservoir(kg, sd);
+
+  /* TODO(weizhen): what features are needed here? Is this the right state? */
+  surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
+      kg, state, sd, render_buffer, path_flag);
+  /* TODO(weizhen): do we call `surface_shader_prepare_closures()` here? */
+
+  light_sample_from_uv(kg, sd->time, sd->P, sd->N, sd->flag, path_flag, ls);
+}
+
+/* Evaluate BSDF * L * cos_NO. */
+template<typename ConstIntegratorGenericState>
+ccl_device_forceinline void radiance_eval(KernelGlobals kg,
+                                          ConstIntegratorGenericState state,
+                                          ccl_private ShaderData *sd,
+                                          ccl_private LightSample *ls,
+                                          ccl_private BsdfEval *radiance)
+{
+  ShaderDataCausticsStorage emission_sd_storage;
+  ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
+
+  const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, ls, sd->time);
+
+  /* TODO(weizhen): path guiding needs state. */
+  surface_shader_bsdf_eval(kg, INTEGRATOR_STATE_NULL, sd, ls->D, radiance, ls->shader);
+
+  bsdf_eval_mul(radiance, light_eval);
+}
+
 /* TODO(weizhen): state or shadow_state? */
 ccl_device void integrator_restir(KernelGlobals kg,
                                   IntegratorShadowState state,
@@ -137,31 +176,14 @@ ccl_device void integrator_restir(KernelGlobals kg,
 
   /* TODO(weizhen): read neighbor weights, pick a neighbor, then retrieve sd. */
 
-  /* write everything in render buffer, setup shader, eval shader, etc, following
-   * integrate_surface. */
   Reservoir reservoir;
   uint32_t path_flag;
   ShaderData sd;
   integrator_restir_unpack_reservoir(kg, state, &reservoir, &path_flag, &sd, render_buffer);
-  shader_setup_from_reservoir(kg, &sd);
 
-  /* TODO(weizhen): what features are needed here? Is this the right state? */
-  surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
-      kg, state, &sd, render_buffer, path_flag);
-  /* TODO(weizhen): do we call `surface_shader_prepare_closures()` here? */
+  radiance_eval_setup_from_reservoir(kg, state, &sd, &reservoir.ls, path_flag, render_buffer);
+  radiance_eval(kg, state, &sd, &reservoir.ls, &reservoir.radiance);
 
-  light_sample_from_uv(kg, sd.time, sd.P, sd.N, sd.flag, path_flag, &reservoir.ls);
-
-  ShaderDataCausticsStorage emission_sd_storage;
-  ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-
-  const Spectrum light_eval = light_sample_shader_eval(
-      kg, state, emission_sd, &reservoir.ls, sd.time);
-  /* TODO(weizhen): path guiding needs state. */
-  surface_shader_bsdf_eval(
-      kg, INTEGRATOR_STATE_NULL, &sd, reservoir.ls.D, &reservoir.radiance, reservoir.ls.shader);
-
-  bsdf_eval_mul(&reservoir.radiance, light_eval);
   bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight / reduce_add(reservoir.radiance.sum));
 
   /* TODO(weizhen): move shadow ray tracing after this. */
