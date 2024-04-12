@@ -321,11 +321,17 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   bool has_bezier_stroke = false;
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
     if (gps->editcurve != nullptr) {
+      if (gps->editcurve->tot_curve_points == 0) {
+        continue;
+      }
       has_bezier_stroke = true;
       num_points += gps->editcurve->tot_curve_points;
       curve_types.append(CURVE_TYPE_BEZIER);
     }
     else {
+      if (gps->totpoints == 0) {
+        continue;
+      }
       num_points += gps->totpoints;
       curve_types.append(CURVE_TYPE_POLY);
     }
@@ -333,13 +339,17 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     offsets.append(num_points);
   }
 
+  /* Return if the legacy frame contains no strokes (or zero points). */
+  if (num_strokes == 0) {
+    return;
+  }
+
   /* Resize the CurvesGeometry. */
   Drawing &drawing = r_drawing.wrap();
   CurvesGeometry &curves = drawing.strokes_for_write();
   curves.resize(num_points, num_strokes);
-  if (num_strokes > 0) {
-    curves.offsets_for_write().copy_from(offsets);
-  }
+  curves.offsets_for_write().copy_from(offsets);
+
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
 
@@ -389,8 +399,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       "delta_time", AttrDomain::Point);
   SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
       "rotation", AttrDomain::Point);
-  SpanAttributeWriter<ColorGeometry4f> vertex_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", AttrDomain::Point);
+  MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
   SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_span<bool>(
       ".selection", AttrDomain::Point);
   MutableSpan<MDeformVert> dverts = use_dverts ? curves.wrap().deform_verts_for_write() :
@@ -410,19 +419,23 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       "hardness", AttrDomain::Curve);
   SpanAttributeWriter<float> stroke_point_aspect_ratios =
       attributes.lookup_or_add_for_write_span<float>("aspect_ratio", AttrDomain::Curve);
-  SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
-          "fill_color",
-          AttrDomain::Curve,
-          bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
-              ColorGeometry4f(float4(0.0f)), curves.curves_num())));
+  MutableSpan<ColorGeometry4f> stroke_fill_colors = drawing.fill_colors_for_write();
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Curve);
 
   Array<float4x2> legacy_texture_matrices(num_strokes);
 
   int stroke_i = 0;
-  LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
+    /* In GPv2 strokes with 0 points could technically be represented. In `CurvesGeometry` this is
+     * not the case and would be a bug. So we explicitly make sure to skip over strokes with no
+     * points. */
+    if (gps->totpoints == 0 ||
+        (gps->editcurve != nullptr && gps->editcurve->tot_curve_points == 0))
+    {
+      continue;
+    }
+
     stroke_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
     /* TODO: This should be a `double` attribute. */
     stroke_init_times.span[stroke_i] = float(gps->inittime);
@@ -431,13 +444,11 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_hardnesses.span[stroke_i] = gps->hardness;
     stroke_point_aspect_ratios.span[stroke_i] = gps->aspect_ratio[0] /
                                                 max_ff(gps->aspect_ratio[1], 1e-8);
-    stroke_fill_colors.span[stroke_i] = ColorGeometry4f(gps->vert_color_fill);
+    stroke_fill_colors[stroke_i] = ColorGeometry4f(gps->vert_color_fill);
     stroke_materials.span[stroke_i] = gps->mat_nr;
 
-    IndexRange points = points_by_curve[stroke_i];
-    if (points.is_empty()) {
-      continue;
-    }
+    const IndexRange points = points_by_curve[stroke_i];
+    BLI_assert(points.size() == gps->totpoints);
 
     const Span<bGPDspoint> src_points{gps->points, gps->totpoints};
     /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
@@ -458,7 +469,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     MutableSpan<float> dst_opacities = opacities.slice(points);
     MutableSpan<float> dst_deltatimes = delta_times.span.slice(points);
     MutableSpan<float> dst_rotations = rotations.span.slice(points);
-    MutableSpan<ColorGeometry4f> dst_vertex_colors = vertex_colors.span.slice(points);
+    MutableSpan<ColorGeometry4f> dst_vertex_colors = vertex_colors.slice(points);
     MutableSpan<bool> dst_selection = selection.span.slice(points);
     MutableSpan<MDeformVert> dst_dverts = use_dverts ? dverts.slice(points) :
                                                        MutableSpan<MDeformVert>();
@@ -518,6 +529,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
     const float4x2 legacy_texture_matrix = get_legacy_texture_matrix(gps);
     legacy_texture_matrices[stroke_i] = legacy_texture_matrix;
+
+    stroke_i++;
   }
 
   /* Ensure that the normals are up to date. */
@@ -526,7 +539,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
   delta_times.finish();
   rotations.finish();
-  vertex_colors.finish();
   selection.finish();
 
   stroke_cyclic.finish();
@@ -535,7 +547,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   stroke_end_caps.finish();
   stroke_hardnesses.finish();
   stroke_point_aspect_ratios.finish();
-  stroke_fill_colors.finish();
   stroke_materials.finish();
 }
 
@@ -581,9 +592,10 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     new_layer.set_locked((gpl->flag & GP_LAYER_LOCKED) != 0);
     new_layer.set_selected((gpl->flag & GP_LAYER_SELECT) != 0);
     SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_FRAMELOCK), GP_LAYER_TREE_NODE_MUTE);
-    SET_FLAG_FROM_TEST(
-        new_layer.base.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
+        new_layer.base.flag, (gpl->flag & GP_LAYER_FRAMELOCK) != 0, GP_LAYER_TREE_NODE_MUTE);
+    SET_FLAG_FROM_TEST(new_layer.base.flag,
+                       (gpl->flag & GP_LAYER_USE_LIGHTS) != 0,
+                       GP_LAYER_TREE_NODE_USE_LIGHTS);
     SET_FLAG_FROM_TEST(new_layer.base.flag,
                        (gpl->onion_flag & GP_LAYER_ONIONSKIN) == 0,
                        GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
@@ -594,12 +606,16 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
 
     new_layer.parent = gpl->parent;
     new_layer.set_parent_bone_name(gpl->parsubstr);
+    copy_m4_m4(new_layer.parentinv, gpl->inverse);
 
     copy_v3_v3(new_layer.translation, gpl->location);
     copy_v3_v3(new_layer.rotation, gpl->rotation);
     copy_v3_v3(new_layer.scale, gpl->scale);
 
     new_layer.set_view_layer_name(gpl->viewlayername);
+    SET_FLAG_FROM_TEST(new_layer.base.flag,
+                       (gpl->flag & GP_LAYER_DISABLE_MASKS_IN_VIEWLAYER) != 0,
+                       GP_LAYER_TREE_NODE_DISABLE_MASKS_IN_VIEWLAYER);
 
     /* Convert the layer masks. */
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
