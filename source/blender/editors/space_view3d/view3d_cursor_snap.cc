@@ -855,19 +855,12 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void * /*customda
   wmWindow *win = CTX_wm_window(C);
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
-
-  /* `event_modifier` is used to identify whether modifier keys that activate snap, (by default
-   * Ctrl), have been pressed.
-   * It's useful to keep track of it to know if we need to update the position of the snap cursor.
-   * If `win->eventstate` is `nullptr`, reuse the last event modifer stored. Thus, only the mouse
-   * position will be considered. */
-  uint8_t event_modifier = win->eventstate ? win->eventstate->modifier :
-                                             data_intern->last_eventstate.modifier;
+  wmEvent *event = win->eventstate;
   x -= region->winrct.xmin;
   y -= region->winrct.ymin;
-  if (v3d_cursor_eventstate_has_changed(data_intern, state, x, y, event_modifier)) {
+  if (event && v3d_cursor_eventstate_has_changed(data_intern, state, x, y, event->modifier)) {
     View3D *v3d = CTX_wm_view3d(C);
-    v3d_cursor_snap_update(state, C, depsgraph, scene, region, v3d, x, y, event_modifier);
+    v3d_cursor_snap_update(state, C, depsgraph, scene, region, v3d, x, y, event->modifier);
   }
 
   const bool draw_plane = state->draw_plane || state->draw_box;
@@ -1052,14 +1045,7 @@ void ED_view3d_cursor_snap_data_update(V3DSnapCursorState *state,
 {
   SnapCursorDataIntern *data_intern = &g_data_intern;
   const wmEvent *event = CTX_wm_window(C)->eventstate;
-
-  /* `event_modifier` is used to identify whether modifier keys that activate snap, (by default
-   * Ctrl), have been pressed.
-   * It's useful to keep track of it to know if we need to update the position of the snap cursor.
-   * If `event` is `nullptr`, reuse the last event modifer stored. Thus, only the mouse position
-   * will be considered. */
-  uint8_t event_modifier = event ? event->modifier : data_intern->last_eventstate.modifier;
-  if (v3d_cursor_eventstate_has_changed(data_intern, state, x, y, event_modifier)) {
+  if (event && v3d_cursor_eventstate_has_changed(data_intern, state, x, y, event->modifier)) {
     Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     Scene *scene = DEG_get_input_scene(depsgraph);
     ScrArea *area = CTX_wm_area(C);
@@ -1069,7 +1055,7 @@ void ED_view3d_cursor_snap_data_update(V3DSnapCursorState *state,
     if (!state) {
       state = ED_view3d_cursor_snap_state_active_get();
     }
-    v3d_cursor_snap_update(state, C, depsgraph, scene, region, v3d, x, y, event_modifier);
+    v3d_cursor_snap_update(state, C, depsgraph, scene, region, v3d, x, y, event->modifier);
   }
 }
 
