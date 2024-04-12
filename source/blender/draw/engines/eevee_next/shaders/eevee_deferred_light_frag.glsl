@@ -46,8 +46,7 @@ void main()
   {
     float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
     gbuf.thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
-                         ((gbuf.thickness == 0.0) ? shadow_thickness :
-                                                    min(shadow_thickness, gbuf.thickness)) :
+                         min(shadow_thickness, gbuf.thickness) :
                          gbuf.thickness;
 
 #  if 1 /* TODO Limit to SSS. */
