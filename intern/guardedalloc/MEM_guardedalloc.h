@@ -259,7 +259,8 @@ void MEM_use_guarded_allocator(void);
 #  include <utility>
 
 /* Conservative value of memory alignment returned by non-aligned OS-level memory allocation
- * functions. */
+ * functions. For alignments smaller than this value, using non-aligned versions of allocator API
+ * functions is okay, allowing use of calloc, for example. */
 #  define MEM_MIN_CPP_ALIGNMENT \
     (__STDCPP_DEFAULT_NEW_ALIGNMENT__ < alignof(void *) ? __STDCPP_DEFAULT_NEW_ALIGNMENT__ : \
                                                           alignof(void *))
