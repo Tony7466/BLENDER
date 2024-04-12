@@ -120,10 +120,6 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
   desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset"));
   ED_workspace_status_item(C, desc.c_str(), ICON_EVENT_O);
 
-  desc = IFACE_("Outset: ");
-  desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset"));
-  ED_workspace_status_item(C, desc.c_str(), ICON_EVENT_O);
-
   desc = IFACE_("Boundary: ");
   desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_boundary"));
   ED_workspace_status_item(C, desc.c_str(), ICON_EVENT_B);
