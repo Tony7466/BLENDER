@@ -245,6 +245,8 @@ struct uiBut {
   uchar unit_type = 0;
   short iconadd = 0;
 
+  float menu_search_weight = 0.0f;
+
   /** #UI_BTYPE_BLOCK data */
   uiBlockCreateFunc block_create_func = nullptr;
 

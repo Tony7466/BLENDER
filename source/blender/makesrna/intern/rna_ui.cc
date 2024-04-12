@@ -1492,6 +1492,16 @@ static void rna_UILayout_property_decorate_set(PointerRNA *ptr, bool value)
   uiLayoutSetPropDecorate(static_cast<uiLayout *>(ptr->data), value);
 }
 
+static float rna_UILayout_search_weight_get(PointerRNA *ptr)
+{
+  return uiLayoutGetSearchWeight(static_cast<uiLayout *>(ptr->data));
+}
+
+static void rna_UILayout_search_weight_set(PointerRNA *ptr, float value)
+{
+  uiLayoutSetSearchWeight(static_cast<uiLayout *>(ptr->data), value);
+}
+
 /* File Handler */
 
 static bool file_handler_poll_drop(const bContext *C,
@@ -1735,6 +1745,12 @@ static void rna_def_ui_layout(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_property_decorate", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(
       prop, "rna_UILayout_property_decorate_get", "rna_UILayout_property_decorate_set");
+
+  prop = RNA_def_property(srna, "search_weight", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_funcs(
+      prop, "rna_UILayout_search_weight_get", "rna_UILayout_search_weight_set", nullptr);
+  RNA_def_property_ui_text(
+      prop, "Search Weight", "Influences the sorting of elements when using menu-search");
 }
 
 static void rna_def_panel(BlenderRNA *brna)
