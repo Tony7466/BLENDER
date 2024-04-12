@@ -225,10 +225,18 @@ class GRAPH_MT_select(Menu):
         props.mode = 'RIGHT'
 
         layout.separator()
-        props = layout.operator("graph.select_key_handles", text="Select Handles")
+        props = layout.operator("graph.select_key_handles", text="Select Both Handles")
         props.left_handle_action = 'SELECT'
         props.right_handle_action = 'SELECT'
         props.key_action = 'KEEP'
+        props = layout.operator("graph.select_key_handles", text="Select Left Handles")
+        props.left_handle_action = 'SELECT'
+        props.right_handle_action = 'KEEP'
+        props.key_action = 'DESELECT'
+        props = layout.operator("graph.select_key_handles", text="Select Right Handles")
+        props.left_handle_action = 'KEEP'
+        props.right_handle_action = 'SELECT'
+        props.key_action = 'DESELECT'
         props = layout.operator("graph.select_key_handles", text="Select Key")
         props.left_handle_action = 'DESELECT'
         props.right_handle_action = 'DESELECT'
