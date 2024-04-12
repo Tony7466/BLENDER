@@ -241,17 +241,22 @@ ccl_device_forceinline bool area_light_is_ellipse(const ccl_global KernelAreaLig
 }
 
 /* Common API. */
-/* Evaluate `eval_fac`, `Ng` and `pdf`. Also sample a position on the light if `sample_coord`. */
-template<bool in_volume_segment>
+/* TODO(weizhen): this function is too complicated, consider splitting. */
+/* Evaluate `eval_fac` and `Ng`. Also sample a new position on the light if `sample_coord`, and
+ * compute `pdf` if `!has_uv`. */
+template<bool in_volume_segment, bool has_uv = false>
 ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
                                        const float3 ray_P,
                                        ccl_private float3 *light_P,
                                        ccl_private LightSample *ccl_restrict ls,
                                        const float2 rand,
-                                       bool sample_coord,
-                                       bool has_uv = false)
+                                       bool sample_coord)
 {
   ls->Ng = klight->area.dir;
+
+  if (!in_volume_segment && dot(*light_P - ray_P, ls->Ng) > 0.0f) {
+    return false;
+  }
 
   float3 axis_u = klight->area.axis_u;
   float3 axis_v = klight->area.axis_v;
@@ -259,64 +264,66 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
   float len_v = klight->area.len_v;
 
   const float invarea = fabsf(klight->area.invarea);
-  bool sample_rectangle = (klight->area.invarea > 0.0f);
 
-  float3 light_P_new = *light_P;
-
-  if (in_volume_segment) {
-    light_P_new += sample_rectangle ?
-                       rectangle_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand) :
-                       ellipse_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand);
-    ls->pdf = invarea;
-  }
-  else {
-    if (dot(*light_P - ray_P, ls->Ng) > 0.0f) {
-      return false;
-    }
-    if (klight->area.normalize_spread > 0) {
-      if (!area_light_spread_clamp_light(ray_P,
-                                         ls->Ng,
-                                         &light_P_new,
-                                         &axis_u,
-                                         &len_u,
-                                         &axis_v,
-                                         &len_v,
-                                         klight->area.tan_half_spread,
-                                         &sample_rectangle))
-      {
-        return false;
-      }
-    }
-
-    if (sample_rectangle) {
-      ls->pdf = area_light_rect_sample(
-          ray_P, &light_P_new, axis_u, len_u, axis_v, len_v, rand, sample_coord);
-    }
-    else {
-      if (klight->area.tan_half_spread == 0.0f) {
-        ls->pdf = 1.0f;
-      }
-      else {
-        if (sample_coord) {
-          light_P_new += ellipse_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand);
-        }
-        ls->pdf = 4.0f * M_1_PI_F / (len_u * len_v);
-      }
-    }
-  }
-
-  if (sample_coord) {
-    *light_P = light_P_new;
-    ls->D = normalize_len(*light_P - ray_P, &ls->t);
-  }
-  else if (has_uv) {
-    /* TODO(weizhen): check what fields of ls needs to be written, probably no need to call
-     * `area_light_eval()`. */
+  if (has_uv) {
+    kernel_assert(!sample_coord);
     const float light_v = ls->u - 0.5f;
     const float light_u = -(ls->v + light_v);
-    ls->P = *light_P + light_u * klight->area.len_u * klight->area.axis_u +
-            light_v * klight->area.len_v * klight->area.axis_v;
+    ls->P = *light_P + light_u * len_u * axis_u + light_v * len_v * axis_v;
     ls->D = normalize_len(ls->P - ray_P, &ls->t);
+  }
+  else {
+    bool sample_rectangle = (klight->area.invarea > 0.0f);
+
+    float3 light_P_new = *light_P;
+
+    if (in_volume_segment) {
+      light_P_new += sample_rectangle ?
+                         rectangle_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand) :
+                         ellipse_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand);
+      ls->pdf = invarea;
+    }
+    else {
+      if (klight->area.normalize_spread > 0) {
+        if (!area_light_spread_clamp_light(ray_P,
+                                           ls->Ng,
+                                           &light_P_new,
+                                           &axis_u,
+                                           &len_u,
+                                           &axis_v,
+                                           &len_v,
+                                           klight->area.tan_half_spread,
+                                           &sample_rectangle))
+        {
+          return false;
+        }
+      }
+
+      if (sample_rectangle) {
+        ls->pdf = area_light_rect_sample(
+            ray_P, &light_P_new, axis_u, len_u, axis_v, len_v, rand, sample_coord);
+      }
+      else {
+        if (klight->area.tan_half_spread == 0.0f) {
+          ls->pdf = 1.0f;
+        }
+        else {
+          if (sample_coord) {
+            light_P_new += ellipse_sample(axis_u * len_u * 0.5f, axis_v * len_v * 0.5f, rand);
+          }
+          ls->pdf = 4.0f * M_1_PI_F / (len_u * len_v);
+        }
+      }
+    }
+
+    if (sample_coord) {
+      *light_P = light_P_new;
+      ls->D = normalize_len(*light_P - ray_P, &ls->t);
+    }
+
+    if (in_volume_segment || (!sample_rectangle && klight->area.tan_half_spread > 0)) {
+      ls->pdf *= light_pdf_area_to_solid_angle(ls->Ng, -ls->D, ls->t);
+    }
   }
 
   /* Convert radiant flux to radiance. */
@@ -326,10 +333,6 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
     /* Area Light spread angle attenuation */
     ls->eval_fac *= area_light_spread_attenuation(
         ls->D, ls->Ng, klight->area.tan_half_spread, klight->area.normalize_spread);
-  }
-
-  if (in_volume_segment || (!sample_rectangle && klight->area.tan_half_spread > 0)) {
-    ls->pdf *= light_pdf_area_to_solid_angle(ls->Ng, -ls->D, ls->t);
   }
 
   return in_volume_segment || ls->eval_fac > 0;
@@ -435,13 +438,14 @@ ccl_device_inline bool area_light_intersect(const ccl_global KernelLight *klight
                             is_ellipse);
 }
 
+/* NOTE: `ls->pdf` is skipped. */
 ccl_device_inline bool area_light_sample_from_uv(const ccl_global KernelLight *klight,
                                                  const float3 ray_P,
                                                  ccl_private LightSample *ccl_restrict ls)
 {
   ls->Ng = klight->area.dir;
   float3 light_P = klight->co;
-  return area_light_eval<false>(klight, ray_P, &light_P, ls, zero_float2(), false, true);
+  return area_light_eval<false, true>(klight, ray_P, &light_P, ls, zero_float2(), false);
 }
 
 ccl_device_inline bool area_light_sample_from_intersection(
@@ -452,10 +456,10 @@ ccl_device_inline bool area_light_sample_from_intersection(
 {
   ls->u = isect->u;
   ls->v = isect->v;
+  ls->Ng = klight->area.dir;
+  float3 light_P = klight->co;
 
-  /* TODO(weizhen): temporarily calling this function just to make sure the implementation is
-   * correct. Should call `area_light_eval()` instead. */
-  return area_light_sample_from_uv(klight, ray_P, ls);
+  return area_light_eval<false>(klight, ray_P, &light_P, ls, zero_float2(), false);
 }
 
 /* Returns the maximal distance between the light center and the boundary. */

@@ -148,6 +148,29 @@ ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *kligh
   }
 }
 
+/* TODO(weizhen): `pdf`, `t` and `P` are skipped. Check if they are actually needed. Especially
+ * when the radius is zero. */
+ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *klight,
+                                                  const float3 ray_P,
+                                                  ccl_private LightSample *ccl_restrict ls)
+{
+  ls->eval_fac = klight->spot.eval_fac;
+
+  const Transform tfm = klight->tfm;
+  const float2 uv = make_float2(1.0f - ls->u - ls->v, ls->u);
+  ls->Ng = transform_direction(&tfm, map_to_sphere(uv));
+
+  if (klight->spot.is_sphere) {
+    ls->P = klight->co + klight->spot.radius * ls->Ng;
+    ls->D = normalize(ls->P - ray_P);
+  }
+  else {
+    ls->D = -ls->Ng;
+  }
+
+  return true;
+}
+
 ccl_device_inline bool point_light_sample_from_intersection(const ccl_global KernelLight *klight,
                                                             const float3 ray_P,
                                                             const float3 ray_D,

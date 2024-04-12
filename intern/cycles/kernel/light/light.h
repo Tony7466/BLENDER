@@ -197,7 +197,6 @@ ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
   ls->group = lamp_lightgroup(kg, lamp);
 
   /* TODO(weizhen): support other light types. */
-  kernel_assert(type == LIGHT_AREA);
 
   // if (type == LIGHT_DISTANT) {
   //   if (!distant_light_sample(klight, rand, ls)) {
@@ -219,19 +218,14 @@ ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
   //     return false;
   //   }
   // }
-  // else if (type == LIGHT_POINT) {
-  //   if (!point_light_sample(klight, rand, P, N, shader_flags, ls)) {
-  //     return false;
-  //   }
-  // }
-  // else {
-  /* area light */
-  if (!area_light_sample_from_uv(klight, P, ls)) {
-    return false;
+  if (type == LIGHT_POINT) {
+    return point_light_sample_from_uv(klight, P, ls);
   }
-  // }
 
-  return (ls->pdf > 0.0f);
+  kernel_assert(type == LIGHT_AREA);
+
+  /* area light */
+  return area_light_sample_from_uv(klight, P, ls);
 }
 
 /* Sample a point on the chosen emitter. */
