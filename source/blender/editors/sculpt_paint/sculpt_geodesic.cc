@@ -49,14 +49,14 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
     return false;
   }
 
-  BLI_assert(dists[v1] != FLT_MAX);
+  BLI_assert(dists[v1] != std::numeric_limits<float>::max());
   if (dists[v0] <= dists[v1]) {
     return false;
   }
 
   float dist0;
   if (v2 != SCULPT_GEODESIC_VERTEX_NONE) {
-    BLI_assert(dists[v2] != FLT_MAX);
+    BLI_assert(dists[v2] != std::numeric_limits<float>::max());
     if (dists[v0] <= dists[v2]) {
       return false;
     }
@@ -79,7 +79,7 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
 
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
-  const int UNASSIGNED = -1;
+  constexpr const int non_checked = -1;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -105,13 +105,13 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
         edges, mesh->verts_num, ss->vert_to_edge_offsets, ss->vert_to_edge_indices);
   }
 
-  threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
+  threading::parallel_for(IndexRange(totvert), 4096, [&](IndexRange range) {
     for (const int i : range) {
       if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
         dists[i] = 0.0f;
       }
       else {
-        dists[i] = FLT_MAX;
+        dists[i] = std::numeric_limits<float>::max();
       }
     }
   });
@@ -119,7 +119,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
    * to define a distance to them the algorithm can stop earlier by skipping them. */
   Vector<bool> affected_vert(totvert, false);
-  if (limit_radius == FLT_MAX) {
+  if (limit_radius == std::numeric_limits<float>::max()) {
     /* In this case, no need to loop through all initial vertices to check distances as they are
      * all going to be affected. */
     affected_vert.fill(true);
@@ -133,7 +133,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     GSET_ITER (gs_iter, initial_verts) {
       const int v = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
       const float *v_co = vert_positions[v];
-      threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
+      threading::parallel_for(IndexRange(totvert), 4096, [&](IndexRange range) {
         for (const int i : range) {
           if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
             affected_vert[i] = true;
@@ -157,7 +157,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
       const int v1 = edges[edge_index][0];
       const int v2 = edges[edge_index][1];
       if ((affected_vert[v1] || affected_vert[v2]) &&
-          (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
+          (dists[v1] != std::numeric_limits<float>::max() ||
+           dists[v2] != std::numeric_limits<float>::max()))
       {
         queue.append(edge_index);
       }
@@ -168,16 +169,18 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
    * since they are an advancing front in the mesh hence no need
    * to allocate much more memmory and keep the iteration range smaller */
   size_t new_size = 4 * queue.size();
-  queue_next.resize(new_size, UNASSIGNED);
+  queue_next.resize(new_size, non_checked);
 
   BitVector<> edge_tag(totedge);
   while (!queue.is_empty()) {
-    threading::parallel_for_each(IndexRange(0, queue.size()), [&](const int val) {
+    threading::parallel_for_each(IndexRange(queue.size()), [&](const int val) {
       const int edge_index = queue[val];
       int v1 = edges[edge_index][0];
       int v2 = edges[edge_index][1];
 
-      if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) {
+      if (dists[v1] == std::numeric_limits<float>::max() ||
+          dists[v2] == std::numeric_limits<float>::max())
+      {
         if (dists[v1] > dists[v2]) {
           std::swap(v1, v2);
         }
@@ -206,7 +209,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
                 edge_other == edge_index || edge_tag[edge_other] ||
                 (!ss->edge_to_face_map[edge_other].is_empty() &&
-                 dists[edge_vertex_other] == FLT_MAX))
+                 dists[edge_vertex_other] == std::numeric_limits<float>::max()))
             {
               continue;
             }
@@ -217,7 +220,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
              * collission in hash tables can also be used to avoid
              * parallel data storage collisions */
             size_t idx = edge_other % new_size;
-            while (queue_next[idx] != UNASSIGNED) {
+            while (queue_next[idx] != non_checked) {
               ++idx;
               if (idx >= new_size) {
                 idx = 0;
@@ -239,7 +242,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     }
     new_size = 4 * queue.size();
     queue_next.clear();
-    queue_next.resize(new_size, UNASSIGNED);
+    queue_next.resize(new_size, non_checked);
   }
 
   return dists;
@@ -263,7 +266,7 @@ static float *geodesic_fallback_create(Object *ob, GSet *initial_verts)
 
   if (first_affected == SCULPT_GEODESIC_VERTEX_NONE) {
     for (int i = 0; i < totvert; i++) {
-      dists[i] = FLT_MAX;
+      dists[i] = std::numeric_limits<float>::max();
     }
     return dists;
   }
@@ -311,7 +314,7 @@ float *distances_create_from_vert_and_symm(Object *ob,
       else {
         float location[3];
         flip_v3_v3(location, SCULPT_vertex_co_get(ss, vertex), ePaintSymmetryFlags(i));
-        v = SCULPT_nearest_vertex_get(ob, location, FLT_MAX, false);
+        v = SCULPT_nearest_vertex_get(ob, location, std::numeric_limits<float>::max(), false);
       }
       if (v.i != PBVH_REF_NONE) {
         BLI_gset_add(initial_verts, POINTER_FROM_INT(BKE_pbvh_vertex_to_index(ss->pbvh, v)));

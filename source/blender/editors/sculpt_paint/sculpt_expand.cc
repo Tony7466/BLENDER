@@ -608,7 +608,7 @@ static float *sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertR
         ob, symm_it, v);
     if (symm_vertex.i != SCULPT_EXPAND_VERTEX_NONE) {
       const float *co = SCULPT_vertex_co_get(ss, symm_vertex);
-      threading::parallel_for(IndexRange(0, totvert), 4096, [&](IndexRange range) {
+      threading::parallel_for(IndexRange(totvert), 4096, [&](IndexRange range) {
         for (const int i : range) {
           PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
