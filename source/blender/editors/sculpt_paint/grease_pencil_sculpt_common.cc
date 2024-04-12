@@ -44,20 +44,12 @@ Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bCont
       return {};
     }
     const Layer &active_layer = *grease_pencil.get_active_layer();
-    Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene.r.cfra);
-    if (drawing == nullptr) {
-      return {};
-    }
-
-    const int layer_index = *grease_pencil.get_layer_index(active_layer);
-    const int frame_number = scene.r.cfra;
-    const float multi_frame_falloff = 1.0f;
-    return {ed::greasepencil::MutableDrawingInfo{
-        *drawing, layer_index, frame_number, multi_frame_falloff}};
+    return ed::greasepencil::retrieve_editable_drawings_from_layer_with_falloff(
+        scene, grease_pencil, active_layer);
   }
 
   /* Apply to all editable drawings. */
-  return ed::greasepencil::retrieve_editable_drawings(scene, grease_pencil);
+  return ed::greasepencil::retrieve_editable_drawings_with_falloff(scene, grease_pencil);
 }
 
 void init_brush(Brush &brush)

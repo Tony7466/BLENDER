@@ -201,6 +201,8 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
                                                                    GreasePencil &grease_pencil);
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
+Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
+    const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                               const GreasePencil &grease_pencil,
                                               bool do_onion_skinning);
