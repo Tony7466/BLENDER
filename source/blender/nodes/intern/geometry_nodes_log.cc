@@ -429,29 +429,31 @@ ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)
         }
       }
     }
-    else if (node.is_reroute()) {
-      const bNodeSocket &input_socket = node.input_socket(0);
-      if (added_sockets.add(&input_socket)) {
-        sockets_to_check.push(&input_socket);
-      }
-      const Span<const bNodeLink *> links = input_socket.directly_linked_links();
-      for (const bNodeLink *link : links) {
-        const bNodeSocket &from_socket = *link->fromsock;
-        if (added_sockets.add(&from_socket)) {
-          sockets_to_check.push(&from_socket);
+    else {
+      if (node.is_reroute()) {
+        const bNodeSocket &input_socket = node.input_socket(0);
+        if (added_sockets.add(&input_socket)) {
+          sockets_to_check.push(&input_socket);
         }
-      }
-    }
-    else if (node.is_muted()) {
-      if (const bNodeSocket *input_socket = socket.internal_link_input()) {
-        if (added_sockets.add(input_socket)) {
-          sockets_to_check.push(input_socket);
-        }
-        const Span<const bNodeLink *> links = input_socket->directly_linked_links();
+        const Span<const bNodeLink *> links = input_socket.directly_linked_links();
         for (const bNodeLink *link : links) {
           const bNodeSocket &from_socket = *link->fromsock;
           if (added_sockets.add(&from_socket)) {
             sockets_to_check.push(&from_socket);
+          }
+        }
+      }
+      else if (node.is_muted()) {
+        if (const bNodeSocket *input_socket = socket.internal_link_input()) {
+          if (added_sockets.add(input_socket)) {
+            sockets_to_check.push(input_socket);
+          }
+          const Span<const bNodeLink *> links = input_socket->directly_linked_links();
+          for (const bNodeLink *link : links) {
+            const bNodeSocket &from_socket = *link->fromsock;
+            if (added_sockets.add(&from_socket)) {
+              sockets_to_check.push(&from_socket);
+            }
           }
         }
       }
