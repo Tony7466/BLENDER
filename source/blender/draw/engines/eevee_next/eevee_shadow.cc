@@ -903,6 +903,13 @@ void ShadowModule::sync_object(const Object *ob,
     return;
   }
 
+  const ObjectBounds &bounds =
+      inst_.manager->bounds_buf.current()[resource_handle.resource_index()];
+  if (bounds.bounding_sphere.w == -1.0f) {
+    /* The object doesn't have a valid bounding box. */
+    return;
+  }
+
   ShadowObject &shadow_ob = objects_.lookup_or_add_default(handle.object_key);
   shadow_ob.used = true;
   const bool is_initialized = shadow_ob.resource_handle.raw != 0;
