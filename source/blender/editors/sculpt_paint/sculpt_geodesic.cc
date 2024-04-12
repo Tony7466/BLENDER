@@ -143,7 +143,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     }
   }
 
-  Vector<int> queue, queue_next;
+  Vector<int> queue;
+  Vector<int> queue_next;
   queue.reserve(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
@@ -173,60 +174,66 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
   BitVector<> edge_tag(totedge);
   while (!queue.is_empty()) {
-    threading::parallel_for_each(IndexRange(queue.size()), [&](const int val) {
-      const int edge_index = queue[val];
-      int v1 = edges[edge_index][0];
-      int v2 = edges[edge_index][1];
+    threading::parallel_for(IndexRange(queue.size()), 1, [&](IndexRange range) {
+      for (const int value : range) {
+        const int edge_index = queue[value];
+        int edge_vert_a = edges[edge_index][0];
+        int edge_vert_b = edges[edge_index][1];
 
-      if (dists[v1] == std::numeric_limits<float>::max() ||
-          dists[v2] == std::numeric_limits<float>::max())
-      {
-        if (dists[v1] > dists[v2]) {
-          std::swap(v1, v2);
+        if (dists[edge_vert_a] == std::numeric_limits<float>::max() ||
+            dists[edge_vert_b] == std::numeric_limits<float>::max())
+        {
+          if (dists[edge_vert_a] > dists[edge_vert_b]) {
+            std::swap(edge_vert_a, edge_vert_b);
+          }
+          sculpt_geodesic_mesh_test_dist_add(vert_positions,
+                                             edge_vert_b,
+                                             edge_vert_a,
+                                             SCULPT_GEODESIC_VERTEX_NONE,
+                                             dists,
+                                             initial_verts);
         }
-        sculpt_geodesic_mesh_test_dist_add(
-            vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
-      }
 
-      for (const int face : ss->edge_to_face_map[edge_index]) {
-        if (!hide_poly.is_empty() && hide_poly[face]) {
-          continue;
-        }
-        for (const int vertex_other : corner_verts.slice(faces[face])) {
-          if (ELEM(vertex_other, v1, v2)) {
+        for (const int face : ss->edge_to_face_map[edge_index]) {
+          if (!hide_poly.is_empty() && hide_poly[face]) {
             continue;
           }
-          if (!sculpt_geodesic_mesh_test_dist_add(
-                  vert_positions, vertex_other, v1, v2, dists, initial_verts))
-          {
-            continue;
-          }
-
-          for (const int edge_other : ss->vert_to_edge_map[vertex_other]) {
-            const int edge_vertex_other = bke::mesh::edge_other_vert(edges[edge_other],
-                                                                     vertex_other);
-
-            if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
-                edge_other == edge_index || edge_tag[edge_other] ||
-                (!ss->edge_to_face_map[edge_other].is_empty() &&
-                 dists[edge_vertex_other] == std::numeric_limits<float>::max()))
+          for (const int vertex_other : corner_verts.slice(faces[face])) {
+            if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
+              continue;
+            }
+            if (!sculpt_geodesic_mesh_test_dist_add(
+                    vert_positions, vertex_other, edge_vert_a, edge_vert_b, dists, initial_verts))
             {
               continue;
             }
 
-            edge_tag[edge_other].set();
+            for (const int edge_other : ss->vert_to_edge_map[vertex_other]) {
+              const int edge_vertex_other = bke::mesh::edge_other_vert(edges[edge_other],
+                                                                       vertex_other);
 
-            /* Open addressing with linear probing that minimizes
-             * collission in hash tables can also be used to avoid
-             * parallel data storage collisions */
-            size_t idx = edge_other % new_size;
-            while (queue_next[idx] != non_checked) {
-              ++idx;
-              if (idx >= new_size) {
-                idx = 0;
+              if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
+                  edge_other == edge_index || edge_tag[edge_other] ||
+                  (!ss->edge_to_face_map[edge_other].is_empty() &&
+                   dists[edge_vertex_other] == std::numeric_limits<float>::max()))
+              {
+                continue;
               }
+
+              edge_tag[edge_other].set();
+
+              /* Open addressing with linear probing that minimizes
+               * collission in hash tables can also be used to avoid
+               * parallel data storage collisions */
+              size_t idx = edge_other % new_size;
+              while (queue_next[idx] != non_checked) {
+                ++idx;
+                if (idx >= new_size) {
+                  idx = 0;
+                }
+              }
+              queue_next[idx] = edge_other;
             }
-            queue_next[idx] = edge_other;
           }
         }
       }
