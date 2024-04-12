@@ -1265,7 +1265,8 @@ static std::string to_string_unit(const bContext &context,
                            RNA_SUBTYPE_UNIT_VALUE(socket_subtype),
                            &scene.unit,
                            false);
-  return std::string(StringRef(new_str).trim());
+  /* For the most of formats of value types we don't want to have indentation. */
+  return StringRef(new_str).trim();
 }
 
 static void create_inspection_string_for_generic_value(const bContext &context,
@@ -1331,15 +1332,19 @@ static void create_inspection_string_for_generic_value(const bContext &context,
     }
   }
   else if (socket_type.is<float>()) {
-    const float float_value = *static_cast<float *>(socket_value);
-    /* Above that threshold floats can't represent fractions anymore. */
-    if (std::abs(float_value) > (1 << 24)) {
-      /* Use higher precision to display correct integer value instead of one that is rounded to
-       * fewer significant digits. */
-      ss << fmt::format(TIP_("{:.10} (Float)"), float_value);
-    }
-    else {
-      ss << fmt::format(TIP_("{} (Float)"), to_string_unit(context, socket_subtype, float_value));
+    switch (socket_subtype) {
+      case PROP_PERCENTAGE: {
+        ss << fmt::format(
+            TIP_("{}% (Float)"),
+            to_string_unit(context, socket_subtype, *static_cast<float *>(socket_value)));
+        break;
+      }
+      default: {
+        ss << fmt::format(
+            TIP_("{} (Float)"),
+            to_string_unit(context, socket_subtype, *static_cast<float *>(socket_value)));
+        break;
+      }
     }
   }
   else if (socket_type.is<blender::float3>()) {
