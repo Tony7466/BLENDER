@@ -203,18 +203,17 @@ static void draw_cross(float position[2], const float scale[2], uint attr_id)
   GPU_matrix_pop();
 }
 
-static void draw_fcurve_selected_keyframe_vertices(
-    FCurve *fcu, View2D *v2d, bool sel, uint pos, const blender::int2 &bounds)
+static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu,
+                                                   bool sel,
+                                                   uint pos,
+                                                   const blender::int2 &bounding_indices)
 {
-  const float fac = 0.05f * BLI_rctf_size_x(&v2d->cur);
-
   set_fcurve_vertex_color(fcu, sel);
 
   immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
 
-  BezTriple *bezt;
-  for (int i = bounds[0]; i <= bounds[1]; i++) {
-    bezt = &fcu->bezt[i];
+  for (int i = bounding_indices[0]; i <= bounding_indices[1]; i++) {
+    BezTriple *bezt = &fcu->bezt[i];
     /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
      * - only draw those with correct selection state for the current drawing color
      * -
@@ -268,8 +267,8 @@ static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, const uint p
 
   const blender::int2 bounding_indices = get_bounding_bezt_indices(
       fcu, v2d->cur.xmin, v2d->cur.xmax);
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos, bounding_indices);
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos, bounding_indices);
+  draw_fcurve_selected_keyframe_vertices(fcu, false, pos, bounding_indices);
+  draw_fcurve_selected_keyframe_vertices(fcu, true, pos, bounding_indices);
   draw_fcurve_active_vertex(fcu, v2d, pos);
 
   immUnbindProgram();
