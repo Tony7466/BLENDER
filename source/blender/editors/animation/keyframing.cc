@@ -247,7 +247,7 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   return OPERATOR_FINISHED;
 }
 
-static bool is_keyable_type(IDProperty *prop, const PropertyRNA *property_rna)
+static bool is_idproperty_keyable(IDProperty *prop, const PropertyRNA *property_rna)
 {
   if (RNA_property_is_runtime(property_rna)) {
     return false;
@@ -339,7 +339,7 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
         if (!resolved_path) {
           continue;
         }
-        if (is_keyable_type(prop, resolved_prop)) {
+        if (is_idproperty_keyable(prop, resolved_prop)) {
           paths.append(path);
         }
       }
