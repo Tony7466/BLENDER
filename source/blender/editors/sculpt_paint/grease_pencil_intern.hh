@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "DNA_scene_types.h"
 #include "ED_grease_pencil.hh"
 
 #include "paint_intern.hh"
@@ -66,10 +67,10 @@ bool is_brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
 
 /* Common parameters for stroke callbacks that can be passed to utility functions. */
 struct GreasePencilStrokeParams {
-  const bContext &context;
+  const ToolSettings &toolsettings;
   const ARegion &region;
-  Object &ob_eval;
   Object &ob_orig;
+  Object &ob_eval;
   const bke::greasepencil::Layer &layer;
   int layer_index;
   int frame_number;
@@ -79,8 +80,11 @@ struct GreasePencilStrokeParams {
 
   /* Note: accessing region in worker threads will return null,
    * this has to be done on the main thread and passed explicitly. */
-  static GreasePencilStrokeParams from_context(const bContext &C,
+  static GreasePencilStrokeParams from_context(const Scene &scene,
+                                               const Depsgraph &depsgraph,
                                                const ARegion &region,
+                                               const View3D &view3d,
+                                               Object &object,
                                                int layer_index,
                                                int frame_number,
                                                float multi_frame_falloff,

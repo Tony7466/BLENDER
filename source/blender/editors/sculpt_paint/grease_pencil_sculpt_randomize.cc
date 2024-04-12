@@ -58,11 +58,12 @@ void RandomizeOperation::on_stroke_begin(const bContext &C, const InputSample &s
 
 void RandomizeOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
+  const Scene &scene = *CTX_data_scene(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Brush &brush = *BKE_paint_brush(&paint);
+  const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
+
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    const Scene &scene = *CTX_data_scene(&params.context);
-    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-    const Brush &brush = *BKE_paint_brush(&paint);
-    const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
     const unsigned int seed = this->unique_seed();
 
     IndexMaskMemory selection_memory;

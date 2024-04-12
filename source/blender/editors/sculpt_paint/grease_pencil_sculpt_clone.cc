@@ -35,6 +35,9 @@ static float2 arithmetic_mean(Span<float2> values)
 
 void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
 {
+  Main &bmain = *CTX_data_main(&C);
+  Object &object = *CTX_data_active_object(&C);
+
   this->init_stroke(C, start_sample);
 
   /* Note: Only one copy is created at the beginning of each stroke.
@@ -44,9 +47,6 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
    *
    * Here we only have the GPv2 behavior that actually works for now. */
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    Main &bmain = *CTX_data_main(&params.context);
-    Object &object = *CTX_data_active_object(&params.context);
-
     const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
         bmain, object, params.drawing, false);
     if (pasted_curves.is_empty()) {

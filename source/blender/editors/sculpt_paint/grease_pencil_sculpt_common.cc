@@ -184,27 +184,26 @@ bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
 }
 
 GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
-    const bContext &C,
+    const Scene &scene,
+    const Depsgraph &depsgraph,
     const ARegion &region,
+    const View3D &view3d,
+    Object &object,
     const int layer_index,
     const int frame_number,
     const float multi_frame_falloff,
     bke::greasepencil::Drawing &drawing)
 {
-  const Scene &scene = *CTX_data_scene(&C);
-  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-  const View3D &view3d = *CTX_wm_view3d(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &object);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
   ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
 
-  return {C,
+  return {*scene.toolsettings,
           region,
+          object,
           ob_eval,
-          ob_orig,
           layer,
           layer_index,
           frame_number,
@@ -215,9 +214,8 @@ GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
 
 IndexMask point_selection_mask(const GreasePencilStrokeParams &params, IndexMaskMemory &memory)
 {
-  const Scene &scene = *CTX_data_scene(&params.context);
   const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
-      eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
+      eGP_Sculpt_SelectMaskFlag(params.toolsettings.gpencil_selectmode_sculpt));
   return (is_masking ? ed::greasepencil::retrieve_editable_and_selected_points(
                            params.ob_eval, params.drawing, memory) :
                        params.drawing.strokes().points_range());
@@ -268,15 +266,26 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
 {
   using namespace blender::bke::greasepencil;
 
+  const Scene &scene = *CTX_data_scene(&C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  const View3D &view3d = *CTX_wm_view3d(&C);
   const ARegion &region = *CTX_wm_region(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   std::atomic<bool> changed = false;
   const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, info.layer_index, info.frame_number, info.multi_frame_falloff, info.drawing);
+        scene,
+        depsgraph,
+        region,
+        view3d,
+        object,
+        info.layer_index,
+        info.frame_number,
+        info.multi_frame_falloff,
+        info.drawing);
     if (fn(params)) {
       changed = true;
     }

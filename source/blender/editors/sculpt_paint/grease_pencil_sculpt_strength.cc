@@ -35,11 +35,12 @@ void StrengthOperation::on_stroke_begin(const bContext &C, const InputSample &st
 
 void StrengthOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-    const Brush &brush = *BKE_paint_brush(&paint);
-    const bool invert = this->is_inverted(brush);
+  const Scene &scene = *CTX_data_scene(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Brush &brush = *BKE_paint_brush(&paint);
+  const bool invert = this->is_inverted(brush);
 
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory selection_memory;
     const IndexMask selection = point_selection_mask(params, selection_memory);
     if (selection.is_empty()) {
@@ -51,11 +52,8 @@ void StrengthOperation::on_stroke_extended(const bContext &C, const InputSample 
 
     selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       float &opacity = opacities[point_i];
-      const float influence = brush_influence(*CTX_data_scene(&params.context),
-                                              brush,
-                                              view_positions[point_i],
-                                              extension_sample,
-                                              params.multi_frame_falloff);
+      const float influence = brush_influence(
+          scene, brush, view_positions[point_i], extension_sample, params.multi_frame_falloff);
       /* Brush influence mapped to opacity by a factor of 0.125. */
       const float delta_opacity = (invert ? -influence : influence) * 0.125f;
       opacity = std::clamp(opacity + delta_opacity, 0.0f, 1.0f);

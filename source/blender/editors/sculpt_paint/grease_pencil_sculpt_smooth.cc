@@ -41,11 +41,12 @@ void SmoothOperation::on_stroke_begin(const bContext &C, const InputSample &star
 
 void SmoothOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-    const Brush &brush = *BKE_paint_brush(&paint);
-    const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
+  const Scene &scene = *CTX_data_scene(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Brush &brush = *BKE_paint_brush(&paint);
+  const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
 
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory selection_memory;
     const IndexMask selection = point_selection_mask(params, selection_memory);
     if (selection.is_empty()) {
@@ -61,11 +62,8 @@ void SmoothOperation::on_stroke_extended(const bContext &C, const InputSample &e
 
     const VArray<float> influences = VArray<float>::ForFunc(
         view_positions.size(), [&](const int64_t point_) {
-          return brush_influence(*CTX_data_scene(&params.context),
-                                 brush,
-                                 view_positions[point_],
-                                 extension_sample,
-                                 params.multi_frame_falloff);
+          return brush_influence(
+              scene, brush, view_positions[point_], extension_sample, params.multi_frame_falloff);
         });
     Array<bool> selection_array(curves.points_num());
     selection.to_bools(selection_array);

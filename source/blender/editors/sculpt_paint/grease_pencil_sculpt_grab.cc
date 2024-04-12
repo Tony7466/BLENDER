@@ -67,9 +67,12 @@ void GrabOperation::foreach_grabbed_drawing(
         const GreasePencilStrokeParams &params, const IndexMask &mask, Span<float> weights)> fn)
     const
 {
+  const Scene &scene = *CTX_data_scene(&C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   const ARegion &region = *CTX_wm_region(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+  const View3D &view3d = *CTX_wm_view3d(&C);
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   bool changed = false;
   threading::parallel_for_each(this->drawing_data.index_range(), [&](const int i) {
@@ -91,7 +94,15 @@ void GrabOperation::foreach_grabbed_drawing(
         reinterpret_cast<GreasePencilDrawing &>(drawing_base).wrap();
 
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
-        C, region, data.layer_index, data.frame_number, data.multi_frame_falloff, drawing);
+        scene,
+        depsgraph,
+        region,
+        view3d,
+        object,
+        data.layer_index,
+        data.frame_number,
+        data.multi_frame_falloff,
+        drawing);
     if (fn(params, data.point_mask, data.weights)) {
       changed = true;
     }
@@ -133,10 +144,10 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
     BLI_assert(grease_pencil.get_drawing_at(layer, info.frame_number) == &info.drawing);
 
     ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
-    GreasePencilStrokeParams params = {C,
+    GreasePencilStrokeParams params = {*scene.toolsettings,
                                        region,
-                                       ob_eval,
                                        ob_orig,
+                                       ob_eval,
                                        layer,
                                        info.layer_index,
                                        info.frame_number,
@@ -178,6 +189,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
 void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
+  const ARegion &region = *CTX_wm_region(&C);
   const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
 
   this->foreach_grabbed_drawing(
@@ -193,7 +205,7 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
         const float3 layer_origin = params.layer.to_world_space(params.ob_eval).location();
         const float zfac = ED_view3d_calc_zfac(&rv3d, layer_origin);
         float3 mouse_delta;
-        ED_view3d_win_to_delta(&params.region, mouse_delta_win, zfac, mouse_delta);
+        ED_view3d_win_to_delta(&region, mouse_delta_win, zfac, mouse_delta);
 
         bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
         MutableSpan<float3> positions = curves.positions_for_write();
@@ -204,8 +216,7 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
           const float3 new_pos_world = math::transform_point(
               params.layer.to_world_space(params.ob_eval), new_pos_layer);
           float2 new_pos_view;
-          ED_view3d_project_float_global(
-              &params.region, new_pos_world, new_pos_view, V3D_PROJ_TEST_NOP);
+          ED_view3d_project_float_global(&region, new_pos_world, new_pos_view, V3D_PROJ_TEST_NOP);
           positions[point_i] = params.placement.project(new_pos_view);
         });
 

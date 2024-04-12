@@ -34,11 +34,11 @@ void PushOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
 void PushOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    const Scene &scene = *CTX_data_scene(&params.context);
-    Paint &paint = *BKE_paint_get_active_from_context(&params.context);
-    const Brush &brush = *BKE_paint_brush(&paint);
+  const Scene &scene = *CTX_data_scene(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Brush &brush = *BKE_paint_brush(&paint);
 
+  this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory selection_memory;
     const IndexMask selection = point_selection_mask(params, selection_memory);
     if (selection.is_empty()) {
