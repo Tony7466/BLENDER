@@ -403,7 +403,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
+      ED_workspace_status_text(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
     }
   }
 
@@ -611,10 +611,16 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   handle->can_refresh = true;
 
   if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-    ED_workspace_status_text(C, IFACE_("Type to search..."));
+    ED_workspace_status_begin(C);
+    ED_workspace_status_icons(C, ICON_EVENT_A);
+    ED_workspace_status_item(C, "-");
+    ED_workspace_status_icons(C, ICON_EVENT_Z);
+    ED_workspace_status_space(C, 0.7f);
+    ED_workspace_status_item(C, IFACE_("Search"));
+    ED_workspace_status_end(C);
   }
   else if (mt->idname[0]) {
-    ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
+    ED_workspace_status_text(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
   }
 }
 

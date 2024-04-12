@@ -18,6 +18,13 @@ struct Main;
 struct bScreen;
 struct bToolRef;
 
+typedef struct WorkSpaceStatusItem {
+  struct WorkSpaceStatusItem *next, *prev;
+  int icon;
+  char *text;
+  float space_factor;
+} WorkSpaceStatusItem;
+
 /* -------------------------------------------------------------------- */
 /** \name Create, Delete, Initialize
  * \{ */
@@ -163,6 +170,8 @@ bool BKE_workspace_owner_id_check(const struct WorkSpace *workspace, const char 
     ATTR_NONNULL();
 
 void BKE_workspace_id_tag_all_visible(struct Main *bmain, int tag) ATTR_NONNULL();
+
+void BKE_workspace_status_clear(struct WorkSpace *workspace);
 
 #undef GETTER_ATTRS
 #undef SETTER_ATTRS

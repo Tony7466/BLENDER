@@ -58,7 +58,7 @@ static void workspace_free_data(ID *id)
     BKE_workspace_tool_remove(workspace, static_cast<bToolRef *>(workspace->tools.first));
   }
 
-  MEM_SAFE_FREE(workspace->status_text);
+  BKE_workspace_status_clear(workspace);
   BKE_viewer_path_clear(&workspace->viewer_path);
 }
 
@@ -115,7 +115,7 @@ static void workspace_blend_read_data(BlendDataReader *reader, ID *id)
     IDP_BlendDataRead(reader, &tref->properties);
   }
 
-  workspace->status_text = nullptr;
+  BKE_workspace_status_clear(workspace);
 
   /* Do not keep the scene reference when appending a workspace. Setting a scene for a workspace is
    * a convenience feature, but the workspace should never truly depend on scene data. */
@@ -630,6 +630,25 @@ void BKE_workspace_layout_name_set(WorkSpace *workspace,
 bScreen *BKE_workspace_layout_screen_get(const WorkSpaceLayout *layout)
 {
   return layout->screen;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Status
+ * \{ */
+
+void BKE_workspace_status_clear(WorkSpace *workspace)
+{
+  /* Clear simple status text. */
+  // MEM_SAFE_FREE(workspace->status_text);
+
+  /* Clear complex status list. */
+  LISTBASE_FOREACH_MUTABLE (WorkSpaceStatusItem *, item, &workspace->status) {
+    MEM_SAFE_FREE(item->text);
+    MEM_freeN(item);
+  }
+  BLI_listbase_clear(&workspace->status);
 }
 
 /** \} */

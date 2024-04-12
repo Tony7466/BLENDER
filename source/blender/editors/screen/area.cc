@@ -834,33 +834,74 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
-void ED_workspace_status_text(bContext *C, const char *str)
+void ED_workspace_status_begin(bContext *C)
 {
-  wmWindow *win = CTX_wm_window(C);
   WorkSpace *workspace = CTX_wm_workspace(C);
+  if (workspace) {
+    BKE_workspace_status_clear(workspace);
+  }
+}
 
+void ED_workspace_status_item(bContext *C, const char *text, int icon, float space_factor)
+{
+  WorkSpace *workspace = CTX_wm_workspace(C);
   /* Can be nullptr when running operators in background mode. */
   if (workspace == nullptr) {
     return;
   }
 
-  if (str) {
-    if (workspace->status_text == nullptr) {
-      workspace->status_text = static_cast<char *>(MEM_mallocN(UI_MAX_DRAW_STR, "headerprint"));
-    }
-    BLI_strncpy(workspace->status_text, str, UI_MAX_DRAW_STR);
-  }
-  else {
-    MEM_SAFE_FREE(workspace->status_text);
-  }
+  WorkSpaceStatusItem *item = MEM_cnew<WorkSpaceStatusItem>(__func__);
+  item->text = text ? BLI_strdup(text) : nullptr;
+  item->icon = icon;
+  item->space_factor = space_factor;
+  BLI_addtail(&workspace->status, item);
+}
 
-  /* Redraw status bar. */
-  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-    if (area->spacetype == SPACE_STATUSBAR) {
-      ED_area_tag_redraw(area);
-      break;
-    }
+void ED_workspace_status_space(bContext *C, float space_factor)
+{
+  ED_workspace_status_item(C, nullptr, ICON_NONE, space_factor);
+}
+
+void ED_workspace_status_icons(bContext *C, int icon)
+{
+  ED_workspace_status_item(C, nullptr, icon);
+}
+
+void ED_workspace_status_icons(bContext *C, int icon1, int icon2)
+{
+  ED_workspace_status_item(C, nullptr, icon1);
+  ED_workspace_status_item(C, nullptr, icon2);
+}
+
+void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3)
+{
+  ED_workspace_status_item(C, nullptr, icon1);
+  ED_workspace_status_item(C, nullptr, icon2);
+  ED_workspace_status_item(C, nullptr, icon3);
+}
+
+void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3, int icon4)
+{
+  ED_workspace_status_item(C, nullptr, icon1);
+  ED_workspace_status_item(C, nullptr, icon2);
+  ED_workspace_status_item(C, nullptr, icon3);
+  ED_workspace_status_item(C, nullptr, icon4);
+}
+
+void ED_workspace_status_end(bContext *C)
+{
+  wmWindow *win = CTX_wm_window(C);
+  ScrArea *area = WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C));
+  ED_area_tag_redraw(area);
+}
+
+void ED_workspace_status_text(bContext *C, const char *str, int icon)
+{
+  ED_workspace_status_begin(C);
+  if (str) {
+    ED_workspace_status_item(C, str, icon);
   }
+  ED_workspace_status_end(C);
 }
 
 /* ************************************************************ */

@@ -67,6 +67,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
+#include "BKE_workspace.h"
 
 #include "BLO_readfile.hh"
 
@@ -6239,8 +6240,16 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   WorkSpace *workspace = CTX_wm_workspace(C);
 
   /* Workspace status text has priority. */
-  if (workspace->status_text) {
-    uiItemL(layout, workspace->status_text, ICON_NONE);
+  if (!BLI_listbase_is_empty(&workspace->status)) {
+    uiLayout *row = uiLayoutRow(layout, true);
+    LISTBASE_FOREACH (WorkSpaceStatusItem *, item, &workspace->status) {
+      if (item->space_factor != 0.0f) {
+        uiItemS_ex(row, item->space_factor);
+      }
+      else {
+        uiItemL(row, item->text, item->icon);
+      }
+    }
     return;
   }
 
