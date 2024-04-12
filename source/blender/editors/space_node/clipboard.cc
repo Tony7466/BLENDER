@@ -27,10 +27,9 @@
 namespace blender::ed::space_node {
 
 struct NodeClipboardItemIDInfo {
-  /* Extra info to validate the node on creation. Otherwise we may reference missing data. */
   ID *id;
   std::string id_name;
-  /* Not used? */
+  /* Set but not used? */
   std::string library_name;
 };
 
@@ -43,12 +42,7 @@ struct NodeClipboardItem {
   rctf draw_rect;
 
   /* Extra info to validate the node on creation. Otherwise we may reference missing data. */
-  /* TODO: replace with NodeClipboardItemIDInfo struct. */
-  ID *id;
-  std::string id_name;
-  std::string library_name;
-
-  /* Same as above but for IDs referenced in sockets. */
+  NodeClipboardItemIDInfo id_info;
   Map<bNodeSocket *, NodeClipboardItemIDInfo> id_info_sockets;
 };
 
@@ -77,14 +71,14 @@ struct NodeClipboard {
       bNode &node = *item.node;
       /* Reassign each loop since we may clear, open a new file where the ID is valid, and paste
        * again. */
-      node.id = item.id;
+      node.id = item.id_info.id;
 
       if (node.id) {
-        const ListBase *lb = which_libbase(G_MAIN, GS(item.id_name.c_str()));
-        if (BLI_findindex(lb, item.id) == -1) {
+        const ListBase *lb = which_libbase(G_MAIN, GS(item.id_info.id_name.c_str()));
+        if (BLI_findindex(lb, item.id_info.id) == -1) {
           /* May assign null. */
           node.id = static_cast<ID *>(
-              BLI_findstring(lb, item.id_name.c_str() + 2, offsetof(ID, name) + 2));
+              BLI_findstring(lb, item.id_info.id_name.c_str() + 2, offsetof(ID, name) + 2));
           if (!node.id) {
             ok = false;
           }
@@ -172,11 +166,11 @@ struct NodeClipboard {
     NodeClipboardItem item;
     item.draw_rect = node.runtime->totr;
     item.node = new_node;
-    item.id = new_node->id;
-    if (item.id) {
-      item.id_name = new_node->id->name;
+    item.id_info.id = new_node->id;
+    if (item.id_info.id) {
+      item.id_info.id_name = new_node->id->name;
       if (ID_IS_LINKED(new_node->id)) {
-        item.library_name = new_node->id->lib->runtime.filepath_abs;
+        item.id_info.library_name = new_node->id->lib->runtime.filepath_abs;
       }
     }
 
