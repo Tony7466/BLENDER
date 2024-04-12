@@ -53,9 +53,9 @@ float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
   }
 }
 
-float transmission_thickness_amend_closure(inout ClosureUndetermined cl,
-                                           inout vec3 V,
-                                           float thickness)
+void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
+                                          inout vec3 V,
+                                          float thickness)
 {
   switch (cl.type) {
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {

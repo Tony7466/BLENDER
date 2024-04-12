@@ -859,16 +859,16 @@ int gbuffer_closure_count(uint header)
 }
 
 /* Return the number of normal layer as encoded in the given header value. */
-uint gbuffer_normal_count(uint header)
+int gbuffer_normal_count(uint header)
 {
   if (header == 0u) {
-    return 0u;
+    return 0;
   }
   /* Count implicit first layer. */
   uint count = 1u;
   count += uint(((header >> 12u) & 3u) != 0);
   count += uint(((header >> 14u) & 3u) != 0);
-  return count;
+  return int(count);
 }
 
 /* Return the type of a closure using its bin index. */
@@ -1107,7 +1107,7 @@ float gbuffer_read_thickness(uint header, samplerGBufferNormal normal_tx, ivec2 
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
     case CLOSURE_BSDF_TRANSLUCENT_ID:
     case CLOSURE_BSSRDF_BURLEY_ID: {
-      uint normal_len = gbuffer_normal_count(header);
+      int normal_len = gbuffer_normal_count(header);
       vec2 data_packed = fetchGBuffer(normal_tx, texel, normal_len).rg;
       return gbuffer_thickness_unpack(data_packed.x);
     }
