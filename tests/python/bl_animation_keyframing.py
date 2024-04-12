@@ -142,6 +142,10 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
         _insert_from_user_preference_test({"LOCATION", "ROTATION", "SCALE"}, ["location", "rotation_euler", "scale"])
 
     def test_insert_custom_properties(self):
+        # Used to create a datablock reference property.
+        ref_object = bpy.data.objects.new("ref_object", None)
+        bpy.context.scene.collection.objects.link(ref_object)
+
         bpy.context.preferences.edit.key_insert_channels = {"CUSTOM_PROPS"}
         keyed_object = _create_animation_object()
 
@@ -158,8 +162,9 @@ class InsertKeyTest(AbstractKeyframingTest, unittest.TestCase):
 
         unkeyed_properties = {
             "str": "unkeyed",
+            "reference": ref_object,
         }
-        keyed_object["test"] = 1.0
+
         for path, value in keyed_properties.items():
             keyed_object[path] = value
 
