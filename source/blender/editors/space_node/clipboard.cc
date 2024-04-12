@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "DNA_collection_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_context.hh"
@@ -25,6 +26,14 @@
 
 namespace blender::ed::space_node {
 
+struct NodeClipboardItemIDInfo {
+  /* Extra info to validate the node on creation. Otherwise we may reference missing data. */
+  ID *id;
+  std::string id_name;
+  /* Not used? */
+  std::string library_name;
+};
+
 struct NodeClipboardItem {
   bNode *node;
   /**
@@ -34,9 +43,13 @@ struct NodeClipboardItem {
   rctf draw_rect;
 
   /* Extra info to validate the node on creation. Otherwise we may reference missing data. */
+  /* TODO: replace with NodeClipboardItemIDInfo struct. */
   ID *id;
   std::string id_name;
   std::string library_name;
+
+  /* Same as above but for IDs referenced in sockets. */
+  Map<bNodeSocket *, NodeClipboardItemIDInfo> id_info_sockets;
 };
 
 struct NodeClipboard {
@@ -77,6 +90,70 @@ struct NodeClipboard {
           }
         }
       }
+
+      /* We might also have IDs referenced in sockets e.g. SOCK_OBJECT. */
+      LISTBASE_FOREACH (bNodeSocket *, socket, &node.inputs) {
+        if (!item.id_info_sockets.contains(socket)) {
+          continue;
+        }
+
+        NodeClipboardItemIDInfo id_info_socket = item.id_info_sockets.lookup(socket);
+        const ListBase *lb = which_libbase(G_MAIN, GS(id_info_socket.id_name.c_str()));
+        ID *id_to_use = id_info_socket.id;
+        if (BLI_findindex(lb, id_to_use) == -1) {
+          id_to_use = reinterpret_cast<ID *>(
+              BLI_findstring(lb, id_info_socket.id_name.c_str() + 2, offsetof(ID, name) + 2));
+          if (!id_to_use) {
+            ok = false;
+          }
+        }
+
+        switch (eNodeSocketDatatype(socket->type)) {
+          case SOCK_OBJECT: {
+            bNodeSocketValueObject &default_value =
+                *socket->default_value_typed<bNodeSocketValueObject>();
+            default_value.value = reinterpret_cast<Object *>(id_to_use);
+            break;
+          }
+          case SOCK_IMAGE: {
+            bNodeSocketValueImage &default_value =
+                *socket->default_value_typed<bNodeSocketValueImage>();
+            default_value.value = reinterpret_cast<Image *>(id_to_use);
+            break;
+          }
+          case SOCK_COLLECTION: {
+            bNodeSocketValueCollection &default_value =
+                *socket->default_value_typed<bNodeSocketValueCollection>();
+            default_value.value = reinterpret_cast<Collection *>(id_to_use);
+            break;
+          }
+          case SOCK_TEXTURE: {
+            bNodeSocketValueTexture &default_value =
+                *socket->default_value_typed<bNodeSocketValueTexture>();
+            default_value.value = reinterpret_cast<Tex *>(id_to_use);
+            break;
+          }
+          case SOCK_MATERIAL: {
+            bNodeSocketValueMaterial &default_value =
+                *socket->default_value_typed<bNodeSocketValueMaterial>();
+            default_value.value = reinterpret_cast<Material *>(id_to_use);
+            break;
+          }
+          case SOCK_FLOAT:
+          case SOCK_VECTOR:
+          case SOCK_RGBA:
+          case SOCK_BOOLEAN:
+          case SOCK_ROTATION:
+          case SOCK_MATRIX:
+          case SOCK_INT:
+          case SOCK_STRING:
+          case SOCK_CUSTOM:
+          case SOCK_SHADER:
+          case SOCK_GEOMETRY:
+          case SOCK_MENU:
+            break;
+        }
+      }
     }
 
     return ok;
@@ -102,6 +179,71 @@ struct NodeClipboard {
         item.library_name = new_node->id->lib->runtime.filepath_abs;
       }
     }
+
+    /* We might also have IDs in sockets e.g. SOCK_OBJECT, see socket_id_user_increment() */
+    LISTBASE_FOREACH (bNodeSocket *, socket, &new_node->inputs) {
+      switch (eNodeSocketDatatype(socket->type)) {
+        case SOCK_OBJECT: {
+          bNodeSocketValueObject &default_value =
+              *socket->default_value_typed<bNodeSocketValueObject>();
+          NodeClipboardItemIDInfo id_info_socket;
+          id_info_socket.id = &default_value.value->id;
+          id_info_socket.id_name = id_info_socket.id->name;
+          item.id_info_sockets.add(socket, id_info_socket);
+          break;
+        }
+        case SOCK_IMAGE: {
+          bNodeSocketValueImage &default_value =
+              *socket->default_value_typed<bNodeSocketValueImage>();
+          NodeClipboardItemIDInfo id_info_socket;
+          id_info_socket.id = &default_value.value->id;
+          id_info_socket.id_name = id_info_socket.id->name;
+          item.id_info_sockets.add(socket, id_info_socket);
+          break;
+        }
+        case SOCK_COLLECTION: {
+          bNodeSocketValueCollection &default_value =
+              *socket->default_value_typed<bNodeSocketValueCollection>();
+          NodeClipboardItemIDInfo id_info_socket;
+          id_info_socket.id = &default_value.value->id;
+          id_info_socket.id_name = id_info_socket.id->name;
+          item.id_info_sockets.add(socket, id_info_socket);
+          break;
+        }
+        case SOCK_TEXTURE: {
+          bNodeSocketValueTexture &default_value =
+              *socket->default_value_typed<bNodeSocketValueTexture>();
+          NodeClipboardItemIDInfo id_info_socket;
+          id_info_socket.id = &default_value.value->id;
+          id_info_socket.id_name = id_info_socket.id->name;
+          item.id_info_sockets.add(socket, id_info_socket);
+          break;
+        }
+        case SOCK_MATERIAL: {
+          bNodeSocketValueMaterial &default_value =
+              *socket->default_value_typed<bNodeSocketValueMaterial>();
+          NodeClipboardItemIDInfo id_info_socket;
+          id_info_socket.id = &default_value.value->id;
+          id_info_socket.id_name = id_info_socket.id->name;
+          item.id_info_sockets.add(socket, id_info_socket);
+          break;
+        }
+        case SOCK_FLOAT:
+        case SOCK_VECTOR:
+        case SOCK_RGBA:
+        case SOCK_BOOLEAN:
+        case SOCK_ROTATION:
+        case SOCK_MATRIX:
+        case SOCK_INT:
+        case SOCK_STRING:
+        case SOCK_CUSTOM:
+        case SOCK_SHADER:
+        case SOCK_GEOMETRY:
+        case SOCK_MENU:
+          break;
+      }
+    }
+
     this->nodes.append(std::move(item));
   }
 };
