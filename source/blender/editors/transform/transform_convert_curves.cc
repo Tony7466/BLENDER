@@ -131,11 +131,11 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       tc.data_len = curves.points_num() + 2 * bezier_point_count;
     }
     else {
-      tc.data_len = std::reduce(
-          selection_per_attribute[i].begin(),
-          selection_per_attribute[i].end(),
-          int(0),
-          [&](int acc, const IndexMask &selected) { return selected.size() + acc; });
+      tc.data_len = 0;
+      int selected_point_count = 0;
+      for (const IndexMask &selection : selection_per_attribute[i]) {
+        tc.data_len += selection.size();
+      }
     }
 
     if (tc.data_len > 0) {
@@ -255,13 +255,10 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
       for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         const IndexRange all_curve_points = flat_points_by_curve[curve_i];
-        const int selected_point_count = std::reduce(selected_indices.begin(),
-                                                     selected_indices.end(),
-                                                     int64_t(0),
-                                                     [&](int64_t acc, const IndexMask &mask) {
-                                                       return mask.slice_content(points).size() +
-                                                              acc;
-                                                     });
+        int selected_point_count = 0;
+        for (const IndexMask &selection : selected_indices) {
+          selected_point_count += selection.slice_content(points).size();
+        }
         const bool has_any_selected = selected_point_count > 0;
         if (!has_any_selected && use_connected_only) {
           for (const int point_i : all_curve_points) {
