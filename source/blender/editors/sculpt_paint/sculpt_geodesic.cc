@@ -169,7 +169,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   /* queue and queue_next should not differ by a huge amount of size
    * since they are an advancing front in the mesh hence no need
    * to allocate much more memmory and keep the iteration range smaller */
-  size_t new_size = 4 * queue.size();
+  int new_size = 4 * queue.size();
   queue_next.resize(new_size, non_checked);
 
   BitVector<> edge_tag(totedge);
@@ -225,7 +225,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
               /* Open addressing with linear probing that minimizes
                * collission in hash tables can also be used to avoid
                * parallel data storage collisions */
-              size_t idx = edge_other % new_size;
+              int idx = edge_other % new_size;
               while (queue_next[idx] != non_checked) {
                 ++idx;
                 if (idx >= new_size) {
