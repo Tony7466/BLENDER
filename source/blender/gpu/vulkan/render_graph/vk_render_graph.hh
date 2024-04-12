@@ -31,17 +31,16 @@
 #include "vk_nodes.hh"
 #include "vk_resource_dependencies.hh"
 #include "vk_resources.hh"
-#include "vk_scheduler.hh"
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
+class VKScheduler;
 
 class VKRenderGraph : public NonCopyable {
   VKResourceDependencies resource_dependencies_;
   VKNodes nodes_;
   VKCommandBuilder command_builder_;
 
-  std::unique_ptr<VKScheduler> scheduler_;
   std::unique_ptr<VKCommandBufferInterface> command_buffer_;
 
   /**
@@ -52,9 +51,7 @@ class VKRenderGraph : public NonCopyable {
   VKResources &resources_;
 
  public:
-  VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                std::unique_ptr<VKScheduler> sorting_strategy,
-                VKResources &resources);
+  VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer, VKResources &resources);
 
   /**
    * Free all resources held by the render graph.
@@ -126,7 +123,7 @@ class VKRenderGraph : public NonCopyable {
 
  private:
   friend class VKCommandBuilder;
-  friend class Sequential;
+  friend class VKScheduler;
 };
 
 }  // namespace blender::gpu::render_graph

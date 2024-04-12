@@ -1001,8 +1001,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   if (use_window_surface) {
     const char *native_surface_extension_name = getPlatformSpecificSurfaceExtension();
-
-    requireExtension(extensions_available, extensions_enabled, "VK_KHR_surface");
+    requireExtension(extensions_available, extensions_enabled, VK_KHR_SURFACE_EXTENSION_NAME);
     requireExtension(extensions_available, extensions_enabled, native_surface_extension_name);
 
     extensions_device.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -1010,13 +1009,14 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   extensions_device.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   extensions_device.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 
-#if __APPLE__
+  /* Enable MoltenVK required instance extensions. */
+#ifdef __APPLE__
   requireExtension(
       extensions_available, extensions_enabled, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+#endif
   requireExtension(extensions_available,
                    extensions_enabled,
                    VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-#endif
 
   VkInstance instance = VK_NULL_HANDLE;
   if (!vulkan_device.has_value()) {
@@ -1049,7 +1049,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
       create_info.pNext = &validationFeatures;
     }
 
-#if __APPLE__
+#ifdef __APPLE__
     create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
 

@@ -21,7 +21,7 @@ class VKCommandBuilder;
 
 class VKNodes {
  private:
-  VKRenderGraphList<NodeHandle, VKNodeData> nodes_;
+  VKResourceHandles<NodeHandle, VKNodeData> nodes_;
 
  public:
   template<typename NodeClass, typename NodeCreateInfo>

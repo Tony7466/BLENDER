@@ -11,18 +11,14 @@
 namespace blender::gpu::render_graph {
 
 VKRenderGraph::VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                             std::unique_ptr<VKScheduler> scheduler,
                              VKResources &resources)
-    : scheduler_(std::move(scheduler)),
-      command_buffer_(std::move(command_buffer)),
-      resources_(resources)
+    : command_buffer_(std::move(command_buffer)), resources_(resources)
 {
 }
 
 void VKRenderGraph::deinit()
 {
   command_buffer_.reset();
-  scheduler_.reset();
 }
 
 /* -------------------------------------------------------------------- */

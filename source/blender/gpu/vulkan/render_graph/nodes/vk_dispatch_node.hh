@@ -13,6 +13,9 @@
 #include "vk_node_class.hh"
 
 namespace blender::gpu::render_graph {
+/**
+ * Information stored inside the render graph node. See `VKNodeData`.
+ */
 struct VKDispatchData {
   VKPipelineData pipeline_data;
   uint32_t group_count_x;
@@ -21,7 +24,7 @@ struct VKDispatchData {
 };
 
 /**
- * All information to add a new dispatch node to the render graph.
+ * Information needed to add a node to the render graph.
  */
 struct VKDispatchCreateInfo : NonCopyable {
   VKDispatchData dispatch_node;
@@ -34,6 +37,13 @@ class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                           VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
+  /**
+   * Update the node data with the data inside create_info.
+   *
+   * Has been implemented as a template to ensure all node specific data
+   * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
+   * actual node data (`VKNodeData` includes all header files.)
+   */
   template<typename Node>
   static void set_node_data(Node &node, const VKDispatchCreateInfo &create_info)
   {
@@ -41,11 +51,17 @@ class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
     localize_shader_data(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
   }
 
+  /**
+   * Free the pipeline data stored in the render graph node data.
+   */
   void free_data(VKDispatchData &data)
   {
     vk_pipeline_free_data(data.pipeline_data);
   }
 
+  /**
+   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   */
   void build_resource_dependencies(VKResources &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
@@ -55,9 +71,12 @@ class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
         resources, dependencies, node_handle, create_info.resources);
   }
 
+  /**
+   * Build the commands and add them to the command_buffer.
+   */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                             const VKDispatchData &data,
-                             VKBoundPipelines &r_bound_pipelines) override
+                      const VKDispatchData &data,
+                      VKBoundPipelines &r_bound_pipelines) override
   {
     // TODO: introduce helper function in pipeline types.
     const VKPipelineData &pipeline_data = data.pipeline_data;

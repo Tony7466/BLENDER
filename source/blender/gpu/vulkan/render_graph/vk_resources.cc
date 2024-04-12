@@ -6,9 +6,9 @@
  * \ingroup gpu
  */
 
-#include "vk_resources.hh"
-
 #include "BLI_index_range.hh"
+
+#include "vk_resources.hh"
 
 namespace blender::gpu::render_graph {
 

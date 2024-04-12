@@ -8,11 +8,13 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_render_graph_list.hh"
+#include "vk_resource_handles.hh"
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
@@ -98,7 +100,7 @@ class VKResources {
     }
   };
 
-  VKRenderGraphList<ResourceHandle, Resource> resources_;
+  VKResourceHandles<ResourceHandle, Resource> resources_;
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
 
@@ -106,22 +108,22 @@ class VKResources {
 
  public:
   /**
-   * Register a buffer resource to the render graph.
+   * Register a buffer resource.
    */
   void add_buffer(VkBuffer vk_buffer);
 
   /**
-   * Register an image resource to the render graph.
+   * Register an image resource.
    */
   void add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner);
 
   /**
-   * Remove an registered image from the resource list.
+   * Remove an registered image.
    */
   void remove_image(VkImage vk_image);
 
   /**
-   * Remove an registered buffer from the resource list.
+   * Remove an registered buffer.
    */
   void remove_buffer(VkBuffer vk_buffer);
 

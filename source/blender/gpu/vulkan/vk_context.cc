@@ -22,9 +22,7 @@
 namespace blender::gpu {
 
 VKContext::VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources)
-    : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(),
-                    std::make_unique<render_graph::Sequential>(),
-                    resources)
+    : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(), resources)
 
 {
   ghost_window_ = ghost_window;
