@@ -173,6 +173,67 @@ ccl_device_inline bool light_sample(KernelGlobals kg,
   return in_volume_segment || (ls->pdf > 0.0f);
 }
 
+ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
+                                            const int lamp,
+                                            const float3 P,
+                                            const float3 N,
+                                            const int shader_flags,
+                                            const uint32_t path_flag,
+                                            ccl_private LightSample *ls)
+{
+  const ccl_global KernelLight *klight = &kernel_data_fetch(lights, lamp);
+  if (path_flag & PATH_RAY_SHADOW_CATCHER_PASS) {
+    if (klight->shader_id & SHADER_EXCLUDE_SHADOW_CATCHER) {
+      return false;
+    }
+  }
+
+  LightType type = (LightType)klight->type;
+  ls->type = type;
+  ls->shader = klight->shader_id;
+  ls->object = PRIM_NONE;
+  ls->prim = PRIM_NONE;
+  ls->lamp = lamp;
+  ls->group = lamp_lightgroup(kg, lamp);
+
+  /* TODO(weizhen): support other light types. */
+  kernel_assert(type == LIGHT_AREA);
+
+  // if (type == LIGHT_DISTANT) {
+  //   if (!distant_light_sample(klight, rand, ls)) {
+  //     return false;
+  //   }
+  // }
+  // else if (type == LIGHT_BACKGROUND) {
+  //   /* infinite area light (e.g. light dome or env light) */
+  //   float3 D = -background_light_sample(kg, P, rand, &ls->pdf);
+
+  //   ls->P = D;
+  //   ls->Ng = D;
+  //   ls->D = -D;
+  //   ls->t = FLT_MAX;
+  //   ls->eval_fac = 1.0f;
+  // }
+  // else if (type == LIGHT_SPOT) {
+  //   if (!spot_light_sample<in_volume_segment>(klight, rand, P, N, shader_flags, ls)) {
+  //     return false;
+  //   }
+  // }
+  // else if (type == LIGHT_POINT) {
+  //   if (!point_light_sample(klight, rand, P, N, shader_flags, ls)) {
+  //     return false;
+  //   }
+  // }
+  // else {
+  /* area light */
+  if (!area_light_sample_from_uv(klight, P, ls)) {
+    return false;
+  }
+  // }
+
+  return (ls->pdf > 0.0f);
+}
+
 /* Sample a point on the chosen emitter. */
 
 template<bool in_volume_segment>
@@ -465,8 +526,14 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
   ls->type = type;
   ls->shader = klight->shader_id;
   ls->object = isect->object;
-  ls->prim = isect->prim;
+  ls->prim = PRIM_NONE;
   ls->lamp = lamp;
+
+  /* TODO(weizhen): distribution or triangle without MIS might need another array to recover
+   * `emitter_id`. Alternatively, see if we can use other members of LightSample for ReSTIR. */
+  kernel_assert(kernel_data.integrator.use_light_tree);
+  ls->emitter_id = kernel_data_fetch(light_to_tree, ls->lamp),
+
   ls->t = isect->t;
   ls->P = ray_P + ray_D * ls->t;
   ls->D = ray_D;
@@ -491,6 +558,59 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
     kernel_assert(!"Invalid lamp type in light_sample_from_intersection");
     return false;
   }
+
+  return true;
+}
+
+/* TODO(weizhen): make sure `emitter_id` is written. */
+ccl_device_noinline bool light_sample_from_uv(KernelGlobals kg,
+                                              const float time,
+                                              const float3 P,
+                                              const float3 N,
+                                              const int shader_flags,
+                                              const uint32_t path_flag,
+                                              ccl_private LightSample *ls)
+{
+  int prim;
+  MeshLight mesh_light;
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    ccl_global const KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
+                                                                           ls->emitter_id);
+    prim = kemitter->light.id;
+    mesh_light.shader_flag = kemitter->mesh_light.shader_flag;
+    mesh_light.object_id = kemitter->mesh.object_id;
+  }
+  else
+#endif
+  {
+    ccl_global const KernelLightDistribution *kdistribution = &kernel_data_fetch(
+        light_distribution, ls->emitter_id);
+    prim = kdistribution->prim;
+    mesh_light = kdistribution->mesh_light;
+  }
+
+  // if (prim >= 0) {
+  //   /* Mesh light. */
+  //   const int object = mesh_light.object_id;
+  //   const int shader_flag = mesh_light.shader_flag;
+
+  // if (!triangle_light_sample<false>(kg, prim, object, rand, time, ls, P)) {
+  //   return false;
+  // }
+  //   ls->shader |= shader_flag;
+  // }
+  // else {
+
+  /* TODO(weizhen): add support for mesh lights. */
+  kernel_assert(prim < 0);
+
+  const int light = ~prim;
+
+  if (!light_sample_from_uv(kg, light, P, N, shader_flags, path_flag, ls)) {
+    return false;
+  }
+  // }
 
   return true;
 }

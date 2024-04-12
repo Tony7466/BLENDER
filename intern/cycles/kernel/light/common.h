@@ -10,6 +10,9 @@ CCL_NAMESPACE_BEGIN
 
 /* Light Sample Result */
 
+/* TODO(weizhen): make sure `prim` is PRIM_NONE when it's lamp, and `lamp` is LAMP_NONE when it's
+ * a primitive. Could also write `~lamp` to `prim` for lamps. Anyway make sure things are
+ * consistent. Can write utility functions if needed. */
 typedef struct LightSample {
   float3 P;            /* position on light, or direction for distant light */
   packed_float3 Ng;    /* normal on light */

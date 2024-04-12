@@ -391,6 +391,63 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
 #endif
 }
 
+/* TODO(weizhen): mostly copied from `shader_setup_from_ray()`, the original function requires
+ * `isect` in many places, but they are also available in `sd`, can probably reuse. */
+ccl_device_inline void shader_setup_from_reservoir(KernelGlobals kg,
+                                                   ccl_private ShaderData *ccl_restrict sd)
+{
+  sd->object_flag = kernel_data_fetch(object_flag, sd->object);
+  sd->lamp = LAMP_NONE;
+
+#ifdef __OBJECT_MOTION__
+  shader_setup_object_transforms(kg, sd, sd->time);
+#endif
+
+  /* TODO(weizhen): curve and point cloud. */
+  kernel_assert(sd->type & PRIMITIVE_TRIANGLE);
+
+  if (sd->type == PRIMITIVE_TRIANGLE) {
+    /* static triangle */
+    triangle_shader_setup(kg, sd);
+  }
+  else {
+    /* motion triangle */
+    motion_triangle_shader_setup(kg, sd);
+  }
+
+  if (!(sd->object_flag & SD_OBJECT_TRANSFORM_APPLIED)) {
+    /* instance transform */
+    object_normal_transform_auto(kg, sd, &sd->N);
+    object_normal_transform_auto(kg, sd, &sd->Ng);
+#ifdef __DPDU__
+    object_dir_transform_auto(kg, sd, &sd->dPdu);
+    object_dir_transform_auto(kg, sd, &sd->dPdv);
+#endif
+  }
+
+  sd->flag = kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
+
+  /* backfacing test */
+  bool backfacing = (dot(sd->Ng, sd->wi) < 0.0f);
+
+  if (backfacing) {
+    sd->flag |= SD_BACKFACING;
+    sd->Ng = -sd->Ng;
+    sd->N = -sd->N;
+#ifdef __DPDU__
+    sd->dPdu = -sd->dPdu;
+    sd->dPdv = -sd->dPdv;
+#endif
+  }
+
+  /* #ifdef __RAY_DIFFERENTIALS__ */
+  /*   /\* differentials *\/ */
+  /*   sd->dP = differential_transfer_compact(ray->dP, ray->D, ray->dD, sd->ray_length); */
+  /*   sd->dI = differential_incoming_compact(ray->dD); */
+  /*   differential_dudv_compact(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng); */
+  /* #endif */
+}
+
 /* ShaderData setup from point inside volume */
 
 #ifdef __VOLUME__

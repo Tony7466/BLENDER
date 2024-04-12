@@ -10,6 +10,7 @@
 
 #include "kernel/film/cryptomatte_passes.h"
 #include "kernel/film/write.h"
+#include "kernel/integrator/restir.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -207,6 +208,38 @@ ccl_device_inline void film_write_data_passes_background(
     }
   }
 #endif
+}
+
+ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
+                                                      IntegratorState state,
+                                                      const ccl_private Reservoir *reservoir,
+                                                      const uint32_t path_flag,
+                                                      const ccl_private ShaderData *sd,
+                                                      ccl_global float *ccl_restrict render_buffer)
+{
+  ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+  if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    float *ptr = buffer + kernel_data.film.pass_restir_reservoir;
+    /* TODO(weizhen): it is possible to compress the LightSample. */
+    film_overwrite_pass_float(ptr++, (float)reservoir->ls.emitter_id);
+
+    film_overwrite_pass_float(ptr++, reservoir->ls.u);
+    film_overwrite_pass_float(ptr++, reservoir->ls.v);
+
+    film_overwrite_pass_float(ptr++, reservoir->total_weight);
+
+    film_overwrite_pass_float(ptr++, (float)path_flag);
+
+    film_overwrite_pass_float(ptr++, sd->u);
+    film_overwrite_pass_float(ptr++, sd->v);
+    film_overwrite_pass_float(ptr++, sd->ray_length);
+    film_overwrite_pass_float(ptr++, (float)sd->type);
+    film_overwrite_pass_float(ptr++, (float)sd->object);
+    film_overwrite_pass_float(ptr++, (float)sd->prim);
+    film_overwrite_pass_float(ptr++, (float)sd->lcg_state);
+    film_overwrite_pass_float(ptr++, sd->time);
+    film_overwrite_pass_float3(ptr, sd->wi);
+  }
 }
 
 CCL_NAMESPACE_END

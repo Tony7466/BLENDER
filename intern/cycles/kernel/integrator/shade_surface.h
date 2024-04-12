@@ -294,7 +294,8 @@ ccl_device
     integrate_surface_direct_light(KernelGlobals kg,
                                    IntegratorState state,
                                    ccl_private ShaderData *sd,
-                                   ccl_private const RNGState *rng_state)
+                                   ccl_private const RNGState *rng_state,
+                                   ccl_global float *ccl_restrict render_buffer)
 {
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
@@ -513,6 +514,9 @@ ccl_device
               uint triangle = kernel_data_fetch(triangle_to_tree,
                                                 emission_sd.prim - prim_offset + lookup_offset);
 
+              /* TODO(weizhen): ensure `emitter_id` is written in other cases. */
+              ls.emitter_id = triangle;
+
               ls.pdf *= light_tree_pdf<false>(kg,
                                               sd->P,
                                               sd->N,
@@ -576,10 +580,13 @@ ccl_device
 
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
+  film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
+
   int mnee_vertex_count = 0;
   const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
   Ray ray ccl_optional_struct_init;
 
+  /* TODO(weizhen): check termination after resampling. */
   /* Path termination. */
   const float terminate = path_state_rng_light_termination(kg, rng_state);
   if (light_sample_terminate(kg, &radiance, terminate)) {
@@ -978,7 +985,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
 #endif
     /* Direct light. */
     PROFILING_EVENT(PROFILING_SHADE_SURFACE_DIRECT_LIGHT);
-    integrate_surface_direct_light<node_feature_mask>(kg, state, &sd, &rng_state);
+    integrate_surface_direct_light<node_feature_mask>(kg, state, &sd, &rng_state, render_buffer);
 
 #if defined(__AO__)
     /* Ambient occlusion pass. */

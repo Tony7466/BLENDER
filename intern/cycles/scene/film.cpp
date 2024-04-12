@@ -196,6 +196,7 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
   kfilm->pass_shadow_catcher = PASS_UNUSED;
   kfilm->pass_shadow_catcher_sample_count = PASS_UNUSED;
   kfilm->pass_shadow_catcher_matte = PASS_UNUSED;
+  kfilm->pass_restir_reservoir = PASS_UNUSED;
 
   kfilm->pass_guiding_color = PASS_UNUSED;
   kfilm->pass_guiding_probability = PASS_UNUSED;
@@ -392,6 +393,9 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
       case PASS_GUIDING_AVG_ROUGHNESS:
         kfilm->pass_guiding_avg_roughness = kfilm->pass_stride;
         break;
+      case PASS_RESTIR_RESERVOIR:
+        kfilm->pass_restir_reservoir = kfilm->pass_stride;
+        break;
       default:
         assert(false);
         break;
@@ -531,6 +535,9 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
     add_auto_pass(scene, PASS_SHADOW_CATCHER);
     add_auto_pass(scene, PASS_SHADOW_CATCHER_SAMPLE_COUNT);
   }
+
+  /* TODO(weizhen): condition to add reservoir pass. */
+  add_auto_pass(scene, PASS_RESTIR_RESERVOIR);
 
   const vector<Pass *> passes_immutable = scene->passes;
   for (const Pass *pass : passes_immutable) {
