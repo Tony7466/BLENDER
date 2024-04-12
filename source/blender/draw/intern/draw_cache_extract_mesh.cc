@@ -665,7 +665,9 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 
 #undef EXTRACT_ADD_REQUESTED
 
-  if (extractors.is_empty()) {
+  if (extractors.is_empty() && !DRW_ibo_requested(mbuflist->ibo.lines) &&
+      !DRW_ibo_requested(mbuflist->ibo.lines_loose))
+  {
     return;
   }
 
@@ -709,7 +711,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
         task_graph,
         [](void *__restrict task_data) {
           const LooseEdgedata &data = *static_cast<LooseEdgedata *>(task_data);
-          extract_lines_mesh(data.mr, data.buffers.ibo.lines, data.buffers.ibo.lines_loose);
+          extract_lines(data.mr, data.buffers.ibo.lines, data.buffers.ibo.lines_loose);
         },
         new LooseEdgedata{*mr, *mbuflist},
         [](void *task_data) { delete static_cast<LooseEdgedata *>(task_data); });
@@ -825,9 +827,6 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
     extractors.append(&extract_fdots_pos);
   }
 
-  if (DRW_ibo_requested(mbuflist->ibo.lines_loose) || DRW_ibo_requested(mbuflist->ibo.lines)) {
-    extractors.append(&extract_lines);
-  }
   EXTRACT_ADD_REQUESTED(ibo, edituv_points);
   EXTRACT_ADD_REQUESTED(ibo, edituv_tris);
   EXTRACT_ADD_REQUESTED(ibo, edituv_lines);
@@ -850,7 +849,9 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
 
 #undef EXTRACT_ADD_REQUESTED
 
-  if (extractors.is_empty()) {
+  if (extractors.is_empty() && !DRW_ibo_requested(mbuflist->ibo.lines) &&
+      !DRW_ibo_requested(mbuflist->ibo.lines_loose))
+  {
     return;
   }
 
@@ -859,6 +860,8 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
   mesh_render_data_update_loose_geom(
       mr, mbc, MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT, MR_DATA_LOOSE_GEOM);
   DRW_subdivide_loose_geom(&subdiv_cache, &mbc);
+
+  extract_lines_subdiv(subdiv_cache, mr, mbuflist->ibo.lines, mbuflist->ibo.lines_loose);
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);
   uint32_t data_offset = 0;
