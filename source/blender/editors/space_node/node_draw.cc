@@ -50,6 +50,8 @@
 #include "BKE_scene_runtime.hh"
 #include "BKE_type_conversions.hh"
 
+#include "BKE_unit.hh"
+
 #include "IMB_imbuf.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1247,10 +1249,31 @@ void node_socket_color_get(const bContext &C,
   sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
 }
 
-static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
+static std::string to_string_unit(const bContext &context,
+                                  const PropertySubType socket_subtype,
+                                  const float value)
+{
+  const Scene &scene = *CTX_data_scene(&context);
+  const double scaled_value = BKE_scene_unit_scale(
+      &scene.unit, RNA_SUBTYPE_UNIT_VALUE(socket_subtype), value);
+
+  char new_str[64];
+  BKE_unit_value_as_string(new_str,
+                           sizeof(new_str),
+                           scaled_value,
+                           4,
+                           RNA_SUBTYPE_UNIT_VALUE(socket_subtype),
+                           &scene.unit,
+                           false);
+  return std::string(StringRef(new_str).trim());
+}
+
+static void create_inspection_string_for_generic_value(const bContext &context,
+                                                       const bNodeSocket &socket,
                                                        const GPointer value,
                                                        std::stringstream &ss)
 {
+  const PropertySubType socket_subtype = PropertySubType(socket.typeinfo->subtype);
   auto id_to_inspection_string = [&](const ID *id, const short idcode) {
     ss << (id ? id->name + 2 : TIP_("None")) << " (" << TIP_(BKE_idtype_idcode_to_name(idcode))
        << ")";
@@ -1296,7 +1319,16 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   BLI_SCOPED_DEFER([&]() { socket_type.destruct(socket_value); });
 
   if (socket_type.is<int>()) {
-    ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
+    switch (socket_subtype) {
+      case PROP_PERCENTAGE: {
+        ss << fmt::format(TIP_("{}% (Integer)"), *static_cast<int *>(socket_value));
+        break;
+      }
+      default: {
+        ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
+        break;
+      }
+    }
   }
   else if (socket_type.is<float>()) {
     const float float_value = *static_cast<float *>(socket_value);
@@ -1307,12 +1339,15 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
       ss << fmt::format(TIP_("{:.10} (Float)"), float_value);
     }
     else {
-      ss << fmt::format(TIP_("{} (Float)"), float_value);
+      ss << fmt::format(TIP_("{} (Float)"), to_string_unit(context, socket_subtype, float_value));
     }
   }
   else if (socket_type.is<blender::float3>()) {
     const blender::float3 &vector = *static_cast<blender::float3 *>(socket_value);
-    ss << fmt::format(TIP_("({}, {}, {}) (Vector)"), vector.x, vector.y, vector.z);
+    ss << fmt::format(TIP_("({}, {}, {}) (Vector)"),
+                      to_string_unit(context, socket_subtype, vector.x),
+                      to_string_unit(context, socket_subtype, vector.y),
+                      to_string_unit(context, socket_subtype, vector.z));
   }
   else if (socket_type.is<blender::ColorGeometry4f>()) {
     const blender::ColorGeometry4f &color = *static_cast<blender::ColorGeometry4f *>(socket_value);
@@ -1321,11 +1356,10 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   else if (socket_type.is<math::Quaternion>()) {
     const math::Quaternion &rotation = *static_cast<math::Quaternion *>(socket_value);
     const math::EulerXYZ euler = math::to_euler(rotation);
-    ss << fmt::format(TIP_("({}" BLI_STR_UTF8_DEGREE_SIGN ", {}" BLI_STR_UTF8_DEGREE_SIGN
-                           ", {}" BLI_STR_UTF8_DEGREE_SIGN ") (Rotation)"),
-                      euler.x().degree(),
-                      euler.y().degree(),
-                      euler.z().degree());
+    ss << fmt::format(TIP_("({}, {}, {}) (Rotation)"),
+                      to_string_unit(context, PROP_EULER, euler.x().radian()),
+                      to_string_unit(context, PROP_EULER, euler.y().radian()),
+                      to_string_unit(context, PROP_EULER, euler.z().radian()));
   }
   else if (socket_type.is<bool>()) {
     ss << fmt::format(TIP_("{} (Boolean)"),
@@ -1546,7 +1580,8 @@ static std::optional<std::string> create_description_inspection_string(const bNo
   return TIP_(description.c_str());
 }
 
-static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
+static std::optional<std::string> create_log_inspection_string(const bContext &context,
+                                                               geo_log::GeoTreeLog *geo_tree_log,
                                                                const bNodeSocket &socket)
 {
   using namespace blender::nodes::geo_eval_log;
@@ -1564,7 +1599,7 @@ static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeL
   if (const geo_log::GenericValueLog *generic_value_log =
           dynamic_cast<const geo_log::GenericValueLog *>(value_log))
   {
-    create_inspection_string_for_generic_value(socket, generic_value_log->value, ss);
+    create_inspection_string_for_generic_value(context, socket, generic_value_log->value, ss);
   }
   else if (const geo_log::FieldInfoLog *gfield_value_log =
                dynamic_cast<const geo_log::FieldInfoLog *>(value_log))
@@ -1600,7 +1635,8 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
   return str;
 }
 
-static std::string node_socket_get_tooltip(const SpaceNode *snode,
+static std::string node_socket_get_tooltip(const bContext &context,
+                                           const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
 {
@@ -1626,7 +1662,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
-  if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+  if (std::optional<std::string> info = create_log_inspection_string(
+          context, geo_tree_log, socket))
+  {
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
@@ -1672,7 +1710,7 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLa
         const bNodeTree &ntree = *snode.edittree;
         const int index_in_tree = POINTER_AS_INT(argN);
         ntree.ensure_topology_cache();
-        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+        return node_socket_get_tooltip(*C, &snode, ntree, *ntree.all_sockets()[index_in_tree]);
       },
       POINTER_FROM_INT(sock.index_in_tree()),
       nullptr,
@@ -1695,7 +1733,7 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
       [](bContext *C, void *argN, const char * /*tip*/) {
         SocketTooltipData *data = static_cast<SocketTooltipData *>(argN);
         const SpaceNode *snode = CTX_wm_space_node(C);
-        return node_socket_get_tooltip(snode, *data->ntree, *data->socket);
+        return node_socket_get_tooltip(*C, snode, *data->ntree, *data->socket);
       },
       data,
       MEM_dupallocN,
@@ -1758,7 +1796,7 @@ static void node_socket_draw_nested(const bContext &C,
         const bNodeTree &ntree = *snode.edittree;
         const int index_in_tree = POINTER_AS_INT(argN);
         ntree.ensure_topology_cache();
-        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+        return node_socket_get_tooltip(*C, &snode, ntree, *ntree.all_sockets()[index_in_tree]);
       },
       POINTER_FROM_INT(sock.index_in_tree()),
       nullptr);
