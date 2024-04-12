@@ -448,18 +448,19 @@ bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_ol
     ATTR_NONNULL();
 bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *C) ATTR_NONNULL();
 
-void ED_workspace_status_text(bContext *C, const char *str, int icon = 0);
+void ED_workspace_status_text(bContext *C, const char *str, const int icon = 0);
 
 void ED_workspace_status_begin(bContext *C);
 void ED_workspace_status_item(bContext *C,
-                              const char *text = nullptr,
-                              int icon = 0,
-                              float space_factor = 0.0f);
+                              const std::string text = {},
+                              const int icon = 0,
+                              const float space_factor = 0.0f);
 void ED_workspace_status_space(bContext *C, float space_factor = 1.0f);
-void ED_workspace_status_icons(bContext *C, int icon);
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2);
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3);
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3, int icon4);
+void ED_workspace_status_icons(bContext *C, const int icon);
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2);
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, const int icon3);
+void ED_workspace_status_icons(
+    bContext *C, const int icon1, const int icon2, const int icon3, const int icon4);
 void ED_workspace_status_end(bContext *C);
 
 void ED_workspace_do_listen(bContext *C, const wmNotifier *note);

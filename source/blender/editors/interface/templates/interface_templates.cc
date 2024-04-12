@@ -67,7 +67,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_readfile.hh"
 
@@ -6247,7 +6247,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         uiItemS_ex(row, item->space_factor);
       }
       else {
-        uiItemL(row, item->text, item->icon);
+        uiItemL(row, item->text.c_str(), item->icon);
       }
     }
     return;

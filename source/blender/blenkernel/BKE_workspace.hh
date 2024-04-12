@@ -17,12 +17,12 @@ struct WorkSpace;
 struct WorkSpaceInstanceHook;
 struct WorkSpaceLayout;
 
-typedef struct WorkSpaceStatusItem {
+struct WorkSpaceStatusItem {
   struct WorkSpaceStatusItem *next, *prev;
   int icon;
-  char *text;
+  std::string text;
   float space_factor;
-} WorkSpaceStatusItem;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Create, Delete, Initialize

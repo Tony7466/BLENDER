@@ -842,7 +842,10 @@ void ED_workspace_status_begin(bContext *C)
   }
 }
 
-void ED_workspace_status_item(bContext *C, const char *text, int icon, float space_factor)
+void ED_workspace_status_item(bContext *C,
+                              const std::string text,
+                              const int icon,
+                              const float space_factor)
 {
   WorkSpace *workspace = CTX_wm_workspace(C);
   /* Can be nullptr when running operators in background mode. */
@@ -850,52 +853,51 @@ void ED_workspace_status_item(bContext *C, const char *text, int icon, float spa
     return;
   }
 
-  WorkSpaceStatusItem *item = MEM_cnew<WorkSpaceStatusItem>(__func__);
-  item->text = text ? BLI_strdup(text) : nullptr;
+  WorkSpaceStatusItem *item = new WorkSpaceStatusItem();
+  item->text = text;
   item->icon = icon;
   item->space_factor = space_factor;
   BLI_addtail(&workspace->status, item);
 }
 
-void ED_workspace_status_space(bContext *C, float space_factor)
+void ED_workspace_status_space(bContext *C, const float space_factor)
 {
-  ED_workspace_status_item(C, nullptr, ICON_NONE, space_factor);
+  ED_workspace_status_item(C, {}, ICON_NONE, space_factor);
 }
 
-void ED_workspace_status_icons(bContext *C, int icon)
+void ED_workspace_status_icons(bContext *C, const int icon)
 {
-  ED_workspace_status_item(C, nullptr, icon);
+  ED_workspace_status_item(C, {}, icon);
 }
 
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2)
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
 {
-  ED_workspace_status_item(C, nullptr, icon1);
-  ED_workspace_status_item(C, nullptr, icon2);
+  ED_workspace_status_item(C, {}, icon1);
+  ED_workspace_status_item(C, {}, icon2);
 }
 
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3)
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, const int icon3)
 {
-  ED_workspace_status_item(C, nullptr, icon1);
-  ED_workspace_status_item(C, nullptr, icon2);
-  ED_workspace_status_item(C, nullptr, icon3);
+  ED_workspace_status_item(C, {}, icon1);
+  ED_workspace_status_item(C, {}, icon2);
+  ED_workspace_status_item(C, {}, icon3);
 }
 
-void ED_workspace_status_icons(bContext *C, int icon1, int icon2, int icon3, int icon4)
+void ED_workspace_status_icons(
+    bContext *C, const int icon1, const int icon2, const int icon3, const int icon4)
 {
-  ED_workspace_status_item(C, nullptr, icon1);
-  ED_workspace_status_item(C, nullptr, icon2);
-  ED_workspace_status_item(C, nullptr, icon3);
-  ED_workspace_status_item(C, nullptr, icon4);
+  ED_workspace_status_item(C, {}, icon1);
+  ED_workspace_status_item(C, {}, icon2);
+  ED_workspace_status_item(C, {}, icon3);
+  ED_workspace_status_item(C, {}, icon4);
 }
 
 void ED_workspace_status_end(bContext *C)
 {
-  wmWindow *win = CTX_wm_window(C);
-  ScrArea *area = WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C));
-  ED_area_tag_redraw(area);
+  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C)));
 }
 
-void ED_workspace_status_text(bContext *C, const char *str, int icon)
+void ED_workspace_status_text(bContext *C, const char *str, const int icon)
 {
   ED_workspace_status_begin(C);
   if (str) {

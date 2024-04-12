@@ -645,8 +645,7 @@ void BKE_workspace_status_clear(WorkSpace *workspace)
 
   /* Clear complex status list. */
   LISTBASE_FOREACH_MUTABLE (WorkSpaceStatusItem *, item, &workspace->status) {
-    MEM_SAFE_FREE(item->text);
-    MEM_freeN(item);
+    delete item;
   }
   BLI_listbase_clear(&workspace->status);
 }
