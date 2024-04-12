@@ -1864,7 +1864,7 @@ static Object *duplicate_grease_pencil_object(Main *bmain,
                                               GreasePencil &grease_pencil_src)
 {
   const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
-  Base *base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
+  Base *base_new = object::add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
   Object *object_dst = base_new->object;
   object_dst->mode = OB_MODE_OBJECT;
   object_dst->data = BKE_grease_pencil_add(bmain, grease_pencil_src.id.name + 2);
@@ -2239,12 +2239,15 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Deselect everything in the target layer. The pasted strokes are the only ones then after the
-   * paste. That's convenient for the user. */
-  bke::GSpanAttributeWriter selection_in_target = ed::curves::ensure_selection_attribute(
-      target_drawing->strokes_for_write(), selection_domain, CD_PROP_BOOL);
-  ed::curves::fill_selection_false(selection_in_target.span);
-  selection_in_target.finish();
+  /* Deselect everything from editable drawings. The pasted strokes are the only ones then after
+   * the paste. That's convenient for the user. */
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::GSpanAttributeWriter selection_in_target = ed::curves::ensure_selection_attribute(
+        info.drawing.strokes_for_write(), selection_domain, CD_PROP_BOOL);
+    ed::curves::fill_selection_false(selection_in_target.span);
+    selection_in_target.finish();
+  });
 
   /* Get a list of all materials in the scene. */
   Map<uint, Material *> scene_materials;
@@ -2354,6 +2357,7 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
   }
 
   if (!anything_copied) {
+    clipboard.curves.resize(0, 0);
     return OPERATOR_CANCELLED;
   }
 

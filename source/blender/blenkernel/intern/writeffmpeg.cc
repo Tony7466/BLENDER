@@ -46,6 +46,7 @@ extern "C" {
 #  include <libavformat/avformat.h>
 #  include <libavutil/buffer.h>
 #  include <libavutil/channel_layout.h>
+#  include <libavutil/cpu.h>
 #  include <libavutil/imgutils.h>
 #  include <libavutil/mastering_display_metadata.h>
 #  include <libavutil/opt.h>
@@ -257,14 +258,15 @@ static AVFrame *alloc_picture(AVPixelFormat pix_fmt, int width, int height)
   }
 
   /* allocate the actual picture buffer */
-  int size = av_image_get_buffer_size(pix_fmt, width, height, 1);
+  const size_t align = av_cpu_max_align();
+  int size = av_image_get_buffer_size(pix_fmt, width, height, align);
   AVBufferRef *buf = av_buffer_alloc(size);
   if (buf == nullptr) {
     av_frame_free(&f);
     return nullptr;
   }
 
-  av_image_fill_arrays(f->data, f->linesize, buf->data, pix_fmt, width, height, 1);
+  av_image_fill_arrays(f->data, f->linesize, buf->data, pix_fmt, width, height, align);
   f->buf[0] = buf;
   f->format = pix_fmt;
   f->width = width;
@@ -419,16 +421,16 @@ static AVFrame *generate_video_frame(FFMpegContext *context, const ImBuf *image)
     rgb_frame = context->current_frame;
   }
 
-  const size_t linesize = rgb_frame->linesize[0];
+  const size_t linesize_dst = rgb_frame->linesize[0];
   if (use_float) {
     /* Float image: need to split up the image into a planar format,
      * because libswscale does not support RGBA->YUV conversions from
      * packed float formats. */
-    BLI_assert_msg(rgb_frame->linesize[1] == linesize && rgb_frame->linesize[2] == linesize &&
-                       rgb_frame->linesize[3] == linesize,
+    BLI_assert_msg(rgb_frame->linesize[1] == linesize_dst && rgb_frame->linesize[2] == linesize_dst &&
+                       rgb_frame->linesize[3] == linesize_dst,
                    "ffmpeg frame should be 4 same size planes for a floating point image case");
     for (int y = 0; y < height; y++) {
-      size_t dst_offset = linesize * (height - y - 1);
+      size_t dst_offset = linesize_dst * (height - y - 1);
       float *dst_g = reinterpret_cast<float *>(rgb_frame->data[0] + dst_offset);
       float *dst_b = reinterpret_cast<float *>(rgb_frame->data[1] + dst_offset);
       float *dst_r = reinterpret_cast<float *>(rgb_frame->data[2] + dst_offset);
@@ -446,9 +448,10 @@ static AVFrame *generate_video_frame(FFMpegContext *context, const ImBuf *image)
   else {
     /* Byte image: flip the image vertically, possibly with endian
      * conversion. */
+    const size_t linesize_src = rgb_frame->width * 4;
     for (int y = 0; y < height; y++) {
-      uint8_t *target = rgb_frame->data[0] + linesize * (height - y - 1);
-      const uint8_t *src = pixels + linesize * y;
+      uint8_t *target = rgb_frame->data[0] + linesize_dst * (height - y - 1);
+      const uint8_t *src = pixels + linesize_src * y;
 
 #  if ENDIAN_ORDER == L_ENDIAN
       memcpy(target, src, linesize);
