@@ -11,9 +11,10 @@
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_subsurface_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_subsurface_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_amend_lib.glsl)
 
 void main()
 {
@@ -43,6 +44,12 @@ void main()
       (cl_transmit.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) ||
       (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID))
   {
+    float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
+    gbuf.thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
+                         ((gbuf.thickness == 0.0) ? shadow_thickness :
+                                                    min(shadow_thickness, gbuf.thickness)) :
+                         gbuf.thickness;
+
 #  if 1 /* TODO Limit to SSS. */
     vec3 sss_reflect_shadowed, sss_reflect_unshadowed;
     if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
