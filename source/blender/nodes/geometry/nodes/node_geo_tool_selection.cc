@@ -51,7 +51,8 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
 
 class ToolFloatFieldInput final : public bke::GeometryFieldInput {
  public:
-  ToolFloatFieldInput() : bke::GeometryFieldInput(CPPType::get<bool>(), "Operator Selection")
+  ToolFloatFieldInput()
+      : bke::GeometryFieldInput(CPPType::get<bool>(), "Operator Selection")
   {
     category_ = Category::NamedAttribute;
   }
@@ -64,9 +65,9 @@ class ToolFloatFieldInput final : public bke::GeometryFieldInput {
     switch (context.type()) {
       case GeometryComponent::Type::Curve:
       case GeometryComponent::Type::PointCloud:
-        return *attributes.lookup_or_default<float>(".selection", domain, true);
+        return *attributes.lookup_or_default<float>(".selection", domain, 1.0f);
       case GeometryComponent::Type::Mesh:
-        return *attributes.lookup_or_default<float>(".sculpt_mask", domain, true);
+        return *attributes.lookup_or_default<float>(".sculpt_mask", domain, 0.0f);
       default:
         return {};
     }
@@ -80,15 +81,21 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   if (params.user_data()->call_data->operator_data->mode == OB_MODE_OBJECT) {
     params.set_output("Selection", true);
-    params.set_output("Float", false);
+    params.set_output("Float", 1.0f);
   }
   else {
     params.set_output("Selection", Field<bool>(std::make_shared<ToolSelectionFieldInput>()));
     if (params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT) {
-      params.set_output("Float", Field<float>(std::make_shared<ToolFloatFieldInput>()));
+      Field<float> values = Field<float>(std::make_shared<ToolFloatFieldInput>());
+      static auto invert_fn = mf::build::SI1_SO<float, float>(
+          "invert",
+          [](float value) { return (1.0f - value); });
+      Field<float> inverted(
+          FieldOperation::Create(invert_fn, {values}));
+          params.set_output("Float", inverted);
     }
     else {
-      params.set_output("Float", false);
+      params.set_output("Float", 1.0f);
     }
   }
 }

@@ -65,9 +65,13 @@ static void node_geo_exec(GeoNodeExecParams params)
     geometry.modify_geometry_sets([&](GeometrySet &geometry) {
       if (Mesh *mesh = geometry.get_mesh_for_write()) {
         if (params.user_data()->call_data->operator_data->mode == OB_MODE_SCULPT) {
-          Field<bool> inverted = invert_boolean_field(selection);
+          Field<bool> inverted_bool = invert_boolean_field(selection);
+          const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+          const eNodeSocketDatatype data_type = eNodeSocketDatatype(SOCK_FLOAT);
+          const CPPType &output_type = *bke::socket_type_to_geo_nodes_base_cpp_type(data_type);
+          const Field<float> inverted_float = conversions.try_convert(inverted_bool, output_type);
           bke::try_capture_field_on_geometry(
-              geometry.get_component_for_write<MeshComponent>(), ".sculpt_mask", domain, inverted);
+              geometry.get_component_for_write<MeshComponent>(), ".sculpt_mask", domain, inverted_float);
         }
         else {
           switch (domain) {
