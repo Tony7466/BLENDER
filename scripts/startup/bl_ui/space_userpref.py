@@ -1788,6 +1788,10 @@ class USERPREF_PT_input_touchpad(InputPanel, CenterAlignMixIn, Panel):
         col = layout.column()
         col.prop(inputs, "use_multitouch_gestures")
 
+        from _bpy import _ghost_backend
+        if _ghost_backend() == 'WAYLAND':
+            col.prop(inputs, "touchpad_scroll_direction", text="Scroll Direction")
+
 
 class USERPREF_PT_input_tablet(InputPanel, CenterAlignMixIn, Panel):
     bl_label = "Tablet"
