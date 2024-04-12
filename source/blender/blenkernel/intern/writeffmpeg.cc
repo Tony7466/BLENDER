@@ -454,10 +454,10 @@ static AVFrame *generate_video_frame(FFMpegContext *context, const ImBuf *image)
       const uint8_t *src = pixels + linesize_src * y;
 
 #  if ENDIAN_ORDER == L_ENDIAN
-      memcpy(target, src, linesize);
+      memcpy(target, src, linesize_src);
 
 #  elif ENDIAN_ORDER == B_ENDIAN
-      const uint8_t *end = src + linesize;
+      const uint8_t *end = src + linesize_src;
       while (src != end) {
         target[3] = src[0];
         target[2] = src[1];
