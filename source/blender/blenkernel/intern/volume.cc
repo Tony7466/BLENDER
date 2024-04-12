@@ -6,10 +6,6 @@
  * \ingroup bke
  */
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/tools/GridTransformer.h>
-#endif
-
 #include <optional>
 
 #include "MEM_guardedalloc.h"
