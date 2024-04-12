@@ -576,6 +576,12 @@ static eKeyPasteError paste_action_keys(bAnimContext *ac,
 
 /* ------------------- */
 
+static blender::ed::greasepencil::KeyframeClipboard &get_grease_pencil_keyframe_clipboard()
+{
+  static blender::ed::greasepencil::KeyframeClipboard clipboard;
+  return clipboard;
+}
+
 static int actkeys_copy_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
@@ -588,7 +594,8 @@ static int actkeys_copy_exec(bContext *C, wmOperator *op)
   /* copy keyframes */
   if (ac.datatype == ANIMCONT_GPENCIL) {
     if (ED_gpencil_anim_copybuf_copy(&ac) == false &&
-        blender::ed::greasepencil::grease_pencil_copy_keyframes(&ac) == false)
+        blender::ed::greasepencil::grease_pencil_copy_keyframes(
+            &ac, get_grease_pencil_keyframe_clipboard()) == false)
     {
       /* check if anything ended up in the buffer */
       BKE_report(op->reports, RPT_ERROR, "No keyframes copied to the internal clipboard");
@@ -604,7 +611,8 @@ static int actkeys_copy_exec(bContext *C, wmOperator *op)
     /* Both copy function needs to be evaluated to account for mixed selection */
     const short kf_empty = copy_action_keys(&ac);
     const bool gpf_ok = ED_gpencil_anim_copybuf_copy(&ac) ||
-                        blender::ed::greasepencil::grease_pencil_copy_keyframes(&ac);
+                        blender::ed::greasepencil::grease_pencil_copy_keyframes(
+                            &ac, get_grease_pencil_keyframe_clipboard());
 
     if (kf_empty && !gpf_ok) {
       BKE_report(op->reports, RPT_ERROR, "No keyframes copied to the internal clipboard");
@@ -651,8 +659,8 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
   /* paste keyframes */
   if (ac.datatype == ANIMCONT_GPENCIL) {
     if (ED_gpencil_anim_copybuf_paste(&ac, offset_mode) == false &&
-        blender::ed::greasepencil::grease_pencil_paste_keyframes(&ac, offset_mode, merge_mode) ==
-            false)
+        blender::ed::greasepencil::grease_pencil_paste_keyframes(
+            &ac, offset_mode, merge_mode, get_grease_pencil_keyframe_clipboard()) == false)
     {
       BKE_report(op->reports, RPT_ERROR, "No data in the internal clipboard to paste");
       return OPERATOR_CANCELLED;
@@ -671,7 +679,7 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
     /* non-zero return means an error occurred while trying to paste */
     gpframes_inbuf = ED_gpencil_anim_copybuf_paste(&ac, offset_mode) ||
                      blender::ed::greasepencil::grease_pencil_paste_keyframes(
-                         &ac, offset_mode, merge_mode);
+                         &ac, offset_mode, merge_mode, get_grease_pencil_keyframe_clipboard());
 
     /* Only report an error if nothing was pasted, i.e. when both FCurve and GPencil failed. */
     if (!gpframes_inbuf) {

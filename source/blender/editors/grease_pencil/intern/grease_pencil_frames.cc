@@ -432,45 +432,9 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
 }
 
-/* Datatype for use in copy/paste buffer. */
-struct DrawingBufferItem {
-  blender::bke::greasepencil::FramesMapKey frame_number;
-  bke::greasepencil::Drawing drawing;
-  int duration;
-};
-
-struct LayerBufferItem {
-  Vector<DrawingBufferItem> drawing_buffers;
-  blender::bke::greasepencil::FramesMapKey first_frame;
-  blender::bke::greasepencil::FramesMapKey last_frame;
-};
-
-struct Clipboard {
-  Map<std::string, LayerBufferItem> copy_buffer{};
-  int first_frame{std::numeric_limits<int>::max()};
-  int last_frame{std::numeric_limits<int>::min()};
-  int cfra{0};
-
-  void clear()
-  {
-    copy_buffer.clear();
-    first_frame = std::numeric_limits<int>::max();
-    last_frame = std::numeric_limits<int>::min();
-    cfra = 0;
-  }
-};
-
-static Clipboard &get_grease_pencil_keyframe_clipboard()
-{
-  static Clipboard clipboard;
-  return clipboard;
-}
-
-bool grease_pencil_copy_keyframes(bAnimContext *ac)
+bool grease_pencil_copy_keyframes(bAnimContext *ac, KeyframeClipboard &clipboard)
 {
   using namespace bke::greasepencil;
-
-  Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
 
   /* Clear buffer first. */
   clipboard.clear();
@@ -491,7 +455,7 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
 
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
-    Vector<DrawingBufferItem> buf;
+    Vector<KeyframeClipboard::DrawingBufferItem> buf;
     FramesMapKey layer_first_frame = std::numeric_limits<int>::max();
     FramesMapKey layer_last_frame = std::numeric_limits<int>::min();
     for (auto [frame_number, frame] : layer->frames().items()) {
@@ -533,7 +497,9 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   return !clipboard.copy_buffer.is_empty();
 }
 
-int calculate_offset(const eKeyPasteOffset offset_mode, const int cfra, const Clipboard &clipboard)
+static int calculate_offset(const eKeyPasteOffset offset_mode,
+                            const int cfra,
+                            const KeyframeClipboard &clipboard)
 {
   int offset = 0;
   switch (offset_mode) {
@@ -555,11 +521,10 @@ int calculate_offset(const eKeyPasteOffset offset_mode, const int cfra, const Cl
 
 bool grease_pencil_paste_keyframes(bAnimContext *ac,
                                    const eKeyPasteOffset offset_mode,
-                                   const eKeyMergeMode merge_mode)
+                                   const eKeyMergeMode merge_mode,
+                                   const KeyframeClipboard &clipboard)
 {
   using namespace bke::greasepencil;
-
-  const Clipboard &clipboard = get_grease_pencil_keyframe_clipboard();
 
   /* Check if buffer is empty. */
   if (clipboard.copy_buffer.is_empty()) {
@@ -589,8 +554,9 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
     if (!from_single_channel && !clipboard.copy_buffer.contains(layer_name)) {
       continue;
     }
-    LayerBufferItem layer_buffer = from_single_channel ? *clipboard.copy_buffer.values().begin() :
-                                                         clipboard.copy_buffer.lookup(layer_name);
+    KeyframeClipboard::LayerBufferItem layer_buffer = from_single_channel ?
+                                                          *clipboard.copy_buffer.values().begin() :
+                                                          clipboard.copy_buffer.lookup(layer_name);
     bool change = false;
 
     /* Mix mode with existing data. */
@@ -638,7 +604,7 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac,
         break;
       }
     }
-    for (DrawingBufferItem drawing_buffer : layer_buffer.drawing_buffers) {
+    for (KeyframeClipboard::DrawingBufferItem drawing_buffer : layer_buffer.drawing_buffers) {
       const int target_frame_number = drawing_buffer.frame_number + offset;
       if (layer->frames().contains(target_frame_number)) {
         layer->remove_frame(target_frame_number);
