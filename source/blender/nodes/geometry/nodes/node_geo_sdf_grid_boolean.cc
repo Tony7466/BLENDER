@@ -28,9 +28,9 @@ enum class Operation {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("SDF Grid 1");
-  b.add_input<decl::Float>("SDF Grid 2").multi_input();
-  b.add_output<decl::Float>("SDF Grid").hide_value();
+  b.add_input<decl::Float>("Grid 1").hide_value();
+  b.add_input<decl::Float>("Grid 2").hide_value().multi_input();
+  b.add_output<decl::Float>("Grid").hide_value();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -46,11 +46,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
     case Operation::Intersect:
     case Operation::Union:
       bke::nodeSetSocketAvailability(ntree, grid_1_socket, false);
-      node_sock_label(grid_2_socket, "SDF Grid");
+      node_sock_label(grid_2_socket, "Grid");
       break;
     case Operation::Difference:
       bke::nodeSetSocketAvailability(ntree, grid_1_socket, true);
-      node_sock_label(grid_2_socket, "SDF Grid 2");
+      node_sock_label(grid_2_socket, "Grid 2");
       break;
   }
 }
@@ -72,8 +72,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 #ifdef WITH_OPENVDB
   const Operation operation = Operation(params.node().custom1);
 
-  Vector<SocketValueVariant> inputs = params.extract_input<Vector<SocketValueVariant>>(
-      "SDF Grid 2");
+  Vector<SocketValueVariant> inputs = params.extract_input<Vector<SocketValueVariant>>("Grid 2");
   Vector<bke::VolumeGrid<float>> operands;
   switch (operation) {
     case Operation::Intersect:
@@ -81,7 +80,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       get_float_grids(inputs, operands);
       break;
     case Operation::Difference:
-      if (auto grid = params.extract_input<bke::VolumeGrid<float>>("SDF Grid 1")) {
+      if (auto grid = params.extract_input<bke::VolumeGrid<float>>("Grid 1")) {
         operands.append(std::move(grid));
       }
       get_float_grids(inputs, operands);
@@ -123,7 +122,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
   }
 
-  params.set_output("SDF Grid", std::move(operands.first()));
+  params.set_output("Grid", std::move(operands.first()));
 #else
   node_geo_exec_with_missing_openvdb(params);
 #endif
