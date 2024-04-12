@@ -18,13 +18,10 @@ def add_node_type(layout, node_type, *, label=None, poll=None, search_weight=0.0
         label = bl_rna.name if bl_rna else iface_("Unknown")
 
     if poll is True or poll is None:
-        prev_search_weight = layout.search_weight
-        layout.search_weight = search_weight
         translation_context = bl_rna.translation_context if bl_rna else i18n_contexts.default
-        props = layout.operator("node.add_node", text=label, text_ctxt=translation_context)
+        props = layout.operator("node.add_node", text=label, text_ctxt=translation_context, search_weight=search_weight)
         props.type = node_type
         props.use_transform = True
-        layout.search_weight = prev_search_weight
         return props
 
 
