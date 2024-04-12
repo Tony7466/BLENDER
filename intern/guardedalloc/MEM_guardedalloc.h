@@ -38,6 +38,8 @@
 #include "../../source/blender/blenlib/BLI_compiler_attrs.h"
 #include "../../source/blender/blenlib/BLI_sys_types.h"
 
+#include <string.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -309,7 +311,14 @@ template<typename T> inline void MEM_delete(const T *ptr)
 template<typename T> inline T *MEM_cnew(const char *allocation_name)
 {
   static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
-  return static_cast<T *>(MEM_callocN(sizeof(T), allocation_name));
+  if (alignof(T) <= MEM_MIN_CPP_ALIGNMENT) {
+    return static_cast<T *>(MEM_callocN(sizeof(T), allocation_name));
+  }
+  void *ptr = MEM_mallocN_aligned(sizeof(T), alignof(T), allocation_name);
+  if (ptr) {
+    memset(ptr, 0, sizeof(T));
+  }
+  return static_cast<T *>(ptr);
 }
 
 /**
