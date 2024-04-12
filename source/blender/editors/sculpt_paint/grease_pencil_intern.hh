@@ -34,10 +34,6 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
-float3 mouse_delta_in_world_space(const bContext &C,
-                                  const bke::greasepencil::Layer &layer,
-                                  const float2 &mouse_delta_win);
-
 /* Get list of drawings the tool should be operating on. */
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C);
 

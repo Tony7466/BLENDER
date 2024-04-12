@@ -26,24 +26,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-float3 mouse_delta_in_world_space(const bContext &C,
-                                  const bke::greasepencil::Layer &layer,
-                                  const float2 &mouse_delta_win)
-{
-  const ARegion &region = *CTX_wm_region(&C);
-  const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
-  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-  Object &ob_orig = *CTX_data_active_object(&C);
-  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
-
-  const float3 layer_origin = layer.to_world_space(ob_eval).location();
-  const float zfac = ED_view3d_calc_zfac(&rv3d, layer_origin);
-  float3 mouse_delta;
-  ED_view3d_win_to_delta(&region, mouse_delta_win, zfac, mouse_delta);
-
-  return mouse_delta;
-}
-
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C)
 {
   using namespace blender::bke::greasepencil;
