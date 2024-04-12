@@ -281,7 +281,7 @@ void ControllerExporter::export_morph_controller(Object *ob, Key *key)
                           this->export_settings.get_apply_modifiers(),
                           this->export_settings.get_triangulate());
 
-  std::string controller_name = get_morph_id(ob) + "-morph";
+  std::string controller_name = id_name(ob) + "-morph";
   std::string controller_id = get_controller_id(key, ob);
 
   openMorph(
