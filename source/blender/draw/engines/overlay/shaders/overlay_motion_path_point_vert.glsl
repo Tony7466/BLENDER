@@ -26,9 +26,7 @@ void main()
     gl_PointSize = float(pointSize) + 4;
   }
 
-  /* Draw special dot where the current frame is.
-   * NOTE: this is only done when keyframes are shown, since this adds similar types of clutter
-   */
+  /* Draw special dot where the current frame is. */
   if (frame == frameCurrent) {
     gl_PointSize = float(pointSize + 8);
     finalColor = colorCurrentFrame;
