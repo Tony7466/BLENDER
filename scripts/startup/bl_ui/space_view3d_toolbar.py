@@ -624,8 +624,11 @@ class VIEW3D_PT_slots_paint_canvas(SelectPaintSlotHelper, View3DPanel, Panel):
             if mat and mat.texture_paint_images and mat.texture_paint_slots:
                 label = mat.texture_paint_slots[mat.paint_active_slot].name
         elif paint.canvas_source == 'COLOR_ATTRIBUTE':
-            label = (me.color_attributes.active_color.name if me.color_attributes.active_color
-                     else iface_("Color Attribute"))
+            active_color = me.color_attributes.active_color
+            label = (
+                active_color.name if active_color else
+                iface_("Color Attribute")
+            )
         elif paint.canvas_image:
             label = paint.canvas_image.name
 
@@ -640,8 +643,9 @@ class VIEW3D_PT_slots_color_attributes(Panel):
 
     def draw_header(self, context):
         me = context.object.data
+        active_color = me.color_attributes.active_color
         self.bl_label = (
-            me.color_attributes.active_color.name if me.color_attributes.active_color else
+            active_color.name if active_color else
             iface_("Color Attributes")
         )
 
