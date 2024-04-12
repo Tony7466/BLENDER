@@ -883,7 +883,7 @@ void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, bo
 {
   ED_workspace_status_item(C, {}, icon1);
   if (is_range) {
-    ED_workspace_status_item(C, "‐");
+    ED_workspace_status_item(C, "-");
   }
   ED_workspace_status_item(C, {}, icon2);
 }
