@@ -103,7 +103,7 @@
 #include "BKE_blender_version.h"
 #include "BKE_bpath.hh"
 #include "BKE_global.hh" /* For #Global `G`. */
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -1008,7 +1008,7 @@ static void write_libraries(WriteData *wd, Main *main)
                          "Data-block '%s' from lib '%s' is not linkable, but is flagged as "
                          "directly linked",
                          id->name,
-                         main->curlib->filepath_abs);
+                         main->curlib->runtime.filepath_abs);
             }
             writestruct(wd, ID_LINK_PLACEHOLDER, ID, 1, id);
           }

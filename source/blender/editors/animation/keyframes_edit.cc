@@ -15,7 +15,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_function_ref.hh"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -23,7 +23,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
 
 #include "ED_anim_api.hh"
@@ -596,9 +596,7 @@ bool keyframe_region_lasso_test(const KeyframeEdit_LassoData *data_lasso, const 
 
     BLI_rctf_transform_pt_v(data_lasso->rectf_view, data_lasso->rectf_scaled, xy_view, xy);
 
-    if (BLI_lasso_is_point_inside(
-            data_lasso->mcoords, data_lasso->mcoords_len, xy_view[0], xy_view[1], INT_MAX))
-    {
+    if (BLI_lasso_is_point_inside(data_lasso->mcoords, xy_view[0], xy_view[1], INT_MAX)) {
       return true;
     }
   }
@@ -1373,7 +1371,7 @@ KeyframeEditFunc ANIM_editkeyframes_ipo(short mode)
 static short set_keytype_keyframe(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    BEZKEYTYPE(bezt) = BEZT_KEYTYPE_KEYFRAME;
+    BEZKEYTYPE_LVALUE(bezt) = BEZT_KEYTYPE_KEYFRAME;
   }
   return 0;
 }
@@ -1381,7 +1379,7 @@ static short set_keytype_keyframe(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short set_keytype_breakdown(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    BEZKEYTYPE(bezt) = BEZT_KEYTYPE_BREAKDOWN;
+    BEZKEYTYPE_LVALUE(bezt) = BEZT_KEYTYPE_BREAKDOWN;
   }
   return 0;
 }
@@ -1389,7 +1387,7 @@ static short set_keytype_breakdown(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short set_keytype_extreme(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    BEZKEYTYPE(bezt) = BEZT_KEYTYPE_EXTREME;
+    BEZKEYTYPE_LVALUE(bezt) = BEZT_KEYTYPE_EXTREME;
   }
   return 0;
 }
@@ -1397,7 +1395,7 @@ static short set_keytype_extreme(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short set_keytype_jitter(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    BEZKEYTYPE(bezt) = BEZT_KEYTYPE_JITTER;
+    BEZKEYTYPE_LVALUE(bezt) = BEZT_KEYTYPE_JITTER;
   }
   return 0;
 }
@@ -1405,30 +1403,32 @@ static short set_keytype_jitter(KeyframeEditData * /*ked*/, BezTriple *bezt)
 static short set_keytype_moving_hold(KeyframeEditData * /*ked*/, BezTriple *bezt)
 {
   if (bezt->f2 & SELECT) {
-    BEZKEYTYPE(bezt) = BEZT_KEYTYPE_MOVEHOLD;
+    BEZKEYTYPE_LVALUE(bezt) = BEZT_KEYTYPE_MOVEHOLD;
   }
   return 0;
 }
 
-KeyframeEditFunc ANIM_editkeyframes_keytype(short mode)
+KeyframeEditFunc ANIM_editkeyframes_keytype(const eBezTriple_KeyframeType keyframe_type)
 {
-  switch (mode) {
-    case BEZT_KEYTYPE_BREAKDOWN: /* breakdown */
+  switch (keyframe_type) {
+    case BEZT_KEYTYPE_BREAKDOWN:
       return set_keytype_breakdown;
 
-    case BEZT_KEYTYPE_EXTREME: /* extreme keyframe */
+    case BEZT_KEYTYPE_EXTREME:
       return set_keytype_extreme;
 
-    case BEZT_KEYTYPE_JITTER: /* jitter keyframe */
+    case BEZT_KEYTYPE_JITTER:
       return set_keytype_jitter;
 
-    case BEZT_KEYTYPE_MOVEHOLD: /* moving hold */
+    case BEZT_KEYTYPE_MOVEHOLD:
       return set_keytype_moving_hold;
 
-    case BEZT_KEYTYPE_KEYFRAME: /* proper keyframe */
-    default:
+    case BEZT_KEYTYPE_KEYFRAME:
       return set_keytype_keyframe;
   }
+
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 /* ------- */

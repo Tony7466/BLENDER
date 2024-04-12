@@ -10,6 +10,8 @@
 
 #include "BLI_sys_types.h"
 
+#include "DNA_curve_types.h"
+
 struct AnimData;
 struct ChannelDrawList;
 struct FCurve;
@@ -26,9 +28,12 @@ struct GreasePencil;
 struct GreasePencilLayer;
 struct GreasePencilLayerTreeGroup;
 
-/* draw simple diamond-shape keyframe */
-/* caller should set up vertex format, bind GPU_SHADER_KEYFRAME_SHAPE,
- * immBegin(GPU_PRIM_POINTS, n), then call this n times */
+/**
+ * Draw simple diamond-shape keyframe.
+ *
+ * The caller should set up vertex format, bind #GPU_SHADER_KEYFRAME_SHAPE,
+ * `immBegin(GPU_PRIM_POINTS, n)`, then call this `n` times.
+ */
 struct KeyframeShaderBindings {
   uint pos_id;
   uint size_id;
@@ -41,7 +46,7 @@ void draw_keyframe_shape(float x,
                          float y,
                          float size,
                          bool sel,
-                         short key_type,
+                         eBezTriple_KeyframeType key_type,
                          short mode,
                          float alpha,
                          const KeyframeShaderBindings *sh_bindings,
