@@ -9,3 +9,4 @@ Referenced by issue #120203, Crash on Intel Mac when rendering or opening materi
 Referenced by issue #120231, Crash on `bpy.ops.uv.pack_islands` for certain geometry with `shape_method='CONVEX'`
 Referenced by issue #120217, Loading a .blend file created with 4.0.2 crash/freezes in 4.1
 Referenced by issue #120465, Crash when snapping Measure Tool with CTRL
+Referenced by issue #120556, Crash on start
