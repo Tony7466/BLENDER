@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
@@ -561,9 +562,8 @@ static void grease_pencil_update_extend(bContext &C, const GreasePencilFillOpDat
 }
 
 /* Helper: Check if must skip the layer */
-static IndexMask get_fill_boundary_layers(const GreasePencil &grease_pencil,
-                                          eGP_FillLayerModes fill_layer_mode,
-                                          IndexMaskMemory &memory)
+static VArray<bool> get_fill_boundary_layers(const GreasePencil &grease_pencil,
+                                             eGP_FillLayerModes fill_layer_mode)
 {
   BLI_assert(grease_pencil.has_active_layer());
   const IndexRange all_layers = grease_pencil.layers().index_range();
@@ -571,29 +571,37 @@ static IndexMask get_fill_boundary_layers(const GreasePencil &grease_pencil,
 
   switch (fill_layer_mode) {
     case GP_FILL_GPLMODE_ACTIVE:
-      return IndexRange::from_single(active_layer_index);
+      return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
+        return index == active_layer_index;
+      });
     case GP_FILL_GPLMODE_ABOVE:
-      return all_layers.contains(active_layer_index + 1) ?
-                 IndexRange::from_single(active_layer_index + 1) :
-                 IndexRange{};
+      return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
+        return index == active_layer_index + 1;
+      });
     case GP_FILL_GPLMODE_BELOW:
-      return all_layers.contains(active_layer_index - 1) ?
-                 IndexRange::from_single(active_layer_index - 1) :
-                 IndexRange{};
+      return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
+        return index == active_layer_index - 1;
+      });
     case GP_FILL_GPLMODE_ALL_ABOVE:
-      return all_layers.drop_front(active_layer_index + 1);
+      return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
+        return index > active_layer_index;
+      });
     case GP_FILL_GPLMODE_ALL_BELOW:
-      return all_layers.take_front(active_layer_index);
+      return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
+        return index < active_layer_index;
+      });
     case GP_FILL_GPLMODE_VISIBLE:
-      return IndexMask::from_predicate(
-          all_layers, GrainSize(512), memory, [&](const int layer_index) {
-            grease_pencil.layers()[layer_index]->is_visible();
-          });
+      return VArray<bool>::ForFunc(all_layers.size(), [grease_pencil](const int index) {
+        return grease_pencil.layers()[index]->is_visible();
+      });
   }
   return {};
 }
 
-static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent &event)
+static bool grease_pencil_apply_fill(bContext &C,
+                                     wmOperator &op,
+                                     const wmEvent &event,
+                                     const bool is_inverted)
 {
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
   if (!region) {
@@ -615,13 +623,10 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
     return false;
   }
 
-  IndexMaskMemory layer_mask_memory;
-  IndexMask layer_mask = get_fill_boundary_layers(
-      grease_pencil,
-      eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode),
-      layer_mask_memory);
+  const VArray<bool> is_boundary_layer = get_fill_boundary_layers(
+      grease_pencil, eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode));
 
-  ed::greasepencil::fill_strokes(C, *region, layer_mask);
+  ed::greasepencil::fill_strokes(C, *region, is_boundary_layer, is_inverted, *op.reports);
 
   // tgpf->mouse[0] = event->mval[0];
   // tgpf->mouse[1] = event->mval[1];
@@ -668,9 +673,9 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   //   int step = (float(i) / float(total)) * 100.0f;
   //   WM_cursor_time(win, step);
 
-  if (extend_lines) {
-    grease_pencil_update_extend(C, op_data);
-  }
+  // if (extend_lines) {
+  //   grease_pencil_update_extend(C, op_data);
+  // }
 
   //   /* Repeat loop until get something. */
   //   tgpf->done = false;
@@ -846,8 +851,8 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
 
       /* First time the event is not enabled to show help lines. */
       if (op_data.is_fill_initialized || !help_lines) {
-        estate = (grease_pencil_apply_fill(*C, *op, *event) ? OPERATOR_FINISHED :
-                                                              OPERATOR_CANCELLED);
+        estate = (grease_pencil_apply_fill(*C, *op, *event, is_inverted) ? OPERATOR_FINISHED :
+                                                                           OPERATOR_CANCELLED);
       }
       else if (extend_lines) {
         grease_pencil_update_extend(*C, op_data);
