@@ -334,9 +334,9 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
         std::string path = fmt::format("[\"{}\"]", name_escaped);
         PointerRNA resolved_ptr;
         PropertyRNA *resolved_prop;
-        const bool resolved_path = RNA_path_resolve_property(
+        const bool is_resolved = RNA_path_resolve_property(
             ptr, path.c_str(), &resolved_ptr, &resolved_prop);
-        if (!resolved_path) {
+        if (!is_resolved) {
           continue;
         }
         if (is_idproperty_keyable(prop, resolved_prop)) {
