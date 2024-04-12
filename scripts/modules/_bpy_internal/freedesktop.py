@@ -266,6 +266,14 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
     else:
         base_dir = XDG_DATA_HOME
 
+    # Ensure directories exist `xdg-mime` will fail with an error if these don't exist.
+    for dirpath_dst in (
+            os.path.join(base_dir, "mime", "application"),
+            os.path.join(base_dir, "mime", "packages")
+    ):
+        os.makedirs(dirpath_dst, exist_ok=True)
+    del dirpath_dst
+
     # Unfortunately there doesn't seem to be a way to know the installed location.
     # Use hard-coded location.
     package_xml_dst = os.path.join(base_dir, "mime", "application", filename)
@@ -390,6 +398,12 @@ def main_run_as_root_if_needed(do_register: bool) -> Optional[bool]:
     if os.geteuid() == 0:
         # Already an admin, run this script with escalated privileges.
         return None
+
+    # If the system prefix doesn't exist, fail with an error because it's highly likely that the
+    # system won't use this when it has not been created.
+    if not os.path.exists(SYSTEM_PREFIX):
+        sys.stderr.write("Error: system path does not exist {!r}\n".format(SYSTEM_PREFIX))
+        return False
 
     prog: Optional[str] = shutil.which("pkexec")
     if prog is None:
