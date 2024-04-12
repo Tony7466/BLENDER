@@ -538,17 +538,17 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   bool is_masked = !disable_masks_render && layer.use_masks() &&
                    !BLI_listbase_is_empty(&layer.masks);
 
-  float vert_col_opacity = (override_vertcol) ?
-                               (is_vert_col_mode ? pd->vertex_paint_opacity : 0.0f) :
-                               pd->vertex_paint_opacity;
+  const float vert_col_opacity = (override_vertcol) ?
+                                     (is_vert_col_mode ? pd->vertex_paint_opacity : 0.0f) :
+                                     pd->vertex_paint_opacity;
   /* Negate thickness sign to tag that strokes are in screen space.
    * Convert to world units (by default, 1 meter = 1000 pixels). */
-  float thickness_scale = (is_screenspace) ? -1.0f : 1.0f / 1000.0f;
+  const float thickness_scale = (is_screenspace) ? -1.0f : 1.0f / 1000.0f;
   /* If the layer is used as a mask (but is otherwise not visible in the render), render it with a
    * opacity of 0 so that it can still mask other layers. */
-  float layer_opacity = !is_used_as_mask ?
-                            grease_pencil_layer_final_opacity_get(pd, ob, grease_pencil, layer) :
-                            0.0f;
+  const float layer_opacity = !is_used_as_mask ? grease_pencil_layer_final_opacity_get(
+                                                     pd, ob, grease_pencil, layer) :
+                                                 0.0f;
 
   float layer_alpha = pd->xray_alpha;
   const float4 layer_tint = grease_pencil_layer_final_tint_and_alpha_get(
