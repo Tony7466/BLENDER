@@ -132,7 +132,6 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     }
     else {
       tc.data_len = 0;
-      int selected_point_count = 0;
       for (const IndexMask &selection : selection_per_attribute[i]) {
         tc.data_len += selection.size();
       }
