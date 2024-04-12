@@ -146,7 +146,7 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-#if defined(MAT_TRANSLUCENT) && !defined(MAT_CLEARCOAT)
+#if (CLOSURE_BIN_COUNT > 1) && defined(MAT_TRANSLUCENT) && !defined(MAT_CLEARCOAT)
   /* Use second slot so we can have diffuse + translucent without noise. */
   closure_select(g_closure_bins[1], g_closure_rand[1], cl);
 #else
