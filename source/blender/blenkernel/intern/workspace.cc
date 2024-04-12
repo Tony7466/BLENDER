@@ -640,10 +640,6 @@ bScreen *BKE_workspace_layout_screen_get(const WorkSpaceLayout *layout)
 
 void BKE_workspace_status_clear(WorkSpace *workspace)
 {
-  /* Clear simple status text. */
-  // MEM_SAFE_FREE(workspace->status_text);
-
-  /* Clear complex status list. */
   LISTBASE_FOREACH_MUTABLE (WorkSpaceStatusItem *, item, &workspace->status) {
     delete item;
   }

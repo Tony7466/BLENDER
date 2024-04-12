@@ -834,6 +834,15 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
+void ED_workspace_status_text(bContext *C, const char *str, const int icon)
+{
+  ED_workspace_status_begin(C);
+  if (str) {
+    ED_workspace_status_item(C, str, icon);
+  }
+  ED_workspace_status_end(C);
+}
+
 void ED_workspace_status_begin(bContext *C)
 {
   WorkSpace *workspace = CTX_wm_workspace(C);
@@ -870,9 +879,12 @@ void ED_workspace_status_icons(bContext *C, const int icon)
   ED_workspace_status_item(C, {}, icon);
 }
 
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, bool is_range)
 {
   ED_workspace_status_item(C, {}, icon1);
+  if (is_range) {
+    ED_workspace_status_item(C, "‐");
+  }
   ED_workspace_status_item(C, {}, icon2);
 }
 
@@ -895,15 +907,6 @@ void ED_workspace_status_icons(
 void ED_workspace_status_end(bContext *C)
 {
   ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C)));
-}
-
-void ED_workspace_status_text(bContext *C, const char *str, const int icon)
-{
-  ED_workspace_status_begin(C);
-  if (str) {
-    ED_workspace_status_item(C, str, icon);
-  }
-  ED_workspace_status_end(C);
 }
 
 /* ************************************************************ */

@@ -612,9 +612,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
 
   if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
     ED_workspace_status_begin(C);
-    ED_workspace_status_icons(C, ICON_EVENT_A);
-    ED_workspace_status_item(C, "-");
-    ED_workspace_status_icons(C, ICON_EVENT_Z);
+    ED_workspace_status_icons(C, ICON_EVENT_A, ICON_EVENT_Z, true);
     ED_workspace_status_space(C, 0.7f);
     ED_workspace_status_item(C, IFACE_("Search"));
     ED_workspace_status_end(C);
