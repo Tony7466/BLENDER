@@ -1665,12 +1665,7 @@ static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
   return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
 }
 
-static int64_t line_size(const StringRef string)
-{
-  return string.find_last_of("\n");
-}
-
-static Vector<std::string> lines(std::string text)
+static Vector<std::string> lines_of_text(std::string text)
 {
   Vector<std::string> result;
   std::istringstream text_stream(text);
@@ -1687,43 +1682,55 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
     return std::nullopt;
   }
 
-  Vector<std::string> inputs;
+  Vector<std::pair<int, std::string>, 8> numerated_info;
 
-  for (const bNodeLink *link : socket.directly_linked_links()) {
+  const Span<const bNodeLink *> connected_links = socket.directly_linked_links();
+  for (const int index : connected_links.index_range()) {
+    const bNodeLink *link = connected_links[index];
+    const int connection_number = index + 1;
+    if (!link->is_used()) {
+      continue;
+    }
+    if (!(link->flag & NODE_LINK_VALID)) {
+      continue;
+    }
     if (link->fromnode->is_dangling_reroute()) {
       continue;
     }
     const bNodeSocket &connected_socket = *link->fromsock;
     geo_log::GeoTreeLog *geo_tree_log = geo_tree_log_for_socket(
         ntree, connected_socket, tree_draw_ctx);
-    std::optional<std::string> input_log = create_log_inspection_string(geo_tree_log,
-                                                                        connected_socket);
-    if (input_log.has_value()) {
-      inputs.append(std::move(*input_log));
+    const std::optional<std::string> input_log = create_log_inspection_string(geo_tree_log,
+                                                                              connected_socket);
+    if (!input_log.has_value()) {
+      continue;
     }
+    numerated_info.append({connection_number, std::move(*input_log)});
   }
-  if (inputs.is_empty()) {
+
+  if (numerated_info.is_empty()) {
     return std::nullopt;
   }
 
+  constexpr const char *indentation = "  ";
+
   std::stringstream ss;
-  for (const int index : inputs.index_range()) {
-    const std::string &info = inputs[index];
-    ss << index + 1 << ". ";
-
-    const Vector<std::string> lines_of_info = lines(info);
-    for (const std::string &line : lines_of_info) {
-      ss << "  " << line;
-      if (&line != &lines_of_info.last()) {
-        ss << "\n";
-      }
+  for (const std::pair<int, std::string> &info : numerated_info) {
+    const Vector<std::string> lines = lines_of_text(info.second);
+    ss << info.first << ". " << lines.first();
+    for (const std::string &line : lines.as_span().drop_front(1)) {
+      ss << "\n" << indentation << line;
     }
-
-    if (&info != &inputs.last()) {
+    if (&info != &numerated_info.last()) {
       ss << ".\n";
     }
   }
-  return ss.str();
+
+  if (const std::string str = ss.str(); !str.empty()) {
+    return str;
+  }
+
+  return std::nullopt;
 }
 
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
