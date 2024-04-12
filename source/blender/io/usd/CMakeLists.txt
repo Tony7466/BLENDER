@@ -120,11 +120,7 @@ set(SRC
   intern/usd_reader_stage.cc
   intern/usd_reader_volume.cc
   intern/usd_reader_xform.cc
-<<<<<<< HEAD
-  intern/usd_reader_pointinstancer.cc
   intern/usd_reader_utils.cc
-=======
->>>>>>> main
   intern/usd_skel_convert.cc
   intern/usd_skel_root_utils.cc
 
@@ -165,11 +161,7 @@ set(SRC
   intern/usd_reader_stage.hh
   intern/usd_reader_volume.hh
   intern/usd_reader_xform.hh
-<<<<<<< HEAD
-  intern/usd_reader_pointinstancer.hh
   intern/usd_reader_utils.hh
-=======
->>>>>>> main
   intern/usd_skel_convert.hh
   intern/usd_skel_root_utils.hh
 )
