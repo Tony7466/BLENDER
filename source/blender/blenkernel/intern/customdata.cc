@@ -1754,8 +1754,8 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr},
     /* 18: CD_TANGENT */
-    {sizeof(float[4][4]),
-     alignof(float[4][4]),
+    {sizeof(float[4]),
+     alignof(float[4]),
      "",
      0,
      N_("Tangent"),
@@ -4799,7 +4799,7 @@ void CustomData_external_read(CustomData *data, ID *id, eCustomDataMask mask, co
       /* pass */
     }
     else if ((layer->flag & CD_FLAG_EXTERNAL) && typeInfo->read) {
-      CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
+      const CDataFileLayer *blay = cdf_layer_find(cdf, layer->type, layer->name);
 
       if (blay) {
         if (cdf_read_layer(cdf, blay)) {
@@ -5467,6 +5467,8 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
 
   BLO_read_data_address(reader, &data->external);
 
+  blender::Map<void *, const ImplicitSharingInfo *> sharing_info_by_data;
+
   int i = 0;
   while (i < data->totlayer) {
     CustomDataLayer *layer = &data->layers[i];
@@ -5477,12 +5479,24 @@ void CustomData_blend_read(BlendDataReader *reader, CustomData *data, const int 
     layer->sharing_info = nullptr;
 
     if (CustomData_verify_versions(data, i)) {
-      layer->sharing_info = BLO_read_shared(reader, &layer->data, [&]() {
-        blend_read_layer_data(reader, *layer, count);
-        return layer->data ? make_implicit_sharing_info_for_layer(
-                                 eCustomDataType(layer->type), layer->data, count) :
-                             nullptr;
-      });
+      layer->sharing_info = BLO_read_shared(
+          reader, &layer->data, [&]() -> const ImplicitSharingInfo * {
+            blend_read_layer_data(reader, *layer, count);
+            if (layer->data == nullptr) {
+              return nullptr;
+            }
+            const ImplicitSharingInfo *sharing_info = sharing_info_by_data.lookup_default(
+                layer->data, nullptr);
+            if (sharing_info != nullptr) {
+              sharing_info->add_user();
+            }
+            else {
+              sharing_info = make_implicit_sharing_info_for_layer(
+                  eCustomDataType(layer->type), layer->data, count);
+              sharing_info_by_data.add(layer->data, sharing_info);
+            }
+            return sharing_info;
+          });
       i++;
     }
   }

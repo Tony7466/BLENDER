@@ -13,9 +13,9 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_platform.h"
-#include "gpu_shader_dependency_private.h"
+#include "GPU_capabilities.hh"
+#include "GPU_platform.hh"
+#include "gpu_shader_dependency_private.hh"
 
 #include "gl_debug.hh"
 #include "gl_vertex_buffer.hh"
@@ -142,62 +142,6 @@ static const char *to_string(const Type &type)
   }
   BLI_assert_unreachable();
   return "unknown";
-}
-
-static int to_component_count(const Type &type)
-{
-  switch (type) {
-    case Type::FLOAT:
-    case Type::UINT:
-    case Type::INT:
-    case Type::BOOL:
-      return 1;
-    case Type::VEC2:
-    case Type::UVEC2:
-    case Type::IVEC2:
-      return 2;
-    case Type::VEC3:
-    case Type::UVEC3:
-    case Type::IVEC3:
-      return 3;
-    case Type::VEC4:
-    case Type::UVEC4:
-    case Type::IVEC4:
-      return 4;
-    case Type::MAT3:
-      return 9;
-    case Type::MAT4:
-      return 16;
-    /* Alias special types. */
-    case Type::UCHAR:
-    case Type::USHORT:
-      return 1;
-    case Type::UCHAR2:
-    case Type::USHORT2:
-      return 2;
-    case Type::UCHAR3:
-    case Type::USHORT3:
-      return 3;
-    case Type::UCHAR4:
-    case Type::USHORT4:
-      return 4;
-    case Type::CHAR:
-    case Type::SHORT:
-      return 1;
-    case Type::CHAR2:
-    case Type::SHORT2:
-      return 2;
-    case Type::CHAR3:
-    case Type::SHORT3:
-      return 3;
-    case Type::CHAR4:
-    case Type::SHORT4:
-      return 4;
-    case Type::VEC3_101010I2:
-      return 3;
-  }
-  BLI_assert_unreachable();
-  return -1;
 }
 
 static Type to_component_type(const Type &type)
@@ -1337,13 +1281,13 @@ void GLShader::transform_feedback_names_set(Span<const char *> name_list,
   transform_feedback_type_ = geom_type;
 }
 
-bool GLShader::transform_feedback_enable(GPUVertBuf *buf_)
+bool GLShader::transform_feedback_enable(blender::gpu::VertBuf *buf_)
 {
   if (transform_feedback_type_ == GPU_SHADER_TFB_NONE) {
     return false;
   }
 
-  GLVertBuf *buf = static_cast<GLVertBuf *>(unwrap(buf_));
+  GLVertBuf *buf = static_cast<GLVertBuf *>(buf_);
 
   if (buf->vbo_id_ == 0) {
     buf->bind();

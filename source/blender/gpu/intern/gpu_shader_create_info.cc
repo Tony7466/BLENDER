@@ -14,15 +14,15 @@
 
 #include "BKE_global.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_platform.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_platform.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_create_info_private.hh"
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #undef GPU_SHADER_INTERFACE_INFO
 #undef GPU_SHADER_CREATE_INFO
@@ -467,7 +467,6 @@ void gpu_shader_create_info_init()
                           GPU_OS_ANY,
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
-      GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
       GPU_crappy_amd_driver())
   {
     draw_modelmat = draw_modelmat_legacy;
