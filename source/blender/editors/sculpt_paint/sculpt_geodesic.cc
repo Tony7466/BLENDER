@@ -77,6 +77,22 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   return false;
 }
 
+/* Open addressing with linear probing that minimizes
+ * collission in hash tables can also be used to avoid
+ * parallel data storage collisions */
+static void lock_free_emplace(const int edge_other, const int non_checked, Vector<int> &queue_next)
+{
+  const int new_size = queue_next.size();
+  int idx = edge_other % new_size;
+  while (queue_next[idx] != non_checked) {
+    ++idx;
+    if (idx >= new_size) {
+      idx = 0;
+    }
+  }
+  queue_next[idx] = edge_other;
+}
+
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
   constexpr const int non_checked = -1;
@@ -221,18 +237,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
               }
 
               edge_tag[edge_other].set();
-
-              /* Open addressing with linear probing that minimizes
-               * collission in hash tables can also be used to avoid
-               * parallel data storage collisions */
-              int idx = edge_other % new_size;
-              while (queue_next[idx] != non_checked) {
-                ++idx;
-                if (idx >= new_size) {
-                  idx = 0;
-                }
-              }
-              queue_next[idx] = edge_other;
+              lock_free_emplace(edge_other, non_checked, queue_next);
             }
           }
         }
