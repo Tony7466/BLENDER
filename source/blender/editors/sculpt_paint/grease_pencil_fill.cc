@@ -37,89 +37,145 @@
 
 namespace blender::ed::greasepencil {
 
-/* Helper: Calc the maximum bounding box size of strokes to get the zoom level of the viewport.
- * For each stroke, the 2D projected bounding box is calculated and using this data, the total
- * object bounding box (all strokes) is calculated. */
-static rctf get_boundary_bounds(const ARegion &region,
-                                const Brush &brush,
-                                Object &object,
-                                const Object &object_eval,
-                                const Span<DrawingInfo> src_drawings,
-                                const VArray<bool> &is_boundary_layer)
+/* Loop all layers to draw strokes. */
+static void draw_datablock(Object &object, const ColorGeometry4f &ink)
 {
-  using bke::greasepencil::Drawing;
-  using bke::greasepencil::Layer;
+  bGPdata *gpd = tgpf->gpd;
+  Brush *brush = tgpf->brush;
+  BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+  ToolSettings *ts = tgpf->scene->toolsettings;
+  const bool extend_lines = (tgpf->fill_extend_fac > 0.0f);
 
-  rctf bounds;
-  BLI_rctf_init_minmax(&bounds);
+  tGPDdraw tgpw;
+  tgpw.rv3d = tgpf->rv3d;
+  tgpw.depsgraph = tgpf->depsgraph;
+  tgpw.ob = ob;
+  tgpw.gpd = gpd;
+  tgpw.offsx = 0;
+  tgpw.offsy = 0;
+  tgpw.winx = tgpf->sizex;
+  tgpw.winy = tgpf->sizey;
+  tgpw.dflag = 0;
+  tgpw.disable_fill = 1;
+  tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
 
-  if (brush.gpencil_settings->flag & GP_BRUSH_FILL_FIT_DISABLE) {
-    return bounds;
-  }
+  GPU_blend(GPU_BLEND_ALPHA);
 
-  BLI_assert(object.type == OB_GREASE_PENCIL);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
+  BLI_assert(gpl_active != nullptr);
 
-  BLI_assert(grease_pencil.has_active_layer());
+  const int gpl_active_index = BLI_findindex(&gpd->layers, gpl_active);
+  BLI_assert(gpl_active_index >= 0);
 
-  for (const DrawingInfo &info : src_drawings) {
-    const bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            &object_eval, object, info.layer_index, info.frame_number);
-    const bool only_boundary_strokes = is_boundary_layer[info.layer_index];
-    const bke::CurvesGeometry &strokes = info.drawing.strokes();
-    const bke::AttributeAccessor attributes = strokes.attributes();
-    const VArray<int> materials = *attributes.lookup<int>("material_index",
-                                                          bke::AttrDomain::Curve);
-    const VArray<bool> is_boundary_stroke = *attributes.lookup_or_default<bool>(
-        "is_boundary", bke::AttrDomain::Curve, false);
+  /* Draw blue point where click with mouse. */
+  draw_mouse_position(tgpf);
 
-    threading::parallel_for(strokes.curves_range(), 512, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = strokes.points_by_curve()[curve_i];
-        /* Check if stroke can be drawn. */
-        if (points.size() < 2) {
-          continue;
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+    /* do not draw layer if hidden */
+    if (gpl->flag & GP_LAYER_HIDE) {
+      continue;
+    }
+
+    /* calculate parent position */
+    BKE_gpencil_layer_transform_matrix_get(tgpw.depsgraph, ob, gpl, tgpw.diff_mat);
+
+    /* Decide if the strokes of layers are included or not depending on the layer mode.
+     * Cannot skip the layer because it can use boundary strokes and must be used. */
+    const int gpl_index = BLI_findindex(&gpd->layers, gpl);
+    bool skip = skip_layer_check(brush_settings->fill_layer_mode, gpl_active_index, gpl_index);
+
+    /* if active layer and no keyframe, create a new one */
+    if (gpl == tgpf->gpl) {
+      if ((gpl->actframe == nullptr) || (gpl->actframe->framenum != tgpf->active_cfra)) {
+        short add_frame_mode;
+        if (blender::animrig::is_autokey_on(tgpf->scene)) {
+          if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
+            add_frame_mode = GP_GETFRAME_ADD_COPY;
+          }
+          else {
+            add_frame_mode = GP_GETFRAME_ADD_NEW;
+          }
         }
-        /* check if the color is visible */
-        const int material_index = materials[curve_i];
-        Material *mat = BKE_object_material_get(&object, material_index + 1);
-        if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
-          continue;
+        else {
+          add_frame_mode = GP_GETFRAME_USE_PREV;
         }
 
-        /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
-        if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
-          continue;
-        }
+        BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, eGP_GetFrame_Mode(add_frame_mode));
+      }
+    }
 
-        for (const int point_i : points) {
-          float2 pos_view;
-          eV3DProjStatus result = ED_view3d_project_float_global(
-              &region, deformation.positions[point_i], pos_view, V3D_PROJ_TEST_NOP);
-          if (result == V3D_PROJ_RET_OK) {
-            BLI_rctf_do_minmax_v(&bounds, pos_view);
+    /* get frame to draw */
+    bGPDframe *gpf = BKE_gpencil_layer_frame_get(gpl, tgpf->active_cfra, GP_GETFRAME_USE_PREV);
+    if (gpf == nullptr) {
+      continue;
+    }
+
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+      /* check if stroke can be drawn */
+      if ((gps->points == nullptr) || (gps->totpoints < 2)) {
+        continue;
+      }
+      /* check if the color is visible */
+      MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
+      if ((gp_style == nullptr) || (gp_style->flag & GP_MATERIAL_HIDE)) {
+        continue;
+      }
+
+      /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
+      if ((skip) && ((gps->flag & GP_STROKE_NOFILL) == 0)) {
+        continue;
+      }
+
+      tgpw.gps = gps;
+      tgpw.gpl = gpl;
+      tgpw.gpf = gpf;
+      tgpw.t_gpf = gpf;
+
+      tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true;
+      /* Reduce thickness to avoid gaps. */
+      tgpw.lthick = gpl->line_change;
+      tgpw.opacity = 1.0;
+      copy_v4_v4(tgpw.tintcolor, ink);
+      tgpw.onion = true;
+      tgpw.custonion = true;
+
+      /* Normal strokes. */
+      if (ELEM(tgpf->fill_draw_mode, GP_FILL_DMODE_STROKE, GP_FILL_DMODE_BOTH)) {
+        if (gpencil_stroke_is_drawable(tgpf, gps) && ((gps->flag & GP_STROKE_TAG) == 0) &&
+            ((gps->flag & GP_STROKE_HELP) == 0))
+        {
+          ED_gpencil_draw_fill(&tgpw);
+        }
+        /* In stroke mode, still must draw the extend lines. */
+        if (extend_lines && (tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE)) {
+          if ((gps->flag & GP_STROKE_NOFILL) && (gps->flag & GP_STROKE_TAG)) {
+            gpencil_draw_basic_stroke(tgpf,
+                                      gps,
+                                      tgpw.diff_mat,
+                                      gps->flag & GP_STROKE_CYCLIC,
+                                      ink,
+                                      tgpf->flag,
+                                      tgpf->fill_threshold,
+                                      1.0f);
           }
         }
       }
-    });
+
+      /* 3D Lines with basic shapes and invisible lines. */
+      if (ELEM(tgpf->fill_draw_mode, GP_FILL_DMODE_CONTROL, GP_FILL_DMODE_BOTH)) {
+        gpencil_draw_basic_stroke(tgpf,
+                                  gps,
+                                  tgpw.diff_mat,
+                                  gps->flag & GP_STROKE_CYCLIC,
+                                  ink,
+                                  tgpf->flag,
+                                  tgpf->fill_threshold,
+                                  1.0f);
+      }
+    }
   }
 
-  return bounds;
-}
-
-static rctf get_region_bounds(const ARegion &region)
-{
-  /* Init maximum boundbox size. */
-  rctf region_bounds;
-  const float winx_half = region.winx / 2.0f;
-  const float winy_half = region.winy / 2.0f;
-  BLI_rctf_init(&region_bounds,
-                0.0f - winx_half,
-                region.winx + winx_half,
-                0.0f - winy_half,
-                region.winy + winy_half);
-  return region_bounds;
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 /* Draw strokes in off-screen buffer. */
@@ -355,6 +411,91 @@ static bool do_frame_fill(Main &bmain,
   }
 
   return true;
+}
+
+static rctf get_region_bounds(const ARegion &region)
+{
+  /* Init maximum boundbox size. */
+  rctf region_bounds;
+  const float winx_half = region.winx / 2.0f;
+  const float winy_half = region.winy / 2.0f;
+  BLI_rctf_init(&region_bounds,
+                0.0f - winx_half,
+                region.winx + winx_half,
+                0.0f - winy_half,
+                region.winy + winy_half);
+  return region_bounds;
+}
+
+/* Helper: Calc the maximum bounding box size of strokes to get the zoom level of the viewport.
+ * For each stroke, the 2D projected bounding box is calculated and using this data, the total
+ * object bounding box (all strokes) is calculated. */
+static rctf get_boundary_bounds(const ARegion &region,
+                                const Brush &brush,
+                                Object &object,
+                                const Object &object_eval,
+                                const Span<DrawingInfo> src_drawings,
+                                const VArray<bool> &is_boundary_layer)
+{
+  using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
+
+  rctf bounds;
+  BLI_rctf_init_minmax(&bounds);
+
+  if (brush.gpencil_settings->flag & GP_BRUSH_FILL_FIT_DISABLE) {
+    return bounds;
+  }
+
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  BLI_assert(grease_pencil.has_active_layer());
+
+  for (const DrawingInfo &info : src_drawings) {
+    const bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            &object_eval, object, info.layer_index, info.frame_number);
+    const bool only_boundary_strokes = is_boundary_layer[info.layer_index];
+    const bke::CurvesGeometry &strokes = info.drawing.strokes();
+    const bke::AttributeAccessor attributes = strokes.attributes();
+    const VArray<int> materials = *attributes.lookup<int>("material_index",
+                                                          bke::AttrDomain::Curve);
+    const VArray<bool> is_boundary_stroke = *attributes.lookup_or_default<bool>(
+        "is_boundary", bke::AttrDomain::Curve, false);
+
+    threading::parallel_for(strokes.curves_range(), 512, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        const IndexRange points = strokes.points_by_curve()[curve_i];
+        /* Check if stroke can be drawn. */
+        if (points.size() < 2) {
+          continue;
+        }
+        /* check if the color is visible */
+        const int material_index = materials[curve_i];
+        Material *mat = BKE_object_material_get(&object, material_index + 1);
+        if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
+          continue;
+        }
+
+        /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
+        if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
+          continue;
+        }
+
+        for (const int point_i : points) {
+          float2 pos_view;
+          eV3DProjStatus result = ED_view3d_project_float_global(
+              &region, deformation.positions[point_i], pos_view, V3D_PROJ_TEST_NOP);
+          if (result == V3D_PROJ_RET_OK) {
+            BLI_rctf_do_minmax_v(&bounds, pos_view);
+          }
+        }
+      }
+    });
+  }
+
+  return bounds;
 }
 
 bool fill_strokes(bContext &C,
