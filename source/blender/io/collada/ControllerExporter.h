@@ -80,7 +80,7 @@ class ControllerExporter : public COLLADASW::LibraryControllers,
   std::string get_controller_id(Key *key, Object *ob);
 
   /** `ob` should be of type OB_MESH, both arguments are required. */
-  void export_skin_controller(Object *ob, Object *ob_arm);
+  void export_skin_controller(Object *ob, Object *ob_arm, bool containsShapeKey);
 
   void export_morph_controller(Object *ob, Key *key);
 
