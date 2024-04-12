@@ -131,23 +131,22 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       if (is_transmission) {
         cl_light.N = -cl.N;
-        cl_light.is_translucent_with_thickness = thickness > 0.0;
         cl_light.type = LIGHT_DIFFUSE;
         out_P = P;
 
-        if (cl_light.is_translucent_with_thickness) {
+        if (thickness > 0.0) {
           vec2 random_2d = pcg3d(P).xy;
 #ifdef EEVEE_SAMPLING_DATA
           random_2d = fract(random_2d + sampling_rng_2D_get(SAMPLING_SHADOW_X));
 #endif
           float radius = thickness * 0.5;
-          random_2d = sample_disk(random_2d) * radius;
           /* Store random shadow position inside the normal since it has no effect. */
-          cl_light.N = vec3(random_2d, radius);
+          cl_light.N = vec3(sample_disk(random_2d) * radius, radius);
           /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
            * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
            * a unique position on the sphere and use the light vector as normal. */
-          out_P -= cl.N * thickness * 0.5;
+          out_P -= cl.N * radius;
+          cl_light.is_translucent_with_thickness = true;
         }
       }
       break;
