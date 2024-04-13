@@ -1105,10 +1105,10 @@ int blf_str_offset_to_cursor(
   else if (prev.xmax && next.xmax) {
     /* Middle of the string, so in between. */
     if (next.xmin >= prev.xmax) {
-      return int((prev.xmax + next.xmin - cursor_width) / 2.0f);
+      return int((float(prev.xmax + next.xmin) - cursor_width) / 2.0f);
     }
     /* Possible with RTL. */
-    return int((next.xmax + prev.xmin - cursor_width) / 2.0f);
+    return int((float(next.xmax + prev.xmin) - cursor_width) / 2.0f);
   }
   else if (!str_offset) {
     /* Before first space character. */

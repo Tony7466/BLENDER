@@ -2019,8 +2019,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       /* IME candidate window uses cursor position. */
       if (!ime_reposition_window) {
         ime_reposition_window = true;
-        ime_win_x = but_cursor_shape.xmax + 5;
-        ime_win_y = but_cursor_shape.ymin + 3;
+        ime_win_x = rect->xmin + t + 5;
+        ime_win_y = rect->ymin + 3;
       }
 #endif
     }
