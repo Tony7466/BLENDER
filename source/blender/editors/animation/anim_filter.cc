@@ -2045,7 +2045,6 @@ static size_t animdata_filter_gpencil_legacy(bAnimContext *ac,
   /* return the number of items added to the list */
   return items;
 }
-
 /* Helper for Grease Pencil data integrated with main DopeSheet */
 static size_t animdata_filter_ds_gpencil(
     bAnimContext *ac, ListBase *anim_data, bDopeSheet *ads, bGPdata *gpd, int filter_mode)
@@ -2956,10 +2955,16 @@ static size_t animdata_filter_dopesheet_ob(
     }
 
     /* grease pencil */
-    if ((ob->type == OB_GPENCIL_LEGACY) && (ob->data) && !(ads->filterflag & ADS_FILTER_NOGPENCIL))
+    if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) && !(ads->filterflag & ADS_FILTER_NOGPENCIL))
     {
-      tmp_items += animdata_filter_ds_gpencil(
-          ac, &tmp_data, ads, static_cast<bGPdata *>(ob->data), filter_mode);
+      if ((ob->type == OB_GREASE_PENCIL) && U.experimental.use_grease_pencil_version3) {
+        tmp_items += animdata_filter_grease_pencil_data(
+            &tmp_data, ads, static_cast<GreasePencil *>(ob->data), filter_mode);
+      }
+      else {
+        tmp_items += animdata_filter_ds_gpencil(
+            ac, &tmp_data, ads, static_cast<bGPdata *>(ob->data), filter_mode);
+      }
     }
   }
   END_ANIMFILTER_SUBCHANNELS;
