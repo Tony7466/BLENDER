@@ -23,7 +23,7 @@
 
 #include "ED_object.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -88,7 +88,7 @@ void shaderfx_panel_end(uiLayout *layout, PointerRNA *ptr)
   ShaderFxData *fx = static_cast<ShaderFxData *>(ptr->data);
   if (fx->error) {
     uiLayout *row = uiLayoutRow(layout, false);
-    uiItemL(row, TIP_(fx->error), ICON_ERROR);
+    uiItemL(row, RPT_(fx->error), ICON_ERROR);
   }
 }
 
@@ -106,7 +106,7 @@ PointerRNA *shaderfx_panel_get_property_pointers(Panel *panel, PointerRNA *r_ob_
   return ptr;
 }
 
-#define ERROR_LIBDATA_MESSAGE TIP_("External library data")
+#define ERROR_LIBDATA_MESSAGE N_("External library data")
 
 static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void *fx_v)
 {
@@ -114,7 +114,7 @@ static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void 
   uiLayout *row;
   ShaderFxData *fx = (ShaderFxData *)fx_v;
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx);
   uiLayoutSetContextPointer(layout, "shaderfx", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
@@ -214,7 +214,7 @@ static void shaderfx_panel_header(const bContext * /*C*/, Panel *panel)
 
 static bool shaderfx_ui_poll(const bContext *C, PanelType * /*pt*/)
 {
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
 
   return (ob != nullptr) && (ob->type == OB_GPENCIL_LEGACY);
 }

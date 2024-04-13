@@ -16,9 +16,9 @@
 #include "mtl_capabilities.hh"
 #include "mtl_shader_interface_type.hh"
 
-#include "GPU_common.h"
-#include "GPU_common_types.h"
-#include "GPU_texture.h"
+#include "GPU_common.hh"
+#include "GPU_common_types.hh"
+#include "GPU_texture.hh"
 #include "gpu_texture_private.hh"
 #include <Metal/Metal.h>
 #include <functional>
@@ -163,7 +163,7 @@ MTLVertexFormat mtl_datatype_to_vertex_type(eMTLDataType type);
 
 /**
  * Implementation of Shader interface for Metal Back-end.
- **/
+ */
 class MTLShaderInterface : public ShaderInterface {
 
  private:

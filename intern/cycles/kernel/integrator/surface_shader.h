@@ -167,7 +167,8 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
           sc->sample_weight = 0.0f;
         }
         else if ((CLOSURE_IS_BSDF_TRANSPARENT(sc->type) &&
-                  (filter_closures & FILTER_CLOSURE_TRANSPARENT))) {
+                  (filter_closures & FILTER_CLOSURE_TRANSPARENT)))
+        {
           sc->type = CLOSURE_HOLDOUT_ID;
           sc->sample_weight = 0.0f;
           sd->flag |= SD_HOLDOUT;
@@ -211,7 +212,7 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
 /* BSDF */
 #ifdef WITH_CYCLES_DEBUG
 ccl_device_inline void surface_shader_validate_bsdf_sample(const KernelGlobals kg,
-                                                           const ShaderClosure *sc,
+                                                           ccl_private const ShaderClosure *sc,
                                                            const float3 wo,
                                                            const int org_label,
                                                            const float2 org_roughness,
@@ -929,13 +930,16 @@ ccl_device float surface_shader_average_roughness(ccl_private const ShaderData *
     if (CLOSURE_IS_BSDF(sc->type)) {
       /* sqrt once to undo the squaring from multiplying roughness on the
        * two axes, and once for the squared roughness convention. */
-      float weight = fabsf(average(sc->weight));
-      roughness += weight * sqrtf(safe_sqrtf(bsdf_get_roughness_squared(sc)));
-      sum_weight += weight;
+      float value = bsdf_get_roughness_pass_squared(sc);
+      if (value >= 0.0f) {
+        float weight = fabsf(average(sc->weight));
+        roughness += weight * sqrtf(sqrtf(value));
+        sum_weight += weight;
+      }
     }
   }
 
-  return (sum_weight > 0.0f) ? roughness / sum_weight : 0.0f;
+  return (sum_weight > 0.0f) ? roughness / sum_weight : 1.0f;
 }
 
 ccl_device Spectrum surface_shader_transparency(KernelGlobals kg, ccl_private const ShaderData *sd)
@@ -948,22 +952,6 @@ ccl_device Spectrum surface_shader_transparency(KernelGlobals kg, ccl_private co
   }
   else {
     return zero_spectrum();
-  }
-}
-
-ccl_device void surface_shader_disable_transparency(KernelGlobals kg, ccl_private ShaderData *sd)
-{
-  if (sd->flag & SD_TRANSPARENT) {
-    for (int i = 0; i < sd->num_closure; i++) {
-      ccl_private ShaderClosure *sc = &sd->closure[i];
-
-      if (sc->type == CLOSURE_BSDF_TRANSPARENT_ID) {
-        sc->sample_weight = 0.0f;
-        sc->weight = zero_spectrum();
-      }
-    }
-
-    sd->flag &= ~SD_TRANSPARENT;
   }
 }
 

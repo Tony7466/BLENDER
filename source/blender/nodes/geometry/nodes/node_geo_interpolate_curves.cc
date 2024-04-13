@@ -12,11 +12,8 @@
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
-#include "BKE_curves_utils.hh"
 
 #include "GEO_randomize.hh"
-
-#include "DNA_pointcloud_types.h"
 
 namespace blender::nodes::node_geo_interpolate_curves_cc {
 
@@ -473,7 +470,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (type == CD_PROP_STRING) {
       return true;
     }
-    if (guide_curve_attributes.is_builtin(id) && !ELEM(id.name(), "radius", "tilt", "resolution"))
+    if (guide_curve_attributes.is_builtin(id) &&
+        !ELEM(id.name(), "radius", "tilt", "resolution", "cyclic"))
     {
       return true;
     }
@@ -867,7 +865,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   GeometryComponentEditData::remember_deformed_positions_if_necessary(guide_curves_geometry);
   if (const auto *curve_edit_data =
-          guide_curves_geometry.get_component<GeometryComponentEditData>()) {
+          guide_curves_geometry.get_component<GeometryComponentEditData>())
+  {
     new_curves.add(*curve_edit_data);
   }
 

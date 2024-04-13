@@ -15,32 +15,29 @@
 #include "BLI_map.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_key_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "BKE_action.h"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
 #include "BKE_nla.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
+#include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
 #include "ANIM_animdata.hh"
@@ -57,8 +54,6 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
-
-#include "UI_interface.hh"
 
 #include "action_intern.hh"
 
@@ -795,8 +790,9 @@ static void insert_grease_pencil_key(bAnimContext *ac,
 
   bool changed = false;
   if (hold_previous) {
-    const FramesMapKey active_frame_number = layer->frame_key_at(current_frame_number);
-    if ((active_frame_number == -1) || layer->frames().lookup(active_frame_number).is_null()) {
+    const std::optional<FramesMapKey> active_frame_number = layer->frame_key_at(
+        current_frame_number);
+    if (!active_frame_number || layer->frames().lookup(*active_frame_number).is_null()) {
       /* There is no active frame to hold to, or it's a null frame. Therefore just insert a blank
        * frame. */
       changed = grease_pencil->insert_blank_frame(
@@ -805,7 +801,7 @@ static void insert_grease_pencil_key(bAnimContext *ac,
     else {
       /* Duplicate the active frame. */
       changed = grease_pencil->insert_duplicate_frame(
-          *layer, active_frame_number, current_frame_number, false);
+          *layer, *active_frame_number, current_frame_number, false);
     }
   }
   else {
@@ -844,7 +840,6 @@ static void insert_fcurve_key(bAnimContext *ac,
     insert_keyframe(ac->bmain,
                     reports,
                     ale->id,
-                    nullptr,
                     ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
                     fcu->rna_path,
                     fcu->array_index,
@@ -896,7 +891,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Init keyframing flag. */
-  flag = ANIM_get_keyframing_flags(scene, true);
+  flag = ANIM_get_keyframing_flags(scene);
 
   /* GPLayers specific flags */
   if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
@@ -1152,6 +1147,20 @@ static int actkeys_delete_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int actkeys_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete selected keyframes?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return actkeys_delete_exec(C, op);
+}
+
 void ACTION_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1160,7 +1169,7 @@ void ACTION_OT_delete(wmOperatorType *ot)
   ot->description = "Remove all selected keyframes";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = actkeys_delete_invoke;
   ot->exec = actkeys_delete_exec;
   ot->poll = ED_operator_action_active;
 
@@ -1664,7 +1673,7 @@ void ACTION_OT_handle_type(wmOperatorType *ot)
  * \{ */
 
 /* this function is responsible for setting keyframe type for keyframes */
-static void setkeytype_action_keys(bAnimContext *ac, short mode)
+static void setkeytype_action_keys(bAnimContext *ac, eBezTriple_KeyframeType mode)
 {
   ListBase anim_data = {nullptr, nullptr};
   eAnimFilter_Flags filter;
@@ -1713,7 +1722,6 @@ static void setkeytype_action_keys(bAnimContext *ac, short mode)
 static int actkeys_keytype_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
-  short mode;
 
   /* get editor data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -1725,11 +1733,8 @@ static int actkeys_keytype_exec(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  /* get handle setting mode */
-  mode = RNA_enum_get(op->ptr, "type");
-
-  /* set handle type */
-  setkeytype_action_keys(&ac, mode);
+  const int mode = RNA_enum_get(op->ptr, "type");
+  setkeytype_action_keys(&ac, eBezTriple_KeyframeType(mode));
 
   /* set notifier that keyframe properties have changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);

@@ -98,6 +98,7 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
         col.separator()
 
         if light.type in {'POINT', 'SPOT'}:
+            col.prop(light, "use_soft_falloff")
             col.prop(light, "shadow_soft_size", text="Radius")
         elif light.type == 'SUN':
             col.prop(light, "angle")
@@ -117,6 +118,8 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
 
             col.prop(light, "use_shadow", text="Cast Shadow")
             col.prop(light, "shadow_softness_factor", text="Shadow Softness")
+            col.prop(light, "shadow_filter_radius", text="Filtering Radius")
+            col.prop(light, "shadow_resolution_scale", text="Resolution Scale")
 
             if light.type == 'SUN':
                 col.prop(light, "shadow_trace_distance", text="Trace Distance")

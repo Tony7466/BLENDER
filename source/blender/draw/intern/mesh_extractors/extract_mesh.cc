@@ -19,6 +19,8 @@
 
 #include "draw_cache_impl.hh"
 
+namespace blender::draw {
+
 void *mesh_extract_buffer_get(const MeshExtract *extractor, MeshBufferList *mbuflist)
 {
   /* NOTE: POINTER_OFFSET on windows platforms casts internally to `void *`, but on GCC/CLANG to
@@ -50,11 +52,8 @@ eMRIterType mesh_extract_iter_type(const MeshExtract *ext)
 
 static const MeshExtract *mesh_extract_override_hq_normals(const MeshExtract *extractor)
 {
-  if (extractor == &extract_pos_nor) {
-    return &extract_pos_nor_hq;
-  }
-  if (extractor == &extract_lnor) {
-    return &extract_lnor_hq;
+  if (extractor == &extract_nor) {
+    return &extract_nor_hq;
   }
   if (extractor == &extract_tan) {
     return &extract_tan_hq;
@@ -65,24 +64,11 @@ static const MeshExtract *mesh_extract_override_hq_normals(const MeshExtract *ex
   return extractor;
 }
 
-static const MeshExtract *mesh_extract_override_single_material(const MeshExtract *extractor)
-{
-  if (extractor == &extract_tris) {
-    return &extract_tris_single_mat;
-  }
-  return extractor;
-}
-
 const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
-                                             const bool do_hq_normals,
-                                             const bool do_single_mat)
+                                             const bool do_hq_normals)
 {
   if (do_hq_normals) {
     extractor = mesh_extract_override_hq_normals(extractor);
-  }
-
-  if (do_single_mat) {
-    extractor = mesh_extract_override_single_material(extractor);
   }
 
   return extractor;
@@ -155,3 +141,5 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
 }
 
 /** \} */
+
+}  // namespace blender::draw

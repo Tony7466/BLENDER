@@ -11,15 +11,15 @@
 #include "BKE_object.hh"
 #include "BLI_link_utils.h"
 #include "BLI_math_matrix.hh"
-#include "GPU_batch.h"
-#include "GPU_capabilities.h"
-#include "GPU_debug.h"
+#include "GPU_batch.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_debug.hh"
 
-#include "draw_debug.h"
 #include "draw_debug.hh"
-#include "draw_manager.h"
-#include "draw_shader.h"
-#include "draw_shader_shared.h"
+#include "draw_debug_c.hh"
+#include "draw_manager_c.hh"
+#include "draw_shader.hh"
+#include "draw_shader_shared.hh"
 
 #include <iomanip>
 #include <sstream>
@@ -28,7 +28,7 @@
 #  define DRAW_DEBUG
 #else
 /* Uncomment to forcibly enable debug draw in release mode. */
-//#define DRAW_DEBUG
+// #define DRAW_DEBUG
 #endif
 
 namespace blender::draw {
@@ -146,7 +146,7 @@ void DebugDraw::draw_polygon(Span<float3> face_verts, float4 color)
   }
 }
 
-void DebugDraw::draw_matrix(const float4x4 m4)
+void DebugDraw::draw_matrix(const float4x4 &m4)
 {
   float3 v0 = float3(0.0f, 0.0f, 0.0f);
   float3 v1 = float3(1.0f, 0.0f, 0.0f);
@@ -182,7 +182,7 @@ void DebugDraw::draw_bbox(const BoundBox &bbox, const float4 color)
   draw_line(bbox.vec[3], bbox.vec[7], col);
 }
 
-void DebugDraw::draw_matrix_as_bbox(float4x4 mat, const float4 color)
+void DebugDraw::draw_matrix_as_bbox(const float4x4 &mat, const float4 color)
 {
   BoundBox bb;
   const float min[3] = {-1.0f, -1.0f, -1.0f}, max[3] = {1.0f, 1.0f, 1.0f};
@@ -520,7 +520,7 @@ void DebugDraw::display_lines()
 
   drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
 
-  GPUBatch *batch = drw_cache_procedural_lines_get();
+  gpu::Batch *batch = drw_cache_procedural_lines_get();
   GPUShader *shader = DRW_shader_debug_draw_display_get();
   GPU_batch_set_shader(batch, shader);
   GPU_shader_uniform_mat4(shader, "persmat", persmat.ptr());
@@ -552,7 +552,7 @@ void DebugDraw::display_prints()
 
   drw_state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_PROGRAM_POINT_SIZE);
 
-  GPUBatch *batch = drw_cache_procedural_points_get();
+  gpu::Batch *batch = drw_cache_procedural_points_get();
   GPUShader *shader = DRW_shader_debug_print_display_get();
   GPU_batch_set_shader(batch, shader);
   float f_viewport[4];

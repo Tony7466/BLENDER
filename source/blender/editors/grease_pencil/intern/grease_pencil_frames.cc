@@ -20,6 +20,8 @@
 
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
@@ -28,6 +30,8 @@
 #include "DNA_curves_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_scene_types.h"
+
+#include "ANIM_keyframing.hh"
 
 #include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
@@ -48,6 +52,7 @@ void set_selected_frames_type(bke::greasepencil::Layer &layer,
   for (GreasePencilFrame &frame : layer.frames_for_write().values()) {
     if (frame.is_selected()) {
       frame.type = key_type;
+      layer.tag_frames_map_changed();
     }
   }
 }
@@ -166,7 +171,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     }
 
     /* Create the duplicate drawing. */
-    const Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
+    const Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number);
     if (drawing == nullptr) {
       continue;
     }
@@ -176,12 +181,16 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     /* Make a copy of the frame in the duplicates. */
     GreasePencilFrame frame_duplicate = frame;
     frame_duplicate.drawing_index = duplicated_drawing_index;
-    trans_data.temp_frames_buffer.add_overwrite(frame_number, frame_duplicate);
+    trans_data.duplicated_frames_buffer.add_overwrite(frame_number, frame_duplicate);
 
     /* Deselect the current frame, so that only the copy is selected. */
     frame.flag ^= GP_FRAME_SELECTED;
 
     changed = true;
+  }
+
+  if (changed) {
+    layer.tag_frames_map_changed();
   }
 
   return changed;
@@ -224,6 +233,7 @@ bool select_frame_at(bke::greasepencil::Layer &layer,
     return false;
   }
   select_frame(*frame, select_mode);
+  layer.tag_frames_map_changed();
   return true;
 }
 
@@ -246,6 +256,7 @@ void select_all_frames(bke::greasepencil::Layer &layer, const short select_mode)
 {
   for (auto item : layer.frames_for_write().items()) {
     select_frame(item.value, select_mode);
+    layer.tag_frames_map_changed();
   }
 }
 
@@ -278,10 +289,13 @@ void select_frames_region(KeyframeEditData *ked,
       }
       else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
         if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data),
-                                        pt)) {
+                                        pt))
+        {
           select_frame(frame, select_mode);
         }
       }
+
+      node.as_layer().tag_frames_map_changed();
     }
   }
   else if (node.is_group()) {
@@ -301,6 +315,7 @@ void select_frames_range(bke::greasepencil::TreeNode &node,
     for (auto [frame_number, frame] : node.as_layer().frames_for_write().items()) {
       if (IN_RANGE(float(frame_number), min, max)) {
         select_frame(frame, select_mode);
+        node.as_layer().tag_frames_map_changed();
       }
     }
   }
@@ -331,6 +346,44 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
       append_frame_to_key_edit_data(ked, frame_number, frame);
     }
   }
+}
+
+bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
+{
+  const int current_frame = scene.r.cfra;
+  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+
+  if (!active_layer.has_drawing_at(current_frame) && !blender::animrig::is_autokey_on(&scene)) {
+    return false;
+  }
+
+  /* If auto-key is on and the drawing at the current frame starts before the current frame a new
+   * keyframe needs to be inserted. */
+  const bool is_first = active_layer.sorted_keys().is_empty() ||
+                        (active_layer.sorted_keys().first() > current_frame);
+  const bool needs_new_drawing = is_first ||
+                                 (*active_layer.frame_key_at(current_frame) < current_frame);
+
+  if (blender::animrig::is_autokey_on(&scene) && needs_new_drawing) {
+    const Brush *brush = BKE_paint_brush_for_read(&scene.toolsettings->gp_paint->paint);
+    if (((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) ||
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
+    {
+      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
+       * current frame. Also duplicate the frame when erasing, Otherwise empty drawing is added,
+       * see !119051 */
+      grease_pencil.insert_duplicate_frame(
+          active_layer, *active_layer.frame_key_at(current_frame), current_frame, false);
+    }
+    else {
+      /* Otherwise we just insert a blank keyframe at the current frame. */
+      grease_pencil.insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
+  }
+  /* There should now always be a drawing at the current frame. */
+  BLI_assert(active_layer.has_drawing_at(current_frame));
+
+  return true;
 }
 
 static int insert_blank_frame_exec(bContext *C, wmOperator *op)

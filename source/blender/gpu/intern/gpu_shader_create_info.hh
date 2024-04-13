@@ -15,8 +15,8 @@
 
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include "GPU_material.h"
-#include "GPU_texture.h"
+#include "GPU_material.hh"
+#include "GPU_texture.hh"
 
 #include <iostream>
 
@@ -73,6 +73,62 @@ enum class Type {
   SHORT3,
   SHORT4
 };
+
+BLI_INLINE int to_component_count(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::UINT:
+    case Type::INT:
+    case Type::BOOL:
+      return 1;
+    case Type::VEC2:
+    case Type::UVEC2:
+    case Type::IVEC2:
+      return 2;
+    case Type::VEC3:
+    case Type::UVEC3:
+    case Type::IVEC3:
+      return 3;
+    case Type::VEC4:
+    case Type::UVEC4:
+    case Type::IVEC4:
+      return 4;
+    case Type::MAT3:
+      return 9;
+    case Type::MAT4:
+      return 16;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return 1;
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return 2;
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return 3;
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return 4;
+    case Type::CHAR:
+    case Type::SHORT:
+      return 1;
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return 2;
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return 3;
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return 4;
+    case Type::VEC3_101010I2:
+      return 3;
+  }
+  BLI_assert_unreachable();
+  return -1;
+}
 
 /* All of these functions is a bit out of place */
 static inline Type to_type(const eGPUType type)
@@ -640,6 +696,11 @@ struct ShaderCreateInfo {
   eGPUShaderTFBType tf_type_ = GPU_SHADER_TFB_NONE;
   Vector<const char *> tf_names_;
 
+  /* Api-specific parameters. */
+#ifdef WITH_METAL_BACKEND
+  ushort mtl_max_threads_per_threadgroup_ = 0;
+#endif
+
  public:
   ShaderCreateInfo(const char *name) : name_(name){};
   ~ShaderCreateInfo(){};
@@ -663,12 +724,6 @@ struct ShaderCreateInfo {
     return *(Self *)this;
   }
 
-  /**
-   * IMPORTANT: invocations count is only used if GL_ARB_gpu_shader5 is supported. On
-   * implementations that do not supports it, the max_vertices will be multiplied by invocations.
-   * Your shader needs to account for this fact. Use `#ifdef GPU_ARB_gpu_shader5` and make a code
-   * path that does not rely on #gl_InvocationID.
-   */
   Self &geometry_layout(PrimitiveIn prim_in,
                         PrimitiveOut prim_out,
                         int max_vertices,
@@ -790,6 +845,7 @@ struct ShaderCreateInfo {
         break;
     }
     specialization_constants_.append(constant);
+    interface_names_size_ += name.size() + 1;
     return *(Self *)this;
   }
 
@@ -905,7 +961,7 @@ struct ShaderCreateInfo {
 
   Self &push_constant(Type type, StringRefNull name, int array_size = 0)
   {
-    /* We don't have support for UINT push constants yet, use INT instead.*/
+    /* We don't have support for UINT push constants yet, use INT instead. */
     BLI_assert(type != Type::UINT);
     BLI_assert_msg(name.find("[") == -1,
                    "Array syntax is forbidden for push constants."
@@ -1028,6 +1084,29 @@ struct ShaderCreateInfo {
     tf_names_.append(name);
     return *(Self *)this;
   }
+  /** \} */
+
+  /* -------------------------------------------------------------------- */
+  /** \name API-Specific Parameters
+   *
+   * Optional parameters exposed by specific back-ends to enable additional features and
+   * performance tuning.
+   * NOTE: These functions can be exposed as a pass-through on unsupported configurations.
+   * \{ */
+
+  /* \name mtl_max_total_threads_per_threadgroup
+   * \a  max_total_threads_per_threadgroup - Provides compiler hint for maximum threadgroup size up
+   * front. Maximum value is 1024. */
+  Self &mtl_max_total_threads_per_threadgroup(ushort max_total_threads_per_threadgroup)
+  {
+#ifdef WITH_METAL_BACKEND
+    mtl_max_threads_per_threadgroup_ = max_total_threads_per_threadgroup;
+#else
+    UNUSED_VARS(max_total_threads_per_threadgroup);
+#endif
+    return *(Self *)this;
+  }
+
   /** \} */
 
   /* -------------------------------------------------------------------- */

@@ -18,16 +18,13 @@
 
 #include "DNA_asset_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_space_types.h"
 
-#include "ED_asset_handle.h"
-#include "ED_asset_list.h"
+#include "ED_asset_handle.hh"
 #include "ED_asset_list.hh"
-#include "ED_asset_shelf.h"
+#include "ED_asset_shelf.hh"
 
 #include "UI_grid_view.hh"
 #include "UI_interface.hh"
-#include "UI_view2d.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -97,15 +94,13 @@ AssetView::AssetView(const AssetLibraryReference &library_ref, const AssetShelf 
 
 void AssetView::build_items()
 {
-  const asset_system::AssetLibrary *library = ED_assetlist_library_get_once_available(
-      library_ref_);
+  const asset_system::AssetLibrary *library = list::library_get_once_available(library_ref_);
   if (!library) {
     return;
   }
 
-  ED_assetlist_iterate(library_ref_, [&](AssetHandle asset_handle) {
-    const asset_system::AssetRepresentation *asset = ED_asset_handle_get_representation(
-        &asset_handle);
+  list::iterate(library_ref_, [&](AssetHandle asset_handle) {
+    const asset_system::AssetRepresentation *asset = handle_get_representation(&asset_handle);
 
     if (shelf_.type->asset_poll && !shelf_.type->asset_poll(shelf_.type, asset)) {
       return true;
@@ -121,14 +116,14 @@ void AssetView::build_items()
     const bool show_names = (shelf_.settings.display_flag & ASSETSHELF_SHOW_NAMES);
 
     const StringRef identifier = asset->get_identifier().library_relative_identifier();
-    const int preview_id = [this, &asset_handle]() -> int {
-      if (ED_assetlist_asset_image_is_loading(&library_ref_, &asset_handle)) {
+    const int preview_id = [&]() -> int {
+      if (list::asset_image_is_loading(&library_ref_, &asset_handle)) {
         return ICON_TEMP;
       }
-      return ED_asset_handle_get_preview_or_type_icon_id(&asset_handle);
+      return handle_get_preview_or_type_icon_id(&asset_handle);
     }();
 
-    AssetViewItem &item = add_item<AssetViewItem>(
+    AssetViewItem &item = this->add_item<AssetViewItem>(
         asset_handle, identifier, asset->get_name(), preview_id);
     if (!show_names) {
       item.hide_label();
@@ -171,13 +166,13 @@ static std::optional<asset_system::AssetCatalogFilter> catalog_filter_from_shelf
     return {};
   }
 
-  asset_system ::AssetCatalog *active_catalog = library.catalog_service->find_catalog_by_path(
+  asset_system::AssetCatalog *active_catalog = library.catalog_service().find_catalog_by_path(
       shelf_settings.active_catalog_path);
   if (!active_catalog) {
     return {};
   }
 
-  return library.catalog_service->create_catalog_filter(active_catalog->catalog_id);
+  return library.catalog_service().create_catalog_filter(active_catalog->catalog_id);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -211,22 +206,22 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
 {
-  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
   const AssetShelfType &shelf_type = *asset_view.shelf_.type;
   if (shelf_type.draw_context_menu) {
-    asset_system::AssetRepresentation *asset = ED_asset_handle_get_representation(&asset_);
+    asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
     shelf_type.draw_context_menu(&C, &shelf_type, asset, &column);
   }
 }
 
 bool AssetViewItem::is_filtered_visible() const
 {
-  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(this->get_view());
   if (asset_view.search_string[0] == '\0') {
     return true;
   }
 
-  const StringRefNull asset_name = ED_asset_handle_get_representation(&asset_)->get_name();
+  const StringRefNull asset_name = handle_get_representation(&asset_)->get_name();
   return fnmatch(asset_view.search_string, asset_name.c_str(), FNM_CASEFOLD) == 0;
 }
 
@@ -235,8 +230,8 @@ std::unique_ptr<ui::AbstractViewItemDragController> AssetViewItem::create_drag_c
   if (!allow_asset_drag_) {
     return nullptr;
   }
-  asset_system::AssetRepresentation *asset = ED_asset_handle_get_representation(&asset_);
-  return std::make_unique<AssetDragController>(get_view(), *asset);
+  asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
+  return std::make_unique<AssetDragController>(this->get_view(), *asset);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -247,16 +242,16 @@ void build_asset_view(uiLayout &layout,
                       const bContext &C,
                       ARegion &region)
 {
-  ED_assetlist_storage_fetch(&library_ref, &C);
-  ED_assetlist_ensure_previews_job(&library_ref, &C);
+  list::storage_fetch(&library_ref, &C);
+  list::ensure_previews_job(&library_ref, &C);
 
-  const asset_system::AssetLibrary *library = ED_assetlist_library_get_once_available(library_ref);
+  const asset_system::AssetLibrary *library = list::library_get_once_available(library_ref);
   if (!library) {
     return;
   }
 
-  const float tile_width = ED_asset_shelf_tile_width(shelf.settings);
-  const float tile_height = ED_asset_shelf_tile_height(shelf.settings);
+  const float tile_width = shelf::tile_width(shelf.settings);
+  const float tile_height = shelf::tile_height(shelf.settings);
   BLI_assert(tile_width != 0);
   BLI_assert(tile_height != 0);
 

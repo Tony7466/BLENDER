@@ -164,7 +164,7 @@ static int PHashSizes[] = {
 };
 
 #define PHASH_hash(ph, item) (uintptr_t(item) % uint((ph)->cursize))
-#define PHASH_edge(v1, v2) (((v1) < (v2)) ? ((v1)*39) ^ ((v2)*31) : ((v1)*31) ^ ((v2)*39))
+#define PHASH_edge(v1, v2) (((v1) < (v2)) ? ((v1) * 39) ^ ((v2) * 31) : ((v1) * 31) ^ ((v2) * 39))
 
 static PHash *phash_new(PHashLink **list, int sizehint)
 {
@@ -789,11 +789,13 @@ static bool p_edge_has_pair(ParamHandle *handle, PEdge *e, bool topology_from_uv
       v2 = pe->next->vert;
 
       if (((v1->u.key == key1) && (v2->u.key == key2)) ||
-          ((v1->u.key == key2) && (v2->u.key == key1))) {
+          ((v1->u.key == key2) && (v2->u.key == key1)))
+      {
 
         /* don't connect seams and t-junctions */
         if ((pe->flag & PEDGE_SEAM) || *r_pair ||
-            (topology_from_uvs && p_edge_implicit_seam(e, pe))) {
+            (topology_from_uvs && p_edge_implicit_seam(e, pe)))
+        {
           *r_pair = nullptr;
           return false;
         }
@@ -1232,7 +1234,7 @@ static void p_chart_fill_boundary(ParamHandle *handle, PChart *chart, PEdge *be,
   BLI_heap_free(heap, nullptr);
 }
 
-static void p_chart_fill_boundaries(ParamHandle *handle, PChart *chart, PEdge *outer)
+static void p_chart_fill_boundaries(ParamHandle *handle, PChart *chart, const PEdge *outer)
 {
   PEdge *e, *be; /* *enext - as yet unused */
   int nedges;
@@ -3798,8 +3800,8 @@ static void p_add_ngon(ParamHandle *handle,
     const ParamKey tri_vkeys[3] = {vkeys[v0], vkeys[v1], vkeys[v2]};
     const float *tri_co[3] = {co[v0], co[v1], co[v2]};
     float *tri_uv[3] = {uv[v0], uv[v1], uv[v2]};
-    bool tri_pin[3] = {pin[v0], pin[v1], pin[v2]};
-    bool tri_select[3] = {select[v0], select[v1], select[v2]};
+    const bool tri_pin[3] = {pin[v0], pin[v1], pin[v2]};
+    const bool tri_select[3] = {select[v0], select[v1], select[v2]};
 
     uv_parametrizer_face_add(handle, key, 3, tri_vkeys, tri_co, tri_uv, tri_pin, tri_select);
   }

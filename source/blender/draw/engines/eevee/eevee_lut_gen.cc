@@ -11,13 +11,13 @@
  * These functions are not to be used in the final executable.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_rand.h"
 #include "BLI_string_utils.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 #define DO_FILE_OUTPUT 0
 

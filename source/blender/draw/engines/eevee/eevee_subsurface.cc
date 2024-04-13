@@ -8,17 +8,17 @@
  * Screen space subsurface scattering technique.
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_string_utils.hh"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_material.h"
-#include "GPU_texture.h"
+#include "GPU_capabilities.hh"
+#include "GPU_material.hh"
+#include "GPU_texture.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 void EEVEE_subsurface_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data * /*vedata*/) {}
 

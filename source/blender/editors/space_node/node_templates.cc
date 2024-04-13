@@ -20,10 +20,10 @@
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
@@ -259,7 +259,8 @@ static void node_socket_add_replace(const bContext *C,
         }
 
         if (STREQ(sock_prev->identifier, sock_from->identifier) &&
-            sock_prev->type == sock_from->type) {
+            sock_prev->type == sock_from->type)
+        {
           bNodeLink *link = sock_prev->link;
 
           if (link && link->fromnode) {
@@ -372,48 +373,7 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       const SocketDeclaration &socket_decl = *socket_decl_ptr;
       NodeLinkItem item;
       item.socket_index = index++;
-      if (dynamic_cast<const decl::Float *>(&socket_decl)) {
-        item.socket_type = SOCK_FLOAT;
-      }
-      else if (dynamic_cast<const decl::Int *>(&socket_decl)) {
-        item.socket_type = SOCK_INT;
-      }
-      else if (dynamic_cast<const decl::Bool *>(&socket_decl)) {
-        item.socket_type = SOCK_BOOLEAN;
-      }
-      else if (dynamic_cast<const decl::Vector *>(&socket_decl)) {
-        item.socket_type = SOCK_VECTOR;
-      }
-      else if (dynamic_cast<const decl::Color *>(&socket_decl)) {
-        item.socket_type = SOCK_RGBA;
-      }
-      else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
-        item.socket_type = SOCK_ROTATION;
-      }
-      else if (dynamic_cast<const decl::String *>(&socket_decl)) {
-        item.socket_type = SOCK_STRING;
-      }
-      else if (dynamic_cast<const decl::Image *>(&socket_decl)) {
-        item.socket_type = SOCK_IMAGE;
-      }
-      else if (dynamic_cast<const decl::Texture *>(&socket_decl)) {
-        item.socket_type = SOCK_TEXTURE;
-      }
-      else if (dynamic_cast<const decl::Material *>(&socket_decl)) {
-        item.socket_type = SOCK_MATERIAL;
-      }
-      else if (dynamic_cast<const decl::Shader *>(&socket_decl)) {
-        item.socket_type = SOCK_SHADER;
-      }
-      else if (dynamic_cast<const decl::Collection *>(&socket_decl)) {
-        item.socket_type = SOCK_COLLECTION;
-      }
-      else if (dynamic_cast<const decl::Object *>(&socket_decl)) {
-        item.socket_type = SOCK_OBJECT;
-      }
-      else {
-        item.socket_type = SOCK_CUSTOM;
-      }
+      item.socket_type = socket_decl.socket_type;
       item.socket_name = socket_decl.name.c_str();
       item.node_name = arg->node_type->ui_name;
       items.append(item);
@@ -597,8 +557,6 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
                    nullptr,
                    0.0,
                    0.0,
-                   0.0,
-                   0.0,
                    "");
         }
 
@@ -620,8 +578,6 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
                              UI_UNIT_X * 4,
                              UI_UNIT_Y,
                              nullptr,
-                             0.0,
-                             0.0,
                              0.0,
                              0.0,
                              TIP_("Add node to input"));
@@ -683,8 +639,6 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
                    nullptr,
                    0.0,
                    0.0,
-                   0.0,
-                   0.0,
                    TIP_("Remove nodes connected to the input"));
     UI_but_funcN_set(but, ui_node_link, MEM_dupallocN(arg), POINTER_FROM_INT(UI_NODE_LINK_REMOVE));
 
@@ -697,8 +651,6 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
                    UI_UNIT_X * 4,
                    UI_UNIT_Y,
                    nullptr,
-                   0.0,
-                   0.0,
                    0.0,
                    0.0,
                    TIP_("Disconnect nodes connected to the input"));
@@ -798,16 +750,13 @@ static void ui_node_draw_panel(uiLayout &layout,
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
                                 0,
-                                panel_state.is_collapsed() ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                             ICON_DISCLOSURE_TRI_DOWN,
+                                panel_state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
                                 IFACE_(panel_decl.name.c_str()),
                                 0,
                                 0,
                                 UI_UNIT_X * 4,
                                 UI_UNIT_Y,
                                 nullptr,
-                                0.0,
-                                0.0,
                                 0.0,
                                 0.0,
                                 "");
@@ -922,9 +871,9 @@ static void ui_node_draw_input(uiLayout &layout,
       UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
       if (lnode &&
-          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP))) {
-        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                   ICON_DISCLOSURE_TRI_DOWN;
+          (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP)))
+      {
+        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT;
         uiItemR(sub, &inputptr, "show_expanded", UI_ITEM_R_ICON_ONLY, "", icon);
       }
 
@@ -937,7 +886,7 @@ static void ui_node_draw_input(uiLayout &layout,
   }
 
   if (dependency_loop) {
-    uiItemL(row, IFACE_("Dependency Loop"), ICON_ERROR);
+    uiItemL(row, RPT_("Dependency Loop"), ICON_ERROR);
     add_dummy_decorator = true;
   }
   else if (lnode) {
@@ -992,6 +941,9 @@ static void ui_node_draw_input(uiLayout &layout,
               split_wrapper.decorate_column, &inputptr, "default_value", RNA_NO_INDEX);
           break;
         }
+        case SOCK_MENU:
+          uiItemL(sub, RPT_("Unsupported Menu Socket"), ICON_NONE);
+          break;
         case SOCK_CUSTOM:
           input.typeinfo->draw(&C, sub, &inputptr, &nodeptr, input.name);
           break;

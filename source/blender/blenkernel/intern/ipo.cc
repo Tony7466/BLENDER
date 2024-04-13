@@ -41,18 +41,18 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
-#include "BKE_fcurve.h"
+#include "BKE_anim_data.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
 #include "BKE_ipo.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_nla.h"
 
@@ -156,7 +156,8 @@ static void ipo_blend_read_data(BlendDataReader *reader, ID *id)
 
 IDTypeInfo IDType_ID_IP = {
     /*id_code*/ ID_IP,
-    /*id_filter*/ 0,
+    /*id_filter*/ FILTER_ID_IP,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_IP,
     /*struct_size*/ sizeof(Ipo),
     /*name*/ "Ipo",
@@ -443,7 +444,7 @@ static char *shapekey_adrcodes_to_paths(ID *id, int adrcode, int * /*r_array_ind
   else {
     /* Find the name of the ShapeKey (i.e. KeyBlock) to look for */
     Key *key = (Key *)id;
-    KeyBlock *kb = BKE_keyblock_from_key(key, adrcode);
+    KeyBlock *kb = BKE_keyblock_find_by_index(key, adrcode);
 
     /* setting that we alter is the "value" (i.e. keyblock.curval) */
     if (kb) {
@@ -769,15 +770,15 @@ static const char *camera_adrcodes_to_paths(int adrcode, int *r_array_index)
   /* result depends on adrcode */
   switch (adrcode) {
     case CAM_LENS:
-#if 0  /* XXX this cannot be resolved easily... \
-        * perhaps we assume camera is perspective (works for most cases... */
+#if 0 /* XXX this cannot be resolved easily... \
+       * perhaps we assume camera is perspective (works for most cases... */
       if (ca->type == CAM_ORTHO) {
         return "ortho_scale";
       }
       else {
         return "lens";
       }
-#else  /* XXX lazy hack for now... */
+#else /* XXX lazy hack for now... */
       return "lens";
 #endif /* XXX this cannot be resolved easily */
 
@@ -1021,8 +1022,8 @@ static const char *particle_adrcodes_to_paths(int adrcode, int *r_array_index)
 static char *get_rna_access(ID *id,
                             int blocktype,
                             int adrcode,
-                            char actname[],
-                            char constname[],
+                            const char actname[],
+                            const char constname[],
                             Sequence *seq,
                             int *r_array_index)
 {
@@ -2152,7 +2153,7 @@ void do_versions_ipos_to_animato(Main *bmain)
     if (ob->pose) {
       LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
         LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
-          /* if constraint has own IPO, convert add these to Object
+          /* if constraint has its own IPO, convert add these to Object
            * (NOTE: they're most likely to be drivers too)
            */
           if (con->ipo) {
@@ -2172,7 +2173,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 
     /* check constraints for local IPO's */
     LISTBASE_FOREACH (bConstraint *, con, &ob->constraints) {
-      /* if constraint has own IPO, convert add these to Object
+      /* if constraint has its own IPO, convert add these to Object
        * (NOTE: they're most likely to be drivers too)
        */
       if (con->ipo) {

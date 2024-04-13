@@ -10,22 +10,15 @@
 
 #include <memory>
 
-namespace blender {
-namespace index_mask {
-class IndexMask;
-}
-using index_mask::IndexMask;
-}  // namespace blender
-
 #include "BLI_array.hh"
 #include "BLI_bit_group_vector.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
 
 #include "BKE_DerivedMesh.hh"
 
 struct CCGElem;
-struct CCGFace;
 struct CCGKey;
 struct Mesh;
 struct Subdiv;
@@ -227,11 +220,8 @@ void BKE_subdiv_ccg_topology_counters(const SubdivCCG &subdiv_ccg,
                                       int &r_num_loops);
 
 struct SubdivCCGNeighbors {
-  SubdivCCGCoord *coords;
-  int size;
+  blender::Array<SubdivCCGCoord, 256> coords;
   int num_duplicates;
-
-  SubdivCCGCoord coords_fixed[256];
 };
 
 void BKE_subdiv_ccg_print_coord(const char *message, const SubdivCCGCoord &coord);
@@ -251,9 +241,6 @@ bool BKE_subdiv_ccg_check_coord_valid(const SubdivCCG &subdiv_ccg, const SubdivC
  *   element inside of every neighboring grid. */
 
 /* Get actual neighbors of the given coordinate.
- *
- * SubdivCCGNeighbors.neighbors must be freed if it is not equal to
- * SubdivCCGNeighbors.fixed_neighbors.
  *
  * If include_duplicates is true, vertices in other grids that match
  * the current vertex are added at the end of the coords array. */

@@ -46,6 +46,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_tracking_types.h"
@@ -54,23 +55,23 @@
 #undef DNA_GENFILE_VERSIONING_MACROS
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_asset.hh"
 #include "BKE_attribute.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
-#include "BKE_deform.h"
-#include "BKE_fcurve.h"
+#include "BKE_deform.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
@@ -79,13 +80,13 @@
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -553,11 +554,10 @@ static bNodeTree *add_realize_node_tree(Main *bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(bmain, "Realize Instances 2.93 Legacy", "GeometryNodeTree");
 
-  node_tree->tree_interface.add_socket("Geometry",
-                                       "",
-                                       "NodeSocketGeometry",
-                                       NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
-                                       nullptr);
+  node_tree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
+  node_tree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_INPUT, nullptr);
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -400.0f;
@@ -1181,7 +1181,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
                      SOCK_OBJECT,
                      SOCK_COLLECTION,
                      SOCK_TEXTURE,
-                     SOCK_MATERIAL)) {
+                     SOCK_MATERIAL))
+            {
               link->tosock = link->tosock->next;
             }
           }
@@ -1379,18 +1380,11 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_300 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void version_switch_node_input_prefix(Main *bmain)
@@ -1567,6 +1561,7 @@ static void do_version_subsurface_methods(bNode *node)
 
 static void version_geometry_nodes_add_attribute_input_settings(NodesModifierData *nmd)
 {
+  using namespace blender;
   if (nmd->settings.properties == nullptr) {
     return;
   }
@@ -1589,14 +1584,13 @@ static void version_geometry_nodes_add_attribute_input_settings(NodesModifierDat
     char use_attribute_prop_name[MAX_IDPROP_NAME];
     SNPRINTF(use_attribute_prop_name, "%s%s", property->name, "_use_attribute");
 
-    IDPropertyTemplate idprop = {0};
-    IDProperty *use_attribute_prop = IDP_New(IDP_INT, &idprop, use_attribute_prop_name);
+    IDProperty *use_attribute_prop = bke::idprop::create(use_attribute_prop_name, 0).release();
     IDP_AddToGroup(nmd->settings.properties, use_attribute_prop);
 
     char attribute_name_prop_name[MAX_IDPROP_NAME];
     SNPRINTF(attribute_name_prop_name, "%s%s", property->name, "_attribute_name");
 
-    IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_prop_name);
+    IDProperty *attribute_prop = bke::idprop::create(attribute_name_prop_name, "").release();
     IDP_AddToGroup(nmd->settings.properties, attribute_prop);
   }
 }
@@ -2644,7 +2638,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 300, 13)) {
     /* Convert Surface Deform to sparse-capable bind structure. */
     if (!DNA_struct_member_exists(
-            fd->filesdna, "SurfaceDeformModifierData", "int", "mesh_verts_num")) {
+            fd->filesdna, "SurfaceDeformModifierData", "int", "mesh_verts_num"))
+    {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
           if (md->type == eModifierType_SurfaceDeform) {
@@ -2662,7 +2657,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
             if (md->type == eGpencilModifierType_Lineart) {
               LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-              lmd->flags |= LRT_GPENCIL_USE_CACHE;
+              lmd->flags |= MOD_LINEART_USE_CACHE;
               lmd->chain_smooth_tolerance = 0.2f;
             }
           }
@@ -2671,7 +2666,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     if (!DNA_struct_member_exists(
-            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library")) {
+            fd->filesdna, "WorkSpace", "AssetLibraryReference", "asset_library"))
+    {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
       }
@@ -2900,7 +2896,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
           LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
             if (md->type == eGpencilModifierType_Lineart) {
               LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-              lmd->calculation_flags |= LRT_USE_CREASE_ON_SMOOTH_SURFACES;
+              lmd->calculation_flags |= MOD_LINEART_USE_CREASE_ON_SMOOTH_SURFACES;
             }
           }
         }
@@ -4563,16 +4559,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_after_linking_300 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }

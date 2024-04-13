@@ -19,7 +19,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
-#include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
 #include "BLI_range.h"
 #include "BLI_utildefines.h"
@@ -31,7 +30,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_grease_pencil.hh"
 
 #include "ED_anim_api.hh"
@@ -519,7 +518,7 @@ static ActKeyColumn *nalloc_ak_cel(void *data)
   /* Store settings based on state of BezTriple */
   ak->cfra = cel.frame_number;
   ak->sel = (cel.frame.flag & SELECT) != 0;
-  ak->key_type = cel.frame.type;
+  ak->key_type = eBezTriple_KeyframeType(cel.frame.type);
 
   /* Count keyframes in this column */
   ak->totkey = 1;
@@ -560,7 +559,7 @@ static ActKeyColumn *nalloc_ak_gpframe(void *data)
   /* store settings based on state of BezTriple */
   ak->cfra = gpf->framenum;
   ak->sel = (gpf->flag & GP_FRAME_SELECT) ? SELECT : 0;
-  ak->key_type = gpf->key_type;
+  ak->key_type = eBezTriple_KeyframeType(gpf->key_type);
 
   /* Count keyframes in this column. */
   ak->totkey = 1;
@@ -885,7 +884,7 @@ static void update_keyblocks(AnimKeylist *keylist, BezTriple *bezt, const int be
   int max_curve = 0;
 
   LISTBASE_FOREACH (ActKeyColumn *, col, &keylist->key_columns) {
-    max_curve = MAX2(max_curve, col->totcurve);
+    max_curve = std::max(max_curve, int(col->totcurve));
   }
 
   /* Propagate blocks to inserted keys. */

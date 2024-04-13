@@ -88,6 +88,13 @@ bool ghost_wl_dynload_libraries_init();
 void ghost_wl_dynload_libraries_exit();
 #endif
 
+#if defined(WITH_GHOST_WAYLAND_LIBDECOR) && defined(WITH_VULKAN_BACKEND)
+/**
+ * Needed for temporary buffer creation.
+ */
+int memfd_create_sealed_for_vulkan_hack(const char *name);
+#endif
+
 struct GWL_Output {
 
   /** Wayland core types. */
@@ -152,6 +159,27 @@ class GHOST_SystemWayland : public GHOST_System {
 
   void putClipboard(const char *buffer, bool selection) const override;
 
+  /**
+   * Returns GHOST_kSuccess if the clipboard contains an image.
+   */
+  GHOST_TSuccess hasClipboardImage() const override;
+
+  /**
+   * Get image data from the Clipboard
+   * \param r_width: the returned image width in pixels.
+   * \param r_height: the returned image height in pixels.
+   * \return pointer uint array in RGBA byte order. Caller must free.
+   */
+  uint *getClipboardImage(int *r_width, int *r_height) const override;
+
+  /**
+   * Put image data to the Clipboard
+   * \param rgba: uint array in RGBA byte order.
+   * \param width: the image width in pixels.
+   * \param height: the image height in pixels.
+   */
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const override;
+
   uint8_t getNumDisplays() const override;
 
   uint64_t getMilliSeconds() const override;
@@ -186,6 +214,8 @@ class GHOST_SystemWayland : public GHOST_System {
                               const GHOST_IWindow *parentWindow) override;
 
   GHOST_TCapabilityFlag getCapabilities() const override;
+
+  void setMultitouchGestures(const bool use) override;
 
   /* WAYLAND utility functions (share window/system logic). */
 

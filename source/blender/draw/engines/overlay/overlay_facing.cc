@@ -7,7 +7,7 @@
  */
 
 #include "BKE_paint.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "overlay_private.hh"
 
@@ -50,7 +50,7 @@ void OVERLAY_facing_cache_populate(OVERLAY_Data *vedata, Object *ob)
     DRW_shgroup_call_sculpt(pd->facing_grp[is_xray], ob, false, false, false, false, false);
   }
   else {
-    GPUBatch *geom = DRW_cache_object_surface_get(ob);
+    blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob);
     if (geom) {
       DRW_shgroup_call(pd->facing_grp[is_xray], geom, ob);
     }

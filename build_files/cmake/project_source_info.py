@@ -24,12 +24,12 @@ from typing import (
     Any,
     Callable,
     Generator,
+    IO,
     List,
     Optional,
     Sequence,
     Tuple,
     Union,
-    cast,
 )
 
 import shlex
@@ -120,12 +120,13 @@ def makefile_log() -> List[str]:
         time.sleep(1)
 
     # We know this is always true based on the input arguments to `Popen`.
-    stdout: IO[bytes] = process.stdout  # type: ignore
+    assert process.stdout is not None
+    stdout: IO[bytes] = process.stdout
 
     out = stdout.read()
     stdout.close()
     print("done!", len(out), "bytes")
-    return cast(List[str], out.decode("utf-8", errors="ignore").split("\n"))
+    return out.decode("utf-8", errors="ignore").split("\n")
 
 
 def build_info(
@@ -158,12 +159,13 @@ def build_info(
         del args_orig
 
         # join args incase they are not.
-        args = ' '.join(args)
-        args = args.replace(" -isystem", " -I")
-        args = args.replace(" -D ", " -D")
-        args = args.replace(" -I ", " -I")
+        args_str = " ".join(args)
+        args_str = args_str.replace(" -isystem", " -I")
+        args_str = args_str.replace(" -D ", " -D")
+        args_str = args_str.replace(" -I ", " -I")
 
-        args = shlex.split(args)
+        args = shlex.split(args_str)
+        del args_str
         # end
 
         # remove compiler
@@ -210,9 +212,10 @@ def build_defines_as_source() -> str:
     )
 
     # We know this is always true based on the input arguments to `Popen`.
-    stdout: IO[bytes] = process.stdout  # type: ignore
+    assert process.stdout is not None
+    stdout: IO[bytes] = process.stdout
 
-    return cast(str, stdout.read().strip().decode('ascii'))
+    return stdout.read().strip().decode('ascii')
 
 
 def build_defines_as_args() -> List[str]:

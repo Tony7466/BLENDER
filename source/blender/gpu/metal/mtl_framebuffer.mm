@@ -8,7 +8,7 @@
 
 #include "BLI_string.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "mtl_context.hh"
 #include "mtl_debug.hh"
@@ -470,6 +470,27 @@ void MTLFrameBuffer::clear_attachment(GPUAttachmentType type,
      * between clears where no draws occur. Can optimize at the high-level by using explicit
      * load-store flags. */
     this->force_clear();
+  }
+}
+void MTLFrameBuffer::subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
+                                             Span<GPUAttachmentState> color_attachment_states)
+{
+  const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+  if (!is_tile_based_arch) {
+    /* Break renderpass if tile memory is unsupported to ensure current framebuffer results are
+     * stored. */
+    context_->main_command_buffer.end_active_command_encoder();
+
+    /* Bind framebuffer attachments as textures.
+     * NOTE: Follows behaviour of gl_framebuffer. However, shaders utilising subpass_in will
+     * need to avoid bindpoint collisions for image/texture resources.  */
+    for (int i : color_attachment_states.index_range()) {
+      GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0 + i;
+      GPUTexture *attach_tex = this->attachments_[type].tex;
+      if (color_attachment_states[i] == GPU_ATTACHEMENT_READ) {
+        GPU_texture_image_bind(attach_tex, i);
+      }
+    }
   }
 }
 

@@ -16,7 +16,6 @@
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute.hh"
@@ -25,15 +24,12 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_image.h"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 #include "BKE_subdiv_ccg.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -46,8 +42,8 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
 
 #include "bmesh.hh"
 
@@ -447,7 +443,7 @@ static PBVHVertRef sculpt_expand_get_vertex_index_for_symmetry_pass(
   else {
     float location[3];
     flip_v3_v3(location, SCULPT_vertex_co_get(ss, original_vertex), ePaintSymmetryFlags(symm_it));
-    symm_vertex = SCULPT_nearest_vertex_get(nullptr, ob, location, FLT_MAX, false);
+    symm_vertex = SCULPT_nearest_vertex_get(ob, location, FLT_MAX, false);
   }
   return symm_vertex;
 }
@@ -456,9 +452,9 @@ static PBVHVertRef sculpt_expand_get_vertex_index_for_symmetry_pass(
  * Geodesic: Initializes the falloff with geodesic distances from the given active vertex, taking
  * symmetry into account.
  */
-static float *sculpt_expand_geodesic_falloff_create(Sculpt *sd, Object *ob, const PBVHVertRef v)
+static float *sculpt_expand_geodesic_falloff_create(Object *ob, const PBVHVertRef v)
 {
-  return geodesic::distances_create_from_vert_and_symm(sd, ob, v, FLT_MAX);
+  return geodesic::distances_create_from_vert_and_symm(ob, v, FLT_MAX);
 }
 
 /**
@@ -489,7 +485,7 @@ static bool expand_topology_floodfill_cb(
   return true;
 }
 
-static float *sculpt_expand_topology_falloff_create(Sculpt *sd, Object *ob, const PBVHVertRef v)
+static float *sculpt_expand_topology_falloff_create(Object *ob, const PBVHVertRef v)
 {
   SculptSession *ss = ob->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
@@ -497,7 +493,7 @@ static float *sculpt_expand_topology_falloff_create(Sculpt *sd, Object *ob, cons
 
   SculptFloodFill flood;
   flood_fill::init_fill(ss, &flood);
-  flood_fill::add_initial_with_symmetry(sd, ob, ss, &flood, v, FLT_MAX);
+  flood_fill::add_initial_with_symmetry(ob, ss, &flood, v, FLT_MAX);
 
   ExpandFloodFillData fdata;
   fdata.dists = dists;
@@ -538,8 +534,7 @@ static bool mask_expand_normal_floodfill_cb(
   return true;
 }
 
-static float *sculpt_expand_normal_falloff_create(Sculpt *sd,
-                                                  Object *ob,
+static float *sculpt_expand_normal_falloff_create(Object *ob,
                                                   const PBVHVertRef v,
                                                   const float edge_sensitivity,
                                                   const int blur_steps)
@@ -554,7 +549,7 @@ static float *sculpt_expand_normal_falloff_create(Sculpt *sd,
 
   SculptFloodFill flood;
   flood_fill::init_fill(ss, &flood);
-  flood_fill::add_initial_with_symmetry(sd, ob, ss, &flood, v, FLT_MAX);
+  flood_fill::add_initial_with_symmetry(ob, ss, &flood, v, FLT_MAX);
 
   ExpandFloodFillData fdata;
   fdata.dists = dists;
@@ -732,7 +727,7 @@ static float *sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertR
 
     int v_next_i = BKE_pbvh_vertex_to_index(ss->pbvh, v_next);
 
-    for (const int face : ss->pmap[v_next_i]) {
+    for (const int face : ss->vert_to_face_map[v_next_i]) {
       for (const int vert : ss->corner_verts.slice(ss->faces[face])) {
         const PBVHVertRef neighbor_v = BKE_pbvh_make_vref(vert);
         if (visited_verts[neighbor_v.i]) {
@@ -1036,11 +1031,7 @@ static void sculpt_expand_initialize_from_face_set_boundary(Object *ob,
  * falloff type.
  */
 static void sculpt_expand_falloff_factors_from_vertex_and_symm_create(
-    Cache *expand_cache,
-    Sculpt *sd,
-    Object *ob,
-    const PBVHVertRef v,
-    eSculptExpandFalloffType falloff_type)
+    Cache *expand_cache, Object *ob, const PBVHVertRef v, eSculptExpandFalloffType falloff_type)
 {
   MEM_SAFE_FREE(expand_cache->vert_falloff);
   expand_cache->falloff_type = falloff_type;
@@ -1051,20 +1042,19 @@ static void sculpt_expand_falloff_factors_from_vertex_and_symm_create(
   switch (falloff_type) {
     case SCULPT_EXPAND_FALLOFF_GEODESIC:
       expand_cache->vert_falloff = has_topology_info ?
-                                       sculpt_expand_geodesic_falloff_create(sd, ob, v) :
+                                       sculpt_expand_geodesic_falloff_create(ob, v) :
                                        sculpt_expand_spherical_falloff_create(ob, v);
       break;
     case SCULPT_EXPAND_FALLOFF_TOPOLOGY:
-      expand_cache->vert_falloff = sculpt_expand_topology_falloff_create(sd, ob, v);
+      expand_cache->vert_falloff = sculpt_expand_topology_falloff_create(ob, v);
       break;
     case SCULPT_EXPAND_FALLOFF_TOPOLOGY_DIAGONALS:
       expand_cache->vert_falloff = has_topology_info ?
                                        sculpt_expand_diagonals_falloff_create(ob, v) :
-                                       sculpt_expand_topology_falloff_create(sd, ob, v);
+                                       sculpt_expand_topology_falloff_create(ob, v);
       break;
     case SCULPT_EXPAND_FALLOFF_NORMALS:
       expand_cache->vert_falloff = sculpt_expand_normal_falloff_create(
-          sd,
           ob,
           v,
           SCULPT_EXPAND_NORMALS_FALLOFF_EDGE_SENSITIVITY,
@@ -1143,7 +1133,6 @@ static void sculpt_expand_cache_data_free(Cache *expand_cache)
 {
   MEM_SAFE_FREE(expand_cache->vert_falloff);
   MEM_SAFE_FREE(expand_cache->face_falloff);
-  MEM_SAFE_FREE(expand_cache->original_mask);
   MEM_SAFE_FREE(expand_cache->original_colors);
   MEM_delete<Cache>(expand_cache);
 }
@@ -1240,7 +1229,7 @@ static void sculpt_expand_restore_original_state(bContext *C, Object *ob, Cache 
   SculptSession *ss = ob->sculpt;
   switch (expand_cache->target) {
     case SCULPT_EXPAND_TARGET_MASK:
-      write_mask_data(ss, {expand_cache->original_mask, SCULPT_vertex_count_get(ss)});
+      write_mask_data(ss, expand_cache->original_mask);
       SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
       SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_MASK);
       SCULPT_tag_update_overlays(C);
@@ -1439,13 +1428,7 @@ static void sculpt_expand_original_state_store(Object *ob, Cache *expand_cache)
   expand_cache->original_face_sets = face_set::duplicate_face_sets(mesh);
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_MASK) {
-    expand_cache->original_mask = static_cast<float *>(
-        MEM_malloc_arrayN(totvert, sizeof(float), "initial mask"));
-    for (int i = 0; i < totvert; i++) {
-      PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
-
-      expand_cache->original_mask[i] = SCULPT_vertex_mask_get(ss, vertex);
-    }
+    expand_cache->original_mask = mask::duplicate_mask(*ob);
   }
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_COLORS) {
@@ -1713,8 +1696,6 @@ static void sculpt_expand_move_propagation_origin(bContext *C,
                                                   const wmEvent *event,
                                                   Cache *expand_cache)
 {
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-
   const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
   float move_disp[2];
   sub_v2_v2v2(move_disp, mval_fl, expand_cache->initial_mouse_move);
@@ -1725,7 +1706,6 @@ static void sculpt_expand_move_propagation_origin(bContext *C,
   sculpt_expand_set_initial_components_for_mouse(C, ob, expand_cache, new_mval);
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
       expand_cache,
-      sd,
       ob,
       expand_cache->initial_active_vertex,
       expand_cache->move_preview_falloff_type);
@@ -1770,7 +1750,6 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
 
   /* Skips INBETWEEN_MOUSEMOVE events and other events that may cause unnecessary updates. */
   if (!ELEM(event->type, MOUSEMOVE, EVT_MODAL_MAP)) {
@@ -1833,7 +1812,6 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
           expand_cache->move = false;
           sculpt_expand_falloff_factors_from_vertex_and_symm_create(
               expand_cache,
-              sd,
               ob,
               expand_cache->initial_active_vertex,
               expand_cache->move_original_falloff_type);
@@ -1877,22 +1855,14 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
         sculpt_expand_check_topology_islands(ob, SCULPT_EXPAND_FALLOFF_GEODESIC);
 
         sculpt_expand_falloff_factors_from_vertex_and_symm_create(
-            expand_cache,
-            sd,
-            ob,
-            expand_cache->initial_active_vertex,
-            SCULPT_EXPAND_FALLOFF_GEODESIC);
+            expand_cache, ob, expand_cache->initial_active_vertex, SCULPT_EXPAND_FALLOFF_GEODESIC);
         break;
       }
       case SCULPT_EXPAND_MODAL_FALLOFF_TOPOLOGY: {
         sculpt_expand_check_topology_islands(ob, SCULPT_EXPAND_FALLOFF_TOPOLOGY);
 
         sculpt_expand_falloff_factors_from_vertex_and_symm_create(
-            expand_cache,
-            sd,
-            ob,
-            expand_cache->initial_active_vertex,
-            SCULPT_EXPAND_FALLOFF_TOPOLOGY);
+            expand_cache, ob, expand_cache->initial_active_vertex, SCULPT_EXPAND_FALLOFF_TOPOLOGY);
         break;
       }
       case SCULPT_EXPAND_MODAL_FALLOFF_TOPOLOGY_DIAGONALS: {
@@ -1900,7 +1870,6 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
 
         sculpt_expand_falloff_factors_from_vertex_and_symm_create(
             expand_cache,
-            sd,
             ob,
             expand_cache->initial_active_vertex,
             SCULPT_EXPAND_FALLOFF_TOPOLOGY_DIAGONALS);
@@ -1910,7 +1879,6 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
         expand_cache->check_islands = false;
         sculpt_expand_falloff_factors_from_vertex_and_symm_create(
             expand_cache,
-            sd,
             ob,
             expand_cache->initial_active_vertex,
             SCULPT_EXPAND_FALLOFF_SPHERICAL);
@@ -1980,7 +1948,7 @@ static void sculpt_expand_delete_face_set_id(
     int *r_face_sets, SculptSession *ss, Cache *expand_cache, Mesh *mesh, const int delete_id)
 {
   const int totface = ss->totfaces;
-  const GroupedSpan<int> pmap = ss->pmap;
+  const GroupedSpan<int> vert_to_face_map = ss->vert_to_face_map;
   const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
@@ -2018,7 +1986,7 @@ static void sculpt_expand_delete_face_set_id(
       const int f_index = POINTER_AS_INT(BLI_LINKSTACK_POP(queue));
       int other_id = delete_id;
       for (const int vert : corner_verts.slice(faces[f_index])) {
-        for (const int neighbor_face_index : pmap[vert]) {
+        for (const int neighbor_face_index : vert_to_face_map[vert]) {
           if (expand_cache->original_face_sets[neighbor_face_index] <= 0) {
             /* Skip picking IDs from hidden Face Sets. */
             continue;
@@ -2112,13 +2080,66 @@ static void sculpt_expand_undo_push(Object *ob, Cache *expand_cache)
   }
 }
 
+static bool any_nonzero_mask(const Object &object)
+{
+  const SculptSession &ss = *object.sculpt;
+  switch (BKE_pbvh_type(ss.pbvh)) {
+    case PBVH_FACES: {
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask");
+      if (mask.is_empty()) {
+        return false;
+      }
+      return std::any_of(
+          mask.begin(), mask.end(), [&](const float value) { return value > 0.0f; });
+    }
+    case PBVH_GRIDS: {
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      if (!key.has_mask) {
+        return false;
+      }
+      return std::any_of(subdiv_ccg.grids.begin(), subdiv_ccg.grids.end(), [&](CCGElem *elem) {
+        for (const int i : IndexRange(key.grid_area)) {
+          if (*CCG_elem_offset_mask(&key, elem, i) > 0.0f) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }
+    case PBVH_BMESH: {
+      BMesh &bm = *ss.bm;
+      const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+      if (offset == -1) {
+        return false;
+      }
+      BMIter iter;
+      BMVert *vert;
+      BM_ITER_MESH (vert, &iter, &bm, BM_VERTS_OF_MESH) {
+        if (BM_ELEM_CD_GET_FLOAT(vert, offset) > 0.0f) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
 static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   SCULPT_stroke_id_next(ob);
 
@@ -2141,19 +2162,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     BKE_sculpt_mask_layers_ensure(depsgraph, CTX_data_main(C), ob, mmd);
 
     if (RNA_boolean_get(op->ptr, "use_auto_mask")) {
-      int verts_num = SCULPT_vertex_count_get(ss);
-      bool ok = true;
-
-      for (int i = 0; i < verts_num; i++) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
-
-        if (SCULPT_vertex_mask_get(ss, vertex) != 0.0f) {
-          ok = false;
-          break;
-        }
-      }
-
-      if (ok) {
+      if (any_nonzero_mask(*ob)) {
         write_mask_data(ss, Array<float>(SCULPT_vertex_count_get(ss), 1.0f));
       }
     }
@@ -2210,7 +2219,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
 
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
-      ss->expand_cache, sd, ob, ss->expand_cache->initial_active_vertex, falloff_type);
+      ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
 
   sculpt_expand_check_topology_islands(ob, falloff_type);
 

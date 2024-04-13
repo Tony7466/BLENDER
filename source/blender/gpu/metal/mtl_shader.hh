@@ -10,10 +10,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_batch.h"
-#include "GPU_capabilities.h"
-#include "GPU_shader.h"
-#include "GPU_vertex_format.h"
+#include "GPU_batch.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_shader.hh"
+#include "GPU_vertex_format.hh"
 
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
@@ -102,7 +102,7 @@ struct MTLRenderPipelineStateInstance {
 /* Common compute pipeline state. */
 struct MTLComputePipelineStateCommon {
 
-  /* Threadgroup information is common for all PSO variants.*/
+  /* Thread-group information is common for all PSO variants. */
   int threadgroup_x_len = 1;
   int threadgroup_y_len = 1;
   int threadgroup_z_len = 1;
@@ -163,7 +163,7 @@ struct MTLShaderBuilder {
  * - set MSL source.
  * - set Vertex/Fragment function names.
  * - Create and populate #MTLShaderInterface.
- **/
+ */
 class MTLShader : public Shader {
   friend shader::ShaderCreateInfo;
   friend shader::StageInterfaceInfo;
@@ -187,7 +187,7 @@ class MTLShader : public Shader {
   /* Whether transform feedback is currently active. */
   bool transform_feedback_active_ = false;
   /* Vertex buffer to write transform feedback data into. */
-  GPUVertBuf *transform_feedback_vertbuf_ = nullptr;
+  VertBuf *transform_feedback_vertbuf_ = nullptr;
 
   /** Shader source code. */
   MTLShaderBuilder *shd_builder_ = nullptr;
@@ -263,6 +263,9 @@ class MTLShader : public Shader {
   void *push_constant_data_ = nullptr;
   bool push_constant_modified_ = false;
 
+  /** Special definition for Max TotalThreadsPerThreadgroup tuning. */
+  uint maxTotalThreadsPerThreadgroup_Tuning_ = 0;
+
  public:
   MTLShader(MTLContext *ctx, const char *name);
   MTLShader(MTLContext *ctx,
@@ -273,6 +276,8 @@ class MTLShader : public Shader {
             NSString *vertex_function_name_,
             NSString *fragment_function_name_);
   ~MTLShader();
+
+  void init(const shader::ShaderCreateInfo & /*info*/) override {}
 
   /* Assign GLSL source. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -315,7 +320,7 @@ class MTLShader : public Shader {
 
   void transform_feedback_names_set(Span<const char *> name_list,
                                     const eGPUShaderTFBType geom_type) override;
-  bool transform_feedback_enable(GPUVertBuf *buf) override;
+  bool transform_feedback_enable(VertBuf *buf) override;
   void transform_feedback_disable() override;
 
   void bind() override;
@@ -375,7 +380,7 @@ class MTLShader : public Shader {
     return compute_pso_common_state_;
   }
   /* Transform Feedback. */
-  GPUVertBuf *get_transform_feedback_active_buffer();
+  VertBuf *get_transform_feedback_active_buffer();
   bool has_transform_feedback_varying(std::string str);
 
  private:

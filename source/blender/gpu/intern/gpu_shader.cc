@@ -12,16 +12,16 @@
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_debug.h"
-#include "GPU_matrix.h"
-#include "GPU_platform.h"
+#include "GPU_capabilities.hh"
+#include "GPU_debug.hh"
+#include "GPU_matrix.hh"
+#include "GPU_platform.hh"
 
 #include "gpu_backend.hh"
 #include "gpu_context_private.hh"
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_create_info_private.hh"
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 #include "gpu_shader_private.hh"
 
 #include <string>
@@ -65,8 +65,10 @@ Shader::~Shader()
 static void standard_defines(Vector<const char *> &sources)
 {
   BLI_assert(sources.is_empty());
-  /* Version needs to be first. Exact values will be added by implementation. */
+  /* Version and specialization constants needs to be first.
+   * Exact values will be added by implementation. */
   sources.append("version");
+  sources.append("/* specialization_constants */");
   /* Define to identify code usage in shading language. */
   sources.append("#define GPU_SHADER\n");
   /* some useful defines to detect GPU type */
@@ -78,6 +80,9 @@ static void standard_defines(Vector<const char *> &sources)
   }
   else if (GPU_type_matches(GPU_DEVICE_INTEL, GPU_OS_ANY, GPU_DRIVER_ANY)) {
     sources.append("#define GPU_INTEL\n");
+  }
+  else if (GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+    sources.append("#define GPU_APPLE\n");
   }
   /* some useful defines to detect OS type */
   if (GPU_type_matches(GPU_DEVICE_ANY, GPU_OS_WIN, GPU_DRIVER_ANY)) {
@@ -102,7 +107,7 @@ static void standard_defines(Vector<const char *> &sources)
       sources.append("#define GPU_VULKAN\n");
       break;
     default:
-      BLI_assert(false && "Invalid GPU Backend Type");
+      BLI_assert_msg(false, "Invalid GPU Backend Type");
       break;
   }
 
@@ -297,7 +302,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
   }
 
   Shader *shader = GPUBackend::get()->shader_alloc(info.name_.c_str());
-
+  shader->init(info);
   shader->specialization_constants_init(info);
 
   std::string defines = shader->defines_declare(info);
@@ -309,7 +314,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 
   Vector<const char *> typedefs;
   if (!info.typedef_sources_.is_empty() || !info.typedef_source_generated.empty()) {
-    typedefs.append(gpu_shader_dependency_get_source("GPU_shader_shared_utils.h").c_str());
+    typedefs.append(gpu_shader_dependency_get_source("GPU_shader_shared_utils.hh").c_str());
   }
   if (!info.typedef_source_generated.empty()) {
     typedefs.append(info.typedef_source_generated.c_str());
@@ -445,6 +450,12 @@ GPUShader *GPU_shader_create_from_python(const char *vertcode,
   return sh;
 }
 
+void GPU_shader_compile_static()
+{
+  printf("Compiling all static GPU shaders. This process takes a while.\n");
+  gpu_shader_create_info_compile("");
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -462,8 +473,13 @@ void GPU_shader_bind(GPUShader *gpu_shader)
     shader->bind();
     GPU_matrix_bind(gpu_shader);
     Shader::set_srgb_uniform(gpu_shader);
+    shader->constants.is_dirty = false;
   }
   else {
+    if (shader->constants.is_dirty) {
+      shader->bind();
+      shader->constants.is_dirty = false;
+    }
     if (Shader::srgb_uniform_dirty_get()) {
       Shader::set_srgb_uniform(gpu_shader);
     }
@@ -534,7 +550,7 @@ void GPU_shader_warm_cache(GPUShader *shader, int limit)
  * TODO(fclem): Should be replaced by compute shaders.
  * \{ */
 
-bool GPU_shader_transform_feedback_enable(GPUShader *shader, GPUVertBuf *vertbuf)
+bool GPU_shader_transform_feedback_enable(GPUShader *shader, blender::gpu::VertBuf *vertbuf)
 {
   return unwrap(shader)->transform_feedback_enable(vertbuf);
 }
@@ -557,27 +573,33 @@ void Shader::specialization_constants_init(const shader::ShaderCreateInfo &info)
     constants.types.append(sc.type);
     constants.values.append(sc.default_value);
   }
+  constants.is_dirty = true;
 }
 
 void GPU_shader_constant_int_ex(GPUShader *sh, int location, int value)
 {
-  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::INT);
-  unwrap(sh)->constants.values[location].i = value;
+  Shader &shader = *unwrap(sh);
+  BLI_assert(shader.constants.types[location] == gpu::shader::Type::INT);
+  shader.constants.is_dirty |= assign_if_different(shader.constants.values[location].i, value);
 }
 void GPU_shader_constant_uint_ex(GPUShader *sh, int location, uint value)
 {
-  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::UINT);
-  unwrap(sh)->constants.values[location].u = value;
+  Shader &shader = *unwrap(sh);
+  BLI_assert(shader.constants.types[location] == gpu::shader::Type::UINT);
+  shader.constants.is_dirty |= assign_if_different(shader.constants.values[location].u, value);
 }
 void GPU_shader_constant_float_ex(GPUShader *sh, int location, float value)
 {
-  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::FLOAT);
-  unwrap(sh)->constants.values[location].f = value;
+  Shader &shader = *unwrap(sh);
+  BLI_assert(shader.constants.types[location] == gpu::shader::Type::FLOAT);
+  shader.constants.is_dirty |= assign_if_different(shader.constants.values[location].f, value);
 }
 void GPU_shader_constant_bool_ex(GPUShader *sh, int location, bool value)
 {
-  BLI_assert(unwrap(sh)->constants.types[location] == gpu::shader::Type::BOOL);
-  unwrap(sh)->constants.values[location].u = value;
+  Shader &shader = *unwrap(sh);
+  BLI_assert(shader.constants.types[location] == gpu::shader::Type::BOOL);
+  shader.constants.is_dirty |= assign_if_different(shader.constants.values[location].u,
+                                                   uint32_t(value));
 }
 
 void GPU_shader_constant_int(GPUShader *sh, const char *name, int value)

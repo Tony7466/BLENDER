@@ -12,22 +12,19 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_paint.hh"
-#include "BKE_screen.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_deform.hh"
@@ -44,7 +41,6 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 struct MultiresRuntimeData {
@@ -70,15 +66,6 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   if (mmd->flags & eMultiresModifierFlag_UseCustomNormals) {
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
-}
-
-static bool depends_on_normals(ModifierData *md)
-{
-  MultiresModifierData *mmd = (MultiresModifierData *)md;
-  if (mmd->flags & eMultiresModifierFlag_UseCustomNormals) {
-    return true;
-  }
-  return false;
 }
 
 static void copy_data(const ModifierData *md_src, ModifierData *md_dst, const int flag)
@@ -260,9 +247,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     result = multires_as_mesh(mmd, ctx, mesh, subdiv);
 
     if (use_clnors) {
-      float(*lnors)[3] = static_cast<float(*)[3]>(
+      float(*corner_normals)[3] = static_cast<float(*)[3]>(
           CustomData_get_layer_for_write(&result->corner_data, CD_NORMAL, result->corners_num));
-      BKE_mesh_set_custom_normals(result, lnors);
+      BKE_mesh_set_custom_normals(result, corner_normals);
       CustomData_free_layers(&result->corner_data, CD_NORMAL, result->corners_num);
     }
     // BKE_subdiv_stats_print(&subdiv->stats);
@@ -329,7 +316,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   const bool is_sculpt_mode = CTX_data_active_object(C)->mode & OB_MODE_SCULPT;
   uiBlock *block = uiLayoutGetBlock(panel->layout);
-  UI_block_lock_set(block, !is_sculpt_mode, IFACE_("Sculpt Base Mesh"));
+  UI_block_lock_set(block, !is_sculpt_mode, N_("Sculpt Base Mesh"));
   uiItemR(col, ptr, "use_sculpt_base_mesh", UI_ITEM_NONE, IFACE_("Sculpt Base Mesh"), ICON_NONE);
   UI_block_lock_clear(block);
 
@@ -506,11 +493,12 @@ ModifierTypeInfo modifierType_Multires = {
     /*is_disabled*/ nullptr,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
-    /*depends_on_normals*/ depends_on_normals,
+    /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ nullptr,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ free_runtime_data,
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

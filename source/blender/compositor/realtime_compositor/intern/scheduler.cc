@@ -10,7 +10,6 @@
 
 #include "NOD_derived_node_tree.hh"
 
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "COM_context.hh"
@@ -337,7 +336,8 @@ Schedule compute_schedule(const Context &context, const DerivedNodeTree &tree)
       int insertion_position = 0;
       for (int i = 0; i < sorted_dependency_nodes.size(); i++) {
         if (needed_buffers.lookup(doutput.node()) >
-            needed_buffers.lookup(sorted_dependency_nodes[i])) {
+            needed_buffers.lookup(sorted_dependency_nodes[i]))
+        {
           insertion_position++;
         }
         else {

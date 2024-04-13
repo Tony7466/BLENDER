@@ -4,8 +4,6 @@
 
 #include "node_geometry_util.hh"
 
-#include "BLI_array_utils.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -179,23 +177,32 @@ class LazyFunctionForIndexSwitchNode : public LazyFunction {
   const CPPType *field_base_type_;
 
  public:
-  LazyFunctionForIndexSwitchNode(const bNode &node) : node_(node)
+  LazyFunctionForIndexSwitchNode(const bNode &node,
+                                 GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
+      : node_(node)
   {
     const NodeIndexSwitch &storage = node_storage(node);
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.data_type);
-    can_be_field_ = socket_type_supports_fields(data_type);
-
+    const bNodeSocket &index_socket = node.input_socket(0);
     const bNodeSocket &output_socket = node.output_socket(0);
     const CPPType &cpp_type = *output_socket.typeinfo->geometry_nodes_cpp_type;
-    field_base_type_ = output_socket.typeinfo->base_cpp_type;
 
     debug_name_ = node.name;
-    inputs_.append_as("Index", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
+    can_be_field_ = socket_type_supports_fields(data_type);
+    field_base_type_ = output_socket.typeinfo->base_cpp_type;
+
+    MutableSpan<int> lf_index_by_bsocket = lf_graph_info.mapping.lf_index_by_bsocket;
+
+    lf_index_by_bsocket[index_socket.index_in_tree()] = inputs_.append_and_get_index_as(
+        "Index", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used);
+    lf_index_by_bsocket[output_socket.index_in_tree()] = outputs_.append_and_get_index_as(
+        "Value", cpp_type);
+
     for (const int i : storage.items_span().index_range()) {
       const bNodeSocket &input = node.input_socket(value_inputs_start + i);
-      inputs_.append_as(input.identifier, cpp_type, lf::ValueUsage::Maybe);
+      lf_index_by_bsocket[input.index_in_tree()] = inputs_.append_and_get_index_as(
+          input.identifier, cpp_type, lf::ValueUsage::Maybe);
     }
-    outputs_.append_as("Value", cpp_type);
   }
 
   void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
@@ -283,11 +290,15 @@ static void node_rna(StructRNA *srna)
         *r_free = true;
         return enum_items_filter(rna_enum_node_socket_data_type_items,
                                  [](const EnumPropertyItem &item) -> bool {
+                                   if (item.value == SOCK_MATRIX) {
+                                     return U.experimental.use_new_matrix_socket;
+                                   }
                                    return ELEM(item.value,
                                                SOCK_FLOAT,
                                                SOCK_INT,
                                                SOCK_BOOLEAN,
                                                SOCK_ROTATION,
+                                               SOCK_MATRIX,
                                                SOCK_VECTOR,
                                                SOCK_STRING,
                                                SOCK_RGBA,
@@ -295,7 +306,8 @@ static void node_rna(StructRNA *srna)
                                                SOCK_OBJECT,
                                                SOCK_COLLECTION,
                                                SOCK_MATERIAL,
-                                               SOCK_IMAGE);
+                                               SOCK_IMAGE,
+                                               SOCK_MENU);
                                  });
       });
 }
@@ -342,11 +354,12 @@ NOD_REGISTER_NODE(register_node)
 
 namespace blender::nodes {
 
-std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node)
+std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info)
 {
   using namespace node_geo_index_switch_cc;
   BLI_assert(node.type == GEO_NODE_INDEX_SWITCH);
-  return std::make_unique<LazyFunctionForIndexSwitchNode>(node);
+  return std::make_unique<LazyFunctionForIndexSwitchNode>(node, lf_graph_info);
 }
 
 }  // namespace blender::nodes

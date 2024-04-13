@@ -89,6 +89,7 @@ LANGUAGES = (
     (50, "Khmer (ខ្មែរ)", "km"),
     (51, "Swahili (Kiswahili)", "sw"),
     (52, "Belarusian (беларуску)", "be"),
+    (53, "Danish (Dansk)", "da"),
 )
 
 # Default context, in py (keep in sync with `BLT_translation.h`)!
@@ -243,14 +244,15 @@ _ctxt_re = _ctxt_re_gen("")
 _msg_re = r"(?P<msg_raw>" + _str_whole_re.format(_="_msg") + r")"
 PYGETTEXT_KEYWORDS = (() +
     tuple((r"{}\(\s*" + _msg_re + r"\s*\)").format(it)
-          for it in ("IFACE_", "TIP_", "DATA_", "N_")) +
+          for it in ("IFACE_", "TIP_", "RPT_", "DATA_", "N_")) +
 
     tuple((r"{}\(\s*" + _ctxt_re + r"\s*,\s*" + _msg_re + r"\s*\)").format(it)
-          for it in ("CTX_IFACE_", "CTX_TIP_", "CTX_DATA_", "CTX_N_")) +
+          for it in ("CTX_IFACE_", "CTX_TIP_", "CTX_RPT_", "CTX_DATA_", "CTX_N_")) +
 
     tuple(("{}\\((?:[^\"',]+,){{1,2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("BKE_report", "BKE_reportf", "BKE_reports_prepend", "BKE_reports_prependf",
-                     "CTX_wm_operator_poll_msg_set", "WM_report", "WM_reportf")) +
+                     "CTX_wm_operator_poll_msg_set", "WM_report", "WM_reportf",
+                     "UI_but_disable")) +
 
     # bmesh operator errors
     tuple(("{}\\((?:[^\"',]+,){{3}}\\s*" + _msg_re + r"\s*\)").format(it)
@@ -345,6 +347,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "author",                        # Addons' field. :/
     "bItasc",
     "blender.org",
+    "bytes",
     "color_index is invalid",
     "cos(A)",
     "cosh(A)",
@@ -364,6 +367,8 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "glTF Material Output",
     "glTF Original PBR data",
     "glTF Separate (.gltf + .bin + textures)",
+    "gltfpack",
+    "glTFpack file path",
     "invoke() needs to be called before execute()",
     "iScale",
     "iso-8859-15",
@@ -383,10 +388,13 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "ogg",
     "oneAPI",
     "p0",
+    "parent_index should not be less than -1: %d",
+    "parent_index (%d) should be less than the number of bone collections (%d)",
     "px",
     "re",
     "res",
     "rv",
+    "seconds",
     "sin(A)",
     "sin(x) / x",
     "sinh(A)",
@@ -528,6 +536,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
 WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= set(lng[2] for lng in LANGUAGES)
 
 WARN_MSGID_END_POINT_ALLOWED = {
+    "Cannot figure out which object this bone belongs to.",
     "Circle|Alt .",
     "Float Neg. Exp.",
     "Max Ext.",
@@ -535,6 +544,7 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Not assigned to any bone collection.",
     "Numpad .",
     "Pad.",
+    "Please file a bug report.",
     "    RNA Path: bpy.types.",
     "Temp. Diff.",
     "Temperature Diff.",
@@ -544,6 +554,9 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Invalid surface UVs on %d curves.",
     "The pose library moved.",
     "in the asset shelf.",
+    "Remove, local files not found.",
+    "Remove all files in \"{}\".",
+    "Remove, keeping local files.",
 }
 
 PARSER_CACHE_HASH = 'sha1'

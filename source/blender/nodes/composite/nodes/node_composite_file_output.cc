@@ -27,7 +27,8 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_scene.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -37,13 +38,12 @@
 
 #include "WM_api.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_openexr.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_openexr.hh"
 
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 #include "COM_node_operation.hh"
 
@@ -294,10 +294,14 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
   cmp_node_update_default(ntree, node);
 
   /* automatically update the socket type based on linked input */
+  ntree->ensure_topology_cache();
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-    if (sock->link) {
-      PointerRNA ptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, sock);
-      RNA_enum_set(&ptr, "type", sock->link->fromsock->type);
+    if (sock->is_logically_linked()) {
+      const bNodeSocket *from_socket = sock->logically_linked_sockets()[0];
+      if (sock->type != from_socket->type) {
+        nodeModifySocketTypeStatic(ntree, node, sock, from_socket->type, 0);
+        BKE_ntree_update_tag_socket_property(ntree, sock);
+      }
     }
   }
 }

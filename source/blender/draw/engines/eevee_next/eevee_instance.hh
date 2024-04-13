@@ -13,7 +13,7 @@
 #include "BKE_object.hh"
 #include "DEG_depsgraph.hh"
 #include "DNA_lightprobe_types.h"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "eevee_ambient_occlusion.hh"
 #include "eevee_camera.hh"
@@ -67,6 +67,11 @@ class Instance {
   friend VelocityModule;
   friend MotionBlurModule;
 
+  /** Debug scopes. */
+  static void *debug_scope_render_sample;
+  static void *debug_scope_irradiance_setup;
+  static void *debug_scope_irradiance_sample;
+
   uint64_t depsgraph_last_update_ = 0;
   bool overlays_enabled_;
 
@@ -81,8 +86,6 @@ class Instance {
   LightModule lights;
   AmbientOcclusion ambient_occlusion;
   RayTraceModule raytracing;
-  ReflectionProbeModule reflection_probes;
-  PlanarProbeModule planar_probes;
   VelocityModule velocity;
   MotionBlurModule motion_blur;
   DepthOfField depth_of_field;
@@ -98,8 +101,10 @@ class Instance {
   World world;
   LookdevView lookdev_view;
   LookdevModule lookdev;
+  SphereProbeModule sphere_probes;
+  PlanarProbeModule planar_probes;
+  VolumeProbeModule volume_probes;
   LightProbeModule light_probes;
-  IrradianceCache irradiance_cache;
   VolumeModule volume;
 
   /** Input data. */
@@ -123,6 +128,10 @@ class Instance {
   bool gpencil_engine_enabled;
   /** True if the instance is created for light baking. */
   bool is_light_bake = false;
+  /** View-layer overrides. */
+  bool use_surfaces = true;
+  bool use_curves = true;
+  bool use_volumes = true;
 
   /** Info string displayed at the top of the render / viewport. */
   std::string info = "";
@@ -140,8 +149,6 @@ class Instance {
         lights(*this),
         ambient_occlusion(*this, uniform_data.data.ao),
         raytracing(*this, uniform_data.data.raytrace),
-        reflection_probes(*this),
-        planar_probes(*this),
         velocity(*this),
         motion_blur(*this),
         depth_of_field(*this),
@@ -156,8 +163,10 @@ class Instance {
         world(*this),
         lookdev_view(*this),
         lookdev(*this),
+        sphere_probes(*this),
+        planar_probes(*this),
+        volume_probes(*this),
         light_probes(*this),
-        irradiance_cache(*this),
         volume(*this, uniform_data.data.volumes){};
   ~Instance(){};
 
@@ -214,6 +223,11 @@ class Instance {
     return render == nullptr && !is_baking();
   }
 
+  bool is_image_render() const
+  {
+    return DRW_state_is_image_render();
+  }
+
   bool is_viewport_image_render() const
   {
     return DRW_state_is_viewport_image_render();
@@ -227,6 +241,22 @@ class Instance {
   bool overlays_enabled() const
   {
     return overlays_enabled_;
+  }
+
+  bool is_playback() const
+  {
+    return DRW_state_is_playback();
+  }
+
+  bool is_transforming() const
+  {
+    BLI_assert_msg(!is_image_render(), "Caller need to check, otherwise this is unsafe");
+    return (G.moving & (G_TRANSFORM_OBJ | G_TRANSFORM_EDIT)) != 0;
+  }
+
+  bool is_navigating() const
+  {
+    return DRW_state_is_navigating();
   }
 
   bool use_scene_lights() const
@@ -287,6 +317,24 @@ class Instance {
   void update_eval_members();
 
   void set_time(float time);
+
+  struct DebugScope {
+    void *scope;
+
+    DebugScope(void *&scope_p, const char *name)
+    {
+      if (scope_p == nullptr) {
+        scope_p = GPU_debug_capture_scope_create(name);
+      }
+      scope = scope_p;
+      GPU_debug_capture_scope_begin(scope);
+    }
+
+    ~DebugScope()
+    {
+      GPU_debug_capture_scope_end(scope);
+    }
+  };
 };
 
 }  // namespace blender::eevee

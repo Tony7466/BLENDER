@@ -20,21 +20,19 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -187,7 +185,8 @@ static int weight_sample_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
     if (use_vert_sel) {
       if (ED_mesh_pick_vert(
-              C, vc.obact, event->mval, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index)) {
+              C, vc.obact, event->mval, ED_MESH_PICK_DEFAULT_VERT_DIST, true, &index))
+      {
         v_idx_best = index;
       }
     }
@@ -444,7 +443,8 @@ static bool weight_paint_set(Object *ob, float paintweight)
     for (const int vert : corner_verts.slice(faces[i])) {
       if (!dvert[vert].flag) {
         if ((paint_selmode == SCE_SELECT_VERTEX) &&
-            !(!select_vert.is_empty() && select_vert[vert])) {
+            !(!select_vert.is_empty() && select_vert[vert]))
+        {
           continue;
         }
 
@@ -826,17 +826,17 @@ static int paint_weight_gradient_exec(bContext *C, wmOperator *op)
   ED_view3d_init_mats_rv3d(ob, static_cast<RegionView3D *>(region->regiondata));
 
   const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
   if (data.is_init) {
     data.vert_visit = BLI_BITMAP_NEW(mesh->verts_num, __func__);
 
-    BKE_mesh_foreach_mapped_vert(me_eval, gradientVertInit__mapFunc, &data, MESH_FOREACH_NOP);
+    BKE_mesh_foreach_mapped_vert(mesh_eval, gradientVertInit__mapFunc, &data, MESH_FOREACH_NOP);
 
     MEM_freeN(data.vert_visit);
     data.vert_visit = nullptr;
   }
   else {
-    BKE_mesh_foreach_mapped_vert(me_eval, gradientVertUpdate__mapFunc, &data, MESH_FOREACH_NOP);
+    BKE_mesh_foreach_mapped_vert(mesh_eval, gradientVertUpdate__mapFunc, &data, MESH_FOREACH_NOP);
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

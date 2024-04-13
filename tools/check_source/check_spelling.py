@@ -272,7 +272,7 @@ def words_from_text(text: str, check_type: str) -> List[Tuple[str, int]]:
             w_prev = w_lower
             w_prev_start = w_start
     else:
-        assert False
+        assert False, "unreachable"
 
     return words
 
@@ -380,8 +380,6 @@ def extract_c_comments(filepath: str) -> Tuple[List[Comment], Set[str]]:
 
     BEGIN = "/*"
     END = "*/"
-    TABSIZE = 4
-    SINGLE_LINE = False
 
     # reverse these to find blocks we won't parse
     PRINT_NON_ALIGNED = False
@@ -553,7 +551,7 @@ def spell_check_file(
                 # print(filepath + ":" + str(slineno + 1) + ":" + str(scol), w, "(duplicates)")
                 yield (w, slineno, scol)
     else:
-        assert False
+        assert False, "unreachable"
 
 
 def spell_check_file_recursive(
