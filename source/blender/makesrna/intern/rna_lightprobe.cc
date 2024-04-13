@@ -166,7 +166,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
                            "Offset sampling of the irradiance grid in "
                            "the surface normal direction to reduce light bleeding");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_view_bias", PROP_FLOAT, PROP_FACTOR);
@@ -175,14 +175,14 @@ static void rna_def_lightprobe(BlenderRNA *brna)
                            "Offset sampling of the irradiance grid in "
                            "the viewing direction to reduce light bleeding");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_facing_bias", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_ui_text(
       prop, "Facing Bias", "Smoother irradiance interpolation but introduce light bleeding");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_bake_samples", PROP_INT, PROP_NONE);
@@ -216,6 +216,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
                            "Ratio of front-facing surface hits under which a grid sample will "
                            "not be considered for lighting");
   RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_dilation_threshold", PROP_FLOAT, PROP_FACTOR);
@@ -224,6 +225,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
                            "Ratio of front-facing surface hits under which a grid sample will "
                            "reuse neighbors grid sample lighting");
   RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_dilation_radius", PROP_FLOAT, PROP_FACTOR);
@@ -232,6 +234,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
       "Dilation Radius",
       "Radius in grid sample to search valid grid samples to copy into invalid grid samples");
   RNA_def_property_range(prop, 1.0f, 5.0f);
+  RNA_def_property_ui_range(prop, 1.0f, 5.0f, 1, 2);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_capture_world", PROP_BOOLEAN, PROP_NONE);
@@ -258,12 +261,14 @@ static void rna_def_lightprobe(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "grid_clamp_direct", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, FLT_MAX, 1, 2);
   RNA_def_property_ui_text(
       prop, "Clamp Direct", "Clamp the direct lighting intensity to reduce noise (0 to disable)");
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
   prop = RNA_def_property(srna, "grid_clamp_indirect", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, FLT_MAX, 1, 2);
   RNA_def_property_ui_text(prop,
                            "Clamp Indirect",
                            "Clamp the indirect lighting intensity to reduce noise (0 to disable)");
