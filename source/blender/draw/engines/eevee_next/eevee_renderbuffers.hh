@@ -51,7 +51,6 @@ class RenderBuffers {
     switch (pass_type) {
       case EEVEE_RENDER_PASS_Z:
       case EEVEE_RENDER_PASS_MIST:
-      case EEVEE_RENDER_PASS_SHADOW:
       case EEVEE_RENDER_PASS_AO:
         return PASS_STORAGE_VALUE;
       case EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT:

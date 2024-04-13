@@ -83,9 +83,8 @@ void main()
       radiance_shadowed += stack.cl[i].light_shadowed;
       radiance_unshadowed += stack.cl[i].light_unshadowed;
     }
-    /* TODO(fclem): Change shadow pass to be colored. */
     vec3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
-    output_renderpass_value(uniform_buf.render_pass.shadow_id, average(shadows));
+    output_renderpass_color(uniform_buf.render_pass.shadow_id, vec4(shadows, 1.0));
   }
 
   if (use_lightprobe_eval) {
