@@ -2955,7 +2955,8 @@ static size_t animdata_filter_dopesheet_ob(
     }
 
     /* grease pencil */
-    if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) && !(ads->filterflag & ADS_FILTER_NOGPENCIL))
+    if ((ELEM(ob->type, OB_GREASE_PENCIL, OB_GPENCIL_LEGACY)) && (ob->data) &&
+        !(ads->filterflag & ADS_FILTER_NOGPENCIL))
     {
       if ((ob->type == OB_GREASE_PENCIL) && U.experimental.use_grease_pencil_version3) {
         tmp_items += animdata_filter_grease_pencil_data(
