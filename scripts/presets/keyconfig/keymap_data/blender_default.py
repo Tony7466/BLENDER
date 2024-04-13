@@ -4696,7 +4696,7 @@ def km_grease_pencil_sculpt_mode(params):
         # Invoke sculpt operator
         ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
-         "ctrl": True}, {"properties": [("mode", 'INVERT')]}),        # # Selection
+         "ctrl": True}, {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
          "shift": True}, {"properties": [("wait_for_input", False)]}),
         *_template_paint_radial_control("gpencil_sculpt_paint"),
