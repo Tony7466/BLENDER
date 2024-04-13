@@ -2045,6 +2045,7 @@ static size_t animdata_filter_gpencil_legacy(bAnimContext *ac,
   /* return the number of items added to the list */
   return items;
 }
+
 /* Helper for Grease Pencil data integrated with main DopeSheet */
 static size_t animdata_filter_ds_gpencil(
     bAnimContext *ac, ListBase *anim_data, bDopeSheet *ads, bGPdata *gpd, int filter_mode)
