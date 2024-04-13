@@ -1812,9 +1812,7 @@ class USERPREF_PT_input_ndof(InputPanel, CenterAlignMixIn, Panel):
 
     @classmethod
     def poll(cls, context):
-        prefs = context.preferences
-        inputs = prefs.inputs
-        return inputs.use_ndof
+        return bpy.app.build_options.input_ndof
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
@@ -2069,8 +2067,6 @@ class USERPREF_PT_extensions_repos(Panel):
         paths = context.preferences.filepaths
         active_repo_index = paths.active_extension_repo
 
-        layout.label(text="Repositories")
-
         row = layout.row()
 
         row.template_list(
@@ -2106,7 +2102,7 @@ class USERPREF_PT_extensions_repos(Panel):
             split = row.split(factor=0.936)
             if active_repo.remote_path == "":
                 split.alert = True
-            split.prop(active_repo, "remote_path", text="URL")
+            split.prop(active_repo, "remote_path", text="", icon="URL", placeholder="Repository URL")
             split = row.split()
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
@@ -2126,11 +2122,10 @@ class USERPREF_PT_extensions_repos(Panel):
                 # valid UTF-8 which will raise a Python exception when passed in as text.
                 row.prop(active_repo, "directory", text="")
 
+            layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
 
-            row = layout_panel.row()
-            row.prop(active_repo, "use_cache")
-            row.prop(active_repo, "module")
+            layout_panel.prop(active_repo, "module")
 
 
 # -----------------------------------------------------------------------------
