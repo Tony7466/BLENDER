@@ -791,9 +791,13 @@ void ArmatureImporter::make_armatures(bContext *C, std::vector<Object *> &object
 
     /* link armature with a mesh object */
     const COLLADAFW::UniqueId &uid = skin.get_controller_uid();
-    const COLLADAFW::UniqueId *guid = get_geometry_uid(uid);
+    const COLLADAFW::UniqueId *guid = get_geometry_uid(uid);  // skin -> gome or morph
+
     if (guid != nullptr) {
       Object *ob = mesh_importer->get_object_by_geom_uid(*guid);
+      if (!ob) {  // morph -> geom
+        ob = mesh_importer->get_object_by_geom_uid(*get_geometry_uid(*guid));
+      }
       if (ob) {
         skin.link_armature(C, ob, joint_by_uid, this);
 
