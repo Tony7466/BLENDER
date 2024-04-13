@@ -2387,10 +2387,6 @@ static void GREASE_PENCIL_OT_copy(wmOperatorType *ot)
 void clipboard_free()
 {
   if (grease_pencil_clipboard) {
-    Clipboard &clipboard = *grease_pencil_clipboard;
-    clipboard.curves = {};
-    clipboard.materials.clear_and_shrink();
-    clipboard.materials_in_source_num = 0;
     MEM_delete(grease_pencil_clipboard);
     grease_pencil_clipboard = nullptr;
   }
