@@ -834,11 +834,11 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
-void ED_workspace_status_text(bContext *C, const char *str, const int icon)
+void ED_workspace_status_text(bContext *C, const char *str)
 {
   ED_workspace_status_begin(C);
   if (str) {
-    ED_workspace_status_item(C, str, icon);
+    ED_workspace_status_item(C, str);
   }
   ED_workspace_status_end(C);
 }

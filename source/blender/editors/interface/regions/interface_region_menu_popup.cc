@@ -403,7 +403,9 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      ED_workspace_status_text(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
+      ED_workspace_status_begin(C);
+      ED_workspace_status_key(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
+      ED_workspace_status_end(C);
     }
   }
 
@@ -616,7 +618,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
     ED_workspace_status_end(C);
   }
   else if (mt->idname[0]) {
-    ED_workspace_status_text(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
+    ED_workspace_status_key(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
   }
 }
 
