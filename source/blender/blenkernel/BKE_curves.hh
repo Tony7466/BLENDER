@@ -383,6 +383,8 @@ class CurvesGeometry : public ::CurvesGeometry {
   void transform(const float4x4 &matrix);
 
   void calculate_bezier_auto_handles();
+  void calculate_bezier_auto_handles(MutableSpan<float3> positions_left,
+                                     MutableSpan<float3> positions_right);
 
   void remove_points(const IndexMask &points_to_delete,
                      const AnonymousAttributePropagationInfo &propagation_info);

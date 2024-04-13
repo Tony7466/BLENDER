@@ -1098,6 +1098,14 @@ static void transform_normals(MutableSpan<float3> normals, const float4x4 &matri
 
 void CurvesGeometry::calculate_bezier_auto_handles()
 {
+  MutableSpan<float3> positions_left = this->handle_positions_left_for_write();
+  MutableSpan<float3> positions_right = this->handle_positions_right_for_write();
+  calculate_bezier_auto_handles(positions_left, positions_right);
+}
+
+void CurvesGeometry::calculate_bezier_auto_handles(MutableSpan<float3> positions_left,
+                                                   MutableSpan<float3> positions_right)
+{
   if (!this->has_curve_with_type(CURVE_TYPE_BEZIER)) {
     return;
   }
@@ -1110,8 +1118,6 @@ void CurvesGeometry::calculate_bezier_auto_handles()
   const VArraySpan<int8_t> types_left{this->handle_types_left()};
   const VArraySpan<int8_t> types_right{this->handle_types_right()};
   const Span<float3> positions = this->positions();
-  MutableSpan<float3> positions_left = this->handle_positions_left_for_write();
-  MutableSpan<float3> positions_right = this->handle_positions_right_for_write();
 
   threading::parallel_for(this->curves_range(), 128, [&](IndexRange range) {
     for (const int i_curve : range) {
