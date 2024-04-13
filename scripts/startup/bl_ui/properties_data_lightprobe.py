@@ -103,7 +103,7 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             sub = col.column(align=True)
             sub.prop(probe, "grid_normal_bias")
             sub.prop(probe, "grid_view_bias")
-            sub.prop(probe, "grid_irradiance_smoothing")
+            sub.prop(probe, "grid_facing_bias")
 
             col.separator()
 

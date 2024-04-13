@@ -178,8 +178,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1, 3);
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
-  prop = RNA_def_property(srna, "grid_irradiance_smoothing", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, nullptr, "grid_facing_bias");
+  prop = RNA_def_property(srna, "grid_facing_bias", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_ui_text(
       prop, "Facing Bias", "Smoother irradiance interpolation but introduce light bleeding");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
