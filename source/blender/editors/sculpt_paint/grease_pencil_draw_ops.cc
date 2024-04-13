@@ -561,7 +561,7 @@ static void grease_pencil_update_extend(bContext &C, const GreasePencilFillOpDat
   WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
 }
 
-/* Helper: Check if must skip the layer */
+/* Layer mode defines layers where only marked boundary strokes are used. */
 static VArray<bool> get_fill_boundary_layers(const GreasePencil &grease_pencil,
                                              eGP_FillLayerModes fill_layer_mode)
 {
@@ -572,27 +572,27 @@ static VArray<bool> get_fill_boundary_layers(const GreasePencil &grease_pencil,
   switch (fill_layer_mode) {
     case GP_FILL_GPLMODE_ACTIVE:
       return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
-        return index == active_layer_index;
+        return index != active_layer_index;
       });
     case GP_FILL_GPLMODE_ABOVE:
       return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
-        return index == active_layer_index + 1;
+        return index != active_layer_index + 1;
       });
     case GP_FILL_GPLMODE_BELOW:
       return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
-        return index == active_layer_index - 1;
+        return index != active_layer_index - 1;
       });
     case GP_FILL_GPLMODE_ALL_ABOVE:
       return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
-        return index > active_layer_index;
+        return index <= active_layer_index;
       });
     case GP_FILL_GPLMODE_ALL_BELOW:
       return VArray<bool>::ForFunc(all_layers.size(), [active_layer_index](const int index) {
-        return index < active_layer_index;
+        return index >= active_layer_index;
       });
     case GP_FILL_GPLMODE_VISIBLE:
       return VArray<bool>::ForFunc(all_layers.size(), [grease_pencil](const int index) {
-        return grease_pencil.layers()[index]->is_visible();
+        return !grease_pencil.layers()[index]->is_visible();
       });
   }
   return {};

@@ -474,6 +474,7 @@ static bool do_frame_fill(Main &bmain,
                           const Scene &scene,
                           Depsgraph &depsgraph,
                           const Object &object,
+                          const VArray<bool> &boundary_layers,
                           const Span<DrawingInfo> drawings,
                           const float pixel_scale,
                           const float2 zoom,
@@ -483,9 +484,6 @@ static bool do_frame_fill(Main &bmain,
                           const bool keep_images)
 {
   const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
-  const bke::AttributeAccessor attributes = grease_pencil.attributes();
-  const VArray<bool> boundary_layers = *attributes.lookup_or_default(
-      attr_is_boundary, bke::AttrDomain::Layer, false);
 
   // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
@@ -615,8 +613,8 @@ static rctf get_boundary_bounds(const ARegion &region,
                                 const Brush &brush,
                                 Object &object,
                                 const Object &object_eval,
-                                const Span<DrawingInfo> src_drawings,
-                                const VArray<bool> &is_boundary_layer)
+                                const VArray<bool> &boundary_layers,
+                                const Span<DrawingInfo> src_drawings)
 {
   using bke::greasepencil::Drawing;
   using bke::greasepencil::Layer;
@@ -637,7 +635,7 @@ static rctf get_boundary_bounds(const ARegion &region,
     const bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             &object_eval, object, info.layer_index, info.frame_number);
-    const bool only_boundary_strokes = is_boundary_layer[info.layer_index];
+    const bool only_boundary_strokes = boundary_layers[info.layer_index];
     const bke::CurvesGeometry &strokes = info.drawing.strokes();
     const bke::AttributeAccessor attributes = strokes.attributes();
     const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
@@ -681,7 +679,7 @@ static rctf get_boundary_bounds(const ARegion &region,
 
 bool fill_strokes(bContext &C,
                   ARegion &region,
-                  const VArray<bool> &is_boundary_layer,
+                  const VArray<bool> &boundary_layers,
                   const bool invert,
                   ReportList &reports)
 {
@@ -725,12 +723,12 @@ bool fill_strokes(bContext &C,
         dst_info.drawing.strokes_for_write().attributes_for_write();
     /* Zoom and offset based on bounds, to fit all strokes within the render. */
     const rctf bounds = get_boundary_bounds(
-        region, brush, object, object_eval, src_drawings, is_boundary_layer);
+        region, brush, object, object_eval, boundary_layers, src_drawings);
     const rctf region_bounds = get_region_bounds(region);
     const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
-    const float2 bounds_min = float2(bounds.xmax, bounds.ymax);
+    const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
     const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
-    const float2 region_min = float2(region_bounds.xmax, region_bounds.ymax);
+    const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
     const float2 zoom = math::safe_divide(region_max - region_min, bounds_max - bounds_min);
     const float2 offset = 0.5f * ((region_min + region_max) - (bounds_min + bounds_max) * zoom);
 
@@ -741,6 +739,7 @@ bool fill_strokes(bContext &C,
                   scene,
                   depsgraph,
                   object,
+                  boundary_layers,
                   src_drawings,
                   pixel_scale,
                   zoom,
