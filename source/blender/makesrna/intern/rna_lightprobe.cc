@@ -324,7 +324,6 @@ static void rna_def_lightprobe(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_data_display", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIGHTPROBE_FLAG_SHOW_DATA);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_ON, 1);
   RNA_def_property_ui_text(
       prop, "Display Data", "Display sampled data in the viewport to debug captured light");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
