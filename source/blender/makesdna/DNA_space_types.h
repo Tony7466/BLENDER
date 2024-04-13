@@ -700,6 +700,7 @@ typedef enum eSpaceSeq_RegionType {
   SEQ_DRAW_IMG_WAVEFORM = 2,
   SEQ_DRAW_IMG_VECTORSCOPE = 3,
   SEQ_DRAW_IMG_HISTOGRAM = 4,
+  SEQ_DRAW_IMG_RGBPARADE = 5,
 } eSpaceSeq_RegionType;
 
 /** #SpaceSeq.draw_flag */

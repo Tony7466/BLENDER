@@ -840,6 +840,9 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq)
   else if (sseq->mainb == SEQ_DRAW_IMG_VECTORSCOPE) {
     scope_image = scopes->vector_ibuf;
   }
+  else if (sseq->mainb == SEQ_DRAW_IMG_RGBPARADE) {
+    scope_image = scopes->sep_waveform_ibuf;
+  }
 
   if (use_blend) {
     GPU_blend(GPU_BLEND_ALPHA);
@@ -893,7 +896,7 @@ static void sequencer_draw_scopes(Scene *scene, ARegion *region, SpaceSeq *sseq)
   if (sseq->mainb == SEQ_DRAW_IMG_HISTOGRAM) {
     draw_histogram(region, scopes->histogram, quads, preview);
   }
-  if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM) {
+  if (sseq->mainb == SEQ_DRAW_IMG_WAVEFORM || sseq->mainb == SEQ_DRAW_IMG_RGBPARADE) {
     use_blend = true;
     draw_waveform_graticule(region, quads, preview);
   }
@@ -963,6 +966,12 @@ static bool sequencer_calc_scopes(Scene *scene, SpaceSeq *sseq, ImBuf *ibuf, boo
       scopes->histogram.calc_from_ibuf(display_ibuf);
       IMB_freeImBuf(display_ibuf);
     } break;
+    case SEQ_DRAW_IMG_RGBPARADE:
+      if (!scopes->sep_waveform_ibuf) {
+        scopes->sep_waveform_ibuf = sequencer_make_scope(
+            scene, ibuf, make_sep_waveform_view_from_ibuf);
+      }
+      break;
     default: /* Future files might have scopes we don't know about. */
       return false;
   }
@@ -1017,7 +1026,7 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   {
     return;
   }
-  if (ELEM(sseq->mainb, SEQ_DRAW_IMG_WAVEFORM, SEQ_DRAW_IMG_VECTORSCOPE, SEQ_DRAW_IMG_HISTOGRAM)) {
+  if (ELEM(sseq->mainb, SEQ_DRAW_IMG_WAVEFORM, SEQ_DRAW_IMG_VECTORSCOPE, SEQ_DRAW_IMG_HISTOGRAM, SEQ_DRAW_IMG_RGBPARADE)) {
     return;
   }
 

@@ -5898,6 +5898,7 @@ static void rna_def_space_sequencer(BlenderRNA *brna)
       {SEQ_DRAW_IMG_WAVEFORM, "WAVEFORM", ICON_SEQ_LUMA_WAVEFORM, "Luma Waveform", ""},
       {SEQ_DRAW_IMG_VECTORSCOPE, "VECTOR_SCOPE", ICON_SEQ_CHROMA_SCOPE, "Chroma Vectorscope", ""},
       {SEQ_DRAW_IMG_HISTOGRAM, "HISTOGRAM", ICON_SEQ_HISTOGRAM, "Histogram", ""},
+      {SEQ_DRAW_IMG_RGBPARADE, "RGB_PARADE", ICON_RENDERLAYERS, "RGB Parade", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
