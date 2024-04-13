@@ -612,14 +612,14 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 
+  ED_workspace_status_begin(C);
   if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-    ED_workspace_status_begin(C);
     ED_workspace_status_range(C, IFACE_("Search"), ICON_EVENT_A, ICON_EVENT_Z);
-    ED_workspace_status_end(C);
   }
   else if (mt->idname[0]) {
     ED_workspace_status_key(C, IFACE_("Search"), ICON_EVENT_SPACEKEY);
   }
+  ED_workspace_status_end(C);
 }
 
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
