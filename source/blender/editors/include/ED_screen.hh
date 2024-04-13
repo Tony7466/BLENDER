@@ -463,10 +463,26 @@ void ED_workspace_status_item(bContext *C,
 void ED_workspace_status_space(bContext *C, float space_factor = 1.0f);
 /* Adds one ormore icons to the status bar. */
 void ED_workspace_status_icons(bContext *C, const int icon);
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, bool is_range = false);
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2);
 void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, const int icon3);
 void ED_workspace_status_icons(
     bContext *C, const int icon1, const int icon2, const int icon3, const int icon4);
+
+void ED_workspace_status_range(bContext *C,
+                               const std::string text,
+                               const int icon1,
+                               const int icon2);
+
+void ED_workspace_status_key(bContext *C,
+                             const std::string text,
+                             const int icon,
+                             const bool shift = false,
+                             const bool ctrl = false,
+                             const bool alt = false,
+                             const bool oskey = false);
+
+void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi);
+
 /* Ends complex layout and requests a redraw of the status bar. */
 void ED_workspace_status_end(bContext *C);
 

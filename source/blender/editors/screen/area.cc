@@ -879,13 +879,9 @@ void ED_workspace_status_icons(bContext *C, const int icon)
   ED_workspace_status_item(C, {}, icon);
 }
 
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, bool is_range)
+void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
 {
   ED_workspace_status_item(C, {}, icon1);
-  if (is_range) {
-    ED_workspace_status_item(C, "-");
-    ED_workspace_status_space(C, -0.5f);
-  }
   ED_workspace_status_item(C, {}, icon2);
 }
 
@@ -903,6 +899,59 @@ void ED_workspace_status_icons(
   ED_workspace_status_item(C, {}, icon2);
   ED_workspace_status_item(C, {}, icon3);
   ED_workspace_status_item(C, {}, icon4);
+}
+
+/* Helpers for common keymap patterns. */
+
+void ED_workspace_status_range(bContext *C,
+                               const std::string text,
+                               const int icon1,
+                               const int icon2)
+{
+  ED_workspace_status_item(C, {}, icon1);
+  ED_workspace_status_item(C, "-");
+  ED_workspace_status_space(C, -0.5f);
+  ED_workspace_status_item(C, {}, icon2);
+  ED_workspace_status_space(C, 0.6f);
+  ED_workspace_status_item(C, text, ICON_NONE);
+  ED_workspace_status_space(C, 0.7f);
+}
+
+void ED_workspace_status_key(bContext *C,
+                             const std::string text,
+                             const int icon,
+                             const bool shift,
+                             const bool ctrl,
+                             const bool alt,
+                             const bool oskey)
+{
+  if (shift) {
+    ED_workspace_status_item(C, {}, ICON_EVENT_SHIFT);
+  }
+  if (ctrl) {
+    ED_workspace_status_item(C, {}, ICON_EVENT_CTRL);
+  }
+  if (alt) {
+    ED_workspace_status_item(C, {}, ICON_EVENT_ALT);
+  }
+  if (oskey) {
+    ED_workspace_status_item(C, {}, ICON_EVENT_OS);
+  }
+  ED_workspace_status_item(C, {}, icon);
+  ED_workspace_status_space(C, 0.6f);
+  ED_workspace_status_item(C, text, ICON_NONE);
+  ED_workspace_status_space(C, 0.7f);
+}
+
+void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi)
+{
+  ED_workspace_status_key(C,
+                          text,
+                          UI_icon_from_event_type(kmi->type, kmi->val),
+                          !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
+                          !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
+                          !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
+                          !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
 }
 
 void ED_workspace_status_end(bContext *C)
