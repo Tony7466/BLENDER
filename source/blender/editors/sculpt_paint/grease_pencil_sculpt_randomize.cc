@@ -43,11 +43,6 @@ class RandomizeOperation : public GreasePencilStrokeOperationCommon {
 
 unsigned int RandomizeOperation::unique_seed() const
 {
-  /* Note: GPv2 method, this does not return a different value for every invocation: the time-based
-   * part remains the same for one second and the pointer isn't guaranteed to be different. */
-  //   unsigned int seed = (unsigned int)(BLI_time_now_seconds_i() & UINT_MAX);
-  //   seed ^= POINTER_AS_UINT(this);
-
   return RandomNumberGenerator::from_random_seed().get_uint32();
 }
 
