@@ -533,7 +533,8 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
      * them... maybe join multiple <instance_...> meshes into 1, and link object with it? not
      * sure... <instance_geometry> */
     while (geom_done < geom.getCount()) {
-      ob = mesh_importer.create_mesh_object(node, geom[geom_done], false, uid_material_map);
+      ob = mesh_importer.create_mesh_object(
+          node, (COLLADAFW::InstanceController *)geom[geom_done], false, uid_material_map);
       if (ob == nullptr) {
         report_unknown_reference(*node, "instance_mesh");
       }
@@ -572,9 +573,9 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
       lamp_done++;
     }
     while (controller_done < controller.getCount()) {
-      COLLADAFW::InstanceGeometry *geometry = (COLLADAFW::InstanceGeometry *)
+      COLLADAFW::InstanceController *nowController = (COLLADAFW::InstanceController *)
           controller[controller_done];
-      ob = mesh_importer.create_mesh_object(node, geometry, true, uid_material_map);
+      ob = mesh_importer.create_mesh_object(node, nowController, true, uid_material_map);
       if (ob == nullptr) {
         report_unknown_reference(*node, "instance_controller");
       }

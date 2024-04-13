@@ -229,7 +229,7 @@ class MeshImporter : public MeshImporterBase {
                                short mat_index);
 
   Object *create_mesh_object(COLLADAFW::Node *node,
-                             COLLADAFW::InstanceGeometry *geom,
+                             COLLADAFW::InstanceController *controller_or_geom,
                              bool isController,
                              std::map<COLLADAFW::UniqueId, Material *> &uid_material_map);
 

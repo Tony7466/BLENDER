@@ -101,11 +101,11 @@ void ControllerExporter::operator()(Object *ob)
 
   bool containsShapeKey = key && this->export_settings.get_include_shapekeys();
 
-  if (ob_arm) {
-    export_skin_controller(ob, ob_arm, containsShapeKey);
-  }
   if (containsShapeKey) {
     export_morph_controller(ob, key);
+  }
+  if (ob_arm) {
+    export_skin_controller(ob, ob_arm, containsShapeKey);
   }
 }
 #if 0

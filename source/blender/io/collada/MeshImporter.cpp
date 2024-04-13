@@ -1053,24 +1053,33 @@ void MeshImporter::assign_material_to_geom(
 
 Object *MeshImporter::create_mesh_object(
     COLLADAFW::Node *node,
-    COLLADAFW::InstanceGeometry *geom,
+    COLLADAFW::InstanceController *controller_or_gome,
     bool isController,
     std::map<COLLADAFW::UniqueId, Material *> &uid_material_map)
 {
-  const COLLADAFW::UniqueId *geom_uid = &geom->getInstanciatedObjectId();
+  const COLLADAFW::UniqueId *geom_uid = nullptr;
+
+  // INSTANCE_CONTROLLER
 
   /* check if node instantiates controller or geometry */
   if (isController) {
 
-    geom_uid = armature_importer->get_geometry_uid(*geom_uid);
+    const COLLADAFW::UniqueId *geom_or_morphe = armature_importer->get_geometry_uid(
+        *&controller_or_gome->getInstanciatedObjectId());
+    if (!uid_mesh_map[*geom_or_morphe]) {  // is morphe
 
+      geom_uid = armature_importer->get_geometry_uid(*geom_or_morphe);
+    }
+    else {
+      geom_uid = geom_or_morphe;
+    }
     if (!geom_uid) {
       fprintf(stderr, "Couldn't find a mesh UID by controller's UID.\n");
       return nullptr;
     }
   }
   else {
-
+    geom_uid = &controller_or_gome->getInstanciatedObjectId();
     if (uid_mesh_map.find(*geom_uid) == uid_mesh_map.end()) {
       /* this could happen if a mesh was not created
        * (e.g. if it contains unsupported geometry) */
@@ -1078,6 +1087,7 @@ Object *MeshImporter::create_mesh_object(
       return nullptr;
     }
   }
+
   if (!uid_mesh_map[*geom_uid]) {
     return nullptr;
   }
@@ -1105,7 +1115,7 @@ Object *MeshImporter::create_mesh_object(
 
   BKE_id_free_us(m_bmain, old_mesh);
 
-  COLLADAFW::MaterialBindingArray &mat_array = geom->getMaterialBindings();
+  COLLADAFW::MaterialBindingArray &mat_array = controller_or_gome->getMaterialBindings();
 
   /* loop through geom's materials */
   for (uint i = 0; i < mat_array.getCount(); i++) {
