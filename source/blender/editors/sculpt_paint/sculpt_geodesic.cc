@@ -80,7 +80,9 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
 /* Open addressing with linear probing that minimizes
  * collission in hash tables can also be used to avoid
  * parallel data storage collisions */
-static void lock_free_emplace(const int edge_other, const int non_checked, Vector<int> &queue_next)
+static void lock_free_emplace(const int edge_other,
+                              const int non_checked,
+                              MutableSpan<int> queue_next)
 {
   const int new_size = queue_next.size();
   int idx = edge_other % new_size;
@@ -160,7 +162,6 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   }
 
   Vector<int> queue;
-  Vector<int> queue_next;
   queue.reserve(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
@@ -185,8 +186,9 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   /* queue and queue_next should not differ by a huge amount of size
    * since they are an advancing front in the mesh hence no need
    * to allocate much more memmory and keep the iteration range smaller */
+
   int new_size = 4 * queue.size();
-  queue_next.resize(new_size, non_checked);
+  Vector<int> queue_next(new_size, non_checked);
 
   BitVector<> edge_tag(totedge);
   while (!queue.is_empty()) {
@@ -245,8 +247,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     });
 
     queue.clear();
-    for (int i = 0; i < new_size; ++i) {
-      const int edge_index = queue_next[i];
+    for (const int edge_index : queue_next) {
       if (edge_index != -1) {
         edge_tag[edge_index].reset();
         queue.append(edge_index);
