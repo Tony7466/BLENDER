@@ -185,7 +185,7 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 const SocketDeclaration &socket_decl,
                                 Vector<bNodeSocket *> &old_sockets,
                                 VectorSet<bNodeSocket *> &new_sockets,
-                                const bool hide_new_socket)
+                                const bool hide_new_sockets)
 {
   /* Try to find a socket that corresponds to the declaration. */
   bNodeSocket *old_socket_with_same_identifier = nullptr;
@@ -201,7 +201,7 @@ static void refresh_node_socket(bNodeTree &ntree,
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
     new_socket = &socket_decl.build(ntree, node);
-    SET_FLAG_FROM_TEST(new_socket->flag, hide_new_socket, SOCK_HIDDEN);
+    SET_FLAG_FROM_TEST(new_socket->flag, hide_new_sockets, SOCK_HIDDEN);
   }
   else {
     STRNCPY(old_socket_with_same_identifier->name, socket_decl.name.c_str());
@@ -420,12 +420,12 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
   }
 
   Vector<bNodeSocket *> old_outputs;
-  bool has_hidden_socket = false;
+  bool has_hidden_output_socket = false;
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
     old_outputs.append(socket);
-    has_hidden_socket |= socket->is_hidden();
+    has_hidden_output_socket |= socket->is_hidden();
   }
-  const bool hide_new_socket = node.is_group_input() && has_hidden_socket;
+  const bool hide_new_sockets = node.is_group_input() && has_hidden_output_socket;
 
   Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
 
@@ -443,10 +443,10 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
             item_decl.get()))
     {
       if (socket_decl->in_out == SOCK_IN) {
-        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs, hide_new_socket);
+        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs, hide_new_sockets);
       }
       else {
-        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs, hide_new_socket);
+        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs, hide_new_sockets);
       }
     }
     else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
