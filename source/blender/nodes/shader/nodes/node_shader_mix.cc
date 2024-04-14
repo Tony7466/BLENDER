@@ -10,6 +10,7 @@
 
 #include "BKE_material.h"
 
+#include "BLI_math_matrix.hh"
 #include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
@@ -79,10 +80,16 @@ static void sh_node_mix_declare(NodeDeclarationBuilder &b)
       .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
   b.add_input<decl::Rotation>("B", "B_Rotation").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
 
+  b.add_input<decl::Matrix>("A", "A_Matrix")
+      .is_default_link_socket()
+      .translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+  b.add_input<decl::Matrix>("B", "B_Matrix").translation_context(BLT_I18NCONTEXT_ID_NODETREE);
+
   b.add_output<decl::Float>("Result", "Result_Float");
   b.add_output<decl::Vector>("Result", "Result_Vector");
   b.add_output<decl::Color>("Result", "Result_Color");
   b.add_output<decl::Rotation>("Result", "Result_Rotation");
+  b.add_output<decl::Matrix>("Result", "Result_Matrix");
 };
 
 static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -100,6 +107,7 @@ static void sh_node_mix_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *p
       uiItemR(layout, ptr, "clamp_result", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
       break;
     default:
       BLI_assert_unreachable();
@@ -193,6 +201,9 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
     case SOCK_ROTATION:
       type = SOCK_ROTATION;
       break;
+    case SOCK_MATRIX:
+      type = SOCK_MATRIX;
+      break;
     default:
       return;
   }
@@ -236,7 +247,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
           weight);
       weight--;
     }
-    if (type != SOCK_ROTATION) {
+    if (!ELEM(type, SOCK_ROTATION, SOCK_MATRIX)) {
       params.add_item(
           IFACE_("Factor"),
           [type](LinkSearchOpParams &params) {
@@ -249,7 +260,7 @@ static void node_mix_gather_link_searches(GatherLinkSearchOpParams &params)
     }
   }
 
-  if (type == SOCK_ROTATION) {
+  if (ELEM(type, SOCK_ROTATION, SOCK_MATRIX)) {
     return;
   }
 
@@ -520,6 +531,56 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
                 [](const float t, const math::Quaternion &a, const math::Quaternion &b) {
                   return math::interpolate(a, b, t);
                 });
+        return &fn;
+      }
+    }
+    case SOCK_MATRIX: {
+      if (clamp_factor) {
+        static auto fn = mf::build::SI3_SO<float, float4x4, float4x4, float4x4>(
+            "Clamp Mix Matrix", [](const float t, const float4x4 &a, const float4x4 &b) {
+              float3 a_location;
+              math::Quaternion a_rotation;
+              float3 a_scale;
+              math::to_loc_rot_scale(a, a_location, a_rotation, a_scale);
+
+              float3 b_location;
+              math::Quaternion b_rotation;
+              float3 b_scale;
+              math::to_loc_rot_scale(b, b_location, b_rotation, b_scale);
+
+              const float3 result_location = math::interpolate(
+                  a_location, b_location, math::clamp(t, 0.0f, 1.0f));
+              const math::Quaternion result_rotation = math::interpolate(
+                  a_rotation, b_rotation, math::clamp(t, 0.0f, 1.0f));
+              const float3 result_scale = math::interpolate(
+                  a_scale, b_scale, math::clamp(t, 0.0f, 1.0f));
+
+              return math::from_loc_rot_scale<float4x4>(
+                  result_location, result_rotation, result_scale);
+            });
+        return &fn;
+      }
+      else {
+        static auto fn = mf::build::SI3_SO<float, float4x4, float4x4, float4x4>(
+            "Mix Matrix", [](const float t, const float4x4 &a, const float4x4 &b) {
+              float3 a_location;
+              math::Quaternion a_rotation;
+              float3 a_scale;
+              math::to_loc_rot_scale(a, a_location, a_rotation, a_scale);
+
+              float3 b_location;
+              math::Quaternion b_rotation;
+              float3 b_scale;
+              math::to_loc_rot_scale(b, b_location, b_rotation, b_scale);
+
+              const float3 result_location = math::interpolate(a_location, b_location, t);
+              const math::Quaternion result_rotation = math::interpolate(
+                  a_rotation, b_rotation, t);
+              const float3 result_scale = math::interpolate(a_scale, b_scale, t);
+
+              return math::from_loc_rot_scale<float4x4>(
+                  result_location, result_rotation, result_scale);
+            });
         return &fn;
       }
     }
