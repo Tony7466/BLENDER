@@ -837,7 +837,7 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
 }
 
 void ED_region_image_render_size_draw(
-    const char *title, int x, int y, const rcti *frame, float zoomx, float zoomy, bool draw_inside)
+    const char *title, int x, int y, const rcti *frame, float zoomx, float zoomy, bool upper_left, float passepartout_alpha, const rcti *region_size)
 {
   /* find window pixel coordinates of origin */
   GPU_matrix_push();
@@ -848,53 +848,50 @@ void ED_region_image_render_size_draw(
   GPU_matrix_translate_2f(x, y);
   GPU_matrix_scale_2f(zoomx, zoomy);
 
-  const uiStyle *style = UI_style_get_dpi();
-  BLF_size(blf_mono_font, style->widgetlabel.points * UI_SCALE_FAC * 2);
-  UI_FontThemeColor(blf_mono_font, TH_METADATA_TEXT);
-  if (draw_inside) {
-    int font_height = BLF_height_max(blf_mono_font);
-    BLF_position(blf_mono_font,
-                 frame->xmin - frame_width / 2,
-                 frame->ymax - frame_height / 2 - font_height,
-                 0.0f);
-  }
-  else {
-    BLF_position(
-        blf_mono_font, frame->xmin - frame_width / 2, frame->ymax - frame_height / 2, 0.0f);
-  }
-  char temp_str[MAX_METADATA_STR];
-  SNPRINTF(temp_str, "%s: %dx%d", title, frame_width, frame_height);
-  BLF_draw(blf_mono_font, temp_str, sizeof(temp_str));
-
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_blend(GPU_BLEND_ALPHA);
-  immUniformColor4f(1, 1, 1, 1);
 
   float x1 = frame->xmin - frame_width / 2;
   float x2 = frame->xmax - frame_width / 2;
   float y1 = frame->ymin - frame_height / 2;
   float y2 = frame->ymax - frame_height / 2;
 
-  immBegin(GPU_PRIM_LINES, 8);
-  immVertex2f(pos, x1, y1);
-  immVertex2f(pos, x2, y1);
+  if(passepartout_alpha > 0) {
 
-  immVertex2f(pos, x1, y2);
-  immVertex2f(pos, x2, y2);
+    immUniformColor4f(0, 0, 0, passepartout_alpha);
+    // todo: compute limits from region_size instead?
+    immRectf(pos, -100000, y2, 100000, 100000);
+    immRectf(pos, -100000, y1, 100000, -100000);
+    immRectf(pos, -100000, y1, x1, y2);
+    immRectf(pos, x2, y1, 100000, y2);
+  }
 
-  immVertex2f(pos, x1, y1);
-  immVertex2f(pos, x1, y2);
+  const uiStyle *style = UI_style_get_dpi();
+  BLF_size(blf_mono_font, style->widgetlabel.points * UI_SCALE_FAC * 3);
+  UI_FontThemeColor(blf_mono_font, TH_METADATA_TEXT);
+  char temp_str[MAX_METADATA_STR];
+  SNPRINTF(temp_str, "%s: %dx%d", title, frame_width, frame_height);
 
-  immVertex2f(pos, x2, y1);
-  immVertex2f(pos, x2, y2);
+  if (upper_left) {
+    BLF_position(blf_mono_font,
+                 frame->xmin - frame_width / 2,
+                 frame->ymax - frame_height / 2,
+                 0.0f);
+  }
+  else {
+    int font_width = BLF_width(blf_mono_font, temp_str, sizeof(temp_str));
+    BLF_position(
+        blf_mono_font, frame->xmax - frame_width/2 - font_width, frame->ymax - frame_height / 2, 0.0f);
+  }
+  BLF_draw(blf_mono_font, temp_str, sizeof(temp_str));
 
-  immEnd();
+  immUniformColor4f(1, 1, 1, 1);
+  imm_draw_box_wire_2d(pos, x1, y1, x2, y2);
 
   immUnbindProgram();
-
   GPU_blend(GPU_BLEND_NONE);
 
   GPU_matrix_pop();

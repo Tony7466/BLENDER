@@ -70,7 +70,9 @@ void ED_region_image_render_size_draw(const char *title,
                                       const rcti *frame,
                                       float zoomx,
                                       float zoomy,
-                                      bool draw_inside);
+                                      bool draw_inside,
+                                      float passepartout_alpha,
+                                      const rcti* region_size);
 
 /* Slider */
 

@@ -1709,7 +1709,29 @@ class IMAGE_PT_overlay_image(Panel):
 
         layout.active = overlay.show_overlays
         layout.prop(uvedit, "show_metadata")
-        layout.prop(uvedit, "show_render_size")
+
+class IMAGE_PT_overlay_render(Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Render"
+    bl_parent_id = "IMAGE_PT_overlay"
+
+    def draw(self, context):
+        layout = self.layout
+
+        sima = context.space_data
+        uvedit = sima.uv_editor
+        overlay = sima.overlay
+
+        layout.active = overlay.show_overlays
+
+        row = layout.row(align=True)
+        row.prop(uvedit, "show_render_size")
+        subrow = row.row()
+        subrow.active = uvedit.show_render_size
+        subrow.prop(uvedit, "passepartout_alpha", text="Passepartout")
+
+        row = layout.row(align=True)
         layout.prop(uvedit, "show_domain_size")
 
 
@@ -1795,6 +1817,7 @@ classes = (
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
+    IMAGE_PT_overlay_render,
 )
 
 
