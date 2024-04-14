@@ -204,12 +204,12 @@ ccl_device int integrate_surface_ray_portal(KernelGlobals kg,
  * THe common is between the surface shading and configuration of a special shadow ray for the
  * shadow linking. */
 ccl_device_inline IntegratorShadowState
-integrate_direct_light_shadow_init_common(KernelGlobals kg,
-                                          IntegratorState state,
-                                          ccl_private const Ray *ccl_restrict ray,
-                                          const Spectrum bsdf_spectrum,
-                                          const int light_group,
-                                          const int mnee_vertex_count)
+integrate_direct_light_shadow_init_surface(KernelGlobals kg,
+                                           IntegratorState state,
+                                           ccl_private const Ray *ccl_restrict ray,
+                                           const Spectrum bsdf_spectrum,
+                                           const int light_group,
+                                           const int mnee_vertex_count)
 {
 
   /* Branch off shadow kernel. */
@@ -267,6 +267,12 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
         state, path, bounce);
   }
 
+  uint32_t shadow_flag = INTEGRATOR_STATE(state, path, flag);
+  if (!(shadow_flag & PATH_RAY_ANY_PASS)) {
+    shadow_flag |= PATH_RAY_SURFACE_PASS;
+  }
+  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, flag) = shadow_flag;
+
   /* Write Light-group, +1 as light-group is int but we need to encode into a uint8_t. */
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, lightgroup) = light_group + 1;
 
@@ -278,6 +284,72 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
 #endif
 
   return shadow_state;
+}
+
+ccl_device_inline void integrate_shadow_write_pass_diffuse_glossy(
+    KernelGlobals kg,
+    ConstIntegratorState state,
+    IntegratorShadowState shadow_state,
+    const ccl_private BsdfEval *radiance,
+    bool is_direct_light)
+{
+  if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
+    PackedSpectrum pass_diffuse_weight;
+    PackedSpectrum pass_glossy_weight;
+
+    if (is_direct_light) {
+      /* Direct light, use BSDFs at this bounce. */
+      pass_diffuse_weight = PackedSpectrum(bsdf_eval_pass_diffuse_weight(radiance));
+      pass_glossy_weight = PackedSpectrum(bsdf_eval_pass_glossy_weight(radiance));
+    }
+    else {
+      /* Indirect bounce, use weights from earlier surface or volume bounce. */
+      pass_diffuse_weight = INTEGRATOR_STATE(state, path, pass_diffuse_weight);
+      pass_glossy_weight = INTEGRATOR_STATE(state, path, pass_glossy_weight);
+    }
+
+    INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_diffuse_weight) = pass_diffuse_weight;
+    INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_glossy_weight) = pass_glossy_weight;
+  }
+}
+
+ccl_device_inline void integrate_direct_light_create_shadow_path(
+    KernelGlobals kg,
+    IntegratorState state,
+    ccl_private const RNGState *rng_state,
+    ccl_private const ShaderData *sd,
+    ccl_private const LightSample *ls,
+    ccl_private BsdfEval *radiance,
+    const int mnee_vertex_count,
+    const bool is_direct_light)
+{
+  /* TODO(weizhen): check termination after resampling. */
+  /* Path termination. */
+  const float terminate = path_state_rng_light_termination(kg, rng_state);
+  if (light_sample_terminate(kg, radiance, terminate)) {
+    return;
+  }
+
+  Ray ray ccl_optional_struct_init;
+  /* Create shadow ray. */
+  light_sample_to_surface_shadow_ray(kg, sd, ls, &ray);
+
+  if (ray.self.object != OBJECT_NONE) {
+    ray.P = integrate_surface_ray_offset(kg, sd, ray.P, ray.D);
+  }
+
+  /* Branch off shadow kernel. */
+  IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_surface(
+      kg, state, &ray, bsdf_eval_sum(radiance), ls->group, mnee_vertex_count);
+
+  const bool is_transmission = dot(ls->D, sd->N) < 0.0f;
+  if (is_transmission) {
+#ifdef __VOLUME__
+    shadow_volume_stack_enter_exit(kg, shadow_state, sd);
+#endif
+  }
+
+  integrate_shadow_write_pass_diffuse_glossy(kg, state, shadow_state, radiance, is_direct_light);
 }
 
 /* TODO(weizhen): split function to direct/indirect illumination and rename. */
@@ -308,12 +380,12 @@ ccl_device
   /* Use Resampled Importance Sampling for direct illumination based on Talbot, Justin F.
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
-  const bool use_ris = (bounce == 0);
+  const bool is_direct_light = !(path_flag & PATH_RAY_ANY_PASS);
 
   const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
   /* Sample position on a light. */
-  Reservoir reservoir(use_ris, rand);
+  Reservoir reservoir(is_direct_light, rand);
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     LightSample ls ccl_optional_struct_init;
@@ -370,8 +442,8 @@ ccl_device
     reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
-  /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
+  /* If `is_direct_light`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
+  for (int i = 0; i < reservoir.num_bsdf_samples * is_direct_light; i++) {
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
@@ -572,67 +644,16 @@ ccl_device
     return;
   }
 
-  LightSample ls = reservoir.ls;
   BsdfEval radiance = reservoir.radiance;
-
   const float unbiased_contribution_weight = reservoir.total_weight /
                                              reduce_add(fabs(radiance.sum));
-
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
   film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
 
   int mnee_vertex_count = 0;
-  const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
-  Ray ray ccl_optional_struct_init;
-
-  /* TODO(weizhen): check termination after resampling. */
-  /* Path termination. */
-  const float terminate = path_state_rng_light_termination(kg, rng_state);
-  if (light_sample_terminate(kg, &radiance, terminate)) {
-    return;
-  }
-
-  /* Create shadow ray. */
-  light_sample_to_surface_shadow_ray(kg, sd, &ls, &ray);
-
-  if (ray.self.object != OBJECT_NONE) {
-    ray.P = integrate_surface_ray_offset(kg, sd, ray.P, ray.D);
-  }
-
-  /* Branch off shadow kernel. */
-  IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
-      kg, state, &ray, bsdf_eval_sum(&radiance), ls.group, mnee_vertex_count);
-
-  if (is_transmission) {
-#ifdef __VOLUME__
-    shadow_volume_stack_enter_exit(kg, shadow_state, sd);
-#endif
-  }
-
-  uint32_t shadow_flag = INTEGRATOR_STATE(state, path, flag);
-
-  if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
-    PackedSpectrum pass_diffuse_weight;
-    PackedSpectrum pass_glossy_weight;
-
-    if (shadow_flag & PATH_RAY_ANY_PASS) {
-      /* Indirect bounce, use weights from earlier surface or volume bounce. */
-      pass_diffuse_weight = INTEGRATOR_STATE(state, path, pass_diffuse_weight);
-      pass_glossy_weight = INTEGRATOR_STATE(state, path, pass_glossy_weight);
-    }
-    else {
-      /* Direct light, use BSDFs at this bounce. */
-      shadow_flag |= PATH_RAY_SURFACE_PASS;
-      pass_diffuse_weight = PackedSpectrum(bsdf_eval_pass_diffuse_weight(&radiance));
-      pass_glossy_weight = PackedSpectrum(bsdf_eval_pass_glossy_weight(&radiance));
-    }
-
-    INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_diffuse_weight) = pass_diffuse_weight;
-    INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_glossy_weight) = pass_glossy_weight;
-  }
-
-  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, flag) = shadow_flag;
+  integrate_direct_light_create_shadow_path(
+      kg, state, rng_state, sd, &reservoir.ls, &radiance, mnee_vertex_count, is_direct_light);
 }
 
 /* Path tracing: bounce off or through surface with new direction. */

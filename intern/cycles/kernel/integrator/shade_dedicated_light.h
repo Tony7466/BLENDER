@@ -196,7 +196,7 @@ ccl_device void shadow_linking_shade(KernelGlobals kg,
   shadow_linking_setup_ray_from_intersection(state, &ray, &isect);
 
   /* Branch off shadow kernel. */
-  IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
+  IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_surface(
       kg, state, &ray, bsdf_spectrum, light_group, 0);
 
   /* The light is accumulated from the shade_surface kernel, which will make the clamping decision
@@ -208,8 +208,6 @@ ccl_device void shadow_linking_shade(KernelGlobals kg,
   /* No need to update the volume stack as the surface bounce already performed enter-exit check.
    */
 
-  const uint32_t shadow_flag = INTEGRATOR_STATE(state, path, flag);
-
   if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
     /* The diffuse and glossy pass weights are written into the main path as part of the path
      * configuration at a surface bounce. */
@@ -218,8 +216,6 @@ ccl_device void shadow_linking_shade(KernelGlobals kg,
     INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_glossy_weight) = INTEGRATOR_STATE(
         state, path, pass_glossy_weight);
   }
-
-  INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, flag) = shadow_flag;
 
 #  ifdef __PATH_GUIDING__
   if (kernel_data.integrator.train_guiding) {
