@@ -311,15 +311,16 @@ static void select_similar(GreasePencil &grease_pencil,
                            Object *object)
 {
   using namespace blender::ed::greasepencil;
-  blender::Vector<blender::Set<T>> currentlySelectedValuesPerDrawing;
 
   const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                                   grease_pencil);
-  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    currentlySelectedValuesPerDrawing.append(
-        blender::ed::curves::selected_values_for_attribute_in_curve<T>(
-            info.drawing.strokes_for_write(), static_cast<int>(type), attribute_id));
-  });
+  blender::Array<blender::Set<T>> currentlySelectedValuesPerDrawing(drawings.size());
+
+  int counter = 0;
+  for (const MutableDrawingInfo &info : drawings) {
+    currentlySelectedValuesPerDrawing[counter++] = blender::ed::curves::selected_values_for_attribute_in_curve<T>(
+            info.drawing.strokes_for_write(), static_cast<int>(type), attribute_id);
+  }
 
   Set<T> currentlySelectedValues = blender::ed::curves::join_sets<T>(
       currentlySelectedValuesPerDrawing);

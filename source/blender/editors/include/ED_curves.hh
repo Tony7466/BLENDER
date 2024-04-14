@@ -327,7 +327,7 @@ blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curv
 }
 
 template<typename T>
-static blender::Set<T> join_sets(blender::Vector<blender::Set<T>> &setsToBeJoined)
+static blender::Set<T> join_sets(blender::Array<blender::Set<T>> &setsToBeJoined)
 {
   Set<T> currentlySelectedValues{};
   for (auto &singleSet : setsToBeJoined) {
