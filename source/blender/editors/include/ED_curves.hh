@@ -285,7 +285,7 @@ template<typename T> static T default_for_lookup() {
   else if constexpr (std::is_same<T, std::string>::value) {
     return "default";
   }
-  throw std::invalid_argument("Undefined behavior for distance function for the used type");
+  return T(0);
 }
 
 template<typename T>
