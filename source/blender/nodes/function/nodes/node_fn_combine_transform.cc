@@ -5,8 +5,6 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.hh"
 
-#include "NOD_socket_search_link.hh"
-
 #include "node_function_util.hh"
 
 namespace blender::nodes::node_fn_combine_transform_cc {
