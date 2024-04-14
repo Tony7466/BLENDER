@@ -303,6 +303,94 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
 }
 
 template<typename T>
+blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curves,
+                                                       int type,
+                                                       std::string attribute_id)
+{
+  blender::Set<T> selectedValuesForAttribute;
+  VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
+      attribute_id, bke::AttrDomain::Point, blender::ed::curves::default_for_lookup<T>());
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = blender::ed::curves::ensure_selection_attribute(
+      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+
+  // for now sequential implementation, grain_size == 1
+  threading::parallel_for(curves.curves_range(), 1, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+
+      if (!blender::ed::curves::has_anything_selected(selection.span.slice(points))) {
+        continue;
+      }
+
+      for (const int index : points.index_range()) {
+        if (selection_typed[points[index]]) {
+          // careful: problems with concurrency?
+          selectedValuesForAttribute.add(attributes[points[index]]);
+        }
+      }
+    }
+  });
+
+  selection.finish();
+  return selectedValuesForAttribute;
+}
+
+template<typename T>
+static blender::Set<T> join_sets(blender::Array<blender::Set<T>> &setsToBeJoined)
+{
+  Set<T> currentlySelectedValues{};
+  for (auto &singleSet : setsToBeJoined) {
+    for (auto &value : singleSet) {
+      currentlySelectedValues.add(value);
+    }
+  }
+  return currentlySelectedValues;
+}
+
+template<typename T> static float distance(T first, T second)
+{
+  if constexpr (std::is_same<T, ColorGeometry4f>::value) {
+    // might be better to normalize and then dot product
+    return std::abs(int(rgb_to_grayscale(first)) - int(rgb_to_grayscale(second)));
+  }
+  else if constexpr (std::is_convertible<T, float>()) {
+    return math::distance(first, second);
+  }
+  return INFINITY;
+}
+
+template<typename T>
+static void select_with_similar_attribute(bke::CurvesGeometry &curves,
+                                          blender::Set<T> &set_active_if_similar_to,
+                                          float threshold,
+                                          const IndexMask &editable_points)
+{
+  const VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
+      ".selection", bke::AttrDomain::Point, blender::ed::curves::default_for_lookup<T>());
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  bke::GSpanAttributeWriter selection = blender::ed::curves::ensure_selection_attribute(
+      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+
+  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_predicate(
+      editable_points, GrainSize(1), memory, [&](int64_t point_i) {
+        for (auto &s : set_active_if_similar_to) {
+          if (distance<T>(attributes[point_i], s) <= threshold) {
+            return true;
+          }
+        }
+        return false;
+      });
+  index_mask::masked_fill(selection_typed, true, mask);
+  selection.finish();
+}
+
+template<typename T>
 static void select_similar(GreasePencil &grease_pencil,
                            Scene *scene,
                            eSelectSimilar type,
@@ -318,11 +406,11 @@ static void select_similar(GreasePencil &grease_pencil,
 
   int counter = 0;
   for (const MutableDrawingInfo &info : drawings) {
-    currentlySelectedValuesPerDrawing[counter++] = blender::ed::curves::selected_values_for_attribute_in_curve<T>(
+    currentlySelectedValuesPerDrawing[counter++] = selected_values_for_attribute_in_curve<T>(
             info.drawing.strokes_for_write(), static_cast<int>(type), attribute_id);
   }
 
-  Set<T> currentlySelectedValues = blender::ed::curves::join_sets<T>(
+  Set<T> currentlySelectedValues = join_sets<T>(
       currentlySelectedValuesPerDrawing);
 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
@@ -330,7 +418,7 @@ static void select_similar(GreasePencil &grease_pencil,
     const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
         *object, info.drawing, memory);
 
-    blender::ed::curves::select_with_similar_attribute<T>(
+    select_with_similar_attribute<T>(
         info.drawing.strokes_for_write(), currentlySelectedValues, threshold,
         editable_points);
   });
