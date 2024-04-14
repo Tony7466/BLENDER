@@ -302,9 +302,72 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
                   "(De)select the first and last point of each stroke");
 }
 
+template<typename T>
+static void select_similar(GreasePencil &grease_pencil,
+                           Scene *scene,
+                           bke::AttrDomain selection_domain,
+                           eSelectSimilar type,
+                           float threshold,
+                           std::string attribute_id)
+{
+  using namespace blender::ed::greasepencil;
+  blender::Vector<blender::Set<T>> currentlySelectedValuesPerDrawing;
+
+  const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
+                                                                                  grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    currentlySelectedValuesPerDrawing.append(
+        blender::ed::curves::selected_values_for_attribute_in_curve<T>(
+            info.drawing.strokes_for_write(), static_cast<int>(type), attribute_id));
+  });
+
+  Set<T> currentlySelectedValues = blender::ed::curves::join_sets<T>(
+      currentlySelectedValuesPerDrawing);
+
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    blender::ed::curves::select_with_similar_attribute<T>(
+        info.drawing.strokes_for_write(), currentlySelectedValues, threshold, static_cast<int>(type), attribute_id);
+  });
+}
+
+static void select_similar_layer(GreasePencil &grease_pencil,
+                                 Scene *scene,
+                                 bke::AttrDomain selection_domain)
+{
+  blender::Vector<blender::Set<std::string>> currentlySelectedLayers(
+      grease_pencil.drawings().size());
+  currentlySelectedLayers.fill(blender::Set<std::string>{});
+
+  grease_pencil.foreach_editable_drawing_in_layer_ex(
+      scene->r.cfra,
+      [&](int drawing_index,
+          blender::bke::greasepencil::Drawing &drawing,
+          const blender::bke::greasepencil::Layer *layer) {
+        if (!blender::ed::curves::has_anything_selected(drawing.strokes_for_write())) {
+          return;
+        }
+        if constexpr (std::is_same<std::string, std::string>::value) {
+          currentlySelectedLayers[drawing_index].add(std::string{layer->name().c_str()});
+        }
+      });
+
+  Set<std::string> s = blender::ed::curves::join_sets<std::string>(currentlySelectedLayers);
+
+  grease_pencil.foreach_editable_drawing_in_layer_ex(
+      scene->r.cfra,
+      [&](int drawing_index,
+          blender::bke::greasepencil::Drawing &drawing,
+          const blender::bke::greasepencil::Layer *layer) {
+        if (!s.contains(std::string{layer->name().c_str()})) {
+          return;
+        }
+        blender::ed::curves::select_all(drawing.strokes_for_write(), selection_domain, SEL_SELECT);
+      });
+}
+
 static int select_similar_exec(bContext *C, wmOperator *op)
 {
-  const int type = RNA_enum_get(op->ptr, "type");
+  const eSelectSimilar type = eSelectSimilar(RNA_enum_get(op->ptr, "type"));
   const float threshold = RNA_float_get(op->ptr, "threshold");
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -314,28 +377,26 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
   switch (type) {
-    case static_cast<int>(eSelectSimilar::LAYER):
-      ed::curves::select_similar_layer(
-          grease_pencil, scene, selection_domain, type);
+    case eSelectSimilar::LAYER:
+      select_similar_layer(
+          grease_pencil, scene, selection_domain);
       break;
-    case static_cast<int>(eSelectSimilar::MATERIAL):
-      ed::curves::select_similar<int>(
+    case eSelectSimilar::MATERIAL:
+      select_similar<int>(
           grease_pencil, scene, selection_domain, type, threshold, "material_index");
       break;
-    case static_cast<int>(eSelectSimilar::VERTEX_COLOR):
-      ed::curves::select_similar<ColorGeometry4f>(
+    case eSelectSimilar::VERTEX_COLOR:
+      select_similar<ColorGeometry4f>(
           grease_pencil, scene, selection_domain, type, threshold, "vertex_color");
       break;
-    case static_cast<int>(eSelectSimilar::RADIUS):
-      ed::curves::select_similar<float>(
+    case eSelectSimilar::RADIUS:
+      select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "radius");
       break;
-    case static_cast<int>(eSelectSimilar::OPACITY):
-      ed::curves::select_similar<float>(
+    case eSelectSimilar::OPACITY:
+      select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "opacity");
       break;
-    default:
-      throw std::invalid_argument("Undefined behavior for eSelectSimilar_Mode " + type);
   }
 
   /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
