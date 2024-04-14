@@ -184,11 +184,9 @@ static void refresh_node_socket(bNodeTree &ntree,
                                 bNode &node,
                                 const SocketDeclaration &socket_decl,
                                 Vector<bNodeSocket *> &old_sockets,
-                                VectorSet<bNodeSocket *> &new_sockets)
+                                VectorSet<bNodeSocket *> &new_sockets,
+                                const bool hide_new_socket)
 {
-  /* Only group inputs have the option to hide new sockets. */
-  const bool hide_new_group_input_sockets = node.is_group_input() &&
-                                            (node.flag & NODE_HIDE_UNUSED_SOCKETS);
   /* Try to find a socket that corresponds to the declaration. */
   bNodeSocket *old_socket_with_same_identifier = nullptr;
   for (const int i : old_sockets.index_range()) {
@@ -203,7 +201,8 @@ static void refresh_node_socket(bNodeTree &ntree,
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
     new_socket = &socket_decl.build(ntree, node);
-    if (hide_new_group_input_sockets) {
+
+    if (hide_new_socket) {
       new_socket->flag |= SOCK_HIDDEN;
     }
   }
@@ -422,9 +421,12 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
   }
 
   Vector<bNodeSocket *> old_outputs;
+  bool has_hidden_socket = false;
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
     old_outputs.append(socket);
+    has_hidden_socket |= socket->is_hidden();
   }
+  const bool hide_new_socket = node.is_group_input() && has_hidden_socket;
 
   Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
 
@@ -442,10 +444,10 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
             item_decl.get()))
     {
       if (socket_decl->in_out == SOCK_IN) {
-        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
+        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs, hide_new_socket);
       }
       else {
-        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
+        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs, hide_new_socket);
       }
     }
     else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(

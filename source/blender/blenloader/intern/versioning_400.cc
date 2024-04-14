@@ -2068,15 +2068,15 @@ static void versioning_node_group_input_socket_visibility(bNodeTree *ntree)
     if (!node->is_group_input()) {
       continue;
     }
+
     bNodeSocket *extension_socket = static_cast<bNodeSocket *>(node->outputs.last);
-    if (extension_socket->flag & SOCK_HIDDEN) {
-      node->flag |= NODE_HIDE_UNUSED_SOCKETS;
+    if (extension_socket->is_hidden()) {
+      continue;
     }
-    else {
-      /* When the extension socket is shown, the node should show all sockets. */
-      LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
-        sock->flag &= ~SOCK_HIDDEN;
-      }
+
+    /* When the extension socket is shown, the node should show all sockets. */
+    LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
+      sock->flag &= ~SOCK_HIDDEN;
     }
   }
 }

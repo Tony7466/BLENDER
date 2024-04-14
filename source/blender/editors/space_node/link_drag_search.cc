@@ -103,7 +103,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 
   /* Don't show the new input other group input nodes, that hide unused sockets. */
   for (bNode *node : params.node_tree.all_nodes()) {
-    if (node->is_group_input() && (node->flag & NODE_HIDE_UNUSED_SOCKETS)) {
+    if (node->is_group_input() && node_has_hidden_sockets(node)) {
       bNodeSocket *new_group_input_socket = nodeFindSocket(
           node, SOCK_OUT, socket_iface->identifier);
       if (new_group_input_socket) {
@@ -125,9 +125,6 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 
     bke::node_socket_move_default_value(
         *CTX_data_main(&params.C), params.node_tree, params.socket, *socket);
-
-    /* Make sure the socket visibility stays the same on further updates to the group interface. */
-    group_input.flag |= NODE_HIDE_UNUSED_SOCKETS;
   }
 }
 
@@ -149,9 +146,6 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
-
-    /* Make sure the socket visibility stays the same on further updates to the group interface. */
-    group_input.flag |= NODE_HIDE_UNUSED_SOCKETS;
   }
 }
 
