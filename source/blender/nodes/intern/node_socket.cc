@@ -201,10 +201,7 @@ static void refresh_node_socket(bNodeTree &ntree,
   if (old_socket_with_same_identifier == nullptr) {
     /* Create a completely new socket. */
     new_socket = &socket_decl.build(ntree, node);
-
-    if (hide_new_socket) {
-      new_socket->flag |= SOCK_HIDDEN;
-    }
+    SET_FLAG_FROM_TEST(new_socket->flag, hide_new_socket, SOCK_HIDDEN);
   }
   else {
     STRNCPY(old_socket_with_same_identifier->name, socket_decl.name.c_str());
