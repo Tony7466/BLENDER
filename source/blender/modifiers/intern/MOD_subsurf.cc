@@ -15,7 +15,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -26,14 +26,13 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
-#include "BKE_scene.h"
-#include "BKE_screen.hh"
+#include "BKE_mesh_types.hh"
+#include "BKE_scene.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subdiv_deform.hh"
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
-#include "BKE_subsurf.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -48,8 +47,6 @@
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
-
-#include "BLO_read_write.hh"
 
 #include "intern/CCGSubSurf.h"
 
@@ -68,15 +65,6 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
     r_cddata_masks->lmask |= CD_MASK_CUSTOMLOOPNORMAL;
   }
-}
-
-static bool depends_on_normals(ModifierData *md)
-{
-  SubsurfModifierData *smd = (SubsurfModifierData *)md;
-  if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
-    return true;
-  }
-  return false;
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
@@ -243,7 +231,7 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
     /* Same check as in `DRW_mesh_batch_cache_create_requested` to keep both code coherent. The
      * difference is that here we do not check for the final edit mesh pointer as it is not yet
      * assigned at this stage of modifier stack evaluation. */
-    const bool is_editmode = (mesh->edit_mesh != nullptr);
+    const bool is_editmode = (mesh->runtime->edit_mesh != nullptr);
     const int required_mode = BKE_subsurf_modifier_eval_required_mode(is_render_mode, is_editmode);
     if (BKE_subsurf_modifier_can_do_gpu_subdiv(scene, ctx->object, mesh, smd, required_mode)) {
       subdiv_cache_mesh_wrapper_settings(ctx, mesh, smd, runtime_data);
@@ -258,7 +246,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   }
   const bool use_clnors = BKE_subsurf_modifier_use_custom_loop_normals(smd, mesh);
   if (use_clnors) {
-    void *data = CustomData_add_layer(&mesh->loop_data, CD_NORMAL, CD_CONSTRUCT, mesh->totloop);
+    void *data = CustomData_add_layer(
+        &mesh->corner_data, CD_NORMAL, CD_CONSTRUCT, mesh->corners_num);
     memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
   /* TODO(sergey): Decide whether we ever want to use CCG for subsurf,
@@ -273,8 +262,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   if (use_clnors) {
     BKE_mesh_set_custom_normals(result,
                                 static_cast<float(*)[3]>(CustomData_get_layer_for_write(
-                                    &result->loop_data, CD_NORMAL, result->totloop)));
-    CustomData_free_layers(&result->loop_data, CD_NORMAL, result->totloop);
+                                    &result->corner_data, CD_NORMAL, result->corners_num)));
+    CustomData_free_layers(&result->corner_data, CD_NORMAL, result->corners_num);
   }
   // BKE_subdiv_stats_print(&subdiv->stats);
   if (!ELEM(subdiv, runtime_data->subdiv_cpu, runtime_data->subdiv_gpu)) {
@@ -392,7 +381,7 @@ static void panel_draw(const bContext *C, Panel *panel)
                                  RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
                              0.1f);
     char output[256];
-    SNPRINTF(output, TIP_("Final Scale: Render %.2f px, Viewport %.2f px"), render, preview);
+    SNPRINTF(output, RPT_("Final Scale: Render %.2f px, Viewport %.2f px"), render, preview);
     uiItemL(layout, output, ICON_NONE);
 
     uiItemS(layout);
@@ -509,11 +498,12 @@ ModifierTypeInfo modifierType_Subsurf = {
     /*is_disabled*/ is_disabled,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
-    /*depends_on_normals*/ depends_on_normals,
+    /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ nullptr,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ free_runtime_data,
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ blend_read,
+    /*foreach_cache*/ nullptr,
 };

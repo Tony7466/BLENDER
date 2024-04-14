@@ -490,21 +490,40 @@ BLI_INLINE float perlin_noise(float4 position)
 
 float perlin_signed(float position)
 {
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. */
+  position = math::mod(position, 100000.0f);
+
   return perlin_noise(position) * 0.2500f;
 }
 
 float perlin_signed(float2 position)
 {
+  /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0f, however at such scales
+   * this usually shouldn't be noticeable. */
+  position = math::mod(position, 100000.0f);
+
   return perlin_noise(position) * 0.6616f;
 }
 
 float perlin_signed(float3 position)
 {
+  /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0f, however at such scales
+   * this usually shouldn't be noticeable. */
+  position = math::mod(position, 100000.0f);
+
   return perlin_noise(position) * 0.9820f;
 }
 
 float perlin_signed(float4 position)
 {
+  /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0f, however at such scales
+   * this usually shouldn't be noticeable. */
+  position = math::mod(position, 100000.0f);
+
   return perlin_noise(position) * 0.8344f;
 }
 
@@ -556,9 +575,7 @@ float perlin_fbm(
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
   }
-  else {
-    return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
-  }
+  return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
 }
 
 /* Explicit instantiation for Wave Texture. */
@@ -667,7 +684,7 @@ float perlin_ridged_multi_fractal(T p,
 
   for (int i = 1; i <= int(detail); i++) {
     p *= lacunarity;
-    weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
+    weight = std::clamp(signal * gain, 0.0f, 1.0f);
     signal = offset - std::abs(perlin_signed(p));
     signal *= signal;
     signal *= weight;
@@ -1909,7 +1926,7 @@ VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
       output = octave;
       break;
     }
-    else if (i <= params.detail) {
+    if (i <= params.detail) {
       max_amplitude += amplitude;
       output.distance += octave.distance * amplitude;
       output.color += octave.color * amplitude;
@@ -1960,7 +1977,7 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
       distance = octave_distance;
       break;
     }
-    else if (i <= params.detail) {
+    if (i <= params.detail) {
       max_amplitude = mix(max_amplitude, params.max_distance / scale, amplitude);
       distance = mix(distance, math::min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;

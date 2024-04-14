@@ -48,7 +48,8 @@ def geometry_node_group_empty_tool_new(context):
     group.use_fake_user = True
     group.is_tool = True
 
-    ob_type = context.object.type if context.object else 'MESH'
+    ob = context.object
+    ob_type = ob.type if ob else 'MESH'
     if ob_type == 'CURVES':
         group.is_type_curve = True
     elif ob_type == 'POINTCLOUD':
@@ -56,7 +57,7 @@ def geometry_node_group_empty_tool_new(context):
     else:
         group.is_type_mesh = True
 
-    mode = context.object.mode if context.object else 'OBJECT'
+    mode = ob.mode if ob else 'OBJECT'
     if mode in {'SCULPT', 'SCULPT_CURVES'}:
         group.is_mode_sculpt = True
     elif mode == 'EDIT':
@@ -315,11 +316,33 @@ class NewGeometryNodeGroupTool(Operator):
 
 class ZoneOperator:
     @classmethod
-    def get_output_node(cls, context):
+    def get_node(cls, context):
         node = context.active_node
+        if node is None:
+            return None
+        if node.bl_idname == cls.output_node_type:
+            return node
         if node.bl_idname == cls.input_node_type:
             return node.paired_output
-        if node.bl_idname == cls.output_node_type:
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        # Needs active node editor and a tree.
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
+            return False
+        if cls.get_node(context) is None:
+            return False
+        return True
+
+
+class NodeOperator:
+    @classmethod
+    def get_node(cls, context):
+        node = context.active_node
+        if node is None:
+            return None
+        if node.bl_idname == cls.node_type:
             return node
 
     @classmethod
@@ -328,21 +351,19 @@ class ZoneOperator:
         # Needs active node editor and a tree.
         if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
             return False
-        node = context.active_node
-        if node is None or node.bl_idname not in [cls.input_node_type, cls.output_node_type]:
-            return False
-        if cls.get_output_node(context) is None:
+        node = cls.get_node(context)
+        if node is None:
             return False
         return True
 
 
-class ZoneItemAddOperator:
+class SocketItemAddOperator:
     items_name = None
     active_index_name = None
     default_socket_type = 'GEOMETRY'
 
     def execute(self, context):
-        node = self.get_output_node(context)
+        node = self.get_node(context)
         items = getattr(node, self.items_name)
         # Remember index to move the item.
         old_active_index = getattr(node, self.active_index_name)
@@ -362,12 +383,12 @@ class ZoneItemAddOperator:
         return {'FINISHED'}
 
 
-class ZoneItemRemoveOperator:
+class SocketItemRemoveOperator:
     items_name = None
     active_index_name = None
 
     def execute(self, context):
-        node = self.get_output_node(context)
+        node = self.get_node(context)
         items = getattr(node, self.items_name)
         old_active_index = getattr(node, self.active_index_name)
 
@@ -377,7 +398,7 @@ class ZoneItemRemoveOperator:
         return {'FINISHED'}
 
 
-class ZoneMoveItemOperator:
+class SocketMoveItemOperator:
     items_name = None
     active_index_name = None
 
@@ -388,7 +409,7 @@ class ZoneMoveItemOperator:
     )
 
     def execute(self, context):
-        node = self.get_output_node(context)
+        node = self.get_node(context)
         items = getattr(node, self.items_name)
         old_active_index = getattr(node, self.active_index_name)
 
@@ -410,21 +431,21 @@ class SimulationZoneOperator(ZoneOperator):
     active_index_name = "active_index"
 
 
-class SimulationZoneItemAddOperator(SimulationZoneOperator, ZoneItemAddOperator, Operator):
+class SimulationZoneItemAddOperator(SimulationZoneOperator, SocketItemAddOperator, Operator):
     """Add a state item to the simulation zone"""
     bl_idname = "node.simulation_zone_item_add"
     bl_label = "Add State Item"
     bl_options = {'REGISTER', 'UNDO'}
 
 
-class SimulationZoneItemRemoveOperator(SimulationZoneOperator, ZoneItemRemoveOperator, Operator):
+class SimulationZoneItemRemoveOperator(SimulationZoneOperator, SocketItemRemoveOperator, Operator):
     """Remove a state item from the simulation zone"""
     bl_idname = "node.simulation_zone_item_remove"
     bl_label = "Remove State Item"
     bl_options = {'REGISTER', 'UNDO'}
 
 
-class SimulationZoneItemMoveOperator(SimulationZoneOperator, ZoneMoveItemOperator, Operator):
+class SimulationZoneItemMoveOperator(SimulationZoneOperator, SocketMoveItemOperator, Operator):
     """Move a simulation state item up or down in the list"""
     bl_idname = "node.simulation_zone_item_move"
     bl_label = "Move State Item"
@@ -439,24 +460,52 @@ class RepeatZoneOperator(ZoneOperator):
     active_index_name = "active_index"
 
 
-class RepeatZoneItemAddOperator(RepeatZoneOperator, ZoneItemAddOperator, Operator):
+class RepeatZoneItemAddOperator(RepeatZoneOperator, SocketItemAddOperator, Operator):
     """Add a repeat item to the repeat zone"""
     bl_idname = "node.repeat_zone_item_add"
     bl_label = "Add Repeat Item"
     bl_options = {'REGISTER', 'UNDO'}
 
 
-class RepeatZoneItemRemoveOperator(RepeatZoneOperator, ZoneItemRemoveOperator, Operator):
+class RepeatZoneItemRemoveOperator(RepeatZoneOperator, SocketItemRemoveOperator, Operator):
     """Remove a repeat item from the repeat zone"""
     bl_idname = "node.repeat_zone_item_remove"
     bl_label = "Remove Repeat Item"
     bl_options = {'REGISTER', 'UNDO'}
 
 
-class RepeatZoneItemMoveOperator(RepeatZoneOperator, ZoneMoveItemOperator, Operator):
+class RepeatZoneItemMoveOperator(RepeatZoneOperator, SocketMoveItemOperator, Operator):
     """Move a repeat item up or down in the list"""
     bl_idname = "node.repeat_zone_item_move"
     bl_label = "Move Repeat Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class BakeNodeOperator(NodeOperator):
+    node_type = 'GeometryNodeBake'
+
+    items_name = "bake_items"
+    active_index_name = "active_index"
+
+
+class BakeNodeItemAddOperator(BakeNodeOperator, SocketItemAddOperator, Operator):
+    """Add a bake item to the bake node"""
+    bl_idname = "node.bake_node_item_add"
+    bl_label = "Add Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class BakeNodeItemRemoveOperator(BakeNodeOperator, SocketItemRemoveOperator, Operator):
+    """Remove a bake item from the bake node"""
+    bl_idname = "node.bake_node_item_remove"
+    bl_label = "Remove Bake Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+class BakeNodeItemMoveOperator(BakeNodeOperator, SocketMoveItemOperator, Operator):
+    """Move a bake item up or down in the list"""
+    bl_idname = "node.bake_node_item_move"
+    bl_label = "Move Bake Item"
     bl_options = {'REGISTER', 'UNDO'}
 
 
@@ -520,6 +569,9 @@ classes = (
     RepeatZoneItemAddOperator,
     RepeatZoneItemRemoveOperator,
     RepeatZoneItemMoveOperator,
+    BakeNodeItemAddOperator,
+    BakeNodeItemRemoveOperator,
+    BakeNodeItemMoveOperator,
     IndexSwitchItemAddOperator,
     IndexSwitchItemRemoveOperator,
 )

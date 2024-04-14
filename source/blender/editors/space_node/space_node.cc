@@ -8,16 +8,18 @@
 
 #include "AS_asset_representation.hh"
 
+#include "BLI_listbase.h"
 #include "BLI_string.h"
 
 #include "DNA_ID.h"
-#include "DNA_gpencil_legacy_types.h"
-#include "DNA_light_types.h"
+#include "DNA_image_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
-#include "DNA_world_types.h"
+#include "DNA_screen_types.h"
+#include "DNA_space_types.h"
+#include "DNA_windowmanager_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -25,18 +27,17 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_idprop.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_screen.hh"
 
+#include "ED_image.hh"
 #include "ED_node.hh"
 #include "ED_node_preview.hh"
-#include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
@@ -679,6 +680,28 @@ static void node_area_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
+/* Returns true if an image editor exists that views the compositor result. */
+static bool is_compositor_viewer_image_visible(const bContext *C)
+{
+  wmWindowManager *window_manager = CTX_wm_manager(C);
+  LISTBASE_FOREACH (wmWindow *, window, &window_manager->windows) {
+    bScreen *screen = WM_window_get_active_screen(window);
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      SpaceLink *space_link = static_cast<SpaceLink *>(area->spacedata.first);
+      if (!space_link || space_link->spacetype != SPACE_IMAGE) {
+        continue;
+      }
+      const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(space_link);
+      Image *image = ED_space_image(space_image);
+      if (image && image->source == IMA_SRC_VIEWER) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 static void node_area_refresh(const bContext *C, ScrArea *area)
 {
   /* default now: refresh node is starting preview */
@@ -698,7 +721,11 @@ static void node_area_refresh(const bContext *C, ScrArea *area)
         }
         else if (snode->runtime->recalc_regular_compositing) {
           snode->runtime->recalc_regular_compositing = false;
-          ED_node_composite_job(C, snode->nodetree, scene);
+          /* Only start compositing if its result will be visible either in the backdrop or in a
+           * viewer image. */
+          if (snode->flag & SNODE_BACKDRAW || is_compositor_viewer_image_visible(C)) {
+            ED_node_composite_job(C, snode->nodetree, scene);
+          }
         }
       }
     }
@@ -856,7 +883,7 @@ static bool node_ima_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = static_cast<eFileSel_File_Types>(
         WM_drag_get_path_file_type(drag));
-    return ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
+    return ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE);
   }
   return WM_drag_is_ID_type(drag, ID_IM);
 }
@@ -875,7 +902,7 @@ static void node_group_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
-  RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
+  RNA_int_set(drop->ptr, "session_uid", int(id->session_uid));
 
   RNA_boolean_set(drop->ptr, "show_datablock_in_node", (drag->type != WM_DRAG_ASSET));
 }
@@ -884,7 +911,7 @@ static void node_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 {
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
-  RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
+  RNA_int_set(drop->ptr, "session_uid", int(id->session_uid));
 }
 
 static void node_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
@@ -892,12 +919,12 @@ static void node_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   if (id) {
-    RNA_int_set(drop->ptr, "session_uuid", int(id->session_uuid));
+    RNA_int_set(drop->ptr, "session_uid", int(id->session_uid));
     RNA_struct_property_unset(drop->ptr, "filepath");
     return;
   }
 
-  const char *path = WM_drag_get_path(drag);
+  const char *path = WM_drag_get_single_path(drag);
   if (path) {
     RNA_string_set(drop->ptr, "filepath", path);
     RNA_struct_property_unset(drop->ptr, "name");
@@ -1123,10 +1150,8 @@ static void node_widgets()
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_corner_pin);
 }
 
-static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
+static void node_id_remap(ID *old_id, ID *new_id, SpaceNode *snode)
 {
-  SpaceNode *snode = static_cast<SpaceNode *>(user_data);
-
   if (snode->id == old_id) {
     /* nasty DNA logic for SpaceNode:
      * ideally should be handled by editor code, but would be bad level call
@@ -1156,8 +1181,10 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
   }
   else if (GS(old_id->name) == ID_NT) {
 
-    if (&snode->geometry_nodes_tool_tree->id == old_id) {
-      snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+    if (snode->geometry_nodes_tool_tree) {
+      if (&snode->geometry_nodes_tool_tree->id == old_id) {
+        snode->geometry_nodes_tool_tree = reinterpret_cast<bNodeTree *>(new_id);
+      }
     }
 
     bNodeTreePath *path, *path_next;
@@ -1196,7 +1223,9 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
   }
 }
 
-static void node_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void node_id_remap(ScrArea * /*area*/,
+                          SpaceLink *slink,
+                          const blender::bke::id::IDRemapper &mappings)
 {
   /* Although we should be able to perform all the mappings in a single go this lead to issues when
    * running the python test cases. Somehow the nodetree/edittree weren't updated to the new
@@ -1209,7 +1238,9 @@ static void node_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper
    * We could also move a remap address at a time to use the IDRemapper as that should get closer
    * to cleaner code. See {D13615} for more information about this topic.
    */
-  BKE_id_remapper_iter(mappings, node_id_remap_cb, slink);
+  mappings.iter([&](ID *old_id, ID *new_id) {
+    node_id_remap(old_id, new_id, reinterpret_cast<SpaceNode *>(slink));
+  });
 }
 
 static void node_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -1367,7 +1398,7 @@ void ED_spacetype_node()
 {
   using namespace blender::ed::space_node;
 
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype node");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_NODE;
@@ -1448,5 +1479,5 @@ void ED_spacetype_node()
   WM_menutype_add(MEM_new<MenuType>(__func__, add_unassigned_assets_menu_type()));
   WM_menutype_add(MEM_new<MenuType>(__func__, add_root_catalogs_menu_type()));
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

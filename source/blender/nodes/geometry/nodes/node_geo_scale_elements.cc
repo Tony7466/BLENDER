@@ -9,9 +9,6 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -50,7 +47,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = ATTR_DOMAIN_FACE;
+  node->custom1 = int16_t(AttrDomain::Face);
   node->custom2 = GEO_NODE_SCALE_ELEMENTS_UNIFORM;
 }
 
@@ -168,32 +165,37 @@ static void scale_vertex_islands_uniformly(Mesh &mesh,
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
 
-  threading::parallel_for(islands.index_range(), 256, [&](const IndexRange range) {
-    for (const int island_index : range) {
-      const ElementIsland &island = islands[island_index];
+  threading::parallel_for_weighted(
+      islands.index_range(),
+      512,
+      [&](const IndexRange range) {
+        for (const int island_index : range) {
+          const ElementIsland &island = islands[island_index];
 
-      float scale = 0.0f;
-      float3 center = {0.0f, 0.0f, 0.0f};
+          float scale = 0.0f;
+          float3 center = {0.0f, 0.0f, 0.0f};
 
-      VectorSet<int> vertex_indices;
-      for (const int face_index : island.element_indices) {
-        get_vertex_indices(edges, faces, corner_verts, face_index, vertex_indices);
-        center += params.centers[face_index];
-        scale += params.scales[face_index];
-      }
+          VectorSet<int> vertex_indices;
+          for (const int face_index : island.element_indices) {
+            get_vertex_indices(edges, faces, corner_verts, face_index, vertex_indices);
+            center += params.centers[face_index];
+            scale += params.scales[face_index];
+          }
 
-      /* Divide by number of elements to get the average. */
-      const float f = 1.0f / island.element_indices.size();
-      scale *= f;
-      center *= f;
+          /* Divide by number of elements to get the average. */
+          const float f = 1.0f / island.element_indices.size();
+          scale *= f;
+          center *= f;
 
-      for (const int vert_index : vertex_indices) {
-        positions[vert_index] = transform_with_uniform_scale(positions[vert_index], center, scale);
-      }
-    }
-  });
+          for (const int vert_index : vertex_indices) {
+            positions[vert_index] = transform_with_uniform_scale(
+                positions[vert_index], center, scale);
+          }
+        }
+      },
+      [&](const int64_t i) { return islands[i].element_indices.size(); });
 
-  BKE_mesh_tag_positions_changed(&mesh);
+  mesh.tag_positions_changed();
 }
 
 static void scale_vertex_islands_on_axis(Mesh &mesh,
@@ -239,7 +241,7 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
     }
   });
 
-  BKE_mesh_tag_positions_changed(&mesh);
+  mesh.tag_positions_changed();
 }
 
 static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
@@ -249,7 +251,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
   const Span<int> corner_verts = mesh.corner_verts();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
-  DisjointSet<int> disjoint_set(mesh.totvert);
+  DisjointSet<int> disjoint_set(mesh.verts_num);
   face_selection.foreach_index([&](const int face_index) {
     const Span<int> face_verts = corner_verts.slice(faces[face_index]);
     for (const int loop_index : face_verts.index_range().drop_back(1)) {
@@ -304,7 +306,7 @@ static AxisScaleParams evaluate_axis_scale_fields(FieldEvaluator &evaluator,
 
 static void scale_faces_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Face};
   FieldEvaluator evaluator{field_context, mesh.faces_num};
   AxisScaleParams params = evaluate_axis_scale_fields(evaluator, fields);
 
@@ -326,7 +328,7 @@ static UniformScaleParams evaluate_uniform_scale_fields(FieldEvaluator &evaluato
 
 static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Face};
   FieldEvaluator evaluator{field_context, mesh.faces_num};
   UniformScaleParams params = evaluate_uniform_scale_fields(evaluator, fields);
 
@@ -340,7 +342,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
   const Span<int2> edges = mesh.edges();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
-  DisjointSet<int> disjoint_set(mesh.totvert);
+  DisjointSet<int> disjoint_set(mesh.verts_num);
   edge_selection.foreach_index([&](const int edge_index) {
     const int2 &edge = edges[edge_index];
     disjoint_set.join(edge[0], edge[1]);
@@ -379,8 +381,8 @@ static void get_edge_verts(const Span<int2> edges,
 
 static void scale_edges_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator evaluator{field_context, mesh.totedge};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Edge};
+  FieldEvaluator evaluator{field_context, mesh.edges_num};
   UniformScaleParams params = evaluate_uniform_scale_fields(evaluator, fields);
 
   Vector<ElementIsland> island = prepare_edge_islands(mesh, params.selection);
@@ -389,8 +391,8 @@ static void scale_edges_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 
 static void scale_edges_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator evaluator{field_context, mesh.totedge};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Edge};
+  FieldEvaluator evaluator{field_context, mesh.edges_num};
   AxisScaleParams params = evaluate_axis_scale_fields(evaluator, fields);
 
   Vector<ElementIsland> island = prepare_edge_islands(mesh, params.selection);
@@ -400,7 +402,7 @@ static void scale_edges_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
-  const eAttrDomain domain = eAttrDomain(node.custom1);
+  const AttrDomain domain = AttrDomain(node.custom1);
   const GeometryNodeScaleElementsMode scale_mode = GeometryNodeScaleElementsMode(node.custom2);
 
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
@@ -416,7 +418,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
-        case ATTR_DOMAIN_FACE: {
+        case AttrDomain::Face: {
           switch (scale_mode) {
             case GEO_NODE_SCALE_ELEMENTS_UNIFORM: {
               scale_faces_uniformly(*mesh, {selection_field, scale_field, center_field});
@@ -429,7 +431,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           }
           break;
         }
-        case ATTR_DOMAIN_EDGE: {
+        case AttrDomain::Edge: {
           switch (scale_mode) {
             case GEO_NODE_SCALE_ELEMENTS_UNIFORM: {
               scale_edges_uniformly(*mesh, {selection_field, scale_field, center_field});
@@ -455,12 +457,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem domain_items[] = {
-      {ATTR_DOMAIN_FACE,
+      {int(AttrDomain::Face),
        "FACE",
        ICON_NONE,
        "Face",
        "Scale individual faces or neighboring face islands"},
-      {ATTR_DOMAIN_EDGE,
+      {int(AttrDomain::Edge),
        "EDGE",
        ICON_NONE,
        "Edge",
@@ -488,7 +490,7 @@ static void node_rna(StructRNA *srna)
                     "Element type to transform",
                     domain_items,
                     NOD_inline_enum_accessors(custom1),
-                    ATTR_DOMAIN_FACE);
+                    int(AttrDomain::Face));
 
   RNA_def_node_enum(
       srna, "scale_mode", "Scale Mode", "", scale_mode_items, NOD_inline_enum_accessors(custom2));

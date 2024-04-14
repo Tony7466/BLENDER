@@ -5,6 +5,7 @@
 set(INC
   .
   ../blenkernel
+  ../imbuf
   ../makesrna
   ../../../intern/locale
 )
@@ -16,15 +17,14 @@ set(SRC
   intern/blt_lang.cc
   intern/blt_translation.cc
 
-  BLT_lang.h
-  BLT_translation.h
+  BLT_lang.hh
+  BLT_translation.hh
 )
 
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 

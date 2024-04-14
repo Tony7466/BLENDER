@@ -16,22 +16,21 @@
 #include <Python.h>
 #include <cstddef>
 
-#include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_blendfile_link_append.h"
+#include "BKE_blendfile_link_append.hh"
 #include "BKE_context.hh"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_space_types.h" /* FILE_LINK, FILE_RELPATH */
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -152,6 +151,7 @@ static PyTypeObject bpy_lib_Type = {
 };
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_lib_load_doc,
     ".. method:: load("
     "filepath, "
@@ -471,7 +471,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
   BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
 
   /* here appending/linking starts */
-  const int id_tag_extra = self->bmain_is_temp ? LIB_TAG_TEMP_MAIN : 0;
+  const int id_tag_extra = self->bmain_is_temp ? int(LIB_TAG_TEMP_MAIN) : 0;
   LibraryLink_Params liblink_params;
   BLO_library_link_params_init(&liblink_params, bmain, self->flag, id_tag_extra);
 

@@ -5,16 +5,16 @@
 /** \file
  * \ingroup gpu
  *
- * Metal implementation of GPUBatch.
+ * Metal implementation of gpu::Batch.
  */
 
 #include "BLI_assert.h"
 #include "BLI_span.hh"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
-#include "GPU_common.h"
-#include "gpu_batch_private.hh"
+#include "GPU_batch.hh"
+#include "GPU_common.hh"
 #include "gpu_shader_private.hh"
 
 #include "mtl_batch.hh"
@@ -134,7 +134,7 @@ int MTLBatch::prepare_vertex_binding(MTLVertBuf *verts,
         "In Metal, Vertex buffer stride should be 4. SSBO Vertex fetch is not affected by this");
   }
 
-  /* Iterate over GPUVertBuf vertex format and find attributes matching those in the active
+  /* Iterate over VertBuf vertex format and find attributes matching those in the active
    * shader's interface. */
   for (uint32_t a_idx = 0; a_idx < format->attr_len; a_idx++) {
     const GPUVertAttr *a = &format->attrs[a_idx];
@@ -157,11 +157,14 @@ int MTLBatch::prepare_vertex_binding(MTLVertBuf *verts,
         /* Vertex/instance buffers provided have attribute data for attributes which are not needed
          * by this particular shader. This shader only needs binding information for the attributes
          * has in the shader interface. */
-        MTL_LOG_WARNING(
-            "MTLBatch: Could not find attribute with name '%s' (defined in active vertex format) "
-            "in the shader interface for shader '%s'",
-            name,
-            interface->get_name());
+        if (StringRefNull(name) != "dummy") {
+          MTL_LOG_WARNING(
+              "MTLBatch: Could not find attribute with name '%s' (defined in active vertex "
+              "format) "
+              "in the shader interface for shader '%s'",
+              name,
+              interface->get_name());
+        }
         continue;
       }
 

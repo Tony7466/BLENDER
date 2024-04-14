@@ -36,6 +36,8 @@ class VKShader : public Shader {
   VKShader(const char *name);
   virtual ~VKShader();
 
+  void init(const shader::ShaderCreateInfo & /*info*/) override {}
+
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
@@ -45,7 +47,7 @@ class VKShader : public Shader {
 
   void transform_feedback_names_set(Span<const char *> name_list,
                                     eGPUShaderTFBType geom_type) override;
-  bool transform_feedback_enable(GPUVertBuf *) override;
+  bool transform_feedback_enable(VertBuf *) override;
   void transform_feedback_disable() override;
 
   void bind() override;

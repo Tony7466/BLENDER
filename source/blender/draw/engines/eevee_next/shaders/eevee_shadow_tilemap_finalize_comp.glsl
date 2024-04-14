@@ -57,6 +57,7 @@ void main()
   bool is_cubemap = (tilemap_data.projection_type == SHADOW_PROJECTION_CUBEFACE);
   int lod_max = is_cubemap ? SHADOW_TILEMAP_LOD : 0;
   int valid_tile_index = -1;
+  uint valid_lod = 0u;
   /* With all threads (LOD0 size dispatch) load each lod tile from the highest lod
    * to the lowest, keeping track of the lowest one allocated which will be use for shadowing.
    * This guarantee a O(1) lookup time.
@@ -68,7 +69,7 @@ void main()
     ShadowTileData tile = shadow_tile_unpack(tiles_buf[tile_index]);
 
     /* Compute update area. */
-    if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
+    if (gl_LocalInvocationIndex == 0u) {
       rect_min_x = SHADOW_TILEMAP_RES;
       rect_min_y = SHADOW_TILEMAP_RES;
       rect_max_x = 0;
@@ -96,7 +97,7 @@ void main()
     ivec2 viewport_size = viewport_size_get(viewport_index);
 
     /* Issue one view if there is an update in the LOD. */
-    if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
+    if (gl_LocalInvocationIndex == 0u) {
       bool lod_has_update = rect_min.x < rect_max.x;
       if (lod_has_update) {
         view_index = atomicAdd(statistics_buf.view_needed_count, 1);
@@ -176,12 +177,17 @@ void main()
     if (tile.is_used && tile.is_allocated && (!tile.do_update || lod_is_rendered)) {
       /* Save highest lod for this thread. */
       valid_tile_index = tile_index;
+      valid_lod = uint(lod);
     }
   }
 
   /* Store the highest LOD valid page for rendering. */
-  uint tile_packed = (valid_tile_index != -1) ? tiles_buf[valid_tile_index] : SHADOW_NO_DATA;
-  imageStore(tilemaps_img, atlas_texel, uvec4(tile_packed));
+  ShadowTileDataPacked tile_packed = (valid_tile_index != -1) ? tiles_buf[valid_tile_index] :
+                                                                SHADOW_NO_DATA;
+  ShadowTileData tile_data = shadow_tile_unpack(tile_packed);
+  ShadowSamplingTile tile_sampling = shadow_sampling_tile_create(tile_data, valid_lod);
+  ShadowSamplingTilePacked tile_sampling_packed = shadow_sampling_tile_pack(tile_sampling);
+  imageStore(tilemaps_img, atlas_texel, uvec4(tile_sampling_packed));
 
   if (all(equal(gl_GlobalInvocationID, uvec3(0)))) {
     /* Clamp it as it can underflow if there is too much tile present on screen. */

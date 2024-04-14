@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_map.hh"
 #include "BLI_vector.hh"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "eevee_sync.hh"
 
@@ -51,8 +51,6 @@ enum eMaterialGeometry {
   MAT_GEOM_VOLUME,
 
   /* These maps to special shader. */
-  MAT_GEOM_VOLUME_OBJECT,
-  MAT_GEOM_VOLUME_WORLD,
   MAT_GEOM_WORLD,
 };
 
@@ -125,11 +123,17 @@ static inline eClosureBits shader_closure_bits_from_flag(const GPUMaterial *gpum
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
     closure_bits |= CLOSURE_TRANSPARENCY;
   }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
+    closure_bits |= CLOSURE_TRANSLUCENT;
+  }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_EMISSION)) {
     closure_bits |= CLOSURE_EMISSION;
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_GLOSSY)) {
     closure_bits |= CLOSURE_REFLECTION;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_COAT)) {
+    closure_bits |= CLOSURE_CLEARCOAT;
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
     closure_bits |= CLOSURE_SSS;
@@ -142,6 +146,9 @@ static inline eClosureBits shader_closure_bits_from_flag(const GPUMaterial *gpum
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_AO)) {
     closure_bits |= CLOSURE_AMBIENT_OCCLUSION;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SHADER_TO_RGBA)) {
+    closure_bits |= CLOSURE_SHADER_TO_RGBA;
   }
   return closure_bits;
 }
@@ -282,6 +289,7 @@ struct MaterialPass {
 
 struct Material {
   bool is_alpha_blend_transparent;
+  bool has_transparent_shadows;
   bool has_surface;
   bool has_volume;
   MaterialPass shadow;

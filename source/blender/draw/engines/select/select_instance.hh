@@ -14,7 +14,7 @@
 
 #include "GPU_select.hh"
 
-#include "../intern/gpu_select_private.h"
+#include "../intern/gpu_select_private.hh"
 
 #include "draw_manager.hh"
 #include "draw_pass.hh"
@@ -88,7 +88,7 @@ struct SelectMap {
 
   /** Mapping between internal IDs and `object->runtime->select_id`. */
   Vector<uint> select_id_map;
-#ifdef DEBUG
+#ifndef NDEBUG
   /** Debug map containing a copy of the object name. */
   Vector<std::string> map_names;
 #endif
@@ -113,7 +113,7 @@ struct SelectMap {
 
     uint object_id = ob_ref.object->runtime->select_id;
     uint id = select_id_map.append_and_get_index(object_id | sub_object_id);
-#ifdef DEBUG
+#ifndef NDEBUG
     map_names.append(ob_ref.object->id.name);
 #endif
     return {id};
@@ -153,12 +153,12 @@ struct SelectMap {
     info_buf.push_update();
 
     select_id_map.clear();
-#ifdef DEBUG
+#ifndef NDEBUG
     map_names.clear();
 #endif
   }
 
-  /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
   void select_bind(PassSimple &pass)
   {
     if (selection_type == SelectionType::DISABLED) {
@@ -173,7 +173,7 @@ struct SelectMap {
     pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
   }
 
-  /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
   void select_bind(PassMain &pass)
   {
     if (selection_type == SelectionType::DISABLED) {

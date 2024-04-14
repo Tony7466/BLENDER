@@ -8,9 +8,11 @@ set(INC
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
+  ../../functions
   ../../gpencil_modifiers_legacy
   ../../gpu
   ../../ikplugin
+  ../../imbuf
   ../../makesrna
   ../../modifiers
   ../../python
@@ -54,7 +56,7 @@ set(SRC
   object_volume.cc
   object_warp.cc
 
-  object_intern.h
+  object_intern.hh
 )
 
 set(LIB
@@ -66,8 +68,7 @@ set(LIB
   PRIVATE bf::dna
   bf_editor_mesh
   bf_editor_grease_pencil
-  PRIVATE bf::functions
-  PRIVATE bf::imbuf
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_render

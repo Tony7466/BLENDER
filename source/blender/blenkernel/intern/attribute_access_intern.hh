@@ -31,14 +31,10 @@ struct CustomDataAccessInfo {
  * A #BuiltinAttributeProvider is responsible for exactly one attribute on a geometry component.
  * The attribute is identified by its name and has a fixed domain and type. Builtin attributes do
  * not follow the same loose rules as other attributes, because they are mapped to internal
- * "legacy" data structures. For example, some builtin attributes cannot be deleted. */
+ * "legacy" data structures. For example, some builtin attributes cannot be deleted.
+ */
 class BuiltinAttributeProvider {
  public:
-  /* Some utility enums to avoid hard to read booleans in function calls. */
-  enum CreatableEnum {
-    Creatable,
-    NonCreatable,
-  };
   enum DeletableEnum {
     Deletable,
     NonDeletable,
@@ -46,23 +42,20 @@ class BuiltinAttributeProvider {
 
  protected:
   const std::string name_;
-  const eAttrDomain domain_;
+  const AttrDomain domain_;
   const eCustomDataType data_type_;
-  const CreatableEnum createable_;
   const DeletableEnum deletable_;
   const AttributeValidator validator_;
 
  public:
   BuiltinAttributeProvider(std::string name,
-                           const eAttrDomain domain,
+                           const AttrDomain domain,
                            const eCustomDataType data_type,
-                           const CreatableEnum createable,
                            const DeletableEnum deletable,
                            AttributeValidator validator = {})
       : name_(std::move(name)),
         domain_(domain),
         data_type_(data_type),
-        createable_(createable),
         deletable_(deletable),
         validator_(validator)
   {
@@ -79,7 +72,7 @@ class BuiltinAttributeProvider {
     return name_;
   }
 
-  eAttrDomain domain() const
+  AttrDomain domain() const
   {
     return domain_;
   }
@@ -108,7 +101,7 @@ class DynamicAttributesProvider {
   virtual bool try_delete(void *owner, const AttributeIDRef &attribute_id) const = 0;
   virtual bool try_create(void *owner,
                           const AttributeIDRef &attribute_id,
-                          const eAttrDomain domain,
+                          const AttrDomain domain,
                           const eCustomDataType data_type,
                           const AttributeInit &initializer) const
   {
@@ -119,7 +112,7 @@ class DynamicAttributesProvider {
 
   virtual bool foreach_attribute(const void *owner,
                                  const AttributeForeachCallback callback) const = 0;
-  virtual void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const = 0;
+  virtual void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const = 0;
 };
 
 /**
@@ -128,11 +121,11 @@ class DynamicAttributesProvider {
 class CustomDataAttributeProvider final : public DynamicAttributesProvider {
  private:
   static constexpr uint64_t supported_types_mask = CD_MASK_PROP_ALL;
-  eAttrDomain domain_;
+  AttrDomain domain_;
   CustomDataAccessInfo custom_data_access_;
 
  public:
-  CustomDataAttributeProvider(const eAttrDomain domain,
+  CustomDataAttributeProvider(const AttrDomain domain,
                               const CustomDataAccessInfo custom_data_access)
       : domain_(domain), custom_data_access_(custom_data_access)
   {
@@ -147,13 +140,13 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
 
   bool try_create(void *owner,
                   const AttributeIDRef &attribute_id,
-                  eAttrDomain domain,
+                  AttrDomain domain,
                   const eCustomDataType data_type,
                   const AttributeInit &initializer) const final;
 
   bool foreach_attribute(const void *owner, const AttributeForeachCallback callback) const final;
 
-  void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const final
+  void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const final
   {
     callback(domain_);
   }
@@ -174,27 +167,21 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
  */
 class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
   using UpdateOnChange = void (*)(void *owner);
-  const eCustomDataType stored_type_;
   const CustomDataAccessInfo custom_data_access_;
   const UpdateOnChange update_on_change_;
-  bool stored_as_named_attribute_;
 
  public:
   BuiltinCustomDataLayerProvider(std::string attribute_name,
-                                 const eAttrDomain domain,
-                                 const eCustomDataType attribute_type,
-                                 const eCustomDataType stored_type,
-                                 const CreatableEnum creatable,
+                                 const AttrDomain domain,
+                                 const eCustomDataType data_type,
                                  const DeletableEnum deletable,
                                  const CustomDataAccessInfo custom_data_access,
-                                 const UpdateOnChange update_on_write,
+                                 const UpdateOnChange update_on_change,
                                  const AttributeValidator validator = {})
       : BuiltinAttributeProvider(
-            std::move(attribute_name), domain, attribute_type, creatable, deletable, validator),
-        stored_type_(stored_type),
+            std::move(attribute_name), domain, data_type, deletable, validator),
         custom_data_access_(custom_data_access),
-        update_on_change_(update_on_write),
-        stored_as_named_attribute_(data_type_ == stored_type_)
+        update_on_change_(update_on_change)
   {
   }
 
@@ -229,7 +216,7 @@ class ComponentAttributeProviders {
   /**
    * All the domains that are supported by at least one of the providers above.
    */
-  VectorSet<eAttrDomain> supported_domains_;
+  VectorSet<AttrDomain> supported_domains_;
 
  public:
   ComponentAttributeProviders(Span<const BuiltinAttributeProvider *> builtin_attribute_providers,
@@ -242,7 +229,7 @@ class ComponentAttributeProviders {
       supported_domains_.add(provider->domain());
     }
     for (const DynamicAttributesProvider *provider : dynamic_attribute_providers) {
-      provider->foreach_domain([&](eAttrDomain domain) { supported_domains_.add(domain); });
+      provider->foreach_domain([&](AttrDomain domain) { supported_domains_.add(domain); });
     }
   }
 
@@ -256,7 +243,7 @@ class ComponentAttributeProviders {
     return dynamic_attribute_providers_;
   }
 
-  Span<eAttrDomain> supported_domains() const
+  Span<AttrDomain> supported_domains() const
   {
     return supported_domains_;
   }
@@ -298,7 +285,7 @@ template<const ComponentAttributeProviders &providers>
 inline bool for_all(const void *owner,
                     FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn)
 {
-  Set<AttributeIDRef> handled_attribute_ids;
+  Set<AttributeIDRef, 16> handled_attribute_ids;
   for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
   {
     if (provider->exists(owner)) {
@@ -414,7 +401,7 @@ inline bool remove(void *owner, const AttributeIDRef &attribute_id)
 template<const ComponentAttributeProviders &providers>
 inline bool add(void *owner,
                 const AttributeIDRef &attribute_id,
-                eAttrDomain domain,
+                AttrDomain domain,
                 eCustomDataType data_type,
                 const AttributeInit &initializer)
 {

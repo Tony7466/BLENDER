@@ -8,7 +8,7 @@
 
 #include "DNA_material_types.h"
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "NOD_shader.h"
@@ -78,9 +78,11 @@ MaterialModule::MaterialModule(Instance &inst) : inst_(inst)
     diffuse_mat->use_nodes = true;
     diffuse_mat->surface_render_method = MA_SURFACE_METHOD_FORWARD;
 
+    /* Use 0.18 as it is close to middle gray. Middle gray is typically defined as 18% reflectance
+     * of visible light and commonly used for VFX balls. */
     bNode *bsdf = nodeAddStaticNode(nullptr, ntree, SH_NODE_BSDF_DIFFUSE);
     bNodeSocket *base_color = nodeFindSocket(bsdf, SOCK_IN, "Color");
-    copy_v3_fl(((bNodeSocketValueRGBA *)base_color->default_value)->value, 0.8f);
+    copy_v3_fl(((bNodeSocketValueRGBA *)base_color->default_value)->value, 0.18f);
 
     bNode *output = nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_MATERIAL);
 
@@ -171,7 +173,11 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       blender_mat, ntree, pipeline_type, geometry_type, use_deferred_compilation);
 
   const bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_OCCUPANCY, MAT_PIPE_VOLUME_MATERIAL);
-  const bool is_forward = ELEM(pipeline_type, MAT_PIPE_FORWARD, MAT_PIPE_PREPASS_OVERLAP);
+  const bool is_forward = ELEM(pipeline_type,
+                               MAT_PIPE_FORWARD,
+                               MAT_PIPE_PREPASS_FORWARD,
+                               MAT_PIPE_PREPASS_FORWARD_VELOCITY,
+                               MAT_PIPE_PREPASS_OVERLAP);
 
   switch (GPU_material_status(matpass.gpumat)) {
     case GPU_MAT_SUCCESS: {
@@ -200,6 +206,8 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
   inst_.manager->register_layer_attributes(matpass.gpumat);
 
   if (GPU_material_recalc_flag_get(matpass.gpumat)) {
+    /* TODO(Miguel Pozo): This is broken, it consumes the flag,
+     * but GPUMats can be shared across viewports. */
     inst_.sampling.reset();
   }
 
@@ -243,7 +251,7 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.volume_occupancy = material_pass_get(
           ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME);
       mat.volume_material = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME);
       return mat;
     });
 
@@ -330,7 +338,7 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.volume_occupancy = material_pass_get(
             ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
         mat.volume_material = material_pass_get(
-            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, geometry_type);
       }
       else {
         mat.volume_occupancy = MaterialPass();
@@ -348,6 +356,10 @@ Material &MaterialModule::material_sync(Object *ob,
     mat.is_alpha_blend_transparent = use_forward_pipeline &&
                                      GPU_material_flag_get(mat.shading.gpumat,
                                                            GPU_MATFLAG_TRANSPARENT);
+    mat.has_transparent_shadows = blender_mat->blend_flag & MA_BL_TRANSPARENT_SHADOW &&
+                                  GPU_material_flag_get(mat.shading.gpumat,
+                                                        GPU_MATFLAG_TRANSPARENT);
+
     return mat;
   });
 

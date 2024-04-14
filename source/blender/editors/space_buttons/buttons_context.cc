@@ -15,10 +15,9 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
-#include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -28,9 +27,8 @@
 #include "DNA_world_types.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.hh"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
@@ -51,7 +49,7 @@
 
 #include "WM_api.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static int set_pointer_type(ButsContextPath *path, bContextDataResult *result, StructRNA *type)
 {
@@ -831,6 +829,7 @@ const char *buttons_context_dir[] = {
     "texture",
     "texture_user",
     "texture_user_property",
+    "texture_node",
     "bone",
     "edit_bone",
     "pose_bone",
@@ -846,7 +845,9 @@ const char *buttons_context_dir[] = {
     "line_style",
     "collection",
     "gpencil",
+#ifdef WITH_GREASE_PENCIL_V3
     "grease_pencil",
+#endif
     "curves",
 #ifdef WITH_POINT_CLOUD
     "pointcloud",

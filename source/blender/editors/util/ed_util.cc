@@ -16,12 +16,12 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_collection.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_collection.hh"
+#include "BKE_global.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -30,7 +30,7 @@
 #include "BKE_packedFile.h"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
-#include "BKE_undo_system.h"
+#include "BKE_undo_system.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -44,10 +44,11 @@
 #include "ED_object.hh"
 #include "ED_paint.hh"
 #include "ED_screen.hh"
+#include "ED_sculpt.hh"
 #include "ED_space_api.hh"
 #include "ED_util.hh"
 
-#include "GPU_immediate.h"
+#include "GPU_immediate.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -75,6 +76,7 @@ void ED_editors_init_for_undo(Main *bmain)
 
 void ED_editors_init(bContext *C)
 {
+  using namespace blender::ed;
   Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -84,7 +86,7 @@ void ED_editors_init(bContext *C)
   ReportList *reports = CTX_wm_reports(C);
   int reports_flag_prev = reports->flag & ~RPT_STORE;
 
-  SWAP(int, reports->flag, reports_flag_prev);
+  std::swap(reports->flag, reports_flag_prev);
 
   /* Don't do undo pushes when calling an operator. */
   wm->op_undo_depth++;
@@ -111,7 +113,7 @@ void ED_editors_init(bContext *C)
                        GP_DATA_STROKE_SCULPTMODE | GP_DATA_STROKE_WEIGHTMODE |
                        GP_DATA_STROKE_VERTEXMODE);
         ob->mode = OB_MODE_OBJECT;
-        DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
       }
       else if (mode & OB_MODE_ALL_PAINT_GPENCIL) {
         ED_gpencil_toggle_brush_cursor(C, true, nullptr);
@@ -123,7 +125,7 @@ void ED_editors_init(bContext *C)
      * previous mode if possible, re-creating its mode data, etc. */
     ID *ob_data = static_cast<ID *>(ob->data);
     ob->mode = OB_MODE_OBJECT;
-    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 
     /* Object mode is enforced if there is no active object, or if the active object's type is
      * different. */
@@ -154,7 +156,7 @@ void ED_editors_init(bContext *C)
     }
 
     if (mode == OB_MODE_EDIT) {
-      ED_object_editmode_enter_ex(bmain, scene, ob, 0);
+      object::editmode_enter_ex(bmain, scene, ob, 0);
     }
     else if (mode & OB_MODE_ALL_SCULPT) {
       if (obact == ob) {
@@ -183,7 +185,7 @@ void ED_editors_init(bContext *C)
     else {
       /* TODO(@ideasman42): avoid operator calls. */
       if (obact == ob) {
-        ED_object_mode_set(C, eObjectMode(mode));
+        object::mode_set(C, eObjectMode(mode));
       }
     }
   }
@@ -205,14 +207,15 @@ void ED_editors_init(bContext *C)
     }
   }
 
-  ED_assetlist_storage_tag_main_data_dirty();
+  asset::list::storage_tag_main_data_dirty();
 
-  SWAP(int, reports->flag, reports_flag_prev);
+  std::swap(reports->flag, reports_flag_prev);
   wm->op_undo_depth--;
 }
 
 void ED_editors_exit(Main *bmain, bool do_undo_system)
 {
+  using namespace blender::ed;
   if (!bmain) {
     return;
   }
@@ -235,12 +238,12 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
    * since exiting edit-mode will tag the objects too.
    *
    * However there is no guarantee the active object _never_ changes while in edit-mode.
-   * Python for example can do this, some callers to #ED_object_base_activate
+   * Python for example can do this, some callers to #object::base_activate
    * don't handle modes either (doing so isn't always practical).
    *
    * To reproduce the problem where stale data is used, see: #84920. */
   LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    if (ED_object_editmode_free_ex(bmain, ob)) {
+    if (object::editmode_free_ex(bmain, ob)) {
       if (do_undo_system == false) {
         DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
       }
@@ -257,6 +260,7 @@ bool ED_editors_flush_edits_for_object_ex(Main *bmain,
                                           bool for_render,
                                           bool check_needs_flush)
 {
+  using namespace blender::ed;
   bool has_edited = false;
   if (ob->mode & OB_MODE_SCULPT) {
     /* Don't allow flushing while in the middle of a stroke (frees data in use).
@@ -296,7 +300,7 @@ bool ED_editors_flush_edits_for_object_ex(Main *bmain,
 
     /* get editmode results */
     has_edited = true;
-    ED_object_editmode_load(bmain, ob);
+    object::editmode_load(bmain, ob);
   }
   return has_edited;
 }
@@ -391,7 +395,7 @@ void unpack_menu(bContext *C,
     if (!STREQ(abs_name, local_name)) {
       switch (BKE_packedfile_compare_to_file(blendfile_path, local_name, pf)) {
         case PF_CMP_NOFILE:
-          SNPRINTF(line, TIP_("Create %s"), local_name);
+          SNPRINTF(line, IFACE_("Create %s"), local_name);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_WRITE_LOCAL);
@@ -399,7 +403,7 @@ void unpack_menu(bContext *C,
 
           break;
         case PF_CMP_EQUAL:
-          SNPRINTF(line, TIP_("Use %s (identical)"), local_name);
+          SNPRINTF(line, IFACE_("Use %s (identical)"), local_name);
           // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
@@ -408,14 +412,14 @@ void unpack_menu(bContext *C,
 
           break;
         case PF_CMP_DIFFERS:
-          SNPRINTF(line, TIP_("Use %s (differs)"), local_name);
+          SNPRINTF(line, IFACE_("Use %s (differs)"), local_name);
           // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
           RNA_enum_set(&props_ptr, "method", PF_USE_LOCAL);
           RNA_string_set(&props_ptr, "id", id_name);
 
-          SNPRINTF(line, TIP_("Overwrite %s"), local_name);
+          SNPRINTF(line, IFACE_("Overwrite %s"), local_name);
           // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_LOCAL);
           uiItemFullO_ptr(
               layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
@@ -428,7 +432,7 @@ void unpack_menu(bContext *C,
 
   switch (BKE_packedfile_compare_to_file(blendfile_path, abs_name, pf)) {
     case PF_CMP_NOFILE:
-      SNPRINTF(line, TIP_("Create %s"), abs_name);
+      SNPRINTF(line, IFACE_("Create %s"), abs_name);
       // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
@@ -436,7 +440,7 @@ void unpack_menu(bContext *C,
       RNA_string_set(&props_ptr, "id", id_name);
       break;
     case PF_CMP_EQUAL:
-      SNPRINTF(line, TIP_("Use %s (identical)"), abs_name);
+      SNPRINTF(line, IFACE_("Use %s (identical)"), abs_name);
       // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
@@ -444,14 +448,14 @@ void unpack_menu(bContext *C,
       RNA_string_set(&props_ptr, "id", id_name);
       break;
     case PF_CMP_DIFFERS:
-      SNPRINTF(line, TIP_("Use %s (differs)"), abs_name);
+      SNPRINTF(line, IFACE_("Use %s (differs)"), abs_name);
       // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_USE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
       RNA_enum_set(&props_ptr, "method", PF_USE_ORIGINAL);
       RNA_string_set(&props_ptr, "id", id_name);
 
-      SNPRINTF(line, TIP_("Overwrite %s"), abs_name);
+      SNPRINTF(line, IFACE_("Overwrite %s"), abs_name);
       // uiItemEnumO_ptr(layout, ot, line, ICON_NONE, "method", PF_WRITE_ORIGINAL);
       uiItemFullO_ptr(
           layout, ot, line, ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &props_ptr);
@@ -463,7 +467,9 @@ void unpack_menu(bContext *C,
   UI_popup_menu_end(C, pup);
 }
 
-void ED_spacedata_id_remap(ScrArea *area, SpaceLink *sl, const IDRemapper *mappings)
+void ED_spacedata_id_remap(ScrArea *area,
+                           SpaceLink *sl,
+                           const blender::bke::id::IDRemapper &mappings)
 {
   SpaceType *st = BKE_spacetype_from_id(sl->spacetype);
   if (st && st->id_remap) {
@@ -476,9 +482,8 @@ void ED_spacedata_id_remap_single(ScrArea *area, SpaceLink *sl, ID *old_id, ID *
   SpaceType *st = BKE_spacetype_from_id(sl->spacetype);
 
   if (st && st->id_remap) {
-    IDRemapper *mappings = BKE_id_remapper_create();
-    BKE_id_remapper_add(mappings, old_id, new_id);
+    blender::bke::id::IDRemapper mappings;
+    mappings.add(old_id, new_id);
     st->id_remap(area, sl, mappings);
-    BKE_id_remapper_free(mappings);
   }
 }

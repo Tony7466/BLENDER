@@ -28,8 +28,6 @@
 #endif
 #include "MEM_guardedalloc.h"
 
-#include "PIL_time.h"
-
 #include "CLG_log.h"
 
 #include "BLI_fileops.h"
@@ -39,32 +37,32 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_image.h"
 
 #include "BIF_glutil.hh"
 
-#include "GPU_context.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_init_exit.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_context.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_init_exit.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 #include "DNA_scene_types.h"
-#include "ED_datafiles.h" /* for fonts */
 #include "GHOST_C-api.h"
 
 #include "DEG_depsgraph.hh"
 
-#include "wm_window_private.h"
+#include "wm_window_private.hh"
 
 #include "WM_api.hh" /* Only for #WM_main_playanim. */
 
@@ -269,7 +267,7 @@ struct PlayState {
   GhostData ghost_data;
 };
 
-/* for debugging */
+/* For debugging. */
 #if 0
 static void print_ps(PlayState *ps)
 {
@@ -301,26 +299,26 @@ static void playanim_gpu_matrix()
   GPU_matrix_ortho_set(0.0f, 1.0f, 0.0f, 1.0f, -1.0, 1.0f);
 }
 
-/* implementation */
+/* Implementation. */
 static void playanim_event_qual_update(GhostData *ghost_data)
 {
   bool val;
 
-  /* Shift */
+  /* Shift. */
   GHOST_GetModifierKeyState(ghost_data->system, GHOST_kModifierKeyLeftShift, &val);
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_LSHIFT);
 
   GHOST_GetModifierKeyState(ghost_data->system, GHOST_kModifierKeyRightShift, &val);
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_RSHIFT);
 
-  /* Control */
+  /* Control. */
   GHOST_GetModifierKeyState(ghost_data->system, GHOST_kModifierKeyLeftControl, &val);
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_LCTRL);
 
   GHOST_GetModifierKeyState(ghost_data->system, GHOST_kModifierKeyRightControl, &val);
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_RCTRL);
 
-  /* Alt */
+  /* Alt. */
   GHOST_GetModifierKeyState(ghost_data->system, GHOST_kModifierKeyLeftAlt, &val);
   SET_FLAG_FROM_TEST(ghost_data->qual, val, WS_QUAL_LALT);
 
@@ -337,7 +335,7 @@ struct PlayAnimPict {
   /** The allocated error message to show if the file cannot be loaded. */
   char *error_message;
   ImBuf *ibuf;
-  struct anim *anim;
+  ImBufAnim *anim;
   int frame;
   int IB_flags;
 
@@ -351,7 +349,7 @@ struct PlayAnimPict {
 /**
  * Various globals relating to playback.
  * \note Avoid adding members here where possible,
- * prefer #PlayState or one of it's members where possible.
+ * prefer #PlayState or one of its members where possible.
  */
 static struct {
   bool from_disk;
@@ -487,7 +485,7 @@ static int pupdate_time()
 {
   static double time_last;
 
-  double time = PIL_check_seconds_timer();
+  double time = BLI_time_now_seconds();
 
   g_playanim.total_time += (time - time_last);
   time_last = time;
@@ -507,7 +505,7 @@ static void *ocio_transform_ibuf(const PlayDisplayContext *display_ctx,
   force_fallback |= (ED_draw_imbuf_method(ibuf) != IMAGE_DRAW_METHOD_GLSL);
   force_fallback |= (ibuf->dither != 0.0f);
 
-  /* Default */
+  /* Default. */
   *r_format = GPU_RGBA8;
   *r_data = GPU_DATA_UBYTE;
 
@@ -608,10 +606,10 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
   BLI_rctf_init(&preview, 0.0f, 1.0f, 0.0f, 1.0f);
   if (draw_flip) {
     if (draw_flip[0]) {
-      SWAP(float, preview.xmin, preview.xmax);
+      std::swap(preview.xmin, preview.xmax);
     }
     if (draw_flip[1]) {
-      SWAP(float, preview.ymin, preview.ymax);
+      std::swap(preview.ymin, preview.ymax);
     }
   }
 
@@ -845,7 +843,7 @@ static void build_pict_list_from_anim(ListBase *picsbase,
                                       const int frame_offset)
 {
   /* OCIO_TODO: support different input color space. */
-  anim *anim = IMB_open_anim(filepath_first, IB_rect, 0, nullptr);
+  ImBufAnim *anim = IMB_open_anim(filepath_first, IB_rect, 0, nullptr);
   if (anim == nullptr) {
     CLOG_WARN(&LOG, "couldn't open anim '%s'", filepath_first);
     return;
@@ -920,7 +918,8 @@ static void build_pict_list_from_image_sequence(ListBase *picsbase,
     void *mem = nullptr;
     size_t size = -1;
     if (!buffer_from_filepath(
-            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message)) {
+            filepath, g_playanim.from_disk ? nullptr : &mem, &size, &error_message))
+    {
       has_error = true;
       size = 0;
     }
@@ -1065,7 +1064,7 @@ static void playanim_change_frame(PlayState *ps)
   int sizex, sizey;
   playanim_window_get_size(ps->ghost_data.window, &sizex, &sizey);
   const int i_last = static_cast<PlayAnimPict *>(ps->picsbase.last)->frame;
-  /* Without this the frame-indicator location isn't closest to the cursor.  */
+  /* Without this the frame-indicator location isn't closest to the cursor. */
   const int correct_rounding = (sizex / i_last) / 2;
   const int i = clamp_i((i_last * (ps->frame_cursor_x + correct_rounding)) / sizex, 0, i_last);
 
@@ -1143,11 +1142,11 @@ static void playanim_audio_stop(PlayState * /*ps*/)
 #endif
 }
 
-static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr ps_void)
+static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr ps_void_ptr)
 {
-  PlayState *ps = static_cast<PlayState *>(ps_void);
-  const GHOST_TEventType type = GHOST_GetEventType(evt);
-  GHOST_TEventDataPtr data = GHOST_GetEventData(evt);
+  PlayState *ps = static_cast<PlayState *>(ps_void_ptr);
+  const GHOST_TEventType type = GHOST_GetEventType(ghost_event);
+  GHOST_TEventDataPtr data = GHOST_GetEventData(ghost_event);
   /* Convert ghost event into value keyboard or mouse. */
   const int val = ELEM(type, GHOST_kEventKeyDown, GHOST_kEventButtonDown);
   GHOST_SystemHandle ghost_system = ps->ghost_data.system;
@@ -1642,7 +1641,7 @@ static GHOST_WindowHandle playanim_window_open(
 static void playanim_window_zoom(PlayState *ps, const float zoom_offset)
 {
   int size[2];
-  // int ofs[2]; /* UNUSED */
+  // int ofs[2]; /* UNUSED. */
 
   if (ps->zoom + zoom_offset > 0.0f) {
     ps->zoom += zoom_offset;
@@ -1650,12 +1649,12 @@ static void playanim_window_zoom(PlayState *ps, const float zoom_offset)
 
   // playanim_window_get_position(&ofs[0], &ofs[1]);
   // playanim_window_get_size(ps->ghost_data.window, &size[0], &size[1]);
-  // ofs[0] += size[0] / 2; /* UNUSED */
-  // ofs[1] += size[1] / 2; /* UNUSED */
+  // ofs[0] += size[0] / 2; /* UNUSED. */
+  // ofs[1] += size[1] / 2; /* UNUSED. */
   size[0] = ps->zoom * ps->ibuf_size[0];
   size[1] = ps->zoom * ps->ibuf_size[1];
-  // ofs[0] -= size[0] / 2; /* UNUSED */
-  // ofs[1] -= size[1] / 2; /* UNUSED */
+  // ofs[0] -= size[0] / 2; /* UNUSED. */
+  // ofs[1] -= size[1] / 2; /* UNUSED. */
   // window_set_position(ps->ghost_data.window, size[0], size[1]);
   GHOST_SetClientSize(ps->ghost_data.window, size[0], size[1]);
 }
@@ -1807,7 +1806,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 
   if (IMB_isanim(filepath)) {
     /* OCIO_TODO: support different input color spaces. */
-    anim *anim = IMB_open_anim(filepath, IB_rect, 0, nullptr);
+    ImBufAnim *anim = IMB_open_anim(filepath, IB_rect, 0, nullptr);
     if (anim) {
       ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
       IMB_close_anim(anim);
@@ -1918,7 +1917,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
 #ifdef WITH_AUDASPACE
   g_audaspace.source = AUD_Sound_file(filepath);
   if (!BLI_listbase_is_empty(&ps.picsbase)) {
-    anim *anim_movie = static_cast<PlayAnimPict *>(ps.picsbase.first)->anim;
+    ImBufAnim *anim_movie = static_cast<PlayAnimPict *>(ps.picsbase.first)->anim;
     if (anim_movie) {
       short frs_sec = 25;
       float frs_sec_base = 1.0;
@@ -2016,13 +2015,13 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
           STRNCPY(ibuf->filepath, ps.picture->filepath);
         }
 
-/* why only windows? (from 2.4x) - campbell */
+/* NOTE(@ideasman42): why only windows? (from 2.4x). */
 #ifdef _WIN32
         GHOST_SetTitle(ps.ghost_data.window, ps.picture->filepath);
 #endif
 
         while (pupdate_time()) {
-          PIL_sleep_ms(1);
+          BLI_time_sleep_ms(1);
         }
         g_playanim.total_time -= g_playanim.swap_time;
         playanim_toscreen(&ps, ps.picture, ibuf);
@@ -2053,7 +2052,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
       }
       playanim_change_frame(&ps);
       if (!has_event) {
-        PIL_sleep_ms(1);
+        BLI_time_sleep_ms(1);
       }
       if (ps.wait) {
         continue;
@@ -2116,7 +2115,7 @@ static bool wm_main_playanim_intern(int argc, const char **argv, PlayArgs *args_
     MEM_freeN(ps.picture);
   }
 
-/* cleanup */
+/* Cleanup. */
 #ifndef USE_IMB_CACHE
   if (ibuf) {
     IMB_freeImBuf(ibuf);

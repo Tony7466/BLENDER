@@ -98,19 +98,30 @@ struct bAnimContext {
   ReportList *reports;
 };
 
-/* Main Data container types */
+/** Main Data container types. */
 enum eAnimCont_Types {
-  ANIMCONT_NONE = 0,      /* invalid or no data */
-  ANIMCONT_ACTION = 1,    /* action (#bAction) */
-  ANIMCONT_SHAPEKEY = 2,  /* shape-key (#Key) */
-  ANIMCONT_GPENCIL = 3,   /* grease pencil (screen) */
-  ANIMCONT_DOPESHEET = 4, /* dope-sheet (#bDopesheet) */
-  ANIMCONT_FCURVES = 5,   /* animation F-Curves (#bDopesheet) */
-  ANIMCONT_DRIVERS = 6,   /* drivers (#bDopesheet) */
-  ANIMCONT_NLA = 7,       /* NLA (#bDopesheet) */
-  ANIMCONT_CHANNEL = 8,   /* animation channel (#bAnimListElem) */
-  ANIMCONT_MASK = 9,      /* mask dope-sheet */
-  ANIMCONT_TIMELINE = 10, /* "timeline" editor (#bDopeSheet) */
+  /** Invalid or no data. */
+  ANIMCONT_NONE = 0,
+  /** Action (#bAction). */
+  ANIMCONT_ACTION = 1,
+  /** Shape-key (#Key). */
+  ANIMCONT_SHAPEKEY = 2,
+  /** Grease pencil (screen). */
+  ANIMCONT_GPENCIL = 3,
+  /** Dope-sheet (#bDopesheet). */
+  ANIMCONT_DOPESHEET = 4,
+  /** Animation F-Curves (#bDopesheet). */
+  ANIMCONT_FCURVES = 5,
+  /** Drivers (#bDopesheet). */
+  ANIMCONT_DRIVERS = 6,
+  /** NLA (#bDopesheet). */
+  ANIMCONT_NLA = 7,
+  /** Animation channel (#bAnimListElem). */
+  ANIMCONT_CHANNEL = 8,
+  /** Mask dope-sheet. */
+  ANIMCONT_MASK = 9,
+  /** "timeline" editor (#bDopeSheet). */
+  ANIMCONT_TIMELINE = 10,
 };
 
 /** \} */
@@ -247,7 +258,7 @@ enum eAnim_ChannelType {
   ANIMTYPE_NUM_TYPES,
 };
 
-/* types of keyframe data in bAnimListElem */
+/** Types of keyframe data in #bAnimListElem. */
 enum eAnim_KeyType {
   ALE_NONE = 0, /* no keyframe data */
   ALE_FCURVE,   /* F-Curve */
@@ -272,9 +283,12 @@ enum eAnim_KeyType {
  * For use with ANIM_animdata_update()
  */
 enum eAnim_Update_Flags {
-  ANIM_UPDATE_DEPS = (1 << 0),    /* referenced data and dependencies get refreshed */
-  ANIM_UPDATE_ORDER = (1 << 1),   /* keyframes need to be sorted */
-  ANIM_UPDATE_HANDLES = (1 << 2), /* recalculate handles */
+  /** Referenced data and dependencies get refreshed. */
+  ANIM_UPDATE_DEPS = (1 << 0),
+  /** Keyframes need to be sorted. */
+  ANIM_UPDATE_ORDER = (1 << 1),
+  /** Recalculate handles. */
+  ANIM_UPDATE_HANDLES = (1 << 2),
 };
 
 /* used for most tools which change keyframes (flushed by ANIM_animdata_update) */
@@ -454,9 +468,6 @@ ENUM_OPERATORS(eAnimFilter_Flags, ANIMFILTER_TMP_IGNORE_ONLYSEL);
 /** Track widths */
 #define NLATRACK_NAMEWIDTH (10 * U.widget_unit)
 
-/** Track toggle-buttons */
-#define NLATRACK_BUTTON_WIDTH (0.8f * U.widget_unit)
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -492,6 +503,9 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac);
  * - AnimContext to write to is provided as pointer to var on stack so that we don't have
  *   allocation/freeing costs (which are not that avoidable with channels).
  * \return whether the operation was successful.
+ *
+ * \note This may also update the space data. For example, `SpaceAction::action`
+ * is set to the currently active object's Action.
  */
 bool ANIM_animdata_context_getdata(bAnimContext *ac);
 
@@ -537,7 +551,7 @@ enum eAnimChannels_SetFlag {
   ACHANNEL_SETFLAG_INVERT = 2,
   /** some on -> all off / all on */
   ACHANNEL_SETFLAG_TOGGLE = 3,
-  /** turn off, keep active flag **/
+  /** Turn off, keep active flag. */
   ACHANNEL_SETFLAG_EXTEND_RANGE = 4,
 };
 
@@ -956,12 +970,6 @@ float ANIM_unit_mapping_get_factor(Scene *scene, ID *id, FCurve *fcu, short flag
 /* -------------------------------------------------------------------- */
 /** \name Utility macros
  * \{ */
-
-/**
- * Provide access to Keyframe Type info in #BezTriple.
- * NOTE: this is so that we can change it from being stored in 'hide'
- */
-#define BEZKEYTYPE(bezt) ((bezt)->hide)
 
 /**
  * Set/Clear/Toggle macro.

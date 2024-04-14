@@ -12,7 +12,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -28,15 +28,18 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_attribute.h"
-#  include "BKE_node.h"
+#  include <fmt/format.h>
+
+#  include "BKE_attribute.hh"
+#  include "BKE_node.hh"
+#  include "BKE_node_enum.hh"
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.hh"
 
 #  include "BLI_set.hh"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  include "DNA_material_types.h"
 #  include "ED_node.hh"
@@ -77,21 +80,21 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
   }
 }
 
-static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   const bNodeTreeInterfaceItem *item = static_cast<const bNodeTreeInterfaceItem *>(ptr->data);
   if (!ntree->runtime) {
-    return nullptr;
+    return std::nullopt;
   }
 
   ntree->ensure_interface_cache();
   for (const int index : ntree->interface_items().index_range()) {
     if (ntree->interface_items()[index] == item) {
-      return BLI_sprintfN("interface.items_tree[%d]", index);
+      return fmt::format("interface.items_tree[{}]", index);
     }
   }
-  return nullptr;
+  return std::nullopt;
 }
 
 static PointerRNA rna_NodeTreeInterfaceItem_parent_get(PointerRNA *ptr)
@@ -275,7 +278,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
     nodeRegisterSocketType(st);
   }
 
-  st->free_self = (void (*)(bNodeSocketType * stype)) MEM_freeN;
+  st->free_self = (void (*)(bNodeSocketType *stype))MEM_freeN;
 
   /* if RNA type is already registered, unregister first */
   if (st->ext_interface.srna) {
@@ -446,13 +449,14 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
 static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_attribute_domain_itemf(
     bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
 {
+  using namespace blender;
   EnumPropertyItem *item_array = nullptr;
   int items_len = 0;
 
   for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
        item++)
   {
-    if (!U.experimental.use_grease_pencil_version3 && item->value == ATTR_DOMAIN_LAYER) {
+    if (!U.experimental.use_grease_pencil_version3 && item->value == int(bke::AttrDomain::Layer)) {
       continue;
     }
     RNA_enum_item_add(&item_array, &items_len, item);
@@ -526,32 +530,19 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
   return socket;
 }
 
-static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
-    ID *id,
-    bNodeTreeInterface *interface,
-    Main *bmain,
-    ReportList *reports,
-    const char *name,
-    const char *description,
-    bool default_closed,
-    bNodeTreeInterfacePanel *parent)
+static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(ID *id,
+                                                                     bNodeTreeInterface *interface,
+                                                                     Main *bmain,
+                                                                     ReportList *reports,
+                                                                     const char *name,
+                                                                     const char *description,
+                                                                     bool default_closed)
 {
-  if (parent != nullptr) {
-    if (!interface->find_item(parent->item)) {
-      BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
-      return nullptr;
-    }
-    if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
-      BKE_report(reports, RPT_WARNING, "Parent panel does not allow child panels");
-      return nullptr;
-    }
-  }
-
   NodeTreeInterfacePanelFlag flag = NodeTreeInterfacePanelFlag(0);
   SET_FLAG_FROM_TEST(flag, default_closed, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 
   bNodeTreeInterfacePanel *panel = interface->add_panel(
-      name ? name : "", description ? description : "", flag, parent);
+      name ? name : "", description ? description : "", flag, nullptr);
 
   if (panel == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create panel");
@@ -688,7 +679,8 @@ static const EnumPropertyItem *rna_subtype_filter_itemf(const blender::Set<int> 
   EnumPropertyItem *items = nullptr;
   int items_count = 0;
   for (const EnumPropertyItem *item = rna_enum_property_subtype_items; item->name != nullptr;
-       item++) {
+       item++)
+  {
     if (subtypes.contains(item->value)) {
       RNA_enum_item_add(&items, &items_count, item);
     }
@@ -879,6 +871,24 @@ static int rna_NodeTreeInterface_items_lookup_string(PointerRNA *ptr,
     }
   }
   return false;
+}
+
+const EnumPropertyItem *RNA_node_tree_interface_socket_menu_itemf(bContext * /*C*/,
+                                                                  PointerRNA *ptr,
+                                                                  PropertyRNA * /*prop*/,
+                                                                  bool *r_free)
+{
+  const bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
+  if (!socket) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  const bNodeSocketValueMenu *data = static_cast<bNodeSocketValueMenu *>(socket->socket_data);
+  if (!data->enum_items) {
+    *r_free = false;
+    return rna_enum_dummy_NULL_items;
+  }
+  return RNA_node_enum_definition_itemf(*data->enum_items, r_free);
 }
 
 #else
@@ -1155,11 +1165,6 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_boolean(
       func, "default_closed", false, "Default Closed", "Panel is closed by default on new nodes");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_pointer(func,
-                  "parent",
-                  "NodeTreeInterfacePanel",
-                  "Parent",
-                  "Add panel as a child of the parent panel");
   /* return value */
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfacePanel", "Panel", "New panel");
   RNA_def_function_return(func, parm);

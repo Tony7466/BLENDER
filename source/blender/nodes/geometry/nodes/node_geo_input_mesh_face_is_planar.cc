@@ -4,9 +4,6 @@
 
 #include "BLI_math_vector.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_mesh.hh"
 
 #include "node_geometry_util.hh"
@@ -19,7 +16,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.01f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)
-      .field_source()
       .supports_field()
       .description(
           "The distance a point can be from the surface before the face is no longer "
@@ -39,7 +35,7 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
     const Span<float3> positions = mesh.vert_positions();
@@ -47,7 +43,7 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
     const Span<int> corner_verts = mesh.corner_verts();
     const Span<float3> face_normals = mesh.face_normals();
 
-    const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_FACE};
+    const bke::MeshFieldContext context{mesh, AttrDomain::Face};
     fn::FieldEvaluator evaluator{context, faces.size()};
     evaluator.add(threshold_);
     evaluator.evaluate();
@@ -77,7 +73,7 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
     };
 
     return mesh.attributes().adapt_domain<bool>(
-        VArray<bool>::ForFunc(faces.size(), planar_fn), ATTR_DOMAIN_FACE, domain);
+        VArray<bool>::ForFunc(faces.size(), planar_fn), AttrDomain::Face, domain);
   }
 
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
@@ -96,9 +92,9 @@ class PlanarFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const PlanarFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
   {
-    return ATTR_DOMAIN_FACE;
+    return AttrDomain::Face;
   }
 };
 

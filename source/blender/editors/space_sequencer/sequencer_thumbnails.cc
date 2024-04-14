@@ -10,11 +10,11 @@
 #include "BLI_ghash.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_scene.h"
+#include "BKE_global.hh"
+#include "BKE_scene.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_screen.hh"
 
@@ -37,7 +37,7 @@ struct ThumbnailDrawJob {
   SeqRenderData context;
   GHash *sequences_ghash;
   Scene *scene;
-  rctf *view_area;
+  const rctf *view_area;
   float pixelx;
   float pixely;
   float thumb_height;
@@ -59,7 +59,7 @@ static void thumbnail_freejob(void *data)
 {
   ThumbnailDrawJob *tj = static_cast<ThumbnailDrawJob *>(data);
   BLI_ghash_free(tj->sequences_ghash, nullptr, thumbnail_hash_data_free);
-  MEM_freeN(tj->view_area);
+  MEM_freeN((void *)tj->view_area);
   MEM_freeN(tj);
 }
 
@@ -69,7 +69,7 @@ static void thumbnail_endjob(void *data)
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, tj->scene);
 }
 
-static bool check_seq_need_thumbnails(const Scene *scene, Sequence *seq, rctf *view_area)
+static bool check_seq_need_thumbnails(const Scene *scene, Sequence *seq, const rctf *view_area)
 {
   if (!ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     return false;
@@ -143,7 +143,7 @@ static void thumbnail_start_job(void *data, wmJobWorkerStatus *worker_status)
 
   /* First pass: render visible images. */
   BLI_ghashIterator_init(&gh_iter, tj->sequences_ghash);
-  while (!BLI_ghashIterator_done(&gh_iter) & !worker_status->stop) {
+  while (!BLI_ghashIterator_done(&gh_iter) && !worker_status->stop) {
     Sequence *seq_orig = static_cast<Sequence *>(BLI_ghashIterator_getKey(&gh_iter));
     ThumbDataItem *val = static_cast<ThumbDataItem *>(
         BLI_ghash_lookup(tj->sequences_ghash, seq_orig));
@@ -160,7 +160,7 @@ static void thumbnail_start_job(void *data, wmJobWorkerStatus *worker_status)
 
   /* Second pass: render "guaranteed" set of images. */
   BLI_ghashIterator_init(&gh_iter, tj->sequences_ghash);
-  while (!BLI_ghashIterator_done(&gh_iter) & !worker_status->stop) {
+  while (!BLI_ghashIterator_done(&gh_iter) && !worker_status->stop) {
     Sequence *seq_orig = static_cast<Sequence *>(BLI_ghashIterator_getKey(&gh_iter));
     ThumbDataItem *val = static_cast<ThumbDataItem *>(
         BLI_ghash_lookup(tj->sequences_ghash, seq_orig));
@@ -295,21 +295,21 @@ static void sequencer_thumbnail_start_job_if_necessary(
 
   /* Job start requested, but over area which has been processed. Unless `thumbnail_is_missing` is
    * true, ignore this request as all images are in view. */
-  if (v2d->cur.xmax == sseq->runtime.last_thumbnail_area.xmax &&
-      v2d->cur.ymax == sseq->runtime.last_thumbnail_area.ymax && !thumbnail_is_missing)
+  if (v2d->cur.xmax == sseq->runtime->last_thumbnail_area.xmax &&
+      v2d->cur.ymax == sseq->runtime->last_thumbnail_area.ymax && !thumbnail_is_missing)
   {
     return;
   }
 
   /* Stop the job first as view has changed. Pointless to continue old job. */
-  if (v2d->cur.xmax != sseq->runtime.last_thumbnail_area.xmax ||
-      v2d->cur.ymax != sseq->runtime.last_thumbnail_area.ymax)
+  if (v2d->cur.xmax != sseq->runtime->last_thumbnail_area.xmax ||
+      v2d->cur.ymax != sseq->runtime->last_thumbnail_area.ymax)
   {
     WM_jobs_stop(CTX_wm_manager(C), nullptr, thumbnail_start_job);
   }
 
   sequencer_thumbnail_init_job(C, v2d, ed, thumb_height);
-  sseq->runtime.last_thumbnail_area = v2d->cur;
+  sseq->runtime->last_thumbnail_area = v2d->cur;
 }
 
 void last_displayed_thumbnails_list_free(void *val)
@@ -320,15 +320,15 @@ void last_displayed_thumbnails_list_free(void *val)
 static GSet *last_displayed_thumbnails_list_ensure(const bContext *C, Sequence *seq)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if (sseq->runtime.last_displayed_thumbnails == nullptr) {
-    sseq->runtime.last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
+  if (sseq->runtime->last_displayed_thumbnails == nullptr) {
+    sseq->runtime->last_displayed_thumbnails = BLI_ghash_ptr_new(__func__);
   }
 
   GSet *displayed_thumbnails = static_cast<GSet *>(
-      BLI_ghash_lookup(sseq->runtime.last_displayed_thumbnails, seq));
+      BLI_ghash_lookup(sseq->runtime->last_displayed_thumbnails, seq));
   if (displayed_thumbnails == nullptr) {
     displayed_thumbnails = BLI_gset_int_new(__func__);
-    BLI_ghash_insert(sseq->runtime.last_displayed_thumbnails, seq, displayed_thumbnails);
+    BLI_ghash_insert(sseq->runtime->last_displayed_thumbnails, seq, displayed_thumbnails);
   }
 
   return displayed_thumbnails;

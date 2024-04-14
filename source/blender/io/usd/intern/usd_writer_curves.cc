@@ -11,22 +11,20 @@
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
-#include "usd_hierarchy_iterator.h"
-#include "usd_writer_curves.h"
+#include "usd_hierarchy_iterator.hh"
+#include "usd_writer_curves.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_curve_legacy_convert.hh"
 #include "BKE_curves.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
-#include "BLI_math_geom.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-
-#include "WM_api.hh"
 
 namespace blender::io::usd {
 
@@ -73,7 +71,7 @@ static void populate_curve_widths(const bke::CurvesGeometry &geometry, pxr::VtAr
 {
   const bke::AttributeAccessor curve_attributes = geometry.attributes();
   const bke::AttributeReader<float> radii = curve_attributes.lookup<float>("radius",
-                                                                           ATTR_DOMAIN_POINT);
+                                                                           bke::AttrDomain::Point);
 
   widths.resize(radii.varray.size());
 
@@ -215,10 +213,8 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
                                  positions[last_point_index][1],
                                  positions[last_point_index][2]));
 
-    /* For USD representation of periodic bezier curve, one of the curve's points must be
-     * repeated to close the curve. The repeated point is the first point. Since the curve is
-     * closed, we now need to include the right handle of the last point and the left handle of
-     * the first point.
+    /* For USD periodic bezier curves, since the curve is closed, we need to include
+     * the right handle of the last point and the left handle of the first point.
      */
     if (is_cyclic) {
       const blender::float3 right_handle = handles_r[last_point_index];
@@ -226,10 +222,6 @@ static void populate_curve_verts_for_bezier(const bke::CurvesGeometry &geometry,
 
       const blender::float3 left_handle = handles_l[start_point_index];
       verts.push_back(pxr::GfVec3f(left_handle[0], left_handle[1], left_handle[2]));
-
-      verts.push_back(pxr::GfVec3f(positions[start_point_index][0],
-                                   positions[start_point_index][1],
-                                   positions[start_point_index][2]));
     }
 
     const int tot_points = verts.size() - start_verts_count;
@@ -529,9 +521,11 @@ void USDCurvesWriter::assign_materials(const HierarchyContext &context,
       continue;
     }
 
-    pxr::UsdShadeMaterialBindingAPI api = pxr::UsdShadeMaterialBindingAPI(usd_curve.GetPrim());
+    pxr::UsdPrim curve_prim = usd_curve.GetPrim();
+    pxr::UsdShadeMaterialBindingAPI api = pxr::UsdShadeMaterialBindingAPI(curve_prim);
     pxr::UsdShadeMaterial usd_material = ensure_usd_material(context, material);
     api.Bind(usd_material);
+    api.Apply(curve_prim);
 
     /* USD seems to support neither per-material nor per-face-group double-sidedness, so we just
      * use the flag from the first non-empty material slot. */

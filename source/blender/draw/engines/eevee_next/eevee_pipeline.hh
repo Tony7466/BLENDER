@@ -12,8 +12,10 @@
 
 #pragma once
 
-#include "DRW_render.h"
-#include "draw_shader_shared.h"
+#include "BLI_math_bits.h"
+
+#include "DRW_render.hh"
+#include "draw_shader_shared.hh"
 
 #include "eevee_lut.hh"
 #include "eevee_subsurface.hh"
@@ -38,7 +40,7 @@ class BackgroundPipeline {
  public:
   BackgroundPipeline(Instance &inst) : inst_(inst){};
 
-  void sync(GPUMaterial *gpumat, float background_opacity);
+  void sync(GPUMaterial *gpumat, float background_opacity, float background_blur);
   void render(View &view);
 };
 
@@ -143,6 +145,9 @@ class ForwardPipeline {
   PassSortable transparent_ps_ = {"Forward.Transparent"};
   float3 camera_forward_;
 
+  bool has_opaque_ = false;
+  bool has_transparent_ = false;
+
  public:
   ForwardPipeline(Instance &inst) : inst_(inst){};
 
@@ -175,25 +180,46 @@ struct DeferredLayerBase {
   PassMain::Sub *prepass_double_sided_moving_ps_ = nullptr;
 
   PassMain gbuffer_ps_ = {"Shading"};
+  /* Shaders that use the ClosureToRGBA node needs to be rendered first.
+   * Consider they hybrid forward and deferred. */
+  PassMain::Sub *gbuffer_single_sided_hybrid_ps_ = nullptr;
+  PassMain::Sub *gbuffer_double_sided_hybrid_ps_ = nullptr;
   PassMain::Sub *gbuffer_single_sided_ps_ = nullptr;
   PassMain::Sub *gbuffer_double_sided_ps_ = nullptr;
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
+  /* Maximum closure count considering all material in this pass. */
+  int closure_count_ = 0;
 
   /* Return the amount of gbuffer layer needed. */
   int closure_layer_count() const
   {
-    return count_bits_i(closure_bits_ &
-                        (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE | CLOSURE_SSS));
+    /* Diffuse and translucent require only one layer. */
+    int count = count_bits_i(closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* SSS require an additional layer compared to diffuse. */
+    count += count_bits_i(closure_bits_ & CLOSURE_SSS);
+    /* Reflection and refraction can have at most two layers. */
+    count += 2 * count_bits_i(closure_bits_ &
+                              (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_CLEARCOAT));
+    return count;
   }
 
   /* Return the amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
-    return count_bits_i(closure_bits_ &
-                        (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
+    /* TODO(fclem): We could count the number of different tangent frame in the shader and use
+     * min(tangent_frame_count, closure_count) once we have the normal reuse optimization.
+     * For now, allocate a split normal layer for each Closure. */
+    int count = count_bits_i(closure_bits_ &
+                             (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_CLEARCOAT |
+                              CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    /* Count the additional infos layer needed by some closures. */
+    count += count_bits_i(closure_bits_ & (CLOSURE_SSS | CLOSURE_TRANSLUCENT));
+    return count;
   }
+
+  void gbuffer_pass_sync(Instance &inst);
 };
 
 class DeferredPipeline;
@@ -203,6 +229,8 @@ class DeferredLayer : DeferredLayerBase {
 
  private:
   Instance &inst_;
+
+  static constexpr int max_lighting_tile_count_ = 128 * 128;
 
   /* Evaluate all light objects contribution. */
   PassSimple eval_light_ps_ = {"EvalLights"};
@@ -216,20 +244,27 @@ class DeferredLayer : DeferredLayerBase {
    * BSDF color and do additive blending for each of the lighting step.
    *
    * NOTE: Not to be confused with the render passes.
+   * NOTE: Using array of texture instead of texture array to allow to use TextureFromPool.
    */
-  TextureFromPool direct_diffuse_tx_ = {"direct_diffuse_tx"};
-  TextureFromPool direct_reflect_tx_ = {"direct_reflect_tx"};
-  TextureFromPool direct_refract_tx_ = {"direct_refract_tx"};
-  /* Reference to ray-tracing result. */
-  GPUTexture *indirect_diffuse_tx_ = nullptr;
-  GPUTexture *indirect_reflect_tx_ = nullptr;
-  GPUTexture *indirect_refract_tx_ = nullptr;
+  TextureFromPool direct_radiance_txs_[3] = {
+      {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
+  Texture dummy_black_tx = {"dummy_black_tx"};
+  /* Reference to ray-tracing results. */
+  GPUTexture *indirect_radiance_txs_[3] = {nullptr};
+
+  /**
+   * Tile texture containing several bool per tile indicating presence of feature.
+   * It is used to select specialized shader for each tile.
+   */
+  Texture tile_mask_tx_ = {"tile_mask_tx_"};
 
   /* TODO(fclem): This should be a TextureFromPool. */
   Texture radiance_behind_tx_ = {"radiance_behind_tx"};
   /* TODO(fclem): This shouldn't be part of the pipeline but of the view. */
   Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
   float4x4 radiance_feedback_persmat_;
+
+  bool use_combined_lightprobe_eval = true;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
@@ -243,8 +278,8 @@ class DeferredLayer : DeferredLayerBase {
   void render(View &main_view,
               View &render_view,
               Framebuffer &prepass_fb,
-              Framebuffer &gbuffer_fb,
               Framebuffer &combined_fb,
+              Framebuffer &gbuffer_fb,
               int2 extent,
               RayTraceBuffer &rt_buffer,
               bool is_first_pass);
@@ -259,6 +294,8 @@ class DeferredPipeline {
   DeferredLayer volumetric_layer_;
 
   PassSimple debug_draw_ps_ = {"debug_gbuffer"};
+
+  bool use_combined_lightprobe_eval;
 
  public:
   DeferredPipeline(Instance &inst)
@@ -286,9 +323,9 @@ class DeferredPipeline {
   }
 
   /* Return the maximum amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
-    return max_ii(opaque_layer_.color_layer_count(), refraction_layer_.color_layer_count());
+    return max_ii(opaque_layer_.normal_layer_count(), refraction_layer_.normal_layer_count());
   }
 
   void debug_draw(draw::View &view, GPUFrameBuffer *combined_fb);
@@ -304,28 +341,13 @@ class DeferredPipeline {
  *
  * \{ */
 
-struct GridAABB {
-  int3 min, max;
+struct VolumeObjectBounds {
+  /* Screen 2D bounds for layer intersection check. */
+  std::optional<Bounds<float2>> screen_bounds;
+  /* Combined bounds in Z. Allow tighter integration bounds. */
+  std::optional<Bounds<float>> z_range;
 
-  GridAABB(int3 min_, int3 max_) : min(min_), max(max_){};
-
-  /** Returns the intersection between this AABB and the \a other AABB. */
-  GridAABB intersection(const GridAABB &other) const
-  {
-    return {math::max(this->min, other.min), math::min(this->max, other.max)};
-  }
-
-  /** Returns the extent of the volume. Undefined if AABB is empty. */
-  int3 extent() const
-  {
-    return max - min;
-  }
-
-  /** Returns true if volume covers nothing or is negative. */
-  bool is_empty() const
-  {
-    return math::reduce_min(max - min) <= 0;
-  }
+  VolumeObjectBounds(const Camera &camera, Object *ob);
 };
 
 /**
@@ -336,6 +358,8 @@ class VolumeLayer {
   bool use_hit_list = false;
   bool is_empty = true;
   bool finalized = false;
+  bool has_scatter = false;
+  bool has_absorption = false;
 
  private:
   Instance &inst_;
@@ -345,7 +369,9 @@ class VolumeLayer {
   PassMain::Sub *occupancy_ps_;
   PassMain::Sub *material_ps_;
   /* List of bounds from all objects contained inside this pass. */
-  Vector<GridAABB> object_bounds_;
+  Vector<std::optional<Bounds<float2>>> object_bounds_;
+  /* Combined bounds from object_bounds_. */
+  std::optional<Bounds<float2>> combined_screen_bounds_;
 
  public:
   VolumeLayer(Instance &inst) : inst_(inst)
@@ -361,20 +387,9 @@ class VolumeLayer {
                               GPUMaterial *gpumat);
 
   /* Return true if the given bounds overlaps any of the contained object in this layer. */
-  bool bounds_overlaps(const GridAABB &object_aabb) const
-  {
-    for (const GridAABB &other_aabb : object_bounds_) {
-      if (object_aabb.intersection(other_aabb).is_empty() == false) {
-        return true;
-      }
-    }
-    return false;
-  }
+  bool bounds_overlaps(const VolumeObjectBounds &object_aabb) const;
 
-  void add_object_bound(const GridAABB &object_aabb)
-  {
-    object_bounds_.append(object_aabb);
-  }
+  void add_object_bound(const VolumeObjectBounds &object_aabb);
 
   void sync();
   void render(View &view, Texture &occupancy_tx);
@@ -386,6 +401,8 @@ class VolumePipeline {
 
   Vector<std::unique_ptr<VolumeLayer>> layers_;
 
+  /* Combined bounds in Z. Allow tighter integration bounds. */
+  std::optional<Bounds<float>> object_integration_range_;
   /* True if any volume (any object type) creates a volume draw-call. Enables the volume module. */
   bool enabled_ = false;
   /* Aggregated properties of all volume objects. */
@@ -404,12 +421,7 @@ class VolumePipeline {
    */
   VolumeLayer *register_and_get_layer(Object *ob);
 
-  /**
-   * Creates a volume material call.
-   * If any call to this function result in a valid draw-call, then the volume module will be
-   * enabled.
-   */
-  void material_call(MaterialPass &volume_material_pass, Object *ob, ResourceHandle res_handle);
+  std::optional<Bounds<float>> object_integration_range() const;
 
   bool is_enabled() const
   {
@@ -417,31 +429,25 @@ class VolumePipeline {
   }
   bool has_scatter() const
   {
-    return has_scatter_;
+    for (auto &layer : layers_) {
+      if (layer->has_scatter) {
+        return true;
+      }
+    }
+    return false;
   }
   bool has_absorption() const
   {
-    return has_absorption_;
+    for (auto &layer : layers_) {
+      if (layer->has_absorption) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /* Returns true if any volume layer uses the hist list. */
   bool use_hit_list() const;
-
- private:
-  /**
-   * Returns Axis aligned bounding box in the volume grid.
-   * Used for frustum culling and volumes overlapping detection.
-   * Represents min and max grid corners covered by a volume.
-   * So a volume covering the first froxel will have min={0,0,0} and max={1,1,1}.
-   * A volume with min={0,0,0} and max={0,0,0} covers nothing.
-   */
-  GridAABB grid_aabb_from_object(Object *ob);
-
-  /**
-   * Returns the view entire AABB. Used for clipping object bounds.
-   * Remember that these are cells corners, so this extents to `tex_size`.
-   */
-  GridAABB grid_aabb_from_view();
 };
 
 /** \} */
@@ -450,38 +456,16 @@ class VolumePipeline {
 /** \name Deferred Probe Capture.
  * \{ */
 
-class DeferredProbePipeline;
-
-class DeferredProbeLayer : DeferredLayerBase {
-  friend DeferredProbePipeline;
-
+class DeferredProbePipeline {
  private:
   Instance &inst_;
+
+  DeferredLayerBase opaque_layer_;
 
   PassSimple eval_light_ps_ = {"EvalLights"};
 
  public:
-  DeferredProbeLayer(Instance &inst) : inst_(inst){};
-
-  void begin_sync();
-  void end_sync();
-
-  PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat);
-  PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
-
-  void render(View &view,
-              Framebuffer &prepass_fb,
-              Framebuffer &combined_fb,
-              Framebuffer &gbuffer_fb,
-              int2 extent);
-};
-
-class DeferredProbePipeline {
- private:
-  DeferredProbeLayer opaque_layer_;
-
- public:
-  DeferredProbePipeline(Instance &inst) : opaque_layer_(inst){};
+  DeferredProbePipeline(Instance &inst) : inst_(inst){};
 
   void begin_sync();
   void end_sync();
@@ -502,9 +486,9 @@ class DeferredProbePipeline {
   }
 
   /* Return the maximum amount of gbuffer layer needed. */
-  int color_layer_count() const
+  int normal_layer_count() const
   {
-    return opaque_layer_.color_layer_count();
+    return opaque_layer_.normal_layer_count();
   }
 };
 
@@ -529,8 +513,11 @@ class PlanarProbePipeline : DeferredLayerBase {
   PassMain::Sub *prepass_add(::Material *material, GPUMaterial *gpumat);
   PassMain::Sub *material_add(::Material *material, GPUMaterial *gpumat);
 
-  void render(
-      View &view, Framebuffer &gbuffer, Framebuffer &combined_fb, int layer_id, int2 extent);
+  void render(View &view,
+              GPUTexture *depth_layer_tx,
+              Framebuffer &gbuffer,
+              Framebuffer &combined_fb,
+              int2 extent);
 };
 
 /** \} */
@@ -673,6 +660,7 @@ class PipelineModule {
 
   void begin_sync()
   {
+    data.is_probe_reflection = false;
     probe.begin_sync();
     planar.begin_sync();
     deferred.begin_sync();

@@ -32,10 +32,6 @@
 
 #include <sys/stat.h>
 
-/* Set to 0 to allow devices that do not have the required features.
- * This allows development on OSX until we really needs these features. */
-#define STRICT_REQUIREMENTS true
-
 /*
  * Should we only select surfaces that are known to be compatible. Or should we in case no
  * compatible surfaces have been found select the first one.
@@ -226,13 +222,15 @@ class GHOST_DeviceVK {
     queue_create_infos.push_back(graphic_queue_create_info);
 
     VkPhysicalDeviceFeatures device_features = {};
-#if STRICT_REQUIREMENTS
+#ifndef __APPLE__
     device_features.geometryShader = VK_TRUE;
-    device_features.dualSrcBlend = VK_TRUE;
+    /* MoltenVK supports logicOp, needs to be build with MVK_USE_METAL_PRIVATE_API. */
     device_features.logicOp = VK_TRUE;
+#endif
+    device_features.dualSrcBlend = VK_TRUE;
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
-#endif
+    device_features.shaderClipDistance = VK_TRUE;
     device_features.drawIndirectFirstInstance = VK_TRUE;
     device_features.fragmentStoresAndAtomics = VK_TRUE;
     device_features.samplerAnisotropy = features.features.samplerAnisotropy;
@@ -303,7 +301,6 @@ class GHOST_DeviceVK {
     }
 
     fprintf(stderr, "Couldn't find any Graphic queue family on selected device\n");
-    return;
   }
 };
 
@@ -318,7 +315,7 @@ static std::optional<GHOST_DeviceVK> vulkan_device;
 
 static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
                                            VkSurfaceKHR vk_surface,
-                                           vector<const char *> required_extensions)
+                                           const vector<const char *> &required_extensions)
 {
   if (vulkan_device.has_value()) {
     return GHOST_kSuccess;
@@ -355,7 +352,11 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
       }
     }
 
-#if STRICT_REQUIREMENTS
+#ifdef __APPLE__
+    if (!device_vk.features.features.dualSrcBlend || !device_vk.features.features.imageCubeArray) {
+      continue;
+    }
+#else
     if (!device_vk.features.features.geometryShader || !device_vk.features.features.dualSrcBlend ||
         !device_vk.features.features.logicOp || !device_vk.features.features.imageCubeArray)
     {
@@ -623,7 +624,7 @@ static vector<VkExtensionProperties> getExtensionsAvailable()
   return extensions;
 }
 
-static bool checkExtensionSupport(vector<VkExtensionProperties> &extensions_available,
+static bool checkExtensionSupport(const vector<VkExtensionProperties> &extensions_available,
                                   const char *extension_name)
 {
   for (const auto &extension : extensions_available) {
@@ -634,7 +635,7 @@ static bool checkExtensionSupport(vector<VkExtensionProperties> &extensions_avai
   return false;
 }
 
-static void requireExtension(vector<VkExtensionProperties> &extensions_available,
+static void requireExtension(const vector<VkExtensionProperties> &extensions_available,
                              vector<const char *> &extensions_enabled,
                              const char *extension_name)
 {
@@ -657,7 +658,8 @@ static vector<VkLayerProperties> getLayersAvailable()
   return layers;
 }
 
-static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const char *layer_name)
+static bool checkLayerSupport(const vector<VkLayerProperties> &layers_available,
+                              const char *layer_name)
 {
   for (const auto &layer : layers_available) {
     if (strcmp(layer_name, layer.layerName) == 0) {
@@ -667,7 +669,7 @@ static bool checkLayerSupport(vector<VkLayerProperties> &layers_available, const
   return false;
 }
 
-static void enableLayer(vector<VkLayerProperties> &layers_available,
+static void enableLayer(const vector<VkLayerProperties> &layers_available,
                         vector<const char *> &layers_enabled,
                         const VkLayer layer,
                         const bool display_warning)
@@ -789,7 +791,7 @@ static bool selectSurfaceFormat(const VkPhysicalDevice physical_device,
   vector<VkSurfaceFormatKHR> formats(format_count);
   vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface, &format_count, formats.data());
 
-  for (VkSurfaceFormatKHR &format : formats) {
+  for (const VkSurfaceFormatKHR &format : formats) {
     if (surfaceFormatSupported(format)) {
       r_surfaceFormat = format;
       return true;
@@ -999,8 +1001,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 
   if (use_window_surface) {
     const char *native_surface_extension_name = getPlatformSpecificSurfaceExtension();
-
-    requireExtension(extensions_available, extensions_enabled, "VK_KHR_surface");
+    requireExtension(extensions_available, extensions_enabled, VK_KHR_SURFACE_EXTENSION_NAME);
     requireExtension(extensions_available, extensions_enabled, native_surface_extension_name);
 
     extensions_device.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -1009,10 +1010,13 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   extensions_device.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 
   /* Enable MoltenVK required instance extensions. */
-#ifdef VK_MVK_MOLTENVK_EXTENSION_NAME
+#ifdef __APPLE__
   requireExtension(
-      extensions_available, extensions_enabled, "VK_KHR_get_physical_device_properties2");
+      extensions_available, extensions_enabled, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
+  requireExtension(extensions_available,
+                   extensions_enabled,
+                   VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
   VkInstance instance = VK_NULL_HANDLE;
   if (!vulkan_device.has_value()) {
@@ -1044,6 +1048,10 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     if (m_debug) {
       create_info.pNext = &validationFeatures;
     }
+
+#ifdef __APPLE__
+    create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
   }

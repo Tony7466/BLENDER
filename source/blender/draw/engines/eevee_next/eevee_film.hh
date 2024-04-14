@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "eevee_shader_shared.hh"
 
@@ -79,6 +79,8 @@ class Film {
   int2 display_extent;
 
   eViewLayerEEVEEPassType enabled_passes_ = eViewLayerEEVEEPassType(0);
+  PassCategory enabled_categories_ = PassCategory(0);
+  bool use_reprojection_ = false;
 
  public:
   Film(Instance &inst, FilmData &data) : inst_(inst), data_(data){};
@@ -88,6 +90,11 @@ class Film {
 
   void sync();
   void end_sync();
+
+  const FilmData &get_data()
+  {
+    return data_;
+  }
 
   /** Accumulate the newly rendered sample contained in #RenderBuffers and blit to display. */
   void accumulate(View &view, GPUTexture *combined_final_tx);
@@ -111,6 +118,11 @@ class Film {
   int2 display_extent_get() const
   {
     return display_extent;
+  }
+
+  int scaling_factor_get() const
+  {
+    return data_.scaling_factor;
   }
 
   float2 pixel_jitter_get() const;

@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -21,30 +22,27 @@
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 
-#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_sound.h"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
 
 #include "SEQ_add.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_effects.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
-#include "SEQ_select.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
@@ -54,7 +52,6 @@
 #include "proxy.hh"
 #include "sequencer.hh"
 #include "strip_time.hh"
-#include "utils.hh"
 
 void SEQ_add_load_data_init(SeqLoadData *load_data,
                             const char *name,
@@ -323,7 +320,7 @@ Sequence *SEQ_add_sound_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
    * nearest frame as the audio track usually overshoots or undershoots the
    * end frame of the video by a little bit.
    * See #47135 for under shoot example. */
-  seq->len = MAX2(1, round((info.length - sound->offset_time) * FPS));
+  seq->len = std::max(1, int(round((info.length - sound->offset_time) * FPS)));
 
   Strip *strip = seq->strip;
   /* We only need 1 element to store the filename. */
@@ -332,7 +329,7 @@ Sequence *SEQ_add_sound_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   BLI_path_split_dir_file(
       load_data->path, strip->dirpath, sizeof(strip->dirpath), se->filename, sizeof(se->filename));
 
-  if (seq != nullptr && seq->sound != nullptr) {
+  if (seq->sound != nullptr) {
     if (load_data->flags & SEQ_LOAD_SOUND_MONO) {
       seq->sound->flags |= SOUND_FLAGS_MONO;
     }
@@ -384,14 +381,15 @@ Sequence *SEQ_add_meta_strip(Scene *scene, ListBase *seqbase, SeqLoadData *load_
 
 Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqLoadData *load_data)
 {
-  char path[sizeof(load_data->path)];
-  STRNCPY(path, load_data->path);
-  BLI_path_abs(path, BKE_main_blendfile_path(bmain));
+  char filepath[sizeof(load_data->path)];
+  STRNCPY(filepath, load_data->path);
+  BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
 
   char colorspace[64] = "\0"; /* MAX_COLORSPACE_NAME */
   bool is_multiview_loaded = false;
   const int totfiles = seq_num_files(scene, load_data->views_format, load_data->use_multiview);
-  anim **anim_arr = static_cast<anim **>(MEM_callocN(sizeof(anim *) * totfiles, "Video files"));
+  ImBufAnim **anim_arr = static_cast<ImBufAnim **>(
+      MEM_callocN(sizeof(ImBufAnim *) * totfiles, "Video files"));
   int i;
   int orig_width = 0;
   int orig_height = 0;
@@ -401,14 +399,14 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
     const char *ext = nullptr;
     size_t j = 0;
 
-    BKE_scene_multiview_view_prefix_get(scene, path, prefix, &ext);
+    BKE_scene_multiview_view_prefix_get(scene, filepath, prefix, &ext);
 
     if (prefix[0] != '\0') {
       for (i = 0; i < totfiles; i++) {
-        char filepath[FILE_MAX];
+        char filepath_view[FILE_MAX];
 
-        seq_multiview_name(scene, i, prefix, ext, filepath, sizeof(filepath));
-        anim_arr[j] = openanim(filepath, IB_rect, 0, colorspace);
+        seq_multiview_name(scene, i, prefix, ext, filepath_view, sizeof(filepath_view));
+        anim_arr[j] = openanim(filepath_view, IB_rect, 0, colorspace);
 
         if (anim_arr[j]) {
           seq_anim_add_suffix(scene, anim_arr[j], i);
@@ -420,7 +418,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   }
 
   if (is_multiview_loaded == false) {
-    anim_arr[0] = openanim(path, IB_rect, 0, colorspace);
+    anim_arr[0] = openanim(filepath, IB_rect, 0, colorspace);
   }
 
   if (anim_arr[0] == nullptr && !load_data->allow_invalid_file) {
@@ -574,7 +572,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
 
         if (prefix[0] != '\0') {
           for (i = 0; i < totfiles; i++) {
-            anim *anim;
+            ImBufAnim *anim;
             char filepath_view[FILE_MAX];
 
             seq_multiview_name(scene, i, prefix, ext, filepath_view, sizeof(filepath_view));
@@ -595,7 +593,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       }
 
       if (is_multiview_loaded == false) {
-        anim *anim;
+        ImBufAnim *anim;
         anim = openanim(filepath,
                         IB_rect | ((seq->flag & SEQ_FILTERY) ? IB_animdeinterlace : 0),
                         seq->streamindex,
@@ -692,8 +690,8 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
 void SEQ_add_movie_reload_if_needed(
     Main *bmain, Scene *scene, Sequence *seq, bool *r_was_reloaded, bool *r_can_produce_frames)
 {
-  BLI_assert(seq->type == SEQ_TYPE_MOVIE ||
-             !"This function is only implemented for movie strips.");
+  BLI_assert_msg(seq->type == SEQ_TYPE_MOVIE,
+                 "This function is only implemented for movie strips.");
 
   bool must_reload = false;
 

@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 
@@ -21,11 +22,7 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_read_write.hh"
-
-#include "BKE_colortools.h"
-#include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_colortools.hh"
 #include "BKE_sound.h"
 
 #ifdef WITH_CONVOLUTION
@@ -63,7 +60,7 @@ static bool sequencer_refresh_sound_length_recursive(Main *bmain, Scene *scene, 
       int old = seq->len;
       float fac;
 
-      seq->len = MAX2(1, round((info.length - seq->sound->offset_time) * FPS));
+      seq->len = std::max(1, int(round((info.length - seq->sound->offset_time) * FPS)));
       fac = float(seq->len) / float(old);
       old = seq->startofs;
       seq->startofs *= fac;
@@ -275,7 +272,7 @@ void *SEQ_sound_equalizermodifier_recreator(Sequence *seq, SequenceModifierData 
 
   SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
 
-  // No Equalizer definition
+  /* No equalizer definition. */
   if (BLI_listbase_is_empty(&semd->graphics)) {
     return sound;
   }
@@ -289,7 +286,7 @@ void *SEQ_sound_equalizermodifier_recreator(Sequence *seq, SequenceModifierData 
   float maxX;
   float interval = SOUND_EQUALIZER_DEFAULT_MAX_FREQ / float(SOUND_EQUALIZER_SIZE_DEFINITION);
 
-  // Visit all equalizer definitions
+  /* Visit all equalizer definitions. */
   LISTBASE_FOREACH (EQCurveMappingData *, mapping, &semd->graphics) {
     eq_mapping = &mapping->curve_mapping;
     BKE_curvemapping_init(eq_mapping);

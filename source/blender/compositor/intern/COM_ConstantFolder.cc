@@ -119,7 +119,7 @@ Vector<MemoryBuffer *> ConstantFolder::get_constant_input_buffers(NodeOperation 
 Vector<ConstantOperation *> ConstantFolder::try_fold_operations(Span<NodeOperation *> operations)
 {
   Set<NodeOperation *> foldable_ops = find_constant_foldable_operations(operations);
-  if (foldable_ops.size() == 0) {
+  if (foldable_ops.is_empty()) {
     return Vector<ConstantOperation *>();
   }
 
@@ -133,7 +133,7 @@ Vector<ConstantOperation *> ConstantFolder::try_fold_operations(Span<NodeOperati
 
 int ConstantFolder::fold_operations()
 {
-  WorkScheduler::start(operations_builder_.context());
+  WorkScheduler::start();
   Vector<ConstantOperation *> last_folds = try_fold_operations(
       operations_builder_.get_operations());
   int folds_count = last_folds.size();

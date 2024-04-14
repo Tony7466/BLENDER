@@ -9,6 +9,7 @@ set(INC
   ../../blentranslation
   ../../editors/include
   ../../gpu
+  ../../imbuf
   ../../imbuf/intern/oiio
   ../../makesrna
   ../../windowmanager
@@ -39,6 +40,7 @@ set(SRC
   bpy_app_translations.cc
   bpy_app_usd.cc
   bpy_capi_utils.cc
+  bpy_cli_command.cc
   bpy_driver.cc
   bpy_gizmo_wrap.cc
   bpy_interface.cc
@@ -86,6 +88,7 @@ set(SRC
   bpy_app_translations.h
   bpy_app_usd.h
   bpy_capi_utils.h
+  bpy_cli_command.h
   bpy_driver.h
   bpy_gizmo_wrap.h
   bpy_intern_string.h
@@ -123,7 +126,6 @@ set(LIB
   bf_editor_animation
   bf_editor_interface
   bf_editor_space_api
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig
@@ -178,10 +180,6 @@ endif()
 
 if(WITH_BULLET)
   add_definitions(-DWITH_BULLET)
-endif()
-
-if(WITH_CODEC_AVI)
-  add_definitions(-DWITH_AVI)
 endif()
 
 if(WITH_CODEC_FFMPEG)

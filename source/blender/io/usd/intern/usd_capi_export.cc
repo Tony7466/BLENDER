@@ -4,20 +4,20 @@
 
 #include <iostream>
 
-#include "usd.h"
+#include "IO_subdiv_disabler.hh"
 #include "usd.hh"
-#include "usd_hierarchy_iterator.h"
-#include "usd_hook.h"
+#include "usd_hierarchy_iterator.hh"
+#include "usd_hook.hh"
+#include "usd_private.hh"
 
-#include <pxr/base/plug/registry.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/pxr.h>
-#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdUtils/dependencies.h>
+#include <pxr/usd/usdUtils/usdzPackage.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -25,14 +25,16 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_global.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
@@ -226,6 +228,15 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
 
+  SubdivModifierDisabler mod_disabler(depsgraph);
+
+  /* If we want to set the subdiv scheme, then we need to the export the mesh
+   * without the subdiv modifier applied. */
+  if (ELEM(params.export_subdiv, USD_SUBDIV_BEST_MATCH, USD_SUBDIV_IGNORE)) {
+    mod_disabler.disable_modifiers();
+    BKE_scene_graph_update_tagged(depsgraph, bmain);
+  }
+
   /* This whole `export_to_stage` function is assumed to cover about 80% of the whole export
    * process, from 0.1f to 0.9f. */
   worker_status->progress = 0.10f;
@@ -245,8 +256,8 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   /* For restoring the current frame after exporting animation is done. */
   const int orig_frame = scene->r.cfra;
 
-  /* Ensure Python types for invoking export hooks are registered. */
-  register_export_hook_converters();
+  /* Ensure Python types for invoking hooks are registered. */
+  register_hook_converters();
 
   usd_stage->SetMetadata(pxr::UsdGeomTokens->upAxis, pxr::VtValue(pxr::UsdGeomTokens->z));
   ensure_root_prim(usd_stage, params);
@@ -286,6 +297,10 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
   worker_status->do_update = true;
 
   iter.release_writers();
+
+  if (params.export_shapekeys || params.export_armatures) {
+    iter.process_usd_skel();
+  }
 
   /* Set the default prim if it doesn't exist */
   if (!usd_stage->GetDefaultPrim()) {
@@ -411,8 +426,6 @@ static void export_endjob(void *customdata)
   report_job_duration(data);
 }
 
-}  // namespace blender::io::usd
-
 /* To create a usdz file, we must first create a .usd/a/c file and then covert it to .usdz. The
  * temporary files will be created in Blender's temporary session storage. The .usdz file will then
  * be moved to job->usdz_filepath. */
@@ -472,7 +485,20 @@ bool USD_export(bContext *C,
    *
    * Has to be done from main thread currently, as it may affect Main original data (e.g. when
    * doing deferred update of the view-layers, see #112534 for details). */
-  if (job->params.visible_objects_only) {
+  if (strlen(job->params.collection) > 0) {
+    Collection *collection = reinterpret_cast<Collection *>(
+        BKE_libblock_find_name(job->bmain, ID_GR, job->params.collection));
+    if (!collection) {
+      BKE_reportf(job->params.worker_status->reports,
+                  RPT_ERROR,
+                  "USD Export: Unable to find collection '%s'",
+                  job->params.collection);
+      return false;
+    }
+
+    DEG_graph_build_from_collection(job->depsgraph, collection);
+  }
+  else if (job->params.visible_objects_only) {
     DEG_graph_build_from_view_layer(job->depsgraph);
   }
   else {
@@ -523,3 +549,5 @@ int USD_get_version()
    */
   return PXR_VERSION;
 }
+
+}  // namespace blender::io::usd

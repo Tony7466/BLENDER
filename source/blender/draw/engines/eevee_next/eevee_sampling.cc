@@ -8,6 +8,8 @@
  * Random number generator, contains persistent state and sample count logic.
  */
 
+#include "BKE_colortools.hh"
+
 #include "BLI_rand.h"
 
 #include "BLI_math_base.hh"
@@ -25,6 +27,10 @@ namespace blender::eevee {
 void Sampling::init(const Scene *scene)
 {
   sample_count_ = inst_.is_viewport() ? scene->eevee.taa_samples : scene->eevee.taa_render_samples;
+
+  if (inst_.is_image_render()) {
+    sample_count_ = math::max(uint64_t(1), sample_count_);
+  }
 
   if (sample_count_ == 0) {
     BLI_assert(inst_.is_viewport());
@@ -75,7 +81,8 @@ void Sampling::end_sync()
 
     interactive_mode_ = viewport_sample_ < interactive_mode_threshold;
 
-    bool interactive_mode_disabled = (inst_.scene->eevee.flag & SCE_EEVEE_TAA_REPROJECTION) == 0;
+    bool interactive_mode_disabled = (inst_.scene->eevee.flag & SCE_EEVEE_TAA_REPROJECTION) == 0 ||
+                                     inst_.is_viewport_image_render();
     if (interactive_mode_disabled) {
       interactive_mode_ = false;
       sample_ = viewport_sample_;
@@ -140,9 +147,9 @@ void Sampling::step()
     }
     /* Using leaped Halton sequence so we can reused the same primes as lens. */
     double3 r, offset = {0, 0, 0};
-    uint64_t leap = 11;
-    uint3 primes = {5, 4, 7};
-    BLI_halton_3d(primes, offset, sample_raytrace * leap, r);
+    uint64_t leap = 13;
+    uint3 primes = {5, 7, 11};
+    BLI_halton_3d(primes, offset, sample_raytrace * leap + 1, r);
     data_.dimensions[SAMPLING_SHADOW_U] = r[0];
     data_.dimensions[SAMPLING_SHADOW_V] = r[1];
     data_.dimensions[SAMPLING_SHADOW_W] = r[2];
@@ -150,17 +157,26 @@ void Sampling::step()
     data_.dimensions[SAMPLING_RAYTRACE_U] = r[0];
     data_.dimensions[SAMPLING_RAYTRACE_V] = r[1];
     data_.dimensions[SAMPLING_RAYTRACE_W] = r[2];
-    /* TODO de-correlate. */
-    data_.dimensions[SAMPLING_VOLUME_U] = r[0];
-    data_.dimensions[SAMPLING_VOLUME_V] = r[1];
-    data_.dimensions[SAMPLING_VOLUME_W] = r[2];
+  }
+  {
+    uint64_t sample_volume = sample_;
+    if (interactive_mode()) {
+      sample_volume = sample_volume % interactive_sample_volume_;
+    }
+    double3 r, offset = {0, 0, 0};
+    uint3 primes = {2, 3, 5};
+    BLI_halton_3d(primes, offset, sample_volume + 1, r);
+    /* WORKAROUND: We offset the distribution to make the first sample (0,0,0). */
+    data_.dimensions[SAMPLING_VOLUME_U] = fractf(r[0] + (1.0 / 2.0));
+    data_.dimensions[SAMPLING_VOLUME_V] = fractf(r[1] + (2.0 / 3.0));
+    data_.dimensions[SAMPLING_VOLUME_W] = fractf(r[2] + (4.0 / 5.0));
   }
   {
     /* Using leaped Halton sequence so we can reused the same primes. */
     double2 r, offset = {0, 0};
     uint64_t leap = 5;
     uint2 primes = {2, 3};
-    BLI_halton_2d(primes, offset, sample_ * leap, r);
+    BLI_halton_2d(primes, offset, sample_ * leap + 1, r);
     data_.dimensions[SAMPLING_SHADOW_X] = r[0];
     data_.dimensions[SAMPLING_SHADOW_Y] = r[1];
     /* TODO de-correlate. */

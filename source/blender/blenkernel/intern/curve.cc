@@ -9,6 +9,7 @@
 #include <cmath> /* floor */
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -25,7 +26,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -40,23 +41,17 @@
 #include "DNA_object_types.h"
 #include "DNA_vfont_types.h"
 
-#include "BKE_anim_data.h"
 #include "BKE_curve.hh"
 #include "BKE_curveprofile.h"
-#include "BKE_displist.h"
-#include "BKE_idtype.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.hh"
-#include "BKE_object.hh"
+#include "BKE_idtype.hh"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_object_types.hh"
 #include "BKE_vfont.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
-
-#include "CLG_log.h"
 
 #include "BLO_read_write.hh"
 
@@ -85,7 +80,11 @@ static void curve_init_data(ID *id)
   MEMCPY_STRUCT_AFTER(curve, DNA_struct_default_get(Curve), id);
 }
 
-static void curve_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void curve_copy_data(Main *bmain,
+                            std::optional<Library *> owner_library,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   Curve *curve_dst = (Curve *)id_dst;
   const Curve *curve_src = (const Curve *)id_src;
@@ -103,7 +102,7 @@ static void curve_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
   curve_dst->bevel_profile = BKE_curveprofile_copy(curve_src->bevel_profile);
 
   if (curve_src->key && (flag & LIB_ID_COPY_SHAPEKEY)) {
-    BKE_id_copy_ex(bmain, &curve_src->key->id, (ID **)&curve_dst->key, flag);
+    BKE_id_copy_in_lib(bmain, owner_library, &curve_src->key->id, (ID **)&curve_dst->key, flag);
     /* XXX This is not nice, we need to make BKE_id_copy_ex fully re-entrant... */
     curve_dst->key->from = &curve_dst->id;
   }
@@ -277,6 +276,7 @@ static void curve_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_CU_LEGACY = {
     /*id_code*/ ID_CU_LEGACY,
     /*id_filter*/ FILTER_ID_CU_LEGACY,
+    /*dependencies_id_types*/ FILTER_ID_OB | FILTER_ID_MA | FILTER_ID_VF | FILTER_ID_KE,
     /*main_listbase_index*/ INDEX_ID_CU_LEGACY,
     /*struct_size*/ sizeof(Curve),
     /*name*/ "Curve",
@@ -4256,7 +4256,8 @@ void BKE_nurbList_handles_set(ListBase *editnurb,
           while (a--) {
             const short flag = BKE_nurb_bezt_handle_test_calc_flag(bezt, SELECT, handle_mode);
             if (((flag & (1 << 0)) && bezt->h1 != HD_FREE) ||
-                ((flag & (1 << 2)) && bezt->h2 != HD_FREE)) {
+                ((flag & (1 << 2)) && bezt->h2 != HD_FREE))
+            {
               h_new = HD_AUTO;
               break;
             }
@@ -4749,7 +4750,6 @@ bool BKE_nurb_valid_message(const int pnts,
   NURBSValidationStatus status = nurb_check_valid(
       pnts, order, flag, type, is_surf, &points_needed);
 
-  const char *msg_template = nullptr;
   switch (status) {
     case NURBSValidationStatus::Valid:
       message_dst[0] = 0;
@@ -4760,20 +4760,24 @@ bool BKE_nurb_valid_message(const int pnts,
         message_dst[0] = 0;
         return false;
       }
-      msg_template = TIP_("At least two points required");
+      BLI_strncpy(message_dst, RPT_("At least two points required"), maxncpy);
       break;
     case NURBSValidationStatus::MorePointsThanOrderRequired:
-      msg_template = TIP_("Must have more control points than Order");
+      BLI_strncpy(message_dst, RPT_("Must have more control points than Order"), maxncpy);
       break;
     case NURBSValidationStatus::MoreRowsForBezierRequired:
-      msg_template = TIP_("%d more %s row(s) needed for Bezier");
+      BLI_snprintf(message_dst,
+                   maxncpy,
+                   RPT_("%d more %s row(s) needed for Bézier"),
+                   points_needed,
+                   dir == 0 ? "U" : "V");
       break;
     case NURBSValidationStatus::MorePointsForBezierRequired:
-      msg_template = TIP_("%d more point(s) needed for Bezier");
+      BLI_snprintf(
+          message_dst, maxncpy, RPT_("%d more point(s) needed for Bézier"), points_needed);
       break;
   }
 
-  BLI_snprintf(message_dst, maxncpy, msg_template, points_needed, dir == 0 ? "U" : "V");
   return true;
 }
 
@@ -4879,7 +4883,8 @@ bool BKE_nurb_type_convert(Nurb *nu,
       bp = nu->bp;
       while (a--) {
         if ((type == CU_POLY && bezt->h1 == HD_VECT && bezt->h2 == HD_VECT) ||
-            (use_handles == false)) {
+            (use_handles == false))
+        {
           /* vector handle becomes one poly vertex */
           copy_v3_v3(bp->vec, bezt->vec[1]);
           bp->vec[3] = 1.0;

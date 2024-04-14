@@ -8,6 +8,7 @@ set(INC
   ../../blentranslation
   ../../bmesh
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../windowmanager
   # RNA_prototypes.h
@@ -49,7 +50,7 @@ set(SRC
   gpencil_vertex_paint.cc
   gpencil_weight_paint.cc
 
-  gpencil_intern.h
+  gpencil_intern.hh
   gpencil_trace.h
 )
 
@@ -60,7 +61,6 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 

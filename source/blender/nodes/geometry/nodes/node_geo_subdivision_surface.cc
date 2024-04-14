@@ -2,13 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
 #include "BLI_task.hh"
 
 #include "DNA_modifier_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
@@ -67,14 +66,14 @@ static void write_vert_creases(Mesh &mesh, const VArray<float> &creases)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   attributes.remove("crease_vert");
-  attributes.add<float>("crease_vert", ATTR_DOMAIN_POINT, bke::AttributeInitVArray(creases));
+  attributes.add<float>("crease_vert", AttrDomain::Point, bke::AttributeInitVArray(creases));
 }
 
 static void write_edge_creases(Mesh &mesh, const VArray<float> &creases)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   attributes.remove("crease_edge");
-  attributes.add<float>("crease_edge", ATTR_DOMAIN_EDGE, bke::AttributeInitVArray(creases));
+  attributes.add<float>("crease_edge", AttrDomain::Edge, bke::AttributeInitVArray(creases));
 }
 
 static bool varray_is_single_zero(const VArray<float> &varray)
@@ -101,13 +100,13 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
                                const int boundary_smooth,
                                const int uv_smooth)
 {
-  const bke::MeshFieldContext point_context{*mesh, ATTR_DOMAIN_POINT};
-  FieldEvaluator point_evaluator(point_context, mesh->totvert);
+  const bke::MeshFieldContext point_context{*mesh, AttrDomain::Point};
+  FieldEvaluator point_evaluator(point_context, mesh->verts_num);
   point_evaluator.add(clamp_crease(vert_crease_field));
   point_evaluator.evaluate();
 
-  const bke::MeshFieldContext edge_context{*mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator edge_evaluator(edge_context, mesh->totedge);
+  const bke::MeshFieldContext edge_context{*mesh, AttrDomain::Edge};
+  FieldEvaluator edge_evaluator(edge_context, mesh->edges_num);
   edge_evaluator.add(clamp_crease(edge_crease_field));
   edge_evaluator.evaluate();
 
@@ -206,7 +205,9 @@ static void node_rna(StructRNA *srna)
                     "Controls how smoothing is applied to UVs",
                     rna_enum_subdivision_uv_smooth_items,
                     NOD_storage_enum_accessors(uv_smooth),
-                    SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES);
+                    SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES,
+                    nullptr,
+                    true);
 
   RNA_def_node_enum(srna,
                     "boundary_smooth",
@@ -214,7 +215,9 @@ static void node_rna(StructRNA *srna)
                     "Controls how open boundaries are smoothed",
                     rna_enum_subdivision_boundary_smooth_items,
                     NOD_storage_enum_accessors(boundary_smooth),
-                    SUBSURF_BOUNDARY_SMOOTH_ALL);
+                    SUBSURF_BOUNDARY_SMOOTH_ALL,
+                    nullptr,
+                    true);
 }
 
 static void node_register()
