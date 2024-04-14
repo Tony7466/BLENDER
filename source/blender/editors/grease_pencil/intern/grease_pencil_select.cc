@@ -28,7 +28,7 @@
 
 namespace blender::ed::greasepencil {
 /* WARNING: don't change existing ones without modifying rearrange func accordingly */
-typedef enum eSelectSimilar {
+typedef enum class eSelectSimilar {
   LAYER = 0,
   MATERIAL = 1,
   VERTEX_COLOR = 2,
@@ -38,11 +38,11 @@ typedef enum eSelectSimilar {
 } eSelectSimilar_Mode;
 
 static const EnumPropertyItem prop_select_similar_types[] = {
-    {LAYER, "LAYER", 0, "Layer", ""},
-    {MATERIAL, "MATERIAL", 0, "Material", ""},
-    {VERTEX_COLOR, "VERTEX_COLOR", 0, "Vertex Color", ""},
-    {RADIUS, "RADIUS", 0, "Radius", ""},
-    {OPACITY, "OPACITY", 0, "Opacity", ""},
+    {static_cast<int>(eSelectSimilar::LAYER), "LAYER", 0, "Layer", ""},
+    {static_cast<int>(eSelectSimilar::MATERIAL), "MATERIAL", 0, "Material", ""},
+    {static_cast<int>(eSelectSimilar::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
+    {static_cast<int>(eSelectSimilar::RADIUS), "RADIUS", 0, "Radius", ""},
+    {static_cast<int>(eSelectSimilar::OPACITY), "OPACITY", 0, "Opacity", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -314,23 +314,23 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
   switch (type) {
-    case LAYER:
+    case static_cast<int>(eSelectSimilar::LAYER):
       ed::curves::select_similar_layer(
           grease_pencil, scene, selection_domain, type);
       break;
-    case MATERIAL:
+    case static_cast<int>(eSelectSimilar::MATERIAL):
       ed::curves::select_similar<int>(
           grease_pencil, scene, selection_domain, type, threshold, "material_index");
       break;
-    case VERTEX_COLOR:
+    case static_cast<int>(eSelectSimilar::VERTEX_COLOR):
       ed::curves::select_similar<ColorGeometry4f>(
           grease_pencil, scene, selection_domain, type, threshold, "vertex_color");
       break;
-    case RADIUS:
+    case static_cast<int>(eSelectSimilar::RADIUS):
       ed::curves::select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "radius");
       break;
-    case OPACITY:
+    case static_cast<int>(eSelectSimilar::OPACITY):
       ed::curves::select_similar<float>(
           grease_pencil, scene, selection_domain, type, threshold, "opacity");
       break;
@@ -357,7 +357,7 @@ static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "type", prop_select_similar_types, LAYER, "Type", "");
+  RNA_def_enum(ot->srna, "type", prop_select_similar_types, static_cast<int>(eSelectSimilar::LAYER), "Type", "");
 
   RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
 }
