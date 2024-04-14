@@ -156,6 +156,12 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
       kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
 }
 
+/* TODO(weizhen): move this function to somewhere more appropriate. */
+ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
+{
+  return !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_ANY_PASS);
+}
+
 ccl_device int integrate_surface_ray_portal(KernelGlobals kg,
                                             IntegratorState state,
                                             ccl_private ShaderData *sd,
@@ -268,7 +274,7 @@ integrate_direct_light_shadow_init_surface(KernelGlobals kg,
   }
 
   uint32_t shadow_flag = INTEGRATOR_STATE(state, path, flag);
-  if (!(shadow_flag & PATH_RAY_ANY_PASS)) {
+  if (light_is_direct_illumination(state)) {
     shadow_flag |= PATH_RAY_SURFACE_PASS;
   }
   INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, flag) = shadow_flag;
@@ -286,12 +292,12 @@ integrate_direct_light_shadow_init_surface(KernelGlobals kg,
   return shadow_state;
 }
 
+template<bool is_direct_light>
 ccl_device_inline void integrate_shadow_write_pass_diffuse_glossy(
     KernelGlobals kg,
     ConstIntegratorState state,
     IntegratorShadowState shadow_state,
-    const ccl_private BsdfEval *radiance,
-    bool is_direct_light)
+    const ccl_private BsdfEval *radiance)
 {
   if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
     PackedSpectrum pass_diffuse_weight;
@@ -313,6 +319,7 @@ ccl_device_inline void integrate_shadow_write_pass_diffuse_glossy(
   }
 }
 
+template<bool is_direct_light>
 ccl_device_inline void integrate_direct_light_create_shadow_path(
     KernelGlobals kg,
     IntegratorState state,
@@ -320,8 +327,7 @@ ccl_device_inline void integrate_direct_light_create_shadow_path(
     ccl_private const ShaderData *sd,
     ccl_private const LightSample *ls,
     ccl_private BsdfEval *radiance,
-    const int mnee_vertex_count,
-    const bool is_direct_light)
+    const int mnee_vertex_count)
 {
   /* TODO(weizhen): check termination after resampling. */
   /* Path termination. */
@@ -349,7 +355,7 @@ ccl_device_inline void integrate_direct_light_create_shadow_path(
 #endif
   }
 
-  integrate_shadow_write_pass_diffuse_glossy(kg, state, shadow_state, radiance, is_direct_light);
+  integrate_shadow_write_pass_diffuse_glossy<is_direct_light>(kg, state, shadow_state, radiance);
 }
 
 /* TODO(weizhen): split function to direct/indirect illumination and rename. */
@@ -380,7 +386,7 @@ ccl_device
   /* Use Resampled Importance Sampling for direct illumination based on Talbot, Justin F.
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
-  const bool is_direct_light = !(path_flag & PATH_RAY_ANY_PASS);
+  const bool is_direct_light = light_is_direct_illumination(state);
 
   const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
@@ -644,16 +650,20 @@ ccl_device
     return;
   }
 
-  BsdfEval radiance = reservoir.radiance;
-  const float unbiased_contribution_weight = reservoir.total_weight /
-                                             reduce_add(fabs(radiance.sum));
-  bsdf_eval_mul(&radiance, unbiased_contribution_weight);
+  if (is_direct_light) {
+    /* Write to reservoir and trace shadow ray later. */
+    film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
+  }
+  else {
+    BsdfEval radiance = reservoir.radiance;
+    const float unbiased_contribution_weight = reservoir.total_weight /
+                                               reduce_add(fabs(radiance.sum));
+    bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
-  film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
-
-  int mnee_vertex_count = 0;
-  integrate_direct_light_create_shadow_path(
-      kg, state, rng_state, sd, &reservoir.ls, &radiance, mnee_vertex_count, is_direct_light);
+    int mnee_vertex_count = 0;
+    integrate_direct_light_create_shadow_path<false>(
+        kg, state, rng_state, sd, &reservoir.ls, &radiance, mnee_vertex_count);
+  }
 }
 
 /* Path tracing: bounce off or through surface with new direction. */
