@@ -25,6 +25,8 @@
 #include "ED_select_utils.hh"
 #include "ED_grease_pencil.hh"
 
+#include "math.h"
+
 struct bContext;
 struct Curves;
 struct UndoType;
@@ -338,14 +340,13 @@ static blender::Set<T> join_sets(blender::Vector<blender::Set<T>> &setsToBeJoine
 
 template<typename T> static float distance(T first, T second)
 {
-  if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
-    return std::abs(first - second);
-  }
-  else if constexpr (std::is_same<T, ColorGeometry4f>::value) {
+  if constexpr (std::is_same<T, ColorGeometry4f>::value) {
     // might be better to normalize and then dot product
     return std::abs(int(rgb_to_grayscale(first)) - int(rgb_to_grayscale(second)));
+  } else if constexpr (std::is_convertible<T, float>()) {
+    return math::distance(first, second);
   }
-  throw std::invalid_argument("Undefined behavior for distance function for the used type");
+  return INFINITY;
 }
 
 template<typename T>

@@ -305,7 +305,6 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
 template<typename T>
 static void select_similar(GreasePencil &grease_pencil,
                            Scene *scene,
-                           bke::AttrDomain selection_domain,
                            eSelectSimilar type,
                            float threshold,
                            std::string attribute_id)
@@ -383,19 +382,19 @@ static int select_similar_exec(bContext *C, wmOperator *op)
       break;
     case eSelectSimilar::MATERIAL:
       select_similar<int>(
-          grease_pencil, scene, selection_domain, type, threshold, "material_index");
+          grease_pencil, scene, type, threshold, "material_index");
       break;
     case eSelectSimilar::VERTEX_COLOR:
       select_similar<ColorGeometry4f>(
-          grease_pencil, scene, selection_domain, type, threshold, "vertex_color");
+          grease_pencil, scene, type, threshold, "vertex_color");
       break;
     case eSelectSimilar::RADIUS:
       select_similar<float>(
-          grease_pencil, scene, selection_domain, type, threshold, "radius");
+          grease_pencil, scene, type, threshold, "radius");
       break;
     case eSelectSimilar::OPACITY:
       select_similar<float>(
-          grease_pencil, scene, selection_domain, type, threshold, "opacity");
+          grease_pencil, scene, type, threshold, "opacity");
       break;
   }
 
