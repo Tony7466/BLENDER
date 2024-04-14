@@ -36,7 +36,7 @@
 #include "BKE_pointcloud.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
