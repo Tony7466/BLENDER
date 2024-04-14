@@ -309,7 +309,9 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  eAttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
   switch (type) {
     case LAYER:

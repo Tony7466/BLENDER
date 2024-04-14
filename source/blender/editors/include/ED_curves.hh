@@ -295,10 +295,10 @@ blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curv
 {
   blender::Set<T> selectedValuesForAttribute;
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup<T>());
+      attribute_id, bke::AttrDomain::Point, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
 
@@ -356,10 +356,10 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
                                           std::string attribute_id)
 {
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, ATTR_DOMAIN_POINT, default_for_lookup<T>());
+      attribute_id, bke::AttrDomain::Point, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
   // for now sequential impl, grain_size == 1
@@ -386,7 +386,7 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
 
 static void select_similar_layer(GreasePencil &grease_pencil,
                                  Scene *scene,
-                                 eAttrDomain selection_domain,
+                                 bke::AttrDomain selection_domain,
                                  int type)
 {
   blender::Vector<blender::Set<std::string>> currentlySelectedLayers(
@@ -423,7 +423,7 @@ static void select_similar_layer(GreasePencil &grease_pencil,
 template<typename T>
 static void select_similar(GreasePencil &grease_pencil,
                            Scene *scene,
-                           eAttrDomain selection_domain,
+                           bke::AttrDomain selection_domain,
                            int type,
                            float threshold,
                            std::string attribute_id)
@@ -431,7 +431,8 @@ static void select_similar(GreasePencil &grease_pencil,
   using namespace blender::ed::greasepencil;
   blender::Vector<blender::Set<T>> currentlySelectedValuesPerDrawing;
 
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
+                                                                                  grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     currentlySelectedValuesPerDrawing.append(
             blender::ed::curves::selected_values_for_attribute_in_curve<T>(
