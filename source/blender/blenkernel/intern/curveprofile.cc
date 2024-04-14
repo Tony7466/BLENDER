@@ -1041,12 +1041,6 @@ void BKE_curveprofile_update(CurveProfile *profile, const int update_flags)
   }
 }
 
-void BKE_curveprofile_runtime_update(struct CurveProfile *profile)
-{
-  BKE_curveprofile_get_selection_center(
-      profile, &profile->runtime.center_x, &profile->runtime.center_y);
-}
-
 void BKE_curveprofile_get_selection_center(const struct CurveProfile *profile,
                                            float *center_x_out,
                                            float *center_y_out)

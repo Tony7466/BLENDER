@@ -68,7 +68,6 @@ void BKE_translate_selection(CurveMap *cuma, const float delta_x, const float de
  */
 void BKE_curvemap_handle_set(CurveMap *cuma, int type);
 
-void BKE_curvemap_runtime_update(CurveMap *cuma);
 void BKE_curvemap_get_selection_center(CurveMap *cuma, float *center_x_out, float *center_y_out);
 
 /**

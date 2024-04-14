@@ -930,11 +930,6 @@ void BKE_curvemapping_premultiply(CurveMapping *cumap, bool restore)
 }
 
 /* ************************ more CurveMapping calls *************** */
-void BKE_curvemap_runtime_update(CurveMap *cuma)
-{
-  BKE_curvemap_get_selection_center(cuma, &cuma->runtime.center_x, &cuma->runtime.center_y);
-}
-
 void BKE_curvemap_get_selection_center(CurveMap *cuma, float *center_x_out, float *center_y_out)
 {
   int n = 0;

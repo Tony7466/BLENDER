@@ -4661,7 +4661,8 @@ static void curvemap_buttons_layout(uiLayout *layout,
     }
 
     /* Curve handle position */
-    BKE_curvemap_runtime_update(active_cm);
+    BKE_curvemap_get_selection_center(
+        active_cm, &active_cm->runtime.center_x, &active_cm->runtime.center_y);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -4677,12 +4678,12 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      CurveMap* cuma = cumap->cm + cumap->cur;
+      CurveMap *cuma = cumap->cm + cumap->cur;
       float center_x_pre = 0.0f;
       float center_y_pre = 0.0f;
       BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
       BKE_translate_selection(
-        cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
+          cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -4702,12 +4703,12 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     UI_but_func_set(bt, [cumap, cb](bContext &C) {
-      CurveMap* cuma = cumap->cm + cumap->cur;
+      CurveMap *cuma = cumap->cm + cumap->cur;
       float center_x_pre = 0.0f;
       float center_y_pre = 0.0f;
       BKE_curvemap_get_selection_center(cuma, &center_x_pre, &center_y_pre);
       BKE_translate_selection(
-        cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
+          cuma, cuma->runtime.center_x - center_x_pre, cuma->runtime.center_y - center_y_pre);
       BKE_curvemapping_changed(cumap, true);
       rna_update_cb(C, cb);
     });
@@ -5189,7 +5190,8 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
                 ICON_NONE);
 
     /* Position */
-    BKE_curveprofile_runtime_update(profile);
+    BKE_curveprofile_get_selection_center(
+        profile, &profile->runtime.center_x, &profile->runtime.center_y);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
@@ -5208,8 +5210,9 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
       float center_x_pre = 0.0f;
       float center_y_pre = 0.0f;
       BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
-      BKE_curveprofile_translate_selection(
-        profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
+      BKE_curveprofile_translate_selection(profile,
+                                           profile->runtime.center_x - center_x_pre,
+                                           profile->runtime.center_y - center_y_pre);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });
@@ -5234,8 +5237,9 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
       float center_x_pre = 0.0f;
       float center_y_pre = 0.0f;
       BKE_curveprofile_get_selection_center(profile, &center_x_pre, &center_y_pre);
-      BKE_curveprofile_translate_selection(
-        profile, profile->runtime.center_x - center_x_pre, profile->runtime.center_y - center_y_pre);
+      BKE_curveprofile_translate_selection(profile,
+                                           profile->runtime.center_x - center_x_pre,
+                                           profile->runtime.center_y - center_y_pre);
       BKE_curveprofile_update(profile, PROF_UPDATE_REMOVE_DOUBLES | PROF_UPDATE_CLIP);
       rna_update_cb(C, cb);
     });

@@ -141,7 +141,6 @@ enum {
  * Controls removing doubles and clipping.
  */
 void BKE_curveprofile_update(struct CurveProfile *profile, int update_flags);
-void BKE_curveprofile_runtime_update(struct CurveProfile *profile);
 
 /**
  * Does a single evaluation along the profile's path.
