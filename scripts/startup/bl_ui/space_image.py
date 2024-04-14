@@ -1710,6 +1710,7 @@ class IMAGE_PT_overlay_image(Panel):
         layout.active = overlay.show_overlays
         layout.prop(uvedit, "show_metadata")
 
+
 class IMAGE_PT_overlay_render(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'

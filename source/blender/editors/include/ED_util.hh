@@ -72,7 +72,7 @@ void ED_region_image_render_size_draw(const char *title,
                                       float zoomy,
                                       bool draw_inside,
                                       float passepartout_alpha,
-                                      const rcti* region_size);
+                                      const rcti *region_size);
 
 /* Slider */
 

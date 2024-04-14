@@ -1271,7 +1271,7 @@ typedef struct SpaceImage {
 
   int flag;
 
-  float passepartout_alpha; // todo: maybe move to SpaceImageOverlay
+  float passepartout_alpha;  // todo: maybe move to SpaceImageOverlay
   char _pad2[4];
 
   float uv_opacity;

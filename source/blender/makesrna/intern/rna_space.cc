@@ -3700,7 +3700,7 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   prop = RNA_def_property(srna, "passepartout_alpha", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "passepartout_alpha");
   RNA_def_property_ui_text(
-                           prop, "Passepartout Alpha", "Opacity of the darkened overlay outside the render region");
+      prop, "Passepartout Alpha", "Opacity of the darkened overlay outside the render region");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
   prop = RNA_def_property(srna, "show_texpaint", PROP_BOOLEAN, PROP_NONE);

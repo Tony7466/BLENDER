@@ -836,8 +836,15 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
   return 0;
 }
 
-void ED_region_image_render_size_draw(
-    const char *title, int x, int y, const rcti *frame, float zoomx, float zoomy, bool upper_left, float passepartout_alpha, const rcti *region_size)
+void ED_region_image_render_size_draw(const char *title,
+                                      int x,
+                                      int y,
+                                      const rcti *frame,
+                                      float zoomx,
+                                      float zoomy,
+                                      bool upper_left,
+                                      float passepartout_alpha,
+                                      const rcti *region_size)
 {
   /* find window pixel coordinates of origin */
   GPU_matrix_push();
@@ -859,7 +866,7 @@ void ED_region_image_render_size_draw(
   float y1 = frame->ymin - frame_height / 2;
   float y2 = frame->ymax - frame_height / 2;
 
-  if(passepartout_alpha > 0) {
+  if (passepartout_alpha > 0) {
 
     immUniformColor4f(0, 0, 0, passepartout_alpha);
     // todo: compute limits from region_size instead?
@@ -876,19 +883,21 @@ void ED_region_image_render_size_draw(
   SNPRINTF(temp_str, "%s: %dx%d", title, frame_width, frame_height);
 
   if (upper_left) {
-    BLF_position(blf_mono_font,
-                 frame->xmin - frame_width / 2,
-                 frame->ymax - frame_height / 2,
-                 0.0f);
+    BLF_position(
+        blf_mono_font, frame->xmin - frame_width / 2, frame->ymax - frame_height / 2, 0.0f);
   }
   else {
     int font_width = BLF_width(blf_mono_font, temp_str, sizeof(temp_str));
-    BLF_position(
-        blf_mono_font, frame->xmax - frame_width/2 - font_width, frame->ymax - frame_height / 2, 0.0f);
+    BLF_position(blf_mono_font,
+                 frame->xmax - frame_width / 2 - font_width,
+                 frame->ymax - frame_height / 2,
+                 0.0f);
   }
   BLF_draw(blf_mono_font, temp_str, sizeof(temp_str));
 
-  immUniformColor4f(1, 1, 1, 1);
+  float wire_color[3];
+  UI_GetThemeColor3fv(TH_WIRE_EDIT, wire_color);
+  immUniformColor4f(wire_color[0], wire_color[1], wire_color[2], 1);
   imm_draw_box_wire_2d(pos, x1, y1, x2, y2);
 
   immUnbindProgram();
