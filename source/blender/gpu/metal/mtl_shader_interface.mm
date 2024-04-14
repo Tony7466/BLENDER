@@ -10,7 +10,7 @@
 
 #include "BLI_bitmap.h"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "mtl_common.hh"
 #include "mtl_debug.hh"
@@ -31,7 +31,7 @@ MTLShaderInterface::MTLShaderInterface(const char *name)
   inputs_ = nullptr;
 
   if (name != nullptr) {
-    strcpy(this->name, name);
+    STRNCPY(this->name, name);
   }
 
   /* Ensure #ShaderInterface parameters are cleared. */

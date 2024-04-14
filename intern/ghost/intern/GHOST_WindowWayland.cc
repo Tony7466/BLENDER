@@ -1194,9 +1194,31 @@ static void xdg_toplevel_handle_close(void *data, xdg_toplevel * /*xdg_toplevel*
   win->ghost_window->close();
 }
 
+static void xdg_toplevel_handle_configure_bounds(void * /*data*/,
+                                                 struct xdg_toplevel * /*xdg_toplevel*/,
+                                                 int32_t width,
+                                                 int32_t height)
+{
+  /* Only available in interface version 4. */
+  CLOG_INFO(LOG, 2, "configure_bounds (size=[%d, %d])", width, height);
+
+  /* TODO: investigate using this information, it may reduce flickering on window creation. */
+}
+static void xdg_toplevel_handle_wm_capabilities(void * /*data*/,
+                                                struct xdg_toplevel * /*xdg_toplevel*/,
+                                                struct wl_array * /*capabilities*/)
+{
+  /* Only available in interface version 5. */
+  CLOG_INFO(LOG, 2, "wm_capabilities");
+
+  /* NOTE: this would be useful if blender had CSD, . */
+}
+
 static const xdg_toplevel_listener xdg_toplevel_listener = {
     /*configure*/ xdg_toplevel_handle_configure,
     /*close*/ xdg_toplevel_handle_close,
+    /*configure_bounds*/ xdg_toplevel_handle_configure_bounds,
+    /*wm_capabilities*/ xdg_toplevel_handle_wm_capabilities,
 };
 
 #undef LOG
@@ -1564,9 +1586,27 @@ static void surface_handle_leave(void *data, wl_surface * /*wl_surface*/, wl_out
   }
 }
 
+static void surface_handle_preferred_buffer_scale(void * /*data*/,
+                                                  struct wl_surface * /*wl_surface*/,
+                                                  int32_t factor)
+{
+  /* Only available in interface version 6. */
+  CLOG_INFO(LOG, 2, "handle_preferred_buffer_scale (factor=%d)", factor);
+}
+
+static void surface_handle_preferred_buffer_transform(void * /*data*/,
+                                                      struct wl_surface * /*wl_surface*/,
+                                                      uint32_t transform)
+{
+  /* Only available in interface version 6. */
+  CLOG_INFO(LOG, 2, "handle_preferred_buffer_transform (transform=%u)", transform);
+}
+
 static const wl_surface_listener wl_surface_listener = {
     /*enter*/ surface_handle_enter,
     /*leave*/ surface_handle_leave,
+    /*preferred_buffer_scale*/ surface_handle_preferred_buffer_scale,
+    /*preferred_buffer_transform*/ surface_handle_preferred_buffer_transform,
 };
 
 #undef LOG
@@ -1879,6 +1919,23 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
 
     xdg_toplevel *toplevel = libdecor_frame_get_xdg_toplevel(decor.frame);
     gwl_window_state_set_for_xdg(toplevel, state, gwl_window_state_get(window_));
+
+    /* NOTE(@ideasman42): Round trips are necessary with LIBDECOR on GNOME
+     * because resizing later on and redrawing does *not* update as it should, see #119871.
+     *
+     * Without the round-trip here:
+     * - The window will be created and this function will return using the requested buffer size,
+     *   instead of the window size which ends up being used (causing a visible flicker).
+     *   This has the down side that Blender's internal window state has the outdated size
+     *   which then gets immediately resized, causing a noticeable glitch.
+     * - The window decorations will be displayed at the wrong size before refreshing
+     *   at the new size.
+     * - On GNOME-Shell 46 shows the previous buffer-size under some conditions.
+     *
+     * In principle this could be used with XDG too however it causes problems with KDE
+     * and some WLROOTS based compositors.
+     */
+    wl_display_roundtrip(system_->wl_display_get());
   }
   else
 #endif /* WITH_GHOST_WAYLAND_LIBDECOR */

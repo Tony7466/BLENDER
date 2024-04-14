@@ -40,7 +40,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "graph_intern.h"
+#include "graph_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Keyframe Utilities
@@ -174,7 +174,7 @@ static void get_nearest_fcurve_verts_list(bAnimContext *ac, const int mval[2], L
    *   include the 'only selected' flag...
    */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY |
-            ANIMFILTER_NODUPLIS | ANIMFILTER_FCURVESONLY);
+            ANIMFILTER_NODUPLIS);
   /* FIXME: this should really be check for by the filtering code. */
   if (U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS) {
     filter |= ANIMFILTER_SEL;
@@ -2179,19 +2179,6 @@ static int graphkeys_select_key_handles_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void graphkeys_select_key_handles_ui(bContext * /*C*/, wmOperator *op)
-{
-  uiLayout *layout = op->layout;
-  uiLayout *row;
-
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "left_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "right_handle_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-  row = uiLayoutRow(layout, false);
-  uiItemR(row, op->ptr, "key_action", UI_ITEM_NONE, nullptr, ICON_NONE);
-}
-
 void GRAPH_OT_select_key_handles(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2203,7 +2190,6 @@ void GRAPH_OT_select_key_handles(wmOperatorType *ot)
   /* callbacks */
   ot->poll = graphop_visible_keyframes_poll;
   ot->exec = graphkeys_select_key_handles_exec;
-  ot->ui = graphkeys_select_key_handles_ui;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
