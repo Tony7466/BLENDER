@@ -311,9 +311,10 @@ template<typename T> inline T *MEM_cnew_array(const size_t length, const char *a
   if (alignof(T) <= MEM_MIN_CPP_ALIGNMENT) {
     return static_cast<T *>(MEM_calloc_arrayN(length, sizeof(T), allocation_name));
   }
-  void *ptr = MEM_mallocN_aligned(length * sizeof(T), alignof(T), allocation_name);
+  const size_t bytes_num = length * sizeof(T);
+  void *ptr = MEM_mallocN_aligned(bytes_num, alignof(T), allocation_name);
   if (ptr) {
-    memset(ptr, 0, sizeof(T));
+    memset(ptr, 0, bytes_num);
   }
   return static_cast<T *>(ptr);
 }
