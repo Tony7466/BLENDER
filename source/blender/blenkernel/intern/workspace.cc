@@ -19,13 +19,13 @@
 
 #include "BKE_asset.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_viewer_path.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"

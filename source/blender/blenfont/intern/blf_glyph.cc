@@ -32,7 +32,7 @@
 
 #include "DNA_curve_types.h"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "blf_internal.hh"
 #include "blf_internal_types.hh"
@@ -1604,7 +1604,9 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
  * B3=P2
  */
 
-static void blf_glyph_to_curves(FT_Outline ftoutline, ListBase *nurbsbase, const float scale)
+static void blf_glyph_to_curves(const FT_Outline &ftoutline,
+                                ListBase *nurbsbase,
+                                const float scale)
 {
   const float eps = 0.0001f;
   const float eps_sq = eps * eps;
