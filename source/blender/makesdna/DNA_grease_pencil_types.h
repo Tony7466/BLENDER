@@ -597,11 +597,6 @@ typedef struct GreasePencil {
                              const blender::Map<int, int> &frame_number_destinations,
                              const blender::Map<int, GreasePencilFrame> &duplicate_frames);
 
-  void foreach_editable_drawing_in_layer_ex(
-      int frame,
-      blender::FunctionRef<void(int,
-                                blender::bke::greasepencil::Drawing &,
-                                const blender::bke::greasepencil::Layer *)> function);
   /**
    * Removes all the frames with \a frame_numbers in the \a layer.
    * \returns true if any frame was removed.
