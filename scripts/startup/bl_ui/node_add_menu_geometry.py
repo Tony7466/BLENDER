@@ -169,7 +169,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY(Menu):
         layout.menu("NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeGeometryToInstance")
-        node_add_menu.add_node_type(layout, "GeometryNodeJoinGeometry")
+        node_add_menu.add_node_type(layout, "GeometryNodeJoinGeometry", search_weight=1.0)
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
