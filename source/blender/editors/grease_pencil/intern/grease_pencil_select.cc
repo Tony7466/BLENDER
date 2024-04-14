@@ -307,7 +307,8 @@ static void select_similar(GreasePencil &grease_pencil,
                            Scene *scene,
                            eSelectSimilar type,
                            float threshold,
-                           std::string attribute_id)
+                           std::string attribute_id,
+                           Object *object)
 {
   using namespace blender::ed::greasepencil;
   blender::Vector<blender::Set<T>> currentlySelectedValuesPerDrawing;
@@ -324,8 +325,13 @@ static void select_similar(GreasePencil &grease_pencil,
       currentlySelectedValuesPerDrawing);
 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
+        *object, info.drawing, memory);
+
     blender::ed::curves::select_with_similar_attribute<T>(
-        info.drawing.strokes_for_write(), currentlySelectedValues, threshold, static_cast<int>(type), attribute_id);
+        info.drawing.strokes_for_write(), currentlySelectedValues, threshold, static_cast<int>(type), attribute_id,
+        editable_points);
   });
 }
 
@@ -382,19 +388,19 @@ static int select_similar_exec(bContext *C, wmOperator *op)
       break;
     case eSelectSimilar::MATERIAL:
       select_similar<int>(
-          grease_pencil, scene, type, threshold, "material_index");
+          grease_pencil, scene, type, threshold, "material_index", object);
       break;
     case eSelectSimilar::VERTEX_COLOR:
       select_similar<ColorGeometry4f>(
-          grease_pencil, scene, type, threshold, "vertex_color");
+          grease_pencil, scene, type, threshold, "vertex_color", object);
       break;
     case eSelectSimilar::RADIUS:
       select_similar<float>(
-          grease_pencil, scene, type, threshold, "radius");
+          grease_pencil, scene, type, threshold, "radius", object);
       break;
     case eSelectSimilar::OPACITY:
       select_similar<float>(
-          grease_pencil, scene, type, threshold, "opacity");
+          grease_pencil, scene, type, threshold, "opacity", object);
       break;
   }
 

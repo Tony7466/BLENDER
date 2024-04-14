@@ -354,30 +354,20 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
                                           blender::Set<T> &set_active_if_similar_to,
                                           float threshold,
                                           int type,
-                                          std::string attribute_id)
+                                          std::string attribute_id,
+                                          const IndexMask &editable_points)
 {
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
       attribute_id, bke::AttrDomain::Point, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, bke::AttrDomain::Point, CD_PROP_BOOL);
-
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-  // for now sequential impl, grain_size == 1
-  threading::parallel_for(curves.curves_range(), 1, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      const IndexRange points = points_by_curve[curve_i];
 
-      if (!has_anything_selected(selection.span.slice(points))) {
-        continue;
-      }
-
-      for (const int index : points.index_range()) {
-        for (auto &s : set_active_if_similar_to) {
-          if (distance<T>(attributes[points[index]], s) <= threshold) {
-            selection_typed[points[index]] = true;
-          }
-        }
+  editable_points.foreach_index([&](const int64_t point_i) {
+    for (auto &s : set_active_if_similar_to) {
+      if (distance<T>(attributes[point_i], s) <= threshold) {
+        selection_typed[point_i] = true;
       }
     }
   });
