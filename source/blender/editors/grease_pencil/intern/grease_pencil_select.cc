@@ -337,37 +337,22 @@ static void select_similar(GreasePencil &grease_pencil,
 
 static void select_similar_layer(GreasePencil &grease_pencil,
                                  Scene *scene,
-                                 bke::AttrDomain selection_domain)
+                                 bke::AttrDomain selection_domain,
+                                 Object *object)
 {
-  blender::Vector<blender::Set<std::string>> currentlySelectedLayers(
-      grease_pencil.drawings().size());
-  currentlySelectedLayers.fill(blender::Set<std::string>{});
-
-  grease_pencil.foreach_editable_drawing_in_layer_ex(
-      scene->r.cfra,
-      [&](int drawing_index,
-          blender::bke::greasepencil::Drawing &drawing,
-          const blender::bke::greasepencil::Layer *layer) {
-        if (!blender::ed::curves::has_anything_selected(drawing.strokes_for_write())) {
-          return;
-        }
-        if constexpr (std::is_same<std::string, std::string>::value) {
-          currentlySelectedLayers[drawing_index].add(std::string{layer->name().c_str()});
-        }
-      });
-
-  Set<std::string> s = blender::ed::curves::join_sets<std::string>(currentlySelectedLayers);
-
-  grease_pencil.foreach_editable_drawing_in_layer_ex(
-      scene->r.cfra,
-      [&](int drawing_index,
-          blender::bke::greasepencil::Drawing &drawing,
-          const blender::bke::greasepencil::Layer *layer) {
-        if (!s.contains(std::string{layer->name().c_str()})) {
-          return;
-        }
-        blender::ed::curves::select_all(drawing.strokes_for_write(), selection_domain, SEL_SELECT);
-      });
+  const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    const IndexMask editable_elements = retrieve_editable_elements(
+        *object, info.drawing, selection_domain, memory);
+    if (editable_elements.is_empty()) {
+      return;
+    }
+    const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
+    ed::curves::select_all(
+        info.drawing.strokes_for_write(), editable_elements, selection_domain, SEL_SELECT);
+  });
 }
 
 static int select_similar_exec(bContext *C, wmOperator *op)
@@ -384,7 +369,7 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   switch (type) {
     case eSelectSimilar::LAYER:
       select_similar_layer(
-          grease_pencil, scene, selection_domain);
+          grease_pencil, scene, selection_domain, object);
       break;
     case eSelectSimilar::MATERIAL:
       select_similar<int>(
