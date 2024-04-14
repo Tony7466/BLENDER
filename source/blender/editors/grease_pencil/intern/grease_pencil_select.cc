@@ -330,7 +330,7 @@ static void select_similar(GreasePencil &grease_pencil,
         *object, info.drawing, memory);
 
     blender::ed::curves::select_with_similar_attribute<T>(
-        info.drawing.strokes_for_write(), currentlySelectedValues, threshold, static_cast<int>(type), attribute_id,
+        info.drawing.strokes_for_write(), currentlySelectedValues, threshold,
         editable_points);
   });
 }

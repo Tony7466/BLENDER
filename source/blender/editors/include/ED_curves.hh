@@ -353,25 +353,26 @@ template<typename T>
 static void select_with_similar_attribute(bke::CurvesGeometry &curves,
                                           blender::Set<T> &set_active_if_similar_to,
                                           float threshold,
-                                          int type,
-                                          std::string attribute_id,
                                           const IndexMask &editable_points)
 {
-  VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, bke::AttrDomain::Point, default_for_lookup<T>());
+  const VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
+      ".selection", bke::AttrDomain::Point, default_for_lookup<T>());
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
 
-  editable_points.foreach_index([&](const int64_t point_i) {
-    for (auto &s : set_active_if_similar_to) {
-      if (distance<T>(attributes[point_i], s) <= threshold) {
-        selection_typed[point_i] = true;
-      }
-    }
+  IndexMaskMemory memory;
+  IndexMask mask = IndexMask::from_predicate(editable_points, GrainSize(1), memory, [&](int64_t point_i) {
+        for (auto &s : set_active_if_similar_to) {
+          if (distance<T>(attributes[point_i], s) <= threshold) {
+            return true;
+          }
+        }
+        return false;
   });
-
+  index_mask::masked_fill(selection_typed, true, mask);
   selection.finish();
 }
 
