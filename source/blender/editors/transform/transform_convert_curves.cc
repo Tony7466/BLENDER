@@ -133,6 +133,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
 static void recalcData_curves(TransInfo *t)
 {
+  const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const Span<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
   for (const TransDataContainer &tc : trans_data_contrainers) {
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
@@ -144,6 +145,19 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
+      IndexMaskMemory memory;
+      IndexMask selection;
+      if (use_proportional_edit) {
+        selection = curves.points_range();
+      }
+      else {
+        selection = ed::curves::retrieve_selected_points(curves, memory);
+      }
+      MutableSpan<float3> positions = curves.positions_for_write();
+      selection.foreach_index([&](const int i, const int i_pos) {
+        const TransData &td = tc.data[i_pos];
+        positions[i] = float3(td.loc);
+      });
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
     }
@@ -169,7 +183,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
-  MutableSpan<float3> positions = curves.positions_for_write();
+  const Span<float3> positions = curves.positions();
   if (use_proportional_edit) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
@@ -193,11 +207,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         for (const int i : IndexRange(points.size())) {
           const int point_i = points[i];
           TransData &td = tc.data[point_i + trans_data_offset];
-          float3 *elem = &positions[point_i];
+          const float3 *elem = &positions[point_i];
 
           copy_v3_v3(td.iloc, *elem);
           copy_v3_v3(td.center, td.iloc);
-          td.loc = *elem;
+          copy_v3_v3(td.loc_copy, td.iloc);
+          td.loc = td.loc_copy;
 
           td.flag = 0;
           if (selection[point_i]) {
@@ -233,11 +248,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
       for (const int selection_i : range) {
         TransData *td = &tc.data[selection_i + trans_data_offset];
         const int point_i = selected_indices[selection_i];
-        float3 *elem = &positions[point_i];
+        const float3 *elem = &positions[point_i];
 
         copy_v3_v3(td->iloc, *elem);
         copy_v3_v3(td->center, td->iloc);
-        td->loc = *elem;
+        copy_v3_v3(td->loc_copy, td->iloc);
+        td->loc = td->loc_copy;
 
         if (value_attribute) {
           float *value = &((*value_attribute)[point_i]);

@@ -19,6 +19,7 @@ struct bConstraint;
   float *loc; \
   /** Initial location. */ \
   float iloc[3]; \
+  float loc_copy[3]; \
   /** Individual data center. */ \
   float center[3]; \
   /** Value pointer for special transforms. */ \
