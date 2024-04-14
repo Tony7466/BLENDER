@@ -258,10 +258,13 @@ static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
 
 template<typename Func> static void to_static_type_for_blur(const CPPType &type, const Func &func)
 {
-  bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
-    using T = decltype(dummy);
-    if constexpr (is_same_any_v<T, int, float, float3, ColorGeometry4f>) {
-      func(dummy);
+  type.to_static_type_tag<int, float, float3, ColorGeometry4f>([&](auto type_tag) {
+    using T = typename decltype(type_tag)::type;
+    if constexpr (!std::is_same_v<T, void>) {
+      func(T());
+    }
+    else {
+      BLI_assert_unreachable();
     }
   });
 }
