@@ -10,7 +10,7 @@
 
 #include "kernel/film/cryptomatte_passes.h"
 #include "kernel/film/write.h"
-#include "kernel/integrator/restir.h"
+#include "kernel/integrator/reservoir.h"
 
 CCL_NAMESPACE_BEGIN
 

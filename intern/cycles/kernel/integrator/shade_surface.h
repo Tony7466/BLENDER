@@ -16,7 +16,7 @@
 #include "kernel/integrator/mnee.h"
 
 #include "kernel/integrator/guiding.h"
-#include "kernel/integrator/restir.h"
+#include "kernel/integrator/reservoir.h"
 #include "kernel/integrator/shadow_linking.h"
 #include "kernel/integrator/subsurface.h"
 #include "kernel/integrator/volume_stack.h"
