@@ -155,12 +155,18 @@ ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *
                                                   ccl_private LightSample *ccl_restrict ls)
 {
   ls->eval_fac = klight->spot.eval_fac;
+  const float radius = klight->spot.radius;
+  if (radius == 0.0f) {
+    ls->P = klight->co;
+    ls->D = normalize_len(ls->P - ray_P, &ls->t);
+    ls->Ng = -ls->D;
+    return true;
+  }
 
   const Transform tfm = klight->tfm;
   const float2 uv = make_float2(1.0f - ls->u - ls->v, ls->u);
   ls->Ng = transform_direction(&tfm, map_to_sphere(uv));
 
-  const float radius = klight->spot.radius;
   if (klight->spot.is_sphere) {
     ls->P = klight->co + radius * ls->Ng;
     ls->D = normalize_len(ls->P - ray_P, &ls->t);
