@@ -116,16 +116,18 @@ void main()
   vec3 P = lightprobe_irradiance_grid_sample_position(grid_local_to_world, grid_size, input_coord);
 
   SphericalHarmonicL1 sh_distant = lightprobe_irradiance_sample(P);
-  /* Mask distant lighting by local visibility. */
-  sh_distant = spherical_harmonics_triple_product(sh_visibility, sh_distant);
-  /* Apply intensity scaling. */
-  sh_local = spherical_harmonics_mul(sh_local, grid_intensity_factor);
-  /* Add local lighting to distant lighting. */
-  sh_local = spherical_harmonics_add(sh_local, sh_distant);
 
   if (is_padding_voxel) {
     /* Padding voxels just contain the distant lighting. */
     sh_local = sh_distant;
+  }
+  else {
+    /* Mask distant lighting by local visibility. */
+    sh_distant = spherical_harmonics_triple_product(sh_visibility, sh_distant);
+    /* Apply intensity scaling. */
+    sh_local = spherical_harmonics_mul(sh_local, grid_intensity_factor);
+    /* Add local lighting to distant lighting. */
+    sh_local = spherical_harmonics_add(sh_local, sh_distant);
   }
 
   atlas_store(sh_local.L0.M0, output_coord, 0);
