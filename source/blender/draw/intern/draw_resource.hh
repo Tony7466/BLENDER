@@ -164,6 +164,14 @@ inline std::ostream &operator<<(std::ostream &stream, const ObjectInfos &infos)
 
 inline void ObjectBounds::sync()
 {
+#ifndef NDEBUG
+  /* Initialize to NaN for easier debugging of unitialized data usage. */
+  bounding_corners[0] = float4(NAN_FLT);
+  bounding_corners[1] = float4(NAN_FLT);
+  bounding_corners[2] = float4(NAN_FLT);
+  bounding_corners[3] = float4(NAN_FLT);
+  bounding_sphere = float4(NAN_FLT);
+#endif
   bounding_sphere.w = -1.0f; /* Disable test. */
 }
 
