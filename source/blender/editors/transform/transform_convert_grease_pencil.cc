@@ -72,7 +72,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     }
   }
 
-  /* Reuse the variable `layer_offset` */
+  /* Reuse the variable `layer_offset`. */
   layer_offset = 0;
 
   /* Populate TransData structs. */
@@ -82,7 +82,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
       continue;
     }
     Object *object_eval = DEG_get_evaluated_object(depsgraph, tc.obedit);
-    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object_eval->data);
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
     Span<const bke::greasepencil::Layer *> layers = grease_pencil.layers();
 
     int layer_points_offset = 0;

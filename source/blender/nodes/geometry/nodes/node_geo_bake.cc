@@ -58,7 +58,7 @@ static void node_declare(NodeDeclarationBuilder &b)
         output_decl.field_source();
       }
       else {
-        output_decl.dependent_field({input_decl.input_index()});
+        output_decl.dependent_field({input_decl.index()});
       }
     }
   }
@@ -217,7 +217,7 @@ class LazyFunctionForBakeNode final : public LazyFunction {
               user_data))
       {
         tree_logger->node_warnings.append(
-            {node_.identifier, {NodeWarningType::Error, info->message}});
+            *tree_logger->allocator, {node_.identifier, {NodeWarningType::Error, info->message}});
       }
       this->set_default_outputs(params);
     }

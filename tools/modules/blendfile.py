@@ -539,11 +539,12 @@ class BlendFileBlock:
 
 
 ########################################################################################################################
-# Way more basic access to blendfile data, without any DNA handling.
+# Way more basic access to blend-file data, without any DNA handling.
 
 class BlendFileRaw:
     """
-    Blend file, at a very low-level (only a collection of blocks). Can survive opening e.g. blendfiles withou DNA info.
+    Blend file, at a very low-level (only a collection of blocks).
+    Can survive opening e.g. blend-files without DNA info.
     """
     __slots__ = (
         # file (result of open())
@@ -642,7 +643,7 @@ class BlendFileRaw:
 
 class BlendFileBlockRaw:
     """
-    Instance of a raw blendfile block (only contains its header currently).
+    Instance of a raw blend-file block (only contains its header currently).
     """
     __slots__ = (
         # BlendFile
@@ -771,7 +772,7 @@ class BlendFileHeader:
         elif pointer_size_id == b'_':
             self.pointer_size = 4
         else:
-            assert 0
+            assert False, "unreachable"
         endian_id = values[2]
         if endian_id == b'v':
             self.is_little_endian = True
@@ -782,7 +783,7 @@ class BlendFileHeader:
             self.endian_index = 1
             self.endian_str = b'>'
         else:
-            assert 0
+            assert False, "unreachable"
 
         version_id = values[3]
         self.version = int(version_id)
@@ -964,7 +965,7 @@ class DNAStruct:
                                     use_str=use_str,
                                     use_str_nil=use_nil,
                                     )
-        except NotImplementedError as e:
+        except NotImplementedError:
             raise NotImplementedError("%r exists, but can't resolve field %r" %
                                       (path, dna_name.name_only), dna_name, dna_type)
 

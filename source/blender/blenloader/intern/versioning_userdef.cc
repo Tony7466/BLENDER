@@ -28,7 +28,7 @@
 #include "BKE_addon.h"
 #include "BKE_blender_version.h"
 #include "BKE_colorband.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_keyconfig.h"
 #include "BKE_main.hh"
 #include "BKE_preferences.h"
@@ -38,7 +38,7 @@
 
 #include "BLT_translation.hh"
 
-#include "GPU_platform.h"
+#include "GPU_platform.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -67,7 +67,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 #define FROM_DEFAULT_V4_UCHAR(member) copy_v4_v4_uchar(btheme->member, U_theme_default.member)
 
   if (!USER_VERSION_ATLEAST(300, 41)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   /* Again reset the theme, but only if stored with an early 3.1 alpha version. Some changes were
@@ -76,7 +76,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    * don't want to reset theme changes stored in the eventual 3.0 release once opened in a 3.1
    * build. */
   if (userdef->versionfile > 300 && !USER_VERSION_ATLEAST(301, 1)) {
-    memcpy(btheme, &U_theme_default, sizeof(*btheme));
+    MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   }
 
   if (!USER_VERSION_ATLEAST(301, 2)) {
@@ -140,6 +140,21 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_mode_select);
   }
 
+  if (!USER_VERSION_ATLEAST(402, 13)) {
+    FROM_DEFAULT_V4_UCHAR(space_text.hilite);
+    FROM_DEFAULT_V4_UCHAR(space_console.console_cursor);
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 16)) {
+    BLI_uniquename(
+        &userdef->themes, btheme, "Theme", '.', offsetof(bTheme, name), sizeof(btheme->name));
+  }
+
+  if (!USER_VERSION_ATLEAST(402, 17)) {
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated);
+    FROM_DEFAULT_V4_UCHAR(space_action.keytype_generated_select);
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
@@ -155,7 +170,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
 /** #UserDef.flag */
 #define USER_LMOUSESELECT (1 << 14) /* deprecated */
 
-static void do_version_select_mouse(UserDef *userdef, wmKeyMapItem *kmi)
+static void do_version_select_mouse(const UserDef *userdef, wmKeyMapItem *kmi)
 {
   /* Remove select/action mouse from user defined keymaps. */
   enum {
@@ -481,7 +496,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(275, 2)) {
-    userdef->ndof_deadzone = 0.1;
+    userdef->ndof_deadzone = 0.0;
   }
 
   if (!USER_VERSION_ATLEAST(275, 4)) {
@@ -505,7 +520,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     /* Reset theme, old themes will not be compatible with minor version updates from now on. */
     LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
-      memcpy(btheme, &U_theme_default, sizeof(*btheme));
+      MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
     }
 
     /* Annotations - new layer color
@@ -923,6 +938,13 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
+  if (!USER_VERSION_ATLEAST(402, 6)) {
+    if (BLI_listbase_is_empty(&userdef->extension_repos)) {
+      BKE_preferences_extension_repo_add_default(userdef);
+      BKE_preferences_extension_repo_add_default_user(userdef);
+    }
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a USER_VERSION_ATLEAST check.
@@ -946,10 +968,11 @@ void BLO_sanitize_experimental_features_userpref_blend(UserDef *userdef)
    *
    * At that time master already has its version bumped so its user preferences
    * are not touched by these settings. */
-
+#ifdef WITH_EXPERIMENTAL_FEATURES
   if (BKE_blender_version_is_alpha()) {
     return;
   }
+#endif
 
   MEMSET_STRUCT_AFTER(&userdef->experimental, 0, SANITIZE_AFTER_HERE);
 }

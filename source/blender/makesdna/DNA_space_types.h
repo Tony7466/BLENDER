@@ -53,7 +53,7 @@ using AssetRepresentationHandle = blender::asset_system::AssetRepresentation;
 typedef struct AssetRepresentationHandle AssetRepresentationHandle;
 #endif
 
-/** Defined in `buttons_intern.h`. */
+/** Defined in `buttons_intern.hh`. */
 typedef struct SpaceProperties_Runtime SpaceProperties_Runtime;
 
 #ifdef __cplusplus
@@ -1267,11 +1267,13 @@ typedef struct SpaceImage {
   char gizmo_flag;
 
   char grid_shape_source;
-  char _pad1[2];
+  char _pad1[6];
 
   int flag;
 
   float uv_opacity;
+
+  float stretch_opacity;
 
   int tile_grid_shape[2];
   /**
@@ -1697,9 +1699,7 @@ typedef struct SpaceConsole {
   char _pad0[6];
   /* End 'SpaceLink' header. */
 
-  /* space vars */
-  int lheight;
-  char _pad[4];
+  /* Space variables. */
 
   /** ConsoleLine; output. */
   ListBase scrollback;
@@ -1708,6 +1708,11 @@ typedef struct SpaceConsole {
   char prompt[256];
   /** Multiple consoles are possible, not just python. */
   char language[32];
+
+  int lheight;
+
+  /** Index into history of most recent up/down arrow keys. */
+  int history_index;
 
   /** Selection offset in bytes. */
   int sel_start;
