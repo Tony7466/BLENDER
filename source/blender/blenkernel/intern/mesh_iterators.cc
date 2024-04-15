@@ -31,7 +31,6 @@
 
 void BKE_mesh_foreach_mapped_vert(
     const Mesh *mesh,
-    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float co[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag)
@@ -62,9 +61,8 @@ void BKE_mesh_foreach_mapped_vert(
   }
   else {
     const blender::Span<blender::float3> positions = mesh->vert_positions();
-    const int *index = use_orig_index ? static_cast<const int *>(
-                                            CustomData_get_layer(&mesh->vert_data, CD_ORIGINDEX)) :
-                                        nullptr;
+    const int *index = static_cast<const int *>(
+        CustomData_get_layer(&mesh->vert_data, CD_ORIGINDEX));
     blender::Span<blender::float3> vert_normals;
     if (flag & MESH_FOREACH_USE_NORMAL) {
       vert_normals = mesh->vert_normals();
@@ -92,7 +90,6 @@ void BKE_mesh_foreach_mapped_vert(
 void BKE_mesh_foreach_mapped_edge(
     Mesh *mesh,
     const int tot_edges,
-    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float v0co[3], const float v1co[3]),
     void *user_data)
 {
@@ -121,9 +118,8 @@ void BKE_mesh_foreach_mapped_edge(
   else {
     const blender::Span<blender::float3> positions = mesh->vert_positions();
     const blender::Span<blender::int2> edges = mesh->edges();
-    const int *index = use_orig_index ? static_cast<const int *>(
-                                            CustomData_get_layer(&mesh->edge_data, CD_ORIGINDEX)) :
-                                        nullptr;
+    const int *index = static_cast<const int *>(
+        CustomData_get_layer(&mesh->edge_data, CD_ORIGINDEX));
 
     if (index) {
       for (const int i : edges.index_range()) {
@@ -144,7 +140,6 @@ void BKE_mesh_foreach_mapped_edge(
 }
 
 void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
-                                  const bool use_orig_index,
                                   void (*func)(void *user_data,
                                                int vertex_index,
                                                int face_index,
@@ -199,12 +194,10 @@ void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
     const blender::Span<blender::float3> positions = mesh->vert_positions();
     const blender::OffsetIndices faces = mesh->faces();
     const blender::Span<int> corner_verts = mesh->corner_verts();
-    const int *v_index = use_orig_index ? static_cast<const int *>(CustomData_get_layer(
-                                              &mesh->vert_data, CD_ORIGINDEX)) :
-                                          nullptr;
-    const int *f_index = use_orig_index ? static_cast<const int *>(CustomData_get_layer(
-                                              &mesh->face_data, CD_ORIGINDEX)) :
-                                          nullptr;
+    const int *v_index = static_cast<const int *>(
+        CustomData_get_layer(&mesh->vert_data, CD_ORIGINDEX));
+    const int *f_index = static_cast<const int *>(
+        CustomData_get_layer(&mesh->face_data, CD_ORIGINDEX));
 
     if (v_index || f_index) {
       for (const int face_i : faces.index_range()) {
@@ -234,7 +227,6 @@ void BKE_mesh_foreach_mapped_loop(Mesh *mesh,
 
 void BKE_mesh_foreach_mapped_face_center(
     Mesh *mesh,
-    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float cent[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag)
@@ -272,9 +264,8 @@ void BKE_mesh_foreach_mapped_face_center(
     const blender::Span<float3> positions = mesh->vert_positions();
     const blender::OffsetIndices faces = mesh->faces();
     const blender::Span<int> corner_verts = mesh->corner_verts();
-    const int *index = use_orig_index ? static_cast<const int *>(
-                                            CustomData_get_layer(&mesh->face_data, CD_ORIGINDEX)) :
-                                        nullptr;
+    const int *index = static_cast<const int *>(
+        CustomData_get_layer(&mesh->face_data, CD_ORIGINDEX));
 
     if (index) {
       for (const int i : faces.index_range()) {
@@ -311,7 +302,6 @@ void BKE_mesh_foreach_mapped_face_center(
 
 void BKE_mesh_foreach_mapped_subdiv_face_center(
     Mesh *mesh,
-    const bool use_orig_index,
     void (*func)(void *user_data, int index, const float cent[3], const float no[3]),
     void *user_data,
     MeshForeachFlag flag)
@@ -323,9 +313,8 @@ void BKE_mesh_foreach_mapped_subdiv_face_center(
   if (flag & MESH_FOREACH_USE_NORMAL) {
     vert_normals = mesh->vert_normals();
   }
-  const int *index = use_orig_index ? static_cast<const int *>(
-                                          CustomData_get_layer(&mesh->face_data, CD_ORIGINDEX)) :
-                                      nullptr;
+  const int *index = static_cast<const int *>(
+      CustomData_get_layer(&mesh->face_data, CD_ORIGINDEX));
   const blender::BitSpan facedot_tags = mesh->runtime->subsurf_face_dot_tags;
 
   if (index) {
@@ -389,7 +378,6 @@ void BKE_mesh_foreach_mapped_vert_coords_get(const Mesh *mesh_eval,
   memset(r_cos, 0, sizeof(*r_cos) * totcos);
   user_data.vertexcos = r_cos;
   user_data.vertex_visit = BLI_BITMAP_NEW(totcos, __func__);
-  BKE_mesh_foreach_mapped_vert(
-      mesh_eval, true, get_vertexcos__mapFunc, &user_data, MESH_FOREACH_NOP);
+  BKE_mesh_foreach_mapped_vert(mesh_eval, get_vertexcos__mapFunc, &user_data, MESH_FOREACH_NOP);
   MEM_freeN(user_data.vertex_visit);
 }
