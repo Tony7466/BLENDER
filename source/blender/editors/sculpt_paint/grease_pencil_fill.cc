@@ -94,15 +94,15 @@ static Image *render_to_image(Main &bmain,
   const uint imb_flag = IB_rectfloat;
   ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
 
-  //CameraParams camera_params;
-  //BKE_camera_params_init(&camera_params);
-  //BKE_camera_params_from_view3d(&camera_params, &depsgraph, &view3d, &rv3d);
-  //BKE_camera_params_compute_viewplane(&camera_params, win_size.x, win_size.y, 1.0f, 1.0f);
-  //BKE_camera_params_compute_matrix(&camera_params);
+  // CameraParams camera_params;
+  // BKE_camera_params_init(&camera_params);
+  // BKE_camera_params_from_view3d(&camera_params, &depsgraph, &view3d, &rv3d);
+  // BKE_camera_params_compute_viewplane(&camera_params, win_size.x, win_size.y, 1.0f, 1.0f);
+  // BKE_camera_params_compute_matrix(&camera_params);
 
   rctf viewplane;
   float clip_start, clip_end;
-   const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
+  const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
                                                 &view3d,
                                                 &rv3d,
                                                 win_size.x,
@@ -209,11 +209,11 @@ static void draw_dot(const float3 &position, const float point_size, const Color
 
 /* Draw a line from points. */
 static void draw_curve(Span<float3> positions,
-                      const VArray<ColorGeometry4f> &colors,
-                      const IndexRange indices,
-                      const float4x4 &mat,
-                      const bool cyclic,
-                      const float line_width)
+                       const VArray<ColorGeometry4f> &colors,
+                       const IndexRange indices,
+                       const float4x4 &mat,
+                       const bool cyclic,
+                       const float line_width)
 {
   GPUVertFormat *format = immVertexFormat();
   uint attr_pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -235,8 +235,9 @@ static void draw_curve(Span<float3> positions,
   }
 
   if (cyclic && indices.size() > 2) {
-    immAttr4fv(attr_color, colors[0]);
-    immVertex3fv(attr_pos, math::transform_point(mat, positions[indices[0]]));
+    const int point_i = indices[0];
+    immAttr4fv(attr_color, colors[point_i]);
+    immVertex3fv(attr_pos, math::transform_point(mat, positions[point_i]));
   }
 
   immEnd();
@@ -266,7 +267,7 @@ static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
                  [tint_color, opacities, material_alpha, alpha_threshold](const int64_t index) {
                    float alpha = std::clamp(material_alpha * opacities[index], 0.0f, 1.0f);
                    ColorGeometry4f color = tint_color;
-                   color.a = float(alpha <= alpha_threshold);
+                   color.a = float(alpha > alpha_threshold);
                    return color;
                  });
 }
@@ -347,11 +348,11 @@ static void draw_datablock(const Object &object,
 {
   using bke::greasepencil::Layer;
 
-  //bGPdata *gpd = tgpf->gpd;
-  //Brush *brush = tgpf->brush;
-  //BrushGpencilSettings *brush_settings = brush->gpencil_settings;
-  //ToolSettings *ts = tgpf->scene->toolsettings;
-  //const bool extend_lines = (tgpf->fill_extend_fac > 0.0f);
+  // bGPdata *gpd = tgpf->gpd;
+  // Brush *brush = tgpf->brush;
+  // BrushGpencilSettings *brush_settings = brush->gpencil_settings;
+  // ToolSettings *ts = tgpf->scene->toolsettings;
+  // const bool extend_lines = (tgpf->fill_extend_fac > 0.0f);
 
   // tGPDdraw tgpw;
   // tgpw.rv3d = tgpf->rv3d;
@@ -366,11 +367,11 @@ static void draw_datablock(const Object &object,
   // tgpw.disable_fill = 1;
   // tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
 
-  //bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
-  //BLI_assert(gpl_active != nullptr);
+  // bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
+  // BLI_assert(gpl_active != nullptr);
 
-  //const int gpl_active_index = BLI_findindex(&gpd->layers, gpl_active);
-  //BLI_assert(gpl_active_index >= 0);
+  // const int gpl_active_index = BLI_findindex(&gpd->layers, gpl_active);
+  // BLI_assert(gpl_active_index >= 0);
 
   for (const DrawingInfo &info : drawings) {
     const Layer &layer = *grease_pencil.layers()[info.layer_index];
@@ -384,7 +385,7 @@ static void draw_datablock(const Object &object,
     const Span<float3> positions = strokes.positions();
     const VArray<float> opacities = info.drawing.opacities();
     const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
-                                                           bke::AttrDomain::Curve);
+                                                          bke::AttrDomain::Curve);
     const VArray<bool> boundary_strokes = *attributes.lookup_or_default<bool>(
         attr_is_boundary, bke::AttrDomain::Curve, false);
     const VArray<bool> cyclic = strokes.cyclic();
@@ -423,7 +424,8 @@ static void draw_datablock(const Object &object,
           continue;
         }
         /* Check if the material is visible. */
-        const Material *material = BKE_object_material_get(const_cast<Object *>(&object), materials[curve_i] + 1);
+        const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                           materials[curve_i] + 1);
         const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
         if (gp_style == nullptr || (gp_style->flag & GP_MATERIAL_HIDE)) {
           continue;
@@ -440,13 +442,13 @@ static void draw_datablock(const Object &object,
                                          material->gp_style->stroke_rgba[3] :
                                          1.0f;
 
-        //tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true;
+        // tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true;
         ///* Reduce thickness to avoid gaps. */
-        //tgpw.lthick = gpl->line_change;
-        //tgpw.opacity = 1.0;
-        //copy_v4_v4(tgpw.tintcolor, ink);
-        //tgpw.onion = true;
-        //tgpw.custonion = true;
+        // tgpw.lthick = gpl->line_change;
+        // tgpw.opacity = 1.0;
+        // copy_v4_v4(tgpw.tintcolor, ink);
+        // tgpw.onion = true;
+        // tgpw.custonion = true;
 
         // TODO brush flag
         const bool brush_fill_hide = false;
@@ -462,38 +464,38 @@ static void draw_datablock(const Object &object,
                           alpha_threshold,
                           thickness);
         /* Normal strokes. */
-        //if (ELEM(fill_draw_mode, GP_FILL_DMODE_STROKE, GP_FILL_DMODE_BOTH)) {
-        //  if (gpencil_stroke_is_drawable(tgpf, gps) && ((gps->flag & GP_STROKE_TAG) == 0) &&
-        //      ((gps->flag & GP_STROKE_HELP) == 0))
-        //  {
-        //    ED_gpencil_draw_fill(&tgpw);
-        //  }
-        //  /* In stroke mode, still must draw the extend lines. */
-        //  if (extend_lines && (tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE)) {
-        //    if ((gps->flag & GP_STROKE_NOFILL) && (gps->flag & GP_STROKE_TAG)) {
-        //      gpencil_draw_basic_stroke(tgpf,
-        //                                gps,
-        //                                tgpw.diff_mat,
-        //                                gps->flag & GP_STROKE_CYCLIC,
-        //                                ink,
-        //                                tgpf->flag,
-        //                                tgpf->fill_threshold,
-        //                                1.0f);
-        //    }
-        //  }
-        //}
+        // if (ELEM(fill_draw_mode, GP_FILL_DMODE_STROKE, GP_FILL_DMODE_BOTH)) {
+        //   if (gpencil_stroke_is_drawable(tgpf, gps) && ((gps->flag & GP_STROKE_TAG) == 0) &&
+        //       ((gps->flag & GP_STROKE_HELP) == 0))
+        //   {
+        //     ED_gpencil_draw_fill(&tgpw);
+        //   }
+        //   /* In stroke mode, still must draw the extend lines. */
+        //   if (extend_lines && (tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE)) {
+        //     if ((gps->flag & GP_STROKE_NOFILL) && (gps->flag & GP_STROKE_TAG)) {
+        //       gpencil_draw_basic_stroke(tgpf,
+        //                                 gps,
+        //                                 tgpw.diff_mat,
+        //                                 gps->flag & GP_STROKE_CYCLIC,
+        //                                 ink,
+        //                                 tgpf->flag,
+        //                                 tgpf->fill_threshold,
+        //                                 1.0f);
+        //     }
+        //   }
+        // }
 
         ///* 3D Lines with basic shapes and invisible lines. */
-        //if (ELEM(tgpf->fill_draw_mode, GP_FILL_DMODE_CONTROL, GP_FILL_DMODE_BOTH)) {
-        //  gpencil_draw_basic_stroke(tgpf,
-        //                            gps,
-        //                            tgpw.diff_mat,
-        //                            gps->flag & GP_STROKE_CYCLIC,
-        //                            ink,
-        //                            tgpf->flag,
-        //                            tgpf->fill_threshold,
-        //                            1.0f);
-        //}
+        // if (ELEM(tgpf->fill_draw_mode, GP_FILL_DMODE_CONTROL, GP_FILL_DMODE_BOTH)) {
+        //   gpencil_draw_basic_stroke(tgpf,
+        //                             gps,
+        //                             tgpw.diff_mat,
+        //                             gps->flag & GP_STROKE_CYCLIC,
+        //                             ink,
+        //                             tgpf->flag,
+        //                             tgpf->fill_threshold,
+        //                             1.0f);
+        // }
       }
     });
   }
@@ -527,12 +529,19 @@ static bool do_frame_fill(Main &bmain,
       bmain, region, scene, depsgraph, view3d, rv3d, pixel_scale, zoom, offset, reports, [&]() {
         GPU_blend(GPU_BLEND_ALPHA);
 
-        render_utils::draw_curve({float3(-1, 0, -1), float3()}
+        // Array<float3> debug_positions = {float3(-1, 0, -1), float3(1, 0, 1)};
+        // VArray<ColorGeometry4f> debug_colors = VArray<ColorGeometry4f>::ForSingle(
+        //     {1, 0, 0, 1}, debug_positions.size());
+        // render_utils::draw_curve(debug_positions,
+        //                          debug_colors,
+        //                          debug_positions.index_range(),
+        //                          float4x4::identity(),
+        //                          false,
+        //                          10.0f);
 
         /* Draw blue point where click with mouse. */
         draw_mouse_position(mouse_position);
 
-        const ColorGeometry4f ink(1.0f, 0.0f, 0.0f, 1.0f);
         draw_datablock(object,
                        grease_pencil,
                        drawings,
@@ -776,8 +785,8 @@ bool fill_strokes(bContext &C,
     const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
     const float2 region_center = 0.5f * (region_min + region_max);
     const float2 region_extent = bounds_max - bounds_min;
-    //const float2 zoom = math::safe_divide(region_extent, bounds_extent);
-    //const float2 offset = math::safe_divide(region_center - bounds_center, bounds_extent);
+    // const float2 zoom = math::safe_divide(region_extent, bounds_extent);
+    // const float2 offset = math::safe_divide(region_center - bounds_center, bounds_extent);
     const float2 zoom = float2(1.0f);
     const float2 offset = float2(0.0f);
 
