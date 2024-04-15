@@ -1639,7 +1639,7 @@ static bool object_is_visible_for_viewport_render(const Depsgraph &depsgraph,
 {
   if (DEG_get_mode(&depsgraph) == DAG_EVAL_RENDER) {
     /* For dependency graph in render evaluation mode the visibility is checked on the iterator
-     * level/ */
+     * level. */
     return true;
   }
 
