@@ -940,9 +940,9 @@ if(WITH_GTESTS)
     list(APPEND TEST_SRC
       vulkan/vk_data_conversion_test.cc
       vulkan/vk_memory_layout_test.cc
-      vulkan/render_graph/vk_render_graph_test_transfer.cc
-      vulkan/render_graph/vk_render_graph_test_compute.cc
-      vulkan/render_graph/vk_render_graph_test_present.cc
+      vulkan/render_graph/tests/vk_render_graph_test_transfer.cc
+      vulkan/render_graph/tests/vk_render_graph_test_compute.cc
+      vulkan/render_graph/tests/vk_render_graph_test_present.cc
     )
   endif()
 
