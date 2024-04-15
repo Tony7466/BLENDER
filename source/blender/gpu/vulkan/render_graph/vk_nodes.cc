@@ -10,36 +10,11 @@
 
 namespace blender::gpu::render_graph {
 
-static void free_data(VKNodeData &node_data)
-{
-  switch (node_data.type) {
-    case VKNodeType::DISPATCH: {
-      VKDispatchNode node_class;
-      node_class.free_data(node_data.dispatch);
-      break;
-    }
-
-    case VKNodeType::UNUSED:
-    case VKNodeType::CLEAR_COLOR_IMAGE:
-    case VKNodeType::FILL_BUFFER:
-    case VKNodeType::COPY_BUFFER:
-    case VKNodeType::COPY_IMAGE:
-    case VKNodeType::COPY_IMAGE_TO_BUFFER:
-    case VKNodeType::COPY_BUFFER_TO_IMAGE:
-    case VKNodeType::BLIT_IMAGE:
-    case VKNodeType::SYNCHRONIZATION:
-      break;
-  }
-
-  memset(&node_data, 0, sizeof(VKNodeData));
-  node_data.type = VKNodeType::UNUSED;
-}
-
 void VKNodes::remove_nodes(Span<NodeHandle> node_handles)
 {
   for (NodeHandle node_handle : node_handles) {
-    VKNodeData &node_data = get(node_handle);
-    free_data(node_data);
+    VKNode &node = get(node_handle);
+    node.reset();
     nodes_.free(node_handle);
   }
 }

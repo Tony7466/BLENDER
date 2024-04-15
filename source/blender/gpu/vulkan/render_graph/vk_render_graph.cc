@@ -31,7 +31,7 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   VKSynchronizationCreateInfo synchronization = {};
   synchronization.vk_image = vk_swapchain_image;
   synchronization.vk_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-  add_node<VKSynchronizationNode, VKSynchronizationCreateInfo>(synchronization);
+  add_node<VKSynchronizationNode>(synchronization);
 
   std::scoped_lock lock(resources_.mutex_get());
   Span<NodeHandle> built_nodes = command_builder_.build_image(

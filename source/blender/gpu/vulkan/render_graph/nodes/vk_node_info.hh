@@ -48,11 +48,15 @@ template<VKNodeType NodeType,
          VkPipelineStageFlagBits PipelineStage,
          VKResourceType ResourceUsages>
 class VKNodeInfo : public NonCopyable {
+
  public:
+  using CreateInfo = NodeCreateInfo;
+  using Data = NodeData;
+
   /**
    * Node type of this class.
    *
-   * The node type used to link VKNodeData instance to a VKNodeInfo.
+   * The node type used to link VKNode instance to a VKNodeInfo.
    */
   static constexpr VKNodeType node_type = NodeType;
 
@@ -73,7 +77,7 @@ class VKNodeInfo : public NonCopyable {
    *
    * Has been implemented as a template to ensure all node specific data
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNodeData` includes all header files.)
+   * actual node data (`VKNode` includes all header files.)
    *
    * This function must be implemented by all node classes. But due to cyclic inclusion of header
    * files it is implemented as a template function.

@@ -51,12 +51,11 @@ constexpr VkAccessFlags VK_ACCESS_WRITE_MASK = VK_ACCESS_SHADER_WRITE_BIT |
 /**
  * Enum class containing the different resource types.
  */
-enum class VKResourceType { IMAGE = (1 << 0), BUFFER = (1 << 1) };
+enum class VKResourceType { NONE = (0 << 0), IMAGE = (1 << 0), BUFFER = (1 << 1) };
 ENUM_OPERATORS(VKResourceType, VKResourceType::BUFFER);
 
-
 /**
- * Index of a VKNodeData inside the render graph.
+ * Index of a VKNode inside the render graph.
  */
 using NodeHandle = uint64_t;
 

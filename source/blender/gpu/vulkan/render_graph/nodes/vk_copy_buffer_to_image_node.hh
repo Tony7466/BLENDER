@@ -12,7 +12,7 @@
 
 namespace blender::gpu::render_graph {
 /**
- * Information stored inside the render graph node. See `VKNodeData`.
+ * Information stored inside the render graph node. See `VKNode`.
  */
 struct VKCopyBufferToImageData {
   VkBuffer src_buffer;
@@ -36,7 +36,7 @@ class VKCopyBufferToImageNode : public VKNodeInfo<VKNodeType::COPY_BUFFER_TO_IMA
    *
    * Has been implemented as a template to ensure all node specific data
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNodeData` includes all header files.)
+   * actual node data (`VKNode` includes all header files.)
    */
   template<typename Node>
   static void set_node_data(Node &node, const VKCopyBufferToImageCreateInfo &create_info)

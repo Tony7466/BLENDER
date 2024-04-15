@@ -66,48 +66,46 @@ class VKRenderGraph : public NonCopyable {
   /**
    * Add a node to the render graph.
    */
-  template<typename NodeInfo, typename NodeCreateInfo>
-  void add_node(const NodeCreateInfo &create_info)
+  template<typename NodeInfo> void add_node(const typename NodeInfo::CreateInfo &create_info)
   {
     std::scoped_lock lock(resources_.mutex_get());
-    NodeHandle handle = nodes_.add_node<NodeInfo, NodeCreateInfo>(create_info);
-    NodeInfo node_class;
-    node_class.build_resource_dependencies(
-        resources_, resource_dependencies_, handle, create_info);
+    NodeHandle handle = nodes_.add_node<NodeInfo>(create_info);
+    NodeInfo node_info;
+    node_info.build_resource_dependencies(resources_, resource_dependencies_, handle, create_info);
   }
 
  public:
   void add_node(const VKClearColorImageCreateInfo &clear_color_image)
   {
-    add_node<VKClearColorImageNode, VKClearColorImageCreateInfo>(clear_color_image);
+    add_node<VKClearColorImageNode>(clear_color_image);
   }
   void add_node(const VKFillBufferCreateInfo &fill_buffer)
   {
-    add_node<VKFillBufferNode, VKFillBufferCreateInfo>(fill_buffer);
+    add_node<VKFillBufferNode>(fill_buffer);
   }
   void add_node(const VKCopyBufferCreateInfo &copy_buffer)
   {
-    add_node<VKCopyBufferNode, VKCopyBufferCreateInfo>(copy_buffer);
+    add_node<VKCopyBufferNode>(copy_buffer);
   }
   void add_node(const VKCopyBufferToImageCreateInfo &copy_buffer_to_image)
   {
-    add_node<VKCopyBufferToImageNode, VKCopyBufferToImageCreateInfo>(copy_buffer_to_image);
+    add_node<VKCopyBufferToImageNode>(copy_buffer_to_image);
   }
   void add_node(const VKCopyImageCreateInfo &copy_image_to_buffer)
   {
-    add_node<VKCopyImageNode, VKCopyImageCreateInfo>(copy_image_to_buffer);
+    add_node<VKCopyImageNode>(copy_image_to_buffer);
   }
   void add_node(const VKCopyImageToBufferCreateInfo &copy_image_to_buffer)
   {
-    add_node<VKCopyImageToBufferNode, VKCopyImageToBufferCreateInfo>(copy_image_to_buffer);
+    add_node<VKCopyImageToBufferNode>(copy_image_to_buffer);
   }
   void add_node(const VKBlitImageCreateInfo &blit_image)
   {
-    add_node<VKBlitImageNode, VKBlitImageCreateInfo>(blit_image);
+    add_node<VKBlitImageNode>(blit_image);
   }
   void add_node(const VKDispatchCreateInfo &dispatch)
   {
-    add_node<VKDispatchNode, VKDispatchCreateInfo>(dispatch);
+    add_node<VKDispatchNode>(dispatch);
   }
 
   /**

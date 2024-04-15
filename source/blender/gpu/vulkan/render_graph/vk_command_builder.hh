@@ -133,10 +133,17 @@ class VKCommandBuilder {
   void build_node(VKRenderGraph &render_graph,
                   VKCommandBufferInterface &command_buffer,
                   NodeHandle node_handle,
-                  const VKNodeData &node_data);
+                  const VKNode &node);
 
+  /**
+   * Build the pipeline barriers that should be recorded before the given node handle.
+   */
+  void build_pipeline_barriers(VKRenderGraph &render_graph,
+                               VKCommandBufferInterface &command_buffer,
+                               NodeHandle node_handle,
+                               VkPipelineStageFlags pipeline_stage);
   void reset_barriers();
-  void send_pipeline_barriers(VKRenderGraph &render_graph);
+  void send_pipeline_barriers(VKCommandBufferInterface &command_buffer);
 
   void add_buffer_barriers(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
@@ -165,42 +172,6 @@ class VKCommandBuilder {
   void add_image_write_barriers(VKRenderGraph &render_graph,
                                 NodeHandle node_handle,
                                 VkPipelineStageFlags node_stages);
-
-  /**
-   * Build the pipeline barrier that will be recorded before the given node handle.
-   */
-  template<typename NodeInfo>
-  void build_pipeline_barriers(VKRenderGraph &render_graph, NodeHandle node_handle)
-  {
-    reset_barriers();
-    if constexpr (bool(NodeInfo::resource_usages & VKResourceType::IMAGE)) {
-      add_image_barriers(render_graph, node_handle, NodeInfo::pipeline_stage);
-    }
-    if constexpr (bool(NodeInfo::resource_usages & VKResourceType::BUFFER)) {
-      add_buffer_barriers(render_graph, node_handle, NodeInfo::pipeline_stage);
-    }
-    send_pipeline_barriers(render_graph);
-  }
-
-  /**
-   * Build the commands for a node and record them to the given command buffer. These will include
-   * pipeline barrier commands.
-   *
-   * The `r_bound_pipelines` is used by dispatch and draw commands to be setup the
-   * (compute/graphics draw) pipelines using as few as possible commands.
-   * Data transfer nodes should not use this parameter.
-   */
-  template<typename NodeInfo, typename NodeClassData>
-  void build_node(VKRenderGraph &render_graph,
-                  VKCommandBufferInterface &command_buffer,
-                  NodeHandle node_handle,
-                  const NodeClassData &node_data,
-                  VKBoundPipelines &r_bound_pipelines)
-  {
-    NodeInfo node_class;
-    build_pipeline_barriers<NodeInfo>(render_graph, node_handle);
-    node_class.build_commands(command_buffer, node_data, r_bound_pipelines);
-  }
 };
 
 }  // namespace blender::gpu::render_graph

@@ -79,8 +79,8 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 {
   command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
-    VKNodeData &node_data = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, command_buffer, node_handle, node_data);
+    VKNode &node = render_graph.nodes_.get(node_handle);
+    build_node(render_graph, command_buffer, node_handle, node);
   }
   command_buffer.end_recording();
 }
@@ -88,91 +88,21 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                   VKCommandBufferInterface &command_buffer,
                                   NodeHandle node_handle,
-                                  const VKNodeData &node_data)
+                                  const VKNode &node)
 {
-  switch (node_data.type) {
-    case VKNodeType::UNUSED: {
-      break;
-    }
+  build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
+  node.build_commands(command_buffer, state_.active_pipelines);
+}
 
-    case VKNodeType::CLEAR_COLOR_IMAGE: {
-      build_node<VKClearColorImageNode, VKClearColorImageData>(render_graph,
-                                                               command_buffer,
-                                                               node_handle,
-                                                               node_data.clear_color_image,
-                                                               state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::FILL_BUFFER: {
-      build_node<VKFillBufferNode, VKFillBufferData>(render_graph,
-                                                     command_buffer,
-                                                     node_handle,
-                                                     node_data.fill_buffer,
-                                                     state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::COPY_BUFFER: {
-      build_node<VKCopyBufferNode, VKCopyBufferData>(render_graph,
-                                                     command_buffer,
-                                                     node_handle,
-                                                     node_data.copy_buffer,
-                                                     state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::COPY_BUFFER_TO_IMAGE: {
-      build_node<VKCopyBufferToImageNode, VKCopyBufferToImageData>(render_graph,
-                                                                   command_buffer,
-                                                                   node_handle,
-                                                                   node_data.copy_buffer_to_image,
-                                                                   state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::COPY_IMAGE: {
-      build_node<VKCopyImageNode, VKCopyImageData>(render_graph,
-                                                   command_buffer,
-                                                   node_handle,
-                                                   node_data.copy_image,
-                                                   state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::COPY_IMAGE_TO_BUFFER: {
-      build_node<VKCopyImageToBufferNode, VKCopyImageToBufferData>(render_graph,
-                                                                   command_buffer,
-                                                                   node_handle,
-                                                                   node_data.copy_image_to_buffer,
-                                                                   state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::BLIT_IMAGE: {
-      build_node<VKBlitImageNode, VKBlitImageData>(render_graph,
-                                                   command_buffer,
-                                                   node_handle,
-                                                   node_data.blit_image,
-                                                   state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::SYNCHRONIZATION: {
-      build_node<VKSynchronizationNode, VKSynchronizationData>(render_graph,
-                                                               command_buffer,
-                                                               node_handle,
-                                                               node_data.synchronization,
-                                                               state_.active_pipelines);
-      break;
-    }
-
-    case VKNodeType::DISPATCH: {
-      build_node<VKDispatchNode, VKDispatchData>(
-          render_graph, command_buffer, node_handle, node_data.dispatch, state_.active_pipelines);
-      break;
-    }
-  }
+void VKCommandBuilder::build_pipeline_barriers(VKRenderGraph &render_graph,
+                                               VKCommandBufferInterface &command_buffer,
+                                               NodeHandle node_handle,
+                                               VkPipelineStageFlags pipeline_stage)
+{
+  reset_barriers();
+  add_image_barriers(render_graph, node_handle, pipeline_stage);
+  add_buffer_barriers(render_graph, node_handle, pipeline_stage);
+  send_pipeline_barriers(command_buffer);
 }
 
 void VKCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph,
@@ -196,7 +126,7 @@ void VKCommandBuilder::reset_barriers()
   state_.dst_stage_mask = VK_PIPELINE_STAGE_NONE;
 }
 
-void VKCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
+void VKCommandBuilder::send_pipeline_barriers(VKCommandBufferInterface &command_buffer)
 {
   if (vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) {
     reset_barriers();
@@ -210,15 +140,15 @@ void VKCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
     state_.src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   }
 
-  render_graph.command_buffer_->pipeline_barrier(state_.src_stage_mask,
-                                                 state_.dst_stage_mask,
-                                                 VK_DEPENDENCY_BY_REGION_BIT,
-                                                 0,
-                                                 nullptr,
-                                                 vk_buffer_memory_barriers_.size(),
-                                                 vk_buffer_memory_barriers_.data(),
-                                                 vk_image_memory_barriers_.size(),
-                                                 vk_image_memory_barriers_.data());
+  command_buffer.pipeline_barrier(state_.src_stage_mask,
+                                  state_.dst_stage_mask,
+                                  VK_DEPENDENCY_BY_REGION_BIT,
+                                  0,
+                                  nullptr,
+                                  vk_buffer_memory_barriers_.size(),
+                                  vk_buffer_memory_barriers_.data(),
+                                  vk_image_memory_barriers_.size(),
+                                  vk_image_memory_barriers_.data());
   reset_barriers();
 }
 

@@ -13,7 +13,7 @@
 namespace blender::gpu::render_graph {
 
 /**
- * Information stored inside the render graph node. See `VKNodeData`.
+ * Information stored inside the render graph node. See `VKNode`.
  */
 struct VKBlitImageData {
   VkImage src_image;
@@ -30,7 +30,7 @@ using VKBlitImageCreateInfo = VKBlitImageData;
 /**
  * Blit Image Node
  *
- * - Contains logic to copy relevant data to the VKNodeData.
+ * - Contains logic to copy relevant data to the VKNode.
  * - Determine read/write resource dependencies.
  * - Add commands to a command builder.
  */
@@ -45,7 +45,7 @@ class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
    *
    * Has been implemented as a template to ensure all node specific data
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNodeData` includes all header files.)
+   * actual node data (`VKNode` includes all header files.)
    */
   template<typename Node> void set_node_data(Node &node, const VKBlitImageCreateInfo &create_info)
   {
