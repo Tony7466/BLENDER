@@ -117,7 +117,7 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
             col.separator()
 
             col.prop(light, "use_shadow", text="Cast Shadow")
-            col.prop(light, "use_shadow_jittering", text="Shadow Jittering")
+            col.prop(light, "use_shadow_jittering")
             sub = col.column(align=True)
             sub.active = light.use_shadow_jittering
             sub.prop(light, "shadow_jitter_overblur", text="Jittering Overblur")
