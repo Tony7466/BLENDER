@@ -232,7 +232,9 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
     integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   }
 
-  kernels_.integrator_restir(kg, state, render_buffer);
+  if (!kernels_.integrator_restir(kg, state, &sample_work_tile, render_buffer)) {
+    return;
+  }
   kernels_.integrator_megakernel(kg, state, render_buffer);
 }
 

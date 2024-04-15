@@ -128,9 +128,13 @@ ccl_device_forceinline void radiance_eval(KernelGlobals kg,
   bsdf_eval_mul(radiance, light_eval);
 }
 
-ccl_device void integrator_restir(KernelGlobals kg,
+ccl_device bool integrator_restir(KernelGlobals kg,
                                   IntegratorState state,
-                                  ccl_global float *ccl_restrict render_buffer)
+                                  ccl_global const KernelWorkTile *ccl_restrict tile,
+                                  ccl_global float *ccl_restrict render_buffer,
+                                  const int x,
+                                  const int y,
+                                  const int scheduled_sample)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_RESTIR);
 
@@ -142,7 +146,7 @@ ccl_device void integrator_restir(KernelGlobals kg,
   integrator_restir_unpack_reservoir(
       kg, &reservoir, &sd, &path_flag, render_pixel_index, render_buffer);
   if (reservoir.is_empty()) {
-    return;
+    return false;
   }
 
   shader_data_setup_from_restir(kg, state, &sd, path_flag, render_buffer);
@@ -160,6 +164,8 @@ ccl_device void integrator_restir(KernelGlobals kg,
 
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &sd, &reservoir.ls, &radiance, 0);
+
+  return true;
 }
 
 CCL_NAMESPACE_END

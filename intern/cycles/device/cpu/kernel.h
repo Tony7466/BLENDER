@@ -30,6 +30,7 @@ class CPUKernels {
 
   IntegratorInitFunction integrator_init_from_camera;
   IntegratorInitFunction integrator_init_from_bake;
+  IntegratorInitFunction integrator_restir;
   IntegratorShadeFunction integrator_intersect_closest;
   IntegratorFunction integrator_intersect_shadow;
   IntegratorFunction integrator_intersect_subsurface;
@@ -38,7 +39,6 @@ class CPUKernels {
   IntegratorShadeFunction integrator_shade_background;
   IntegratorShadeFunction integrator_shade_light;
   IntegratorShadeFunction integrator_shade_shadow;
-  IntegratorShadeFunction integrator_restir;
   IntegratorShadeFunction integrator_shade_surface;
   IntegratorShadeFunction integrator_shade_volume;
   IntegratorShadeFunction integrator_shade_dedicated_light;
