@@ -14,7 +14,6 @@
 #include "../../source/blender/blenlib/BLI_strict_flags.h"
 
 #include <cassert>
-#include <cstdlib>
 
 #include "mallocn_intern.h"
 
