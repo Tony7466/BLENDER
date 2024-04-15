@@ -321,7 +321,7 @@ template<typename T> inline void MEM_delete(const T *ptr)
 template<typename T> inline T *MEM_cnew(const char *allocation_name)
 {
   static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
-  return MEM_cnew_array<T>(1, allocation_name);
+  return static_cast<T *>(MEM_calloc_arrayN_aligned(1, sizeof(T), alignof(T), allocation_name));
 }
 
 /**
