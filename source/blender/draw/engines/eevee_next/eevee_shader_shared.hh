@@ -1509,7 +1509,7 @@ struct Surfel {
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
 struct CaptureInfoData {
-  /** Number of surfels inside the surfel buffer or the needed len. */
+  /** Grid size without padding. */
   packed_int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
   bool32_t do_surfel_output;

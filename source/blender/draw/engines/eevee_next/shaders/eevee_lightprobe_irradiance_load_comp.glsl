@@ -46,6 +46,7 @@ void main()
   int brick_index = lightprobe_irradiance_grid_brick_index_get(grids_infos_buf[grid_index],
                                                                ivec3(gl_WorkGroupID));
 
+  ivec3 grid_size = textureSize(irradiance_a_tx, 0);
   /* Brick coordinate in the source grid. */
   ivec3 brick_coord = ivec3(gl_WorkGroupID);
   /* Add padding border to allow bilinear filtering. */
@@ -53,7 +54,7 @@ void main()
   /* Add padding to the grid to allow interpolation to outside grid. */
   texel_coord -= 1;
 
-  ivec3 input_coord = clamp(texel_coord, 0, textureSize(irradiance_a_tx, 0) - 1);
+  ivec3 input_coord = clamp(texel_coord, ivec3(0), grid_size - 1);
 
   bool is_padding_voxel = !all(equal(texel_coord, input_coord));
 
@@ -112,8 +113,7 @@ void main()
   sh_visibility.L1.M0 = sh_local.L1.M0.aaaa;
   sh_visibility.L1.Mp1 = sh_local.L1.Mp1.aaaa;
 
-  vec3 P = lightprobe_irradiance_grid_sample_position(
-      grid_local_to_world, grids_infos_buf[grid_index].grid_size, input_coord);
+  vec3 P = lightprobe_irradiance_grid_sample_position(grid_local_to_world, grid_size, input_coord);
 
   SphericalHarmonicL1 sh_distant = lightprobe_irradiance_sample(P);
   /* Mask distant lighting by local visibility. */

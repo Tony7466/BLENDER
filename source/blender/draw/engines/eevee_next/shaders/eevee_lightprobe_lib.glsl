@@ -5,11 +5,18 @@
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 
+/**
+ * Returns world position of a volume lightprobe sample (center of cell).
+ * Returned position take into account the half voxel padding on each sides.
+ * `grid_local_to_world_mat` is the unmodified object matrix.
+ * `grid_res` is the un-padded grid resolution.
+ * `cell_coord` is the coordinate of the sample in [0..grid_res) range.
+ */
 vec3 lightprobe_irradiance_grid_sample_position(mat4 grid_local_to_world_mat,
                                                 ivec3 grid_res,
                                                 ivec3 cell_coord)
 {
-  vec3 ls_cell_pos = (vec3(cell_coord) + vec3(0.5)) / vec3(grid_res);
+  vec3 ls_cell_pos = (vec3(cell_coord + 1)) / vec3(grid_res + 1);
   ls_cell_pos = ls_cell_pos * 2.0 - 1.0;
   vec3 ws_cell_pos = (grid_local_to_world_mat * vec4(ls_cell_pos, 1.0)).xyz;
   return ws_cell_pos;
