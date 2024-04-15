@@ -41,46 +41,52 @@ VKCommandBuilder::VKCommandBuilder()
   vk_image_memory_barrier_.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Build nodes
+ * \{ */
+
 void VKCommandBuilder::reset(VKRenderGraph &render_graph)
 {
   /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
   render_graph.resources_.reset_image_layouts();
 
   state_.active_pipelines = {};
-  selected_nodes_.clear();
 }
 
-void VKCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
+Span<NodeHandle> VKCommandBuilder::build_image(VKRenderGraph &render_graph,
+                                               VKCommandBufferInterface &command_buffer,
+                                               VkImage vk_image)
 {
-  BLI_assert_msg(selected_nodes_.is_empty(),
-                 "Incorrect state detected: instance isn't reset before building");
-  scheduler_.select_nodes_for_image(render_graph, vk_image, selected_nodes_);
-  if (selected_nodes_.is_empty()) {
-    return;
-  }
-  build_nodes(render_graph, selected_nodes_);
+  reset(render_graph);
+  Span<NodeHandle> selected_nodes = scheduler_.select_nodes_for_image(render_graph, vk_image);
+  build_nodes(render_graph, command_buffer, selected_nodes);
+  return selected_nodes;
 }
 
-void VKCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer)
+Span<NodeHandle> VKCommandBuilder::build_buffer(VKRenderGraph &render_graph,
+                                                VKCommandBufferInterface &command_buffer,
+                                                VkBuffer vk_buffer)
 {
-  BLI_assert_msg(selected_nodes_.is_empty(),
-                 "Incorrect state detected: instance isn't reset before building");
-  scheduler_.select_nodes_for_buffer(render_graph, vk_buffer, selected_nodes_);
-  if (selected_nodes_.is_empty()) {
-    return;
-  }
-  build_nodes(render_graph, selected_nodes_);
+  reset(render_graph);
+  Span<NodeHandle> selected_nodes = scheduler_.select_nodes_for_buffer(render_graph, vk_buffer);
+  build_nodes(render_graph, command_buffer, selected_nodes);
+  return selected_nodes;
 }
 
-void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph, Span<NodeHandle> nodes)
+void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
+                                   VKCommandBufferInterface &command_buffer,
+                                   Span<NodeHandle> nodes)
 {
+  command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
     VKNodeData &node_data = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, node_handle, node_data);
+    build_node(render_graph, command_buffer, node_handle, node_data);
   }
+  command_buffer.end_recording();
 }
 
 void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
+                                  VKCommandBufferInterface &command_buffer,
                                   NodeHandle node_handle,
                                   const VKNodeData &node_data)
 {
@@ -91,7 +97,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::CLEAR_COLOR_IMAGE: {
       build_node<VKClearColorImageNode, VKClearColorImageData>(render_graph,
-                                                               *render_graph.command_buffer_,
+                                                               command_buffer,
                                                                node_handle,
                                                                node_data.clear_color_image,
                                                                state_.active_pipelines);
@@ -100,7 +106,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::FILL_BUFFER: {
       build_node<VKFillBufferNode, VKFillBufferData>(render_graph,
-                                                     *render_graph.command_buffer_,
+                                                     command_buffer,
                                                      node_handle,
                                                      node_data.fill_buffer,
                                                      state_.active_pipelines);
@@ -109,7 +115,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::COPY_BUFFER: {
       build_node<VKCopyBufferNode, VKCopyBufferData>(render_graph,
-                                                     *render_graph.command_buffer_,
+                                                     command_buffer,
                                                      node_handle,
                                                      node_data.copy_buffer,
                                                      state_.active_pipelines);
@@ -118,7 +124,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::COPY_BUFFER_TO_IMAGE: {
       build_node<VKCopyBufferToImageNode, VKCopyBufferToImageData>(render_graph,
-                                                                   *render_graph.command_buffer_,
+                                                                   command_buffer,
                                                                    node_handle,
                                                                    node_data.copy_buffer_to_image,
                                                                    state_.active_pipelines);
@@ -127,7 +133,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::COPY_IMAGE: {
       build_node<VKCopyImageNode, VKCopyImageData>(render_graph,
-                                                   *render_graph.command_buffer_,
+                                                   command_buffer,
                                                    node_handle,
                                                    node_data.copy_image,
                                                    state_.active_pipelines);
@@ -136,7 +142,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::COPY_IMAGE_TO_BUFFER: {
       build_node<VKCopyImageToBufferNode, VKCopyImageToBufferData>(render_graph,
-                                                                   *render_graph.command_buffer_,
+                                                                   command_buffer,
                                                                    node_handle,
                                                                    node_data.copy_image_to_buffer,
                                                                    state_.active_pipelines);
@@ -145,7 +151,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::BLIT_IMAGE: {
       build_node<VKBlitImageNode, VKBlitImageData>(render_graph,
-                                                   *render_graph.command_buffer_,
+                                                   command_buffer,
                                                    node_handle,
                                                    node_data.blit_image,
                                                    state_.active_pipelines);
@@ -154,7 +160,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
 
     case VKNodeType::SYNCHRONIZATION: {
       build_node<VKSynchronizationNode, VKSynchronizationData>(render_graph,
-                                                               *render_graph.command_buffer_,
+                                                               command_buffer,
                                                                node_handle,
                                                                node_data.synchronization,
                                                                state_.active_pipelines);
@@ -162,15 +168,21 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKNodeType::DISPATCH: {
-      build_node<VKDispatchNode, VKDispatchData>(render_graph,
-                                                 *render_graph.command_buffer_,
-                                                 node_handle,
-                                                 node_data.dispatch,
-                                                 state_.active_pipelines);
+      build_node<VKDispatchNode, VKDispatchData>(
+          render_graph, command_buffer, node_handle, node_data.dispatch, state_.active_pipelines);
       break;
     }
   }
 }
+
+void VKCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph,
+                                                     Span<NodeHandle> built_nodes)
+{
+  render_graph.resource_dependencies_.remove_nodes(built_nodes);
+  render_graph.nodes_.remove_nodes(built_nodes);
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Pipeline barriers
@@ -430,12 +442,5 @@ void VKCommandBuilder::add_image_barrier(VkImage vk_image,
 }
 
 /** \} */
-
-void VKCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph)
-{
-  render_graph.resource_dependencies_.remove_nodes(selected_nodes_);
-  render_graph.nodes_.remove_nodes(selected_nodes_);
-  selected_nodes_.clear();
-}
 
 }  // namespace blender::gpu::render_graph

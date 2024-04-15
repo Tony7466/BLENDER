@@ -34,29 +34,24 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   add_node<VKSynchronizationNode, VKSynchronizationCreateInfo>(synchronization);
 
   std::scoped_lock lock(resources_.mutex_get());
-  command_builder_.reset(*this);
-  command_buffer_->begin_recording();
-  command_builder_.build_image(*this, vk_swapchain_image);
-  command_buffer_->end_recording();
+  Span<NodeHandle> built_nodes = command_builder_.build_image(
+      *this, *command_buffer_, vk_swapchain_image);
   /* TODO: It is better to create and return a semaphore. this semaphore can be passed in the
    * swapchain to ensure GPU synchronization. This also require a second semaphore to pause drawing
    * until the swapchain has completed its drawing phase.
    *
    * Currently using CPU synchronization for safety. */
   command_buffer_->submit_with_cpu_synchronization();
-  command_builder_.update_state_after_submission(*this);
+  command_builder_.update_state_after_submission(*this, built_nodes);
   command_buffer_->wait_for_cpu_synchronization();
 }
 
 void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
 {
   std::scoped_lock lock(resources_.mutex_get());
-  command_builder_.reset(*this);
-  command_buffer_->begin_recording();
-  command_builder_.build_buffer(*this, vk_buffer);
-  command_buffer_->end_recording();
+  Span<NodeHandle> built_nodes = command_builder_.build_buffer(*this, *command_buffer_, vk_buffer);
   command_buffer_->submit_with_cpu_synchronization();
-  command_builder_.update_state_after_submission(*this);
+  command_builder_.update_state_after_submission(*this, built_nodes);
   command_buffer_->wait_for_cpu_synchronization();
 }
 

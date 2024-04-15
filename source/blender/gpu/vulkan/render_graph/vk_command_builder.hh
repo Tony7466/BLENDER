@@ -25,8 +25,6 @@ class VKCommandBuilder {
  private:
   VKScheduler scheduler_;
 
-  Vector<NodeHandle> selected_nodes_;
-
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
   Vector<VkImageMemoryBarrier> vk_image_memory_barriers_;
@@ -57,36 +55,71 @@ class VKCommandBuilder {
   VKCommandBuilder();
 
   /**
+   * Build the commands to update the given vk_image to the last version. The commands are recorded
+   * into the given `command_buffer`.
+   *
+   * Pre-condition:
+   * - `command_buffer` must not be in initial state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
+   *
+   * Post-condition:
+   * - `command_buffer` will be in executable state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
+   *
+   * Result must be passed as `built_nodes` parameter of `update_state_after_submission`.
+   */
+  [[nodiscard]] Span<NodeHandle> build_image(VKRenderGraph &render_graph,
+                                             VKCommandBufferInterface &command_buffer,
+                                             VkImage vk_image);
+
+  /**
+   * Build the commands to update the given vk_buffer to the last version.
+   *
+   * Pre-condition:
+   * - `command_buffer` must not be in initial state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
+   *
+   * Post-condition:
+   * - `command_buffer` will be in executable state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
+   *
+   * Result must be passed as `built_nodes` parameter of `update_state_after_submission`.
+   */
+  [[nodiscard]] Span<NodeHandle> build_buffer(VKRenderGraph &render_graph,
+                                              VKCommandBufferInterface &command_buffer,
+                                              VkBuffer vk_buffer);
+
+  /**
+   * After the commands have been submitted the nodes that have been send to the GPU can be
+   * removed. The return value of `build_image/buffer` must be passed as `built_nodes` argument.
+   */
+  static void update_state_after_submission(VKRenderGraph &render_graph,
+                                            Span<NodeHandle> built_nodes);
+
+ private:
+  /**
    * Reset the command builder.
    *
-   * Needs to be called before each build_image/buffer. It ensures that swapchain images are reset
-   * to the correct layout and that the pipelines are reset.
+   * Is called by `build_image/buffer` to ensure the internal state and swapchain images are reset.
    */
   void reset(VKRenderGraph &render_graph);
 
   /**
-   * Build the commands to update the given vk_image to the last version
-   */
-  void build_image(VKRenderGraph &render_graph, VkImage vk_image);
-
-  /**
-   * Build the commands to update the given vk_buffer to the last version
-   */
-  void build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer);
-
-  /**
-   * After the commands have been submitted the nodes that have been send to the GPU can be
-   * removed.
-   */
-  void update_state_after_submission(VKRenderGraph &render_graph);
-
- private:
-  /**
    * Build multiple nodes.
    *
    * Building happen in order provided by the `node_handles` parameter.
+   *
+   * Pre-condition:
+   * - `command_buffer` must not be in initial state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
+   *
+   * Post-condition:
+   * - `command_buffer` will be in executable state according to
+   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
    */
-  void build_nodes(VKRenderGraph &render_graph, Span<NodeHandle> node_handles);
+  void build_nodes(VKRenderGraph &render_graph,
+                   VKCommandBufferInterface &command_buffer,
+                   Span<NodeHandle> node_handles);
 
   /**
    * Build the commands for the given node_handle and node.
@@ -98,6 +131,7 @@ class VKCommandBuilder {
    * buffer.
    */
   void build_node(VKRenderGraph &render_graph,
+                  VKCommandBufferInterface &command_buffer,
                   NodeHandle node_handle,
                   const VKNodeData &node_data);
 

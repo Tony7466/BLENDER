@@ -31,35 +31,47 @@ class VKRenderGraph;
  * - Only select the nodes that are only needed for the given vk_image/vk_buffer. When performing
  *   read-backs of buffers should be done with as least as possible nodes as they can block
  *   drawing. It is better to do handle most nodes just before presenting the image. This would
- * lead to less CPU locks.
+ *   lead to less CPU locks.
+ * - Pruning branches that are not linked to anything. EEVEE can add debug commands that would
+ *   eventually not been displayed on screen. These branches should be pruned. The challenge is
+ *   that we need to know for certain that it isn't used in a not submitted part of the graph.
  */
 class VKScheduler {
+ private:
+  /**
+   * Results of `select_nodes_for_image`, `select_nodes_for_buffer` are cached in this instance to
+   * reduce memory operations.
+   */
+  Vector<NodeHandle> result_;
+
  public:
   /**
    * Determine which nodes of the render graph should be selected and in what order they should
    * be executed to update the given vk_image to its latest content and state.
    *
    * NOTE: Currently will select all nodes.
+   * NOTE: Result becomes invalid by the next call to VKScheduler.
    */
-  void select_nodes_for_image(const VKRenderGraph &render_graph,
-                              VkImage vk_image,
-                              Vector<NodeHandle> &r_selected_nodes);
+  [[nodiscard]] Span<NodeHandle> select_nodes_for_image(const VKRenderGraph &render_graph,
+                                                        VkImage vk_image);
 
   /**
    * Determine which nodes of the render graph should be selected and in what order they should
    * be executed to update the given vk_buffer to its latest content and state.
    *
    * NOTE: Currently will select all nodes.
+   * NOTE: Result becomes invalid by the next call to VKScheduler.
    */
-  void select_nodes_for_buffer(const VKRenderGraph &render_graph,
-                               VkBuffer vk_buffer,
-                               Vector<NodeHandle> &r_selected_nodes);
+  [[nodiscard]] Span<NodeHandle> select_nodes_for_buffer(const VKRenderGraph &render_graph,
+                                                         VkBuffer vk_buffer);
 
  private:
   /**
    * Select all nodes.
+   *
+   * Result is stored in `result_`.
    */
-  void select_all_nodes(const VKRenderGraph &render_graph, Vector<NodeHandle> &r_selected_nodes);
+  void select_all_nodes(const VKRenderGraph &render_graph);
 };
 
 }  // namespace blender::gpu::render_graph
