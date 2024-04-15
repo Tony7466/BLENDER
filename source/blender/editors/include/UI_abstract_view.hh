@@ -90,7 +90,7 @@ class AbstractView {
    */
   virtual bool begin_filtering(const bContext &C) const;
 
-  virtual void draw_overlays(const ARegion &region) const;
+  virtual void draw_overlays(const ARegion &region, const uiBlock &block) const;
 
   virtual void foreach_view_item(FunctionRef<void(AbstractViewItem &)> iter_fn) const = 0;
 

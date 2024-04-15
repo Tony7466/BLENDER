@@ -126,7 +126,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
  public:
   /* virtual */ ~AbstractTreeView() override = default;
 
-  void draw_overlays(const ARegion &region) const override;
+  void draw_overlays(const ARegion &region, const uiBlock &block) const override;
 
   void foreach_item(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
 
@@ -153,17 +153,18 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
                                                  const TreeViewOrItem &old_items);
   static AbstractTreeViewItem *find_matching_child(const AbstractTreeViewItem &lookup_item,
                                                    const TreeViewOrItem &items);
-  std::optional<int> tot_visible_row_count();
+  std::optional<int> tot_visible_row_count() const;
 
   bool supports_scrolling() const override;
 
-  void draw_hierarchy_lines(const ARegion &region) const;
-  void draw_hierarchy_lines_recursive(const ARegion &region,
-                                      const TreeViewOrItem &parent,
-                                      const uint pos,
-                                      const float aspect) const;
+  void draw_hierarchy_lines(const ARegion &region, const uiBlock &block) const;
+  void get_hierarchy_lines(const ARegion &region,
+                           const TreeViewOrItem &parent,
+                           const float aspect,
+                           Vector<std::pair<int2, int2>> &lines,
+                           int &visible_item_index) const;
 
-  AbstractTreeViewItem *find_last_visible_descendant(const AbstractTreeViewItem &parent) const;
+  int count_visible_descendants(const AbstractTreeViewItem &parent) const;
 };
 
 /** \} */

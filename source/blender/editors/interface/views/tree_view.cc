@@ -121,68 +121,111 @@ void AbstractTreeView::set_default_rows(int default_rows)
   custom_height_ = std::make_unique<int>(default_rows * padded_item_height());
 }
 
-AbstractTreeViewItem *AbstractTreeView::find_last_visible_descendant(
-    const AbstractTreeViewItem &parent) const
+int AbstractTreeView::count_visible_descendants(const AbstractTreeViewItem &parent) const
 {
   if (parent.is_collapsed()) {
-    return nullptr;
+    return 0;
+  }
+  int count = 0;
+  for (const auto &item : parent.children_) {
+    if (!item->is_filtered_visible_cached()) {
+      continue;
+    }
+    count++;
+    count += count_visible_descendants(*item);
   }
 
-  AbstractTreeViewItem *last_descendant = parent.children_.last().get();
-  while (!last_descendant->children_.is_empty() && !last_descendant->is_collapsed()) {
-    last_descendant = last_descendant->children_.last().get();
-  }
-
-  return last_descendant;
+  return count;
 }
 
-void AbstractTreeView::draw_hierarchy_lines_recursive(const ARegion &region,
-                                                      const TreeViewOrItem &parent,
-                                                      const uint pos,
-                                                      const float aspect) const
+void AbstractTreeView::get_hierarchy_lines(const ARegion &region,
+                                           const TreeViewOrItem &parent,
+                                           const float aspect,
+                                           Vector<std::pair<int2, int2>> &lines,
+                                           int &visible_item_index) const
 {
+  const int scroll_ofs = scroll_value_ ? *scroll_value_ : 0;
+  const int max_visible_row_count = tot_visible_row_count().value_or(
+      std::numeric_limits<int>::max());
+
   for (const auto &item : parent.children_) {
+    if (!item->is_filtered_visible_cached()) {
+      continue;
+    }
+
+    const int item_index = visible_item_index;
+    visible_item_index++;
+
     if (!item->is_collapsible() || item->is_collapsed()) {
       continue;
     }
 
-    this->draw_hierarchy_lines_recursive(region, *item, pos, aspect);
+    /* Draw a hierarchy line for the descendants of this item. */
 
     const AbstractTreeViewItem *first_descendant = item->children_.first().get();
-    const AbstractTreeViewItem *last_descendant = find_last_visible_descendant(*item);
-    if (!first_descendant->view_item_but_ || !last_descendant || !last_descendant->view_item_but_)
+    const int descendant_count = count_visible_descendants(*item);
+
+    const int first_descendant_index = item_index + 1;
+    const int last_descendant_index = first_descendant_index + descendant_count;
+
     {
-      return;
+      const bool line_ends_above_visible = last_descendant_index < scroll_ofs;
+      if (line_ends_above_visible) {
+        continue;
+      }
+
+      const bool line_starts_below_visible = first_descendant_index >
+                                             (scroll_ofs + long(max_visible_row_count));
+      /* Can return here even, following items won't be in view anymore. */
+      if (line_starts_below_visible) {
+        return;
+      }
     }
-    const uiButViewItem &first_child_but = *first_descendant->view_item_button();
-    const uiButViewItem &last_child_but = *last_descendant->view_item_button();
 
-    BLI_assert(first_child_but.block == last_child_but.block);
-    const uiBlock *block = first_child_but.block;
+    const int x = ((first_descendant->indent_width() - (0.5f * UI_ICON_SIZE) + U.pixelsize +
+                    UI_SCALE_FAC) /
+                   aspect);
+    const int ymax = std::max(0, first_descendant_index - scroll_ofs) * padded_item_height();
+    const int ymin = std::min(max_visible_row_count, last_descendant_index - scroll_ofs) *
+                     padded_item_height();
+    lines.append(std::make_pair(int2(x, ymax), int2(x, ymin)));
 
-    rcti first_child_rect;
-    ui_but_to_pixelrect(&first_child_rect, &region, block, &first_child_but);
-    rcti last_child_rect;
-    ui_but_to_pixelrect(&last_child_rect, &region, block, &last_child_but);
-
-    const float x = first_child_rect.xmin + ((first_descendant->indent_width() -
-                                              (0.5f * UI_ICON_SIZE) + U.pixelsize + UI_SCALE_FAC) /
-                                             aspect);
-    const int first_child_top = first_child_rect.ymax - (2.0f * UI_SCALE_FAC / aspect);
-    const int last_child_bottom = last_child_rect.ymin + (4.0f * UI_SCALE_FAC / aspect);
-    immBegin(GPU_PRIM_LINES, 2);
-    immVertex2f(pos, x, first_child_top);
-    immVertex2f(pos, x, last_child_bottom);
-    immEnd();
+    this->get_hierarchy_lines(region, *item, aspect, lines, visible_item_index);
   }
 }
 
-void AbstractTreeView::draw_hierarchy_lines(const ARegion &region) const
+static uiButViewItem *find_first_view_item_but(const uiBlock &block, const AbstractTreeView &view)
+{
+  LISTBASE_FOREACH (uiBut *, but, &block.buttons) {
+    if (but->type != UI_BTYPE_VIEW_ITEM) {
+      continue;
+    }
+    uiButViewItem *view_item_but = static_cast<uiButViewItem *>(but);
+    if (&view_item_but->view_item->get_view() == &view) {
+      return view_item_but;
+    }
+  }
+  return nullptr;
+}
+
+void AbstractTreeView::draw_hierarchy_lines(const ARegion &region, const uiBlock &block) const
 {
   const float aspect = (region.v2d.flag & V2D_IS_INIT) ?
                            BLI_rctf_size_y(&region.v2d.cur) /
                                (BLI_rcti_size_y(&region.v2d.mask) + 1) :
                            1.0f;
+
+  uiButViewItem *first_item_but = find_first_view_item_but(block, *this);
+  if (!first_item_but) {
+    return;
+  }
+
+  Vector<std::pair<int2, int2>> lines;
+  int index = 0;
+  get_hierarchy_lines(region, *this, aspect, lines, index);
+  if (lines.is_empty()) {
+    return;
+  }
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -191,15 +234,25 @@ void AbstractTreeView::draw_hierarchy_lines(const ARegion &region) const
 
   GPU_line_width(1.0f / aspect);
   GPU_blend(GPU_BLEND_ALPHA);
-  draw_hierarchy_lines_recursive(region, *this, pos, aspect);
+
+  rcti first_item_but_pixel_rect;
+  ui_but_to_pixelrect(&first_item_but_pixel_rect, &region, &block, first_item_but);
+  int2 top_left{first_item_but_pixel_rect.xmin, first_item_but_pixel_rect.ymax};
+
+  for (const auto &line : lines) {
+    immBegin(GPU_PRIM_LINES, 2);
+    immVertex2f(pos, top_left.x + line.first.x, top_left.y - line.first.y);
+    immVertex2f(pos, top_left.x + line.second.x, top_left.y - line.second.y);
+    immEnd();
+  }
   GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
 }
 
-void AbstractTreeView::draw_overlays(const ARegion &region) const
+void AbstractTreeView::draw_overlays(const ARegion &region, const uiBlock &block) const
 {
-  this->draw_hierarchy_lines(region);
+  this->draw_hierarchy_lines(region, block);
 }
 
 void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
@@ -240,7 +293,7 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
   return nullptr;
 }
 
-std::optional<int> AbstractTreeView::tot_visible_row_count()
+std::optional<int> AbstractTreeView::tot_visible_row_count() const
 {
   if (!custom_height_) {
     return {};

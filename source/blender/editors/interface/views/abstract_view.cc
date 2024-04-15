@@ -108,7 +108,7 @@ bool AbstractView::begin_filtering(const bContext & /*C*/) const
   return false;
 }
 
-void AbstractView::draw_overlays(const ARegion & /*region*/) const
+void AbstractView::draw_overlays(const ARegion & /*region*/, const uiBlock & /*block*/) const
 {
   /* Nothing by default. */
 }
