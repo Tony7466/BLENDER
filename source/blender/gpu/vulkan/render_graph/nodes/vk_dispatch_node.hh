@@ -48,7 +48,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
   static void set_node_data(Node &node, const VKDispatchCreateInfo &create_info)
   {
     node.dispatch = create_info.dispatch_node;
-    localize_shader_data(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
+    vk_pipeline_data_copy(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
   }
 
   /**
@@ -56,7 +56,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
    */
   void free_data(VKDispatchData &data)
   {
-    vk_pipeline_free_data(data.pipeline_data);
+    vk_pipeline_data_free(data.pipeline_data);
   }
 
   /**

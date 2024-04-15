@@ -24,17 +24,14 @@ struct VKPipelineData {
   const void *push_constants_data;
 };
 
-struct VKBoundPipeline {
-  VkPipeline vk_pipeline;
-  VkDescriptorSet vk_descriptor_set;
-};
-struct VKBoundPipelines {
-  VKBoundPipeline compute;
-  VKBoundPipeline graphics;
-};
-
-// TODO: This is a copy constructor in disguise.
-BLI_INLINE void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
+/**
+ * Copy src pipeline data into dst. The push_constant_data will be duplicated and needs to be freed
+ * using `vk_pipeline_data_free`.
+ *
+ * Memory duplication isn't used as push_constant_data in the src doesn't need to be allocated via
+ * guardedalloc.
+ */
+BLI_INLINE void vk_pipeline_data_copy(VKPipelineData &dst, const VKPipelineData &src)
 {
   dst.push_constants_data = nullptr;
   dst.push_constants_size = src.push_constants_size;
@@ -46,9 +43,21 @@ BLI_INLINE void localize_shader_data(VKPipelineData &dst, const VKPipelineData &
   }
 }
 
-BLI_INLINE void vk_pipeline_free_data(VKPipelineData &data)
+/**
+ * Free localized data created by `vk_pipeline_data_copy`.
+ */
+BLI_INLINE void vk_pipeline_data_free(VKPipelineData &data)
 {
   MEM_SAFE_FREE(data.push_constants_data);
 }
+
+struct VKBoundPipeline {
+  VkPipeline vk_pipeline;
+  VkDescriptorSet vk_descriptor_set;
+};
+struct VKBoundPipelines {
+  VKBoundPipeline compute;
+  VKBoundPipeline graphics;
+};
 
 }  // namespace blender::gpu::render_graph
