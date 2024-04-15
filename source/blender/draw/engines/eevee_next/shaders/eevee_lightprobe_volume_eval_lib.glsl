@@ -134,8 +134,7 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
   i = grid_start_index;
 #endif
 #ifdef IRRADIANCE_GRID_SAMPLING
-  float random = interlieved_gradient_noise(UTIL_TEXEL, 0.0, 0.0);
-  random = fract(random + sampling_rng_1D_get(SAMPLING_LIGHTPROBE));
+  float random = square(pcg4d(vec4(P, sampling_rng_1D_get(SAMPLING_LIGHTPROBE))).x) * 0.75;
 #endif
 #ifdef GPU_METAL
 /* NOTE: Performs a chunked unroll to avoid the compiler unrolling the entire loop, avoiding
@@ -158,7 +157,7 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
 #ifdef IRRADIANCE_GRID_SAMPLING
       float distance_to_border = reduce_min(
           min(lP, vec3(grids_infos_buf[i].grid_size_padded) - lP));
-      if (distance_to_border < 0.5) {
+      if (distance_to_border < 0.5 + random) {
         /* Try to sample another grid to get smooth transitions at borders. */
         continue;
       }
