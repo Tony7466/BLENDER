@@ -128,19 +128,6 @@ void main()
     sh_local = sh_distant;
   }
 
-  if (is_padding_voxel) {
-    sh_local.L0.M0 = vec4(0.0);
-    sh_local.L1.Mn1 = vec4(0.0);
-    sh_local.L1.M0 = vec4(0.0);
-    sh_local.L1.Mp1 = vec4(0.0);
-  }
-  else {
-    sh_local.L0.M0 = vec4(vec3(input_coord & 1), 0.0);
-    sh_local.L1.Mn1 = vec4(0.0);
-    sh_local.L1.M0 = vec4(0.0);
-    sh_local.L1.Mp1 = vec4(0.0);
-  }
-
   atlas_store(sh_local.L0.M0, output_coord, 0);
   atlas_store(sh_local.L1.Mn1, output_coord, 1);
   atlas_store(sh_local.L1.M0, output_coord, 2);
