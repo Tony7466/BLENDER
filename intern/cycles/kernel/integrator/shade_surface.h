@@ -444,7 +444,7 @@ ccl_device
     /* Evaluate BSDF. */
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
 
-    bsdf_eval_mul(&bsdf_eval, L / ls.pdf);
+    bsdf_eval_mul(&bsdf_eval, L);
     reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
@@ -642,9 +642,12 @@ ccl_device
       /* /\* TODO(weizhen): how to do background light pdf? *\/ */
     }
 
-    bsdf_eval_mul(&bsdf_eval, L / bsdf_pdf);
+    bsdf_eval_mul(&bsdf_eval, L);
     reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf);
   }
+
+  BsdfEval radiance = reservoir.radiance;
+  reservoir.total_weight /= reduce_add(fabs(radiance.sum));
 
   if (is_direct_light) {
     /* Write to reservoir and trace shadow ray later. */
@@ -655,10 +658,7 @@ ccl_device
       return;
     }
 
-    BsdfEval radiance = reservoir.radiance;
-    const float unbiased_contribution_weight = reservoir.total_weight /
-                                               reduce_add(fabs(radiance.sum));
-    bsdf_eval_mul(&radiance, unbiased_contribution_weight);
+    bsdf_eval_mul(&radiance, reservoir.total_weight);
 
     int mnee_vertex_count = 0;
     integrate_direct_light_create_shadow_path<false>(

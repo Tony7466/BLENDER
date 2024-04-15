@@ -103,8 +103,7 @@ ccl_device void integrator_restir(KernelGlobals kg,
     radiance_eval_setup_from_reservoir(kg, state, &sd, &reservoir.ls, path_flag, render_buffer);
     radiance_eval(kg, state, &sd, &reservoir.ls, &reservoir.radiance);
 
-    bsdf_eval_mul(&reservoir.radiance,
-                  reservoir.total_weight / reduce_add(reservoir.radiance.sum));
+    bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight);
 
     /* Load random number state. */
     RNGState rng_state;

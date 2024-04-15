@@ -69,7 +69,7 @@ typedef struct Reservoir {
   {
     const float mis_weight = power_heuristic(
         num_light_samples, ls.pdf, num_bsdf_samples, bsdf_pdf);
-    add_sample(ls, radiance, mis_weight);
+    add_sample(ls, radiance, mis_weight / ls.pdf);
   }
 
   void add_bsdf_sample(const ccl_private LightSample &ls,
@@ -78,7 +78,7 @@ typedef struct Reservoir {
   {
     const float mis_weight = power_heuristic(
         num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
-    add_sample(ls, radiance, mis_weight);
+    add_sample(ls, radiance, mis_weight / bsdf_pdf);
   }
 } Reservoir;
 
