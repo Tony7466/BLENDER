@@ -43,7 +43,7 @@ class PathTraceWorkCPU : public PathTraceWork {
                           const int sample_offset);
 
   void spatial_resampling(const int64_t image_width,
-                          const int64_t total_pixels_num,
+                          const int64_t image_height,
                           const int start_sample,
                           const int sample_offset);
 
