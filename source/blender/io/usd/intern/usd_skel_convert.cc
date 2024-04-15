@@ -372,7 +372,7 @@ void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
   }
 }
 
-}  // End anonymous namespace.
+}  // namespace
 
 namespace blender::io::usd {
 
@@ -1103,7 +1103,7 @@ void import_mesh_skel_bindings(Main *bmain,
       }
       const int joint_idx = joint_indices[k];
       if (bDeformGroup *def_grp = joint_def_grps[joint_idx]) {
-        ED_vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
+        blender::ed::object::vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
       }
     }
   }

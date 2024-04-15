@@ -113,7 +113,6 @@ static void mesh_copy_data(Main *bmain,
   mesh_dst->runtime = new blender::bke::MeshRuntime();
   mesh_dst->runtime->deformed_only = mesh_src->runtime->deformed_only;
   mesh_dst->runtime->wrapper_type = mesh_src->runtime->wrapper_type;
-  mesh_dst->runtime->wrapper_type_finalize = mesh_src->runtime->wrapper_type_finalize;
   mesh_dst->runtime->subsurf_runtime_data = mesh_src->runtime->subsurf_runtime_data;
   mesh_dst->runtime->cd_mask_extra = mesh_src->runtime->cd_mask_extra;
   /* Copy face dot tags and edge tags, since meshes may be duplicated after a subsurf modifier or
@@ -1005,10 +1004,10 @@ void BKE_mesh_texspace_get_reference(Mesh *mesh,
   }
 }
 
-float (*BKE_mesh_orco_verts_get(Object *ob))[3]
+float (*BKE_mesh_orco_verts_get(const Object *ob))[3]
 {
-  Mesh *mesh = static_cast<Mesh *>(ob->data);
-  Mesh *tme = mesh->texcomesh ? mesh->texcomesh : mesh;
+  const Mesh *mesh = static_cast<const Mesh *>(ob->data);
+  const Mesh *tme = mesh->texcomesh ? mesh->texcomesh : mesh;
 
   /* Get appropriate vertex coordinates */
   float(*vcos)[3] = (float(*)[3])MEM_calloc_arrayN(mesh->verts_num, sizeof(*vcos), "orco mesh");

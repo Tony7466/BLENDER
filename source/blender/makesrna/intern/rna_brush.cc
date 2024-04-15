@@ -1459,14 +1459,14 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   PropertyRNA *prop;
 
   /* modes */
-  static EnumPropertyItem gppaint_mode_types_items[] = {
+  static const EnumPropertyItem gppaint_mode_types_items[] = {
       {GPPAINT_MODE_STROKE, "STROKE", 0, "Stroke", "Vertex Color affects to Stroke only"},
       {GPPAINT_MODE_FILL, "FILL", 0, "Fill", "Vertex Color affects to Fill only"},
       {GPPAINT_MODE_BOTH, "BOTH", 0, "Stroke & Fill", "Vertex Color affects to Stroke and Fill"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
+  static const EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
       {GP_STROKE_CAP_ROUND, "ROUND", ICON_GP_CAPS_ROUND, "Round", ""},
       {GP_STROKE_CAP_FLAT, "FLAT", ICON_GP_CAPS_FLAT, "Flat", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1950,6 +1950,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "eraser_mode");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_brush_eraser_modes_items);
   RNA_def_property_ui_text(prop, "Mode", "Eraser Mode");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(
       prop, NC_GPENCIL | ND_DATA, "rna_BrushGpencilSettings_eraser_mode_update");

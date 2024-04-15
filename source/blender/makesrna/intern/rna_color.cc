@@ -14,6 +14,8 @@
 
 #include "BLI_utildefines.h"
 
+#include "BLT_translation.hh"
+
 #include "BKE_node_tree_update.hh"
 
 #include "RNA_define.hh"
@@ -200,13 +202,11 @@ static std::optional<std::string> rna_ColorRamp_path(const PointerRNA *ptr)
       case ID_LS: {
         /* may be nullptr */
         return BKE_linestyle_path_to_color_ramp((FreestyleLineStyle *)id, (ColorBand *)ptr->data);
-        break;
       }
 
       default:
         /* everything else just uses 'color_ramp' */
         return "color_ramp";
-        break;
     }
   }
   else {
@@ -1123,6 +1123,7 @@ static void rna_def_histogram(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "mode");
   RNA_def_property_enum_items(prop, prop_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "Channels to display in the histogram");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
 
   prop = RNA_def_property(srna, "show_line", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", HISTO_FLAG_LINE);

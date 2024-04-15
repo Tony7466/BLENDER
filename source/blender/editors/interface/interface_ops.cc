@@ -106,6 +106,7 @@ static bool copy_data_path_button_poll(bContext *C)
 
   if (ptr.owner_id && ptr.data && prop) {
     if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
+      UNUSED_VARS(path);
       return true;
     }
   }
@@ -194,6 +195,7 @@ static bool copy_as_driver_button_poll(bContext *C)
       (index >= 0 || !RNA_property_array_check(prop)))
   {
     if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
+      UNUSED_VARS(path);
       return true;
     }
   }
@@ -1152,7 +1154,9 @@ bool UI_context_copy_to_selected_list(bContext *C,
         printf("BoneColor is unexpectedly owned by %s '%s'\n",
                BKE_idtype_idcode_to_name(GS(ptr->owner_id->name)),
                ptr->owner_id->name + 2);
-        BLI_assert(!"expected BoneColor to be owned by the Armature (bone & edit bone) or the Object (pose bone)");
+        BLI_assert_msg(false,
+                       "expected BoneColor to be owned by the Armature "
+                       "(bone & edit bone) or the Object (pose bone)");
         return false;
     }
 
@@ -1260,8 +1264,8 @@ bool UI_context_copy_to_selected_list(bContext *C,
 
       /* de-duplicate obdata */
       if (!lb.is_empty()) {
-        for (const PointerRNA &ptr : lb) {
-          Object *ob = (Object *)ptr.owner_id;
+        for (const PointerRNA &ob_ptr : lb) {
+          Object *ob = (Object *)ob_ptr.owner_id;
           if (ID *id_data = static_cast<ID *>(ob->data)) {
             id_data->tag |= LIB_TAG_DOIT;
           }
@@ -1599,7 +1603,7 @@ static bool jump_to_target_ptr(bContext *C, PointerRNA ptr, const bool poll)
     base = BKE_view_layer_base_find(view_layer, (Object *)ptr.owner_id);
   }
   else if (OB_DATA_SUPPORT_ID(id_type)) {
-    base = ED_object_find_first_by_data_id(scene, view_layer, ptr.owner_id);
+    base = blender::ed::object::find_first_by_data_id(scene, view_layer, ptr.owner_id);
   }
 
   bool ok = false;
@@ -1614,10 +1618,10 @@ static bool jump_to_target_ptr(bContext *C, PointerRNA ptr, const bool poll)
     const bool reveal_hidden = true;
     /* Select and activate the target. */
     if (target_type == &RNA_Bone) {
-      ok = ED_object_jump_to_bone(C, base->object, bone_name, reveal_hidden);
+      ok = blender::ed::object::jump_to_bone(C, base->object, bone_name, reveal_hidden);
     }
     else if (target_type == &RNA_Object) {
-      ok = ED_object_jump_to_object(C, base->object, reveal_hidden);
+      ok = blender::ed::object::jump_to_object(C, base->object, reveal_hidden);
     }
     else {
       BLI_assert(0);
