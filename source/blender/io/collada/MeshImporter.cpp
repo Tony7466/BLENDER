@@ -1066,8 +1066,9 @@ Object *MeshImporter::create_mesh_object(
 
     const COLLADAFW::UniqueId *geom_or_morphe = armature_importer->get_geometry_uid(
         *&controller_or_gome->getInstanciatedObjectId());
-    if (!uid_mesh_map[*geom_or_morphe]) {  // is morphe
-
+    /* If it contains morph. */
+    if (!uid_mesh_map[*geom_or_morphe]) {
+      /* Get geom_uid from morph controller. */
       geom_uid = armature_importer->get_geometry_uid(*geom_or_morphe);
     }
     else {

@@ -99,13 +99,13 @@ void ControllerExporter::operator()(Object *ob)
   Object *ob_arm = bc_get_assigned_armature(ob);
   Key *key = BKE_key_from_object(ob);
 
-  bool containsShapeKey = key && this->export_settings.get_include_shapekeys();
+  bool contains_shape_key = key && this->export_settings.get_include_shapekeys();
 
-  if (containsShapeKey) {
+  if (contains_shape_key) {
     export_morph_controller(ob, key);
   }
   if (ob_arm) {
-    export_skin_controller(ob, ob_arm, containsShapeKey);
+    export_skin_controller(ob, ob_arm, contains_shape_key);
   }
 }
 #if 0
@@ -151,7 +151,7 @@ std::string ControllerExporter::get_controller_id(Key *key, Object *ob)
   return translate_id(id_name(ob)) + MORPH_CONTROLLER_ID_SUFFIX;
 }
 
-void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm, bool containsShapeKey)
+void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm, bool contains_shape_key)
 {
   /* joint names
    * joint inverse bind matrices
@@ -180,7 +180,7 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm, bool
   openSkin(controller_id,
            controller_name,
            COLLADABU::URI(COLLADABU::Utils::EMPTY_STRING,
-                          containsShapeKey ? get_morph_id(ob) :
+                          contains_shape_key ? get_morph_id(ob) :
                                              get_geometry_id(ob, use_instantiation)));
 
   add_bind_shape_mat(ob);
