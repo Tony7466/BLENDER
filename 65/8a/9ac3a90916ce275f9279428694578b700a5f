@@ -1,3 +1,4 @@
 Referenced by issue #120542, Painting Size/Strength appears in object mode
 Referenced by pull request #120653, GPv3: Wrong object type
 Referenced by commit 2fefb39e22af07c71664014ceb2b74f215d88913, GPv3: Wrong object type
+Referenced by issue #120662, Grease Pencil: Selection tool (box, circle, lasso) not working when used in Edit Mode
