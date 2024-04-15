@@ -393,11 +393,40 @@ uint DRW_select_buffer_find_nearest_to_point(Depsgraph *depsgraph,
 /** \name Object Utils
  * \{ */
 
-bool DRW_select_buffer_elem_get(const uint sel_id,
-                                uint *r_elem,
-                                uint *r_base_index,
-                                char *r_elem_type,
-                                const bool use_orig_index)
+static const CustomData *mesh_customdata_of_type(const Mesh *mesh_eval, char elem_type)
+{
+  switch (elem_type) {
+    case SCE_SELECT_FACE:
+      return &mesh_eval->face_data;
+    case SCE_SELECT_EDGE:
+      return &mesh_eval->edge_data;
+    case SCE_SELECT_VERTEX:
+    default:
+      return &mesh_eval->vert_data;
+  }
+}
+
+static const int *orig_index_from_object_get(const Object *object_eval, char elem_type)
+{
+  if (object_eval->type != OB_MESH) {
+    return nullptr;
+  }
+
+  /* Keep in sync with the mesh used in #MeshRenderData::mesh. */
+  const Mesh *mesh_eval = static_cast<const Mesh *>(object_eval->data);
+  const bool is_editmode = (mesh_eval->runtime->edit_mesh != nullptr) &&
+                           (BKE_object_get_editmesh_eval_final(object_eval) != nullptr) &&
+                           DRW_object_is_in_edit_mode(object_eval);
+  if (is_editmode) {
+    mesh_eval = BKE_object_get_editmesh_eval_cage(object_eval);
+  }
+
+  const CustomData *data = mesh_customdata_of_type(mesh_eval, elem_type);
+  return static_cast<const int *>(CustomData_get_layer(data, CD_ORIGINDEX));
+}
+
+bool DRW_select_buffer_elem_get(
+    const uint sel_id, uint *r_elem, uint *r_base_index, char *r_elem_type, bool use_orig_index)
 {
   SELECTID_Context *select_ctx = DRW_select_engine_context_get();
 
@@ -438,14 +467,8 @@ bool DRW_select_buffer_elem_get(const uint sel_id,
   }
 
   if (use_orig_index) {
-    Object *object = select_ctx->objects[base_index];
-    Mesh *mesh_eval = BKE_object_get_evaluated_mesh(object);
-    const int *orig_index = reinterpret_cast<const int *>(
-        CustomData_get_layer(elem_type == SCE_SELECT_FACE ? &mesh_eval->face_data :
-                             elem_type == SCE_SELECT_EDGE ? &mesh_eval->edge_data :
-                                                            &mesh_eval->vert_data,
-                             CD_ORIGINDEX));
-
+    const Object *object_eval = select_ctx->objects[base_index];
+    const int *orig_index = orig_index_from_object_get(object_eval, elem_type);
     if (orig_index) {
       elem_id = orig_index[elem_id];
     }
