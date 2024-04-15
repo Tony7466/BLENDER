@@ -973,7 +973,7 @@ class VIEW3D_HT_header(Header):
 
             if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'PAINT_GREASE_PENCIL'}:
                 sub = layout.row(align=True)
-                sub.active = tool_settings.gpencil_stroke_placement_view3d != 'SURFACE'
+                sub.active = tool_settings.gpencil_stroke_placement_view3d not in { 'SURFACE', 'STROKE' }
                 sub.prop_with_popover(
                     tool_settings.gpencil_sculpt,
                     "lock_axis",
