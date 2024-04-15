@@ -126,13 +126,8 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.prop(probe, "influence_distance", text=influence_text)
             col.prop(probe, "falloff")
 
-            sub = layout.column(align=True)
-            sub.prop(probe, "clip_start", text="Clipping Start")
-            sub.prop(probe, "clip_end", text="End")
-
         elif probe.type == 'PLANE':
             col = layout.column()
-            col.prop(probe, "clip_start", text="Clipping Offset")
             col.prop(probe, "influence_distance", text="Distance")
             pass
         else:
@@ -161,6 +156,31 @@ class DATA_PT_lightprobe_visibility(DataButtonsPanel, Panel):
         row = col.row(align=True)
         row.prop(probe, "visibility_collection")
         row.prop(probe, "invert_visibility_collection", text="", icon='ARROW_LEFTRIGHT')
+
+
+class DATA_PT_lightprobe_capture(DataButtonsPanel, Panel):
+    bl_label = "Capture"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        engine = context.engine
+        return context.lightprobe and context.lightprobe.type in {'SPHERE', 'PLANE'} and (engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        probe = context.lightprobe
+
+        col = layout.column()
+
+        if probe.type == 'SPHERE':
+            sub = col.column(align=True)
+            sub.prop(probe, "clip_start", text="Clipping Start")
+            sub.prop(probe, "clip_end", text="End")
+        elif probe.type == 'PLANE':
+            col.prop(probe, "clip_start", text="Clipping Offset")
 
 
 class DATA_PT_lightprobe_bake(DataButtonsPanel, Panel):
@@ -365,6 +385,7 @@ classes = (
     DATA_PT_context_lightprobe,
     DATA_PT_lightprobe,
     DATA_PT_lightprobe_eevee_next,
+    DATA_PT_lightprobe_capture,
     DATA_PT_lightprobe_bake,
     DATA_PT_lightprobe_bake_resolution,
     DATA_PT_lightprobe_bake_capture,
