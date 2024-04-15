@@ -24,13 +24,8 @@ struct VKCopyImageData {
   VkImageCopy region;
 };
 
-/**
- * Information needed to add a node to the render graph.
- */
-using VKCopyImageCreateInfo = VKCopyImageData;
-
 class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
-                                          VKCopyImageCreateInfo,
+                                          VKCopyImageData,
                                           VKCopyImageData,
                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
                                           VKResourceType::IMAGE> {
@@ -42,8 +37,7 @@ class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKCopyImageCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_image = create_info;
   }
@@ -54,7 +48,7 @@ class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKCopyImageCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
     ResourceWithStamp dst_resource = resources.get_image_and_increase_version(
@@ -73,7 +67,7 @@ class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKCopyImageData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.copy_image(data.src_image,

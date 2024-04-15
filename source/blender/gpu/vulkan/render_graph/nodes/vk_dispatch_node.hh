@@ -44,8 +44,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKDispatchCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.dispatch = create_info.dispatch_node;
     vk_pipeline_data_copy(node.dispatch.pipeline_data, create_info.dispatch_node.pipeline_data);
@@ -65,7 +64,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKDispatchCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     resource_access_build_dependencies(
         resources, dependencies, node_handle, create_info.resources);
@@ -75,7 +74,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKDispatchData &data,
+                      const Data &data,
                       VKBoundPipelines &r_bound_pipelines) override
   {
     // TODO: introduce helper function in pipeline types.

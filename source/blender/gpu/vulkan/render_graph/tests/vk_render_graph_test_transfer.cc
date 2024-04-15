@@ -20,7 +20,7 @@ TEST(vk_render_graph, fill_and_read_back)
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
-  VKFillBufferCreateInfo fill_buffer = {buffer, 1024, 42};
+  VKFillBufferNode::CreateInfo fill_buffer = {buffer, 1024, 42};
   render_graph.add_node(fill_buffer);
   render_graph.submit_buffer_for_read_back(buffer);
 
@@ -41,11 +41,11 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
-  VKFillBufferCreateInfo fill_buffer = {buffer, 1024, 42};
+  VKFillBufferNode::CreateInfo fill_buffer = {buffer, 1024, 42};
   render_graph.add_node(fill_buffer);
   resources.add_buffer(staging_buffer);
 
-  VKCopyBufferCreateInfo copy_buffer = {};
+  VKCopyBufferNode::CreateInfo copy_buffer = {};
   copy_buffer.src_buffer = buffer;
   copy_buffer.dst_buffer = staging_buffer;
   copy_buffer.region.srcOffset = 0;
@@ -86,9 +86,9 @@ TEST(vk_render_graph, fill_fill_read_back)
   VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
-  VKFillBufferCreateInfo fill_buffer_1 = {buffer, 1024, 0};
+  VKFillBufferNode::CreateInfo fill_buffer_1 = {buffer, 1024, 0};
   render_graph.add_node(fill_buffer_1);
-  VKFillBufferCreateInfo fill_buffer_2 = {buffer, 1024, 42};
+  VKFillBufferNode::CreateInfo fill_buffer_2 = {buffer, 1024, 42};
   render_graph.add_node(fill_buffer_2);
   render_graph.submit_buffer_for_read_back(buffer);
 
@@ -132,17 +132,17 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   color_black.float32[2] = 0.0f;
   color_black.float32[3] = 1.0f;
 
-  VKClearColorImageCreateInfo clear_color_image_src = {};
+  VKClearColorImageNode::CreateInfo clear_color_image_src = {};
   clear_color_image_src.vk_image = src_image;
   clear_color_image_src.vk_clear_color_value = color_white;
-  VKClearColorImageCreateInfo clear_color_image_dst = {};
+  VKClearColorImageNode::CreateInfo clear_color_image_dst = {};
   clear_color_image_dst.vk_image = dst_image;
   clear_color_image_dst.vk_clear_color_value = color_black;
 
-  VKCopyImageCreateInfo copy_image = {};
+  VKCopyImageNode::CreateInfo copy_image = {};
   copy_image.src_image = src_image;
   copy_image.dst_image = dst_image;
-  VKCopyImageToBufferCreateInfo copy_dst_image_to_buffer = {};
+  VKCopyImageToBufferNode::CreateInfo copy_dst_image_to_buffer = {};
   copy_dst_image_to_buffer.src_image = dst_image;
   copy_dst_image_to_buffer.dst_buffer = staging_buffer;
 
@@ -251,15 +251,15 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
   color_black.float32[2] = 0.0f;
   color_black.float32[3] = 1.0f;
   VkImageBlit vk_image_blit = {};
-  VKClearColorImageCreateInfo clear_color_image_src = {};
+  VKClearColorImageNode::CreateInfo clear_color_image_src = {};
   clear_color_image_src.vk_image = src_image;
   clear_color_image_src.vk_clear_color_value = color_black;
-  VKCopyImageToBufferCreateInfo copy_dst_image_to_buffer = {};
+  VKCopyImageToBufferNode::CreateInfo copy_dst_image_to_buffer = {};
   copy_dst_image_to_buffer.src_image = dst_image;
   copy_dst_image_to_buffer.dst_buffer = staging_buffer;
 
   render_graph.add_node(clear_color_image_src);
-  VKBlitImageCreateInfo blit_image = {src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR};
+  VKBlitImageNode::CreateInfo blit_image = {src_image, dst_image, vk_image_blit, VK_FILTER_LINEAR};
   render_graph.add_node(blit_image);
   render_graph.add_node(copy_dst_image_to_buffer);
   render_graph.submit_buffer_for_read_back(staging_buffer);

@@ -75,35 +75,35 @@ class VKRenderGraph : public NonCopyable {
   }
 
  public:
-  void add_node(const VKClearColorImageCreateInfo &clear_color_image)
+  void add_node(const VKClearColorImageNode::CreateInfo &clear_color_image)
   {
     add_node<VKClearColorImageNode>(clear_color_image);
   }
-  void add_node(const VKFillBufferCreateInfo &fill_buffer)
+  void add_node(const VKFillBufferNode::CreateInfo &fill_buffer)
   {
     add_node<VKFillBufferNode>(fill_buffer);
   }
-  void add_node(const VKCopyBufferCreateInfo &copy_buffer)
+  void add_node(const VKCopyBufferNode::CreateInfo &copy_buffer)
   {
     add_node<VKCopyBufferNode>(copy_buffer);
   }
-  void add_node(const VKCopyBufferToImageCreateInfo &copy_buffer_to_image)
+  void add_node(const VKCopyBufferToImageNode::CreateInfo &copy_buffer_to_image)
   {
     add_node<VKCopyBufferToImageNode>(copy_buffer_to_image);
   }
-  void add_node(const VKCopyImageCreateInfo &copy_image_to_buffer)
+  void add_node(const VKCopyImageNode::CreateInfo &copy_image_to_buffer)
   {
     add_node<VKCopyImageNode>(copy_image_to_buffer);
   }
-  void add_node(const VKCopyImageToBufferCreateInfo &copy_image_to_buffer)
+  void add_node(const VKCopyImageToBufferNode::CreateInfo &copy_image_to_buffer)
   {
     add_node<VKCopyImageToBufferNode>(copy_image_to_buffer);
   }
-  void add_node(const VKBlitImageCreateInfo &blit_image)
+  void add_node(const VKBlitImageNode::CreateInfo &blit_image)
   {
     add_node<VKBlitImageNode>(blit_image);
   }
-  void add_node(const VKDispatchCreateInfo &dispatch)
+  void add_node(const VKDispatchNode::CreateInfo &dispatch)
   {
     add_node<VKDispatchNode>(dispatch);
   }

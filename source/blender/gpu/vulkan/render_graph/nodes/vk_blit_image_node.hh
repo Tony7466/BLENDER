@@ -23,11 +23,6 @@ struct VKBlitImageData {
 };
 
 /**
- * Information needed to add a node to the render graph.
- */
-using VKBlitImageCreateInfo = VKBlitImageData;
-
-/**
  * Blit Image Node
  *
  * - Contains logic to copy relevant data to the VKNode.
@@ -35,7 +30,7 @@ using VKBlitImageCreateInfo = VKBlitImageData;
  * - Add commands to a command builder.
  */
 class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
-                                          VKBlitImageCreateInfo,
+                                          VKBlitImageData,
                                           VKBlitImageData,
                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
                                           VKResourceType::IMAGE> {
@@ -47,7 +42,7 @@ class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node> void set_node_data(Node &node, const VKBlitImageCreateInfo &create_info)
+  template<typename Node> void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.blit_image = create_info;
   }
@@ -58,7 +53,7 @@ class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKBlitImageCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
     ResourceWithStamp dst_resource = resources.get_image_and_increase_version(
@@ -77,7 +72,7 @@ class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKBlitImageData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.blit_image(data.src_image,

@@ -20,13 +20,8 @@ struct VKCopyBufferData {
   VkBufferCopy region;
 };
 
-/**
- * Information needed to add a node to the render graph.
- */
-using VKCopyBufferCreateInfo = VKCopyBufferData;
-
 class VKCopyBufferNode : public VKNodeInfo<VKNodeType::COPY_BUFFER,
-                                           VKCopyBufferCreateInfo,
+                                           VKCopyBufferData,
                                            VKCopyBufferData,
                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
                                            VKResourceType::BUFFER> {
@@ -38,8 +33,7 @@ class VKCopyBufferNode : public VKNodeInfo<VKNodeType::COPY_BUFFER,
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKCopyBufferCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_buffer = create_info;
   }
@@ -50,7 +44,7 @@ class VKCopyBufferNode : public VKNodeInfo<VKNodeType::COPY_BUFFER,
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKCopyBufferCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_buffer(create_info.src_buffer);
     ResourceWithStamp dst_resource = resources.get_buffer_and_increase_version(
@@ -65,7 +59,7 @@ class VKCopyBufferNode : public VKNodeInfo<VKNodeType::COPY_BUFFER,
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKCopyBufferData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.copy_buffer(data.src_buffer, data.dst_buffer, 1, &data.region);

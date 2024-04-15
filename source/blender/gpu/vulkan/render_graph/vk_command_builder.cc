@@ -105,13 +105,6 @@ void VKCommandBuilder::build_pipeline_barriers(VKRenderGraph &render_graph,
   send_pipeline_barriers(command_buffer);
 }
 
-void VKCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph,
-                                                     Span<NodeHandle> built_nodes)
-{
-  render_graph.resource_dependencies_.remove_nodes(built_nodes);
-  render_graph.nodes_.remove_nodes(built_nodes);
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */

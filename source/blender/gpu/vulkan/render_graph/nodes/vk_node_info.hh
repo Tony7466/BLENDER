@@ -76,13 +76,13 @@ class VKNodeInfo : public NonCopyable {
    * Update the node data with the data inside create_info.
    *
    * Has been implemented as a template to ensure all node specific data
-   * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
+   * (`Data`/`CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    *
    * This function must be implemented by all node classes. But due to cyclic inclusion of header
    * files it is implemented as a template function.
    */
-  template<typename Node> static void set_node_data(Node &node, const NodeData &create_info);
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info);
 
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
@@ -90,7 +90,7 @@ class VKNodeInfo : public NonCopyable {
   virtual void build_resource_dependencies(VKResourceStateTracker &resources,
                                            VKResourceDependencies &dependencies,
                                            NodeHandle node_handle,
-                                           const NodeCreateInfo &create_info) = 0;
+                                           const CreateInfo &create_info) = 0;
 
   /**
    * Build the commands and add them to the command_buffer.
@@ -99,7 +99,7 @@ class VKNodeInfo : public NonCopyable {
    * cases. The test cases will validate the log to find out if the correct commands where added.
    */
   virtual void build_commands(VKCommandBufferInterface &command_buffer,
-                              const NodeData &data,
+                              const Data &data,
                               VKBoundPipelines &r_bound_pipelines) = 0;
 };
 }  // namespace blender::gpu::render_graph

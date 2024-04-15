@@ -24,12 +24,8 @@ struct VKCopyImageToBufferData {
   VkBufferImageCopy region;
 };
 
-/**
- * Information needed to add a node to the render graph.
- */
-using VKCopyImageToBufferCreateInfo = VKCopyImageToBufferData;
 class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFFER,
-                                                  VKCopyImageToBufferCreateInfo,
+                                                  VKCopyImageToBufferData,
                                                   VKCopyImageToBufferData,
                                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
                                                   VKResourceType::IMAGE | VKResourceType::BUFFER> {
@@ -41,8 +37,7 @@ class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFF
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKCopyImageToBufferCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.copy_image_to_buffer = create_info;
   }
@@ -53,7 +48,7 @@ class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFF
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKCopyImageToBufferCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
     ResourceWithStamp dst_resource = resources.get_buffer_and_increase_version(
@@ -70,7 +65,7 @@ class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFF
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKCopyImageToBufferData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.copy_image_to_buffer(

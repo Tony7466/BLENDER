@@ -20,12 +20,8 @@ struct VKFillBufferData {
   uint32_t data;
 };
 
-/**
- * Information needed to add a node to the render graph.
- */
-using VKFillBufferCreateInfo = VKFillBufferData;
 class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
-                                           VKFillBufferCreateInfo,
+                                           VKFillBufferData,
                                            VKFillBufferData,
                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
                                            VKResourceType::BUFFER> {
@@ -37,8 +33,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
    * actual node data (`VKNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKFillBufferCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.fill_buffer = create_info;
   }
@@ -49,7 +44,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
   void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
-                                   const VKFillBufferCreateInfo &create_info) override
+                                   const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
     dependencies.add_write_resource(
@@ -60,7 +55,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKFillBufferData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.fill_buffer(data.vk_buffer, 0, data.size, data.data);
