@@ -131,7 +131,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   void on_stroke_done(const bContext &C) override;
 
  private:
-  void simplify_stroke(bke::greasepencil::Drawing &drawing, float epsilon_px);
+  void simplify_stroke(const bContext &C, bke::greasepencil::Drawing &drawing, float epsilon_px);
   void process_stroke_end(const bContext &C, bke::greasepencil::Drawing &drawing);
 };
 
@@ -207,6 +207,83 @@ struct PaintOperationExecutor {
     return opacity;
   }
 
+  static void create_blank_curve(bke::CurvesGeometry &curves, const bool on_back)
+  {
+    if (on_back) {
+      const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
+      const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+
+      curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
+      curves.offsets_for_write().first() = 0;
+      for (const int src_curve : TempCurve.curves_range()) {
+        curves.offsets_for_write()[src_curve + 1] = TempCurve.offsets()[src_curve] + 1;
+      }
+
+      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+      copy_attributes_group_to_group(src_attributes,
+                                     bke::AttrDomain::Point,
+                                     {},
+                                     {},
+                                     OffsetIndices<int>(Array<int>({0, curves.points_num() - 1})),
+                                     OffsetIndices<int>(Array<int>({1, curves.points_num()})),
+                                     IndexMask(IndexRange(1)),
+                                     attributes);
+      copy_attributes_group_to_group(src_attributes,
+                                     bke::AttrDomain::Curve,
+                                     {},
+                                     {},
+                                     OffsetIndices<int>(Array<int>({0, curves.curves_num() - 1})),
+                                     OffsetIndices<int>(Array<int>({1, curves.curves_num()})),
+                                     IndexMask(IndexRange(1)),
+                                     attributes);
+    }
+    else {
+      const int num_old_points = curves.points_num();
+      curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
+      curves.offsets_for_write().last(1) = num_old_points;
+    }
+  }
+
+  static void extend_curve(bke::CurvesGeometry &curves,
+                           const bool on_back,
+                           const int new_points_num)
+  {
+    if (on_back) {
+      const int active_curve = curves.curves_range().first();
+      const int last_active_point = curves.points_by_curve()[active_curve].last();
+
+      const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
+      const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+
+      curves.resize(TempCurve.points_num() + new_points_num, TempCurve.curves_num());
+      for (const int src_curve : TempCurve.curves_range().drop_front(1)) {
+        curves.offsets_for_write()[src_curve] = TempCurve.offsets()[src_curve] + new_points_num;
+      }
+      curves.offsets_for_write().last() = curves.points_num();
+
+      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+      copy_attributes_group_to_group(
+          src_attributes,
+          bke::AttrDomain::Point,
+          {},
+          {},
+          OffsetIndices<int>(
+              Array<int>({last_active_point, curves.points_num() - new_points_num})),
+          OffsetIndices<int>(
+              Array<int>({last_active_point + new_points_num, curves.points_num()})),
+          IndexMask(IndexRange(1)),
+          attributes);
+
+      curves.tag_topology_changed();
+    }
+    else {
+      curves.resize(curves.points_num() + new_points_num, curves.curves_num());
+      curves.offsets_for_write().last() = curves.points_num();
+    }
+  }
+
   void process_start_sample(PaintOperation &self,
                             const bContext &C,
                             const InputSample &start_sample,
@@ -216,6 +293,8 @@ struct PaintOperationExecutor {
     const float start_radius = this->radius_from_input_sample(self, C, start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
+    Scene *scene = CTX_data_scene(&C);
+    const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK);
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -223,14 +302,17 @@ struct PaintOperationExecutor {
 
     /* Resize the curves geometry so there is one more curve with a single point. */
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
-    const int num_old_points = curves.points_num();
-    curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
-    curves.offsets_for_write().last(1) = num_old_points;
+    create_blank_curve(curves, on_back);
 
-    curves.positions_for_write().last() = self.placement_.project(start_coords);
-    drawing_->radii_for_write().last() = start_radius;
-    drawing_->opacities_for_write().last() = start_opacity;
-    drawing_->vertex_colors_for_write().last() = start_vertex_color;
+    const int active_curve = on_back ? curves.curves_range().first() :
+                                       curves.curves_range().last();
+    const IndexRange curve_points = curves.points_by_curve()[active_curve];
+    const int last_active_point = curve_points.last();
+
+    curves.positions_for_write()[last_active_point] = self.placement_.project(start_coords);
+    drawing_->radii_for_write()[last_active_point] = start_radius;
+    drawing_->opacities_for_write()[last_active_point] = start_opacity;
+    drawing_->vertex_colors_for_write()[last_active_point] = start_vertex_color;
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
@@ -241,22 +323,22 @@ struct PaintOperationExecutor {
         "hardness",
         bke::AttrDomain::Curve,
         bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
-    cyclic.span.last() = false;
-    materials.span.last() = material_index;
-    hardnesses.span.last() = hardness_;
+    cyclic.span[active_curve] = false;
+    materials.span[active_curve] = material_index;
+    hardnesses.span[active_curve] = hardness_;
 
     /* Only set the attribute if the type is not the default or if it already exists. */
     if (settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("start_cap")) {
       bke::SpanAttributeWriter<int8_t> start_caps =
           attributes.lookup_or_add_for_write_span<int8_t>("start_cap", bke::AttrDomain::Curve);
-      start_caps.span.last() = settings_->caps_type;
+      start_caps.span[active_curve] = settings_->caps_type;
       start_caps.finish();
     }
 
     if (settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("end_cap")) {
       bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
           "end_cap", bke::AttrDomain::Curve);
-      end_caps.span.last() = settings_->caps_type;
+      end_caps.span[active_curve] = settings_->caps_type;
       end_caps.finish();
     }
 
@@ -264,19 +346,19 @@ struct PaintOperationExecutor {
     materials.finish();
     hardnesses.finish();
 
-    curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
+    curves.curve_types_for_write()[active_curve] = CURVE_TYPE_POLY;
     curves.update_curve_types();
 
     /* Initialize the rest of the attributes with default values. */
     bke::fill_attribute_range_default(attributes,
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
-                                      curves.points_range().take_back(1));
+                                      IndexRange(last_active_point, 1));
     bke::fill_attribute_range_default(
         attributes,
         bke::AttrDomain::Curve,
         {"curve_type", "material_index", "cyclic", "hardness", "start_cap", "end_cap"},
-        curves.curves_range().take_back(1));
+        IndexRange(active_curve, 1));
 
     drawing_->tag_topology_changed();
   }
@@ -371,20 +453,26 @@ struct PaintOperationExecutor {
     const float radius = this->radius_from_input_sample(self, C, extension_sample);
     const float opacity = this->opacity_from_input_sample(extension_sample);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
+    Scene *scene = CTX_data_scene(&C);
+    const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
+    int active_curve = on_back ? curves.curves_range().first() : curves.curves_range().last();
+    IndexRange curve_points = curves.points_by_curve()[active_curve];
+    const int last_active_point = curve_points.last();
+
     const float2 prev_coords = self.screen_space_coords_orig_.last();
-    const float prev_radius = drawing_->radii().last();
-    const float prev_opacity = drawing_->opacities().last();
-    const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
+    const float prev_radius = drawing_->radii()[last_active_point];
+    const float prev_opacity = drawing_->opacities()[last_active_point];
+    const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors()[last_active_point];
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = self.placement_.project(coords);
-      drawing_->radii_for_write().last() = math::max(radius, prev_radius);
-      drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
+      curves.positions_for_write()[last_active_point] = self.placement_.project(coords);
+      drawing_->radii_for_write()[last_active_point] = math::max(radius, prev_radius);
+      drawing_->opacities_for_write()[last_active_point] = math::max(opacity, prev_opacity);
       return;
     }
 
@@ -397,9 +485,8 @@ struct PaintOperationExecutor {
     }
 
     /* Resize the curves geometry. */
-    curves.resize(curves.points_num() + new_points_num, curves.curves_num());
-    curves.offsets_for_write().last() = curves.points_num();
-    const IndexRange curve_points = curves.points_by_curve()[curves.curves_range().last()];
+    extend_curve(curves, on_back, new_points_num);
+    curve_points = curves.points_by_curve()[active_curve];
 
     /* Subdivide stroke in new_points. */
     const IndexRange new_points = curve_points.take_back(new_points_num);
@@ -441,7 +528,7 @@ struct PaintOperationExecutor {
                                       curves.points_range().take_back(1));
 
     drawing_->set_texture_matrices(Span<float4x2>(&(self.texture_space_), 1),
-                                   IndexMask(IndexRange(curves.curves_range().last(), 1)));
+                                   IndexMask(IndexRange(active_curve, 1)));
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -567,10 +654,15 @@ static float dist_to_interpolated_2d(
   return 0.0f;
 }
 
-void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const float epsilon_px)
+void PaintOperation::simplify_stroke(const bContext &C,
+                                     bke::greasepencil::Drawing &drawing,
+                                     const float epsilon_px)
 {
-  const int stroke_index = drawing.strokes().curves_range().last();
-  const IndexRange points = drawing.strokes().points_by_curve()[stroke_index];
+  Scene *scene = CTX_data_scene(&C);
+  const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK);
+  const int active_curve = on_back ? drawing.strokes().curves_range().first() :
+                                     drawing.strokes().curves_range().last();
+  const IndexRange points = drawing.strokes().points_by_curve()[active_curve];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const VArray<float> radii = drawing.radii();
 
@@ -601,11 +693,50 @@ void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const 
   }
 }
 
+static void remove_points_from_end_of_active_curve(bke::CurvesGeometry &curves,
+                                                   const bool on_back,
+                                                   const int rem_points_num)
+{
+  if (on_back) {
+    const int active_curve = curves.curves_range().first();
+    const int last_active_point = curves.points_by_curve()[active_curve].last();
+
+    const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
+    const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+
+    curves.resize(TempCurve.points_num() - rem_points_num, TempCurve.curves_num());
+    for (const int src_curve : TempCurve.curves_range().drop_front(1)) {
+      curves.offsets_for_write()[src_curve] = TempCurve.offsets()[src_curve] - rem_points_num;
+    }
+    curves.offsets_for_write().last() = curves.points_num();
+
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+    copy_attributes_group_to_group(
+        src_attributes,
+        bke::AttrDomain::Point,
+        {},
+        {},
+        OffsetIndices<int>(Array<int>({last_active_point, curves.points_num() + rem_points_num})),
+        OffsetIndices<int>(Array<int>({last_active_point - rem_points_num, curves.points_num()})),
+        IndexMask(IndexRange(1)),
+        attributes);
+
+    curves.tag_topology_changed();
+  }
+  else {
+    curves.resize(curves.points_num() - rem_points_num, curves.curves_num());
+    curves.offsets_for_write().last() = curves.points_num();
+  }
+}
+
 void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Drawing &drawing)
 {
   Scene *scene = CTX_data_scene(&C);
-  const int stroke_index = drawing.strokes().curves_range().last();
-  IndexRange points = drawing.strokes().points_by_curve()[stroke_index];
+  const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK);
+  const int active_curve = on_back ? drawing.strokes().curves_range().first() :
+                                     drawing.strokes().curves_range().last();
+  IndexRange points = drawing.strokes().points_by_curve()[active_curve];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const VArray<float> radii = drawing.radii();
 
@@ -620,8 +751,7 @@ void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Dr
     }
   }
   if (points_to_remove > 0) {
-    curves.resize(curves.points_num() - points_to_remove, curves.curves_num());
-    curves.offsets_for_write().last() = curves.points_num();
+    remove_points_from_end_of_active_curve(curves, on_back, points_to_remove);
     points = points.drop_back(points_to_remove);
   }
 
@@ -632,7 +762,7 @@ void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Dr
       curves, selection_domain, CD_PROP_BOOL);
 
   if (selection_domain == bke::AttrDomain::Curve) {
-    ed::curves::fill_selection_false(selection.span.slice(IndexRange(stroke_index, 1)));
+    ed::curves::fill_selection_false(selection.span.slice(IndexRange(active_curve, 1)));
   }
   else if (selection_domain == bke::AttrDomain::Point) {
     ed::curves::fill_selection_false(selection.span.slice(points));
@@ -662,7 +792,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
       reinterpret_cast<GreasePencilDrawing *>(grease_pencil.drawing(drawing_index))->wrap();
 
   const float simplifiy_threshold_px = 0.5f;
-  this->simplify_stroke(drawing, simplifiy_threshold_px);
+  this->simplify_stroke(C, drawing, simplifiy_threshold_px);
   this->process_stroke_end(C, drawing);
   drawing.tag_topology_changed();
 

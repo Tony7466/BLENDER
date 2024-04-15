@@ -871,6 +871,8 @@ class VIEW3D_HT_header(Header):
 
             if object_mode == 'PAINT_GREASE_PENCIL':
                 row = layout.row(align=True)
+                sub.prop(tool_settings, "use_gpencil_draw_onback", text="", icon='MOD_OPACITY')
+                sub.separator(factor=0.4)
                 row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
 
             if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'WEIGHT_PAINT'}:
