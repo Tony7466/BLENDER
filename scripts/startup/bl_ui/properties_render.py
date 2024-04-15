@@ -332,6 +332,7 @@ class RENDER_PT_eevee_next_depth_of_field(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
         scene = context.scene
         props = scene.eevee
 
@@ -339,11 +340,14 @@ class RENDER_PT_eevee_next_depth_of_field(RenderButtonsPanel, Panel):
         col.prop(props, "bokeh_max_size")
         col.prop(props, "bokeh_threshold")
         col.prop(props, "bokeh_neighbor_max")
-        col.prop(props, "use_bokeh_jittered")
 
-        col = layout.column()
-        col.active = props.use_bokeh_jittered
-        col.prop(props, "bokeh_overblur")
+        col = layout.column(align=False, heading="Jitter Camera")
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(props, "use_bokeh_jittered", text="")
+        sub = sub.row(align=True)
+        sub.active = props.use_bokeh_jittered
+        sub.prop(props, "bokeh_overblur")
 
 
 class RENDER_PT_eevee_bloom(RenderButtonsPanel, Panel):
