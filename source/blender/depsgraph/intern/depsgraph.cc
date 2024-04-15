@@ -84,11 +84,11 @@ Depsgraph::~Depsgraph()
 
 void Depsgraph::clear()
 {
+  clear_id_nodes();
+
   memset(id_type_updated, 0, sizeof(id_type_updated));
   memset(id_type_exist, 0, sizeof(id_type_exist));
   memset(physics_relations, 0, sizeof(physics_relations));
-
-  clear_id_nodes();
 }
 
 /* Node Management ---------------------------- */
