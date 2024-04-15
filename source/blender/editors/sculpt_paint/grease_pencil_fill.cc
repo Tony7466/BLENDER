@@ -48,11 +48,53 @@ namespace blender::ed::greasepencil {
 constexpr const char *attr_material_index = "material_index";
 constexpr const char *attr_is_boundary = "is_boundary";
 
-constexpr const ColorGeometry4f mouse_color = {0, 0, 255, 255};
-constexpr const ColorGeometry4f stroke_color = {255, 0, 0, 255};
-constexpr const ColorGeometry4f extend_color = {0, 255, 255, 255};
-constexpr const ColorGeometry4f helper_color = {255, 0, 127, 127};
-constexpr const ColorGeometry4f fill_color = {255, 0, 0, 127};
+constexpr const ColorGeometry4f boundary_color = {1, 0, 0, 1};
+constexpr const ColorGeometry4f fill_color = {0, 1, 0, 1};
+constexpr const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, 1};
+constexpr const ColorGeometry4f border_color = {0, 0, 1, 1};
+
+constexpr const ColorGeometry4f stroke_color = boundary_color;
+constexpr const ColorGeometry4f extend_color = boundary_color;
+constexpr const ColorGeometry4f mouse_color = seed_color;
+constexpr const ColorGeometry4f helper_color = {1, 0, 0.5f, 0.5f};
+
+static bool is_pixel_boundary(const ColorGeometry4f &color)
+{
+  return color.r == 1.0f;
+}
+
+static bool is_pixel_filled(const ColorGeometry4f &color)
+{
+  return color.g == 1.0f;
+}
+
+static bool is_pixel_border(const ColorGeometry4f &color)
+{
+  return color.b == 1.0f;
+}
+
+static void clear_pixel(ColorGeometry4f &color)
+{
+  color = ColorGeometry4f(0, 0, 0, 1);
+}
+
+static void set_pixel_boundary(ColorGeometry4f &color)
+{
+  color.r = 1.0f;
+  color.a = 1.0f;
+}
+
+static void set_pixel_filled(ColorGeometry4f &color)
+{
+  color.g = 1.0f;
+  color.a = 1.0f;
+}
+
+static void set_pixel_border(ColorGeometry4f &color)
+{
+  color.b = 1.0f;
+  color.a = 1.0f;
+}
 
 /* Utilities for rendering with immediate mode into an offscreen buffer. */
 namespace render_utils {
@@ -523,110 +565,58 @@ FillResult fill_boundaries(Image &ima)
   const int height = ibuf->y;
   MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
                                       width * height);
-  blender::Stack<int> active_pixels;
+  auto index_from_coord = [&](const int x, const int y) { return x + y * width; };
+  auto pixel_from_coord = [&](const int x, const int y) { return pixels[index_from_coord(x, y)]; };
 
-  /* Initialize the stack with blue pixels (mouse cursor). */
+  blender::Stack<int> active_pixels;
+  /* Initialize the stack with filled pixels (dot at mouse position). */
   for (const int i : pixels.index_range()) {
-    if (pixels[i].b == 1.0f) {
+    if (math::is_equal(float4(pixels[i]), float4(seed_color), 0.01f)) {
       active_pixels.push(i);
+      pixels[i] = {0, 0, 0, 1};
     }
   }
 
   bool border_contact = false;
   while (!active_pixels.is_empty()) {
     const int index = active_pixels.pop();
-    ColorGeometry4f &color = pixels[index];
+    ColorGeometry4f pixel_cur = pixels[index];
 
-    if (color.b == 0.5f) {
+    if (is_pixel_border(pixel_cur)) {
       border_contact = true;
+      break;
     }
-    if (color.r == 1.0f) {
+    if (is_pixel_boundary(pixel_cur)) {
       /* Boundary pixel, ignore. */
       continue;
     }
-    if (color.g == 1.0f) {
+    if (is_pixel_filled(pixel_cur)) {
       /* Pixel already filled. */
       continue;
+    }
+
+    /* Mark as filled. */
+    set_pixel_filled(pixels[index]);
+
+    /* Activate neighbors */
+    const div_t d = div(index, width);
+    const int x = d.rem;
+    const int y = d.quot;
+    if (x > 0) {
+      active_pixels.push(index_from_coord(x - 1, y));
+    }
+    if (x < width - 1) {
+      active_pixels.push(index_from_coord(x + 1, y));
+    }
+    if (y > 0) {
+      active_pixels.push(index_from_coord(x, y - 1));
+    }
+    if (y < height - 1) {
+      active_pixels.push(index_from_coord(x, y + 1));
     }
   }
 
   return border_contact ? FillResult::BorderContact : FillResult::Success;
-
-  /**
-   * The fill use a stack to save the pixel list instead of the common recursive
-   * 4-contact point method.
-   * The problem with recursive calls is that for big fill areas, we can get max limit
-   * of recursive calls and STACK_OVERFLOW error.
-   *
-   * The 4-contact point analyze the pixels to the left, right, bottom and top
-   * <pre>
-   * -----------
-   * |    X    |
-   * |   XoX   |
-   * |    X    |
-   * -----------
-   * </pre>
-   */
-  while (!BLI_stack_is_empty(stack)) {
-    int v;
-
-    BLI_stack_pop(stack, &v);
-
-    get_pixel(ibuf, v, rgba);
-
-    /* Determine if the flood contacts with external borders. */
-    if (rgba[3] == 0.5f) {
-      border_contact = true;
-    }
-
-    /* check if no border(red) or already filled color(green) */
-    if ((rgba[0] != 1.0f) && (rgba[1] != 1.0f)) {
-      /* fill current pixel with green */
-      set_pixel(ibuf, v, fill_col);
-
-      /* add contact pixels */
-      /* pixel left */
-      if (v - 1 >= 0) {
-        index = v - 1;
-        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
-          BLI_stack_push(stack, &index);
-        }
-      }
-      /* pixel right */
-      if (v + 1 <= maxpixel) {
-        index = v + 1;
-        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
-          BLI_stack_push(stack, &index);
-        }
-      }
-      /* pixel top */
-      if (v + ibuf->x <= maxpixel) {
-        index = v + ibuf->x;
-        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
-          BLI_stack_push(stack, &index);
-        }
-      }
-      /* pixel bottom */
-      if (v - ibuf->x >= 0) {
-        index = v - ibuf->x;
-        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
-          BLI_stack_push(stack, &index);
-        }
-      }
-    }
-  }
-
-  /* release ibuf */
-  BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
-
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
-  /* free temp stack data */
-  BLI_stack_free(stack);
-
-  return border_contact;
-}
-
-return FillResult::Success;
 }
 
 static bool do_frame_fill(Main &bmain,
@@ -680,7 +670,7 @@ static bool do_frame_fill(Main &bmain,
   }
 
   /* Set red borders to create a external limit. */
-  mark_borders(*ima, fill_color);
+  mark_borders(*ima, border_color);
 
   /* Apply boundary fill */
   FillResult fill_result = fill_boundaries(*ima);
