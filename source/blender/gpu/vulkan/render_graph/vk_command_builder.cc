@@ -46,7 +46,7 @@ void VKCommandBuilder::reset(VKRenderGraph &render_graph)
   /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
   render_graph.resources_.reset_image_layouts();
 
-  active_pipelines = {};
+  state_.active_pipelines = {};
   selected_nodes_.clear();
 }
 
@@ -94,7 +94,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                                *render_graph.command_buffer_,
                                                                node_handle,
                                                                node_data.clear_color_image,
-                                                               active_pipelines);
+                                                               state_.active_pipelines);
       break;
     }
 
@@ -103,7 +103,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                      *render_graph.command_buffer_,
                                                      node_handle,
                                                      node_data.fill_buffer,
-                                                     active_pipelines);
+                                                     state_.active_pipelines);
       break;
     }
 
@@ -112,7 +112,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                      *render_graph.command_buffer_,
                                                      node_handle,
                                                      node_data.copy_buffer,
-                                                     active_pipelines);
+                                                     state_.active_pipelines);
       break;
     }
 
@@ -121,7 +121,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                                    *render_graph.command_buffer_,
                                                                    node_handle,
                                                                    node_data.copy_buffer_to_image,
-                                                                   active_pipelines);
+                                                                   state_.active_pipelines);
       break;
     }
 
@@ -130,7 +130,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                    *render_graph.command_buffer_,
                                                    node_handle,
                                                    node_data.copy_image,
-                                                   active_pipelines);
+                                                   state_.active_pipelines);
       break;
     }
 
@@ -139,7 +139,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                                    *render_graph.command_buffer_,
                                                                    node_handle,
                                                                    node_data.copy_image_to_buffer,
-                                                                   active_pipelines);
+                                                                   state_.active_pipelines);
       break;
     }
 
@@ -148,7 +148,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                    *render_graph.command_buffer_,
                                                    node_handle,
                                                    node_data.blit_image,
-                                                   active_pipelines);
+                                                   state_.active_pipelines);
       break;
     }
 
@@ -157,7 +157,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                                *render_graph.command_buffer_,
                                                                node_handle,
                                                                node_data.synchronization,
-                                                               active_pipelines);
+                                                               state_.active_pipelines);
       break;
     }
 
@@ -166,7 +166,7 @@ void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                                  *render_graph.command_buffer_,
                                                  node_handle,
                                                  node_data.dispatch,
-                                                 active_pipelines);
+                                                 state_.active_pipelines);
       break;
     }
   }
@@ -180,8 +180,8 @@ void VKCommandBuilder::reset_barriers()
 {
   vk_buffer_memory_barriers_.clear();
   vk_image_memory_barriers_.clear();
-  src_stage_mask_ = VK_PIPELINE_STAGE_NONE;
-  dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
+  state_.src_stage_mask = VK_PIPELINE_STAGE_NONE;
+  state_.dst_stage_mask = VK_PIPELINE_STAGE_NONE;
 }
 
 void VKCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
@@ -193,13 +193,13 @@ void VKCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
 
   /* When no resources have been used, we can start the barrier at the top of the pipeline.
    * It is not allowed to set it to None. */
-  // TODO: VK_KHR_synchronization2 allows setting src_stage_mask_ to NONE.
-  if (src_stage_mask_ == VK_PIPELINE_STAGE_NONE) {
-    src_stage_mask_ = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+  // TODO: VK_KHR_synchronization2 allows setting src_stage_mask to NONE.
+  if (state_.src_stage_mask == VK_PIPELINE_STAGE_NONE) {
+    state_.src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   }
 
-  render_graph.command_buffer_->pipeline_barrier(src_stage_mask_,
-                                                 dst_stage_mask_,
+  render_graph.command_buffer_->pipeline_barrier(state_.src_stage_mask,
+                                                 state_.dst_stage_mask,
                                                  VK_DEPENDENCY_BY_REGION_BIT,
                                                  0,
                                                  nullptr,
@@ -244,8 +244,8 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
 
     read_access |= usage.vk_access_flags;
     wait_access |= write_access;
-    src_stage_mask_ |= resource_state.write_stages;
-    dst_stage_mask_ |= node_stages;
+    state_.src_stage_mask |= resource_state.write_stages;
+    state_.dst_stage_mask |= node_stages;
 
     resource_state.read_access = read_access;
     resource_state.write_access = VK_ACCESS_NONE;
@@ -282,8 +282,8 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
       wait_access |= write_access;
     }
 
-    src_stage_mask_ |= resource_state.read_stages | resource_state.write_stages;
-    dst_stage_mask_ |= node_stages;
+    state_.src_stage_mask |= resource_state.read_stages | resource_state.write_stages;
+    state_.dst_stage_mask |= node_stages;
 
     resource_state.read_access = VK_ACCESS_NONE;
     resource_state.write_access = usage.vk_access_flags;
@@ -345,8 +345,8 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
 
     read_access |= usage.vk_access_flags;
     wait_access |= write_access;
-    src_stage_mask_ |= resource_state.write_stages;
-    dst_stage_mask_ |= node_stages;
+    state_.src_stage_mask |= resource_state.write_stages;
+    state_.dst_stage_mask |= node_stages;
 
     resource_state.read_access = read_access;
     resource_state.write_access = VK_ACCESS_NONE;
@@ -388,8 +388,8 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
       wait_access |= write_access;
     }
 
-    src_stage_mask_ |= resource_state.read_stages | resource_state.write_stages;
-    dst_stage_mask_ |= node_stages;
+    state_.src_stage_mask |= resource_state.read_stages | resource_state.write_stages;
+    state_.dst_stage_mask |= node_stages;
 
     resource_state.read_access = VK_ACCESS_NONE;
     resource_state.write_access = usage.vk_access_flags;

@@ -36,10 +36,22 @@ class VKCommandBuilder {
   /** Template image memory barrier. */
   VkImageMemoryBarrier vk_image_memory_barrier_;
 
-  VKBoundPipelines active_pipelines;
+  struct {
+    /**
+     * State of the bound pipelines during command building.
+     */
+    VKBoundPipelines active_pipelines;
 
-  VkPipelineStageFlags src_stage_mask_ = VK_PIPELINE_STAGE_NONE;
-  VkPipelineStageFlags dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
+    /**
+     * When building memory barriers we need to track the src_stage_mask and dst_stage_mask and
+     * pass them to
+     * `https://docs.vulkan.org/spec/latest/chapters/synchronization.html#vkCmdPipelineBarrier`
+     *
+     * NOTE: Only valid between `reset_barriers` and `send_pipeline_barriers`.
+     */
+    VkPipelineStageFlags src_stage_mask = VK_PIPELINE_STAGE_NONE;
+    VkPipelineStageFlags dst_stage_mask = VK_PIPELINE_STAGE_NONE;
+  } state_;
 
  public:
   VKCommandBuilder();
