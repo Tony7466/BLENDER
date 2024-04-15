@@ -31,14 +31,14 @@ bool lightprobe_irradiance_grid_local_coord(VolumeProbeData grid_data, vec3 P, o
   /* Position in cell units. */
   /* NOTE: The vector-matrix multiplication swapped on purpose to cancel the matrix transpose. */
   vec3 lP = (vec4(P, 1.0) * grid_data.world_to_grid_transposed).xyz;
-  r_lP = clamp(lP, vec3(0.0), vec3(grid_data.grid_size) - 1e-5);
+  r_lP = clamp(lP, vec3(0.5), vec3(grid_data.grid_size_padded) - 0.5);
   /* Sample is valid if position wasn't clamped. */
   return all(equal(lP, r_lP));
 }
 
 int lightprobe_irradiance_grid_brick_index_get(VolumeProbeData grid_data, ivec3 brick_coord)
 {
-  int3 grid_size_in_bricks = divide_ceil(grid_data.grid_size,
+  int3 grid_size_in_bricks = divide_ceil(grid_data.grid_size_padded,
                                          int3(IRRADIANCE_GRID_BRICK_SIZE - 1));
   int brick_index = grid_data.brick_offset;
   brick_index += brick_coord.x;

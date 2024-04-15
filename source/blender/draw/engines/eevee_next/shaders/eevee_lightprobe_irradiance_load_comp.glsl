@@ -128,21 +128,36 @@ void main()
     sh_local = sh_distant;
   }
 
+  if (is_padding_voxel) {
+    sh_local.L0.M0 = vec4(0.0);
+    sh_local.L1.Mn1 = vec4(0.0);
+    sh_local.L1.M0 = vec4(0.0);
+    sh_local.L1.Mp1 = vec4(0.0);
+  }
+  else {
+    sh_local.L0.M0 = vec4(vec3(input_coord & 1), 0.0);
+    sh_local.L1.Mn1 = vec4(0.0);
+    sh_local.L1.M0 = vec4(0.0);
+    sh_local.L1.Mp1 = vec4(0.0);
+  }
+
   atlas_store(sh_local.L0.M0, output_coord, 0);
   atlas_store(sh_local.L1.Mn1, output_coord, 1);
   atlas_store(sh_local.L1.M0, output_coord, 2);
   atlas_store(sh_local.L1.Mp1, output_coord, 3);
 
-  if (gl_LocalInvocationID.z % 4 == 0u) {
+  if ((gl_LocalInvocationID.z % 4u) == 0u) {
     /* Encode 4 cells into one volume sample. */
     ivec4 cell_validity_bits = ivec4(0);
     /* Encode validity of each samples in the grid cell. */
     for (int cell = 0; cell < 4; cell++) {
       for (int i = 0; i < 8; i++) {
         ivec3 offset = lightprobe_irradiance_grid_cell_corner(i);
-        ivec3 coord = input_coord + offset + ivec3(0, 0, cell);
-        float validity = texelFetch(validity_tx, coord, 0).r;
-        if (validity > validity_threshold || is_padding_voxel) {
+        ivec3 coord_output = texel_coord + offset + ivec3(0, 0, cell);
+        ivec3 coord_input = clamp(texel_coord, ivec3(0), grid_size - 1);
+        float validity = texelFetch(validity_tx, coord_input, 0).r;
+        bool is_padding_voxel = !all(equal(texel_coord, input_coord));
+        if ((validity > validity_threshold) || is_padding_voxel) {
           cell_validity_bits[cell] |= (1 << i);
         }
       }

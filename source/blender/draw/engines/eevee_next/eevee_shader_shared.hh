@@ -1573,7 +1573,7 @@ struct VolumeProbeData {
   /** World to non-normalized local grid space [0..size-1]. Stored transposed for compactness. */
   float3x4 world_to_grid_transposed;
   /** Number of bricks for this grid. */
-  packed_int3 grid_size;
+  packed_int3 grid_size_padded;
   /** Index in brick descriptor list of the first brick of this grid. */
   int brick_offset;
   /** Biases to apply to the shading point in order to sample a valid probe. */
