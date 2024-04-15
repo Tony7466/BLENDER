@@ -393,8 +393,8 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
 
 /* TODO(weizhen): mostly copied from `shader_setup_from_ray()`, the original function requires
  * `isect` in many places, but they are also available in `sd`, can probably reuse. */
-ccl_device_inline void shader_setup_from_reservoir(KernelGlobals kg,
-                                                   ccl_private ShaderData *ccl_restrict sd)
+ccl_device_inline void shader_setup_from_restir(KernelGlobals kg,
+                                                ccl_private ShaderData *ccl_restrict sd)
 {
   sd->object_flag = kernel_data_fetch(object_flag, sd->object);
   sd->lamp = LAMP_NONE;

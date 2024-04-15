@@ -376,7 +376,7 @@ ccl_device
 {
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
-    /* TODO(weizhen): should we still read/write to the reservoir in this case? */
+    /* TODO(weizhen): we still need to write to the reservoir in this case. */
     return;
   }
 

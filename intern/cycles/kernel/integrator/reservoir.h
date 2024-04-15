@@ -5,7 +5,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-typedef struct Reservoir {
+struct Reservoir {
   LightSample ls;
   BsdfEval radiance;
 
@@ -30,7 +30,6 @@ typedef struct Reservoir {
     return total_weight == 0.0f;
   }
 
- private:
   void add_sample(const ccl_private LightSample &ls,
                   const ccl_private BsdfEval &radiance,
                   const float mis_weight)
@@ -57,7 +56,6 @@ typedef struct Reservoir {
     rand = saturatef(rand);
   }
 
- public:
   float power_heuristic(int num_a, float pdf_a, int num_b, float pdf_b)
   {
     return (pdf_a * pdf_a) / (pdf_a * pdf_a * (float)num_a + pdf_b * pdf_b * (float)num_b);
@@ -80,7 +78,7 @@ typedef struct Reservoir {
         num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
     add_sample(ls, radiance, mis_weight / bsdf_pdf);
   }
-} Reservoir;
+};
 
 CCL_NAMESPACE_END
 

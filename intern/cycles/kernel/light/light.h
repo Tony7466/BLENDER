@@ -609,4 +609,12 @@ ccl_device_noinline bool light_sample_from_uv(KernelGlobals kg,
   return true;
 }
 
+ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
+                                            const ccl_private ShaderData *sd,
+                                            const uint32_t path_flag,
+                                            ccl_private LightSample *ls)
+{
+  return light_sample_from_uv(kg, sd->time, sd->P, sd->N, sd->flag, path_flag, ls);
+}
+
 CCL_NAMESPACE_END

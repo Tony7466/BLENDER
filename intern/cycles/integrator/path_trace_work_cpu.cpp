@@ -80,10 +80,12 @@ void PathTraceWorkCPU::setup_work_tile(KernelWorkTile &work_tile,
 }
 
 void PathTraceWorkCPU::initial_resampling(const int64_t image_width,
-                                          const int64_t total_pixels_num,
+                                          const int64_t image_height,
                                           const int start_sample,
                                           const int sample_offset)
 {
+  const int64_t total_pixels_num = image_width * image_height;
+
   parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
     if (is_cancel_requested()) {
       return;
@@ -127,7 +129,6 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 {
   const int64_t image_width = effective_buffer_params_.width;
   const int64_t image_height = effective_buffer_params_.height;
-  const int64_t total_pixels_num = image_width * image_height;
 
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {
@@ -139,7 +140,7 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 
   /* Initial Resampling. */
   local_arena.execute(
-      [&] { initial_resampling(image_width, total_pixels_num, start_sample, sample_offset); });
+      [&] { initial_resampling(image_width, image_height, start_sample, sample_offset); });
 
   /* Spatial Resampling. */
   local_arena.execute(
