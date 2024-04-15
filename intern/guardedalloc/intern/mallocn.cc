@@ -110,7 +110,7 @@ void *MEM_calloc_arrayN_aligned(const size_t len,
   size_t bytes_num;
   if (UNLIKELY(!MEM_size_safe_multiply(len, size, &bytes_num))) {
     abort();
-    return NULL;
+    return nullptr;
   }
   if (alignment <= MEM_MIN_CPP_ALIGNMENT) {
     return MEM_callocN(bytes_num, allocation_name);
@@ -119,7 +119,7 @@ void *MEM_calloc_arrayN_aligned(const size_t len,
    * #memset unfortunately. */
   void *ptr = MEM_mallocN_aligned(bytes_num, alignment, allocation_name);
   if (!ptr) {
-    return NULL;
+    return nullptr;
   }
   memset(ptr, 0, bytes_num);
   return ptr;
