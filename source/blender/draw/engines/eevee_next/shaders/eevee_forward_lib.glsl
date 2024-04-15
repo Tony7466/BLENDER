@@ -28,7 +28,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
   }
 
   /* TODO(fclem): If transmission (no SSS) is present, we could reduce LIGHT_CLOSURE_EVAL_COUNT
-   * by 1 for this evaluaiton and skip evaluating the transmission closure twice. */
+   * by 1 for this evaluation and skip evaluating the transmission closure twice. */
   light_eval_reflection(stack, g_data.P, g_data.Ng, V, vPz);
 
 #if defined(MAT_SUBSURFACE) || defined(MAT_REFRACTION) || defined(MAT_TRANSLUCENT)
@@ -52,7 +52,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
     if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
       /* Apply transmission profile onto transmitted light and sum with reflected light. */
       vec3 sss_profile = subsurface_transmission(to_closure_subsurface(cl_transmit).sss_radius,
-                                                 gbuf.thickness);
+                                                 thickness);
       stack.cl[0].light_shadowed *= sss_profile;
       stack.cl[0].light_unshadowed *= sss_profile;
       stack.cl[0].light_shadowed += sss_reflect_shadowed;
