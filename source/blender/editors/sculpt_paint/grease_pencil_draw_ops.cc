@@ -626,7 +626,9 @@ static bool grease_pencil_apply_fill(bContext &C,
   const VArray<bool> is_boundary_layer = get_fill_boundary_layers(
       grease_pencil, eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode));
 
-  ed::greasepencil::fill_strokes(C, *region, is_boundary_layer, is_inverted, *op.reports);
+  const float2 mouse_position = float2(event.mval);
+  ed::greasepencil::fill_strokes(
+      C, *region, is_boundary_layer, is_inverted, mouse_position, *op.reports);
 
   // tgpf->mouse[0] = event->mval[0];
   // tgpf->mouse[1] = event->mval[1];

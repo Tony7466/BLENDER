@@ -7,6 +7,7 @@
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_camera.h"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
@@ -35,6 +36,8 @@
 #include "GPU_matrix.hh"
 #include "GPU_state.hh"
 
+#include <iostream>
+
 namespace blender::ed::greasepencil {
 
 constexpr const char *attr_material_index = "material_index";
@@ -44,18 +47,173 @@ constexpr const ColorGeometry4f stroke_color = {1.0f, 0.0f, 0.0f, 1.0f};
 constexpr const ColorGeometry4f extend_color = {0.0f, 1.0f, 1.0f, 1.0f};
 constexpr const ColorGeometry4f helper_color = {1.0f, 0.0f, 0.5f, 0.5f};
 
-static void draw_mouse_position()
+/* Utilities for rendering with immediate mode into an offscreen buffer. */
+namespace render_utils {
+
+/* Set up an offscreen buffer for rendering and return result as an image. */
+static Image *render_to_image(Main &bmain,
+                              ARegion &region,
+                              const Scene &scene,
+                              Depsgraph &depsgraph,
+                              View3D &view3d,
+                              const RegionView3D &rv3d,
+                              const float pixel_scale,
+                              const float2 zoom,
+                              const float2 offset,
+                              ReportList &reports,
+                              FunctionRef<void()> render_fn)
 {
-  /* TODO */
+  const int min_window_size = 128;
+  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+                                  int2(min_window_size));
+
+  char err_out[256] = "unknown";
+  GPUOffScreen *offscreen = GPU_offscreen_create(
+      win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
+  if (offscreen == nullptr) {
+    BKE_report(&reports, RPT_ERROR, "Unable to create fill buffer");
+    return nullptr;
+  }
+
+  auto restore_region =
+      [&region, winx = region.winx, winy = region.winy, winrct = region.winrct]() {
+        region.winx = winx;
+        region.winy = winy;
+        region.winrct = winrct;
+      };
+
+  /* Resize region. */
+  region.winrct.xmin = 0;
+  region.winrct.ymin = 0;
+  region.winrct.xmax = win_size.x;
+  region.winrct.ymax = win_size.y;
+  region.winx = short(win_size.x);
+  region.winy = short(win_size.y);
+
+  GPU_offscreen_bind(offscreen, true);
+  const uint imb_flag = IB_rectfloat;
+  ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
+
+  //CameraParams camera_params;
+  //BKE_camera_params_init(&camera_params);
+  //BKE_camera_params_from_view3d(&camera_params, &depsgraph, &view3d, &rv3d);
+  //BKE_camera_params_compute_viewplane(&camera_params, win_size.x, win_size.y, 1.0f, 1.0f);
+  //BKE_camera_params_compute_matrix(&camera_params);
+
+  rctf viewplane;
+  float clip_start, clip_end;
+   const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
+                                                &view3d,
+                                                &rv3d,
+                                                win_size.x,
+                                                win_size.y,
+                                                &viewplane,
+                                                &clip_start,
+                                                &clip_end,
+                                                nullptr);
+
+  /* Rescale `viewplane` to fit all strokes. */
+  viewplane.xmin = viewplane.xmin * zoom.x + offset.x;
+  viewplane.xmax = viewplane.xmax * zoom.x + offset.x;
+  viewplane.ymin = viewplane.ymin * zoom.y + offset.y;
+  viewplane.ymax = viewplane.ymax * zoom.y + offset.y;
+  std::cout << "View plane: " << int2(viewplane.xmin, viewplane.ymin) << ".."
+            << int2(viewplane.xmax, viewplane.ymax) << ")" << std::endl;
+
+  float4x4 winmat;
+  if (is_ortho) {
+    orthographic_m4(winmat.ptr(),
+                    viewplane.xmin,
+                    viewplane.xmax,
+                    viewplane.ymin,
+                    viewplane.ymax,
+                    -clip_end,
+                    clip_end);
+  }
+  else {
+    perspective_m4(winmat.ptr(),
+                   viewplane.xmin,
+                   viewplane.xmax,
+                   viewplane.ymin,
+                   viewplane.ymax,
+                   clip_start,
+                   clip_end);
+  }
+
+  GPU_matrix_push_projection();
+  GPU_matrix_identity_projection_set();
+  GPU_matrix_push();
+  GPU_matrix_identity_set();
+
+  GPU_depth_mask(true);
+  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
+  GPU_clear_depth(1.0f);
+
+  ED_view3d_update_viewmat(
+      &depsgraph, &scene, &view3d, &region, nullptr, winmat.ptr(), nullptr, true);
+  /* Set for OpenGL. */
+  GPU_matrix_projection_set(winmat.ptr());
+  GPU_matrix_set(rv3d.viewmat);
+
+  /* draw strokes */
+  render_fn();
+
+  GPU_depth_mask(false);
+
+  GPU_matrix_pop_projection();
+  GPU_matrix_pop();
+
+  /* create a image to see result of template */
+  if (ibuf->float_buffer.data) {
+    GPU_offscreen_read_color(offscreen, GPU_DATA_FLOAT, ibuf->float_buffer.data);
+  }
+  else if (ibuf->byte_buffer.data) {
+    GPU_offscreen_read_color(offscreen, GPU_DATA_UBYTE, ibuf->byte_buffer.data);
+  }
+  if (ibuf->float_buffer.data && ibuf->byte_buffer.data) {
+    IMB_rect_from_float(ibuf);
+  }
+
+  Image *ima = BKE_image_add_from_imbuf(&bmain, ibuf, "Grease Pencil Fill");
+  ima->id.tag |= LIB_TAG_DOIT;
+
+  BKE_image_release_ibuf(ima, ibuf, nullptr);
+
+  /* Switch back to window-system-provided frame-buffer. */
+  GPU_offscreen_unbind(offscreen, true);
+  GPU_offscreen_free(offscreen);
+
+  restore_region();
+
+  return ima;
 }
 
-/* draw a given stroke using same thickness and color for all points */
-static void draw_stroke(Span<float3> positions,
-                        const VArray<ColorGeometry4f> &colors,
-                        const IndexRange indices,
-                        const float4x4 &mat,
-                        const bool cyclic,
-                        const float line_width)
+static void draw_dot(const float3 &position, const float point_size, const ColorGeometry4f &color)
+{
+  GPUVertFormat *format = immVertexFormat();
+  uint attr_pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  uint attr_size = GPU_vertformat_attr_add(format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  uint attr_color = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
+  /* Draw mouse click position in Blue. */
+  GPU_program_point_size(true);
+  immBindBuiltinProgram(GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
+  immBegin(GPU_PRIM_POINTS, 1);
+  immAttr1f(attr_size, point_size * M_SQRT2);
+  immAttr4f(attr_color, color.r, color.g, color.b, color.a);
+  immVertex3fv(attr_pos, position);
+  immEnd();
+  immUnbindProgram();
+  GPU_program_point_size(false);
+}
+
+/* Draw a line from points. */
+static void draw_curve(Span<float3> positions,
+                      const VArray<ColorGeometry4f> &colors,
+                      const IndexRange indices,
+                      const float4x4 &mat,
+                      const bool cyclic,
+                      const float line_width)
 {
   GPUVertFormat *format = immVertexFormat();
   uint attr_pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -72,15 +230,26 @@ static void draw_stroke(Span<float3> positions,
   for (const int point_i : indices) {
     immAttr4fv(attr_color, colors[point_i]);
     immVertex3fv(attr_pos, math::transform_point(mat, positions[point_i]));
+    std::cout << "  point " << point_i << " pos=" << math::transform_point(mat, positions[point_i])
+              << std::endl;
   }
 
   if (cyclic && indices.size() > 2) {
     immAttr4fv(attr_color, colors[0]);
-    immVertex3fv(attr_pos, math::transform_point(mat, positions[0]));
+    immVertex3fv(attr_pos, math::transform_point(mat, positions[indices[0]]));
   }
 
   immEnd();
   immUnbindProgram();
+}
+
+}  // namespace render_utils
+
+static void draw_mouse_position(const float2 &position)
+{
+  const float point_size = 4.0f;
+  const ColorGeometry4f color(0.0f, 0.0f, 1.0f, 1.0f);
+  render_utils::draw_dot(float3(position), point_size, color);
 }
 
 static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
@@ -117,7 +286,7 @@ static void draw_basic_stroke(const Span<float3> positions,
   const VArray<ColorGeometry4f> colors = stroke_colors(
       opacities, tint_color, positions.size(), material_alpha, alpha_threshold, brush_fill_hide);
 
-  draw_stroke(positions, colors, indices, mat, cyclic, thickness);
+  render_utils::draw_curve(positions, colors, indices, mat, cyclic, thickness);
 }
 
 /* Draw a extension stroke. */
@@ -136,7 +305,7 @@ static void draw_extension_stroke(const Span<float3> positions,
   const VArray<ColorGeometry4f> colors = stroke_colors(
       opacities, color, positions.size(), material_alpha, alpha_threshold, brush_fill_hide);
 
-  draw_stroke(positions, colors, indices, mat, cyclic, thickness * 2.0f);
+  render_utils::draw_curve(positions, colors, indices, mat, cyclic, thickness * 2.0f);
 }
 
 /* Draw a helper stroke (viewport only). */
@@ -163,7 +332,7 @@ static void draw_helper_stroke(Span<float3> positions,
                                                            alpha_threshold,
                                                            brush_fill_hide);
 
-  draw_stroke(positions, colors, indices, mat, cyclic, thickness * 2.0f);
+  render_utils::draw_curve(positions, colors, indices, mat, cyclic, thickness * 2.0f);
 }
 
 /* Loop all layers to draw strokes. */
@@ -197,16 +366,11 @@ static void draw_datablock(const Object &object,
   // tgpw.disable_fill = 1;
   // tgpw.dflag |= (GP_DRAWFILLS_ONLY3D | GP_DRAWFILLS_NOSTATUS);
 
-  GPU_blend(GPU_BLEND_ALPHA);
-
   //bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
   //BLI_assert(gpl_active != nullptr);
 
   //const int gpl_active_index = BLI_findindex(&gpd->layers, gpl_active);
   //BLI_assert(gpl_active_index >= 0);
-
-  /* Draw blue point where click with mouse. */
-  draw_mouse_position();
 
   for (const DrawingInfo &info : drawings) {
     const Layer &layer = *grease_pencil.layers()[info.layer_index];
@@ -333,138 +497,6 @@ static void draw_datablock(const Object &object,
       }
     });
   }
-
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-/* Draw strokes in off-screen buffer. */
-static Image *render_offscreen(Main &bmain,
-                               ARegion &region,
-                               const Scene &scene,
-                               Depsgraph &depsgraph,
-                               View3D &view3d,
-                               const RegionView3D &rv3d,
-                               const float pixel_scale,
-                               const float2 zoom,
-                               const float2 offset,
-                               ReportList &reports,
-                               FunctionRef<void()> render_fn)
-{
-  const int min_window_size = 128;
-  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-                                  int2(min_window_size));
-
-  char err_out[256] = "unknown";
-  GPUOffScreen *offscreen = GPU_offscreen_create(
-      win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
-  if (offscreen == nullptr) {
-    BKE_report(&reports, RPT_ERROR, "Unable to create fill buffer");
-    return nullptr;
-  }
-
-  auto restore_region =
-      [&region, winx = region.winx, winy = region.winy, winrct = region.winrct]() {
-        region.winx = winx;
-        region.winy = winy;
-        region.winrct = winrct;
-      };
-
-  /* Resize region. */
-  region.winrct.xmin = 0;
-  region.winrct.ymin = 0;
-  region.winrct.xmax = win_size.x;
-  region.winrct.ymax = win_size.y;
-  region.winx = short(win_size.x);
-  region.winy = short(win_size.y);
-
-  GPU_offscreen_bind(offscreen, true);
-  const uint imb_flag = IB_rectfloat;
-  ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
-
-  rctf viewplane;
-  float clip_start, clip_end;
-  const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
-                                                &view3d,
-                                                &rv3d,
-                                                win_size.x,
-                                                win_size.y,
-                                                &viewplane,
-                                                &clip_start,
-                                                &clip_end,
-                                                nullptr);
-
-  /* Rescale `viewplane` to fit all strokes. */
-  viewplane.xmin = viewplane.xmin * zoom.x + offset.x;
-  viewplane.xmax = viewplane.xmax * zoom.x + offset.x;
-  viewplane.ymin = viewplane.ymin * zoom.y + offset.y;
-  viewplane.ymax = viewplane.ymax * zoom.y + offset.y;
-
-  float4x4 winmat;
-  if (is_ortho) {
-    orthographic_m4(winmat.ptr(),
-                    viewplane.xmin,
-                    viewplane.xmax,
-                    viewplane.ymin,
-                    viewplane.ymax,
-                    -clip_end,
-                    clip_end);
-  }
-  else {
-    perspective_m4(winmat.ptr(),
-                   viewplane.xmin,
-                   viewplane.xmax,
-                   viewplane.ymin,
-                   viewplane.ymax,
-                   clip_start,
-                   clip_end);
-  }
-
-  GPU_matrix_push_projection();
-  GPU_matrix_identity_projection_set();
-  GPU_matrix_push();
-  GPU_matrix_identity_set();
-
-  GPU_depth_mask(true);
-  GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
-  GPU_clear_depth(1.0f);
-
-  ED_view3d_update_viewmat(
-      &depsgraph, &scene, &view3d, &region, nullptr, winmat.ptr(), nullptr, true);
-  /* Set for OpenGL. */
-  GPU_matrix_projection_set(rv3d.winmat);
-  GPU_matrix_set(rv3d.viewmat);
-
-  /* draw strokes */
-  render_fn();
-
-  GPU_depth_mask(false);
-
-  GPU_matrix_pop_projection();
-  GPU_matrix_pop();
-
-  /* create a image to see result of template */
-  if (ibuf->float_buffer.data) {
-    GPU_offscreen_read_color(offscreen, GPU_DATA_FLOAT, ibuf->float_buffer.data);
-  }
-  else if (ibuf->byte_buffer.data) {
-    GPU_offscreen_read_color(offscreen, GPU_DATA_UBYTE, ibuf->byte_buffer.data);
-  }
-  if (ibuf->float_buffer.data && ibuf->byte_buffer.data) {
-    IMB_rect_from_float(ibuf);
-  }
-
-  Image *ima = BKE_image_add_from_imbuf(&bmain, ibuf, "Grease Pencil Fill");
-  ima->id.tag |= LIB_TAG_DOIT;
-
-  BKE_image_release_ibuf(ima, ibuf, nullptr);
-
-  /* Switch back to window-system-provided frame-buffer. */
-  GPU_offscreen_unbind(offscreen, true);
-  GPU_offscreen_free(offscreen);
-
-  restore_region();
-
-  return ima;
 }
 
 static bool do_frame_fill(Main &bmain,
@@ -480,6 +512,7 @@ static bool do_frame_fill(Main &bmain,
                           const float2 zoom,
                           const float2 offset,
                           const bool invert,
+                          const float2 &mouse_position,
                           ReportList &reports,
                           const bool keep_images)
 {
@@ -487,11 +520,18 @@ static bool do_frame_fill(Main &bmain,
 
   // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
-  const float alpha_threshold = 0.0f;
-  const float thickness = 10.0f;
+  const float alpha_threshold = 0.2f;
+  const float thickness = 1.0f;
 
-  Image *ima = render_offscreen(
+  Image *ima = render_utils::render_to_image(
       bmain, region, scene, depsgraph, view3d, rv3d, pixel_scale, zoom, offset, reports, [&]() {
+        GPU_blend(GPU_BLEND_ALPHA);
+
+        render_utils::draw_curve({float3(-1, 0, -1), float3()}
+
+        /* Draw blue point where click with mouse. */
+        draw_mouse_position(mouse_position);
+
         const ColorGeometry4f ink(1.0f, 0.0f, 0.0f, 1.0f);
         draw_datablock(object,
                        grease_pencil,
@@ -501,6 +541,8 @@ static bool do_frame_fill(Main &bmain,
                        fill_draw_mode,
                        alpha_threshold,
                        thickness);
+
+        GPU_blend(GPU_BLEND_NONE);
       });
   if (ima == nullptr) {
     return false;
@@ -611,7 +653,7 @@ static rctf get_region_bounds(const ARegion &region)
  * object bounding box (all strokes) is calculated. */
 static rctf get_boundary_bounds(const ARegion &region,
                                 const Brush &brush,
-                                Object &object,
+                                const Object &object,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
                                 const Span<DrawingInfo> src_drawings)
@@ -652,7 +694,7 @@ static rctf get_boundary_bounds(const ARegion &region,
         }
         /* check if the color is visible */
         const int material_index = materials[curve_i];
-        Material *mat = BKE_object_material_get(&object, material_index + 1);
+        Material *mat = BKE_object_material_get(const_cast<Object *>(&object), material_index + 1);
         if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
           continue;
         }
@@ -681,6 +723,7 @@ bool fill_strokes(bContext &C,
                   ARegion &region,
                   const VArray<bool> &boundary_layers,
                   const bool invert,
+                  const float2 &mouse_position,
                   ReportList &reports)
 {
   wmWindow &win = *CTX_wm_window(&C);
@@ -719,18 +762,24 @@ bool fill_strokes(bContext &C,
   const float pixel_scale = 1.0f;
 
   for (const MutableDrawingInfo &dst_info : dst_drawings) {
-    bke::MutableAttributeAccessor attributes =
-        dst_info.drawing.strokes_for_write().attributes_for_write();
     /* Zoom and offset based on bounds, to fit all strokes within the render. */
     const rctf bounds = get_boundary_bounds(
         region, brush, object, object_eval, boundary_layers, src_drawings);
     const rctf region_bounds = get_region_bounds(region);
+    float4x4 bounds_transform;
+    BLI_rctf_transform_calc_m4_pivot_min_ex(&region_bounds, &bounds, bounds_transform.ptr(), 0, 1);
     const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
     const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
+    const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
+    const float2 bounds_extent = bounds_max - bounds_min;
     const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
     const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
-    const float2 zoom = math::safe_divide(region_max - region_min, bounds_max - bounds_min);
-    const float2 offset = 0.5f * ((region_min + region_max) - (bounds_min + bounds_max) * zoom);
+    const float2 region_center = 0.5f * (region_min + region_max);
+    const float2 region_extent = bounds_max - bounds_min;
+    //const float2 zoom = math::safe_divide(region_extent, bounds_extent);
+    //const float2 offset = math::safe_divide(region_center - bounds_center, bounds_extent);
+    const float2 zoom = float2(1.0f);
+    const float2 offset = float2(0.0f);
 
     do_frame_fill(bmain,
                   region,
@@ -745,6 +794,7 @@ bool fill_strokes(bContext &C,
                   zoom,
                   offset,
                   invert,
+                  mouse_position,
                   reports,
                   keep_images);
   }

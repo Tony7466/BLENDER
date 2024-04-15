@@ -268,6 +268,7 @@ bool fill_strokes(bContext &C,
                   ARegion &region,
                   const VArray<bool> &is_boundary_layer,
                   bool invert,
+                  const float2 &mouse_position,
                   ReportList &reports);
 
 }  // namespace blender::ed::greasepencil
