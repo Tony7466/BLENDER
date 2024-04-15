@@ -6,6 +6,7 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_rect.h"
+#include "BLI_stack.hh"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
@@ -37,6 +38,8 @@
 #include "GPU_immediate.hh"
 #include "GPU_matrix.hh"
 #include "GPU_state.hh"
+#include "GPU_texture.hh"
+#include "GPU_vertex_format.hh"
 
 #include <iostream>
 
@@ -45,30 +48,11 @@ namespace blender::ed::greasepencil {
 constexpr const char *attr_material_index = "material_index";
 constexpr const char *attr_is_boundary = "is_boundary";
 
-constexpr const ColorGeometry4f stroke_color = {1.0f, 0.0f, 0.0f, 1.0f};
-constexpr const ColorGeometry4f extend_color = {0.0f, 1.0f, 1.0f, 1.0f};
-constexpr const ColorGeometry4f helper_color = {1.0f, 0.0f, 0.5f, 0.5f};
-
-struct FillParams {
-  ed::greasepencil::DrawingPlacement placement;
-
-  static FillParams from_context(const bContext &C, const DrawingInfo &info)
-  {
-    using bke::greasepencil::Layer;
-
-    const ARegion &region = *CTX_wm_region(&C);
-    const View3D &view3d = *CTX_wm_view3d(&C);
-    const Scene &scene = *CTX_data_scene(&C);
-    const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-    Object &object = *CTX_data_active_object(&C);
-    const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
-    const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-    const Layer &layer = *grease_pencil.layers()[info.layer_index];
-
-    ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
-    return {std::move(placement)};
-  }
-};
+constexpr const ColorGeometry4f mouse_color = {0, 0, 255, 255};
+constexpr const ColorGeometry4f stroke_color = {255, 0, 0, 255};
+constexpr const ColorGeometry4f extend_color = {0, 255, 255, 255};
+constexpr const ColorGeometry4f helper_color = {255, 0, 127, 127};
+constexpr const ColorGeometry4f fill_color = {255, 0, 0, 127};
 
 /* Utilities for rendering with immediate mode into an offscreen buffer. */
 namespace render_utils {
@@ -220,7 +204,7 @@ static void draw_dot(const float3 &position, const float point_size, const Color
   immBindBuiltinProgram(GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
   immBegin(GPU_PRIM_POINTS, 1);
   immAttr1f(attr_size, point_size * M_SQRT2);
-  immAttr4f(attr_color, color.r, color.g, color.b, color.a);
+  immAttr4fv(attr_color, color);
   immVertex3fv(attr_pos, position);
   immEnd();
   immUnbindProgram();
@@ -263,13 +247,6 @@ static void draw_curve(Span<float3> positions,
 }
 
 }  // namespace render_utils
-
-static void draw_mouse_position(const float3 &position)
-{
-  const float point_size = 4.0f;
-  const ColorGeometry4f color(0.0f, 0.0f, 1.0f, 1.0f);
-  render_utils::draw_dot(position, point_size, color);
-}
 
 static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
                                              const ColorGeometry4f &tint_color,
@@ -500,6 +477,158 @@ static void draw_datablock(const Object &object,
   }
 }
 
+/* Set a border to create image limits. */
+static void mark_borders(Image &ima, const ColorGeometry4f &color)
+{
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+                                      width * height);
+
+  int row_start = 0;
+  /* Fill first row */
+  for (const int i : IndexRange(width)) {
+    pixels[row_start + i] = color;
+  }
+  row_start += width;
+  /* Fill first and last pixel of middle rows. */
+  for (const int i : IndexRange(height).drop_front(1).drop_back(1)) {
+    pixels[row_start] = color;
+    pixels[row_start + width - 1] = color;
+    row_start += width;
+  }
+  /* Fill last row */
+  for (const int i : IndexRange(width)) {
+    pixels[row_start + i] = color;
+  }
+
+  /* release ibuf */
+  BKE_image_release_ibuf(&ima, ibuf, lock);
+
+  ima.id.tag |= LIB_TAG_DOIT;
+}
+
+enum class FillResult {
+  Success,
+  BorderContact,
+};
+
+FillResult fill_boundaries(Image &ima)
+{
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+                                      width * height);
+  blender::Stack<int> active_pixels;
+
+  /* Initialize the stack with blue pixels (mouse cursor). */
+  for (const int i : pixels.index_range()) {
+    if (pixels[i].b == 1.0f) {
+      active_pixels.push(i);
+    }
+  }
+
+  bool border_contact = false;
+  while (!active_pixels.is_empty()) {
+    const int index = active_pixels.pop();
+    ColorGeometry4f &color = pixels[index];
+
+    if (color.b == 0.5f) {
+      border_contact = true;
+    }
+    if (color.r == 1.0f) {
+      /* Boundary pixel, ignore. */
+      continue;
+    }
+    if (color.g == 1.0f) {
+      /* Pixel already filled. */
+      continue;
+    }
+  }
+
+  return border_contact ? FillResult::BorderContact : FillResult::Success;
+
+  /**
+   * The fill use a stack to save the pixel list instead of the common recursive
+   * 4-contact point method.
+   * The problem with recursive calls is that for big fill areas, we can get max limit
+   * of recursive calls and STACK_OVERFLOW error.
+   *
+   * The 4-contact point analyze the pixels to the left, right, bottom and top
+   * <pre>
+   * -----------
+   * |    X    |
+   * |   XoX   |
+   * |    X    |
+   * -----------
+   * </pre>
+   */
+  while (!BLI_stack_is_empty(stack)) {
+    int v;
+
+    BLI_stack_pop(stack, &v);
+
+    get_pixel(ibuf, v, rgba);
+
+    /* Determine if the flood contacts with external borders. */
+    if (rgba[3] == 0.5f) {
+      border_contact = true;
+    }
+
+    /* check if no border(red) or already filled color(green) */
+    if ((rgba[0] != 1.0f) && (rgba[1] != 1.0f)) {
+      /* fill current pixel with green */
+      set_pixel(ibuf, v, fill_col);
+
+      /* add contact pixels */
+      /* pixel left */
+      if (v - 1 >= 0) {
+        index = v - 1;
+        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
+          BLI_stack_push(stack, &index);
+        }
+      }
+      /* pixel right */
+      if (v + 1 <= maxpixel) {
+        index = v + 1;
+        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_HORZ)) {
+          BLI_stack_push(stack, &index);
+        }
+      }
+      /* pixel top */
+      if (v + ibuf->x <= maxpixel) {
+        index = v + ibuf->x;
+        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
+          BLI_stack_push(stack, &index);
+        }
+      }
+      /* pixel bottom */
+      if (v - ibuf->x >= 0) {
+        index = v - ibuf->x;
+        if (!is_leak_narrow(ibuf, maxpixel, tgpf->fill_leak, v, LEAK_VERT)) {
+          BLI_stack_push(stack, &index);
+        }
+      }
+    }
+  }
+
+  /* release ibuf */
+  BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
+
+  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  /* free temp stack data */
+  BLI_stack_free(stack);
+
+  return border_contact;
+}
+
+return FillResult::Success;
+}
+
 static bool do_frame_fill(Main &bmain,
                           ARegion &region,
                           View3D &view3d,
@@ -530,7 +659,8 @@ static bool do_frame_fill(Main &bmain,
     render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
 
     /* Draw blue point where click with mouse. */
-    draw_mouse_position(mouse_position);
+    const float mouse_dot_size = 4.0f;
+    render_utils::draw_dot(mouse_position, mouse_dot_size, mouse_color);
 
     draw_datablock(object,
                    grease_pencil,
@@ -548,6 +678,12 @@ static bool do_frame_fill(Main &bmain,
   if (ima == nullptr) {
     return false;
   }
+
+  /* Set red borders to create a external limit. */
+  mark_borders(*ima, fill_color);
+
+  /* Apply boundary fill */
+  FillResult fill_result = fill_boundaries(*ima);
 
   /* Delete temp image. */
   if (!keep_images) {
