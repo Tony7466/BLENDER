@@ -2894,6 +2894,7 @@ static void rna_def_modifier_decimate(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "mode");
   RNA_def_property_enum_items(prop, modifier_decim_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   /* (mode == MOD_DECIM_MODE_COLLAPSE) */
@@ -8378,7 +8379,7 @@ static void rna_def_modifier_grease_pencil_tint(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GreasePencilTintModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Grease Pencil Tint Modifier", "");
   RNA_def_struct_sdna(srna, "GreasePencilTintModifierData");
-  RNA_def_struct_ui_icon(srna, ICON_MOD_OPACITY);
+  RNA_def_struct_ui_icon(srna, ICON_MOD_TINT);
 
   rna_def_modifier_grease_pencil_layer_filter(srna);
   rna_def_modifier_grease_pencil_material_filter(

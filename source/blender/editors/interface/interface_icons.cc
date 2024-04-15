@@ -243,8 +243,13 @@ static void def_internal_vicon(int icon_id, VectorDrawFunc drawFunc)
 
 /* Utilities */
 
-static void vicon_keytype_draw_wrapper(
-    int x, int y, int w, int h, float alpha, short key_type, short handle_type)
+static void vicon_keytype_draw_wrapper(const int x,
+                                       const int y,
+                                       const int w,
+                                       const int h,
+                                       const float alpha,
+                                       const eBezTriple_KeyframeType key_type,
+                                       const short handle_type)
 {
   /* Initialize dummy theme state for Action Editor - where these colors are defined
    * (since we're doing this off-screen, free from any particular space_id). */
@@ -321,6 +326,11 @@ static void vicon_keytype_jitter_draw(int x, int y, int w, int h, float alpha)
 static void vicon_keytype_moving_hold_draw(int x, int y, int w, int h, float alpha)
 {
   vicon_keytype_draw_wrapper(x, y, w, h, alpha, BEZT_KEYTYPE_MOVEHOLD, KEYFRAME_HANDLE_NONE);
+}
+
+static void vicon_keytype_generated_draw(int x, int y, int w, int h, float alpha)
+{
+  vicon_keytype_draw_wrapper(x, y, w, h, alpha, BEZT_KEYTYPE_GENERATED, KEYFRAME_HANDLE_NONE);
 }
 
 static void vicon_handletype_free_draw(int x, int y, int w, int h, float alpha)
@@ -1115,6 +1125,7 @@ static void init_internal_icons()
   def_internal_vicon(ICON_KEYTYPE_EXTREME_VEC, vicon_keytype_extreme_draw);
   def_internal_vicon(ICON_KEYTYPE_JITTER_VEC, vicon_keytype_jitter_draw);
   def_internal_vicon(ICON_KEYTYPE_MOVING_HOLD_VEC, vicon_keytype_moving_hold_draw);
+  def_internal_vicon(ICON_KEYTYPE_GENERATED_VEC, vicon_keytype_generated_draw);
 
   def_internal_vicon(ICON_HANDLETYPE_FREE_VEC, vicon_handletype_free_draw);
   def_internal_vicon(ICON_HANDLETYPE_ALIGNED_VEC, vicon_handletype_aligned_draw);
