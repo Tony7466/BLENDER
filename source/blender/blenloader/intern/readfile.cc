@@ -86,7 +86,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DRW_engine.hh"
 
@@ -4621,7 +4621,7 @@ static FileData *read_library_file_data(FileData *basefd,
 
     BLO_reportf_wrap(basefd->reports,
                      RPT_INFO,
-                     RPT_("Read packed library:  '%s', parent '%s'"),
+                     RPT_("Read packed library: '%s', parent '%s'"),
                      mainptr->curlib->filepath,
                      library_parent_filepath(mainptr->curlib));
     fd = blo_filedata_from_memory(pf->data, pf->size, basefd->reports);
@@ -4633,7 +4633,7 @@ static FileData *read_library_file_data(FileData *basefd,
     /* Read file on disk. */
     BLO_reportf_wrap(basefd->reports,
                      RPT_INFO,
-                     RPT_("Read library:  '%s', '%s', parent '%s'"),
+                     RPT_("Read library: '%s', '%s', parent '%s'"),
                      mainptr->curlib->runtime.filepath_abs,
                      mainptr->curlib->filepath,
                      library_parent_filepath(mainptr->curlib));

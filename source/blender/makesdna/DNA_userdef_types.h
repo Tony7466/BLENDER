@@ -316,10 +316,10 @@ typedef struct ThemeSpace {
   unsigned char ds_channel[4], ds_subchannel[4], ds_ipoline[4];
   /** Keytypes. */
   unsigned char keytype_keyframe[4], keytype_extreme[4], keytype_breakdown[4], keytype_jitter[4],
-      keytype_movehold[4];
+      keytype_movehold[4], keytype_generated[4];
   /** Keytypes. */
   unsigned char keytype_keyframe_select[4], keytype_extreme_select[4], keytype_breakdown_select[4],
-      keytype_jitter_select[4], keytype_movehold_select[4];
+      keytype_jitter_select[4], keytype_movehold_select[4], keytype_generated_select[4];
   unsigned char keyborder[4], keyborder_select[4];
   char _pad4[3];
 
@@ -492,6 +492,16 @@ typedef struct bTheme {
   char name[64];
 
   /* NOTE: Values after `name` are copied when resetting the default theme. */
+
+  /**
+   * The file-path for the preset that was loaded into this theme.
+   *
+   * This is needed so it's possible to know if updating or removing a theme preset
+   * should apply changes to the current theme.
+   *
+   * #FILE_MAX.
+   */
+  char filepath[1024];
 
   ThemeUI tui;
 
