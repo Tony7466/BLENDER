@@ -1082,40 +1082,39 @@ int blf_str_offset_to_cursor(
     return 0;
   }
 
-  /* Find right edge of previous character if available. */
+  /* Right edge of the previous character, if available. */
   rcti prev = {0};
   if (str_offset > 0) {
     blf_str_offset_to_glyph_bounds(font, str, str_offset - 1, &prev);
   }
 
-  /* Find left edge of next character if available. */
+  /* Left edge of the next character, if available. */
   rcti next = {0};
   if (str_offset < strlen(str)) {
     blf_str_offset_to_glyph_bounds(font, str, str_offset, &next);
   }
 
   if ((prev.xmax == prev.xmin) && next.xmax) {
-    /* Left of the first character or a space. */
+    /* Nothing (or a space) to the left, so align to right character. */
     return next.xmin - int(cursor_width);
   }
   else if ((prev.xmax != prev.xmin) && !next.xmax) {
-    /* Right of the last character. */
+    /* End of string, so align to last character. */
     return prev.xmax;
   }
   else if (prev.xmax && next.xmax) {
-    /* Middle of the string, so in between. */
+    /* Between two characters, so use the center. */
     if (next.xmin >= prev.xmax) {
       return int((float(prev.xmax + next.xmin) - cursor_width) / 2.0f);
     }
-    /* Possible with RTL. */
+    /* A nicer center if reversed order - RTL. */
     return int((float(next.xmax + prev.xmin) - cursor_width) / 2.0f);
   }
   else if (!str_offset) {
-    /* Before first space character. */
+    /* Start of string. */
     return 0 - int(cursor_width);
   }
   else {
-    /* After last character. */
     return int(blf_font_width(font, str, str_len, nullptr));
   }
 }
