@@ -2,7 +2,6 @@
 #define RESTIR_H_
 
 #include "kernel/integrator/reservoir.h"
-#include "kernel/integrator/shade_surface.h"
 #include "kernel/integrator/state.h"
 
 CCL_NAMESPACE_BEGIN
@@ -114,8 +113,6 @@ ccl_device void integrator_restir(KernelGlobals kg,
     integrate_direct_light_create_shadow_path<true>(
         kg, state, &rng_state, &sd, &reservoir.ls, &reservoir.radiance, 0);
   }
-
-  integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR);
 }
 
 CCL_NAMESPACE_END

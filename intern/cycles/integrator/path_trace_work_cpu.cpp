@@ -230,8 +230,8 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
   else {
     integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   }
-  integrator_path_init(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR);
 
+  kernels_.integrator_restir(kg, state, render_buffer);
   kernels_.integrator_megakernel(kg, state, render_buffer);
 }
 
