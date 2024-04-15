@@ -383,14 +383,10 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
     origin_shift.z += near;
   }
 
-  float4x4 obmat_tmp = light.object_mat;
-  /* Clear embedded custom data. */
-  obmat_tmp[0][3] = obmat_tmp[1][3] = obmat_tmp[2][3] = 0.0f;
-  obmat_tmp[3][3] = 1.0f;
-  obmat_tmp = obmat_tmp * math::from_location<float4x4>(origin_shift);
+  float4x4 shifted_mat = light.object_mat * math::from_location<float4x4>(origin_shift);
 
   for (int i : IndexRange(tilemaps_needed_)) {
-    tilemaps_[i]->sync_cubeface(obmat_tmp, near, far, side, eCubeFace(i), light.lod_bias);
+    tilemaps_[i]->sync_cubeface(shifted_mat, near, far, side, eCubeFace(i), light.lod_bias);
     tilemap_pool.tilemaps_data[light.tilemap_index + i] = *tilemaps_[i];
     tilemaps_[i]->set_updated();
   }
