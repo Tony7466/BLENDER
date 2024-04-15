@@ -432,13 +432,12 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(eLightType light_type,
+  void sync(const ::Light *bl_light,
+            eLightType light_type,
             const float4x4 &object_mat,
-            float cone_aperture,
             float light_shape_radius,
             float max_distance,
-            float softness_factor,
-            float shadow_radius);
+            bool do_jittering);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -495,11 +494,10 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(const float4x4 &object_mat,
+  void sync(const ::Light *bl_light,
+            const float4x4 &object_mat,
             float min_resolution,
-            float shadow_disk_angle,
-            float trace_distance,
-            float shadow_radius);
+            bool do_jittering);
 
   /**
    * Release the tile-maps that will not be used in the current frame.

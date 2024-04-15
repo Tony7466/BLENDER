@@ -87,38 +87,19 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
-    float softness = la->shadow_softness_factor;
-    if (this->do_jittering) {
-      softness *= la->shadow_jitter_overblur;
-    }
     if (is_sun_light(this->type)) {
-      this->directional->sync(this->object_mat,
-                              1.0f,
-                              la->sun_angle * softness,
-                              la->shadow_trace_distance,
-                              this->sun.radius * la->shadow_softness_factor);
+      this->directional->sync(la, this->object_mat, 1.0f, this->do_jittering);
     }
     else {
       /* Reuse shape radius as near clip plane. */
       /* This assumes `shape_parameters_set` has already set `radius_squared`. */
       float radius = math::sqrt(this->local.radius_squared);
-      float shadow_radius = la->shadow_softness_factor * radius;
-      if (ELEM(la->type, LA_LOCAL, LA_SPOT)) {
-        /* `shape_parameters_set` can increase the radius of point and spot lights to ensure a
-         * minimum radius/energy ratio.
-         * But we don't want to take that into account for computing the shadow-map projection,
-         * since non-zero radius introduces padding (required for soft-shadows tracing), reducing
-         * the effective resolution of shadow-maps.
-         * So we use the original light radius instead. */
-        shadow_radius = la->shadow_softness_factor * la->radius;
-      }
-      this->punctual->sync(this->type,
+      this->punctual->sync(la,
+                           this->type,
                            this->object_mat,
-                           la->spotsize,
                            radius,
                            this->local.influence_radius_max,
-                           softness,
-                           shadow_radius);
+                           this->do_jittering);
     }
   }
   else {
