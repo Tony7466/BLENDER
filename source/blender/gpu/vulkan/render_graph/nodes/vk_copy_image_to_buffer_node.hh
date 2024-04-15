@@ -10,9 +10,9 @@
 
 #include "../vk_command_buffer_wrapper.hh"
 #include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
+#include "../vk_resource_state_tracker.hh"
 #include "vk_common.hh"
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 /**
@@ -28,12 +28,11 @@ struct VKCopyImageToBufferData {
  * Information needed to add a node to the render graph.
  */
 using VKCopyImageToBufferCreateInfo = VKCopyImageToBufferData;
-class VKCopyImageToBufferNode
-    : public VKNodeClass<VKNodeType::COPY_IMAGE_TO_BUFFER,
-                         VKCopyImageToBufferCreateInfo,
-                         VKCopyImageToBufferData,
-                         VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         VKResourceType::IMAGE | VKResourceType::BUFFER> {
+class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFFER,
+                                                  VKCopyImageToBufferCreateInfo,
+                                                  VKCopyImageToBufferData,
+                                                  VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                  VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -51,13 +50,13 @@ class VKCopyImageToBufferNode
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKCopyImageToBufferCreateInfo &create_info) override
   {
-    VersionedResource src_resource = resources.get_image(create_info.src_image);
-    VersionedResource dst_resource = resources.get_buffer_and_increase_version(
+    ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
+    ResourceWithStamp dst_resource = resources.get_buffer_and_increase_version(
         create_info.dst_buffer);
     dependencies.add_read_resource(node_handle,
                                    src_resource,

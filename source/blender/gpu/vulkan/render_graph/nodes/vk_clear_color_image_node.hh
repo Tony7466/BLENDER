@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -26,11 +26,11 @@ struct VKClearColorImageData {
  */
 using VKClearColorImageCreateInfo = VKClearColorImageData;
 
-class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
-                                                 VKClearColorImageCreateInfo,
-                                                 VKClearColorImageData,
-                                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                 VKResourceType::IMAGE> {
+class VKClearColorImageNode : public VKNodeInfo<VKNodeType::CLEAR_COLOR_IMAGE,
+                                                VKClearColorImageCreateInfo,
+                                                VKClearColorImageData,
+                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VKResourceType::IMAGE> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -48,12 +48,12 @@ class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKClearColorImageCreateInfo &create_info) override
   {
-    VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
+    ResourceWithStamp resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }

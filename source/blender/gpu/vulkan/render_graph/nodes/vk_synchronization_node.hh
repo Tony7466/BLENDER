@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -25,11 +25,11 @@ struct VKSynchronizationCreateInfo {
   VkImageLayout vk_image_layout;
 };
 
-class VKSynchronizationNode : public VKNodeClass<VKNodeType::SYNCHRONIZATION,
-                                                 VKSynchronizationCreateInfo,
-                                                 VKSynchronizationData,
-                                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                                 VKResourceType::IMAGE | VKResourceType::BUFFER> {
+class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
+                                                VKSynchronizationCreateInfo,
+                                                VKSynchronizationData,
+                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                                VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -48,12 +48,12 @@ class VKSynchronizationNode : public VKNodeClass<VKNodeType::SYNCHRONIZATION,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKSynchronizationCreateInfo &create_info) override
   {
-    VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
+    ResourceWithStamp resource = resources.get_image_and_increase_version(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
   }

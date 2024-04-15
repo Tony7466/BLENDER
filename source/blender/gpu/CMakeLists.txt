@@ -222,7 +222,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_nodes.cc
   vulkan/render_graph/vk_resource_access_info.cc
   vulkan/render_graph/vk_resource_dependencies.cc
-  vulkan/render_graph/vk_resources.cc
+  vulkan/render_graph/vk_resource_state_tracker.cc
   vulkan/render_graph/vk_scheduler.cc
   vulkan/render_graph/vk_render_graph.cc
   vulkan/vk_resource_tracker.cc
@@ -275,7 +275,7 @@ set(VULKAN_SRC
   vulkan/render_graph/nodes/vk_copy_image_to_buffer_node.hh
   vulkan/render_graph/nodes/vk_dispatch_node.hh
   vulkan/render_graph/nodes/vk_fill_buffer_node.hh
-  vulkan/render_graph/nodes/vk_node_class.hh
+  vulkan/render_graph/nodes/vk_node_info.hh
   vulkan/render_graph/nodes/vk_synchronization_node.hh
   vulkan/render_graph/nodes/vk_types_pipeline.hh
   vulkan/render_graph/vk_command_buffer_wrapper.hh
@@ -284,7 +284,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_resource_access_info.hh
   vulkan/render_graph/vk_resource_dependencies.hh
   vulkan/render_graph/vk_resource_handles.hh
-  vulkan/render_graph/vk_resources.hh
+  vulkan/render_graph/vk_resource_state_tracker.hh
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh
   vulkan/render_graph/vk_types.hh

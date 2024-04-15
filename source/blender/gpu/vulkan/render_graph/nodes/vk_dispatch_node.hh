@@ -10,7 +10,7 @@
 
 #include "render_graph/vk_resource_access_info.hh"
 #include "render_graph/vk_resource_dependencies.hh"
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 /**
@@ -31,11 +31,11 @@ struct VKDispatchCreateInfo : NonCopyable {
   VKResourceAccessInfo resources;
 };
 
-class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
-                                          VKDispatchCreateInfo,
-                                          VKDispatchData,
-                                          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                          VKResourceType::IMAGE | VKResourceType::BUFFER> {
+class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
+                                         VKDispatchCreateInfo,
+                                         VKDispatchData,
+                                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                         VKResourceType::IMAGE | VKResourceType::BUFFER> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -62,7 +62,7 @@ class VKDispatchNode : public VKNodeClass<VKNodeType::DISPATCH,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKDispatchCreateInfo &create_info) override

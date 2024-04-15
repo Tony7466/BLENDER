@@ -10,9 +10,9 @@
 
 #include "../vk_command_buffer_wrapper.hh"
 #include "../vk_resource_dependencies.hh"
-#include "../vk_resources.hh"
+#include "../vk_resource_state_tracker.hh"
 #include "vk_common.hh"
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 /**
@@ -29,11 +29,11 @@ struct VKCopyImageData {
  */
 using VKCopyImageCreateInfo = VKCopyImageData;
 
-class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
-                                           VKCopyImageCreateInfo,
-                                           VKCopyImageData,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                           VKResourceType::IMAGE> {
+class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
+                                          VKCopyImageCreateInfo,
+                                          VKCopyImageData,
+                                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                          VKResourceType::IMAGE> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -51,13 +51,13 @@ class VKCopyImageNode : public VKNodeClass<VKNodeType::COPY_IMAGE,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKCopyImageCreateInfo &create_info) override
   {
-    VersionedResource src_resource = resources.get_image(create_info.src_image);
-    VersionedResource dst_resource = resources.get_image_and_increase_version(
+    ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
+    ResourceWithStamp dst_resource = resources.get_image_and_increase_version(
         create_info.dst_image);
     dependencies.add_read_resource(node_handle,
                                    src_resource,

@@ -17,7 +17,7 @@ TEST(vk_render_graph, fill_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKResources resources;
+  VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
   VKFillBufferCreateInfo fill_buffer = {buffer, 1024, 42};
@@ -38,7 +38,7 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKResources resources;
+  VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
   VKFillBufferCreateInfo fill_buffer = {buffer, 1024, 42};
@@ -83,7 +83,7 @@ TEST(vk_render_graph, fill_fill_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKResources resources;
+  VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_buffer(buffer);
   VKFillBufferCreateInfo fill_buffer_1 = {buffer, 1024, 0};
@@ -116,7 +116,7 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKResources resources;
+  VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
   resources.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
@@ -240,7 +240,7 @@ TEST(vk_render_graph, clear_blit_copy_and_read_back)
 
   Vector<std::string> log;
   VKCommandBufferWrapper wrapper;
-  VKResources resources;
+  VKResourceStateTracker resources;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log), resources);
   resources.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
   resources.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);

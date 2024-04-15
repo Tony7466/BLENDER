@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 /**
@@ -25,11 +25,11 @@ struct VKCopyBufferData {
  */
 using VKCopyBufferCreateInfo = VKCopyBufferData;
 
-class VKCopyBufferNode : public VKNodeClass<VKNodeType::COPY_BUFFER,
-                                            VKCopyBufferCreateInfo,
-                                            VKCopyBufferData,
-                                            VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                            VKResourceType::BUFFER> {
+class VKCopyBufferNode : public VKNodeInfo<VKNodeType::COPY_BUFFER,
+                                           VKCopyBufferCreateInfo,
+                                           VKCopyBufferData,
+                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                           VKResourceType::BUFFER> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -47,13 +47,13 @@ class VKCopyBufferNode : public VKNodeClass<VKNodeType::COPY_BUFFER,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKCopyBufferCreateInfo &create_info) override
   {
-    VersionedResource src_resource = resources.get_buffer(create_info.src_buffer);
-    VersionedResource dst_resource = resources.get_buffer_and_increase_version(
+    ResourceWithStamp src_resource = resources.get_buffer(create_info.src_buffer);
+    ResourceWithStamp dst_resource = resources.get_buffer_and_increase_version(
         create_info.dst_buffer);
     dependencies.add_read_resource(
         node_handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);

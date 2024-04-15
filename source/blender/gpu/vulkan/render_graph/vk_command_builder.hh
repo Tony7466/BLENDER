@@ -123,15 +123,15 @@ class VKCommandBuilder {
   /**
    * Build the pipeline barrier that will be recorded before the given node handle.
    */
-  template<typename NodeClass>
+  template<typename NodeInfo>
   void build_pipeline_barriers(VKRenderGraph &render_graph, NodeHandle node_handle)
   {
     reset_barriers();
-    if constexpr (bool(NodeClass::resource_usages & VKResourceType::IMAGE)) {
-      add_image_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+    if constexpr (bool(NodeInfo::resource_usages & VKResourceType::IMAGE)) {
+      add_image_barriers(render_graph, node_handle, NodeInfo::pipeline_stage);
     }
-    if constexpr (bool(NodeClass::resource_usages & VKResourceType::BUFFER)) {
-      add_buffer_barriers(render_graph, node_handle, NodeClass::pipeline_stage);
+    if constexpr (bool(NodeInfo::resource_usages & VKResourceType::BUFFER)) {
+      add_buffer_barriers(render_graph, node_handle, NodeInfo::pipeline_stage);
     }
     send_pipeline_barriers(render_graph);
   }
@@ -144,15 +144,15 @@ class VKCommandBuilder {
    * (compute/graphics draw) pipelines using as few as possible commands.
    * Data transfer nodes should not use this parameter.
    */
-  template<typename NodeClass, typename NodeClassData>
+  template<typename NodeInfo, typename NodeClassData>
   void build_node(VKRenderGraph &render_graph,
                   VKCommandBufferInterface &command_buffer,
                   NodeHandle node_handle,
                   const NodeClassData &node_data,
                   VKBoundPipelines &r_bound_pipelines)
   {
-    NodeClass node_class;
-    build_pipeline_barriers<NodeClass>(render_graph, node_handle);
+    NodeInfo node_class;
+    build_pipeline_barriers<NodeInfo>(render_graph, node_handle);
     node_class.build_commands(command_buffer, node_data, r_bound_pipelines);
   }
 };

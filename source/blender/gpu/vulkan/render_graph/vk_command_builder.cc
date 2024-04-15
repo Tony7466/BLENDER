@@ -225,8 +225,8 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
   for (const VKResourceDependencies::ResourceUsage &usage :
        render_graph.resource_dependencies_.get_read_resources(node_handle))
   {
-    const VersionedResource &versioned_resource = usage.resource;
-    VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    const ResourceWithStamp &versioned_resource = usage.resource;
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_buffer == VK_NULL_HANDLE) {
       /* Ignore image resources. */
@@ -263,8 +263,8 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
   for (const VKResourceDependencies::ResourceUsage usage :
        render_graph.resource_dependencies_.get_write_resources(node_handle))
   {
-    const VersionedResource &versioned_resource = usage.resource;
-    VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    const ResourceWithStamp &versioned_resource = usage.resource;
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_buffer == VK_NULL_HANDLE) {
       /* Ignore image resources. */
@@ -324,8 +324,8 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
   for (const VKResourceDependencies::ResourceUsage &usage :
        render_graph.resource_dependencies_.get_read_resources(node_handle))
   {
-    const VersionedResource &versioned_resource = usage.resource;
-    VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    const ResourceWithStamp &versioned_resource = usage.resource;
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_image == VK_NULL_HANDLE) {
       /* Ignore buffer resources. */
@@ -369,8 +369,8 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
   for (const VKResourceDependencies::ResourceUsage usage :
        render_graph.resource_dependencies_.get_write_resources(node_handle))
   {
-    const VersionedResource &versioned_resource = usage.resource;
-    VKResources::Resource &resource = render_graph.resources_.resources_.get(
+    const ResourceWithStamp &versioned_resource = usage.resource;
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_image == VK_NULL_HANDLE) {
       /* Ignore image resources. */

@@ -22,19 +22,23 @@ namespace blender::gpu::render_graph {
 class VKCommandBuilder;
 
 using ResourceHandle = uint64_t;
-using ResourceVersion = uint64_t;
+using ResourceStamp = uint64_t;
 
-struct VersionedResource {
+struct ResourceWithStamp {
   ResourceHandle handle;
-  ResourceVersion version;
+  ResourceStamp stamp;
 };
 
+/**
+ * Resources can have deviations in its lifetime based on who owns it.
+ */
 enum class ResourceOwner {
   /**
-   * Resource is owned by the application.
+   * Resource is owned by Blender.
    *
-   * The resource can be destroyed by the application
-   * when it isn't used anymore.
+   * These resources can be destroyed internally by the application.
+   *
+   * Most resources are application owned.
    */
   APPLICATION,
 
@@ -56,7 +60,11 @@ enum class ResourceOwner {
  * images. Each resource can have multiple versions; every time a resource is changed (written to)
  * a new version is tracked.
  */
-class VKResources {
+class VKResourceStateTracker {
+  /* When a command buffer is reset the resources are re-synced. During the syncing the command
+   * builder attributes are resized to reduce reallocations. */
+  friend class VKCommandBuilder;
+
   /**
    * A render resource can be a buffer or an image that needs to be tracked during rendering.
    *
@@ -76,7 +84,7 @@ class VKResources {
     /**
      * Current version of the resource in the graph.
      */
-    ResourceVersion version = 0;
+    ResourceStamp version = 0;
 
     /** Who owns the resource. */
     ResourceOwner owner = ResourceOwner::APPLICATION;
@@ -130,22 +138,22 @@ class VKResources {
   /**
    * Return the current version of the resource, and increase the version.
    */
-  VersionedResource get_image_and_increase_version(VkImage vk_image);
+  ResourceWithStamp get_image_and_increase_version(VkImage vk_image);
 
   /**
    * Return the current version of the resource, and increase the version.
    */
-  VersionedResource get_buffer_and_increase_version(VkBuffer vk_buffer);
+  ResourceWithStamp get_buffer_and_increase_version(VkBuffer vk_buffer);
 
   /**
    * Return the current version of the resource.
    */
-  VersionedResource get_buffer(VkBuffer vk_buffer) const;
+  ResourceWithStamp get_buffer(VkBuffer vk_buffer) const;
 
   /**
    * Return the current version of the resource.
    */
-  VersionedResource get_image(VkImage vk_image) const;
+  ResourceWithStamp get_image(VkImage vk_image) const;
 
   /**
    * Return the resource handle of the given VkImage.
@@ -185,15 +193,11 @@ class VKResources {
   /**
    * Get the current version of the resource.
    */
-  static VersionedResource get_version(ResourceHandle handle, const Resource &resource);
+  static ResourceWithStamp get_version(ResourceHandle handle, const Resource &resource);
   /**
    * Get the current version of the resource and increase the version.
    */
-  static VersionedResource get_and_increase_version(ResourceHandle handle, Resource &resource);
-
-  /* When a command buffer is reset the resources are re-synced. During the syncing the command
-   * builder attributes are resized to reduce reallocations. */
-  friend class VKCommandBuilder;
+  static ResourceWithStamp get_and_increase_version(ResourceHandle handle, Resource &resource);
 };
 
 }  // namespace blender::gpu::render_graph

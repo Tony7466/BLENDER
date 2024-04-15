@@ -11,7 +11,7 @@
 namespace blender::gpu::render_graph {
 
 VKRenderGraph::VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
-                             VKResources &resources)
+                             VKResourceStateTracker &resources)
     : command_buffer_(std::move(command_buffer)), resources_(resources)
 {
 }

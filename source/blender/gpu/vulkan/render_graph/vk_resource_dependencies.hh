@@ -12,7 +12,7 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_resources.hh"
+#include "vk_resource_state_tracker.hh"
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
@@ -22,7 +22,7 @@ class VKResourceDependencies : NonCopyable, NonMovable {
     /**
      * Which resource is being accessed.
      */
-    VersionedResource resource;
+    ResourceWithStamp resource;
 
     /**
      * How is the resource being accessed.
@@ -45,11 +45,11 @@ class VKResourceDependencies : NonCopyable, NonMovable {
 
  public:
   void add_read_resource(NodeHandle handle,
-                         VersionedResource resource_handle,
+                         ResourceWithStamp resource_handle,
                          VkAccessFlags vk_access_flags,
                          VkImageLayout vk_image_layout);
   void add_write_resource(NodeHandle handle,
-                          VersionedResource resource_handle,
+                          ResourceWithStamp resource_handle,
                           VkAccessFlags vk_access_flags,
                           VkImageLayout vk_image_layout);
 

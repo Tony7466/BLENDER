@@ -11,7 +11,7 @@
 namespace blender::gpu::render_graph {
 
 void VKResourceDependencies::add_read_resource(NodeHandle handle,
-                                               VersionedResource resource_handle,
+                                               ResourceWithStamp resource_handle,
                                                VkAccessFlags vk_access_flags,
                                                VkImageLayout vk_image_layout)
 {
@@ -24,7 +24,7 @@ void VKResourceDependencies::add_read_resource(NodeHandle handle,
 }
 
 void VKResourceDependencies::add_write_resource(NodeHandle handle,
-                                                VersionedResource resource_handle,
+                                                ResourceWithStamp resource_handle,
                                                 VkAccessFlags vk_access_flags,
                                                 VkImageLayout vk_image_layout)
 {

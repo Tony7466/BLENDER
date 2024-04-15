@@ -14,7 +14,7 @@
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
-class VKResources;
+class VKResourceStateTracker;
 class VKResourceDependencies;
 
 struct VKImageAccess {
@@ -38,7 +38,7 @@ struct VKResourceAccessInfo : NonCopyable {
   }
 };
 
-void resource_access_build_dependencies(VKResources &resources,
+void resource_access_build_dependencies(VKResourceStateTracker &resources,
                                         VKResourceDependencies &dependencies,
                                         NodeHandle node_handle,
                                         const VKResourceAccessInfo &access_info);

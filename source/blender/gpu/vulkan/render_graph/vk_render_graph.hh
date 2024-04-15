@@ -30,13 +30,16 @@
 #include "vk_command_builder.hh"
 #include "vk_nodes.hh"
 #include "vk_resource_dependencies.hh"
-#include "vk_resources.hh"
+#include "vk_resource_state_tracker.hh"
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
 class VKScheduler;
 
 class VKRenderGraph : public NonCopyable {
+  friend class VKCommandBuilder;
+  friend class VKScheduler;
+
   VKResourceDependencies resource_dependencies_;
   VKNodes nodes_;
   VKCommandBuilder command_builder_;
@@ -48,10 +51,11 @@ class VKRenderGraph : public NonCopyable {
    *
    * Is marked optional as device could
    */
-  VKResources &resources_;
+  VKResourceStateTracker &resources_;
 
  public:
-  VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer, VKResources &resources);
+  VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
+                VKResourceStateTracker &resources);
 
   /**
    * Free all resources held by the render graph.
@@ -62,12 +66,12 @@ class VKRenderGraph : public NonCopyable {
   /**
    * Add a node to the render graph.
    */
-  template<typename NodeClass, typename NodeCreateInfo>
+  template<typename NodeInfo, typename NodeCreateInfo>
   void add_node(const NodeCreateInfo &create_info)
   {
     std::scoped_lock lock(resources_.mutex_get());
-    NodeHandle handle = nodes_.add_node<NodeClass, NodeCreateInfo>(create_info);
-    NodeClass node_class;
+    NodeHandle handle = nodes_.add_node<NodeInfo, NodeCreateInfo>(create_info);
+    NodeInfo node_class;
     node_class.build_resource_dependencies(
         resources_, resource_dependencies_, handle, create_info);
   }
@@ -120,10 +124,6 @@ class VKRenderGraph : public NonCopyable {
    * - `vk_swapchain_image` layout is transitioned to `VK_IMAGE_LAYOUT_SRC_PRESENT`.
    */
   void submit_for_present(VkImage vk_swapchain_image);
-
- private:
-  friend class VKCommandBuilder;
-  friend class VKScheduler;
 };
 
 }  // namespace blender::gpu::render_graph

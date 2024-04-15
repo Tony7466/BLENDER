@@ -8,11 +8,11 @@
 
 #include "vk_resource_access_info.hh"
 #include "vk_resource_dependencies.hh"
-#include "vk_resources.hh"
+#include "vk_resource_state_tracker.hh"
 
 namespace blender::gpu::render_graph {
 
-void resource_access_build_dependencies(VKResources &resources,
+void resource_access_build_dependencies(VKResourceStateTracker &resources,
                                         VKResourceDependencies &dependencies,
                                         NodeHandle node_handle,
                                         const VKResourceAccessInfo &access_info)
@@ -21,14 +21,14 @@ void resource_access_build_dependencies(VKResources &resources,
   for (const VKBufferAccess &buffer_access : access_info.buffers) {
     VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources.get_buffer(buffer_access.vk_buffer);
+      ResourceWithStamp versioned_resource = resources.get_buffer(buffer_access.vk_buffer);
       dependencies.add_read_resource(
           node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
     VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources.get_buffer_and_increase_version(
+      ResourceWithStamp versioned_resource = resources.get_buffer_and_increase_version(
           buffer_access.vk_buffer);
       dependencies.add_write_resource(
           node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
@@ -38,14 +38,14 @@ void resource_access_build_dependencies(VKResources &resources,
   for (const VKImageAccess &image_access : access_info.images) {
     VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources.get_image(image_access.vk_image);
+      ResourceWithStamp versioned_resource = resources.get_image(image_access.vk_image);
       dependencies.add_read_resource(
           node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
     VkAccessFlags write_access = image_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
-      VersionedResource versioned_resource = resources.get_image_and_increase_version(
+      ResourceWithStamp versioned_resource = resources.get_image_and_increase_version(
           image_access.vk_image);
       /* Extract the correct layout to use from the access flags. */
       dependencies.add_write_resource(

@@ -10,34 +10,49 @@
 
 #include "render_graph/vk_command_buffer_wrapper.hh"
 #include "render_graph/vk_resource_dependencies.hh"
-#include "render_graph/vk_resources.hh"
+#include "render_graph/vk_resource_state_tracker.hh"
 #include "vk_common.hh"
 #include "vk_types_pipeline.hh"
 
 namespace blender::gpu::render_graph {
 
 /**
- * Base class for node class.
+ * Type of nodes of the render graph.
+ */
+enum class VKNodeType {
+  UNUSED,
+  CLEAR_COLOR_IMAGE,
+  FILL_BUFFER,
+  COPY_BUFFER,
+  COPY_IMAGE,
+  COPY_IMAGE_TO_BUFFER,
+  COPY_BUFFER_TO_IMAGE,
+  BLIT_IMAGE,
+  DISPATCH,
+  SYNCHRONIZATION,
+};
+
+/**
+ * Info class for a node type.
  *
- * Nodes can be created using `NodeCreateInfo`. When a node is created the `VKNodeClass.node_type`
- * and `VKNodeClass.set_node_data` are used to fill a VKNodeData instance. The VKNodeData is stored
+ * Nodes can be created using `NodeCreateInfo`. When a node is created the `VKNodeInfo.node_type`
+ * and `VKNodeInfo.set_node_data` are used to fill a VKNode instance. The VKNode is stored
  * sequentially in the render graph. When the node is created the dependencies are extracted by
- * calling `VKNodeClass.build_resource_dependencies`.
+ * calling `VKNodeInfo.build_resource_dependencies`.
  *
- * Eventually when a node should be added to a command buffer `VKNodeClass.build_commands` are
- * invoked.
+ * Eventually when a node is recorded to a command buffer `VKNodeInfo.build_commands` is invoked.
  */
 template<VKNodeType NodeType,
          typename NodeCreateInfo,
          typename NodeData,
          VkPipelineStageFlagBits PipelineStage,
          VKResourceType ResourceUsages>
-class VKNodeClass : public NonCopyable {
+class VKNodeInfo : public NonCopyable {
  public:
   /**
    * Node type of this class.
    *
-   * The node type used to link VKNodeData instance to a VKNodeClass.
+   * The node type used to link VKNodeData instance to a VKNodeInfo.
    */
   static constexpr VKNodeType node_type = NodeType;
 
@@ -68,7 +83,7 @@ class VKNodeClass : public NonCopyable {
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  virtual void build_resource_dependencies(VKResources &resources,
+  virtual void build_resource_dependencies(VKResourceStateTracker &resources,
                                            VKResourceDependencies &dependencies,
                                            NodeHandle node_handle,
                                            const NodeCreateInfo &create_info) = 0;

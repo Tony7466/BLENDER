@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -34,11 +34,11 @@ using VKBlitImageCreateInfo = VKBlitImageData;
  * - Determine read/write resource dependencies.
  * - Add commands to a command builder.
  */
-class VKBlitImageNode : public VKNodeClass<VKNodeType::BLIT_IMAGE,
-                                           VKBlitImageCreateInfo,
-                                           VKBlitImageData,
-                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                           VKResourceType::IMAGE> {
+class VKBlitImageNode : public VKNodeInfo<VKNodeType::BLIT_IMAGE,
+                                          VKBlitImageCreateInfo,
+                                          VKBlitImageData,
+                                          VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                          VKResourceType::IMAGE> {
  public:
   /**
    * Update the node data with the data inside create_info.
@@ -55,13 +55,13 @@ class VKBlitImageNode : public VKNodeClass<VKNodeType::BLIT_IMAGE,
   /**
    * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
    */
-  void build_resource_dependencies(VKResources &resources,
+  void build_resource_dependencies(VKResourceStateTracker &resources,
                                    VKResourceDependencies &dependencies,
                                    NodeHandle node_handle,
                                    const VKBlitImageCreateInfo &create_info) override
   {
-    VersionedResource src_resource = resources.get_image(create_info.src_image);
-    VersionedResource dst_resource = resources.get_image_and_increase_version(
+    ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
+    ResourceWithStamp dst_resource = resources.get_image_and_increase_version(
         create_info.dst_image);
     dependencies.add_read_resource(node_handle,
                                    src_resource,
