@@ -52,7 +52,7 @@
 using blender::float3;
 using blender::Span;
 
-Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
+Mesh *BKE_mesh_wrapper_from_editmesh(std::shared_ptr<BMEditMesh> em,
                                      const CustomData_MeshMasks *cd_mask_extra,
                                      const Mesh *me_settings)
 {
@@ -68,7 +68,7 @@ Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
   /* Use edit-mesh directly where possible. */
   mesh->runtime->is_original_bmesh = true;
 
-  mesh->runtime->edit_mesh = std::make_shared<BMEditMesh>(*em);
+  mesh->runtime->edit_mesh = std::move(em);
 
   /* Make sure we crash if these are ever used. */
 #ifndef NDEBUG

@@ -182,7 +182,7 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object)
     }
     case OB_MESH: {
       const Mesh *mesh = static_cast<const Mesh *>(object.data);
-      if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
+      if (std::shared_ptr<BMEditMesh> &em = mesh->runtime->edit_mesh) {
         Mesh *mesh_copy = BKE_mesh_wrapper_from_editmesh(em, nullptr, mesh);
         BKE_mesh_wrapper_ensure_mdata(mesh_copy);
         Mesh *final_copy = BKE_mesh_copy_for_eval(mesh_copy);
