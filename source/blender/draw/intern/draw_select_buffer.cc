@@ -401,9 +401,10 @@ static const CustomData *mesh_customdata_of_type(const Mesh *mesh_eval, char ele
     case SCE_SELECT_EDGE:
       return &mesh_eval->edge_data;
     case SCE_SELECT_VERTEX:
-    default:
       return &mesh_eval->vert_data;
   }
+  BLI_assert_unreachable();
+  return nullptr;
 }
 
 static const int *orig_index_from_object_get(const Object *object_eval, char elem_type)

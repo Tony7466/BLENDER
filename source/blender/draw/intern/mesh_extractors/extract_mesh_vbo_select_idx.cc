@@ -166,7 +166,7 @@ static void extract_vert_idx_iter_loose_vert_mesh(const MeshRenderData &mr,
 }
 
 static void extract_vert_idx_init_subdiv(const DRWSubdivCache &subdiv_cache,
-                                         const MeshRenderData &mr,
+                                         const MeshRenderData & /*mr*/,
                                          MeshBatchCache & /*cache*/,
                                          void *buf,
                                          void * /*data*/)
@@ -181,7 +181,7 @@ static void extract_vert_idx_init_subdiv(const DRWSubdivCache &subdiv_cache,
 }
 
 static void extract_vert_idx_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
-                                               const MeshRenderData &mr,
+                                               const MeshRenderData & /*mr*/,
                                                void *buffer,
                                                void * /*data*/)
 {
@@ -235,7 +235,7 @@ static void extract_edge_idx_init_subdiv(const DRWSubdivCache &subdiv_cache,
 }
 
 static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
-                                               const MeshRenderData &mr,
+                                               const MeshRenderData & /*mr*/,
                                                void *buffer,
                                                void * /*data*/)
 {
@@ -258,7 +258,7 @@ static void extract_edge_idx_loose_geom_subdiv(const DRWSubdivCache &subdiv_cach
 }
 
 static void extract_face_idx_init_subdiv(const DRWSubdivCache &subdiv_cache,
-                                         const MeshRenderData &mr,
+                                         const MeshRenderData & /*mr*/,
                                          MeshBatchCache & /*cache*/,
                                          void *buf,
                                          void * /*data*/)
@@ -334,7 +334,7 @@ static void extract_fdot_idx_iter_face_bm(const MeshRenderData & /*mr*/,
   (*(int32_t **)data)[f_index] = f_index;
 }
 
-static void extract_fdot_idx_iter_face_mesh(const MeshRenderData &mr,
+static void extract_fdot_idx_iter_face_mesh(const MeshRenderData & /*mr*/,
                                             const int face_index,
                                             void *data)
 {
