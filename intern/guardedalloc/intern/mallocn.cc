@@ -39,6 +39,10 @@ void *(*MEM_malloc_arrayN)(size_t len, size_t size, const char *str) = MEM_lockf
 void *(*MEM_mallocN_aligned)(size_t len,
                              size_t alignment,
                              const char *str) = MEM_lockfree_mallocN_aligned;
+void *(*MEM_calloc_arrayN_aligned)(size_t len,
+                                   size_t size,
+                                   size_t alignment,
+                                   const char *str) = MEM_lockfree_calloc_arrayN_aligned;
 void (*MEM_printmemlist_pydict)(void) = MEM_lockfree_printmemlist_pydict;
 void (*MEM_printmemlist)(void) = MEM_lockfree_printmemlist;
 void (*MEM_callbackmemlist)(void (*func)(void *)) = MEM_lockfree_callbackmemlist;
@@ -102,29 +106,6 @@ static void assert_for_allocator_change(void)
   assert(MEM_get_memory_blocks_in_use() == 0);
 }
 
-void *MEM_calloc_arrayN_aligned(const size_t len,
-                                const size_t size,
-                                const size_t alignment,
-                                const char *allocation_name)
-{
-  size_t bytes_num;
-  if (UNLIKELY(!MEM_size_safe_multiply(len, size, &bytes_num))) {
-    abort();
-    return nullptr;
-  }
-  if (alignment <= MEM_MIN_CPP_ALIGNMENT) {
-    return MEM_callocN(bytes_num, allocation_name);
-  }
-  /* There is no lower level #calloc with an alignment parameter, so we have to fallback to using
-   * #memset unfortunately. */
-  void *ptr = MEM_mallocN_aligned(bytes_num, alignment, allocation_name);
-  if (!ptr) {
-    return nullptr;
-  }
-  memset(ptr, 0, bytes_num);
-  return ptr;
-}
-
 void MEM_use_lockfree_allocator(void)
 {
   /* NOTE: Keep in sync with static initialization of the variables. */
@@ -144,6 +125,7 @@ void MEM_use_lockfree_allocator(void)
   MEM_mallocN = MEM_lockfree_mallocN;
   MEM_malloc_arrayN = MEM_lockfree_malloc_arrayN;
   MEM_mallocN_aligned = MEM_lockfree_mallocN_aligned;
+  MEM_calloc_arrayN_aligned = MEM_lockfree_calloc_arrayN_aligned;
   MEM_printmemlist_pydict = MEM_lockfree_printmemlist_pydict;
   MEM_printmemlist = MEM_lockfree_printmemlist;
   MEM_callbackmemlist = MEM_lockfree_callbackmemlist;
@@ -178,6 +160,7 @@ void MEM_use_guarded_allocator(void)
   MEM_mallocN = MEM_guarded_mallocN;
   MEM_malloc_arrayN = MEM_guarded_malloc_arrayN;
   MEM_mallocN_aligned = MEM_guarded_mallocN_aligned;
+  MEM_calloc_arrayN_aligned = MEM_guarded_calloc_arrayN_aligned;
   MEM_printmemlist_pydict = MEM_guarded_printmemlist_pydict;
   MEM_printmemlist = MEM_guarded_printmemlist;
   MEM_callbackmemlist = MEM_guarded_callbackmemlist;

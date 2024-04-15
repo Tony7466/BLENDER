@@ -137,11 +137,11 @@ extern void *(*MEM_mallocN_aligned)(size_t len,
 /**
  * Allocate an aligned block of memory that is initialized with zeros.
  */
-void *MEM_calloc_arrayN_aligned(
+extern void *(*MEM_calloc_arrayN_aligned)(
     size_t len,
     size_t size,
     size_t alignment,
-    const char *allocation_name) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT ATTR_ALLOC_SIZE(1, 2)
+    const char *str) /* ATTR_MALLOC */ ATTR_WARN_UNUSED_RESULT ATTR_ALLOC_SIZE(1, 2)
     ATTR_NONNULL(4);
 
 /**
