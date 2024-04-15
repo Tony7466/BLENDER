@@ -91,6 +91,9 @@ class PathTraceWorkCPU : public PathTraceWork {
   void render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
                                     const KernelWorkTile &work_tile);
 
+  void render_samples_direct_illumination(KernelGlobalsCPU *kernel_globals,
+                                          const KernelWorkTile &work_tile);
+
   /* CPU kernels. */
   const CPUKernels &kernels_;
 

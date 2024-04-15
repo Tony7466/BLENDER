@@ -2,22 +2,21 @@
 #define RESTIR_H_
 
 #include "kernel/integrator/reservoir.h"
+#include "kernel/integrator/shade_surface.h"
 #include "kernel/integrator/state.h"
 
 CCL_NAMESPACE_BEGIN
 
 ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
-                                                          IntegratorShadowState state,
+                                                          IntegratorState state,
                                                           ccl_private Reservoir *reservoir,
                                                           ccl_private uint32_t *path_flag,
                                                           ccl_private ShaderData *sd,
                                                           ccl_global float *ccl_restrict
                                                               render_buffer)
 {
-
   if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
-    ccl_global const float *buffer = film_pass_pixel_render_buffer_shadow(
-                                         kg, state, render_buffer) +
+    ccl_global const float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
                                      kernel_data.film.pass_restir_reservoir;
 
     int i = 0;
@@ -32,9 +31,9 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
 
     *path_flag = (uint32_t)buffer[i++];
 
-    /* TODO(weizhen): `ShaderData` requires quite some storage for now, but probably everything can
-     * be computed from camera and primary ray, if we retrieve the random number. We can also add a
-     * separate pass for it. */
+    /* TODO(weizhen): `ShaderData` requires quite some storage for now, but we can use
+     `ray_length`, `lcg_state`, `time`, and `wi` from state. We can also compress the data, and add
+     a separate pass for it. */
     sd->u = buffer[i++];
     sd->v = buffer[i++];
     sd->ray_length = buffer[i++];
@@ -52,9 +51,8 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
 }
 
 /* TODO(weizhen): move these radiance function to somewhere else. */
-template<typename ConstIntegratorGenericState>
 ccl_device_forceinline void radiance_eval_setup_from_reservoir(KernelGlobals kg,
-                                                               ConstIntegratorGenericState state,
+                                                               ConstIntegratorState state,
                                                                ccl_private ShaderData *sd,
                                                                ccl_private LightSample *ls,
                                                                const uint32_t path_flag,
@@ -72,9 +70,8 @@ ccl_device_forceinline void radiance_eval_setup_from_reservoir(KernelGlobals kg,
 }
 
 /* Evaluate BSDF * L * cos_NO. */
-template<typename ConstIntegratorGenericState>
 ccl_device_forceinline void radiance_eval(KernelGlobals kg,
-                                          ConstIntegratorGenericState state,
+                                          IntegratorState state,
                                           ccl_private ShaderData *sd,
                                           ccl_private LightSample *ls,
                                           ccl_private BsdfEval *radiance)
@@ -85,38 +82,40 @@ ccl_device_forceinline void radiance_eval(KernelGlobals kg,
   const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, ls, sd->time);
 
   /* TODO(weizhen): path guiding needs state. */
-  surface_shader_bsdf_eval(kg, INTEGRATOR_STATE_NULL, sd, ls->D, radiance, ls->shader);
+  surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
 
   bsdf_eval_mul(radiance, light_eval);
 }
 
 /* TODO(weizhen): state or shadow_state? */
 ccl_device void integrator_restir(KernelGlobals kg,
-                                  IntegratorShadowState state,
+                                  IntegratorState state,
                                   ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_RESTIR);
 
   /* TODO(weizhen): read neighbor weights, pick a neighbor, then retrieve sd. */
-
   Reservoir reservoir;
   uint32_t path_flag;
   ShaderData sd;
   integrator_restir_unpack_reservoir(kg, state, &reservoir, &path_flag, &sd, render_buffer);
 
-  radiance_eval_setup_from_reservoir(kg, state, &sd, &reservoir.ls, path_flag, render_buffer);
-  radiance_eval(kg, state, &sd, &reservoir.ls, &reservoir.radiance);
+  if (!reservoir.is_empty()) {
+    radiance_eval_setup_from_reservoir(kg, state, &sd, &reservoir.ls, path_flag, render_buffer);
+    radiance_eval(kg, state, &sd, &reservoir.ls, &reservoir.radiance);
 
-  bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight / reduce_add(reservoir.radiance.sum));
+    bsdf_eval_mul(&reservoir.radiance,
+                  reservoir.total_weight / reduce_add(reservoir.radiance.sum));
 
-  /* TODO(weizhen): move shadow ray tracing after this. */
-  if (INTEGRATOR_STATE(state, shadow_path, bounce) == 0) {
-    INTEGRATOR_STATE_WRITE(state, shadow_path, throughput) = reservoir.radiance.sum;
+    /* Load random number state. */
+    RNGState rng_state;
+    path_state_rng_load(state, &rng_state);
+
+    integrate_direct_light_create_shadow_path<true>(
+        kg, state, &rng_state, &sd, &reservoir.ls, &reservoir.radiance, 0);
   }
 
-  film_write_direct_light(kg, state, render_buffer);
-  integrator_shadow_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR);
-  return;
+  integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR);
 }
 
 CCL_NAMESPACE_END

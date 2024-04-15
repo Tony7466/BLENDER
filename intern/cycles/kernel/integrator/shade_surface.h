@@ -329,7 +329,6 @@ ccl_device_inline void integrate_direct_light_create_shadow_path(
     ccl_private BsdfEval *radiance,
     const int mnee_vertex_count)
 {
-  /* TODO(weizhen): check termination after resampling. */
   /* Path termination. */
   const float terminate = path_state_rng_light_termination(kg, rng_state);
   if (light_sample_terminate(kg, radiance, terminate)) {
@@ -377,6 +376,7 @@ ccl_device
 {
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
+    /* TODO(weizhen): should we still read/write to the reservoir in this case? */
     return;
   }
 
@@ -646,15 +646,15 @@ ccl_device
     reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
-  if (reservoir.is_empty()) {
-    return;
-  }
-
   if (is_direct_light) {
     /* Write to reservoir and trace shadow ray later. */
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }
   else {
+    if (reservoir.is_empty()) {
+      return;
+    }
+
     BsdfEval radiance = reservoir.radiance;
     const float unbiased_contribution_weight = reservoir.total_weight /
                                                reduce_add(fabs(radiance.sum));

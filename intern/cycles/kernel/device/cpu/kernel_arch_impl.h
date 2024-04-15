@@ -109,10 +109,10 @@ DEFINE_INTEGRATOR_SHADE_KERNEL(shade_light)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_surface)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_volume)
 DEFINE_INTEGRATOR_SHADE_KERNEL(shade_dedicated_light)
+DEFINE_INTEGRATOR_SHADE_KERNEL(restir)
 DEFINE_INTEGRATOR_SHADE_KERNEL(megakernel)
 DEFINE_INTEGRATOR_SHADOW_KERNEL(intersect_shadow)
 DEFINE_INTEGRATOR_SHADOW_SHADE_KERNEL(shade_shadow)
-DEFINE_INTEGRATOR_SHADOW_SHADE_KERNEL(restir)
 
 /* --------------------------------------------------------------------
  * Shader evaluation.

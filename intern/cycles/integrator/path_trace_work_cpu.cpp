@@ -9,6 +9,7 @@
 
 #include "kernel/film/write.h"
 #include "kernel/integrator/path_state.h"
+#include "kernel/integrator/state_flow.h"
 
 #include "integrator/pass_accessor_cpu.h"
 #include "integrator/path_trace_display.h"
@@ -98,10 +99,12 @@ void PathTraceWorkCPU::initial_resampling(const int64_t image_width,
 }
 
 void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
-                                          const int64_t total_pixels_num,
+                                          const int64_t image_height,
                                           const int start_sample,
                                           const int sample_offset)
 {
+  const int64_t total_pixels_num = image_width * image_height;
+
   parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
     if (is_cancel_requested()) {
       return;
@@ -112,6 +115,7 @@ void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
 
     CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 
+    render_samples_direct_illumination(kernel_globals, work_tile);
     ++work_tile.start_sample;
   });
 }
@@ -139,7 +143,7 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
 
   /* Spatial Resampling. */
   local_arena.execute(
-      [&] { spatial_resampling(image_width, total_pixels_num, start_sample, sample_offset); });
+      [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset); });
 
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {
@@ -199,6 +203,36 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
   if (shadow_catcher_state) {
     kernels_.integrator_megakernel(kernel_globals, shadow_catcher_state, render_buffer);
   }
+}
+
+void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
+                                                          const KernelWorkTile &work_tile)
+{
+  IntegratorStateCPU integrator_states[2];
+
+  IntegratorStateCPU *state = &integrator_states[0];
+
+  KernelWorkTile sample_work_tile = work_tile;
+  float *render_buffer = buffers_->buffer.data();
+
+  if (is_cancel_requested()) {
+    return;
+  }
+
+  if (!kernels_.integrator_init_from_camera(kg, state, &sample_work_tile, render_buffer)) {
+    return;
+  }
+
+  /* TODO(weizhen): handle the state flow properly during initialization. */
+  if (kernel_data.cam.is_inside_volume) {
+    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);
+  }
+  else {
+    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
+  }
+  integrator_path_init(kg, state, DEVICE_KERNEL_INTEGRATOR_RESTIR);
+
+  kernels_.integrator_megakernel(kg, state, render_buffer);
 }
 
 void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
