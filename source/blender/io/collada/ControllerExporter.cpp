@@ -151,7 +151,7 @@ std::string ControllerExporter::get_controller_id(Key *key, Object *ob)
   return translate_id(id_name(ob)) + MORPH_CONTROLLER_ID_SUFFIX;
 }
 
-void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm, bool contains_shape_key)
+void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm, const bool contains_shape_key)
 {
   /* joint names
    * joint inverse bind matrices
