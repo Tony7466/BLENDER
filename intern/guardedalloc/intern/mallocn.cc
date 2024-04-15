@@ -14,6 +14,7 @@
 #include "../../source/blender/blenlib/BLI_strict_flags.h"
 
 #include <cassert>
+#include <cstdlib>
 
 #include "mallocn_intern.h"
 
@@ -99,6 +100,29 @@ static void assert_for_allocator_change(void)
    * type after all blocks has been freed: some regression tests do rely on this property of
    * allocators. */
   assert(MEM_get_memory_blocks_in_use() == 0);
+}
+
+void *MEM_calloc_arrayN_aligned(const size_t len,
+                                const size_t size,
+                                const size_t alignment,
+                                const char *allocation_name)
+{
+  size_t bytes_num;
+  if (UNLIKELY(!MEM_size_safe_multiply(len, size, &bytes_num))) {
+    abort();
+    return NULL;
+  }
+  if (alignment <= MEM_MIN_CPP_ALIGNMENT) {
+    return MEM_callocN(bytes_num, allocation_name);
+  }
+  /* There is no lower level #calloc with an alignment parameter, so we have to fallback to using
+   * #memset unfortunately. */
+  void *ptr = MEM_mallocN_aligned(bytes_num, alignment, allocation_name);
+  if (!ptr) {
+    return NULL;
+  }
+  memset(ptr, 0, bytes_num);
+  return ptr;
 }
 
 void MEM_use_lockfree_allocator(void)
