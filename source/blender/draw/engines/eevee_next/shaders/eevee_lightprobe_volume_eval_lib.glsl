@@ -169,9 +169,8 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
 
   VolumeProbeData grid_data = grids_infos_buf[index];
 
-  /* TODO(fclem): Make sure this is working as expected. */
   mat3x3 world_to_grid_transposed = mat3x3(grid_data.world_to_grid_transposed);
-  vec3 lNg = safe_normalize(world_to_grid_transposed * Ng);
+  vec3 lNg = safe_normalize(Ng * world_to_grid_transposed);
   vec3 lV = safe_normalize(V * world_to_grid_transposed);
 
   if (do_bias) {
