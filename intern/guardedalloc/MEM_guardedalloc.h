@@ -313,16 +313,6 @@ template<typename T> inline void MEM_delete(const T *ptr)
 }
 
 /**
- * Same as MEM_cnew but for arrays, better alternative to #MEM_calloc_arrayN.
- */
-template<typename T> inline T *MEM_cnew_array(const size_t length, const char *allocation_name)
-{
-  static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
-  return static_cast<T *>(
-      MEM_calloc_arrayN_aligned(length, sizeof(T), alignof(T), allocation_name));
-}
-
-/**
  * Allocates zero-initialized memory for an object of type #T. The constructor of #T is not called,
  * therefor this should only used with trivial types (like all C types).
  * It's valid to call #MEM_freeN on a pointer returned by this, because a destructor call is not
@@ -332,6 +322,16 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name)
 {
   static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
   return MEM_cnew_array<T>(1, allocation_name);
+}
+
+/**
+ * Same as MEM_cnew but for arrays, better alternative to #MEM_calloc_arrayN.
+ */
+template<typename T> inline T *MEM_cnew_array(const size_t length, const char *allocation_name)
+{
+  static_assert(std::is_trivial_v<T>, "For non-trivial types, MEM_new should be used.");
+  return static_cast<T *>(
+      MEM_calloc_arrayN_aligned(length, sizeof(T), alignof(T), allocation_name));
 }
 
 /**
