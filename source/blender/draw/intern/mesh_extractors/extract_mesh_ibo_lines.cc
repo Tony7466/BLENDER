@@ -212,19 +212,6 @@ void extract_lines(const MeshRenderData &mr,
   }
 }
 
-static void generate_subdiv_lines(const DRWSubdivCache &subdiv_cache, gpu::IndexBuf *ibo)
-{
-  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
-  GPU_indexbuf_init_build_on_device(ibo,
-                                    subdiv_cache.num_subdiv_loops * 2 + loose_geom.edge_len * 2);
-
-  if (subdiv_cache.num_subdiv_loops == 0) {
-    return;
-  }
-
-  draw_subdiv_build_lines_buffer(subdiv_cache, ibo);
-}
-
 static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
                                             const MeshRenderData &mr,
                                             const int edge_loose_offset,
@@ -313,22 +300,28 @@ void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire)
 {
-  no_loose_wire = subdiv_cache.loose_geom.edge_len == 0;
+  const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
+  const int loose_num = loose_geom.edge_len * 2;
+  no_loose_wire = loose_num == 0;
+  if (subdiv_cache.num_subdiv_loops == 0) {
+    return;
+  }
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
+    GPU_indexbuf_init_build_on_device(lines_loose, loose_num);
     extract_lines_loose_geom_subdiv(subdiv_cache, mr, 0, lines_loose);
     return;
   }
 
-  const int loose_start = subdiv_cache.num_subdiv_loops * 2;
+  const int non_loose_num = subdiv_cache.num_subdiv_loops * 2;
 
-  generate_subdiv_lines(subdiv_cache, lines);
-  extract_lines_loose_geom_subdiv(subdiv_cache, mr, loose_start, lines);
+  GPU_indexbuf_init_build_on_device(lines, non_loose_num + loose_num);
+  draw_subdiv_build_lines_buffer(subdiv_cache, lines);
+  extract_lines_loose_geom_subdiv(subdiv_cache, mr, non_loose_num, lines);
 
   if (DRW_ibo_requested(lines_loose)) {
     /* Multiply by 2 because these are edges indices. */
-    const int len = subdiv_cache.loose_geom.edge_len * 2;
-    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, loose_start, len);
+    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, non_loose_num, loose_num);
   }
 }
 
