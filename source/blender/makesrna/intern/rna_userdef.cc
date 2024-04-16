@@ -3600,6 +3600,19 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
       prop, "Moving Hold Keyframe Selected", "Color of selected moving hold keyframe");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  prop = RNA_def_property(srna, "keyframe_generated", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "keytype_generated");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Generated Keyframe", "Color of generated keyframe");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "keyframe_generated_selected", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "keytype_generated_select");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop, "Generated Keyframe Selected", "Color of selected generated keyframe");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   prop = RNA_def_property(srna, "keyframe_border", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, nullptr, "keyborder");
   RNA_def_property_array(prop, 4);
@@ -3809,6 +3822,19 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(
       prop, "Moving Hold Keyframe Selected", "Color of selected moving hold keyframe");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "keyframe_generated", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "keytype_generated");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Generated Keyframe", "Color of generated keyframe");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "keyframe_generated_selected", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "keytype_generated_select");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(
+      prop, "Generated Keyframe Selected", "Color of selected generated keyframe");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "keyframe_border", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -5688,8 +5714,9 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_duplicate_grease_pencil", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "dupflag", USER_DUP_GPENCIL);
-  RNA_def_property_ui_text(
-      prop, "Duplicate GPencil", "Causes grease pencil data to be duplicated with the object");
+  RNA_def_property_ui_text(prop,
+                           "Duplicate Grease Pencil",
+                           "Causes grease pencil data to be duplicated with the object");
 
   prop = RNA_def_property(srna, "use_duplicate_curves", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "dupflag", USER_DUP_CURVES);
@@ -6663,12 +6690,10 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   /* NOTE(@ideasman42): this is intended to be used by a package manger component
    * which is not yet integrated. */
   prop = RNA_def_property(srna, "use_cache", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_NO_CACHE);
-  RNA_def_property_ui_text(
-      prop,
-      "Local Cache",
-      "Store packages in local cache, "
-      "otherwise downloaded package files are immediately deleted after installation");
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_NO_CACHE);
+  RNA_def_property_ui_text(prop,
+                           "Clean Files After Install",
+                           "Downloaded package files are deleted after installation");
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_EXTENSION_REPO_FLAG_DISABLED);
@@ -6681,7 +6706,7 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Custom Directory",
                            "Manually set the path for extensions to be stored. "
-                           "When disabled a users extensions directory is created");
+                           "When disabled a user's extensions directory is created");
   RNA_def_property_boolean_funcs(
       prop, nullptr, "rna_userdef_extension_repo_use_custom_directory_set");
 
