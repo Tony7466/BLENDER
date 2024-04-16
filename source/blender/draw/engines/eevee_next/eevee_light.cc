@@ -328,8 +328,6 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   Light &light = light_map_.lookup_or_add_default(handle.object_key);
   light.used = true;
 
-  ::Light *bl_light = static_cast<::Light *>(ob->data);
-
   if (handle.recalc != 0 || !light.initialized) {
     light.initialized = true;
     light.sync(inst_.shadows, ob, light_threshold_);
