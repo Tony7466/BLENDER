@@ -67,7 +67,7 @@ class VKRenderGraph : public NonCopyable {
    */
   template<typename NodeInfo> void add_node(const typename NodeInfo::CreateInfo &create_info)
   {
-    std::scoped_lock lock(resources_.mutex_get());
+    std::scoped_lock lock(resources_.mutex);
     NodeHandle node_handle = nodes_.allocate();
     VKNode &node = nodes_.get(node_handle);
     node.set_node_data<NodeInfo>(create_info);

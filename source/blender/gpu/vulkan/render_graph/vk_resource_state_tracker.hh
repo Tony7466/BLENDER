@@ -112,9 +112,17 @@ class VKResourceStateTracker {
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
 
-  std::mutex mutex_;
-
  public:
+  /**
+   * Device resource mutex
+   *
+   * The mutex is stored in resources due to:
+   * - It protects resources and their state.
+   * - Allowing test cases to do testing without setting up a device instance which requires ghost.
+   * - Device instance isn't accessible in test cases.
+   */
+  std::mutex mutex;
+
   /**
    * Register a buffer resource.
    */
@@ -175,19 +183,6 @@ class VKResourceStateTracker {
    * rendering).
    */
   void reset_image_layouts();
-
-  /**
-   * Get reference to the device mutex.
-   *
-   * The mutex is stored in resources due to:
-   * - It protects resources and their state.
-   * - Allowing test cases to do testing without setting up a device instance which requires ghost.
-   * - Device instance isn't accessible in test cases.
-   */
-  std::mutex &mutex_get()
-  {
-    return mutex_;
-  }
 
  private:
   /**

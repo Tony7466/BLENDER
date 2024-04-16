@@ -43,7 +43,7 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   synchronization.vk_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   add_node<VKSynchronizationNode>(synchronization);
 
-  std::scoped_lock lock(resources_.mutex_get());
+  std::scoped_lock lock(resources_.mutex);
   Span<NodeHandle> built_nodes = command_builder_.build_image(
       *this, *command_buffer_, vk_swapchain_image);
   /* TODO: It is better to create and return a semaphore. this semaphore can be passed in the
@@ -58,7 +58,7 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
 
 void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
 {
-  std::scoped_lock lock(resources_.mutex_get());
+  std::scoped_lock lock(resources_.mutex);
   Span<NodeHandle> built_nodes = command_builder_.build_buffer(*this, *command_buffer_, vk_buffer);
   command_buffer_->submit_with_cpu_synchronization();
   remove_nodes(built_nodes);
