@@ -5894,6 +5894,7 @@ class VIEW3D_MT_edit_greasepencil_cleanup(Menu):
         layout = self.layout
 
         layout.operator("grease_pencil.clean_loose")
+        layout.operator("grease_pencil.frame_clean_duplicate")
 
 
 class VIEW3D_MT_edit_greasepencil(Menu):
