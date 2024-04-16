@@ -557,13 +557,13 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
 }
 
 /* TODO(weizhen): make sure `emitter_id` is written. */
-ccl_device_noinline bool light_sample_from_uv(KernelGlobals kg,
-                                              const float time,
-                                              const float3 P,
-                                              const float3 N,
-                                              const int shader_flags,
-                                              const uint32_t path_flag,
-                                              ccl_private LightSample *ls)
+ccl_device bool light_sample_from_uv(KernelGlobals kg,
+                                     const float time,
+                                     const float3 P,
+                                     const float3 N,
+                                     const int shader_flags,
+                                     const uint32_t path_flag,
+                                     ccl_private LightSample *ls)
 {
   int prim;
   MeshLight mesh_light;

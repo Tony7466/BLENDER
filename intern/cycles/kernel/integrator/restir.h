@@ -6,6 +6,41 @@
 
 CCL_NAMESPACE_BEGIN
 
+struct SpatialResampling {
+  static const int num_neighbors = 8;
+
+  static uint get_render_pixel_index(ccl_global const KernelWorkTile *ccl_restrict tile,
+                                     const int x,
+                                     const int y)
+  {
+    return (uint)tile->offset + x + y * tile->stride;
+  }
+
+  static uint get_next_neighbor(ccl_global const KernelWorkTile *ccl_restrict tile, const int id)
+  {
+    /* TODO(weizhen): adjust the numbers based on `num_neighbors`. */
+    const int dx = id % 3 - 1;
+    const int dy = id / 3 - 1;
+    const int x = tile->x + dx;
+    const int y = tile->y + dy;
+
+    if (x < tile->min_x || x > tile->max_x || y < tile->min_y || y > tile->max_y) {
+      /* Out of bound. */
+      return -1;
+    }
+
+    return get_render_pixel_index(tile, x, y);
+  }
+
+  static uint is_valid_neighbor(const ccl_private ShaderData *sd,
+                                const ccl_private ShaderData *neighbor_sd,
+                                const ccl_private Reservoir *reservoir)
+  {
+    /* TODO(weizhen): find a good criterion. */
+    return (sd->object == neighbor_sd->object) && !reservoir->is_empty();
+  }
+};
+
 ccl_device_inline void integrator_restir_unpack_reservoir(ccl_private Reservoir *reservoir,
                                                           const ccl_global float *buffer)
 {
@@ -110,7 +145,7 @@ ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
   /* TODO(weizhen): do we call `surface_shader_prepare_closures()` here? */
 }
 
-/* Evaluate BSDF * L * cos_NO. */
+/* Evaluate BSDF * L * cos_NO, accounting for visibility. */
 ccl_device_forceinline void radiance_eval(KernelGlobals kg,
                                           IntegratorState state,
                                           ccl_private ShaderData *sd,
@@ -120,9 +155,10 @@ ccl_device_forceinline void radiance_eval(KernelGlobals kg,
   ShaderDataCausticsStorage emission_sd_storage;
   ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
 
-  const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, ls, sd->time);
+  /* TODO(weizhen): where should we check visibility? */
+  const Spectrum light_eval = light_sample_shader_eval(
+      kg, state, emission_sd, ls, sd->time, sd, true);
 
-  /* TODO(weizhen): path guiding needs state. */
   surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
 
   bsdf_eval_mul(radiance, light_eval);
@@ -138,29 +174,105 @@ ccl_device bool integrator_restir(KernelGlobals kg,
 {
   PROFILING_INIT(kg, PROFILING_SHADE_RESTIR);
 
-  /* TODO(weizhen): read neighbor weights, pick a neighbor, then retrieve sd. */
-  Reservoir reservoir;
   uint32_t path_flag;
   ShaderData sd;
-  const uint64_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  integrator_restir_unpack_reservoir(
-      kg, &reservoir, &sd, &path_flag, render_pixel_index, render_buffer);
-  if (reservoir.is_empty()) {
+  integrator_restir_unpack_shader(kg, state, &sd, &path_flag, render_buffer);
+
+  if (!(sd.type)) {
+    /* No interesction at the current shading point. */
+    /* TODO(weizhen): revisit this condition when we support background and distant lights. */
     return false;
   }
 
   shader_data_setup_from_restir(kg, state, &sd, path_flag, render_buffer);
 
-  /* Evaluate sample from the current shading point. */
-  light_sample_from_uv(kg, &sd, path_flag, &reservoir.ls);
-  radiance_eval(kg, state, &sd, &reservoir.ls, &reservoir.radiance);
-
-  BsdfEval radiance = reservoir.radiance;
-  bsdf_eval_mul(&radiance, reservoir.total_weight);
-
   /* Load random number state. */
   RNGState rng_state;
   path_state_rng_load(state, &rng_state);
+
+  const float rand = path_state_rng_1D(kg, &rng_state, PRNG_SPATIAL_RESAMPLING);
+
+  Reservoir reservoir(rand);
+
+  /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good
+   * for point light with soft falloff and area light with small spread. */
+  /* Fetch neighboring reservoirs. */
+  for (int i = 0; i < SpatialResampling::num_neighbors + 1; i++) {
+    const uint neighbor_pixel_index = SpatialResampling::get_next_neighbor(tile, i);
+
+    if (neighbor_pixel_index == -1) {
+      continue;
+    }
+
+    Reservoir neighbor_reservoir;
+    uint32_t neighbor_path_flag;
+    ShaderData neighbor_sd;
+    integrator_restir_unpack_reservoir(kg,
+                                       &neighbor_reservoir,
+                                       &neighbor_sd,
+                                       &neighbor_path_flag,
+                                       neighbor_pixel_index,
+                                       render_buffer);
+
+    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd, &neighbor_reservoir)) {
+      continue;
+    }
+
+    /* Evaluate neighbor sample from the current shading point. */
+    if (!light_sample_from_uv(kg, &sd, path_flag, &neighbor_reservoir.ls)) {
+      continue;
+    }
+    radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
+
+    reservoir.add_sample(
+        neighbor_reservoir.ls, neighbor_reservoir.radiance, neighbor_reservoir.total_weight);
+  }
+
+  if (reservoir.is_empty()) {
+    return false;
+  }
+
+  /* Loop over neighborhood again to determine valid samples. */
+  int valid_neighbors = 0;
+  for (int i = 0; i < SpatialResampling::num_neighbors + 1; i++) {
+    const uint neighbor_pixel_index = SpatialResampling::get_next_neighbor(tile, i);
+
+    if (neighbor_pixel_index == -1) {
+      continue;
+    }
+
+    Reservoir neighbor_reservoir;
+    uint32_t neighbor_path_flag;
+    ShaderData neighbor_sd;
+    integrator_restir_unpack_reservoir(kg,
+                                       &neighbor_reservoir,
+                                       &neighbor_sd,
+                                       &neighbor_path_flag,
+                                       neighbor_pixel_index,
+                                       render_buffer);
+
+    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd, &neighbor_reservoir)) {
+      continue;
+    }
+
+    shader_data_setup_from_restir(kg, state, &neighbor_sd, neighbor_path_flag, render_buffer);
+
+    /* Evaluate picked sample from neighboring shading points. */
+    LightSample picked_ls = reservoir.ls;
+    if (!light_sample_from_uv(kg, &neighbor_sd, neighbor_path_flag, &picked_ls)) {
+      continue;
+    }
+    radiance_eval(kg, state, &neighbor_sd, &picked_ls, &neighbor_reservoir.radiance);
+
+    if (!bsdf_eval_is_zero(&neighbor_reservoir.radiance)) {
+      valid_neighbors++;
+    }
+  }
+
+  BsdfEval radiance = reservoir.radiance;
+  const float unbiased_contribution_weight = reservoir.total_weight /
+                                             reduce_add(fabs(radiance.sum)) / valid_neighbors;
+  bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &sd, &reservoir.ls, &radiance, 0);

@@ -335,6 +335,7 @@ enum PathTraceDimension {
   /* TODO(weizhen): Temp for RIS, revisit later for stratified sampling. */
   PRNG_RIS = 12,
   PRNG_PICK = 13,
+  PRNG_SPATIAL_RESAMPLING = 14,
 
   /* High enough number so we don't need to change it when adding new dimensions,
    * low enough so there is no uint16_t overflow with many bounces. */
@@ -1779,6 +1780,11 @@ typedef struct KernelWorkTile {
   /* Precalculated parameters used by init_from_camera kernel on GPU. */
   int path_index_offset;
   int work_size;
+
+  int min_x;
+  int max_x;
+  int min_y;
+  int max_y;
 } KernelWorkTile;
 
 /* Shader Evaluation.

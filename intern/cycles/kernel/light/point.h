@@ -170,10 +170,15 @@ ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *
   if (klight->spot.is_sphere) {
     ls->P = klight->co + radius * ls->Ng;
     ls->D = normalize_len(ls->P - ray_P, &ls->t);
+    /* TODO(weizhen): what if uv is not visible from the new point? */
   }
   else {
     ls->D = -ls->Ng;
-    ray_aligned_disk_intersect(ray_P, ls->D, 0.0f, FLT_MAX, klight->co, radius, &ls->P, &ls->t);
+    if (!ray_aligned_disk_intersect(
+            ray_P, ls->D, 0.0f, FLT_MAX, klight->co, radius, &ls->P, &ls->t))
+    {
+      return false;
+    }
   }
 
   return true;

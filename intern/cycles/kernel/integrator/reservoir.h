@@ -16,6 +16,12 @@ struct Reservoir {
 
   Reservoir() {}
 
+  Reservoir(const float rand)
+  {
+    total_weight = 0.0f;
+    this->rand = rand;
+  }
+
   Reservoir(const bool use_ris, const float rand)
   {
     total_weight = 0.0f;
@@ -25,7 +31,7 @@ struct Reservoir {
     this->num_bsdf_samples = use_ris ? 3 : 1;
   }
 
-  bool is_empty()
+  bool is_empty() const
   {
     return total_weight == 0.0f;
   }

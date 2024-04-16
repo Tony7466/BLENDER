@@ -62,12 +62,17 @@ void PathTraceWorkCPU::init_execution()
 void PathTraceWorkCPU::setup_work_tile(KernelWorkTile &work_tile,
                                        const int64_t work_index,
                                        const int64_t image_width,
+                                       const int64_t image_height,
                                        const int start_sample,
                                        const int sample_offset)
 {
   const int y = work_index / image_width;
   const int x = work_index - y * image_width;
 
+  work_tile.min_x = effective_buffer_params_.full_x;
+  work_tile.min_y = effective_buffer_params_.full_y;
+  work_tile.max_x = effective_buffer_params_.full_x + image_width - 1;
+  work_tile.max_y = effective_buffer_params_.full_y + image_height - 1;
   work_tile.x = effective_buffer_params_.full_x + x;
   work_tile.y = effective_buffer_params_.full_y + y;
   work_tile.w = 1;
@@ -92,7 +97,7 @@ void PathTraceWorkCPU::initial_resampling(const int64_t image_width,
     }
 
     KernelWorkTile work_tile;
-    setup_work_tile(work_tile, work_index, image_width, start_sample, sample_offset);
+    setup_work_tile(work_tile, work_index, image_width, image_height, start_sample, sample_offset);
 
     CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 
@@ -113,7 +118,7 @@ void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
     }
 
     KernelWorkTile work_tile;
-    setup_work_tile(work_tile, work_index, image_width, start_sample, sample_offset);
+    setup_work_tile(work_tile, work_index, image_width, image_height, start_sample, sample_offset);
 
     CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 
