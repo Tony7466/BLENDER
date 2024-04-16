@@ -12,34 +12,36 @@
 
 namespace blender::gpu::render_graph {
 
-void resource_access_build_links(VKResourceStateTracker &resources,
-                                 VKRenderGraphLinks &dependencies,
-                                 NodeHandle node_handle,
-                                 const VKResourceAccessInfo &access_info)
+void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
+                                       VKRenderGraphLinks &links,
+                                       NodeHandle node_handle) const
 {
-  // TODO: Add a debug time validation that resources are unique (or merged).
-  for (const VKBufferAccess &buffer_access : access_info.buffers) {
+  for (const VKBufferAccess &buffer_access : buffers) {
     VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer(buffer_access.vk_buffer);
-      dependencies.add_input(
-          node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
+      links.add_input(node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
     VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer_and_increase_version(
           buffer_access.vk_buffer);
-      dependencies.add_output(
-          node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
+      links.add_output(node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
   }
 
-  for (const VKImageAccess &image_access : access_info.images) {
+  /* TODO: The image layouts are hard coded here. When adding dispatch/draw nodes we should find a
+   * way to determine the correct image layout. This could be determined from the access flags, if
+   * that isn't sufficient we should provide the correct layout inside the VKResourcesAccessInfo
+   * struct. The correct way how to handle this will be implemented when the validation layer will
+   * start complaining that this isn't correct. I expect that to happen when we add our first draw
+   * node. */
+  for (const VKImageAccess &image_access : images) {
     VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_image(image_access.vk_image);
-      dependencies.add_input(
+      links.add_input(
           node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
@@ -47,8 +49,7 @@ void resource_access_build_links(VKResourceStateTracker &resources,
     if (write_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_image_and_increase_stamp(
           image_access.vk_image);
-      /* Extract the correct layout to use from the access flags. */
-      dependencies.add_output(
+      links.add_output(
           node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
   }

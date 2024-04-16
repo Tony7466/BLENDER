@@ -128,7 +128,7 @@ void VKCommandBuilder::send_pipeline_barriers(VKCommandBufferInterface &command_
 
   /* When no resources have been used, we can start the barrier at the top of the pipeline.
    * It is not allowed to set it to None. */
-  // TODO: VK_KHR_synchronization2 allows setting src_stage_mask to NONE.
+  /* TODO: VK_KHR_synchronization2 allows setting src_stage_mask to NONE. */
   if (state_.src_stage_mask == VK_PIPELINE_STAGE_NONE) {
     state_.src_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   }

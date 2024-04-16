@@ -66,7 +66,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
                    NodeHandle node_handle,
                    const CreateInfo &create_info) override
   {
-    resource_access_build_links(resources, links, node_handle, create_info.resources);
+    create_info.resources.build_links(resources, links, node_handle);
   }
 
   /**
@@ -76,7 +76,7 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
                       const Data &data,
                       VKBoundPipelines &r_bound_pipelines) override
   {
-    // TODO: introduce helper function in pipeline types.
+    /* TODO: introduce helper function in pipeline types. */
     const VKPipelineData &pipeline_data = data.pipeline_data;
     if (assign_if_different(r_bound_pipelines.compute.vk_pipeline, pipeline_data.vk_pipeline)) {
       command_buffer.bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
