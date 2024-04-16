@@ -751,6 +751,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_armature_shape_solid_frag.glsl
   engines/overlay/shaders/overlay_armature_shape_solid_vert.glsl
   engines/overlay/shaders/overlay_armature_shape_wire_vert.glsl
+  engines/overlay/shaders/overlay_armature_shape_wire_vert_no_geom.glsl
   engines/overlay/shaders/overlay_armature_shape_wire_frag.glsl
   engines/overlay/shaders/overlay_armature_shape_wire_geom.glsl
   engines/overlay/shaders/overlay_armature_sphere_outline_vert.glsl

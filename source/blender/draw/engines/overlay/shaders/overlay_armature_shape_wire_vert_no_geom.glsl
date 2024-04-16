@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,11 +13,12 @@ void main()
   vec3 world_pos = (model_mat * vec4(pos, 1.0)).xyz;
   gl_Position = point_world_to_ndc(world_pos);
 
-  geometry_in.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
-  geometry_in.finalColor.a = 1.0;
   /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
    * change as well. */
-  geometry_in.wire_width = bone_color.a * 16.0;
+  const float wire_width = bone_color.a * 16.0;
+  geometry_out.wire_width = wire_width;
 
+  geometry_out.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
+  geometry_out.finalColor.a = 1.0;
   view_clipping_distances(world_pos);
 }

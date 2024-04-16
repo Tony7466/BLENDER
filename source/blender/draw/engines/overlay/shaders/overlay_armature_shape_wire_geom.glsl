@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019-2024 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,9 +49,7 @@ void main()
   vec2 line = screen_space_pos[0] - screen_space_pos[1];
   line = abs(line) * sizeViewport.xy;
 
-  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
-   * change as well. */
-  float wire_width = geometry_in[0].wire_width * 16.0;
+  const float wire_width = geometry_in[0].wire_width;
   geometry_out.wire_width = wire_width;
   float half_size = max(wire_width / 2.0, 0.5);
 
