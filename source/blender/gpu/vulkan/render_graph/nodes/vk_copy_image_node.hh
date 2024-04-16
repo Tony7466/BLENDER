@@ -51,8 +51,7 @@ class VKCopyImageNode : public VKNodeInfo<VKNodeType::COPY_IMAGE,
                                    const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
-    ResourceWithStamp dst_resource = resources.get_image_and_increase_version(
-        create_info.dst_image);
+    ResourceWithStamp dst_resource = resources.get_image_and_increase_stamp(create_info.dst_image);
     dependencies.add_read_resource(node_handle,
                                    src_resource,
                                    VK_ACCESS_TRANSFER_READ_BIT,

@@ -52,7 +52,7 @@ class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
                                    NodeHandle node_handle,
                                    const CreateInfo &create_info) override
   {
-    ResourceWithStamp resource = resources.get_image_and_increase_version(create_info.vk_image);
+    ResourceWithStamp resource = resources.get_image_and_increase_stamp(create_info.vk_image);
     dependencies.add_write_resource(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
   }

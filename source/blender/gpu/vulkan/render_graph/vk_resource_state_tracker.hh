@@ -4,6 +4,20 @@
 
 /** \file
  * \ingroup gpu
+ *
+ * The state of resources needs to be tracked on device level.
+ *
+ * The state that are being tracked include:
+ * - Modification stamps: Each time a resource is modified, this stamp is increased. Inside the
+ *   render graph nodes track the resources including this stamp.
+ * - Image layouts: The layout of pixels of an image on the GPU depends on the command being
+ *   executed. A certain `vkCmd*` requires the image to be in a certain layout. Using incorrect
+ *   layouts could lead to rendering artifacts.
+ * - Resource ownership: Resources that are externally managed (swap chain or external) uses a
+ *   different workflow as its state can be altered externally and needs to be reset.
+ * - Read/Write access masks: To generate correct and performing pipeline barriers the src/dst
+ *   access masks needs to be accurate and precise. When creating pipeline barriers the resource
+ *   usage upto that point should be known and the resource usage from that point on.
  */
 
 #pragma once
@@ -22,11 +36,24 @@ namespace blender::gpu::render_graph {
 class VKCommandBuilder;
 
 using ResourceHandle = uint64_t;
-using ResourceStamp = uint64_t;
 
+/**
+ * ModificationStamp is used to track resource modifications.
+ *
+ * When a resource is modified it will generate a new stamp by incrementing the previous stamp
+ * with 1. Consecutive reads should use this new stamp. The stamp stays active until the next
+ * modification to the resources is added to any render graph.
+ */
+using ModificationStamp = uint64_t;
+
+/**
+ * Resource with a stamp.
+ *
+ * This struct represents an image or buffer (handle) and its modification stamp.
+ */
 struct ResourceWithStamp {
   ResourceHandle handle;
-  ResourceStamp stamp;
+  ModificationStamp stamp;
 };
 
 /**
@@ -36,19 +63,17 @@ enum class ResourceOwner {
   /**
    * Resource is owned by Blender.
    *
-   * These resources can be destroyed internally by the application.
+   * These resources can be destroyed internally by Blender.
    *
-   * Most resources are application owned.
+   * NOTE: Most resources are application owned.
    */
   APPLICATION,
 
   /**
-   * Resource is owned by the swapchain.
+   * Resource is owned by a swap chain.
    *
-   * These resources cannot be destroyed and could be recreated externally.
-   *
-   * Actual layout can be changed externally and therefore will be reset when building command
-   * buffers.
+   * These resources cannot be destroyed, could be recreated externally and its layout can be
+   * modified outside our context.
    */
   SWAP_CHAIN,
 };
@@ -61,8 +86,8 @@ enum class ResourceOwner {
  * a new version is tracked.
  */
 class VKResourceStateTracker {
-  /* When a command buffer is reset the resources are re-synced. During the syncing the command
-   * builder attributes are resized to reduce reallocations. */
+  /* When a command buffer is reset the resources are re-synced.
+   * During the syncing the command builder attributes are resized to reduce reallocations. */
   friend class VKCommandBuilder;
 
   /**
@@ -73,38 +98,51 @@ class VKResourceStateTracker {
    * pixel layout on the device.
    */
   struct Resource {
-    VkBuffer vk_buffer = VK_NULL_HANDLE;
-    VkImage vk_image = VK_NULL_HANDLE;
+    /** Is this resource a buffer or an image. */
+    VKResourceType type;
+    union {
+      struct {
+        /** VkBuffer handle of the resource being tracked. */
+        VkBuffer vk_buffer = VK_NULL_HANDLE;
+      } buffer;
 
-    /**
-     * Last image layout that has been submitted to the queue.
-     */
-    VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+      struct {
+        /** VkImage handle of the resource being tracked. */
+        VkImage vk_image = VK_NULL_HANDLE;
 
-    /**
-     * Current version of the resource in the graph.
-     */
-    ResourceStamp version = 0;
+        /**
+         * Original image layout when the resource was added to the state tracker.
+         *
+         * It is used to reset the state tracker to its original state when working with swap chain
+         * images. See `reset_image_layout`.
+         */
+        VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+      } image;
+    };
+
+    /** Current modification stamp of the resource. */
+    ModificationStamp stamp = 0;
 
     /** Who owns the resource. */
     ResourceOwner owner = ResourceOwner::APPLICATION;
 
     /**
-     * State tracking to ensure correct pipeline barriers can be created.
+     * State tracking to ensure correct pipeline barriers and command creation.
      */
     VKResourceBarrierState barrier_state;
 
     /**
-     * Reset the image layout to its original state.
+     * Reset the image layout to its original layout.
      *
      * The layout of swap chain images are externally managed. When they are used again we need to
      * ensure the correct state.
      *
-     * NOTE: Also needed when working with external memory (Cycles, OpenXR, multi device).
+     * NOTE: Also needed when for other external images (Cycles, OpenXR, multi device).
      */
     void reset_image_layout()
     {
-      barrier_state.image_layout = vk_image_layout;
+      BLI_assert(type == VKResourceType::IMAGE);
+      barrier_state.image_layout = image.vk_image_layout;
     }
   };
 
@@ -125,53 +163,79 @@ class VKResourceStateTracker {
 
   /**
    * Register a buffer resource.
+   *
+   * When a buffer is created in VKBuffer, it needs to be registered in the device resources so the
+   * resource state can be tracked during its lifetime.
    */
   void add_buffer(VkBuffer vk_buffer);
 
   /**
    * Register an image resource.
+   *
+   * When an image is created in VKTexture, it needs to be registered in the device resources so
+   * the resource state can be tracked during its lifetime.
    */
   void add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner);
 
   /**
    * Remove an registered image.
+   *
+   * When a image is destroyed by calling `vmaDestroyImage`, a call to `remove_image` is needed to
+   * unregister the resource from state tracking.
    */
   void remove_image(VkImage vk_image);
 
   /**
    * Remove an registered buffer.
+   *
+   * When a buffer is destroyed by calling `vmaDestroyBuffer`, a call to `remove_buffer` is needed
+   * to unregister the resource from state tracking.
    */
   void remove_buffer(VkBuffer vk_buffer);
 
   /**
-   * Return the current version of the resource, and increase the version.
+   * Return the current stamp of the resource, and increase the stamp.
+   *
+   * When a node writes to an image, this method is called to increase the stamp of the image.
+   * The node that writes to the image will use the current stamp as its input, but generate a new
+   * stamp for future nodes.
+   *
+   * This function is called when adding a node to the render graph, during building resource
+   * dependencies. See `VKNodeInfo.build_resource_dependencies`
    */
-  ResourceWithStamp get_image_and_increase_version(VkImage vk_image);
+  ResourceWithStamp get_image_and_increase_stamp(VkImage vk_image);
 
   /**
-   * Return the current version of the resource, and increase the version.
+   * Return the current stamp of the resource, and increase the stamp.
+   *
+   * When a node writes to a buffer, this method is called to increase the stamp of the buffer.
+   * The node that writes to the buffer will use the current stamp as its input, but generate the
+   * new stamp for future nodes.
+   *
+   * This function is called when adding a node to the render graph, during building resource
+   * dependencies. See `VKNodeInfo.build_resource_dependencies`
    */
   ResourceWithStamp get_buffer_and_increase_version(VkBuffer vk_buffer);
 
   /**
-   * Return the current version of the resource.
+   * Return the current stamp of the resource.
+   *
+   * When a node reads from a buffer, this method is called to get the current stamp the buffer.
+   *
+   * This function is called when adding a node to the render graph, during building resource
+   * dependencies. See `VKNodeInfo.build_resource_dependencies`
    */
   ResourceWithStamp get_buffer(VkBuffer vk_buffer) const;
 
   /**
-   * Return the current version of the resource.
+   * Return the current stamp of the resource.
+   *
+   * When a node reads from an image, this method is called to get the current stamp the image.
+   *
+   * This function is called when adding a node to the render graph, during building resource
+   * dependencies. See `VKNodeInfo.build_resource_dependencies`
    */
   ResourceWithStamp get_image(VkImage vk_image) const;
-
-  /**
-   * Return the resource handle of the given VkImage.
-   */
-  ResourceHandle get_image_handle(VkImage vk_image) const;
-
-  /**
-   * Return the resource handle of the given VkBuffer.
-   */
-  ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 
   /**
    * Reset the swap chain image layouts to its original layout.
@@ -186,13 +250,14 @@ class VKResourceStateTracker {
 
  private:
   /**
-   * Get the current version of the resource.
+   * Get the current stamp of the resource.
    */
-  static ResourceWithStamp get_version(ResourceHandle handle, const Resource &resource);
+  static ResourceWithStamp get_stamp(ResourceHandle handle, const Resource &resource);
+
   /**
-   * Get the current version of the resource and increase the version.
+   * Get the current stamp of the resource and increase the stamp.
    */
-  static ResourceWithStamp get_and_increase_version(ResourceHandle handle, Resource &resource);
+  static ResourceWithStamp get_and_increase_stamp(ResourceHandle handle, Resource &resource);
 };
 
 }  // namespace blender::gpu::render_graph

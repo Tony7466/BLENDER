@@ -27,11 +27,11 @@ void VKResourceStateTracker::add_image(VkImage vk_image,
   Resource &resource = resources_.get(handle);
   image_resources_.add_new(vk_image, handle);
 
+  resource.type = VKResourceType::IMAGE;
   resource.owner = owner;
-  resource.vk_buffer = VK_NULL_HANDLE;
-  resource.vk_image = vk_image;
-  resource.vk_image_layout = vk_image_layout;
-  resource.version = 0;
+  resource.image.vk_image = vk_image;
+  resource.image.vk_image_layout = vk_image_layout;
+  resource.stamp = 0;
 }
 
 void VKResourceStateTracker::add_buffer(VkBuffer vk_buffer)
@@ -43,11 +43,10 @@ void VKResourceStateTracker::add_buffer(VkBuffer vk_buffer)
   Resource &resource = resources_.get(handle);
   buffer_resources_.add_new(vk_buffer, handle);
 
+  resource.type = VKResourceType::BUFFER;
   resource.owner = ResourceOwner::APPLICATION;
-  resource.vk_buffer = vk_buffer;
-  resource.vk_image = VK_NULL_HANDLE;
-  resource.vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-  resource.version = 0;
+  resource.buffer.vk_buffer = vk_buffer;
+  resource.stamp = 0;
 }
 
 /** \} */
@@ -72,58 +71,49 @@ void VKResourceStateTracker::remove_image(VkImage vk_image)
 
 /** \} */
 
-ResourceHandle VKResourceStateTracker::get_image_handle(VkImage vk_image) const
-{
-  return image_resources_.lookup(vk_image);
-}
-ResourceHandle VKResourceStateTracker::get_buffer_handle(VkBuffer vk_buffer) const
-{
-  return buffer_resources_.lookup(vk_buffer);
-}
-
-ResourceWithStamp VKResourceStateTracker::get_version(ResourceHandle handle,
-                                                      const Resource &resource)
+ResourceWithStamp VKResourceStateTracker::get_stamp(ResourceHandle handle,
+                                                    const Resource &resource)
 {
   ResourceWithStamp result;
   result.handle = handle;
-  result.stamp = resource.version;
+  result.stamp = resource.stamp;
   return result;
 }
 
-ResourceWithStamp VKResourceStateTracker::get_and_increase_version(ResourceHandle handle,
-                                                                   Resource &resource)
+ResourceWithStamp VKResourceStateTracker::get_and_increase_stamp(ResourceHandle handle,
+                                                                 Resource &resource)
 {
-  ResourceWithStamp result = get_version(handle, resource);
-  resource.version += 1;
+  ResourceWithStamp result = get_stamp(handle, resource);
+  resource.stamp += 1;
   return result;
 }
 
-ResourceWithStamp VKResourceStateTracker::get_image_and_increase_version(VkImage vk_image)
+ResourceWithStamp VKResourceStateTracker::get_image_and_increase_stamp(VkImage vk_image)
 {
-  ResourceHandle handle = get_image_handle(vk_image);
+  ResourceHandle handle = image_resources_.lookup(vk_image);
   Resource &resource = resources_.get(handle);
-  return get_and_increase_version(handle, resource);
+  return get_and_increase_stamp(handle, resource);
 }
 
 ResourceWithStamp VKResourceStateTracker::get_buffer_and_increase_version(VkBuffer vk_buffer)
 {
-  ResourceHandle handle = get_buffer_handle(vk_buffer);
+  ResourceHandle handle = buffer_resources_.lookup(vk_buffer);
   Resource &resource = resources_.get(handle);
-  return get_and_increase_version(handle, resource);
+  return get_and_increase_stamp(handle, resource);
 }
 
 ResourceWithStamp VKResourceStateTracker::get_buffer(VkBuffer vk_buffer) const
 {
-  ResourceHandle handle = get_buffer_handle(vk_buffer);
+  ResourceHandle handle = buffer_resources_.lookup(vk_buffer);
   const Resource &resource = resources_.get(handle);
-  return get_version(handle, resource);
+  return get_stamp(handle, resource);
 }
 
 ResourceWithStamp VKResourceStateTracker::get_image(VkImage vk_image) const
 {
-  ResourceHandle handle = get_image_handle(vk_image);
+  ResourceHandle handle = image_resources_.lookup(vk_image);
   const Resource &resource = resources_.get(handle);
-  return get_version(handle, resource);
+  return get_stamp(handle, resource);
 }
 
 void VKResourceStateTracker::reset_image_layouts()

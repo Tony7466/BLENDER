@@ -45,7 +45,7 @@ void resource_access_build_dependencies(VKResourceStateTracker &resources,
 
     VkAccessFlags write_access = image_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
-      ResourceWithStamp versioned_resource = resources.get_image_and_increase_version(
+      ResourceWithStamp versioned_resource = resources.get_image_and_increase_stamp(
           image_access.vk_image);
       /* Extract the correct layout to use from the access flags. */
       dependencies.add_write_resource(

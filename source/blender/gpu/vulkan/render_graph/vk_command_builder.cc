@@ -163,7 +163,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
     const ResourceWithStamp &versioned_resource = usage.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
-    if (resource.vk_buffer == VK_NULL_HANDLE) {
+    if (resource.type == VKResourceType::IMAGE) {
       /* Ignore image resources. */
       continue;
     }
@@ -187,7 +187,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
     resource_state.read_stages |= node_stages;
     resource_state.write_stages = VK_PIPELINE_STAGE_NONE;
 
-    add_buffer_barrier(resource.vk_buffer, wait_access, read_access);
+    add_buffer_barrier(resource.buffer.vk_buffer, wait_access, read_access);
   }
 }
 
@@ -201,7 +201,7 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
     const ResourceWithStamp &versioned_resource = usage.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
-    if (resource.vk_buffer == VK_NULL_HANDLE) {
+    if (resource.type == VKResourceType::IMAGE) {
       /* Ignore image resources. */
       continue;
     }
@@ -226,7 +226,7 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
     resource_state.write_stages = node_stages;
 
     if (wait_access != VK_ACCESS_NONE) {
-      add_buffer_barrier(resource.vk_buffer, wait_access, usage.vk_access_flags);
+      add_buffer_barrier(resource.buffer.vk_buffer, wait_access, usage.vk_access_flags);
     }
   }
 }
@@ -262,7 +262,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     const ResourceWithStamp &versioned_resource = usage.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
-    if (resource.vk_image == VK_NULL_HANDLE) {
+    if (resource.type == VKResourceType::BUFFER) {
       /* Ignore buffer resources. */
       continue;
     }
@@ -288,7 +288,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
     resource_state.read_stages |= node_stages;
     resource_state.write_stages = VK_PIPELINE_STAGE_NONE;
 
-    add_image_barrier(resource.vk_image,
+    add_image_barrier(resource.image.vk_image,
                       wait_access,
                       read_access,
                       resource_state.image_layout,
@@ -307,8 +307,8 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
     const ResourceWithStamp &versioned_resource = usage.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
-    if (resource.vk_image == VK_NULL_HANDLE) {
-      /* Ignore image resources. */
+    if (resource.type == VKResourceType::BUFFER) {
+      /* Ignore buffer resources. */
       continue;
     }
     VKResourceBarrierState &resource_state = resource.barrier_state;
@@ -332,7 +332,7 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
     resource_state.write_stages = node_stages;
 
     if (wait_access != VK_ACCESS_NONE || usage.vk_image_layout != resource_state.image_layout) {
-      add_image_barrier(resource.vk_image,
+      add_image_barrier(resource.image.vk_image,
                         wait_access,
                         usage.vk_access_flags,
                         resource_state.image_layout,
