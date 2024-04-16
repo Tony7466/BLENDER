@@ -6278,12 +6278,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   wmWindow *win = CTX_wm_window(C);
   WorkSpace *workspace = CTX_wm_workspace(C);
 
-  bool content = false;
-
-  /* Automatic keymap status first. */
-  content = WM_window_modal_keymap_status_draw(C, win, layout);
-
-  /* Custom items can be added afterward. */
   if (!BLI_listbase_is_empty(&workspace->status)) {
     uiLayout *row = uiLayoutRow(layout, true);
     LISTBASE_FOREACH (WorkSpaceStatusItem *, item, &workspace->status) {
@@ -6294,10 +6288,10 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         uiItemL(row, item->text.c_str(), item->icon);
       }
     }
-    content = true;
+    return;
   }
 
-  if (content) {
+  if (WM_window_modal_keymap_status_draw(C, win, layout)) {
     return;
   }
 

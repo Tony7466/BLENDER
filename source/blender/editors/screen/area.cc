@@ -938,9 +938,11 @@ void ED_workspace_status_key(bContext *C,
     ED_workspace_status_item(C, {}, ICON_EVENT_OS);
   }
   ED_workspace_status_item(C, {}, icon);
-  ED_workspace_status_space(C, 0.6f);
-  ED_workspace_status_item(C, text, ICON_NONE);
-  ED_workspace_status_space(C, 0.7f);
+  if (!text.empty()) {
+    ED_workspace_status_space(C, 0.6f);
+    ED_workspace_status_item(C, text, ICON_NONE);
+    ED_workspace_status_space(C, 0.7f);
+  }
 }
 
 void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi)

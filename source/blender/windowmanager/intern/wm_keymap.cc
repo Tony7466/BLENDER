@@ -1288,6 +1288,16 @@ std::optional<std::string> WM_modalkeymap_operator_items_to_string(wmOperatorTyp
   return WM_modalkeymap_items_to_string(keymap, propvalue, compact);
 }
 
+const wmKeyMapItem *WM_modalkeymap_operator(wmOperatorType *ot, const int propvalue)
+{
+  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+  wmKeyMap *keymap = WM_keymap_active(wm, ot->modalkeymap);
+  if (keymap) {
+    return WM_modalkeymap_find_propvalue(keymap, propvalue);
+  }
+  return nullptr;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

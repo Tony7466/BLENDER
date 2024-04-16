@@ -1102,51 +1102,75 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
     return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
   };
 
-  const std::string header = fmt::format(
-      IFACE_("{}: confirm, {}: cancel, {}: undo, "
-             "{}: start/define cut, {}: close cut, {}: new cut, "
-             "{}: midpoint snap ({}), {}: ignore snap ({}), "
-             "{}: angle constraint {:.2f}({:.2f}) ({}{}{}{}), {}: cut through ({}), "
-             "{}: panning, {}{}{}: orientation lock ({}), "
-             "{}: distance/angle measurements ({}), "
-             "{}: x-ray ({})"),
-      get_modal_key_str(KNF_MODAL_CONFIRM),
-      get_modal_key_str(KNF_MODAL_CANCEL),
-      get_modal_key_str(KNF_MODAL_UNDO),
-      get_modal_key_str(KNF_MODAL_ADD_CUT),
-      get_modal_key_str(KNF_MODAL_ADD_CUT_CLOSED),
-      get_modal_key_str(KNF_MODAL_NEW_CUT),
-      get_modal_key_str(KNF_MODAL_MIDPOINT_ON),
-      WM_bool_as_string(kcd->snap_midpoints),
-      get_modal_key_str(KNF_MODAL_IGNORE_SNAP_ON),
-      WM_bool_as_string(kcd->ignore_edge_snapping),
-      get_modal_key_str(KNF_MODAL_ANGLE_SNAP_TOGGLE),
+  ED_workspace_status_begin(C);
+
+  std::string desc;
+
+  ED_workspace_status_keymap(C, TIP_("Cut"), WM_modalkeymap_operator(op->type, KNF_MODAL_ADD_CUT));
+  ED_workspace_status_keymap(
+      C, TIP_("Stop"), WM_modalkeymap_operator(op->type, KNF_MODAL_NEW_CUT));
+  ED_workspace_status_keymap(
+      C, TIP_("Confirm"), WM_modalkeymap_operator(op->type, KNF_MODAL_CONFIRM));
+  ED_workspace_status_keymap(
+      C, TIP_("Cancel"), WM_modalkeymap_operator(op->type, KNF_MODAL_CANCEL));
+  ED_workspace_status_keymap(C, TIP_("Undo"), WM_modalkeymap_operator(op->type, KNF_MODAL_UNDO));
+  ED_workspace_status_keymap(C, "Pan View", WM_modalkeymap_operator(op->type, KNF_MODAL_PANNING));
+
+  desc = IFACE_("Midpoint Snap: ");
+  desc += WM_bool_as_string(kcd->snap_midpoints);
+  ED_workspace_status_keymap(C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_MIDPOINT_ON));
+
+  desc = IFACE_("Ignore Snap: ");
+  desc += WM_bool_as_string(kcd->ignore_edge_snapping);
+  ED_workspace_status_keymap(C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_IGNORE_SNAP_ON));
+
+  const std::string angle = fmt::format(
+      "{}: {:.2f}({:.2f}) ({}{}{}{})",
+      IFACE_("Angle Constraint"),
+
       (kcd->angle >= 0.0f) ? RAD2DEGF(kcd->angle) : 360.0f + RAD2DEGF(kcd->angle),
+
       (kcd->angle_snapping_increment > KNIFE_MIN_ANGLE_SNAPPING_INCREMENT &&
        kcd->angle_snapping_increment <= KNIFE_MAX_ANGLE_SNAPPING_INCREMENT) ?
           kcd->angle_snapping_increment :
           KNIFE_DEFAULT_ANGLE_SNAPPING_INCREMENT,
+
       kcd->angle_snapping ?
           ((kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_SCREEN) ? "Screen" : "Relative") :
           "OFF", /* TODO: Can this be simplified? */
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? " - " : "",
+
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ?
           get_modal_key_str(KNF_MODAL_CYCLE_ANGLE_SNAP_EDGE) :
           "",
-      (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? ": cycle edge" : "", /**/
-      get_modal_key_str(KNF_MODAL_CUT_THROUGH_TOGGLE),
-      WM_bool_as_string(kcd->cut_through),
-      get_modal_key_str(KNF_MODAL_PANNING),
-      get_modal_key_str(KNF_MODAL_X_AXIS),
-      get_modal_key_str(KNF_MODAL_Y_AXIS),
-      get_modal_key_str(KNF_MODAL_Z_AXIS),
-      (kcd->axis_constrained ? kcd->axis_string : WM_bool_as_string(kcd->axis_constrained)),
-      get_modal_key_str(KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE),
-      WM_bool_as_string(kcd->show_dist_angle),
-      get_modal_key_str(KNF_MODAL_DEPTH_TEST_TOGGLE),
-      WM_bool_as_string(!kcd->depth_test));
+      (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? ": cycle edge" : "");
 
-  ED_workspace_status_text(C, header.c_str());
+  ED_workspace_status_keymap(
+      C, angle, WM_modalkeymap_operator(op->type, KNF_MODAL_ANGLE_SNAP_TOGGLE));
+
+  desc = IFACE_("Cut Through: ");
+  desc += WM_bool_as_string(kcd->cut_through);
+  ED_workspace_status_keymap(
+      C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_CUT_THROUGH_TOGGLE));
+
+  ED_workspace_status_keymap(C, "", WM_modalkeymap_operator(op->type, KNF_MODAL_X_AXIS));
+  ED_workspace_status_keymap(C, "", WM_modalkeymap_operator(op->type, KNF_MODAL_Y_AXIS));
+  ED_workspace_status_keymap(C, "", WM_modalkeymap_operator(op->type, KNF_MODAL_Z_AXIS));
+  desc = IFACE_("Axis: ");
+  desc += kcd->axis_constrained ? kcd->axis_string : WM_bool_as_string(kcd->axis_constrained);
+  ED_workspace_status_item(C, desc);
+
+  desc = IFACE_("Measure: ");
+  desc += WM_bool_as_string(kcd->show_dist_angle);
+  ED_workspace_status_keymap(
+      C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE));
+
+  desc = IFACE_("X-ray: ");
+  desc += WM_bool_as_string(!kcd->depth_test);
+  ED_workspace_status_keymap(
+      C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_DEPTH_TEST_TOGGLE));
+
+  ED_workspace_status_end(C);
 }
 
 /** \} */
