@@ -6523,29 +6523,40 @@ bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout,
                                       EnumPropertyItem item,
                                       const wmKeyMapItem *kmi)
 {
-  if (STR_ELEM(item.identifier, "AXIS_Y", "AXIS_Z", "PLANE_X", "PLANE_Y", "PLANE_Z")) {
-    return true; /* Swallow these. */
+  int icon_mod[4];
+  int icon = 0;
+
+  if (STR_ELEM(item.identifier, "AXIS_X", "PLANE_X")) {
+    icon = UI_icon_from_keymap_item(kmi, icon_mod);
+    for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+      uiItemL(layout, "", icon_mod[j]);
+    }
+    uiItemL(layout, "", icon);
+    return true;
   }
-  if (!STREQ(item.identifier, "AXIS_X")) {
-    return false; /* Reject all others. */
+  if (STR_ELEM(item.identifier, "AXIS_Y", "PLANE_Y")) {
+    icon = UI_icon_from_keymap_item(kmi, icon_mod);
+    uiItemL(layout, "", icon);
+    return true;
+  }
+  if (STREQ(item.identifier, "AXIS_Z")) {
+    icon = UI_icon_from_keymap_item(kmi, icon_mod);
+    uiItemL(layout, "", icon);
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, IFACE_("Axis"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+    return true;
+  }
+  if (STREQ(item.identifier, "PLANE_Z")) {
+    icon = UI_icon_from_keymap_item(kmi, icon_mod);
+    uiItemL(layout, "", icon);
+    uiItemS_ex(layout, 0.6f);
+    uiItemL(layout, IFACE_("Plane"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+    return true;
   }
 
-  uiItemL(layout, "", ICON_EVENT_X);
-  uiItemL(layout, "", ICON_EVENT_Y);
-  uiItemL(layout, "", ICON_EVENT_Z);
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, IFACE_("Axis"), ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", ICON_EVENT_SHIFT);
-  uiItemL(layout, "", ICON_EVENT_X);
-  uiItemL(layout, "", ICON_EVENT_Y);
-  uiItemL(layout, "", ICON_EVENT_Z);
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, IFACE_("Plane"), ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  return true;
+  return false;
 }
 
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
