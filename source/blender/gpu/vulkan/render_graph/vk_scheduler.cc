@@ -34,6 +34,8 @@ void VKScheduler::select_all_nodes(const VKRenderGraph &render_graph)
   result_.clear();
   NodeHandle node_handle = 0;
 
+  /* TODO: This will not work when we extract subgraphs. When subgraphs are removed the order in
+   * the render graph may not follow the order of adding. */
   for (const std::optional<VKNode> &optional_node_data : render_graph.nodes_.as_span()) {
     if (optional_node_data.has_value()) {
       const VKNode &node = *optional_node_data;

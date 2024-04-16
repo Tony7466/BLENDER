@@ -28,7 +28,6 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_resource_handles.hh"
 #include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
@@ -146,7 +145,8 @@ class VKResourceStateTracker {
     }
   };
 
-  VKResourceHandles<Resource> resources_;
+  Map<ResourceHandle, Resource> resources_;
+  Vector<ResourceHandle> unused_handles_;
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
 
@@ -258,6 +258,8 @@ class VKResourceStateTracker {
    * Get the current stamp of the resource and increase the stamp.
    */
   static ResourceWithStamp get_and_increase_stamp(ResourceHandle handle, Resource &resource);
+
+  ResourceHandle create_resource_slot();
 };
 
 }  // namespace blender::gpu::render_graph

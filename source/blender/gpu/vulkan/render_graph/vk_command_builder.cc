@@ -56,7 +56,7 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 
   command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
-    VKNode &node = render_graph.nodes_.get(node_handle);
+    VKNode &node = render_graph.nodes_[node_handle] ;
     build_node(render_graph, command_buffer, node_handle, node);
   }
   command_buffer.end_recording();
@@ -136,7 +136,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
 {
   for (const VKRenderGraphLinks::Link &link : render_graph.links_.get_inputs(node_handle)) {
     const ResourceWithStamp &versioned_resource = link.resource;
-    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
     if (resource.type == VKResourceType::IMAGE) {
       /* Ignore image resources. */
@@ -172,7 +172,7 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
 {
   for (const VKRenderGraphLinks::Link link : render_graph.links_.get_outputs(node_handle)) {
     const ResourceWithStamp &versioned_resource = link.resource;
-    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
     if (resource.type == VKResourceType::IMAGE) {
       /* Ignore image resources. */
@@ -231,7 +231,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
 {
   for (const VKRenderGraphLinks::Link &link : render_graph.links_.get_inputs(node_handle)) {
     const ResourceWithStamp &versioned_resource = link.resource;
-    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
     if (resource.type == VKResourceType::BUFFER) {
       /* Ignore buffer resources. */
@@ -274,7 +274,7 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
 {
   for (const VKRenderGraphLinks::Link link : render_graph.links_.get_outputs(node_handle)) {
     const ResourceWithStamp &versioned_resource = link.resource;
-    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.get(
+    VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
     if (resource.type == VKResourceType::BUFFER) {
       /* Ignore buffer resources. */

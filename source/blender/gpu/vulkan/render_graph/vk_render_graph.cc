@@ -23,12 +23,12 @@ void VKRenderGraph::free_data()
 
 void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
 {
+  BLI_assert_msg(node_handles.size() == nodes_.size(),
+                 "Currently only supporting removing all nodes. The VKScheduler doesn't walk the "
+                 "nodes, and will use incorrect ordering when not all nodes are removed. This "
+                 "needs to be fixed when implementing a better scheduler.");
   links_.remove_links(node_handles);
-  for (NodeHandle node_handle : node_handles) {
-    VKNode &node = nodes_.get(node_handle);
-    node.reset();
-    nodes_.free(node_handle);
-  }
+  nodes_.clear();
 }
 
 /* -------------------------------------------------------------------- */

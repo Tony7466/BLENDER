@@ -281,7 +281,6 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_command_builder.hh
   vulkan/render_graph/vk_node.hh
   vulkan/render_graph/vk_resource_access_info.hh
-  vulkan/render_graph/vk_resource_handles.hh
   vulkan/render_graph/vk_resource_state_tracker.hh
   vulkan/render_graph/vk_scheduler.hh
   vulkan/render_graph/vk_render_graph.hh
