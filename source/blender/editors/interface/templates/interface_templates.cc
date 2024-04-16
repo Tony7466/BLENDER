@@ -6519,44 +6519,32 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /** \name Event Icon Template
  * \{ */
 
-bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout, std::string text, const wmKeyMapItem *kmi)
+bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout,
+                                      EnumPropertyItem item,
+                                      const wmKeyMapItem *kmi)
 {
-  if (!ELEM(kmi->type, EVT_XKEY, EVT_YKEY, EVT_ZKEY)) {
-    return false;
+  if (STR_ELEM(item.identifier, "AXIS_Y", "AXIS_Z", "PLANE_X", "PLANE_Y", "PLANE_Z")) {
+    return true; /* Swallow these. */
+  }
+  if (!STREQ(item.identifier, "AXIS_X")) {
+    return false; /* Reject all others. */
   }
 
-  if (kmi->type != EVT_ZKEY) {
-    /* Swallow X and Y. */
-    return true;
-  }
-
-  /* Modifier icons. */
-  if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
-    uiItemL(layout, "", ICON_EVENT_SHIFT);
-  }
-  if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
-    uiItemL(layout, "", ICON_EVENT_CTRL);
-  }
-  if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
-    uiItemL(layout, "", ICON_EVENT_ALT);
-  }
-  if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
-    uiItemL(layout, "", ICON_EVENT_OS);
-  }
-
-  /* All three X, Y, Z icons. */
   uiItemL(layout, "", ICON_EVENT_X);
   uiItemL(layout, "", ICON_EVENT_Y);
   uiItemL(layout, "", ICON_EVENT_Z);
   uiItemS_ex(layout, 0.6f);
-
-  const int index = text.find("Z ");
-  if (index != std::string::npos) {
-    text.erase(index, 2);
-  }
-
-  uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text.c_str()), ICON_NONE);
+  uiItemL(layout, IFACE_("Axis"), ICON_NONE);
   uiItemS_ex(layout, 0.7f);
+
+  uiItemL(layout, "", ICON_EVENT_SHIFT);
+  uiItemL(layout, "", ICON_EVENT_X);
+  uiItemL(layout, "", ICON_EVENT_Y);
+  uiItemL(layout, "", ICON_EVENT_Z);
+  uiItemS_ex(layout, 0.6f);
+  uiItemL(layout, IFACE_("Plane"), ICON_NONE);
+  uiItemS_ex(layout, 0.7f);
+
   return true;
 }
 

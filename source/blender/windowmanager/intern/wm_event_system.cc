@@ -6377,20 +6377,15 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
   }
   const EnumPropertyItem *items = static_cast<const EnumPropertyItem *>(keymap->modal_items);
 
-#ifdef WITH_HEADLESS
-  const bool collapse_xyz = false;
-#else
-  bool axis_x = false;
-  bool axis_y = false;
-  bool axis_z = false;
+  /* If all the following are present we can collapse them into a compact form. */
+  int axis_items_count = 0;
   for (int i = 0; items[i].identifier; i++) {
-    axis_x |= STREQ(items[i].identifier, "AXIS_X");
-    axis_y |= STREQ(items[i].identifier, "AXIS_Y");
-    axis_z |= STREQ(items[i].identifier, "AXIS_Z");
+    if (STR_ELEM(
+            items[i].identifier, "AXIS_X", "AXIS_Y", "AXIS_Z", "PLANE_X", "PLANE_Y", "PLANE_Z"))
+    {
+      axis_items_count++;
+    }
   }
-  /* Only collapse these if all three are present. */
-  const bool collapse_xyz = axis_x && axis_y && axis_z;
-#endif
 
   uiLayout *row = uiLayoutRow(layout, true);
   for (int i = 0; items[i].identifier; i++) {
@@ -6418,7 +6413,7 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
           /* Assume release events just disable something which was toggled on. */
           continue;
         }
-        if (collapse_xyz && uiTemplateEventFromKeymapItemXYZ(row, items[i].name, kmi)) {
+        if ((axis_items_count == 6) && uiTemplateEventFromKeymapItemXYZ(row, items[i], kmi)) {
           continue;
         }
         if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {
