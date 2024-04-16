@@ -231,7 +231,7 @@ class PREFERENCES_OT_keyconfig_import(Operator):
             else:
                 shutil.move(self.filepath, path)
         except BaseException as ex:
-            self.report({'ERROR'}, rpt_("Installing keymap failed: {:s}").format(ex))
+            self.report({'ERROR'}, rpt_("Installing keymap failed: {:s}").format(str(ex)))
             return {'CANCELLED'}
 
         # sneaky way to check we're actually running the code.
