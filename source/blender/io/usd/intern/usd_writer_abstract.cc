@@ -368,6 +368,13 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
           str_attr.Set<std::string>(static_cast<const char *>(prop->data.pointer), timecode);
         }
         break;
+      case IDP_BOOLEAN:
+        if (pxr::UsdAttribute bool_attr = prim.CreateAttribute(
+          prop_token, pxr::SdfValueTypeNames->Bool, true))
+        {
+          bool_attr.Set<bool>(prop->data.val, timecode);
+        }
+        break;
       case IDP_ARRAY:
         create_vector_attrib(prim, prop, prop_token, timecode);
         break;

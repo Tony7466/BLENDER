@@ -12,10 +12,11 @@
 
 
 namespace {
+
 template<typename VECT>
-void set_array_prop(IDProperty *idgroup,
-                    const char *prop_name,
-                    const pxr::UsdAttribute &attr,
+void set_array_prop(IDProperty* idgroup,
+                    const char* prop_name,
+                    const pxr::UsdAttribute& attr,
                     const pxr::UsdTimeCode motionSampleTime)
 {
   if (!idgroup || !attr) {
@@ -27,7 +28,7 @@ void set_array_prop(IDProperty *idgroup,
     return;
   }
 
-  IDPropertyTemplate val = {0};
+  IDPropertyTemplate val = { 0 };
   val.array.len = static_cast<int>(vec.dimension);
 
   if (val.array.len <= 0) {
@@ -37,6 +38,9 @@ void set_array_prop(IDProperty *idgroup,
   }
 
   if (std::is_same<float, typename VECT::ScalarType>()) {
+    val.array.type = IDP_FLOAT;
+  }
+  else if (std::is_same<pxr::GfHalf, typename VECT::ScalarType>()) {
     val.array.type = IDP_FLOAT;
   }
   else if (std::is_same<double, typename VECT::ScalarType>()) {
@@ -50,24 +54,33 @@ void set_array_prop(IDProperty *idgroup,
     return;
   }
 
-  IDProperty *prop = IDP_New(IDP_ARRAY, &val, prop_name);
+  IDProperty* prop = IDP_New(IDP_ARRAY, &val, prop_name);
 
   if (!prop) {
     std::cout << "Couldn't create array prop " << prop_name << std::endl;
     return;
   }
 
-  typename VECT::ScalarType *prop_data = static_cast<typename VECT::ScalarType *>(
-      prop->data.pointer);
-
-  for (int i = 0; i < val.array.len; ++i) {
-    prop_data[i] = vec[i];
+  if (std::is_same<pxr::GfHalf, typename VECT::ScalarType>()) {
+    float* prop_data = static_cast<float*>(prop->data.pointer);
+    for (int i = 0; i < val.array.len; ++i) {
+      prop_data[i] = vec[i];
+    }
+  }
+  else {
+    std::memcpy(prop->data.pointer, vec.data(), prop->len * sizeof(VECT::ScalarType));
   }
 
   IDP_AddToGroup(idgroup, prop);
 }
-}  // anonymous namespace
 
+
+bool equivalent(const pxr::SdfValueTypeName& type_name1, const pxr::SdfValueTypeName& type_name2)
+{
+  return type_name1.GetType().IsA(type_name2.GetType());
+}
+
+}  // anonymous namespace
 
 namespace blender::io::usd {
 
@@ -102,6 +115,19 @@ static void set_int_prop(IDProperty *idgroup, const char *prop_name, const int i
   IDPropertyTemplate val = {0};
   val.i = ival;
   IDProperty *prop = IDP_New(IDP_INT, &val, prop_name);
+
+  IDP_AddToGroup(idgroup, prop);
+}
+
+static void set_bool_prop(IDProperty* idgroup, const char* prop_name, const bool bval)
+{
+  if (!idgroup) {
+    return;
+  }
+
+  IDPropertyTemplate val = { 0 };
+  val.i = bval;
+  IDProperty* prop = IDP_New(IDP_BOOLEAN, &val, prop_name);
 
   IDP_AddToGroup(idgroup, prop);
 }
@@ -201,6 +227,12 @@ void set_id_props_from_prim(ID *id,
         set_double_prop(idgroup, attr_name.GetString().c_str(), dval);
       }
     }
+    else if (type_name == pxr::SdfValueTypeNames->Half) {
+      pxr::GfHalf hval = 0.0f;
+      if (attr.Get<pxr::GfHalf>(&hval, time_code)) {
+        set_float_prop(idgroup, attr_name.GetString().c_str(), hval);
+      }
+    }
     else if (type_name == pxr::SdfValueTypeNames->String) {
       std::string sval;
       if (attr.Get<std::string>(&sval, time_code)) {
@@ -213,32 +245,53 @@ void set_id_props_from_prim(ID *id,
         set_string_prop(idgroup, attr_name.GetString().c_str(), tval.GetString().c_str());
       }
     }
-    else if (type_name == pxr::SdfValueTypeNames->Float2) {
+    else if (type_name == pxr::SdfValueTypeNames->Asset) {
+      pxr::SdfAssetPath aval;
+      if (attr.Get<pxr::SdfAssetPath>(&aval, time_code)) {
+        set_string_prop(idgroup, attr_name.GetString().c_str(), aval.GetAssetPath().c_str());
+      }
+    }
+    else if (type_name == pxr::SdfValueTypeNames->Bool) {
+      bool bval = false;
+      if (attr.Get<bool>(&bval, time_code)) {
+        set_bool_prop(idgroup, attr_name.GetString().c_str(), bval);
+      }
+    }
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Float2)) {
       set_array_prop<pxr::GfVec2f>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Float3) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Float3)) {
       set_array_prop<pxr::GfVec3f>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Float4) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Float4)) {
       set_array_prop<pxr::GfVec4f>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Double2) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Double2)) {
       set_array_prop<pxr::GfVec2d>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Double3) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Double3)) {
       set_array_prop<pxr::GfVec3d>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Double4) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Double4)) {
       set_array_prop<pxr::GfVec4d>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Int2) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Int2)) {
       set_array_prop<pxr::GfVec2i>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Int3) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Int3)) {
       set_array_prop<pxr::GfVec3i>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
-    else if (type_name == pxr::SdfValueTypeNames->Int4) {
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Int4)) {
       set_array_prop<pxr::GfVec4i>(idgroup, attr_name.GetString().c_str(), attr, time_code);
+    }
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Half2)) {
+      set_array_prop<pxr::GfVec2h>(idgroup, attr_name.GetString().c_str(), attr, time_code);
+    }
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Half3)) {
+      set_array_prop<pxr::GfVec3h>(idgroup, attr_name.GetString().c_str(), attr, time_code);
+    }
+    else if (equivalent(type_name, pxr::SdfValueTypeNames->Half4)) {
+      set_array_prop<pxr::GfVec4h>(idgroup, attr_name.GetString().c_str(), attr, time_code);
     }
   }
 }
