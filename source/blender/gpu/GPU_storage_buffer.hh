@@ -34,7 +34,12 @@ void GPU_storagebuf_update(GPUStorageBuf *ssbo, const void *data);
 
 void GPU_storagebuf_bind(GPUStorageBuf *ssbo, int slot);
 void GPU_storagebuf_unbind(GPUStorageBuf *ssbo);
-void GPU_storagebuf_unbind_all();
+/**
+ * Resets the internal slot usage tracking. But there is no guarantee that
+ * this actually undo the bindings for the next draw call. Only to be called
+ * for debugging with G_DEBUG_GPU.
+ */
+void GPU_storagebuf_debug_unbind_all();
 
 void GPU_storagebuf_clear_to_zero(GPUStorageBuf *ssbo);
 
