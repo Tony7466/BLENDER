@@ -103,6 +103,10 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               const IndexRange face = faces[face_index];
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
+                /* Access to `used` don't need to be atomic because any of the possible face corner
+                 * indices from `edge_from_corners` are correct, since they all correspond to the
+                 * same #Mesh vertex. `used` only exists here as a performance optimization to
+                 * avoid writing to the VBO unnecessarily. */
                 if (used[edge]) {
                   continue;
                 }
@@ -175,6 +179,8 @@ static void extract_lines_bm(const MeshRenderData &mr,
                     max_index);
   MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
 
+  /* Make use of BMesh's edge to loop topology knowledge to iterate over edges instead of
+   * iterating over faces and defining edges implicitly as done in the #Mesh extraction. */
   visible_non_loose_edges.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
     const BMEdge &edge = *BM_edge_at_index(&bm, i);
     data[pos] = uint2(BM_elem_index_get(edge.l), BM_elem_index_get(edge.l->next));
