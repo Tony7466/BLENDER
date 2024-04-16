@@ -396,6 +396,19 @@ static void do_forward_compat_versioning(bNode &node, const NodeDeclaration &nod
   }
 }
 
+/**
+ * When the extension socket on group input nodes is hidden, we consider the socket visibility
+ * fixed and don't want to add newly created group inputs.
+ */
+static bool hide_new_group_input_sockets(const bNode &node)
+{
+  /* Check needed to handle newly added group input nodes. */
+  if (const bNodeSocket *extension_socket = static_cast<bNodeSocket *>(node.outputs.last)) {
+    return extension_socket->is_hidden();
+  }
+  return false;
+}
+
 static void refresh_node_sockets_and_panels(bNodeTree &ntree,
                                             bNode &node,
                                             const NodeDeclaration &node_decl,
@@ -420,12 +433,11 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
   }
 
   Vector<bNodeSocket *> old_outputs;
-  bool has_hidden_output_socket = false;
   LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
     old_outputs.append(socket);
-    has_hidden_output_socket |= socket->is_hidden();
   }
-  const bool hide_new_sockets = node.is_group_input() && has_hidden_output_socket;
+
+  const bool hide_new_sockets = node.is_group_input() ? hide_new_group_input_sockets(node) : false;
 
   Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
 
