@@ -1704,11 +1704,26 @@ void OBJECT_OT_modifier_move_down(wmOperatorType *ot)
 
 static int modifier_move_to_index_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = context_active_object(C);
-  ModifierData *md = edit_modifier_property_get(op, ob, 0);
-  int index = RNA_int_get(op->ptr, "index");
+  char name[MAX_NAME];
+  RNA_string_get(op->ptr, "modifier", name);
 
-  if (!(md && modifier_move_to_index(op->reports, RPT_WARNING, ob, md, index, true))) {
+  const int index = RNA_int_get(op->ptr, "index");
+
+  bool changed = false;
+  for (const PointerRNA &ptr : modifier_get_edit_objects(*C, *op)) {
+    Object *ob = static_cast<Object *>(ptr.data);
+    ModifierData *md = BKE_modifiers_findby_name(ob, name);
+    if (!md) {
+      continue;
+    }
+
+    if (!modifier_move_to_index(op->reports, RPT_WARNING, ob, md, index, true)) {
+      continue;
+    }
+    changed = true;
+  }
+
+  if (!changed) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1740,6 +1755,7 @@ void OBJECT_OT_modifier_move_to_index(wmOperatorType *ot)
   edit_modifier_properties(ot);
   RNA_def_int(
       ot->srna, "index", 0, 0, INT_MAX, "Index", "The index to move the modifier to", 0, INT_MAX);
+  modifier_register_use_selected_objects_prop(ot);
 }
 
 /** \} */
