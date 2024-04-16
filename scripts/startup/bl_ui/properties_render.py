@@ -179,28 +179,6 @@ class RENDER_PT_eevee_ambient_occlusion(RenderButtonsPanel, Panel):
         col.prop(props, "use_gtao_bounce")
 
 
-class RENDER_PT_eevee_next_horizon_scan(RenderButtonsPanel, Panel):
-    bl_label = "Horizon Scan"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
-
-    @classmethod
-    def poll(cls, context):
-        return (context.engine in cls.COMPAT_ENGINES)
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        scene = context.scene
-        props = scene.eevee
-
-        col = layout.column()
-        col.prop(props, "horizon_quality", text="Precision")
-        col.prop(props, "horizon_thickness", text="Thickness")
-        col.prop(props, "horizon_bias", text="Bias")
-        col.prop(props, "horizon_resolution", text="Resolution")
-
-
 class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
     bl_label = "Motion Blur"
     bl_options = {'DEFAULT_CLOSED'}
@@ -461,55 +439,22 @@ class RENDER_PT_eevee_next_volumes(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
 
         scene = context.scene
         props = scene.eevee
 
         col = layout.column(align=True)
-        col.prop(props, "volumetric_start")
-        col.prop(props, "volumetric_end")
+        col.prop(props, "volumetric_tile_size", text="Resolution")
+        col.prop(props, "volumetric_samples", text="Steps")
+        col.prop(props, "volumetric_sample_distribution", text="Distribution")
 
         col = layout.column()
-        col.prop(props, "volumetric_tile_size")
-        col.prop(props, "volumetric_samples")
-        col.prop(props, "volumetric_sample_distribution", text="Distribution")
         col.prop(props, "volumetric_ray_depth", text="Max Depth")
 
-
-class RENDER_PT_eevee_next_volumes_lighting(RenderButtonsPanel, Panel):
-    bl_label = "Volume Lighting"
-    bl_parent_id = "RENDER_PT_eevee_next_volumes"
-    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        scene = context.scene
-        props = scene.eevee
-
-        layout.prop(props, "volumetric_light_clamp", text="Light Clamping")
-
-
-class RENDER_PT_eevee_next_volumes_shadows(RenderButtonsPanel, Panel):
-    bl_label = "Volume Shadows"
-    bl_parent_id = "RENDER_PT_eevee_next_volumes"
-    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
-
-    def draw_header(self, context):
-        scene = context.scene
-        props = scene.eevee
-        self.layout.prop(props, "use_volumetric_shadows", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        scene = context.scene
-        props = scene.eevee
-
-        layout.active = props.use_volumetric_shadows
-        layout.prop(props, "volumetric_shadow_samples", text="Samples")
+        col = layout.column(align=True)
+        col.prop(props, "volumetric_start")
+        col.prop(props, "volumetric_end")
 
 
 class RENDER_PT_eevee_subsurface_scattering(RenderButtonsPanel, Panel):
@@ -591,16 +536,18 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
 
         scene = context.scene
         props = scene.eevee
 
-        layout.prop(props, "ray_tracing_method", text="Method")
+        col = layout.column()
+        col.prop(props, "ray_tracing_method", text="Method")
 
         options = context.scene.eevee.ray_tracing_options
 
-        layout.prop(options, "resolution_scale")
-        layout.prop(options, "sample_clamp")
+        col.prop(options, "resolution_scale")
+        col.prop(options, "sample_clamp")
 
 
 class RENDER_PT_eevee_next_screen_trace(RenderButtonsPanel, Panel):
@@ -617,11 +564,37 @@ class RENDER_PT_eevee_next_screen_trace(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
         props = context.scene.eevee.ray_tracing_options
 
-        layout.prop(props, "screen_trace_quality", text="Precision")
-        layout.prop(props, "screen_trace_thickness", text="Thickness")
-        layout.prop(props, "screen_trace_max_roughness", text="Max Roughness")
+        col = layout.column()
+        col.prop(props, "screen_trace_quality", text="Precision")
+        col.prop(props, "screen_trace_thickness", text="Thickness")
+        col.prop(props, "screen_trace_max_roughness", text="Max Roughness")
+
+
+class RENDER_PT_eevee_next_horizon_scan(RenderButtonsPanel, Panel):
+    bl_label = "Horizon Scan"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_next_raytracing"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column()
+        col.prop(props, "horizon_quality", text="Precision")
+        col.prop(props, "horizon_thickness", text="Thickness")
+        col.prop(props, "horizon_bias", text="Bias")
+        col.prop(props, "horizon_resolution", text="Resolution")
 
 
 class RENDER_PT_eevee_next_denoise(RenderButtonsPanel, Panel):
@@ -641,6 +614,7 @@ class RENDER_PT_eevee_next_denoise(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
         props = context.scene.eevee.ray_tracing_options
 
         col = layout.column()
@@ -680,8 +654,8 @@ class RENDER_PT_eevee_shadows(RenderButtonsPanel, Panel):
         col.prop(props, "light_threshold")
 
 
-class RENDER_PT_eevee_next_lights(RenderButtonsPanel, Panel):
-    bl_label = "Lights"
+class RENDER_PT_eevee_next_light_paths(RenderButtonsPanel, Panel):
+    bl_label = "Light Paths"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
@@ -692,12 +666,18 @@ class RENDER_PT_eevee_next_lights(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
+        layout.use_property_decorate = False
 
         scene = context.scene
         props = scene.eevee
 
-        col = layout.column()
-        col.prop(props, "light_threshold")
+        col = layout.column(heading="Surface Clamp", align=True)
+        col.prop(props, "volumetric_light_clamp", text="Direct Light")
+        col.prop(props, "volumetric_light_clamp", text="Indirect Light")
+
+        col = layout.column(heading="Volume Clamp", align=True)
+        col.prop(props, "volumetric_light_clamp", text="Direct Light")
+        col.prop(props, "volumetric_light_clamp", text="Indirect Light")
 
 
 class RENDER_PT_eevee_next_shadows(RenderButtonsPanel, Panel):
@@ -733,6 +713,14 @@ class RENDER_PT_eevee_next_shadows(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(props, "use_shadow_jittered_viewport", text="Jittered Transparency (Viewport)")
+
+        col = layout.column(align=False, heading="Volume Shadows")
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(props, "use_volumetric_shadows", text="")
+        sub = sub.row(align=True)
+        sub.active = props.use_volumetric_shadows
+        sub.prop(props, "volumetric_shadow_samples", text="Samples")
 
 
 class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):
@@ -783,7 +771,7 @@ class RENDER_PT_eevee_next_sampling_viewport(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
+        layout.use_property_decorate = False
 
         scene = context.scene
         props = scene.eevee
@@ -807,7 +795,7 @@ class RENDER_PT_eevee_next_sampling_render(RenderButtonsPanel, Panel):
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
-        layout.use_property_decorate = False  # No animation.
+        layout.use_property_decorate = False
 
         scene = context.scene
         props = scene.eevee
@@ -816,6 +804,28 @@ class RENDER_PT_eevee_next_sampling_render(RenderButtonsPanel, Panel):
         col.prop(props, "taa_render_samples", text="Samples")
 
         # Add SSS sample count here.
+
+
+class RENDER_PT_eevee_next_sampling_light(RenderButtonsPanel, Panel):
+    bl_label = "Lights"
+    bl_parent_id = "RENDER_PT_eevee_next_sampling"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column()
+        col.prop(props, "light_threshold")
 
 
 class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
@@ -1285,39 +1295,38 @@ classes = (
     RENDER_PT_eevee_next_sampling,
     RENDER_PT_eevee_next_sampling_viewport,
     RENDER_PT_eevee_next_sampling_render,
+    RENDER_PT_eevee_next_sampling_light,
+    RENDER_PT_eevee_next_light_paths,
     RENDER_PT_eevee_ambient_occlusion,
     RENDER_PT_eevee_bloom,
-    RENDER_PT_eevee_depth_of_field,
-    RENDER_PT_eevee_next_depth_of_field,
     RENDER_PT_eevee_subsurface_scattering,
     RENDER_PT_eevee_screen_space_reflections,
-    RENDER_PT_eevee_next_horizon_scan,
     RENDER_PT_eevee_next_raytracing_presets,
     RENDER_PT_eevee_next_raytracing,
     RENDER_PT_eevee_next_screen_trace,
+    RENDER_PT_eevee_next_horizon_scan,
     RENDER_PT_eevee_next_denoise,
     RENDER_PT_eevee_motion_blur,
     RENDER_PT_eevee_volumetric,
     RENDER_PT_eevee_volumetric_lighting,
     RENDER_PT_eevee_volumetric_shadows,
     RENDER_PT_eevee_next_volumes,
-    RENDER_PT_eevee_next_volumes_lighting,
-    RENDER_PT_eevee_next_volumes_shadows,
-    RENDER_PT_eevee_performance,
-    RENDER_PT_eevee_performance_viewport,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
-    RENDER_PT_eevee_next_lights,
     RENDER_PT_eevee_next_shadows,
     RENDER_PT_eevee_indirect_lighting,
     RENDER_PT_eevee_indirect_lighting_display,
     RENDER_PT_eevee_next_light_probes,
     RENDER_PT_eevee_next_light_probes_sphere,
     RENDER_PT_eevee_next_light_probes_volume,
-    RENDER_PT_eevee_film,
+    RENDER_PT_eevee_depth_of_field,
+    RENDER_PT_eevee_next_depth_of_field,
     RENDER_PT_eevee_next_motion_blur,
     RENDER_PT_eevee_next_motion_blur_curve,
+    RENDER_PT_eevee_film,
     RENDER_PT_eevee_next_film,
+    RENDER_PT_eevee_performance,
+    RENDER_PT_eevee_performance_viewport,
 
 
     RENDER_PT_gpencil,
