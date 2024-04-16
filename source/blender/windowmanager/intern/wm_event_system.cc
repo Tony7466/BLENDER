@@ -6352,6 +6352,29 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
 /** \name Modal Keymap Status
  * \{ */
 
+static bool can_collapse_keymap_items(const EnumPropertyItem *modal_items,
+                         wmKeyMap *keymap,
+                         const char *item1, const char *item2, const char *item3)
+{
+  blender::Vector<wmKeyMapItem *> kmi_list;
+  for (int i = 0; modal_items[i].identifier; i++) {
+    if (STR_ELEM(modal_items[i].identifier, item1, item2, item3)) {
+      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
+           kmi = kmi->next)
+      {
+        if (kmi->propvalue == modal_items[i].value) {
+          kmi_list.append(kmi);
+        }
+      }
+    }
+  }
+  return (kmi_list.size() == 3 && (kmi_list[0]->shift == kmi_list[1]->shift) &&
+          (kmi_list[0]->shift == kmi_list[2]->shift) && (kmi_list[0]->ctrl == kmi_list[1]->ctrl) &&
+          (kmi_list[0]->ctrl == kmi_list[2]->ctrl) && (kmi_list[0]->alt == kmi_list[1]->alt) &&
+          (kmi_list[0]->alt == kmi_list[2]->alt) && (kmi_list[0]->oskey == kmi_list[1]->oskey) &&
+          (kmi_list[0]->oskey == kmi_list[2]->oskey));
+}
+
 bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *layout)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -6376,51 +6399,10 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
     return false;
   }
   const EnumPropertyItem *items = static_cast<const EnumPropertyItem *>(keymap->modal_items);
-
-  /* If all of AXIS_X - AXIS_Z are present we can collapse them into a compact form. */
-  blender::Vector<wmKeyMapItem *> axis_kmi;
-  for (int i = 0; items[i].identifier; i++) {
-    if (STR_ELEM(items[i].identifier, "AXIS_X", "AXIS_Y", "AXIS_Z")) {
-      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
-           kmi = kmi->next)
-      {
-        if (kmi->propvalue == items[i].value) {
-          axis_kmi.append(kmi);
-        }
-      }
-    }
-  }
-  const bool collapse_axis = (axis_kmi.size() == 3 && (axis_kmi[0]->shift == axis_kmi[1]->shift) &&
-                              (axis_kmi[0]->shift == axis_kmi[2]->shift) &&
-                              (axis_kmi[0]->ctrl == axis_kmi[1]->ctrl) &&
-                              (axis_kmi[0]->ctrl == axis_kmi[2]->ctrl) &&
-                              (axis_kmi[0]->alt == axis_kmi[1]->alt) &&
-                              (axis_kmi[0]->alt == axis_kmi[2]->alt) &&
-                              (axis_kmi[0]->oskey == axis_kmi[1]->oskey) &&
-                              (axis_kmi[0]->oskey == axis_kmi[2]->oskey));
-
-  /* If all of PLANE_X - PLANE_Z are present we can collapse them into a compact form. */
-  blender::Vector<wmKeyMapItem *> plane_kmi;
-  for (int i = 0; items[i].identifier; i++) {
-    if (STR_ELEM(items[i].identifier, "PLANE_X", "PLANE_Y", "PLANE_Z")) {
-      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
-           kmi = kmi->next)
-      {
-        if (kmi->propvalue == items[i].value) {
-          plane_kmi.append(kmi);
-        }
-      }
-    }
-  }
-  const bool collapse_planes = (plane_kmi.size() == 3 &&
-                                (plane_kmi[0]->shift == plane_kmi[1]->shift) &&
-                                (plane_kmi[0]->shift == plane_kmi[2]->shift) &&
-                                (plane_kmi[0]->ctrl == plane_kmi[1]->ctrl) &&
-                                (plane_kmi[0]->ctrl == plane_kmi[2]->ctrl) &&
-                                (plane_kmi[0]->alt == plane_kmi[1]->alt) &&
-                                (plane_kmi[0]->alt == plane_kmi[2]->alt) &&
-                                (plane_kmi[0]->oskey == plane_kmi[1]->oskey) &&
-                                (plane_kmi[0]->oskey == plane_kmi[2]->oskey));
+  const bool collapse_axis = can_collapse_keymap_items(
+      items, keymap, "AXIS_X", "AXIS_Y", "AXIS_Z");
+  const bool collapse_planes = can_collapse_keymap_items(
+      items, keymap, "PLANE_X", "PLANE_Y", "PLANE_Z");
 
   uiLayout *row = uiLayoutRow(layout, true);
   for (int i = 0; items[i].identifier; i++) {
