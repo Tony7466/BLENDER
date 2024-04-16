@@ -46,7 +46,7 @@ void main()
     ivec2 texel = ivec2(x, y);
     non_causal_inputs[0] = texture_load(input_tx, texel);
 
-    non_causal_outputs[0] = dvec4(0.0);
+    non_causal_outputs[0] = vec4(0.0);
     for (int i = 0; i < non_causal_inputs.length() - 1; i++) {
       non_causal_outputs[0] += non_causal_feedforward_coefficients[i] * non_causal_inputs[i + 1];
       non_causal_outputs[0] -= feedback_coefficients[i] * non_causal_outputs[i + 1];
