@@ -1667,8 +1667,7 @@ enum ShapeType {
   Box = 0,
 
   /* In the context of a sculpt gesture, both lasso and polyline modal
-   * operators are handled as the same general shape.
-   * TODO: Rename to polygon? */
+   * operators are handled as the same general shape. */
   Lasso = 1,
   Line = 2,
 };

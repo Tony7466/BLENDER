@@ -37,6 +37,7 @@
 #include "RNA_access.hh"
 
 using blender::Array;
+using blender::float2;
 using blender::int2;
 
 /* -------------------------------------------------------------------- */
@@ -809,8 +810,8 @@ int WM_gesture_polyline_modal(bContext *C, wmOperator *op, const wmEvent *event)
           break;
         }
 
-        const float cur[2] = {float(cur_x), float(cur_y)};
-        const float orig[2] = {float(border[0][0]), float(border[0][1])};
+        const float2 cur(cur_x, cur_y);
+        const float2 orig(border[0][0], border[0][1]);
 
         const float dist = len_v2v2(cur, orig);
 
