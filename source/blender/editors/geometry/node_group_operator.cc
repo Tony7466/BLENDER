@@ -281,83 +281,63 @@ static void store_result_geometry(
   }
 }
 
-struct NodeToolsDepsgraphs {
-  const Depsgraph &depsgraph_active;
-  Depsgraph *depsgraph_node_tree;
-  Depsgraph *depsgraph_inputs_extra;
-};
+// TODO: Adding selected objects is necessary because they are currently compared by pointer
+// to other evaluated objects inside of geometry nodes.
 
-/**
- * Create a dependency graph referencing all data-blocks used by the tree, and all selected
- * objects. Adding the selected objects is necessary because they are currently compared by pointer
- * to other evaluated objects inside of geometry nodes.
- */
-static NodeToolsDepsgraphs build_depsgraphs(const Depsgraph &depsgraph_active,
-                                            const bNodeTree &node_tree,
-                                            const IDProperty &properties)
+/** Create a dependency graph referencing all data-blocks used by the node group. */
+static Depsgraph *build_node_tree_depsgraph(const Depsgraph &depsgraph_active,
+                                            const bNodeTree &node_tree)
 {
-  NodeToolsDepsgraphs result{depsgraph_active, nullptr, nullptr};
-
-  {
-    Set<ID *> ids;
-    bool needs_own_transform_relation = false;
-    bool needs_scene_camera_relation = false;
-    nodes::find_node_tree_dependencies(
-        node_tree, ids, needs_own_transform_relation, needs_scene_camera_relation);
-    if (!ids.is_empty()) {
-    }
-  }
-  IDP_foreach_property(
-      &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
-        if (ID *id = IDP_Id(property)) {
-          ids_for_relations.add(id);
-        }
-      });
-
-  Vector<ID *> extra_ids;
-  for (ID *id : ids_for_relations) {
-    if (!DEG_get_evaluated_id(&depsgraph_active, id)) {
-      extra_ids.append(id);
-    }
-  }
-  if (extra_ids.is_empty()) {
+  Set<ID *> ids;
+  bool needs_own_transform_relation = false;
+  bool needs_scene_camera_relation = false;
+  nodes::find_node_tree_dependencies(
+      node_tree, ids, needs_own_transform_relation, needs_scene_camera_relation);
+  if (ids.is_empty()) {
     return nullptr;
   }
-
+  ids.add(const_cast<ID *>(&node_tree.id));
   Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&depsgraph_active),
                                        DEG_get_input_scene(&depsgraph_active),
                                        DEG_get_input_view_layer(&depsgraph_active),
                                        DEG_get_mode(&depsgraph_active));
-  DEG_graph_build_from_ids(depsgraph, extra_ids);
+  DEG_graph_build_from_ids(depsgraph, Vector<ID *>(ids.begin(), ids.end()));
+  DEG_evaluate_on_refresh(depsgraph);
   return depsgraph;
 }
 
-static ID *get_evaluated_id(const Depsgraph *depsgraph_main,
-                            const Depsgraph *depsgraph_extra,
-                            ID &id_orig)
+static Depsgraph *build_inputs_depsgraph(const Depsgraph &depsgraph_active,
+                                         const IDProperty &properties)
 {
-  if (depsgraph_main) {
-    if (ID *id = DEG_get_evaluated_id(depsgraph_main, &id_orig)) {
-      return id;
-    }
+  Vector<ID *> input_ids;
+  IDP_foreach_property(
+      &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
+        if (ID *id = IDP_Id(property)) {
+          if (!DEG_get_evaluated_id(&depsgraph_active, id)) {
+            input_ids.append_non_duplicates(id);
+          }
+        }
+      });
+  if (input_ids.is_empty()) {
+    return nullptr;
   }
-  if (depsgraph_extra) {
-    if (ID *id = DEG_get_evaluated_id(depsgraph_extra, &id_orig)) {
-      return id;
-    }
-  }
-  return nullptr;
+  Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&depsgraph_active),
+                                       DEG_get_input_scene(&depsgraph_active),
+                                       DEG_get_input_view_layer(&depsgraph_active),
+                                       DEG_get_mode(&depsgraph_active));
+  DEG_graph_build_from_ids(depsgraph, input_ids);
+  DEG_evaluate_on_refresh(depsgraph);
+  return depsgraph;
 }
 
-static IDProperty *replace_inputs_evaluated_data_blocks(const IDProperty &op_properties,
-                                                        const Depsgraph *depsgraph_main,
-                                                        const Depsgraph *depsgraph_extra)
+static IDProperty *replace_inputs_evaluated_data_blocks(
+    const IDProperty &op_properties, const nodes::GeoNodesOperatorDepsgraphs &depsgraphs)
 {
   /* We just create a temporary copy, so don't adjust data-block user count. */
   IDProperty *properties = IDP_CopyProperty_ex(&op_properties, LIB_ID_CREATE_NO_USER_REFCOUNT);
   IDP_foreach_property(properties, IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
     if (ID *id = IDP_Id(property)) {
-      property->data.pointer = get_evaluated_id(depsgraph_main, depsgraph_extra, *id);
+      property->data.pointer = const_cast<ID *>(depsgraphs.get_evaluated_id(*id));
     }
   });
   return properties;
@@ -432,30 +412,23 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
   const Vector<Object *> objects = gather_supported_objects(*C, *bmain, mode);
 
-  Depsgraph *depsgraph_main = CTX_data_ensure_evaluated_depsgraph(C);
-  Depsgraph *depsgraph_extra = build_depsgraphs(*depsgraph_main, *node_tree_orig, *op->properties);
-  BLI_SCOPED_DEFER([&]() { DEG_graph_free(depsgraph_extra); });
+  Depsgraph *depsgraph_active = CTX_data_ensure_evaluated_depsgraph(C);
+  const nodes::GeoNodesOperatorDepsgraphs depsgraphs{
+      depsgraph_active,
+      build_node_tree_depsgraph(*depsgraph_active, *node_tree_orig),
+      build_inputs_depsgraph(*depsgraph_active, *op->properties)};
 
-  if (depsgraph_extra) {
-    DEG_evaluate_on_refresh(depsgraph_extra);
-  }
-
-  IDProperty *properties = replace_inputs_evaluated_data_blocks(
-      *op->properties, depsgraph_main, depsgraph_extra);
+  IDProperty *properties = replace_inputs_evaluated_data_blocks(*op->properties, depsgraphs);
   BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
 
-  bNodeTree *node_tree = reinterpret_cast<bNodeTree *>(
-      BKE_id_copy_ex(nullptr, &node_tree_orig->id, nullptr, LIB_ID_COPY_LOCALIZE));
-  if (!node_tree) {
-    BKE_report(op->reports, RPT_ERROR, "Cannot evaluate node group");
-    BLI_assert_unreachable();
-    return OPERATOR_CANCELLED;
+  const bNodeTree *node_tree = nullptr;
+  if (depsgraphs.node_tree) {
+    node_tree = reinterpret_cast<const bNodeTree *>(
+        DEG_get_evaluated_id(depsgraphs.node_tree, const_cast<ID *>(&node_tree_orig->id)));
   }
-  struct IDCallBackData {};
-  IDCallBackData data;
-  BKE_library_foreach_ID_link(
-      bmain, &node_tree->id, [](LibraryIDLinkCallbackData *cb_data) { return 0; }, &data, );
-  BLI_SCOPED_DEFER([&]() { BKE_id_free(nullptr, node_tree); });
+  else {
+    node_tree = node_tree_orig;
+  }
 
   const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
       nodes::ensure_geometry_nodes_lazy_function_graph(*node_tree);
@@ -497,7 +470,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   for (Object *object : objects) {
     nodes::GeoNodesOperatorData operator_eval_data{};
     operator_eval_data.mode = mode;
-    operator_eval_data.depsgraph_main = depsgraph_main;
+    operator_eval_data.depsgraphs = &depsgraphs;
     operator_eval_data.self_object_orig = object;
     operator_eval_data.scene_orig = scene;
 

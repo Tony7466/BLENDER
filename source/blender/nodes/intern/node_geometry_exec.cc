@@ -17,6 +17,13 @@
 
 namespace blender::nodes {
 
+Main *GeoNodeExecParams::bmain() const
+{
+  /* For the node tools case where we potentially have two dependency graphs (`depsgraph_main`
+   * and `depsgraph_extra`) they will both reference the same main data-base anyway. */
+  return DEG_get_bmain(this->depsgraph());
+}
+
 void GeoNodeExecParams::error_message_add(const NodeWarningType type,
                                           const StringRef message) const
 {

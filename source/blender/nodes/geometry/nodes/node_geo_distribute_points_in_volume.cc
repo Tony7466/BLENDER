@@ -20,8 +20,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "DEG_depsgraph_query.hh"
-
 #include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"

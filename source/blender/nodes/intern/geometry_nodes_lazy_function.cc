@@ -4323,15 +4323,30 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
   return found;
 }
 
-const ID *GeoNodesOperatorData::get_evaluated_id(const ID &id_orig)
+GeoNodesOperatorDepsgraphs::~GeoNodesOperatorDepsgraphs()
 {
-  if (this->depsgraph_main) {
-    if (const ID *id = DEG_get_evaluated_id(this->depsgraph_main, const_cast<ID *>(&id_orig))) {
+  if (this->node_tree) {
+    DEG_graph_free(this->node_tree);
+  }
+  if (this->inputs_extra) {
+    DEG_graph_free(this->inputs_extra);
+  }
+}
+
+const ID *GeoNodesOperatorDepsgraphs::get_evaluated_id(const ID &id_orig) const
+{
+  if (const Depsgraph *graph = this->active) {
+    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
       return id;
     }
   }
-  if (this->depsgraph_extra) {
-    if (const ID *id = DEG_get_evaluated_id(this->depsgraph_extra, const_cast<ID *>(&id_orig))) {
+  if (const Depsgraph *graph = this->node_tree) {
+    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
+      return id;
+    }
+  }
+  if (const Depsgraph *graph = this->inputs_extra) {
+    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
       return id;
     }
   }
@@ -4344,8 +4359,8 @@ const Object *GeoNodesCallData::self_object() const
     return this->modifier_data->self_object;
   }
   if (this->operator_data) {
-    return reinterpret_cast<const Object *>(
-        this->operator_data->get_evaluated_id(this->operator_data->self_object_orig->id));
+    return DEG_get_evaluated_object(this->operator_data->depsgraphs->active,
+                                    const_cast<Object *>(this->operator_data->self_object_orig));
   }
   return nullptr;
 }

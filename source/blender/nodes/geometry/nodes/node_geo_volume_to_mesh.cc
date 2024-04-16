@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DEG_depsgraph_query.hh"
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/GridTransformer.h>
 #  include <openvdb/tools/VolumeToMesh.h>

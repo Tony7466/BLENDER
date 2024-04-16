@@ -164,16 +164,25 @@ struct GeoNodesModifierData {
   Depsgraph *depsgraph = nullptr;
 };
 
+struct GeoNodesOperatorDepsgraphs {
+  /** Current evaluated depsgraph from the viewport. Shouldn't be null. */
+  const Depsgraph *active;
+  /** Depsgraph containing IDs referenced by the node tree and the node tree itself. */
+  Depsgraph *node_tree;
+  /** Depsgraph containing IDs from node group inputs (the redo panel). */
+  Depsgraph *inputs_extra;
+
+  ~GeoNodesOperatorDepsgraphs();
+
+  const ID *get_evaluated_id(const ID &id_orig) const;
+};
+
 struct GeoNodesOperatorData {
   eObjectMode mode;
   /** The object currently effected by the operator. */
   const Object *self_object_orig = nullptr;
-  /** Current evaluated depsgraph. */
-  Depsgraph *depsgraph_main = nullptr;
-  Depsgraph *depsgraph_extra = nullptr;
+  const GeoNodesOperatorDepsgraphs *depsgraphs;
   Scene *scene_orig = nullptr;
-
-  const ID *get_evaluated_id(const ID &id_orig);
 };
 
 struct GeoNodesCallData {
