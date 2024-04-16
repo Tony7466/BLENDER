@@ -1833,7 +1833,7 @@ static int render_view_add_exec(bContext *C, wmOperator * /*op*/)
 {
   Main* bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  
+
   BKE_scene_add_render_view(scene, nullptr);
   scene->r.actview = BLI_listbase_count(&scene->r.views) - 1;
 
