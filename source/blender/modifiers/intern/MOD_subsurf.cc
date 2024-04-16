@@ -67,15 +67,6 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   }
 }
 
-static bool depends_on_normals(ModifierData *md)
-{
-  SubsurfModifierData *smd = (SubsurfModifierData *)md;
-  if (smd->flags & eSubsurfModifierFlag_UseCustomNormals) {
-    return true;
-  }
-  return false;
-}
-
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
 #if 0
@@ -410,7 +401,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   Object *ob = static_cast<Object *>(ob_ptr.data);
   const Mesh *mesh = static_cast<const Mesh *>(ob->data);
   if (BKE_subsurf_modifier_force_disable_gpu_evaluation_for_mesh(smd, mesh)) {
-    uiItemL(layout, "Autosmooth or custom normals detected, disabling GPU subdivision", ICON_INFO);
+    uiItemL(
+        layout, "Sharp edges or custom normals detected, disabling GPU subdivision", ICON_INFO);
   }
   else if (Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob)) {
     if (ModifierData *md_eval = BKE_modifiers_findby_name(ob_eval, smd->modifier.name)) {
@@ -507,7 +499,7 @@ ModifierTypeInfo modifierType_Subsurf = {
     /*is_disabled*/ is_disabled,
     /*update_depsgraph*/ nullptr,
     /*depends_on_time*/ nullptr,
-    /*depends_on_normals*/ depends_on_normals,
+    /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ nullptr,
     /*foreach_tex_link*/ nullptr,
     /*free_runtime_data*/ free_runtime_data,
