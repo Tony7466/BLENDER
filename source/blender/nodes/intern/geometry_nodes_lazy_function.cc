@@ -241,7 +241,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       return user_data.call_data->modifier_data->self_object;
     }
     if (user_data.call_data->operator_data) {
-      return user_data.call_data->operator_data->self_object;
+      return user_data.call_data->operator_data->self_object_orig;
     }
     BLI_assert_unreachable();
     return nullptr;
@@ -4323,13 +4323,29 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
   return found;
 }
 
+const ID *GeoNodesOperatorData::get_evaluated_id(const ID &id_orig)
+{
+  if (this->depsgraph_main) {
+    if (const ID *id = DEG_get_evaluated_id(this->depsgraph_main, const_cast<ID *>(&id_orig))) {
+      return id;
+    }
+  }
+  if (this->depsgraph_extra) {
+    if (const ID *id = DEG_get_evaluated_id(this->depsgraph_extra, const_cast<ID *>(&id_orig))) {
+      return id;
+    }
+  }
+  return nullptr;
+}
+
 const Object *GeoNodesCallData::self_object() const
 {
   if (this->modifier_data) {
     return this->modifier_data->self_object;
   }
   if (this->operator_data) {
-    return this->operator_data->self_object;
+    return reinterpret_cast<const Object *>(
+        this->operator_data->get_evaluated_id(this->operator_data->self_object_orig->id));
   }
   return nullptr;
 }

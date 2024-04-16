@@ -27,6 +27,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -211,9 +212,11 @@ static void store_result_geometry(
 
       /* Anonymous attributes shouldn't be available on the applied geometry. */
       new_curves->geometry.wrap().attributes_for_write().remove_anonymous();
-
-      curves.geometry.wrap() = std::move(new_curves->geometry.wrap());
       BKE_object_material_from_eval_data(&bmain, &object, &new_curves->id);
+
+      if (&curves != new_curves) {
+        curves.geometry.wrap() = std::move(new_curves->geometry.wrap());
+      }
       break;
     }
     case OB_POINTCLOUD: {
@@ -228,9 +231,12 @@ static void store_result_geometry(
 
       /* Anonymous attributes shouldn't be available on the applied geometry. */
       new_points->attributes_for_write().remove_anonymous();
-
       BKE_object_material_from_eval_data(&bmain, &object, &new_points->id);
-      BKE_pointcloud_nomain_to_pointcloud(new_points, &points);
+
+      if (&points != new_points) {
+        BKE_pointcloud_nomain_to_pointcloud(new_points, &points);
+      }
+
       break;
     }
     case OB_MESH: {
@@ -249,15 +255,17 @@ static void store_result_geometry(
       else {
         /* Anonymous attributes shouldn't be available on the applied geometry. */
         new_mesh->attributes_for_write().remove_anonymous();
-
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
+
         if (object.mode == OB_MODE_EDIT) {
           EDBM_mesh_make_from_mesh(&object, new_mesh, scene.toolsettings->selectmode, true);
           BKE_editmesh_looptris_and_normals_calc(mesh.runtime->edit_mesh);
           BKE_id_free(nullptr, new_mesh);
         }
         else {
-          BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+          if (&mesh != new_mesh) {
+            BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+          }
         }
       }
 
@@ -278,20 +286,15 @@ static void store_result_geometry(
  * objects. Adding the selected objects is necessary because they are currently compared by pointer
  * to other evaluated objects inside of geometry nodes.
  */
-static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
-                                                    Scene &scene,
-                                                    ViewLayer &view_layer,
-                                                    const bNodeTree &node_tree_orig,
-                                                    const Span<const Object *> objects,
+static Depsgraph *build_depsgraph_from_indirect_ids(const Depsgraph &main_depsgraph,
+                                                    const bNodeTree &node_tree,
                                                     const IDProperty &properties)
 {
   Set<ID *> ids_for_relations;
   bool needs_own_transform_relation = false;
   bool needs_scene_camera_relation = false;
-  nodes::find_node_tree_dependencies(node_tree_orig,
-                                     ids_for_relations,
-                                     needs_own_transform_relation,
-                                     needs_scene_camera_relation);
+  nodes::find_node_tree_dependencies(
+      node_tree, ids_for_relations, needs_own_transform_relation, needs_scene_camera_relation);
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
@@ -299,24 +302,50 @@ static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
         }
       });
 
-  Vector<const ID *> ids;
-  ids.append(&node_tree_orig.id);
-  ids.extend(objects.cast<const ID *>());
-  ids.insert(ids.size(), ids_for_relations.begin(), ids_for_relations.end());
+  Vector<const ID *> extra_ids;
+  for (ID *id : ids_for_relations) {
+    if (!DEG_get_evaluated_id(&main_depsgraph, id)) {
+      extra_ids.append(id);
+    }
+  }
+  if (extra_ids.is_empty()) {
+    return nullptr;
+  }
 
-  Depsgraph *depsgraph = DEG_graph_new(&bmain, &scene, &view_layer, DAG_EVAL_VIEWPORT);
-  DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(ids.data()), ids.size());
+  Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&main_depsgraph),
+                                       DEG_get_input_scene(&main_depsgraph),
+                                       DEG_get_input_view_layer(&main_depsgraph),
+                                       DEG_get_mode(&main_depsgraph));
+  DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(extra_ids.data()), extra_ids.size());
   return depsgraph;
 }
 
+static ID *get_evaluated_id(const Depsgraph *depsgraph_main,
+                            const Depsgraph *depsgraph_extra,
+                            ID &id_orig)
+{
+  if (depsgraph_main) {
+    if (ID *id = DEG_get_evaluated_id(depsgraph_main, &id_orig)) {
+      return id;
+    }
+  }
+  if (depsgraph_extra) {
+    if (ID *id = DEG_get_evaluated_id(depsgraph_extra, &id_orig)) {
+      return id;
+    }
+  }
+  return nullptr;
+}
+
 static IDProperty *replace_inputs_evaluated_data_blocks(const IDProperty &op_properties,
-                                                        const Depsgraph &depsgraph)
+                                                        const Depsgraph *depsgraph_main,
+                                                        const Depsgraph *depsgraph_extra)
 {
   /* We just create a temporary copy, so don't adjust data-block user count. */
   IDProperty *properties = IDP_CopyProperty_ex(&op_properties, LIB_ID_CREATE_NO_USER_REFCOUNT);
   IDP_foreach_property(properties, IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
     if (ID *id = IDP_Id(property)) {
-      property->data.pointer = DEG_get_evaluated_id(&depsgraph, id);
+      property->data.pointer = get_evaluated_id(depsgraph_main, depsgraph_extra, *id);
     }
   });
   return properties;
@@ -378,7 +407,6 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *active_object = CTX_data_active_object(C);
   if (!active_object) {
     return OPERATOR_CANCELLED;
@@ -392,13 +420,31 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
   const Vector<Object *> objects = gather_supported_objects(*C, *bmain, mode);
 
-  Depsgraph *depsgraph = build_depsgraph_from_indirect_ids(
-      *bmain, *scene, *view_layer, *node_tree_orig, objects, *op->properties);
-  DEG_evaluate_on_refresh(depsgraph);
-  BLI_SCOPED_DEFER([&]() { DEG_graph_free(depsgraph); });
+  Depsgraph *depsgraph_main = CTX_data_ensure_evaluated_depsgraph(C);
+  Depsgraph *depsgraph_extra = build_depsgraph_from_indirect_ids(
+      *depsgraph_main, *node_tree_orig, *op->properties);
+  BLI_SCOPED_DEFER([&]() { DEG_graph_free(depsgraph_extra); });
 
-  const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(
-      DEG_get_evaluated_id(depsgraph, const_cast<ID *>(&node_tree_orig->id)));
+  if (depsgraph_extra) {
+    DEG_evaluate_on_refresh(depsgraph_extra);
+  }
+
+  IDProperty *properties = replace_inputs_evaluated_data_blocks(
+      *op->properties, depsgraph_main, depsgraph_extra);
+  BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
+
+  bNodeTree *node_tree = reinterpret_cast<bNodeTree *>(
+      BKE_id_copy_ex(nullptr, &node_tree_orig->id, nullptr, LIB_ID_COPY_LOCALIZE));
+  if (!node_tree) {
+    BKE_report(op->reports, RPT_ERROR, "Cannot evaluate node group");
+    BLI_assert_unreachable();
+    return OPERATOR_CANCELLED;
+  }
+  struct IDCallBackData {};
+  IDCallBackData data;
+  BKE_library_foreach_ID_link(
+      bmain, &node_tree->id, [](LibraryIDLinkCallbackData *cb_data) { return 0; }, &data, );
+  BLI_SCOPED_DEFER([&]() { BKE_id_free(nullptr, node_tree); });
 
   const nodes::GeometryNodesLazyFunctionGraphInfo *lf_graph_info =
       nodes::ensure_geometry_nodes_lazy_function_graph(*node_tree);
@@ -430,9 +476,6 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  IDProperty *properties = replace_inputs_evaluated_data_blocks(*op->properties, *depsgraph);
-  BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
-
   bke::OperatorComputeContext compute_context;
   Set<ComputeContextHash> socket_log_contexts;
   GeoOperatorLog &eval_log = get_static_eval_log();
@@ -443,9 +486,9 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   for (Object *object : objects) {
     nodes::GeoNodesOperatorData operator_eval_data{};
     operator_eval_data.mode = mode;
-    operator_eval_data.depsgraph = depsgraph;
-    operator_eval_data.self_object = DEG_get_evaluated_object(depsgraph, object);
-    operator_eval_data.scene = DEG_get_evaluated_scene(depsgraph);
+    operator_eval_data.depsgraph_main = depsgraph_main;
+    operator_eval_data.self_object_orig = object;
+    operator_eval_data.scene_orig = scene;
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;
@@ -1006,7 +1049,8 @@ static bool unassigned_local_poll(const bContext &C)
   }
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(*active_object);
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu.
+     */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }
@@ -1051,7 +1095,8 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
   bool add_separator = !tree->unassigned_assets.is_empty();
   Main &bmain = *CTX_data_main(C);
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu.
+     */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }

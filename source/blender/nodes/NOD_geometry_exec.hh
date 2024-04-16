@@ -232,10 +232,17 @@ class GeoNodeExecParams {
         return data->call_data->modifier_data->depsgraph;
       }
       if (data->call_data->operator_data) {
-        return data->call_data->operator_data->depsgraph;
+        return data->call_data->operator_data->depsgraph_main;
       }
     }
     return nullptr;
+  }
+
+  Main *bmain() const
+  {
+    /* For the node tools case where we potentially have two dependency graphs (`depsgraph_main`
+     * and `depsgraph_extra`) they will both reference the same main data-base anyway. */
+    return DEG_get_bmain(this->depsgraph());
   }
 
   GeoNodesLFUserData *user_data() const

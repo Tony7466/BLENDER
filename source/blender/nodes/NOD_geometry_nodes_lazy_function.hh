@@ -167,10 +167,13 @@ struct GeoNodesModifierData {
 struct GeoNodesOperatorData {
   eObjectMode mode;
   /** The object currently effected by the operator. */
-  const Object *self_object = nullptr;
+  const Object *self_object_orig = nullptr;
   /** Current evaluated depsgraph. */
-  Depsgraph *depsgraph = nullptr;
-  Scene *scene = nullptr;
+  Depsgraph *depsgraph_main = nullptr;
+  Depsgraph *depsgraph_extra = nullptr;
+  Scene *scene_orig = nullptr;
+
+  const ID *get_evaluated_id(const ID &id_orig);
 };
 
 struct GeoNodesCallData {

@@ -16,9 +16,14 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_exec(GeoNodeExecParams params)
 {
-  const Scene *scene = DEG_get_evaluated_scene(params.depsgraph());
-  Object *camera = DEG_get_evaluated_object(params.depsgraph(), scene->camera);
-  params.set_output("Active Camera", camera);
+  if (const GeoNodesOperatorData *op_data = params.user_data()->call_data->operator_data) {
+    params.set_output("Active Camera", op_data->scene_orig->camera);
+  }
+  else {
+    const Scene *scene = DEG_get_evaluated_scene(params.depsgraph());
+    Object *camera = DEG_get_evaluated_object(params.depsgraph(), scene->camera);
+    params.set_output("Active Camera", camera);
+  }
 }
 
 static void node_register()
