@@ -7968,9 +7968,9 @@ def km_3d_view_tool_sculpt_polyline_hide(params):
         "3D View Tool: Sculpt, Polyline Hide",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
-            ("paint.hide_show_polyline_gesture", {"type": params.select_mouse, "value": params.select_mouse_value},
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
              {"properties": [("action", 'HIDE')]}),
-            ("paint.hide_show_polyline_gesture", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True},
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
              {"properties": [("action", 'SHOW')]}),
         ]},
     )
