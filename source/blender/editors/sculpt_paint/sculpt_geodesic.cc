@@ -6,6 +6,7 @@
  * \ingroup edsculpt
  */
 
+#include "tbb/concurrent_vector.h"
 #include <cmath>
 #include <cstdlib>
 
@@ -35,6 +36,18 @@
 
 #define SCULPT_GEODESIC_VERTEX_NONE -1
 
+#include <iostream>
+#define TICK_START auto tic = std::chrono::steady_clock::now();
+#define TICK tic = std::chrono::steady_clock::now();
+#define TOCK_START(X) \
+  auto toc = std::chrono::steady_clock::now(); \
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
+            << " seconds" << std::endl;
+#define TOCK(X) \
+  toc = std::chrono::steady_clock::now(); \
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
+            << " seconds" << std::endl;
+
 namespace blender::ed::sculpt_paint::geodesic {
 
 /* Propagate distance from v1 and v2 to v0. */
@@ -42,22 +55,22 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
                                                const int v0,
                                                const int v1,
                                                const int v2,
-                                               float *dists,
+                                               std::atomic<float> *dists,
                                                GSet *initial_verts)
 {
   if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(v0))) {
     return false;
   }
 
-  BLI_assert(dists[v1] != std::numeric_limits<float>::max());
-  if (dists[v0] <= dists[v1]) {
+  BLI_assert(dists[v1].load() != std::numeric_limits<float>::max());
+  if (dists[v0].load() <= dists[v1].load()) {
     return false;
   }
 
   float dist0;
   if (v2 != SCULPT_GEODESIC_VERTEX_NONE) {
-    BLI_assert(dists[v2] != std::numeric_limits<float>::max());
-    if (dists[v0] <= dists[v2]) {
+    BLI_assert(dists[v2].load() != std::numeric_limits<float>::max());
+    if (dists[v0].load() <= dists[v2].load()) {
       return false;
     }
     dist0 = geodesic_distance_propagate_across_triangle(
@@ -66,38 +79,20 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   else {
     float vec[3];
     sub_v3_v3v3(vec, vert_positions[v1], vert_positions[v0]);
-    dist0 = dists[v1] + len_v3(vec);
+    dist0 = dists[v1].load() + len_v3(vec);
   }
 
-  if (dist0 < dists[v0]) {
-    dists[v0] = dist0;
+  if (dist0 < dists[v0].load()) {
+    dists[v0].store(dist0);
     return true;
   }
 
   return false;
 }
 
-/* Open addressing with linear probing that minimizes
- * collission in hash tables can also be used to avoid
- * parallel data storage collisions */
-static void lock_free_emplace(const int edge_other,
-                              const int non_checked,
-                              MutableSpan<int> queue_next)
-{
-  const int new_size = queue_next.size();
-  int idx = edge_other % new_size;
-  while (queue_next[idx] != non_checked) {
-    ++idx;
-    if (idx >= new_size) {
-      idx = 0;
-    }
-  }
-  queue_next[idx] = edge_other;
-}
-
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
-  constexpr const int non_checked = -1;
+  TICK_START;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -136,13 +131,14 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 
   /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
    * to define a distance to them the algorithm can stop earlier by skipping them. */
-  Vector<bool> affected_vert(totvert, false);
+  Vector<bool> affected_vert;
   if (limit_radius == std::numeric_limits<float>::max()) {
     /* In this case, no need to loop through all initial vertices to check distances as they are
      * all going to be affected. */
-    affected_vert.fill(true);
+    affected_vert.resize(totvert, true);
   }
   else {
+    affected_vert.resize(totvert, false);
     const float limit_radius_sq = limit_radius * limit_radius;
     GSetIterator gs_iter;
     /* This is an O(n^2) loop used to limit the geodesic distance calculation to a radius. When
@@ -161,8 +157,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     }
   }
 
-  Vector<int> queue;
-  queue.reserve(totedge);
+  tbb::concurrent_vector<int> queue;
 
   /* Add edges adjacent to an initial vertex to the queue.
    * Since there are typically few initial vertices, iterating over its
@@ -178,37 +173,38 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
           (dists[v1] != std::numeric_limits<float>::max() ||
            dists[v2] != std::numeric_limits<float>::max()))
       {
-        queue.append(edge_index);
+        queue.push_back(edge_index);
       }
     }
   }
 
-  /* queue and queue_next should not differ by a huge amount of size
-   * since they are an advancing front in the mesh hence no need
-   * to allocate much more memmory and keep the iteration range smaller */
+  tbb::concurrent_vector<int> queue_next;
+  queue_next.reserve(4 * queue.size());
 
-  int new_size = 4 * queue.size();
-  Vector<int> queue_next(new_size, non_checked);
+  std::atomic<float> *atomic_dists = new std::atomic<float>[totvert];
+  for (int i = 0; i < totvert; i++) {
+    atomic_dists[i] = dists[i];
+  }
 
   BitVector<> edge_tag(totedge);
-  while (!queue.is_empty()) {
+  while (!queue.empty()) {
     threading::parallel_for(IndexRange(queue.size()), 1, [&](IndexRange range) {
       for (const int value : range) {
         const int edge_index = queue[value];
         int edge_vert_a = edges[edge_index][0];
         int edge_vert_b = edges[edge_index][1];
 
-        if (dists[edge_vert_a] == std::numeric_limits<float>::max() ||
-            dists[edge_vert_b] == std::numeric_limits<float>::max())
+        if (atomic_dists[edge_vert_a].load() == std::numeric_limits<float>::max() ||
+            atomic_dists[edge_vert_b].load() == std::numeric_limits<float>::max())
         {
-          if (dists[edge_vert_a] > dists[edge_vert_b]) {
+          if (atomic_dists[edge_vert_a].load() > atomic_dists[edge_vert_b].load()) {
             std::swap(edge_vert_a, edge_vert_b);
           }
           sculpt_geodesic_mesh_test_dist_add(vert_positions,
                                              edge_vert_b,
                                              edge_vert_a,
                                              SCULPT_GEODESIC_VERTEX_NONE,
-                                             dists,
+                                             atomic_dists,
                                              initial_verts);
         }
 
@@ -220,8 +216,12 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
               continue;
             }
-            if (!sculpt_geodesic_mesh_test_dist_add(
-                    vert_positions, vertex_other, edge_vert_a, edge_vert_b, dists, initial_verts))
+            if (!sculpt_geodesic_mesh_test_dist_add(vert_positions,
+                                                    vertex_other,
+                                                    edge_vert_a,
+                                                    edge_vert_b,
+                                                    atomic_dists,
+                                                    initial_verts))
             {
               continue;
             }
@@ -233,31 +233,31 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
               if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
                   edge_other == edge_index || edge_tag[edge_other] ||
                   (!ss->edge_to_face_map[edge_other].is_empty() &&
-                   dists[edge_vertex_other] == std::numeric_limits<float>::max()))
+                   atomic_dists[edge_vertex_other].load() == std::numeric_limits<float>::max()))
               {
                 continue;
               }
 
               edge_tag[edge_other].set();
-              lock_free_emplace(edge_other, non_checked, queue_next);
+              queue_next.push_back(edge_other);
             }
           }
         }
       }
     });
 
-    queue.clear();
-    for (const int edge_index : queue_next) {
-      if (edge_index != -1) {
-        edge_tag[edge_index].reset();
-        queue.append(edge_index);
-      }
+    queue.swap(queue_next);
+    for (const int edge_index : queue) {
+      edge_tag[edge_index].reset();
     }
-    new_size = 4 * queue.size();
     queue_next.clear();
-    queue_next.resize(new_size, non_checked);
   }
 
+  for (int i = 0; i < totvert; ++i) {
+    dists[i] = atomic_dists[i].load();
+  }
+  delete[] atomic_dists;
+  TOCK_START("Bottleneck: ");
   return dists;
 }
 
