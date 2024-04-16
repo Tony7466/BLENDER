@@ -51,6 +51,10 @@ static uint2 edge_from_corners(const IndexRange face, const int corner)
 
 static void fill_loose_lines_ibo(const uint corners_num, MutableSpan<uint2> data)
 {
+  /* Vertices for loose edges are not shared in the GPU vertex buffers, so the indices are simply
+   * an increasing contiguous range. Ideally this would be generated on the GPU itself, or just
+   * unnecessary, but a large number of loose edges isn't expected to be a common performance
+   * bottleneck either. */
   threading::memory_bandwidth_bound_task(data.size_in_bytes(), [&]() {
     array_utils::fill_index_range(data.cast<uint>(), corners_num);
   });
