@@ -565,8 +565,12 @@ FillResult fill_boundaries(Image &ima)
   const int height = ibuf->y;
   MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
                                       width * height);
-  auto index_from_coord = [&](const int x, const int y) { return x + y * width; };
-  auto pixel_from_coord = [&](const int x, const int y) { return pixels[index_from_coord(x, y)]; };
+  auto coord_from_index = [&](const int index) {
+    const div_t d = div(index, width);
+    return int2{d.rem, d.quot};
+  };
+  auto index_from_coord = [&](const int2 &c) { return c.x + c.y * width; };
+  auto pixel_from_coord = [&](const int2 &c) { return pixels[index_from_coord(c)]; };
 
   blender::Stack<int> active_pixels;
   /* Initialize the stack with filled pixels (dot at mouse position). */
@@ -577,42 +581,67 @@ FillResult fill_boundaries(Image &ima)
     }
   }
 
+  constexpr const int filter_width = 5;
+  enum FilterDirection {
+    Horizontal = 1,
+    Vertical = 2,
+  };
+
   bool border_contact = false;
   while (!active_pixels.is_empty()) {
     const int index = active_pixels.pop();
-    ColorGeometry4f pixel_cur = pixels[index];
+    const int2 coord = coord_from_index(index);
+    ColorGeometry4f pixel_value = pixels[index];
 
-    if (is_pixel_border(pixel_cur)) {
+    if (is_pixel_border(pixel_value)) {
       border_contact = true;
       break;
     }
-    if (is_pixel_boundary(pixel_cur)) {
+    if (is_pixel_filled(pixel_value)) {
+      /* Pixel already filled. */
+      continue;
+    }
+
+    if (is_pixel_boundary(pixel_value)) {
       /* Boundary pixel, ignore. */
       continue;
     }
-    if (is_pixel_filled(pixel_cur)) {
-      /* Pixel already filled. */
-      continue;
+    /* Directional box filtering for gap detection. */
+    const filter_x_neg = coord.x - std::max(coord.x - filter_width - 1, 0);
+    bool is_boundary_horizontal = false;
+    for (const int filter_i : IndexRange(1, ) {
+      const int2 filter_coord = coord - int2(0, filter_i);
+      is_boundary_horizontal |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
+    }
+    for (const int filter_i : IndexRange(1, filter_width)) {
+      const int2 filter_coord = coord + int2(0, filter_i);
+      is_boundary_horizontal |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
+    }
+    bool is_boundary_vertical = false;
+    for (const int filter_i : IndexRange(1, filter_width)) {
+      const int2 filter_coord = coord - int2(filter_i, 0);
+      is_boundary_vertical |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
+    }
+    for (const int filter_i : IndexRange(1, filter_width)) {
+      const int2 filter_coord = coord + int2(filter_i, 0);
+      is_boundary_vertical |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
     }
 
     /* Mark as filled. */
     set_pixel_filled(pixels[index]);
 
     /* Activate neighbors */
-    const div_t d = div(index, width);
-    const int x = d.rem;
-    const int y = d.quot;
-    if (x > 0) {
-      active_pixels.push(index_from_coord(x - 1, y));
+    if (coord.x > 0 && !is_boundary_horizontal) {
+      active_pixels.push(index_from_coord(coord - int2{1, 0}));
     }
-    if (x < width - 1) {
-      active_pixels.push(index_from_coord(x + 1, y));
+    if (coord.x < width - 1 && !is_boundary_horizontal) {
+      active_pixels.push(index_from_coord(coord + int2{1, 0}));
     }
-    if (y > 0) {
-      active_pixels.push(index_from_coord(x, y - 1));
+    if (coord.y > 0 && !is_boundary_vertical) {
+      active_pixels.push(index_from_coord(coord - int2{0, 1}));
     }
-    if (y < height - 1) {
-      active_pixels.push(index_from_coord(x, y + 1));
+    if (coord.y < height - 1 && !is_boundary_vertical) {
+      active_pixels.push(index_from_coord(coord + int2{0, 1}));
     }
   }
 
