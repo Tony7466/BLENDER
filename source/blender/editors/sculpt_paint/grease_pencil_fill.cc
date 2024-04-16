@@ -581,7 +581,7 @@ FillResult fill_boundaries(Image &ima)
     }
   }
 
-  constexpr const int filter_width = 5;
+  constexpr const int filter_width = 3;
   enum FilterDirection {
     Horizontal = 1,
     Vertical = 2,
@@ -606,29 +606,29 @@ FillResult fill_boundaries(Image &ima)
       /* Boundary pixel, ignore. */
       continue;
     }
-    /* Directional box filtering for gap detection. */
-    const filter_x_neg = coord.x - std::max(coord.x - filter_width - 1, 0);
-    bool is_boundary_horizontal = false;
-    for (const int filter_i : IndexRange(1, ) {
-      const int2 filter_coord = coord - int2(0, filter_i);
-      is_boundary_horizontal |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
-    }
-    for (const int filter_i : IndexRange(1, filter_width)) {
-      const int2 filter_coord = coord + int2(0, filter_i);
-      is_boundary_horizontal |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
-    }
-    bool is_boundary_vertical = false;
-    for (const int filter_i : IndexRange(1, filter_width)) {
-      const int2 filter_coord = coord - int2(filter_i, 0);
-      is_boundary_vertical |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
-    }
-    for (const int filter_i : IndexRange(1, filter_width)) {
-      const int2 filter_coord = coord + int2(filter_i, 0);
-      is_boundary_vertical |= is_pixel_boundary(pixels[index_from_coord(filter_coord)]);
-    }
 
     /* Mark as filled. */
     set_pixel_filled(pixels[index]);
+
+    /* Directional box filtering for gap detection. */
+    const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, filter_width));
+    const IndexRange filter_x_pos = IndexRange(1, std::min(width - 1 - coord.x, filter_width));
+    const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, filter_width));
+    const IndexRange filter_y_pos = IndexRange(1, std::min(height - 1 - coord.y, filter_width));
+    bool is_boundary_horizontal = false;
+    bool is_boundary_vertical = false;
+    for (const int filter_i : filter_y_neg) {
+      is_boundary_horizontal |= is_pixel_boundary(pixel_from_coord(coord - int2(0, 1 + filter_i)));
+    }
+    for (const int filter_i : filter_y_pos) {
+      is_boundary_horizontal |= is_pixel_boundary(pixel_from_coord(coord + int2(0, 1 + filter_i)));
+    }
+    for (const int filter_i : filter_x_neg) {
+      is_boundary_vertical |= is_pixel_boundary(pixel_from_coord(coord - int2(1 + filter_i, 0)));
+    }
+    for (const int filter_i : filter_x_pos) {
+      is_boundary_vertical |= is_pixel_boundary(pixel_from_coord(coord + int2(1 + filter_i, 0)));
+    }
 
     /* Activate neighbors */
     if (coord.x > 0 && !is_boundary_horizontal) {
