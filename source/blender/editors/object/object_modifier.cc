@@ -1254,7 +1254,7 @@ void modifier_register_use_selected_objects_prop(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "use_selected_objects",
                   false,
-                  "Use Selected Objects",
+                  "Selected Objects",
                   "Affect all selected objects instead of just the active object");
 }
 
