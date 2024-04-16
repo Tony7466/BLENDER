@@ -10,13 +10,12 @@
 
 #include "BLI_utildefines.h"
 
-
 namespace {
 
 template<typename VECT>
-void set_array_prop(IDProperty* idgroup,
-                    const char* prop_name,
-                    const pxr::UsdAttribute& attr,
+void set_array_prop(IDProperty *idgroup,
+                    const char *prop_name,
+                    const pxr::UsdAttribute &attr,
                     const pxr::UsdTimeCode motionSampleTime)
 {
   if (!idgroup || !attr) {
@@ -28,7 +27,7 @@ void set_array_prop(IDProperty* idgroup,
     return;
   }
 
-  IDPropertyTemplate val = { 0 };
+  IDPropertyTemplate val = {0};
   val.array.len = static_cast<int>(vec.dimension);
 
   if (val.array.len <= 0) {
@@ -54,7 +53,7 @@ void set_array_prop(IDProperty* idgroup,
     return;
   }
 
-  IDProperty* prop = IDP_New(IDP_ARRAY, &val, prop_name);
+  IDProperty *prop = IDP_New(IDP_ARRAY, &val, prop_name);
 
   if (!prop) {
     std::cout << "Couldn't create array prop " << prop_name << std::endl;
@@ -62,7 +61,7 @@ void set_array_prop(IDProperty* idgroup,
   }
 
   if (std::is_same<pxr::GfHalf, typename VECT::ScalarType>()) {
-    float* prop_data = static_cast<float*>(prop->data.pointer);
+    float *prop_data = static_cast<float *>(prop->data.pointer);
     for (int i = 0; i < val.array.len; ++i) {
       prop_data[i] = vec[i];
     }
@@ -74,8 +73,7 @@ void set_array_prop(IDProperty* idgroup,
   IDP_AddToGroup(idgroup, prop);
 }
 
-
-bool equivalent(const pxr::SdfValueTypeName& type_name1, const pxr::SdfValueTypeName& type_name2)
+bool equivalent(const pxr::SdfValueTypeName &type_name1, const pxr::SdfValueTypeName &type_name2)
 {
   return type_name1.GetType().IsA(type_name2.GetType());
 }
@@ -119,15 +117,15 @@ static void set_int_prop(IDProperty *idgroup, const char *prop_name, const int i
   IDP_AddToGroup(idgroup, prop);
 }
 
-static void set_bool_prop(IDProperty* idgroup, const char* prop_name, const bool bval)
+static void set_bool_prop(IDProperty *idgroup, const char *prop_name, const bool bval)
 {
   if (!idgroup) {
     return;
   }
 
-  IDPropertyTemplate val = { 0 };
+  IDPropertyTemplate val = {0};
   val.i = bval;
-  IDProperty* prop = IDP_New(IDP_BOOLEAN, &val, prop_name);
+  IDProperty *prop = IDP_New(IDP_BOOLEAN, &val, prop_name);
 
   IDP_AddToGroup(idgroup, prop);
 }
@@ -158,11 +156,10 @@ static void set_double_prop(IDProperty *idgroup, const char *prop_name, const do
   IDP_AddToGroup(idgroup, prop);
 }
 
-
 void set_id_props_from_prim(ID *id,
-               const pxr::UsdPrim &prim,
-               const eUSDAttrImportMode attr_import_mode,
-               const std::optional<double> motionSampleTime)
+                            const pxr::UsdPrim &prim,
+                            const eUSDAttrImportMode attr_import_mode,
+                            const std::optional<double> motionSampleTime)
 {
   pxr::UsdAttributeVector attribs = prim.GetAuthoredAttributes();
   if (attribs.empty()) {
@@ -296,4 +293,4 @@ void set_id_props_from_prim(ID *id,
   }
 }
 
-} // end namespace blender:io::usd
+}  // namespace blender::io::usd

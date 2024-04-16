@@ -13,14 +13,11 @@
 #include "BKE_idprop.hh"
 #include "usd.hh"
 
-
 namespace blender::io::usd {
 
-
 void set_id_props_from_prim(ID *id,
-               const pxr::UsdPrim &prim,
-               const eUSDAttrImportMode attr_import_mode = USD_ATTR_IMPORT_ALL,
-               const std::optional<double> motionSampleTime = std::nullopt);
+                            const pxr::UsdPrim &prim,
+                            const eUSDAttrImportMode attr_import_mode = USD_ATTR_IMPORT_ALL,
+                            const std::optional<double> motionSampleTime = std::nullopt);
 
-
-} // end namesapce blender::io::usd
+}  // namespace blender::io::usd

@@ -370,7 +370,7 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
         break;
       case IDP_BOOLEAN:
         if (pxr::UsdAttribute bool_attr = prim.CreateAttribute(
-          prop_token, pxr::SdfValueTypeNames->Bool, true))
+                prop_token, pxr::SdfValueTypeNames->Bool, true))
         {
           bool_attr.Set<bool>(prop->data.val, timecode);
         }
