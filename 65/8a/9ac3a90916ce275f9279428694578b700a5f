@@ -3,3 +3,4 @@ Referenced by pull request #120653, GPv3: Wrong object type
 Referenced by commit 2fefb39e22af07c71664014ceb2b74f215d88913, GPv3: Wrong object type
 Referenced by issue #120662, Grease Pencil: Selection tool (box, circle, lasso) not working when used in Edit Mode
 Referenced by pull request #120687, Fix #120662: GP selection tool not working from toolbox
+Referenced by commit 1de48f98a59da48ec94e1b7b7acaaf884abd530d, Fix #120662: GP selection tool not working from toolbox
