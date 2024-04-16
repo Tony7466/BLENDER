@@ -314,7 +314,7 @@ static NodeToolsDepsgraphs build_depsgraphs(const Depsgraph &depsgraph_active,
         }
       });
 
-  Vector<const ID *> extra_ids;
+  Vector<ID *> extra_ids;
   for (ID *id : ids_for_relations) {
     if (!DEG_get_evaluated_id(&depsgraph_active, id)) {
       extra_ids.append(id);
@@ -328,7 +328,7 @@ static NodeToolsDepsgraphs build_depsgraphs(const Depsgraph &depsgraph_active,
                                        DEG_get_input_scene(&depsgraph_active),
                                        DEG_get_input_view_layer(&depsgraph_active),
                                        DEG_get_mode(&depsgraph_active));
-  DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(extra_ids.data()), extra_ids.size());
+  DEG_graph_build_from_ids(depsgraph, extra_ids);
   return depsgraph;
 }
 
