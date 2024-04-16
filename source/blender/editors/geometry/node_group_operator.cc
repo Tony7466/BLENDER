@@ -281,9 +281,6 @@ static void store_result_geometry(
   }
 }
 
-// TODO: Adding selected objects is necessary because they are currently compared by pointer
-// to other evaluated objects inside of geometry nodes.
-
 /** Create a dependency graph referencing all data-blocks used by the node group. */
 static Depsgraph *build_node_tree_depsgraph(const Depsgraph &depsgraph_active,
                                             const bNodeTree &node_tree)

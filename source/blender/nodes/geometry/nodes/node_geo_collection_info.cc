@@ -61,6 +61,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
+  // TODO: Resolve comparison by pointer from different depsgraphs.
   const Object *self_object = params.self_object();
   const bool is_recursive = BKE_collection_has_object_recursive_instanced(
       collection, const_cast<Object *>(self_object));

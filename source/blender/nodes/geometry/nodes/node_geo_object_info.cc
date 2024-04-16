@@ -70,6 +70,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Scale", scale);
 
   if (params.output_is_required("Geometry")) {
+    // TODO: Resolve comparison by pointer from different depsgraphs.
     if (object == self_object) {
       params.error_message_add(NodeWarningType::Error,
                                TIP_("Geometry cannot be retrieved from the modifier object"));
