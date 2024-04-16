@@ -1871,7 +1871,6 @@ static int render_view_remove_exec(bContext *C, wmOperator * /*op*/)
   Scene *scene = CTX_data_scene(C);
   SceneRenderView *rv = static_cast<SceneRenderView *>(
       BLI_findlink(&scene->r.views, scene->r.actview));
-  bNodeTree *ntree = scene->nodetree;
 
   if (!BKE_scene_remove_render_view(scene, rv)) {
     return OPERATOR_CANCELLED;
