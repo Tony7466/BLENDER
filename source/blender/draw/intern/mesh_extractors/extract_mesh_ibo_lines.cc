@@ -27,7 +27,10 @@ static IndexMask calc_mesh_edge_visibility(const MeshRenderData &mr,
     visible = IndexMask::from_bits(visible, visible_bits, memory);
   }
   if (!mr.hide_edge.is_empty()) {
-    visible = IndexMask::from_bools(visible, mr.hide_edge, memory);
+    /* Like #IndexMask::from_bools but reversed. */
+    const Span<bool> hide_edge = mr.hide_edge;
+    visible = IndexMask::from_predicate(
+        visible, GrainSize(4096), memory, [&](const int64_t i) { return !hide_edge[i]; });
   }
   if (mr.hide_unmapped_edges && mr.e_origindex != nullptr) {
     const int *orig_index = mr.e_origindex;
