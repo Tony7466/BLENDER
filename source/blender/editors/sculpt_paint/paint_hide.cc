@@ -730,35 +730,58 @@ static void grow_shrink_visibility_mesh(Object &object,
                                         const EditMode mode)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const Span<int2> edges = mesh.edges();
+  const OffsetIndices faces = mesh.faces();
+  const Span<int> corner_verts = mesh.corner_verts();
+
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (!attributes.contains(".hide_vert")) {
-    // If the entire mesh is visible, we can neither grow nor shrink the boundary.
+    /* If the entire mesh is visible, we can neither grow nor shrink the boundary. */
     return;
   }
 
   bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
       ".hide_vert", bke::AttrDomain::Point);
+  const VArraySpan hide_poly = *attributes.lookup<int>(".hide_poly", bke::AttrDomain::Face);
   Array<bool> orig_hide_vert(hide_vert.span.size());
+
   array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
 
   bool any_changed = false;
   const bool desired_state = !(mode == EditMode::Grow);
-  threading::parallel_for(edges.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const blender::int2 edge = edges[i];
-      if (orig_hide_vert[edge[0]] == orig_hide_vert[edge[1]]) {
-        continue;
+
+  threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(&object, node, undo::Type::HideVert);
+
+      Vector<int> &face_indices = all_face_indices.local();
+      const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, face_indices);
+      for (const int idx : indices.index_range()) {
+        if (!hide_poly[idx]) {
+          continue;
+        }
+
+        const IndexRange face = faces[idx];
+        for (const int corner : face) {
+          int vert = corner_verts[corner];
+          if (orig_hide_vert[vert] != desired_state) {
+            continue;
+          }
+
+          any_changed = true;
+
+          const int prev = bke::mesh::face_corner_prev(face, corner);
+          const int prev_vert = corner_verts[prev];
+          hide_vert.span[prev_vert] = desired_state;
+
+          const int next = bke::mesh::face_corner_next(face, corner);
+          const int next_vert = corner_verts[next];
+          hide_vert.span[next_vert] = desired_state;
+        }
       }
 
-      if (orig_hide_vert[edge[0]] != desired_state && orig_hide_vert[edge[1]] != desired_state) {
-        continue;
-      }
-
-      any_changed = true;
-
-      hide_vert.span[edge[0]] = desired_state;
-      hide_vert.span[edge[1]] = desired_state;
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
     }
   });
 
@@ -766,14 +789,6 @@ static void grow_shrink_visibility_mesh(Object &object,
   if (any_changed) {
     bke::mesh_hide_vert_flush(mesh);
   }
-
-  for (const int i : nodes.index_range()) {
-    undo::push_node(&object, nodes[i], undo::Type::HideVert);
-
-    BKE_pbvh_node_mark_update_visibility(nodes[i]);
-  }
-
-  bke::pbvh::update_visibility(pbvh);
 }
 
 static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
@@ -807,8 +822,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
             SubdivCCGNeighbors neighbors;
             BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
             bool should_scan_dup = true;
-            int dup_idx_start = neighbors.coords.size() - neighbors.num_duplicates;
-            for (int i = 0; i < dup_idx_start; i++) {
+            for (const int i : neighbors.coords.index_range().drop_back(neighbors.num_duplicates))
+            {
               int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
               if (grid_hidden[neighbor_idx] == desired_state) {
                 hide[cur_idx].set(desired_state);
@@ -821,7 +836,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
               break;
             }
 
-            for (int i = dup_idx_start; i < neighbors.coords.size(); i++) {
+            for (const int i : neighbors.coords.index_range().take_back(neighbors.num_duplicates))
+            {
               const BoundedBitSpan neighbor_span = orig_hide[neighbors.coords[i].grid_index];
               int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
               if (neighbor_span[neighbor_idx] == desired_state) {
