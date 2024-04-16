@@ -498,7 +498,7 @@ static bool rna_property_override_operation_store(Main *bmain,
     }
   }
 
-  if (ptr_storage != nullptr && prop_storage->magic == RNA_MAGIC &&
+  if ((prop_storage->magic == RNA_MAGIC) &&
       !ELEM(prop_storage->override_store, nullptr, override_store))
   {
     override_store = nullptr;
@@ -1084,10 +1084,10 @@ static bool rna_property_override_collection_subitem_name_id_lookup(
       memset(r_ptr_item_name, 0, sizeof(*r_ptr_item_name));
     }
 
-    return bool(iter.valid);
+    return iter.valid;
   }
   else {
-    return bool(RNA_property_collection_lookup_string(ptr, prop, item_name, r_ptr_item_name));
+    return RNA_property_collection_lookup_string(ptr, prop, item_name, r_ptr_item_name);
   }
 }
 
