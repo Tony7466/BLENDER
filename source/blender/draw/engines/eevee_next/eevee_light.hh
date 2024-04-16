@@ -44,7 +44,7 @@ struct Light : public LightData, NonCopyable {
  public:
   bool initialized = false;
   bool used = false;
-  bool do_jittering;
+  bool do_jittering = false;
 
   /** Pointers to source Shadow. Type depends on `LightData::type`. */
   ShadowDirectional *directional = nullptr;
@@ -64,6 +64,7 @@ struct Light : public LightData, NonCopyable {
     *static_cast<LightData *>(this) = other;
     this->initialized = other.initialized;
     this->used = other.used;
+    this->do_jittering = other.do_jittering;
     this->directional = other.directional;
     this->punctual = other.punctual;
     other.directional = nullptr;
