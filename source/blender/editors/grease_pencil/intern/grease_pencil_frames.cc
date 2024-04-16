@@ -41,8 +41,6 @@
 #include "RNA_define.hh"
 
 #include "WM_api.hh"
-#include <algorithm>
-#include <optional>
 
 namespace blender::ed::greasepencil {
 
