@@ -28,7 +28,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
@@ -1424,7 +1424,7 @@ bool data_transfer_layersmapping_vgroups(ListBase *r_map,
   MDeformVert *data_dst = static_cast<MDeformVert *>(
       CustomData_get_layer_for_write(cd_dst, CD_MDEFORMVERT, num_elem_dst));
   if (data_dst && use_dupref_dst && r_map) {
-    /* If dest is a derivedmesh, we do not want to overwrite cdlayers of org mesh! */
+    /* If dest is an evaluated mesh, we do not want to overwrite cdlayers of org mesh! */
     data_dst = static_cast<MDeformVert *>(
         CustomData_get_layer_for_write(cd_dst, CD_MDEFORMVERT, num_elem_dst));
   }

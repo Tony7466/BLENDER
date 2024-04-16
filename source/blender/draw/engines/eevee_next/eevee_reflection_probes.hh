@@ -30,19 +30,12 @@ class CaptureView;
 
 class SphereProbeModule {
   friend LightProbeModule;
-  /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
+  /* Capture View requires access to the probe texture for frame-buffer configuration. */
   friend class CaptureView;
   /* Instance requires access to #update_probes_this_sample_ */
   friend class Instance;
 
  private:
-  /**
-   * The maximum resolution of a cube-map side.
-   *
-   * Must be a power of two; intention to be used as a cube-map atlas.
-   */
-  static constexpr int max_resolution_ = 2048;
-
   Instance &instance_;
   SphereProbeDataBuf data_buf_;
 
@@ -51,11 +44,22 @@ class SphereProbeModule {
 
   /** Copy the rendered cube-map to the atlas texture. */
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
-  /** Extract irradiance information from the world. */
-  PassSimple update_irradiance_ps_ = {"Probe.UpdateIrradiance"};
+  /** Sum irradiance information optionally extracted during `remap_ps_`. */
+  PassSimple sum_sh_ps_ = {"Probe.SumSphericalHarmonics"};
+  /** Copy volume probe irradiance for the center of sphere probes. */
   PassSimple select_ps_ = {"Probe.Select"};
+  /** Convolve the octahedral map to fill the Mip-map levels. */
+  PassSimple convolve_ps_ = {"Probe.Convolve"};
+  /** Input mip level for the convolution. */
+  GPUTexture *convolve_input_ = nullptr;
+  /** Output mip level for the convolution. */
+  GPUTexture *convolve_output_ = nullptr;
+  int convolve_lod_ = 0;
+  /* True if we extract spherical harmonic during `remap_ps_`. */
+  bool extract_sh_ = false;
 
   int3 dispatch_probe_pack_ = int3(1);
+  int3 dispatch_probe_convolve_ = int3(1);
   int3 dispatch_probe_select_ = int3(1);
 
   /**
@@ -66,15 +70,21 @@ class SphereProbeModule {
   Texture cubemap_tx_ = {"Probe.Cubemap"};
   /** Index of the probe being updated. */
   int probe_index_ = 0;
-  /** Mip level being sampled for remapping. */
-  int probe_mip_level_ = 0;
   /** Updated Probe coordinates in the atlas. */
   SphereProbeUvArea probe_sampling_coord_;
   SphereProbePixelArea probe_write_coord_;
+  /** Source Probe coordinates in the atlas. */
+  SphereProbePixelArea probe_read_coord_;
   /** World coordinates in the atlas. */
   SphereProbeUvArea world_sampling_coord_;
   /** Number of the probe to process in the select phase. */
   int reflection_probe_count_ = 0;
+
+  /** Intermediate buffer to store spherical harmonics. */
+  StorageArrayBuffer<SphereProbeHarmonic, SPHERE_PROBE_MAX_HARMONIC, true>
+      tmp_spherical_harmonics_ = {"tmp_spherical_harmonics_"};
+  /** Final buffer containing the spherical harmonics for the world. */
+  StorageBuffer<SphereProbeHarmonic, true> spherical_harmonics_ = {"spherical_harmonics_"};
 
   /**
    * True if the next redraw will trigger a light-probe sphere update.
@@ -118,9 +128,9 @@ class SphereProbeModule {
    */
   int probe_render_extent() const;
 
-  void tag_world_irradiance_for_update()
+  StorageBuffer<SphereProbeHarmonic, true> &spherical_harmonics_buf()
   {
-    do_world_irradiance_update = true;
+    return spherical_harmonics_;
   }
 
  private:
@@ -128,7 +138,7 @@ class SphereProbeModule {
    * Result is safely clamped to max resolution. */
   int subdivision_level_get(const eLightProbeResolution probe_resolution)
   {
-    return max_ii(int(log2(max_resolution_)) - int(probe_resolution), 0);
+    return max_ii(SPHERE_PROBE_ATLAS_MAX_SUBDIV - int(probe_resolution), 0);
   }
 
   /**
@@ -145,17 +155,16 @@ class SphereProbeModule {
   struct UpdateInfo {
     float3 probe_pos;
     /** Resolution of the cube-map to be rendered. */
-    int resolution;
+    int cube_target_extent;
 
     float2 clipping_distances;
 
     SphereProbeAtlasCoord atlas_coord;
 
     bool do_render;
-    bool do_world_irradiance_update;
   };
 
-  UpdateInfo update_info_from_probe(const SphereProbe &probe);
+  UpdateInfo update_info_from_probe(SphereProbe &probe);
 
   /**
    * Pop the next reflection probe that requires to be updated.
@@ -164,11 +173,15 @@ class SphereProbeModule {
   std::optional<UpdateInfo> probe_update_info_pop();
 
   /**
-   * Internal processing passes.
+   * Remap the rendered cube-map `cubemap_tx_` to a octahedral map inside the atlas at the given
+   * coordinate.
+   * If `extract_spherical_harmonics` is true, it will extract the spherical harmonics into
+   * `spherical_harmonics_`.
    */
-  void remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord);
-  void update_probes_texture_mipmaps();
-  void update_world_irradiance();
+  void remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord,
+                                      bool extract_spherical_harmonics);
+
+  void sync_display(Vector<SphereProbe *> &probe_active);
 };
 
 /** \} */

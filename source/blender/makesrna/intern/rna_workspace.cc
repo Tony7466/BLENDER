@@ -10,7 +10,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "ED_render.hh"
 
@@ -27,7 +27,7 @@
 
 #  include "BLI_listbase.h"
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"

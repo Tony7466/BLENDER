@@ -17,11 +17,9 @@
 #include "BLI_session_uid.h"
 
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
 
 #include "IMB_imbuf.hh"
 
@@ -30,7 +28,6 @@
 #include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
-#include "SEQ_transform.hh"
 
 #include "effects.hh"
 #include "image_cache.hh"
@@ -325,7 +322,7 @@ static Sequence *sequencer_check_scene_recursion(Scene *scene, ListBase *seqbase
     }
 
     if (seq->type == SEQ_TYPE_SCENE && (seq->flag & SEQ_SCENE_STRIPS)) {
-      if (sequencer_check_scene_recursion(scene, &seq->scene->ed->seqbase)) {
+      if (seq->scene->ed && sequencer_check_scene_recursion(scene, &seq->scene->ed->seqbase)) {
         return seq;
       }
     }

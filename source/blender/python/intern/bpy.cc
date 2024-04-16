@@ -21,21 +21,20 @@
 
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_bpath.h"
-#include "BKE_global.h" /* XXX, G_MAIN only */
+#include "BKE_bpath.hh"
+#include "BKE_global.hh" /* XXX, G_MAIN only */
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.hh"
 
-#include "GPU_state.h"
+#include "GPU_state.hh"
 
 #include "WM_api.hh" /* For #WM_ghost_backend */
 
 #include "bpy.h"
 #include "bpy_app.h"
-#include "bpy_capi_utils.h"
+#include "bpy_cli_command.h"
 #include "bpy_driver.h"
 #include "bpy_library.h"
 #include "bpy_operator.h"
@@ -43,7 +42,6 @@
 #include "bpy_rna.h"
 #include "bpy_rna_data.h"
 #include "bpy_rna_gizmo.h"
-#include "bpy_rna_id_collection.h"
 #include "bpy_rna_types_capi.h"
 #include "bpy_utils_previews.h"
 #include "bpy_utils_units.h"
@@ -78,11 +76,11 @@ static PyObject *bpy_script_paths(PyObject * /*self*/)
   PyObject *item;
 
   std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromStdStr(path.has_value() ? path.value() : "");
+  item = PyC_UnicodeFromStdStr(path.value_or(""));
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 0, item);
   path = BKE_appdir_folder_id(BLENDER_USER_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromStdStr(path.has_value() ? path.value() : "");
+  item = PyC_UnicodeFromStdStr(path.value_or(""));
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 1, item);
 
@@ -225,7 +223,7 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
       {BLENDER_USER_DATAFILES, "DATAFILES"},
       {BLENDER_USER_CONFIG, "CONFIG"},
       {BLENDER_USER_SCRIPTS, "SCRIPTS"},
-      {BLENDER_USER_AUTOSAVE, "AUTOSAVE"},
+      {BLENDER_USER_EXTENSIONS, "EXTENSIONS"},
       {0, nullptr},
   };
   PyC_StringEnum type = {type_items};
@@ -258,7 +256,7 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
                                                                            subdir_data.value);
   Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromStdStr(path.has_value() ? path.value() : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
 PyDoc_STRVAR(
@@ -308,7 +306,7 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
   std::optional<std::string> path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
   Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromStdStr(path.has_value() ? path.value() : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
 PyDoc_STRVAR(
@@ -358,7 +356,7 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
   const std::optional<std::string> path = BKE_appdir_resource_path_id_with_version(
       type.value_found, false, (major * 100) + minor);
 
-  return PyC_UnicodeFromStdStr(path.has_value() ? path.value() : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
 /* This is only exposed for tests, see: `tests/python/bl_pyapi_bpy_driver_secure_eval.py`. */
@@ -720,27 +718,28 @@ void BPy_init_modules(bContext *C)
   /* Register methods and property get/set for RNA types. */
   BPY_rna_types_extend_capi();
 
+#define PYMODULE_ADD_METHOD(mod, meth) \
+  PyModule_AddObject(mod, (meth)->ml_name, (PyObject *)PyCFunction_New(meth, nullptr))
+
   for (int i = 0; bpy_methods[i].ml_name; i++) {
     PyMethodDef *m = &bpy_methods[i];
     /* Currently there is no need to support these. */
     BLI_assert((m->ml_flags & (METH_CLASS | METH_STATIC)) == 0);
-    PyModule_AddObject(mod, m->ml_name, (PyObject *)PyCFunction_New(m, nullptr));
+    PYMODULE_ADD_METHOD(mod, m);
   }
 
   /* Register functions (`bpy_rna.cc`). */
-  PyModule_AddObject(mod,
-                     meth_bpy_register_class.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_register_class, nullptr));
-  PyModule_AddObject(mod,
-                     meth_bpy_unregister_class.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_unregister_class, nullptr));
+  PYMODULE_ADD_METHOD(mod, &meth_bpy_register_class);
+  PYMODULE_ADD_METHOD(mod, &meth_bpy_unregister_class);
 
-  PyModule_AddObject(mod,
-                     meth_bpy_owner_id_get.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_get, nullptr));
-  PyModule_AddObject(mod,
-                     meth_bpy_owner_id_set.ml_name,
-                     (PyObject *)PyCFunction_New(&meth_bpy_owner_id_set, nullptr));
+  PYMODULE_ADD_METHOD(mod, &meth_bpy_owner_id_get);
+  PYMODULE_ADD_METHOD(mod, &meth_bpy_owner_id_set);
+
+  /* Register command functions. */
+  PYMODULE_ADD_METHOD(mod, &BPY_cli_command_register_def);
+  PYMODULE_ADD_METHOD(mod, &BPY_cli_command_unregister_def);
+
+#undef PYMODULE_ADD_METHOD
 
   /* add our own modules dir, this is a python package */
   bpy_package_py = bpy_import_test("bpy");

@@ -20,14 +20,14 @@
 
 #include "DNA_userdef_types.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_matrix.h"
-#include "GPU_shader.h"
-#include "GPU_storage_buffer.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
-#include "GPU_vertex_buffer.h"
-#include "intern/gpu_matrix_private.h"
+#include "GPU_capabilities.hh"
+#include "GPU_matrix.hh"
+#include "GPU_shader.hh"
+#include "GPU_storage_buffer.hh"
+#include "GPU_texture.hh"
+#include "GPU_uniform_buffer.hh"
+#include "GPU_vertex_buffer.hh"
+#include "intern/gpu_matrix_private.hh"
 
 #include "BLI_time.h"
 
@@ -980,8 +980,7 @@ bool MTLContext::ensure_render_pipeline_state(MTLPrimitiveType mtl_prim_type)
     }
 
     /* Transform feedback buffer binding. */
-    GPUVertBuf *tf_vbo =
-        this->pipeline_state.active_shader->get_transform_feedback_active_buffer();
+    VertBuf *tf_vbo = this->pipeline_state.active_shader->get_transform_feedback_active_buffer();
     if (tf_vbo != nullptr && pipeline_state_instance->transform_feedback_buffer_index >= 0) {
 
       /* Ensure primitive type is either GPU_LINES, GPU_TRIANGLES or GPU_POINT */
@@ -1086,7 +1085,7 @@ bool MTLContext::ensure_render_pipeline_state(MTLPrimitiveType mtl_prim_type)
         /* Scissor is disabled, reset to default size as scissor state may have been previously
          * assigned on this encoder.
          * NOTE: If an attachment-less framebuffer is used, fetch specified width/height rather
-         * than active attachment width/height as provided by get_default_w/h().*/
+         * than active attachment width/height as provided by get_default_w/h(). */
         uint default_w = render_fb->get_default_width();
         uint default_h = render_fb->get_default_height();
         bool is_attachmentless = (default_w == 0) && (default_h == 0);
@@ -1883,6 +1882,12 @@ void MTLContext::ensure_texture_bindings(
              * shader. */
             id<MTLTexture> tex = bound_texture->get_metal_handle();
 
+            /* If texture resource is an image binding and has a non-default swizzle mask, we need
+             * to bind the source texture resource to retain image write access. */
+            if (!is_resource_sampler && bound_texture->has_custom_swizzle()) {
+              tex = bound_texture->get_metal_handle_base();
+            }
+
             if (bool(shader_texture_info.stage_mask & ShaderStage::COMPUTE)) {
               cs.bind_compute_texture(tex, slot);
               cs.bind_compute_sampler(bound_sampler, use_argument_buffer_for_samplers, slot);
@@ -2678,7 +2683,7 @@ void present(MTLRenderPassDescriptor *blit_descriptor,
   }
 
   while (MTLContext::max_drawables_in_flight > min_ii(perf_max_drawables, MTL_MAX_DRAWABLES)) {
-    BLI_sleep_ms(1);
+    BLI_time_sleep_ms(1);
   }
 
   /* Present is submitted in its own CMD Buffer to ensure drawable reference released as early as

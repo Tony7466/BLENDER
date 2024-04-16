@@ -9,13 +9,15 @@
 
 #include "DNA_node_types.h"
 
+#include "BKE_node.hh"
+
 struct bNodeTree;
 
 namespace blender::compositor {
 
 class NodeOperation;
 
-/* Profiling ddata gathered during execution of a compositing node tree. */
+/* Profiling data gathered during execution of a compositing node tree. */
 class ProfilerData {
  public:
   /* Per-node accumulated execution time. Includes execution time of all operations the node was

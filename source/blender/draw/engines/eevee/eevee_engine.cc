@@ -8,11 +8,11 @@
 
 #include "DRW_render.hh"
 
-#include "draw_color_management.h" /* TODO: remove dependency. */
+#include "draw_color_management.hh" /* TODO: remove dependency. */
 
 #include "BLI_rand.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_object.hh"
 
@@ -20,11 +20,11 @@
 
 #include "DNA_world_types.h"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "IMB_imbuf.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 #include "eevee_engine.h" /* own include */
 

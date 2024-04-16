@@ -17,9 +17,9 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_global.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "UI_view2d.hh"
 
@@ -40,7 +40,7 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 
-#include "anim_intern.h"
+#include "anim_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Frame Change Operator

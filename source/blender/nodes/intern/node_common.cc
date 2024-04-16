@@ -13,7 +13,6 @@
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math_euler.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -21,14 +20,11 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.hh"
-
-#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -249,6 +245,11 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       dst = std::move(decl);
       break;
     }
+    case SOCK_MATRIX: {
+      std::unique_ptr<decl::Matrix> decl = std::make_unique<decl::Matrix>();
+      dst = std::move(decl);
+      break;
+    }
     case SOCK_INT: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueInt>(io_socket);
       std::unique_ptr<decl::Int> decl = std::make_unique<decl::Int>();
@@ -317,6 +318,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
   dst->name = io_socket.name ? io_socket.name : "";
   dst->identifier = io_socket.identifier;
   dst->in_out = in_out;
+  dst->socket_type = datatype;
   dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & NODE_INTERFACE_SOCKET_HIDE_VALUE;
   dst->compact = io_socket.flag & NODE_INTERFACE_SOCKET_COMPACT;
@@ -367,7 +369,7 @@ static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*n
 
 static void set_default_input_field(const bNodeTreeInterfaceSocket &input, SocketDeclaration &decl)
 {
-  if (dynamic_cast<decl::Vector *>(&decl)) {
+  if (decl.socket_type == SOCK_VECTOR) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_NORMAL_FIELD) {
       decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::normal);
@@ -379,7 +381,7 @@ static void set_default_input_field(const bNodeTreeInterfaceSocket &input, Socke
       decl.hide_value = true;
     }
   }
-  else if (dynamic_cast<decl::Int *>(&decl)) {
+  else if (decl.socket_type == SOCK_INT) {
     if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_INDEX_FIELD) {
       decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::index);

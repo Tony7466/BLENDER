@@ -13,7 +13,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_map.hh"
@@ -23,8 +23,6 @@
 #include "BLI_vector.hh"
 
 #include "DNA_material_types.h"
-
-#include "WM_api.hh"
 
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/usd/ar/packageUtils.h>
@@ -74,6 +72,7 @@ static const pxr::TfToken RAW("RAW", pxr::TfToken::Immortal);
 static const pxr::TfToken black("black", pxr::TfToken::Immortal);
 static const pxr::TfToken clamp("clamp", pxr::TfToken::Immortal);
 static const pxr::TfToken repeat("repeat", pxr::TfToken::Immortal);
+static const pxr::TfToken mirror("mirror", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapS("wrapS", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
 
@@ -108,22 +107,40 @@ static const char *temp_textures_dir()
 
 using blender::io::usd::ShaderToNodeMap;
 
+/**
+ * Generate a key for caching a Blender node created for a given USD shader
+ * by returning the shader prim path with an optional tag suffix.  The tag can
+ * be specified in order to generate a unique key when more than one Blender
+ * node is created for the USD shader.
+ */
+static std::string get_key(const pxr::UsdShadeShader &usd_shader, const char *tag)
+{
+  std::string key = usd_shader.GetPath().GetAsString();
+  if (tag) {
+    key += ":";
+    key += tag;
+  }
+  return key;
+}
+
 /* Returns the Blender node previously cached for
  * the given USD shader in the given map.  Returns
  * null if no cached shader was found. */
 static bNode *get_cached_node(const ShaderToNodeMap &node_cache,
-                              const pxr::UsdShadeShader &usd_shader)
+                              const pxr::UsdShadeShader &usd_shader,
+                              const char *tag = nullptr)
 {
-  return node_cache.lookup_default(usd_shader.GetPath().GetAsString(), nullptr);
+  return node_cache.lookup_default(get_key(usd_shader, tag), nullptr);
 }
 
 /* Cache the Blender node translated from the given USD shader
  * in the given map. */
 static void cache_node(ShaderToNodeMap &node_cache,
                        const pxr::UsdShadeShader &usd_shader,
-                       bNode *node)
+                       bNode *node,
+                       const char *tag = nullptr)
 {
-  node_cache.add(usd_shader.GetPath().GetAsString(), node);
+  node_cache.add(get_key(usd_shader, tag), node);
 }
 
 /* Add a node of the given type at the given location coordinates. */
@@ -312,6 +329,10 @@ static int get_image_extension(const pxr::UsdShadeShader &usd_shader, const int 
 
   if (wrap_val == usdtokens::black) {
     return SHD_IMAGE_EXTENSION_CLIP;
+  }
+
+  if (wrap_val == usdtokens::mirror) {
+    return SHD_IMAGE_EXTENSION_MIRROR;
   }
 
   return default_value;
@@ -743,7 +764,16 @@ static IntermediateNode add_scale_bias(const pxr::UsdShadeShader &usd_shader,
   compute_node_loc(feeds_normal_map ? column + 1 : column, &locx, &locy, r_ctx);
 
   IntermediateNode scale_bias{};
-  scale_bias.node = add_node(nullptr, ntree, SH_NODE_VECTOR_MATH, locx, locy);
+
+  const char *tag = "scale_bias";
+  bNode *node = get_cached_node(r_ctx->node_cache, usd_shader, tag);
+
+  if (!node) {
+    node = add_node(nullptr, ntree, SH_NODE_VECTOR_MATH, locx, locy);
+    cache_node(r_ctx->node_cache, usd_shader, node, tag);
+  }
+
+  scale_bias.node = node;
   scale_bias.node->custom1 = NODE_VECTOR_MATH_MULTIPLY_ADD;
   scale_bias.sock_input_name = "Vector";
   scale_bias.sock_output_name = "Vector";
@@ -778,7 +808,8 @@ static IntermediateNode add_scale_bias_adjust(bNodeTree *ntree,
   return adjust;
 }
 
-static IntermediateNode add_separate_color(const pxr::TfToken &usd_source_name,
+static IntermediateNode add_separate_color(const pxr::UsdShadeShader &usd_shader,
+                                           const pxr::TfToken &usd_source_name,
                                            bNodeTree *ntree,
                                            int column,
                                            NodePlacementContext *r_ctx)
@@ -788,11 +819,19 @@ static IntermediateNode add_separate_color(const pxr::TfToken &usd_source_name,
   if (usd_source_name == usdtokens::r || usd_source_name == usdtokens::g ||
       usd_source_name == usdtokens::b)
   {
-    float locx = 0.0f;
-    float locy = 0.0f;
-    compute_node_loc(column, &locx, &locy, r_ctx);
+    const char *tag = "separate_color";
+    bNode *node = get_cached_node(r_ctx->node_cache, usd_shader, tag);
 
-    separate_color.node = add_node(nullptr, ntree, SH_NODE_SEPARATE_COLOR, locx, locy);
+    if (!node) {
+      float locx = 0.0f;
+      float locy = 0.0f;
+      compute_node_loc(column, &locx, &locy, r_ctx);
+
+      node = add_node(nullptr, ntree, SH_NODE_SEPARATE_COLOR, locx, locy);
+      cache_node(r_ctx->node_cache, usd_shader, node, tag);
+    }
+
+    separate_color.node = node;
     separate_color.sock_input_name = "Color";
 
     if (usd_source_name == usdtokens::r) {
@@ -859,7 +898,7 @@ bool USDMaterialReader::follow_connection(const pxr::UsdShadeInput &usd_input,
 
     /* Create a Separate Color node if necessary. */
     IntermediateNode separate_color = add_separate_color(
-        source_name, ntree, column + shift, r_ctx);
+        source_shader, source_name, ntree, column + shift, r_ctx);
     if (separate_color.node) {
       shift++;
     }

@@ -4,11 +4,11 @@
 
 #include "BLI_threads.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "COM_ExecutionSystem.h"
 #include "COM_WorkScheduler.h"
@@ -53,7 +53,6 @@ void COM_execute(Render *render,
                  RenderData *render_data,
                  Scene *scene,
                  bNodeTree *node_tree,
-                 bool rendering,
                  const char *view_name,
                  blender::realtime_compositor::RenderContext *render_context,
                  blender::compositor::ProfilerData &profiler_data)
@@ -79,27 +78,25 @@ void COM_execute(Render *render,
   compositor_reset_node_tree_status(node_tree);
 
   if (U.experimental.use_full_frame_compositor &&
-      node_tree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
+      node_tree->execution_mode == NTREE_EXECUTION_MODE_GPU)
   {
-    /* Realtime GPU compositor. */
-    RE_compositor_execute(
-        *render, *scene, *render_data, *node_tree, rendering, view_name, render_context);
+    /* GPU compositor. */
+    RE_compositor_execute(*render, *scene, *render_data, *node_tree, view_name, render_context);
   }
   else {
-    /* Tiled and Full Frame compositors. */
+    /* CPU compositor. */
 
     /* Initialize workscheduler. */
-    const bool use_opencl = (node_tree->flag & NTREE_COM_OPENCL) != 0;
-    blender::compositor::WorkScheduler::initialize(use_opencl,
-                                                   BKE_render_num_threads(render_data));
+    blender::compositor::WorkScheduler::initialize(BKE_render_num_threads(render_data));
 
     /* Execute. */
-    const bool twopass = (node_tree->flag & NTREE_TWO_PASS) && !rendering;
+    const bool is_rendering = render_context != nullptr;
+    const bool twopass = (node_tree->flag & NTREE_TWO_PASS) && !is_rendering;
     if (twopass) {
       blender::compositor::ExecutionSystem fast_pass(render_data,
                                                      scene,
                                                      node_tree,
-                                                     rendering,
+                                                     is_rendering,
                                                      true,
                                                      view_name,
                                                      render_context,
@@ -112,8 +109,14 @@ void COM_execute(Render *render,
       }
     }
 
-    blender::compositor::ExecutionSystem system(
-        render_data, scene, node_tree, rendering, false, view_name, render_context, profiler_data);
+    blender::compositor::ExecutionSystem system(render_data,
+                                                scene,
+                                                node_tree,
+                                                is_rendering,
+                                                false,
+                                                view_name,
+                                                render_context,
+                                                profiler_data);
     system.execute();
   }
 

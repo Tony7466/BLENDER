@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_generate_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_volume_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 
 #ifdef SPHERE_PROBE
 
@@ -24,8 +27,8 @@ struct LightProbeSample {
  */
 LightProbeSample lightprobe_load(vec3 P, vec3 Ng, vec3 V)
 {
-  /* TODO: Dependency hell */
-  float noise = 0.0;
+  float noise = interlieved_gradient_noise(UTIL_TEXEL, 0.0, 0.0);
+  noise = fract(noise + sampling_rng_1D_get(SAMPLING_LIGHTPROBE));
 
   LightProbeSample result;
   result.volume_irradiance = lightprobe_irradiance_sample(P, V, Ng);
@@ -73,7 +76,7 @@ vec3 lightprobe_spherical_sample_normalized_with_parallax(
 
 float pdf_to_lod(float pdf)
 {
-  return 1.0; /* TODO */
+  return 0.0; /* TODO */
 }
 
 vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 P, vec3 L, float pdf)
@@ -84,70 +87,84 @@ vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 P, vec3 L, float pdf)
   return radiance_sh;
 }
 
-float lightprobe_roughness_to_cube_sh_mix_fac(float roughness)
-{
-  /* Temporary. Do something better. */
-  return square(saturate(roughness * 4.0 - 2.0));
-}
-
-float lightprobe_roughness_to_lod(float roughness)
-{
-  /* Temporary. Do something better. */
-  return sqrt(roughness) * SPHERE_PROBE_MIPMAP_LEVELS;
-}
-
 vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)
 {
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(cl.N, samp.volume_irradiance);
   return radiance_sh;
 }
 
-vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 V)
+vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 V, float thickness)
 {
+  if (thickness > 0.0) {
+    return spherical_harmonics_L0_evaluate(-cl.N, samp.volume_irradiance.L0).rgb;
+  }
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(-cl.N, samp.volume_irradiance);
   return radiance_sh;
 }
 
-vec3 lightprobe_reflection_dominant_dir(vec3 N, vec3 V, float roughness)
-{
-  vec3 R = -reflect(V, N);
-  float smoothness = 1.0 - roughness;
-  float fac = smoothness * (sqrt(smoothness) + roughness);
-  return normalize(mix(N, R, fac));
-}
-
 vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 P, vec3 V)
 {
-  vec3 L = lightprobe_reflection_dominant_dir(reflection.N, V, reflection.roughness);
+  vec3 L = reflection_dominant_dir(reflection.N, V, reflection.roughness);
 
-  float lod = lightprobe_roughness_to_lod(reflection.roughness);
+  float lod = sphere_probe_roughness_to_lod(reflection.roughness);
   vec3 radiance_cube = lightprobe_spherical_sample_normalized_with_parallax(
       samp.spherical_id, P, L, lod, samp.volume_irradiance);
 
-  float fac = lightprobe_roughness_to_cube_sh_mix_fac(reflection.roughness);
+  float fac = sphere_probe_roughness_to_mix_fac(reflection.roughness);
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
   return mix(radiance_cube, radiance_sh, fac);
 }
 
-vec3 lightprobe_refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
+vec3 lightprobe_eval(LightProbeSample samp, ClosureRefraction cl, vec3 P, vec3 V, float thickness)
 {
-  vec3 R = refract(-V, N, 1.0 / ior);
-  float smoothness = 1.0 - roughness;
-  float fac = smoothness * (sqrt(smoothness) + roughness);
-  return normalize(mix(-N, R, fac));
-}
+  cl.roughness = refraction_roughness_remapping(cl.roughness, cl.ior);
 
-vec3 lightprobe_eval(LightProbeSample samp, ClosureRefraction cl, vec3 P, vec3 V)
-{
-  vec3 L = lightprobe_refraction_dominant_dir(cl.N, V, cl.ior, cl.roughness);
+  if (thickness > 0.0) {
+    vec3 L = refraction_dominant_dir(cl.N, V, cl.ior, cl.roughness);
+    ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);
+    P += isect.hit_P;
+    cl.N = -isect.hit_N;
+    cl.ior = 1.0 / cl.ior;
+    V = -L;
+  }
 
-  float lod = lightprobe_roughness_to_lod(cl.roughness);
+  vec3 L = refraction_dominant_dir(cl.N, V, cl.ior, cl.roughness);
+
+  float lod = sphere_probe_roughness_to_lod(cl.roughness);
   vec3 radiance_cube = lightprobe_spherical_sample_normalized_with_parallax(
       samp.spherical_id, P, L, lod, samp.volume_irradiance);
 
-  float fac = lightprobe_roughness_to_cube_sh_mix_fac(cl.roughness);
+  float fac = sphere_probe_roughness_to_mix_fac(cl.roughness);
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
   return mix(radiance_cube, radiance_sh, fac);
+}
+
+void lightprobe_eval(LightProbeSample samp,
+                     ClosureUndetermined cl,
+                     vec3 P,
+                     vec3 V,
+                     float thickness,
+                     inout vec3 radiance)
+{
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      radiance += lightprobe_eval(samp, to_closure_translucent(cl), P, V, thickness);
+      break;
+    case CLOSURE_BSSRDF_BURLEY_ID:
+      /* TODO: Support translucency in ray tracing first. Otherwise we have a discrepancy. */
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      radiance += lightprobe_eval(samp, to_closure_diffuse(cl), P, V);
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      radiance += lightprobe_eval(samp, to_closure_reflection(cl), P, V);
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      radiance += lightprobe_eval(samp, to_closure_refraction(cl), P, V, thickness);
+      break;
+    case CLOSURE_NONE_ID:
+      /* TODO(fclem): Assert. */
+      break;
+  }
 }
 
 #endif /* SPHERE_PROBE */

@@ -31,11 +31,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_strict_flags.h" /* keep last */
-
 #ifdef WITH_MEM_VALGRIND
 #  include "valgrind/memcheck.h"
 #endif
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 #ifdef WITH_ASAN
 #  define POISON_REDZONE_SIZE 32
@@ -618,7 +618,8 @@ void BLI_mempool_as_array(BLI_mempool *pool, void *data)
 {
   const uint esize = pool->esize - (uint)POISON_REDZONE_SIZE;
   BLI_mempool_iter iter;
-  char *elem, *p = data;
+  const char *elem;
+  char *p = data;
 
   BLI_assert(pool->flag & BLI_MEMPOOL_ALLOW_ITER);
 

@@ -10,18 +10,20 @@
 #include <memory>
 #include <string>
 
-#include "BKE_mesh.hh"
+#include "BKE_context.hh"
 #include "BKE_object.hh"
+#include "BKE_report.hh"
 
 #include "BLI_string.h"
+#include "BLI_string_utils.hh"
 
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_mesh_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -40,7 +42,17 @@ void export_frame(Depsgraph *depsgraph,
 
   /* If not exporting in batch, create single writer for all objects. */
   if (!export_params.use_batch) {
-    writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
+    try {
+      writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
+    }
+    catch (const std::runtime_error &ex) {
+      fprintf(stderr, "%s\n", ex.what());
+      BKE_reportf(export_params.reports,
+                  RPT_ERROR,
+                  "STL Export: Cannot open file '%s'",
+                  export_params.filepath);
+      return;
+    }
   }
 
   DEGObjectIterSettings deg_iter_settings{};
@@ -61,16 +73,30 @@ void export_frame(Depsgraph *depsgraph,
     /* If exporting in batch, create writer for each iteration over objects. */
     if (export_params.use_batch) {
       /* Get object name by skipping initial "OB" prefix. */
-      std::string object_name = (object->id.name + 2);
+      char object_name[sizeof(object->id.name) - 2];
+      STRNCPY(object_name, object->id.name + 2);
+      BLI_path_make_safe_filename(object_name);
       /* Replace spaces with underscores. */
-      std::replace(object_name.begin(), object_name.end(), ' ', '_');
+      BLI_string_replace_char(object_name, ' ', '_');
 
       /* Include object name in the exported file name. */
-      std::string suffix = object_name + ".stl";
       char filepath[FILE_MAX];
       STRNCPY(filepath, export_params.filepath);
-      BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
-      writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
+      BLI_path_suffix(filepath, FILE_MAX, object_name, "");
+      /* Make sure we have .stl extension (case insensitive). */
+      if (!BLI_path_extension_check(filepath, ".stl")) {
+        BLI_path_extension_ensure(filepath, FILE_MAX, ".stl");
+      }
+
+      try {
+        writer = std::make_unique<FileWriter>(filepath, export_params.ascii_format);
+      }
+      catch (const std::runtime_error &ex) {
+        fprintf(stderr, "%s\n", ex.what());
+        BKE_reportf(
+            export_params.reports, RPT_ERROR, "STL Export: Cannot open file '%s'", filepath);
+        return;
+      }
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
@@ -85,10 +111,10 @@ void export_frame(Depsgraph *depsgraph,
     /* +Y-forward and +Z-up are the default Blender axis settings. */
     mat3_from_axis_conversion(
         export_params.forward_axis, export_params.up_axis, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
-    mul_m4_m3m4(xform, axes_transform, obj_eval->object_to_world);
+    mul_m4_m3m4(xform, axes_transform, obj_eval->object_to_world().ptr());
     /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
-    mul_v3_m3v3(xform[3], axes_transform, obj_eval->object_to_world[3]);
-    xform[3][3] = obj_eval->object_to_world[3][3];
+    mul_v3_m3v3(xform[3], axes_transform, obj_eval->object_to_world().location());
+    xform[3][3] = obj_eval->object_to_world()[3][3];
 
     /* Write triangles. */
     const Span<float3> positions = mesh->vert_positions();

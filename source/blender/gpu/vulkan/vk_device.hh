@@ -15,6 +15,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_descriptor_set_layouts.hh"
 #include "vk_samplers.hh"
 #include "vk_timeline_semaphore.hh"
 
@@ -61,6 +62,7 @@ class VKDevice : public NonCopyable {
   VkQueue vk_queue_ = VK_NULL_HANDLE;
 
   VKSamplers samplers_;
+  VKDescriptorSetLayouts descriptor_set_layouts_;
 
   /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
   VKTimelineSemaphore timeline_semaphore_;
@@ -162,6 +164,11 @@ class VKDevice : public NonCopyable {
     return vk_pipeline_cache_;
   }
 
+  VKDescriptorSetLayouts &descriptor_set_layouts_get()
+  {
+    return descriptor_set_layouts_;
+  }
+
   debug::VKDebuggingTools &debugging_tools_get()
   {
     return debugging_tools_;
@@ -186,6 +193,7 @@ class VKDevice : public NonCopyable {
    */
   void init_dummy_buffer(VKContext &context);
   void init_dummy_color_attachment();
+  void reinit();
   void deinit();
 
   eGPUDeviceType device_type() const;
@@ -207,7 +215,7 @@ class VKDevice : public NonCopyable {
 
   void context_register(VKContext &context);
   void context_unregister(VKContext &context);
-  const Vector<std::reference_wrapper<VKContext>> &contexts_get() const;
+  Span<std::reference_wrapper<VKContext>> contexts_get() const;
 
   const VKBuffer &dummy_buffer_get() const
   {

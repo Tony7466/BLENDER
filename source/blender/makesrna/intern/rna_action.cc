@@ -16,7 +16,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 
@@ -34,7 +34,7 @@
 
 #  include "BLI_math_base.h"
 
-#  include "BKE_fcurve.h"
+#  include "BKE_fcurve.hh"
 
 #  include "DEG_depsgraph.hh"
 

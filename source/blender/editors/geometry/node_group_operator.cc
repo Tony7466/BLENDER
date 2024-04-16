@@ -34,8 +34,9 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
+#include "BKE_workspace.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -56,7 +57,7 @@
 #include "ED_mesh.hh"
 #include "ED_sculpt.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "FN_lazy_function_execute.hh"
 
@@ -113,26 +114,53 @@ static const bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, Repor
   return group;
 }
 
-class OperatorComputeContext : public ComputeContext {
- private:
-  static constexpr const char *s_static_type = "OPERATOR";
+GeoOperatorLog::~GeoOperatorLog() {}
 
-  std::string operator_name_;
+/**
+ * The socket value log is stored statically so it can be used in the node editor. A fancier
+ * storage system shouldn't be necessary, since the goal is just to be able to debug intermediate
+ * values when building a tool.
+ */
+static GeoOperatorLog &get_static_eval_log()
+{
+  static GeoOperatorLog log;
+  return log;
+}
 
- public:
-  OperatorComputeContext(std::string operator_name)
-      : ComputeContext(s_static_type, nullptr), operator_name_(std::move(operator_name))
-  {
-    hash_.mix_in(s_static_type, strlen(s_static_type));
-    hash_.mix_in(operator_name_.data(), operator_name_.size());
+const GeoOperatorLog &node_group_operator_static_eval_log()
+{
+  return get_static_eval_log();
+}
+
+/** Find all the visible node editors to log values for. */
+static void find_socket_log_contexts(const Main &bmain,
+                                     Set<ComputeContextHash> &r_socket_log_contexts)
+{
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain.wm.first);
+  if (wm == nullptr) {
+    return;
   }
-
- private:
-  void print_current_in_line(std::ostream &stream) const override
-  {
-    stream << "Operator: " << operator_name_;
+  LISTBASE_FOREACH (const wmWindow *, window, &wm->windows) {
+    const bScreen *screen = BKE_workspace_active_screen_get(window->workspace_hook);
+    LISTBASE_FOREACH (const ScrArea *, area, &screen->areabase) {
+      const SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
+      if (sl->spacetype == SPACE_NODE) {
+        const SpaceNode &snode = *reinterpret_cast<const SpaceNode *>(sl);
+        if (snode.edittree == nullptr) {
+          continue;
+        }
+        ComputeContextBuilder compute_context_builder;
+        compute_context_builder.push<bke::OperatorComputeContext>();
+        const Map<const bke::bNodeTreeZone *, ComputeContextHash> hash_by_zone =
+            geo_log::GeoModifierLog::get_context_hash_by_zone_for_node_editor(
+                snode, compute_context_builder);
+        for (const ComputeContextHash &hash : hash_by_zone.values()) {
+          r_socket_log_contexts.add(hash);
+        }
+      }
+    }
   }
-};
+}
 
 /**
  * Geometry nodes currently requires working on "evaluated" data-blocks (rather than "original"
@@ -154,8 +182,8 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object)
     }
     case OB_MESH: {
       const Mesh *mesh = static_cast<const Mesh *>(object.data);
-      if (mesh->edit_mesh) {
-        Mesh *mesh_copy = BKE_mesh_wrapper_from_editmesh(mesh->edit_mesh, nullptr, mesh);
+      if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+        Mesh *mesh_copy = BKE_mesh_wrapper_from_editmesh(em, nullptr, mesh);
         BKE_mesh_wrapper_ensure_mdata(mesh_copy);
         Mesh *final_copy = BKE_mesh_copy_for_eval(mesh_copy);
         BKE_id_free(nullptr, mesh_copy);
@@ -208,6 +236,8 @@ static void store_result_geometry(
     case OB_MESH: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
 
+      const bool has_shape_keys = mesh.key != nullptr;
+
       if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_begin(&object, &op);
       }
@@ -221,14 +251,21 @@ static void store_result_geometry(
         new_mesh->attributes_for_write().remove_anonymous();
 
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
-        BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        if (object.mode == OB_MODE_EDIT) {
+          EDBM_mesh_make_from_mesh(&object, new_mesh, scene.toolsettings->selectmode, true);
+          BKE_editmesh_looptris_and_normals_calc(mesh.runtime->edit_mesh);
+          BKE_id_free(nullptr, new_mesh);
+        }
+        else {
+          BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        }
       }
 
-      if (object.mode == OB_MODE_EDIT) {
-        EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
+      if (has_shape_keys && !mesh.key) {
+        BKE_report(op.reports, RPT_WARNING, "Mesh shape key data removed");
       }
-      else if (object.mode == OB_MODE_SCULPT) {
+
+      if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(&object);
       }
       break;
@@ -256,14 +293,11 @@ static Depsgraph *build_depsgraph_from_indirect_ids(Main &bmain,
                                      needs_own_transform_relation,
                                      needs_scene_camera_relation);
   IDP_foreach_property(
-      &const_cast<IDProperty &>(properties),
-      IDP_TYPE_FILTER_ID,
-      [](IDProperty *property, void *user_data) {
+      &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
-          static_cast<Set<ID *> *>(user_data)->add(id);
+          ids_for_relations.add(id);
         }
-      },
-      &ids_for_relations);
+      });
 
   Vector<const ID *> ids;
   ids.append(&node_tree_orig.id);
@@ -280,16 +314,11 @@ static IDProperty *replace_inputs_evaluated_data_blocks(const IDProperty &op_pro
 {
   /* We just create a temporary copy, so don't adjust data-block user count. */
   IDProperty *properties = IDP_CopyProperty_ex(&op_properties, LIB_ID_CREATE_NO_USER_REFCOUNT);
-  IDP_foreach_property(
-      properties,
-      IDP_TYPE_FILTER_ID,
-      [](IDProperty *property, void *user_data) {
-        if (ID *id = IDP_Id(property)) {
-          Depsgraph *depsgraph = static_cast<Depsgraph *>(user_data);
-          property->data.pointer = DEG_get_evaluated_id(depsgraph, id);
-        }
-      },
-      &const_cast<Depsgraph &>(depsgraph));
+  IDP_foreach_property(properties, IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
+    if (ID *id = IDP_Id(property)) {
+      property->data.pointer = DEG_get_evaluated_id(&depsgraph, id);
+    }
+  });
   return properties;
 }
 
@@ -310,19 +339,38 @@ static Vector<Object *> gather_supported_objects(const bContext &C,
 {
   Vector<Object *> objects;
   Set<const ID *> unique_object_data;
-  CTX_DATA_BEGIN (&C, Object *, object, selected_objects) {
+
+  auto handle_object = [&](Object *object) {
     if (object->mode != mode) {
-      continue;
+      return;
     }
     if (!unique_object_data.add(static_cast<const ID *>(object->data))) {
-      continue;
+      return;
     }
     if (!object_has_editable_data(bmain, *object)) {
-      continue;
+      return;
     }
     objects.append(object);
+  };
+
+  if (mode == OB_MODE_OBJECT) {
+    CTX_DATA_BEGIN (&C, Object *, object, selected_objects) {
+      handle_object(object);
+    }
+    CTX_DATA_END;
   }
-  CTX_DATA_END;
+  else {
+    Scene *scene = CTX_data_scene(&C);
+    ViewLayer *view_layer = CTX_data_view_layer(&C);
+    View3D *v3d = CTX_wm_view3d(&C);
+    Object *active_object = CTX_data_active_object(&C);
+    if (v3d && active_object) {
+      FOREACH_OBJECT_IN_MODE_BEGIN (scene, view_layer, v3d, active_object->type, mode, ob) {
+        handle_object(ob);
+      }
+      FOREACH_OBJECT_IN_MODE_END;
+    }
+  }
   return objects;
 }
 
@@ -375,12 +423,22 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
     }
   }
+  if (node_tree->interface_outputs().is_empty() ||
+      !STREQ(node_tree->interface_outputs()[0]->socket_type, "NodeSocketGeometry"))
+  {
+    BKE_report(op->reports, RPT_ERROR, "Node group's first output must be a geometry");
+    return OPERATOR_CANCELLED;
+  }
 
   IDProperty *properties = replace_inputs_evaluated_data_blocks(*op->properties, *depsgraph);
   BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
 
-  OperatorComputeContext compute_context(op->type->idname);
-  auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
+  bke::OperatorComputeContext compute_context;
+  Set<ComputeContextHash> socket_log_contexts;
+  GeoOperatorLog &eval_log = get_static_eval_log();
+  eval_log.log = std::make_unique<geo_log::GeoModifierLog>();
+  eval_log.node_group_name = node_tree->id.name + 2;
+  find_socket_log_contexts(*bmain, socket_log_contexts);
 
   for (Object *object : objects) {
     nodes::GeoNodesOperatorData operator_eval_data{};
@@ -391,7 +449,11 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;
-    call_data.eval_log = eval_log.get();
+    call_data.eval_log = eval_log.log.get();
+    if (object == active_object) {
+      /* Only log values from the active object. */
+      call_data.socket_log_contexts = &socket_log_contexts;
+    }
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object);
 
@@ -404,7 +466,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, object->data);
   }
 
-  geo_log::GeoTreeLog &tree_log = eval_log->get_tree_log(compute_context.hash());
+  geo_log::GeoTreeLog &tree_log = eval_log.log->get_tree_log(compute_context.hash());
   tree_log.ensure_node_warnings();
   for (const geo_log::NodeWarning &warning : tree_log.all_warnings) {
     if (warning.type == geo_log::NodeWarningType::Info) {
@@ -425,7 +487,7 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
     return OPERATOR_CANCELLED;
   }
 
-  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, true, *op->properties);
+  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, *op->properties);
   nodes::update_output_properties_from_node_tree(*node_tree, op->properties, *op->properties);
 
   return run_node_group_exec(C, op);
@@ -761,7 +823,7 @@ void clear_operator_asset_trees()
   for (const ObjectType type : {OB_MESH, OB_CURVES, OB_POINTCLOUD}) {
     for (const eObjectMode mode : {OB_MODE_OBJECT, OB_MODE_EDIT, OB_MODE_SCULPT_CURVES}) {
       if (asset::AssetItemTree *tree = get_static_item_tree(type, mode)) {
-        *tree = {};
+        tree->dirty = true;
       }
     }
   }
@@ -769,7 +831,7 @@ void clear_operator_asset_trees()
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C, const Object &active_object)
 {
-  AssetFilterSettings type_filter{};
+  asset::AssetFilterSettings type_filter{};
   type_filter.id_types = FILTER_ID_NT;
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(active_object);
   auto meta_data_filter = [&](const AssetMetaData &meta_data) {
@@ -785,6 +847,7 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C, const Object &
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
+  asset_system::all_library_reload_catalogs_if_dirty();
   return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
@@ -877,7 +940,7 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   }
   const auto &menu_path = *static_cast<const asset_system::AssetCatalogPath *>(menu_path_ptr.data);
   const Span<asset_system::AssetRepresentation *> assets = tree->assets_per_path.lookup(menu_path);
-  asset_system::AssetCatalogTreeItem *catalog_item = tree->catalogs.find_item(menu_path);
+  const asset_system::AssetCatalogTreeItem *catalog_item = tree->catalogs.find_item(menu_path);
   BLI_assert(catalog_item != nullptr);
 
   uiLayout *layout = menu->layout;
@@ -910,7 +973,7 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
     return;
   }
 
-  catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
+  catalog_item->foreach_child([&](const asset_system::AssetCatalogTreeItem &item) {
     if (builtin_menus.contains_as(item.catalog_path().str())) {
       return;
     }
@@ -1078,7 +1141,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext
   if (!tree) {
     return;
   }
-  if (tree->assets_per_path.size() == 0) {
+  if (tree->dirty) {
     *tree = build_catalog_tree(C, *active_object);
   }
 
@@ -1091,7 +1154,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext
   const Set<std::string> builtin_menus = get_builtin_menus(ObjectType(active_object->type),
                                                            eObjectMode(active_object->mode));
 
-  tree->catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
+  tree->catalogs.foreach_root_item([&](const asset_system::AssetCatalogTreeItem &item) {
     if (!builtin_menus.contains_as(item.catalog_path().str())) {
       asset::draw_menu_for_catalog(
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
