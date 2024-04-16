@@ -108,7 +108,7 @@ class VKResourceStateTracker {
     }
   };
 
-  VKResourceHandles<ResourceHandle, Resource> resources_;
+  VKResourceHandles<Resource> resources_;
   Map<VkImage, ResourceHandle> image_resources_;
   Map<VkBuffer, ResourceHandle> buffer_resources_;
 

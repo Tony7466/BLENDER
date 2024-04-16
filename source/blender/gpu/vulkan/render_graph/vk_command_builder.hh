@@ -8,8 +8,9 @@
 
 #pragma once
 
+#include "nodes/vk_types_pipeline.hh"
 #include "vk_common.hh"
-#include "vk_nodes.hh"
+#include "vk_node.hh"
 #include "vk_scheduler.hh"
 
 namespace blender::gpu::render_graph {

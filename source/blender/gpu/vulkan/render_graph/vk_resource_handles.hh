@@ -19,7 +19,9 @@ namespace blender::gpu::render_graph {
  * List for working with handles and items.
  * Reference to the first empty slot is stored internally to stop iterating over all the elements.
  */
-template<typename Handle, typename Item> class VKResourceHandles {
+template<typename Item> class VKResourceHandles {
+  using Handle = uint64_t;
+
  private:
   const int64_t grow_size_ = 64;
   Handle first_empty_slot_ = 0;

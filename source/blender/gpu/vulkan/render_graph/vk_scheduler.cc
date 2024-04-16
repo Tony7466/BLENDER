@@ -34,7 +34,7 @@ void VKScheduler::select_all_nodes(const VKRenderGraph &render_graph)
   result_.clear();
   NodeHandle node_handle = 0;
 
-  for (const std::optional<VKNode> &optional_node_data : render_graph.nodes_.nodes()) {
+  for (const std::optional<VKNode> &optional_node_data : render_graph.nodes_.as_span()) {
     if (optional_node_data.has_value()) {
       const VKNode &node = *optional_node_data;
       if (node.type != VKNodeType::UNUSED) {

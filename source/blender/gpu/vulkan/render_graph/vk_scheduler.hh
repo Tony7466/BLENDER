@@ -14,7 +14,7 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_nodes.hh"
+#include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
 class VKRenderGraph;

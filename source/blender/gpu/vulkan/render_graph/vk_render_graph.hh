@@ -28,7 +28,6 @@
 
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
-#include "vk_nodes.hh"
 #include "vk_resource_dependencies.hh"
 #include "vk_resource_state_tracker.hh"
 #include "vk_types.hh"
@@ -41,7 +40,7 @@ class VKRenderGraph : public NonCopyable {
   friend class VKScheduler;
 
   VKResourceDependencies resource_dependencies_;
-  VKNodes nodes_;
+  VKResourceHandles<VKNode> nodes_;
   VKCommandBuilder command_builder_;
 
   std::unique_ptr<VKCommandBufferInterface> command_buffer_;
@@ -69,9 +68,11 @@ class VKRenderGraph : public NonCopyable {
   template<typename NodeInfo> void add_node(const typename NodeInfo::CreateInfo &create_info)
   {
     std::scoped_lock lock(resources_.mutex_get());
-    NodeHandle handle = nodes_.add_node<NodeInfo>(create_info);
-    NodeInfo node_info;
-    node_info.build_resource_dependencies(resources_, resource_dependencies_, handle, create_info);
+    NodeHandle node_handle = nodes_.allocate();
+    VKNode &node = nodes_.get(node_handle);
+    node.set_node_data<NodeInfo>(create_info);
+    node.build_resource_dependencies<NodeInfo>(
+        resources_, resource_dependencies_, node_handle, create_info);
   }
 
  public:
@@ -122,6 +123,9 @@ class VKRenderGraph : public NonCopyable {
    * - `vk_swapchain_image` layout is transitioned to `VK_IMAGE_LAYOUT_SRC_PRESENT`.
    */
   void submit_for_present(VkImage vk_swapchain_image);
+
+ private:
+  void remove_nodes(Span<NodeHandle> node_handles);
 };
 
 }  // namespace blender::gpu::render_graph

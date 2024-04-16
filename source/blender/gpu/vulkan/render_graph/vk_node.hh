@@ -60,6 +60,19 @@ struct VKNode {
   }
 
   /**
+   * Build resource dependencies
+   */
+  template<typename NodeInfo>
+  void build_resource_dependencies(VKResourceStateTracker &resources,
+                                   VKResourceDependencies &dependencies,
+                                   NodeHandle node_handle,
+                                   const typename NodeInfo::CreateInfo &create_info)
+  {
+    NodeInfo node_info;
+    node_info.build_resource_dependencies(resources, dependencies, node_handle, create_info);
+  }
+
+  /**
    * Get the pipeline stage of the node.
    *
    * Pipeline stage is used to update `src/dst_stage_masks` of the VKCommandBuilder.

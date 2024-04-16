@@ -21,6 +21,16 @@ void VKRenderGraph::deinit()
   command_buffer_.reset();
 }
 
+void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
+{
+  resource_dependencies_.remove_nodes(node_handles);
+  for (NodeHandle node_handle : node_handles) {
+    VKNode &node = nodes_.get(node_handle);
+    node.reset();
+    nodes_.free(node_handle);
+  }
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Submit graph
  * \{ */
@@ -42,8 +52,7 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
    *
    * Currently using CPU synchronization for safety. */
   command_buffer_->submit_with_cpu_synchronization();
-  resource_dependencies_.remove_nodes(built_nodes);
-  nodes_.remove_nodes(built_nodes);
+  remove_nodes(built_nodes);
   command_buffer_->wait_for_cpu_synchronization();
 }
 
@@ -52,8 +61,7 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   std::scoped_lock lock(resources_.mutex_get());
   Span<NodeHandle> built_nodes = command_builder_.build_buffer(*this, *command_buffer_, vk_buffer);
   command_buffer_->submit_with_cpu_synchronization();
-  resource_dependencies_.remove_nodes(built_nodes);
-  nodes_.remove_nodes(built_nodes);
+  remove_nodes(built_nodes);
   command_buffer_->wait_for_cpu_synchronization();
 }
 
