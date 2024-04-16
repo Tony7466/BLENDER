@@ -502,14 +502,6 @@ static void applyVertSlide(TransInfo *t)
   else {
     ofs += BLI_snprintf_rlen(str + ofs, sizeof(str) - ofs, "%.4f ", final);
   }
-  ofs += BLI_snprintf_rlen(
-      str + ofs, sizeof(str) - ofs, IFACE_("(E)ven: %s, "), WM_bool_as_string(use_even));
-  if (use_even) {
-    ofs += BLI_snprintf_rlen(
-        str + ofs, sizeof(str) - ofs, IFACE_("(F)lipped: %s, "), WM_bool_as_string(flipped));
-  }
-  ofs += BLI_snprintf_rlen(
-      str + ofs, sizeof(str) - ofs, IFACE_("Alt or (C)lamp: %s"), WM_bool_as_string(is_clamp));
   /* Done with header string. */
 
   /* Do stuff here. */
@@ -518,6 +510,27 @@ static void applyVertSlide(TransInfo *t)
   recalc_data(t);
 
   ED_area_status_text(t->area, str);
+
+  ED_workspace_status_begin(t->context);
+
+  std::string desc;
+
+  desc = IFACE_("Clamp: ");
+  desc += WM_bool_as_string(is_clamp);
+  ED_workspace_status_icons(t->context, ICON_EVENT_C, ICON_EVENT_ALT);
+  ED_workspace_status_item(t->context, desc);
+
+  desc = IFACE_("Even: ");
+  desc += WM_bool_as_string(use_even);
+  ED_workspace_status_key(t->context, desc, ICON_EVENT_E);
+
+  if (use_even) {
+    desc = IFACE_("Flipped: ");
+    desc += WM_bool_as_string(flipped);
+    ED_workspace_status_key(t->context, desc, ICON_EVENT_F);
+  }
+
+  ED_workspace_status_end(t->context);
 }
 
 static void vert_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
