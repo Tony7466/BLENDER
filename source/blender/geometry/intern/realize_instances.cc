@@ -168,7 +168,7 @@ struct RealizeCurveTask {
   CurvesElementStartIndices start_indices;
 
   const RealizeCurveInfo *curve_info;
-  /* Transformation applied to the position of control points and handles. */
+  /** Transformation applied to the position of control points and handles. */
   float4x4 transform;
   AttributeFallbacksArray attribute_fallbacks;
   /** Only used when the output contains an output attribute. */
@@ -220,7 +220,7 @@ struct AllCurvesInfo {
 };
 
 struct AllInstancesInfo {
-  /** store an array of void pointer to attributes for each component. */
+  /** Stores an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
   /** Instance components to merge for output geometry. */
   Vector<bke::GeometryComponentPtr> instances_components_to_merge;
@@ -500,36 +500,35 @@ static Vector<std::pair<int, GSpan>> prepare_attribute_fallbacks(
   return attributes_to_override;
 }
 
-static bke::GeometrySet &geometry_set_from_reference(const InstanceReference &reference,
-                                                     bke::GeometrySet &r_geometry_set)
+static bke::GeometrySet geometry_set_from_reference(const InstanceReference &reference)
 {
   switch (reference.type()) {
     case InstanceReference::Type::Object: {
       const Object &object = reference.object();
-      r_geometry_set = bke::object_get_evaluated_geometry_set(object);
+      const bke::GeometrySet geometry_set = bke::object_get_evaluated_geometry_set(object);
+      return geometry_set;
       break;
     }
     case InstanceReference::Type::Collection: {
       Collection *collection_ptr = &reference.collection();
       std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
       realize_collections(collection_ptr, instances.get());
-      r_geometry_set.replace_instances(instances.release());
+      bke::GeometrySet geometry_set;
+      geometry_set.replace_instances(instances.release());
+      return geometry_set;
       break;
     }
     case InstanceReference::Type::GeometrySet: {
-      r_geometry_set = reference.geometry_set();
+      const bke::GeometrySet geometry_set = reference.geometry_set();
+      return geometry_set;
       break;
     }
     case InstanceReference::Type::None: {
-      r_geometry_set = bke::GeometrySet();  // Return an empty GeometrySet for None type
-      break;
-    }
-    default: {
-      r_geometry_set = bke::GeometrySet();
+      return {};  // Return an empty GeometrySet for None type
       break;
     }
   }
-  return r_geometry_set;
+  return {};
 }
 
 /**
@@ -543,8 +542,7 @@ static void foreach_geometry_in_reference(
     FunctionRef<void(const bke::GeometrySet &geometry_set, const float4x4 &transform, uint32_t id)>
         fn)
 {
-  bke::GeometrySet geometry_set;
-  geometry_set_from_reference(reference, geometry_set);
+  bke::GeometrySet geometry_set = geometry_set_from_reference(reference);
   fn(geometry_set, base_transform, id);
 }
 
@@ -778,9 +776,8 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
     for (const int index : indices.index_range()) {
       const int i = indices[index];
       const int depth_target_tmp = (0 == current_depth) ? instance_depth[i] : depth_target;
-      bke::GeometrySet instance_geometry_set;
-      geometry_set_from_reference(instances.references()[instances.reference_handles()[i]],
-                                  instance_geometry_set);
+      bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
+          instances.references()[instances.reference_handles()[i]]);
       /*Process child instances with a recursive call.*/
       if (current_depth != depth_target_tmp) {
         child_has_component = child_has_component | attribute_foreach(instance_geometry_set,
@@ -1014,7 +1011,7 @@ static void execute_instances_tasks(
   }
 
   join_attributes(
-      for_join_attributes, {"position", ".reference_index", "instance_transform"}, dst_component);
+      for_join_attributes, dst_component, {"position", ".reference_index", "instance_transform"});
 }
 
 /** \} */
