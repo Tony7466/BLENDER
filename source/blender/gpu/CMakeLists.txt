@@ -276,7 +276,7 @@ set(VULKAN_SRC
   vulkan/render_graph/nodes/vk_fill_buffer_node.hh
   vulkan/render_graph/nodes/vk_node_info.hh
   vulkan/render_graph/nodes/vk_synchronization_node.hh
-  vulkan/render_graph/nodes/vk_types_pipeline.hh
+  vulkan/render_graph/nodes/vk_pipeline_data.hh
   vulkan/render_graph/vk_command_buffer_wrapper.hh
   vulkan/render_graph/vk_command_builder.hh
   vulkan/render_graph/vk_node.hh

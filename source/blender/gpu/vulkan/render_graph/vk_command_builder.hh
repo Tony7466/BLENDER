@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "nodes/vk_types_pipeline.hh"
 #include "vk_common.hh"
 #include "vk_node.hh"
 #include "vk_scheduler.hh"
