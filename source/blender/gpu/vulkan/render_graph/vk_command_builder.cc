@@ -56,7 +56,7 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 
   command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
-    VKNode &node = render_graph.nodes_[node_handle] ;
+    VKNode &node = render_graph.nodes_[node_handle];
     build_node(render_graph, command_buffer, node_handle, node);
   }
   command_buffer.end_recording();
