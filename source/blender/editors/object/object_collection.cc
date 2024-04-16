@@ -475,7 +475,7 @@ static int collection_exporter_add_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void COLLECTION_OT_exporter_add(wmOperatorType *ot)
+static void COLLECTION_OT_exporter_add(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Add Exporter";
@@ -525,7 +525,7 @@ static int collection_exporter_remove_invoke(bContext *C,
       C, op, IFACE_("Remove exporter?"), nullptr, IFACE_("Delete"), ALERT_ICON_NONE, false);
 }
 
-void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
+static void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Remove Exporter";
@@ -546,7 +546,8 @@ void COLLECTION_OT_exporter_remove(wmOperatorType *ot)
 static int collection_exporter_export(bContext *C,
                                       wmOperator *op,
                                       CollectionExport *data,
-                                      Collection *collection)
+                                      Collection *collection,
+                                      const bool report_success)
 {
   using namespace blender;
   bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
@@ -594,6 +595,11 @@ static int collection_exporter_export(bContext *C,
   int op_result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &properties, nullptr);
 
   IDP_FreeProperty(op_props);
+
+  if (report_success && op_result == OPERATOR_FINISHED) {
+    BKE_reportf(op->reports, RPT_INFO, "Exported '%s'", filepath);
+  }
+
   return op_result;
 }
 
@@ -608,10 +614,10 @@ static int collection_exporter_export_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  return collection_exporter_export(C, op, data, collection);
+  return collection_exporter_export(C, op, data, collection, true);
 }
 
-void COLLECTION_OT_exporter_export(wmOperatorType *ot)
+static void COLLECTION_OT_exporter_export(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export";
@@ -631,12 +637,20 @@ void COLLECTION_OT_exporter_export(wmOperatorType *ot)
 static int collection_export(bContext *C, wmOperator *op, Collection *collection)
 {
   ListBase *exporters = &collection->exporters;
+  int num_files = 0;
 
   LISTBASE_FOREACH (CollectionExport *, data, exporters) {
-    if (collection_exporter_export(C, op, data, collection) != OPERATOR_FINISHED) {
+    if (collection_exporter_export(C, op, data, collection, false) != OPERATOR_FINISHED) {
       /* Do not continue calling exporters if we encounter one that fails. */
       return OPERATOR_CANCELLED;
     }
+    else {
+      num_files++;
+    }
+  }
+
+  if (num_files) {
+    BKE_reportf(op->reports, RPT_INFO, "Exported %d files", num_files);
   }
 
   return OPERATOR_FINISHED;
@@ -648,7 +662,7 @@ static int collection_io_export_all_exec(bContext *C, wmOperator *op)
   return collection_export(C, op, collection);
 }
 
-void COLLECTION_OT_export_all(wmOperatorType *ot)
+static void COLLECTION_OT_export_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export All";
@@ -697,7 +711,7 @@ static int wm_collection_export_all_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void WM_OT_collection_export_all(wmOperatorType *ot)
+static void WM_OT_collection_export_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export All Collections";
