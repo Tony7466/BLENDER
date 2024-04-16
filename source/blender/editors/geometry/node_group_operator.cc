@@ -281,20 +281,32 @@ static void store_result_geometry(
   }
 }
 
+struct NodeToolsDepsgraphs {
+  const Depsgraph &depsgraph_active;
+  Depsgraph *depsgraph_node_tree;
+  Depsgraph *depsgraph_inputs_extra;
+};
+
 /**
  * Create a dependency graph referencing all data-blocks used by the tree, and all selected
  * objects. Adding the selected objects is necessary because they are currently compared by pointer
  * to other evaluated objects inside of geometry nodes.
  */
-static Depsgraph *build_depsgraph_from_indirect_ids(const Depsgraph &main_depsgraph,
-                                                    const bNodeTree &node_tree,
-                                                    const IDProperty &properties)
+static NodeToolsDepsgraphs build_depsgraphs(const Depsgraph &depsgraph_active,
+                                            const bNodeTree &node_tree,
+                                            const IDProperty &properties)
 {
-  Set<ID *> ids_for_relations;
-  bool needs_own_transform_relation = false;
-  bool needs_scene_camera_relation = false;
-  nodes::find_node_tree_dependencies(
-      node_tree, ids_for_relations, needs_own_transform_relation, needs_scene_camera_relation);
+  NodeToolsDepsgraphs result{depsgraph_active, nullptr, nullptr};
+
+  {
+    Set<ID *> ids;
+    bool needs_own_transform_relation = false;
+    bool needs_scene_camera_relation = false;
+    nodes::find_node_tree_dependencies(
+        node_tree, ids, needs_own_transform_relation, needs_scene_camera_relation);
+    if (!ids.is_empty()) {
+    }
+  }
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
@@ -304,7 +316,7 @@ static Depsgraph *build_depsgraph_from_indirect_ids(const Depsgraph &main_depsgr
 
   Vector<const ID *> extra_ids;
   for (ID *id : ids_for_relations) {
-    if (!DEG_get_evaluated_id(&main_depsgraph, id)) {
+    if (!DEG_get_evaluated_id(&depsgraph_active, id)) {
       extra_ids.append(id);
     }
   }
@@ -312,10 +324,10 @@ static Depsgraph *build_depsgraph_from_indirect_ids(const Depsgraph &main_depsgr
     return nullptr;
   }
 
-  Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&main_depsgraph),
-                                       DEG_get_input_scene(&main_depsgraph),
-                                       DEG_get_input_view_layer(&main_depsgraph),
-                                       DEG_get_mode(&main_depsgraph));
+  Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&depsgraph_active),
+                                       DEG_get_input_scene(&depsgraph_active),
+                                       DEG_get_input_view_layer(&depsgraph_active),
+                                       DEG_get_mode(&depsgraph_active));
   DEG_graph_build_from_ids(depsgraph, const_cast<ID **>(extra_ids.data()), extra_ids.size());
   return depsgraph;
 }
@@ -421,8 +433,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   const Vector<Object *> objects = gather_supported_objects(*C, *bmain, mode);
 
   Depsgraph *depsgraph_main = CTX_data_ensure_evaluated_depsgraph(C);
-  Depsgraph *depsgraph_extra = build_depsgraph_from_indirect_ids(
-      *depsgraph_main, *node_tree_orig, *op->properties);
+  Depsgraph *depsgraph_extra = build_depsgraphs(*depsgraph_main, *node_tree_orig, *op->properties);
   BLI_SCOPED_DEFER([&]() { DEG_graph_free(depsgraph_extra); });
 
   if (depsgraph_extra) {
