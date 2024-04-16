@@ -36,11 +36,12 @@ float edge_step(float dist)
 
 void main()
 {
-  const float dist = abs(geometry_noperspective_out.edgeCoord) - max(geometry_out.wire_width/2.0 - 0.5, 0.0);
-  const float mix_w = edge_step(dist);
+  const float dist = abs(geometry_noperspective_out.edgeCoord) - geometry_out.wire_width / 2.0;
+  const float mix_w = clamp(edge_step(dist), 0.0, 1.0);
 
-  fragColor = mix(vec4(0), vec4(geometry_out.finalColor.rgb, alpha), 1.0 - mix_w);
+  fragColor = mix(vec4(geometry_out.finalColor.rgb, alpha), vec4(0), mix_w);
   fragColor.a *= 1.0 - mix_w;
   fragColor.a *= test_occlusion() ? alpha : 1.0;
   select_id_output(select_id);
+  lineOutput = vec4(0);
 }

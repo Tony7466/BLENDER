@@ -166,6 +166,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .geometry_source("overlay_armature_shape_wire_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
     .fragment_out(0, Type::VEC4, "fragColor")
+    .fragment_out(1, Type::VEC4, "lineOutput")
     .additional_info("overlay_armature_common", "draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_clipped)
