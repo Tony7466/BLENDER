@@ -5,14 +5,15 @@
 /** \file
  * \ingroup gpu
  *
- * Render graph is a render solution that is able to track resource usages in a single submission
+ * Render graph is a render solution that is able to track resource usages of a single submission
  *
- * The graph contains nodes that refers to resources it depends on, or alters.
+ * The graph contains nodes that refers to resources it reads from, or modifies.
+ * The resources that are read from are linked to the node inputs. The resources that are written
+ * to are linked to the node outputs.
  *
  * Resources needs to be tracked as usage can alter the content of the resource. For example an
  * image can be optimized for data transfer, or optimized for sampling which can use a different
  * pixel layout on the device.
- *
  */
 
 #pragma once
@@ -39,27 +40,56 @@ class VKRenderGraph : public NonCopyable {
   friend class VKCommandBuilder;
   friend class VKScheduler;
 
+  /** All links inside the graph. */
   VKRenderGraphLinks links_;
+  /** All nodes inside the graph. */
   VKResourceHandles<VKNode> nodes_;
+  /** Scheduler decides which nodes to select and in what order to execute them. */
+  VKScheduler scheduler_;
+  /**
+   * Command builder generated the commands of the nodes and record them into the command buffer.
+   */
   VKCommandBuilder command_builder_;
 
+  /**
+   * Command buffer sends the commands to the device (`VKCommandBufferWrapper`).
+   *
+   * To improve testability the command buffer can be replaced by an instance of
+   * `VKCommandBufferLog` this way test cases don't need to create a fully working context in order
+   * to test something render graph specific.
+   */
   std::unique_ptr<VKCommandBufferInterface> command_buffer_;
 
   /**
    * Not owning pointer to device resources.
    *
-   * Is marked optional as device could
+   * To improve testability the render graph doesn't access VKDevice or VKBackend directly.
+   * resources_ can be replaced by a local variable. This way test cases don't need to create a
+   * fully working context in order to test something render graph specific. Is marked optional as
+   * device could
    */
   VKResourceStateTracker &resources_;
 
  public:
+  /**
+   * Construct a new render graph instance.
+   *
+   * To improve testability the command buffer and resources they work on are provided as a
+   * parameter.
+   */
   VKRenderGraph(std::unique_ptr<VKCommandBufferInterface> command_buffer,
                 VKResourceStateTracker &resources);
 
   /**
-   * Free all resources held by the render graph.
+   * Free all resources held by the render graph. After calling this function the render graph may
+   * not work as expected, leading to crashes.
+   *
+   * Freeing data of context resources cannot be done inside the destructor due to an issue when
+   * Blender (read window manager) exits. During this phase the backend is deallocated, device is
+   * destroyed, but window manager requires a context so it creates new one. We work around this
+   * issue by ensuring the VKDevice is always in control of releasing resources.
    */
-  void deinit();
+  void free_data();
 
  private:
   /**
@@ -109,14 +139,23 @@ class VKRenderGraph : public NonCopyable {
   }
 
   /**
-   * Submit the commands to readback the given vk_buffer to the command queue.
+   * Submit partial graph to be able to read the expected result of the rendering commands
+   * affecting the given vk_buffer. This method is called from
+   * `GPU_texture/storagebuf/indexbuf/vertbuf/_read`. In vulkan the content of images cannot be
+   * read directly and always needs tobe copied to a transfer buffer.
+   *
+   * After calling this function the mapped memory of the vk_buffer would contain the data of the
+   * buffer.
    */
-  void submit_buffer_for_read_back(VkBuffer vk_buffer);
+  void submit_buffer_for_read(VkBuffer vk_buffer);
 
   /**
-   * Submit the commands to present the given vk_image to the command queue.
+   * Submit partial graph to be able to present the expected result of the rendering commands
+   * affecting the given vk_swapchain_image. This method is called when performing a
+   * swap chain swap.
    *
-   * `vk_image` needs to be a swapchain owned image.
+   * Pre conditions:
+   * - `vk_swapchain_image` needs to be a created using ResourceOwner::SWAP_CHAIN`.
    *
    * Post conditions:
    * - `vk_swapchain_image` layout is transitioned to `VK_IMAGE_LAYOUT_SRC_PRESENT`.

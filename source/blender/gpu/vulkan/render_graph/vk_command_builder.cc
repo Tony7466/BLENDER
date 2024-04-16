@@ -45,38 +45,15 @@ VKCommandBuilder::VKCommandBuilder()
 /** \name Build nodes
  * \{ */
 
-void VKCommandBuilder::reset(VKRenderGraph &render_graph)
+void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
+                                   VKCommandBufferInterface &command_buffer,
+                                   Span<NodeHandle> nodes)
 {
   /* Swap chain images layouts needs to be reset as the image layouts are changed externally.  */
   render_graph.resources_.reset_image_layouts();
 
   state_.active_pipelines = {};
-}
 
-Span<NodeHandle> VKCommandBuilder::build_image(VKRenderGraph &render_graph,
-                                               VKCommandBufferInterface &command_buffer,
-                                               VkImage vk_image)
-{
-  reset(render_graph);
-  Span<NodeHandle> selected_nodes = scheduler_.select_nodes_for_image(render_graph, vk_image);
-  build_nodes(render_graph, command_buffer, selected_nodes);
-  return selected_nodes;
-}
-
-Span<NodeHandle> VKCommandBuilder::build_buffer(VKRenderGraph &render_graph,
-                                                VKCommandBufferInterface &command_buffer,
-                                                VkBuffer vk_buffer)
-{
-  reset(render_graph);
-  Span<NodeHandle> selected_nodes = scheduler_.select_nodes_for_buffer(render_graph, vk_buffer);
-  build_nodes(render_graph, command_buffer, selected_nodes);
-  return selected_nodes;
-}
-
-void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
-                                   VKCommandBufferInterface &command_buffer,
-                                   Span<NodeHandle> nodes)
-{
   command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
     VKNode &node = render_graph.nodes_.get(node_handle);

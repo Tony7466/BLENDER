@@ -24,8 +24,6 @@ class VKRenderGraph;
  */
 class VKCommandBuilder {
  private:
-  VKScheduler scheduler_;
-
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
   Vector<VkImageMemoryBarrier> vk_image_memory_barriers_;
@@ -56,65 +54,8 @@ class VKCommandBuilder {
   VKCommandBuilder();
 
   /**
-   * Build the commands to update the given vk_image to the latest stamp. The commands are
+   * Build the commands of the nodes provided by the `node_handles` parameter. The commands are
    * recorded into the given `command_buffer`.
-   *
-   * `VKRenderGraph::submit_for_present` and its responsibility is to generate and record
-   * all the commands needed to update the given vk_image to its latest stamp. The latest stamp is
-   * determined by the last command has a write access to the `vk_image`.
-   *
-   * Pre-condition:
-   * - `command_buffer` must not be in initial state according to
-   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
-   *
-   * Post-condition:
-   * - `command_buffer` will be in executable state according to
-   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
-   *
-   * Result must be passed to the `remove_nodes` methods in `VKRenderGraph` and
-   * `VKRenderGraphLinks` to free their resources. This can be done after submission when the CPU
-   * is waiting.
-   */
-  [[nodiscard]] Span<NodeHandle> build_image(VKRenderGraph &render_graph,
-                                             VKCommandBufferInterface &command_buffer,
-                                             VkImage vk_image);
-
-  /**
-   * Build the commands to update the given vk_buffer to the latest stamp. The commands are
-   * recorded into the given `command_buffer`.
-   *
-   * `VKRenderGraph::submit_buffer_for_read_back` and its responsibility is to generate and record
-   * all the commands needed to update the given vk_buffer to its latest stamp. The latest stamp is
-   * determined by the last command has a write access to the `vk_buffer`.
-   *
-   * Pre-condition:
-   * - `command_buffer` must not be in initial state according to
-   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
-   *
-   * Post-condition:
-   * - `command_buffer` will be in executable state according to
-   *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
-   *
-   * Result must be passed to the `remove_nodes` methods in `VKRenderGraph` and
-   * `VKRenderGraphLinks` to free their resources. This can be done after submission when the CPU
-   * is waiting.
-   */
-  [[nodiscard]] Span<NodeHandle> build_buffer(VKRenderGraph &render_graph,
-                                              VKCommandBufferInterface &command_buffer,
-                                              VkBuffer vk_buffer);
-
- private:
-  /**
-   * Reset the command builder.
-   *
-   * Is called by `build_image/buffer` to ensure the internal state and swapchain images are reset.
-   */
-  void reset(VKRenderGraph &render_graph);
-
-  /**
-   * Build multiple nodes.
-   *
-   * Building happen in order provided by the `node_handles` parameter.
    *
    * Pre-condition:
    * - `command_buffer` must not be in initial state according to
@@ -128,6 +69,7 @@ class VKCommandBuilder {
                    VKCommandBufferInterface &command_buffer,
                    Span<NodeHandle> node_handles);
 
+ private:
   /**
    * Build the commands for the given node_handle and node.
    *
