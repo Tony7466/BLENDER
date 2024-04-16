@@ -763,7 +763,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
                               const bke::GeometrySet::AttributeForeachCallback callback)
 {
 
-  /*Initialize flag to track if child instances have the specified components.*/
+  /* Initialize flag to track if child instances have the specified components.*/
   bool child_has_component = true;
 
   if (geometry_set.has_instances()) {
@@ -778,7 +778,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
       const int depth_target_tmp = (0 == current_depth) ? instance_depth[i] : depth_target;
       bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
           instances.references()[instances.reference_handles()[i]]);
-      /*Process child instances with a recursive call.*/
+      /* Process child instances with a recursive call.*/
       if (current_depth != depth_target_tmp) {
         child_has_component = child_has_component | attribute_foreach(instance_geometry_set,
                                                                       component_types,
@@ -791,17 +791,17 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
     }
   }
 
-  /*Flag to track if any relevant attributes were found.*/
+  /* Flag to track if any relevant attributes were found.*/
   bool is_relevant = false;
 
   for (const bke::GeometryComponent::Type component_type : component_types) {
     if (geometry_set.has(component_type)) {
-      /*Check if the current instance components is the main one*/
+      /* Check if the current instance components is the main one*/
       const bool is_special_instance = (bke::GeometryComponent::Type::Instance ==
                                         component_type) &&
                                        (component_types.size() > 1);
       if (!is_special_instance || child_has_component) {
-        /*Process attributes for the current component.*/
+        /* Process attributes for the current component.*/
         const bke::GeometryComponent &component = *geometry_set.get_component(component_type);
         const std::optional<bke::AttributeAccessor> attributes = component.attributes();
         if (attributes.has_value()) {
