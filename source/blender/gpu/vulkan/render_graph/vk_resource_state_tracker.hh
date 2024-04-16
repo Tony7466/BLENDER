@@ -201,7 +201,7 @@ class VKResourceStateTracker {
    * stamp for future nodes.
    *
    * This function is called when adding a node to the render graph, during building resource
-   * dependencies. See `VKNodeInfo.build_resource_dependencies`
+   * dependencies. See `VKNodeInfo.build_links`
    */
   ResourceWithStamp get_image_and_increase_stamp(VkImage vk_image);
 
@@ -213,7 +213,7 @@ class VKResourceStateTracker {
    * new stamp for future nodes.
    *
    * This function is called when adding a node to the render graph, during building resource
-   * dependencies. See `VKNodeInfo.build_resource_dependencies`
+   * dependencies. See `VKNodeInfo.build_links`
    */
   ResourceWithStamp get_buffer_and_increase_version(VkBuffer vk_buffer);
 
@@ -223,7 +223,7 @@ class VKResourceStateTracker {
    * When a node reads from a buffer, this method is called to get the current stamp the buffer.
    *
    * This function is called when adding a node to the render graph, during building resource
-   * dependencies. See `VKNodeInfo.build_resource_dependencies`
+   * dependencies. See `VKNodeInfo.build_links`
    */
   ResourceWithStamp get_buffer(VkBuffer vk_buffer) const;
 
@@ -233,7 +233,7 @@ class VKResourceStateTracker {
    * When a node reads from an image, this method is called to get the current stamp the image.
    *
    * This function is called when adding a node to the render graph, during building resource
-   * dependencies. See `VKNodeInfo.build_resource_dependencies`
+   * dependencies. See `VKNodeInfo.build_links`
    */
   ResourceWithStamp get_image(VkImage vk_image) const;
 

@@ -8,8 +8,8 @@
 
 #pragma once
 
+#include "render_graph/vk_render_graph_links.hh"
 #include "render_graph/vk_resource_access_info.hh"
-#include "render_graph/vk_resource_dependencies.hh"
 #include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
@@ -59,15 +59,14 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   * Extract read/write resource dependencies from `create_info` and add them to `links`.
    */
-  void build_resource_dependencies(VKResourceStateTracker &resources,
-                                   VKResourceDependencies &dependencies,
-                                   NodeHandle node_handle,
-                                   const CreateInfo &create_info) override
+  void build_links(VKResourceStateTracker &resources,
+                   VKRenderGraphLinks &links,
+                   NodeHandle node_handle,
+                   const CreateInfo &create_info) override
   {
-    resource_access_build_dependencies(
-        resources, dependencies, node_handle, create_info.resources);
+    resource_access_build_links(resources, links, node_handle, create_info.resources);
   }
 
   /**

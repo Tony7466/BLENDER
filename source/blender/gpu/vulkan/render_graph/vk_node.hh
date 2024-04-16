@@ -60,16 +60,18 @@ struct VKNode {
   }
 
   /**
-   * Build resource dependencies
+   * Build the input/output links for this.
+   *
+   * Newly created links are added to the `links` parameter.
    */
   template<typename NodeInfo>
-  void build_resource_dependencies(VKResourceStateTracker &resources,
-                                   VKResourceDependencies &dependencies,
-                                   NodeHandle node_handle,
-                                   const typename NodeInfo::CreateInfo &create_info)
+  void build_links(VKResourceStateTracker &resources,
+                   VKRenderGraphLinks &links,
+                   NodeHandle node_handle,
+                   const typename NodeInfo::CreateInfo &create_info)
   {
     NodeInfo node_info;
-    node_info.build_resource_dependencies(resources, dependencies, node_handle, create_info);
+    node_info.build_links(resources, links, node_handle, create_info);
   }
 
   /**

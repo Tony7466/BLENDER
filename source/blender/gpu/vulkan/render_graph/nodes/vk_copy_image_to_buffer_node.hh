@@ -9,7 +9,7 @@
 #pragma once
 
 #include "../vk_command_buffer_wrapper.hh"
-#include "../vk_resource_dependencies.hh"
+#include "../vk_render_graph_links.hh"
 #include "../vk_resource_state_tracker.hh"
 #include "vk_common.hh"
 #include "vk_node_info.hh"
@@ -43,21 +43,21 @@ class VKCopyImageToBufferNode : public VKNodeInfo<VKNodeType::COPY_IMAGE_TO_BUFF
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   * Extract read/write resource dependencies from `create_info` and add them to `links`.
    */
-  void build_resource_dependencies(VKResourceStateTracker &resources,
-                                   VKResourceDependencies &dependencies,
-                                   NodeHandle node_handle,
-                                   const CreateInfo &create_info) override
+  void build_links(VKResourceStateTracker &resources,
+                   VKRenderGraphLinks &links,
+                   NodeHandle node_handle,
+                   const CreateInfo &create_info) override
   {
     ResourceWithStamp src_resource = resources.get_image(create_info.src_image);
     ResourceWithStamp dst_resource = resources.get_buffer_and_increase_version(
         create_info.dst_buffer);
-    dependencies.add_read_resource(node_handle,
-                                   src_resource,
-                                   VK_ACCESS_TRANSFER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    dependencies.add_write_resource(
+    links.add_input(node_handle,
+                           src_resource,
+                           VK_ACCESS_TRANSFER_READ_BIT,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    links.add_output(
         node_handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 

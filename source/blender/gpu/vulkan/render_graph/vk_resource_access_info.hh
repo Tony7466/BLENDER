@@ -15,7 +15,7 @@
 
 namespace blender::gpu::render_graph {
 class VKResourceStateTracker;
-class VKResourceDependencies;
+class VKRenderGraphLinks;
 
 struct VKImageAccess {
   VkImage vk_image;
@@ -38,9 +38,9 @@ struct VKResourceAccessInfo : NonCopyable {
   }
 };
 
-void resource_access_build_dependencies(VKResourceStateTracker &resources,
-                                        VKResourceDependencies &dependencies,
-                                        NodeHandle node_handle,
-                                        const VKResourceAccessInfo &access_info);
+void resource_access_build_links(VKResourceStateTracker &resources,
+                                 VKRenderGraphLinks &dependencies,
+                                 NodeHandle node_handle,
+                                 const VKResourceAccessInfo &access_info);
 
 }  // namespace blender::gpu::render_graph

@@ -7,22 +7,22 @@
  */
 
 #include "vk_resource_access_info.hh"
-#include "vk_resource_dependencies.hh"
+#include "vk_render_graph_links.hh"
 #include "vk_resource_state_tracker.hh"
 
 namespace blender::gpu::render_graph {
 
-void resource_access_build_dependencies(VKResourceStateTracker &resources,
-                                        VKResourceDependencies &dependencies,
-                                        NodeHandle node_handle,
-                                        const VKResourceAccessInfo &access_info)
+void resource_access_build_links(VKResourceStateTracker &resources,
+                                 VKRenderGraphLinks &dependencies,
+                                 NodeHandle node_handle,
+                                 const VKResourceAccessInfo &access_info)
 {
   // TODO: Add a debug time validation that resources are unique (or merged).
   for (const VKBufferAccess &buffer_access : access_info.buffers) {
     VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer(buffer_access.vk_buffer);
-      dependencies.add_read_resource(
+      dependencies.add_input(
           node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
@@ -30,7 +30,7 @@ void resource_access_build_dependencies(VKResourceStateTracker &resources,
     if (write_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer_and_increase_version(
           buffer_access.vk_buffer);
-      dependencies.add_write_resource(
+      dependencies.add_output(
           node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
   }
@@ -39,7 +39,7 @@ void resource_access_build_dependencies(VKResourceStateTracker &resources,
     VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_image(image_access.vk_image);
-      dependencies.add_read_resource(
+      dependencies.add_input(
           node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
@@ -48,7 +48,7 @@ void resource_access_build_dependencies(VKResourceStateTracker &resources,
       ResourceWithStamp versioned_resource = resources.get_image_and_increase_stamp(
           image_access.vk_image);
       /* Extract the correct layout to use from the access flags. */
-      dependencies.add_write_resource(
+      dependencies.add_output(
           node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
   }

@@ -71,8 +71,9 @@ class VKCommandBuilder {
    * - `command_buffer` will be in executable state according to
    *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
    *
-   * Result must be passed to the `remove_nodes` methods in `VKNodes` and `VKResourceDependencies`
-   * to free their resources. This can be done after submission when the CPU is waiting.
+   * Result must be passed to the `remove_nodes` methods in `VKRenderGraph` and
+   * `VKRenderGraphLinks` to free their resources. This can be done after submission when the CPU
+   * is waiting.
    */
   [[nodiscard]] Span<NodeHandle> build_image(VKRenderGraph &render_graph,
                                              VKCommandBufferInterface &command_buffer,
@@ -94,8 +95,9 @@ class VKCommandBuilder {
    * - `command_buffer` will be in executable state according to
    *   https://docs.vulkan.org/spec/latest/chapters/cmdbuffers.html#commandbuffers-lifecycle
    *
-   * Result must be passed to the `remove_nodes` methods in `VKNodes` and `VKResourceDependencies`
-   * to free their resources. This can be done after submission when the CPU is waiting.
+   * Result must be passed to the `remove_nodes` methods in `VKRenderGraph` and
+   * `VKRenderGraphLinks` to free their resources. This can be done after submission when the CPU
+   * is waiting.
    */
   [[nodiscard]] Span<NodeHandle> build_buffer(VKRenderGraph &render_graph,
                                               VKCommandBufferInterface &command_buffer,

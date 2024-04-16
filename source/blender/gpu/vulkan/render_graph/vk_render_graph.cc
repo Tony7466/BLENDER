@@ -23,7 +23,7 @@ void VKRenderGraph::deinit()
 
 void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
 {
-  resource_dependencies_.remove_nodes(node_handles);
+  links_.remove_links(node_handles);
   for (NodeHandle node_handle : node_handles) {
     VKNode &node = nodes_.get(node_handle);
     node.reset();

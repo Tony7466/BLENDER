@@ -9,7 +9,7 @@
 #pragma once
 
 #include "render_graph/vk_command_buffer_wrapper.hh"
-#include "render_graph/vk_resource_dependencies.hh"
+#include "render_graph/vk_render_graph_links.hh"
 #include "render_graph/vk_resource_state_tracker.hh"
 #include "vk_common.hh"
 #include "vk_types_pipeline.hh"
@@ -38,7 +38,7 @@ enum class VKNodeType {
  * Nodes can be created using `NodeCreateInfo`. When a node is created the `VKNodeInfo.node_type`
  * and `VKNodeInfo.set_node_data` are used to fill a VKNode instance. The VKNode is stored
  * sequentially in the render graph. When the node is created the dependencies are extracted by
- * calling `VKNodeInfo.build_resource_dependencies`.
+ * calling `VKNodeInfo.build_links`.
  *
  * Eventually when a node is recorded to a command buffer `VKNodeInfo.build_commands` is invoked.
  */
@@ -85,12 +85,12 @@ class VKNodeInfo : public NonCopyable {
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info);
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   * Extract read/write resource dependencies from `create_info` and add them to `links`.
    */
-  virtual void build_resource_dependencies(VKResourceStateTracker &resources,
-                                           VKResourceDependencies &dependencies,
-                                           NodeHandle node_handle,
-                                           const CreateInfo &create_info) = 0;
+  virtual void build_links(VKResourceStateTracker &resources,
+                           VKRenderGraphLinks &links,
+                           NodeHandle node_handle,
+                           const CreateInfo &create_info) = 0;
 
   /**
    * Build the commands and add them to the command_buffer.

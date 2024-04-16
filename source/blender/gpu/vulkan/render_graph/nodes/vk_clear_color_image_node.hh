@@ -40,15 +40,15 @@ class VKClearColorImageNode : public VKNodeInfo<VKNodeType::CLEAR_COLOR_IMAGE,
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   * Extract read/write resource dependencies from `create_info` and add them to `links`.
    */
-  void build_resource_dependencies(VKResourceStateTracker &resources,
-                                   VKResourceDependencies &dependencies,
-                                   NodeHandle node_handle,
-                                   const CreateInfo &create_info) override
+  void build_links(VKResourceStateTracker &resources,
+                   VKRenderGraphLinks &links,
+                   NodeHandle node_handle,
+                   const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_image_and_increase_stamp(create_info.vk_image);
-    dependencies.add_write_resource(
+    links.add_output(
         node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 

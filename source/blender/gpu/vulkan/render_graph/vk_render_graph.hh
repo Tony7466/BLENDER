@@ -28,7 +28,7 @@
 
 #include "vk_command_buffer_wrapper.hh"
 #include "vk_command_builder.hh"
-#include "vk_resource_dependencies.hh"
+#include "vk_render_graph_links.hh"
 #include "vk_resource_state_tracker.hh"
 #include "vk_types.hh"
 
@@ -39,7 +39,7 @@ class VKRenderGraph : public NonCopyable {
   friend class VKCommandBuilder;
   friend class VKScheduler;
 
-  VKResourceDependencies resource_dependencies_;
+  VKRenderGraphLinks links_;
   VKResourceHandles<VKNode> nodes_;
   VKCommandBuilder command_builder_;
 
@@ -71,8 +71,7 @@ class VKRenderGraph : public NonCopyable {
     NodeHandle node_handle = nodes_.allocate();
     VKNode &node = nodes_.get(node_handle);
     node.set_node_data<NodeInfo>(create_info);
-    node.build_resource_dependencies<NodeInfo>(
-        resources_, resource_dependencies_, node_handle, create_info);
+    node.build_links<NodeInfo>(resources_, links_, node_handle, create_info);
   }
 
  public:
