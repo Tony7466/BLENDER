@@ -4237,6 +4237,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
         VArray<float>::ForSingle(BASIS_RAD, boundary_positions_num),
         VArray<int>::ForSingle(5, boundary_positions_num),
         true,
+        false,
         {});
   }
 

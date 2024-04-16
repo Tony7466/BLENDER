@@ -12,7 +12,6 @@
 #include "GEO_fillet_curves.hh"
 
 namespace blender::geometry {
-
 static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_curve,
                                         const OffsetIndices<int> dst_points_by_curve,
                                         const IndexMask &curve_selection,
@@ -93,104 +92,84 @@ static void calculate_angles(const Span<float3> directions, MutableSpan<float> a
   }
 }
 
-/**
- * Find the portion of the previous and next segments used by the current and next point fillets.
- * If more than the total length of the segment would be used, scale the current point's radius
- * just enough to make the two points meet in the middle.
- */
-static float limit_radius(const float3 &position_prev,
-                          const float3 &position,
-                          const float3 &position_next,
-                          const float angle_prev,
-                          const float angle,
-                          const float angle_next,
-                          const float radius_prev,
-                          const float radius,
-                          const float radius_next)
-{
-  const float displacement = radius * std::tan(angle / 2.0f);
-
-  const float displacement_prev = radius_prev * std::tan(angle_prev / 2.0f);
-  const float segment_length_prev = math::distance(position, position_prev);
-  const float total_displacement_prev = displacement_prev + displacement;
-  const float factor_prev = std::clamp(
-      math::safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
-
-  const float displacement_next = radius_next * std::tan(angle_next / 2.0f);
-  const float segment_length_next = math::distance(position, position_next);
-  const float total_displacement_next = displacement_next + displacement;
-  const float factor_next = std::clamp(
-      math::safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
-
-  return radius * std::min(factor_prev, factor_next);
-}
-
 static void limit_radii(const Span<float3> positions,
                         const Span<float> angles,
                         const Span<float> radii,
                         const bool cyclic,
-                        MutableSpan<float> radii_clamped)
+                        MutableSpan<float> radii_clamped,
+                        MutableSpan<bool> isDuplicated)
 {
-  if (cyclic) {
-    /* First point. */
-    radii_clamped.first() = limit_radius(positions.last(),
-                                         positions.first(),
-                                         positions[1],
-                                         angles.last(),
-                                         angles.first(),
-                                         angles[1],
-                                         radii.last(),
-                                         radii.first(),
-                                         radii[1]);
-    /* All middle points. */
-    for (const int i : positions.index_range().drop_back(1).drop_front(1)) {
-      const int i_prev = i - 1;
-      const int i_next = i + 1;
-      radii_clamped[i] = limit_radius(positions[i_prev],
-                                      positions[i],
-                                      positions[i_next],
-                                      angles[i_prev],
-                                      angles[i],
-                                      angles[i_next],
-                                      radii[i_prev],
-                                      radii[i],
-                                      radii[i_next]);
-    }
-    /* Last point. */
-    radii_clamped.last() = limit_radius(positions.last(1),
-                                        positions.last(),
-                                        positions.first(),
-                                        angles.last(1),
-                                        angles.last(),
-                                        angles.first(),
-                                        radii.last(1),
-                                        radii.last(),
-                                        radii.first());
+  /* Previous, current, and next values will be needed simultaneously.
+   * Calculate the variables needed at each stage in advance.
+   */
+  Array<float> displacements(positions.size());
+  for (const int i : positions.index_range()) {
+    displacements[i] = radii[i] * std::tan(angles[i] / 2.0f);
   }
-  else {
-    const int i_last = positions.index_range().last();
-    /* First point. */
-    radii_clamped.first() = 0.0f;
-    /* All middle points. */
-    for (const int i : positions.index_range().drop_back(1).drop_front(1)) {
-      const int i_prev = i - 1;
-      const int i_next = i + 1;
-      /* Use a zero radius for the first and last points, because they don't have fillets.
-       * This logic could potentially be unrolled, but it doesn't seem worth it. */
-      const float radius_prev = i_prev == 0 ? 0.0f : radii[i_prev];
-      const float radius_next = i_next == i_last ? 0.0f : radii[i_next];
-      radii_clamped[i] = limit_radius(positions[i_prev],
-                                      positions[i],
-                                      positions[i_next],
-                                      angles[i_prev],
-                                      angles[i],
-                                      angles[i_next],
-                                      radius_prev,
-                                      radii[i],
-                                      radius_next);
+
+  IndexRange positions_range = positions.index_range();
+  const int i_last = positions_range.last();
+  for (const int i : positions_range) {
+    int i_prev = i - 1;
+    int i_next = i + 1;
+
+    /* Handle the first point. */
+    if (i == 0) {
+      if (cyclic) {
+        /* The previous point on cyclic curves */
+        i_prev = i_last;
+      }
+      else {
+        /* Use a zero radius for the first and last points, because they don't have fillets.
+         * This logic could potentially be unrolled, but it doesn't seem worth it. */
+        radii_clamped.first() = 0.0f;
+        continue;
+      }
     }
-    /* Last point. */
-    radii_clamped.last() = 0.0f;
+
+    /* Handle the last point */
+    if (i == i_last) {
+      if (cyclic) {
+        /* The next point on cyclic curves */
+        i_next = 0;
+      }
+      else {
+        radii_clamped.last() = 0.0f;
+        continue;
+      }
+    }
+
+    /**
+     * Find the portion of the previous and next segments used by the current and next point
+     * fillets. If more than the total length of the segment would be used, scale the current
+     * point's radius just enough to make the two points meet in the middle.
+     */
+    const float radius = radii[i];
+    const float3 position = positions[i];
+    const float displacement = displacements[i];
+
+    const float3 position_prev = positions[i_prev];
+    const float displacement_prev = displacements[i_prev];
+    const float segment_length_prev = math::distance(position, position_prev);
+    const float total_displacement_prev = displacement_prev + displacement;
+    const float factor_prev = std::clamp(
+        math::safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
+
+    const float3 position_next = positions[i_next];
+    const float displacement_next = displacements[i_next];
+    const float segment_length_next = math::distance(position, position_next);
+    const float total_displacement_next = displacement_next + displacement;
+    const float factor_next = std::clamp(
+        math::safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
+
+    /*
+     * The lower of the two factors is the location of the duplicate point
+     * If it is the next location, that point should be removed.
+     */
+
+    const float min_factor = std::min(factor_prev, factor_next);
+    radii_clamped[i] = radius * min_factor;
+    isDuplicated[i] = min_factor < 1 && factor_next <= factor_prev;
   }
 }
 
@@ -368,6 +347,7 @@ static bke::CurvesGeometry fillet_curves(
     const VArray<float> &radius_input,
     const VArray<int> &counts,
     const bool limit_radius,
+    bool remove_duplicated_points,
     const bool use_bezier_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -382,18 +362,20 @@ static bke::CurvesGeometry fillet_curves(
   /* Stores the offset of every result point for every original point.
    * The extra length is used in order to store an extra zero for every curve. */
   Array<int> dst_point_offsets(src_curves.points_num() + src_curves.curves_num());
+  MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
   calculate_result_offsets(src_points_by_curve,
                            curve_selection,
                            unselected,
                            radius_input,
                            counts,
                            cyclic,
-                           dst_curves.offsets_for_write(),
+                           dst_curve_offsets,
                            dst_point_offsets);
   const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
   const Span<int> all_point_offsets = dst_point_offsets.as_span();
 
-  dst_curves.resize(dst_curves.offsets().last(), dst_curves.curves_num());
+  const int dst_curve_size = dst_curve_offsets.last();
+  dst_curves.resize(dst_curve_size, dst_curves.curves_num());
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
 
@@ -422,6 +404,7 @@ static bke::CurvesGeometry fillet_curves(
     Array<float> angles;
     Array<float> radii;
     Array<float> input_radii_buffer;
+    Array<bool> is_duplicated_r;
 
     for (const int curve_i : segment) {
       const IndexRange src_points = src_points_by_curve[curve_i];
@@ -438,10 +421,13 @@ static bke::CurvesGeometry fillet_curves(
       calculate_angles(directions, angles);
 
       radii.reinitialize(src_points.size());
+      is_duplicated_r.reinitialize(src_points.size());
+
       if (limit_radius) {
         input_radii_buffer.reinitialize(src_points.size());
         radius_input.materialize_compressed(src_points, input_radii_buffer);
-        limit_radii(src_positions, angles, input_radii_buffer, cyclic[curve_i], radii);
+        limit_radii(
+            src_positions, angles, input_radii_buffer, cyclic[curve_i], radii, is_duplicated_r);
       }
       else {
         radius_input.materialize_compressed(src_points, radii);
@@ -454,6 +440,12 @@ static bke::CurvesGeometry fillet_curves(
                                  offsets,
                                  dst_positions.slice(dst_points));
 
+      MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
+      MutableSpan<float3> dst_handles_l_write = dst_handles_l.slice(dst_points);
+      MutableSpan<float3> dst_handles_r_write = dst_handles_r.slice(dst_points);
+      MutableSpan<int8_t> dst_types_l_write = dst_types_l.slice(dst_points);
+      MutableSpan<int8_t> dst_types_r_write = dst_types_r.slice(dst_points);
+
       if (src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
         if (use_bezier_mode) {
           calculate_bezier_handles_bezier_mode(src_handles_l.slice(src_points),
@@ -464,11 +456,11 @@ static bke::CurvesGeometry fillet_curves(
                                                radii,
                                                directions,
                                                offsets,
-                                               dst_positions.slice(dst_points),
-                                               dst_handles_l.slice(dst_points),
-                                               dst_handles_r.slice(dst_points),
-                                               dst_types_l.slice(dst_points),
-                                               dst_types_r.slice(dst_points));
+                                               dst_positions_write,
+                                               dst_handles_l_write,
+                                               dst_handles_r_write,
+                                               dst_types_l_write,
+                                               dst_types_r_write);
         }
         else {
           calculate_bezier_handles_poly_mode(src_handles_l.slice(src_points),
@@ -476,11 +468,43 @@ static bke::CurvesGeometry fillet_curves(
                                              src_types_l.slice(src_points),
                                              src_types_r.slice(src_points),
                                              offsets,
-                                             dst_positions.slice(dst_points),
-                                             dst_handles_l.slice(dst_points),
-                                             dst_handles_r.slice(dst_points),
-                                             dst_types_l.slice(dst_points),
-                                             dst_types_r.slice(dst_points));
+                                             dst_positions_write,
+                                             dst_handles_l_write,
+                                             dst_handles_r_write,
+                                             dst_types_l_write,
+                                             dst_types_r_write);
+        }
+      }
+
+      if (limit_radius && remove_duplicated_points) {
+        int i_r = 0;
+        int dst_i = 0;
+        bool elements_remain = true;
+        /* Skip all the duplicated right-side edges (odd-index) */
+        const int point_num = dst_positions.size();
+        for (; dst_i < point_num; dst_i++) {
+          elements_remain = i_r < point_num;
+
+          /* Data associated with left-edge is "skipped" on the next loop */
+          float3 handle_l = elements_remain ? dst_handles_l_write[i_r] : float3{0.0f, 0.0f, 0.0f};
+          int8_t type_l = elements_remain ? dst_types_l_write[i_r] : BEZIER_HANDLE_VECTOR;
+
+          const bool remove_r = elements_remain && i_r % 2 == 1 && is_duplicated_r[i_r / 2];
+          if (remove_r) {
+            i_r++;
+          }
+
+          float3 pos = elements_remain ? dst_positions_write[i_r] : float3{0.0f, 0.0f, 0.0f};
+          float3 handle_r = elements_remain ? dst_handles_r_write[i_r] : float3{0.0f, 0.0f, 0.0f};
+          int8_t type_r = elements_remain ? dst_types_r_write[i_r] : BEZIER_HANDLE_VECTOR;
+
+          dst_positions_write[dst_i] = pos;
+          dst_handles_l_write[dst_i] = handle_l;
+          dst_handles_r_write[dst_i] = handle_r;
+          dst_types_l_write[dst_i] = type_l;
+          dst_types_r_write[dst_i] = type_r;
+
+          i_r++;
         }
       }
     }
@@ -520,10 +544,17 @@ bke::CurvesGeometry fillet_curves_poly(
     const VArray<float> &radius,
     const VArray<int> &count,
     const bool limit_radius,
+    const bool remove_duplicated_points,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  return fillet_curves(
-      src_curves, curve_selection, radius, count, limit_radius, false, propagation_info);
+  return fillet_curves(src_curves,
+                       curve_selection,
+                       radius,
+                       count,
+                       limit_radius,
+                       remove_duplicated_points,
+                       false,
+                       propagation_info);
 }
 
 bke::CurvesGeometry fillet_curves_bezier(
@@ -531,6 +562,7 @@ bke::CurvesGeometry fillet_curves_bezier(
     const IndexMask &curve_selection,
     const VArray<float> &radius,
     const bool limit_radius,
+    const bool remove_duplicated_points,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   return fillet_curves(src_curves,
@@ -538,8 +570,8 @@ bke::CurvesGeometry fillet_curves_bezier(
                        radius,
                        VArray<int>::ForSingle(1, src_curves.points_num()),
                        limit_radius,
+                       remove_duplicated_points,
                        true,
                        propagation_info);
 }
-
 }  // namespace blender::geometry

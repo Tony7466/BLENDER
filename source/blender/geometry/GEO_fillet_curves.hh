@@ -10,13 +10,13 @@
 #include "BKE_curves.hh"
 
 namespace blender::geometry {
-
 bke::CurvesGeometry fillet_curves_poly(
     const bke::CurvesGeometry &src_curves,
     const IndexMask &curve_selection,
     const VArray<float> &radius,
     const VArray<int> &counts,
     bool limit_radius,
+    bool remove_duplicated_points,
     const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 bke::CurvesGeometry fillet_curves_bezier(
@@ -24,6 +24,6 @@ bke::CurvesGeometry fillet_curves_bezier(
     const IndexMask &curve_selection,
     const VArray<float> &radius,
     bool limit_radius,
+    bool remove_duplicated_points,
     const bke::AnonymousAttributePropagationInfo &propagation_info);
-
 }  // namespace blender::geometry
