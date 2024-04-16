@@ -57,5 +57,6 @@ add_dependencies(
   external_tbb
   external_quickhull
   external_clipper2
-  external_cccl 
+  external_cccl
+  external_glm
 )
