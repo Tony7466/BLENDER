@@ -28,7 +28,6 @@
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
-#include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
 
@@ -56,6 +55,12 @@ struct ResourceWithStamp {
 };
 
 /**
+ * Enum containing the different resource types that are being tracked.
+ */
+enum class VKResourceType { NONE = (0 << 0), IMAGE = (1 << 0), BUFFER = (1 << 1) };
+ENUM_OPERATORS(VKResourceType, VKResourceType::BUFFER);
+
+/**
  * Resources can have deviations in its lifetime based on who owns it.
  */
 enum class ResourceOwner {
@@ -75,6 +80,25 @@ enum class ResourceOwner {
    * modified outside our context.
    */
   SWAP_CHAIN,
+};
+
+/**
+ * State being tracked for a resource.
+ *
+ * NOTE: write_access and read_access are mutual exclusive.
+ * NOTE: write_stages and read_stages are mutual exclusive.
+ */
+struct VKResourceBarrierState {
+  /* How was the resource accessed when last written to. */
+  VkAccessFlags write_access = VK_ACCESS_NONE;
+  /* How is the resource currently been read from. */
+  VkAccessFlags read_access = VK_ACCESS_NONE;
+  /* Pipeline stage that created wrote last to the resource. */
+  VkPipelineStageFlags write_stages = VK_PIPELINE_STAGE_NONE;
+  /* Pipeline stage that is currently reading from the resource. */
+  VkPipelineStageFlags read_stages = VK_PIPELINE_STAGE_NONE;
+  /* Current image layout of the image resource. */
+  VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
 /**

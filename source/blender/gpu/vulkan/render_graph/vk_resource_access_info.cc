@@ -12,6 +12,24 @@
 
 namespace blender::gpu::render_graph {
 
+/** Which access flags are considered for read access. */
+static constexpr VkAccessFlags VK_ACCESS_READ_MASK = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
+                                                     VK_ACCESS_INDEX_READ_BIT |
+                                                     VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
+                                                     VK_ACCESS_UNIFORM_READ_BIT |
+                                                     VK_ACCESS_INPUT_ATTACHMENT_READ_BIT |
+                                                     VK_ACCESS_SHADER_READ_BIT |
+                                                     VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                                     VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                                     VK_ACCESS_TRANSFER_READ_BIT |
+                                                     VK_ACCESS_HOST_READ_BIT;
+
+/** Which access flags are considered for write access. */
+static constexpr VkAccessFlags VK_ACCESS_WRITE_MASK =
+    VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
+    VK_ACCESS_HOST_WRITE_BIT;
+
 void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
                                        VKRenderGraphLinks &links,
                                        NodeHandle node_handle) const

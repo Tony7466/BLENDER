@@ -8,8 +8,6 @@
 
 #pragma once
 
-#include "vk_types.hh"
-
 #include "nodes/vk_blit_image_node.hh"
 #include "nodes/vk_clear_color_image_node.hh"
 #include "nodes/vk_copy_buffer_node.hh"

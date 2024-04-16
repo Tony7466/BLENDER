@@ -31,19 +31,11 @@ Span<NodeHandle> VKScheduler::select_nodes_for_buffer(const VKRenderGraph &rende
 
 void VKScheduler::select_all_nodes(const VKRenderGraph &render_graph)
 {
-  result_.clear();
-  NodeHandle node_handle = 0;
-
   /* TODO: This will not work when we extract subgraphs. When subgraphs are removed the order in
-   * the render graph may not follow the order of adding. */
-  for (const std::optional<VKNode> &optional_node_data : render_graph.nodes_.as_span()) {
-    if (optional_node_data.has_value()) {
-      const VKNode &node = *optional_node_data;
-      if (node.type != VKNodeType::UNUSED) {
-        result_.append(node_handle);
-      }
-    }
-    node_handle += 1;
+   * the render graph may not follow the order the nodes were added. */
+  result_.clear();
+  for (NodeHandle node_handle : render_graph.nodes_.index_range()) {
+    result_.append(node_handle);
   }
 }
 

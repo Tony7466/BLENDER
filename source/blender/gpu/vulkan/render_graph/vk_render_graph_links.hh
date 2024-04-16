@@ -21,9 +21,14 @@
 
 #include "vk_common.hh"
 #include "vk_resource_state_tracker.hh"
-#include "vk_types.hh"
 
 namespace blender::gpu::render_graph {
+/**
+ * Index of a node inside the render graph.
+ * Defined here to solve a include dependency cycle.
+ */
+using NodeHandle = uint64_t;
+
 /**
  * Class containing all links inside the render graph.
  */
