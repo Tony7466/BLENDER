@@ -1087,7 +1087,7 @@ static void rna_BrushGpencilSettings_default_eraser_update(Main *bmain,
 {
   ToolSettings *ts = scene->toolsettings;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_cur = paint->brush;
+  Brush *brush_cur = BKE_paint_brush(paint);
 
   /* disable default eraser in all brushes */
   for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
@@ -1127,7 +1127,7 @@ static void rna_BrushGpencilSettings_eraser_mode_update(Main * /*bmain*/,
 {
   ToolSettings *ts = scene->toolsettings;
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
 
   /* set eraser icon */
   if ((brush) && (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
@@ -1459,14 +1459,14 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   PropertyRNA *prop;
 
   /* modes */
-  static EnumPropertyItem gppaint_mode_types_items[] = {
+  static const EnumPropertyItem gppaint_mode_types_items[] = {
       {GPPAINT_MODE_STROKE, "STROKE", 0, "Stroke", "Vertex Color affects to Stroke only"},
       {GPPAINT_MODE_FILL, "FILL", 0, "Fill", "Vertex Color affects to Fill only"},
       {GPPAINT_MODE_BOTH, "BOTH", 0, "Stroke & Fill", "Vertex Color affects to Stroke and Fill"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
+  static const EnumPropertyItem rna_enum_gpencil_brush_caps_types_items[] = {
       {GP_STROKE_CAP_ROUND, "ROUND", ICON_GP_CAPS_ROUND, "Round", ""},
       {GP_STROKE_CAP_FLAT, "FLAT", ICON_GP_CAPS_FLAT, "Flat", ""},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1950,6 +1950,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "eraser_mode");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_brush_eraser_modes_items);
   RNA_def_property_ui_text(prop, "Mode", "Eraser Mode");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(
       prop, NC_GPENCIL | ND_DATA, "rna_BrushGpencilSettings_eraser_mode_update");
@@ -3057,7 +3058,9 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 1.0f);
   RNA_def_property_ui_range(prop, 0, 0.2f, 1, 3);
   RNA_def_property_ui_text(
-      prop, "Brush Height", "Affectable height of brush (layer height for layer tool, i.e.)");
+      prop,
+      "Brush Height",
+      "Affectable height of brush (i.e. the layer height for the layer tool)");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "texture_sample_bias", PROP_FLOAT, PROP_DISTANCE);

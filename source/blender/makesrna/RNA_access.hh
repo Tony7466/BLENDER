@@ -288,6 +288,11 @@ int RNA_property_enum_bitflag_identifiers(
 StructRNA *RNA_property_pointer_type(PointerRNA *ptr, PropertyRNA *prop);
 bool RNA_property_pointer_poll(PointerRNA *ptr, PropertyRNA *prop, PointerRNA *value);
 
+/**
+ * A property is a runtime property if the PROP_INTERN_RUNTIME flag is set on it.
+ */
+bool RNA_property_is_runtime(const PropertyRNA *prop);
+
 bool RNA_property_editable(const PointerRNA *ptr, PropertyRNA *prop);
 /**
  * Version of #RNA_property_editable that tries to return additional info in \a r_info
@@ -467,15 +472,15 @@ bool RNA_property_collection_is_empty(PointerRNA *ptr, PropertyRNA *prop);
 int RNA_property_collection_lookup_index(PointerRNA *ptr,
                                          PropertyRNA *prop,
                                          const PointerRNA *t_ptr);
-int RNA_property_collection_lookup_int(PointerRNA *ptr,
-                                       PropertyRNA *prop,
-                                       int key,
-                                       PointerRNA *r_ptr);
-int RNA_property_collection_lookup_string(PointerRNA *ptr,
-                                          PropertyRNA *prop,
-                                          const char *key,
-                                          PointerRNA *r_ptr);
-int RNA_property_collection_lookup_string_index(
+bool RNA_property_collection_lookup_int(PointerRNA *ptr,
+                                        PropertyRNA *prop,
+                                        int key,
+                                        PointerRNA *r_ptr);
+bool RNA_property_collection_lookup_string(PointerRNA *ptr,
+                                           PropertyRNA *prop,
+                                           const char *key,
+                                           PointerRNA *r_ptr);
+bool RNA_property_collection_lookup_string_index(
     PointerRNA *ptr, PropertyRNA *prop, const char *key, PointerRNA *r_ptr, int *r_index);
 
 bool RNA_property_collection_lookup_int_has_fn(PropertyRNA *prop);
@@ -490,10 +495,10 @@ bool RNA_property_collection_lookup_string_supported(PropertyRNA *prop);
 /**
  * Zero return is an assignment error.
  */
-int RNA_property_collection_assign_int(PointerRNA *ptr,
-                                       PropertyRNA *prop,
-                                       int key,
-                                       const PointerRNA *assign_ptr);
+bool RNA_property_collection_assign_int(PointerRNA *ptr,
+                                        PropertyRNA *prop,
+                                        int key,
+                                        const PointerRNA *assign_ptr);
 bool RNA_property_collection_type_get(PointerRNA *ptr, PropertyRNA *prop, PointerRNA *r_ptr);
 
 /* efficient functions to set properties for arrays */
@@ -744,33 +749,6 @@ void RNA_parameter_dynamic_length_set_data(ParameterList *parms,
 
 int RNA_function_call(
     bContext *C, ReportList *reports, PointerRNA *ptr, FunctionRNA *func, ParameterList *parms);
-int RNA_function_call_lookup(bContext *C,
-                             ReportList *reports,
-                             PointerRNA *ptr,
-                             const char *identifier,
-                             ParameterList *parms);
-
-int RNA_function_call_direct(
-    bContext *C, ReportList *reports, PointerRNA *ptr, FunctionRNA *func, const char *format, ...)
-    ATTR_PRINTF_FORMAT(5, 6);
-int RNA_function_call_direct_lookup(bContext *C,
-                                    ReportList *reports,
-                                    PointerRNA *ptr,
-                                    const char *identifier,
-                                    const char *format,
-                                    ...) ATTR_PRINTF_FORMAT(5, 6);
-int RNA_function_call_direct_va(bContext *C,
-                                ReportList *reports,
-                                PointerRNA *ptr,
-                                FunctionRNA *func,
-                                const char *format,
-                                va_list args);
-int RNA_function_call_direct_va_lookup(bContext *C,
-                                       ReportList *reports,
-                                       PointerRNA *ptr,
-                                       const char *identifier,
-                                       const char *format,
-                                       va_list args);
 
 const char *RNA_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, int translate);
@@ -792,7 +770,7 @@ StructRNA *ID_code_to_RNA_type(short idcode);
 #if defined __GNUC__
 #  define RNA_warning(format, args...) _RNA_warning("%s: " format "\n", __func__, ##args)
 #elif defined(_MSVC_TRADITIONAL) && \
-    !_MSVC_TRADITIONAL  // The "new preprocessor" is enabled via /Zc:preprocessor
+    !_MSVC_TRADITIONAL /* The "new preprocessor" is enabled via `/Zc:preprocessor`. */
 #  define RNA_warning(format, ...) _RNA_warning("%s: " format "\n", __FUNCTION__, ##__VA_ARGS__)
 #else
 #  define RNA_warning(format, ...) _RNA_warning("%s: " format "\n", __FUNCTION__, __VA_ARGS__)

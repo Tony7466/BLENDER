@@ -12,6 +12,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_paint.hh"
 #include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
@@ -166,7 +167,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     /* Make a copy of the frame in the duplicates. */
     GreasePencilFrame frame_duplicate = frame;
     frame_duplicate.drawing_index = duplicated_drawing_index;
-    trans_data.temp_frames_buffer.add_overwrite(frame_number, frame_duplicate);
+    trans_data.duplicated_frames_buffer.add_overwrite(frame_number, frame_duplicate);
 
     /* Deselect the current frame, so that only the copy is selected. */
     frame.flag ^= GP_FRAME_SELECTED;
@@ -350,7 +351,7 @@ bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
                                  (*active_layer.frame_key_at(current_frame) < current_frame);
 
   if (blender::animrig::is_autokey_on(&scene) && needs_new_drawing) {
-    const Brush *brush = scene.toolsettings->gp_paint->paint.brush;
+    const Brush *brush = BKE_paint_brush_for_read(&scene.toolsettings->gp_paint->paint);
     if (((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) ||
         (brush->gpencil_tool == GPAINT_TOOL_ERASE))
     {

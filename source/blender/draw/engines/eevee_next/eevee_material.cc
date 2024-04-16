@@ -251,7 +251,7 @@ Material &MaterialModule::material_sync(Object *ob,
       mat.volume_occupancy = material_pass_get(
           ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, MAT_GEOM_VOLUME);
       mat.volume_material = material_pass_get(
-          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+          ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME);
       return mat;
     });
 
@@ -338,7 +338,7 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.volume_occupancy = material_pass_get(
             ob, blender_mat, MAT_PIPE_VOLUME_OCCUPANCY, geometry_type);
         mat.volume_material = material_pass_get(
-            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, MAT_GEOM_VOLUME_OBJECT);
+            ob, blender_mat, MAT_PIPE_VOLUME_MATERIAL, geometry_type);
       }
       else {
         mat.volume_occupancy = MaterialPass();
@@ -356,6 +356,10 @@ Material &MaterialModule::material_sync(Object *ob,
     mat.is_alpha_blend_transparent = use_forward_pipeline &&
                                      GPU_material_flag_get(mat.shading.gpumat,
                                                            GPU_MATFLAG_TRANSPARENT);
+    mat.has_transparent_shadows = blender_mat->blend_flag & MA_BL_TRANSPARENT_SHADOW &&
+                                  GPU_material_flag_get(mat.shading.gpumat,
+                                                        GPU_MATFLAG_TRANSPARENT);
+
     return mat;
   });
 
