@@ -1165,7 +1165,7 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
   ED_workspace_status_keymap(
       C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE));
 
-  desc = IFACE_("X-ray: ");
+  desc = IFACE_("X-Ray: ");
   desc += WM_bool_as_string(!kcd->depth_test);
   ED_workspace_status_keymap(
       C, desc, WM_modalkeymap_operator(op->type, KNF_MODAL_DEPTH_TEST_TOGGLE));

@@ -1436,6 +1436,11 @@ int transformEvent(TransInfo *t, const wmEvent *event)
     WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
   }
 
+  WorkSpace *workspace = CTX_wm_workspace(t->context);
+  if (workspace) {
+    BKE_workspace_status_clear(workspace);
+  }
+
   if (!is_navigating && (handled || t->redraw)) {
     return 0;
   }
