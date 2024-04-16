@@ -185,10 +185,10 @@ void main()
         rect_fg.color_and_coc[2].a = coc4_fg[2];
         rect_fg.color_and_coc[3].a = coc4_fg[1];
         /* Apply weights. */
-        rect_fg.color_and_coc[0].rgb = color4_0 * fg_weights[0] * vec3(1, 0, 0);
-        rect_fg.color_and_coc[1].rgb = color4_3 * fg_weights[3] * vec3(1, 0, 0);
-        rect_fg.color_and_coc[2].rgb = color4_2 * fg_weights[2] * vec3(1, 0, 0);
-        rect_fg.color_and_coc[3].rgb = color4_1 * fg_weights[1] * vec3(1, 0, 0);
+        rect_fg.color_and_coc[0].rgb = color4_0 * fg_weights[0];
+        rect_fg.color_and_coc[1].rgb = color4_3 * fg_weights[3];
+        rect_fg.color_and_coc[2].rgb = color4_2 * fg_weights[2];
+        rect_fg.color_and_coc[3].rgb = color4_1 * fg_weights[1];
 
         scatter_fg_list_buf[rect_id] = rect_fg;
       }
@@ -214,10 +214,10 @@ void main()
         rect_bg.color_and_coc[2].a = coc4_bg[2];
         rect_bg.color_and_coc[3].a = coc4_bg[3];
         /* Apply weights. */
-        rect_bg.color_and_coc[0].rgb = color4_0 * bg_weights[0] * vec3(0, 1, 0);
-        rect_bg.color_and_coc[1].rgb = color4_1 * bg_weights[1] * vec3(0, 1, 0);
-        rect_bg.color_and_coc[2].rgb = color4_2 * bg_weights[2] * vec3(0, 1, 0);
-        rect_bg.color_and_coc[3].rgb = color4_3 * bg_weights[3] * vec3(0, 1, 0);
+        rect_bg.color_and_coc[0].rgb = color4_0 * bg_weights[0];
+        rect_bg.color_and_coc[1].rgb = color4_1 * bg_weights[1];
+        rect_bg.color_and_coc[2].rgb = color4_2 * bg_weights[2];
+        rect_bg.color_and_coc[3].rgb = color4_3 * bg_weights[3];
 
         scatter_bg_list_buf[rect_id] = rect_bg;
       }
