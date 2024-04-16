@@ -706,14 +706,18 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
     struct LooseEdgedata {
       MeshRenderData &mr;
       MeshBufferList &buffers;
+      MeshBatchCache &cache;
     };
     TaskNode *task_node = BLI_task_graph_node_create(
         task_graph,
         [](void *__restrict task_data) {
           const LooseEdgedata &data = *static_cast<LooseEdgedata *>(task_data);
-          extract_lines(data.mr, data.buffers.ibo.lines, data.buffers.ibo.lines_loose);
+          extract_lines(data.mr,
+                        data.buffers.ibo.lines,
+                        data.buffers.ibo.lines_loose,
+                        data.cache.no_loose_wire);
         },
-        new LooseEdgedata{*mr, *mbuflist},
+        new LooseEdgedata{*mr, *mbuflist, cache},
         [](void *task_data) { delete static_cast<LooseEdgedata *>(task_data); });
     BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
   }
@@ -861,7 +865,8 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
       mr, mbc, MR_ITER_LOOSE_EDGE | MR_ITER_LOOSE_VERT, MR_DATA_LOOSE_GEOM);
   DRW_subdivide_loose_geom(&subdiv_cache, &mbc);
 
-  extract_lines_subdiv(subdiv_cache, mr, mbuflist->ibo.lines, mbuflist->ibo.lines_loose);
+  extract_lines_subdiv(
+      subdiv_cache, mr, mbuflist->ibo.lines, mbuflist->ibo.lines_loose, cache.no_loose_wire);
 
   void *data_stack = MEM_mallocN(extractors.data_size_total(), __func__);
   uint32_t data_offset = 0;

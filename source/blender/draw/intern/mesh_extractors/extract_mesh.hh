@@ -337,11 +337,15 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
 template<typename GPUType>
 void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
 
-void extract_lines(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::IndexBuf *lines_loose);
+void extract_lines(const MeshRenderData &mr,
+                   gpu::IndexBuf *lines,
+                   gpu::IndexBuf *lines_loose,
+                   bool &no_loose_wire);
 void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           const MeshRenderData &mr,
                           gpu::IndexBuf *lines,
-                          gpu::IndexBuf *lines_loose);
+                          gpu::IndexBuf *lines_loose,
+                          bool &no_loose_wire);
 
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_points;

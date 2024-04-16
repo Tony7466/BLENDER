@@ -58,12 +58,15 @@ static void fill_loose_lines_ibo(const uint corners_num, MutableSpan<uint2> data
 
 static void extract_lines_mesh(const MeshRenderData &mr,
                                gpu::IndexBuf *lines,
-                               gpu::IndexBuf *lines_loose)
+                               gpu::IndexBuf *lines_loose,
+                               bool &no_loose_wire)
 {
   IndexMaskMemory memory;
   const IndexMask all_loose_edges = IndexMask::from_indices(mr.loose_edges, memory);
   const IndexMask visible_loose_edges = calc_mesh_edge_visibility(mr, all_loose_edges, memory);
   const int max_index = mr.corners_num + visible_loose_edges.size() * 2;
+
+  no_loose_wire = visible_loose_edges.is_empty();
 
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
     GPUIndexBufBuilder builder;
@@ -150,7 +153,8 @@ static IndexMask calc_bm_edge_visibility(BMesh &bm, const IndexMask &mask, Index
 
 static void extract_lines_bm(const MeshRenderData &mr,
                              gpu::IndexBuf *lines,
-                             gpu::IndexBuf *lines_loose)
+                             gpu::IndexBuf *lines_loose,
+                             bool &no_loose_wire)
 {
   BMesh &bm = *mr.bm;
 
@@ -159,7 +163,9 @@ static void extract_lines_bm(const MeshRenderData &mr,
   const IndexMask visible_loose_edges = calc_bm_edge_visibility(bm, all_loose_edges, memory);
   const int max_index = mr.corners_num + visible_loose_edges.size() * 2;
 
-  const IndexMask non_loose_edges = all_loose_edges.complement(IndexRange(bm.totvert), memory);
+  no_loose_wire = visible_loose_edges.is_empty();
+
+  const IndexMask non_loose_edges = all_loose_edges.complement(IndexRange(bm.totedge), memory);
   const IndexMask visible_non_loose_edges = calc_bm_edge_visibility(bm, non_loose_edges, memory);
 
   GPUIndexBufBuilder builder;
@@ -183,13 +189,16 @@ static void extract_lines_bm(const MeshRenderData &mr,
   }
 }
 
-void extract_lines(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::IndexBuf *lines_loose)
+void extract_lines(const MeshRenderData &mr,
+                   gpu::IndexBuf *lines,
+                   gpu::IndexBuf *lines_loose,
+                   bool &no_loose_wire)
 {
   if (mr.extract_type == MR_EXTRACT_MESH) {
-    extract_lines_mesh(mr, lines, lines_loose);
+    extract_lines_mesh(mr, lines, lines_loose, no_loose_wire);
   }
   else {
-    extract_lines_bm(mr, lines, lines_loose);
+    extract_lines_bm(mr, lines, lines_loose, no_loose_wire);
   }
 }
 
@@ -289,13 +298,16 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
 void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           const MeshRenderData &mr,
                           gpu::IndexBuf *lines,
-                          gpu::IndexBuf *lines_loose)
+                          gpu::IndexBuf *lines_loose,
+                          bool &no_loose_wire)
 {
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
     // TODO: Fix `edge_loose_offset`
     extract_lines_loose_geom_subdiv(subdiv_cache, mr, lines_loose);
     return;
   }
+
+  no_loose_wire = subdiv_cache.loose_geom.edge_len == 0;
 
   generate_subdiv_lines(subdiv_cache, lines);
   extract_lines_loose_geom_subdiv(subdiv_cache, mr, lines);

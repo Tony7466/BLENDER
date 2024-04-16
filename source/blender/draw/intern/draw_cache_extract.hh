@@ -293,6 +293,8 @@ struct MeshBatchCache {
    * Only valid after `DRW_mesh_batch_cache_create_requested` has been called. */
   float tot_area, tot_uv_area;
 
+  bool no_loose_wire;
+
   eV3DShadingColorType color_type;
   bool pbvh_is_drawing;
 };
