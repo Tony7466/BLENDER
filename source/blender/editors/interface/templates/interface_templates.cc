@@ -6521,39 +6521,63 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 
 bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout,
                                       EnumPropertyItem item,
-                                      const wmKeyMapItem *kmi)
+                                      const wmKeyMapItem *kmi,
+                                      const bool collapse_axis,
+                                      const bool collapse_planes)
 {
+  if (!collapse_axis && !collapse_planes) {
+    return false;
+  };
+
   int icon_mod[4];
   int icon = 0;
 
-  if (STR_ELEM(item.identifier, "AXIS_X", "PLANE_X")) {
-    icon = UI_icon_from_keymap_item(kmi, icon_mod);
-    for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
-      uiItemL(layout, "", icon_mod[j]);
+  if (collapse_axis) {
+    if (STREQ(item.identifier, "AXIS_X")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+        uiItemL(layout, "", icon_mod[j]);
+      }
+      uiItemL(layout, "", icon);
+      return true;
     }
-    uiItemL(layout, "", icon);
-    return true;
+    if (STREQ(item.identifier, "AXIS_Y")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      uiItemL(layout, "", icon);
+      return true;
+    }
+    if (STREQ(item.identifier, "AXIS_Z")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      uiItemL(layout, "", icon);
+      uiItemS_ex(layout, 0.6f);
+      uiItemL(layout, IFACE_("Axis"), ICON_NONE);
+      uiItemS_ex(layout, 0.7f);
+      return true;
+    }
   }
-  if (STR_ELEM(item.identifier, "AXIS_Y", "PLANE_Y")) {
-    icon = UI_icon_from_keymap_item(kmi, icon_mod);
-    uiItemL(layout, "", icon);
-    return true;
-  }
-  if (STREQ(item.identifier, "AXIS_Z")) {
-    icon = UI_icon_from_keymap_item(kmi, icon_mod);
-    uiItemL(layout, "", icon);
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, IFACE_("Axis"), ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-    return true;
-  }
-  if (STREQ(item.identifier, "PLANE_Z")) {
-    icon = UI_icon_from_keymap_item(kmi, icon_mod);
-    uiItemL(layout, "", icon);
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, IFACE_("Plane"), ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-    return true;
+
+  if (collapse_planes) {
+    if (STREQ(item.identifier, "PLANE_X")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+        uiItemL(layout, "", icon_mod[j]);
+      }
+      uiItemL(layout, "", icon);
+      return true;
+    }
+    if (STREQ(item.identifier, "PLANE_Y")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      uiItemL(layout, "", icon);
+      return true;
+    }
+    if (STREQ(item.identifier, "PLANE_Z")) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      uiItemL(layout, "", icon);
+      uiItemS_ex(layout, 0.6f);
+      uiItemL(layout, IFACE_("Plane"), ICON_NONE);
+      uiItemS_ex(layout, 0.7f);
+      return true;
+    }
   }
 
   return false;

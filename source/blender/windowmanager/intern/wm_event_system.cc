@@ -6377,15 +6377,50 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
   }
   const EnumPropertyItem *items = static_cast<const EnumPropertyItem *>(keymap->modal_items);
 
-  /* If all the following are present we can collapse them into a compact form. */
-  int axis_items_count = 0;
+  /* If all of AXIS_X - AXIS_Z are present we can collapse them into a compact form. */
+  blender::Vector<wmKeyMapItem *> axis_kmi;
   for (int i = 0; items[i].identifier; i++) {
-    if (STR_ELEM(
-            items[i].identifier, "AXIS_X", "AXIS_Y", "AXIS_Z", "PLANE_X", "PLANE_Y", "PLANE_Z"))
-    {
-      axis_items_count++;
+    if (STR_ELEM(items[i].identifier, "AXIS_X", "AXIS_Y", "AXIS_Z")) {
+      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
+           kmi = kmi->next)
+      {
+        if (kmi->propvalue == items[i].value) {
+          axis_kmi.append(kmi);
+        }
+      }
     }
   }
+  const bool collapse_axis = (axis_kmi.size() == 3 && (axis_kmi[0]->shift == axis_kmi[1]->shift) &&
+                              (axis_kmi[0]->shift == axis_kmi[2]->shift) &&
+                              (axis_kmi[0]->ctrl == axis_kmi[1]->ctrl) &&
+                              (axis_kmi[0]->ctrl == axis_kmi[2]->ctrl) &&
+                              (axis_kmi[0]->alt == axis_kmi[1]->alt) &&
+                              (axis_kmi[0]->alt == axis_kmi[2]->alt) &&
+                              (axis_kmi[0]->oskey == axis_kmi[1]->oskey) &&
+                              (axis_kmi[0]->oskey == axis_kmi[2]->oskey));
+
+  /* If all of PLANE_X - PLANE_Z are present we can collapse them into a compact form. */
+  blender::Vector<wmKeyMapItem *> plane_kmi;
+  for (int i = 0; items[i].identifier; i++) {
+    if (STR_ELEM(items[i].identifier, "PLANE_X", "PLANE_Y", "PLANE_Z")) {
+      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
+           kmi = kmi->next)
+      {
+        if (kmi->propvalue == items[i].value) {
+          plane_kmi.append(kmi);
+        }
+      }
+    }
+  }
+  const bool collapse_planes = (plane_kmi.size() == 3 &&
+                                (plane_kmi[0]->shift == plane_kmi[1]->shift) &&
+                                (plane_kmi[0]->shift == plane_kmi[2]->shift) &&
+                                (plane_kmi[0]->ctrl == plane_kmi[1]->ctrl) &&
+                                (plane_kmi[0]->ctrl == plane_kmi[2]->ctrl) &&
+                                (plane_kmi[0]->alt == plane_kmi[1]->alt) &&
+                                (plane_kmi[0]->alt == plane_kmi[2]->alt) &&
+                                (plane_kmi[0]->oskey == plane_kmi[1]->oskey) &&
+                                (plane_kmi[0]->oskey == plane_kmi[2]->oskey));
 
   uiLayout *row = uiLayoutRow(layout, true);
   for (int i = 0; items[i].identifier; i++) {
@@ -6413,7 +6448,7 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
           /* Assume release events just disable something which was toggled on. */
           continue;
         }
-        if ((axis_items_count == 6) && uiTemplateEventFromKeymapItemXYZ(row, items[i], kmi)) {
+        if (uiTemplateEventFromKeymapItemXYZ(row, items[i], kmi, collapse_axis, collapse_planes)) {
           continue;
         }
         if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {

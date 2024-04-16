@@ -2551,7 +2551,9 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
  */
 bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout,
                                       EnumPropertyItem item,
-                                      const wmKeyMapItem *kmi);
+                                      const wmKeyMapItem *kmi,
+                                      const bool collapse_axis,
+                                      const bool collapse_planes);
 
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,
