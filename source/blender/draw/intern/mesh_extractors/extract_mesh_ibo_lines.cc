@@ -227,6 +227,7 @@ static void generate_subdiv_lines(const DRWSubdivCache &subdiv_cache, gpu::Index
 
 static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
                                             const MeshRenderData &mr,
+                                            const int edge_loose_offset,
                                             gpu::IndexBuf *ibo)
 {
   const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
@@ -300,7 +301,8 @@ static void extract_lines_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
     }
   }
 
-  draw_subdiv_build_lines_loose_buffer(subdiv_cache, ibo, flags, uint(loose_geom.edge_len));
+  draw_subdiv_build_lines_loose_buffer(
+      subdiv_cache, ibo, flags, uint(edge_loose_offset), uint(loose_geom.edge_len));
 
   GPU_vertbuf_discard(flags);
 }
@@ -311,22 +313,22 @@ void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire)
 {
+  no_loose_wire = subdiv_cache.loose_geom.edge_len == 0;
+
   if (DRW_ibo_requested(lines_loose) && !DRW_ibo_requested(lines)) {
-    // TODO: Fix `edge_loose_offset`
-    extract_lines_loose_geom_subdiv(subdiv_cache, mr, lines_loose);
+    extract_lines_loose_geom_subdiv(subdiv_cache, mr, 0, lines_loose);
     return;
   }
 
-  no_loose_wire = subdiv_cache.loose_geom.edge_len == 0;
+  const int loose_start = subdiv_cache.num_subdiv_loops * 2;
 
   generate_subdiv_lines(subdiv_cache, lines);
-  extract_lines_loose_geom_subdiv(subdiv_cache, mr, lines);
+  extract_lines_loose_geom_subdiv(subdiv_cache, mr, loose_start, lines);
 
   if (DRW_ibo_requested(lines_loose)) {
     /* Multiply by 2 because these are edges indices. */
-    const int start = subdiv_cache.num_subdiv_loops * 2;
     const int len = subdiv_cache.loose_geom.edge_len * 2;
-    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, start, len);
+    GPU_indexbuf_create_subrange_in_place(lines_loose, lines, loose_start, len);
   }
 }
 
