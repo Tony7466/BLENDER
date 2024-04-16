@@ -54,6 +54,8 @@ struct VKNode {
   template<typename NodeInfo> void set_node_data(const typename NodeInfo::CreateInfo &create_info)
   {
     BLI_assert(type == VKNodeType::UNUSED);
+    /* Instance of NodeInfo is needed to call virtual methods. CPP doesn't support overloading of
+     * static methods.*/
     NodeInfo node_info;
     type = NodeInfo::node_type;
     node_info.set_node_data(*this, create_info);
@@ -70,6 +72,8 @@ struct VKNode {
                    NodeHandle node_handle,
                    const typename NodeInfo::CreateInfo &create_info)
   {
+    /* Instance of NodeInfo is needed to call virtual methods. CPP doesn't support overloading of
+     * static methods.*/
     NodeInfo node_info;
     node_info.build_links(resources, links, node_handle, create_info);
   }

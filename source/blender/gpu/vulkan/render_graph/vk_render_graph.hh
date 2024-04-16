@@ -5,7 +5,10 @@
 /** \file
  * \ingroup gpu
  *
- * Render graph is a render solution that is able to track resource usages of a single submission
+ * The render graph primarily is a a graph of GPU commands that are then serialized into command
+ * buffers. The submission order can be altered and barriers are added for resource sync.
+ *
+ * # Building render graph
  *
  * The graph contains nodes that refers to resources it reads from, or modifies.
  * The resources that are read from are linked to the node inputs. The resources that are written
@@ -14,6 +17,22 @@
  * Resources needs to be tracked as usage can alter the content of the resource. For example an
  * image can be optimized for data transfer, or optimized for sampling which can use a different
  * pixel layout on the device.
+ *
+ * When adding a node to the render graph the input and output links are extracted from the
+ * See `VKNodeInfo::build_links`.
+ *
+ * # Executing render graph
+ *
+ * Executing a render graph is done by calling `submit_for_read` or `submit_for_present`. When
+ * called the nodes that are needed to render the resource are determined by a `VKScheduler`. The
+ * nodes are converted to `vkCmd*` and recorded in the command buffer by `VKCommandBuilder`.
+ *
+ * # Thread safety
+ *
+ * When the render graph is called the device will be locked. Nodes inside the render graph relies
+ * on the resources which are device specific. The locked time is tiny when adding new nodes.
+ * During execution this takes a longer time, but the lock can be released when the commands have
+ * been queued. So other threads can continue.
  */
 
 #pragma once
