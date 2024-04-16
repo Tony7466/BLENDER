@@ -42,6 +42,7 @@
 #include "GPU_vertex_format.hh"
 
 #include <iostream>
+#include <optional>
 
 namespace blender::ed::greasepencil {
 
@@ -290,6 +291,53 @@ static void draw_curve(Span<float3> positions,
 
 }  // namespace render_utils
 
+static IndexMask get_boundary_curve_mask(const Object &object,
+                                         const DrawingInfo &info,
+                                         const bool is_boundary_layer,
+                                         IndexMaskMemory &memory)
+{
+  const bke::CurvesGeometry &strokes = info.drawing.strokes();
+  const bke::AttributeAccessor attributes = strokes.attributes();
+  const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
+                                                        bke::AttrDomain::Curve);
+
+  auto is_visible_curve = [&](const int curve_i) {
+    /* Check if stroke can be drawn. */
+    const IndexRange points = strokes.points_by_curve()[curve_i];
+    if (points.size() < 2) {
+      return false;
+    }
+
+    /* Check if the material is visible. */
+    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                       materials[curve_i] + 1);
+    const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
+    if (gp_style == nullptr || (gp_style->flag & GP_MATERIAL_HIDE)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  /* On boundary layers only boundary strokes are rendered. */
+  if (is_boundary_layer) {
+    const VArray<bool> boundary_strokes = *attributes.lookup_or_default<bool>(
+        attr_is_boundary, bke::AttrDomain::Curve, false);
+
+    return IndexMask::from_predicate(
+        strokes.curves_range(), GrainSize(512), memory, [&](const int curve_i) {
+          if (!is_visible_curve(curve_i)) {
+            return false;
+          }
+          const bool is_boundary_stroke = boundary_strokes[curve_i];
+          return is_boundary_stroke;
+        });
+  }
+
+  return IndexMask::from_predicate(
+      strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
+}
+
 static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
                                              const ColorGeometry4f &tint_color,
                                              const int64_t num_points,
@@ -371,53 +419,6 @@ static void draw_helper_stroke(Span<float3> positions,
                                                            brush_fill_hide);
 
   render_utils::draw_curve(positions, colors, indices, mat, cyclic, thickness * 2.0f);
-}
-
-static IndexMask get_boundary_curve_mask(const Object &object,
-                                         const DrawingInfo &info,
-                                         const bool is_boundary_layer,
-                                         IndexMaskMemory &memory)
-{
-  const bke::CurvesGeometry &strokes = info.drawing.strokes();
-  const bke::AttributeAccessor attributes = strokes.attributes();
-  const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
-                                                        bke::AttrDomain::Curve);
-
-  auto is_visible_curve = [&](const int curve_i) {
-    /* Check if stroke can be drawn. */
-    const IndexRange points = strokes.points_by_curve()[curve_i];
-    if (points.size() < 2) {
-      return false;
-    }
-
-    /* Check if the material is visible. */
-    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
-                                                       materials[curve_i] + 1);
-    const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
-    if (gp_style == nullptr || (gp_style->flag & GP_MATERIAL_HIDE)) {
-      return false;
-    }
-
-    return true;
-  };
-
-  /* On boundary layers only boundary strokes are rendered. */
-  if (is_boundary_layer) {
-    const VArray<bool> boundary_strokes = *attributes.lookup_or_default<bool>(
-        attr_is_boundary, bke::AttrDomain::Curve, false);
-
-    return IndexMask::from_predicate(
-        strokes.curves_range(), GrainSize(512), memory, [&](const int curve_i) {
-          if (!is_visible_curve(curve_i)) {
-            return false;
-          }
-          const bool is_boundary_stroke = boundary_strokes[curve_i];
-          return is_boundary_stroke;
-        });
-  }
-
-  return IndexMask::from_predicate(
-      strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
 }
 
 /* Loop all layers to draw strokes. */
@@ -648,206 +649,414 @@ FillResult fill_boundaries(Image &ima)
   return border_contact ? FillResult::BorderContact : FillResult::Success;
 }
 
-static bool do_frame_fill(Main &bmain,
-                          ARegion &region,
-                          View3D &view3d,
-                          RegionView3D &rv3d,
-                          const Scene &scene,
-                          Depsgraph &depsgraph,
-                          Object &object,
-                          const VArray<bool> &boundary_layers,
-                          const Span<DrawingInfo> drawings,
-                          const int2 &win_size,
-                          const float2 zoom,
-                          const float2 offset,
-                          const bool invert,
-                          const float3 &mouse_position,
-                          ReportList &reports,
-                          const bool keep_images)
+/* Get the outline points of a shape using Moore Neighborhood algorithm
+ *
+ * This is a Blender customized version of the general algorithm described
+ * in https://en.wikipedia.org/wiki/Moore_neighborhood
+ */
+static void get_outline_curve(Image &ima)
 {
-  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+                                      width * height);
+  auto coord_from_index = [&](const int index) {
+    const div_t d = div(index, width);
+    return int2{d.rem, d.quot};
+  };
+  auto index_from_coord = [&](const int2 &c) { return c.x + c.y * width; };
+  auto pixel_from_coord = [&](const int2 &c) { return pixels[index_from_coord(c)]; };
+  auto is_valid_coord = [width, height](const int2 &c) -> bool {
+    return c.x >= 0 && c.x < width && c.y >= 0 && c.y < height;
+  };
 
-  // TODO
-  const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
-  const float alpha_threshold = 0.2f;
-  const float thickness = 1.0f;
+  constexpr const int num_directions = 8;
+  static const int2 offset_by_direction[num_directions] = {
+      {-1, -1},
+      {0, -1},
+      {1, -1},
+      {1, 0},
+      {1, 1},
+      {0, 1},
+      {-1, 1},
+      {-1, 0},
+  };
+  // constexpr auto find_direction_from_offset = [](const int2 offset) -> int {
+  //   const bool pos_x = offset.x > 0;
+  //   const bool neg_x = offset.x < 0;
+  //   const bool pos_y = offset.y > 0;
+  //   const bool neg_y = offset.y < 0;
+  //   return pos_x ? (pos_y ? 4 : (neg_y ? 2 : 3)) :
+  //                  (neg_x ? (pos_y ? 6 : (neg_y ? 0 : 7)) : (pos_y ? 5 : 1));
+  // };
 
-  Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
-    GPU_blend(GPU_BLEND_ALPHA);
-    GPU_depth_mask(true);
-    render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+  struct BoundaryIterator {
+    int2 coord;
+    int direction;
+  };
 
-    /* Draw blue point where click with mouse. */
-    const float mouse_dot_size = 4.0f;
-    render_utils::draw_dot(mouse_position, mouse_dot_size, mouse_color);
+  /* Find any filled pixel as starting point. */
+  auto find_start_coordinate = [&]() -> std::optional<BoundaryIterator> {
+    int dir = -1;
+    for (const int index : pixels.index_range()) {
+      if (is_pixel_filled(pixels[index])) {
+        const int2 boundary_co = coord_from_index(index);
+        /* Arbitrary start direction.
+         * TODO: This should be a valid direction, i.e. not another boundary pixel in this
+         * direction. Should check correct start position more carefully to guarantee success. */
+        dir = 0;
+        return BoundaryIterator{boundary_co, dir};
+      }
+    }
+    return std::nullopt;
+  };
+  /* Find the next filled pixel in clockwise direction from the current. */
+  auto find_next_neighbor = [&](const BoundaryIterator &iter) -> std::optional<BoundaryIterator> {
+    for (const int i : IndexRange(num_directions).drop_front(1)) {
+      const int neighbor_dir = iter.direction + i -
+                               num_directions * int(iter.direction + i >= num_directions);
+      const int2 neighbor_coord = iter.coord + offset_by_direction[neighbor_dir];
+      if (!is_valid_coord(neighbor_coord)) {
+        continue;
+      }
+      const int neighbor_index = index_from_coord(neighbor_coord);
+      if (!is_pixel_filled(pixels[neighbor_index])) {
+        continue;
+      }
 
-    draw_datablock(object,
-                   grease_pencil,
-                   drawings,
-                   boundary_layers,
-                   stroke_color,
-                   fill_draw_mode,
-                   alpha_threshold,
-                   thickness);
+      return BoundaryIterator
+      {
+        neighbor_dir;
+      }
+      return std::nullopt;
+    };
 
-    render_utils::clear_viewmat();
-    GPU_depth_mask(false);
-    GPU_blend(GPU_BLEND_NONE);
-  });
-  if (ima == nullptr) {
-    return false;
+    int backtrack_dir;
+    const std::optional<int2> start_coord = find_start_coordinate(backtrack_dir);
+    if (!start_coord) {
+      return;
+    }
+
+    Vector<int2> boundary_coords = {*start_coord};
+    int2 prev_check_co = *start_coord;
+    while (true) {
+      std::optional<int> next_dir = find_next_direction(prev_check_co, backtrack_dir);
+      if (!next_dir) {
+        break;
+      }
+    }
+
+    /* release ibuf */
+    BKE_image_release_ibuf(&ima, ibuf, lock);
+
+    int boundary_co[2];
+    int start_co[2];
+    int first_co[2] = {-1, -1};
+    int current_check_co[2];
+    int prev_check_co[2];
+    int backtracked_offset[1][2] = {{0, 0}};
+    bool first_pixel = false;
+    bool start_found = false;
+    const int NEIGHBOR_COUNT = 8;
+
+    const int offset[8][2] = {
+        {-1, -1},
+        {0, -1},
+        {1, -1},
+        {1, 0},
+        {1, 1},
+        {0, 1},
+        {-1, 1},
+        {-1, 0},
+    };
+
+    int imagesize = ibuf->x * ibuf->y;
+
+    for (int idx = imagesize - 1; idx != 0; idx--) {
+      float rgba[4];
+      get_pixel(ibuf, idx, rgba);
+      if (rgba[1] == 1.0f) {
+        int backtracked_co[2];
+        boundary_co[0] = idx % ibuf->x;
+        boundary_co[1] = idx / ibuf->x;
+        copy_v2_v2_int(start_co, boundary_co);
+        backtracked_co[0] = (idx - 1) % ibuf->x;
+        backtracked_co[1] = (idx - 1) / ibuf->x;
+        backtracked_offset[0][0] = backtracked_co[0] - boundary_co[0];
+        backtracked_offset[0][1] = backtracked_co[1] - boundary_co[1];
+        copy_v2_v2_int(prev_check_co, start_co);
+
+        BLI_stack_push(tgpf->stack, &boundary_co);
+        start_found = true;
+        break;
+      }
+    }
+
+    while (start_found) {
+      int cur_back_offset = -1;
+      for (int i = 0; i < NEIGHBOR_COUNT; i++) {
+        if (backtracked_offset[0][0] == offset[i][0] && backtracked_offset[0][1] == offset[i][1]) {
+          /* Finding the back-tracked pixel offset index */
+          cur_back_offset = i;
+          break;
+        }
+      }
+
+      int loop = 0;
+      while (loop < (NEIGHBOR_COUNT - 1) && cur_back_offset != -1) {
+        int offset_idx = (cur_back_offset + 1) % NEIGHBOR_COUNT;
+        current_check_co[0] = boundary_co[0] + offset[offset_idx][0];
+        current_check_co[1] = boundary_co[1] + offset[offset_idx][1];
+
+        int image_idx = ibuf->x * current_check_co[1] + current_check_co[0];
+        /* Check if the index is inside the image. If the index is outside is
+         * because the algorithm is unable to find the outline of the figure. This is
+         * possible for negative filling when click inside a figure instead of
+         * clicking outside.
+         * If the index is out of range, finish the filling. */
+        if (image_idx > imagesize - 1) {
+          start_found = false;
+          break;
+        }
+        float rgba[4];
+        get_pixel(ibuf, image_idx, rgba);
+
+        /* find next boundary pixel */
+        if (rgba[1] == 1.0f) {
+          int backtracked_co[2];
+          copy_v2_v2_int(boundary_co, current_check_co);
+          copy_v2_v2_int(backtracked_co, prev_check_co);
+          backtracked_offset[0][0] = backtracked_co[0] - boundary_co[0];
+          backtracked_offset[0][1] = backtracked_co[1] - boundary_co[1];
+
+          BLI_stack_push(tgpf->stack, &boundary_co);
+
+          break;
+        }
+        copy_v2_v2_int(prev_check_co, current_check_co);
+        cur_back_offset++;
+        loop++;
+      }
+      /* Current pixel is equal to starting or first pixel. */
+      if ((boundary_co[0] == start_co[0] && boundary_co[1] == start_co[1]) ||
+          (boundary_co[0] == first_co[0] && boundary_co[1] == first_co[1]))
+      {
+        int v[2];
+        BLI_stack_pop(tgpf->stack, &v);
+        break;
+      }
+
+      if (!first_pixel) {
+        first_pixel = true;
+        copy_v2_v2_int(first_co, boundary_co);
+      }
+    }
   }
 
-  /* Set red borders to create a external limit. */
-  mark_borders(*ima, border_color);
+  static bool
+  do_frame_fill(Main & bmain,
+                ARegion & region,
+                View3D & view3d,
+                RegionView3D & rv3d,
+                const Scene &scene,
+                Depsgraph &depsgraph,
+                Object &object,
+                const VArray<bool> &boundary_layers,
+                const Span<DrawingInfo> drawings,
+                const int2 &win_size,
+                const float2 zoom,
+                const float2 offset,
+                const bool invert,
+                const float3 &mouse_position,
+                ReportList &reports,
+                const bool keep_images)
+  {
+    const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
 
-  /* Apply boundary fill */
-  FillResult fill_result = fill_boundaries(*ima);
+    // TODO
+    const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
+    const float alpha_threshold = 0.2f;
+    const float thickness = 1.0f;
 
-  /* Delete temp image. */
-  if (!keep_images) {
-    BKE_id_free(&bmain, ima);
+    Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
+      GPU_blend(GPU_BLEND_ALPHA);
+      GPU_depth_mask(true);
+      render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+
+      /* Draw blue point where click with mouse. */
+      const float mouse_dot_size = 4.0f;
+      render_utils::draw_dot(mouse_position, mouse_dot_size, mouse_color);
+
+      draw_datablock(object,
+                     grease_pencil,
+                     drawings,
+                     boundary_layers,
+                     stroke_color,
+                     fill_draw_mode,
+                     alpha_threshold,
+                     thickness);
+
+      render_utils::clear_viewmat();
+      GPU_depth_mask(false);
+      GPU_blend(GPU_BLEND_NONE);
+    });
+    if (ima == nullptr) {
+      return false;
+    }
+
+    /* Set red borders to create a external limit. */
+    mark_borders(*ima, border_color);
+
+    /* Apply boundary fill */
+    FillResult fill_result = fill_boundaries(*ima);
+
+    /* Delete temp image. */
+    if (!keep_images) {
+      BKE_id_free(&bmain, ima);
+    }
+
+    return true;
   }
 
-  return true;
-}
+  static rctf get_region_bounds(const ARegion &region)
+  {
+    /* Init maximum boundbox size. */
+    rctf region_bounds;
+    BLI_rctf_init(&region_bounds, 0, region.winx, 0, region.winy);
+    return region_bounds;
+  }
 
-static rctf get_region_bounds(const ARegion &region)
-{
-  /* Init maximum boundbox size. */
-  rctf region_bounds;
-  BLI_rctf_init(&region_bounds, 0, region.winx, 0, region.winy);
-  return region_bounds;
-}
+  /* Helper: Calc the maximum bounding box size of strokes to get the zoom level of the viewport.
+   * For each stroke, the 2D projected bounding box is calculated and using this data, the total
+   * object bounding box (all strokes) is calculated. */
+  static rctf get_boundary_bounds(const ARegion &region,
+                                  const Brush &brush,
+                                  const Object &object,
+                                  const Object &object_eval,
+                                  const VArray<bool> &boundary_layers,
+                                  const Span<DrawingInfo> src_drawings)
+  {
+    using bke::greasepencil::Drawing;
+    using bke::greasepencil::Layer;
 
-/* Helper: Calc the maximum bounding box size of strokes to get the zoom level of the viewport.
- * For each stroke, the 2D projected bounding box is calculated and using this data, the total
- * object bounding box (all strokes) is calculated. */
-static rctf get_boundary_bounds(const ARegion &region,
-                                const Brush &brush,
-                                const Object &object,
-                                const Object &object_eval,
-                                const VArray<bool> &boundary_layers,
-                                const Span<DrawingInfo> src_drawings)
-{
-  using bke::greasepencil::Drawing;
-  using bke::greasepencil::Layer;
+    rctf bounds;
+    BLI_rctf_init_minmax(&bounds);
 
-  rctf bounds;
-  BLI_rctf_init_minmax(&bounds);
+    if (brush.gpencil_settings->flag & GP_BRUSH_FILL_FIT_DISABLE) {
+      return bounds;
+    }
 
-  if (brush.gpencil_settings->flag & GP_BRUSH_FILL_FIT_DISABLE) {
+    BLI_assert(object.type == OB_GREASE_PENCIL);
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+    BLI_assert(grease_pencil.has_active_layer());
+
+    for (const DrawingInfo &info : src_drawings) {
+      const Layer &layer = *grease_pencil.layers()[info.layer_index];
+      const float4x4 layer_to_world = layer.to_world_space(object);
+      const bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              &object_eval, object, info.layer_index, info.frame_number);
+      const bool only_boundary_strokes = boundary_layers[info.layer_index];
+      const bke::CurvesGeometry &strokes = info.drawing.strokes();
+      const bke::AttributeAccessor attributes = strokes.attributes();
+      const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
+                                                            bke::AttrDomain::Curve);
+      const VArray<bool> is_boundary_stroke = *attributes.lookup_or_default<bool>(
+          "is_boundary", bke::AttrDomain::Curve, false);
+
+      threading::parallel_for(strokes.curves_range(), 512, [&](const IndexRange range) {
+        for (const int curve_i : range) {
+          const IndexRange points = strokes.points_by_curve()[curve_i];
+          /* Check if stroke can be drawn. */
+          if (points.size() < 2) {
+            continue;
+          }
+          /* check if the color is visible */
+          const int material_index = materials[curve_i];
+          Material *mat = BKE_object_material_get(const_cast<Object *>(&object),
+                                                  material_index + 1);
+          if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
+            continue;
+          }
+
+          /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
+          if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
+            continue;
+          }
+
+          for (const int point_i : points) {
+            const float3 pos_world = math::transform_point(layer_to_world,
+                                                           deformation.positions[point_i]);
+            float2 pos_view;
+            eV3DProjStatus result = ED_view3d_project_float_global(
+                &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
+            if (result == V3D_PROJ_RET_OK) {
+              BLI_rctf_do_minmax_v(&bounds, pos_view);
+            }
+          }
+        }
+      });
+    }
+
     return bounds;
   }
 
-  BLI_assert(object.type == OB_GREASE_PENCIL);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  bool fill_strokes(bContext & C,
+                    ARegion & region,
+                    const VArray<bool> &boundary_layers,
+                    const bool invert,
+                    const float2 &mouse_position,
+                    ReportList &reports)
+  {
+    using bke::greasepencil::Layer;
 
-  BLI_assert(grease_pencil.has_active_layer());
+    wmWindow &win = *CTX_wm_window(&C);
+    View3D &view3d = *CTX_wm_view3d(&C);
+    RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+    Main &bmain = *CTX_data_main(&C);
+    const Scene &scene = *CTX_data_scene(&C);
+    Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+    Object &object = *CTX_data_active_object(&C);
+    const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
+    GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+    const ToolSettings &ts = *CTX_data_tool_settings(&C);
+    const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+    //   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
+    //   const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
 
-  for (const DrawingInfo &info : src_drawings) {
-    const Layer &layer = *grease_pencil.layers()[info.layer_index];
-    const float4x4 layer_to_world = layer.to_world_space(object);
-    const bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            &object_eval, object, info.layer_index, info.frame_number);
-    const bool only_boundary_strokes = boundary_layers[info.layer_index];
-    const bke::CurvesGeometry &strokes = info.drawing.strokes();
-    const bke::AttributeAccessor attributes = strokes.attributes();
-    const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
-                                                          bke::AttrDomain::Curve);
-    const VArray<bool> is_boundary_stroke = *attributes.lookup_or_default<bool>(
-        "is_boundary", bke::AttrDomain::Curve, false);
+    /* Debug setting: keep image data blocks for inspection. */
+    constexpr const bool keep_images = true;
 
-    threading::parallel_for(strokes.curves_range(), 512, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = strokes.points_by_curve()[curve_i];
-        /* Check if stroke can be drawn. */
-        if (points.size() < 2) {
-          continue;
-        }
-        /* check if the color is visible */
-        const int material_index = materials[curve_i];
-        Material *mat = BKE_object_material_get(const_cast<Object *>(&object), material_index + 1);
-        if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
-          continue;
-        }
+    if (region.regiontype != RGN_TYPE_WINDOW) {
+      return false;
+    }
+    if (!grease_pencil.has_active_layer()) {
+      return false;
+    }
 
-        /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
-        if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
-          continue;
-        }
+    // TODO based on the fill_factor (aka "Precision") setting.
+    constexpr const int min_window_size = 128;
+    const float pixel_scale = 1.0f;
+    const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+                                    int2(min_window_size));
 
-        for (const int point_i : points) {
-          const float3 pos_world = math::transform_point(layer_to_world,
-                                                         deformation.positions[point_i]);
-          float2 pos_view;
-          eV3DProjStatus result = ED_view3d_project_float_global(
-              &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
-          if (result == V3D_PROJ_RET_OK) {
-            BLI_rctf_do_minmax_v(&bounds, pos_view);
-          }
-        }
-      }
-    });
-  }
+    /* Drawings that form boundaries for the generated strokes. */
+    const Vector<DrawingInfo> src_drawings = ed::greasepencil::retrieve_visible_drawings(
+        scene, grease_pencil, false);
+    /* Drawings from the active layer where strokes are generated. */
+    const Vector<MutableDrawingInfo> dst_drawings =
+        ed::greasepencil::retrieve_editable_drawings_from_layer(
+            scene, grease_pencil, *grease_pencil.get_active_layer());
 
-  return bounds;
-}
-
-bool fill_strokes(bContext &C,
-                  ARegion &region,
-                  const VArray<bool> &boundary_layers,
-                  const bool invert,
-                  const float2 &mouse_position,
-                  ReportList &reports)
-{
-  using bke::greasepencil::Layer;
-
-  wmWindow &win = *CTX_wm_window(&C);
-  View3D &view3d = *CTX_wm_view3d(&C);
-  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
-  Main &bmain = *CTX_data_main(&C);
-  const Scene &scene = *CTX_data_scene(&C);
-  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-  Object &object = *CTX_data_active_object(&C);
-  const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-  const ToolSettings &ts = *CTX_data_tool_settings(&C);
-  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  //   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
-  //   const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
-
-  /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = true;
-
-  if (region.regiontype != RGN_TYPE_WINDOW) {
-    return false;
-  }
-  if (!grease_pencil.has_active_layer()) {
-    return false;
-  }
-
-  // TODO based on the fill_factor (aka "Precision") setting.
-  constexpr const int min_window_size = 128;
-  const float pixel_scale = 1.0f;
-  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-                                  int2(min_window_size));
-
-  /* Drawings that form boundaries for the generated strokes. */
-  const Vector<DrawingInfo> src_drawings = ed::greasepencil::retrieve_visible_drawings(
-      scene, grease_pencil, false);
-  /* Drawings from the active layer where strokes are generated. */
-  const Vector<MutableDrawingInfo> dst_drawings =
-      ed::greasepencil::retrieve_editable_drawings_from_layer(
-          scene, grease_pencil, *grease_pencil.get_active_layer());
-
-  for (const MutableDrawingInfo &dst_info : dst_drawings) {
-    const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
-    const float4x4 layer_to_world = layer.to_world_space(object);
-    ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
-    const float3 mouse_position_world = math::transform_point(layer_to_world,
-                                                              placement.project(mouse_position));
+    for (const MutableDrawingInfo &dst_info : dst_drawings) {
+      const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
+      const float4x4 layer_to_world = layer.to_world_space(object);
+      ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
+      const float3 mouse_position_world = math::transform_point(layer_to_world,
+                                                                placement.project(mouse_position));
 
 #if 0  // TODO doesn't quite work yet, use identity for now.
     /* Zoom and offset based on bounds, to fit all strokes within the render. */
@@ -867,120 +1076,120 @@ bool fill_strokes(bContext &C,
     std::cout << "region " << region_min << ".." << region_max << ", bounds " << bounds_min << ".."
               << bounds_max << " zoom=" << zoom << " offset=" << offset << std::endl;
 #else
-    const float2 zoom = float2(1);
-    const float2 offset = float2(0);
+      const float2 zoom = float2(1);
+      const float2 offset = float2(0);
 #endif
 
-    do_frame_fill(bmain,
-                  region,
-                  view3d,
-                  rv3d,
-                  scene,
-                  depsgraph,
-                  object,
-                  boundary_layers,
-                  src_drawings,
-                  win_size,
-                  zoom,
-                  offset,
-                  invert,
-                  mouse_position_world,
-                  reports,
-                  keep_images);
+      do_frame_fill(bmain,
+                    region,
+                    view3d,
+                    rv3d,
+                    scene,
+                    depsgraph,
+                    object,
+                    boundary_layers,
+                    src_drawings,
+                    win_size,
+                    zoom,
+                    offset,
+                    invert,
+                    mouse_position_world,
+                    reports,
+                    keep_images);
+    }
+
+    // tgpf->mouse[0] = event->mval[0];
+    // tgpf->mouse[1] = event->mval[1];
+    // tgpf->is_render = true;
+
+    // /* Create Temp stroke. */
+    // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
+    // tGPspoint point2D;
+    // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
+    // copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
+    // gpencil_stroke_convertcoords_tpoint(
+    //     tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
+
+    // /* Hash of selected frames. */
+    // GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
+
+    // /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
+    //  * create a new frame. */
+    // if (!is_multiedit) {
+    //   tgpf->gpf = BKE_gpencil_layer_frame_get(
+    //       tgpf->gpl,
+    //       tgpf->active_cfra,
+    //       blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
+    //       GP_GETFRAME_USE_PREV);
+    //   tgpf->gpf->flag |= GP_FRAME_SELECT;
+
+    //   BLI_ghash_insert(frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
+    // }
+    // else {
+    //   BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
+    // }
+
+    // /* Loop all frames. */
+    // wmWindow *win = CTX_wm_window(C);
+    // GHashIterator gh_iter;
+    // int total = BLI_ghash_len(frame_list);
+    // int i = 1;
+    // GHASH_ITER (gh_iter, frame_list) {
+    //   /* Set active frame as current for filling. */
+    //   tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
+    //   int step = (float(i) / float(total)) * 100.0f;
+    //   WM_cursor_time(win, step);
+
+    //   if (extend_lines) {
+    //     grease_pencil_update_extend(C, op_data);
+    //   }
+
+    //   /* Repeat loop until get something. */
+    //   tgpf->done = false;
+    //   int loop_limit = 0;
+    //   while ((!tgpf->done) && (loop_limit < 2)) {
+    //     WM_cursor_time(win, loop_limit + 1);
+    //     /* Render screen to temp image and do fill. */
+    //     gpencil_do_frame_fill(tgpf, is_inverted);
+
+    //     /* restore size */
+    //     tgpf->region->winx = short(tgpf->bwinx);
+    //     tgpf->region->winy = short(tgpf->bwiny);
+    //     tgpf->region->winrct = tgpf->brect;
+    //     if (!tgpf->done) {
+    //       /* If the zoom was not set before, avoid a loop. */
+    //       if (tgpf->zoom == 1.0f) {
+    //         loop_limit++;
+    //       }
+    //       else {
+    //         tgpf->zoom = 1.0f;
+    //         tgpf->fill_factor = max_ff(
+    //             GPENCIL_MIN_FILL_FAC,
+    //             min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
+    //       }
+    //     }
+    //     loop_limit++;
+    //   }
+
+    //   if (extend_lines) {
+    //     stroke_array_free(tgpf);
+    //     gpencil_delete_temp_stroke_extension(tgpf, true);
+    //   }
+
+    //   i++;
+    // }
+
+    WM_cursor_modal_restore(&win);
+    /* Free hash table. */
+    // BLI_ghash_free(frame_list, nullptr, nullptr);
+
+    /* Free temp stroke. */
+    // BKE_gpencil_free_stroke(tgpf->gps_mouse);
+
+    /* push undo data */
+    // gpencil_undo_push(tgpf->gpd);
+
+    return true;
   }
-
-  // tgpf->mouse[0] = event->mval[0];
-  // tgpf->mouse[1] = event->mval[1];
-  // tgpf->is_render = true;
-
-  // /* Create Temp stroke. */
-  // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
-  // tGPspoint point2D;
-  // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
-  // copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
-  // gpencil_stroke_convertcoords_tpoint(
-  //     tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
-
-  // /* Hash of selected frames. */
-  // GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
-
-  // /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
-  //  * create a new frame. */
-  // if (!is_multiedit) {
-  //   tgpf->gpf = BKE_gpencil_layer_frame_get(
-  //       tgpf->gpl,
-  //       tgpf->active_cfra,
-  //       blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
-  //       GP_GETFRAME_USE_PREV);
-  //   tgpf->gpf->flag |= GP_FRAME_SELECT;
-
-  //   BLI_ghash_insert(frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
-  // }
-  // else {
-  //   BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
-  // }
-
-  // /* Loop all frames. */
-  // wmWindow *win = CTX_wm_window(C);
-  // GHashIterator gh_iter;
-  // int total = BLI_ghash_len(frame_list);
-  // int i = 1;
-  // GHASH_ITER (gh_iter, frame_list) {
-  //   /* Set active frame as current for filling. */
-  //   tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
-  //   int step = (float(i) / float(total)) * 100.0f;
-  //   WM_cursor_time(win, step);
-
-  //   if (extend_lines) {
-  //     grease_pencil_update_extend(C, op_data);
-  //   }
-
-  //   /* Repeat loop until get something. */
-  //   tgpf->done = false;
-  //   int loop_limit = 0;
-  //   while ((!tgpf->done) && (loop_limit < 2)) {
-  //     WM_cursor_time(win, loop_limit + 1);
-  //     /* Render screen to temp image and do fill. */
-  //     gpencil_do_frame_fill(tgpf, is_inverted);
-
-  //     /* restore size */
-  //     tgpf->region->winx = short(tgpf->bwinx);
-  //     tgpf->region->winy = short(tgpf->bwiny);
-  //     tgpf->region->winrct = tgpf->brect;
-  //     if (!tgpf->done) {
-  //       /* If the zoom was not set before, avoid a loop. */
-  //       if (tgpf->zoom == 1.0f) {
-  //         loop_limit++;
-  //       }
-  //       else {
-  //         tgpf->zoom = 1.0f;
-  //         tgpf->fill_factor = max_ff(
-  //             GPENCIL_MIN_FILL_FAC,
-  //             min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
-  //       }
-  //     }
-  //     loop_limit++;
-  //   }
-
-  //   if (extend_lines) {
-  //     stroke_array_free(tgpf);
-  //     gpencil_delete_temp_stroke_extension(tgpf, true);
-  //   }
-
-  //   i++;
-  // }
-
-  WM_cursor_modal_restore(&win);
-  /* Free hash table. */
-  // BLI_ghash_free(frame_list, nullptr, nullptr);
-
-  /* Free temp stroke. */
-  // BKE_gpencil_free_stroke(tgpf->gps_mouse);
-
-  /* push undo data */
-  // gpencil_undo_push(tgpf->gpd);
-
-  return true;
-}
 
 }  // namespace blender::ed::greasepencil
