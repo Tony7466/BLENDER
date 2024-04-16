@@ -1,2 +1,3 @@
 Referenced by issue #120494, Poor redo panel performance when using a big asset library
 Referenced by issue #119631, 4.1: Candidates for corrective releases
+Referenced by pull request #120699, Assets: Speed up iterating over asset libraries
