@@ -17,6 +17,7 @@
 #include "COM_smaa_precomputed_textures.hh"
 #include "COM_symmetric_blur_weights.hh"
 #include "COM_symmetric_separable_blur_weights.hh"
+#include "COM_van_vliet_gaussian_coefficients.hh"
 
 namespace blender::realtime_compositor {
 
@@ -57,6 +58,7 @@ class StaticCacheManager {
   BokehKernelContainer bokeh_kernels;
   CachedImageContainer cached_images;
   DericheGaussianCoefficientsContainer deriche_gaussian_coefficients;
+  VanVlietGaussianCoefficientsContainer van_vliet_gaussian_coefficients;
 
   /* Reset the cache manager by deleting the cached resources that are no longer needed because
    * they weren't used in the last evaluation and prepare the remaining cached resources to track
