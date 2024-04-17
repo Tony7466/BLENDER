@@ -18,6 +18,7 @@ set(INC
   ../../modifiers
   ../../render
   ../../windowmanager
+
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -205,6 +206,8 @@ set(SRC
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
+  nodes/node_geo_object_attribute.cc
+
   node_geometry_tree.cc
   node_geometry_util.cc
 
@@ -240,6 +243,7 @@ if(WITH_TBB)
     ${TBB_INCLUDE_DIRS}
   )
   add_definitions(-DWITH_TBB)
+
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
     # that will collide with the stl versions.

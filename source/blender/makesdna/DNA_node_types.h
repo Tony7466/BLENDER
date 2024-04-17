@@ -1999,6 +1999,10 @@ typedef struct NodeGeometryBake {
   char _pad[4];
 } NodeGeometryBake;
 
+typedef struct GeometryNodeObjectAttribute {
+  int data_type;
+} GeometryNodeObjectAttribute;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
