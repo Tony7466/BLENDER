@@ -555,7 +555,14 @@ enum class FillResult {
   BorderContact,
 };
 
-FillResult fill_boundaries(Image &ima)
+enum FillBorderMode {
+  /* Cancel when hitting the border, fill failed. */
+  Cancel,
+  /* Allow border contact, continue with other pixels. */
+  Ignore,
+};
+
+template<FillBorderMode border_mode> FillResult fill_boundaries(Image &ima)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
@@ -591,9 +598,22 @@ FillResult fill_boundaries(Image &ima)
     const int2 coord = coord_from_index(index);
     ColorGeometry4f pixel_value = pixels[index];
 
-    if (is_pixel_border(pixel_value)) {
-      border_contact = true;
-      break;
+    if constexpr (border_mode == FillBorderMode::Cancel) {
+      if (is_pixel_border(pixel_value)) {
+        border_contact = true;
+        break;
+      }
+    }
+    else if constexpr (border_mode == FillBorderMode::Ignore) {
+      if (is_pixel_border(pixel_value)) {
+        border_contact = true;
+        continue;
+      }
+    }
+    else {
+      if (is_pixel_border(pixel_value)) {
+        border_contact = true;
+      }
     }
     if (is_pixel_filled(pixel_value)) {
       /* Pixel already filled. */
@@ -972,7 +992,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   mark_borders(*ima, border_color);
 
   /* Apply boundary fill */
-  FillResult fill_result = fill_boundaries(*ima);
+  FillResult fill_result = fill_boundaries<FillBorderMode::Ignore>(*ima);
   if (fill_result != FillResult::Success) {
     return {};
   }
