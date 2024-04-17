@@ -1750,6 +1750,9 @@ void WM_window_status_area_tag_redraw(wmWindow *win);
  */
 ScrArea *WM_window_status_area_find(wmWindow *win, bScreen *screen);
 
+/**
+ * Return currently-running modal operator, and optionally the keymap it's using.
+ */
 wmOperator *WM_window_modal_operator(bContext *C, wmKeyMap **km_r = nullptr);
 
 bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *layout);

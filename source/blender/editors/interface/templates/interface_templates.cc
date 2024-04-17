@@ -6311,6 +6311,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   wmWindow *win = CTX_wm_window(C);
   WorkSpace *workspace = CTX_wm_workspace(C);
 
+  /* Workspace status text has priority. */
   if (!BLI_listbase_is_empty(&workspace->status)) {
     uiLayout *row = uiLayoutRow(layout, true);
     LISTBASE_FOREACH (WorkSpaceStatusItem *, item, &workspace->status) {
