@@ -8,6 +8,8 @@
 
 #include "UI_interface_c.hh"
 
+struct Image;
+
 namespace blender::nodes {
 
 struct NodeExtraInfoRow {
@@ -24,6 +26,12 @@ struct NodeExtraInfoParams {
   Vector<NodeExtraInfoRow> &rows;
   const bNode &node;
   const bContext &C;
+};
+
+struct NodeTooltipRow {
+  std::string text;
+  uiTooltipColorID color = UI_TIP_LC_MAIN;
+  Image *image = nullptr;
 };
 
 }  // namespace blender::nodes

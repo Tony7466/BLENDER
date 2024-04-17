@@ -9,6 +9,11 @@
 
 #include <iomanip>
 
+#include "BKE_image.h"
+
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_light_types.h"
@@ -1600,9 +1605,9 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
   return str;
 }
 
-static std::string node_socket_get_tooltip(const SpaceNode *snode,
-                                           const bNodeTree &ntree,
-                                           const bNodeSocket &socket)
+static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode *snode,
+                                                                const bNodeTree &ntree,
+                                                                const bNodeSocket &socket)
 {
   TreeDrawContext tree_draw_ctx;
   if (snode != nullptr) {
@@ -1621,46 +1626,59 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     return tree_draw_ctx.geo_log_by_zone.lookup_default(zone, nullptr);
   }();
 
-  Vector<std::string> inspection_strings;
+  Vector<nodes::NodeTooltipRow, 8> inspections;
 
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
-    inspection_strings.append(std::move(*info));
+    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
-    inspection_strings.append(std::move(*info));
+    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
   if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
-    inspection_strings.append(std::move(*info));
+    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
 
-  std::stringstream output;
-  for (const std::string &info : inspection_strings) {
-    output << info;
-    if (&info != &inspection_strings.last()) {
-      output << ".\n\n";
+  /*
+    std::stringstream output;
+    for (const std::string &info : inspection_strings) {
+      output << info;
+      if (&info != &inspection_strings.last()) {
+        output << ".\n\n";
+      }
     }
-  }
+  */
 
-  if (inspection_strings.is_empty()) {
+  if (inspections.is_empty()) {
     const bNode &node = socket.owner_node();
     if (node.is_reroute()) {
       char reroute_name[MAX_NAME];
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
-      output << reroute_name;
+      // output << reroute_name;
+
+      inspections.append({std::string(reroute_name), UI_TIP_LC_NORMAL});
     }
     else {
-      output << bke::nodeSocketLabel(&socket);
+      // output << bke::nodeSocketLabel(&socket);
+      inspections.append({std::string(bke::nodeSocketLabel(&socket)), UI_TIP_LC_NORMAL});
     }
 
     if (ntree.type == NTREE_GEOMETRY) {
-      output << ".\n\n";
-      output << TIP_(
-          "Unknown socket value. Either the socket was not used or its value was not logged "
-          "during the last evaluation");
+      // output << TIP_("Unknown socket value. Either the socket was not used or its value was not
+      // logged during the last evaluation");
+      inspections.append({std::string("Unknown socket value. Either the socket was not used or "
+                                      "its value was not logged during the last evaluation"),
+                          UI_TIP_LC_NORMAL});
     }
   }
 
-  return output.str();
+  if (socket.type == SOCK_IMAGE) {
+    Image *image = socket.default_value_typed<bNodeSocketValueImage>()->value;
+    if (image != nullptr) {
+      inspections.append({"", UI_TIP_LC_MAIN, image});
+    }
+  }
+
+  return inspections;
 }
 
 static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLayout &layout)
@@ -1672,7 +1690,8 @@ static void node_socket_add_tooltip_in_node_editor(const bNodeSocket &sock, uiLa
         const bNodeTree &ntree = *snode.edittree;
         const int index_in_tree = POINTER_AS_INT(argN);
         ntree.ensure_topology_cache();
-        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+        return std::string{};  // node_socket_get_tooltip(&snode, ntree,
+                               // *ntree.all_sockets()[index_in_tree]) + " BBB";
       },
       POINTER_FROM_INT(sock.index_in_tree()),
       nullptr,
@@ -1695,7 +1714,8 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
       [](bContext *C, void *argN, const char * /*tip*/) {
         SocketTooltipData *data = static_cast<SocketTooltipData *>(argN);
         const SpaceNode *snode = CTX_wm_space_node(C);
-        return node_socket_get_tooltip(snode, *data->ntree, *data->socket);
+        return std::string{};  // node_socket_get_tooltip(snode, *data->ntree, *data->socket) + "
+                               // AAA";
       },
       data,
       MEM_dupallocN,
@@ -1751,17 +1771,64 @@ static void node_socket_draw_nested(const bContext &C,
                             0,
                             nullptr);
 
-  UI_but_func_tooltip_set(
+  UI_but_func_tooltip_custom_set(
       but,
-      [](bContext *C, void *argN, const char * /*tip*/) {
+      [](bContext *C, uiTooltipData *tip, void *argN) {
         const SpaceNode &snode = *CTX_wm_space_node(C);
         const bNodeTree &ntree = *snode.edittree;
         const int index_in_tree = POINTER_AS_INT(argN);
         ntree.ensure_topology_cache();
-        return node_socket_get_tooltip(&snode, ntree, *ntree.all_sockets()[index_in_tree]);
+
+        Vector<nodes::NodeTooltipRow, 8> info_list = node_socket_get_tooltip(
+            &snode, ntree, *ntree.all_sockets()[index_in_tree]);
+
+        for (nodes::NodeTooltipRow &info : info_list) {
+          UI_tooltip_text_field_add(tip, info.text, {}, UI_TIP_STYLE_NORMAL, info.color);
+
+          if (info.image != nullptr) {
+            Image *image = info.image;
+
+            ImageUser image_user;
+            BKE_imageuser_default(&image_user);
+            image_user.frames = INT_MAX;
+            image_user.framenr = 0;
+
+            void *lock;
+            ImBuf *ibuf = BKE_image_acquire_ibuf(image, &image_user, &lock);
+            BLI_SCOPED_DEFER([&]() { BKE_image_release_ibuf(image, ibuf, lock); });
+
+            if (ibuf != nullptr) {
+              uiTooltipImage image_data;
+              float scale = (96.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
+              image_data.ibuf = ibuf;
+              image_data.width = short(float(ibuf->x) * scale);
+              image_data.height = short(float(ibuf->y) * scale);
+              image_data.border = true;
+              image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
+              image_data.premultiplied = true;
+              UI_tooltip_image_field_add(tip, image_data);
+            }
+          }
+        }
       },
       POINTER_FROM_INT(sock.index_in_tree()),
       nullptr);
+
+  if constexpr (false) {
+    UI_but_func_tooltip_set(
+        but,
+        [](bContext *C, void *argN, const char * /*tip*/) {
+          const SpaceNode &snode = *CTX_wm_space_node(C);
+          const bNodeTree &ntree = *snode.edittree;
+          const int index_in_tree = POINTER_AS_INT(argN);
+          ntree.ensure_topology_cache();
+          return std::string{};  // node_socket_get_tooltip(&snode, ntree,
+                                 // *ntree.all_sockets()[index_in_tree]) + " CCC";
+        },
+        POINTER_FROM_INT(sock.index_in_tree()),
+        nullptr);
+  }
+
   /* Disable the button so that clicks on it are ignored the link operator still works. */
   UI_but_flag_enable(but, UI_BUT_DISABLED);
   UI_block_emboss_set(&block, old_emboss);
