@@ -102,6 +102,7 @@ set(SRC
   cached_resources/intern/smaa_precomputed_textures.cc
   cached_resources/intern/symmetric_blur_weights.cc
   cached_resources/intern/symmetric_separable_blur_weights.cc
+  cached_resources/intern/van_vliet_gaussian_coefficients.cc
 
   cached_resources/COM_bokeh_kernel.hh
   cached_resources/COM_cached_image.hh
@@ -117,6 +118,7 @@ set(SRC
   cached_resources/COM_smaa_precomputed_textures.hh
   cached_resources/COM_symmetric_blur_weights.hh
   cached_resources/COM_symmetric_separable_blur_weights.hh
+  cached_resources/COM_van_vliet_gaussian_coefficients.hh
 )
 
 set(LIB
