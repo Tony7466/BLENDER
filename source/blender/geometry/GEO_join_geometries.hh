@@ -14,5 +14,5 @@ bke::GeometrySet join_geometries(Span<bke::GeometrySet> geometries,
 
 void join_attributes(const Span<const bke::GeometryComponent *> src_components,
                      bke::GeometryComponent &r_result,
-                     const Span<StringRef> ignored_attributes = {})
+                     const Span<StringRef> ignored_attributes = {});
 }  // namespace blender::geometry
