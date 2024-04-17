@@ -21,18 +21,22 @@
 #include "BKE_paint.hh"
 #include "BKE_report.hh"
 
-#include "DEG_depsgraph_query.hh"
+#include "DNA_curves_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
+
+#include "DEG_depsgraph_query.hh"
+
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
+
+#include "GEO_join_geometries.hh"
 
 #include "GPU_framebuffer.hh"
 #include "GPU_immediate.hh"
@@ -738,7 +742,7 @@ static Vector<BoundaryStep> build_fill_boundary(Image &ima)
 
   const std::optional<BoundaryStep> start_iter = find_start_coordinate();
   if (!start_iter) {
-    return;
+    return {};
   }
 
   Vector<BoundaryStep> boundary_steps = {*start_iter};
@@ -755,6 +759,8 @@ static Vector<BoundaryStep> build_fill_boundary(Image &ima)
 
   /* release ibuf */
   BKE_image_release_ibuf(&ima, ibuf, lock);
+
+  return boundary_steps;
 }
 
 /* Create curves geometry from boundary positions. */
@@ -1073,6 +1079,16 @@ static rctf get_boundary_bounds(const ARegion &region,
   return bounds;
 }
 
+Curves *curves_new_nomain(const int points_num, const int curves_num)
+{
+  BLI_assert(points_num >= 0);
+  BLI_assert(curves_num >= 0);
+  Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  curves.resize(points_num, curves_num);
+  return curves_id;
+}
+
 bool fill_strokes(bContext &C,
                   ARegion &region,
                   const VArray<bool> &boundary_layers,
@@ -1167,7 +1183,13 @@ bool fill_strokes(bContext &C,
                                                     reports,
                                                     keep_images);
 
-
+    Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
+    Curves *fill_curves_id = curves_new_nomain(fill_curves);
+    Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_curves(dst_curves_id),
+                                             bke::GeometrySet::from_curves(fill_curves_id)};
+    bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
+    dst_info.drawing.strokes_for_write() = std::move(
+        joined_curves.get_curves_for_write()->geometry.wrap());
   }
 
   // tgpf->mouse[0] = event->mval[0];
