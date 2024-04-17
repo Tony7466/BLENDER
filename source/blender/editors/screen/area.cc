@@ -946,9 +946,13 @@ void ED_workspace_status_opmodal(bContext *C,
         ED_workspace_status_space(C, -0.8f);
       }
 
-      ED_workspace_status_item(C, {}, icon);
+      if (icon) {
+        ED_workspace_status_item(C, {}, icon);
+        if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+          ED_workspace_status_space(C, 0.6f);
+        }
+      }
       if (!text.empty()) {
-        ED_workspace_status_space(C, 0.6f);
         ED_workspace_status_item(C, text, ICON_NONE);
         ED_workspace_status_space(C, 0.7f);
       }
