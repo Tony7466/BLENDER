@@ -387,11 +387,12 @@ ccl_device
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
   const bool is_direct_light = light_is_direct_illumination(state);
+  const bool use_ris = is_direct_light && kernel_data.integrator.use_restir;
 
   const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
   /* Sample position on a light. */
-  Reservoir reservoir(is_direct_light, rand);
+  Reservoir reservoir(use_ris, rand);
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     LightSample ls ccl_optional_struct_init;
@@ -448,8 +449,8 @@ ccl_device
     reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf);
   }
 
-  /* If `is_direct_light`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < reservoir.num_bsdf_samples * is_direct_light; i++) {
+  /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
+  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
@@ -649,7 +650,7 @@ ccl_device
   BsdfEval radiance = reservoir.radiance;
   reservoir.total_weight /= reduce_add(fabs(radiance.sum));
 
-  if (is_direct_light) {
+  if (use_ris) {
     /* Write to reservoir and trace shadow ray later. */
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }

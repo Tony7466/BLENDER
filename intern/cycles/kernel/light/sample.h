@@ -438,7 +438,9 @@ ccl_device_inline float light_sample_mis_weight_forward_surface(KernelGlobals kg
                                                                 const ccl_private ShaderData *sd)
 {
   /* TODO(weizhen): revisit this condition. */
-  if (kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1) {
+  if (kernel_data.integrator.use_restir && kernel_data.integrator.use_direct_light &&
+      INTEGRATOR_STATE(state, path, bounce) == 1)
+  {
     /* Direct illumination is handled with RIS. */
     return 0.0f;
   }
@@ -487,7 +489,9 @@ ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
                                                              const ccl_private LightSample *ls,
                                                              const float3 P)
 {
-  if (kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1) {
+  if (kernel_data.integrator.use_restir && kernel_data.integrator.use_direct_light &&
+      INTEGRATOR_STATE(state, path, bounce) == 1)
+  {
     /* Direct illumination is handled with RIS. */
     return 0.0f;
   }

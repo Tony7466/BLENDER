@@ -359,6 +359,11 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
     scene->light_manager->tag_update(scene, LightManager::UPDATE_ALL);
   }
 
+  integrator->set_use_restir(get_boolean(cscene, "use_restir"));
+  if (integrator->use_restir_is_modified()) {
+    scene->light_manager->tag_update(scene, Integrator::UPDATE_ALL);
+  }
+
   SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
       cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
 

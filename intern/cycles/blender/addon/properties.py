@@ -587,6 +587,12 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=True,
     )
 
+    use_restir: BoolProperty(
+        name="ReSTIR",
+        description="Reservoir-based Spatial Temporal Importance Resampling",
+        default=True,
+    )
+
     min_light_bounces: IntProperty(
         name="Min Light Bounces",
         description="Minimum number of light bounces. Setting this higher reduces noise in the first bounces, "

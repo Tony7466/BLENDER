@@ -148,8 +148,10 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
       [&] { initial_resampling(image_width, image_height, start_sample, sample_offset); });
 
   /* Spatial Resampling. */
-  local_arena.execute(
-      [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset); });
+  if (device_scene_->data.integrator.use_restir) {
+    local_arena.execute(
+        [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset); });
+  }
 
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {

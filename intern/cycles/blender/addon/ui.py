@@ -472,6 +472,7 @@ class CYCLES_RENDER_PT_sampling_lights(CyclesButtonsPanel, Panel):
 
         col = layout.column(align=True)
         col.prop(cscene, "use_light_tree")
+        col.prop(cscene, "use_restir")
         sub = col.row()
         sub.prop(cscene, "light_sampling_threshold", text="Light Threshold")
         sub.active = not cscene.use_light_tree

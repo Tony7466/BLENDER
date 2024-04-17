@@ -116,6 +116,7 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(adaptive_min_samples, "Adaptive Min Samples", 0);
 
   SOCKET_BOOLEAN(use_light_tree, "Use light tree to optimize many light sampling", true);
+  SOCKET_BOOLEAN(use_restir, "Reservoir-based Spatial Temporal Importance Resampling", true);
   SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.0f);
 
   static NodeEnum sampling_pattern_enum;
