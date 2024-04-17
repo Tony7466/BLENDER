@@ -971,7 +971,6 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
   const asset_system::AssetRepresentation *asset = asset::find_asset_from_weak_ref(
       *C, brush_weak_ref, op->reports);
   if (!asset) {
-    BLI_assert_unreachable();
     return OPERATOR_CANCELLED;
   }
   const asset_system::AssetLibrary &library = asset->owner_asset_library();
