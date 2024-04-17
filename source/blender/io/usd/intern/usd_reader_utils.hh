@@ -4,14 +4,11 @@
 
 #pragma once
 
-#include <optional>
-#include <string>
+#include "usd.hh"
 
-#include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/prim.h>
 
 #include "BKE_idprop.hh"
-#include "usd.hh"
 
 namespace blender::io::usd {
 
