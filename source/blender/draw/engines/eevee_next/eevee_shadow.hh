@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "BLI_math_rotation.h"
 #include "BLI_pool.hh"
 #include "BLI_vector.hh"
 
@@ -405,19 +406,18 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   Vector<ShadowTileMap *> tilemaps_;
   /** Shape type. */
   eLightType light_type_;
-  /** Light position. */
-  float3 position_;
-  /** Used to compute near and far clip distances. */
-  float max_distance_, light_radius_;
   /** Number of tile-maps needed to cover the light angular extents. */
   int tilemaps_needed_;
-  /** Scaling factor to the light shape for shadow ray casting. */
+  /** Light position. */
+  float3 position_;
+  /** Unmodified light shape radius. */
+  float light_radius_;
+  /** Used to compute near and far clip distances. */
+  float max_distance_;
+  /** Scaling factor to the light shape for shadows. */
   float softness_factor_;
-  /**
-   * `radius * softness_factor` (Bypasses LightModule radius modifications
-   * to avoid unnecessary padding in the shadow projection).
-   */
-  float shadow_radius_;
+  /** Softness scale for jittered shadows. */
+  float jitter_overblur_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -435,9 +435,7 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   void sync(const ::Light *bl_light,
             eLightType light_type,
             const float4x4 &object_mat,
-            float light_shape_radius,
-            float max_distance,
-            bool do_jittering);
+            float max_distance);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -450,6 +448,18 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   void end_sync(Light &light, bool is_render_sync = false);
 
  private:
+  /** Scaling factor to the light shape for shadow tracing. */
+  float softness_factor_get(bool do_jittering)
+  {
+    return softness_factor_ * (do_jittering ? jitter_overblur_ : 1.0f);
+  }
+
+  /** Light shape radius used for shadows. */
+  float shadow_radius_get()
+  {
+    return light_radius_ * softness_factor_;
+  }
+
   /**
    * Compute the projection matrix inputs.
    * Make sure that the projection encompass all possible rays that can start in the projection
@@ -474,12 +484,14 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   float4x4 object_mat_;
   /** Current range of clip-map / cascades levels covered by this shadow. */
   IndexRange levels_range;
-  /** Angle of the shadowed light shape. Might be scaled compared to the shading disk. */
-  float disk_shape_angle_;
+  /** Unmodified light shape angle. */
+  float light_angle_;
   /** Maximum distance a shadow map ray can be travel. */
   float trace_distance_;
-  /** Light radius * shadow softness */
-  float shadow_radius_;
+  /** Scaling factor to the light shape for shadows. */
+  float softness_factor_;
+  /** Softness scale for jittered shadows. */
+  float jitter_overblur_;
 
  public:
   ShadowDirectional(ShadowModule &module) : shadows_(module){};
@@ -494,10 +506,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Sync shadow parameters but do not allocate any shadow tile-maps.
    */
-  void sync(const ::Light *bl_light,
-            const float4x4 &object_mat,
-            float min_resolution,
-            bool do_jittering);
+  void sync(const ::Light *bl_light, const float4x4 &object_mat, float min_resolution);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -524,6 +533,24 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   }
 
  private:
+  /** Scaling factor to the light shape for shadow tracing. */
+  float softness_factor_get(bool do_jittering)
+  {
+    return softness_factor_ * (do_jittering ? jitter_overblur_ : 1.0f);
+  }
+
+  /** Light shape angle used for shadows. */
+  float shadow_angle_get(bool do_jittering)
+  {
+    return min_ff(light_angle_ * softness_factor_get(do_jittering), DEG2RADF(179.9f)) / 2.0f;
+  }
+
+  /** Light shape radius used for shadows. */
+  float shadow_radius_get()
+  {
+    return tanf(min_ff(light_angle_ * softness_factor_, DEG2RADF(179.9f)) / 2.0f);
+  }
+
   IndexRange clipmap_level_range(const Camera &camera);
   IndexRange cascade_level_range(const Camera &camera, float lod_bias);
 

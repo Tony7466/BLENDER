@@ -88,18 +88,10 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
     if (is_sun_light(this->type)) {
-      this->directional->sync(la, this->object_mat, 1.0f, this->do_jittering);
+      this->directional->sync(la, this->object_mat, 1.0f);
     }
     else {
-      /* Reuse shape radius as near clip plane. */
-      /* This assumes `shape_parameters_set` has already set `radius_squared`. */
-      float radius = math::sqrt(this->local.radius_squared);
-      this->punctual->sync(la,
-                           this->type,
-                           this->object_mat,
-                           radius,
-                           this->local.influence_radius_max,
-                           this->do_jittering);
+      this->punctual->sync(la, this->type, this->object_mat, this->local.influence_radius_max);
     }
   }
   else {

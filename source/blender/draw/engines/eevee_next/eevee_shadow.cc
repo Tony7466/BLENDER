@@ -9,7 +9,6 @@
  */
 
 #include "BKE_global.hh"
-#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 
 #include "eevee_instance.hh"
@@ -222,10 +221,10 @@ void ShadowTileMapPool::end_sync(ShadowModule &module)
 void ShadowPunctual::sync(const ::Light *bl_light,
                           eLightType light_type,
                           const float4x4 &object_mat,
-                          float light_shape_radius,
-                          float max_distance,
-                          bool do_jittering)
+                          float max_distance)
 {
+  light_type_ = light_type;
+
   if (is_spot_light(light_type)) {
     tilemaps_needed_ = (bl_light->spotsize > DEG2RADF(90.0f)) ? 5 : 1;
   }
@@ -236,24 +235,19 @@ void ShadowPunctual::sync(const ::Light *bl_light,
     tilemaps_needed_ = 6;
   }
 
-  /* Clamp for near/far clip distance calculation. */
-  max_distance_ = max_ff(max_distance, 4e-4f);
-  light_radius_ = min_ff(light_shape_radius, max_distance_ - 1e-4f);
-  light_type_ = light_type;
-
-  position_ = float3(object_mat[3]);
+  position_ = object_mat.location();
+  max_distance_ = max_distance;
   softness_factor_ = bl_light->shadow_softness_factor;
-  if (do_jittering) {
-    softness_factor_ *= bl_light->shadow_jitter_overblur;
+  jitter_overblur_ = bl_light->shadow_jitter_overblur;
+
+  if (is_area_light(light_type)) {
+    const bool is_irregular = ELEM(bl_light->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
+    light_radius_ = math::length(
+        float2(bl_light->area_size, is_irregular ? bl_light->area_sizey : bl_light->area_size));
   }
-  /* `shape_parameters_set` can increase the radius of point and spot lights to ensure a
-   * minimum radius/energy ratio.
-   * But we don't want to take that into account for computing the shadow-map projection,
-   * since non-zero radius introduces padding (required for soft-shadows tracing), reducing
-   * the effective resolution of shadow-maps.
-   * So we use the original light radius instead. */
-  shadow_radius_ = ELEM(bl_light->type, LA_LOCAL, LA_SPOT) ? bl_light->radius : light_shape_radius;
-  shadow_radius_ *= bl_light->shadow_softness_factor;
+  else {
+    light_radius_ = bl_light->radius;
+  }
 }
 
 void ShadowPunctual::release_excess_tilemaps()
@@ -327,6 +321,8 @@ void ShadowPunctual::compute_projection_boundaries(float light_radius,
    *
    * TODO(fclem): Explain derivation.
    */
+  max_lit_distance = max_ff(max_lit_distance, 4e-4f);
+  light_radius = min_ff(light_radius, max_lit_distance - 1e-4f);
   float cos_alpha = shadow_radius / max_lit_distance;
   float sin_alpha = sqrt(1.0f - math::square(cos_alpha));
   float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
@@ -365,7 +361,8 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
   }
 
   float side, near, far;
-  compute_projection_boundaries(light_radius_, shadow_radius_, max_distance_, near, far, side);
+  compute_projection_boundaries(
+      light_radius_, shadow_radius_get(), max_distance_, near, far, side);
 
   float3 origin_shift = float3(0.0f);
 
@@ -383,7 +380,7 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
     }
     else {
       origin_shift = sampling.sample_ball(random);
-      origin_shift *= shadow_radius_;
+      origin_shift *= shadow_radius_get();
     }
   }
 
@@ -411,7 +408,7 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
   light.clip_far = as_int.i;
   light.local.clip_side = side;
   light.local.shadow_projection_shift = origin_shift;
-  light.local.shadow_scale = softness_factor_;
+  light.local.shadow_scale = softness_factor_get(light.do_jittering);
   light.local.tilemaps_count = tilemaps_needed_;
 }
 
@@ -636,24 +633,17 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light, const Camera
 
 void ShadowDirectional::sync(const ::Light *bl_light,
                              const float4x4 &object_mat,
-                             float min_resolution,
-                             bool do_jittering)
+                             float min_resolution)
 {
   object_mat_ = object_mat;
   /* Remove translation. */
   object_mat_.location() = float3(0.0f);
 
+  light_angle_ = bl_light->sun_angle;
   min_resolution_ = min_resolution;
   trace_distance_ = bl_light->shadow_trace_distance;
-
-  float trace_softness = bl_light->shadow_softness_factor;
-  if (do_jittering) {
-    trace_softness *= bl_light->shadow_jitter_overblur;
-  }
-
-  disk_shape_angle_ = min_ff(bl_light->sun_angle * trace_softness, DEG2RADF(179.9f)) / 2.0f;
-  shadow_radius_ = tanf(
-      min_ff(bl_light->sun_angle * bl_light->shadow_softness_factor, DEG2RADF(179.9f)) / 2.0f);
+  softness_factor_ = bl_light->shadow_softness_factor;
+  jitter_overblur_ = bl_light->shadow_jitter_overblur;
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_bias)
@@ -727,7 +717,7 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
     Sampling &sampling = shadows_.inst_.sampling;
     /* TODO: de-correlate. */
     float2 random = sampling.rng_2d_get(SAMPLING_SHADOW_U);
-    float2 r_disk = sampling.sample_disk(random) * shadow_radius_;
+    float2 r_disk = sampling.sample_disk(random) * shadow_radius_get();
     float3 jitter = object_mat_.x_axis() * r_disk.x + object_mat_.y_axis() * r_disk.y;
     object_mat_[2] += float4(jitter, 0.0f);
     object_mat_ = math::orthogonalize(object_mat_, math::Axis::Z);
@@ -737,7 +727,7 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
   light.sun.shadow_trace_distance = trace_distance_;
-  light.sun.shadow_angle = disk_shape_angle_;
+  light.sun.shadow_angle = shadow_angle_get(light.do_jittering);
 
   if (directional_distribution_type_get(camera) == SHADOW_PROJECTION_CASCADE) {
     cascade_tilemaps_distribution(light, camera);
