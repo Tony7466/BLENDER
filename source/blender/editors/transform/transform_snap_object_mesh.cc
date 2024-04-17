@@ -424,13 +424,14 @@ eSnapMode snap_edge_points_mesh(SnapObjectContext *sctx,
   return elem;
 }
 
-static eSnapMode mesh_snap_mode_supported(const Mesh *mesh, const bool use_hide)
+static eSnapMode mesh_snap_mode_supported(const Mesh *mesh, const bool is_from_edit_mesh)
 {
-  /* When considering hidden geometry, we still cannot obtain the number of loose verts until
-   * computing #BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN. Therefore, consider #SCE_SNAP_TO_POINT supported
-   * even if the mesh has no loose vertices in this case. */
-  eSnapMode snap_mode_supported = (use_hide || mesh->loose_verts().count) ? SCE_SNAP_TO_POINT :
-                                                                            SCE_SNAP_TO_NONE;
+  /* When considering geometry from edit mesh, we still cannot obtain the number of loose verts
+   * until computing #BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN. Therefore, consider #SCE_SNAP_TO_POINT
+   * supported even if the mesh has no loose vertices in this case. */
+  eSnapMode snap_mode_supported = (is_from_edit_mesh || mesh->loose_verts().count) ?
+                                      SCE_SNAP_TO_POINT :
+                                      SCE_SNAP_TO_NONE;
   if (mesh->faces_num) {
     snap_mode_supported |= SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_NEAREST | SNAP_TO_EDGE_ELEMENTS;
   }
@@ -446,6 +447,7 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
                           const Mesh *mesh_eval,
                           const float4x4 &obmat,
                           bool use_hide,
+                          bool is_from_edit_mesh,
                           eSnapMode snap_to)
 {
   BLI_assert(snap_to != SCE_SNAP_TO_FACE);
@@ -459,7 +461,7 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
     }
   }
 
-  snap_to &= mesh_snap_mode_supported(mesh_eval, use_hide) &
+  snap_to &= mesh_snap_mode_supported(mesh_eval, is_from_edit_mesh) &
              (SNAP_TO_EDGE_ELEMENTS | SCE_SNAP_TO_POINT);
   if (snap_to == SCE_SNAP_TO_NONE) {
     return SCE_SNAP_TO_NONE;
@@ -471,15 +473,15 @@ static eSnapMode snapMesh(SnapObjectContext *sctx,
   BVHTree *bvhtree[2] = {nullptr};
   bvhtree[0] = BKE_bvhtree_from_mesh_get(&treedata_dummy,
                                          mesh_eval,
-                                         use_hide ? BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN :
-                                                    BVHTREE_FROM_LOOSEEDGES,
+                                         is_from_edit_mesh ? BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN :
+                                                             BVHTREE_FROM_LOOSEEDGES,
                                          2);
   BLI_assert(treedata_dummy.cached);
   if (snap_to & SCE_SNAP_TO_POINT) {
     bvhtree[1] = BKE_bvhtree_from_mesh_get(&treedata_dummy,
                                            mesh_eval,
-                                           use_hide ? BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN :
-                                                      BVHTREE_FROM_LOOSEVERTS,
+                                           is_from_edit_mesh ? BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN :
+                                                               BVHTREE_FROM_LOOSEVERTS,
                                            2);
     BLI_assert(treedata_dummy.cached);
   }
@@ -596,13 +598,14 @@ eSnapMode snap_object_mesh(SnapObjectContext *sctx,
                            const ID *id,
                            const float4x4 &obmat,
                            eSnapMode snap_to_flag,
-                           bool use_hide)
+                           bool use_hide,
+                           bool is_from_edit_mesh)
 {
   eSnapMode elem = SCE_SNAP_TO_NONE;
   const Mesh *mesh_eval = reinterpret_cast<const Mesh *>(id);
 
   if (snap_to_flag & (SNAP_TO_EDGE_ELEMENTS | SCE_SNAP_TO_POINT)) {
-    elem = snapMesh(sctx, ob_eval, mesh_eval, obmat, use_hide, snap_to_flag);
+    elem = snapMesh(sctx, ob_eval, mesh_eval, obmat, use_hide, is_from_edit_mesh, snap_to_flag);
     if (elem) {
       return elem;
     }

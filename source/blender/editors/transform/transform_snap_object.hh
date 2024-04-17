@@ -227,7 +227,8 @@ eSnapMode snap_object_mesh(SnapObjectContext *sctx,
                            const ID *id,
                            const blender::float4x4 &obmat,
                            eSnapMode snap_to_flag,
-                           bool use_hide);
+                           bool use_hide,
+                           bool is_from_edit_mesh);
 
 eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
                             const Object *ob_eval,
