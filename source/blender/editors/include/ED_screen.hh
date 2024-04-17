@@ -461,27 +461,22 @@ void ED_workspace_status_item(bContext *C,
 
 /* Adds a horizontal space to the status bar. */
 void ED_workspace_status_space(bContext *C, float space_factor = 1.0f);
-/* Adds one ormore icons to the status bar. */
+
+/* Adds one or more icons to the status bar. */
 void ED_workspace_status_icons(bContext *C, const int icon);
 void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2);
 
+/* Adds two icons, and text, indicating a range between the icons like A-Z. */
 void ED_workspace_status_range(bContext *C,
                                const std::string text,
                                const int icon1,
                                const int icon2);
 
-void ED_workspace_status_key(bContext *C,
-                             const std::string text,
-                             const int icon,
-                             const bool shift = false,
-                             const bool ctrl = false,
-                             const bool alt = false,
-                             const bool oskey = false);
-
-void ED_workspace_status_operator(bContext *C,
-                                  const std::string text,
-                                  wmOperatorType *ot,
-                                  const int propvalue);
+/* Modal operator. */
+void ED_workspace_status_operator_modal(bContext *C,
+                                        const std::string text,
+                                        wmOperatorType *ot,
+                                        const int propvalue);
 
 /* Ends complex layout and requests a redraw of the status bar. */
 void ED_workspace_status_end(bContext *C);

@@ -905,50 +905,41 @@ void ED_workspace_status_range(bContext *C,
   ED_workspace_status_space(C, 0.7f);
 }
 
-void ED_workspace_status_key(bContext *C,
-                             const std::string text,
-                             const int icon,
-                             const bool shift,
-                             const bool ctrl,
-                             const bool alt,
-                             const bool oskey)
-{
-  if (shift) {
-    ED_workspace_status_item(C, {}, ICON_EVENT_SHIFT);
-  }
-  if (ctrl) {
-    ED_workspace_status_item(C, {}, ICON_EVENT_CTRL);
-  }
-  if (alt) {
-    ED_workspace_status_item(C, {}, ICON_EVENT_ALT);
-  }
-  if (oskey) {
-    ED_workspace_status_item(C, {}, ICON_EVENT_OS);
-  }
-  ED_workspace_status_item(C, {}, icon);
-  if (!text.empty()) {
-    ED_workspace_status_space(C, 0.6f);
-    ED_workspace_status_item(C, text, ICON_NONE);
-    ED_workspace_status_space(C, 0.7f);
-  }
-}
-
-void ED_workspace_status_operator(bContext *C,
-                                  const std::string text,
-                                  wmOperatorType *ot,
-                                  const int propvalue)
+void ED_workspace_status_operator_modal(bContext *C,
+                                        const std::string text,
+                                        wmOperatorType *ot,
+                                        const int propvalue)
 {
   wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C), ot->modalkeymap);
   if (keymap) {
     const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
     if (kmi) {
-      ED_workspace_status_key(C,
-                              text,
-                              UI_icon_from_event_type(kmi->type, kmi->val),
-                              !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
-                              !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
-                              !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
-                              !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
+      int icon = UI_icon_from_event_type(kmi->type, kmi->val);
+
+      if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
+        ED_workspace_status_item(C, {}, ICON_EVENT_SHIFT);
+      }
+      if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
+        ED_workspace_status_item(C, {}, ICON_EVENT_CTRL);
+      }
+      if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
+        ED_workspace_status_item(C, {}, ICON_EVENT_ALT);
+      }
+      if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
+        ED_workspace_status_item(C, {}, ICON_EVENT_OS);
+      }
+
+      if (kmi->val == KM_DBL_CLICK) {
+        ED_workspace_status_item(C, "2x", ICON_NONE);
+        ED_workspace_status_space(C, -0.8f);
+      }
+
+      ED_workspace_status_item(C, {}, icon);
+      if (!text.empty()) {
+        ED_workspace_status_space(C, 0.6f);
+        ED_workspace_status_item(C, text, ICON_NONE);
+        ED_workspace_status_space(C, 0.7f);
+      }
     }
   }
 }

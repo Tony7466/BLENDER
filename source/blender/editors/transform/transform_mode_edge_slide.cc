@@ -801,16 +801,19 @@ static void applyEdgeSlide(TransInfo *t)
 
   ED_workspace_status_begin(t->context);
 
-  ED_workspace_status_operator(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_operator(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_operator(
+  ED_workspace_status_operator_modal(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_operator_modal(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_operator_modal(
       t->context, TIP_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
-  ED_workspace_status_operator(+t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
-  ED_workspace_status_operator(t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
-  ED_workspace_status_operator(t->context, TIP_("Move"), op->type, TFM_MODAL_TRANSLATE);
-  ED_workspace_status_operator(t->context, TIP_("Rotate"), op->type, TFM_MODAL_ROTATE);
-  ED_workspace_status_operator(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
-  ED_workspace_status_operator(+t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
+  ED_workspace_status_operator_modal(
+      +t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
+  ED_workspace_status_operator_modal(
+      t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
+  ED_workspace_status_operator_modal(t->context, TIP_("Move"), op->type, TFM_MODAL_TRANSLATE);
+  ED_workspace_status_operator_modal(t->context, TIP_("Rotate"), op->type, TFM_MODAL_ROTATE);
+  ED_workspace_status_operator_modal(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
+  ED_workspace_status_operator_modal(
+      +t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
 
   std::string desc;
   desc = IFACE_("Clamp: ");

@@ -136,7 +136,7 @@ typedef struct WorkSpace {
   /** Number for workspace tab reordering in the UI. */
   int order;
 
-  /** Info text from modal operators (runtime). */
+  /** Info from modal operators to display in status bar (runtime). WorkSpaceStatusItem. */
   ListBase status;
 
   /** Workspace-wide active asset library, for asset UIs to use (e.g. asset view UI template). The
