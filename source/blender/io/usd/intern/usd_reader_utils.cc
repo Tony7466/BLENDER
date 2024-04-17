@@ -166,8 +166,6 @@ void set_id_props_from_prim(ID *id,
     return;
   }
 
-  IDProperty *idgroup = IDP_EnsureProperties(id);
-
   bool all_custom_attrs = (attr_import_mode == USD_ATTR_IMPORT_ALL);
 
   const pxr::UsdTimeCode time_code(motionSampleTime.has_value() ? motionSampleTime.value() :
@@ -190,6 +188,8 @@ void set_id_props_from_prim(ID *id,
     if (!all_custom_attrs && !is_user_prop) {
       continue;
     }
+
+    IDProperty *idgroup = IDP_EnsureProperties(id);
 
     /* When importing user properties, strip the namespace. */
     pxr::TfToken attr_name;
