@@ -264,11 +264,15 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
-bool fill_strokes(bContext &C,
-                  ARegion &region,
-                  const VArray<bool> &boundary_layers,
-                  bool invert,
-                  const float2 &mouse_position,
-                  ReportList &reports);
+bke::CurvesGeometry fill_strokes(bContext &C,
+                                 ARegion &region,
+                                 Object &object,
+                                 const bke::greasepencil::Layer &layer,
+                                 const VArray<bool> &boundary_layers,
+                                 Span<DrawingInfo> src_drawings,
+                                 bool invert,
+                                 const float2 &mouse_position,
+                                 ReportList &reports,
+                                 bool keep_image);
 
 }  // namespace blender::ed::greasepencil

@@ -2,31 +2,31 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_attribute.hh"
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
-#include "BLI_index_mask.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_string.h"
-#include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_grease_pencil_types.h"
-
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_windowmanager_types.h"
+
+#include "DEG_depsgraph_query.hh"
+
+#include "GEO_join_geometries.hh"
+
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
-
-#include "ANIM_keyframing.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -603,126 +603,71 @@ static bool grease_pencil_apply_fill(bContext &C,
                                      const wmEvent &event,
                                      const bool is_inverted)
 {
+  using bke::greasepencil::Layer;
+  using ed::greasepencil::DrawingInfo;
+  using ed::greasepencil::MutableDrawingInfo;
+
+  /* Debug setting: keep image data blocks for inspection. */
+  constexpr const bool keep_images = true;
+
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
-  if (!region) {
+  if (!region || region->regiontype != RGN_TYPE_WINDOW) {
     return false;
   }
+  /* Perform bounds check */
+  const bool in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event.xy);
+  if (!in_bounds) {
+    return false;
+  }
+
   wmWindow &win = *CTX_wm_window(&C);
   const ToolSettings &ts = *CTX_data_tool_settings(&C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  Object &ob = *CTX_data_active_object(&C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+  const Scene &scene = *CTX_data_scene(&C);
+  Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
-  const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+  // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
 
-  bool in_bounds = false;
-  /* Perform bounds check */
-  in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event.xy);
-
-  if (!in_bounds || region->regiontype != RGN_TYPE_WINDOW) {
-    return false;
-  }
-
-  const VArray<bool> is_boundary_layer = get_fill_boundary_layers(
+  const VArray<bool> boundary_layers = get_fill_boundary_layers(
       grease_pencil, eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode));
 
   const float2 mouse_position = float2(event.mval);
-  ed::greasepencil::fill_strokes(
-      C, *region, is_boundary_layer, is_inverted, mouse_position, *op.reports);
 
-  // tgpf->mouse[0] = event->mval[0];
-  // tgpf->mouse[1] = event->mval[1];
-  // tgpf->is_render = true;
-  // /* Define Zoom level. */
-  // gpencil_zoom_level_set(tgpf);
+  /* Drawings that form boundaries for the generated strokes. */
+  const Vector<DrawingInfo> src_drawings = ed::greasepencil::retrieve_visible_drawings(
+      scene, grease_pencil, false);
+  /* Drawings from the active layer where strokes are generated. */
+  const Vector<MutableDrawingInfo> dst_drawings =
+      ed::greasepencil::retrieve_editable_drawings_from_layer(
+          scene, grease_pencil, *grease_pencil.get_active_layer());
 
-  /* Create Temp stroke. */
-  // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
-  // tGPspoint point2D;
-  // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
-  // copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
-  // gpencil_stroke_convertcoords_tpoint(
-  //     tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
+  for (const MutableDrawingInfo &dst_info : dst_drawings) {
+    const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
 
-  // /* Hash of selected frames. */
-  // GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
+    bke::CurvesGeometry fill_curves = fill_strokes(C,
+                                                   *region,
+                                                   object,
+                                                   layer,
+                                                   boundary_layers,
+                                                   src_drawings,
+                                                   is_inverted,
+                                                   mouse_position,
+                                                   *op.reports,
+                                                   keep_images);
 
-  // /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
-  //  * create a new frame. */
-  // if (!is_multiedit) {
-  //   tgpf->gpf = BKE_gpencil_layer_frame_get(
-  //       tgpf->gpl,
-  //       tgpf->active_cfra,
-  //       blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
-  //       GP_GETFRAME_USE_PREV);
-  //   tgpf->gpf->flag |= GP_FRAME_SELECT;
+    Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
+    Curves *fill_curves_id = curves_new_nomain(fill_curves);
+    Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_curves(dst_curves_id),
+                                             bke::GeometrySet::from_curves(fill_curves_id)};
+    bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
+    dst_info.drawing.strokes_for_write() = std::move(
+        joined_curves.get_curves_for_write()->geometry.wrap());
 
-  //   BLI_ghash_insert(frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
-  // }
-  // else {
-  //   BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
-  // }
-
-  // /* Loop all frames. */
-  // wmWindow *win = CTX_wm_window(C);
-
-  // GHashIterator gh_iter;
-  // int total = BLI_ghash_len(frame_list);
-  // int i = 1;
-  // GHASH_ITER (gh_iter, frame_list) {
-  //   /* Set active frame as current for filling. */
-  //   tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
-  //   int step = (float(i) / float(total)) * 100.0f;
-  //   WM_cursor_time(win, step);
-
-  // if (extend_lines) {
-  //   grease_pencil_update_extend(C, op_data);
-  // }
-
-  //   /* Repeat loop until get something. */
-  //   tgpf->done = false;
-  //   int loop_limit = 0;
-  //   while ((!tgpf->done) && (loop_limit < 2)) {
-  //     WM_cursor_time(win, loop_limit + 1);
-  //     /* Render screen to temp image and do fill. */
-  //     gpencil_do_frame_fill(tgpf, is_inverted);
-
-  //     /* restore size */
-  //     tgpf->region->winx = short(tgpf->bwinx);
-  //     tgpf->region->winy = short(tgpf->bwiny);
-  //     tgpf->region->winrct = tgpf->brect;
-  //     if (!tgpf->done) {
-  //       /* If the zoom was not set before, avoid a loop. */
-  //       if (tgpf->zoom == 1.0f) {
-  //         loop_limit++;
-  //       }
-  //       else {
-  //         tgpf->zoom = 1.0f;
-  //         tgpf->fill_factor = max_ff(
-  //             GPENCIL_MIN_FILL_FAC,
-  //             min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
-  //       }
-  //     }
-  //     loop_limit++;
-  //   }
-
-  //   if (extend_lines) {
-  //     stroke_array_free(tgpf);
-  //     gpencil_delete_temp_stroke_extension(tgpf, true);
-  //   }
-
-  //   i++;
-  // }
+    dst_info.drawing.tag_topology_changed();
+  }
 
   WM_cursor_modal_restore(&win);
-  /* Free hash table. */
-  // BLI_ghash_free(frame_list, nullptr, nullptr);
-
-  /* Free temp stroke. */
-  // BKE_gpencil_free_stroke(tgpf->gps_mouse);
-
-  /* push undo data */
-  // gpencil_undo_push(tgpf->gpd);
 
   /* Save extend value for next operation. */
   brush.gpencil_settings->fill_extend_fac = op_data.fill_extend_fac;

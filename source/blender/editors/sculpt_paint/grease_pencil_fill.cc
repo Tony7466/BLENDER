@@ -36,8 +36,6 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "GEO_join_geometries.hh"
-
 #include "GPU_framebuffer.hh"
 #include "GPU_immediate.hh"
 #include "GPU_matrix.hh"
@@ -50,66 +48,15 @@
 
 namespace blender::ed::greasepencil {
 
-constexpr const char *attr_material_index = "material_index";
-constexpr const char *attr_is_boundary = "is_boundary";
-
-constexpr const ColorGeometry4f boundary_color = {1, 0, 0, 1};
-constexpr const ColorGeometry4f fill_color = {0, 1, 0, 1};
-constexpr const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, 1};
-constexpr const ColorGeometry4f border_color = {0, 0, 1, 1};
-
-constexpr const ColorGeometry4f stroke_color = boundary_color;
-constexpr const ColorGeometry4f extend_color = boundary_color;
-constexpr const ColorGeometry4f mouse_color = seed_color;
-constexpr const ColorGeometry4f helper_color = {1, 0, 0.5f, 0.5f};
-
-static bool is_pixel_boundary(const ColorGeometry4f &color)
-{
-  return color.r == 1.0f;
-}
-
-static bool is_pixel_filled(const ColorGeometry4f &color)
-{
-  return color.g == 1.0f;
-}
-
-static bool is_pixel_border(const ColorGeometry4f &color)
-{
-  return color.b == 1.0f;
-}
-
-static void clear_pixel(ColorGeometry4f &color)
-{
-  color = ColorGeometry4f(0, 0, 0, 1);
-}
-
-static void set_pixel_boundary(ColorGeometry4f &color)
-{
-  color.r = 1.0f;
-  color.a = 1.0f;
-}
-
-static void set_pixel_filled(ColorGeometry4f &color)
-{
-  color.g = 1.0f;
-  color.a = 1.0f;
-}
-
-static void set_pixel_border(ColorGeometry4f &color)
-{
-  color.b = 1.0f;
-  color.a = 1.0f;
-}
-
 /* Utilities for rendering with immediate mode into an offscreen buffer. */
 namespace render_utils {
 
 /* Set up an offscreen buffer for rendering and return result as an image. */
-static Image *render_to_image(Main &bmain,
-                              ARegion &region,
-                              const int2 &win_size,
-                              ReportList &reports,
-                              FunctionRef<void()> render_fn)
+Image *render_to_image(Main &bmain,
+                       ARegion &region,
+                       const int2 &win_size,
+                       ReportList &reports,
+                       FunctionRef<void()> render_fn)
 {
   char err_out[256] = "unknown";
   GPUOffScreen *offscreen = GPU_offscreen_create(
@@ -294,6 +241,57 @@ static void draw_curve(Span<float3> positions,
 }
 
 }  // namespace render_utils
+
+constexpr const char *attr_material_index = "material_index";
+constexpr const char *attr_is_boundary = "is_boundary";
+
+constexpr const ColorGeometry4f boundary_color = {1, 0, 0, 1};
+constexpr const ColorGeometry4f fill_color = {0, 1, 0, 1};
+constexpr const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, 1};
+constexpr const ColorGeometry4f border_color = {0, 0, 1, 1};
+
+constexpr const ColorGeometry4f stroke_color = boundary_color;
+constexpr const ColorGeometry4f extend_color = boundary_color;
+constexpr const ColorGeometry4f mouse_color = seed_color;
+constexpr const ColorGeometry4f helper_color = {1, 0, 0.5f, 0.5f};
+
+bool is_pixel_boundary(const ColorGeometry4f &color)
+{
+  return color.r == 1.0f;
+}
+
+bool is_pixel_filled(const ColorGeometry4f &color)
+{
+  return color.g == 1.0f;
+}
+
+bool is_pixel_border(const ColorGeometry4f &color)
+{
+  return color.b == 1.0f;
+}
+
+void clear_pixel(ColorGeometry4f &color)
+{
+  color = ColorGeometry4f(0, 0, 0, 1);
+}
+
+void set_pixel_boundary(ColorGeometry4f &color)
+{
+  color.r = 1.0f;
+  color.a = 1.0f;
+}
+
+void set_pixel_filled(ColorGeometry4f &color)
+{
+  color.g = 1.0f;
+  color.a = 1.0f;
+}
+
+void set_pixel_border(ColorGeometry4f &color)
+{
+  color.b = 1.0f;
+  color.a = 1.0f;
+}
 
 static IndexMask get_boundary_curve_mask(const Object &object,
                                          const DrawingInfo &info,
@@ -1035,38 +1033,28 @@ Curves *curves_new_nomain(const int points_num, const int curves_num)
   return curves_id;
 }
 
-bool fill_strokes(bContext &C,
-                  ARegion &region,
-                  const VArray<bool> &boundary_layers,
-                  const bool invert,
-                  const float2 &mouse_position,
-                  ReportList &reports)
+bke::CurvesGeometry fill_strokes(bContext &C,
+                                 ARegion &region,
+                                 Object &object,
+                                 const bke::greasepencil::Layer &layer,
+                                 const VArray<bool> &boundary_layers,
+                                 const Span<DrawingInfo> src_drawings,
+                                 const bool /*invert*/,
+                                 const float2 &mouse_position,
+                                 ReportList &reports,
+                                 const bool keep_image)
 {
   using bke::greasepencil::Layer;
 
-  wmWindow &win = *CTX_wm_window(&C);
+  BLI_assert(object.type == OB_GREASE_PENCIL);
+
   View3D &view3d = *CTX_wm_view3d(&C);
   RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   Main &bmain = *CTX_data_main(&C);
   const Scene &scene = *CTX_data_scene(&C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-  Object &object = *CTX_data_active_object(&C);
-  const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
-  const ToolSettings &ts = *CTX_data_tool_settings(&C);
-  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  //   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
-  //   const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
-
-  /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = true;
-
-  if (region.regiontype != RGN_TYPE_WINDOW) {
-    return false;
-  }
-  if (!grease_pencil.has_active_layer()) {
-    return false;
-  }
+  const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
 
   // TODO based on the fill_factor (aka "Precision") setting.
   constexpr const int min_window_size = 128;
@@ -1074,25 +1062,15 @@ bool fill_strokes(bContext &C,
   const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
                                   int2(min_window_size));
 
-  /* Drawings that form boundaries for the generated strokes. */
-  const Vector<DrawingInfo> src_drawings = ed::greasepencil::retrieve_visible_drawings(
-      scene, grease_pencil, false);
-  /* Drawings from the active layer where strokes are generated. */
-  const Vector<MutableDrawingInfo> dst_drawings =
-      ed::greasepencil::retrieve_editable_drawings_from_layer(
-          scene, grease_pencil, *grease_pencil.get_active_layer());
-
   // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
   const float thickness = 1.0f;
 
-  for (const MutableDrawingInfo &dst_info : dst_drawings) {
-    const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
-    const float4x4 layer_to_world = layer.to_world_space(object);
-    ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
-    const float3 mouse_position_world = math::transform_point(layer_to_world,
-                                                              placement.project(mouse_position));
+  const float4x4 layer_to_world = layer.to_world_space(object);
+  ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
+  const float3 mouse_position_world = math::transform_point(layer_to_world,
+                                                            placement.project(mouse_position));
 
 #if 0  // TODO doesn't quite work yet, use identity for now.
     /* Zoom and offset based on bounds, to fit all strokes within the render. */
@@ -1112,147 +1090,45 @@ bool fill_strokes(bContext &C,
     std::cout << "region " << region_min << ".." << region_max << ", bounds " << bounds_min << ".."
               << bounds_max << " zoom=" << zoom << " offset=" << offset << std::endl;
 #else
-    const float2 zoom = float2(1);
-    const float2 offset = float2(0);
+  const float2 zoom = float2(1);
+  const float2 offset = float2(0);
 #endif
 
-    Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
-      GPU_blend(GPU_BLEND_ALPHA);
-      GPU_depth_mask(true);
-      render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+  Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
+    GPU_blend(GPU_BLEND_ALPHA);
+    GPU_depth_mask(true);
+    render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
 
-      /* Draw blue point where click with mouse. */
-      const float mouse_dot_size = 4.0f;
-      render_utils::draw_dot(mouse_position_world, mouse_dot_size, mouse_color);
+    /* Draw blue point where click with mouse. */
+    const float mouse_dot_size = 4.0f;
+    render_utils::draw_dot(mouse_position_world, mouse_dot_size, mouse_color);
 
-      draw_datablock(object,
-                     grease_pencil,
-                     src_drawings,
-                     boundary_layers,
-                     stroke_color,
-                     fill_draw_mode,
-                     alpha_threshold,
-                     thickness);
+    draw_datablock(object,
+                   grease_pencil,
+                   src_drawings,
+                   boundary_layers,
+                   stroke_color,
+                   fill_draw_mode,
+                   alpha_threshold,
+                   thickness);
 
-      render_utils::clear_viewmat();
-      GPU_depth_mask(false);
-      GPU_blend(GPU_BLEND_NONE);
-    });
+    render_utils::clear_viewmat();
+    GPU_depth_mask(false);
+    GPU_blend(GPU_BLEND_NONE);
+  });
 
-    if (ima) {
-      /* Set red borders to create a external limit. */
-      mark_borders(*ima, border_color);
-    }
-
-    bke::CurvesGeometry fill_curves = create_fill_boundary_curves(ima, placement);
-    /* Delete temp image. */
-    if (!keep_images) {
-      BKE_id_free(&bmain, ima);
-    }
-
-    Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
-    Curves *fill_curves_id = curves_new_nomain(fill_curves);
-    Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_curves(dst_curves_id),
-                                             bke::GeometrySet::from_curves(fill_curves_id)};
-    bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
-    dst_info.drawing.strokes_for_write() = std::move(
-        joined_curves.get_curves_for_write()->geometry.wrap());
-
-    dst_info.drawing.tag_topology_changed();
+  if (ima) {
+    /* Set red borders to create a external limit. */
+    mark_borders(*ima, border_color);
   }
 
-  // tgpf->mouse[0] = event->mval[0];
-  // tgpf->mouse[1] = event->mval[1];
-  // tgpf->is_render = true;
+  bke::CurvesGeometry fill_curves = create_fill_boundary_curves(ima, placement);
+  /* Delete temp image. */
+  if (!keep_image) {
+    BKE_id_free(&bmain, ima);
+  }
 
-  // /* Create Temp stroke. */
-  // tgpf->gps_mouse = BKE_gpencil_stroke_new(0, 1, 10.0f);
-  // tGPspoint point2D;
-  // bGPDspoint *pt = &tgpf->gps_mouse->points[0];
-  // copy_v2fl_v2i(point2D.m_xy, tgpf->mouse);
-  // gpencil_stroke_convertcoords_tpoint(
-  //     tgpf->scene, tgpf->region, tgpf->ob, &point2D, nullptr, &pt->x);
-
-  // /* Hash of selected frames. */
-  // GHash *frame_list = BLI_ghash_int_new_ex(__func__, 64);
-
-  // /* If not multi-frame and there is no frame in scene->r.cfra for the active layer,
-  //  * create a new frame. */
-  // if (!is_multiedit) {
-  //   tgpf->gpf = BKE_gpencil_layer_frame_get(
-  //       tgpf->gpl,
-  //       tgpf->active_cfra,
-  //       blender::animrig::is_autokey_on(tgpf->scene) ? GP_GETFRAME_ADD_NEW :
-  //       GP_GETFRAME_USE_PREV);
-  //   tgpf->gpf->flag |= GP_FRAME_SELECT;
-
-  //   BLI_ghash_insert(frame_list, POINTER_FROM_INT(tgpf->active_cfra), tgpf->gpl->actframe);
-  // }
-  // else {
-  //   BKE_gpencil_frame_selected_hash(tgpf->gpd, frame_list);
-  // }
-
-  // /* Loop all frames. */
-  // wmWindow *win = CTX_wm_window(C);
-  // GHashIterator gh_iter;
-  // int total = BLI_ghash_len(frame_list);
-  // int i = 1;
-  // GHASH_ITER (gh_iter, frame_list) {
-  //   /* Set active frame as current for filling. */
-  //   tgpf->active_cfra = POINTER_AS_INT(BLI_ghashIterator_getKey(&gh_iter));
-  //   int step = (float(i) / float(total)) * 100.0f;
-  //   WM_cursor_time(win, step);
-
-  //   if (extend_lines) {
-  //     grease_pencil_update_extend(C, op_data);
-  //   }
-
-  //   /* Repeat loop until get something. */
-  //   tgpf->done = false;
-  //   int loop_limit = 0;
-  //   while ((!tgpf->done) && (loop_limit < 2)) {
-  //     WM_cursor_time(win, loop_limit + 1);
-  //     /* Render screen to temp image and do fill. */
-  //     gpencil_do_frame_fill(tgpf, is_inverted);
-
-  //     /* restore size */
-  //     tgpf->region->winx = short(tgpf->bwinx);
-  //     tgpf->region->winy = short(tgpf->bwiny);
-  //     tgpf->region->winrct = tgpf->brect;
-  //     if (!tgpf->done) {
-  //       /* If the zoom was not set before, avoid a loop. */
-  //       if (tgpf->zoom == 1.0f) {
-  //         loop_limit++;
-  //       }
-  //       else {
-  //         tgpf->zoom = 1.0f;
-  //         tgpf->fill_factor = max_ff(
-  //             GPENCIL_MIN_FILL_FAC,
-  //             min_ff(brush->gpencil_settings->fill_factor, GPENCIL_MAX_FILL_FAC));
-  //       }
-  //     }
-  //     loop_limit++;
-  //   }
-
-  //   if (extend_lines) {
-  //     stroke_array_free(tgpf);
-  //     gpencil_delete_temp_stroke_extension(tgpf, true);
-  //   }
-
-  //   i++;
-  // }
-
-  WM_cursor_modal_restore(&win);
-  /* Free hash table. */
-  // BLI_ghash_free(frame_list, nullptr, nullptr);
-
-  /* Free temp stroke. */
-  // BKE_gpencil_free_stroke(tgpf->gps_mouse);
-
-  /* push undo data */
-  // gpencil_undo_push(tgpf->gpd);
-
-  return true;
+  return fill_curves;
 }
 
 }  // namespace blender::ed::greasepencil
