@@ -270,10 +270,7 @@ void ForwardPipeline::sync()
 
     {
       /* Common resources. */
-
-      /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-
       prepass_ps_.bind_resources(inst_.uniform_data);
       prepass_ps_.bind_resources(inst_.velocity);
       prepass_ps_.bind_resources(inst_.sampling);
@@ -296,14 +293,7 @@ void ForwardPipeline::sync()
 
     {
       /* Common resources. */
-      /* RenderPasses & AOVs. */
-      opaque_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
-      opaque_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
-      /* Cryptomatte. */
-      opaque_ps_.bind_image(RBUFS_CRYPTOMATTE_SLOT, &inst_.render_buffers.cryptomatte_tx);
-      /* Textures. */
       opaque_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-
       opaque_ps_.bind_resources(inst_.uniform_data);
       opaque_ps_.bind_resources(inst_.lights);
       opaque_ps_.bind_resources(inst_.shadows);
@@ -953,7 +943,7 @@ void VolumeLayer::sync()
   }
   {
     PassMain::Sub &pass = layer_pass.sub("material_ps");
-    /* Double sided with stencil equal to ensure only one fragment is nvoked per pixel. */
+    /* Double sided with stencil equal to ensure only one fragment is invoked per pixel. */
     pass.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
     pass.state_stencil(0x1u, 0x1u, 0x1u);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -1067,10 +1057,10 @@ void VolumePipeline::render(View &view, Texture &occupancy_tx)
 
 VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
 {
-  /* TODO(fclem): For panoramic camera, we will have to do this check for each cubeface. */
+  /* TODO(fclem): For panoramic camera, we will have to do this check for each cube-face. */
   const float4x4 &view_matrix = camera.data_get().viewmat;
   /* Note in practice we only care about the projection type since we only care about 2D overlap,
-   * and this is independant of FOV. */
+   * and this is independent of FOV. */
   const float4x4 &projection_matrix = camera.data_get().winmat;
 
   const Bounds<float3> bounds = BKE_object_boundbox_get(ob).value_or(Bounds(float3(0.0f)));
@@ -1083,7 +1073,7 @@ VolumeObjectBounds::VolumeObjectBounds(const Camera &camera, Object *ob)
 
   for (float3 l_corner : bb.vec) {
     float3 ws_corner = math::transform_point(ob->object_to_world(), l_corner);
-    /* Split view and projection for percision. */
+    /* Split view and projection for precision. */
     float3 vs_corner = math::transform_point(view_matrix, ws_corner);
     float3 ss_corner = math::project_point(projection_matrix, vs_corner);
 
@@ -1169,7 +1159,7 @@ void DeferredProbePipeline::begin_sync()
 
 void DeferredProbePipeline::end_sync()
 {
-  if (opaque_layer_.closure_bits_ & (CLOSURE_DIFFUSE | CLOSURE_REFLECTION)) {
+  {
     PassSimple &pass = eval_light_ps_;
     pass.init();
     /* Use depth test to reject background pixels. */
