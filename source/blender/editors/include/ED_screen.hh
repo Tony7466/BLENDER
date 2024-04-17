@@ -448,8 +448,8 @@ bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_ol
     ATTR_NONNULL();
 bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *C) ATTR_NONNULL();
 
-/* Simple text output to status bar. */
-void ED_workspace_status_text(bContext *C, const char *str);
+/* Status consisting of a single item: text and optional icon. */
+void ED_workspace_status_text(bContext *C, const char *str, const int icon = 0);
 
 /* Clears status bar text and allow the following actions. */
 void ED_workspace_status_begin(bContext *C);

@@ -114,19 +114,19 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
 
   desc = IFACE_("Tweak: ");
   desc += WM_bool_as_string(opdata->modify_depth);
-  ED_workspace_status_key(C, desc, ICON_EVENT_CTRL);
+  ED_workspace_status_item(C, desc, ICON_EVENT_CTRL);
 
   desc = IFACE_("Outset: ");
   desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset"));
-  ED_workspace_status_key(C, desc, ICON_EVENT_O);
+  ED_workspace_status_item(C, desc, ICON_EVENT_O);
 
   desc = IFACE_("Boundary: ");
   desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_boundary"));
-  ED_workspace_status_key(C, desc, ICON_EVENT_B);
+  ED_workspace_status_item(C, desc, ICON_EVENT_B);
 
   desc = IFACE_("Individual: ");
   desc += WM_bool_as_string(RNA_boolean_get(op->ptr, "use_individual"));
-  ED_workspace_status_key(C, desc, ICON_EVENT_I);
+  ED_workspace_status_item(C, desc, ICON_EVENT_I);
 
   ED_workspace_status_end(C);
 }

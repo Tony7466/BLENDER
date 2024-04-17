@@ -820,12 +820,12 @@ static void applyEdgeSlide(TransInfo *t)
 
   desc = IFACE_("Even: ");
   desc += WM_bool_as_string(use_even);
-  ED_workspace_status_key(t->context, desc, ICON_EVENT_E);
+  ED_workspace_status_item(t->context, desc, ICON_EVENT_E);
 
   if (use_even) {
     desc = IFACE_("Flipped: ");
     desc += WM_bool_as_string(flipped);
-    ED_workspace_status_key(t->context, desc, ICON_EVENT_F);
+    ED_workspace_status_item(t->context, desc, ICON_EVENT_F);
   }
 
   ED_workspace_status_end(t->context);
