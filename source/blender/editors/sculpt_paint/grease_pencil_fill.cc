@@ -1033,8 +1033,12 @@ Curves *curves_new_nomain(const int points_num, const int curves_num)
   return curves_id;
 }
 
-bke::CurvesGeometry fill_strokes(bContext &C,
-                                 ARegion &region,
+bke::CurvesGeometry fill_strokes(ARegion &region,
+                                 View3D &view3d,
+                                 RegionView3D &rv3d,
+                                 Main &bmain,
+                                 const Scene &scene,
+                                 Depsgraph &depsgraph,
                                  Object &object,
                                  const bke::greasepencil::Layer &layer,
                                  const VArray<bool> &boundary_layers,
@@ -1047,12 +1051,6 @@ bke::CurvesGeometry fill_strokes(bContext &C,
   using bke::greasepencil::Layer;
 
   BLI_assert(object.type == OB_GREASE_PENCIL);
-
-  View3D &view3d = *CTX_wm_view3d(&C);
-  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
-  Main &bmain = *CTX_data_main(&C);
-  const Scene &scene = *CTX_data_scene(&C);
-  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
   const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
 

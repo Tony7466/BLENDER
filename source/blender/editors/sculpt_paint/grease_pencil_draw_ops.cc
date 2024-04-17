@@ -621,12 +621,16 @@ static bool grease_pencil_apply_fill(bContext &C,
   }
 
   wmWindow &win = *CTX_wm_window(&C);
-  const ToolSettings &ts = *CTX_data_tool_settings(&C);
-  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
+  View3D &view3d = *CTX_wm_view3d(&C);
+  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+  Main &bmain = *CTX_data_main(&C);
+  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   const Scene &scene = *CTX_data_scene(&C);
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
+  const ToolSettings &ts = *CTX_data_tool_settings(&C);
+  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
   // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
 
   const VArray<bool> boundary_layers = get_fill_boundary_layers(
@@ -645,8 +649,12 @@ static bool grease_pencil_apply_fill(bContext &C,
   for (const MutableDrawingInfo &dst_info : dst_drawings) {
     const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
 
-    bke::CurvesGeometry fill_curves = fill_strokes(C,
-                                                   *region,
+    bke::CurvesGeometry fill_curves = fill_strokes(*region,
+                                                   view3d,
+                                                   rv3d,
+                                                   bmain,
+                                                   scene,
+                                                   depsgraph,
                                                    object,
                                                    layer,
                                                    boundary_layers,
