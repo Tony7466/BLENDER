@@ -6,15 +6,16 @@
  * \ingroup edsculpt
  */
 
-#include "tbb/concurrent_vector.h"
 #include <cmath>
 #include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_linklist_stack.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
+#include "BLI_set.hh"
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
@@ -34,19 +35,10 @@
 
 #include "bmesh.hh"
 
-#define SCULPT_GEODESIC_VERTEX_NONE -1
+#include "BLI_timeit.hh"
+#include <cassert>
 
-#include <iostream>
-#define TICK_START auto tic = std::chrono::steady_clock::now();
-#define TICK tic = std::chrono::steady_clock::now();
-#define TOCK_START(X) \
-  auto toc = std::chrono::steady_clock::now(); \
-  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
-            << " seconds" << std::endl;
-#define TOCK(X) \
-  toc = std::chrono::steady_clock::now(); \
-  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
-            << " seconds" << std::endl;
+#define SCULPT_GEODESIC_VERTEX_NONE -1
 
 namespace blender::ed::sculpt_paint::geodesic {
 
@@ -55,22 +47,22 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
                                                const int v0,
                                                const int v1,
                                                const int v2,
-                                               std::atomic<float> *dists,
+                                               float *dists,
                                                GSet *initial_verts)
 {
   if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(v0))) {
     return false;
   }
 
-  BLI_assert(dists[v1].load() != std::numeric_limits<float>::max());
-  if (dists[v0].load() <= dists[v1].load()) {
+  BLI_assert(dists[v1] != std::numeric_limits<float>::max());
+  if (dists[v0] <= dists[v1]) {
     return false;
   }
 
   float dist0;
   if (v2 != SCULPT_GEODESIC_VERTEX_NONE) {
-    BLI_assert(dists[v2].load() != std::numeric_limits<float>::max());
-    if (dists[v0].load() <= dists[v2].load()) {
+    BLI_assert(dists[v2] != std::numeric_limits<float>::max());
+    if (dists[v0] <= dists[v2]) {
       return false;
     }
     dist0 = geodesic_distance_propagate_across_triangle(
@@ -79,11 +71,11 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   else {
     float vec[3];
     sub_v3_v3v3(vec, vert_positions[v1], vert_positions[v0]);
-    dist0 = dists[v1].load() + len_v3(vec);
+    dist0 = dists[v1] + len_v3(vec);
   }
 
-  if (dist0 < dists[v0].load()) {
-    dists[v0].store(dist0);
+  if (dist0 < dists[v0]) {
+    dists[v0]= dist0;
     return true;
   }
 
@@ -92,7 +84,8 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
 
 static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float limit_radius)
 {
-  TICK_START;
+  SCOPED_TIMER("geodesic_mesh_create");
+
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -157,7 +150,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     }
   }
 
-  tbb::concurrent_vector<int> queue;
+  Vector<int> queue;
+  queue.reserve(totedge);
 
   /* Add edges adjacent to an initial vertex to the queue.
    * Since there are typically few initial vertices, iterating over its
@@ -173,38 +167,46 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
           (dists[v1] != std::numeric_limits<float>::max() ||
            dists[v2] != std::numeric_limits<float>::max()))
       {
-        queue.push_back(edge_index);
+        queue.append(edge_index);
       }
     }
   }
 
-  tbb::concurrent_vector<int> queue_next;
-  queue_next.reserve(4 * queue.size());
+#define USE_ORIGINAL_PR 0
 
-  std::atomic<float> *atomic_dists = new std::atomic<float>[totvert];
-  for (int i = 0; i < totvert; i++) {
-    atomic_dists[i] = dists[i];
-  }
+  struct TLS {
+    Set<int> new_edges;
+  };
+  threading::EnumerableThreadSpecific<TLS> all_tls;
 
-  BitVector<> edge_tag(totedge);
-  while (!queue.empty()) {
-    threading::parallel_for(IndexRange(queue.size()), 1, [&](IndexRange range) {
+  /* Bitmap which is used to ensure new edges are only scheduled once.
+   * This is needed because multiple threads might want to schedule an edge, and we do not want
+   * duplicates to be in the queue.
+   * Using bitmask seems the fastest way of doing so. Alternatives like combining sets from TLS
+   * is much slower. There might be different ideas here too. */
+  BitVector<> is_edge_scheduled_map(totedge);
+
+  while (!queue.is_empty()) {
+    threading::parallel_for(IndexRange(queue.size()),128, [&](IndexRange range) {
+      TLS &tls = all_tls.local();
+      Set<int> &new_edges = tls.new_edges;
+
       for (const int value : range) {
         const int edge_index = queue[value];
         int edge_vert_a = edges[edge_index][0];
         int edge_vert_b = edges[edge_index][1];
 
-        if (atomic_dists[edge_vert_a].load() == std::numeric_limits<float>::max() ||
-            atomic_dists[edge_vert_b].load() == std::numeric_limits<float>::max())
+        if (dists[edge_vert_a] == std::numeric_limits<float>::max() ||
+            dists[edge_vert_b] == std::numeric_limits<float>::max())
         {
-          if (atomic_dists[edge_vert_a].load() > atomic_dists[edge_vert_b].load()) {
+          if (dists[edge_vert_a] > dists[edge_vert_b]) {
             std::swap(edge_vert_a, edge_vert_b);
           }
           sculpt_geodesic_mesh_test_dist_add(vert_positions,
                                              edge_vert_b,
                                              edge_vert_a,
                                              SCULPT_GEODESIC_VERTEX_NONE,
-                                             atomic_dists,
+                                             dists,
                                              initial_verts);
         }
 
@@ -216,12 +218,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
               continue;
             }
-            if (!sculpt_geodesic_mesh_test_dist_add(vert_positions,
-                                                    vertex_other,
-                                                    edge_vert_a,
-                                                    edge_vert_b,
-                                                    atomic_dists,
-                                                    initial_verts))
+            if (!sculpt_geodesic_mesh_test_dist_add(
+                    vert_positions, vertex_other, edge_vert_a, edge_vert_b, dists, initial_verts))
             {
               continue;
             }
@@ -231,33 +229,32 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
                                                                        vertex_other);
 
               if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
-                  edge_other == edge_index || edge_tag[edge_other] ||
+                  edge_other == edge_index || 
                   (!ss->edge_to_face_map[edge_other].is_empty() &&
-                   atomic_dists[edge_vertex_other].load() == std::numeric_limits<float>::max()))
+                   dists[edge_vertex_other] == std::numeric_limits<float>::max()))
               {
                 continue;
               }
-
-              edge_tag[edge_other].set();
-              queue_next.push_back(edge_other);
+              new_edges.add(edge_other);
             }
           }
         }
       }
     });
 
-    queue.swap(queue_next);
-    for (const int edge_index : queue) {
-      edge_tag[edge_index].reset();
+    queue.clear();
+    for (TLS &tls : all_tls) {
+      for (const int edge_index : tls.new_edges) {
+        if (!is_edge_scheduled_map[edge_index]) {
+          queue.append(edge_index);
+          is_edge_scheduled_map[edge_index].set();
+        }
+      }
+      tls.new_edges.clear();
     }
-    queue_next.clear();
+   // is_edge_scheduled_map.fill(false);
   }
 
-  for (int i = 0; i < totvert; ++i) {
-    dists[i] = atomic_dists[i].load();
-  }
-  delete[] atomic_dists;
-  TOCK_START("Bottleneck: ");
   return dists;
 }
 
