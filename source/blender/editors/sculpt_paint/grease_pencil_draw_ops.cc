@@ -661,7 +661,6 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    src_drawings,
                                                    is_inverted,
                                                    mouse_position,
-                                                   *op.reports,
                                                    keep_images);
 
     Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));

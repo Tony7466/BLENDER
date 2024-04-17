@@ -290,7 +290,6 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  Span<DrawingInfo> src_drawings,
                                  bool invert,
                                  const float2 &fill_point,
-                                 ReportList &reports,
                                  bool keep_image);
 
 }  // namespace blender::ed::greasepencil

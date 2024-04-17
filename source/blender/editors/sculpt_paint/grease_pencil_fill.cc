@@ -19,14 +19,12 @@
 #include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.hh"
 
 #include "DNA_curves_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_windowmanager_types.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -43,7 +41,6 @@
 #include "GPU_texture.hh"
 #include "GPU_vertex_format.hh"
 
-#include <iostream>
 #include <optional>
 
 namespace blender::ed::greasepencil {
@@ -55,14 +52,12 @@ namespace render_utils {
 Image *render_to_image(Main &bmain,
                        ARegion &region,
                        const int2 &win_size,
-                       ReportList &reports,
                        FunctionRef<void()> render_fn)
 {
   char err_out[256] = "unknown";
   GPUOffScreen *offscreen = GPU_offscreen_create(
       win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
   if (offscreen == nullptr) {
-    BKE_report(&reports, RPT_ERROR, "Unable to create fill buffer");
     return nullptr;
   }
 
@@ -1045,7 +1040,6 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool /*invert*/,
                                  const float2 &fill_point,
-                                 ReportList &reports,
                                  const bool keep_image)
 {
   using bke::greasepencil::Layer;
@@ -1092,7 +1086,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const float2 offset = float2(0);
 #endif
 
-  Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
+  Image *ima = render_utils::render_to_image(bmain, region, win_size, [&]() {
     GPU_blend(GPU_BLEND_ALPHA);
     GPU_depth_mask(true);
     render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
@@ -1114,11 +1108,12 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     GPU_depth_mask(false);
     GPU_blend(GPU_BLEND_NONE);
   });
-
-  if (ima) {
-    /* Set red borders to create a external limit. */
-    mark_borders(*ima, border_color);
+  if (!ima) {
+    return {};
   }
+
+  /* Set red borders to create a external limit. */
+  mark_borders(*ima, border_color);
 
   bke::CurvesGeometry fill_curves = create_fill_boundary_curves(ima, placement);
   /* Delete temp image. */
