@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
@@ -183,25 +185,31 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
                                     const int i)
 {
   float3x3 matrix = math::from_orthonormal_axes<float3x3>(normals[i], tangents[i]);
-  if (!radii.is_empty()) {
-    matrix = math::scale(matrix, float3(radii[i]));
-  }
 
   if (angle_scale && !ELEM(i, 0, positions.index_range().last())) {
-    // const float3 dir_a = math::normalize(positions[i - 1] - positions[i]);
-    // const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
-    // const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
-    const float angle = angle_v3v3v3(positions[i - 1], positions[i], positions[i + 1]);
-    const float factor = shell_angle_to_dist(angle);
-    if (factor != 1.0f) {
-      const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
+    const float3 dir_a = math::normalize(positions[i] - positions[i - 1]);
+    std::cout << "dir_a: " << dir_a << '\n';
+    const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
+    std::cout << "dir_b: " << dir_b << '\n';
+    const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
+    // const float angle = angle_v3v3v3(positions[i - 1], positions[i], positions[i + 1]);
+    // std::cout << "angle: " << angle << '\n';
+    // const float factor = shell_angle_to_dist(angle);
+    std::cout << "factor: " << factor << '\n';
+    // if (factor != 1.0f) {
+    const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
+    std::cout << "tri_normal: " << tri_normal << '\n';
+    const float3x3 base = math::from_orthonormal_axes<float3x3>(tangents[i], tri_normal);
+    std::cout << "base: " << base << '\n';
+    const float3x3 scale = math::scale(base, float3(1.0f, factor, 1.0f));
+    std::cout << "scale: " << scale << '\n';
+    matrix = scale * matrix;
+    // }
+  }
 
-      const float3x3 scale = math::scale(
-          math::from_orthonormal_axes<float3x3>(tangents[i], tri_normal),
-          float3(1.0f, 1.0f, factor));
-
-      matrix *= scale;
-    }
+  const float radius = radii.is_empty() ? 1.0f : radii[i];
+  if (radius != 1.0f) {
+    matrix = math::scale(matrix, float3(radius));
   }
 
   float4x4 final(matrix);
