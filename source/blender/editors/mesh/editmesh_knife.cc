@@ -1104,23 +1104,17 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
 
   ED_workspace_status_begin(C);
 
-  std::string desc;
-
-  ED_workspace_status_operator_modal(C, TIP_("Cut"), op->type, KNF_MODAL_ADD_CUT);
-  ED_workspace_status_operator_modal(C, TIP_("Close"), op->type, KNF_MODAL_ADD_CUT_CLOSED);
-  ED_workspace_status_operator_modal(C, TIP_("Stop"), op->type, KNF_MODAL_NEW_CUT);
-  ED_workspace_status_operator_modal(C, TIP_("Confirm"), op->type, KNF_MODAL_CONFIRM);
-  ED_workspace_status_operator_modal(C, TIP_("Cancel"), op->type, KNF_MODAL_CANCEL);
-  ED_workspace_status_operator_modal(C, TIP_("Undo"), op->type, KNF_MODAL_UNDO);
-  ED_workspace_status_operator_modal(C, "Pan View", op->type, KNF_MODAL_PANNING);
-
-  desc = IFACE_("Midpoint Snap: ");
-  desc += WM_bool_as_string(kcd->snap_midpoints);
-  ED_workspace_status_operator_modal(C, desc, op->type, KNF_MODAL_MIDPOINT_ON);
-
-  desc = IFACE_("Ignore Snap: ");
-  desc += WM_bool_as_string(kcd->ignore_edge_snapping);
-  ED_workspace_status_operator_modal(C, desc, op->type, KNF_MODAL_IGNORE_SNAP_ON);
+  ED_workspace_status_opmodal(C, TIP_("Cut"), op->type, KNF_MODAL_ADD_CUT);
+  ED_workspace_status_opmodal(C, TIP_("Close"), op->type, KNF_MODAL_ADD_CUT_CLOSED);
+  ED_workspace_status_opmodal(C, TIP_("Stop"), op->type, KNF_MODAL_NEW_CUT);
+  ED_workspace_status_opmodal(C, TIP_("Confirm"), op->type, KNF_MODAL_CONFIRM);
+  ED_workspace_status_opmodal(C, TIP_("Cancel"), op->type, KNF_MODAL_CANCEL);
+  ED_workspace_status_opmodal(C, TIP_("Undo"), op->type, KNF_MODAL_UNDO);
+  ED_workspace_status_opmodal(C, "Pan View", op->type, KNF_MODAL_PANNING);
+  ED_workspace_status_opmodal(
+      C, IFACE_("Midpoint Snap"), op->type, KNF_MODAL_MIDPOINT_ON, kcd->snap_midpoints);
+  ED_workspace_status_opmodal(
+      C, IFACE_("Ignore Snap"), op->type, KNF_MODAL_IGNORE_SNAP_ON, kcd->ignore_edge_snapping);
 
   const std::string angle = fmt::format(
       "{}: {:.2f}({:.2f}) ({}{}{}{})",
@@ -1142,26 +1136,18 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
           "",
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? ": cycle edge" : "");
 
-  ED_workspace_status_operator_modal(C, angle, op->type, KNF_MODAL_ANGLE_SNAP_TOGGLE);
+  ED_workspace_status_opmodal(C, angle, op->type, KNF_MODAL_ANGLE_SNAP_TOGGLE);
 
-  desc = IFACE_("Cut Through: ");
-  desc += WM_bool_as_string(kcd->cut_through);
-  ED_workspace_status_operator_modal(C, desc, op->type, KNF_MODAL_CUT_THROUGH_TOGGLE);
-
-  ED_workspace_status_operator_modal(C, "", op->type, KNF_MODAL_X_AXIS);
-  ED_workspace_status_operator_modal(C, "", op->type, KNF_MODAL_Y_AXIS);
-  ED_workspace_status_operator_modal(C, "", op->type, KNF_MODAL_Z_AXIS);
-  desc = IFACE_("Axis: ");
-  desc += kcd->axis_constrained ? kcd->axis_string : WM_bool_as_string(kcd->axis_constrained);
-  ED_workspace_status_item(C, desc);
-
-  desc = IFACE_("Measure: ");
-  desc += WM_bool_as_string(kcd->show_dist_angle);
-  ED_workspace_status_operator_modal(C, desc, op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE);
-
-  desc = IFACE_("X-Ray: ");
-  desc += WM_bool_as_string(!kcd->depth_test);
-  ED_workspace_status_operator_modal(C, desc, op->type, KNF_MODAL_DEPTH_TEST_TOGGLE);
+  ED_workspace_status_opmodal(
+      C, IFACE_("Cut Through"), op->type, KNF_MODAL_CUT_THROUGH_TOGGLE, kcd->cut_through);
+  ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_X_AXIS);
+  ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_Y_AXIS);
+  ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_Z_AXIS);
+  ED_workspace_status_item(C, IFACE_("Axis"), ICON_NONE, kcd->axis_constrained);
+  ED_workspace_status_opmodal(
+      C, IFACE_("Measure"), op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE, kcd->show_dist_angle);
+  ED_workspace_status_opmodal(
+      C, IFACE_("X-Ray"), op->type, KNF_MODAL_DEPTH_TEST_TOGGLE, !kcd->depth_test);
 
   ED_workspace_status_end(C);
 }

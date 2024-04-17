@@ -905,10 +905,22 @@ void ED_workspace_status_range(bContext *C,
   ED_workspace_status_space(C, 0.7f);
 }
 
-void ED_workspace_status_operator_modal(bContext *C,
-                                        const std::string text,
-                                        wmOperatorType *ot,
-                                        const int propvalue)
+void ED_workspace_status_item(bContext *C, std::string text, const int icon, const bool enabled)
+{
+  if (icon) {
+    ED_workspace_status_item(C, {}, icon);
+    ED_workspace_status_space(C, 0.6f);
+  }
+  text += ": ";
+  text += enabled ? "ON" : "off";
+  ED_workspace_status_item(C, text, ICON_NONE);
+  ED_workspace_status_space(C, 0.6f);
+}
+
+void ED_workspace_status_opmodal(bContext *C,
+                                 const std::string text,
+                                 wmOperatorType *ot,
+                                 const int propvalue)
 {
   wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C), ot->modalkeymap);
   if (keymap) {
@@ -942,6 +954,14 @@ void ED_workspace_status_operator_modal(bContext *C,
       }
     }
   }
+}
+
+void ED_workspace_status_opmodal(
+    bContext *C, std::string text, wmOperatorType *ot, const int propvalue, const bool enabled)
+{
+  text += ": ";
+  text += enabled ? "ON" : "off";
+  ED_workspace_status_opmodal(C, text, ot, propvalue);
 }
 
 void ED_workspace_status_end(bContext *C)

@@ -801,34 +801,21 @@ static void applyEdgeSlide(TransInfo *t)
 
   ED_workspace_status_begin(t->context);
 
-  ED_workspace_status_operator_modal(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_operator_modal(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_operator_modal(
+  ED_workspace_status_opmodal(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_opmodal(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_opmodal(
       t->context, TIP_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
-  ED_workspace_status_operator_modal(
-      +t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
-  ED_workspace_status_operator_modal(
-      t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
-  ED_workspace_status_operator_modal(t->context, TIP_("Move"), op->type, TFM_MODAL_TRANSLATE);
-  ED_workspace_status_operator_modal(t->context, TIP_("Rotate"), op->type, TFM_MODAL_ROTATE);
-  ED_workspace_status_operator_modal(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
-  ED_workspace_status_operator_modal(
-      +t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
-
-  std::string desc;
-  desc = IFACE_("Clamp: ");
-  desc += WM_bool_as_string(is_clamp);
+  ED_workspace_status_opmodal(+t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
+  ED_workspace_status_opmodal(t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
+  ED_workspace_status_opmodal(t->context, TIP_("Move"), op->type, TFM_MODAL_TRANSLATE);
+  ED_workspace_status_opmodal(t->context, TIP_("Rotate"), op->type, TFM_MODAL_ROTATE);
+  ED_workspace_status_opmodal(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
+  ED_workspace_status_opmodal(+t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
   ED_workspace_status_icons(t->context, ICON_EVENT_C, ICON_EVENT_ALT);
-  ED_workspace_status_item(t->context, desc);
-
-  desc = IFACE_("Even: ");
-  desc += WM_bool_as_string(use_even);
-  ED_workspace_status_item(t->context, desc, ICON_EVENT_E);
-
+  ED_workspace_status_item(t->context, IFACE_("Clamp"), ICON_NONE, is_clamp);
+  ED_workspace_status_item(t->context, IFACE_("Even"), ICON_EVENT_E, use_even);
   if (use_even) {
-    desc = IFACE_("Flipped: ");
-    desc += WM_bool_as_string(flipped);
-    ED_workspace_status_item(t->context, desc, ICON_EVENT_F);
+    ED_workspace_status_item(t->context, IFACE_("Flipped"), ICON_EVENT_F, flipped);
   }
 
   ED_workspace_status_end(t->context);
