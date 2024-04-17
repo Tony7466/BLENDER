@@ -483,6 +483,11 @@ void ED_workspace_status_key(bContext *C,
 
 void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi);
 
+void ED_workspace_status_operator(bContext *C,
+                                  const std::string text,
+                                  wmOperatorType *ot,
+                                  const int propvalue);
+
 /* Ends complex layout and requests a redraw of the status bar. */
 void ED_workspace_status_end(bContext *C);
 

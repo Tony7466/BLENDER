@@ -947,13 +947,27 @@ void ED_workspace_status_key(bContext *C,
 
 void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi)
 {
-  ED_workspace_status_key(C,
-                          text,
-                          UI_icon_from_event_type(kmi->type, kmi->val),
-                          !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
-                          !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
-                          !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
-                          !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
+  if (kmi) {
+    ED_workspace_status_key(C,
+                            text,
+                            UI_icon_from_event_type(kmi->type, kmi->val),
+                            !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
+                            !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
+                            !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
+                            !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
+  }
+}
+
+void ED_workspace_status_operator(bContext *C,
+                                  const std::string text,
+                                  wmOperatorType *ot,
+                                  const int propvalue)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmKeyMap *keymap = WM_keymap_active(wm, ot->modalkeymap);
+  if (keymap) {
+    ED_workspace_status_keymap(C, text, WM_modalkeymap_find_propvalue(keymap, propvalue));
+  }
 }
 
 void ED_workspace_status_end(bContext *C)

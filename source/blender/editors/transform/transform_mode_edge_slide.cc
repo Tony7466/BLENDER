@@ -804,31 +804,16 @@ static void applyEdgeSlide(TransInfo *t)
     return;
   }
 
-  ED_workspace_status_keymap(
-      t->context, TIP_("Confirm"), WM_modalkeymap_operator(op->type, TFM_MODAL_CONFIRM));
-
-  ED_workspace_status_keymap(
-      t->context, TIP_("Cancel"), WM_modalkeymap_operator(op->type, TFM_MODAL_CONFIRM));
-
-  ED_workspace_status_keymap(t->context,
-                             TIP_("Set Snap Base"),
-                             WM_modalkeymap_operator(op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON));
-
-  ED_workspace_status_keymap(
-      +t->context, TIP_("Snap Invert"), WM_modalkeymap_operator(op->type, TFM_MODAL_SNAP_INV_ON));
-
-  ED_workspace_status_keymap(
-      t->context, TIP_("Snap Invert"), WM_modalkeymap_operator(op->type, TFM_MODAL_SNAP_TOGGLE));
-
-  ED_workspace_status_keymap(
-      t->context, TIP_("Move"), WM_modalkeymap_operator(op->type, TFM_MODAL_TRANSLATE));
-  ED_workspace_status_keymap(
-      t->context, TIP_("Rotate"), WM_modalkeymap_operator(op->type, TFM_MODAL_ROTATE));
-  ED_workspace_status_keymap(
-      t->context, TIP_("Resize"), WM_modalkeymap_operator(op->type, TFM_MODAL_RESIZE));
-
-  ED_workspace_status_keymap(
-      +t->context, TIP_("Precision Mode"), WM_modalkeymap_operator(op->type, TFM_MODAL_PRECISION));
+  ED_workspace_status_operator(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_operator(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
+  ED_workspace_status_operator(
+      t->context, TIP_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
+  ED_workspace_status_operator(+t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
+  ED_workspace_status_operator(t->context, TIP_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
+  ED_workspace_status_operator(t->context, TIP_("Move"), op->type, TFM_MODAL_TRANSLATE);
+  ED_workspace_status_operator(t->context, TIP_("Rotate"), op->type, TFM_MODAL_ROTATE);
+  ED_workspace_status_operator(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
+  ED_workspace_status_operator(+t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
 
   desc = IFACE_("Clamp: ");
   desc += WM_bool_as_string(is_clamp);
