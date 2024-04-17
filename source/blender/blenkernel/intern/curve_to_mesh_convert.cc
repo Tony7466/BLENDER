@@ -197,7 +197,7 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
     // const float factor = shell_angle_to_dist(angle);
     const float dot = math::dot(dir_a, dir_b);
     std::cout << "dot: " << dot << '\n';
-    const float factor = dot < FLT_EPSILON ? 1.0f : math::rcp(math::abs(dot));
+    const float factor = 1.0f / sqrt((1.0f - dot) * 0.5f);
     std::cout << "factor: " << factor << '\n';
     // if (factor != 1.0f) {
     const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
