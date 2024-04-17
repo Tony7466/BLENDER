@@ -1124,7 +1124,6 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
   const std::string angle = fmt::format(
       "{}: {:.2f}({:.2f}) ({}{}{}{})",
       IFACE_("Angle Constraint"),
-
       (kcd->angle >= 0.0f) ? RAD2DEGF(kcd->angle) : 360.0f + RAD2DEGF(kcd->angle),
 
       (kcd->angle_snapping_increment > KNIFE_MIN_ANGLE_SNAPPING_INCREMENT &&

@@ -885,22 +885,6 @@ void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
   ED_workspace_status_item(C, {}, icon2);
 }
 
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2, const int icon3)
-{
-  ED_workspace_status_item(C, {}, icon1);
-  ED_workspace_status_item(C, {}, icon2);
-  ED_workspace_status_item(C, {}, icon3);
-}
-
-void ED_workspace_status_icons(
-    bContext *C, const int icon1, const int icon2, const int icon3, const int icon4)
-{
-  ED_workspace_status_item(C, {}, icon1);
-  ED_workspace_status_item(C, {}, icon2);
-  ED_workspace_status_item(C, {}, icon3);
-  ED_workspace_status_item(C, {}, icon4);
-}
-
 /* Helpers for common keymap patterns. */
 
 void ED_workspace_status_range(bContext *C,
@@ -945,19 +929,6 @@ void ED_workspace_status_key(bContext *C,
   }
 }
 
-void ED_workspace_status_keymap(bContext *C, const std::string text, const wmKeyMapItem *kmi)
-{
-  if (kmi) {
-    ED_workspace_status_key(C,
-                            text,
-                            UI_icon_from_event_type(kmi->type, kmi->val),
-                            !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
-                            !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
-                            !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
-                            !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
-  }
-}
-
 void ED_workspace_status_operator(bContext *C,
                                   const std::string text,
                                   wmOperatorType *ot,
@@ -965,7 +936,16 @@ void ED_workspace_status_operator(bContext *C,
 {
   wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C), ot->modalkeymap);
   if (keymap) {
-    ED_workspace_status_keymap(C, text, WM_modalkeymap_find_propvalue(keymap, propvalue));
+    const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
+    if (kmi) {
+      ED_workspace_status_key(C,
+                              text,
+                              UI_icon_from_event_type(kmi->type, kmi->val),
+                              !ELEM(kmi->shift, KM_NOTHING, KM_ANY),
+                              !ELEM(kmi->ctrl, KM_NOTHING, KM_ANY),
+                              !ELEM(kmi->alt, KM_NOTHING, KM_ANY),
+                              !ELEM(kmi->oskey, KM_NOTHING, KM_ANY));
+    }
   }
 }
 
