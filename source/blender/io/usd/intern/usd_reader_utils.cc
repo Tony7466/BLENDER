@@ -1,6 +1,6 @@
-//
-// Created by Charles Wardlaw on 2024-02-29.
-//
+/* SPDX-FileCopyrightText: 2024 NVIDIA Corporation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_reader_utils.hh"
 
