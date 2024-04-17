@@ -1,15 +1,7 @@
 #include "NOD_rna_define.hh"
 
-#include "BKE_layer.hh"
-#include "BLI_math_matrix.hh"
-#include "GEO_transform.hh"
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "BKE_instances.hh"
-
-#include "BKE_geometry_set_instances.hh"
-#include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
 
@@ -18,20 +10,13 @@
 #include "BKE_mesh.h"
 #include "BKE_object.hh"
 
-#include "BLI_vector.hh"
-#include "BLI_virtual_array.hh"
-#include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
 #include "DNA_camera_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_light_types.h"
 #include "DNA_object_types.h"
 #include "node_geometry_util.hh"
 
 #include "RNA_access.hh"
-#include "RNA_define.hh"
 #include "RNA_path.hh"
-#include "RNA_types.hh"
 #include "intern/rna_internal.hh"
 
 #include <any>
