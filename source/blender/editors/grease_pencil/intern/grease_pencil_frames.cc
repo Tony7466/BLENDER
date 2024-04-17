@@ -6,16 +6,9 @@
  * \ingroup edgreasepencil
  */
 
-#include "BKE_attribute.hh"
-#include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BLI_cpp_type.hh"
-#include "BLI_generic_span.hh"
-#include "BLI_generic_virtual_array.hh"
-#include "BLI_index_range.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -23,12 +16,8 @@
 #include "BKE_paint.hh"
 #include "BKE_report.hh"
 
-#include "BLI_vector.hh"
-#include "BLI_virtual_array.hh"
 #include "DEG_depsgraph.hh"
 
-#include "DNA_curves_types.h"
-#include "DNA_grease_pencil_types.h"
 #include "DNA_scene_types.h"
 
 #include "ANIM_keyframing.hh"
