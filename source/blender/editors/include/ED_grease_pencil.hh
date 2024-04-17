@@ -264,6 +264,20 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
+/**
+ * Fill tool for generating strokes in empty areas.
+ *
+ * This uses an approximate render of strokes and boundaries,
+ * then fills the image starting from the mouse position.
+ * The outline of the filled pixel area is returned as a curve.
+ *
+ * \param layer The layer containing the new stroke, used for reprojecting from images.
+ * \param boundary_layers Layers that are purely for boundaries, regular strokes are not rendered.
+ * \param src_drawings Drawings to include as boundary strokes.
+ * \param fill_point Point from which to start the bucket fill.
+ * \param reports Reports list for errors.
+ * \param keep_image Keep the image data block after generating curves.
+ */
 bke::CurvesGeometry fill_strokes(ARegion &region,
                                  View3D &view3d,
                                  RegionView3D &rv3d,
@@ -275,7 +289,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const VArray<bool> &boundary_layers,
                                  Span<DrawingInfo> src_drawings,
                                  bool invert,
-                                 const float2 &mouse_position,
+                                 const float2 &fill_point,
                                  ReportList &reports,
                                  bool keep_image);
 

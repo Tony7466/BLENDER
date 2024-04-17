@@ -1044,7 +1044,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const VArray<bool> &boundary_layers,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool /*invert*/,
-                                 const float2 &mouse_position,
+                                 const float2 &fill_point,
                                  ReportList &reports,
                                  const bool keep_image)
 {
@@ -1067,8 +1067,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
-  const float3 mouse_position_world = math::transform_point(layer_to_world,
-                                                            placement.project(mouse_position));
+  const float3 fill_point_world = math::transform_point(layer_to_world,
+                                                        placement.project(fill_point));
 
 #if 0  // TODO doesn't quite work yet, use identity for now.
     /* Zoom and offset based on bounds, to fit all strokes within the render. */
@@ -1099,7 +1099,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
     /* Draw blue point where click with mouse. */
     const float mouse_dot_size = 4.0f;
-    render_utils::draw_dot(mouse_position_world, mouse_dot_size, mouse_color);
+    render_utils::draw_dot(fill_point_world, mouse_dot_size, mouse_color);
 
     draw_datablock(object,
                    grease_pencil,
