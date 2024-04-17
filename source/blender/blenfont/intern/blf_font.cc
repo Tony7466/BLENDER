@@ -1025,6 +1025,9 @@ size_t blf_str_offset_from_cursor_position(FontBLF *font,
                                            size_t str_len,
                                            int location_x)
 {
+  /* Do not early exit if location_x <= 0, as this can result in an incorrect
+   * offset for RTL text. Instead of offset of character responsible for first
+   * glyph you'd get offset of first character, which could be the last glyph. */
   if (!str || !str[0] || !str_len) {
     return 0;
   }
@@ -1032,10 +1035,6 @@ size_t blf_str_offset_from_cursor_position(FontBLF *font,
   CursorPositionForeachGlyph_Data data{};
   data.location_x = location_x;
   data.r_offset = size_t(-1);
-
-  /* For negative position, don't early exit with 0 but instead test as
-   * if it were zero. First glyph might not be from first character. */
-  location_x = std::max(location_x, 0);
 
   blf_font_boundbox_foreach_glyph(font, str, str_len, blf_cursor_position_foreach_glyph, &data);
 
@@ -1107,11 +1106,11 @@ int blf_str_offset_to_cursor(
     /* Nothing (or a space) to the left, so align to right character. */
     return next.xmin - int(cursor_width);
   }
-  else if ((prev.xmax != prev.xmin) && !next.xmax) {
+  if ((prev.xmax != prev.xmin) && !next.xmax) {
     /* End of string, so align to last character. */
     return prev.xmax;
   }
-  else if (prev.xmax && next.xmax) {
+  if (prev.xmax && next.xmax) {
     /* Between two characters, so use the center. */
     if (next.xmin >= prev.xmax) {
       return int((float(prev.xmax + next.xmin) - cursor_width) / 2.0f);
@@ -1119,13 +1118,11 @@ int blf_str_offset_to_cursor(
     /* A nicer center if reversed order - RTL. */
     return int((float(next.xmax + prev.xmin) - cursor_width) / 2.0f);
   }
-  else if (!str_offset) {
+  if (!str_offset) {
     /* Start of string. */
     return 0 - int(cursor_width);
   }
-  else {
-    return int(blf_font_width(font, str, str_len, nullptr));
-  }
+  return int(blf_font_width(font, str, str_len, nullptr));
 }
 
 /** \} */
