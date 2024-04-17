@@ -4333,20 +4333,29 @@ GeoNodesOperatorDepsgraphs::~GeoNodesOperatorDepsgraphs()
   }
 }
 
+static const ID *get_only_evaluated_id(const Depsgraph &depsgraph, const ID &id_orig)
+{
+  const ID *id = DEG_get_evaluated_id(&depsgraph, const_cast<ID *>(&id_orig));
+  if (id == &id_orig) {
+    return nullptr;
+  }
+  return id;
+}
+
 const ID *GeoNodesOperatorDepsgraphs::get_evaluated_id(const ID &id_orig) const
 {
   if (const Depsgraph *graph = this->active) {
-    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
+    if (const ID *id = get_only_evaluated_id(*graph, id_orig)) {
       return id;
     }
   }
   if (const Depsgraph *graph = this->node_tree) {
-    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
+    if (const ID *id = get_only_evaluated_id(*graph, id_orig)) {
       return id;
     }
   }
   if (const Depsgraph *graph = this->inputs_extra) {
-    if (const ID *id = DEG_get_evaluated_id(graph, const_cast<ID *>(&id_orig))) {
+    if (const ID *id = get_only_evaluated_id(*graph, id_orig)) {
       return id;
     }
   }
