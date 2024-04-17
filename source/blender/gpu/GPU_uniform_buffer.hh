@@ -40,8 +40,7 @@ void GPU_uniformbuf_bind_as_ssbo(GPUUniformBuf *ubo, int slot);
 void GPU_uniformbuf_unbind(GPUUniformBuf *ubo);
 /**
  * Resets the internal slot usage tracking. But there is no guarantee that
- * this actually undo the bindings for the next draw call. Only to be called
- * for debugging with G_DEBUG_GPU.
+ * this actually undo the bindings for the next draw call. Only has effect when G_DEBUG_GPU is set.
  */
 void GPU_uniformbuf_debug_unbind_all();
 
