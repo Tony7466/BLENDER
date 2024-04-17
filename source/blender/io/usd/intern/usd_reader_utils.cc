@@ -10,6 +10,9 @@
 
 #include "BLI_utildefines.h"
 
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
+
 namespace {
 
 template<typename VECT>
@@ -31,8 +34,7 @@ void set_array_prop(IDProperty *idgroup,
   val.array.len = static_cast<int>(vec.dimension);
 
   if (val.array.len <= 0) {
-    /* Should never happen. */
-    std::cout << "Invalid array length for prop " << prop_name << std::endl;
+    CLOG_WARN(&LOG, "Invalid array length for prop %s", prop_name);
     return;
   }
 
@@ -49,14 +51,14 @@ void set_array_prop(IDProperty *idgroup,
     val.array.type = IDP_INT;
   }
   else {
-    std::cout << "Couldn't determine array type for prop " << prop_name << std::endl;
+    CLOG_WARN(&LOG, "Couldn't determine array type for prop %s", prop_name);
     return;
   }
 
   IDProperty *prop = IDP_New(IDP_ARRAY, &val, prop_name);
 
   if (!prop) {
-    std::cout << "Couldn't create array prop " << prop_name << std::endl;
+    CLOG_WARN(&LOG, "Couldn't create array prop %s", prop_name);
     return;
   }
 

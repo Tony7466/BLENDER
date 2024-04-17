@@ -57,8 +57,9 @@ bool set_vec_attrib(const pxr::UsdPrim &prim,
   pxr::UsdAttribute vec_attr = prim.CreateAttribute(prop_token, type_name, true);
 
   if (!vec_attr) {
-    printf("WARNING: Couldn't USD attribute for array property %s.\n",
-           prop_token.GetString().c_str());
+    CLOG_WARN(&LOG,
+              "Couldn't create USD attribute for array property %s",
+              prop_token.GetString().c_str());
     return false;
   }
 
@@ -79,10 +80,9 @@ static void create_vector_attrib(const pxr::UsdPrim &prim,
   }
 
   if (prop->type != IDP_ARRAY) {
-    printf(
-        "WARNING: Property %s is not an array type and can't be converted to a vector "
-        "attribute.\n",
-        prop_token.GetString().c_str());
+    CLOG_WARN(&LOG,
+              "Property %s is not an array type and can't be converted to a vector attribute",
+              prop->name);
     return;
   }
 
@@ -133,14 +133,15 @@ static void create_vector_attrib(const pxr::UsdPrim &prim,
   }
 
   if (!type_name) {
-    printf("WARNING: Couldn't determine USD type name for array property %s.\n",
-           prop_token.GetString().c_str());
+    CLOG_WARN(&LOG,
+              "Couldn't determine USD type name for array property %s",
+              prop_token.GetString().c_str());
     return;
   }
 
   if (!success) {
-    printf("WARNING: Couldn't set USD attribute from array property %s.\n",
-           prop_token.GetString().c_str());
+    CLOG_WARN(
+        &LOG, "Couldn't set USD attribute from array property %s", prop_token.GetString().c_str());
     return;
   }
 }
