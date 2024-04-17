@@ -1649,7 +1649,13 @@ static int arg_handle_start_with_console(int /*argc*/, const char ** /*argv*/, v
 static bool arg_handle_extension_registration(const bool do_register, const bool all_users)
 {
   /* Logic runs in #main_args_handle_registration. */
-  const bool result = WM_platform_assosiate_set(do_register, all_users);
+  char *error_msg = nullptr;
+  bool result = WM_platform_assosiate_set(do_register, all_users, &error_msg);
+  if (error_msg) {
+    fprintf(stderr, "Error: %s\n", error_msg);
+    MEM_freeN(error_msg);
+  }
+
 #  ifdef WIN32
   TerminateProcess(GetCurrentProcess(), 0);
 #  endif

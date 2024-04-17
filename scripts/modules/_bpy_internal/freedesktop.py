@@ -23,6 +23,7 @@ import sys
 import tempfile
 
 from typing import (
+    Callable,
     Optional,
 )
 
@@ -114,7 +115,7 @@ def filepath_ensure_removed(path: str) -> bool:
 # On registration when handlers return False this causes registration to fail and unregister to be called.
 # Non fatal errors should print a message and return True instead.
 
-def handle_bin(*, do_register: bool, all_users: bool) -> bool:
+def handle_bin(do_register: bool, all_users: bool) -> Optional[str]:
     if all_users:
         dirpath_dst = os.path.join(SYSTEM_PREFIX, "bin")
     else:
@@ -134,7 +135,7 @@ def handle_bin(*, do_register: bool, all_users: bool) -> bool:
                         dirpath_dst,
                     ))
                 # NOTE: this is not an error, don't consider it a failure.
-                return True
+                return None
 
         os.makedirs(dirpath_dst, exist_ok=True)
 
@@ -165,10 +166,10 @@ def handle_bin(*, do_register: bool, all_users: bool) -> bool:
             os.chmod(filepath_dst, 0o755)
         else:
             os.symlink(filepath_src, filepath_dst)
-    return True
+    return None
 
 
-def handle_desktop_file(*, do_register: bool, all_users: bool) -> bool:
+def handle_desktop_file(do_register: bool, all_users: bool) -> Optional[str]:
     # `cp ./blender.desktop ~/.local/share/applications/`
 
     filename = BLENDER_DESKTOP
@@ -191,13 +192,12 @@ def handle_desktop_file(*, do_register: bool, all_users: bool) -> bool:
 
     filepath_ensure_removed(filepath_desktop_dst)
     if not do_register:
-        return True
+        return None
 
     if not os.path.exists(filepath_desktop_src):
-        sys.stderr.write("Error: desktop file not found: {:s}\n".format(filepath_desktop_src))
         # Unlike other missing things, this must be an error otherwise
         # the MIME association fails which is the main purpose of registering types.
-        return False
+        return "Error: desktop file not found: {:s}".format(filepath_desktop_src)
 
     os.makedirs(dirpath_dst, exist_ok=True)
 
@@ -208,10 +208,10 @@ def handle_desktop_file(*, do_register: bool, all_users: bool) -> bool:
 
     with open(filepath_desktop_dst, "w", encoding="utf-8") as fh:
         fh.write(data)
-    return True
+    return None
 
 
-def handle_thumbnailer(*, do_register: bool, all_users: bool) -> bool:
+def handle_thumbnailer(do_register: bool, all_users: bool) -> Optional[str]:
     filename = "blender.thumbnailer"
 
     if all_users:
@@ -230,14 +230,14 @@ def handle_thumbnailer(*, do_register: bool, all_users: bool) -> bool:
 
     filepath_ensure_removed(filepath_thumbnailer_dst)
     if not do_register:
-        return True
+        return None
 
     blender_thumbnailer_bin = os.path.join(BLENDER_DIR, BLENDER_THUMBNAILER_FILENAME)
     if not os.path.exists(blender_thumbnailer_bin):
         sys.stderr.write("Thumbnailer not found, this may not be a portable installation: {:s}\n".format(
             blender_thumbnailer_bin,
         ))
-        return True
+        return None
 
     os.makedirs(dirpath_dst, exist_ok=True)
 
@@ -254,10 +254,10 @@ def handle_thumbnailer(*, do_register: bool, all_users: bool) -> bool:
         fh.write("TryExec={:s}\n".format(command))
         fh.write("Exec={:s} %i %o\n".format(command))
         fh.write("MimeType={:s};\n".format(BLENDER_MIME))
-    return True
+    return None
 
 
-def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
+def handle_mime_association_xml(do_register: bool, all_users: bool) -> Optional[str]:
     # `xdg-mime install x-blender.xml`
     filename = "x-blender.xml"
 
@@ -291,7 +291,7 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
 
     if not do_register:
         if not os.path.exists(package_xml_dst):
-            return True
+            return None
         # NOTE: `xdg-mime query default application/x-blender` could be used to check
         # if the XML is installed, however there is some slim chance the XML is installed
         # but the default doesn't point to Blender, just uninstall as it's harmless.
@@ -302,7 +302,7 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
             package_xml_dst,
         )
         subprocess.check_output(cmd, env=env)
-        return True
+        return None
 
     with tempfile.TemporaryDirectory() as tempdir:
         package_xml_src = os.path.join(tempdir, filename)
@@ -327,10 +327,10 @@ def handle_mime_association_xml(*, do_register: bool, all_users: bool) -> bool:
             package_xml_src,
         )
         subprocess.check_output(cmd, env=env)
-    return True
+    return None
 
 
-def handle_mime_association_default(*, do_register: bool, all_users: bool) -> bool:
+def handle_mime_association_default(do_register: bool, all_users: bool) -> Optional[str]:
     # `xdg-mime default blender.desktop application/x-blender`
 
     if VERBOSE:
@@ -340,7 +340,7 @@ def handle_mime_association_default(*, do_register: bool, all_users: bool) -> bo
 
     # NOTE: there doesn't seem to be a way to reverse this action.
     if not do_register:
-        return True
+        return None
 
     cmd = (
         XDG_MIME_PROG,
@@ -349,10 +349,10 @@ def handle_mime_association_default(*, do_register: bool, all_users: bool) -> bo
         BLENDER_MIME,
     )
     subprocess.check_output(cmd)
-    return True
+    return None
 
 
-def handle_icon(*, do_register: bool, all_users: bool) -> bool:
+def handle_icon(do_register: bool, all_users: bool) -> Optional[str]:
     # `cp ~/`
     filename = "blender.svg"
     if all_users:
@@ -373,12 +373,12 @@ def handle_icon(*, do_register: bool, all_users: bool) -> bool:
 
     filepath_ensure_removed(filepath_desktop_dst)
     if not do_register:
-        return True
+        return None
 
     if not os.path.exists(filepath_desktop_src):
         sys.stderr.write("  Icon file not found, skipping: \"{:s}\"\n".format(filepath_desktop_src))
         # Not an error.
-        return True
+        return None
 
     os.makedirs(dirpath_dst, exist_ok=True)
 
@@ -388,27 +388,21 @@ def handle_icon(*, do_register: bool, all_users: bool) -> bool:
     with open(filepath_desktop_dst, "wb") as fh:
         fh.write(data)
 
-    return True
+    return None
 
 
 # -----------------------------------------------------------------------------
 # Escalate Privileges
 
-def main_run_as_root_if_needed(do_register: bool) -> Optional[bool]:
-    if os.geteuid() == 0:
-        # Already an admin, run this script with escalated privileges.
-        return None
-
+def main_run_as_root(do_register: bool) -> Optional[str]:
     # If the system prefix doesn't exist, fail with an error because it's highly likely that the
     # system won't use this when it has not been created.
     if not os.path.exists(SYSTEM_PREFIX):
-        sys.stderr.write("Error: system path does not exist {!r}\n".format(SYSTEM_PREFIX))
-        return False
+        return "Error: system path does not exist {!r}".format(SYSTEM_PREFIX)
 
     prog: Optional[str] = shutil.which("pkexec")
     if prog is None:
-        sys.stderr.write("Error: command \"pkexec\" not found\n")
-        return False
+        return "Error: command \"pkexec\" not found"
 
     cmd = [
         prog,
@@ -422,14 +416,42 @@ def main_run_as_root_if_needed(do_register: bool) -> Optional[bool]:
     if VERBOSE:
         sys.stdout.write("Executing: {:s}\n".format(shlex.join(cmd)))
 
-    proc = subprocess.run(cmd)
-    return proc.returncode == 0
+    proc = subprocess.run(cmd, stderr=subprocess.PIPE)
+    if proc.returncode != 0:
+        if proc.stderr:
+            return proc.stderr.decode("utf-8", errors="surrogateescape")
+        return "Error: pkexec returned non-zero returncode"
+
+    return None
+
+
+# -----------------------------------------------------------------------------
+# Checked Call
+#
+# While exceptions should not happen, we can't entirely prevent this as it's always possible
+# a file write fails or a command doesn't work as expected anymore.
+# Handle these cases gracefully.
+
+def call_handle_checked(
+        fn: Callable[[bool, bool], Optional[str]],
+        *,
+        do_register: bool,
+        all_users: bool
+) -> Optional[str]:
+    try:
+        result = fn(do_register, all_users)
+    except BaseException as ex:
+        # This should never happen.
+        result = "Internal Error: {!r}".format(ex)
+    return result
 
 
 # -----------------------------------------------------------------------------
 # Main Registration Functions
 
-def register_impl(do_register: bool, all_users: bool) -> bool:
+def register_impl(do_register: bool, all_users: bool) -> Optional[str]:
+    # A non-empty string indicates an error (which is forwarded to the user), otherwise None for success.
+
     global BLENDER_BIN
     global BLENDER_DIR
 
@@ -439,9 +461,9 @@ def register_impl(do_register: bool, all_users: bool) -> bool:
 
         # Running inside Blender, detect the need for privilege escalation (which will run outside of Blender).
         if all_users:
-            if (result := main_run_as_root_if_needed(do_register)) is not None:
-                return result
-            del result
+            if os.geteuid() != 0:
+                # Run this script with escalated privileges.
+                return main_run_as_root(do_register)
     else:
         assert BLENDER_BIN != ""
 
@@ -449,45 +471,52 @@ def register_impl(do_register: bool, all_users: bool) -> bool:
 
     if all_users:
         if not os.access(SYSTEM_PREFIX, os.W_OK):
-            sys.stderr.write("Error: {:s} not writable, this command may need to run as a superuser!\n".format(
-                SYSTEM_PREFIX,
-            ))
-            return False
+            return "Error: {:s} not writable, this command may need to run as a superuser!".format(SYSTEM_PREFIX)
 
     if VERBOSE:
         sys.stdout.write("{:s}: {:s}\n".format("Register" if do_register else "Unregister", BLENDER_BIN))
 
     if XDG_MIME_PROG == "":
-        sys.stderr.write("Could not find \"xdg-mime\", unable to associate mime-types\n")
-        return False
+        return "Could not find \"xdg-mime\", unable to associate mime-types"
 
-    ok = True
-    ok &= handle_bin(do_register=do_register, all_users=all_users)
-    ok &= handle_icon(do_register=do_register, all_users=all_users)
-    ok &= handle_desktop_file(do_register=do_register, all_users=all_users)
-    ok &= handle_mime_association_xml(do_register=do_register, all_users=all_users)
+    handlers = (
+        handle_bin,
+        handle_icon,
+        handle_desktop_file,
+        handle_mime_association_xml,
+        # This only makes sense for users, although there may be a way to do this for all users.
+        *(() if all_users else (handle_mime_association_default,)),
+        # The thumbnailer only works when installed for all users.
+        *((handle_thumbnailer,) if all_users else ()),
+    )
 
-    # NOTE: This only makes sense for users, although there may be a way to do this for all users.
-    if not all_users:
-        ok &= handle_mime_association_default(do_register=do_register, all_users=all_users)
+    error_or_none = None
+    for i, fn in enumerate(handlers):
+        if (error_or_none := call_handle_checked(fn, do_register=do_register, all_users=all_users)) is not None:
+            break
 
-    # The thumbnailer only works when installed for all users.
-    if all_users:
-        ok &= handle_thumbnailer(do_register=do_register, all_users=all_users)
-
-    # Roll back registration on failure.
-    if not ok:
+    if error_or_none is not None:
+        # Roll back registration on failure.
         if do_register:
-            register_impl(False, all_users)
+            for fn in reversed(handlers[:i + 1]):
+                error_or_none_reverse = call_handle_checked(fn, do_register=False, all_users=all_users)
+                if error_or_none_reverse is not None:
+                    sys.stdout.write("Error reverting action: {:s}\n".format(error_or_none_reverse))
 
-    return ok
+        # Print to the `stderr`, in case the user has a console open, it can be helpful
+        # especially if it's multi-line.
+        sys.stdout.write("{:s}\n".format(error_or_none))
+
+    return error_or_none
 
 
-def register(all_users: bool = False) -> bool:
+def register(all_users: bool = False) -> Optional[str]:
+    # Return an empty string for success.
     return register_impl(True, all_users)
 
 
-def unregister(all_users: bool = False) -> bool:
+def unregister(all_users: bool = False) -> Optional[str]:
+    # Return an empty string for success.
     return register_impl(False, all_users)
 
 
@@ -535,7 +564,10 @@ def main() -> int:
     else:
         result = unregister(all_users=all_users)
 
-    return 0 if result else 1
+    if result:
+        sys.stderr.write("{:s}\n".format(result))
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
