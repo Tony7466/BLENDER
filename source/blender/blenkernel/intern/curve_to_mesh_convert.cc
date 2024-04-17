@@ -189,7 +189,7 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
   if (angle_scale && !ELEM(i, 0, positions.index_range().last())) {
     const float3 dir_a = math::normalize(positions[i] - positions[i - 1]);
     std::cout << "dir_a: " << dir_a << '\n';
-    const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
+    const float3 dir_b = math::normalize(positions[i] - positions[i + 1]);
     std::cout << "dir_b: " << dir_b << '\n';
     // const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
     // const float angle = angle_v3v3v3(positions[i - 1], positions[i], positions[i + 1]);
@@ -197,7 +197,7 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
     // const float factor = shell_angle_to_dist(angle);
     const float dot = math::dot(dir_a, dir_b);
     std::cout << "dot: " << dot << '\n';
-    const float factor = 1.0f / sqrt((1.0f - dot) * 0.5f);
+    const float factor = 1.0f / math::sqrt((1.0f - dot) * 0.5f);
     std::cout << "factor: " << factor << '\n';
     // if (factor != 1.0f) {
     const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
