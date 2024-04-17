@@ -780,7 +780,8 @@ static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPla
   // const char align_flag = ts->gpencil_v3d_align;
   // const bool is_depth = bool(align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
   // const bool is_lock_axis_view = bool(ts->gp_sculpt.lock_axis == 0);
-  // const bool is_camera = is_lock_axis_view && (tgpf->rv3d->persp == RV3D_CAMOB) && (!is_depth);
+  // const bool is_camera = is_lock_axis_view && (tgpf->rv3d->persp == RV3D_CAMOB) &&
+  // (!is_depth);
 
   // Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
   // if (brush == nullptr) {
@@ -927,73 +928,16 @@ static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPla
   // BKE_gpencil_stroke_geometry_update(tgpf->gpd, gps);
 }
 
-static bke::CurvesGeometry do_frame_fill(Main &bmain,
-                                         ARegion &region,
-                                         View3D &view3d,
-                                         RegionView3D &rv3d,
-                                         const Scene &scene,
-                                         Depsgraph &depsgraph,
-                                         Object &object,
-                                         const VArray<bool> &boundary_layers,
-                                         const Span<DrawingInfo> drawings,
-                                         const ed::greasepencil::DrawingPlacement &placement,
-                                         const int2 &win_size,
-                                         const float2 zoom,
-                                         const float2 offset,
-                                         const bool invert,
-                                         const float3 &mouse_position,
-                                         ReportList &reports,
-                                         const bool keep_images)
+static bke::CurvesGeometry create_fill_boundary_curves(
+    Image *ima, const ed::greasepencil::DrawingPlacement &placement)
 {
-  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
-
-  // TODO
-  const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
-  const float alpha_threshold = 0.2f;
-  const float thickness = 1.0f;
-
-  Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
-    GPU_blend(GPU_BLEND_ALPHA);
-    GPU_depth_mask(true);
-    render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
-
-    /* Draw blue point where click with mouse. */
-    const float mouse_dot_size = 4.0f;
-    render_utils::draw_dot(mouse_position, mouse_dot_size, mouse_color);
-
-    draw_datablock(object,
-                   grease_pencil,
-                   drawings,
-                   boundary_layers,
-                   stroke_color,
-                   fill_draw_mode,
-                   alpha_threshold,
-                   thickness);
-
-    render_utils::clear_viewmat();
-    GPU_depth_mask(false);
-    GPU_blend(GPU_BLEND_NONE);
-  });
-  if (ima == nullptr) {
-    return {};
-  }
-
-  /* Set red borders to create a external limit. */
-  mark_borders(*ima, border_color);
-
   /* Apply boundary fill */
   FillResult fill_result = fill_boundaries(*ima);
-
-  Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
-
-  bke::CurvesGeometry curves = boundary_to_curves(placement, boundary);
-
-  /* Delete temp image. */
-  if (!keep_images) {
-    BKE_id_free(&bmain, ima);
+  if (fill_result != FillResult::Success) {
+    return {};
   }
-
-  return curves;
+  Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
+  return boundary_to_curves(placement, boundary);
 }
 
 static rctf get_region_bounds(const ARegion &region)
@@ -1043,34 +987,36 @@ static rctf get_boundary_bounds(const ARegion &region,
     const VArray<bool> is_boundary_stroke = *attributes.lookup_or_default<bool>(
         "is_boundary", bke::AttrDomain::Curve, false);
 
-    threading::parallel_for(strokes.curves_range(), 512, [&](const IndexRange range) {
-      for (const int curve_i : range) {
-        const IndexRange points = strokes.points_by_curve()[curve_i];
-        /* Check if stroke can be drawn. */
-        if (points.size() < 2) {
-          continue;
-        }
-        /* check if the color is visible */
-        const int material_index = materials[curve_i];
-        Material *mat = BKE_object_material_get(const_cast<Object *>(&object), material_index + 1);
-        if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
-          continue;
-        }
+    IndexMaskMemory curve_mask_memory;
+    const IndexMask curve_mask = get_boundary_curve_mask(
+        object, info, only_boundary_strokes, curve_mask_memory);
 
-        /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
-        if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
-          continue;
-        }
+    curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+      const IndexRange points = strokes.points_by_curve()[curve_i];
+      /* Check if stroke can be drawn. */
+      if (points.size() < 2) {
+        return;
+      }
+      /* check if the color is visible */
+      const int material_index = materials[curve_i];
+      Material *mat = BKE_object_material_get(const_cast<Object *>(&object), material_index + 1);
+      if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
+        return;
+      }
 
-        for (const int point_i : points) {
-          const float3 pos_world = math::transform_point(layer_to_world,
-                                                         deformation.positions[point_i]);
-          float2 pos_view;
-          eV3DProjStatus result = ED_view3d_project_float_global(
-              &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
-          if (result == V3D_PROJ_RET_OK) {
-            BLI_rctf_do_minmax_v(&bounds, pos_view);
-          }
+      /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
+      if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
+        return;
+      }
+
+      for (const int point_i : points) {
+        const float3 pos_world = math::transform_point(layer_to_world,
+                                                       deformation.positions[point_i]);
+        float2 pos_view;
+        eV3DProjStatus result = ED_view3d_project_float_global(
+            &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
+        if (result == V3D_PROJ_RET_OK) {
+          BLI_rctf_do_minmax_v(&bounds, pos_view);
         }
       }
     });
@@ -1136,6 +1082,11 @@ bool fill_strokes(bContext &C,
       ed::greasepencil::retrieve_editable_drawings_from_layer(
           scene, grease_pencil, *grease_pencil.get_active_layer());
 
+  // TODO
+  const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
+  const float alpha_threshold = 0.2f;
+  const float thickness = 1.0f;
+
   for (const MutableDrawingInfo &dst_info : dst_drawings) {
     const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
     const float4x4 layer_to_world = layer.to_world_space(object);
@@ -1165,23 +1116,39 @@ bool fill_strokes(bContext &C,
     const float2 offset = float2(0);
 #endif
 
-    bke::CurvesGeometry fill_curves = do_frame_fill(bmain,
-                                                    region,
-                                                    view3d,
-                                                    rv3d,
-                                                    scene,
-                                                    depsgraph,
-                                                    object,
-                                                    boundary_layers,
-                                                    src_drawings,
-                                                    placement,
-                                                    win_size,
-                                                    zoom,
-                                                    offset,
-                                                    invert,
-                                                    mouse_position_world,
-                                                    reports,
-                                                    keep_images);
+    Image *ima = render_utils::render_to_image(bmain, region, win_size, reports, [&]() {
+      GPU_blend(GPU_BLEND_ALPHA);
+      GPU_depth_mask(true);
+      render_utils::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+
+      /* Draw blue point where click with mouse. */
+      const float mouse_dot_size = 4.0f;
+      render_utils::draw_dot(mouse_position_world, mouse_dot_size, mouse_color);
+
+      draw_datablock(object,
+                     grease_pencil,
+                     src_drawings,
+                     boundary_layers,
+                     stroke_color,
+                     fill_draw_mode,
+                     alpha_threshold,
+                     thickness);
+
+      render_utils::clear_viewmat();
+      GPU_depth_mask(false);
+      GPU_blend(GPU_BLEND_NONE);
+    });
+
+    if (ima) {
+      /* Set red borders to create a external limit. */
+      mark_borders(*ima, border_color);
+    }
+
+    bke::CurvesGeometry fill_curves = create_fill_boundary_curves(ima, placement);
+    /* Delete temp image. */
+    if (!keep_images) {
+      BKE_id_free(&bmain, ima);
+    }
 
     Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
     Curves *fill_curves_id = curves_new_nomain(fill_curves);

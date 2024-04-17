@@ -266,7 +266,7 @@ IndexMask polyline_detect_corners(Span<float2> points,
 
 bool fill_strokes(bContext &C,
                   ARegion &region,
-                  const VArray<bool> &is_boundary_layer,
+                  const VArray<bool> &boundary_layers,
                   bool invert,
                   const float2 &mouse_position,
                   ReportList &reports);
