@@ -1120,17 +1120,14 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
       "{}: {:.2f}({:.2f}) ({}{}{}{})",
       IFACE_("Angle Constraint"),
       (kcd->angle >= 0.0f) ? RAD2DEGF(kcd->angle) : 360.0f + RAD2DEGF(kcd->angle),
-
       (kcd->angle_snapping_increment > KNIFE_MIN_ANGLE_SNAPPING_INCREMENT &&
        kcd->angle_snapping_increment <= KNIFE_MAX_ANGLE_SNAPPING_INCREMENT) ?
           kcd->angle_snapping_increment :
           KNIFE_DEFAULT_ANGLE_SNAPPING_INCREMENT,
-
       kcd->angle_snapping ?
           ((kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_SCREEN) ? "Screen" : "Relative") :
           "OFF", /* TODO: Can this be simplified? */
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? " - " : "",
-
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ?
           get_modal_key_str(KNF_MODAL_CYCLE_ANGLE_SNAP_EDGE) :
           "",
