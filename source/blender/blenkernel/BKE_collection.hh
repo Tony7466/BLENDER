@@ -101,8 +101,7 @@ Collection *BKE_collection_master_add(Scene *scene);
 bool BKE_collection_has_object(Collection *collection, const Object *ob);
 bool BKE_collection_has_object_recursive(Collection *collection, Object *ob);
 bool BKE_collection_has_object_recursive_instanced(Collection *collection, Object *ob);
-bool BKE_collection_has_object_recursive_instanced_session_uid(Collection *collection,
-                                                               uint session_uid);
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection, Object *ob);
 Collection *BKE_collection_object_find(Main *bmain,
                                        Scene *scene,
                                        Collection *collection,

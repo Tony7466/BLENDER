@@ -1055,12 +1055,11 @@ bool BKE_collection_has_object_recursive_instanced(Collection *collection, Objec
   return BLI_findptr(&objects, ob, offsetof(Base, object));
 }
 
-bool BKE_collection_has_object_recursive_instanced_session_uid(Collection *collection,
-                                                               const uint session_uid)
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection, Object *ob)
 {
   const ListBase objects = BKE_collection_object_cache_instanced_get(collection);
   LISTBASE_FOREACH (Base *, base, &objects) {
-    if (base->object->id.session_uid == session_uid) {
+    if (base->object->id.orig_id == ob->id.orig_id) {
       return true;
     }
   }
