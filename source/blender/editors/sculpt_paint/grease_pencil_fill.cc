@@ -1190,6 +1190,8 @@ bool fill_strokes(bContext &C,
     bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
     dst_info.drawing.strokes_for_write() = std::move(
         joined_curves.get_curves_for_write()->geometry.wrap());
+
+    dst_info.drawing.tag_topology_changed();
   }
 
   // tgpf->mouse[0] = event->mval[0];
