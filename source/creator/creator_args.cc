@@ -1649,10 +1649,11 @@ static int arg_handle_start_with_console(int /*argc*/, const char ** /*argv*/, v
 static bool arg_handle_extension_registration(const bool do_register, const bool all_users)
 {
   /* Logic runs in #main_args_handle_registration. */
-  return WM_platform_assosiate_set(do_register, all_users);
+  const bool result = WM_platform_assosiate_set(do_register, all_users);
 #  ifdef WIN32
   TerminateProcess(GetCurrentProcess(), 0);
 #  endif
+  return result;
 }
 
 static const char arg_handle_register_extension_doc[] =
