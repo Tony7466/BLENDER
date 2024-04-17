@@ -276,9 +276,9 @@ void set_pixel_boundary(ColorGeometry4f &color)
   color.a = 1.0f;
 }
 
-void set_pixel_filled(ColorGeometry4f &color)
+void set_pixel_filled(ColorGeometry4f &color, const bool enable = true)
 {
-  color.g = 1.0f;
+  color.g = (enable ? 1.0f : 0.0f);
   color.a = 1.0f;
 }
 
@@ -424,7 +424,7 @@ static void draw_datablock(const Object &object,
                            const Span<DrawingInfo> drawings,
                            const VArray<bool> &boundary_layers,
                            const ColorGeometry4f &ink,
-                           const eGP_FillDrawModes fill_draw_mode,
+                           const eGP_FillDrawModes /*fill_draw_mode*/,
                            const float alpha_threshold,
                            const float thickness)
 {
@@ -643,7 +643,26 @@ FillResult fill_boundaries(Image &ima)
     }
   }
 
+  BKE_image_release_ibuf(&ima, ibuf, lock);
+
   return border_contact ? FillResult::BorderContact : FillResult::Success;
+}
+
+void invert_fill(Image &ima)
+{
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+                                      width * height);
+
+  /* Initialize the stack with filled pixels (dot at mouse position). */
+  for (const int i : pixels.index_range()) {
+    set_pixel_filled(pixels[i], !is_pixel_filled(pixels[i]));
+  }
+
+  BKE_image_release_ibuf(&ima, ibuf, lock);
 }
 
 constexpr const int num_directions = 8;
@@ -921,18 +940,6 @@ static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPla
   // BKE_gpencil_stroke_geometry_update(tgpf->gpd, gps);
 }
 
-static bke::CurvesGeometry create_fill_boundary_curves(
-    Image *ima, const ed::greasepencil::DrawingPlacement &placement)
-{
-  /* Apply boundary fill */
-  FillResult fill_result = fill_boundaries(*ima);
-  if (fill_result != FillResult::Success) {
-    return {};
-  }
-  Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
-  return boundary_to_curves(placement, boundary);
-}
-
 static rctf get_region_bounds(const ARegion &region)
 {
   /* Init maximum boundbox size. */
@@ -1038,7 +1045,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const bke::greasepencil::Layer &layer,
                                  const VArray<bool> &boundary_layers,
                                  const Span<DrawingInfo> src_drawings,
-                                 const bool /*invert*/,
+                                 const bool invert,
                                  const float2 &fill_point,
                                  const bool keep_image)
 {
@@ -1115,7 +1122,18 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   /* Set red borders to create a external limit. */
   mark_borders(*ima, border_color);
 
-  bke::CurvesGeometry fill_curves = create_fill_boundary_curves(ima, placement);
+  /* Apply boundary fill */
+  FillResult fill_result = fill_boundaries(*ima);
+  if (fill_result != FillResult::Success) {
+    return {};
+  }
+
+  if (invert) {
+    invert_fill(*ima);
+  }
+
+  Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
+  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary);
   /* Delete temp image. */
   if (!keep_image) {
     BKE_id_free(&bmain, ima);
