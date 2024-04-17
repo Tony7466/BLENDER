@@ -711,6 +711,8 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
     }
   }
 
+  float3x3 jitter_mat = float3x3::identity();
+
   if (is_render_sync) {
     /* Render sync is only needed for jittered shadows. */
     BLI_assert(light.do_jittering);
@@ -719,10 +721,20 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
     float2 random = sampling.rng_2d_get(SAMPLING_SHADOW_U);
     float2 r_disk = sampling.sample_disk(random) * shadow_radius_get();
     float3 jitter = object_mat_.x_axis() * r_disk.x + object_mat_.y_axis() * r_disk.y;
-    object_mat_[2] += float4(jitter, 0.0f);
-    object_mat_ = math::orthogonalize(object_mat_, math::Axis::Z);
-    light.object_mat = object_mat_;
+
+    jitter_mat[2] += jitter;
+    jitter_mat = math::orthogonalize(jitter_mat, math::Axis::Z);
+    jitter_mat = math::normalize(jitter_mat);
+
+    object_mat_ = light.object_mat;
+    object_mat_.location() = float3(0.0f);
+    object_mat_ = object_mat_ * float4x4(jitter_mat);
   }
+
+  float4 q;
+  mat3_to_quat(q, jitter_mat.ptr());
+  /* Put w component at last (Why is the sign flip needed?). */
+  light.sun.shadow_projection_rotation = {q[1], q[2], q[3], -q[0]};
 
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */

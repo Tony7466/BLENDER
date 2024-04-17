@@ -18,6 +18,13 @@
 shared int global_min;
 shared int global_max;
 
+/* TODO: Move to lib. */
+vec3 _quaternion_transform(vec4 a, vec3 vector)
+{
+  vec3 t = cross(a.xyz, vector) * 2.0;
+  return vector + t * a.w + cross(a.xyz, t);
+}
+
 void main()
 {
   IsectBox box;
@@ -46,8 +53,10 @@ void main()
 
     float local_min = FLT_MAX;
     float local_max = -FLT_MAX;
+    vec3 shadow_back = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation,
+                                             light._back);
     for (int i = 0; i < 8; i++) {
-      float z = dot(box.corners[i].xyz, -light._back);
+      float z = dot(box.corners[i].xyz, -shadow_back);
       local_min = min(local_min, z);
       local_max = max(local_max, z);
     }

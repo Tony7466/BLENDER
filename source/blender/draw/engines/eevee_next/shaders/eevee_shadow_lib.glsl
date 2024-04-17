@@ -14,6 +14,40 @@
 #  define SHADOW_ATLAS_TYPE usampler2DArray
 #endif
 
+/* TODO: Move to lib. */
+vec4 _quaternion_inverted(vec4 a)
+{
+  return vec4(-a.xyz, a.w);
+}
+
+/* TODO: Move to lib. */
+vec3 _quaternion_transform(vec4 a, vec3 vector)
+{
+  vec3 t = cross(a.xyz, vector) * 2.0;
+  return vector + t * a.w + cross(a.xyz, t);
+}
+
+vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
+{
+  if (is_directional) {
+    return _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, lP);
+  }
+  else {
+    return lP - light_local_data_get(light).shadow_projection_shift;
+  }
+}
+
+vec3 shadow_local_to_light_local(LightData light, vec3 lP, bool is_directional)
+{
+  if (is_directional) {
+    return _quaternion_transform(
+        _quaternion_inverted(light_sun_data_get(light).shadow_projection_rotation), lP);
+  }
+  else {
+    return lP - light_local_data_get(light).shadow_projection_shift;
+  }
+}
+
 struct ShadowSampleParams {
   vec3 lP;
   vec3 uv;
@@ -152,12 +186,14 @@ vec3 shadow_punctual_reconstruct_position(ShadowSampleParams params,
   vec3 lP = project_point(wininv, clip_P);
   int face_id = params.tilemap_index - light.tilemap_index;
   lP = shadow_punctual_face_local_to_local_position(face_id, lP);
+  lP = shadow_local_to_light_local(light, lP, false);
   return mat3(light.object_mat) * lP + light._position;
 }
 
 ShadowSampleParams shadow_punctual_sample_params_get(LightData light, vec3 P)
 {
   vec3 lP = (P - light._position) * mat3(light.object_mat);
+  lP = light_local_to_shadow_local(light, lP, false);
 
   int face_id = shadow_punctual_face_index_get(lP);
   /* Local Light Space > Face Local (View) Space. */
@@ -234,6 +270,8 @@ vec3 shadow_directional_reconstruct_position(ShadowSampleParams params, LightDat
   lP.xy = clipmap_pos + info.clipmap_origin;
   lP.z = (params.uv.z + info.clip_near) * -1.0;
 
+  lP = shadow_local_to_light_local(light, lP, true);
+
   return mat3(light.object_mat) * lP;
 }
 
@@ -242,6 +280,8 @@ ShadowSampleParams shadow_directional_sample_params_get(usampler2D tilemaps_tx,
                                                         vec3 P)
 {
   vec3 lP = P * mat3(light.object_mat);
+  lP = light_local_to_shadow_local(light, lP, true);
+
   ShadowDirectionalSampleInfo info = shadow_directional_sample_info_get(light, lP);
 
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);

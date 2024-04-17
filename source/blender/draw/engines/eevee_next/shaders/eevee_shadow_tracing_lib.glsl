@@ -546,15 +546,18 @@ ShadowEvalResult shadow_eval(LightData light,
   /* TODO(fclem): Scale based on depth. */
   P += N_bias * normal_offset;
 
-  vec3 lP;
+  vec3 lP, lNg;
   if (is_directional) {
     lP = light_world_to_local(light, P);
+    lP = light_local_to_shadow_local(light, lP, true);
+    lNg = light_world_to_local(light, Ng);
+    lNg = light_local_to_shadow_local(light, lNg, true);
   }
   else {
-    lP = light_world_to_local(light, P - light._position) -
-         light_local_data_get(light).shadow_projection_shift;
+    lP = light_world_to_local(light, P - light._position);
+    lP = light_local_to_shadow_local(light, lP, false);
+    lNg = light_world_to_local(light, Ng);
   }
-  vec3 lNg = light_world_to_local(light, Ng);
   /* Invert horizon clipping. */
   lNg = (is_transmission) ? -lNg : lNg;
   /* Don't do a any horizon clipping in this case as the closure is lit from both sides. */

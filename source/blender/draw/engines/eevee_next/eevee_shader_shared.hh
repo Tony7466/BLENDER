@@ -821,21 +821,18 @@ BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size mu
 
 struct LightSunData {
   float radius;
+  /** Angle covered by the light shape for shadow ray casting. */
+  float shadow_angle;
+  /** Trace distance around the shading point. */
+  float shadow_trace_distance;
   float _pad0;
-  float _pad1;
-  float _pad2;
 
   /** --- Shadow Data --- */
   /** Offset of the LOD min in LOD min tile units. Split positive and negative for bit-shift. */
   int2 clipmap_base_offset_neg;
   int2 clipmap_base_offset_pos;
 
-  /** Angle covered by the light shape for shadow ray casting. */
-  float shadow_angle;
-  /** Trace distance around the shading point. */
-  float shadow_trace_distance;
-  float _pad3;
-  float _pad4;
+  float4 shadow_projection_rotation;
 
   /** Offset to convert from world units to tile space of the clipmap_lod_max. */
   float2 clipmap_origin;
@@ -1048,8 +1045,12 @@ static inline LightSunData light_sun_data_get(LightData light)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(
       clipmap_base_offset_neg, shadow_projection_shift.x, shadow_projection_shift.y)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, shadow_projection_shift.z, clip_side)
-  SAFE_ASSIGN_INT_AS_FLOAT(shadow_angle, tilemaps_count)
-  SAFE_ASSIGN_FLOAT(shadow_trace_distance, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_angle, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(shadow_trace_distance, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_INT_AS_FLOAT(shadow_projection_rotation.x, tilemaps_count);
+  SAFE_ASSIGN_FLOAT(shadow_projection_rotation.y, shadow_scale);
+  SAFE_ASSIGN_FLOAT(shadow_projection_rotation.z, _pad1);
+  SAFE_ASSIGN_FLOAT(shadow_projection_rotation.w, _pad2);
   SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_min, _pad4)
   SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_max, _pad5)

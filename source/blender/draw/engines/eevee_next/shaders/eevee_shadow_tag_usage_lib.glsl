@@ -35,6 +35,7 @@ void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level
   }
 
   vec3 lP = light_world_to_local(light, P);
+  lP = light_local_to_shadow_local(light, lP, true);
 
   level = clamp(
       level, light_sun_data_get(light).clipmap_lod_min, light_sun_data_get(light).clipmap_lod_max);
@@ -52,6 +53,7 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
   }
 
   vec3 lP = light_world_to_local(light, P);
+  lP = light_local_to_shadow_local(light, lP, true);
 
   /* TODO(Miguel Pozo): Implement lod_bias support. */
   if (radius == 0.0) {
@@ -61,7 +63,11 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
   }
   else {
     vec3 start_lP = light_world_to_local(light, P - V * radius);
+    start_lP = light_local_to_shadow_local(light, start_lP, true);
+
     vec3 end_lP = light_world_to_local(light, P + V * radius);
+    end_lP = light_local_to_shadow_local(light, end_lP, true);
+
     int min_level = shadow_directional_level(light, start_lP - light._position);
     int max_level = shadow_directional_level(light, end_lP - light._position);
 
@@ -109,7 +115,7 @@ void shadow_tag_usage_tilemap_punctual(
     }
   }
 
-  lP -= light_local_data_get(light).shadow_projection_shift;
+  lP = light_local_to_shadow_local(light, lP, false);
 
   float footprint_ratio = shadow_punctual_footprint_ratio(
       light, P, drw_view_is_perspective(), dist_to_cam, tilemap_proj_ratio);
