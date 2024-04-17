@@ -135,25 +135,98 @@ const EnumPropertyItem rna_enum_brush_automasking_flag_items[] = {
     {0, nullptr, 0, nullptr, nullptr}};
 
 const EnumPropertyItem rna_enum_brush_sculpt_tool_items[] = {
-    {SCULPT_TOOL_DRAW, "DRAW", ICON_BRUSH_SCULPT_DRAW, "Draw", ""},
-    {SCULPT_TOOL_DRAW_SHARP, "DRAW_SHARP", ICON_BRUSH_SCULPT_DRAW, "Draw Sharp", ""},
-    {SCULPT_TOOL_CLAY, "CLAY", ICON_BRUSH_CLAY, "Clay", ""},
-    {SCULPT_TOOL_CLAY_STRIPS, "CLAY_STRIPS", ICON_BRUSH_CLAY_STRIPS, "Clay Strips", ""},
-    {SCULPT_TOOL_CLAY_THUMB, "CLAY_THUMB", ICON_BRUSH_CLAY_STRIPS, "Clay Thumb", ""},
-    {SCULPT_TOOL_LAYER, "LAYER", ICON_BRUSH_LAYER, "Layer", ""},
-    {SCULPT_TOOL_INFLATE, "INFLATE", ICON_BRUSH_INFLATE, "Inflate", ""},
-    {SCULPT_TOOL_BLOB, "BLOB", ICON_BRUSH_BLOB, "Blob", ""},
-    {SCULPT_TOOL_CREASE, "CREASE", ICON_BRUSH_CREASE, "Crease", ""},
+    {SCULPT_TOOL_DRAW,
+     "DRAW",
+     ICON_BRUSH_SCULPT_DRAW,
+     "Draw",
+     "Move vertices outward with Smooth Falloff, based the average vertex normals within the "
+     "brush radius.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_DRAW_SHARP,
+     "DRAW_SHARP",
+     ICON_BRUSH_SCULPT_DRAW,
+     "Draw Sharp",
+     "Move vertices inward with Sharper Falloff, based the average vertex normals within the "
+     "brush radius.\n"
+     "\u2022 Ctrl - Move vertices outward"},
+    {SCULPT_TOOL_CLAY,
+     "CLAY",
+     ICON_BRUSH_CLAY,
+     "Clay",
+     "Move vertices outward using round brush shape, based the average vertex normals within the "
+     "brush radius.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_CLAY_STRIPS,
+     "CLAY_STRIPS",
+     ICON_BRUSH_CLAY_STRIPS,
+     "Clay Strips",
+     "Move vertices outward using rectangular brush shape, based the average vertex normals "
+     "within the brush radius.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_CLAY_THUMB,
+     "CLAY_THUMB",
+     ICON_BRUSH_CLAY_STRIPS,
+     "Clay Thumb",
+     "Simulate using thumb to push vertices of the sculpt, in the brushed stroke direction. "
+     "During stroke, it builds volume in front of brush"},
+    {SCULPT_TOOL_LAYER,
+     "LAYER",
+     ICON_BRUSH_LAYER,
+     "Layer",
+     "Move vertices outwards by defined distance. This creates the appearance of a flat layer.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_INFLATE,
+     "INFLATE",
+     ICON_BRUSH_INFLATE,
+     "Inflate",
+     "Move vertices outward with Smooth Falloff, based the individual vertex normals.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_BLOB,
+     "BLOB",
+     ICON_BRUSH_BLOB,
+     "Blob",
+     "Move vertices outward using spherical brush shape. "
+     "This will lead to a more consistent spherical curvature and thickening of strokes.\n"
+     "\u2022 Ctrl - Move vertices inward"},
+    {SCULPT_TOOL_CREASE,
+     "CREASE",
+     ICON_BRUSH_CREASE,
+     "Crease",
+     "Create sharp indents by pushing the mesh, while pinching the vertices together.\n"
+     "\u2022 Ctrl - Create ridges by pulling the mesh"},
     RNA_ENUM_ITEM_SEPR,
-    {SCULPT_TOOL_SMOOTH, "SMOOTH", ICON_BRUSH_SMOOTH, "Smooth", ""},
-    {SCULPT_TOOL_FLATTEN, "FLATTEN", ICON_BRUSH_FLATTEN, "Flatten", ""},
-    {SCULPT_TOOL_FILL, "FILL", ICON_BRUSH_FILL, "Fill", ""},
-    {SCULPT_TOOL_SCRAPE, "SCRAPE", ICON_BRUSH_SCRAPE, "Scrape", ""},
+    {SCULPT_TOOL_SMOOTH,
+     "SMOOTH",
+     ICON_BRUSH_SMOOTH,
+     "Smooth",
+     "Evens out the distance between verticies, to remove irregularities.\n"
+     "\u2022 Ctrl - Enchance irregularities"},
+    {SCULPT_TOOL_FLATTEN,
+     "FLATTEN",
+     ICON_BRUSH_FLATTEN,
+     "Flatten",
+     "Flatten surfaces by pulling and pushing them towards average height. "
+     "The average height is determined within the brush radius.\n"
+     "\u2022 Ctrl - Contrast surfaces by pulling and pushing them away from a average height"},
+    {SCULPT_TOOL_FILL,
+     "FILL",
+     ICON_BRUSH_FILL,
+     "Fill",
+     "Move up vertices, which are below average height, within the brush radius.\n"
+     "\u2022 Ctrl - Move down vertices, which are above average height"},
+    {SCULPT_TOOL_SCRAPE,
+     "SCRAPE",
+     ICON_BRUSH_SCRAPE,
+     "Scrape",
+     "Move down vertices, which are above average height, within the brush radius.\n"
+     "\u2022 Ctrl - Move up vertices, which are below average height"},
     {SCULPT_TOOL_MULTIPLANE_SCRAPE,
      "MULTIPLANE_SCRAPE",
      ICON_BRUSH_SCRAPE,
      "Multi-plane Scrape",
-     ""},
+     "Scrapes the mesh with two angled planes at the same time, creating a sharp edge between "
+     "them. It is useful for creating and polishing hard surface objects.\n"
+     "\u2022 Ctrl - Invert the angle between two planes"},
     {SCULPT_TOOL_PINCH, "PINCH", ICON_BRUSH_PINCH, "Pinch", ""},
     RNA_ENUM_ITEM_SEPR,
     {SCULPT_TOOL_GRAB, "GRAB", ICON_BRUSH_GRAB, "Grab", ""},
