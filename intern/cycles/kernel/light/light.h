@@ -523,10 +523,13 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
   ls->prim = PRIM_NONE;
   ls->lamp = lamp;
 
+#ifdef __LIGHT_TREE__
   /* TODO(weizhen): distribution or triangle without MIS might need another array to recover
    * `emitter_id`. Alternatively, see if we can use other members of LightSample for ReSTIR. */
-  kernel_assert(kernel_data.integrator.use_light_tree);
-  ls->emitter_id = kernel_data_fetch(light_to_tree, ls->lamp),
+  if (kernel_data.integrator.use_light_tree) {
+    ls->emitter_id = kernel_data_fetch(light_to_tree, ls->lamp);
+  }
+#endif
 
   ls->t = isect->t;
   ls->P = ray_P + ray_D * ls->t;
@@ -578,10 +581,11 @@ ccl_device bool light_sample_from_uv(KernelGlobals kg,
   else
 #endif
   {
-    ccl_global const KernelLightDistribution *kdistribution = &kernel_data_fetch(
-        light_distribution, ls->emitter_id);
-    prim = kdistribution->prim;
-    mesh_light = kdistribution->mesh_light;
+    // ccl_global const KernelLightDistribution *kdistribution = &kernel_data_fetch(
+    //     light_distribution, ls->emitter_id);
+    // prim = kdistribution->prim;
+    // mesh_light = kdistribution->mesh_light;
+    prim = ~(ls->lamp);
   }
 
   // if (prim >= 0) {

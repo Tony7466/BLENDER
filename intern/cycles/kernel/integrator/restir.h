@@ -41,13 +41,23 @@ struct SpatialResampling {
   }
 };
 
-ccl_device_inline void integrator_restir_unpack_reservoir(ccl_private Reservoir *reservoir,
+ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
+                                                          ccl_private Reservoir *reservoir,
                                                           const ccl_global float *buffer)
 {
   int i = 0;
   /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
    * instead. */
-  reservoir->ls.emitter_id = (int)buffer[i++];
+
+#ifdef __LIGHT_TREE__
+  if (kernel_data.integrator.use_light_tree) {
+    reservoir->ls.emitter_id = (int)buffer[i++];
+  }
+  else
+#endif
+  {
+    reservoir->ls.lamp = (int)buffer[i++];
+  }
 
   reservoir->ls.u = buffer[i++];
   reservoir->ls.v = buffer[i++];
@@ -124,7 +134,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
     ccl_global const float *buffer = render_buffer + render_buffer_offset +
                                      kernel_data.film.pass_restir_reservoir;
 
-    integrator_restir_unpack_reservoir(reservoir, buffer);
+    integrator_restir_unpack_reservoir(kg, reservoir, buffer);
     integrator_restir_unpack_shader(sd, path_flag, buffer);
   }
 }
