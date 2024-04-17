@@ -270,9 +270,9 @@ void clear_pixel(ColorGeometry4f &color)
   color = ColorGeometry4f(0, 0, 0, 1);
 }
 
-void set_pixel_boundary(ColorGeometry4f &color)
+void set_pixel_boundary(ColorGeometry4f &color, const bool enable = true)
 {
-  color.r = 1.0f;
+  color.r = (enable ? 1.0f : 0.0f);
   color.a = 1.0f;
 }
 
@@ -282,9 +282,9 @@ void set_pixel_filled(ColorGeometry4f &color, const bool enable = true)
   color.a = 1.0f;
 }
 
-void set_pixel_border(ColorGeometry4f &color)
+void set_pixel_border(ColorGeometry4f &color, const bool enable = true)
 {
-  color.b = 1.0f;
+  color.b = (enable ? 1.0f : 0.0f);
   color.a = 1.0f;
 }
 
@@ -615,6 +615,7 @@ template<FillBorderMode border_mode> FillResult fill_boundaries(Image &ima)
         border_contact = true;
       }
     }
+
     if (is_pixel_filled(pixel_value)) {
       /* Pixel already filled. */
       continue;
@@ -677,9 +678,10 @@ void invert_fill(Image &ima)
   MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
                                       width * height);
 
-  /* Initialize the stack with filled pixels (dot at mouse position). */
   for (const int i : pixels.index_range()) {
-    set_pixel_filled(pixels[i], !is_pixel_filled(pixels[i]));
+    const bool is_filled = is_pixel_filled(pixels[i]);
+    set_pixel_boundary(pixels[i], is_filled);
+    set_pixel_filled(pixels[i], !is_filled);
   }
 
   BKE_image_release_ibuf(&ima, ibuf, lock);
@@ -992,13 +994,21 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   mark_borders(*ima, border_color);
 
   /* Apply boundary fill */
-  FillResult fill_result = fill_boundaries<FillBorderMode::Ignore>(*ima);
-  if (fill_result != FillResult::Success) {
-    return {};
-  }
-
   if (invert) {
+    /* When inverted accept border fill, image borders are valid boundaries. */
+    FillResult fill_result = fill_boundaries<FillBorderMode::Ignore>(*ima);
+    if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
+      return {};
+    }
+    /* Make fills into boundaries and vice versa for finding exterior boundaries. */
     invert_fill(*ima);
+  }
+  else {
+    /* Cancel when encountering a border, counts as failure. */
+    FillResult fill_result = fill_boundaries<FillBorderMode::Cancel>(*ima);
+    if (fill_result != FillResult::Success) {
+      return {};
+    }
   }
 
   Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
