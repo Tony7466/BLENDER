@@ -61,10 +61,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
-  // TODO: Resolve comparison by pointer from different depsgraphs.
   const Object *self_object = params.self_object();
-  const bool is_recursive = BKE_collection_has_object_recursive_instanced(
-      collection, const_cast<Object *>(self_object));
+  /* Compare by #session_uid because objects may be copied into separate depsgraphs. */
+  const bool is_recursive = BKE_collection_has_object_recursive_instanced_session_uid(
+      collection, self_object->id.session_uid);
   if (is_recursive) {
     params.error_message_add(NodeWarningType::Error, TIP_("Collection contains current object"));
     params.set_default_remaining_outputs();

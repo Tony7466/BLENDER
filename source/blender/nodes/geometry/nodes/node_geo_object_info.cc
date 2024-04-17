@@ -70,13 +70,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Scale", scale);
 
   if (params.output_is_required("Geometry")) {
-    // TODO: Resolve comparison by pointer from different depsgraphs.
-    if (object == self_object) {
+    /* Compare by #session_uid because objects may be copied into separate depsgraphs. */
+    if (object->id.session_uid == self_object->id.session_uid) {
       params.error_message_add(NodeWarningType::Error,
                                TIP_("Geometry cannot be retrieved from the modifier object"));
       params.set_default_remaining_outputs();
       return;
     }
+    BLI_assert(object != self_object);
 
     GeometrySet geometry_set;
     if (params.get_input<bool>("As Instance")) {

@@ -212,11 +212,9 @@ static void store_result_geometry(
 
       /* Anonymous attributes shouldn't be available on the applied geometry. */
       new_curves->geometry.wrap().attributes_for_write().remove_anonymous();
-      BKE_object_material_from_eval_data(&bmain, &object, &new_curves->id);
 
-      if (&curves != new_curves) {
-        curves.geometry.wrap() = std::move(new_curves->geometry.wrap());
-      }
+      curves.geometry.wrap() = std::move(new_curves->geometry.wrap());
+      BKE_object_material_from_eval_data(&bmain, &object, &new_curves->id);
       break;
     }
     case OB_POINTCLOUD: {
@@ -231,12 +229,9 @@ static void store_result_geometry(
 
       /* Anonymous attributes shouldn't be available on the applied geometry. */
       new_points->attributes_for_write().remove_anonymous();
+
       BKE_object_material_from_eval_data(&bmain, &object, &new_points->id);
-
-      if (&points != new_points) {
-        BKE_pointcloud_nomain_to_pointcloud(new_points, &points);
-      }
-
+      BKE_pointcloud_nomain_to_pointcloud(new_points, &points);
       break;
     }
     case OB_MESH: {
@@ -255,17 +250,15 @@ static void store_result_geometry(
       else {
         /* Anonymous attributes shouldn't be available on the applied geometry. */
         new_mesh->attributes_for_write().remove_anonymous();
-        BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
 
+        BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
         if (object.mode == OB_MODE_EDIT) {
           EDBM_mesh_make_from_mesh(&object, new_mesh, scene.toolsettings->selectmode, true);
           BKE_editmesh_looptris_and_normals_calc(mesh.runtime->edit_mesh);
           BKE_id_free(nullptr, new_mesh);
         }
         else {
-          if (&mesh != new_mesh) {
-            BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
-          }
+          BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
         }
       }
 
@@ -1030,8 +1023,7 @@ static bool unassigned_local_poll(const bContext &C)
   }
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(*active_object);
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu.
-     */
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }
@@ -1076,8 +1068,7 @@ static void catalog_assets_draw_unassigned(const bContext *C, Menu *menu)
   bool add_separator = !tree->unassigned_assets.is_empty();
   Main &bmain = *CTX_data_main(C);
   LISTBASE_FOREACH (const bNodeTree *, group, &bmain.nodetrees) {
-    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu.
-     */
+    /* Assets are displayed in other menus, and non-local data-blocks aren't added to this menu. */
     if (group->id.library_weak_reference || group->id.asset_data) {
       continue;
     }
