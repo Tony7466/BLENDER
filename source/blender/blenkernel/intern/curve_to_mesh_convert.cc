@@ -191,15 +191,19 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
     std::cout << "dir_a: " << dir_a << '\n';
     const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
     std::cout << "dir_b: " << dir_b << '\n';
-    const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
+    // const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
     // const float angle = angle_v3v3v3(positions[i - 1], positions[i], positions[i + 1]);
     // std::cout << "angle: " << angle << '\n';
     // const float factor = shell_angle_to_dist(angle);
+    const float dot = math::dot(dir_a, dir_b);
+    std::cout << "dot: " << dot << '\n';
+    const float factor = dot < FLT_EPSILON ? 1.0f : math::rcp(math::abs(dot));
     std::cout << "factor: " << factor << '\n';
     // if (factor != 1.0f) {
     const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
+    const float3 normal = math::is_zero(tri_normal) ? normals[i] : tri_normal;
     std::cout << "tri_normal: " << tri_normal << '\n';
-    const float3x3 base = math::from_orthonormal_axes<float3x3>(tangents[i], tri_normal);
+    const float3x3 base = math::from_orthonormal_axes<float3x3>(tangents[i], normal);
     std::cout << "base: " << base << '\n';
     const float3x3 scale = math::scale(base, float3(1.0f, factor, 1.0f));
     std::cout << "scale: " << scale << '\n';
