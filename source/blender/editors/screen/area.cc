@@ -912,7 +912,7 @@ void ED_workspace_status_item(bContext *C, std::string text, const int icon, con
     ED_workspace_status_space(C, 0.6f);
   }
   text += ": ";
-  text += enabled ? "ON" : "off";
+  text += enabled ? "✔" : "🚫";
   ED_workspace_status_item(C, text, ICON_NONE);
   ED_workspace_status_space(C, 0.6f);
 }
@@ -960,7 +960,7 @@ void ED_workspace_status_opmodal(
     bContext *C, std::string text, wmOperatorType *ot, const int propvalue, const bool enabled)
 {
   text += ": ";
-  text += enabled ? "ON" : "off";
+  text += enabled ? "✔" : "🚫";
   ED_workspace_status_opmodal(C, text, ot, propvalue);
 }
 
