@@ -25,12 +25,14 @@ static Result horizontal_pass(Context &context, Result &input, float radius)
   const DericheGaussianCoefficients &coefficients =
       context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_4fv(
-      shader, "causal_feedforward_coefficients", coefficients.causal_feedforward_coefficients());
+  GPU_shader_uniform_4fv(shader,
+                         "causal_feedforward_coefficients",
+                         float4(coefficients.causal_feedforward_coefficients()));
   GPU_shader_uniform_4fv(shader,
                          "non_causal_feedforward_coefficients",
-                         coefficients.non_causal_feedforward_coefficients());
-  GPU_shader_uniform_4fv(shader, "feedback_coefficients", coefficients.feedback_coefficients());
+                         float4(coefficients.non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_4fv(
+      shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
 
   input.bind_as_texture(shader, "input_tx");
 
@@ -73,12 +75,14 @@ static void vertical_pass(Context &context,
   const DericheGaussianCoefficients &coefficients =
       context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_4fv(
-      shader, "causal_feedforward_coefficients", coefficients.causal_feedforward_coefficients());
+  GPU_shader_uniform_4fv(shader,
+                         "causal_feedforward_coefficients",
+                         float4(coefficients.causal_feedforward_coefficients()));
   GPU_shader_uniform_4fv(shader,
                          "non_causal_feedforward_coefficients",
-                         coefficients.non_causal_feedforward_coefficients());
-  GPU_shader_uniform_4fv(shader, "feedback_coefficients", coefficients.feedback_coefficients());
+                         float4(coefficients.non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_4fv(
+      shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
 
   horizontal_pass_result.bind_as_texture(shader, "input_tx");
 

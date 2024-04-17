@@ -37,16 +37,16 @@ bool operator==(const DericheGaussianCoefficientsKey &a, const DericheGaussianCo
  * approximating a Gaussian filter computed using Deriche's design method. */
 class DericheGaussianCoefficients : public CachedResource {
  private:
-  float4 feedback_coefficients_;
-  float4 causal_feedforward_coefficients_;
-  float4 non_causal_feedforward_coefficients_;
+  double4 feedback_coefficients_;
+  double4 causal_feedforward_coefficients_;
+  double4 non_causal_feedforward_coefficients_;
 
  public:
   DericheGaussianCoefficients(Context &context, float sigma);
 
-  const float4 &feedback_coefficients() const;
-  const float4 &causal_feedforward_coefficients() const;
-  const float4 &non_causal_feedforward_coefficients() const;
+  const double4 &feedback_coefficients() const;
+  const double4 &causal_feedforward_coefficients() const;
+  const double4 &non_causal_feedforward_coefficients() const;
 };
 
 /* ------------------------------------------------------------------------------------------------
