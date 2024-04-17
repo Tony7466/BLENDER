@@ -6352,9 +6352,9 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
 /** \name Modal Keymap Status
  * \{ */
 
-wmKeyMap *WM_window_modal_keymap(bContext *C, wmOperator **op_r)
+wmOperator *WM_window_modal_operator(bContext *C, wmKeyMap **km_r)
 {
-  wmKeyMap *keymap = nullptr;
+  wmOperator *op = nullptr;
   wmWindow *win = CTX_wm_window(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
@@ -6365,20 +6365,22 @@ wmKeyMap *WM_window_modal_keymap(bContext *C, wmOperator **op_r)
         wmOperator *op_test = handler->op->opm ? handler->op->opm : handler->op;
         wmKeyMap *keymap_test = WM_keymap_active(wm, op_test->type->modalkeymap);
         if (keymap_test && keymap_test->modal_items) {
-          keymap = keymap_test;
-          *op_r = op_test;
+          if (km_r) {
+            *km_r = keymap_test;
+          }
+          op = op_test;
           break;
         }
       }
     }
   }
-  return keymap;
+  return op;
 }
 
 bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *layout)
 {
-  wmOperator *op = nullptr;
-  wmKeyMap *keymap = WM_window_modal_keymap(C, &op);
+  wmKeyMap *keymap = nullptr;
+  wmOperator *op = WM_window_modal_operator(C, &keymap);
   if (keymap == nullptr || keymap->modal_items == nullptr) {
     return false;
   }

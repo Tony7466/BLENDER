@@ -794,15 +794,12 @@ static void applyEdgeSlide(TransInfo *t)
 
   ED_area_status_text(t->area, str);
 
-  ED_workspace_status_begin(t->context);
-
-  std::string desc;
-
-  wmOperator *op = nullptr;
-  wmKeyMap *keymap = WM_window_modal_keymap(t->context, &op);
-  if (keymap == nullptr || keymap->modal_items == nullptr) {
+  wmOperator *op = WM_window_modal_operator(t->context);
+  if (!op) {
     return;
   }
+
+  ED_workspace_status_begin(t->context);
 
   ED_workspace_status_operator(t->context, TIP_("Confirm"), op->type, TFM_MODAL_CONFIRM);
   ED_workspace_status_operator(t->context, TIP_("Cancel"), op->type, TFM_MODAL_CONFIRM);
@@ -815,6 +812,7 @@ static void applyEdgeSlide(TransInfo *t)
   ED_workspace_status_operator(t->context, TIP_("Resize"), op->type, TFM_MODAL_RESIZE);
   ED_workspace_status_operator(+t->context, TIP_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
 
+  std::string desc;
   desc = IFACE_("Clamp: ");
   desc += WM_bool_as_string(is_clamp);
   ED_workspace_status_icons(t->context, ICON_EVENT_C, ICON_EVENT_ALT);

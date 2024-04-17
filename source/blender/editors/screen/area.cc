@@ -963,8 +963,7 @@ void ED_workspace_status_operator(bContext *C,
                                   wmOperatorType *ot,
                                   const int propvalue)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
-  wmKeyMap *keymap = WM_keymap_active(wm, ot->modalkeymap);
+  wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C), ot->modalkeymap);
   if (keymap) {
     ED_workspace_status_keymap(C, text, WM_modalkeymap_find_propvalue(keymap, propvalue));
   }
