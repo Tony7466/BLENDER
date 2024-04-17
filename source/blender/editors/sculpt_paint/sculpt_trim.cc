@@ -725,8 +725,8 @@ static int gesture_box_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  initialize_cursor_info(*C, *op, *gesture_data);
   init_operation(*gesture_data, *op);
+  initialize_cursor_info(*C, *op, *gesture_data);
 
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
@@ -754,8 +754,8 @@ static int gesture_lasso_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  initialize_cursor_info(*C, *op, *gesture_data);
   init_operation(*gesture_data, *op);
+  initialize_cursor_info(*C, *op, *gesture_data);
 
   gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
