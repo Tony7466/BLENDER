@@ -1097,9 +1097,12 @@ static int brush_asset_edit_metadata_exec(bContext *C, wmOperator *op)
   const Brush *brush = (paint) ? BKE_paint_brush_for_read(paint) : nullptr;
   BLI_assert(ID_IS_ASSET(&brush->id));
   const AssetWeakReference &brush_weak_ref = *paint->brush_asset_reference;
-  const asset_system::AssetRepresentation &asset = *asset::find_asset_from_weak_ref(
+  const asset_system::AssetRepresentation *asset = asset::find_asset_from_weak_ref(
       *C, brush_weak_ref, op->reports);
-  const asset_system::AssetLibrary &library_const = asset.owner_asset_library();
+  if (!asset) {
+    return OPERATOR_CANCELLED;
+  }
+  const asset_system::AssetLibrary &library_const = asset->owner_asset_library();
   const AssetLibraryReference library_ref = *library_to_library_ref(library_const);
   asset_system::AssetLibrary *library = AS_asset_library_load(bmain, library_ref);
 
@@ -1143,10 +1146,13 @@ static int brush_asset_edit_metadata_invoke(bContext *C, wmOperator *op, const w
 {
   const Paint *paint = BKE_paint_get_active_from_context(C);
   const AssetWeakReference &brush_weak_ref = *paint->brush_asset_reference;
-  const asset_system::AssetRepresentation &asset = *asset::find_asset_from_weak_ref(
+  const asset_system::AssetRepresentation *asset = asset::find_asset_from_weak_ref(
       *C, brush_weak_ref, op->reports);
-  const asset_system::AssetLibrary &library = asset.owner_asset_library();
-  const AssetMetaData &meta_data = asset.get_metadata();
+  if (!asset) {
+    return OPERATOR_CANCELLED;
+  }
+  const asset_system::AssetLibrary &library = asset->owner_asset_library();
+  const AssetMetaData &meta_data = asset->get_metadata();
 
   if (!RNA_struct_property_is_set(op->ptr, "catalog_path")) {
     const asset_system::CatalogID &id = meta_data.catalog_id;
@@ -1173,9 +1179,12 @@ static void visit_active_library_catalogs_catalog_for_search_fn(
 {
   const Paint *paint = BKE_paint_get_active_from_context(C);
   const AssetWeakReference &brush_weak_ref = *paint->brush_asset_reference;
-  const asset_system::AssetRepresentation &asset = *asset::find_asset_from_weak_ref(
+  const asset_system::AssetRepresentation *asset = asset::find_asset_from_weak_ref(
       *C, brush_weak_ref, nullptr);
-  const asset_system::AssetLibrary &library = asset.owner_asset_library();
+  if (!asset) {
+    return;
+  }
+  const asset_system::AssetLibrary &library = asset->owner_asset_library();
 
   /* NOTE: Using the all library would also be a valid choice. */
   visit_library_catalogs_catalog_for_search(
