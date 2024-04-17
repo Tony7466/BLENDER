@@ -174,8 +174,7 @@ static Mesh *create_mesh_from_volume(GeometrySet &geometry_set, GeoNodeExecParam
     return nullptr;
   }
 
-  const Main *bmain = params.bmain();
-  BKE_volume_load(volume, bmain);
+  BKE_volume_load(volume, params.bmain());
 
   Vector<bke::VolumeTreeAccessToken> tree_tokens;
   Vector<const openvdb::GridBase *> grids;
