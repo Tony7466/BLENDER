@@ -17,7 +17,7 @@
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "BLI_math_matrix_types.hh"
 
@@ -26,6 +26,12 @@
 extern "C" char datatoc_glsl_shader_defines_glsl[];
 
 namespace blender::gpu {
+
+void VKDevice::reinit()
+{
+  samplers_.free();
+  samplers_.init();
+}
 
 void VKDevice::deinit()
 {
@@ -43,6 +49,7 @@ void VKDevice::deinit()
   samplers_.free();
   destroy_discarded_resources();
   vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
+  descriptor_set_layouts_.deinit();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
 

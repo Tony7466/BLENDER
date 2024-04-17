@@ -1475,7 +1475,7 @@ static void rna_def_gpencil_guides(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GPencilSculptGuide", nullptr);
   RNA_def_struct_sdna(srna, "GP_Sculpt_Guide");
   RNA_def_struct_path_func(srna, "rna_GPencilSculptGuide_path");
-  RNA_def_struct_ui_text(srna, "GPencil Sculpt Guide", "Guides for drawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Sculpt Guide", "Guides for drawing");
 
   static const EnumPropertyItem prop_gpencil_guidetypes[] = {
       {GP_GUIDE_CIRCULAR, "CIRCULAR", 0, "Circular", "Use single point to create rings"},
@@ -1562,14 +1562,6 @@ static void rna_def_gpencil_guides(BlenderRNA *brna)
 
 static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 {
-  static const EnumPropertyItem prop_direction_items[] = {
-      {0, "ADD", ICON_ADD, "Add", "Add effect of brush"},
-      {GP_SCULPT_FLAG_INVERT, "SUBTRACT", ICON_REMOVE, "Subtract", "Subtract effect of brush"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  UNUSED_VARS(prop_direction_items);
-
   StructRNA *srna;
   PropertyRNA *prop;
 

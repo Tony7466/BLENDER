@@ -150,8 +150,8 @@ set(GLSL_SRC
   shaders/compositor_ellipse_mask.glsl
   shaders/compositor_filter.glsl
   shaders/compositor_flip.glsl
-  shaders/compositor_glare_fog_glow_downsample.glsl
-  shaders/compositor_glare_fog_glow_upsample.glsl
+  shaders/compositor_glare_bloom_downsample.glsl
+  shaders/compositor_glare_bloom_upsample.glsl
   shaders/compositor_glare_ghost_accumulate.glsl
   shaders/compositor_glare_ghost_base.glsl
   shaders/compositor_glare_highlights.glsl
@@ -191,11 +191,14 @@ set(GLSL_SRC
   shaders/compositor_parallel_reduction.glsl
   shaders/compositor_pixelate.glsl
   shaders/compositor_plane_deform.glsl
+  shaders/compositor_plane_deform_mask.glsl
   shaders/compositor_plane_deform_motion_blur.glsl
+  shaders/compositor_plane_deform_motion_blur_mask.glsl
   shaders/compositor_premultiply_alpha.glsl
   shaders/compositor_projector_lens_distortion.glsl
   shaders/compositor_read_input.glsl
   shaders/compositor_realize_on_domain.glsl
+  shaders/compositor_scale_variable.glsl
   shaders/compositor_screen_lens_distortion.glsl
   shaders/compositor_smaa_blending_weight_calculation.glsl
   shaders/compositor_smaa_edge_detection.glsl
@@ -315,11 +318,11 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_parallel_reduction_info.hh
   shaders/infos/compositor_pixelate_info.hh
   shaders/infos/compositor_plane_deform_info.hh
-  shaders/infos/compositor_plane_deform_motion_blur_info.hh
   shaders/infos/compositor_premultiply_alpha_info.hh
   shaders/infos/compositor_projector_lens_distortion_info.hh
   shaders/infos/compositor_read_input_info.hh
   shaders/infos/compositor_realize_on_domain_info.hh
+  shaders/infos/compositor_scale_variable_info.hh
   shaders/infos/compositor_screen_lens_distortion_info.hh
   shaders/infos/compositor_smaa_info.hh
   shaders/infos/compositor_split_info.hh

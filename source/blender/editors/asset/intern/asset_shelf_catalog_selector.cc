@@ -66,8 +66,7 @@ class AssetCatalogSelectorTree : public ui::AbstractTreeView {
     catalog_tree_.foreach_root_item(
         [this](const asset_system::AssetCatalogTreeItem &catalog_item) {
           Item &item = build_catalog_items_recursive(*this, catalog_item);
-          /* Uncollapse root items by default (user edits will override this just fine). */
-          item.set_collapsed(false);
+          item.uncollapse_by_default();
         });
   }
 
@@ -135,10 +134,6 @@ class AssetCatalogSelectorTree : public ui::AbstractTreeView {
       uiBlock *block = uiLayoutGetBlock(&row);
 
       uiLayoutSetEmboss(&row, UI_EMBOSS);
-
-      if (!is_collapsible()) {
-        uiItemL(&row, nullptr, ICON_BLANK1);
-      }
 
       uiLayout *subrow = uiLayoutRow(&row, false);
       uiLayoutSetActive(subrow, catalog_path_enabled_);
