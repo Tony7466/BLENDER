@@ -434,7 +434,7 @@ void OVERLAY_armature_cache_init(OVERLAY_Data *vedata)
       }
       DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
       GPUTexture **depth_tex = &dtxl->depth;
-      const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE) == 0;
+      const bool do_smooth_wire = U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE;
 
       sh = OVERLAY_shader_armature_shape(true);
       cb->solid.custom_outline = grp = DRW_shgroup_create(sh, armature_ps);
