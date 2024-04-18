@@ -109,7 +109,7 @@ class BlurOperation : public NodeOperation {
     }
 
     if (node_storage(bnode()).filtertype == R_FILTER_FAST_GAUSS) {
-      deriche_gaussian_blur(
+      van_vliet_gaussian_blur(
           context(), get_input("Image"), get_result("Image"), compute_blur_radius());
     }
     else if (use_variable_size()) {
