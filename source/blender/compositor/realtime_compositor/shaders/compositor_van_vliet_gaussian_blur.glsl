@@ -25,7 +25,7 @@ void main()
       causal_outputs[0] -= feedback_coefficients[i] * causal_outputs[i + 1];
     }
 
-    imageStore(output_img, texel.yx, vec4(causal_outputs[0]));
+    imageStore(output_img, texel.yx, causal_outputs[0]);
 
     for (int i = FILTER_ORDER; i >= 1; i--) {
       causal_outputs[i] = causal_outputs[i - 1];
@@ -39,7 +39,7 @@ void main()
 
   for (int x = width - 1; x >= 0; x--) {
     ivec2 texel = ivec2(x, y);
-    vec4 non_causal_input = imageLoad(output_img, texel);
+    vec4 non_causal_input = imageLoad(output_img, texel.yx);
 
     non_causal_outputs[0] = feedforward_coefficient * non_causal_input;
     for (int i = 0; i < FILTER_ORDER; i++) {
