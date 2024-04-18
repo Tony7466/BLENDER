@@ -653,13 +653,13 @@ int UI_icon_from_event_type(short event_type, short event_value)
   } while ((di = di->data.input.next));
 
   if (event_type == LEFTMOUSE) {
-    return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_LMB : ICON_MOUSE_LMB_DRAG;
+    return (event_value == KM_CLICK_DRAG) ? ICON_MOUSE_LMB_DRAG : ICON_MOUSE_LMB;
   }
   if (event_type == MIDDLEMOUSE) {
-    return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_MMB : ICON_MOUSE_MMB_DRAG;
+    return (event_value == KM_CLICK_DRAG) ? ICON_MOUSE_MMB_DRAG : ICON_MOUSE_MMB;
   }
   if (event_type == RIGHTMOUSE) {
-    return ELEM(event_value, KM_CLICK, KM_PRESS) ? ICON_MOUSE_RMB : ICON_MOUSE_RMB_DRAG;
+    return (event_value == KM_CLICK_DRAG) ? ICON_MOUSE_MMB_DRAG : ICON_MOUSE_RMB;
   }
 
   return ICON_NONE;

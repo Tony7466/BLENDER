@@ -944,8 +944,8 @@ void ED_workspace_status_opmodal(bContext *C,
       }
 
       if (kmi->val == KM_DBL_CLICK) {
-        ED_workspace_status_item(C, "2x", ICON_NONE);
-        ED_workspace_status_space(C, -0.8f);
+        ED_workspace_status_item(C, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
+        ED_workspace_status_space(C, -1.2f);
       }
 
       if (icon) {
