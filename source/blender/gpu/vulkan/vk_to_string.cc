@@ -16,7 +16,7 @@ namespace blender::gpu {
 static std::string to_string_handle(uint64_t vk_handle)
 {
   std::stringstream ss;
-  ss << "0x" << std::hex << std::noshowbase << vk_handle;
+  ss << std::hex << std::showbase << vk_handle;
   return ss.str();
 }
 
