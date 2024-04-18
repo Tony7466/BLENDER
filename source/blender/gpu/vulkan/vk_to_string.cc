@@ -13,6 +13,8 @@
 #include "vk_to_string.hh"
 
 namespace blender::gpu {
+
+/** Portable printing of vulkan handles across platforms. */
 static std::string to_string_handle(uint64_t vk_handle)
 {
   std::stringstream ss;
@@ -36,6 +38,11 @@ std::string to_string(VkRenderPass vk_handle)
 }
 
 std::string to_string(VkFramebuffer vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkPipelineLayout vk_handle)
 {
   return to_string_handle(uint64_t(vk_handle));
 }
