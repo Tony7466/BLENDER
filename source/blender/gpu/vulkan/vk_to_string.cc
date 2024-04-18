@@ -13,47 +13,41 @@
 #include "vk_to_string.hh"
 
 namespace blender::gpu {
+static std::string to_string_handle(uint64_t vk_handle)
+{
+  std::stringstream ss;
+  ss << "0x" << std::hex << std::noshowbase << vk_handle;
+  return ss.str();
+}
 
 std::string to_string(VkBuffer vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 std::string to_string(VkImage vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 std::string to_string(VkRenderPass vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 std::string to_string(VkFramebuffer vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 std::string to_string(VkPipeline vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 std::string to_string(VkDescriptorSet vk_handle)
 {
-  char result[16];
-  BLI_snprintf(result, sizeof(result), "%p", vk_handle);
-  return std::string(result);
+  return to_string_handle(uint64_t(vk_handle));
 }
 
 const char *to_string(const VkFilter vk_filter)
