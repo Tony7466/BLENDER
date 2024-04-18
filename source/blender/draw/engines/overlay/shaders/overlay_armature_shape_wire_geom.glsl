@@ -54,14 +54,9 @@ void main()
     half_size += 0.5;
   }
 
-  const vec2 line = abs(screen_space_pos[0] - screen_space_pos[1]) * sizeViewport.xy;
-  vec2 edge_ofs = half_size * sizeViewportInv;
-  if (line.x > line.y) {
-    edge_ofs[0] = 0.0;
-  }
-  else {
-    edge_ofs[1] = 0.0;
-  }
+  const vec2 line = (screen_space_pos[0] - screen_space_pos[1]) * sizeViewport.xy;
+  const vec2 line_norm = normalize(vec2(line[1], -line[0]));
+  vec2 edge_ofs = (half_size * line_norm) * sizeViewportInv;
 
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
