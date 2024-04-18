@@ -21,6 +21,11 @@
 namespace blender::gpu::render_graph {
 
 /**
+ * Index of a node inside the render graph.
+ */
+using NodeHandle = uint64_t;
+
+/**
  * Node stored inside a render graph.
  *
  * Node specific data in the render graph are stored in a vector to ensure that the data can be
@@ -62,18 +67,17 @@ struct VKRenderGraphNode {
   /**
    * Build the input/output links for this.
    *
-   * Newly created links are added to the `links` parameter.
+   * Newly created links are added to the `node_links` parameter.
    */
   template<typename NodeInfo>
   void build_links(VKResourceStateTracker &resources,
-                   VKRenderGraphLinks &links,
-                   NodeHandle node_handle,
+                   VKRenderGraphNodeLinks &node_links,
                    const typename NodeInfo::CreateInfo &create_info)
   {
     /* Instance of NodeInfo is needed to call virtual methods. CPP doesn't support overloading of
      * static methods.*/
     NodeInfo node_info;
-    node_info.build_links(resources, links, node_handle, create_info);
+    node_info.build_links(resources, node_links, create_info);
   }
 
   /**

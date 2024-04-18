@@ -39,16 +39,14 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `links`.
+   * Extract read/write resource dependencies from `create_info` and add them to `node_links`.
    */
   void build_links(VKResourceStateTracker &resources,
-                   VKRenderGraphLinks &links,
-                   NodeHandle node_handle,
+                   VKRenderGraphNodeLinks &node_links,
                    const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
-    links.add_output(
-        node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
+    node_links.add_output(resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
   }
 
   /**

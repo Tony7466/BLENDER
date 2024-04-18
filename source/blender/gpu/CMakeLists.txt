@@ -224,7 +224,6 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_resource_state_tracker.cc
   vulkan/render_graph/vk_scheduler.cc
   vulkan/render_graph/vk_render_graph.cc
-  vulkan/render_graph/vk_render_graph_links.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_samplers.cc

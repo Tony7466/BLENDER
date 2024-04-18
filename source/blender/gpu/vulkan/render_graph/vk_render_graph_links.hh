@@ -23,53 +23,41 @@
 #include "vk_resource_state_tracker.hh"
 
 namespace blender::gpu::render_graph {
-/**
- * Index of a node inside the render graph.
- * Defined here to solve a include dependency cycle.
- */
-using NodeHandle = uint64_t;
 
-/**
- * Class containing all links inside the render graph.
- */
-class VKRenderGraphLinks : NonCopyable, NonMovable {
- public:
-  struct Link {
-    /**
-     * Which resource is being accessed.
-     */
-    ResourceWithStamp resource;
-
-    /**
-     * How is the resource being accessed.
-     *
-     * When generating pipeline barriers of a resource, the nodes access flags are evaluated to
-     * create src/dst access masks.
-     */
-    VkAccessFlags vk_access_flags;
-
-    /**
-     * When resource is an image, which layout should the image be using.
-     *
-     * When generating the commands this attribute is compared with the actual image layout of the
-     * the image. Additional pipeline barriers will be added to transit to the layout stored here.
-     */
-    VkImageLayout vk_image_layout;
-  };
-
-  struct NodeLinks {
-    /** All links to resources that a node reads from. */
-    Vector<Link> inputs;
-    /** All links to resources that a node writes to. */
-    Vector<Link> outputs;
-  };
-
- private:
-  Vector<NodeLinks> links_per_node_;
-
- public:
+struct VKRenderGraphLink {
   /**
-   * Add an input link for the given node handle.
+   * Which resource is being accessed.
+   */
+  ResourceWithStamp resource;
+
+  /**
+   * How is the resource being accessed.
+   *
+   * When generating pipeline barriers of a resource, the nodes access flags are evaluated to
+   * create src/dst access masks.
+   */
+  VkAccessFlags vk_access_flags;
+
+  /**
+   * When resource is an image, which layout should the image be using.
+   *
+   * When generating the commands this attribute is compared with the actual image layout of the
+   * the image. Additional pipeline barriers will be added to transit to the layout stored here.
+   */
+  VkImageLayout vk_image_layout;
+};
+
+/**
+ * All input and output links of a node in the render graph.
+ */
+struct VKRenderGraphNodeLinks {
+  /** All links to resources that a node reads from. */
+  Vector<VKRenderGraphLink> inputs;
+  /** All links to resources that a node writes to. */
+  Vector<VKRenderGraphLink> outputs;
+
+  /**
+   * Add an input link.
    *
    * An input link describes a resource that the node reads from.
    *
@@ -81,13 +69,19 @@ class VKRenderGraphLinks : NonCopyable, NonMovable {
    * (`vk_image_layout`) to ensure correct image layout transition. For buffer resources this can
    * be set to `VK_IMAGE_LAYOUT_UNDEFINED`.
    */
-  void add_input(NodeHandle handle,
-                 ResourceWithStamp resource_handle,
+  void add_input(ResourceWithStamp resource_handle,
                  VkAccessFlags vk_access_flags,
-                 VkImageLayout vk_image_layout);
+                 VkImageLayout vk_image_layout)
+  {
+    VKRenderGraphLink link = {};
+    link.resource = resource_handle;
+    link.vk_access_flags = vk_access_flags;
+    link.vk_image_layout = vk_image_layout;
+    inputs.append(link);
+  }
 
   /**
-   * Add an output link for the given node handle.
+   * Add an output link.
    *
    * An output link describes a resource that the node modifies/writes to.
    *
@@ -99,38 +93,16 @@ class VKRenderGraphLinks : NonCopyable, NonMovable {
    * (`vk_image_layout`) to ensure correct image layout transition. For buffer resources this can
    * be set to `VK_IMAGE_LAYOUT_UNDEFINED`.
    */
-  void add_output(NodeHandle handle,
-                  ResourceWithStamp resource_handle,
+  void add_output(ResourceWithStamp resource_handle,
                   VkAccessFlags vk_access_flags,
-                  VkImageLayout vk_image_layout);
-
-  /**
-   * Get all outputs connected to the given node_handle.
-   *
-   * Output links contain resources that the node modified/writes to.
-   */
-  Span<Link> get_outputs(NodeHandle node_handle)
+                  VkImageLayout vk_image_layout)
   {
-    return links_per_node_[node_handle].outputs;
+    VKRenderGraphLink link = {};
+    link.resource = resource_handle;
+    link.vk_access_flags = vk_access_flags;
+    link.vk_image_layout = vk_image_layout;
+    outputs.append(link);
   }
-
-  /**
-   * Get all inputs connected to the given node_handle.
-   *
-   * Input links contain resources that the node reads from.
-   */
-  Span<Link> get_inputs(NodeHandle node_handle)
-  {
-    return links_per_node_[node_handle].inputs;
-  }
-
-  /**
-   * Remove all links for the given node_handles.
-   */
-  void remove_links(Span<NodeHandle> node_handles);
-
- private:
-  void ensure_capacity(NodeHandle node_handle);
 };
 
 }  // namespace blender::gpu::render_graph

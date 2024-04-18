@@ -27,9 +27,11 @@ void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
                  "Currently only supporting removing all nodes. The VKScheduler doesn't walk the "
                  "nodes, and will use incorrect ordering when not all nodes are removed. This "
                  "needs to be fixed when implementing a better scheduler.");
-  links_.remove_links(node_handles);
+  links_.clear();
   nodes_.clear();
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Submit graph

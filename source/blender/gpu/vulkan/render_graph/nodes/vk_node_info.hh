@@ -85,11 +85,10 @@ class VKNodeInfo : public NonCopyable {
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info);
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `links`.
+   * Extract read/write resource dependencies from `create_info` and add them to `node_links`.
    */
   virtual void build_links(VKResourceStateTracker &resources,
-                           VKRenderGraphLinks &links,
-                           NodeHandle node_handle,
+                           VKRenderGraphNodeLinks &node_links,
                            const CreateInfo &create_info) = 0;
 
   /**

@@ -58,9 +58,9 @@ class VKRenderGraph : public NonCopyable {
   friend class VKCommandBuilder;
   friend class VKScheduler;
 
-  /** All links inside the graph. */
-  VKRenderGraphLinks links_;
-  /** All nodes inside the graph. */
+  /** All links inside the graph indexable via NodeHandle. */
+  Vector<VKRenderGraphNodeLinks> links_;
+  /** All nodes inside the graph indexable via NodeHandle. */
   Vector<VKRenderGraphNode> nodes_;
   /** Scheduler decides which nodes to select and in what order to execute them. */
   VKScheduler scheduler_;
@@ -118,9 +118,13 @@ class VKRenderGraph : public NonCopyable {
     std::scoped_lock lock(resources_.mutex);
     static VKRenderGraphNode node_template = {};
     NodeHandle node_handle = nodes_.append_and_get_index(node_template);
+    if (nodes_.size() > links_.size()) {
+      links_.resize(nodes_.size());
+    }
     VKRenderGraphNode &node = nodes_[node_handle];
+    VKRenderGraphNodeLinks &node_links = links_[node_handle];
     node.set_node_data<NodeInfo>(create_info);
-    node.build_links<NodeInfo>(resources_, links_, node_handle, create_info);
+    node.build_links<NodeInfo>(resources_, node_links, create_info);
   }
 
  public:

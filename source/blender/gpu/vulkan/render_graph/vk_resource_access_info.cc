@@ -31,21 +31,20 @@ static constexpr VkAccessFlags VK_ACCESS_WRITE_MASK =
     VK_ACCESS_HOST_WRITE_BIT;
 
 void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
-                                       VKRenderGraphLinks &links,
-                                       NodeHandle node_handle) const
+                                       VKRenderGraphNodeLinks &node_links) const
 {
   for (const VKBufferAccess &buffer_access : buffers) {
     VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer(buffer_access.vk_buffer);
-      links.add_input(node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
+      node_links.add_input(versioned_resource, read_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
     VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_buffer_and_increase_version(
           buffer_access.vk_buffer);
-      links.add_output(node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
+      node_links.add_output(versioned_resource, write_access, VK_IMAGE_LAYOUT_UNDEFINED);
     }
   }
 
@@ -59,16 +58,16 @@ void VKResourceAccessInfo::build_links(VKResourceStateTracker &resources,
     VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
     if (read_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_image(image_access.vk_image);
-      links.add_input(
-          node_handle, versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      node_links.add_input(
+          versioned_resource, read_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
     VkAccessFlags write_access = image_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
     if (write_access != VK_ACCESS_NONE) {
       ResourceWithStamp versioned_resource = resources.get_image_and_increase_stamp(
           image_access.vk_image);
-      links.add_output(
-          node_handle, versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      node_links.add_output(
+          versioned_resource, write_access, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
   }
 }

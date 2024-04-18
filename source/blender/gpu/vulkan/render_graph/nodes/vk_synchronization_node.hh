@@ -45,16 +45,14 @@ class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `links`.
+   * Extract read/write resource dependencies from `create_info` and add them to `node_links`.
    */
   void build_links(VKResourceStateTracker &resources,
-                   VKRenderGraphLinks &links,
-                   NodeHandle node_handle,
+                   VKRenderGraphNodeLinks &node_links,
                    const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_image_and_increase_stamp(create_info.vk_image);
-    links.add_output(
-        node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
+    node_links.add_output(resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
   }
 
   /**

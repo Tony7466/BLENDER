@@ -134,7 +134,7 @@ void VKCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
                                                 NodeHandle node_handle,
                                                 VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphLinks::Link &link : render_graph.links_.get_inputs(node_handle)) {
+  for (const VKRenderGraphLink &link : render_graph.links_[node_handle].inputs) {
     const ResourceWithStamp &versioned_resource = link.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
@@ -170,7 +170,7 @@ void VKCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
                                                  NodeHandle node_handle,
                                                  VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphLinks::Link link : render_graph.links_.get_outputs(node_handle)) {
+  for (const VKRenderGraphLink link : render_graph.links_[node_handle].outputs) {
     const ResourceWithStamp &versioned_resource = link.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
@@ -229,7 +229,7 @@ void VKCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
                                                NodeHandle node_handle,
                                                VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphLinks::Link &link : render_graph.links_.get_inputs(node_handle)) {
+  for (const VKRenderGraphLink &link : render_graph.links_[node_handle].inputs) {
     const ResourceWithStamp &versioned_resource = link.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);
@@ -272,7 +272,7 @@ void VKCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
                                                 NodeHandle node_handle,
                                                 VkPipelineStageFlags node_stages)
 {
-  for (const VKRenderGraphLinks::Link link : render_graph.links_.get_outputs(node_handle)) {
+  for (const VKRenderGraphLink link : render_graph.links_[node_handle].outputs) {
     const ResourceWithStamp &versioned_resource = link.resource;
     VKResourceStateTracker::Resource &resource = render_graph.resources_.resources_.lookup(
         versioned_resource.handle);

@@ -45,11 +45,9 @@ struct VKResourceAccessInfo : NonCopyable {
   Vector<VKImageAccess> images;
 
   /**
-   * Extract read/write resource dependencies and add them to `links`.
+   * Extract read/write resource dependencies and add them to `node_links`.
    */
-  void build_links(VKResourceStateTracker &resources,
-                   VKRenderGraphLinks &links,
-                   NodeHandle node_handle) const;
+  void build_links(VKResourceStateTracker &resources, VKRenderGraphNodeLinks &node_links) const;
 };
 
 }  // namespace blender::gpu::render_graph

@@ -59,14 +59,13 @@ class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `links`.
+   * Extract read/write resource dependencies from `create_info` and add them to `node_links`.
    */
   void build_links(VKResourceStateTracker &resources,
-                   VKRenderGraphLinks &links,
-                   NodeHandle node_handle,
+                   VKRenderGraphNodeLinks &node_links,
                    const CreateInfo &create_info) override
   {
-    create_info.resources.build_links(resources, links, node_handle);
+    create_info.resources.build_links(resources, node_links);
   }
 
   /**
