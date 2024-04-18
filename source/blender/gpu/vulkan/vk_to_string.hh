@@ -13,6 +13,7 @@
 namespace blender::gpu {
 std::string to_string(VkImage vk_handle);
 std::string to_string(VkBuffer vk_handle);
+std::string to_string(VkDescriptorSet vk_handle);
 std::string to_string(VkPipeline vk_handle);
 std::string to_string(VkPipelineLayout vk_handle);
 std::string to_string(VkRenderPass vk_handle);
