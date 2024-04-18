@@ -453,19 +453,13 @@ void ED_workspace_status_text(bContext *C, const char *str, const int icon = 0);
 
 /* Clears status bar text and allow the following actions. */
 void ED_workspace_status_begin(bContext *C);
-/* Adds a new item to the status bar. */
-void ED_workspace_status_item(bContext *C,
-                              const std::string text,
-                              const int icon = 0,
-                              const float space_factor = 0.0f);
+
+void ED_workspace_status_item(bContext *C, const std::string text, const int icon = 0);
 
 void ED_workspace_status_item_bool(bContext *C,
                                    std::string text,
                                    const int icon,
                                    const bool enabled);
-
-/* Adds a horizontal space to the status bar. */
-void ED_workspace_status_space(bContext *C, float space_factor = 1.0f);
 
 /* Adds one or more icons to the status bar. */
 void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2 = 0);

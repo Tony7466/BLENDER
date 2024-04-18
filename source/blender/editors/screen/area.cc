@@ -834,31 +834,12 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
-void ED_workspace_status_text(bContext *C, const char *str, int icon)
-{
-  ED_workspace_status_begin(C);
-  if (icon) {
-    ED_workspace_status_icons(C, icon);
-    ED_workspace_status_space(C, 0.6f);
-  }
-  if (str) {
-    ED_workspace_status_item(C, str);
-  }
-  ED_workspace_status_end(C);
-}
+/* *************************************************************** */
 
-void ED_workspace_status_begin(bContext *C)
-{
-  WorkSpace *workspace = CTX_wm_workspace(C);
-  if (workspace) {
-    BKE_workspace_status_clear(workspace);
-  }
-}
-
-void ED_workspace_status_item(bContext *C,
-                              const std::string text,
-                              const int icon,
-                              const float space_factor)
+static void ed_workspace_status_add_item(bContext *C,
+                                         const std::string text,
+                                         const int icon,
+                                         const float space_factor = 0.0f)
 {
   WorkSpace *workspace = CTX_wm_workspace(C);
   /* Can be nullptr when running operators in background mode. */
@@ -873,20 +854,50 @@ void ED_workspace_status_item(bContext *C,
   BLI_addtail(&workspace->status, item);
 }
 
-void ED_workspace_status_space(bContext *C, const float space_factor)
+static void ed_workspace_status_space(bContext *C, const float space_factor)
 {
-  ED_workspace_status_item(C, {}, ICON_NONE, space_factor);
+  ed_workspace_status_add_item(C, {}, ICON_NONE, space_factor);
+}
+
+void ED_workspace_status_text(bContext *C, const char *str, int icon)
+{
+  ED_workspace_status_begin(C);
+  if (icon) {
+    ed_workspace_status_add_item(C, {}, icon);
+    ed_workspace_status_space(C, 0.6f);
+  }
+  if (str) {
+    ed_workspace_status_add_item(C, str, ICON_NONE);
+  }
+  ED_workspace_status_end(C);
+}
+
+void ED_workspace_status_begin(bContext *C)
+{
+  WorkSpace *workspace = CTX_wm_workspace(C);
+  if (workspace) {
+    BKE_workspace_status_clear(workspace);
+  }
+}
+
+void ED_workspace_status_item(bContext *C, const std::string text, const int icon)
+{
+  if (icon) {
+    ED_workspace_status_icons(C, icon);
+  }
+  if (!text.empty()) {
+    ed_workspace_status_add_item(C, text, ICON_NONE);
+    ed_workspace_status_space(C, 0.7f);
+  }
 }
 
 void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
 {
-  ED_workspace_status_item(C, {}, icon1);
+  ed_workspace_status_add_item(C, {}, icon1);
   if (icon2) {
-    ED_workspace_status_item(C, {}, icon2);
+    ed_workspace_status_add_item(C, {}, icon2);
   }
 }
-
-/* Helpers for common keymap patterns. */
 
 void ED_workspace_status_range(bContext *C,
                                const std::string text,
@@ -894,12 +905,12 @@ void ED_workspace_status_range(bContext *C,
                                const int icon2)
 {
   ED_workspace_status_icons(C, icon1);
-  ED_workspace_status_item(C, "-");
-  ED_workspace_status_space(C, -0.5f);
+  ed_workspace_status_add_item(C, "-", ICON_NONE);
+  ed_workspace_status_space(C, -0.5f);
   ED_workspace_status_icons(C, icon2);
-  ED_workspace_status_space(C, 0.6f);
-  ED_workspace_status_item(C, text, ICON_NONE);
-  ED_workspace_status_space(C, 0.7f);
+  ed_workspace_status_space(C, 0.6f);
+  ed_workspace_status_add_item(C, text, ICON_NONE);
+  ed_workspace_status_space(C, 0.7f);
 }
 
 void ED_workspace_status_item_bool(bContext *C,
@@ -909,7 +920,7 @@ void ED_workspace_status_item_bool(bContext *C,
 {
   if (icon) {
     ED_workspace_status_icons(C, icon);
-    ED_workspace_status_space(C, 0.6f);
+    ed_workspace_status_space(C, 0.6f);
   }
   text += ": ";
   /* These symbols (and usage below) would be put BLI_string_utf8_symbols.h when we agree on them.
@@ -918,8 +929,8 @@ void ED_workspace_status_item_bool(bContext *C,
    * ✔ and 🚫, but the off looks like "prohibited". ✅ & ❎ look okay, but can both look ON?
    * ✓ & ✗ are too small in our font. Can make/use icons for this purpose if need be. */
   text += enabled ? "✔" : "✖";
-  ED_workspace_status_item(C, text, ICON_NONE);
-  ED_workspace_status_space(C, 0.6f);
+  ed_workspace_status_add_item(C, text, ICON_NONE);
+  ed_workspace_status_space(C, 0.7f);
 }
 
 void ED_workspace_status_opmodal(bContext *C,
@@ -947,19 +958,19 @@ void ED_workspace_status_opmodal(bContext *C,
       }
 
       if (kmi->val == KM_DBL_CLICK) {
-        ED_workspace_status_item(C, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
-        ED_workspace_status_space(C, -1.2f);
+        ed_workspace_status_add_item(C, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
+        ed_workspace_status_space(C, -1.2f);
       }
 
       if (icon) {
         ED_workspace_status_icons(C, icon);
         if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-          ED_workspace_status_space(C, 0.6f);
+          ed_workspace_status_space(C, 0.6f);
         }
       }
       if (!text.empty()) {
-        ED_workspace_status_item(C, text, ICON_NONE);
-        ED_workspace_status_space(C, 0.7f);
+        ed_workspace_status_add_item(C, text, ICON_NONE);
+        ed_workspace_status_space(C, 0.7f);
       }
     }
   }
