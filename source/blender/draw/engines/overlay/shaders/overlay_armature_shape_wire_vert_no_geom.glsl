@@ -13,8 +13,8 @@ void main()
   vec3 world_pos = (model_mat * vec4(pos, 1.0)).xyz;
   gl_Position = point_world_to_ndc(world_pos);
 
-  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
-   * change as well. */
+  /* Due to packing, the wire width is passed in compressed. If the RNA range is increased, this
+   * needs to change as well. */
   const float wire_width = bone_color.a * 16.0;
   geometry_out.wire_width = wire_width;
 

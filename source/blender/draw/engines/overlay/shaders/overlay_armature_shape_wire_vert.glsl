@@ -15,8 +15,8 @@ void main()
 
   geometry_in.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
   geometry_in.finalColor.a = 1.0;
-  /* Due to packing wire width is passed in clamped. If the RNA range is increased, this needs to
-   * change as well. */
+  /* Due to packing, the wire width is passed in compressed. If the RNA range is increased, this
+   * needs to change as well. */
   geometry_in.wire_width = bone_color.a * 16.0;
 
   view_clipping_distances(world_pos);
