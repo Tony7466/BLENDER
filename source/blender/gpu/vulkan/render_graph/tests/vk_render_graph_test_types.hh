@@ -75,7 +75,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
     std::stringstream ss;
     ss << "bind_pipeline(";
     ss << "pipeline_bind_point=" << to_string(pipeline_bind_point);
-    ss << ", pipeline=" << pipeline;
+    ss << ", pipeline=" << to_string(pipeline);
     ss << ")";
     log_.append(ss.str());
   }
@@ -101,7 +101,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << "bind_descriptor_sets(";
     ss << "pipeline_bind_point=" << to_string(pipeline_bind_point);
     ss << ", layout=" << layout;
-    ss << ", p_descriptor_sets=" << p_descriptor_sets[0];
+    ss << ", p_descriptor_sets=" << to_string(p_descriptor_sets[0]);
     ss << ")";
     log_.append(ss.str());
   }
@@ -201,8 +201,8 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "copy_buffer(";
-    ss << "src_buffer=" << src_buffer;
-    ss << ", dst_buffer=" << dst_buffer;
+    ss << "src_buffer=" << to_string(src_buffer);
+    ss << ", dst_buffer=" << to_string(dst_buffer);
     ss << std::endl;
     for (const VkBufferCopy &region : Span<const VkBufferCopy>(p_regions, region_count)) {
       ss << " - region(" << to_string(region, 1) << ")" << std::endl;
@@ -222,9 +222,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "copy_image(";
-    ss << "src_image=" << src_image;
+    ss << "src_image=" << to_string(src_image);
     ss << ", src_image_layout=" << to_string(src_image_layout);
-    ss << ", dst_image=" << dst_image;
+    ss << ", dst_image=" << to_string(dst_image);
     ss << ", dst_image_layout=" << to_string(dst_image_layout);
     ss << std::endl;
     for (const VkImageCopy &region : Span<const VkImageCopy>(p_regions, region_count)) {
@@ -246,9 +246,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "blit_image(";
-    ss << "src_image=" << src_image;
+    ss << "src_image=" << to_string(src_image);
     ss << ", src_image_layout=" << to_string(src_image_layout);
-    ss << ", dst_image=" << dst_image;
+    ss << ", dst_image=" << to_string(dst_image);
     ss << ", dst_image_layout=" << to_string(dst_image_layout);
     ss << ", filter=" << to_string(filter);
     ss << std::endl;
@@ -269,8 +269,8 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "copy_buffer_to_image(";
-    ss << "src_buffer=" << src_buffer;
-    ss << ", dst_image=" << dst_image;
+    ss << "src_buffer=" << to_string(src_buffer);
+    ss << ", dst_image=" << to_string(dst_image);
     ss << ", src_image_layout=" << to_string(dst_image_layout);
     ss << std::endl;
     for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
@@ -291,9 +291,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "copy_image_to_buffer(";
-    ss << "src_image=" << src_image;
+    ss << "src_image=" << to_string(src_image);
     ss << ", src_image_layout=" << to_string(src_image_layout);
-    ss << ", dst_buffer=" << dst_buffer;
+    ss << ", dst_buffer=" << to_string(dst_buffer);
     ss << std::endl;
     for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
     {
@@ -312,7 +312,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "fill_buffer(";
-    ss << "dst_buffer=" << dst_buffer;
+    ss << "dst_buffer=" << to_string(dst_buffer);
     ss << ", dst_offset=" << dst_offset;
     ss << ", size=" << size;
     ss << ", data=" << data;
@@ -331,7 +331,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "clear_color_image(";
-    ss << "image=" << image;
+    ss << "image=" << to_string(image);
     ss << ", image_layout=" << to_string(image_layout);
     ss << ")";
     log_.append(ss.str());
