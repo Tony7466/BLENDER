@@ -101,21 +101,15 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
     ED_area_status_text(area, msg);
   }
 
-  ED_workspace_status_begin(C);
-
-  ED_workspace_status_icons(C, ICON_EVENT_RETURN, ICON_MOUSE_LMB);
-  ED_workspace_status_item(C, IFACE_("Confirm"));
-  ED_workspace_status_icons(C, ICON_EVENT_ESC, ICON_MOUSE_RMB);
-  ED_workspace_status_item(C, IFACE_("Cancel"));
-  ED_workspace_status_item_bool(C, IFACE_("Tweak"), ICON_EVENT_CTRL, opdata->modify_depth);
-  ED_workspace_status_item_bool(
-      C, IFACE_("Outset"), ICON_EVENT_O, RNA_boolean_get(op->ptr, "use_outset"));
-  ED_workspace_status_item_bool(
-      C, IFACE_("Boundary"), ICON_EVENT_B, RNA_boolean_get(op->ptr, "use_boundary"));
-  ED_workspace_status_item_bool(
-      C, IFACE_("Individual"), ICON_EVENT_I, RNA_boolean_get(op->ptr, "use_individual"));
-
-  ED_workspace_status_end(C);
+  WorkspaceStatus status(C);
+  status.icons(ICON_EVENT_RETURN, ICON_MOUSE_LMB);
+  status.item(IFACE_("Confirm"));
+  status.icons(ICON_EVENT_ESC, ICON_MOUSE_RMB);
+  status.item(IFACE_("Cancel"));
+  status.item_bool(IFACE_("Tweak"), ICON_EVENT_CTRL, opdata->modify_depth);
+  status.item_bool(IFACE_("Outset"), ICON_EVENT_O, RNA_boolean_get(op->ptr, "use_outset"));
+  status.item_bool(IFACE_("Boundary"), ICON_EVENT_B, RNA_boolean_get(op->ptr, "use_boundary"));
+  status.item_bool(IFACE_("Individual"), ICON_EVENT_I, RNA_boolean_get(op->ptr, "use_individual"));
 }
 
 static bool edbm_inset_init(bContext *C, wmOperator *op, const bool is_modal)

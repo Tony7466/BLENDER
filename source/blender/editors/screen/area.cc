@@ -836,12 +836,11 @@ void ED_area_status_text(ScrArea *area, const char *str)
 
 /* *************************************************************** */
 
-static void ed_workspace_status_add_item(bContext *C,
-                                         const std::string text,
-                                         const int icon,
-                                         const float space_factor = 0.0f)
+static void ed_workspace_status_item(WorkSpace *workspace,
+                                     const std::string text,
+                                     const int icon,
+                                     const float space_factor = 0.0f)
 {
-  WorkSpace *workspace = CTX_wm_workspace(C);
   /* Can be nullptr when running operators in background mode. */
   if (workspace == nullptr) {
     return;
@@ -854,139 +853,124 @@ static void ed_workspace_status_add_item(bContext *C,
   BLI_addtail(&workspace->status, item);
 }
 
-static void ed_workspace_status_space(bContext *C, const float space_factor)
+static void ed_workspace_status_space(WorkSpace *workspace, const float space_factor)
 {
-  ed_workspace_status_add_item(C, {}, ICON_NONE, space_factor);
+  ed_workspace_status_item(workspace, {}, ICON_NONE, space_factor);
 }
 
-void ED_workspace_status_text(bContext *C, const char *str, int icon)
+WorkspaceStatus::WorkspaceStatus(bContext *C)
 {
-  ED_workspace_status_begin(C);
-  if (icon) {
-    ed_workspace_status_add_item(C, {}, icon);
-    ed_workspace_status_space(C, 0.6f);
+  C_ = C;
+  workspace_ = CTX_wm_workspace(C);
+  if (workspace_) {
+    BKE_workspace_status_clear(workspace_);
   }
-  if (str) {
-    ed_workspace_status_add_item(C, str, ICON_NONE);
-  }
-  ED_workspace_status_end(C);
-}
+};
 
-void ED_workspace_status_begin(bContext *C)
+WorkspaceStatus::~WorkspaceStatus()
 {
-  WorkSpace *workspace = CTX_wm_workspace(C);
-  if (workspace) {
-    BKE_workspace_status_clear(workspace);
-  }
-}
+  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C_), CTX_wm_screen(C_)));
+};
 
-void ED_workspace_status_item(bContext *C, const std::string text, const int icon)
+void WorkspaceStatus::item(const std::string text, const int icon)
 {
   if (icon) {
-    ED_workspace_status_icons(C, icon);
+    ed_workspace_status_item(workspace_, {}, icon);
   }
   if (!text.empty()) {
-    ed_workspace_status_add_item(C, text, ICON_NONE);
-    ed_workspace_status_space(C, 0.7f);
+    ed_workspace_status_item(workspace_, text, ICON_NONE);
+    ed_workspace_status_space(workspace_, 0.7f);
   }
 }
 
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
+void WorkspaceStatus::icons(const int icon1, const int icon2)
 {
-  ed_workspace_status_add_item(C, {}, icon1);
+  ed_workspace_status_item(workspace_, {}, icon1);
   if (icon2) {
-    ed_workspace_status_add_item(C, {}, icon2);
+    ed_workspace_status_item(workspace_, {}, icon2);
   }
 }
 
-void ED_workspace_status_range(bContext *C,
-                               const std::string text,
-                               const int icon1,
-                               const int icon2)
+void WorkspaceStatus::range(const std::string text, const int icon1, const int icon2)
 {
-  ED_workspace_status_icons(C, icon1);
-  ed_workspace_status_add_item(C, "-", ICON_NONE);
-  ed_workspace_status_space(C, -0.5f);
-  ED_workspace_status_icons(C, icon2);
-  ed_workspace_status_space(C, 0.6f);
-  ed_workspace_status_add_item(C, text, ICON_NONE);
-  ed_workspace_status_space(C, 0.7f);
+  ed_workspace_status_item(workspace_, {}, icon1);
+  ed_workspace_status_item(workspace_, "-", ICON_NONE);
+  ed_workspace_status_space(workspace_, -0.5f);
+  ed_workspace_status_item(workspace_, {}, icon2);
+  ed_workspace_status_space(workspace_, 0.6f);
+  ed_workspace_status_item(workspace_, text, ICON_NONE);
+  ed_workspace_status_space(workspace_, 0.7f);
 }
 
-void ED_workspace_status_item_bool(bContext *C,
-                                   std::string text,
-                                   const int icon,
-                                   const bool enabled)
+void WorkspaceStatus::item_bool(std::string text, const int icon, const bool enabled)
 {
   if (icon) {
-    ED_workspace_status_icons(C, icon);
-    ed_workspace_status_space(C, 0.6f);
+    ed_workspace_status_item(workspace_, {}, icon);
+    ed_workspace_status_space(workspace_, 0.6f);
   }
-  text += ": ";
   /* These symbols (and usage below) would be put BLI_string_utf8_symbols.h when we agree on them.
    * Note that the matching symbols must be the same width to avoid jiggling. Ideally they would
    * each be unambiguious when seen in insolation. Ie: empty box doesn't work for off.  We tried
    * ✔ and 🚫, but the off looks like "prohibited". ✅ & ❎ look okay, but can both look ON?
    * ✓ & ✗ are too small in our font. Can make/use icons for this purpose if need be. */
-  text += enabled ? "✔" : "✖";
-  ed_workspace_status_add_item(C, text, ICON_NONE);
-  ed_workspace_status_space(C, 0.7f);
+  text += enabled ? ": ✔" : ": ✖";
+  ed_workspace_status_item(workspace_, text, ICON_NONE);
+  ed_workspace_status_space(workspace_, 0.7f);
 }
 
-void ED_workspace_status_opmodal(bContext *C,
-                                 const std::string text,
-                                 wmOperatorType *ot,
-                                 const int propvalue)
+void WorkspaceStatus::opmodal(const std::string text, wmOperatorType *ot, const int propvalue)
 {
-  wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C), ot->modalkeymap);
+  wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C_), ot->modalkeymap);
   if (keymap) {
     const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
     if (kmi) {
       int icon = UI_icon_from_event_type(kmi->type, kmi->val);
 
       if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_icons(C, ICON_EVENT_SHIFT);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT);
       }
       if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_icons(C, ICON_EVENT_CTRL);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_CTRL);
       }
       if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_icons(C, ICON_EVENT_ALT);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_ALT);
       }
       if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_icons(C, ICON_EVENT_OS);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_OS);
       }
 
       if (kmi->val == KM_DBL_CLICK) {
-        ed_workspace_status_add_item(C, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
-        ed_workspace_status_space(C, -1.2f);
+        ed_workspace_status_item(workspace_, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
+        ed_workspace_status_space(workspace_, -1.2f);
       }
 
       if (icon) {
-        ED_workspace_status_icons(C, icon);
+        ed_workspace_status_item(workspace_, {}, icon);
         if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-          ed_workspace_status_space(C, 0.6f);
+          ed_workspace_status_space(workspace_, 0.6f);
         }
       }
       if (!text.empty()) {
-        ed_workspace_status_add_item(C, text, ICON_NONE);
-        ed_workspace_status_space(C, 0.7f);
+        ed_workspace_status_item(workspace_, text, ICON_NONE);
+        ed_workspace_status_space(workspace_, 0.7f);
       }
     }
   }
 }
 
-void ED_workspace_status_opmodal_bool(
-    bContext *C, std::string text, wmOperatorType *ot, const int propvalue, const bool enabled)
+void WorkspaceStatus::opmodal_bool(std::string text,
+                                   wmOperatorType *ot,
+                                   const int propvalue,
+                                   const bool enabled)
 {
-  text += ": ";
-  text += enabled ? "✔" : "✖";
-  ED_workspace_status_opmodal(C, text, ot, propvalue);
+  text += enabled ? ": ✔" : ": ✖";
+  this->opmodal(text, ot, propvalue);
 }
 
-void ED_workspace_status_end(bContext *C)
+void ED_workspace_status_text(bContext *C, const char *str)
 {
-  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C)));
+  WorkspaceStatus status(C);
+  status.item(str ? str : "", ICON_NONE);
 }
 
 /* ************************************************************ */

@@ -448,42 +448,26 @@ bool ED_workspace_layout_delete(WorkSpace *workspace, WorkSpaceLayout *layout_ol
     ATTR_NONNULL();
 bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *C) ATTR_NONNULL();
 
-/* Status consisting of a single item: text and optional icon. */
-void ED_workspace_status_text(bContext *C, const char *str, const int icon = 0);
+void ED_workspace_status_text(bContext *C, const char *str);
 
-/* Clears status bar text and allow the following actions. */
-void ED_workspace_status_begin(bContext *C);
+class WorkspaceStatus {
+ private:
+  bContext *C_;
+  WorkSpace *workspace_;
 
-void ED_workspace_status_item(bContext *C, const std::string text, const int icon = 0);
-
-void ED_workspace_status_item_bool(bContext *C,
-                                   std::string text,
-                                   const int icon,
-                                   const bool enabled);
-
-/* Adds one or more icons to the status bar. */
-void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2 = 0);
-
-/* Adds two icons, and text, indicating a range between the icons like A-Z. */
-void ED_workspace_status_range(bContext *C,
-                               const std::string text,
-                               const int icon1,
-                               const int icon2);
-
-/* Modal operator. */
-void ED_workspace_status_opmodal(bContext *C,
-                                 const std::string text,
-                                 wmOperatorType *ot,
-                                 const int propvalue);
-
-void ED_workspace_status_opmodal_bool(bContext *C,
-                                      const std::string text,
-                                      wmOperatorType *ot,
-                                      const int propvalue,
-                                      const bool enabled);
-
-/* Ends complex layout and requests a redraw of the status bar. */
-void ED_workspace_status_end(bContext *C);
+ public:
+  WorkspaceStatus(bContext *C);
+  ~WorkspaceStatus();
+  void item(const std::string text, const int icon = 0);
+  void item_bool(const std::string text, const int icon, const bool enabled);
+  void icons(const int icon1, const int icon2 = 0);
+  void range(const std::string text, const int icon1, const int icon2);
+  void opmodal(const std::string text, wmOperatorType *ot, const int propvalue);
+  void opmodal_bool(const std::string text,
+                    wmOperatorType *ot,
+                    const int propvalue,
+                    const bool enabled);
+};
 
 void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
 

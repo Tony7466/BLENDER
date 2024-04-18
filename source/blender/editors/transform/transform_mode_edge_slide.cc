@@ -800,27 +800,22 @@ static void applyEdgeSlide(TransInfo *t)
     return;
   }
 
-  ED_workspace_status_begin(t->context);
-
-  ED_workspace_status_opmodal(t->context, IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_opmodal(t->context, IFACE_("Cancel"), op->type, TFM_MODAL_CONFIRM);
-  ED_workspace_status_opmodal(
-      t->context, IFACE_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
-  ED_workspace_status_opmodal(+t->context, IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
-  ED_workspace_status_opmodal(t->context, IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
-  ED_workspace_status_opmodal(t->context, IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
-  ED_workspace_status_opmodal(t->context, IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
-  ED_workspace_status_opmodal(t->context, IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
-  ED_workspace_status_opmodal(
-      +t->context, IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
-  ED_workspace_status_icons(t->context, ICON_EVENT_C, ICON_EVENT_ALT);
-  ED_workspace_status_item_bool(t->context, IFACE_("Clamp"), ICON_NONE, is_clamp);
-  ED_workspace_status_item_bool(t->context, IFACE_("Even"), ICON_EVENT_E, use_even);
+  WorkspaceStatus status(t->context);
+  status.opmodal(IFACE_("Confirm"), op->type, TFM_MODAL_CONFIRM);
+  status.opmodal(IFACE_("Cancel"), op->type, TFM_MODAL_CONFIRM);
+  status.opmodal(IFACE_("Set Snap Base"), op->type, TFM_MODAL_EDIT_SNAP_SOURCE_ON);
+  status.opmodal(IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_INV_ON);
+  status.opmodal(IFACE_("Snap Invert"), op->type, TFM_MODAL_SNAP_TOGGLE);
+  status.opmodal(IFACE_("Move"), op->type, TFM_MODAL_TRANSLATE);
+  status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
+  status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
+  status.opmodal(IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
+  status.icons(ICON_EVENT_C, ICON_EVENT_ALT);
+  status.item_bool(IFACE_("Clamp"), ICON_NONE, is_clamp);
+  status.item_bool(IFACE_("Even"), ICON_EVENT_E, use_even);
   if (use_even) {
-    ED_workspace_status_item_bool(t->context, IFACE_("Flipped"), ICON_EVENT_F, flipped);
+    status.item_bool(IFACE_("Flipped"), ICON_EVENT_F, flipped);
   }
-
-  ED_workspace_status_end(t->context);
 }
 
 static void edge_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
