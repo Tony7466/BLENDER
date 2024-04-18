@@ -1887,8 +1887,7 @@ static void icon_draw_texture(float x,
       copy_v4_v4_uchar(text_color, text_overlay->color);
     }
     else {
-      UI_GetThemeColor3ubv(TH_TEXT, text_color);
-      text_color[3] = 255;
+      UI_GetThemeColor4ubv(TH_TEXT, text_color);
     }
 
     uiFontStyle fstyle_small = *UI_FSTYLE_WIDGET;
