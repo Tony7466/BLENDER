@@ -52,6 +52,9 @@ static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
 static const pxr::TfToken Cd("Cd", pxr::TfToken::Immortal);
 static const pxr::TfToken displayColor("displayColor", pxr::TfToken::Immortal);
 static const pxr::TfToken normalsPrimvar("normals", pxr::TfToken::Immortal);
+
+/* Non-standard primvar written by Blender versions prior to 4.2. */
+static const pxr::TfToken velocityPrimvar("velocity", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
 namespace utils {
@@ -737,6 +740,32 @@ void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTim
   creases.finish();
 }
 
+void USDMeshReader::read_velocities(Mesh *mesh, const double motionSampleTime)
+{
+  pxr::UsdGeomPrimvarsAPI primvarsAPI(mesh_prim_);
+  pxr::UsdGeomPrimvar primvar = primvarsAPI.GetPrimvar(usdtokens::velocityPrimvar);
+  pxr::VtVec3fArray velocities;
+
+  /* If 'velocities' and 'primvars:velocity' are both specified, the latter has precedence. */
+  if (primvar.HasValue()) {
+    primvar.ComputeFlattened(&velocities, motionSampleTime);
+  }
+  else {
+    mesh_prim_.GetVelocitiesAttr().Get(&velocities, motionSampleTime);
+  }
+
+  if (!velocities.empty()) {
+    bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+    bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
+        "velocity", bke::AttrDomain::Point, CD_PROP_FLOAT3);
+
+    Span<pxr::GfVec3f> usd_data(velocities.data(), velocities.size());
+    attribute.span.typed<float3>().copy_from(usd_data.cast<float3>());
+
+    attribute.finish();
+  }
+}
+
 void USDMeshReader::process_normals_vertex_varying(Mesh *mesh)
 {
   if (!mesh) {
@@ -868,6 +897,7 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
       (settings->read_flag & MOD_MESHSEQ_READ_COLOR) ||
       (settings->read_flag & MOD_MESHSEQ_READ_ATTRIBUTES))
   {
+    read_velocities(mesh, motionSampleTime);
     read_custom_data(settings, mesh, motionSampleTime, new_mesh);
   }
 }
@@ -910,6 +940,11 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
     /* To avoid unnecessarily reloading static primvars during animation,
      * early out if not first load and this primvar isn't animated. */
     if (!new_mesh && primvar_varying_map_.contains(name) && !primvar_varying_map_.lookup(name)) {
+      continue;
+    }
+
+    /* We handle the non-standard primvar:velocity elsewhere. */
+    if (ELEM(name, "velocity")) {
       continue;
     }
 
