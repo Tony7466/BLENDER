@@ -223,15 +223,20 @@ static void vert_hide_update(Object &object,
       any_changed = true;
       undo::push_node(&object, node, undo::Type::HideVert);
       array_utils::scatter(new_hide.as_span(), verts, hide_vert.span);
-
-      BKE_pbvh_node_mark_update_visibility(node);
-      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *node);
     }
   });
 
   hide_vert.finish();
   if (any_changed) {
     bke::mesh_hide_vert_flush(mesh);
+
+    /* We mark all nodes to update visibility instead of only those that have a changed vertex
+     * to ensure that faces at the boundary of PBVH nodes are updated correctly.
+     * See #120761 for further information. */
+    for (const int i : nodes.index_range()) {
+      BKE_pbvh_node_mark_update_visibility(nodes[i]);
+      bke::pbvh::node_update_visibility_mesh(hide_vert.span, *nodes[i]);
+    }
   }
 }
 
@@ -271,15 +276,20 @@ static void grid_hide_update(Depsgraph &depsgraph,
       for (const int i : grids.index_range()) {
         grid_hidden[grids[i]].copy_from(new_hide[i].as_span());
       }
-
-      BKE_pbvh_node_mark_update_visibility(node);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
     }
   });
 
   if (any_changed) {
     multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
     BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+
+    /* We mark all nodes to update visibility instead of only those that have a changed vertex
+     * to ensure that faces at the boundary of PBVH nodes are updated correctly.
+     * See #120761 for further information. */
+    for (const int i : nodes.index_range()) {
+      BKE_pbvh_node_mark_update_visibility(nodes[i]);
+      bke::pbvh::node_update_visibility_grids(grid_hidden, *nodes[i]);
+    }
   }
 }
 
