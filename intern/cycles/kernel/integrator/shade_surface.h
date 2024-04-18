@@ -388,6 +388,7 @@ ccl_device
   /* TODO(weizhen): add MNEE back? */
   const bool is_direct_light = light_is_direct_illumination(state);
   const bool use_ris = is_direct_light && kernel_data.integrator.use_initial_resampling;
+  const bool use_bsdf_samples = is_direct_light && kernel_data.integrator.use_spatial_resampling;
 
   const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
@@ -452,7 +453,7 @@ ccl_device
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
+  for (int i = 0; i < reservoir.num_bsdf_samples * use_bsdf_samples; i++) {
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
@@ -654,7 +655,7 @@ ccl_device
     reservoir.total_weight /= reduce_add(fabs(radiance.sum));
   }
 
-  if (is_direct_light && kernel_data.integrator.use_spatial_resampling) {
+  if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }

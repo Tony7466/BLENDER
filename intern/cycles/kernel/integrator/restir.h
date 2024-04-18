@@ -35,7 +35,7 @@ struct SpatialResampling {
   static uint is_valid_neighbor(const ccl_private ShaderData *sd,
                                 const ccl_private ShaderData *neighbor_sd)
   {
-    /* TODO(weizhen): find a good criterion. */
+    /* TODO(weizhen): find a good criterion, for example the distance to the normal plane of sd. */
     return (sd->object == neighbor_sd->object) && (sd->type == neighbor_sd->type);
   }
 };
