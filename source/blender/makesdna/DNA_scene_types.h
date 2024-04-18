@@ -860,13 +860,6 @@ enum {
   UV_SCULPT_ALL_ISLANDS = 2,
 };
 
-/** #ToolSettings::uv_relax_method */
-enum {
-  UV_SCULPT_TOOL_RELAX_LAPLACIAN = 1,
-  UV_SCULPT_TOOL_RELAX_HC = 2,
-  UV_SCULPT_TOOL_RELAX_COTAN = 3,
-};
-
 /* Stereo Flags. */
 #define STEREO_RIGHT_NAME "right"
 #define STEREO_LEFT_NAME "left"
@@ -1101,6 +1094,8 @@ typedef struct CurvesSculpt {
 
 typedef struct UvSculpt {
   struct CurveMapping *strength_curve;
+  int8_t curve_preset; /* #eBrushCurvePreset. */
+  char _pad[7];
 } UvSculpt;
 
 /** Grease pencil drawing brushes. */
@@ -1665,9 +1660,10 @@ typedef struct ToolSettings {
 
   /* UV painting. */
   char uv_sculpt_settings;
-  char uv_relax_method;
 
   char workspace_tool_type;
+
+  char _pad5[1];
 
   /**
    * XXX: these `sculpt_paint_*` fields are deprecated, use the

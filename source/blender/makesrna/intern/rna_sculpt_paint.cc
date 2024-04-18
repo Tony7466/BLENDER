@@ -110,6 +110,7 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #  include "MEM_guardedalloc.h"
 
 #  include "BKE_collection.hh"
+#  include "BKE_colortools.hh"
 #  include "BKE_context.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_object.hh"
@@ -514,6 +515,17 @@ static void rna_ImaPaint_canvas_update(bContext *C, PointerRNA * /*ptr*/)
   if (ob && ob->type == OB_MESH) {
     ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
     WM_main_add_notifier(NC_OBJECT | ND_DRAW, nullptr);
+  }
+}
+
+static void rna_UvSculpt_curve_preset_set(PointerRNA *ptr, int value)
+{
+  Scene *scene = reinterpret_cast<Scene *>(ptr->owner_id);
+  if (value == BRUSH_CURVE_CUSTOM) {
+    if (!scene->toolsettings->uvsculpt.strength_curve) {
+      scene->toolsettings->uvsculpt.strength_curve = BKE_curvemapping_add(
+          1, 0.0f, 0.0f, 1.0f, 1.0f);
+    }
   }
 }
 
@@ -995,10 +1007,23 @@ static void rna_def_sculpt(BlenderRNA *brna)
 static void rna_def_uv_sculpt(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "UvSculpt", "Paint");
   RNA_def_struct_path_func(srna, "rna_UvSculpt_path");
   RNA_def_struct_ui_text(srna, "UV Sculpting", "");
+
+  prop = RNA_def_property(srna, "strength_curve", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "CurveMapping");
+  RNA_def_property_pointer_funcs(prop, nullptr, nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Strength Curve", "");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "curve_preset", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_brush_curve_preset_items);
+  RNA_def_property_ui_text(prop, "Strength Curve Preset", "");
+  RNA_def_property_enum_funcs(prop, nullptr, "rna_UvSculpt_curve_preset_set", nullptr);
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
 }
 
 static void rna_def_gp_paint(BlenderRNA *brna)

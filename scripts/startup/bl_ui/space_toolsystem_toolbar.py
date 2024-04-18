@@ -2058,6 +2058,7 @@ class _defs_image_uv_sculpt:
             layout.prop(props, "strength")
             layout.popover("IMAGE_PT_uv_sculpt_curve")
             layout.popover("IMAGE_PT_uv_sculpt_options")
+            layout.prop(props, "relax_method", text="Method")
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d

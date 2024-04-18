@@ -1654,7 +1654,9 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
       BKE_curvemapping_init(ts->sculpt->automasking_cavity_curve_op);
     }
   }
-  ts->uvsculpt.strength_curve = BKE_curvemapping_copy(ts->uvsculpt.strength_curve);
+  if (ts->uvsculpt.strength_curve) {
+    ts->uvsculpt.strength_curve = BKE_curvemapping_copy(ts->uvsculpt.strength_curve);
+  }
   if (ts->gp_paint) {
     ts->gp_paint = static_cast<GpPaint *>(MEM_dupallocN(ts->gp_paint));
     BKE_paint_copy(&ts->gp_paint->paint, &ts->gp_paint->paint, flag);
@@ -1717,7 +1719,9 @@ void BKE_toolsettings_free(ToolSettings *toolsettings)
     BKE_paint_free(&toolsettings->sculpt->paint);
     MEM_freeN(toolsettings->sculpt);
   }
-  BKE_curvemapping_free(toolsettings->uvsculpt.strength_curve);
+  if (toolsettings->uvsculpt.strength_curve) {
+    BKE_curvemapping_free(toolsettings->uvsculpt.strength_curve);
+  }
   if (toolsettings->gp_paint) {
     BKE_paint_free(&toolsettings->gp_paint->paint);
     MEM_freeN(toolsettings->gp_paint);

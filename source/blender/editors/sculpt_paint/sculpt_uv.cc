@@ -53,6 +53,12 @@ typedef enum eBrushUVSculptTool {
   UV_SCULPT_TOOL_PINCH = 2,
 } eBrushUVSculptTool;
 
+enum {
+  UV_SCULPT_TOOL_RELAX_LAPLACIAN = 0,
+  UV_SCULPT_TOOL_RELAX_HC = 1,
+  UV_SCULPT_TOOL_RELAX_COTAN = 2,
+};
+
 /* When set, the UV element is on the boundary of the graph.
  * i.e. Instead of a 2-dimensional laplace operator, use a 1-dimensional version.
  * Visually, UV elements on the graph boundary appear as borders of the UV Island. */
@@ -126,7 +132,6 @@ struct UvSculptData {
 
   /** UV-smooth for fast reference. */
   UvSculpt *uvsculpt;
-  eBrushCurvePreset curve_preset;
 
   /** Tool to use. duplicating here to change if modifier keys are pressed. */
   char tool;
@@ -154,8 +159,10 @@ static void apply_sculpt_data_constraints(UvSculptData *sculptdata, float uv[2])
 
 static float calc_strength(const UvSculptData *sculptdata, float p, const float len)
 {
-  float strength = BKE_brush_curve_strength(
-      sculptdata->curve_preset, sculptdata->uvsculpt->strength_curve, p, len);
+  float strength = BKE_brush_curve_strength(eBrushCurvePreset(sculptdata->uvsculpt->curve_preset),
+                                            sculptdata->uvsculpt->strength_curve,
+                                            p,
+                                            len);
 
   CLAMP(strength, 0.0f, 1.0f);
 
@@ -477,7 +484,6 @@ static void uv_sculpt_stroke_apply(bContext *C,
   ARegion *region = CTX_wm_region(C);
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   UvSculptData *sculptdata = (UvSculptData *)op->customdata;
-  ToolSettings *toolsettings = CTX_data_tool_settings(C);
   eBrushUVSculptTool tool = eBrushUVSculptTool(sculptdata->tool);
   int invert = sculptdata->invert ? -1 : 1;
   float alpha = RNA_float_get(op->ptr, "strength");
@@ -543,7 +549,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
                               alpha,
                               radius_sq,
                               aspectRatio,
-                              toolsettings->uv_relax_method);
+                              RNA_enum_get(op->ptr, "relax_method"));
       break;
     }
     case UV_SCULPT_TOOL_GRAB: {
@@ -669,9 +675,7 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 
   bool do_island_optimization = !(ts->uv_sculpt_settings & UV_SCULPT_ALL_ISLANDS);
   int island_index = 0;
-  if (STREQ(op->type->idname, "SCULPT_OT_uv_sculpt_relax") ||
-      RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_SMOOTH)
-  {
+  if (STREQ(op->type->idname, "SCULPT_OT_uv_sculpt_relax")) {
     data->tool = UV_SCULPT_TOOL_RELAX;
   }
   else if (STREQ(op->type->idname, "SCULPT_OT_uv_sculpt_grab")) {
@@ -680,10 +684,9 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
   else {
     data->tool = UV_SCULPT_TOOL_PINCH;
   }
-  data->invert = (RNA_enum_get(op->ptr, "mode") == BRUSH_STROKE_INVERT) ? 1 : 0;
+  data->invert = RNA_boolean_get(op->ptr, "use_invert");
 
   data->uvsculpt = &ts->uvsculpt;
-  data->curve_preset = eBrushCurvePreset(RNA_enum_get(op->ptr, "curve_preset"));
 
   /* Winding was added to island detection in 5197aa04c6bd
    * However the sculpt tools can flip faces, potentially creating orphaned islands.
@@ -965,23 +968,13 @@ static int uv_sculpt_stroke_modal(bContext *C, wmOperator *op, const wmEvent *ev
 static void register_common_props(wmOperatorType *ot)
 {
   PropertyRNA *prop;
-  static const EnumPropertyItem stroke_mode_items[] = {
-      {BRUSH_STROKE_NORMAL, "NORMAL", 0, "Regular", "Apply action normally"},
-      {BRUSH_STROKE_INVERT, "INVERT", 0, "Invert", "Invert action for the duration of the stroke"},
-      {BRUSH_STROKE_SMOOTH, "RELAX", 0, "Relax", "Switch to relax mode for duration of stroke"},
-      {0},
-  };
 
-  prop = RNA_def_enum(
-      ot->srna, "mode", stroke_mode_items, BRUSH_STROKE_NORMAL, "Mode", "Stroke Mode");
+  prop = RNA_def_boolean(
+      ot->srna, "use_invert", false, "Invert", "Invert action for the duration of the stroke");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
-  RNA_def_enum(ot->srna,
-               "curve_preset",
-               rna_enum_brush_curve_preset_items,
-               CURVE_PRESET_SMOOTH,
-               "Curve Preset",
-               "");
+
   RNA_def_float_factor(ot->srna, "strength", 1.0f, 0.0f, 1.0f, "Strength", "", 0.0f, 1.0f);
+
   prop = RNA_def_int(ot->srna, "size", 50, 1, 5000, "Size", "", 1, 500);
   RNA_def_property_subtype(prop, PROP_PIXEL);
 }
@@ -1014,6 +1007,28 @@ void SCULPT_OT_uv_sculpt_relax(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   register_common_props(ot);
+
+  static const EnumPropertyItem relax_method_items[] = {
+      {UV_SCULPT_TOOL_RELAX_LAPLACIAN,
+       "LAPLACIAN",
+       0,
+       "Laplacian",
+       "Use Laplacian method for relaxation"},
+      {UV_SCULPT_TOOL_RELAX_HC, "HC", 0, "HC", "Use HC method for relaxation"},
+      {UV_SCULPT_TOOL_RELAX_COTAN,
+       "COTAN",
+       0,
+       "Geometry",
+       "Use Geometry (cotangent) relaxation, making UVs follow the underlying 3D geometry"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_enum(ot->srna,
+               "relax_method",
+               relax_method_items,
+               CURVE_PRESET_SMOOTH,
+               "Relax Method",
+               "Algorithm used for UV relaxation");
 }
 
 void SCULPT_OT_uv_sculpt_pinch(wmOperatorType *ot)
