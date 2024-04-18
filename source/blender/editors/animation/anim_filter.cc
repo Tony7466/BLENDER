@@ -449,8 +449,8 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
 
 /* ............................... */
 
-/* quick macro to test if AnimData has usable Action */
-#define ANIMDATA_HAS_KEYS(id) ((id)->adt && !(id)->adt->animation && (id)->adt->action)
+/* Test whether AnimData has a usable Action. */
+#define ANIMDATA_HAS_ACTION(id) ((id)->adt && !(id)->adt->animation && (id)->adt->action)
 
 /* quick macro to test if AnimData is usable for drivers */
 #define ANIMDATA_HAS_DRIVERS(id) ((id)->adt && (id)->adt->drivers.first)
@@ -507,7 +507,7 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaOk \
           } \
-          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_KEYS(id)) { \
+          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_ACTION(id)) { \
             nlaOk \
           } \
         } \
@@ -523,7 +523,7 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaKeysOk \
           } \
-          if (ANIMDATA_HAS_KEYS(id)) { \
+          if (ANIMDATA_HAS_ACTION(id)) { \
             keysOk \
           } \
         } \
