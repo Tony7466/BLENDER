@@ -11,6 +11,45 @@
 #include "vk_to_string.hh"
 
 namespace blender::gpu {
+
+/** Portable printing of vulkan handles across platforms. */
+static std::string to_string_handle(uint64_t vk_handle)
+{
+  std::stringstream ss;
+  ss << std::hex << std::showbase << vk_handle;
+  return ss.str();
+}
+
+std::string to_string(VkBuffer vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkImage vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkRenderPass vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkFramebuffer vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkPipeline vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
+std::string to_string(VkDescriptorSet vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
 const char *to_string(const VkFilter vk_filter)
 {
   switch (vk_filter) {
@@ -486,7 +525,7 @@ std::string to_string(const VkBufferMemoryBarrier &vk_buffer_memory_barrier, int
   std::stringstream ss;
   ss << "src_access_mask=" << to_string_vk_access_flags(vk_buffer_memory_barrier.srcAccessMask);
   ss << ", dst_access_mask=" << to_string_vk_access_flags(vk_buffer_memory_barrier.dstAccessMask);
-  ss << ", buffer=" << vk_buffer_memory_barrier.buffer;
+  ss << ", buffer=" << to_string(vk_buffer_memory_barrier.buffer);
   ss << ", offset=" << vk_buffer_memory_barrier.offset;
   ss << ", size=" << vk_buffer_memory_barrier.size;
 
@@ -597,7 +636,7 @@ std::string to_string(const VkImageMemoryBarrier &vk_image_memory_barrier, int i
   ss << ", dst_access_mask=" << to_string_vk_access_flags(vk_image_memory_barrier.dstAccessMask);
   ss << ", old_layout=" << to_string(vk_image_memory_barrier.oldLayout);
   ss << ", new_layout=" << to_string(vk_image_memory_barrier.newLayout);
-  ss << ", image=" << vk_image_memory_barrier.image;
+  ss << ", image=" << to_string(vk_image_memory_barrier.image);
   ss << ", subresource_range=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_memory_barrier.subresourceRange, indentation_level + 1);
@@ -683,8 +722,8 @@ std::string to_string(const VkRenderPassBeginInfo &vk_render_pass_begin_info,
                       int indentation_level)
 {
   std::stringstream ss;
-  ss << "render_pass=" << vk_render_pass_begin_info.renderPass;
-  ss << ", framebuffer=" << vk_render_pass_begin_info.framebuffer;
+  ss << "render_pass=" << to_string(vk_render_pass_begin_info.renderPass);
+  ss << ", framebuffer=" << to_string(vk_render_pass_begin_info.framebuffer);
   ss << ", render_area=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_render_pass_begin_info.renderArea, indentation_level + 1);
