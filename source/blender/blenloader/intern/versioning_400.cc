@@ -2927,9 +2927,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       input_sample_values[2] = ts->curves_sculpt != nullptr ?
                                    ts->curves_sculpt->paint.num_input_samples_deprecated :
                                    1;
-      input_sample_values[3] = ts->uvsculpt != nullptr ?
-                                   ts->uvsculpt->paint.num_input_samples_deprecated :
-                                   1;
 
       input_sample_values[4] = ts->gp_paint != nullptr ?
                                    ts->gp_paint->paint.num_input_samples_deprecated :

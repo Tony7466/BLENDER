@@ -713,10 +713,6 @@ class IMAGE_HT_tool_header(Header):
                 layout.popover("IMAGE_PT_tools_brush_display")
                 layout.popover("IMAGE_PT_tools_brush_texture")
                 layout.popover("IMAGE_PT_tools_mask_texture")
-        elif tool_mode == 'UV':
-            if (tool is not None) and tool.has_datablock:
-                layout.popover("IMAGE_PT_uv_sculpt_curve")
-                layout.popover("IMAGE_PT_uv_sculpt_options")
 
     def draw_mode_settings(self, context):
         layout = self.layout
@@ -1395,12 +1391,10 @@ class IMAGE_PT_uv_sculpt_options(Panel, ImagePaintPanel, UVSculptPanel):
         layout = self.layout
 
         tool_settings = context.tool_settings
-        uvsculpt = tool_settings.uv_sculpt
 
         col = layout.column()
         col.prop(tool_settings, "uv_sculpt_lock_borders")
         col.prop(tool_settings, "uv_sculpt_all_islands")
-        col.prop(uvsculpt, "show_brush", text="Display Cursor")
 
 
 class ImageScopesPanel:
