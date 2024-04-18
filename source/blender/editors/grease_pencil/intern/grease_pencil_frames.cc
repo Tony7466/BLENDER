@@ -460,6 +460,10 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
 {
   using namespace blender::bke;
 
+  if (curves_a.points_num() == 0 && curves_b.points_num() == 0) {
+    return true;
+  }
+
   if (curves_a.curves_num() != curves_b.curves_num() ||
       curves_a.points_num() != curves_b.points_num() || curves_a.offsets() != curves_b.offsets())
   {
