@@ -23,6 +23,7 @@ void VKRenderGraph::free_data()
 
 void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
 {
+  UNUSED_VARS_NDEBUG(node_handles);
   BLI_assert_msg(node_handles.size() == nodes_.size(),
                  "Currently only supporting removing all nodes. The VKScheduler doesn't walk the "
                  "nodes, and will use incorrect ordering when not all nodes are removed. This "
