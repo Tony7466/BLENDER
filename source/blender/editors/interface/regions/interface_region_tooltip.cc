@@ -1116,6 +1116,8 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
 
     UI_tooltip_image_field_add(data, image_data);
+    /* Tooltip now owns a copy of the ImBuf, so we can delete ours.*/
+    IMB_freeImBuf(image_data.ibuf);
 
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
 
