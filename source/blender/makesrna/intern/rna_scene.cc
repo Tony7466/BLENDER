@@ -7814,12 +7814,16 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem ray_tracing_method_items[] = {
-      {RAYTRACE_EEVEE_METHOD_NONE, "NONE", 0, "None", "No intersection with scene geometry"},
+      {RAYTRACE_EEVEE_METHOD_PROBE,
+       "PROBE",
+       0,
+       "Light Probe",
+       "Use light probes to find scene intersection"},
       {RAYTRACE_EEVEE_METHOD_SCREEN,
        "SCREEN",
        0,
        "Screen-Trace",
-       "Raytrace against the depth buffer"},
+       "Raytrace against the depth buffer. Fallback to light probes for invalid rays"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -8049,13 +8053,16 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, eevee_volumetric_tile_size_items);
   RNA_def_property_ui_text(prop,
                            "Tile Size",
-                           "Control the quality of the volumetric effects "
-                           "(lower size increase vram usage and quality)");
+                           "Control the quality of the volumetric effects. "
+                           "Lower size increase vram usage and quality");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "volumetric_samples", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Samples", "Number of samples to compute volumetric effects");
+  RNA_def_property_ui_text(prop,
+                           "Steps",
+                           "Number of steps to compute volumetric effects. "
+                           "Higher step count increase VRAM usage and quality");
   RNA_def_property_range(prop, 1, 256);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
@@ -8070,7 +8077,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Volume Max Ray Depth",
                            "Maximum surface intersection count used by the accurate volume "
-                           "intersection method. Will create artifact if it is exceeded");
+                           "intersection method. Will create artifact if it is exceeded. "
+                           "Higher count increases VRAM usage");
   RNA_def_property_range(prop, 1, 16);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
@@ -8298,7 +8306,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   /* Motion blur */
   prop = RNA_def_property(srna, "motion_blur_depth_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop,
-                           "Background Separation",
+                           "Bleeding Bias",
                            "Lower values will reduce background"
                            " bleeding onto foreground elements");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
