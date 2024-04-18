@@ -942,13 +942,14 @@ static void execute_instances_tasks(
   std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>();
   dst_instances->resize(offsets.total_size());
 
-  /* Prepare generic output attributes. */
+  /* Makes sure generic output attributes exists. */
   for (const int attribute_index : all_instances_attributes.index_range()) {
     bke::AttrDomain domain = bke::AttrDomain::Instance;
     bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
     eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
-    blender::bke::MutableAttributeAccessor attr = dst_instances->attributes_for_write();
-    attr.lookup_or_add_for_write_only_span(id, domain, type).finish();
+    dst_instances->attributes_for_write()
+        .lookup_or_add_for_write_only_span(id, domain, type)
+        .finish();
   }
 
   MutableSpan<float4x4> all_transforms = dst_instances->transforms_for_write();
