@@ -40,6 +40,11 @@ std::string to_string(VkFramebuffer vk_handle)
   return to_string_handle(uint64_t(vk_handle));
 }
 
+std::string to_string(VkPipelineLayout vk_handle)
+{
+  return to_string_handle(uint64_t(vk_handle));
+}
+
 std::string to_string(VkPipeline vk_handle)
 {
   return to_string_handle(uint64_t(vk_handle));
