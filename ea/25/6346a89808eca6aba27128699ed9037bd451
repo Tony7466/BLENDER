@@ -1,2 +1,3 @@
 Referenced by issue #112308, Curves have offset animations (alembic / USD)
 Referenced by issue #118261, wrong motion blur from usd in cycles and reverting to the first frame when disabeling motion blur
+Referenced by pull request #120790, Fix: Use correct datatype in MSC modify_geometry_set for the frame time
