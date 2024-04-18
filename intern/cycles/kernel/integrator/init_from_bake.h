@@ -251,7 +251,7 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
       const float surface_normal_offset = 0.2f;
 
       /* Keep the ray direction at least `surface_normal_offset` "above" the smooth normal. */
-      if (DN <= surface_normal_offset) {
+      if ((shader & SHADER_SMOOTH_NORMAL) && (DN <= surface_normal_offset)) {
         D -= N * (DN - surface_normal_offset);
         D = normalize(D);
       }
