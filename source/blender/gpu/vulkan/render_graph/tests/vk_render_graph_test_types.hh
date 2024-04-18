@@ -100,7 +100,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
     std::stringstream ss;
     ss << "bind_descriptor_sets(";
     ss << "pipeline_bind_point=" << to_string(pipeline_bind_point);
-    ss << ", layout=" << layout;
+    ss << ", layout=" << to_string(layout);
     ss << ", p_descriptor_sets=" << to_string(p_descriptor_sets[0]);
     ss << ")";
     log_.append(ss.str());
