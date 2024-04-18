@@ -273,7 +273,8 @@ int BKE_crazyspace_get_first_deform_matrices_editbmesh(
         cd_mask_extra = datamasks->mask;
         BLI_linklist_free((LinkNode *)datamasks, nullptr);
 
-        mesh = BKE_mesh_wrapper_from_editmesh(em, &cd_mask_extra, me_input);
+        mesh = BKE_mesh_wrapper_from_editmesh(
+            std::make_shared<BMEditMesh>(*em), &cd_mask_extra, me_input);
         deformcos.reinitialize(verts_num);
         BKE_mesh_wrapper_vert_coords_copy(mesh, deformcos);
         deformmats.reinitialize(verts_num);
@@ -435,6 +436,7 @@ void BKE_crazyspace_build_sculpt(Depsgraph *depsgraph,
     VirtualModifierData virtual_modifier_data;
     Object object_eval;
     crazyspace_init_object_for_eval(depsgraph, object, &object_eval);
+    BLI_SCOPED_DEFER([&]() { MEM_delete(object_eval.runtime); });
     ModifierData *md = BKE_modifiers_get_virtual_modifierlist(&object_eval,
                                                               &virtual_modifier_data);
     const ModifierEvalContext mectx = {depsgraph, &object_eval, ModifierApplyFlag(0)};
