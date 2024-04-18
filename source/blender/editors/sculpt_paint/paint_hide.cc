@@ -724,6 +724,9 @@ enum class EditMode {
   Shrink = 1,
 };
 
+/* Number of vertices per iteration step size when growing or shrinking visibility. */
+static constexpr float VERTEX_ITERATION_THRESHOLD = 50000.0f;
+
 static void grow_shrink_visibility_mesh(Object &object,
                                         PBVH &pbvh,
                                         const Span<PBVHNode *> nodes,
@@ -741,7 +744,7 @@ static void grow_shrink_visibility_mesh(Object &object,
 
   bke::SpanAttributeWriter<bool> hide_vert = attributes.lookup_or_add_for_write_span<bool>(
       ".hide_vert", bke::AttrDomain::Point);
-  const VArraySpan hide_poly = *attributes.lookup<int>(".hide_poly", bke::AttrDomain::Face);
+  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   Array<bool> orig_hide_vert(hide_vert.span.size());
 
   array_utils::copy(hide_vert.span.as_span(), orig_hide_vert.as_mutable_span());
@@ -756,12 +759,13 @@ static void grow_shrink_visibility_mesh(Object &object,
 
       Vector<int> &face_indices = all_face_indices.local();
       const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, face_indices);
-      for (const int idx : indices.index_range()) {
-        if (!hide_poly[idx]) {
+      for (const int i : indices.index_range()) {
+        int face_index = indices[i];
+        if (!hide_poly[face_index]) {
           continue;
         }
 
-        const IndexRange face = faces[idx];
+        const IndexRange face = faces[face_index];
         for (const int corner : face) {
           int vert = corner_verts[corner];
           if (orig_hide_vert[vert] != desired_state) {
@@ -902,19 +906,27 @@ static int visibility_edit_exec(bContext *C, wmOperator *op)
   const EditMode mode = EditMode(RNA_enum_get(op->ptr, "mode"));
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
-  undo::push_begin(&object, op);
-  switch (BKE_pbvh_type(pbvh)) {
-    case PBVH_FACES:
-      grow_shrink_visibility_mesh(object, *pbvh, nodes, mode);
-      break;
-    case PBVH_GRIDS:
-      grow_shrink_visibility_grid(depsgraph, object, *pbvh, nodes, mode);
-      break;
-    case PBVH_BMESH:
-      grow_shrink_visibility_bmesh(object, *pbvh, nodes, mode);
-      break;
-  }
 
+  const SculptSession &ss = *object.sculpt;
+  int num_verts = SCULPT_vertex_count_get(&ss);
+
+  /* Automatically adjust the number of iterations based on the number of vertices in the mesh. */
+  int iterations = int(num_verts / VERTEX_ITERATION_THRESHOLD) + 1;
+
+  undo::push_begin(&object, op);
+  for (int i = 0; i < iterations; i++) {
+    switch (BKE_pbvh_type(pbvh)) {
+      case PBVH_FACES:
+        grow_shrink_visibility_mesh(object, *pbvh, nodes, mode);
+        break;
+      case PBVH_GRIDS:
+        grow_shrink_visibility_grid(depsgraph, object, *pbvh, nodes, mode);
+        break;
+      case PBVH_BMESH:
+        grow_shrink_visibility_bmesh(object, *pbvh, nodes, mode);
+        break;
+    }
+  }
   undo::push_end(&object);
 
   SCULPT_topology_islands_invalidate(object.sculpt);
