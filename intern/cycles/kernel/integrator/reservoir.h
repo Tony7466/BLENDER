@@ -22,13 +22,13 @@ struct Reservoir {
     this->rand = rand;
   }
 
-  Reservoir(const bool use_ris, const float rand)
+  Reservoir(KernelGlobals kg, const bool use_ris, const float rand)
   {
     total_weight = 0.0f;
     this->rand = rand;
     /* TODO(weizhen): find optimal values automatically, or set manually when debugging. */
-    this->num_light_samples = use_ris ? 8 : 1;
-    this->num_bsdf_samples = use_ris ? 3 : 1;
+    this->num_light_samples = use_ris ? kernel_data.integrator.restir_light_samples : 1;
+    this->num_bsdf_samples = use_ris ? kernel_data.integrator.restir_bsdf_samples : 1;
   }
 
   bool is_empty() const

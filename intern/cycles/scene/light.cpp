@@ -1149,7 +1149,6 @@ void LightManager::device_update_lights(Device *device, DeviceScene *dscene, Sce
   KernelIntegrator *kintegrator = &dscene->data.integrator;
   kintegrator->use_light_tree = scene->integrator->get_use_light_tree() &&
                                 device->info.has_light_tree;
-  kintegrator->use_restir = scene->integrator->get_use_restir();
   kintegrator->num_lights = num_lights;
   kintegrator->num_distant_lights = num_distant_lights;
   kintegrator->num_background_lights = num_background_lights;

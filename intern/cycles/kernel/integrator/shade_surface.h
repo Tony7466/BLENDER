@@ -357,7 +357,7 @@ ccl_device_inline void integrate_direct_light_create_shadow_path(
   integrate_shadow_write_pass_diffuse_glossy<is_direct_light>(kg, state, shadow_state, radiance);
 }
 
-/* TODO(weizhen): split function to direct/indirect illumination and rename. */
+/* TODO(weizhen): split function to direct/indirect illumination and rename this to NEE. */
 /* Path tracing: sample point on light and evaluate light shader, then
  * queue shadow ray to be traced. */
 template<uint node_feature_mask>
@@ -387,12 +387,12 @@ ccl_device
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
   const bool is_direct_light = light_is_direct_illumination(state);
-  const bool use_ris = is_direct_light && kernel_data.integrator.use_restir;
+  const bool use_ris = is_direct_light && kernel_data.integrator.use_initial_resampling;
 
   const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
 
   /* Sample position on a light. */
-  Reservoir reservoir(use_ris, rand);
+  Reservoir reservoir(kg, use_ris, rand);
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     LightSample ls ccl_optional_struct_init;
@@ -650,7 +650,7 @@ ccl_device
   BsdfEval radiance = reservoir.radiance;
   reservoir.total_weight /= reduce_add(fabs(radiance.sum));
 
-  if (use_ris) {
+  if (is_direct_light && kernel_data.integrator.use_spatial_resampling) {
     /* Write to reservoir and trace shadow ray later. */
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }

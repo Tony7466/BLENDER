@@ -359,10 +359,22 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
     scene->light_manager->tag_update(scene, LightManager::UPDATE_ALL);
   }
 
-  integrator->set_use_restir(get_boolean(cscene, "use_restir"));
-  if (integrator->use_restir_is_modified()) {
-    scene->light_manager->tag_update(scene, Integrator::UPDATE_ALL);
+  /* ReSTIR. */
+  bool use_restir = get_boolean(cscene, "use_restir");
+
+  bool use_initial_resampling = get_boolean(cscene, "use_initial_resampling");
+  const int light_samples = get_int(cscene, "restir_light_samples");
+  const int bsdf_samples = get_int(cscene, "restir_bsdf_samples");
+  if (light_samples == 1 && bsdf_samples == 1) {
+    use_initial_resampling = false;
   }
+
+  bool use_spatial_resampling = get_boolean(cscene, "use_spatial_resampling");
+
+  integrator->set_use_initial_resampling(use_restir && use_initial_resampling);
+  integrator->set_restir_light_samples(light_samples);
+  integrator->set_restir_bsdf_samples(bsdf_samples);
+  integrator->set_use_spatial_resampling(use_restir && use_spatial_resampling);
 
   SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
       cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);

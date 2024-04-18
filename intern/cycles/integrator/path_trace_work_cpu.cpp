@@ -148,7 +148,8 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
       [&] { initial_resampling(image_width, image_height, start_sample, sample_offset); });
 
   /* Spatial Resampling. */
-  if (device_scene_->data.integrator.use_restir) {
+  if (device_scene_->data.integrator.use_spatial_resampling) {
+    /* TODO(weizhen): spatial resampling seem to cause denoiser fail. */
     local_arena.execute(
         [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset); });
   }

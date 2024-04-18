@@ -243,6 +243,15 @@ enum_guiding_directional_sampling_types = (
      2),
 )
 
+enum_restir_visibility = (
+    ('INITIAL_SAMPLE', "Initial Samples", "Check visibility of initial samples"),
+    ('FINAL_SAMPLE', "Final Samples", "Check visibility of final samples"),
+)
+
+enum_restir_heuristics = (
+    ('BALANCED_HEURISTICS', "Balanced Heuristics", ""),
+    ('POWER_HEURISTICS', "Power Heuristics", ""),
+)
 
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
@@ -591,6 +600,67 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="ReSTIR",
         description="Reservoir-based Spatial Temporal Importance Resampling",
         default=True,
+    )
+
+    use_initial_resampling: BoolProperty(
+        name="Initial Resampling",
+        description="Process several light or BSDF samples using Resampled Importance Sampling",
+        default=True,
+    )
+
+    use_spatial_resampling: BoolProperty(
+        name="Spatial Resampling",
+        description="Process samples from neighboring pixels",
+        default=True,
+    )
+
+    restir_light_samples: IntProperty(
+        name="Light",
+        description="Number of light samples",
+        min=1, max=32,
+        default=8,
+    )
+
+    restir_bsdf_samples: IntProperty(
+        name="BSDF",
+        description="Number of BSDF samples",
+        min=1, max=8,
+        default=3,
+    )
+
+    restir_spatial_iterations: IntProperty(
+        name="Iterations",
+        description="Number of spatial resampling iterations",
+        min=1, max=1,
+        default=1,
+    )
+
+    restir_neighbor_radius: IntProperty(
+        name="Radius",
+        description="Pixel radius to gather samples from",
+        min=1, max=1,
+        default=1,
+    )
+
+    restir_visibility: EnumProperty(
+        name="Visibility",
+        description="Check visibility on intial or final samples",
+        items=enum_restir_visibility,
+        default='FINAL_SAMPLE',
+    )
+
+    restir_biased: BoolProperty(
+        name="Unbiased",
+        description="Querying extra visibility rays, render is unbiased but slower",
+        default=True)
+    restir_pairwise: BoolProperty(
+        name="Pairwise",
+        description="Use pairwise MIS when combining samples",
+        default=True)
+    restir_heuristics: EnumProperty(
+        name=" ",
+        items=enum_restir_heuristics,
+        default='POWER_HEURISTICS',
     )
 
     min_light_bounces: IntProperty(

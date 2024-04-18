@@ -536,8 +536,10 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
     add_auto_pass(scene, PASS_SHADOW_CATCHER_SAMPLE_COUNT);
   }
 
-  /* TODO(weizhen): condition to add reservoir pass. */
-  add_auto_pass(scene, PASS_RESTIR_RESERVOIR);
+  /* TODO(weizhen): this crashed once but I can't reproduce. */
+  if (integrator->get_use_spatial_resampling()) {
+    add_auto_pass(scene, PASS_RESTIR_RESERVOIR);
+  }
 
   const vector<Pass *> passes_immutable = scene->passes;
   for (const Pass *pass : passes_immutable) {

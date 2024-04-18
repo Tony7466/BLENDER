@@ -472,11 +472,57 @@ class CYCLES_RENDER_PT_sampling_lights(CyclesButtonsPanel, Panel):
 
         col = layout.column(align=True)
         col.prop(cscene, "use_light_tree")
-        col.prop(cscene, "use_restir")
         sub = col.row()
         sub.prop(cscene, "light_sampling_threshold", text="Light Threshold")
         sub.active = not cscene.use_light_tree
 
+
+class CYCLES_RENDER_PT_sampling_lights_restir(CyclesButtonsPanel, Panel):
+    bl_label = "ReSTIR"
+    bl_parent_id = 'CYCLES_RENDER_PT_sampling_lights'
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_header(self, context):
+        scene = context.scene
+        cscene = scene.cycles
+
+        self.layout.prop(context.scene.cycles, "use_restir", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        scene = context.scene
+        cscene = scene.cycles
+
+        col = layout.column()
+        col.active = cscene.use_restir
+        col.prop(cscene, "use_initial_resampling")
+        sub = col.column()
+        sub.active = cscene.use_initial_resampling
+        sub.prop(cscene, "restir_light_samples")
+        sub.prop(cscene, "restir_bsdf_samples")
+        col.separator()
+
+        col.prop(cscene, "use_spatial_resampling")
+        sub = col.column()
+        sub.active = cscene.use_spatial_resampling
+        sub.prop(cscene, "restir_spatial_iterations")
+        sub.prop(cscene, "restir_neighbor_radius")
+        col.separator()
+
+        sub = col.column()
+        sub.active = False
+        sub.prop(cscene, "restir_visibility")
+        col.separator()
+
+        sub = col.column(heading="MIS Weight")
+        row = sub.row(align=True)
+        row.prop(cscene, "restir_biased", toggle=True)
+        row.prop(cscene, "restir_pairwise", toggle=True)
+        sub.prop(cscene, "restir_heuristics")
+        sub.active = False
 
 class CYCLES_RENDER_PT_subdivision(CyclesButtonsPanel, Panel):
     bl_label = "Subdivision"
@@ -2562,6 +2608,7 @@ classes = (
     CYCLES_RENDER_PT_sampling_path_guiding,
     CYCLES_RENDER_PT_sampling_path_guiding_debug,
     CYCLES_RENDER_PT_sampling_lights,
+    CYCLES_RENDER_PT_sampling_lights_restir,
     CYCLES_RENDER_PT_sampling_advanced,
     CYCLES_RENDER_PT_light_paths,
     CYCLES_RENDER_PT_light_paths_max_bounces,
