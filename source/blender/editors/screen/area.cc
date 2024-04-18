@@ -902,7 +902,10 @@ void ED_workspace_status_range(bContext *C,
   ED_workspace_status_space(C, 0.7f);
 }
 
-void ED_workspace_status_item(bContext *C, std::string text, const int icon, const bool enabled)
+void ED_workspace_status_item_bool(bContext *C,
+                                   std::string text,
+                                   const int icon,
+                                   const bool enabled)
 {
   if (icon) {
     ED_workspace_status_icons(C, icon);
@@ -962,7 +965,7 @@ void ED_workspace_status_opmodal(bContext *C,
   }
 }
 
-void ED_workspace_status_opmodal(
+void ED_workspace_status_opmodal_bool(
     bContext *C, std::string text, wmOperatorType *ot, const int propvalue, const bool enabled)
 {
   text += ": ";

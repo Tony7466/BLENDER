@@ -109,12 +109,12 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
   ED_workspace_status_icons(C, ICON_EVENT_ESC, ICON_MOUSE_RMB);
   ED_workspace_status_item(C, "Cancel");
   ED_workspace_status_space(C, 0.6f);
-  ED_workspace_status_item(C, IFACE_("Tweak"), ICON_EVENT_CTRL, opdata->modify_depth);
-  ED_workspace_status_item(
+  ED_workspace_status_item_bool(C, IFACE_("Tweak"), ICON_EVENT_CTRL, opdata->modify_depth);
+  ED_workspace_status_item_bool(
       C, IFACE_("Outset"), ICON_EVENT_O, RNA_boolean_get(op->ptr, "use_outset"));
-  ED_workspace_status_item(
+  ED_workspace_status_item_bool(
       C, IFACE_("Boundary"), ICON_EVENT_B, RNA_boolean_get(op->ptr, "use_boundary"));
-  ED_workspace_status_item(
+  ED_workspace_status_item_bool(
       C, IFACE_("Individual"), ICON_EVENT_I, RNA_boolean_get(op->ptr, "use_individual"));
 
   ED_workspace_status_end(C);

@@ -1111,9 +1111,9 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
   ED_workspace_status_opmodal(C, IFACE_("Cancel"), op->type, KNF_MODAL_CANCEL);
   ED_workspace_status_opmodal(C, IFACE_("Undo"), op->type, KNF_MODAL_UNDO);
   ED_workspace_status_opmodal(C, "Pan View", op->type, KNF_MODAL_PANNING);
-  ED_workspace_status_opmodal(
+  ED_workspace_status_opmodal_bool(
       C, IFACE_("Midpoint Snap"), op->type, KNF_MODAL_MIDPOINT_ON, kcd->snap_midpoints);
-  ED_workspace_status_opmodal(
+  ED_workspace_status_opmodal_bool(
       C, IFACE_("Ignore Snap"), op->type, KNF_MODAL_IGNORE_SNAP_ON, kcd->ignore_edge_snapping);
 
   const std::string angle = fmt::format(
@@ -1135,15 +1135,15 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
 
   ED_workspace_status_opmodal(C, angle, op->type, KNF_MODAL_ANGLE_SNAP_TOGGLE);
 
-  ED_workspace_status_opmodal(
+  ED_workspace_status_opmodal_bool(
       C, IFACE_("Cut Through"), op->type, KNF_MODAL_CUT_THROUGH_TOGGLE, kcd->cut_through);
   ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_X_AXIS);
   ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_Y_AXIS);
   ED_workspace_status_opmodal(C, "", op->type, KNF_MODAL_Z_AXIS);
-  ED_workspace_status_item(C, IFACE_("Axis"), ICON_NONE, kcd->axis_constrained);
-  ED_workspace_status_opmodal(
+  ED_workspace_status_item_bool(C, IFACE_("Axis"), ICON_NONE, kcd->axis_constrained);
+  ED_workspace_status_opmodal_bool(
       C, IFACE_("Measure"), op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE, kcd->show_dist_angle);
-  ED_workspace_status_opmodal(
+  ED_workspace_status_opmodal_bool(
       C, IFACE_("X-Ray"), op->type, KNF_MODAL_DEPTH_TEST_TOGGLE, !kcd->depth_test);
 
   ED_workspace_status_end(C);

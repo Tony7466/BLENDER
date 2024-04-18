@@ -80,6 +80,7 @@ struct EdgeSlideData {
 };
 
 struct EdgeSlideParams {
+  wmOperator *op = nullptr;
   float perc;
 
   /** When un-clamped - use this index: #TransDataEdgeSlideVert.dir_side. */
@@ -794,7 +795,7 @@ static void applyEdgeSlide(TransInfo *t)
 
   ED_area_status_text(t->area, str);
 
-  wmOperator *op = WM_window_modal_operator(t->context);
+  wmOperator *op = slp->op;
   if (!op) {
     return;
   }
@@ -813,10 +814,10 @@ static void applyEdgeSlide(TransInfo *t)
   ED_workspace_status_opmodal(
       +t->context, IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
   ED_workspace_status_icons(t->context, ICON_EVENT_C, ICON_EVENT_ALT);
-  ED_workspace_status_item(t->context, IFACE_("Clamp"), ICON_NONE, is_clamp);
-  ED_workspace_status_item(t->context, IFACE_("Even"), ICON_EVENT_E, use_even);
+  ED_workspace_status_item_bool(t->context, IFACE_("Clamp"), ICON_NONE, is_clamp);
+  ED_workspace_status_item_bool(t->context, IFACE_("Even"), ICON_EVENT_E, use_even);
   if (use_even) {
-    ED_workspace_status_item(t->context, IFACE_("Flipped"), ICON_EVENT_F, flipped);
+    ED_workspace_status_item_bool(t->context, IFACE_("Flipped"), ICON_EVENT_F, flipped);
   }
 
   ED_workspace_status_end(t->context);
@@ -857,8 +858,12 @@ static void edge_slide_transform_matrix_fn(TransInfo *t, float mat_xform[4][4])
   add_v3_v3(mat_xform[3], delta);
 }
 
-static void initEdgeSlide_ex(
-    TransInfo *t, bool use_double_side, bool use_even, bool flipped, bool use_clamp)
+static void initEdgeSlide_ex(TransInfo *t,
+                             wmOperator *op,
+                             bool use_double_side,
+                             bool use_even,
+                             bool flipped,
+                             bool use_clamp)
 {
   EdgeSlideData *sld;
   bool ok = false;
@@ -867,6 +872,7 @@ static void initEdgeSlide_ex(
 
   {
     EdgeSlideParams *slp = static_cast<EdgeSlideParams *>(MEM_callocN(sizeof(*slp), __func__));
+    slp->op = op;
     slp->use_even = use_even;
     slp->flipped = flipped;
     /* Happens to be best for single-sided. */
@@ -923,7 +929,7 @@ static void initEdgeSlide(TransInfo *t, wmOperator *op)
     flipped = RNA_boolean_get(op->ptr, "flipped");
     use_clamp = RNA_boolean_get(op->ptr, "use_clamp");
   }
-  initEdgeSlide_ex(t, use_double_side, use_even, flipped, use_clamp);
+  initEdgeSlide_ex(t, op, use_double_side, use_even, flipped, use_clamp);
 }
 
 /** \} */

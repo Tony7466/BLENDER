@@ -459,7 +459,10 @@ void ED_workspace_status_item(bContext *C,
                               const int icon = 0,
                               const float space_factor = 0.0f);
 
-void ED_workspace_status_item(bContext *C, std::string text, const int icon, const bool enabled);
+void ED_workspace_status_item_bool(bContext *C,
+                                   std::string text,
+                                   const int icon,
+                                   const bool enabled);
 
 /* Adds a horizontal space to the status bar. */
 void ED_workspace_status_space(bContext *C, float space_factor = 1.0f);
@@ -479,11 +482,11 @@ void ED_workspace_status_opmodal(bContext *C,
                                  wmOperatorType *ot,
                                  const int propvalue);
 
-void ED_workspace_status_opmodal(bContext *C,
-                                 const std::string text,
-                                 wmOperatorType *ot,
-                                 const int propvalue,
-                                 const bool enabled);
+void ED_workspace_status_opmodal_bool(bContext *C,
+                                      const std::string text,
+                                      wmOperatorType *ot,
+                                      const int propvalue,
+                                      const bool enabled);
 
 /* Ends complex layout and requests a redraw of the status bar. */
 void ED_workspace_status_end(bContext *C);
