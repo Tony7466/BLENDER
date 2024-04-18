@@ -77,8 +77,6 @@ Image *render_to_image(Main &bmain,
   region.winy = short(win_size.y);
 
   GPU_offscreen_bind(offscreen, true);
-  const uint imb_flag = IB_rectfloat;
-  ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
 
   GPU_matrix_push_projection();
   GPU_matrix_identity_projection_set();
@@ -92,6 +90,8 @@ Image *render_to_image(Main &bmain,
   render_fn();
 
   /* create a image to see result of template */
+  const uint imb_flag = IB_rect;
+  ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
   if (ibuf->float_buffer.data) {
     GPU_offscreen_read_color(offscreen, GPU_DATA_FLOAT, ibuf->float_buffer.data);
   }
@@ -245,87 +245,29 @@ enum ColorFlag {
   Boundary = 1 << 1,
   Fill = 1 << 2,
   Seed = 1 << 3,
-  Stroke = 1 << 4,
 };
-ENUM_OPERATORS(ColorFlag, ColorFlag::Stroke)
-
-inline int float_as_int(const float value)
-{
-  return *reinterpret_cast<const int *>(&value);
-}
-
-inline float int_as_float(const int value)
-{
-  return *reinterpret_cast<const float *>(&value);
-}
+ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
 
 /* Alpha channel used to store various flags. */
 
-const ColorGeometry4f boundary_color = {1, 0, 0, int_as_float(ColorFlag::Boundary)};
-const ColorGeometry4f fill_color = {0, 1, 0, int_as_float(ColorFlag::Fill)};
-const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, int_as_float(ColorFlag::Seed)};
-const ColorGeometry4f border_color = {0, 0, 1, int_as_float(ColorFlag::Border)};
+const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
+const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
 
-const ColorGeometry4f extend_color = {1, 1, 0, 0};
-const ColorGeometry4f helper_color = {1, 0, 0.5f, 0};
+const ColorGeometry4b output_boundary_color = {255, 0, 0, 255};
+const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
+const ColorGeometry4b output_border_color = {0, 0, 255, 255};
+const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
+const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
+const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
 
-bool get_flag(const ColorGeometry4f &color, const ColorFlag flag) {
-  const uint8_t a = *reinterpret_cast<const uint8_t *>(&color.a);
-  return (a & flag) != 0;
+bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
+{
+  return (color.r & flag) != 0;
 }
 
-void set_flag(ColorGeometry4f &color, const ColorFlag flag, const ColorGeometry4f &debug_color, bool value)
+void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
 {
-  color.r = debug_color.r;
-  color.g = debug_color.g;
-  color.b = debug_color.b;
-  uint8_t &a = *reinterpret_cast<uint8_t *>(&color.a);
-  a = value ? (a | flag) : (a & (~flag));
-}
-
-bool is_pixel_boundary(const ColorGeometry4f &color)
-{
-  return get_flag(color, ColorFlag::Boundary);
-}
-
-bool is_pixel_filled(const ColorGeometry4f &color)
-{
-  return get_flag(color, ColorFlag::Fill);
-}
-
-bool is_pixel_border(const ColorGeometry4f &color)
-{
-  return get_flag(color, ColorFlag::Border);
-}
-
-bool is_pixel_seed(const ColorGeometry4f &color)
-{
-  return get_flag(color, ColorFlag::Seed);
-}
-
-void clear_pixel(ColorGeometry4f &color)
-{
-  color.a = 0;
-}
-
-void set_pixel_boundary(ColorGeometry4f &color, const bool enable = true)
-{
-  set_flag(color, ColorFlag::Boundary, boundary_color, enable);
-}
-
-void set_pixel_filled(ColorGeometry4f &color, const bool enable = true)
-{
-  set_flag(color, ColorFlag::Fill, fill_color, enable);
-}
-
-void set_pixel_border(ColorGeometry4f &color, const bool enable = true)
-{
-  set_flag(color, ColorFlag::Border, border_color, enable);
-}
-
-void set_pixel_seed(ColorGeometry4f &color, const bool enable = true)
-{
-  set_flag(color, ColorFlag::Seed, seed_color, enable);
+  color.r = value ? (color.r | flag) : (color.r & (~flag));
 }
 
 static IndexMask get_boundary_curve_mask(const Object &object,
@@ -389,7 +331,7 @@ static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
                  [tint_color, opacities, material_alpha, alpha_threshold](const int64_t index) {
                    float alpha = std::clamp(material_alpha * opacities[index], 0.0f, 1.0f);
                    ColorGeometry4f color = tint_color;
-                   color.a = float(alpha > alpha_threshold);
+                   color.a = (alpha > alpha_threshold ? 255 : 0);
                    return color;
                  });
 }
@@ -424,7 +366,8 @@ static void draw_extension_stroke(const Span<float3> positions,
                                   const float thickness,
                                   const bool draw_as_helper)
 {
-  const ColorGeometry4f &color = draw_as_helper ? helper_color : extend_color;
+  const ColorGeometry4f &color = draw_as_helper ? output_helper_color.decode() :
+                                                  output_extend_color.decode();
   const VArray<ColorGeometry4f> colors = stroke_colors(
       opacities, color, positions.size(), material_alpha, alpha_threshold, brush_fill_hide);
 
@@ -443,13 +386,14 @@ static void draw_helper_stroke(Span<float3> positions,
                                const float thickness,
                                const bool transparent)
 {
-  const ColorGeometry4f helper_color_transparent = ColorGeometry4f(
-      helper_color.r, helper_color.g, helper_color.b, 0.0f);
+  const ColorGeometry4f helper_color_transparent =
+      ColorGeometry4b(output_helper_color.r, output_helper_color.g, output_helper_color.b, 0.0f)
+          .decode();
   const VArray<ColorGeometry4f> colors = transparent ?
                                              VArray<ColorGeometry4f>::ForSingle(
                                                  helper_color_transparent, positions.size()) :
                                              stroke_colors(opacities,
-                                                           helper_color,
+                                                           output_helper_color.decode(),
                                                            positions.size(),
                                                            material_alpha,
                                                            alpha_threshold,
@@ -558,13 +502,75 @@ static void draw_datablock(const Object &object,
 }
 
 /* Set a border to create image limits. */
-static void mark_borders(Image &ima, const ColorGeometry4f &color)
+/* TODO this shouldn't be necessary if drawing could accurately save flag values. */
+static void convert_colors_to_flags(Image &ima)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
   const int width = ibuf->x;
   const int height = ibuf->y;
-  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
+                                      width * height);
+
+  for (const int i : pixels.index_range()) {
+    const ColorGeometry4b input_color = pixels[i];
+    const bool is_boundary = input_color.r > 0.0f;
+    const bool is_seed = input_color.g > 0.0f;
+    pixels[i].r = (is_boundary ? ColorFlag::Boundary : 0) | (is_seed ? ColorFlag::Seed : 0);
+    pixels[i].g = 0;
+    pixels[i].b = 0;
+    pixels[i].a = 0;
+  }
+
+  /* release ibuf */
+  BKE_image_release_ibuf(&ima, ibuf, lock);
+
+  ima.id.tag |= LIB_TAG_DOIT;
+}
+
+/* Set a border to create image limits. */
+static void convert_flags_to_colors(Image &ima)
+{
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
+                                      width * height);
+
+  for (const int i : pixels.index_range()) {
+    const ColorGeometry4b input_color = pixels[i];
+    if (input_color.r & ColorFlag::Boundary) {
+      pixels[i] = output_boundary_color;
+    }
+    else if (input_color.r & ColorFlag::Border) {
+      pixels[i] = output_border_color;
+    }
+    else if (input_color.r & ColorFlag::Seed) {
+      pixels[i] = output_seed_color;
+    }
+    else if (input_color.r & ColorFlag::Fill) {
+      pixels[i] = output_fill_color;
+    }
+    else {
+      pixels[i] = ColorGeometry4b(0, 0, 0, 0);
+    }
+  }
+
+  /* release ibuf */
+  BKE_image_release_ibuf(&ima, ibuf, lock);
+
+  ima.id.tag |= LIB_TAG_DOIT;
+}
+
+/* Set a border to create image limits. */
+static void mark_borders(Image &ima, const ColorGeometry4b &color)
+{
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
+  const int width = ibuf->x;
+  const int height = ibuf->y;
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
                                       width * height);
 
   int row_start = 0;
@@ -602,13 +608,14 @@ enum FillBorderMode {
   Ignore,
 };
 
-template<FillBorderMode border_mode> FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
+template<FillBorderMode border_mode>
+FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
   const int width = ibuf->x;
   const int height = ibuf->y;
-  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
                                       width * height);
   auto coord_from_index = [&](const int index) {
     const div_t d = div(index, width);
@@ -620,7 +627,7 @@ template<FillBorderMode border_mode> FillResult flood_fill(Image &ima, const int
   blender::Stack<int> active_pixels;
   /* Initialize the stack with filled pixels (dot at mouse position). */
   for (const int i : pixels.index_range()) {
-    if (is_pixel_seed(pixels[i])) {
+    if (get_flag(pixels[i], ColorFlag::Seed)) {
       active_pixels.push(i);
     }
   }
@@ -634,57 +641,63 @@ template<FillBorderMode border_mode> FillResult flood_fill(Image &ima, const int
   while (!active_pixels.is_empty()) {
     const int index = active_pixels.pop();
     const int2 coord = coord_from_index(index);
-    ColorGeometry4f pixel_value = pixels[index];
+    ColorGeometry4b pixel_value = pixels[index];
 
     if constexpr (border_mode == FillBorderMode::Cancel) {
-      if (is_pixel_border(pixel_value)) {
+      if (get_flag(pixel_value, ColorFlag::Border)) {
         border_contact = true;
         break;
       }
     }
     else if constexpr (border_mode == FillBorderMode::Ignore) {
-      if (is_pixel_border(pixel_value)) {
+      if (get_flag(pixel_value, ColorFlag::Border)) {
         border_contact = true;
         continue;
       }
     }
     else {
-      if (is_pixel_border(pixel_value)) {
+      if (get_flag(pixel_value, ColorFlag::Border)) {
         border_contact = true;
       }
     }
 
-    if (is_pixel_filled(pixel_value)) {
+    if (get_flag(pixel_value, ColorFlag::Fill)) {
       /* Pixel already filled. */
       continue;
     }
 
-    if (is_pixel_boundary(pixel_value)) {
+    if (get_flag(pixel_value, ColorFlag::Boundary)) {
       /* Boundary pixel, ignore. */
       continue;
     }
 
     /* Mark as filled. */
-    set_pixel_filled(pixels[index]);
+    set_flag(pixels[index], ColorFlag::Fill, true);
 
     /* Directional box filtering for gap detection. */
     const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, leak_filter_width));
-    const IndexRange filter_x_pos = IndexRange(1, std::min(width - 1 - coord.x, leak_filter_width));
+    const IndexRange filter_x_pos = IndexRange(1,
+                                               std::min(width - 1 - coord.x, leak_filter_width));
     const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, leak_filter_width));
-    const IndexRange filter_y_pos = IndexRange(1, std::min(height - 1 - coord.y, leak_filter_width));
+    const IndexRange filter_y_pos = IndexRange(1,
+                                               std::min(height - 1 - coord.y, leak_filter_width));
     bool is_boundary_horizontal = false;
     bool is_boundary_vertical = false;
     for (const int filter_i : filter_y_neg) {
-      is_boundary_horizontal |= is_pixel_boundary(pixel_from_coord(coord - int2(0, filter_i)));
+      is_boundary_horizontal |= get_flag(pixel_from_coord(coord - int2(0, filter_i)),
+                                         ColorFlag::Boundary);
     }
     for (const int filter_i : filter_y_pos) {
-      is_boundary_horizontal |= is_pixel_boundary(pixel_from_coord(coord + int2(0, filter_i)));
+      is_boundary_horizontal |= get_flag(pixel_from_coord(coord + int2(0, filter_i)),
+                                         ColorFlag::Boundary);
     }
     for (const int filter_i : filter_x_neg) {
-      is_boundary_vertical |= is_pixel_boundary(pixel_from_coord(coord - int2(filter_i, 0)));
+      is_boundary_vertical |= get_flag(pixel_from_coord(coord - int2(filter_i, 0)),
+                                       ColorFlag::Boundary);
     }
     for (const int filter_i : filter_x_pos) {
-      is_boundary_vertical |= is_pixel_boundary(pixel_from_coord(coord + int2(filter_i, 0)));
+      is_boundary_vertical |= get_flag(pixel_from_coord(coord + int2(filter_i, 0)),
+                                       ColorFlag::Boundary);
     }
 
     /* Activate neighbors */
@@ -713,13 +726,13 @@ void invert_fill(Image &ima)
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
   const int width = ibuf->x;
   const int height = ibuf->y;
-  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
                                       width * height);
 
   for (const int i : pixels.index_range()) {
-    const bool is_filled = is_pixel_filled(pixels[i]);
-    set_pixel_boundary(pixels[i], is_filled);
-    set_pixel_filled(pixels[i], !is_filled);
+    const bool is_filled = get_flag(pixels[i], ColorFlag::Fill);
+    set_flag(pixels[i], ColorFlag::Boundary, is_filled);
+    set_flag(pixels[i], ColorFlag::Fill, !is_filled);
   }
 
   BKE_image_release_ibuf(&ima, ibuf, lock);
@@ -760,7 +773,7 @@ static Vector<int> build_fill_boundary(Image &ima)
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
   const int width = ibuf->x;
   const int height = ibuf->y;
-  MutableSpan<ColorGeometry4f> pixels(reinterpret_cast<ColorGeometry4f *>(ibuf->float_buffer.data),
+  MutableSpan<ColorGeometry4b> pixels(reinterpret_cast<ColorGeometry4b *>(ibuf->byte_buffer.data),
                                       width * height);
   auto coord_from_index = [&](const int index) {
     const div_t d = div(index, width);
@@ -785,7 +798,7 @@ static Vector<int> build_fill_boundary(Image &ima)
       for (const int x : IndexRange(width)) {
         const int2 coord = {x, y};
         const int index = index_from_coord(coord);
-        if (is_pixel_seed(pixels[index])) {
+        if (get_flag(pixels[index], ColorFlag::Seed)) {
           /* Direction 3: (1, 0). Found the first filled pixel in the row. */
           return BoundaryStep{coord, 3};
         }
@@ -804,7 +817,7 @@ static Vector<int> build_fill_boundary(Image &ima)
         continue;
       }
       const int neighbor_index = index_from_coord(neighbor_coord);
-      if (!is_pixel_filled(pixels[neighbor_index])) {
+      if (!get_flag(pixels[neighbor_index], ColorFlag::Fill)) {
         continue;
       }
 
@@ -1024,13 +1037,13 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
     /* Draw blue point where click with mouse. */
     const float mouse_dot_size = 4.0f;
-    render_utils::draw_dot(fill_point_world, mouse_dot_size, seed_color);
+    render_utils::draw_dot(fill_point_world, mouse_dot_size, draw_seed_color);
 
     draw_datablock(object,
                    grease_pencil,
                    src_drawings,
                    boundary_layers,
-                   boundary_color,
+                   draw_boundary_color,
                    fill_draw_mode,
                    alpha_threshold,
                    thickness);
@@ -1043,8 +1056,10 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     return {};
   }
 
+  convert_colors_to_flags(*ima);
+
   /* Set red borders to create a external limit. */
-  mark_borders(*ima, border_color);
+  mark_borders(*ima, output_border_color);
 
   /* Apply boundary fill */
   if (invert) {
@@ -1067,7 +1082,10 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   Vector<int> boundary = build_fill_boundary(*ima);
   bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
   /* Delete temp image. */
-  if (!keep_image) {
+  if (keep_image) {
+    convert_flags_to_colors(*ima);
+  }
+  else {
     BKE_id_free(&bmain, ima);
   }
 
