@@ -402,6 +402,7 @@ static void do_forward_compat_versioning(bNode &node, const NodeDeclaration &nod
  */
 static bool hide_new_group_input_sockets(const bNode &node)
 {
+  BLI_assert(node.is_group_input());
   /* Check needed to handle newly added group input nodes. */
   if (const bNodeSocket *extension_socket = static_cast<bNodeSocket *>(node.outputs.last)) {
     return extension_socket->is_hidden();
