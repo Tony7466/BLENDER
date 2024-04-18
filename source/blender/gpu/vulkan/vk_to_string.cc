@@ -464,18 +464,15 @@ std::string to_string(const VkBufferImageCopy &vk_buffer_image_copy, int indenta
   ss << "buffer_offset=" << vk_buffer_image_copy.bufferOffset;
   ss << ", buffer_row_length=" << vk_buffer_image_copy.bufferRowLength;
   ss << ", buffer_image_height=" << vk_buffer_image_copy.bufferImageHeight;
-  ss << ", image_subresource="
-     << "\n";
+  ss << ", image_subresource=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_buffer_image_copy.imageSubresource, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", image_offset="
-     << "\n";
+  ss << ", image_offset=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_buffer_image_copy.imageOffset, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", image_extent="
-     << "\n";
+  ss << ", image_extent=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_buffer_image_copy.imageExtent, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -520,8 +517,7 @@ std::string to_string(const VkClearDepthStencilValue &vk_clear_depth_stencil_val
 std::string to_string(const VkClearRect &vk_clear_rect, int indentation_level)
 {
   std::stringstream ss;
-  ss << "rect="
-     << "\n";
+  ss << "rect=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_clear_rect.rect, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -555,13 +551,11 @@ std::string to_string(const VkExtent3D &vk_extent3_d, int indentation_level)
 std::string to_string(const VkImageBlit &vk_image_blit, int indentation_level)
 {
   std::stringstream ss;
-  ss << "src_subresource="
-     << "\n";
+  ss << "src_subresource=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_blit.srcSubresource, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", dst_subresource="
-     << "\n";
+  ss << ", dst_subresource=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_blit.dstSubresource, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -572,28 +566,23 @@ std::string to_string(const VkImageBlit &vk_image_blit, int indentation_level)
 std::string to_string(const VkImageCopy &vk_image_copy, int indentation_level)
 {
   std::stringstream ss;
-  ss << "src_subresource="
-     << "\n";
+  ss << "src_subresource=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_copy.srcSubresource, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", src_offset="
-     << "\n";
+  ss << ", src_offset=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_copy.srcOffset, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", dst_subresource="
-     << "\n";
+  ss << ", dst_subresource=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_copy.dstSubresource, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", dst_offset="
-     << "\n";
+  ss << ", dst_offset=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_copy.dstOffset, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", extent="
-     << "\n";
+  ss << ", extent=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_copy.extent, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -609,8 +598,7 @@ std::string to_string(const VkImageMemoryBarrier &vk_image_memory_barrier, int i
   ss << ", old_layout=" << to_string(vk_image_memory_barrier.oldLayout);
   ss << ", new_layout=" << to_string(vk_image_memory_barrier.newLayout);
   ss << ", image=" << vk_image_memory_barrier.image;
-  ss << ", subresource_range="
-     << "\n";
+  ss << ", subresource_range=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_image_memory_barrier.subresourceRange, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -679,13 +667,11 @@ std::string to_string(const VkOffset3D &vk_offset3_d, int indentation_level)
 std::string to_string(const VkRect2D &vk_rect2_d, int indentation_level)
 {
   std::stringstream ss;
-  ss << "offset="
-     << "\n";
+  ss << "offset=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_rect2_d.offset, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
-  ss << ", extent="
-     << "\n";
+  ss << ", extent=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_rect2_d.extent, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
@@ -699,8 +685,7 @@ std::string to_string(const VkRenderPassBeginInfo &vk_render_pass_begin_info,
   std::stringstream ss;
   ss << "render_pass=" << vk_render_pass_begin_info.renderPass;
   ss << ", framebuffer=" << vk_render_pass_begin_info.framebuffer;
-  ss << ", render_area="
-     << "\n";
+  ss << ", render_area=" << std::endl;
   ss << std::string(indentation_level * 2 + 2, ' ')
      << to_string(vk_render_pass_begin_info.renderArea, indentation_level + 1);
   ss << std::string(indentation_level * 2, ' ');
