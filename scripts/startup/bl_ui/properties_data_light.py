@@ -107,11 +107,6 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
                 sub.prop(light, "size", text="Size X")
                 sub.prop(light, "size_y", text="Y")
 
-        if context.engine == 'BLENDER_EEVEE_NEXT':
-            col.separator()
-
-            col.prop(light, "use_shadow", text="Cast Shadow")
-
 
 class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
     bl_label = "Custom Distance"
@@ -147,10 +142,15 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
+    def draw_header(self, context):
+        light = context.light
+        self.layout.prop(light, "use_shadow", text="")
+
     def draw(self, context):
         layout = self.layout
         light = context.light
         layout.use_property_split = True
+        layout.active = context.scene.eevee.use_shadows and light.use_shadow
 
         col = layout.column()
         col.prop(light, "shadow_softness_factor", text="Softness")
@@ -171,13 +171,25 @@ class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+        ob = context.object
         light = context.light
         layout.use_property_split = True
 
         col = layout.column()
+        col.active = ob.visible_diffuse
         col.prop(light, "diffuse_factor", text="Diffuse")
-        col.prop(light, "specular_factor", text="Specular")
-        col.prop(light, "volume_factor", text="Volume", text_ctxt=i18n_contexts.id_id)
+
+        col = layout.column()
+        col.active = ob.visible_glossy
+        col.prop(light, "specular_factor", text="Glossy")
+
+        col = layout.column()
+        col.active = ob.visible_transmission
+        col.prop(light, "transmission_factor", text="Transmission")
+
+        col = layout.column()
+        col.active = ob.visible_volume_scatter
+        col.prop(light, "volume_factor", text="Volume Scatter", text_ctxt=i18n_contexts.id_id)
 
 
 class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
