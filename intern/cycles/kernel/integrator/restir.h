@@ -33,11 +33,10 @@ struct SpatialResampling {
   }
 
   static uint is_valid_neighbor(const ccl_private ShaderData *sd,
-                                const ccl_private ShaderData *neighbor_sd,
-                                const ccl_private Reservoir *reservoir)
+                                const ccl_private ShaderData *neighbor_sd)
   {
     /* TODO(weizhen): find a good criterion. */
-    return (sd->object == neighbor_sd->object) && !reservoir->is_empty();
+    return (sd->object == neighbor_sd->object) && (sd->type == neighbor_sd->type);
   }
 };
 
@@ -225,7 +224,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                        neighbor_pixel_index,
                                        render_buffer);
 
-    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd, &neighbor_reservoir)) {
+    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd) || neighbor_reservoir.is_empty())
+    {
       continue;
     }
 
@@ -262,7 +262,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                        neighbor_pixel_index,
                                        render_buffer);
 
-    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd, &neighbor_reservoir)) {
+    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd)) {
       continue;
     }
 
