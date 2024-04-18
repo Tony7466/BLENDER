@@ -19,8 +19,9 @@
 #include "GPU_shader.hh"
 #include "GPU_texture.hh"
 
-#include "COM_algorithm_recursive_gaussian_blur.hh"
+#include "COM_algorithm_deriche_gaussian_blur.hh"
 #include "COM_algorithm_symmetric_separable_blur.hh"
+#include "COM_algorithm_van_vliet_gaussian_blur.hh"
 #include "COM_node_operation.hh"
 #include "COM_symmetric_blur_weights.hh"
 #include "COM_utilities.hh"
@@ -108,7 +109,7 @@ class BlurOperation : public NodeOperation {
     }
 
     if (node_storage(bnode()).filtertype == R_FILTER_FAST_GAUSS) {
-      recursive_gaussian_blur(
+      deriche_gaussian_blur(
           context(), get_input("Image"), get_result("Image"), compute_blur_radius());
     }
     else if (use_variable_size()) {

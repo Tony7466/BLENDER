@@ -11,26 +11,22 @@
 #include "COM_result.hh"
 #include "COM_utilities.hh"
 
-#include "COM_algorithm_recursive_gaussian_blur.hh"
-#include "COM_deriche_gaussian_coefficients.hh"
+#include "COM_algorithm_van_vliet_gaussian_blur.hh"
+#include "COM_van_vliet_gaussian_coefficients.hh"
 
 namespace blender::realtime_compositor {
 
 static Result horizontal_pass(Context &context, Result &input, float radius)
 {
-  GPUShader *shader = context.get_shader("compositor_recursive_gaussian_blur");
+  GPUShader *shader = context.get_shader("compositor_van_vliet_gaussian_blur");
   GPU_shader_bind(shader);
 
   const float sigma = radius / 2.0f;
-  const DericheGaussianCoefficients &coefficients =
-      context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
+  const VanVlietGaussianCoefficients &coefficients =
+      context.cache_manager().van_vliet_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_4fv(shader,
-                         "causal_feedforward_coefficients",
-                         float4(coefficients.causal_feedforward_coefficients()));
-  GPU_shader_uniform_4fv(shader,
-                         "non_causal_feedforward_coefficients",
-                         float4(coefficients.non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_1f(
+      shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
   GPU_shader_uniform_4fv(
       shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
 
@@ -68,19 +64,15 @@ static void vertical_pass(Context &context,
                           Result &output,
                           float radius)
 {
-  GPUShader *shader = context.get_shader("compositor_recursive_gaussian_blur");
+  GPUShader *shader = context.get_shader("compositor_van_vliet_gaussian_blur");
   GPU_shader_bind(shader);
 
   const float sigma = radius / 2.0f;
-  const DericheGaussianCoefficients &coefficients =
-      context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
+  const VanVlietGaussianCoefficients &coefficients =
+      context.cache_manager().van_vliet_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_4fv(shader,
-                         "causal_feedforward_coefficients",
-                         float4(coefficients.causal_feedforward_coefficients()));
-  GPU_shader_uniform_4fv(shader,
-                         "non_causal_feedforward_coefficients",
-                         float4(coefficients.non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_1f(
+      shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
   GPU_shader_uniform_4fv(
       shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
 
@@ -99,7 +91,7 @@ static void vertical_pass(Context &context,
   horizontal_pass_result.unbind_as_texture();
 }
 
-void recursive_gaussian_blur(Context &context, Result &input, Result &output, float2 radius)
+void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, float2 radius)
 {
   Result horizontal_pass_result = horizontal_pass(context, input, radius.x);
   vertical_pass(context, input, horizontal_pass_result, output, radius.y);
