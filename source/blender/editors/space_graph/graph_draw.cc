@@ -209,7 +209,7 @@ static void draw_cross(float position[2], const float scale[2], uint attr_id)
 static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu,
                                                    bool sel,
                                                    uint pos,
-                                                   const blender::IndexRange &index_range)
+                                                   const blender::IndexRange index_range)
 {
   set_fcurve_vertex_color(fcu, sel);
 
