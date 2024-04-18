@@ -138,9 +138,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_solid_clipped)
 
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_iface, "geometry_in")
     .smooth(Type::VEC4, "finalColor")
-    .flat(Type::FLOAT, "wire_width")
-    .smooth(Type::VEC4, "finalColorOuter_")
-    .smooth(Type::UINT, "selectOverride_");
+    .flat(Type::FLOAT, "wire_width");
 
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_iface, "geometry_out")
     .flat(Type::VEC4, "finalColor")

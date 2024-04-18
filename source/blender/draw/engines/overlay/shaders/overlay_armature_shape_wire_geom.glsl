@@ -61,12 +61,11 @@ void main()
   /* Due to an AMD glitch, this line was moved out of the `do_vertex`
    * function (see #62792). */
   view_clipping_distances_set(gl_in[0]);
-  do_vertex(geometry_in[0].finalColor, pos0, half_size, edge_ofs);
-  do_vertex(geometry_in[0].finalColor, pos0, -half_size, -edge_ofs);
+  const vec4 final_color = geometry_in[0].finalColor;
+  do_vertex(final_color, pos0, half_size, edge_ofs);
+  do_vertex(final_color, pos0, -half_size, -edge_ofs);
 
   view_clipping_distances_set(gl_in[1]);
-  const vec4 final_color = (geometry_in[0].selectOverride_ == 0u) ? geometry_in[1].finalColor :
-                                                              geometry_in[0].finalColor;
   do_vertex(final_color, pos1, half_size, edge_ofs);
   do_vertex(final_color, pos1, -half_size, -edge_ofs);
 
