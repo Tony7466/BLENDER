@@ -1362,12 +1362,10 @@ class IMAGE_PT_uv_sculpt_options(Panel, ImagePaintPanel):
         layout = self.layout
 
         tool_settings = context.tool_settings
-        uvsculpt = tool_settings.uv_sculpt
 
         col = layout.column()
         col.prop(tool_settings, "uv_sculpt_lock_borders")
         col.prop(tool_settings, "uv_sculpt_all_islands")
-        col.prop(uvsculpt, "show_brush", text="Display Cursor")
 
 
 class ImageScopesPanel:

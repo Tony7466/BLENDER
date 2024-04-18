@@ -1250,7 +1250,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->sculpt);
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->vpaint);
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->wpaint);
-    direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->uvsculpt);
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->gp_paint);
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->gp_vertexpaint);
     direct_link_paint_helper(reader, sce, (Paint **)&sce->toolsettings->gp_sculptpaint);
@@ -1263,6 +1262,9 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     sce->toolsettings->particle.scene = nullptr;
     sce->toolsettings->particle.object = nullptr;
     sce->toolsettings->gp_sculpt.paintcursor = nullptr;
+    if (sce->toolsettings->uvsculpt.strength_curve) {
+      BKE_curvemapping_blend_read(reader, sce->toolsettings->uvsculpt.strength_curve);
+    }
 
     if (sce->toolsettings->sculpt) {
       BLO_read_data_address(reader, &sce->toolsettings->sculpt->automasking_cavity_curve);

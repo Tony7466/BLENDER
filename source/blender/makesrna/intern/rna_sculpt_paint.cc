@@ -527,6 +527,7 @@ static void rna_UvSculpt_curve_preset_set(PointerRNA *ptr, int value)
           1, 0.0f, 0.0f, 1.0f, 1.0f);
     }
   }
+  scene->toolsettings->uvsculpt.curve_preset = int8_t(value);
 }
 
 /** \name Paint mode settings

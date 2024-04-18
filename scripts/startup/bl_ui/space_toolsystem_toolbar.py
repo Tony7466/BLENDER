@@ -2032,10 +2032,6 @@ class _defs_image_uv_sculpt:
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            tool_settings = context.tool_settings
-            uv_sculpt = tool_settings.uv_sculpt
-            if not uv_sculpt.show_brush:
-                return
             props = tool.operator_properties("sculpt.uv_sculpt_grab")
             radius = props.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
@@ -2062,10 +2058,6 @@ class _defs_image_uv_sculpt:
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            tool_settings = context.tool_settings
-            uv_sculpt = tool_settings.uv_sculpt
-            if not uv_sculpt.show_brush:
-                return
             props = tool.operator_properties("sculpt.uv_sculpt_relax")
             radius = props.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
@@ -2091,10 +2083,6 @@ class _defs_image_uv_sculpt:
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            tool_settings = context.tool_settings
-            uv_sculpt = tool_settings.uv_sculpt
-            if not uv_sculpt.show_brush:
-                return
             props = tool.operator_properties("sculpt.uv_sculpt_pinch")
             radius = props.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
