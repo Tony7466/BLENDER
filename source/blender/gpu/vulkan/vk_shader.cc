@@ -736,7 +736,6 @@ bool VKShader::finalize_descriptor_set_layouts(VKDevice &vk_device,
   if (created) {
     debug::object_label(vk_descriptor_set_layout_, name_get());
   }
-
   if (!needed) {
     BLI_assert(vk_descriptor_set_layout_ == VK_NULL_HANDLE);
     return true;

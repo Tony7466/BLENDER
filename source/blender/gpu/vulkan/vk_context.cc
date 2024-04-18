@@ -21,7 +21,9 @@
 
 namespace blender::gpu {
 
-VKContext::VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources)
+VKContext::VKContext(void *ghost_window,
+                     void *ghost_context,
+                     render_graph::VKResourceStateTracker &resources)
     : render_graph_(std::make_unique<render_graph::VKCommandBufferWrapper>(), resources)
 
 {
@@ -44,7 +46,7 @@ VKContext::~VKContext()
     surface_texture_ = nullptr;
   }
   VKBackend::get().device_.context_unregister(*this);
-  render_graph_.deinit();
+  render_graph_.free_data();
 
   delete imm;
   imm = nullptr;
@@ -229,7 +231,7 @@ void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data
 void VKContext::update_dispatch_info()
 {
   dispatch_info_.dispatch_node = {};
-  dispatch_info_.resources.clear();
+  dispatch_info_.resources.reset();
   state_manager_get().apply_bindings(*this, dispatch_info_.resources);
 
   update_pipeline_data(dispatch_info_.dispatch_node.pipeline_data);

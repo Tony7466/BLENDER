@@ -36,10 +36,12 @@ class VKContext : public Context, NonCopyable {
   void *ghost_context_;
 
   render_graph::VKRenderGraph render_graph_;
-  render_graph::VKDispatchCreateInfo dispatch_info_ = {};
+  render_graph::VKDispatchNode::CreateInfo dispatch_info_ = {};
 
  public:
-  VKContext(void *ghost_window, void *ghost_context, render_graph::VKResources &resources);
+  VKContext(void *ghost_window,
+            void *ghost_context,
+            render_graph::VKResourceStateTracker &resources);
   virtual ~VKContext();
 
   void activate() override;
@@ -59,6 +61,9 @@ class VKContext : public Context, NonCopyable {
   void *debug_capture_scope_create(const char *name) override;
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
+
+  void debug_unbind_all_ubo() override{};
+  void debug_unbind_all_ssbo() override{};
 
   bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);

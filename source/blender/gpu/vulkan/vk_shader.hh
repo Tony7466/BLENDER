@@ -27,7 +27,11 @@ class VKShader : public Shader {
   VkShaderModule fragment_module_ = VK_NULL_HANDLE;
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
   bool compilation_failed_ = false;
-  /* TODO: Should we move descriptor set layout and pipeline layout to VKShaderInterface? */
+
+  /**
+   * Not owning handle to the descriptor layout.
+   * The handle is owned by `VKDescriptorSetLayouts` of the device.
+   */
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   [[deprecated]] VKPipeline pipeline_;

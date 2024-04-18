@@ -164,8 +164,8 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Note: input_tot_len is sometimes more than we need. */
   const uint32_t resources_len = input_tot_len;
 
-  /* Update the descriptor set layout. */
-  init_descriptor_types(info, resources_len, all_resources, push_constants_storage_type);
+  /* Initialize the descriptor set layout. */
+  init_descriptor_set_layout_info(info, resources_len, all_resources, push_constants_storage_type);
 
   /* Update the descriptor set locations, bind types and access masks. */
   descriptor_set_locations_ = Array<VKDescriptorSet::Location>(resources_len);
@@ -326,7 +326,7 @@ const ShaderInput *VKShaderInterface::shader_input_get(
   return nullptr;
 }
 
-void VKShaderInterface::init_descriptor_types(
+void VKShaderInterface::init_descriptor_set_layout_info(
     const shader::ShaderCreateInfo &info,
     int64_t resources_len,
     Span<shader::ShaderCreateInfo::Resource> all_resources,

@@ -101,7 +101,7 @@ void VKVertexBuffer::read(void *data) const
   render_graph::VKRenderGraph &render_graph = VKContext::get()->render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(render_graph);
-  render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());
+  render_graph.submit_buffer_for_read(staging_buffer.host_buffer_get().vk_handle());
   staging_buffer.host_buffer_get().read(data);
 }
 

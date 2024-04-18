@@ -465,7 +465,7 @@ static bool gpencil_sculptmode_toggle_poll(bContext *C)
   return false;
 }
 
-bool gpencil_sculpt_poll_view3d(bContext *C)
+static bool gpencil_sculpt_poll_view3d(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
   if (ob == nullptr || (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) == 0) {
@@ -2856,6 +2856,7 @@ void GPENCIL_OT_dissolve(wmOperatorType *ot)
                           0,
                           "Type",
                           "Method used for dissolving stroke points");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_GPENCIL);
 }
 
 /** \} */

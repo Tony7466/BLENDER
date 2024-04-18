@@ -75,10 +75,10 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
   }
 
  private:
-  void init_descriptor_types(const shader::ShaderCreateInfo &info,
-                             int64_t resources_len,
-                             Span<shader::ShaderCreateInfo::Resource> resources,
-                             VKPushConstants::StorageType push_constants_storage);
+  void init_descriptor_set_layout_info(const shader::ShaderCreateInfo &info,
+                                       int64_t resources_len,
+                                       Span<shader::ShaderCreateInfo::Resource> resources,
+                                       VKPushConstants::StorageType push_constants_storage);
   /**
    * Retrieve the shader input for the given resource.
    *

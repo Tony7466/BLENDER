@@ -66,7 +66,7 @@ class VKDevice : public NonCopyable {
   VKSamplers samplers_;
   VKPipelines pipelines_;
   VKDescriptorSetLayouts descriptor_set_layouts_;
-  render_graph::VKResources resources_;
+  render_graph::VKResourceStateTracker resources_;
 
   /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
   VKTimelineSemaphore timeline_semaphore_;
@@ -194,7 +194,7 @@ class VKDevice : public NonCopyable {
   {
     return samplers_;
   }
-  render_graph::VKResources &resources_get()
+  render_graph::VKResourceStateTracker &resources_get()
   {
     return resources_;
   }

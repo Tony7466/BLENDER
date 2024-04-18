@@ -37,7 +37,6 @@ void VKStateManager::apply_bindings(VKContext &context,
     return;
   }
 
-  resource_access_info.clear();
   AddToDescriptorSetData data(
       context.descriptor_set_get(), shader->interface_get(), resource_access_info);
   textures_.apply_bindings(data);

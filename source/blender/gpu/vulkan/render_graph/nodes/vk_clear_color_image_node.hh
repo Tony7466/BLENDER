@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include "vk_node_class.hh"
+#include "vk_node_info.hh"
 
 namespace blender::gpu::render_graph {
 
 /**
- * Information stored inside the render graph node. See `VKNodeData`.
+ * Information stored inside the render graph node. See `VKRenderGraphNode`.
  */
 struct VKClearColorImageData {
   VkImage vk_image;
@@ -21,48 +21,41 @@ struct VKClearColorImageData {
   VkImageSubresourceRange vk_image_subresource_range;
 };
 
-/**
- * Information needed to add a node to the render graph.
- */
-using VKClearColorImageCreateInfo = VKClearColorImageData;
-
-class VKClearColorImageNode : public VKNodeClass<VKNodeType::CLEAR_COLOR_IMAGE,
-                                                 VKClearColorImageCreateInfo,
-                                                 VKClearColorImageData,
-                                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                                 VKResourceType::IMAGE> {
+class VKClearColorImageNode : public VKNodeInfo<VKNodeType::CLEAR_COLOR_IMAGE,
+                                                VKClearColorImageData,
+                                                VKClearColorImageData,
+                                                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VKResourceType::IMAGE> {
  public:
   /**
    * Update the node data with the data inside create_info.
    *
    * Has been implemented as a template to ensure all node specific data
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNodeData` includes all header files.)
+   * actual node data (`VKRenderGraphNode` includes all header files.)
    */
-  template<typename Node>
-  static void set_node_data(Node &node, const VKClearColorImageCreateInfo &create_info)
+  template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
     node.clear_color_image = create_info;
   }
 
   /**
-   * Extract read/write resource dependencies from `create_info` and add them to `dependencies`.
+   * Extract read/write resource dependencies from `create_info` and add them to `node_links`.
    */
-  void build_resource_dependencies(VKResources &resources,
-                                   VKResourceDependencies &dependencies,
-                                   NodeHandle node_handle,
-                                   const VKClearColorImageCreateInfo &create_info) override
+  void build_links(VKResourceStateTracker &resources,
+                   VKRenderGraphNodeLinks &node_links,
+                   const CreateInfo &create_info) override
   {
-    VersionedResource resource = resources.get_image_and_increase_version(create_info.vk_image);
-    dependencies.add_write_resource(
-        node_handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    ResourceWithStamp resource = resources.get_image_and_increase_stamp(create_info.vk_image);
+    node_links.add_output(
+        resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
 
   /**
    * Build the commands and add them to the command_buffer.
    */
   void build_commands(VKCommandBufferInterface &command_buffer,
-                      const VKClearColorImageData &data,
+                      const Data &data,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     command_buffer.clear_color_image(data.vk_image,
