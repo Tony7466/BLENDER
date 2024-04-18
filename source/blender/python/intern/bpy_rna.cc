@@ -1496,10 +1496,8 @@ int pyrna_pydict_to_props(PointerRNA *ptr,
     }
 
     if (kw == nullptr) {
-      PyErr_Format(PyExc_TypeError,
-                   "%.200s: no keywords, expected \"%.200s\"",
-                   error_prefix,
-                   arg_name ? arg_name : "<UNKNOWN>");
+      PyErr_Format(
+          PyExc_TypeError, "%.200s: no keywords, expected \"%.200s\"", error_prefix, arg_name);
       error_val = -1;
       break;
     }
@@ -2350,7 +2348,7 @@ static int pyrna_prop_collection_ass_subscript_int(BPy_PropertyRNA *self,
 
   PYRNA_PROP_COLLECTION_ABS_INDEX(-1);
 
-  if (RNA_property_collection_assign_int(&self->ptr, self->prop, keynum_abs, ptr) == 0) {
+  if (!RNA_property_collection_assign_int(&self->ptr, self->prop, keynum_abs, ptr)) {
     const int len = RNA_property_collection_length(&self->ptr, self->prop);
     if (keynum_abs >= len) {
       PyErr_Format(PyExc_IndexError,
@@ -6391,8 +6389,8 @@ static PyObject *pyrna_param_to_py(PointerRNA *ptr, PropertyRNA *prop, void *dat
       case PROP_COLLECTION: {
         CollectionVector *lb = (CollectionVector *)data;
         ret = PyList_New(0);
-        for (PointerRNA &ptr : lb->items) {
-          PyList_APPEND(ret, pyrna_struct_CreatePyObject(&ptr));
+        for (PointerRNA &ptr_iter : lb->items) {
+          PyList_APPEND(ret, pyrna_struct_CreatePyObject(&ptr_iter));
         }
         break;
       }
