@@ -40,12 +40,14 @@ class VanVlietGaussianCoefficients : public CachedResource {
  private:
   double4 feedback_coefficients_;
   double feedforward_coefficient_;
+  double boundary_coefficient_;
 
  public:
   VanVlietGaussianCoefficients(Context &context, float sigma);
 
   const double4 &feedback_coefficients() const;
-  const double feedforward_coefficient() const;
+  double feedforward_coefficient() const;
+  double boundary_coefficient() const;
 };
 
 /* ------------------------------------------------------------------------------------------------

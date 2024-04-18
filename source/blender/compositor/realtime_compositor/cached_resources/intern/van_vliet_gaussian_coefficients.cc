@@ -231,6 +231,18 @@ static double compute_feedforward_coefficient(const double4 &feedback_coefficien
   return 1.0 + math::reduce_add(feedback_coefficients);
 }
 
+/* Computes the coefficient that needs to be multiplied to the boundary value in order to simulate
+ * an infinite previous stream of that value. The boundary value is used to initialize the previous
+ * outputs for the causal and non-causal filters. This works for both Dirichlet and Neumann
+ * boundaries. The equation for that coefficient can be derived by rearranging the difference
+ * equation to compute the current input from the output and previous outputs, substituting the
+ * boundary value for previous outputs. */
+static double compute_boundary_coefficient(const double4 &feedback_coefficients,
+                                           double feedforward_coefficient)
+{
+  return 1.0 / (feedforward_coefficient - math::reduce_add(feedback_coefficients));
+}
+
 /* Computes the feedback and feedforward coefficients for the 4th order Van Vliet Gaussian filter
  * given a target Gaussian sigma value. We first scale the poles of the filter to match the sigma
  * value based on the method described in Section 4.2 of Van Vliet's paper, then we compute the
@@ -254,6 +266,9 @@ VanVlietGaussianCoefficients::VanVlietGaussianCoefficients(Context & /*context*/
   feedback_coefficients_ = compute_feedback_coefficients(scaled_poles);
 
   feedforward_coefficient_ = compute_feedforward_coefficient(feedback_coefficients_);
+
+  boundary_coefficient_ = compute_boundary_coefficient(feedback_coefficients_,
+                                                       feedforward_coefficient_);
 }
 
 const double4 &VanVlietGaussianCoefficients::feedback_coefficients() const
@@ -261,9 +276,14 @@ const double4 &VanVlietGaussianCoefficients::feedback_coefficients() const
   return feedback_coefficients_;
 }
 
-const double VanVlietGaussianCoefficients::feedforward_coefficient() const
+double VanVlietGaussianCoefficients::feedforward_coefficient() const
 {
   return feedforward_coefficient_;
+}
+
+double VanVlietGaussianCoefficients::boundary_coefficient() const
+{
+  return boundary_coefficient_;
 }
 
 /* --------------------------------------------------------------------

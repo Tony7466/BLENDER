@@ -29,6 +29,8 @@ static Result horizontal_pass(Context &context, Result &input, float radius)
       shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
   GPU_shader_uniform_4fv(
       shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
+  GPU_shader_uniform_1f(
+      shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
 
   input.bind_as_texture(shader, "input_tx");
 
@@ -75,6 +77,8 @@ static void vertical_pass(Context &context,
       shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
   GPU_shader_uniform_4fv(
       shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
+  GPU_shader_uniform_1f(
+      shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
 
   horizontal_pass_result.bind_as_texture(shader, "input_tx");
 

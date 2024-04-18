@@ -13,8 +13,9 @@ void main()
 
   /* **** Causal Filter **** */
 
-  vec4 boundary = texture_load(input_tx, ivec2(0, y));
-  vec4 causal_outputs[FILTER_ORDER + 1] = vec4[](boundary, boundary, boundary, boundary, boundary);
+  vec4 causal_boundary = texture_load(input_tx, ivec2(0, y)) * boundary_coefficient;
+  vec4 causal_outputs[FILTER_ORDER + 1] = vec4[](
+      causal_boundary, causal_boundary, causal_boundary, causal_boundary, causal_boundary);
 
   for (int x = 0; x < width; x++) {
     ivec2 texel = ivec2(x, y);
@@ -34,8 +35,12 @@ void main()
 
   /* **** Non Causal Filter **** */
 
-  boundary = texture_load(input_tx, ivec2(width - 1, y));
-  vec4 non_causal_outputs[5] = vec4[](boundary, boundary, boundary, boundary, boundary);
+  vec4 non_causal_boundary = texture_load(input_tx, ivec2(width - 1, y)) * boundary_coefficient;
+  vec4 non_causal_outputs[5] = vec4[](non_causal_boundary,
+                                      non_causal_boundary,
+                                      non_causal_boundary,
+                                      non_causal_boundary,
+                                      non_causal_boundary);
 
   for (int x = width - 1; x >= 0; x--) {
     ivec2 texel = ivec2(x, y);
