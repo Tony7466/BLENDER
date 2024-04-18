@@ -1104,12 +1104,12 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
 
   ED_workspace_status_begin(C);
 
-  ED_workspace_status_opmodal(C, TIP_("Cut"), op->type, KNF_MODAL_ADD_CUT);
-  ED_workspace_status_opmodal(C, TIP_("Close"), op->type, KNF_MODAL_ADD_CUT_CLOSED);
-  ED_workspace_status_opmodal(C, TIP_("Stop"), op->type, KNF_MODAL_NEW_CUT);
-  ED_workspace_status_opmodal(C, TIP_("Confirm"), op->type, KNF_MODAL_CONFIRM);
-  ED_workspace_status_opmodal(C, TIP_("Cancel"), op->type, KNF_MODAL_CANCEL);
-  ED_workspace_status_opmodal(C, TIP_("Undo"), op->type, KNF_MODAL_UNDO);
+  ED_workspace_status_opmodal(C, IFACE_("Cut"), op->type, KNF_MODAL_ADD_CUT);
+  ED_workspace_status_opmodal(C, IFACE_("Close"), op->type, KNF_MODAL_ADD_CUT_CLOSED);
+  ED_workspace_status_opmodal(C, IFACE_("Stop"), op->type, KNF_MODAL_NEW_CUT);
+  ED_workspace_status_opmodal(C, IFACE_("Confirm"), op->type, KNF_MODAL_CONFIRM);
+  ED_workspace_status_opmodal(C, IFACE_("Cancel"), op->type, KNF_MODAL_CANCEL);
+  ED_workspace_status_opmodal(C, IFACE_("Undo"), op->type, KNF_MODAL_UNDO);
   ED_workspace_status_opmodal(C, "Pan View", op->type, KNF_MODAL_PANNING);
   ED_workspace_status_opmodal(
       C, IFACE_("Midpoint Snap"), op->type, KNF_MODAL_MIDPOINT_ON, kcd->snap_midpoints);

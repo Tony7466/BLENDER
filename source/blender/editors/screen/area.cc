@@ -838,7 +838,7 @@ void ED_workspace_status_text(bContext *C, const char *str, int icon)
 {
   ED_workspace_status_begin(C);
   if (icon) {
-    ED_workspace_status_item(C, {}, icon);
+    ED_workspace_status_icons(C, icon);
     ED_workspace_status_space(C, 0.6f);
   }
   if (str) {
@@ -878,15 +878,12 @@ void ED_workspace_status_space(bContext *C, const float space_factor)
   ED_workspace_status_item(C, {}, ICON_NONE, space_factor);
 }
 
-void ED_workspace_status_icons(bContext *C, const int icon)
-{
-  ED_workspace_status_item(C, {}, icon);
-}
-
 void ED_workspace_status_icons(bContext *C, const int icon1, const int icon2)
 {
   ED_workspace_status_item(C, {}, icon1);
-  ED_workspace_status_item(C, {}, icon2);
+  if (icon2) {
+    ED_workspace_status_item(C, {}, icon2);
+  }
 }
 
 /* Helpers for common keymap patterns. */
@@ -896,10 +893,10 @@ void ED_workspace_status_range(bContext *C,
                                const int icon1,
                                const int icon2)
 {
-  ED_workspace_status_item(C, {}, icon1);
+  ED_workspace_status_icons(C, icon1);
   ED_workspace_status_item(C, "-");
   ED_workspace_status_space(C, -0.5f);
-  ED_workspace_status_item(C, {}, icon2);
+  ED_workspace_status_icons(C, icon2);
   ED_workspace_status_space(C, 0.6f);
   ED_workspace_status_item(C, text, ICON_NONE);
   ED_workspace_status_space(C, 0.7f);
@@ -908,11 +905,16 @@ void ED_workspace_status_range(bContext *C,
 void ED_workspace_status_item(bContext *C, std::string text, const int icon, const bool enabled)
 {
   if (icon) {
-    ED_workspace_status_item(C, {}, icon);
+    ED_workspace_status_icons(C, icon);
     ED_workspace_status_space(C, 0.6f);
   }
   text += ": ";
-  text += enabled ? "✔" : "🚫";
+  /* These symbols (and usage below) would be put BLI_string_utf8_symbols.h when we agree on them.
+   * Note that the matching symbols must be the same width to avoid jiggling. Ideally they would
+   * each be unambiguious when seen in insolation. Ie: empty box doesn't work for off.  We tried
+   * ✔ and 🚫, but the off looks like "prohibited". ✅ & ❎ look okay, but can both look ON?
+   * ✓ & ✗ are too small in our font. Can make/use icons for this purpose if need be. */
+  text += enabled ? "✔" : "✖";
   ED_workspace_status_item(C, text, ICON_NONE);
   ED_workspace_status_space(C, 0.6f);
 }
@@ -929,16 +931,16 @@ void ED_workspace_status_opmodal(bContext *C,
       int icon = UI_icon_from_event_type(kmi->type, kmi->val);
 
       if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_item(C, {}, ICON_EVENT_SHIFT);
+        ED_workspace_status_icons(C, ICON_EVENT_SHIFT);
       }
       if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_item(C, {}, ICON_EVENT_CTRL);
+        ED_workspace_status_icons(C, ICON_EVENT_CTRL);
       }
       if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_item(C, {}, ICON_EVENT_ALT);
+        ED_workspace_status_icons(C, ICON_EVENT_ALT);
       }
       if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
-        ED_workspace_status_item(C, {}, ICON_EVENT_OS);
+        ED_workspace_status_icons(C, ICON_EVENT_OS);
       }
 
       if (kmi->val == KM_DBL_CLICK) {
@@ -947,7 +949,7 @@ void ED_workspace_status_opmodal(bContext *C,
       }
 
       if (icon) {
-        ED_workspace_status_item(C, {}, icon);
+        ED_workspace_status_icons(C, icon);
         if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
           ED_workspace_status_space(C, 0.6f);
         }
@@ -964,7 +966,7 @@ void ED_workspace_status_opmodal(
     bContext *C, std::string text, wmOperatorType *ot, const int propvalue, const bool enabled)
 {
   text += ": ";
-  text += enabled ? "✔" : "🚫";
+  text += enabled ? "✔" : "✖";
   ED_workspace_status_opmodal(C, text, ot, propvalue);
 }
 
