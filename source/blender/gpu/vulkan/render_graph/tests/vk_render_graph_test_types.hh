@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <locale>
 #include <sstream>
 
 #include "render_graph/vk_render_graph.hh"
@@ -11,6 +12,17 @@
 #include "vk_to_string.hh"
 
 namespace blender::gpu::render_graph {
+
+BLI_INLINE std::string &endl()
+{
+  static std::string endl;
+  if (endl.empty()) {
+    std::stringstream ss;
+    ss << std::endl;
+    endl = ss.str();
+  }
+  return endl;
+}
 
 class CommandBufferLog : public VKCommandBufferInterface {
   Vector<std::string> &log_;
@@ -191,9 +203,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << "copy_buffer(";
     ss << "src_buffer=" << src_buffer;
     ss << ", dst_buffer=" << dst_buffer;
-    ss << "\n";
+    ss << std::endl;
     for (const VkBufferCopy &region : Span<const VkBufferCopy>(p_regions, region_count)) {
-      ss << " - region(" << to_string(region, 1) << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")" << std::endl;
     }
     ss << ")";
     log_.append(ss.str());
@@ -214,9 +226,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << ", src_image_layout=" << to_string(src_image_layout);
     ss << ", dst_image=" << dst_image;
     ss << ", dst_image_layout=" << to_string(dst_image_layout);
-    ss << "\n";
+    ss << std::endl;
     for (const VkImageCopy &region : Span<const VkImageCopy>(p_regions, region_count)) {
-      ss << " - region(" << to_string(region, 1) << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")" << std::endl;
     }
     ss << ")";
     log_.append(ss.str());
@@ -239,9 +251,9 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << ", dst_image=" << dst_image;
     ss << ", dst_image_layout=" << to_string(dst_image_layout);
     ss << ", filter=" << to_string(filter);
-    ss << "\n";
+    ss << std::endl;
     for (const VkImageBlit &region : Span<const VkImageBlit>(p_regions, region_count)) {
-      ss << " - region(" << to_string(region, 1) << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")" << std::endl;
     }
     ss << ")";
     log_.append(ss.str());
@@ -260,10 +272,10 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << "src_buffer=" << src_buffer;
     ss << ", dst_image=" << dst_image;
     ss << ", src_image_layout=" << to_string(dst_image_layout);
-    ss << "\n";
+    ss << std::endl;
     for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
     {
-      ss << " - region(" << to_string(region, 1) << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")" << std::endl;
     }
     ss << ")";
     log_.append(ss.str());
@@ -282,10 +294,10 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << "src_image=" << src_image;
     ss << ", src_image_layout=" << to_string(src_image_layout);
     ss << ", dst_buffer=" << dst_buffer;
-    ss << "\n";
+    ss << std::endl;
     for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
     {
-      ss << " - region(" << to_string(region, 1) << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")" << std::endl;
     }
     ss << ")";
     log_.append(ss.str());
@@ -365,16 +377,16 @@ class CommandBufferLog : public VKCommandBufferInterface {
     ss << "pipeline_barrier(";
     ss << "src_stage_mask=" << to_string_vk_pipeline_stage_flags(src_stage_mask);
     ss << ", dst_stage_mask=" << to_string_vk_pipeline_stage_flags(dst_stage_mask);
-    ss << "\n";
+    ss << std::endl;
     for (VkImageMemoryBarrier image_barrier :
          Span<VkImageMemoryBarrier>(p_image_memory_barriers, image_memory_barrier_count))
     {
-      ss << " - image_barrier(" << to_string(image_barrier, 1) << ")\n";
+      ss << " - image_barrier(" << to_string(image_barrier, 1) << ")" << std::endl;
     }
     for (VkBufferMemoryBarrier buffer_barrier :
          Span<VkBufferMemoryBarrier>(p_buffer_memory_barriers, buffer_memory_barrier_count))
     {
-      ss << " - buffer_barrier(" << to_string(buffer_barrier, 1) << ")\n";
+      ss << " - buffer_barrier(" << to_string(buffer_barrier, 1) << ")" << std::endl;
     }
     ss << ")";
 

@@ -90,11 +90,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
-      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
-      " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
-      "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
-      "size=18446744073709551615)\n"
-      ")",
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
+          "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
       log[3]);
   EXPECT_EQ("dispatch(group_count_x=2, group_count_y=2, group_count_z=2)", log[4]);
 }
@@ -150,11 +151,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
-      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
-      " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
-      "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
-      "size=18446744073709551615)\n"
-      ")",
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
+          "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
       log[3]);
   EXPECT_EQ(
       "bind_descriptor_sets(pipeline_bind_point=VK_PIPELINE_BIND_POINT_COMPUTE, layout=0x3, "
@@ -213,11 +215,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
-      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
-      " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
-      "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
-      "size=18446744073709551615)\n"
-      ")",
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
+          "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
       log[3]);
   EXPECT_EQ("bind_pipeline(pipeline_bind_point=VK_PIPELINE_BIND_POINT_COMPUTE, pipeline=0x3)",
             log[4]);
@@ -276,11 +279,12 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
-      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
-      " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
-      "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
-      "size=18446744073709551615)\n"
-      ")",
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT" +
+          endl() +
+          " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
+          "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
+          "size=18446744073709551615)" +
+          endl() + ")",
       log[3]);
   EXPECT_EQ("bind_pipeline(pipeline_bind_point=VK_PIPELINE_BIND_POINT_COMPUTE, pipeline=0x3)",
             log[4]);
