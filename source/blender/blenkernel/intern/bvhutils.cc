@@ -789,29 +789,31 @@ static BitVector<> loose_verts_no_hidden_mask_get(const Mesh &mesh, int *r_elem_
   int count = mesh.verts_num;
   BitVector<> verts_mask(count, true);
 
-  AttributeAccessor attributes = mesh.attributes();
-  const Span<int2> &edges = mesh.edges();
-  const VArray<bool> &hide_edge = *attributes.lookup_or_default(
+  const AttributeAccessor attributes = mesh.attributes();
+  const Span<int2> edges = mesh.edges();
+  const VArray<bool> hide_edge = *attributes.lookup_or_default(
       ".hide_edge", AttrDomain::Edge, false);
-  const VArray<bool> &hide_vert = *attributes.lookup_or_default(
+  const VArray<bool> hide_vert = *attributes.lookup_or_default(
       ".hide_vert", AttrDomain::Point, false);
 
   for (const int i : edges.index_range()) {
     if (hide_edge[i]) {
       continue;
     }
-    for (const int vert_index : {edges[i][0], edges[i][1]}) {
-      if (verts_mask[vert_index]) {
-        verts_mask[vert_index].reset();
+    for (const int vert : {edges[i][0], edges[i][1]}) {
+      if (verts_mask[vert]) {
+        verts_mask[vert].reset();
         count--;
       }
     }
   }
 
-  for (const int vert_index : verts_mask.index_range()) {
-    if (verts_mask[vert_index] && hide_vert[vert_index]) {
-      verts_mask[vert_index].reset();
-      count--;
+  if (count) {
+    for (const int vert : verts_mask.index_range()) {
+      if (verts_mask[vert] && hide_vert[vert]) {
+        verts_mask[vert].reset();
+        count--;
+      }
     }
   }
 
@@ -828,31 +830,32 @@ static BitVector<> loose_edges_no_hidden_mask_get(const Mesh &mesh, int *r_elem_
   int count = mesh.edges_num;
   BitVector<> edge_mask(count, true);
 
-  AttributeAccessor attributes = mesh.attributes();
-  const OffsetIndices<int> &faces = mesh.faces();
-  const Span<int> &corner_edges = mesh.corner_edges();
-  const VArray<bool> &hide_poly = *attributes.lookup_or_default(
+  const AttributeAccessor attributes = mesh.attributes();
+  const OffsetIndices faces = mesh.faces();
+  const Span<int> corner_edges = mesh.corner_edges();
+  const VArray<bool> hide_poly = *attributes.lookup_or_default(
       ".hide_poly", AttrDomain::Face, false);
-  const VArray<bool> &hide_edge = *attributes.lookup_or_default(
+  const VArray<bool> hide_edge = *attributes.lookup_or_default(
       ".hide_edge", AttrDomain::Edge, false);
 
   for (const int i : faces.index_range()) {
     if (hide_poly[i]) {
       continue;
     }
-    for (const int corner_index : faces[i]) {
-      const int edge_index = corner_edges[corner_index];
-      if (edge_mask[edge_index]) {
-        edge_mask[edge_index].reset();
+    for (const int edge : corner_edges.slice(faces[i])) {
+      if (edge_mask[edge]) {
+        edge_mask[edge].reset();
         count--;
       }
     }
   }
 
-  for (const int edge_index : edge_mask.index_range()) {
-    if (edge_mask[edge_index] && hide_edge[edge_index]) {
-      edge_mask[edge_index].reset();
-      count--;
+  if (count) {
+    for (const int edge : edge_mask.index_range()) {
+      if (edge_mask[edge] && hide_edge[edge]) {
+        edge_mask[edge].reset();
+        count--;
+      }
     }
   }
 
@@ -935,42 +938,39 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
   /* Create BVHTree. */
 
   switch (bvh_cache_type) {
-    case BVHTREE_FROM_VERTS:
-    case BVHTREE_FROM_LOOSEVERTS:
+    case BVHTREE_FROM_LOOSEVERTS: {
+      const LooseVertCache &loose_verts = mesh->loose_verts();
+      data->tree = bvhtree_from_mesh_verts_create_tree(
+          0.0f, tree_type, 6, positions, loose_verts.is_loose_bits, loose_verts.count);
+      break;
+    }
     case BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN: {
       int mask_bits_act_len = -1;
-      BitSpan mask = {};
-      BitVector<> mask_stack;
-      if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN) {
-        mask_stack = loose_verts_no_hidden_mask_get(*mesh, &mask_bits_act_len);
-        mask = mask_stack;
-      }
-      else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
-        const LooseVertCache &loose_verts = mesh->loose_verts();
-        mask = loose_verts.is_loose_bits;
-        mask_bits_act_len = loose_verts.count;
-      }
+      const BitVector<> mask = loose_verts_no_hidden_mask_get(*mesh, &mask_bits_act_len);
       data->tree = bvhtree_from_mesh_verts_create_tree(
           0.0f, tree_type, 6, positions, mask, mask_bits_act_len);
       break;
     }
-    case BVHTREE_FROM_EDGES:
-    case BVHTREE_FROM_LOOSEEDGES:
+    case BVHTREE_FROM_VERTS: {
+      data->tree = bvhtree_from_mesh_verts_create_tree(0.0f, tree_type, 6, positions, {}, -1);
+      break;
+    }
+    case BVHTREE_FROM_LOOSEEDGES: {
+      const LooseEdgeCache &loose_edges = mesh->loose_edges();
+      data->tree = bvhtree_from_mesh_edges_create_tree(
+          positions, edges, loose_edges.is_loose_bits, loose_edges.count, 0.0f, tree_type, 6);
+      break;
+    }
     case BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN: {
       int mask_bits_act_len = -1;
-      BitSpan mask = {};
-      BitVector<> mask_stack;
-      if (bvh_cache_type == BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN) {
-        mask_stack = loose_edges_no_hidden_mask_get(*mesh, &mask_bits_act_len);
-        mask = mask_stack;
-      }
-      else if (bvh_cache_type == BVHTREE_FROM_LOOSEVERTS) {
-        const LooseEdgeCache &loose_edges = mesh->loose_edges();
-        mask = loose_edges.is_loose_bits;
-        mask_bits_act_len = loose_edges.count;
-      }
+      const BitVector<> mask = loose_edges_no_hidden_mask_get(*mesh, &mask_bits_act_len);
       data->tree = bvhtree_from_mesh_edges_create_tree(
           positions, edges, mask, mask_bits_act_len, 0.0f, tree_type, 6);
+      break;
+    }
+    case BVHTREE_FROM_EDGES: {
+      data->tree = bvhtree_from_mesh_edges_create_tree(
+          positions, edges, {}, -1, 0.0f, tree_type, 6);
       break;
     }
     case BVHTREE_FROM_FACES: {
