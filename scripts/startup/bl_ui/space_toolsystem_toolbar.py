@@ -2023,17 +2023,17 @@ class _defs_image_uv_sculpt:
 
     @ToolDef.from_fn
     def grab():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("sculpt.uv_sculpt_grab")
-            layout.prop(props, "size")
-            layout.prop(props, "strength")
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
             layout.popover("IMAGE_PT_uv_sculpt_curve")
             layout.popover("IMAGE_PT_uv_sculpt_options")
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            props = tool.operator_properties("sculpt.uv_sculpt_grab")
-            radius = props.size
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(
@@ -2048,18 +2048,20 @@ class _defs_image_uv_sculpt:
 
     @ToolDef.from_fn
     def relax():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("sculpt.uv_sculpt_relax")
-            layout.prop(props, "size")
-            layout.prop(props, "strength")
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
             layout.popover("IMAGE_PT_uv_sculpt_curve")
             layout.popover("IMAGE_PT_uv_sculpt_options")
+
+            props = tool.operator_properties("sculpt.uv_sculpt_relax")
             layout.prop(props, "relax_method", text="Method")
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            props = tool.operator_properties("sculpt.uv_sculpt_relax")
-            radius = props.size
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(
@@ -2074,17 +2076,17 @@ class _defs_image_uv_sculpt:
 
     @ToolDef.from_fn
     def pinch():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("sculpt.uv_sculpt_pinch")
-            layout.prop(props, "size")
-            layout.prop(props, "strength")
+        def draw_settings(context, layout, tool):
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            layout.prop(uv_sculpt, "size")
+            layout.prop(uv_sculpt, "strength")
             layout.popover("IMAGE_PT_uv_sculpt_curve")
             layout.popover("IMAGE_PT_uv_sculpt_options")
 
         def draw_cursor(context, tool, xy):
             from gpu_extras.presets import draw_circle_2d
-            props = tool.operator_properties("sculpt.uv_sculpt_pinch")
-            radius = props.size
+            uv_sculpt = context.scene.tool_settings.uv_sculpt
+            radius = uv_sculpt.size
             draw_circle_2d(xy, (1.0,) * 4, radius)
 
         return dict(

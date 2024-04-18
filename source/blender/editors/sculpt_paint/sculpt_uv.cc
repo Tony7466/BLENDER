@@ -486,7 +486,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
   UvSculptData *sculptdata = (UvSculptData *)op->customdata;
   eBrushUVSculptTool tool = eBrushUVSculptTool(sculptdata->tool);
   int invert = sculptdata->invert ? -1 : 1;
-  float alpha = RNA_float_get(op->ptr, "strength");
+  float alpha = sculptdata->uvsculpt->strength;
 
   float co[2];
   UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
@@ -499,7 +499,7 @@ static void uv_sculpt_stroke_apply(bContext *C,
   float zoomx, zoomy;
   ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
 
-  const float radius = RNA_int_get(op->ptr, "size") / (width * zoomx);
+  const float radius = sculptdata->uvsculpt->size / (width * zoomx);
   float aspectRatio = width / float(height);
 
   /* We will compare squares to save some computation */
@@ -857,8 +857,8 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 
   /* Allocate initial selection for grab tool */
   if (data->tool == UV_SCULPT_TOOL_GRAB) {
-    float alpha = RNA_float_get(op->ptr, "strength");
-    float radius = RNA_int_get(op->ptr, "size");
+    float alpha = data->uvsculpt->strength;
+    float radius = data->uvsculpt->size;
     int width, height;
     ED_space_image_get_size(sima, &width, &height);
     float zoomx, zoomy;
@@ -972,11 +972,6 @@ static void register_common_props(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna, "use_invert", false, "Invert", "Invert action for the duration of the stroke");
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
-
-  RNA_def_float_factor(ot->srna, "strength", 1.0f, 0.0f, 1.0f, "Strength", "", 0.0f, 1.0f);
-
-  prop = RNA_def_int(ot->srna, "size", 50, 1, 5000, "Size", "", 1, 500);
-  RNA_def_property_subtype(prop, PROP_PIXEL);
 }
 
 void SCULPT_OT_uv_sculpt_grab(wmOperatorType *ot)

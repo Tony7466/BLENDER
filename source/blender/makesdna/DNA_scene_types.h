@@ -1094,6 +1094,8 @@ typedef struct CurvesSculpt {
 
 typedef struct UvSculpt {
   struct CurveMapping *strength_curve;
+  int size;
+  float strength;
   int8_t curve_preset; /* #eBrushCurvePreset. */
   char _pad[7];
 } UvSculpt;

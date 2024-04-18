@@ -7095,10 +7095,10 @@ def km_image_editor_tool_uv_grab(params):
             ("sculpt.uv_sculpt_grab", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-            #  radial_control_properties(paint, 'size', 'use_unified_size')),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-            # radial_control_properties(paint, 'strength', 'use_unified_strength')),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
         ]},
     )
 
@@ -7112,10 +7112,10 @@ def km_image_editor_tool_uv_relax(params):
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-            #  radial_control_properties(paint, 'size', 'use_unified_size')),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-            # radial_control_properties(paint, 'strength', 'use_unified_strength')),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
         ]},
     )
 
@@ -7129,10 +7129,10 @@ def km_image_editor_tool_uv_pinch(params):
             ("sculpt.uv_sculpt_pinch", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-            #  radial_control_properties(paint, 'size', 'use_unified_size')),
-            # ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-            # radial_control_properties(paint, 'strength', 'use_unified_strength')),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
         ]},
     )
 

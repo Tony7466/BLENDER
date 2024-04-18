@@ -1014,6 +1014,17 @@ static void rna_def_uv_sculpt(BlenderRNA *brna)
   RNA_def_struct_path_func(srna, "rna_UvSculpt_path");
   RNA_def_struct_ui_text(srna, "UV Sculpting", "");
 
+  prop = RNA_def_property(srna, "size", PROP_INT, PROP_PIXEL);
+  RNA_def_property_ui_range(prop, 1, 500, 1, 1);
+  RNA_def_property_range(prop, 1, 5000);
+  RNA_def_property_ui_text(prop, "Size", "");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
+  prop = RNA_def_property(srna, "strength", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Strength", "");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr);
+
   prop = RNA_def_property(srna, "strength_curve", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "CurveMapping");
   RNA_def_property_pointer_funcs(prop, nullptr, nullptr, nullptr, nullptr);
