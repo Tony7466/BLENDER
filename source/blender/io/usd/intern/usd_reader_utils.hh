@@ -13,7 +13,7 @@ namespace blender::io::usd {
 
 void set_id_props_from_prim(ID *id,
                             const pxr::UsdPrim &prim,
-                            const eUSDAttrImportMode attr_import_mode = USD_ATTR_IMPORT_ALL,
-                            const std::optional<double> motionSampleTime = std::nullopt);
+                            eUSDAttrImportMode attr_import_mode = USD_ATTR_IMPORT_ALL,
+                            pxr::UsdTimeCode time_code = pxr::UsdTimeCode::Default());
 
 }  // namespace blender::io::usd

@@ -161,7 +161,7 @@ static void set_double_prop(IDProperty *idgroup, const char *prop_name, const do
 void set_id_props_from_prim(ID *id,
                             const pxr::UsdPrim &prim,
                             const eUSDAttrImportMode attr_import_mode,
-                            const std::optional<double> motionSampleTime)
+                            const pxr::UsdTimeCode time_code)
 {
   pxr::UsdAttributeVector attribs = prim.GetAuthoredAttributes();
   if (attribs.empty()) {
@@ -169,9 +169,6 @@ void set_id_props_from_prim(ID *id,
   }
 
   bool all_custom_attrs = (attr_import_mode == USD_ATTR_IMPORT_ALL);
-
-  const pxr::UsdTimeCode time_code(motionSampleTime.has_value() ? motionSampleTime.value() :
-                                                                  pxr::UsdTimeCode::Default());
 
   for (const pxr::UsdAttribute &attr : attribs) {
     if (!attr.IsCustom()) {

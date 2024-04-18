@@ -21,21 +21,38 @@
 
 namespace blender::io::usd {
 
-void USDPrimReader::set_props(ID *id,
-                              const pxr::UsdPrim &prim,
-                              const bool use_parent,
-                              const std::optional<double> motionSampleTime)
+void USDPrimReader::set_props(const bool merge_with_parent,
+                              const pxr::UsdTimeCode motionSampleTime)
 {
+  if (!prim_ || !object_) {
+    return;
+  }
+
   eUSDAttrImportMode attr_import_mode = this->import_params_.attr_import_mode;
 
   if (attr_import_mode == USD_ATTR_IMPORT_NONE) {
     return;
   }
 
-  const pxr::UsdPrim parent_prim = prim.GetParent();
-  const pxr::UsdPrim check_prim = use_parent && (bool)parent_prim ? parent_prim : prim;
+  if (merge_with_parent) {
+    /* This object represents a parent Xform merged with its child prim.
+     * Set the parent prim's custom properties on the Object ID. */
+    if (const pxr::UsdPrim parent_prim = prim_.GetParent()) {
+      set_id_props_from_prim(&object_->id, parent_prim, attr_import_mode, motionSampleTime);
+    }
+  }
+  if (!object_->data) {
+    /* If the object has no data, set the prim's custom properties on the object.
+     * This applies to Xforms that have been converted to Empty objects. */
+    set_id_props_from_prim(&object_->id, prim_, attr_import_mode, motionSampleTime);
+  }
 
-  set_id_props_from_prim(id, check_prim, attr_import_mode, motionSampleTime);
+  if (object_->data) {
+    /* If the object has data, the data represents the USD prim, so set the prim's custom
+     * properties on the data directly. */
+    set_id_props_from_prim(
+        static_cast<ID *>(object_->data), prim_, attr_import_mode, motionSampleTime);
+  }
 }
 
 USDPrimReader::USDPrimReader(const pxr::UsdPrim &prim,
@@ -58,17 +75,6 @@ USDPrimReader::~USDPrimReader() = default;
 const pxr::UsdPrim &USDPrimReader::prim() const
 {
   return prim_;
-}
-
-void USDPrimReader::read_object_data(Main * /* bmain */, double motionSampleTime)
-{
-  if (!prim_ || !object_) {
-    return;
-  }
-
-  ID *id = object_->data ? static_cast<ID *>(object_->data) : &object_->id;
-
-  set_props(id, prim_, motionSampleTime);
 }
 
 Object *USDPrimReader::object() const
