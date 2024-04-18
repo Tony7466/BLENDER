@@ -280,6 +280,10 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     }
   }
 
+  if (valid_neighbors == 0) {
+    return false;
+  }
+
   BsdfEval radiance = reservoir.radiance;
   const float unbiased_contribution_weight = reservoir.total_weight /
                                              reduce_add(fabs(radiance.sum)) / valid_neighbors;

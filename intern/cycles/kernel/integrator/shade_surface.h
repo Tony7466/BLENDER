@@ -650,7 +650,9 @@ ccl_device
   }
 
   BsdfEval radiance = reservoir.radiance;
-  reservoir.total_weight /= reduce_add(fabs(radiance.sum));
+  if (!reservoir.is_empty()) {
+    reservoir.total_weight /= reduce_add(fabs(radiance.sum));
+  }
 
   if (is_direct_light && kernel_data.integrator.use_spatial_resampling) {
     /* Write to reservoir and trace shadow ray later. */
