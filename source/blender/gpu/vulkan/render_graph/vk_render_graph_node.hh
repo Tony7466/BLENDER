@@ -27,7 +27,7 @@ namespace blender::gpu::render_graph {
  * prefetched and removing a level of indirection. A consequence is that we cannot use class based
  * nodes.
  */
-struct VKNode {
+struct VKRenderGraphNode {
   VKNodeType type;
   union {
     VKBlitImageNode::Data blit_image;
@@ -206,7 +206,7 @@ struct VKNode {
         break;
     }
 
-    memset(this, 0, sizeof(VKNode));
+    memset(this, 0, sizeof(VKRenderGraphNode));
     type = VKNodeType::UNUSED;
   }
 };

@@ -13,7 +13,7 @@
 namespace blender::gpu::render_graph {
 
 /**
- * Information stored inside the render graph node. See `VKNode`.
+ * Information stored inside the render graph node. See `VKRenderGraphNode`.
  */
 struct VKSynchronizationData {};
 
@@ -36,7 +36,7 @@ class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
    *
    * Has been implemented as a template to ensure all node specific data
    * (`VK*Data`/`VK*CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNode` includes all header files.)
+   * actual node data (`VKRenderGraphNode` includes all header files.)
    */
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {

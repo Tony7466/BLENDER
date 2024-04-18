@@ -36,9 +36,9 @@ enum class VKNodeType {
  * Info class for a node type.
  *
  * Nodes can be created using `NodeCreateInfo`. When a node is created the `VKNodeInfo.node_type`
- * and `VKNodeInfo.set_node_data` are used to fill a VKNode instance. The VKNode is stored
- * sequentially in the render graph. When the node is created the dependencies are extracted by
- * calling `VKNodeInfo.build_links`.
+ * and `VKNodeInfo.set_node_data` are used to fill a VKRenderGraphNode instance. The
+ * VKRenderGraphNode is stored sequentially in the render graph. When the node is created the
+ * dependencies are extracted by calling `VKNodeInfo.build_links`.
  *
  * Eventually when a node is recorded to a command buffer `VKNodeInfo.build_commands` is invoked.
  */
@@ -56,7 +56,7 @@ class VKNodeInfo : public NonCopyable {
   /**
    * Node type of this class.
    *
-   * The node type used to link VKNode instance to a VKNodeInfo.
+   * The node type used to link VKRenderGraphNode instance to a VKNodeInfo.
    */
   static constexpr VKNodeType node_type = NodeType;
 
@@ -77,7 +77,7 @@ class VKNodeInfo : public NonCopyable {
    *
    * Has been implemented as a template to ensure all node specific data
    * (`Data`/`CreateInfo`) types can be included in the same header file as the logic. The
-   * actual node data (`VKNode` includes all header files.)
+   * actual node data (`VKRenderGraphNode` includes all header files.)
    *
    * This function must be implemented by all node classes. But due to cyclic inclusion of header
    * files it is implemented as a template function.

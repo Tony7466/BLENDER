@@ -61,7 +61,7 @@ class VKRenderGraph : public NonCopyable {
   /** All links inside the graph. */
   VKRenderGraphLinks links_;
   /** All nodes inside the graph. */
-  Vector<VKNode> nodes_;
+  Vector<VKRenderGraphNode> nodes_;
   /** Scheduler decides which nodes to select and in what order to execute them. */
   VKScheduler scheduler_;
   /**
@@ -116,9 +116,9 @@ class VKRenderGraph : public NonCopyable {
   template<typename NodeInfo> void add_node(const typename NodeInfo::CreateInfo &create_info)
   {
     std::scoped_lock lock(resources_.mutex);
-    static VKNode node_template = {};
+    static VKRenderGraphNode node_template = {};
     NodeHandle node_handle = nodes_.append_and_get_index(node_template);
-    VKNode &node = nodes_[node_handle];
+    VKRenderGraphNode &node = nodes_[node_handle];
     node.set_node_data<NodeInfo>(create_info);
     node.build_links<NodeInfo>(resources_, links_, node_handle, create_info);
   }

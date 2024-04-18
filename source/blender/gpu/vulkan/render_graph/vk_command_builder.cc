@@ -56,7 +56,7 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 
   command_buffer.begin_recording();
   for (NodeHandle node_handle : nodes) {
-    VKNode &node = render_graph.nodes_[node_handle];
+    VKRenderGraphNode &node = render_graph.nodes_[node_handle];
     build_node(render_graph, command_buffer, node_handle, node);
   }
   command_buffer.end_recording();
@@ -65,7 +65,7 @@ void VKCommandBuilder::build_nodes(VKRenderGraph &render_graph,
 void VKCommandBuilder::build_node(VKRenderGraph &render_graph,
                                   VKCommandBufferInterface &command_buffer,
                                   NodeHandle node_handle,
-                                  const VKNode &node)
+                                  const VKRenderGraphNode &node)
 {
   build_pipeline_barriers(render_graph, command_buffer, node_handle, node.pipeline_stage_get());
   node.build_commands(command_buffer, state_.active_pipelines);

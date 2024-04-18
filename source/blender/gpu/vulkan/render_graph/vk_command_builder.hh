@@ -9,7 +9,7 @@
 #pragma once
 
 #include "vk_common.hh"
-#include "vk_node.hh"
+#include "vk_render_graph_node.hh"
 #include "vk_scheduler.hh"
 
 namespace blender::gpu::render_graph {
@@ -81,7 +81,7 @@ class VKCommandBuilder {
   void build_node(VKRenderGraph &render_graph,
                   VKCommandBufferInterface &command_buffer,
                   NodeHandle node_handle,
-                  const VKNode &node);
+                  const VKRenderGraphNode &node);
 
   /**
    * Build the pipeline barriers that should be recorded before the given node handle.
