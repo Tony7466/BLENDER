@@ -404,15 +404,17 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     ID *id = self->ptr.owner_id;
 
     BLI_assert(BKE_id_is_in_global_main(id));
-    result = (blender::animrig::insert_keyframe(G_MAIN,
-                                                &reports,
-                                                id,
-                                                group_name,
-                                                path_full,
-                                                index,
-                                                &anim_eval_context,
-                                                eBezTriple_KeyframeType(keytype),
-                                                eInsertKeyFlags(options)) != 0);
+    blender::animrig::CombinedKeyingResult combined_result = blender::animrig::insert_keyframe(
+        G_MAIN,
+        *id,
+        group_name,
+        path_full,
+        index,
+        &anim_eval_context,
+        eBezTriple_KeyframeType(keytype),
+        eInsertKeyFlags(options));
+    combined_result.generate_reports(&reports);
+    result = combined_result.get_count(blender::animrig::SingleKeyingResult::SUCCESS) != 0;
   }
 
   MEM_freeN((void *)path_full);

@@ -100,6 +100,10 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths)
 {
   ID *id = &ob->id;
+  if (id == nullptr) {
+    return;
+  }
+
   if (!autokeyframe_cfra_can_key(scene, id)) {
     return;
   }
@@ -134,16 +138,20 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     Main *bmain = CTX_data_main(C);
 
     if (adt && adt->action) {
+      CombinedKeyingResult combined_result;
       LISTBASE_FOREACH (FCurve *, fcu, &adt->action->curves) {
-        insert_keyframe(bmain,
-                        reports,
-                        id,
-                        (fcu->grp ? fcu->grp->name : nullptr),
-                        fcu->rna_path,
-                        fcu->array_index,
-                        &anim_eval_context,
-                        eBezTriple_KeyframeType(ts->keyframe_type),
-                        flag);
+        CombinedKeyingResult result = insert_keyframe(bmain,
+                                                      *id,
+                                                      (fcu->grp ? fcu->grp->name : nullptr),
+                                                      fcu->rna_path,
+                                                      fcu->array_index,
+                                                      &anim_eval_context,
+                                                      eBezTriple_KeyframeType(ts->keyframe_type),
+                                                      flag);
+        combined_result.merge(result);
+      }
+      if (combined_result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+        combined_result.generate_reports(reports);
       }
     }
     return;
@@ -211,6 +219,10 @@ void autokeyframe_pose_channel(bContext *C,
   AnimData *adt = ob->adt;
   bAction *act = (adt) ? adt->action : nullptr;
 
+  if (id == nullptr) {
+    return;
+  }
+
   if (!blender::animrig::autokeyframe_cfra_can_key(scene, id)) {
     return;
   }
@@ -234,12 +246,12 @@ void autokeyframe_pose_channel(bContext *C,
     flag |= INSERTKEY_MATRIX;
   }
 
-  blender::Vector<PointerRNA> sources;
+  Vector<PointerRNA> sources;
   /* Add data-source override for the camera object. */
   ANIM_relative_keyingset_add_source(sources, id, &RNA_PoseBone, pose_channel);
 
   /* only insert into active keyingset? */
-  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
     /* Run the active Keying Set on the current data-source. */
     ANIM_apply_keyingset(
         C, &sources, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
@@ -247,7 +259,7 @@ void autokeyframe_pose_channel(bContext *C,
   }
 
   /* only insert into available channels? */
-  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     if (!act) {
       return;
     }
@@ -262,15 +274,14 @@ void autokeyframe_pose_channel(bContext *C,
        * NOTE: this will do constraints too, but those are ok to do here too?
        */
       if (STREQ(pchan_name, pose_channel->name)) {
-        blender::animrig::insert_keyframe(bmain,
-                                          reports,
-                                          id,
-                                          ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                          fcu->rna_path,
-                                          fcu->array_index,
-                                          &anim_eval_context,
-                                          eBezTriple_KeyframeType(ts->keyframe_type),
-                                          flag);
+        insert_keyframe(bmain,
+                        *id,
+                        ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                        fcu->rna_path,
+                        fcu->array_index,
+                        &anim_eval_context,
+                        eBezTriple_KeyframeType(ts->keyframe_type),
+                        flag);
       }
     }
     return;
@@ -302,7 +313,6 @@ bool autokeyframe_property(bContext *C,
   bAction *action;
   bool driven;
   bool special;
-  bool changed = false;
 
   /* For entire array buttons we check the first component, it's not perfect
    * but works well enough in typical cases. */
@@ -313,13 +323,14 @@ bool autokeyframe_property(bContext *C,
   /* Only early out when we actually want an existing F-curve already
    * (e.g. auto-keyframing from buttons). */
   if (fcu == nullptr && (driven || special || only_if_property_keyed)) {
-    return changed;
+    return false;
   }
 
   if (driven) {
     return false;
   }
 
+  bool changed = false;
   if (special) {
     /* NLA Strip property. */
     if (is_autokey_on(scene)) {
@@ -354,16 +365,16 @@ bool autokeyframe_property(bContext *C,
          *       E.g., color wheels (see #42567). */
         BLI_assert((fcu->array_index == rnaindex) || (rnaindex == -1));
       }
-      changed = insert_keyframe(bmain,
-                                reports,
-                                id,
-                                (fcu && fcu->grp) ? fcu->grp->name : nullptr,
-                                fcu ? fcu->rna_path : (path ? path->c_str() : nullptr),
-                                rnaindex,
-                                &anim_eval_context,
-                                eBezTriple_KeyframeType(ts->keyframe_type),
-                                flag) != 0;
-
+      CombinedKeyingResult result = insert_keyframe(bmain,
+                                                    *id,
+                                                    (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+                                                    fcu ? fcu->rna_path :
+                                                          (path ? path->c_str() : nullptr),
+                                                    rnaindex,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    flag);
+      changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
   }
