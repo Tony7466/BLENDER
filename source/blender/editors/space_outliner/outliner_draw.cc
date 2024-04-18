@@ -1781,7 +1781,7 @@ static void outliner_draw_userbuts(uiBlock *block,
                     UI_BTYPE_BUT,
                     0,
                     overlay,
-                    int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_STATUS),
+                    int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_USERS),
                     te->ys,
                     UI_UNIT_X,
                     UI_UNIT_Y,
@@ -1813,7 +1813,7 @@ static void outliner_draw_userbuts(uiBlock *block,
                             LIB_FAKEUSER,
                             1,
                             ICON_FAKE_USER_OFF,
-                            int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_STATUS),
+                            int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_USERS),
                             te->ys,
                             UI_UNIT_X,
                             UI_UNIT_Y,
@@ -1830,6 +1830,11 @@ static void outliner_draw_userbuts(uiBlock *block,
         UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
       }
 
+      if (!real_users && !has_fake_user) {
+        uchar overlay_color[4];
+        UI_GetThemeColor4ubv(TH_REDALERT, overlay_color);
+        UI_but_icon_indicator_color_set(bt, overlay_color);
+      }
       UI_but_icon_indicator_set(bt, overlay);
     }
   });
@@ -4040,10 +4045,7 @@ void draw_outliner(const bContext *C)
     outliner_draw_rnabuts(block, region, space_outliner, buttons_start_x);
     UI_block_emboss_set(block, UI_EMBOSS_NONE_OR_STATUS);
   }
-  else if (space_outliner->outlinevis == SO_ID_ORPHANS) {
-    outliner_draw_userbuts(block, region, space_outliner);
-  }
-  else if (space_outliner->outlinevis == SO_LIBRARIES && space_outliner->flag & SO_USER_COLUMN) {
+  else if (ELEM(space_outliner->outlinevis, SO_ID_ORPHANS, SO_LIBRARIES)) {
     outliner_draw_userbuts(block, region, space_outliner);
   }
   else if (space_outliner->outlinevis == SO_OVERRIDES_LIBRARY) {
