@@ -240,52 +240,92 @@ static void draw_curve(Span<float3> positions,
 constexpr const char *attr_material_index = "material_index";
 constexpr const char *attr_is_boundary = "is_boundary";
 
-constexpr const ColorGeometry4f boundary_color = {1, 0, 0, 1};
-constexpr const ColorGeometry4f fill_color = {0, 1, 0, 1};
-constexpr const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, 1};
-constexpr const ColorGeometry4f border_color = {0, 0, 1, 1};
+enum ColorFlag {
+  Border = 1 << 0,
+  Boundary = 1 << 1,
+  Fill = 1 << 2,
+  Seed = 1 << 3,
+  Stroke = 1 << 4,
+};
+ENUM_OPERATORS(ColorFlag, ColorFlag::Stroke)
 
-constexpr const ColorGeometry4f stroke_color = boundary_color;
-constexpr const ColorGeometry4f extend_color = boundary_color;
-constexpr const ColorGeometry4f mouse_color = seed_color;
-constexpr const ColorGeometry4f helper_color = {1, 0, 0.5f, 0.5f};
+inline int float_as_int(const float value)
+{
+  return *reinterpret_cast<const int *>(&value);
+}
+
+inline float int_as_float(const int value)
+{
+  return *reinterpret_cast<const float *>(&value);
+}
+
+/* Alpha channel used to store various flags. */
+
+const ColorGeometry4f boundary_color = {1, 0, 0, int_as_float(ColorFlag::Boundary)};
+const ColorGeometry4f fill_color = {0, 1, 0, int_as_float(ColorFlag::Fill)};
+const ColorGeometry4f seed_color = {0.5f, 0.5f, 0, int_as_float(ColorFlag::Seed)};
+const ColorGeometry4f border_color = {0, 0, 1, int_as_float(ColorFlag::Border)};
+
+const ColorGeometry4f extend_color = {1, 1, 0, 0};
+const ColorGeometry4f helper_color = {1, 0, 0.5f, 0};
+
+bool get_flag(const ColorGeometry4f &color, const ColorFlag flag) {
+  const uint8_t a = *reinterpret_cast<const uint8_t *>(&color.a);
+  return (a & flag) != 0;
+}
+
+void set_flag(ColorGeometry4f &color, const ColorFlag flag, const ColorGeometry4f &debug_color, bool value)
+{
+  color.r = debug_color.r;
+  color.g = debug_color.g;
+  color.b = debug_color.b;
+  uint8_t &a = *reinterpret_cast<uint8_t *>(&color.a);
+  a = value ? (a | flag) : (a & (~flag));
+}
 
 bool is_pixel_boundary(const ColorGeometry4f &color)
 {
-  return color.r == 1.0f;
+  return get_flag(color, ColorFlag::Boundary);
 }
 
 bool is_pixel_filled(const ColorGeometry4f &color)
 {
-  return color.g == 1.0f;
+  return get_flag(color, ColorFlag::Fill);
 }
 
 bool is_pixel_border(const ColorGeometry4f &color)
 {
-  return color.b == 1.0f;
+  return get_flag(color, ColorFlag::Border);
+}
+
+bool is_pixel_seed(const ColorGeometry4f &color)
+{
+  return get_flag(color, ColorFlag::Seed);
 }
 
 void clear_pixel(ColorGeometry4f &color)
 {
-  color = ColorGeometry4f(0, 0, 0, 1);
+  color.a = 0;
 }
 
 void set_pixel_boundary(ColorGeometry4f &color, const bool enable = true)
 {
-  color.r = (enable ? 1.0f : 0.0f);
-  color.a = 1.0f;
+  set_flag(color, ColorFlag::Boundary, boundary_color, enable);
 }
 
 void set_pixel_filled(ColorGeometry4f &color, const bool enable = true)
 {
-  color.g = (enable ? 1.0f : 0.0f);
-  color.a = 1.0f;
+  set_flag(color, ColorFlag::Fill, fill_color, enable);
 }
 
 void set_pixel_border(ColorGeometry4f &color, const bool enable = true)
 {
-  color.b = (enable ? 1.0f : 0.0f);
-  color.a = 1.0f;
+  set_flag(color, ColorFlag::Border, border_color, enable);
+}
+
+void set_pixel_seed(ColorGeometry4f &color, const bool enable = true)
+{
+  set_flag(color, ColorFlag::Seed, seed_color, enable);
 }
 
 static IndexMask get_boundary_curve_mask(const Object &object,
@@ -403,7 +443,7 @@ static void draw_helper_stroke(Span<float3> positions,
                                const float thickness,
                                const bool transparent)
 {
-  constexpr const ColorGeometry4f helper_color_transparent = ColorGeometry4f(
+  const ColorGeometry4f helper_color_transparent = ColorGeometry4f(
       helper_color.r, helper_color.g, helper_color.b, 0.0f);
   const VArray<ColorGeometry4f> colors = transparent ?
                                              VArray<ColorGeometry4f>::ForSingle(
@@ -534,7 +574,7 @@ static void mark_borders(Image &ima, const ColorGeometry4f &color)
   }
   row_start += width;
   /* Fill first and last pixel of middle rows. */
-  for (const int i : IndexRange(height).drop_front(1).drop_back(1)) {
+  for ([[maybe_unused]] const int i : IndexRange(height).drop_front(1).drop_back(1)) {
     pixels[row_start] = color;
     pixels[row_start + width - 1] = color;
     row_start += width;
@@ -562,7 +602,7 @@ enum FillBorderMode {
   Ignore,
 };
 
-template<FillBorderMode border_mode> FillResult fill_boundaries(Image &ima)
+template<FillBorderMode border_mode> FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
@@ -580,13 +620,11 @@ template<FillBorderMode border_mode> FillResult fill_boundaries(Image &ima)
   blender::Stack<int> active_pixels;
   /* Initialize the stack with filled pixels (dot at mouse position). */
   for (const int i : pixels.index_range()) {
-    if (math::is_equal(float4(pixels[i]), float4(seed_color), 0.01f)) {
+    if (is_pixel_seed(pixels[i])) {
       active_pixels.push(i);
-      pixels[i] = {0, 0, 0, 1};
     }
   }
 
-  constexpr const int filter_width = 3;
   enum FilterDirection {
     Horizontal = 1,
     Vertical = 2,
@@ -630,10 +668,10 @@ template<FillBorderMode border_mode> FillResult fill_boundaries(Image &ima)
     set_pixel_filled(pixels[index]);
 
     /* Directional box filtering for gap detection. */
-    const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, filter_width));
-    const IndexRange filter_x_pos = IndexRange(1, std::min(width - 1 - coord.x, filter_width));
-    const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, filter_width));
-    const IndexRange filter_y_pos = IndexRange(1, std::min(height - 1 - coord.y, filter_width));
+    const IndexRange filter_x_neg = IndexRange(1, std::min(coord.x, leak_filter_width));
+    const IndexRange filter_x_pos = IndexRange(1, std::min(width - 1 - coord.x, leak_filter_width));
+    const IndexRange filter_y_neg = IndexRange(1, std::min(coord.y, leak_filter_width));
+    const IndexRange filter_y_pos = IndexRange(1, std::min(height - 1 - coord.y, leak_filter_width));
     bool is_boundary_horizontal = false;
     bool is_boundary_vertical = false;
     for (const int filter_i : filter_y_neg) {
@@ -711,17 +749,12 @@ static int wrap_dir_3n(const int dir)
   return dir - num_directions * (int(dir >= num_directions) + int(dir >= 2 * num_directions));
 }
 
-struct BoundaryStep {
-  int2 coord;
-  int direction;
-};
-
 /* Get the outline points of a shape using Moore Neighborhood algorithm
  *
  * This is a Blender customized version of the general algorithm described
  * in https://en.wikipedia.org/wiki/Moore_neighborhood
  */
-static Vector<BoundaryStep> build_fill_boundary(Image &ima)
+static Vector<int> build_fill_boundary(Image &ima)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
@@ -739,14 +772,20 @@ static Vector<BoundaryStep> build_fill_boundary(Image &ima)
     return c.x >= 0 && c.x < width && c.y >= 0 && c.y < height;
   };
 
-  /* Find any filled pixel as starting point. */
+  struct BoundaryStep {
+    int2 coord;
+    int direction;
+  };
+
+  VectorSet<int> boundary_starts;
+
+  /* Find filled pixels as starting points. */
   auto find_start_coordinate = [&]() -> std::optional<BoundaryStep> {
-    int dir = -1;
     for (const int y : IndexRange(height)) {
       for (const int x : IndexRange(width)) {
         const int2 coord = {x, y};
         const int index = index_from_coord(coord);
-        if (is_pixel_filled(pixels[index])) {
+        if (is_pixel_seed(pixels[index])) {
           /* Direction 3: (1, 0). Found the first filled pixel in the row. */
           return BoundaryStep{coord, 3};
         }
@@ -779,16 +818,18 @@ static Vector<BoundaryStep> build_fill_boundary(Image &ima)
     return {};
   }
 
-  Vector<BoundaryStep> boundary_steps = {*start_iter};
+  BoundaryStep iter = *start_iter;
+  Vector<int> boundary_steps;
   while (true) {
-    std::optional<BoundaryStep> next_iter = find_next_neighbor(boundary_steps.last());
+    boundary_steps.append(index_from_coord(iter.coord));
+    std::optional<BoundaryStep> next_iter = find_next_neighbor(iter);
     if (!next_iter) {
       break;
     }
     if (next_iter->coord == start_iter->coord) {
       break;
     }
-    boundary_steps.append(*next_iter);
+    iter = *next_iter;
   }
 
   /* release ibuf */
@@ -799,13 +840,24 @@ static Vector<BoundaryStep> build_fill_boundary(Image &ima)
 
 /* Create curves geometry from boundary positions. */
 static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPlacement &placement,
-                                              const Span<BoundaryStep> boundary)
+                                              const Span<int> boundary,
+                                              const int2 win_size)
 {
-  bke::CurvesGeometry curves(boundary.size(), 1);
+  auto coord_from_index = [&](const int index) {
+    const div_t d = div(index, win_size.x);
+    return int2{d.rem, d.quot};
+  };
 
+  /* Curve cannot have 0 points. */
+  if (boundary.is_empty()) {
+    return {};
+  }
+
+  bke::CurvesGeometry curves(boundary.size(), 1);
   MutableSpan<float3> positions = curves.positions_for_write();
   for (const int index : positions.index_range()) {
-    positions[index] = placement.project(float2(boundary[index].coord));
+    const int2 coord = coord_from_index(boundary[index]);
+    positions[index] = placement.project(float2(coord));
   }
 
   return curves;
@@ -936,6 +988,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
   const float thickness = 1.0f;
+  const int leak_filter_width = 3;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
@@ -971,13 +1024,13 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
     /* Draw blue point where click with mouse. */
     const float mouse_dot_size = 4.0f;
-    render_utils::draw_dot(fill_point_world, mouse_dot_size, mouse_color);
+    render_utils::draw_dot(fill_point_world, mouse_dot_size, seed_color);
 
     draw_datablock(object,
                    grease_pencil,
                    src_drawings,
                    boundary_layers,
-                   stroke_color,
+                   boundary_color,
                    fill_draw_mode,
                    alpha_threshold,
                    thickness);
@@ -996,7 +1049,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   /* Apply boundary fill */
   if (invert) {
     /* When inverted accept border fill, image borders are valid boundaries. */
-    FillResult fill_result = fill_boundaries<FillBorderMode::Ignore>(*ima);
+    FillResult fill_result = flood_fill<FillBorderMode::Ignore>(*ima, leak_filter_width);
     if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
       return {};
     }
@@ -1005,14 +1058,14 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   }
   else {
     /* Cancel when encountering a border, counts as failure. */
-    FillResult fill_result = fill_boundaries<FillBorderMode::Cancel>(*ima);
+    FillResult fill_result = flood_fill<FillBorderMode::Cancel>(*ima, leak_filter_width);
     if (fill_result != FillResult::Success) {
       return {};
     }
   }
 
-  Vector<BoundaryStep> boundary = build_fill_boundary(*ima);
-  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary);
+  Vector<int> boundary = build_fill_boundary(*ima);
+  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
   /* Delete temp image. */
   if (!keep_image) {
     BKE_id_free(&bmain, ima);
