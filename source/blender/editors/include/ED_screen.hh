@@ -458,9 +458,8 @@ class WorkspaceStatus {
  public:
   WorkspaceStatus(bContext *C);
   ~WorkspaceStatus();
-  void item(const std::string text, const int icon = 0);
-  void item_bool(const std::string text, const int icon, const bool enabled);
-  void icons(const int icon1, const int icon2 = 0);
+  void item(const std::string text, const int icon1, const int icon2 = 0);
+  void item_bool(const std::string text, const bool enabled, const int icon1, const int icon2 = 0);
   void range(const std::string text, const int icon1, const int icon2);
   void opmodal(const std::string text, wmOperatorType *ot, const int propvalue);
   void opmodal_bool(const std::string text,

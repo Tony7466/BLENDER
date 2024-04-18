@@ -872,22 +872,17 @@ WorkspaceStatus::~WorkspaceStatus()
   ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C_), CTX_wm_screen(C_)));
 };
 
-void WorkspaceStatus::item(const std::string text, const int icon)
+void WorkspaceStatus::item(const std::string text, const int icon1, const int icon2)
 {
-  if (icon) {
-    ed_workspace_status_item(workspace_, {}, icon);
+  if (icon1) {
+    ed_workspace_status_item(workspace_, {}, icon1);
+  }
+  if (icon2) {
+    ed_workspace_status_item(workspace_, {}, icon2);
   }
   if (!text.empty()) {
     ed_workspace_status_item(workspace_, text, ICON_NONE);
     ed_workspace_status_space(workspace_, 0.7f);
-  }
-}
-
-void WorkspaceStatus::icons(const int icon1, const int icon2)
-{
-  ed_workspace_status_item(workspace_, {}, icon1);
-  if (icon2) {
-    ed_workspace_status_item(workspace_, {}, icon2);
   }
 }
 
@@ -902,12 +897,21 @@ void WorkspaceStatus::range(const std::string text, const int icon1, const int i
   ed_workspace_status_space(workspace_, 0.7f);
 }
 
-void WorkspaceStatus::item_bool(std::string text, const int icon, const bool enabled)
+void WorkspaceStatus::item_bool(std::string text,
+                                const bool enabled,
+                                const int icon1,
+                                const int icon2)
 {
-  if (icon) {
-    ed_workspace_status_item(workspace_, {}, icon);
+  if (icon1) {
+    ed_workspace_status_item(workspace_, {}, icon1);
+  }
+  if (icon2) {
+    ed_workspace_status_item(workspace_, {}, icon2);
+  }
+  if (icon1 || icon2) {
     ed_workspace_status_space(workspace_, 0.6f);
   }
+
   /* These symbols (and usage below) would be put BLI_string_utf8_symbols.h when we agree on them.
    * Note that the matching symbols must be the same width to avoid jiggling. Ideally they would
    * each be unambiguious when seen in insolation. Ie: empty box doesn't work for off.  We tried

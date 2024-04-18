@@ -810,11 +810,10 @@ static void applyEdgeSlide(TransInfo *t)
   status.opmodal(IFACE_("Rotate"), op->type, TFM_MODAL_ROTATE);
   status.opmodal(IFACE_("Resize"), op->type, TFM_MODAL_RESIZE);
   status.opmodal(IFACE_("Precision Mode"), op->type, TFM_MODAL_PRECISION);
-  status.icons(ICON_EVENT_C, ICON_EVENT_ALT);
-  status.item_bool(IFACE_("Clamp"), ICON_NONE, is_clamp);
-  status.item_bool(IFACE_("Even"), ICON_EVENT_E, use_even);
+  status.item_bool(IFACE_("Clamp"), is_clamp, ICON_EVENT_C, ICON_EVENT_ALT);
+  status.item_bool(IFACE_("Even"), use_even, ICON_EVENT_E);
   if (use_even) {
-    status.item_bool(IFACE_("Flipped"), ICON_EVENT_F, flipped);
+    status.item_bool(IFACE_("Flipped"), flipped, ICON_EVENT_F);
   }
 }
 
