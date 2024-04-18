@@ -85,9 +85,11 @@ class Integrator : public Node {
   NODE_SOCKET_API(bool, use_light_tree)
   NODE_SOCKET_API(float, light_sampling_threshold)
   NODE_SOCKET_API(bool, use_initial_resampling)
+  NODE_SOCKET_API(bool, restir_initial_visibility)
   NODE_SOCKET_API(int, restir_light_samples)
   NODE_SOCKET_API(int, restir_bsdf_samples)
   NODE_SOCKET_API(bool, use_spatial_resampling)
+  NODE_SOCKET_API(bool, restir_spatial_visibility)
 
   NODE_SOCKET_API(bool, use_adaptive_sampling)
   NODE_SOCKET_API(int, adaptive_min_samples)

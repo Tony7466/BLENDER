@@ -440,7 +440,9 @@ ccl_device
     ShaderDataCausticsStorage emission_sd_storage;
     ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
 
-    const Spectrum L = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time, sd, true);
+    const bool check_visibility = kernel_data.integrator.restir_initial_visibility;
+    const Spectrum L = light_sample_shader_eval(
+        kg, state, emission_sd, &ls, sd->time, sd, check_visibility);
 
     /* Evaluate BSDF. */
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);

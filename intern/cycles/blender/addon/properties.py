@@ -243,11 +243,6 @@ enum_guiding_directional_sampling_types = (
      2),
 )
 
-enum_restir_visibility = (
-    ('INITIAL_SAMPLE', "Initial Samples", "Check visibility of initial samples"),
-    ('FINAL_SAMPLE', "Final Samples", "Check visibility of final samples"),
-)
-
 enum_restir_heuristics = (
     ('BALANCED_HEURISTICS', "Balanced Heuristics", ""),
     ('POWER_HEURISTICS', "Power Heuristics", ""),
@@ -642,11 +637,16 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=1,
     )
 
-    restir_visibility: EnumProperty(
-        name="Visibility",
-        description="Check visibility on intial or final samples",
-        items=enum_restir_visibility,
-        default='FINAL_SAMPLE',
+    restir_initial_visibility: BoolProperty(
+        name="Check Visibility",
+        description="Check visibility of intial samples",
+        default=True,
+    )
+
+    restir_spatial_visibility: BoolProperty(
+        name="Check Visibility",
+        description="Check visibility of spatial samples",
+        default=True,
     )
 
     restir_biased: BoolProperty(

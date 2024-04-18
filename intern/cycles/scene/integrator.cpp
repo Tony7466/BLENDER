@@ -118,9 +118,11 @@ NODE_DEFINE(Integrator)
   SOCKET_BOOLEAN(use_light_tree, "Use light tree to optimize many light sampling", true);
   SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.0f);
   SOCKET_BOOLEAN(use_initial_resampling, "Initial resampling", true);
+  SOCKET_BOOLEAN(restir_initial_visibility, "Check visibility of initial samples", true);
   SOCKET_INT(restir_light_samples, "Number of light samples for initial resampling", 8);
   SOCKET_INT(restir_bsdf_samples, "Number of BSDF samples for initial resampling", 3);
   SOCKET_BOOLEAN(use_spatial_resampling, "Spatial resampling", true);
+  SOCKET_BOOLEAN(restir_spatial_visibility, "Check visibility of spatial samples", true);
 
   static NodeEnum sampling_pattern_enum;
   sampling_pattern_enum.insert("sobol_burley", SAMPLING_PATTERN_SOBOL_BURLEY);
@@ -329,9 +331,11 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
 
   /* ReSTIR. */
   kintegrator->use_initial_resampling = use_initial_resampling;
+  kintegrator->restir_initial_visibility = restir_initial_visibility;
   kintegrator->restir_light_samples = restir_light_samples;
   kintegrator->restir_bsdf_samples = restir_bsdf_samples;
   kintegrator->use_spatial_resampling = use_spatial_resampling;
+  kintegrator->restir_spatial_visibility = restir_spatial_visibility;
 
   dscene->sample_pattern_lut.clear_modified();
   clear_modified();

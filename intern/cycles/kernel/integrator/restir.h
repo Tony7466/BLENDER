@@ -166,8 +166,9 @@ ccl_device_forceinline void radiance_eval(KernelGlobals kg,
   ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
 
   /* TODO(weizhen): where should we check visibility? */
+  const bool check_visibility = kernel_data.integrator.restir_spatial_visibility;
   const Spectrum light_eval = light_sample_shader_eval(
-      kg, state, emission_sd, ls, sd->time, sd, true);
+      kg, state, emission_sd, ls, sd->time, sd, check_visibility);
 
   surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
 

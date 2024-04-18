@@ -496,33 +496,67 @@ class CYCLES_RENDER_PT_sampling_lights_restir(CyclesButtonsPanel, Panel):
         scene = context.scene
         cscene = scene.cycles
 
-        col = layout.column()
-        col.active = cscene.use_restir
-        col.prop(cscene, "use_initial_resampling")
-        sub = col.column()
-        sub.active = cscene.use_initial_resampling
-        sub.prop(cscene, "restir_light_samples")
-        sub.prop(cscene, "restir_bsdf_samples")
-        col.separator()
-
-        col.prop(cscene, "use_spatial_resampling")
-        sub = col.column()
-        sub.active = cscene.use_spatial_resampling
-        sub.prop(cscene, "restir_spatial_iterations")
-        sub.prop(cscene, "restir_neighbor_radius")
-        col.separator()
-
-        sub = col.column()
-        sub.active = False
-        sub.prop(cscene, "restir_visibility")
-        col.separator()
-
-        sub = col.column(heading="MIS Weight")
-        row = sub.row(align=True)
+        col = layout.column(heading="MIS weight", align=True)
+        row = col.row(align=True)
         row.prop(cscene, "restir_biased", toggle=True)
         row.prop(cscene, "restir_pairwise", toggle=True)
-        sub.prop(cscene, "restir_heuristics")
-        sub.active = False
+        col.prop(cscene, "restir_heuristics")
+        col.active = False
+
+
+class CYCLES_RENDER_PT_sampling_lights_restir_initial(CyclesButtonsPanel, Panel):
+    bl_label = "Initial Resampling"
+    bl_parent_id = 'CYCLES_RENDER_PT_sampling_lights_restir'
+
+    def draw_header(self, context):
+        scene = context.scene
+        cscene = scene.cycles
+
+        self.layout.active = cscene.use_restir
+        self.layout.prop(context.scene.cycles, "use_initial_resampling", text="")
+
+    def draw(self, context):
+        scene = context.scene
+        cscene = scene.cycles
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        layout.active = cscene.use_restir
+
+        col = layout.column(align=True)
+        col.active = cscene.use_initial_resampling
+        col.prop(cscene, "restir_light_samples")
+        col.prop(cscene, "restir_bsdf_samples")
+        col.prop(cscene, "restir_initial_visibility")
+
+
+class CYCLES_RENDER_PT_sampling_lights_restir_spatial(CyclesButtonsPanel, Panel):
+    bl_label = "Spatial Resampling"
+    bl_parent_id = 'CYCLES_RENDER_PT_sampling_lights_restir'
+
+    def draw_header(self, context):
+        scene = context.scene
+        cscene = scene.cycles
+
+        self.layout.active = cscene.use_restir
+        self.layout.prop(context.scene.cycles, "use_spatial_resampling", text="")
+
+    def draw(self, context):
+        scene = context.scene
+        cscene = scene.cycles
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        layout.active = cscene.use_restir
+
+        col = layout.column(align=True)
+        col.active = cscene.use_spatial_resampling
+        col.prop(cscene, "restir_spatial_iterations")
+        col.prop(cscene, "restir_neighbor_radius")
+        col.prop(cscene, "restir_spatial_visibility")
+
 
 class CYCLES_RENDER_PT_subdivision(CyclesButtonsPanel, Panel):
     bl_label = "Subdivision"
@@ -2609,6 +2643,8 @@ classes = (
     CYCLES_RENDER_PT_sampling_path_guiding_debug,
     CYCLES_RENDER_PT_sampling_lights,
     CYCLES_RENDER_PT_sampling_lights_restir,
+    CYCLES_RENDER_PT_sampling_lights_restir_initial,
+    CYCLES_RENDER_PT_sampling_lights_restir_spatial,
     CYCLES_RENDER_PT_sampling_advanced,
     CYCLES_RENDER_PT_light_paths,
     CYCLES_RENDER_PT_light_paths_max_bounces,
