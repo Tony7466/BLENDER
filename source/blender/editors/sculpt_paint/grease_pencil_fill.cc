@@ -2,9 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_array_utils.hh"
 #include "BLI_color.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_rect.h"
 #include "BLI_stack.hh"
 #include "BLI_task.hh"
@@ -41,6 +43,7 @@
 #include "GPU_texture.hh"
 #include "GPU_vertex_format.hh"
 
+#include <numeric>
 #include <optional>
 
 namespace blender::ed::greasepencil {
@@ -240,16 +243,6 @@ static void draw_curve(Span<float3> positions,
 constexpr const char *attr_material_index = "material_index";
 constexpr const char *attr_is_boundary = "is_boundary";
 
-enum ColorFlag {
-  Border = 1 << 0,
-  Boundary = 1 << 1,
-  Fill = 1 << 2,
-  Seed = 1 << 3,
-};
-ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
-
-/* Alpha channel used to store various flags. */
-
 const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
 const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
 
@@ -260,6 +253,15 @@ const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
 const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
 const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
 
+enum ColorFlag {
+  Border = 1 << 0,
+  Stroke = 1 << 1,
+  Fill = 1 << 2,
+  Seed = 1 << 3,
+  Boundary = 1 << 4,
+};
+ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
+
 bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
 {
   return (color.r & flag) != 0;
@@ -268,6 +270,16 @@ bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
 void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
 {
   color.r = value ? (color.r | flag) : (color.r & (~flag));
+}
+
+uint8_t get_direction(const ColorGeometry4b &color)
+{
+  return color.g;
+}
+
+void set_direction(ColorGeometry4b &color, const uint8_t direction)
+{
+  color.g = direction;
 }
 
 static IndexMask get_boundary_curve_mask(const Object &object,
@@ -516,7 +528,7 @@ static void convert_colors_to_flags(Image &ima)
     const ColorGeometry4b input_color = pixels[i];
     const bool is_boundary = input_color.r > 0.0f;
     const bool is_seed = input_color.g > 0.0f;
-    pixels[i].r = (is_boundary ? ColorFlag::Boundary : 0) | (is_seed ? ColorFlag::Seed : 0);
+    pixels[i].r = (is_boundary ? ColorFlag::Stroke : 0) | (is_seed ? ColorFlag::Seed : 0);
     pixels[i].g = 0;
     pixels[i].b = 0;
     pixels[i].a = 0;
@@ -540,7 +552,7 @@ static void convert_flags_to_colors(Image &ima)
 
   for (const int i : pixels.index_range()) {
     const ColorGeometry4b input_color = pixels[i];
-    if (input_color.r & ColorFlag::Boundary) {
+    if (input_color.r & ColorFlag::Stroke) {
       pixels[i] = output_boundary_color;
     }
     else if (input_color.r & ColorFlag::Border) {
@@ -666,7 +678,7 @@ FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
       continue;
     }
 
-    if (get_flag(pixel_value, ColorFlag::Boundary)) {
+    if (get_flag(pixel_value, ColorFlag::Stroke)) {
       /* Boundary pixel, ignore. */
       continue;
     }
@@ -685,19 +697,19 @@ FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
     bool is_boundary_vertical = false;
     for (const int filter_i : filter_y_neg) {
       is_boundary_horizontal |= get_flag(pixel_from_coord(coord - int2(0, filter_i)),
-                                         ColorFlag::Boundary);
+                                         ColorFlag::Stroke);
     }
     for (const int filter_i : filter_y_pos) {
       is_boundary_horizontal |= get_flag(pixel_from_coord(coord + int2(0, filter_i)),
-                                         ColorFlag::Boundary);
+                                         ColorFlag::Stroke);
     }
     for (const int filter_i : filter_x_neg) {
       is_boundary_vertical |= get_flag(pixel_from_coord(coord - int2(filter_i, 0)),
-                                       ColorFlag::Boundary);
+                                       ColorFlag::Stroke);
     }
     for (const int filter_i : filter_x_pos) {
       is_boundary_vertical |= get_flag(pixel_from_coord(coord + int2(filter_i, 0)),
-                                       ColorFlag::Boundary);
+                                       ColorFlag::Stroke);
     }
 
     /* Activate neighbors */
@@ -731,7 +743,7 @@ void invert_fill(Image &ima)
 
   for (const int i : pixels.index_range()) {
     const bool is_filled = get_flag(pixels[i], ColorFlag::Fill);
-    set_flag(pixels[i], ColorFlag::Boundary, is_filled);
+    set_flag(pixels[i], ColorFlag::Stroke, is_filled);
     set_flag(pixels[i], ColorFlag::Fill, !is_filled);
   }
 
@@ -762,12 +774,19 @@ static int wrap_dir_3n(const int dir)
   return dir - num_directions * (int(dir >= num_directions) + int(dir >= 2 * num_directions));
 }
 
+struct FillBoundary {
+  /* Pixel indices making up boundary curves. */
+  Vector<int> pixels;
+  /* Offset index for each curve. */
+  Vector<int> offset_indices;
+};
+
 /* Get the outline points of a shape using Moore Neighborhood algorithm
  *
  * This is a Blender customized version of the general algorithm described
  * in https://en.wikipedia.org/wiki/Moore_neighborhood
  */
-static Vector<int> build_fill_boundary(Image &ima)
+static FillBoundary build_fill_boundary(Image &ima)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
@@ -785,75 +804,103 @@ static Vector<int> build_fill_boundary(Image &ima)
     return c.x >= 0 && c.x < width && c.y >= 0 && c.y < height;
   };
 
-  struct BoundaryStep {
-    int2 coord;
-    int direction;
-  };
-
   VectorSet<int> boundary_starts;
-
-  /* Find filled pixels as starting points. */
-  auto find_start_coordinate = [&]() -> std::optional<BoundaryStep> {
+  /* Find possible starting points for boundary sections.
+   * Direction 3 == (1, 0) is the starting direction. */
+  constexpr const uint8_t x_direction = 3;
+  auto find_start_coordinates = [&]() {
     for (const int y : IndexRange(height)) {
-      for (const int x : IndexRange(width)) {
-        const int2 coord = {x, y};
-        const int index = index_from_coord(coord);
-        if (get_flag(pixels[index], ColorFlag::Seed)) {
+      /* Check for empty pixels next to filled pixels. */
+      for (const int x : IndexRange(width).drop_back(1)) {
+        const int index_empty = index_from_coord({x, y});
+        const int index_filled = index_from_coord({x + 1, y});
+        if (!get_flag(pixels[index_empty], ColorFlag::Fill) &&
+            get_flag(pixels[index_filled], ColorFlag::Fill))
+        {
           /* Direction 3: (1, 0). Found the first filled pixel in the row. */
-          return BoundaryStep{coord, 3};
+          set_flag(pixels[index_filled], ColorFlag::Boundary, true);
+          set_direction(pixels[index_filled], x_direction);
+          boundary_starts.add(index_filled);
         }
       }
     }
-    return std::nullopt;
   };
+
+  struct NeighborIterator {
+    int index;
+    int direction;
+  };
+
   /* Find the next filled pixel in clockwise direction from the current. */
-  auto find_next_neighbor = [&](const BoundaryStep &iter) -> std::optional<BoundaryStep> {
+  auto find_next_neighbor = [&](NeighborIterator &iter) -> bool {
+    const int2 iter_coord = coord_from_index(iter.index);
+    const ColorGeometry4b color = pixels[iter.index];
+
+    if (get_flag(color, ColorFlag::Boundary)) {
+      /* Already part of the boundary, continue using recorded direction. */
+      boundary_starts.remove(iter.index);
+      const int neighbor_dir = get_direction(color);
+      const int2 neighbor_coord = iter_coord + offset_by_direction[neighbor_dir];
+      const int neighbor_index = index_from_coord(neighbor_coord);
+      iter.index = neighbor_index;
+      iter.direction = neighbor_dir;
+      return true;
+    }
+
     for (const int i : IndexRange(num_directions).drop_front(1)) {
       /* Invert direction (add 4) and start at next direction (add 1..n).
        * This can not be greater than 3*num_directions-1, wrap accordingly. */
       const int neighbor_dir = wrap_dir_3n(iter.direction + 4 + i);
-      const int2 neighbor_coord = iter.coord + offset_by_direction[neighbor_dir];
+      const int2 neighbor_coord = iter_coord + offset_by_direction[neighbor_dir];
       if (!is_valid_coord(neighbor_coord)) {
         continue;
       }
       const int neighbor_index = index_from_coord(neighbor_coord);
-      if (!get_flag(pixels[neighbor_index], ColorFlag::Fill)) {
-        continue;
+      if (get_flag(pixels[neighbor_index], ColorFlag::Fill)) {
+        iter.index = neighbor_index;
+        iter.direction = neighbor_dir;
+        return true;
       }
-
-      return BoundaryStep{neighbor_coord, neighbor_dir};
     }
-    return std::nullopt;
+    return false;
   };
 
-  const std::optional<BoundaryStep> start_iter = find_start_coordinate();
-  if (!start_iter) {
-    return {};
-  }
+  find_start_coordinates();
 
-  BoundaryStep iter = *start_iter;
-  Vector<int> boundary_steps;
-  while (true) {
-    boundary_steps.append(index_from_coord(iter.coord));
-    std::optional<BoundaryStep> next_iter = find_next_neighbor(iter);
-    if (!next_iter) {
-      break;
+  FillBoundary final_boundary;
+  while (!boundary_starts.is_empty()) {
+    const int start_index = boundary_starts.pop();
+    final_boundary.offset_indices.append(final_boundary.pixels.size());
+    final_boundary.pixels.append(start_index);
+
+    NeighborIterator iter = {start_index, get_direction(pixels[start_index])};
+    Vector<int> boundary_steps;
+    while (find_next_neighbor(iter)) {
+      ColorGeometry4b &color = pixels[iter.index];
+      if (get_flag(color, ColorFlag::Boundary)) {
+        /* Encountered another part of the boundary.
+         * When hitting another start index, merge both curves. */
+        if (boundary_starts.remove(iter.index)) {
+        }
+        break;
+      }
+
+      set_flag(color, ColorFlag::Boundary, true);
+      set_direction(color, iter.direction);
+      final_boundary.pixels.append(iter.index);
     }
-    if (next_iter->coord == start_iter->coord) {
-      break;
-    }
-    iter = *next_iter;
   }
+  final_boundary.offset_indices.append(final_boundary.pixels.size());
 
   /* release ibuf */
   BKE_image_release_ibuf(&ima, ibuf, lock);
 
-  return boundary_steps;
+  return final_boundary;
 }
 
 /* Create curves geometry from boundary positions. */
 static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPlacement &placement,
-                                              const Span<int> boundary,
+                                              const FillBoundary &boundary,
                                               const int2 win_size)
 {
   auto coord_from_index = [&](const int index) {
@@ -862,15 +909,23 @@ static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPla
   };
 
   /* Curve cannot have 0 points. */
-  if (boundary.is_empty()) {
+  if (boundary.offset_indices.is_empty() || boundary.pixels.is_empty()) {
     return {};
   }
 
-  bke::CurvesGeometry curves(boundary.size(), 1);
+  bke::CurvesGeometry curves(boundary.pixels.size(), boundary.offset_indices.size() - 1);
+
+  curves.offsets_for_write().copy_from(boundary.offset_indices);
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+
   MutableSpan<float3> positions = curves.positions_for_write();
-  for (const int index : positions.index_range()) {
-    const int2 coord = coord_from_index(boundary[index]);
-    positions[index] = placement.project(float2(coord));
+  for (const int curve_i : curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    for (const int point_i : points) {
+      const int pixel_index = boundary.pixels[point_i];
+      const int2 pixel_coord = coord_from_index(pixel_index);
+      positions[point_i] = placement.project(float2(pixel_coord));
+    }
   }
 
   return curves;
@@ -1079,7 +1134,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     }
   }
 
-  Vector<int> boundary = build_fill_boundary(*ima);
+  FillBoundary boundary = build_fill_boundary(*ima);
   bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
   /* Delete temp image. */
   if (keep_image) {
