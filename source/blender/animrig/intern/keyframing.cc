@@ -127,6 +127,42 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
                               error_count > 1 ? "s have" : " has"));
   }
 
+  if (this->get_count(SingleKeyingResult::ID_NOT_EDITABLE) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::ID_NOT_EDITABLE);
+    if (error_count == 1) {
+      errors.append(
+          fmt::format("{} ID has been skipped because it is not editable.", error_count));
+    }
+    else {
+      errors.append(
+          fmt::format("{} IDs have been skipped because they are not editable.", error_count));
+    }
+  }
+
+  if (this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE);
+    if (error_count == 1) {
+      errors.append(
+          fmt::format("{} ID has been skipped because it cannot be animated.", error_count));
+    }
+    else {
+      errors.append(
+          fmt::format("{} IDs have been skipped because they cannot be animated.", error_count));
+    }
+  }
+
+  if (this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH);
+    if (error_count == 1) {
+      errors.append(fmt::format("{} ID has been skipped because the RNA path wasn't valid for it",
+                                error_count));
+    }
+    else {
+      errors.append(fmt::format(
+          "{} IDs have been skipped because the RNA path wasn't valid for them.", error_count));
+    }
+  }
+
   if (errors.is_empty()) {
     BKE_report(reports, RPT_WARNING, "Encountered unhandled error during keyframing");
     return;
@@ -568,7 +604,6 @@ CombinedKeyingResult insert_keyframe(Main *bmain,
   CombinedKeyingResult combined_result;
 
   if (!BKE_id_is_editable(bmain, &id)) {
-    // BKE_reportf(reports, RPT_ERROR, "'%s' on %s is not editable", rna_path, id->name + 2);
     combined_result.add(SingleKeyingResult::ID_NOT_EDITABLE);
     return combined_result;
   }
@@ -577,24 +612,12 @@ CombinedKeyingResult insert_keyframe(Main *bmain,
   PropertyRNA *prop = nullptr;
   PointerRNA id_ptr = RNA_id_pointer_create(&id);
   if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop) == false) {
-    /* BKE_reportf(
-        reports,
-        RPT_ERROR,
-        "Could not insert keyframe, as RNA path is invalid for the given ID (ID = %s, path = %s)",
-        (id) ? id->name : RPT_("<Missing ID block>"),
-        rna_path); */
     combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
     return combined_result;
   }
 
   bAction *act = id_action_ensure(bmain, &id);
   if (act == nullptr) {
-    /* BKE_reportf(reports,
-                RPT_ERROR,
-                "Could not insert keyframe, as this type does not support animation data (ID = "
-                "%s, path = %s)",
-                id->name,
-                rna_path); */
     combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE);
     return combined_result;
   }
