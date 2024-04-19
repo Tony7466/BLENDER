@@ -32,6 +32,7 @@
 
 #include "IMB_imbuf_types.hh"
 
+#include "ED_asset_shelf.hh"
 #include "ED_image.hh"
 #include "ED_mask.hh"
 #include "ED_node.hh"
@@ -132,6 +133,20 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   region->regiontype = RGN_TYPE_TOOL_HEADER;
   region->alignment = (U.uiflag & USER_HEADER_BOTTOM) ? RGN_ALIGN_BOTTOM : RGN_ALIGN_TOP;
   region->flag = RGN_FLAG_HIDDEN | RGN_FLAG_HIDDEN_BY_USER;
+
+  /* asset shelf */
+  region = MEM_cnew<ARegion>("asset shelf for node");
+
+  BLI_addtail(&simage->regionbase, region);
+  region->regiontype = RGN_TYPE_ASSET_SHELF;
+  region->alignment = RGN_ALIGN_BOTTOM;
+
+  /* asset shelf header */
+  region = MEM_cnew<ARegion>("asset shelf header for node");
+
+  BLI_addtail(&simage->regionbase, region);
+  region->regiontype = RGN_TYPE_ASSET_SHELF_HEADER;
+  region->alignment = RGN_ALIGN_BOTTOM | RGN_SPLIT_PREV;
 
   /* buttons/list view */
   region = static_cast<ARegion *>(MEM_callocN(sizeof(ARegion), "buttons for image"));
@@ -1109,6 +1124,7 @@ static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_image()
 {
+  using namespace blender::ed;
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
@@ -1143,6 +1159,34 @@ void ED_spacetype_image()
   art->draw = image_main_region_draw;
   art->listener = image_main_region_listener;
   BLI_addhead(&st->regiontypes, art);
+
+  /* regions: asset shelf */
+  art = MEM_cnew<ARegionType>("spacetype image asset shelf region");
+  art->regionid = RGN_TYPE_ASSET_SHELF;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_ASSET_SHELF | ED_KEYMAP_FRAMES;
+  art->duplicate = asset::shelf::region_duplicate;
+  art->free = asset::shelf::region_free;
+  art->on_poll_success = asset::shelf::region_on_poll_success;
+  art->listener = asset::shelf::region_listen;
+  art->poll = asset::shelf::regions_poll;
+  art->snap_size = asset::shelf::region_snap;
+  art->context = asset::shelf::context;
+  art->init = asset::shelf::region_init;
+  art->layout = asset::shelf::region_layout;
+  art->draw = asset::shelf::region_draw;
+  BLI_addhead(&st->regiontypes, art);
+
+  /* regions: asset shelf header */
+  art = MEM_cnew<ARegionType>("spacetype image asset shelf header region");
+  art->regionid = RGN_TYPE_ASSET_SHELF_HEADER;
+  art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_ASSET_SHELF | ED_KEYMAP_VIEW2D | ED_KEYMAP_FOOTER;
+  art->init = asset::shelf::header_region_init;
+  art->poll = asset::shelf::regions_poll;
+  art->draw = asset::shelf::header_region;
+  art->listener = asset::shelf::header_region_listen;
+  art->context = asset::shelf::context;
+  BLI_addhead(&st->regiontypes, art);
+  asset::shelf::header_regiontype_register(art, SPACE_IMAGE);
 
   /* regions: list-view/buttons/scopes */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype image region"));

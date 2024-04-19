@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import bpy
 from bpy.types import (
     Header,
     Menu,
@@ -29,6 +30,9 @@ from bl_ui.properties_grease_pencil_common import (
 )
 from bl_ui.space_toolsystem_common import (
     ToolActivePanelHelper,
+)
+from bl_ui.space_view3d import (
+    BrushAssetShelf,
 )
 
 from bpy.app.translations import (
@@ -75,6 +79,7 @@ class IMAGE_MT_view(Menu):
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
         layout.prop(sima, "show_region_tool_header")
+        layout.prop(sima, "show_region_asset_shelf")
         layout.prop(sima, "show_region_hud")
 
         layout.separator()
@@ -1721,6 +1726,40 @@ class IMAGE_PT_annotation(AnnotationDataPanel, Panel):
 
 # Grease Pencil drawing tools.
 
+class BrushAssetShelf:
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_options = {'DEFAULT_VISIBLE', 'NO_ASSET_DRAG'}
+    bl_activate_operator = "BRUSH_OT_asset_select"
+    bl_default_preview_size = 48
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.mode == cls.mode
+
+    @classmethod
+    def asset_poll(cls, asset):
+        if asset.id_type != 'BRUSH':
+            return False
+
+        return asset.metadata.get(cls.mode_prop, False)
+
+    @classmethod
+    def get_active_asset(cls):
+        paint_settings = UnifiedPaintPanel.paint_settings(bpy.context)
+        return paint_settings.brush_asset_reference if paint_settings else None
+
+    @classmethod
+    def draw_context_menu(self, context, asset, layout):
+        # Currently this menu adds operators that deal with the affected brush and don't take the
+        # asset into account. Luckily that is okay for now, since right clicking in the grid view
+        # also activates the item.
+        layout.menu_contents("VIEW3D_MT_brush_context_menu")
+
+
+class IMAGE_AST_brush_sculpt(BrushAssetShelf, bpy.types.AssetShelf):
+    mode = 'TEXTURE_PAINT'
+    mode_prop = "use_paint_image"
+
 
 classes = (
     IMAGE_MT_view,
@@ -1793,6 +1832,7 @@ classes = (
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
+    IMAGE_AST_brush_sculpt,
 )
 
 
