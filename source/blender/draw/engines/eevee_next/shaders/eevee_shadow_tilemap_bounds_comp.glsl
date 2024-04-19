@@ -55,7 +55,7 @@ void main()
     float local_min = FLT_MAX;
     float local_max = -FLT_MAX;
 
-    vec3 L = directional_shadow_back(light);
+    vec3 L = shadow_vector_get(light, true, vec3(0));
     for (int i = 0; i < 8; i++) {
       float z = dot(box.corners[i].xyz, -L);
       local_min = min(local_min, z);

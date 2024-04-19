@@ -252,13 +252,9 @@ void light_eval_single(uint l_idx,
     shadow = shadow_unpack(packed_shadows, ray_count, shift);
     shift += ray_count;
 #else
-    float3 L = lv.L;
-    if (is_directional) {
-      /* Take jittered soft shadows into account. */
-      L = directional_shadow_back(light);
-    }
 
-    vec3 shadow_P = (is_transmission) ? P + lv.L * stack.cl[0].shadow_offset : P;
+    vec3 L = shadow_vector_get(light, is_directional, P);
+    vec3 shadow_P = (is_transmission) ? P + L * stack.cl[0].shadow_offset : P;
     ShadowEvalResult result = shadow_eval(light,
                                           is_directional,
                                           is_transmission,

@@ -480,12 +480,7 @@ vec3 shadow_pcf_offset(
 #ifdef GPU_NVIDIA
   /* Workaround for a bug in the Nvidia shader compiler.
    * If we don't compute L here again, it breaks shadows on reflection probes. */
-  if (is_directional) {
-    L = directional_shadow_back(light);
-  }
-  else {
-    L = light_vector_get(light, is_directional, P).L;
-  }
+  L = shadow_vector_get(light, is_directional, P);
 #endif
 
   if (abs(dot(Ng, L)) > 0.999) {

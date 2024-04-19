@@ -15,11 +15,17 @@
 #  define SHADOW_ATLAS_TYPE usampler2DArray
 #endif
 
-vec3 directional_shadow_back(LightData light)
+vec3 shadow_vector_get(LightData light, bool is_directional, vec3 P)
 {
-  vec3 b = float3(0, 0, 1);
-  b = rotate(as_quaternion(light_sun_data_get(light).shadow_projection_rotation), b);
-  return mat3(light.object_mat) * b;
+  if (is_directional) {
+    vec3 b = float3(0, 0, 1);
+    b = rotate(as_quaternion(light_sun_data_get(light).shadow_projection_rotation), b);
+    return mat3(light.object_mat) * b;
+  }
+  else {
+    return safe_normalize((light._position + light_local_data_get(light).shadow_projection_shift) -
+                          P);
+  }
 }
 
 vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
@@ -38,7 +44,7 @@ vec3 shadow_local_to_light_local(LightData light, vec3 lP, bool is_directional)
     return rotate(as_quaternion(light_sun_data_get(light).shadow_projection_rotation), lP);
   }
   else {
-    return lP - light_local_data_get(light).shadow_projection_shift;
+    return lP + light_local_data_get(light).shadow_projection_shift;
   }
 }
 
