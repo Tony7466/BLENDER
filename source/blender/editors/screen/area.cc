@@ -839,7 +839,8 @@ void ED_area_status_text(ScrArea *area, const char *str)
 static void ed_workspace_status_item(WorkSpace *workspace,
                                      const std::string text,
                                      const int icon,
-                                     const float space_factor = 0.0f)
+                                     const float space_factor = 0.0f,
+                                     const bool inverted = false)
 {
   /* Can be nullptr when running operators in background mode. */
   if (workspace == nullptr) {
@@ -850,6 +851,7 @@ static void ed_workspace_status_item(WorkSpace *workspace,
   item->text = text;
   item->icon = icon;
   item->space_factor = space_factor;
+  item->inverted = inverted;
   workspace->runtime->status.append(item);
 }
 
@@ -903,26 +905,22 @@ void WorkspaceStatus::item_bool(std::string text,
                                 const int icon2)
 {
   if (icon1) {
-    ed_workspace_status_item(workspace_, {}, icon1);
+    ed_workspace_status_item(workspace_, {}, icon1, 0.0f, enabled);
   }
   if (icon2) {
-    ed_workspace_status_item(workspace_, {}, icon2);
+    ed_workspace_status_item(workspace_, {}, icon2, 0.0f, enabled);
   }
   if (icon1 || icon2) {
     ed_workspace_status_space(workspace_, 0.6f);
   }
-
-  /* These symbols (and usage below) would be put BLI_string_utf8_symbols.h when we agree on them.
-   * Note that the matching symbols must be the same width to avoid jiggling. Ideally they would
-   * each be unambiguious when seen in insolation. Ie: empty box doesn't work for off.  We tried
-   * ✔ and 🚫, but the off looks like "prohibited". ✅ & ❎ look okay, but can both look ON?
-   * ✓ & ✗ are too small in our font. Can make/use icons for this purpose if need be. */
-  text += enabled ? ": ✔" : ": ✖";
-  ed_workspace_status_item(workspace_, text, ICON_NONE);
+  ed_workspace_status_item(workspace_, text, ICON_NONE, 0.0f, enabled);
   ed_workspace_status_space(workspace_, 0.7f);
 }
 
-void WorkspaceStatus::opmodal(const std::string text, wmOperatorType *ot, const int propvalue)
+void WorkspaceStatus::opmodal(const std::string text,
+                              wmOperatorType *ot,
+                              const int propvalue,
+                              bool inverted)
 {
   wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C_), ot->modalkeymap);
   if (keymap) {
@@ -931,16 +929,16 @@ void WorkspaceStatus::opmodal(const std::string text, wmOperatorType *ot, const 
       int icon = UI_icon_from_event_type(kmi->type, kmi->val);
 
       if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
-        ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT, 0.0f, inverted);
       }
       if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
-        ed_workspace_status_item(workspace_, {}, ICON_EVENT_CTRL);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_CTRL, 0.0f, inverted);
       }
       if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
-        ed_workspace_status_item(workspace_, {}, ICON_EVENT_ALT);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_ALT, 0.0f, inverted);
       }
       if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
-        ed_workspace_status_item(workspace_, {}, ICON_EVENT_OS);
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_OS, 0.0f, inverted);
       }
 
       if (kmi->val == KM_DBL_CLICK) {
@@ -949,7 +947,7 @@ void WorkspaceStatus::opmodal(const std::string text, wmOperatorType *ot, const 
       }
 
       if (icon) {
-        ed_workspace_status_item(workspace_, {}, icon);
+        ed_workspace_status_item(workspace_, {}, icon, 0.0f, inverted);
         if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
           ed_workspace_status_space(workspace_, 0.6f);
         }
@@ -967,8 +965,7 @@ void WorkspaceStatus::opmodal_bool(std::string text,
                                    const int propvalue,
                                    const bool enabled)
 {
-  text += enabled ? ": ✔" : ": ✖";
-  this->opmodal(text, ot, propvalue);
+  this->opmodal(text, ot, propvalue, enabled);
 }
 
 void ED_workspace_status_text(bContext *C, const char *str)

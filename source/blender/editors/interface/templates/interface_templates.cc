@@ -6321,7 +6321,10 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         uiItemS_ex(row, item->space_factor);
       }
       else {
-        uiItemL(row, item->text.c_str(), item->icon);
+        uiBut *but = uiItemL_ex(row, item->text.c_str(), item->icon, false, false);
+        if (item->inverted) {
+          but->drawflag |= UI_BUT_ICON_INVERT;
+        }
       }
     }
     return;

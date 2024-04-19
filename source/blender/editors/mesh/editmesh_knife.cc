@@ -1136,10 +1136,10 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
 
   status.opmodal_bool(
       IFACE_("Cut Through"), op->type, KNF_MODAL_CUT_THROUGH_TOGGLE, kcd->cut_through);
-  status.opmodal({}, op->type, KNF_MODAL_X_AXIS);
-  status.opmodal({}, op->type, KNF_MODAL_Y_AXIS);
-  status.opmodal({}, op->type, KNF_MODAL_Z_AXIS);
-  status.item_bool(IFACE_("Axis"), kcd->axis_constrained, ICON_NONE);
+  status.opmodal_bool({}, op->type, KNF_MODAL_X_AXIS, kcd->constrain_axis == 1);
+  status.opmodal({}, op->type, KNF_MODAL_Y_AXIS, kcd->constrain_axis == 2);
+  status.opmodal({}, op->type, KNF_MODAL_Z_AXIS, kcd->constrain_axis == 3);
+  status.item(IFACE_("Axis"), ICON_NONE);
   status.opmodal_bool(
       IFACE_("Measure"), op->type, KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE, kcd->show_dist_angle);
   status.opmodal_bool(IFACE_("X-Ray"), op->type, KNF_MODAL_DEPTH_TEST_TOGGLE, !kcd->depth_test);

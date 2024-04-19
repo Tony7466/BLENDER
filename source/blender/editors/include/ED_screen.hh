@@ -461,7 +461,10 @@ class WorkspaceStatus {
   void item(const std::string text, const int icon1, const int icon2 = 0);
   void item_bool(const std::string text, const bool enabled, const int icon1, const int icon2 = 0);
   void range(const std::string text, const int icon1, const int icon2);
-  void opmodal(const std::string text, wmOperatorType *ot, const int propvalue);
+  void opmodal(const std::string text,
+               wmOperatorType *ot,
+               const int propvalue,
+               const bool inverted = false);
   void opmodal_bool(const std::string text,
                     wmOperatorType *ot,
                     const int propvalue,

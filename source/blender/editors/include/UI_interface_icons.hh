@@ -110,7 +110,8 @@ void UI_icon_draw_ex(float x,
                      float desaturate,
                      const uchar mono_color[4],
                      bool mono_border,
-                     const IconTextOverlay *text_overlay);
+                     const IconTextOverlay *text_overlay,
+                     const bool inverted = false);
 
 void UI_icons_free();
 void UI_icons_free_drawinfo(void *drawinfo);

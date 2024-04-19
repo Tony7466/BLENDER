@@ -19,9 +19,10 @@ struct WorkSpaceLayout;
 
 struct WorkSpaceStatusItem {
   struct WorkSpaceStatusItem *next, *prev;
-  int icon;
+  int icon = 0;
   std::string text;
   float space_factor;
+  bool inverted;
 };
 
 namespace blender::bke {
