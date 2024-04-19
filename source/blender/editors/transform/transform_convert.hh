@@ -80,6 +80,17 @@ struct TransDataVertSlideVert {
   }
 };
 
+/**
+ * Structure used for curves transform operation.
+ * Used for both curves and grease pencil objects.
+ */
+struct CurvesTransformData {
+  blender::IndexMaskMemory memory;
+  blender::Vector<blender::IndexMask> selection_by_layer;
+  blender::Vector<int> layer_offsets;
+  blender::Array<blender::float3> positions;
+};
+
 /* `transform_convert.cc` */
 
 /**
@@ -160,6 +171,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const blender::IndexMask &affected_curves,
                                        bool use_connected_only,
                                        int trans_data_offset);
+
+CurvesTransformData *create_curves_custom_data(TransCustomData &custom_data);
+
+void selected_positions_from_custom_data(const TransCustomData &custom_data,
+                                         const int layer,
+                                         blender::MutableSpan<blender::float3> positions_dst);
 
 /* `transform_convert_action.cc` */
 
