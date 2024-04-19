@@ -679,12 +679,22 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
+  /* Unfortunately at this point, the name of the ID has already been set to its new value. Revert
+   * it to its old name, to be able to use the generic 'rename' function for IDs.
+   *
+   * NOTE: While utterly inelegant, performances are not really a concern here, so this is an
+   * acceptable solution for now. */
+  auto id_rename_helper = [bmain, tselem, oldname] {
+    std::string new_name = tselem->id->name + 2;
+    BLI_strncpy(tselem->id->name + 2, oldname, sizeof(tselem->id->name) - 2);
+    BKE_libblock_rename(bmain, tselem->id, new_name.c_str());
+  };
+
   if (ts && tselem) {
     TreeElement *te = outliner_find_tree_element(&space_outliner->tree, tselem);
 
     if (tselem->type == TSE_SOME_ID) {
-      BKE_main_namemap_remove_name(bmain, tselem->id, oldname);
-      BKE_libblock_ensure_unique_name(bmain, tselem->id);
+      id_rename_helper();
 
       WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
 
@@ -750,10 +760,9 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           break;
         }
         case TSE_NLA_ACTION: {
-          bAction *act = (bAction *)tselem->id;
-          BKE_main_namemap_remove_name(bmain, &act->id, oldname);
-          BKE_libblock_ensure_unique_name(bmain, &act->id);
-          WM_msg_publish_rna_prop(mbus, &act->id, &act->id, ID, name);
+          /* The #tselem->id is a #bAction. */
+          id_rename_helper();
+          WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
           DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
         }
@@ -871,11 +880,9 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           break;
         }
         case TSE_LAYER_COLLECTION: {
-          /* The ID is a #Collection, not a #LayerCollection */
-          Collection *collection = (Collection *)tselem->id;
-          BKE_main_namemap_remove_name(bmain, &collection->id, oldname);
-          BKE_libblock_ensure_unique_name(bmain, &collection->id);
-          WM_msg_publish_rna_prop(mbus, &collection->id, &collection->id, ID, name);
+          /* The #tselem->id is a #Collection, not a #LayerCollection */
+          id_rename_helper();
+          WM_msg_publish_rna_prop(mbus, tselem->id, tselem->id, ID, name);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
           DEG_id_tag_update(tselem->id, ID_RECALC_SYNC_TO_EVAL);
           break;
@@ -2475,7 +2482,7 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       if (id->tag & LIB_TAG_MISSING) {
         return ICON_LIBRARY_DATA_BROKEN;
       }
-      else if (((Library *)id)->parent) {
+      else if (((Library *)id)->runtime.parent) {
         return ICON_LIBRARY_DATA_INDIRECT;
       }
       else {
@@ -2973,18 +2980,20 @@ static bool tselem_draw_icon(uiBlock *block,
     }
   }
   else {
-    uiDefIconBut(block,
-                 UI_BTYPE_LABEL,
-                 0,
-                 data.icon,
-                 x,
-                 y,
-                 UI_UNIT_X,
-                 UI_UNIT_Y,
-                 nullptr,
-                 0.0,
-                 0.0,
-                 (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
+    uiBut *but = uiDefIconBut(
+        block,
+        UI_BTYPE_LABEL,
+        0,
+        data.icon,
+        x,
+        y,
+        UI_UNIT_X,
+        UI_UNIT_Y,
+        nullptr,
+        0.0,
+        0.0,
+        (data.drag_id && ID_IS_LINKED(data.drag_id)) ? data.drag_id->lib->filepath : "");
+    UI_but_label_alpha_factor_set(but, alpha);
   }
 
   return true;
@@ -3269,6 +3278,12 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
         if (!is_visible) {
           return true;
         }
+        break;
+      }
+      default: {
+        if (te->parent) {
+          return element_should_draw_faded(tvc, te->parent, te->parent->store_elem);
+        }
       }
     }
   }
@@ -3435,6 +3450,15 @@ static void outliner_draw_tree_element(bContext *C,
             float(startx) + offsx + 2 * ufac, float(*starty) + 2 * ufac, lib_icon, alpha_fac);
         offsx += UI_UNIT_X + 4 * ufac;
       }
+
+      if (tselem->type == TSE_LAYER_COLLECTION) {
+        const Collection *collection = (Collection *)tselem->id;
+        if (!BLI_listbase_is_empty(&collection->exporters)) {
+          UI_icon_draw_alpha(
+              float(startx) + offsx + 2 * ufac, float(*starty) + 2 * ufac, ICON_EXPORT, alpha_fac);
+          offsx += UI_UNIT_X + 4 * ufac;
+        }
+      }
     }
     GPU_blend(GPU_BLEND_NONE);
 
@@ -3546,6 +3570,7 @@ static void outliner_draw_hierarchy_line(
 static void outliner_draw_hierarchy_lines_recursive(uint pos,
                                                     SpaceOutliner *space_outliner,
                                                     ListBase *lb,
+                                                    const TreeViewContext *tvc,
                                                     int startx,
                                                     const uchar col[4],
                                                     bool draw_grayed_out,
@@ -3590,18 +3615,28 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
         }
       }
 
-      outliner_draw_hierarchy_lines_recursive(
-          pos, space_outliner, &te->subtree, startx + UI_UNIT_X, col, draw_grayed_out, starty);
+      outliner_draw_hierarchy_lines_recursive(pos,
+                                              space_outliner,
+                                              &te->subtree,
+                                              tvc,
+                                              startx + UI_UNIT_X,
+                                              col,
+                                              draw_grayed_out,
+                                              starty);
     }
 
     if (draw_hierarchy_line) {
+      const short alpha_fac = element_should_draw_faded(tvc, te, tselem) ? 127 : 255;
+      uchar line_color[4];
       if (color_tag != COLLECTION_COLOR_NONE) {
-        immUniformColor4ubv(btheme->collection_color[color_tag].color);
+        copy_v4_v4_uchar(line_color, btheme->collection_color[color_tag].color);
       }
       else {
-        immUniformColor4ubv(col);
+        copy_v4_v4_uchar(line_color, col);
       }
 
+      line_color[3] = alpha_fac;
+      immUniformColor4ubv(line_color);
       outliner_draw_hierarchy_line(pos, startx, y, *starty, is_object_line);
     }
   }
@@ -3609,6 +3644,7 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
 
 static void outliner_draw_hierarchy_lines(SpaceOutliner *space_outliner,
                                           ListBase *lb,
+                                          const TreeViewContext *tvc,
                                           int startx,
                                           int *starty)
 {
@@ -3628,7 +3664,8 @@ static void outliner_draw_hierarchy_lines(SpaceOutliner *space_outliner,
 
   GPU_line_width(1.0f);
   GPU_blend(GPU_BLEND_ALPHA);
-  outliner_draw_hierarchy_lines_recursive(pos, space_outliner, lb, startx, col, false, starty);
+  outliner_draw_hierarchy_lines_recursive(
+      pos, space_outliner, lb, tvc, startx, col, false, starty);
   GPU_blend(GPU_BLEND_NONE);
 
   immUnbindProgram();
@@ -3830,7 +3867,7 @@ static void outliner_draw_tree(bContext *C,
   /* Draw hierarchy lines for collections and object children. */
   starty = int(region->v2d.tot.ymax) - OL_Y_OFFSET;
   startx = columns_offset + UI_UNIT_X / 2 - (U.pixelsize + 1) / 2;
-  outliner_draw_hierarchy_lines(space_outliner, &space_outliner->tree, startx, &starty);
+  outliner_draw_hierarchy_lines(space_outliner, &space_outliner->tree, tvc, startx, &starty);
 
   /* Items themselves. */
   starty = int(region->v2d.tot.ymax) - UI_UNIT_Y - OL_Y_OFFSET;

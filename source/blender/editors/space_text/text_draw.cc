@@ -848,12 +848,12 @@ int space_text_get_visible_lines(const SpaceText *st, const ARegion *region, con
 
 int space_text_get_span_wrap(const SpaceText *st,
                              const ARegion *region,
-                             TextLine *from,
-                             TextLine *to)
+                             const TextLine *from,
+                             const TextLine *to)
 {
   if (st->wordwrap) {
     int ret = 0;
-    TextLine *tmp = from;
+    const TextLine *tmp = from;
 
     /* Look forwards */
     while (tmp) {
@@ -1013,7 +1013,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
   CLAMP(st->runtime->scroll_region_select.ymax, pix_bottom_margin, region->winy - pix_top_margin);
 }
 
-static void draw_textscroll(const SpaceText *st, rcti *scroll, rcti *back)
+static void draw_textscroll(const SpaceText *st, const rcti *scroll, const rcti *back)
 {
   bTheme *btheme = UI_GetTheme();
   uiWidgetColors wcol = btheme->tui.wcol_scroll;

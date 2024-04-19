@@ -467,7 +467,6 @@ void gpu_shader_create_info_init()
                           GPU_OS_ANY,
                           GPU_DRIVER_ANY,
                           GPU_BACKEND_OPENGL) ||
-      GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_MAC, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL) ||
       GPU_crappy_amd_driver())
   {
     draw_modelmat = draw_modelmat_legacy;
@@ -545,7 +544,7 @@ void gpu_shader_create_info_init()
 
     /* NOTE: As atomic data types can alter shader gen if native atomics are unsupported, we need
      * to use differing create info's to handle the tile optimized check. This does prevent
-     * the shadow techniques from being dynamically switchable . */
+     * the shadow techniques from being dynamically switchable. */
     const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
     if (is_tile_based_arch) {
       eevee_shadow_data = eevee_shadow_data_non_atomic;
