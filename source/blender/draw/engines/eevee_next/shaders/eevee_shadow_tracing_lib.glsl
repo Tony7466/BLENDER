@@ -402,14 +402,14 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
-vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec2 random)
+vec3 shadow_pcf_offset(
+    LightData light, const bool is_directional, vec3 L, vec3 P, vec3 Ng, vec2 random)
 {
   if (light.pcf_radius <= 0.001) {
     /* Early return. */
     return vec3(0.0);
   }
 
-  vec3 L = light_vector_get(light, is_directional, P).L;
   if (dot(L, Ng) < 0.001) {
     /* Don't apply PCF to almost perpendicular,
      * since we can't project the offset to the surface. */
@@ -480,7 +480,12 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 #ifdef GPU_NVIDIA
   /* Workaround for a bug in the Nvidia shader compiler.
    * If we don't compute L here again, it breaks shadows on reflection probes. */
-  L = light_vector_get(light, is_directional, P).L;
+  if (is_directional) {
+    L = directional_shadow_back(light);
+  }
+  else {
+    L = light_vector_get(light, is_directional, P).L;
+  }
 #endif
 
   if (abs(dot(Ng, L)) > 0.999) {
@@ -532,7 +537,7 @@ ShadowEvalResult shadow_eval(LightData light,
   float normal_offset = 0.02;
 #endif
 
-  P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
+  P += shadow_pcf_offset(light, is_directional, L, P, Ng, random_pcf_2d);
 
   /* We want to bias inside the object for transmission to go through the object itself.
    * But doing so split the shadow in two different directions at the horizon. Also this

@@ -25,6 +25,13 @@ vec3 _quaternion_transform(vec4 a, vec3 vector)
   return vector + t * a.w + cross(a.xyz, t);
 }
 
+vec3 directional_shadow_back(LightData light)
+{
+  vec3 b = float3(0, 0, 1);
+  b = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, b);
+  return mat3(light.object_mat) * b;
+}
+
 void main()
 {
   IsectBox box;
@@ -53,10 +60,10 @@ void main()
 
     float local_min = FLT_MAX;
     float local_max = -FLT_MAX;
-    vec3 shadow_back = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation,
-                                             light._back);
+
+    vec3 L = directional_shadow_back(light);
     for (int i = 0; i < 8; i++) {
-      float z = dot(box.corners[i].xyz, -shadow_back);
+      float z = dot(box.corners[i].xyz, -L);
       local_min = min(local_min, z);
       local_max = max(local_max, z);
     }

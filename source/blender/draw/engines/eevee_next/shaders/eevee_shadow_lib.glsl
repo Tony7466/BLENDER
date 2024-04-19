@@ -27,10 +27,18 @@ vec3 _quaternion_transform(vec4 a, vec3 vector)
   return vector + t * a.w + cross(a.xyz, t);
 }
 
+vec3 directional_shadow_back(LightData light)
+{
+  vec3 b = float3(0, 0, 1);
+  b = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, b);
+  return mat3(light.object_mat) * b;
+}
+
 vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
 {
   if (is_directional) {
-    return _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, lP);
+    return _quaternion_transform(
+        _quaternion_inverted(light_sun_data_get(light).shadow_projection_rotation), lP);
   }
   else {
     return lP - light_local_data_get(light).shadow_projection_shift;
@@ -40,8 +48,7 @@ vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
 vec3 shadow_local_to_light_local(LightData light, vec3 lP, bool is_directional)
 {
   if (is_directional) {
-    return _quaternion_transform(
-        _quaternion_inverted(light_sun_data_get(light).shadow_projection_rotation), lP);
+    return _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, lP);
   }
   else {
     return lP - light_local_data_get(light).shadow_projection_shift;

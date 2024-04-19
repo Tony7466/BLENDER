@@ -733,8 +733,8 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
 
   float4 q;
   mat3_to_quat(q, jitter_mat.ptr());
-  /* Put w component at last (Why is the sign flip needed?). */
-  light.sun.shadow_projection_rotation = {q[1], q[2], q[3], -q[0]};
+  /* Move w component to the end. */
+  light.sun.shadow_projection_rotation = {q[1], q[2], q[3], q[0]};
 
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */
