@@ -152,7 +152,7 @@ static blender::VectorSet<Sequence *> query_snap_targets(Scene *scene,
   return snap_targets;
 }
 
-static int seq_get_snap_target_points_count(Scene *scene,
+static int seq_get_snap_target_points_count(const Scene *scene,
                                             short snap_mode,
                                             blender::Span<Sequence *> snap_targets)
 {
