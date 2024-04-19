@@ -1,3 +1,4 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by issue #100749, Blender LTS: Maintenance Task 3.3
 Referenced by issue #119999, Regression: Copy to selected on addons properties crach Blender
+Referenced by commit 8b1154a85477b31e3430717f6404b2fc65396fd6, Fix #119999: Regression: Copy to selected on addons properties crash Blender.
