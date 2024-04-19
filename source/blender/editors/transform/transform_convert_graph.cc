@@ -798,77 +798,85 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
   }
 }
 
+static inline void update_trans_data(TransData *td,
+                                     const FCurve *fcu,
+                                     const int new_index,
+                                     const int swap_handles)
+{
+  if (td->flag & TD_BEZTRIPLE && td->hdata) {
+    if (swap_handles == 1) {
+      td->hdata->h1 = &fcu->bezt[new_index].h2;
+      td->hdata->h2 = &fcu->bezt[new_index].h1;
+    }
+    else {
+      td->hdata->h1 = &fcu->bezt[new_index].h1;
+      td->hdata->h2 = &fcu->bezt[new_index].h2;
+    }
+  }
+}
+
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
 static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztMap> bezms)
 {
-  TransData2D *td2d;
-  TransData *td;
-
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  /* Used to mark whether an TransData's pointers have been fixed already, so that we don't
-   * override ones that are already done. */
-  blender::Vector<bool> adjusted(tc->data_len, false);
+  blender::Map<float *, int> trans_info_map;
+  for (int i = 0; i < tc->data_len; i++) {
+    trans_info_map.add(tc->data_2d[i].loc2d, i);
+  }
 
-  /* For each beztmap item, find if it is used anywhere. */
-  const BeztMap *bezm;
-  for (const int i : bezms.index_range()) {
-    bezm = &bezms[i];
-    /* Loop through transdata, testing if we have a hit
-     * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
-    td2d = tc->data_2d;
-    td = tc->data;
-    for (int j = 0; j < tc->data_len; j++, td2d++, td++) {
-      /* Skip item if already marked. */
-      if (adjusted[j]) {
-        continue;
-      }
+  /* At this point, beztmaps are already sorted, so their current index is assumed to be what the
+   * BezTriple index will be after sorting. */
+  for (const int new_index : bezms.index_range()) {
+    const BeztMap *bezm = &bezms[new_index];
+    if (new_index == bezm->oldIndex) {
+      /* If the index is the same,
+       * any pointers to BezTriple will still point to the correct data. */
+      continue;
+    }
 
-      /* Update all transdata pointers, no need to check for selections etc,
-       * since only points that are really needed were created as transdata. */
-      if (td2d->loc2d == bezm->bezt->vec[0]) {
-        if (bezm->swap_handles == 1) {
-          td2d->loc2d = fcu->bezt[i].vec[2];
-        }
-        else {
-          td2d->loc2d = fcu->bezt[i].vec[0];
-        }
-        adjusted[j] = true;
-      }
-      else if (td2d->loc2d == bezm->bezt->vec[2]) {
-        if (bezm->swap_handles == 1) {
-          td2d->loc2d = fcu->bezt[i].vec[0];
-        }
-        else {
-          td2d->loc2d = fcu->bezt[i].vec[2];
-        }
-        adjusted[j] = true;
-      }
-      else if (td2d->loc2d == bezm->bezt->vec[1]) {
-        td2d->loc2d = fcu->bezt[i].vec[1];
+    /* For the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
+    TransData2D *td2d;
+    TransData *td;
 
-        /* If only control point is selected, the handle pointers need to be updated as well. */
-        if (td2d->h1) {
-          td2d->h1 = fcu->bezt[i].vec[0];
-        }
-        if (td2d->h2) {
-          td2d->h2 = fcu->bezt[i].vec[2];
-        }
-
-        adjusted[j] = true;
+    if (trans_info_map.contains(bezm->bezt->vec[0])) {
+      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[0]);
+      td2d = &tc->data_2d[trans_data_index];
+      if (bezm->swap_handles == 1) {
+        td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
-
-      /* The handle type pointer has to be updated too. */
-      if (adjusted[j] && td->flag & TD_BEZTRIPLE && td->hdata) {
-        if (bezm->swap_handles == 1) {
-          td->hdata->h1 = &fcu->bezt[i].h2;
-          td->hdata->h2 = &fcu->bezt[i].h1;
-        }
-        else {
-          td->hdata->h1 = &fcu->bezt[i].h1;
-          td->hdata->h2 = &fcu->bezt[i].h2;
-        }
+      else {
+        td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
+      td = &tc->data[trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm->swap_handles);
+    }
+    if (trans_info_map.contains(bezm->bezt->vec[2])) {
+      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[2]);
+      td2d = &tc->data_2d[trans_data_index];
+      if (bezm->swap_handles == 1) {
+        td2d->loc2d = fcu->bezt[new_index].vec[0];
+      }
+      else {
+        td2d->loc2d = fcu->bezt[new_index].vec[2];
+      }
+      td = &tc->data[trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm->swap_handles);
+    }
+    if (trans_info_map.contains(bezm->bezt->vec[1])) {
+      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[1]);
+      td2d = &tc->data_2d[trans_data_index];
+      td2d->loc2d = fcu->bezt[new_index].vec[1];
+
+      /* If only control point is selected, the handle pointers need to be updated as well. */
+      if (td2d->h1) {
+        td2d->h1 = fcu->bezt[new_index].vec[0];
+      }
+      if (td2d->h2) {
+        td2d->h2 = fcu->bezt[new_index].vec[2];
+      }
+      td = &tc->data[trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm->swap_handles);
     }
   }
 }
