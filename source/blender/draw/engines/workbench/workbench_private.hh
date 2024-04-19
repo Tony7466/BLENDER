@@ -13,6 +13,8 @@
 
 #include "GPU_capabilities.h"
 
+
+
 extern "C" DrawEngineType draw_engine_workbench;
 
 namespace blender::workbench {
@@ -570,5 +572,28 @@ class AntiAliasingPass {
        * and resources.depth_in_front_tx is only valid when mesh passes have to draw to it. */
       GPUTexture *depth_in_front_tx);
 };
+
+
+class USDStagePassImpl;
+
+
+class USDStagesPass {
+ private:
+  std::unique_ptr<USDStagePassImpl> impl_;
+
+ public:
+  USDStagesPass();
+  ~USDStagesPass();
+
+  void init(const SceneState &scene_state);
+  void sync(const SceneState &scene_state, SceneResources &resources);
+  void setup_view(View &view, const SceneState &scene_state);
+  void draw(
+      Manager &manager,
+      View &view,
+      const SceneState &scene_state,
+      SceneResources &resources);
+};
+
 
 }  // namespace blender::workbench

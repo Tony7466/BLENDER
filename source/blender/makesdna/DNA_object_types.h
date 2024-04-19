@@ -49,6 +49,7 @@ struct Path;
 struct RigidBodyOb;
 struct SculptSession;
 struct SoftBody;
+struct USDStage;
 struct bGPdata;
 
 /** Vertex Groups - Name Info */
@@ -467,6 +468,8 @@ typedef enum ObjectType {
 
   OB_GREASE_PENCIL = 30,
 
+  OB_USD_STAGE = 31,
+
   /* Keep last. */
   OB_TYPE_MAX,
 } ObjectType;
@@ -474,7 +477,7 @@ typedef enum ObjectType {
 /* check if the object type supports materials */
 #define OB_TYPE_SUPPORT_MATERIAL(_type) \
   (((_type) >= OB_MESH && (_type) <= OB_MBALL) || \
-   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_GREASE_PENCIL))
+   ((_type) >= OB_GPENCIL_LEGACY && (_type) <= OB_USD_STAGE))
 /**
  * Does the object have some render-able geometry (unlike empties, cameras, etc.). True for
  * #OB_CURVES_LEGACY, since these often evaluate to objects with geometry.
@@ -527,7 +530,8 @@ typedef enum ObjectType {
         ID_CV, \
         ID_PT, \
         ID_VO, \
-        ID_GP))
+        ID_GP, \
+        ID_USD))
 
 #define OB_DATA_SUPPORT_ID_CASE \
   ID_ME: \
@@ -543,6 +547,7 @@ typedef enum ObjectType {
   case ID_CV: \
   case ID_PT: \
   case ID_VO: \
+  case ID_USD: \
   case ID_GP
 
 /** #Object.partype: first 4 bits: type. */

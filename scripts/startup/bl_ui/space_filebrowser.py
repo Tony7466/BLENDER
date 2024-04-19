@@ -170,6 +170,9 @@ class FILEBROWSER_PT_filter(FileBrowserPanel, Panel):
             row = col.row()
             row.label(icon='FILE_VOLUME')
             row.prop(params, "use_filter_volume", text="Volume Files", toggle=False)
+            row = col.row()
+            row.label(icon='FILE_USD')
+            row.prop(params, "use_filter_usd_stage", text="USD Files", toggle=0)
 
         col.separator()
 

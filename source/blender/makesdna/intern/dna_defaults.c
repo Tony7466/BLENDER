@@ -102,6 +102,7 @@
 #include "DNA_space_types.h"
 #include "DNA_speaker_types.h"
 #include "DNA_texture_types.h"
+#include "DNA_usd_stage_types.h"
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
@@ -133,6 +134,7 @@
 #include "DNA_speaker_defaults.h"
 #include "DNA_texture_defaults.h"
 #include "DNA_userdef_defaults.h"
+#include "DNA_usd_stage_defaults.h"
 #include "DNA_volume_defaults.h"
 #include "DNA_world_defaults.h"
 
@@ -227,6 +229,9 @@ SDNA_DEFAULT_DECL_STRUCT(bUserExtensionRepo);
 
 /* DNA_view3d_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(View3D);
+
+/* DNA_usd_stage_defaults.h */
+SDNA_DEFAULT_DECL_STRUCT(USDStage);
 
 /* DNA_volume_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Volume);
@@ -566,6 +571,9 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(DashGpencilModifierSegment),
     SDNA_DEFAULT_DECL(ShrinkwrapGpencilModifierData),
     SDNA_DEFAULT_DECL(EnvelopeGpencilModifierData),
+
+    /* DNA_usd_stage_defaults.h */
+    SDNA_DEFAULT_DECL(USDStage),
 };
 #undef SDNA_DEFAULT_DECL
 #undef SDNA_DEFAULT_DECL_EX

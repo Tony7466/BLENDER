@@ -259,6 +259,7 @@ const EnumPropertyItem rna_enum_object_type_items[] = {
     OBTYPE_CU_SURF,
     {OB_MBALL, "META", ICON_OUTLINER_OB_META, "Metaball", ""},
     OBTYPE_CU_FONT,
+    {OB_USD_STAGE, "USDSTAGE", 0, "UsdStage", ""},
     {OB_CURVES, "CURVES", ICON_OUTLINER_OB_CURVES, "Hair Curves", ""},
     {OB_POINTCLOUD, "POINTCLOUD", ICON_OUTLINER_OB_POINTCLOUD, "Point Cloud", ""},
     {OB_VOLUME, "VOLUME", ICON_OUTLINER_OB_VOLUME, "Volume", ""},
@@ -615,6 +616,10 @@ static StructRNA *rna_Object_data_typef(PointerRNA *ptr)
       return &RNA_Curves;
     case OB_POINTCLOUD:
       return &RNA_PointCloud;
+#ifdef WITH_USD
+    case OB_USD_STAGE:
+      return &RNA_USDStage;
+#endif
     case OB_VOLUME:
       return &RNA_Volume;
     default:

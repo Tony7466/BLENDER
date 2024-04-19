@@ -114,6 +114,17 @@ typedef enum eTreeStoreElemType {
   TSE_LIBRARY_OVERRIDE_OPERATION = 46,
   TSE_GENERIC_LABEL = 47, /* No ID */
   TSE_GREASE_PENCIL_NODE = 48,
+
+/* USDStage object prim types -- Needs to match types in DNA_usd_stage_types.h */
+  TSE_USD_STAGE = 50,
+  TSE_USD_ROOT_PRIM = 51,
+  TSE_USD_PRIM = 52,
+  TSE_USD_PRIM_XFORM = 53,
+  TSE_USD_PRIM_MESH = 54,
+  TSE_USD_PRIM_CURVE = 55,
+  TSE_USD_PRIM_JOINT = 56,
+  TSE_USD_PRIM_SKEL_ROOT = 57,
+  TSE_USD_PRIM_UNKNOWN = 58,
 } eTreeStoreElemType;
 
 /** Check whether given #TreeStoreElem should have a real ID in #TreeStoreElem.id member. */
@@ -131,3 +142,5 @@ typedef enum eTreeStoreElemType {
          TSE_ID_BASE, \
          TSE_GP_LAYER, \
          TSE_GENERIC_LABEL))
+
+//!TODO(kiki): Should the USD type have a real ID here?

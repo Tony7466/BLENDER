@@ -80,6 +80,7 @@ set(SRC
   tree/tree_element_rna.cc
   tree/tree_element_scene_objects.cc
   tree/tree_element_seq.cc
+  tree/tree_element_id_usd_stage.cc
   tree/tree_element_view_collection.cc
   tree/tree_element_view_layer.cc
   tree/tree_iterator.cc
@@ -138,6 +139,22 @@ set(LIB
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
+
+if (WITH_USD)
+	list(APPEND LIB
+		bf_io_usd
+	)
+	list(APPEND INC
+		../../io/usd
+	)
+	add_definitions(-DWITH_USD)
+	list(APPEND INC_SYS
+		${USD_INCLUDE_DIRS}
+		${BOOST_INCLUDE_DIR}
+		${TBB_INCLUDE_DIR}
+		${PYTHON_INCLUDE_DIR}
+	)
+endif()
 
 
 blender_add_lib(bf_editor_space_outliner "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

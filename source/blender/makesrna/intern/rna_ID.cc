@@ -68,6 +68,7 @@ const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_SPK, "SPEAKER", ICON_SPEAKER, "Speaker", ""},
     {ID_TXT, "TEXT", ICON_TEXT, "Text", ""},
     {ID_TE, "TEXTURE", ICON_TEXTURE_DATA, "Texture", ""},
+    {ID_USD, "USDSTAGE", ICON_X, "UsdStage", ""},
     {ID_VO, "VOLUME", ICON_VOLUME_DATA, "Volume", ""},
     {ID_WM, "WINDOWMANAGER", ICON_WINDOW, "Window Manager", ""},
     {ID_WS, "WORKSPACE", ICON_WORKSPACE, "Workspace", ""},
@@ -452,6 +453,9 @@ short RNA_type_to_ID_code(const StructRNA *type)
   if (base_type == &RNA_Text) {
     return ID_TXT;
   }
+  if (base_type == &RNA_USDStage) {
+    return ID_USD;
+  }
   if (base_type == &RNA_VectorFont) {
     return ID_VF;
   }
@@ -547,6 +551,8 @@ StructRNA *ID_code_to_RNA_type(short idcode)
       return &RNA_Texture;
     case ID_TXT:
       return &RNA_Text;
+    case ID_USD:
+      return &RNA_USDStage;
     case ID_VF:
       return &RNA_VectorFont;
     case ID_VO:

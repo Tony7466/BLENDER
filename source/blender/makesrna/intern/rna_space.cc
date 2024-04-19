@@ -3965,6 +3965,11 @@ static void rna_def_space_outliner(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Grease Pencil", "Show grease pencil objects");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
 
+  prop = RNA_def_property(srna, "use_filter_usd", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "filter", SO_FILTER_NO_OB_USD);
+  RNA_def_property_ui_text(prop, "Show Usd Stages", "Show Usd Stage objects");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
+
   prop = RNA_def_property(srna, "use_filter_object_others", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "filter", SO_FILTER_NO_OB_OTHERS);
   RNA_def_property_ui_text(
@@ -6909,6 +6914,13 @@ static void rna_def_fileselect_params(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Filter Text", "Show text files");
   RNA_def_property_ui_icon(prop, ICON_FILE_TEXT, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, nullptr);
+
+  //!TODO(kiki): Fix icon
+  prop = RNA_def_property(srna, "use_filter_usd_stage", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "filter", FILE_TYPE_USD);
+  RNA_def_property_ui_text(prop, "Filter USD", "Show USD files");
+  RNA_def_property_ui_icon(prop, ICON_FILE_3D, 0);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_FILE_PARAMS, NULL);
 
   prop = RNA_def_property(srna, "use_filter_volume", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "filter", FILE_TYPE_VOLUME);

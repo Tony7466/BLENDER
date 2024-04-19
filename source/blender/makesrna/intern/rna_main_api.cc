@@ -57,6 +57,7 @@
 #  include "BKE_speaker.h"
 #  include "BKE_text.h"
 #  include "BKE_texture.h"
+#  include "BKE_usd_stage.hh"
 #  include "BKE_vfont.hh"
 #  include "BKE_volume.hh"
 #  include "BKE_workspace.h"
@@ -87,6 +88,7 @@
 #  include "DNA_speaker_types.h"
 #  include "DNA_text_types.h"
 #  include "DNA_texture_types.h"
+#  include "DNA_usd_stage_types.h"
 #  include "DNA_vfont_types.h"
 #  include "DNA_volume_types.h"
 #  include "DNA_world_types.h"
@@ -776,6 +778,19 @@ static PointCloud *rna_Main_pointclouds_new(Main *bmain, const char *name)
   return pointcloud;
 }
 
+static USDStage* rna_Main_usd_stages_new(Main *bmain, const char *name)
+{
+  char safe_name[MAX_ID_NAME - 2];
+  rna_idname_validate(name, safe_name);
+
+  USDStage* stage = static_cast<USDStage *>(BKE_usd_stage_add(bmain, safe_name));
+  id_us_min(&stage->id);
+
+  WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
+
+  return stage;
+}
+
 static Volume *rna_Main_volumes_new(Main *bmain, const char *name)
 {
   char safe_name[MAX_ID_NAME - 2];
@@ -833,6 +848,7 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(workspaces, workspaces, ID_WS)
 RNA_MAIN_ID_TAG_FUNCS_DEF(lightprobes, lightprobes, ID_LP)
 RNA_MAIN_ID_TAG_FUNCS_DEF(hair_curves, hair_curves, ID_CV)
 RNA_MAIN_ID_TAG_FUNCS_DEF(pointclouds, pointclouds, ID_PT)
+RNA_MAIN_ID_TAG_FUNCS_DEF(usd_stages, usd_stages, ID_USD)
 RNA_MAIN_ID_TAG_FUNCS_DEF(volumes, volumes, ID_VO)
 
 #  undef RNA_MAIN_ID_TAG_FUNCS_DEF
@@ -2336,6 +2352,51 @@ void RNA_def_main_pointclouds(BlenderRNA *brna, PropertyRNA *cprop)
 
   func = RNA_def_function(srna, "tag", "rna_Main_pointclouds_tag");
   parm = RNA_def_boolean(func, "value", false, "Value", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
+
+void RNA_def_main_usd_stages(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_property_srna(cprop, "BlendDataUsdStages");
+  srna = RNA_def_struct(brna, "BlendDataUsdStages", NULL);
+  RNA_def_struct_sdna(srna, "Main");
+  RNA_def_struct_ui_text(srna, "Main USD Stages", "Collection of USD Stages");
+
+  func = RNA_def_function(srna, "new", "rna_Main_usd_stages_new");
+  RNA_def_function_ui_description(func, "Add a new UsdStage to the main database");
+  parm = RNA_def_string(func, "name", "UsdStage", 0, "", "New name for the data-block");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return type */
+  parm = RNA_def_pointer(func, "usd_stage", "USDStage", "", "New UsdStage data-block");
+  RNA_def_function_return(func, parm);
+
+  func = RNA_def_function(srna, "remove", "rna_Main_ID_remove");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_ui_description(func, "Remove a UsdStage from the current blendfile");
+  parm = RNA_def_pointer(func, "usd_stage", "USDStage", "", "UsdStage to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  RNA_def_parameter_clear_flags(parm, PropertyFlag(PROP_THICK_WRAP), PARM_REQUIRED);
+  RNA_def_boolean(func,
+                  "do_unlink",
+                  true,
+                  "",
+                  "Unlink all usages of this UsdStage before deleting it "
+                  "(WARNING: will also delete objects instancing that UsdStage data)");
+  RNA_def_boolean(func,
+                  "do_id_user",
+                  true,
+                  "",
+                  "Decrement user counter of all datablocks used by this UsdStage data");
+  RNA_def_boolean(
+      func, "do_ui_user", true, "", "Make sure interface does not reference this UsdStage data");
+
+  func = RNA_def_function(srna, "tag", "rna_Main_usd_stages_tag");
+  parm = RNA_def_boolean(func, "value", 0, "Value", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 

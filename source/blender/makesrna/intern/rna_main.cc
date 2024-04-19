@@ -126,6 +126,9 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(sounds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(speakers)
 RNA_MAIN_LISTBASE_FUNCS_DEF(texts)
 RNA_MAIN_LISTBASE_FUNCS_DEF(textures)
+#ifdef WITH_USD
+RNA_MAIN_LISTBASE_FUNCS_DEF(usd_stages)
+#endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(volumes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(wm)
 RNA_MAIN_LISTBASE_FUNCS_DEF(workspaces)
@@ -404,6 +407,14 @@ void RNA_def_main(BlenderRNA *brna)
        "Volumes",
        "Volume data-blocks",
        RNA_def_main_volumes},
+#ifdef WITH_USD
+      {"usd_stages",
+       "USDStage",
+       "rna_Main_usd_stages_begin",
+       "USDStages",
+       "USDStage data-blocks",
+       RNA_def_main_usd_stages},
+#endif
       {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
   };
 

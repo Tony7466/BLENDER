@@ -45,6 +45,8 @@
 #include "tree_element_view_collection.hh"
 #include "tree_element_view_layer.hh"
 
+#include "tree_element_id_usd_stage.hh"
+
 #include "../outliner_intern.hh"
 #include "tree_element.hh"
 
@@ -199,6 +201,9 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::create_from_type(const
     case TSE_BONE_COLLECTION:
       return std::make_unique<TreeElementBoneCollection>(
           legacy_te, *static_cast<BoneCollection *>(create_data));
+
+    case TSE_USD_PRIM:
+      return std::make_unique<TreeElementUsdPrim>(legacy_te);
 
     default:
       break;

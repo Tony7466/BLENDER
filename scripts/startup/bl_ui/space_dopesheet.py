@@ -119,6 +119,8 @@ class DopesheetFilterPopoverBase:
             flow.prop(dopesheet, "show_pointclouds", text="Point Clouds")
         if bpy.data.volumes:
             flow.prop(dopesheet, "show_volumes", text="Volumes")
+        if bpy.data.usd_stages:
+            flow.prop(dopesheet, "show_usd_stages", text="Usd Stages")
 
         # data types
         flow.prop(dopesheet, "show_worlds", text="Worlds")

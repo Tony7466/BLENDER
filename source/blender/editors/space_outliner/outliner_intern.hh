@@ -129,6 +129,7 @@ struct TreeElementIcon {
         ID_IM, \
         ID_LT, \
         ID_LA, \
+        ID_USD, \
         ID_CA) || \
    ELEM(GS((_id)->name), \
         ID_KE, \
@@ -144,7 +145,7 @@ struct TreeElementIcon {
         ID_LP, \
         ID_CV, \
         ID_PT, \
-        ID_VO, \
+        ID_VO,  \
         ID_GP) || /* Only in 'blendfile' mode ... :/ */ \
    ELEM(GS((_id)->name), \
         ID_SCR, \

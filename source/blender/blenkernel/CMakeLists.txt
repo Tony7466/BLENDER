@@ -305,6 +305,7 @@ set(SRC
   intern/type_conversions.cc
   intern/undo_system.cc
   intern/unit.cc
+  intern/usd_stage.cc
   intern/vfont.cc
   intern/vfontdata_freetype.cc
   intern/viewer_path.cc
@@ -506,6 +507,7 @@ set(SRC
   BKE_type_conversions.hh
   BKE_undo_system.h
   BKE_unit.hh
+  BKE_usd_stage.hh
   BKE_vfont.hh
   BKE_vfontdata.hh
   BKE_viewer_path.hh
@@ -763,6 +765,7 @@ endif()
 if(WITH_USD)
   list(APPEND INC
     ../io/usd
+    ../io/usd/intern
   )
   add_definitions(-DWITH_USD)
 endif()
@@ -823,6 +826,17 @@ if(WITH_GMP)
   list(APPEND INC_SYS
     ${GMP_INCLUDE_DIRS}
   )
+endif()
+
+if(WITH_USD)
+	list(APPEND INC
+			../usd
+			${USD_INCLUDE_DIRS}
+			${BOOST_INCLUDE_DIR}
+			${TBB_INCLUDE_DIR}
+			${PYTHON_INCLUDE_DIR}
+	)
+	add_definitions(-DWITH_USD)
 endif()
 
 # # Warnings as errors, this is too strict!

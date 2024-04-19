@@ -295,6 +295,10 @@ void ED_operatortypes_object()
   WM_operatortype_append(OBJECT_OT_light_linking_unlink_from_collection);
 
   object_modifier_add_asset_register();
+
+  /* USDStage operators. */
+  WM_operatortype_append(OBJECT_OT_usd_stage_add);
+  WM_operatortype_append(OBJECT_OT_usd_stage_import);
 }
 
 void ED_operatormacros_object()

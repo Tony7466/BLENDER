@@ -70,6 +70,7 @@ set(INC
   ../../../../intern/utfconv
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
+  ../../io/usd
 )
 
 set(INC_SYS
@@ -80,6 +81,8 @@ set(INC_SYS
 )
 
 set(SRC
+  usd_stage_utils.cc
+
   intern/usd_asset_utils.cc
   intern/usd_armature_utils.cc
   intern/usd_blend_shape_utils.cc
@@ -118,6 +121,7 @@ set(SRC
 
   usd.h
   usd.hh
+  usd_stage_utils.hh
 
   intern/usd_asset_utils.h
   intern/usd_armature_utils.h

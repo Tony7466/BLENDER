@@ -346,6 +346,12 @@ TreeElement *AbstractTreeDisplay::add_element(ListBase *lb,
   else if (type == TSE_LINKED_OB) {
     /* pass */
   }
+  else if (type == TSE_USD_STAGE) {
+    /* pass */
+  }
+  else if (type == TSE_USD_PRIM) {
+    /* pass */
+  }
   else if (type == TSE_SOME_ID) {
     BLI_assert_msg(te->abstract_element != nullptr,
                    "Expected this ID type to be ported to new Outliner tree-element design");

@@ -18,6 +18,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_text_types.h"
+#include "DNA_usd_stage_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_mempool.h"
@@ -2926,6 +2927,32 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         data.drag_id = tselem->id;
         data.icon = ICON_SHADERFX;
         break;
+
+      case TSE_USD_PRIM: {
+        //!TODO(kiki): better icons!
+        data.icon = ICON_X;
+        if (te->directdata) {
+          USDStagePrimPath* prim_path = (USDStagePrimPath* )te->directdata;
+          switch(prim_path->type) {
+            case TSE_USD_PRIM_XFORM:
+              data.icon = ICON_OUTLINER_DATA_EMPTY;
+              break;
+            case TSE_USD_PRIM_MESH:
+              data.icon = ICON_OUTLINER_DATA_MESH;
+              break;
+            case TSE_USD_PRIM_CURVE:
+              data.icon = ICON_OUTLINER_DATA_CURVE;
+              break;
+            case TSE_USD_PRIM_JOINT:
+              data.icon = ICON_BONE_DATA;
+              break;
+            default:
+              break;
+          }
+        }
+        break;
+      }
+
       default:
         data.icon = ICON_DOT;
         break;

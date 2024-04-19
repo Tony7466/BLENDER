@@ -117,6 +117,7 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 #define BLT_I18NCONTEXT_ID_SPEAKER "Speaker"
 #define BLT_I18NCONTEXT_ID_TEXT "Text"
 #define BLT_I18NCONTEXT_ID_TEXTURE "Texture"
+#define BLT_I18NCONTEXT_ID_USD_STAGE "UsdStage"
 #define BLT_I18NCONTEXT_ID_VFONT "VFont"
 #define BLT_I18NCONTEXT_ID_VOLUME "Volume"
 #define BLT_I18NCONTEXT_ID_WINDOWMANAGER "WindowManager"
@@ -191,7 +192,8 @@ typedef struct {
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_SOUND, "id_sound"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_SPEAKER, "id_speaker"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_TEXT, "id_text"), \
-        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_TEXTURE, "id_texture"), \
+        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_TEXTURE, "id_texture"),  \
+        BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_USD_STAGE, "id_usdstage"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_VFONT, "id_vfont"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_VOLUME, "id_volume"), \
         BLT_I18NCONTEXTS_ITEM(BLT_I18NCONTEXT_ID_WINDOWMANAGER, "id_windowmanager"), \

@@ -77,6 +77,7 @@ set(SRC_DNA_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_text_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_texture_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_tracking_types.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_usd_stage_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_userdef_enums.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_userdef_types.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_uuid_types.h
@@ -122,6 +123,7 @@ set(SRC_DNA_DEFAULTS_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_space_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_speaker_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_texture_defaults.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_usd_stage_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_userdef_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_vec_defaults.h
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_view3d_defaults.h

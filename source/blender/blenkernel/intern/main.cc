@@ -881,6 +881,8 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->pointclouds);
     case ID_VO:
       return &(bmain->volumes);
+    case ID_USD:
+      return &(bmain->usd_stages);
   }
   return nullptr;
 }
@@ -945,6 +947,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
   lb[INDEX_ID_SCE] = &(bmain->scenes);
   lb[INDEX_ID_WS] = &(bmain->workspaces); /* before wm, so it's freed after it! */
   lb[INDEX_ID_WM] = &(bmain->wm);
+  lb[INDEX_ID_USD] = &(bmain->usd_stages);
   lb[INDEX_ID_MSK] = &(bmain->masks);
 
   lb[INDEX_ID_NULL] = nullptr;

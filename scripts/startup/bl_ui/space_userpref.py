@@ -411,6 +411,7 @@ class USERPREF_PT_edit_objects_duplicate_data(EditingPanel, CenterAlignMixIn, Pa
             ("use_duplicate_curves", "Curves", 'OUTLINER_DATA_CURVES', ''),
             ("use_duplicate_grease_pencil", "Grease Pencil", 'OUTLINER_OB_GREASEPENCIL', ''),
             ("use_duplicate_lattice", "Lattice", 'OUTLINER_DATA_LATTICE', ''),
+            ("use_duplicate_usd", "Usd Stages", 'X', ''),
             (None, None, None, None),
             ("use_duplicate_light", "Light", 'OUTLINER_DATA_LIGHT', ''),
             ("use_duplicate_lightprobe", "Light Probe", 'OUTLINER_DATA_LIGHTPROBE', ''),

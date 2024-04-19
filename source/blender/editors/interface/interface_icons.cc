@@ -2459,6 +2459,9 @@ int UI_icon_from_idcode(const int idcode)
       return ICON_WORKSPACE;
     case ID_GP:
       return ICON_OUTLINER_DATA_GREASEPENCIL;
+    case ID_USD:
+      //!TODO(kiki): proper icon choice
+      return ICON_FILE_CACHE;
 
     /* No icons for these ID-types. */
     case ID_LI:

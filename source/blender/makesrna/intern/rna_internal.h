@@ -206,6 +206,7 @@ void RNA_def_timeline_marker(struct BlenderRNA *brna);
 void RNA_def_sound(struct BlenderRNA *brna);
 void RNA_def_ui(struct BlenderRNA *brna);
 void RNA_def_usd(struct BlenderRNA *brna);
+void RNA_def_usd_stage(struct BlenderRNA* brna);
 void RNA_def_userdef(struct BlenderRNA *brna);
 void RNA_def_vfont(struct BlenderRNA *brna);
 void RNA_def_volume(struct BlenderRNA *brna);
@@ -514,6 +515,9 @@ void RNA_def_main_workspaces(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_lightprobes(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_hair_curves(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_pointclouds(BlenderRNA *brna, PropertyRNA *cprop);
+#ifdef WITH_USD
+void RNA_def_main_usd_stages(BlenderRNA *brna, PropertyRNA *cprop);
+#endif
 void RNA_def_main_volumes(BlenderRNA *brna, PropertyRNA *cprop);
 
 /* ID Properties */

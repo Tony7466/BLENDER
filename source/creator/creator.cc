@@ -48,6 +48,7 @@
 #include "BKE_particle.h"
 #include "BKE_shader_fx.h"
 #include "BKE_sound.h"
+#include "BKE_usd_stage.hh"
 #include "BKE_vfont.hh"
 #include "BKE_volume.hh"
 
@@ -431,6 +432,7 @@ int main(int argc,
   BKE_modifier_init();
   BKE_gpencil_modifier_init();
   BKE_shaderfx_init();
+  BKE_usd_stages_init();
   BKE_volumes_init();
   DEG_register_node_types();
 

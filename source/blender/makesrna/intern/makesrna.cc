@@ -4000,7 +4000,7 @@ static void rna_generate_struct_prototypes(FILE *f)
             int a, found = 0;
             const char *struct_name = rna_parameter_type_name(dp->prop);
             if (struct_name == nullptr) {
-              printf("No struct found for property '%s'\n", dp->prop->identifier);
+              printf("No struct found for property '%s' (struct %s)\n", dp->prop->identifier, ds->dnaname);
               exit(1);
             }
 
@@ -4795,6 +4795,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_ui.cc", "rna_ui_api.cc", RNA_def_ui},
 #ifdef WITH_USD
     {"rna_usd.cc", nullptr, RNA_def_usd},
+    {"rna_usd_stage.cc", nullptr, RNA_def_usd_stage},
 #endif
     {"rna_userdef.cc", nullptr, RNA_def_userdef},
     {"rna_vfont.cc", "rna_vfont_api.cc", RNA_def_vfont},

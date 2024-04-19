@@ -229,6 +229,7 @@ struct Main {
   ListBase hair_curves;
   ListBase pointclouds;
   ListBase volumes;
+  ListBase usd_stages;
 
   /**
    * Must be generated, used and freed by same code - never assume this is valid data unless you

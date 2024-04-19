@@ -51,6 +51,7 @@ set(SRC
   object_shader_fx.cc
   object_shapekey.cc
   object_transform.cc
+  object_usd_stage.cc
   object_utils.cc
   object_vgroup.cc
   object_volume.cc

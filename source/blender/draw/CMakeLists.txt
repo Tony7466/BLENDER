@@ -176,6 +176,7 @@ set(SRC
   engines/workbench/workbench_shader_cache.cc
   engines/workbench/workbench_shadow.cc
   engines/workbench/workbench_state.cc
+  engines/workbench/workbench_usdstage.cc
   engines/workbench/workbench_volume.cc
   engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.cc
@@ -975,6 +976,26 @@ if(WITH_TBB)
   list(APPEND LIB
     ${TBB_LIBRARIES}
   )
+endif()
+
+if (WITH_USD)
+	add_definitions(-DWITH_USD)
+
+	list(APPEND INC_SYS
+		${USD_INCLUDE_DIRS}
+		${BOOST_INCLUDE_DIR}
+		${TBB_INCLUDE_DIR}
+		${PYTHON_INCLUDE_DIR}
+		"${CMAKE_SOURCE_DIR}/source/blender/io/usd/"
+	)
+
+	list(APPEND LIB
+		${BOOST_LIBRARIES}
+		${BOOST_PYTHON_LIBRARIES}
+		${PYTHON_LIBRARIES}
+		${USD_LIBRARIES}
+		${TBB_LIBRARIES}
+	)
 endif()
 
 blender_add_lib(bf_draw "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

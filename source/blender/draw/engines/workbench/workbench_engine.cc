@@ -45,6 +45,8 @@ class Instance {
   DofPass dof_ps;
   AntiAliasingPass anti_aliasing_ps;
 
+  USDStagesPass usd_stage_pass;
+
   /* An array of nullptr GPUMaterial pointers so we can call DRW_cache_object_surface_material_get.
    * They never get actually used. */
   Vector<GPUMaterial *> dummy_gpu_materials = {1, nullptr, {}};
@@ -65,6 +67,8 @@ class Instance {
     outline_ps.init(scene_state);
     dof_ps.init(scene_state);
     anti_aliasing_ps.init(scene_state);
+
+    usd_stage_pass.init(scene_state);
   }
 
   void begin_sync()
@@ -80,6 +84,7 @@ class Instance {
     outline_ps.sync(resources);
     dof_ps.sync(resources);
     anti_aliasing_ps.sync(scene_state, resources);
+    usd_stage_pass.sync(scene_state, resources);
   }
 
   void end_sync()
@@ -152,6 +157,8 @@ class Instance {
     }
 
     ResourceHandle emitter_handle(0);
+
+  //!TODO(kiki): add object sync for USDStage objects
 
     if (is_object_data_visible) {
       if (object_state.sculpt_pbvh) {
@@ -472,6 +479,10 @@ class Instance {
 
     opaque_ps.draw(
         manager, view, resources, resolution, scene_state.draw_shadows ? &shadow_ps : nullptr);
+
+    //!TODO(kiki): Use Hydra to draw the stages in memory
+    usd_stage_pass.draw(manager, view, scene_state, resources);
+
     transparent_ps.draw(manager, view, resources, resolution);
     transparent_depth_ps.draw(manager, view, resources);
 

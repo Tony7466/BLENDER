@@ -1095,7 +1095,7 @@ static void write_thumb(WriteData *wd, const BlendThumbnail *thumb)
 /** \name File Writing (Private)
  * \{ */
 
-#define ID_BUFFER_STATIC_SIZE 8192
+#define ID_BUFFER_STATIC_SIZE 16384
 
 struct BLO_Write_IDBuffer {
   const IDTypeInfo *id_type;

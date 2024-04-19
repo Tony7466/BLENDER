@@ -369,6 +369,10 @@ void OBJECT_OT_quadriflow_remesh(struct wmOperatorType *ot);
 void OBJECT_OT_data_transfer(struct wmOperatorType *ot);
 void OBJECT_OT_datalayout_transfer(struct wmOperatorType *ot);
 
+/* object_usd_stage.cc */
+void OBJECT_OT_usd_stage_add(wmOperatorType *ot);
+void OBJECT_OT_usd_stage_import(wmOperatorType *ot);
+
 #ifdef __cplusplus
 }
 #endif

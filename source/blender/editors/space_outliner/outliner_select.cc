@@ -74,6 +74,7 @@
 #include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
+#include "tree/tree_element_id_usd_stage.hh"
 
 namespace blender::ed::outliner {
 
@@ -787,6 +788,15 @@ static void tree_element_layer_collection_activate(bContext *C, TreeElement *te)
   WM_main_add_notifier(NC_SCENE | ND_LAYER | NS_LAYER_COLLECTION | NA_ACTIVATED, nullptr);
 }
 
+static void tree_element_usd_stage_activate(TreeElement *te, TreeStoreElem *tselem)
+{
+  USDStage *stage = (USDStage *)tselem->id;
+  TreeElementUsdPrim *prim_el = tree_element_cast<TreeElementUsdPrim>(te);
+
+  BKE_usd_stage_active_prim_set(stage, prim_el->get_path());
+  WM_main_add_notifier(NC_OBJECT | ND_USD_STAGE | NA_ACTIVATED , nullptr);
+}
+
 static void tree_element_text_activate(bContext *C, TreeElement *te)
 {
   Text *text = (Text *)te->store_elem->id;
@@ -886,6 +896,19 @@ void tree_element_type_active_set(bContext *C,
     case TSE_LAYER_COLLECTION:
       tree_element_layer_collection_activate(C, te);
       break;
+
+      /* !TODO(kiki): This is making me think I should
+       * rethink the whole prim type thing. */
+      case TSE_USD_PRIM:
+      case TSE_USD_STAGE:
+      case TSE_USD_ROOT_PRIM:
+      case TSE_USD_PRIM_XFORM:
+      case TSE_USD_PRIM_MESH:
+      case TSE_USD_PRIM_CURVE:
+      case TSE_USD_PRIM_JOINT:
+      case TSE_USD_PRIM_SKEL_ROOT:
+      case TSE_USD_PRIM_UNKNOWN:
+        tree_element_usd_stage_activate(te, tselem);
   }
 }
 
@@ -996,6 +1019,17 @@ static eOLDrawState tree_element_viewlayer_state_get(const bContext *C, const Tr
 static eOLDrawState tree_element_bone_collection_state_get(const TreeElement *te,
                                                            const TreeStoreElem *tselem)
 {
+  const bArmature *arm = reinterpret_cast<const bArmature *>(tselem->id);
+  const BoneCollection *bcoll = reinterpret_cast<const BoneCollection *>(te->directdata);
+
+  if (arm->runtime.active_collection == bcoll) {
+    return OL_DRAWSEL_ACTIVE;
+  }
+  return OL_DRAWSEL_NONE;
+}
+
+static eOLDrawState tree_element_usd_stage_get(const TreeElement *te,
+                                               const TreeStoreElem *tselem) {
   const bArmature *arm = reinterpret_cast<const bArmature *>(tselem->id);
   const BoneCollection *bcoll = reinterpret_cast<const BoneCollection *>(te->directdata);
 
@@ -1196,6 +1230,20 @@ eOLDrawState tree_element_type_active_state_get(const bContext *C,
       return tree_element_layer_collection_state_get(C, te);
     case TSE_BONE_COLLECTION:
       return tree_element_bone_collection_state_get(te, tselem);
+
+    /* !TODO(kiki): This is making me think I should
+     * rethink the whole prim type thing. */
+    case TSE_USD_PRIM:
+    case TSE_USD_STAGE:
+    case TSE_USD_ROOT_PRIM:
+    case TSE_USD_PRIM_XFORM:
+    case TSE_USD_PRIM_MESH:
+    case TSE_USD_PRIM_CURVE:
+    case TSE_USD_PRIM_JOINT:
+    case TSE_USD_PRIM_SKEL_ROOT:
+    case TSE_USD_PRIM_UNKNOWN:
+      tree_element_usd_stage_get(te, tselem);
+
   }
   return OL_DRAWSEL_NONE;
 }

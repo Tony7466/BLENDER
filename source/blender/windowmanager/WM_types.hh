@@ -469,6 +469,9 @@ struct wmNotifier {
 #define ND_DATA (91 << 16)
 #define ND_VERTEX_GROUP (92 << 16)
 
+/* USDStage Stuff */
+#define ND_USD_STAGE (95 << 16)
+
 /* NC_NODE Nodes */
 
 /* Influences which menus node assets are included in. */

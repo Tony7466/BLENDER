@@ -33,6 +33,7 @@
 #include "tree_element_id_object.hh"
 #include "tree_element_id_scene.hh"
 #include "tree_element_id_texture.hh"
+#include "tree_element_id_usd_stage.hh"
 
 #include "tree_element_id.hh"
 
@@ -68,6 +69,8 @@ std::unique_ptr<TreeElementID> TreeElementID::create_from_id(TreeElement &legacy
       return std::make_unique<TreeElementIDCollection>(legacy_te, (Collection &)id);
     case ID_AR:
       return std::make_unique<TreeElementIDArmature>(legacy_te, (bArmature &)id);
+    case ID_USD:
+      return std::make_unique<TreeElementIDUSDStage>(legacy_te, (Object &)id);
     case ID_OB:
       return std::make_unique<TreeElementIDObject>(legacy_te, (Object &)id);
     case ID_MA:

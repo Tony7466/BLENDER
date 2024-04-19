@@ -504,7 +504,8 @@ class OUTLINER_PT_filter(Panel):
                 bpy.data.lightprobes or
                 bpy.data.lattices or
                 bpy.data.fonts or
-                bpy.data.speakers
+                bpy.data.speakers or
+                bpy.data.usd_stages
         ):
             row = sub.row()
             row.label(icon='BLANK1')

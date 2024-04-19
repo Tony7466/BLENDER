@@ -167,6 +167,7 @@ static void get_element_operation_type(
       case ID_PT:
       case ID_VO:
       case ID_GP:
+      case ID_USD:
         is_standard_id = true;
         break;
       case ID_WM:

@@ -37,6 +37,7 @@ _modules = [
     "properties_data_lightprobe",
     "properties_data_speaker",
     "properties_data_volume",
+    "properties_data_usd",
     "properties_mask_common",
     "properties_material",
     "properties_material_gpencil",

@@ -129,6 +129,7 @@
 #include "BKE_speaker.h"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
+#include "BKE_usd_stage.hh"
 #include "BKE_vfont.hh"
 #include "BKE_volume.hh"
 
@@ -1971,6 +1972,8 @@ static const char *get_obdata_defname(int type)
       return DATA_("LightProbe");
     case OB_GREASE_PENCIL:
       return DATA_("GreasePencil");
+    case OB_USD_STAGE:
+      return DATA_("USDStage");
     default:
       CLOG_ERROR(&LOG, "Internal error, bad type: %d", type);
       return CTX_DATA_(BLT_I18NCONTEXT_ID_ID, "Empty");
@@ -2042,6 +2045,8 @@ void *BKE_object_obdata_add_from_type(Main *bmain, int type, const char *name)
       return BKE_volume_add(bmain, name);
     case OB_GREASE_PENCIL:
       return BKE_grease_pencil_add(bmain, name);
+    case OB_USD_STAGE:
+      return BKE_usd_stage_add(bmain, name);
     case OB_EMPTY:
       return nullptr;
     default:
@@ -2082,6 +2087,8 @@ int BKE_object_obdata_to_type(const ID *id)
       return OB_VOLUME;
     case ID_GP:
       return OB_GREASE_PENCIL;
+    case ID_USD:
+      return OB_USD_STAGE;
     default:
       return -1;
   }
@@ -2658,6 +2665,10 @@ Object *BKE_object_duplicate(Main *bmain,
         id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag, copy_flags);
       }
       break;
+    case OB_USD_STAGE:
+      if (dupflag & USER_DUP_USD_STAGE) {
+        id_new = BKE_id_copy_for_duplicate(bmain, id_old, dupflag, copy_flags);
+      }
   }
 
   /* If obdata has been copied, we may also have to duplicate the materials assigned to it. */
@@ -3567,6 +3578,8 @@ std::optional<blender::Bounds<blender::float3>> BKE_object_boundbox_get(const Ob
       return BKE_volume_min_max(static_cast<const Volume *>(ob->data));
     case OB_GREASE_PENCIL:
       return static_cast<const GreasePencil *>(ob->data)->bounds_min_max_eval();
+    case OB_USD_STAGE:
+      return BKE_usd_stage_boundbox_get(ob);
   }
   return std::nullopt;
 }

@@ -5590,6 +5590,11 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Duplicate Point Cloud", "Causes point cloud data to be duplicated with the object");
 
+  prop = RNA_def_property(srna, "use_duplicate_usd_stage", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "dupflag", USER_DUP_USD_STAGE);
+  RNA_def_property_ui_text(
+      prop, "Duplicate USDStage", "Causes USD stage data to be duplicated with the object");
+
   prop = RNA_def_property(srna, "use_duplicate_volume", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "dupflag", USER_DUP_VOLUME);
   RNA_def_property_ui_text(

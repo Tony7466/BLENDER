@@ -103,6 +103,7 @@ set(DEFSRC
 if(WITH_USD)
   list(APPEND DEFSRC
     rna_usd.cc
+    rna_usd_stage.cc
   )
   add_definitions(-DWITH_USD)
 endif()

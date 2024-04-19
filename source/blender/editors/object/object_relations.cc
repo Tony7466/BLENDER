@@ -1982,6 +1982,13 @@ static void single_obdata_users(
                                                  nullptr,
                                                  LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS));
             break;
+          case OB_USD_STAGE:
+            ob->data = ID_NEW_SET(ob->data,
+                                  BKE_id_copy_ex(bmain,
+                                                 static_cast<const ID *>(ob->data),
+                                                 nullptr,
+                                                 LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS));
+            break;
           default:
             printf("ERROR %s: can't copy %s\n", __func__, id->name);
             BLI_assert_msg(0, "This should never happen.");

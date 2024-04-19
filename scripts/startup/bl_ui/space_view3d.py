@@ -2528,6 +2528,16 @@ class VIEW3D_MT_camera_add(Menu):
         layout.operator_context = 'EXEC_REGION_WIN'
         layout.operator("object.camera_add", text="Camera", icon='OUTLINER_OB_CAMERA')
 
+class VIEW3D_MT_usd_stage_add(Menu):
+    bl_idname = "VIEW3D_MT_usd_stage_add"
+    bl_label  = "USD Stage"
+
+    def draw(self, _context):
+        layout = self.layout
+        ##!TODO(kiki): replace with USD icons
+        layout.operator("object.usd_stage_import", text="Import USD...", icon='X')
+        layout.operator("object.usd_stage_add", text="Empty Stage", icon='X')
+
 
 class VIEW3D_MT_volume_add(Menu):
     bl_idname = "VIEW3D_MT_volume_add"
@@ -2594,6 +2604,9 @@ class VIEW3D_MT_add(Menu):
                 "type",
                 text="Grease Pencil",
                 icon='OUTLINER_OB_GREASEPENCIL')
+
+        ##!TODO(kiki): fix icon
+        layout.operator("object.usd_stage_add", text="Usd Stage", icon='X')
 
         layout.separator()
 
@@ -6391,6 +6404,7 @@ class VIEW3D_PT_object_type_visibility(Panel):
             ("light_probe", "Light Probe", 'OUTLINER_OB_LIGHTPROBE'),
             ("camera", "Camera", 'OUTLINER_OB_CAMERA'),
             ("speaker", "Speaker", 'OUTLINER_OB_SPEAKER'),
+            ("usd_stage", "Usd Stage", 'OUTLINER_OB_USD'),
         )
 
         for attr, attr_name, attr_icon in attr_object_types:
@@ -6401,6 +6415,8 @@ class VIEW3D_PT_object_type_visibility(Panel):
             if attr == "curves" and not hasattr(bpy.data, "hair_curves"):
                 continue
             elif attr == "pointcloud" and not hasattr(bpy.data, "pointclouds"):
+                continue
+            if attr == "usd_stage" and not hasattr(bpy.data, "usd_stages"):
                 continue
 
             attr_v = "show_object_viewport_" + attr
@@ -8794,6 +8810,7 @@ classes = (
     VIEW3D_MT_camera_add,
     VIEW3D_MT_volume_add,
     VIEW3D_MT_grease_pencil_add,
+    VIEW3D_MT_usd_stage_add,
     VIEW3D_MT_add,
     VIEW3D_MT_image_add,
     VIEW3D_MT_object,
