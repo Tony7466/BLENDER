@@ -62,66 +62,57 @@ static void calculate_curve_point_distances_for_proportional_editing(
   }
 }
 
-static int64_t *custom_data_to_point_num(void *data)
-{
-  return static_cast<int64_t *>(data);
-}
+struct TransformArrays {
+  Vector<IndexRange> ranges;
+  Array<int> offsets;
+  Array<float3> positions;
+};
 
-static int64_t *custom_data_to_range_num(void *data)
-{
-  return static_cast<int64_t *>(data) + 1;
-}
-
-static float3 *custom_data_to_positions(void *data)
-{
-  return reinterpret_cast<float3 *>(custom_data_to_range_num(data) + 1);
-}
-
-static IndexRange *custom_data_to_ranges(void *data, int64_t points_num)
-{
-  return reinterpret_cast<IndexRange *>(custom_data_to_positions(data) + points_num);
-}
-
-static void *selected_positions_to_custom_data(const bke::CurvesGeometry &curves,
-                                               const IndexMask &selection)
+static void selected_positions_to_custom_data(const bke::CurvesGeometry &curves,
+                                              const IndexMask &selection,
+                                              TransCustomData &custom_data)
 {
   const int64_t points_num = selection.size();
-  const Vector<IndexRange> ranges{selection.to_ranges()};
+  Vector<IndexRange> ranges(selection.to_ranges());
 
-  void *data = MEM_callocN(sizeof(int64_t) * 2 + sizeof(float3) * points_num +
-                               sizeof(IndexRange) * ranges.size(),
-                           __func__);
-  *custom_data_to_point_num(data) = points_num;
-  *custom_data_to_range_num(data) = ranges.size();
-  MutableSpan<IndexRange> ranges_dst{custom_data_to_ranges(data, points_num), ranges.size()};
-  ranges_dst.copy_from(ranges);
-
-  float3 *positions_data = custom_data_to_positions(data);
-  MutableSpan<float3> positions_dst{positions_data, points_num};
+  Array<float3> positions_dst(points_num);
   Span<float3> positions = curves.positions();
+  Array<int> offsets(ranges.size() + 1);
 
-  int64_t offset_dst = 0;
-  for (const IndexRange &range : ranges) {
-    positions_dst.slice(offset_dst, range.size()).copy_from(positions.slice(range));
-    offset_dst += range.size();
+  offsets[0] = 0;
+  for (const int i : ranges.index_range()) {
+    offsets[i + 1] = offsets[i] + ranges[i].size();
   }
-  return data;
+
+  OffsetIndices<int> offset_indices(offsets);
+  for (const int i : ranges.index_range()) {
+    positions_dst.as_mutable_span().slice(offset_indices[i]).copy_from(positions.slice(ranges[i]));
+  }
+
+  TransformArrays *transform_arrays = MEM_new<TransformArrays>(__func__);
+  transform_arrays->positions = std::move(positions_dst);
+  transform_arrays->ranges = std::move(ranges);
+  transform_arrays->offsets = std::move(offsets);
+
+  custom_data.data = transform_arrays;
+  custom_data.free_cb = [](TransInfo *, TransDataContainer *, TransCustomData *custom_data) {
+    TransformArrays *data = static_cast<TransformArrays *>(custom_data->data);
+    MEM_delete(data);
+    custom_data->data = nullptr;
+  };
 }
 
-static void selected_positions_from_custom_data(bke::CurvesGeometry &curves, void *data)
+static void selected_positions_from_custom_data(bke::CurvesGeometry &curves,
+                                                const TransformArrays &transform_arrays)
 {
-  const int64_t points_num = *custom_data_to_point_num(data);
-
-  Span<IndexRange> ranges{custom_data_to_ranges(data, points_num),
-                          *custom_data_to_range_num(data)};
-  Span<float3> positions{custom_data_to_positions(data), points_num};
+  Span<IndexRange> ranges{transform_arrays.ranges};
+  Span<float3> positions{transform_arrays.positions};
+  OffsetIndices<int> offset_indices(transform_arrays.offsets);
 
   MutableSpan positions_dst = curves.positions_for_write();
 
-  int64_t offset_src = 0;
-  for (const IndexRange &range : ranges) {
-    positions_dst.slice(range).copy_from(positions.slice(offset_src, range.size()));
-    offset_src += range.size();
+  for (const int i : ranges.index_range()) {
+    positions_dst.slice(ranges[i]).copy_from(positions.slice(offset_indices[i]));
   }
 }
 
@@ -150,7 +141,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
-      tc.custom.type.data = selected_positions_to_custom_data(curves, selection_per_object[i]);
+      selected_positions_to_custom_data(curves, selection_per_object[i], tc.custom.type);
     }
   }
 
@@ -209,7 +200,8 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
-      selected_positions_from_custom_data(curves, tc.custom.type.data);
+      selected_positions_from_custom_data(curves,
+                                          *static_cast<TransformArrays *>(tc.custom.type.data));
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
     }
@@ -234,10 +226,9 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   float mtx[3][3], smtx[3][3];
   copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
-  int64_t position_num = *blender::ed::transform::curves::custom_data_to_point_num(
-      tc.custom.type.data);
+
   MutableSpan<float3> positions{
-      blender::ed::transform::curves::custom_data_to_positions(tc.custom.type.data), position_num};
+      static_cast<ed::transform::curves::TransformArrays *>(tc.custom.type.data)->positions};
   if (use_proportional_edit) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
