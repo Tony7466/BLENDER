@@ -132,15 +132,11 @@ static void test_storage_buffer_copy_from_vertex_buffer()
 
   /* Copy vertex buffer to storage buffer. */
   {
-
     GPU_storagebuf_clear_to_zero(ssbo);
-    /* Copy vertex buffer with offset. */
     GPU_storagebuf_copy_sub_from_vertbuf(ssbo, vbo, 0, 0, sizeof(data));
 
-    /* Read back data from SSBO. */
+    /* Validate content of SSBO. */
     GPU_storagebuf_read(ssbo, read_data.data());
-
-    /* Check if datatest_ is the same. */
     EXPECT_EQ_ARRAY(expected_data, read_data.data(), 24);
     for (int i : IndexRange(24, SIZE - 24)) {
       EXPECT_EQ(0.0, read_data[i]);
@@ -149,15 +145,11 @@ static void test_storage_buffer_copy_from_vertex_buffer()
 
   /* Copy vertex buffer to storage buffer with 16 bytes of offset. */
   {
-
     GPU_storagebuf_clear_to_zero(ssbo);
-    /* Copy vertex buffer with offset. */
     GPU_storagebuf_copy_sub_from_vertbuf(ssbo, vbo, 16, 0, sizeof(data));
 
-    /* Read back data from SSBO. */
+    /* Validate content of SSBO. */
     GPU_storagebuf_read(ssbo, read_data.data());
-
-    /* Check if datatest_ is the same. */
     for (int i : IndexRange(4)) {
       EXPECT_EQ(0.0, read_data[i]);
     }
@@ -170,15 +162,11 @@ static void test_storage_buffer_copy_from_vertex_buffer()
 
   /* Partially Copy vertex buffer to storage buffer with 16 bytes of offset. */
   {
-
     GPU_storagebuf_clear_to_zero(ssbo);
-    /* Copy vertex buffer with offset. */
     GPU_storagebuf_copy_sub_from_vertbuf(ssbo, vbo, 16, sizeof(Vert), sizeof(data) / 2);
 
-    /* Read back data from SSBO. */
+    /* Validate content of SSBO. */
     GPU_storagebuf_read(ssbo, read_data.data());
-
-    /* Check if datatest_ is the same. */
     for (int i : IndexRange(4)) {
       EXPECT_EQ(0.0, read_data[i]);
     }
