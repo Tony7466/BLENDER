@@ -840,7 +840,6 @@ class RENDER_PT_eevee_next_sampling_viewport(RenderButtonsPanel, Panel):
         col.prop(props, "use_taa_reprojection", text="Temporal Reprojection")
         col.prop(props, "use_shadow_jittered_viewport", text="Jittered Shadows")
 
-
         # Add SSS sample count here.
 
 
