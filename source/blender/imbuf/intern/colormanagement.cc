@@ -881,7 +881,10 @@ static OCIO_ConstCPUProcessorRcPtr *create_display_buffer_processor(const char *
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
   const bool use_look = colormanage_use_look(look, view_transform);
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
-  const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
+  float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
+  if (exponent > 100.0f) {
+    exponent = 100.0f;
+  }
 
   OCIO_ConstProcessorRcPtr *processor = OCIO_createDisplayProcessor(config,
                                                                     from_colorspace,
