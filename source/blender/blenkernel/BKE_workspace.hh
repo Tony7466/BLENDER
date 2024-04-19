@@ -30,7 +30,7 @@ struct WorkSpaceRuntime {
   blender::Vector<WorkSpaceStatusItem *> status = {};
 };
 
-}
+}  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */
 /** \name Create, Delete, Initialize
