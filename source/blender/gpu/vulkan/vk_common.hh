@@ -27,9 +27,9 @@ namespace blender::gpu {
 /**
  * The Vulkan backend is currently migrating to a render graph approach. This requires commands to
  * be recorded in a different way. During the migration the backend will mist likely crash. With
- * the `use_render_graph` constant we can switch back to the not render graph implementation. During
- * development of the render graph this is set to true. But when committing to main this must be
- * set to false.
+ * the `use_render_graph` constant we can switch back to the not render graph implementation.
+ * During development of the render graph this is set to true. But when committing to main this
+ * must be set to false.
  */
 static constexpr bool use_render_graph = false;
 
