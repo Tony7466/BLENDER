@@ -211,8 +211,7 @@ class IMAGE_OT_open_images(Operator):
 
     @classmethod
     def poll(cls, context):
-        return (context.area and context.area.ui_type == 'IMAGE_EDITOR'
-                and context.region and context.region.type == 'WINDOW')
+        return context.area and context.area.ui_type == 'IMAGE_EDITOR'
 
     def execute(self, context):
         if not self.directory or len(self.files) == 0:

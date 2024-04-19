@@ -20,7 +20,6 @@
 
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_file_handler.hh"
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_query.hh"
