@@ -4,6 +4,7 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 #define EEVEE_SHADOW_LIB
@@ -14,31 +15,17 @@
 #  define SHADOW_ATLAS_TYPE usampler2DArray
 #endif
 
-/* TODO: Move to lib. */
-vec4 _quaternion_inverted(vec4 a)
-{
-  return vec4(-a.xyz, a.w);
-}
-
-/* TODO: Move to lib. */
-vec3 _quaternion_transform(vec4 a, vec3 vector)
-{
-  vec3 t = cross(a.xyz, vector) * 2.0;
-  return vector + t * a.w + cross(a.xyz, t);
-}
-
 vec3 directional_shadow_back(LightData light)
 {
   vec3 b = float3(0, 0, 1);
-  b = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, b);
+  b = rotate(as_quaternion(light_sun_data_get(light).shadow_projection_rotation), b);
   return mat3(light.object_mat) * b;
 }
 
 vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
 {
   if (is_directional) {
-    return _quaternion_transform(
-        _quaternion_inverted(light_sun_data_get(light).shadow_projection_rotation), lP);
+    return rotate(invert(as_quaternion(light_sun_data_get(light).shadow_projection_rotation)), lP);
   }
   else {
     return lP - light_local_data_get(light).shadow_projection_shift;
@@ -48,7 +35,7 @@ vec3 light_local_to_shadow_local(LightData light, vec3 lP, bool is_directional)
 vec3 shadow_local_to_light_local(LightData light, vec3 lP, bool is_directional)
 {
   if (is_directional) {
-    return _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, lP);
+    return rotate(as_quaternion(light_sun_data_get(light).shadow_projection_rotation), lP);
   }
   else {
     return lP - light_local_data_get(light).shadow_projection_shift;

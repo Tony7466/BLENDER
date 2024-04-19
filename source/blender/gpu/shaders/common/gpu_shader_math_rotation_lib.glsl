@@ -55,6 +55,26 @@ Quaternion Quaternion_identity()
   return Quaternion(1, 0, 0, 0);
 }
 
+Quaternion as_quaternion(vec4 quat)
+{
+  return Quaternion(quat.x, quat.y, quat.z, quat.w);
+}
+
+Quaternion invert(Quaternion quat)
+{
+  quat.x *= -1.0;
+  quat.y *= -1.0;
+  quat.z *= -1.0;
+  return quat;
+}
+
+vec3 rotate(Quaternion quat, vec3 vec)
+{
+  vec4 q = as_vec4(quat);
+  vec3 t = cross(q.xyz, vec) * 2.0;
+  return vec + t * q.w + cross(q.xyz, t);
+}
+
 struct EulerXYZ {
   float x, y, z;
 #  ifdef GPU_METAL

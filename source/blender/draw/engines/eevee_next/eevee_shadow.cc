@@ -731,10 +731,8 @@ void ShadowDirectional::end_sync(Light &light, const Camera &camera, bool is_ren
     object_mat_ = object_mat_ * float4x4(jitter_mat);
   }
 
-  float4 q;
-  mat3_to_quat(q, jitter_mat.ptr());
-  /* Move w component to the end. */
-  light.sun.shadow_projection_rotation = {q[1], q[2], q[3], q[0]};
+  math::Quaternion q = math::to_quaternion(jitter_mat);
+  light.sun.shadow_projection_rotation = {q.x, q.y, q.z, q.w};
 
   light.clip_near = 0x7F7FFFFF;                    /* floatBitsToOrderedInt(FLT_MAX) */
   light.clip_far = int(0xFF7FFFFFu ^ 0x7FFFFFFFu); /* floatBitsToOrderedInt(-FLT_MAX) */

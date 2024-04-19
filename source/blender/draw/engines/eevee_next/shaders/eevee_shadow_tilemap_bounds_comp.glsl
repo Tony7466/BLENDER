@@ -11,26 +11,14 @@
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(common_intersect_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_rotation_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_intersect_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
 shared int global_min;
 shared int global_max;
-
-/* TODO: Move to lib. */
-vec3 _quaternion_transform(vec4 a, vec3 vector)
-{
-  vec3 t = cross(a.xyz, vector) * 2.0;
-  return vector + t * a.w + cross(a.xyz, t);
-}
-
-vec3 directional_shadow_back(LightData light)
-{
-  vec3 b = float3(0, 0, 1);
-  b = _quaternion_transform(light_sun_data_get(light).shadow_projection_rotation, b);
-  return mat3(light.object_mat) * b;
-}
 
 void main()
 {
