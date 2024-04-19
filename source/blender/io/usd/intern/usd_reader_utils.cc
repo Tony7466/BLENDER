@@ -69,7 +69,7 @@ void set_array_prop(IDProperty *idgroup,
     }
   }
   else {
-    std::memcpy(prop->data.pointer, vec.data(), prop->len * sizeof(VECT::ScalarType));
+    std::memcpy(prop->data.pointer, vec.data(), prop->len * sizeof(typename VECT::ScalarType));
   }
 
   IDP_AddToGroup(idgroup, prop);
