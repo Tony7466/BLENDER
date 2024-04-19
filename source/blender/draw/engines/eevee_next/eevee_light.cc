@@ -77,7 +77,6 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
   this->pcf_radius = la->shadow_filter_radius;
-  this->do_jittering = shadows.do_jittering() && la->mode & LA_SHADOW_JITTER;
 
   /* TODO(fclem): Cleanup: Move that block to `ShadowPunctual::end_sync()` and
    * `ShadowDirectional::end_sync()`. */
@@ -320,7 +319,11 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   Light &light = light_map_.lookup_or_add_default(handle.object_key);
   light.used = true;
 
-  if (handle.recalc != 0 || !light.initialized) {
+  ::Light *bl_light = static_cast<::Light *>(ob->data);
+  bool do_jittering = inst_.shadows.do_jittering() && bl_light->mode & LA_SHADOW_JITTER;
+  bool jittering_changed = assign_if_different(light.do_jittering, do_jittering);
+
+  if (handle.recalc != 0 || !light.initialized || do_jittering || jittering_changed) {
     light.initialized = true;
     light.sync(inst_.shadows, ob, light_threshold_);
   }
