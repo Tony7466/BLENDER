@@ -947,11 +947,6 @@ class DOPESHEET_PT_grease_pencil_layer_transform(GreasePencilLayersDopeSheetPane
     bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
     bl_options = {'DEFAULT_CLOSED'}
 
-class DOPESHEET_PT_grease_pencil_layer_Transform(GreasePencilLayersDopeSheetPanel, GreasePencil_LayerTransformPanel, Panel):
-    bl_label = "Transform"
-    bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
-    bl_options = {'DEFAULT_CLOSED'}
-
 class DOPESHEET_PT_grease_pencil_layer_relations(GreasePencilLayersDopeSheetPanel, GreasPencil_LayerRelationsPanel, Panel):
     bl_label = "Relations"
     bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
