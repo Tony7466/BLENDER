@@ -200,15 +200,19 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   RNGState rng_state;
   path_state_rng_load(state, &rng_state);
 
-  const float rand = path_state_rng_1D(kg, &rng_state, PRNG_SPATIAL_RESAMPLING);
-
-  Reservoir reservoir(rand);
+  Reservoir reservoir;
 
   /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good
    * for point light with soft falloff and area light with small spread. */
   /* Fetch neighboring reservoirs. */
   for (int i = 0; i < SpatialResampling::num_neighbors + 1; i++) {
     const uint neighbor_pixel_index = SpatialResampling::get_next_neighbor(tile, i);
+    const float rand = path_branched_rng_3D(kg,
+                                            &rng_state,
+                                            i,
+                                            SpatialResampling::num_neighbors + 1,
+                                            PRNG_SPATIAL_RESAMPLING)
+                           .z;
 
     if (neighbor_pixel_index == -1) {
       continue;
@@ -236,7 +240,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
 
     reservoir.add_sample(
-        neighbor_reservoir.ls, neighbor_reservoir.radiance, neighbor_reservoir.total_weight);
+        neighbor_reservoir.ls, neighbor_reservoir.radiance, neighbor_reservoir.total_weight, rand);
   }
 
   if (reservoir.is_empty()) {

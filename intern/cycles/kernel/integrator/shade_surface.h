@@ -390,10 +390,10 @@ ccl_device
   const bool use_ris = is_direct_light && kernel_data.integrator.use_initial_resampling;
   const bool use_bsdf_samples = is_direct_light && kernel_data.integrator.use_spatial_resampling;
 
-  const float rand = path_state_rng_1D(kg, rng_state, PRNG_PICK);
-
   /* Sample position on a light. */
-  Reservoir reservoir(kg, use_ris, rand);
+  Reservoir reservoir(kg, use_ris);
+  const int max_samples = reservoir.max_samples;
+  int samples_seen = 0;
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     LightSample ls ccl_optional_struct_init;
@@ -403,6 +403,8 @@ ccl_device
      * when using RIS? */
     const float3 rand_light = path_branched_rng_3D(
         kg, rng_state, i, reservoir.num_light_samples, PRNG_LIGHT);
+    const float rand_pick = path_branched_rng_1D(
+        kg, rng_state, samples_seen++, max_samples, PRNG_PICK);
 
     /* TODO(weizhen): use higher-level nodes in light tree, or use light tile as in the ReSTIR PT
      * paper. */
@@ -450,7 +452,7 @@ ccl_device
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
 
     bsdf_eval_mul(&bsdf_eval, L);
-    reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf);
+    reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
@@ -467,6 +469,8 @@ ccl_device
 
     float3 rand_bsdf = path_branched_rng_3D(
         kg, rng_state, i, reservoir.num_bsdf_samples, PRNG_SURFACE_BSDF);
+    const float rand_pick = path_branched_rng_1D(
+        kg, rng_state, samples_seen++, max_samples, PRNG_PICK);
 
     ccl_private const ShaderClosure *sc = surface_shader_bsdf_bssrdf_pick(sd, &rand_bsdf);
 
@@ -648,8 +652,10 @@ ccl_device
     }
 
     bsdf_eval_mul(&bsdf_eval, L);
-    reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf);
+    reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
   }
+
+  kernel_assert(samples_seen <= max_samples);
 
   BsdfEval radiance = reservoir.radiance;
   if (!reservoir.is_empty()) {
