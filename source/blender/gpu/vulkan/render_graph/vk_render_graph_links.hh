@@ -55,54 +55,6 @@ struct VKRenderGraphNodeLinks {
   Vector<VKRenderGraphLink> inputs;
   /** All links to resources that a node writes to. */
   Vector<VKRenderGraphLink> outputs;
-
-  /**
-   * Add an input link.
-   *
-   * An input link describes a resource that the node reads from.
-   *
-   * Access flags should be added to steer the pipeline barrier generation. During pipeline barrier
-   * generation previous and future usages of the resource are checked to construct the correct
-   * pipeline barrier.
-   *
-   * When the resource is an image resource the needed image layout should be passed
-   * (`vk_image_layout`) to ensure correct image layout transition. For buffer resources this can
-   * be set to `VK_IMAGE_LAYOUT_UNDEFINED`.
-   */
-  void add_input(ResourceWithStamp resource_handle,
-                 VkAccessFlags vk_access_flags,
-                 VkImageLayout vk_image_layout)
-  {
-    VKRenderGraphLink link = {};
-    link.resource = resource_handle;
-    link.vk_access_flags = vk_access_flags;
-    link.vk_image_layout = vk_image_layout;
-    inputs.append(link);
-  }
-
-  /**
-   * Add an output link.
-   *
-   * An output link describes a resource that the node modifies/writes to.
-   *
-   * Access flags should be added to steer the pipeline barrier generation. During pipeline barrier
-   * generation previous and future usages of the resource are checked to construct the correct
-   * pipeline barrier.
-   *
-   * When the resource is an image resource the needed image layout should be passed
-   * (`vk_image_layout`) to ensure correct image layout transition. For buffer resources this can
-   * be set to `VK_IMAGE_LAYOUT_UNDEFINED`.
-   */
-  void add_output(ResourceWithStamp resource_handle,
-                  VkAccessFlags vk_access_flags,
-                  VkImageLayout vk_image_layout)
-  {
-    VKRenderGraphLink link = {};
-    link.resource = resource_handle;
-    link.vk_access_flags = vk_access_flags;
-    link.vk_image_layout = vk_image_layout;
-    outputs.append(link);
-  }
 };
 
 }  // namespace blender::gpu::render_graph

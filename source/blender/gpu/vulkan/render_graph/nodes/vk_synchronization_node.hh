@@ -52,7 +52,8 @@ class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
                    const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_image_and_increase_stamp(create_info.vk_image);
-    node_links.add_output(resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout);
+    node_links.outputs.append(
+        {resource, VK_ACCESS_TRANSFER_WRITE_BIT, create_info.vk_image_layout});
   }
 
   /**
@@ -63,7 +64,8 @@ class VKSynchronizationNode : public VKNodeInfo<VKNodeType::SYNCHRONIZATION,
                       VKBoundPipelines & /*r_bound_pipelines*/) override
   {
     UNUSED_VARS(command_buffer, data);
-    /* Intentionally left empty: A pipeline barrier has already been send to the command buffer. */
+    /* Intentionally left empty: A pipeline barrier has already been send to the command buffer.
+     */
   }
 };
 }  // namespace blender::gpu::render_graph
