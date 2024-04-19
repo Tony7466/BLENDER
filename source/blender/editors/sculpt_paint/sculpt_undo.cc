@@ -863,14 +863,17 @@ static int bmesh_restore(bContext *C, Node &unode, Object *ob, SculptSession *ss
  *
  * Note that the dependency graph is ensured to be evaluated prior to the undo step is decoded,
  * so if the object's modifier stack references other object it is all fine. */
-static void refine_subdiv(Depsgraph *depsgraph, SculptSession *ss, Object *object, Subdiv *subdiv)
+static void refine_subdiv(Depsgraph *depsgraph,
+                          SculptSession *ss,
+                          Object *object,
+                          bke::subdiv::Subdiv *subdiv)
 {
   Array<float3> deformed_verts = BKE_multires_create_deformed_base_mesh_vert_coords(
       depsgraph, object, ss->multires.modifier);
 
-  BKE_subdiv_eval_refine_from_mesh(subdiv,
-                                   static_cast<const Mesh *>(object->data),
-                                   reinterpret_cast<float(*)[3]>(deformed_verts.data()));
+  bke::subdiv::eval_refine_from_mesh(subdiv,
+                                     static_cast<const Mesh *>(object->data),
+                                     reinterpret_cast<float(*)[3]>(deformed_verts.data()));
 }
 
 static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
@@ -943,9 +946,9 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
         continue;
       }
     }
-    else if (unode->maxgrid && subdiv_ccg != nullptr) {
-      if ((subdiv_ccg->grids.size() != unode->maxgrid) ||
-          (subdiv_ccg->grid_size != unode->gridsize))
+    else if (unode->mesh_grids_num && subdiv_ccg != nullptr) {
+      if ((subdiv_ccg->grids.size() != unode->mesh_grids_num) ||
+          (subdiv_ccg->grid_size != unode->grid_size))
       {
         continue;
       }
@@ -1009,7 +1012,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
       if (!STREQ(unode->idname, ob->id.name)) {
         continue;
       }
-      modified_grids.resize(unode->maxgrid, false);
+      modified_grids.resize(unode->mesh_grids_num, false);
       modified_grids.as_mutable_span().fill_indices(unode->grids.as_span(), true);
     }
   }
@@ -1183,13 +1186,14 @@ static Node *alloc_node(Object *ob, PBVHNode *node, Type type)
 
   int verts_num;
   if (BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS) {
-    unode->maxgrid = ss->subdiv_ccg->grids.size();
-    unode->gridsize = ss->subdiv_ccg->grid_size;
-
-    verts_num = unode->maxgrid * unode->gridsize * unode->gridsize;
+    unode->mesh_grids_num = ss->subdiv_ccg->grids.size();
+    unode->grid_size = ss->subdiv_ccg->grid_size;
 
     unode->grids = BKE_pbvh_node_get_grid_indices(*node);
     usculpt->undo_size += unode->grids.as_span().size_in_bytes();
+
+    const int grid_area = unode->grid_size * unode->grid_size;
+    verts_num = unode->grids.size() * grid_area;
   }
   else {
     unode->mesh_verts_num = ss->totvert;
@@ -1883,10 +1887,10 @@ static void sculpt_undosys_step_decode(
         /* Pass. */
       }
       else {
-        ED_object_mode_generic_exit(bmain, depsgraph, scene, ob);
+        object::mode_generic_exit(bmain, depsgraph, scene, ob);
 
         /* Sculpt needs evaluated state.
-         * NOTE: needs to be done here, as #ED_object_mode_generic_exit will usually invalidate
+         * NOTE: needs to be done here, as #object::mode_generic_exit will usually invalidate
          * (some) evaluated data. */
         BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
 

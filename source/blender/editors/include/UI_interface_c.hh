@@ -842,6 +842,11 @@ bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
 
 /**
+ * Used for operator presets.
+ */
+void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool free);
+
+/**
  * Can be called with C==NULL.
  */
 void UI_block_free(const bContext *C, uiBlock *block);
@@ -2092,6 +2097,7 @@ enum {
   /* Disable property split for the default layout (custom ui callbacks still have full control
    * over the layout and can enable it). */
   UI_TEMPLATE_OP_PROPS_NO_SPLIT_LAYOUT = 1 << 4,
+  UI_TEMPLATE_OP_PROPS_HIDE_PRESETS = 1 << 5,
 };
 
 /* Used for transparent checkers shown under color buttons that have an alpha component. */
@@ -2204,6 +2210,7 @@ void uiLayoutSetEmboss(uiLayout *layout, eUIEmbossType emboss);
 void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
+void uiLayoutSetSearchWeight(uiLayout *layout, float weight);
 
 wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
@@ -2223,6 +2230,7 @@ eUIEmbossType uiLayoutGetEmboss(uiLayout *layout);
 bool uiLayoutGetPropSep(uiLayout *layout);
 bool uiLayoutGetPropDecorate(uiLayout *layout);
 Panel *uiLayoutGetRootPanel(uiLayout *layout);
+float uiLayoutGetSearchWeight(uiLayout *layout);
 
 /* Layout create functions. */
 
@@ -2704,6 +2712,8 @@ void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
  */
 void uiTemplateNodeInputs(uiLayout *layout, bContext *C, PointerRNA *ptr);
 
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C);
+
 /**
  * \return: True if the list item with unfiltered, unordered index \a item_idx is visible given the
  *          current filter settings.
@@ -2897,7 +2907,7 @@ void uiItemsFullEnumO(uiLayout *layout,
  */
 void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorType *ot,
-                            PointerRNA ptr,
+                            const PointerRNA &ptr,
                             PropertyRNA *prop,
                             IDProperty *properties,
                             wmOperatorCallContext context,
@@ -3054,7 +3064,7 @@ bool UI_drop_color_poll(bContext *C, wmDrag *drag, const wmEvent *event);
 bool UI_context_copy_to_selected_list(bContext *C,
                                       PointerRNA *ptr,
                                       PropertyRNA *prop,
-                                      ListBase *r_lb,
+                                      blender::Vector<PointerRNA> *r_lb,
                                       bool *r_use_path_from_id,
                                       std::optional<std::string> *r_path);
 bool UI_context_copy_to_selected_check(PointerRNA *ptr,

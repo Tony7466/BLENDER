@@ -51,6 +51,8 @@
 #include "BKE_report.hh"
 #include "BKE_texture.h"
 
+#include "ANIM_evaluation.hh"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
@@ -2850,8 +2852,9 @@ static void nlastrip_evaluate_transition(const int evaluation_mode,
       break;
     }
     case STRIP_EVAL_NOBLEND: {
-      BLI_assert( !"This case shouldn't occur. Transitions assumed to not reference other "
-"transitions. ");
+      BLI_assert_msg(false,
+                     "This case shouldn't occur. "
+                     "Transitions assumed to not reference other transitions.");
       break;
     }
   }
@@ -3673,6 +3676,11 @@ void nlasnapshot_blend_get_inverted_lower_snapshot(NlaEvalData *eval_data,
 NlaKeyframingContext *BKE_animsys_get_nla_keyframing_context(
     ListBase *cache, PointerRNA *ptr, AnimData *adt, const AnimationEvalContext *anim_eval_context)
 {
+  /* The PointerRNA needs to point to an ID because animsys_evaluate_nla_for_keyframing uses
+   * F-Curve paths to resolve properties. Since F-Curve paths are always relative to the ID this
+   * would fail if the PointerRNA was e.g. a bone. */
+  BLI_assert(RNA_struct_is_ID(ptr->type));
+
   /* No remapping needed if NLA is off or no action. */
   if ((adt == nullptr) || (adt->action == nullptr) || (adt->nla_tracks.first == nullptr) ||
       (adt->flag & ADT_NLA_EVAL_OFF))
@@ -3917,16 +3925,26 @@ void BKE_animsys_evaluate_animdata(ID *id,
    */
   /* TODO: need to double check that this all works correctly */
   if (recalc & ADT_RECALC_ANIM) {
-    /* evaluate NLA data */
-    if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
-      /* evaluate NLA-stack
-       * - active action is evaluated as part of the NLA stack as the last item
-       */
-      animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+    if (adt->animation && adt->binding_handle) {
+      /* Animation data-blocks take precedence over the old Action + NLA system. */
+      blender::animrig::evaluate_and_apply_animation(id_ptr,
+                                                     adt->animation->wrap(),
+                                                     adt->binding_handle,
+                                                     *anim_eval_context,
+                                                     flush_to_original);
     }
-    /* evaluate Active Action only */
-    else if (adt->action) {
-      animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+    else {
+      /* evaluate NLA data */
+      if ((adt->nla_tracks.first) && !(adt->flag & ADT_NLA_EVAL_OFF)) {
+        /* evaluate NLA-stack
+         * - active action is evaluated as part of the NLA stack as the last item
+         */
+        animsys_calculate_nla(&id_ptr, adt, anim_eval_context, flush_to_original);
+      }
+      /* evaluate Active Action only */
+      else if (adt->action) {
+        animsys_evaluate_action(&id_ptr, adt->action, anim_eval_context, flush_to_original);
+      }
     }
   }
 

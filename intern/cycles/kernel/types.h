@@ -45,6 +45,7 @@ CCL_NAMESPACE_BEGIN
 #define OBJECT_NONE (~0)
 #define PRIM_NONE (~0)
 #define LAMP_NONE (~0)
+#define EMITTER_NONE (~0)
 #define ID_NONE (0.0f)
 #define PASS_UNUSED (~0)
 #define LIGHTGROUP_NONE (~0)
@@ -1532,7 +1533,7 @@ typedef struct KernelParticle {
   float lifetime;
   float size;
   float4 rotation;
-  /* Only xyz are used of the following. float4 instead of float3 are used
+  /* Only XYZ are used of the following. float4 instead of float3 are used
    * to ensure consistent padding/alignment across devices. */
   float4 location;
   float4 velocity;
@@ -1747,6 +1748,9 @@ enum KernelFeatureFlag : uint32_t {
 
   /* Use denoising kernels and output denoising passes. */
   KERNEL_FEATURE_DENOISING = (1U << 29U),
+
+  /* Light tree. */
+  KERNEL_FEATURE_LIGHT_TREE = (1U << 30U),
 };
 
 /* Shader node feature mask, to specialize shader evaluation for kernels. */

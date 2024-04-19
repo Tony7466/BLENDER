@@ -37,14 +37,14 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BKE_sound.h"
 
@@ -1376,8 +1376,7 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
     op->properties = IDP_CopyProperty(static_cast<const IDProperty *>(properties->data));
   }
   else {
-    IDPropertyTemplate val = {0};
-    op->properties = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
+    op->properties = blender::bke::idprop::create_group("wmOperatorProperties").release();
   }
   *op->ptr = RNA_pointer_create(&wm->id, ot->srna, op->properties);
 
@@ -5873,15 +5872,28 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
       const GHOST_TEventWheelData *wheelData = static_cast<const GHOST_TEventWheelData *>(
           customdata);
 
+      int click_step;
       if (wheelData->z > 0) {
         event.type = WHEELUPMOUSE;
+        click_step = wheelData->z;
       }
       else {
         event.type = WHEELDOWNMOUSE;
+        click_step = -wheelData->z;
       }
+      BLI_assert(click_step != 0);
 
+      /* Avoid generating a large number of events.
+       * In practice this values is typically 1, sometimes 2-3, even 32 is very high
+       * although this could happen if the system freezes. */
+      click_step = std::min(click_step, 32);
+
+      /* TODO: support a wheel event that includes the number of steps
+       * instead of generating multiple events. */
       event.val = KM_PRESS;
-      wm_event_add(win, &event);
+      for (int i = 0; i < click_step; i++) {
+        wm_event_add(win, &event);
+      }
 
       break;
     }
