@@ -381,6 +381,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
                                             get_boolean(cscene, "restir_initial_visibility"));
   integrator->set_restir_light_samples(light_samples);
   integrator->set_restir_bsdf_samples(bsdf_samples);
+  integrator->set_restir_spatial_radius(get_int(cscene, "restir_spatial_radius"));
+  integrator->set_restir_spatial_samples(get_int(cscene, "restir_spatial_samples"));
   integrator->set_restir_spatial_visibility(use_spatial_resampling &&
                                             get_boolean(cscene, "restir_spatial_visibility"));
 

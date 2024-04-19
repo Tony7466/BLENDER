@@ -7,32 +7,37 @@
 CCL_NAMESPACE_BEGIN
 
 struct SpatialResampling {
-  static const int num_neighbors = 8;
+  ccl_global const KernelWorkTile *tile;
+  int radius;
 
-  static uint get_render_pixel_index(ccl_global const KernelWorkTile *ccl_restrict tile,
-                                     const int x,
-                                     const int y)
+  SpatialResampling(ccl_global const KernelWorkTile *ccl_restrict tile, const int radius)
+  {
+    this->tile = tile;
+    this->radius = radius;
+  }
+
+  uint get_render_pixel_index(const int x, const int y)
   {
     return (uint)tile->offset + x + y * tile->stride;
   }
 
-  static uint get_next_neighbor(ccl_global const KernelWorkTile *ccl_restrict tile, const int id)
+  uint get_next_neighbor(const float2 rand)
   {
-    /* TODO(weizhen): adjust the numbers based on `num_neighbors`. */
-    const int dx = id % 3 - 1;
-    const int dy = id / 3 - 1;
-    const int x = tile->x + dx;
-    const int y = tile->y + dy;
+    const float2 offset = floor(rand * radius + 0.5f);
+
+    const int x = tile->x + (int)offset.x;
+    const int y = tile->y + (int)offset.y;
 
     if (x < tile->min_x || x > tile->max_x || y < tile->min_y || y > tile->max_y) {
+      /* TODO(weizhen): this is wasting samples, but can we do better? For example overscan? */
       /* Out of bound. */
       return -1;
     }
 
-    return get_render_pixel_index(tile, x, y);
+    return get_render_pixel_index(x, y);
   }
 
-  static uint is_valid_neighbor(const ccl_private ShaderData *sd,
+  static bool is_valid_neighbor(const ccl_private ShaderData *sd,
                                 const ccl_private ShaderData *neighbor_sd)
   {
     /* TODO(weizhen): find a good criterion, for example the distance to the normal plane of sd. */
@@ -200,19 +205,28 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   RNGState rng_state;
   path_state_rng_load(state, &rng_state);
 
+  /* Plus one to account for the current pixel. */
+  const int samples = kernel_data.integrator.restir_spatial_samples + 1;
+
+  const int radius = kernel_data.integrator.restir_spatial_radius;
+  SpatialResampling spatial_resampling(tile, radius);
   Reservoir reservoir;
 
   /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good
    * for point light with soft falloff and area light with small spread. */
-  /* Fetch neighboring reservoirs. */
-  for (int i = 0; i < SpatialResampling::num_neighbors + 1; i++) {
-    const uint neighbor_pixel_index = SpatialResampling::get_next_neighbor(tile, i);
-    const float rand = path_branched_rng_3D(kg,
-                                            &rng_state,
-                                            i,
-                                            SpatialResampling::num_neighbors + 1,
-                                            PRNG_SPATIAL_RESAMPLING)
-                           .z;
+  /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
+   * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
+   * samples are used.  */
+  for (int i = 0; i < samples; i++) {
+    const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
+    const float2 rand_disk = float3_to_float2(rand);
+    const float rand_pick = rand.z;
+
+    /* Always put the current sample in the reservoir. */
+    const uint neighbor_pixel_index = (i == 0) ?
+                                          INTEGRATOR_STATE(state, path, render_pixel_index) :
+                                          spatial_resampling.get_next_neighbor(
+                                              sample_uniform_disk(rand_disk));
 
     if (neighbor_pixel_index == -1) {
       continue;
@@ -228,7 +242,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                        neighbor_pixel_index,
                                        render_buffer);
 
-    if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd) || neighbor_reservoir.is_empty())
+    if (!spatial_resampling.is_valid_neighbor(&sd, &neighbor_sd) || neighbor_reservoir.is_empty())
     {
       continue;
     }
@@ -239,18 +253,21 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     }
     radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
 
-    reservoir.add_sample(
-        neighbor_reservoir.ls, neighbor_reservoir.radiance, neighbor_reservoir.total_weight, rand);
+    reservoir.add_reservoir(neighbor_reservoir, rand_pick);
   }
 
   if (reservoir.is_empty()) {
     return false;
   }
 
-  /* Loop over neighborhood again to determine valid samples. */
-  int valid_neighbors = 0;
-  for (int i = 0; i < SpatialResampling::num_neighbors + 1; i++) {
-    const uint neighbor_pixel_index = SpatialResampling::get_next_neighbor(tile, i);
+  /* Loop over neighborhood again to determine valid samples. Start with one because if the
+   * reservoir is not empty, then at least the current pixel should be valid. */
+  int valid_neighbors = 1;
+  for (int i = 1; i < samples; i++) {
+    const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
+    const float2 rand_disk = sample_uniform_disk(float3_to_float2(rand));
+
+    const uint neighbor_pixel_index = spatial_resampling.get_next_neighbor(rand_disk);
 
     if (neighbor_pixel_index == -1) {
       continue;
@@ -282,10 +299,6 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     if (!bsdf_eval_is_zero(&neighbor_reservoir.radiance)) {
       valid_neighbors++;
     }
-  }
-
-  if (valid_neighbors == 0) {
-    return false;
   }
 
   BsdfEval radiance = reservoir.radiance;

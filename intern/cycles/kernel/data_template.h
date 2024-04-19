@@ -227,10 +227,14 @@ KERNEL_STRUCT_MEMBER(integrator, int, restir_initial_visibility)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_light_samples)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_bsdf_samples)
 KERNEL_STRUCT_MEMBER(integrator, int, use_spatial_resampling)
+KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_radius)
+KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_samples)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_visibility)
 
 /* Padding. */
 KERNEL_STRUCT_MEMBER(integrator, int, pad1)
+KERNEL_STRUCT_MEMBER(integrator, int, pad2)
+KERNEL_STRUCT_MEMBER(integrator, int, pad3)
 KERNEL_STRUCT_END(KernelIntegrator)
 
 /* SVM. For shader specialization. */

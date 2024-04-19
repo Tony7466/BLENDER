@@ -76,7 +76,14 @@ struct Reservoir {
         num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
     add_sample(ls, radiance, mis_weight / bsdf_pdf, rand);
   }
+
+  void add_reservoir(const Reservoir &other, const float rand);
 };
+
+void Reservoir::add_reservoir(const Reservoir &other, const float rand)
+{
+  add_sample(other.ls, other.radiance, other.total_weight, rand);
+}
 
 CCL_NAMESPACE_END
 

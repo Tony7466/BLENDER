@@ -630,11 +630,18 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=1,
     )
 
-    restir_neighbor_radius: IntProperty(
+    restir_spatial_radius: IntProperty(
         name="Radius",
         description="Pixel radius to gather samples from",
-        min=1, max=1,
-        default=1,
+        min=1, max=50,
+        default=15,
+    )
+
+    restir_spatial_samples: IntProperty(
+        name="Samples",
+        description="Number of neighboring samples to draw per pixel per iteration",
+        min=1, max=16,
+        default=5,
     )
 
     restir_initial_visibility: BoolProperty(
