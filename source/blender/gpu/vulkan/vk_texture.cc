@@ -214,21 +214,28 @@ void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
 {
   BLI_assert(buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT));
 
-  VKContext &context = *VKContext::get();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  VkClearDepthStencilValue clear_depth_stencil;
-  clear_depth_stencil.depth = clear_depth;
-  clear_depth_stencil.stencil = clear_stencil;
-  VkImageSubresourceRange range = {0};
-  range.aspectMask = to_vk_image_aspect_flag_bits(buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT));
-  range.levelCount = VK_REMAINING_MIP_LEVELS;
-  range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  render_graph::VKClearDepthStencilImageNode::CreateInfo clear_depth_stencil_image = {};
+  clear_depth_stencil_image.vk_image = vk_image_handle();
+  clear_depth_stencil_image.vk_clear_depth_stencil_value.depth = clear_depth;
+  clear_depth_stencil_image.vk_clear_depth_stencil_value.stencil = clear_stencil;
+  clear_depth_stencil_image.vk_image_subresource_range.aspectMask = to_vk_image_aspect_flag_bits(
+      buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT));
+  clear_depth_stencil_image.vk_image_subresource_range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  clear_depth_stencil_image.vk_image_subresource_range.levelCount = VK_REMAINING_MIP_LEVELS;
 
-  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
-  command_buffers.clear(vk_image_,
-                        current_layout_get(),
-                        clear_depth_stencil,
-                        Span<VkImageSubresourceRange>(&range, 1));
+  VKContext &context = *VKContext::get();
+  if (use_render_graph) {
+    context.render_graph.add_node(clear_depth_stencil_image);
+  }
+  else {
+    VKCommandBuffers &command_buffers = context.command_buffers_get();
+    layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
+    command_buffers.clear(
+        clear_depth_stencil_image.vk_image,
+        current_layout_get(),
+        clear_depth_stencil_image.vk_clear_depth_stencil_value,
+        Span<VkImageSubresourceRange>(&clear_depth_stencil_image.vk_image_subresource_range, 1));
+  }
 }
 
 void VKTexture::swizzle_set(const char swizzle_mask[4])
@@ -252,9 +259,6 @@ void VKTexture::mip_range_set(int min, int max)
 void VKTexture::read_sub(
     int mip, eGPUDataFormat format, const int region[6], const IndexRange layers, void *r_data)
 {
-  VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
   /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKBuffer staging_buffer;
 
@@ -279,11 +283,13 @@ void VKTexture::read_sub(
   copy_image_to_buffer.region.imageSubresource.baseArrayLayer = layers.start();
   copy_image_to_buffer.region.imageSubresource.layerCount = layers.size();
 
+  VKContext &context = *VKContext::get();
   if (use_render_graph) {
     context.render_graph.add_node(copy_image_to_buffer);
     context.render_graph.submit_buffer_for_read(staging_buffer.vk_handle());
   }
   else {
+    layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     VKCommandBuffers &command_buffers = context.command_buffers_get();
     command_buffers.copy(
         staging_buffer, *this, Span<VkBufferImageCopy>(&copy_image_to_buffer.region, 1));
@@ -346,7 +352,7 @@ void VKTexture::update_sub(
   /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
   VKContext &context = *VKContext::get();
   int layers = vk_layer_count(1);
-  size_t sample_len = size_t(extent.x) * extent.y * extent.z;
+  size_t sample_len = size_t(extent.x) * extent.y * extent.z * layers;
   size_t device_memory_size = sample_len * to_bytesize(device_format_);
 
   if (is_compressed) {
