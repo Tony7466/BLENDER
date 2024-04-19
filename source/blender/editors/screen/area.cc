@@ -850,7 +850,7 @@ static void ed_workspace_status_item(WorkSpace *workspace,
   item->text = text;
   item->icon = icon;
   item->space_factor = space_factor;
-  BLI_addtail(&workspace->status, item);
+  workspace->runtime->status.append(item);
 }
 
 static void ed_workspace_status_space(WorkSpace *workspace, const float space_factor)

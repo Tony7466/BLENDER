@@ -6314,9 +6314,9 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   WorkSpace *workspace = CTX_wm_workspace(C);
 
   /* Workspace status text has priority. */
-  if (!BLI_listbase_is_empty(&workspace->status)) {
+  if (!workspace->runtime->status.is_empty()) {
     uiLayout *row = uiLayoutRow(layout, true);
-    LISTBASE_FOREACH (WorkSpaceStatusItem *, item, &workspace->status) {
+    for (WorkSpaceStatusItem *item : workspace->runtime->status) {
       if (item->space_factor != 0.0f) {
         uiItemS_ex(row, item->space_factor);
       }

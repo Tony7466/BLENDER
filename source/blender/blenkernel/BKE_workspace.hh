@@ -24,6 +24,14 @@ struct WorkSpaceStatusItem {
   float space_factor;
 };
 
+namespace blender::bke {
+
+struct WorkSpaceRuntime {
+  blender::Vector<WorkSpaceStatusItem *> status = {};
+};
+
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Create, Delete, Initialize
  * \{ */

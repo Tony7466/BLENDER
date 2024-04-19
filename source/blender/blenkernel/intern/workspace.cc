@@ -42,6 +42,8 @@ static void workspace_init_data(ID *id)
 {
   WorkSpace *workspace = (WorkSpace *)id;
 
+  workspace->runtime = MEM_new<blender::bke::WorkSpaceRuntime>(__func__);
+
   BKE_asset_library_reference_init_default(&workspace->asset_library_ref);
 }
 
@@ -59,6 +61,8 @@ static void workspace_free_data(ID *id)
   }
 
   BKE_workspace_status_clear(workspace);
+  MEM_delete(workspace->runtime);
+
   BKE_viewer_path_clear(&workspace->viewer_path);
 }
 
@@ -115,7 +119,7 @@ static void workspace_blend_read_data(BlendDataReader *reader, ID *id)
     IDP_BlendDataRead(reader, &tref->properties);
   }
 
-  BKE_workspace_status_clear(workspace);
+  workspace->runtime = MEM_new<blender::bke::WorkSpaceRuntime>(__func__);
 
   /* Do not keep the scene reference when appending a workspace. Setting a scene for a workspace is
    * a convenience feature, but the workspace should never truly depend on scene data. */
@@ -640,10 +644,7 @@ bScreen *BKE_workspace_layout_screen_get(const WorkSpaceLayout *layout)
 
 void BKE_workspace_status_clear(WorkSpace *workspace)
 {
-  LISTBASE_FOREACH_MUTABLE (WorkSpaceStatusItem *, item, &workspace->status) {
-    delete item;
-  }
-  BLI_listbase_clear(&workspace->status);
+  workspace->runtime->status.clear_and_shrink();
 }
 
 /** \} */

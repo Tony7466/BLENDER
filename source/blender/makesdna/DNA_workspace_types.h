@@ -14,6 +14,15 @@
 #include "DNA_asset_types.h"
 #include "DNA_viewer_path_types.h"
 
+#ifdef __cplusplus
+namespace blender::bke {
+struct WorkSpaceRuntime;
+}
+using WorkSpaceRuntimeHandle = blender::bke::WorkSpaceRuntime;
+#else
+typedef struct WorkSpaceRuntimeHandle WorkSpaceRuntimeHandle;
+#endif
+
 /** #bToolRef_Runtime.flag */
 enum {
   /**
@@ -136,8 +145,8 @@ typedef struct WorkSpace {
   /** Number for workspace tab reordering in the UI. */
   int order;
 
-  /** Info from modal operators to display in status bar (runtime). WorkSpaceStatusItem. */
-  ListBase status;
+  /** Info text from modal operators (runtime). */
+  WorkSpaceRuntimeHandle *runtime;
 
   /** Workspace-wide active asset library, for asset UIs to use (e.g. asset view UI template). The
    * Asset Browser has its own and doesn't use this. */
