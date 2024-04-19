@@ -54,5 +54,4 @@ std::string to_string(const VkOffset3D &vk_offset3_d, int indentation_level = 0)
 std::string to_string(const VkRect2D &vk_rect2_d, int indentation_level = 0);
 std::string to_string(const VkRenderPassBeginInfo &vk_render_pass_begin_info,
                       int indentation_level = 0);
-
 }  // namespace blender::gpu
