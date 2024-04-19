@@ -62,6 +62,69 @@ static void calculate_curve_point_distances_for_proportional_editing(
   }
 }
 
+static int64_t *custom_data_to_point_num(void *data)
+{
+  return static_cast<int64_t *>(data);
+}
+
+static int64_t *custom_data_to_range_num(void *data)
+{
+  return static_cast<int64_t *>(data) + 1;
+}
+
+static float3 *custom_data_to_positions(void *data)
+{
+  return reinterpret_cast<float3 *>(custom_data_to_range_num(data) + 1);
+}
+
+static IndexRange *custom_data_to_ranges(void *data, int64_t points_num)
+{
+  return reinterpret_cast<IndexRange *>(custom_data_to_positions(data) + points_num);
+}
+
+static void *selected_positions_to_custom_data(const bke::CurvesGeometry &curves,
+                                               const IndexMask &selection)
+{
+  const int64_t points_num = selection.size();
+  const Vector<IndexRange> ranges{selection.to_ranges()};
+
+  void *data = MEM_callocN(sizeof(int64_t) * 2 + sizeof(float3) * points_num +
+                               sizeof(IndexRange) * ranges.size(),
+                           __func__);
+  *custom_data_to_point_num(data) = points_num;
+  *custom_data_to_range_num(data) = ranges.size();
+  MutableSpan<IndexRange> ranges_dst{custom_data_to_ranges(data, points_num), ranges.size()};
+  ranges_dst.copy_from(ranges);
+
+  float3 *positions_data = custom_data_to_positions(data);
+  MutableSpan<float3> positions_dst{positions_data, points_num};
+  Span<float3> positions = curves.positions();
+
+  int64_t offset_dst = 0;
+  for (const IndexRange &range : ranges) {
+    positions_dst.slice(offset_dst, range.size()).copy_from(positions.slice(range));
+    offset_dst += range.size();
+  }
+  return data;
+}
+
+static void selected_positions_from_custom_data(bke::CurvesGeometry &curves, void *data)
+{
+  const int64_t points_num = *custom_data_to_point_num(data);
+
+  Span<IndexRange> ranges{custom_data_to_ranges(data, points_num),
+                          *custom_data_to_range_num(data)};
+  Span<float3> positions{custom_data_to_positions(data), points_num};
+
+  MutableSpan positions_dst = curves.positions_for_write();
+
+  int64_t offset_src = 0;
+  for (const IndexRange &range : ranges) {
+    positions_dst.slice(range).copy_from(positions.slice(offset_src, range.size()));
+    offset_src += range.size();
+  }
+}
+
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 {
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
@@ -77,6 +140,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
     if (use_proportional_edit) {
+      selection_per_object[i] = curves.points_range();
       tc.data_len = curves.point_num;
     }
     else {
@@ -86,6 +150,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
+      tc.custom.type.data = selected_positions_to_custom_data(curves, selection_per_object[i]);
     }
   }
 
@@ -144,6 +209,7 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
+      selected_positions_from_custom_data(curves, tc.custom.type.data);
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
     }
@@ -168,8 +234,10 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   float mtx[3][3], smtx[3][3];
   copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
-
-  MutableSpan<float3> positions = curves.positions_for_write();
+  int64_t position_num = *blender::ed::transform::curves::custom_data_to_point_num(
+      tc.custom.type.data);
+  MutableSpan<float3> positions{
+      blender::ed::transform::curves::custom_data_to_positions(tc.custom.type.data), position_num};
   if (use_proportional_edit) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
@@ -233,7 +301,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
       for (const int selection_i : range) {
         TransData *td = &tc.data[selection_i + trans_data_offset];
         const int point_i = selected_indices[selection_i];
-        float3 *elem = &positions[point_i];
+        float3 *elem = &positions[selection_i];
 
         copy_v3_v3(td->iloc, *elem);
         copy_v3_v3(td->center, td->iloc);
