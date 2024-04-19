@@ -8,8 +8,6 @@
 
 #include <sstream>
 
-#include "BLI_string.h"
-
 #include "vk_to_string.hh"
 
 namespace blender::gpu {
