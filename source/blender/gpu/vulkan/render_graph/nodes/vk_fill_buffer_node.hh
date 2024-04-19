@@ -46,7 +46,7 @@ class VKFillBufferNode : public VKNodeInfo<VKNodeType::FILL_BUFFER,
                    const CreateInfo &create_info) override
   {
     ResourceWithStamp resource = resources.get_buffer_and_increase_version(create_info.vk_buffer);
-    node_links.add_output(resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
+    node_links.outputs.append({resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED});
   }
 
   /**
