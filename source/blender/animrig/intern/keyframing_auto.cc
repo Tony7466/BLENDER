@@ -99,11 +99,11 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 
 void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths)
 {
-  ID *id = &ob->id;
-  if (id == nullptr) {
-    return;
-  }
+  BLI_assert(ob != nullptr);
+  BLI_assert(scene != nullptr);
+  BLI_assert(C != nullptr);
 
+  ID *id = &ob->id;
   if (!autokeyframe_cfra_can_key(scene, id)) {
     return;
   }
@@ -214,14 +214,15 @@ void autokeyframe_pose_channel(bContext *C,
                                Span<std::string> rna_paths,
                                short targetless_ik)
 {
+  BLI_assert(C != nullptr);
+  BLI_assert(scene != nullptr);
+  BLI_assert(ob != nullptr);
+  BLI_assert(pose_channel != nullptr);
+
   Main *bmain = CTX_data_main(C);
   ID *id = &ob->id;
   AnimData *adt = ob->adt;
   bAction *act = (adt) ? adt->action : nullptr;
-
-  if (id == nullptr) {
-    return;
-  }
 
   if (!blender::animrig::autokeyframe_cfra_can_key(scene, id)) {
     return;
@@ -274,14 +275,17 @@ void autokeyframe_pose_channel(bContext *C,
        * NOTE: this will do constraints too, but those are ok to do here too?
        */
       if (STREQ(pchan_name, pose_channel->name)) {
-        insert_keyframe(bmain,
-                        *id,
-                        ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                        fcu->rna_path,
-                        fcu->array_index,
-                        &anim_eval_context,
-                        eBezTriple_KeyframeType(ts->keyframe_type),
-                        flag);
+        CombinedKeyingResult result = insert_keyframe(bmain,
+                                                      *id,
+                                                      ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                                                      fcu->rna_path,
+                                                      fcu->array_index,
+                                                      &anim_eval_context,
+                                                      eBezTriple_KeyframeType(ts->keyframe_type),
+                                                      flag);
+        if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+          result.generate_reports(reports);
+        }
       }
     }
     return;

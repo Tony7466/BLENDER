@@ -130,8 +130,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   if (this->get_count(SingleKeyingResult::ID_NOT_EDITABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_EDITABLE);
     if (error_count == 1) {
-      errors.append(
-          fmt::format("{} ID has been skipped because it is not editable.", error_count));
+      errors.append("Inserting keys for one ID has been skipped because it is not editable.");
     }
     else {
       errors.append(
@@ -142,8 +141,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   if (this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE);
     if (error_count == 1) {
-      errors.append(
-          fmt::format("{} ID has been skipped because it cannot be animated.", error_count));
+      errors.append("Inserting keys for one ID has been skipped because it cannot be animated.");
     }
     else {
       errors.append(
@@ -154,8 +152,8 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   if (this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH);
     if (error_count == 1) {
-      errors.append(fmt::format("{} ID has been skipped because the RNA path wasn't valid for it",
-                                error_count));
+      errors.append(
+          "Inserting keys for one ID has been skipped because the RNA path wasn't valid for it");
     }
     else {
       errors.append(fmt::format(
