@@ -1827,6 +1827,7 @@ static void outliner_draw_userbuts(uiBlock *block,
       }
       else {
         UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
+        /* Allow _inaccurate_ dragging over multiple toggles. */
         UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
       }
 
