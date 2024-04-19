@@ -175,7 +175,7 @@ void set_id_props_from_prim(ID *id,
 
     bool is_user_prop = attr_names[0] == "userProperties";
 
-    if (attr_names.size() > 2 && is_user_prop && attr_names[1] == "blenderName") {
+    if (attr_names.size() > 2 && is_user_prop && attr_names[1] == "blender") {
       continue;
     }
 
