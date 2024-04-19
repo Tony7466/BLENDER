@@ -935,8 +935,8 @@ if(WITH_GTESTS)
 
   if(WITH_VULKAN_BACKEND)
     list(APPEND TEST_SRC
-      vulkan/vk_data_conversion_test.cc
-      vulkan/vk_memory_layout_test.cc
+      vulkan/tests/vk_data_conversion_test.cc
+      vulkan/tests/vk_memory_layout_test.cc
       vulkan/render_graph/tests/vk_render_graph_test_transfer.cc
       vulkan/render_graph/tests/vk_render_graph_test_compute.cc
       vulkan/render_graph/tests/vk_render_graph_test_present.cc
