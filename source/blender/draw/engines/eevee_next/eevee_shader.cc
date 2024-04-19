@@ -383,15 +383,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     }
   }
 
-  bool supports_render_passes = (pipeline_type == MAT_PIPE_DEFERRED);
-  /* Opaque forward do support AOVs and render pass if not using transparency. */
-  if (!GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT) &&
-      (pipeline_type == MAT_PIPE_FORWARD))
-  {
-    supports_render_passes = true;
-  }
-
-  if (supports_render_passes) {
+  /* Only deferred material allow use of cryptomatte and render passes. */
+  if (pipeline_type == MAT_PIPE_DEFERRED) {
     info.additional_info("eevee_render_pass_out");
     info.additional_info("eevee_cryptomatte_out");
   }
@@ -656,7 +649,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           info.additional_info("draw_object_infos_new");
         }
         frag_gen << "vec3 ls_dimensions = safe_rcp(abs(OrcoTexCoFactors[1].xyz));\n";
-        frag_gen << "vec3 ws_dimensions = (ModelMatrix * vec4(ls_dimensions, 1.0)).xyz;\n";
+        frag_gen << "vec3 ws_dimensions = mat3x3(ModelMatrix) * ls_dimensions;\n";
         /* Choose the minimum axis so that cuboids are better represented. */
         frag_gen << "return reduce_min(ws_dimensions);\n";
       }

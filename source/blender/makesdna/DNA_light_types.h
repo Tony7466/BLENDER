@@ -73,13 +73,19 @@ typedef struct Light {
   float contact_bias;
   float contact_thickness;
 
-  float diff_fac, volume_fac;
-  float spec_fac, att_dist;
+  float diff_fac;
+  float spec_fac;
+  float transmission_fac;
+  float volume_fac;
+
+  float att_dist;
   float shadow_softness_factor;
   float shadow_trace_distance;
   float shadow_filter_radius;
   float shadow_resolution_scale;
   float shadow_jitter_overblur;
+
+  float _pad2;
 
   /* Preview */
   struct PreviewImage *preview;
@@ -90,7 +96,7 @@ typedef struct Light {
   /* Deprecated. */
   struct Ipo *ipo DNA_DEPRECATED; /* Old animation system. */
   float energy_deprecated DNA_DEPRECATED;
-  float _pad2;
+  float _pad3;
 } Light;
 
 /* **************** LIGHT ********************* */

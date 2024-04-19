@@ -3168,6 +3168,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 18)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "transmission_fac")) {
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        /* Refracted light was not supported in legacy EEVEE. Set it to zero for compatibility with
+         * older files. */
+        light->transmission_fac = 0.0f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 19)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Keep legacy EEVEE old behavior. */
+      scene->eevee.flag |= SCE_EEVEE_VOLUME_CUSTOM_RANGE;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 20)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_jitter_overblur = 0.1f;
     }

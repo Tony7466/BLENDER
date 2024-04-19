@@ -3389,7 +3389,7 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
       GHOST_TDragnDropTypes ghost_dnd_type = GHOST_kDragnDropTypeUnknown;
       void *ghost_dnd_data = nullptr;
 
-      /* Failure to receive drop data . */
+      /* Failure to receive drop data. */
       if (mime_receive == ghost_wl_mime_text_uri) {
         const char file_proto[] = "file://";
         /* NOTE: some applications CRLF (`\r\n`) GTK3 for e.g. & others don't `pcmanfm-qt`.
@@ -7900,7 +7900,7 @@ GHOST_TSuccess GHOST_SystemWayland::getCursorPositionClientRelative(const GHOST_
   if (UNLIKELY(!seat)) {
     return GHOST_kFailure;
   }
-  GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
+  const GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
   if (!seat_state_pointer || !seat_state_pointer->wl.surface_window) {
     return GHOST_kFailure;
   }
@@ -7934,7 +7934,7 @@ GHOST_TSuccess GHOST_SystemWayland::getCursorPosition(int32_t &x, int32_t &y) co
   if (UNLIKELY(!seat)) {
     return GHOST_kFailure;
   }
-  GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
+  const GWL_SeatStatePointer *seat_state_pointer = gwl_seat_state_pointer_active(seat);
   if (!seat_state_pointer) {
     return GHOST_kFailure;
   }
