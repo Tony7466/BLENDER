@@ -605,7 +605,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
 
     use_spatial_resampling: BoolProperty(
         name="Spatial Resampling",
-        description="Process samples from neighboring pixels",
+        description="Reuse samples from neighboring pixels",
         default=True,
     )
 

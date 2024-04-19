@@ -376,12 +376,11 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
     use_spatial_resampling = false;
   }
 
-  integrator->set_use_initial_resampling(use_initial_resampling);
+  integrator->set_use_restir(use_initial_resampling + (use_spatial_resampling << 1));
   integrator->set_restir_initial_visibility(use_initial_resampling &&
                                             get_boolean(cscene, "restir_initial_visibility"));
   integrator->set_restir_light_samples(light_samples);
   integrator->set_restir_bsdf_samples(bsdf_samples);
-  integrator->set_use_spatial_resampling(use_spatial_resampling);
   integrator->set_restir_spatial_visibility(use_spatial_resampling &&
                                             get_boolean(cscene, "restir_spatial_visibility"));
 
