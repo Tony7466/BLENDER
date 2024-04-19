@@ -203,6 +203,7 @@ set(VULKAN_SRC
   vulkan/vk_debug.cc
   vulkan/vk_descriptor_pools.cc
   vulkan/vk_descriptor_set.cc
+  vulkan/vk_descriptor_set_layouts.cc
   vulkan/vk_device.cc
   vulkan/vk_drawlist.cc
   vulkan/vk_fence.cc
@@ -245,6 +246,7 @@ set(VULKAN_SRC
   vulkan/vk_debug.hh
   vulkan/vk_descriptor_pools.hh
   vulkan/vk_descriptor_set.hh
+  vulkan/vk_descriptor_set_layouts.hh
   vulkan/vk_device.hh
   vulkan/vk_drawlist.hh
   vulkan/vk_fence.hh
@@ -844,7 +846,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   unset(_manifest)
   setup_platform_linker_flags(shader_builder)
 
-  if (WITH_BUILD_INFO)
+  if(WITH_BUILD_INFO)
     target_link_libraries(shader_builder PRIVATE buildinfoobj)
   endif()
   target_link_libraries(shader_builder PRIVATE
@@ -908,8 +910,8 @@ if(WITH_GTESTS)
 
   if(WITH_VULKAN_BACKEND)
     list(APPEND TEST_SRC
-      vulkan/vk_data_conversion_test.cc
-      vulkan/vk_memory_layout_test.cc
+      vulkan/tests/vk_data_conversion_test.cc
+      vulkan/tests/vk_memory_layout_test.cc
     )
   endif()
 
@@ -920,7 +922,7 @@ if(WITH_GTESTS)
     )
   endif()
 
-  if (TEST_SRC)
+  if(TEST_SRC)
     set(TEST_COMMON_SRC
       tests/gpu_testing.cc
       tests/gpu_testing.hh
