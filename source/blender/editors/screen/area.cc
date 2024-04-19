@@ -894,7 +894,7 @@ void WorkspaceStatus::range(const std::string text, const int icon1, const int i
   ed_workspace_status_item(workspace_, "-", ICON_NONE);
   ed_workspace_status_space(workspace_, -0.5f);
   ed_workspace_status_item(workspace_, {}, icon2);
-  ed_workspace_status_space(workspace_, 0.6f);
+  ed_workspace_status_space(workspace_, 0.4f);
   ed_workspace_status_item(workspace_, text, ICON_NONE);
   ed_workspace_status_space(workspace_, 0.7f);
 }
@@ -911,7 +911,7 @@ void WorkspaceStatus::item_bool(std::string text,
     ed_workspace_status_item(workspace_, {}, icon2, 0.0f, enabled);
   }
   if (icon1 || icon2) {
-    ed_workspace_status_space(workspace_, 0.6f);
+    ed_workspace_status_space(workspace_, 0.4f);
   }
   ed_workspace_status_item(workspace_, text, ICON_NONE, 0.0f, enabled);
   ed_workspace_status_space(workspace_, 0.7f);
@@ -949,7 +949,7 @@ void WorkspaceStatus::opmodal(const std::string text,
       if (icon) {
         ed_workspace_status_item(workspace_, {}, icon, 0.0f, inverted);
         if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-          ed_workspace_status_space(workspace_, 0.6f);
+          ed_workspace_status_space(workspace_, 0.4f);
         }
       }
       if (!text.empty()) {
