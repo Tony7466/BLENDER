@@ -63,6 +63,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
