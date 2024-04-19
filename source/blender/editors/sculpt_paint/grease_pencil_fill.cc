@@ -756,12 +756,6 @@ static const int2 offset_by_direction[num_directions] = {
     {-1, 0},
 };
 
-/* Wrap to valid direction, must be less than 2 * num_directions. */
-static int wrap_dir_2n(const int dir)
-{
-  return dir - num_directions * int(dir >= num_directions);
-}
-
 /* Wrap to valid direction, must be less than 3 * num_directions. */
 static int wrap_dir_3n(const int dir)
 {
@@ -835,42 +829,6 @@ static FillBoundary build_fill_boundary(Image &ima)
     return starts;
   };
 
-  // struct BoundaryStart {
-  //   int index;
-  //   uint8_t entry_direction;
-
-  //   uint64_t hash() const
-  //   {
-  //     return get_default_hash(this->index);
-  //   }
-
-  //   bool operator==(const BoundaryStart &other) const
-  //   {
-  //     return this->index == other.index;
-  //   }
-  // };
-
-  // /* Find possible starting points for boundary sections.
-  //  * Direction 3 == (1, 0) is the starting direction. */
-  // constexpr const uint8_t x_direction = 3;
-  // auto find_start_coordinates = [&]() -> VectorSet<BoundaryStart> {
-  //   VectorSet<BoundaryStart> starts;
-  //   for (const int y : IndexRange(height)) {
-  //     /* Check for empty pixels next to filled pixels. */
-  //     for (const int x : IndexRange(width).drop_back(1)) {
-  //       const int index_empty = index_from_coord({x, y});
-  //       const int index_filled = index_from_coord({x + 1, y});
-  //       if (!get_flag(pixels[index_empty], ColorFlag::Fill) &&
-  //           get_flag(pixels[index_filled], ColorFlag::Fill))
-  //       {
-  //         /* Direction 3: (1, 0). Found the first filled pixel in the row. */
-  //         starts.add({index_filled, x_direction});
-  //       }
-  //     }
-  //   }
-  //   return starts;
-  // };
-
   struct NeighborIterator {
     int index;
     int direction;
@@ -897,7 +855,6 @@ static FillBoundary build_fill_boundary(Image &ima)
     return false;
   };
 
-  // VectorSet<BoundaryStart> boundary_starts = find_start_coordinates();
   BoundaryStartMap boundary_starts = find_start_coordinates();
 
   /* Find directions and connectivity for all boundary pixels. */
