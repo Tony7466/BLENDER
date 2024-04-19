@@ -200,6 +200,31 @@ static double4 compute_non_causal_feedforward_coefficients(
   return double4(n1, n2, n3, n4);
 }
 
+/* Computes the coefficient that needs to be multiplied to the boundary value in order to simulate
+ * an infinite previous stream of that value. The boundary value is used to initialize the previous
+ * outputs for the causal filter. This works for both Dirichlet and Neumann boundaries. The
+ * equation for that coefficient can be derived by rearranging the difference equation to compute
+ * the current input from the output, previous outputs, and inputs, substituting the boundary value
+ * for previous outputs. */
+static double compute_causal_boundary_coefficient(const DericheGaussianCoefficients &coefficients)
+{
+  const double4 &causal_feedforward = coefficients.causal_feedforward_coefficients();
+  const double4 &feedback = coefficients.feedback_coefficients();
+
+  return (math::reduce_add(causal_feedforward) - 1.0) / (math::reduce_add(feedback) * 2.0);
+}
+
+/* Identical to compute_causal_boundary_coefficient except it computes the coefficient for the
+ * non-causal filter using the non-causal feedforward coefficients. */
+static double compute_non_causal_boundary_coefficient(
+    const DericheGaussianCoefficients &coefficients)
+{
+  const double4 &non_causal_feedforward = coefficients.non_causal_feedforward_coefficients();
+  const double4 &feedback = coefficients.feedback_coefficients();
+
+  return (math::reduce_add(non_causal_feedforward) - 1.0) / (math::reduce_add(feedback) * 2.0);
+}
+
 /* Computes the feedback, causal feedforward, and non causal feedforward coefficients given a
  * target Gaussian sigma value as used in Equations (28) and (29) in Deriche's paper. */
 DericheGaussianCoefficients::DericheGaussianCoefficients(Context & /*context*/, float sigma)
@@ -217,6 +242,9 @@ DericheGaussianCoefficients::DericheGaussianCoefficients(Context & /*context*/, 
    * feedforward coefficients based on Equation (31) from Deriche's paper. Since the causal
    * coefficients are already normalized, this doesn't need normalization. */
   non_causal_feedforward_coefficients_ = compute_non_causal_feedforward_coefficients(*this);
+
+  causal_boundary_coefficient_ = compute_causal_boundary_coefficient(*this);
+  non_causal_boundary_coefficient_ = compute_non_causal_boundary_coefficient(*this);
 }
 
 const double4 &DericheGaussianCoefficients::feedback_coefficients() const
@@ -232,6 +260,16 @@ const double4 &DericheGaussianCoefficients::causal_feedforward_coefficients() co
 const double4 &DericheGaussianCoefficients::non_causal_feedforward_coefficients() const
 {
   return non_causal_feedforward_coefficients_;
+}
+
+double DericheGaussianCoefficients::causal_boundary_coefficient() const
+{
+  return causal_boundary_coefficient_;
+}
+
+double DericheGaussianCoefficients::non_causal_boundary_coefficient() const
+{
+  return non_causal_boundary_coefficient_;
 }
 
 /* --------------------------------------------------------------------

@@ -40,6 +40,8 @@ class DericheGaussianCoefficients : public CachedResource {
   double4 feedback_coefficients_;
   double4 causal_feedforward_coefficients_;
   double4 non_causal_feedforward_coefficients_;
+  double causal_boundary_coefficient_;
+  double non_causal_boundary_coefficient_;
 
  public:
   DericheGaussianCoefficients(Context &context, float sigma);
@@ -47,6 +49,8 @@ class DericheGaussianCoefficients : public CachedResource {
   const double4 &feedback_coefficients() const;
   const double4 &causal_feedforward_coefficients() const;
   const double4 &non_causal_feedforward_coefficients() const;
+  double causal_boundary_coefficient() const;
+  double non_causal_boundary_coefficient() const;
 };
 
 /* ------------------------------------------------------------------------------------------------
