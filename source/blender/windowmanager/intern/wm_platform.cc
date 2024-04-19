@@ -23,7 +23,7 @@
 #endif
 
 /* -------------------------------------------------------------------- */
-/** \name Register File Assosiation
+/** \name Register File Association
  * \{ */
 
 bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg)
@@ -51,6 +51,7 @@ bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_
   }
 #elif defined(__APPLE__)
   /* Pass. */
+  UNUSED_VARS(do_register, all_users);
 #else
   {
     BPy_RunErrInfo err_info = {};
