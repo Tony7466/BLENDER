@@ -98,10 +98,8 @@ void USDCameraWriter::do_write(HierarchyContext &context)
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
 
-  if (usd_export_context_.export_params.export_custom_properties && camera) {
-    auto prim = usd_camera.GetPrim();
-    write_id_properties(prim, camera->id, timecode);
-  }
+  auto prim = usd_camera.GetPrim();
+  write_id_properties(prim, camera->id, timecode);
 }
 
 }  // namespace blender::io::usd

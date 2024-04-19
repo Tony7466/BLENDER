@@ -10,12 +10,9 @@
 
 #include "usd.hh"
 
-#include "WM_types.hh"
+#include "DNA_object_types.h"
 
-#include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/prim.h>
-
-#include <optional>
 
 #include "BLI_assert.h"
 

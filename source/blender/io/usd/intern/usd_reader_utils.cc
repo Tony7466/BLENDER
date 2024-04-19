@@ -6,10 +6,6 @@
 
 #include <pxr/usd/usd/attribute.h>
 
-#include <iostream>
-
-#include "BLI_utildefines.h"
-
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
 
@@ -180,7 +176,6 @@ void set_id_props_from_prim(ID *id,
     bool is_user_prop = attr_names[0] == "userProperties";
 
     if (attr_names.size() > 2 && is_user_prop && attr_names[1] == "blenderName") {
-      /* Skip the deprecated userProperties:blenderName namespace attribs. */
       continue;
     }
 

@@ -67,12 +67,12 @@ class USDAbstractWriter : public AbstractHierarchyWriter {
   pxr::SdfPath get_material_library_path() const;
   pxr::UsdShadeMaterial ensure_usd_material(const HierarchyContext &context, Material *material);
 
-  void write_id_properties(pxr::UsdPrim &prim,
+  void write_id_properties(const pxr::UsdPrim &prim,
                            const ID &id,
-                           pxr::UsdTimeCode = pxr::UsdTimeCode::Default());
-  void write_user_properties(pxr::UsdPrim &prim,
+                           pxr::UsdTimeCode = pxr::UsdTimeCode::Default()) const;
+  void write_user_properties(const pxr::UsdPrim &prim,
                              IDProperty *properties,
-                             pxr::UsdTimeCode = pxr::UsdTimeCode::Default());
+                             pxr::UsdTimeCode = pxr::UsdTimeCode::Default()) const;
 
   void write_visibility(const HierarchyContext &context,
                         const pxr::UsdTimeCode timecode,

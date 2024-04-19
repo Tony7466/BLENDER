@@ -43,7 +43,7 @@ static std::string get_mesh_active_uvlayer_name(const Object *ob)
   return name ? name : "";
 }
 
-template<typename VECT>
+template<typename USDT>
 bool set_vec_attrib(const pxr::UsdPrim &prim,
                     const IDProperty *prop,
                     const pxr::TfToken &prop_token,
@@ -63,7 +63,7 @@ bool set_vec_attrib(const pxr::UsdPrim &prim,
     return false;
   }
 
-  VECT vec_value(static_cast<typename VECT::ScalarType *>(prop->data.pointer));
+  USDT vec_value(static_cast<typename USDT::ScalarType *>(prop->data.pointer));
 
   return vec_attr.Set(vec_value, timecode);
 }
@@ -227,10 +227,8 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   usd_material = create_usd_material(
       usd_export_context_, usd_path, material, active_uv, reports());
 
-  if (usd_export_context_.export_params.export_custom_properties && material) {
-    auto prim = usd_material.GetPrim();
-    write_id_properties(prim, material->id, get_export_time_code());
-  }
+  auto prim = usd_material.GetPrim();
+  write_id_properties(prim, material->id, get_export_time_code());
 
   return usd_material;
 }
@@ -276,10 +274,18 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
   return true;
 }
 
-void USDAbstractWriter::write_id_properties(pxr::UsdPrim &prim,
+void USDAbstractWriter::write_id_properties(const pxr::UsdPrim &prim,
                                             const ID &id,
-                                            pxr::UsdTimeCode timecode)
+                                            pxr::UsdTimeCode timecode) const
 {
+  if (!usd_export_context_.export_params.export_custom_properties) {
+    return;
+  }
+
+  if (!id.properties) {
+    return;
+  }
+
   if (usd_export_context_.export_params.author_blender_name) {
     if (GS(id.name) == ID_OB) {
       // Author property of original blenderName
@@ -297,13 +303,13 @@ void USDAbstractWriter::write_id_properties(pxr::UsdPrim &prim,
   }
 
   if (id.properties) {
-    write_user_properties(prim, (IDProperty *)id.properties, timecode);
+    write_user_properties(prim, id.properties, timecode);
   }
 }
 
-void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
+void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
                                               IDProperty *properties,
-                                              pxr::UsdTimeCode timecode)
+                                              pxr::UsdTimeCode timecode) const
 {
   if (properties == nullptr) {
     return;
@@ -315,8 +321,7 @@ void USDAbstractWriter::write_user_properties(pxr::UsdPrim &prim,
 
   const StringRef displayName_identifier = "displayName";
 
-  IDProperty *prop;
-  for (prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
+  for (IDProperty *prop = (IDProperty *)properties->data.group.first; prop; prop = prop->next) {
     if (displayName_identifier == prop->name) {
       if (prop->type == IDP_STRING && prop->data.pointer) {
         prim.SetDisplayName(static_cast<char *>(prop->data.pointer));

@@ -506,12 +506,8 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
 
   assign_materials(context, usd_curves);
 
-  if (usd_export_context_.export_params.export_custom_properties && curves &&
-      curves->id.properties)
-  {
-    auto prim = usd_curves.GetPrim();
-    write_id_properties(prim, curves->id, timecode);
-  }
+  auto prim = usd_curves.GetPrim();
+  write_id_properties(prim, curves->id, timecode);
 }
 
 void USDCurvesWriter::assign_materials(const HierarchyContext &context,
