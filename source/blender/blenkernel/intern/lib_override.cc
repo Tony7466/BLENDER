@@ -5046,6 +5046,8 @@ void BKE_lib_override_library_update(Main *bmain, ID *local)
     }
   }
 
+  BKE_animdata_liboverride_post_process(local);
+
   if (local->override_library->storage) {
     /* We know this data-block is not used anywhere besides local->override->storage. */
     /* XXX For until we get fully shadow copies, we still need to ensure storage releases
