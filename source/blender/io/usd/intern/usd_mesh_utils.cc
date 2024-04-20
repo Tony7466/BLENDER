@@ -6,9 +6,12 @@
 #include "usd_hash_types.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_report.hh"
 
 #include "BLI_color.hh"
 #include "BLI_span.hh"
+
+#include "DNA_mesh_types.h"
 
 namespace blender::io::usd {
 
@@ -90,7 +93,7 @@ pxr::VtArray<T> get_prim_attribute_array(const pxr::UsdGeomPrimvar &primvar,
   if (!primvar.ComputeFlattened(&primvar_val, motionSampleTime)) {
     BKE_reportf(reports,
                 RPT_WARNING,
-                "Unable to get array values for primvar %s",
+                "USD Import: unable to get array values for primvar '%s'",
                 primvar.GetName().GetText());
     return array;
   }

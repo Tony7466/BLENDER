@@ -8,10 +8,16 @@
 #include "DNA_customdata_types.h"
 
 #include "usd.hh"
-#include "usd_reader_geom.hh"
+#include "DNA_customdata_types.h"
 
-#include <pxr/usd/sdf/types.h>
-#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/base/vt/array.h>
+#include <pxr/usd/sdf/valueTypeName.h>
+#include <pxr/usd/usdGeom/primvar.h>
+
+#include <optional>
+
+struct Mesh;
+struct ReportList;
 
 namespace blender::io::usd {
 
