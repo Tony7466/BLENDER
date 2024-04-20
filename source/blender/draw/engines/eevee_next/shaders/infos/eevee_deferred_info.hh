@@ -103,6 +103,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .sampler(5, ImageType::FLOAT_2D, "indirect_radiance_1_tx")
     .sampler(6, ImageType::FLOAT_2D, "indirect_radiance_2_tx")
     .sampler(7, ImageType::FLOAT_2D, "indirect_radiance_3_tx")
+    .image(5, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "radiance_feedback_img")
     .fragment_out(0, Type::VEC4, "out_combined")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -115,6 +116,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .specialization_constant(Type::BOOL, "render_pass_specular_light_enabled", true)
     .specialization_constant(Type::BOOL, "render_pass_normal_enabled", true)
     .specialization_constant(Type::BOOL, "use_combined_lightprobe_eval", false)
+    .specialization_constant(Type::BOOL, "use_radiance_feedback", false)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)

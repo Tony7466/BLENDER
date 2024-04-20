@@ -105,7 +105,7 @@ void main()
     hit.time = 10000.0;
   }
 
-  radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.raytrace.brightness_clamp);
+  radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.clamp.surface_indirect);
 
   imageStore(ray_time_img, texel, vec4(hit.time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));

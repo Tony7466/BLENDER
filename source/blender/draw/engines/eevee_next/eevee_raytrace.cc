@@ -386,7 +386,6 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
 
   /* Data for the radiance setup. */
-  data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
   data_.resolution_scale = resolution_scale;
   data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
   data_.radiance_persmat = screen_radiance_persmat;
@@ -512,7 +511,6 @@ RayTraceResultTexture RayTraceModule::trace(
 
   data_.thickness = options.screen_trace_thickness;
   data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
-  data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
 
   float roughness_mask_start = options.trace_max_roughness;
   float roughness_mask_fade = 0.2f;

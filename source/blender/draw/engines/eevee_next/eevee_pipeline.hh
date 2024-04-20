@@ -265,6 +265,7 @@ class DeferredLayer : DeferredLayerBase {
   float4x4 radiance_feedback_persmat_;
 
   bool use_combined_lightprobe_eval = true;
+  bool use_radiance_feedback = true;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};

@@ -7742,12 +7742,6 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "sample_clamp", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Clamp", "Clamp ray intensity to reduce noise (0 to disable)");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
   prop = RNA_def_property(srna, "screen_trace_thickness", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_ui_text(
       prop,
@@ -8030,6 +8024,51 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
                            "Jittered Shadows (Viewport)",
                            "Enable jittered shadows on the viewport. (Jittered shadows are always "
                            "enabled for final renders)");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  /* Clamping */
+  prop = RNA_def_property(srna, "clamp_surface_direct", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Surface Direct",
+                           "If non-zero, the maximum value for lights contribution on a surface. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light objects");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "clamp_surface_indirect", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Surface Indirect",
+                           "If non-zero, the maximum value for indirect lighting on surface. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by ray-tracing and light-probes");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "clamp_volume_direct", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Volume Direct",
+                           "If non-zero, the maximum value for lights contribution in volumes. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light objects");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "clamp_volume_indirect", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Volume Indirect",
+                           "If non-zero, the maximum value for indirect lighting in volumes. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light-probes");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Volumetrics */

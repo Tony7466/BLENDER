@@ -621,6 +621,7 @@ void DeferredLayer::end_sync()
                                "render_pass_specular_light_enabled",
                                (rbuf_data.specular_light_id != -1) ||
                                    (rbuf_data.specular_color_id != -1));
+      pass.specialize_constant(sh, "use_radiance_feedback", use_radiance_feedback);
       pass.specialize_constant(sh, "render_pass_normal_enabled", rbuf_data.normal_id != -1);
       pass.specialize_constant(sh, "use_combined_lightprobe_eval", use_combined_lightprobe_eval);
       pass.shader_set(sh);
@@ -636,6 +637,7 @@ void DeferredLayer::end_sync()
       pass.bind_texture("indirect_radiance_3_tx", &indirect_radiance_txs_[2]);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
+      pass.bind_image("radiance_feedback_img", &radiance_feedback_tx_);
       pass.bind_resources(inst_.gbuffer);
       pass.bind_resources(inst_.uniform_data);
       pass.barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -781,7 +783,6 @@ void DeferredLayer::render(View &main_view,
   }
 
   if (do_screen_space_reflection) {
-    GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
     radiance_feedback_persmat_ = render_view.persmat();
   }
 
