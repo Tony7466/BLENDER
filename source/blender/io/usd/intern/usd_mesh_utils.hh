@@ -8,7 +8,6 @@
 #include "DNA_customdata_types.h"
 
 #include "usd.hh"
-#include "DNA_customdata_types.h"
 
 #include <pxr/base/vt/array.h>
 #include <pxr/usd/sdf/valueTypeName.h>
