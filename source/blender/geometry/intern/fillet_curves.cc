@@ -31,7 +31,7 @@ static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_c
   });
 }
 
-static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curve,
+static void calculate_result_offsets(const OffsetIndices<int> curve_start_indices,
                                      const IndexMask &selection,
                                      const IndexMask &unselected,
                                      const VArray<float> &radii,
@@ -41,25 +41,33 @@ static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curv
                                      MutableSpan<int> dst_point_offsets)
 {
   /* Fill the offsets array with the curve point counts, then accumulate them to form offsets. */
-  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_curve_offsets);
+  offset_indices::copy_group_sizes(curve_start_indices, unselected, dst_curve_offsets);
   selection.foreach_index(GrainSize(512), [&](const int curve_i) {
-    const IndexRange src_points = src_points_by_curve[curve_i];
+    // This is the points representing a single curve in the curve list
+    const IndexRange src_points = curve_start_indices[curve_i];
+    // ??? [INSPECT] I don't understand this one
     const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                 curve_i);
 
+    // Get the mutable span of point offsets for the destination
     MutableSpan<int> point_offsets = dst_point_offsets.slice(offsets_range);
+    // The last elements is the total count of points in the curve
     MutableSpan<int> point_counts = point_offsets.drop_back(1);
 
+    // Copy the "counts" array into the "dst_point_offsets" array at the indices defined by
+    // "src_points_by_curve"
     counts.materialize_compressed(src_points, point_counts);
     for (int &count : point_counts) {
       /* Make sure the number of cuts is greater than zero and add one for the existing point. */
       count = std::max(count, 0) + 1;
     }
+
     if (!cyclic[curve_i]) {
       /* Endpoints on non-cyclic curves cannot be filleted. */
       point_counts.first() = 1;
       point_counts.last() = 1;
     }
+
     /* Implicitly "deselect" points with zero radius. */
     devirtualize_varray(radii, [&](const auto radii) {
       for (const int i : IndexRange(src_points.size())) {
@@ -341,6 +349,36 @@ static void calculate_bezier_handles_poly_mode(const Span<float3> src_handles_l,
   });
 }
 
+/** Print contents of span
+ */
+static void print_spanf(const Span<float> span)
+{
+  for (const int i : span.index_range()) {
+    printf("%f ", span[i]);
+  }
+  printf("\n");
+}
+
+/** Print contents of span
+ */
+static void print_span3f(const Span<float3> span)
+{
+  for (const int i : span.index_range()) {
+    printf("%f %f %f\n", span[i].x, span[i].y, span[i].z);
+  }
+  printf("\n");
+}
+
+/** Print contents of span
+ */
+static void print_spani(const Span<int> span)
+{
+  for (const int i : span.index_range()) {
+    printf("%d ", span[i]);
+  }
+  printf("\n");
+}
+
 static bke::CurvesGeometry fillet_curves(
     const bke::CurvesGeometry &src_curves,
     const IndexMask &curve_selection,
@@ -351,19 +389,25 @@ static bke::CurvesGeometry fillet_curves(
     const bool use_bezier_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
+  // This is the start index of every curve
+  const OffsetIndices curve_start_indices = src_curves.points_by_curve();
+  // This is the contiguous array of all positions available
   const Span<float3> positions = src_curves.positions();
+  // Info about each curve, whether it is cyclic or not
   const VArraySpan<bool> cyclic{src_curves.cyclic()};
+  // ?? What is an attribute in this context?
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
+  // ?? What kind of memory?
   IndexMaskMemory memory;
   const IndexMask unselected = curve_selection.complement(src_curves.curves_range(), memory);
 
+  // Create mostly un-initialized curve geometry
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
   /* Stores the offset of every result point for every original point.
    * The extra length is used in order to store an extra zero for every curve. */
   Array<int> dst_point_offsets(src_curves.points_num() + src_curves.curves_num());
   MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
-  calculate_result_offsets(src_points_by_curve,
+  calculate_result_offsets(curve_start_indices,
                            curve_selection,
                            unselected,
                            radius_input,
@@ -373,6 +417,12 @@ static bke::CurvesGeometry fillet_curves(
                            dst_point_offsets);
   const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
   const Span<int> all_point_offsets = dst_point_offsets.as_span();
+
+  printf("Destination Curve offests\n");
+  print_spani(dst_curve_offsets);
+
+  printf("Destination point offsets\n");
+  print_spani(all_point_offsets);
 
   const int dst_curve_size = dst_curve_offsets.last();
   dst_curves.resize(dst_curve_size, dst_curves.curves_num());
@@ -399,6 +449,13 @@ static bke::CurvesGeometry fillet_curves(
     dst_handles_r = dst_curves.handle_positions_right_for_write();
   }
 
+  MutableSpan<int> result_point_counts;
+  if (limit_radius && remove_duplicated_points) {
+    // All points will be given a count of 1 except for limit
+    result_point_counts = Array<int>(dst_curves.points_num() + dst_curves.curves_num());
+    result_point_counts.fill(1);
+  }
+
   curve_selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
     Array<float3> directions;
     Array<float> angles;
@@ -407,7 +464,7 @@ static bke::CurvesGeometry fillet_curves(
     Array<bool> is_duplicated_r;
 
     for (const int curve_i : segment) {
-      const IndexRange src_points = src_points_by_curve[curve_i];
+      const IndexRange src_points = curve_start_indices[curve_i];
       const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                   curve_i);
       const OffsetIndices<int> offsets(all_point_offsets.slice(offsets_range));
@@ -477,38 +534,65 @@ static bke::CurvesGeometry fillet_curves(
       }
 
       if (limit_radius && remove_duplicated_points) {
-        int i_r = 0;
+        // Get input counts for the curve
+        MutableSpan<int> result_point_counts_for_curve = result_point_counts.slice(offsets_range);
+
         int dst_i = 0;
-        bool elements_remain = true;
-        /* Skip all the duplicated right-side edges (odd-index) */
-        const int point_num = dst_positions.size();
-        for (; dst_i < point_num; dst_i++) {
-          elements_remain = i_r < point_num;
+        const int src_point_num = src_positions.size();
 
-          /* Data associated with left-edge is "skipped" on the next loop */
-          float3 handle_l = elements_remain ? dst_handles_l_write[i_r] : float3{0.0f, 0.0f, 0.0f};
-          int8_t type_l = elements_remain ? dst_types_l_write[i_r] : BEZIER_HANDLE_VECTOR;
+        bool skip_point = false;
+        for (int src_i = 0; src_i < src_point_num; src_i++) {
+          IndexRange dst_src_range = offsets[src_i];
+          const bool skip_last_point = is_duplicated_r[src_i];
+          printf("src_i: %d\n", src_i);
+          // Offset [0,3]
+          // Src: (0, 1, 2, 3, 4), (5, 6, 7)-> Drop 3
+          // Lef: (0, 1, 2, 3), (5, 6, 7)
+          // Rig: (0, 1, 2, 4), (5, 6, 7)
+          int dst_src_i_last = dst_src_range.last();
 
-          const bool remove_r = elements_remain && i_r % 2 == 1 && is_duplicated_r[i_r / 2];
-          if (remove_r) {
-            i_r++;
+          for (const int dst_src_i : dst_src_range) {
+            printf("dst_src_i: %d\n", dst_src_i);
+
+            if (!skip_point) {
+              /* Data associated with left-edge is "skipped" on the next loop */
+              float3 handle_l = dst_handles_l_write[dst_src_i];
+              int8_t type_l = dst_types_l_write[dst_src_i];
+
+              printf("dst_l: %d\n", dst_i);
+              dst_handles_l_write[dst_i] = handle_l;
+              dst_types_l_write[dst_i] = type_l;
+            }
+
+            bool is_last_point = dst_src_i == dst_src_i_last;
+            skip_point = skip_last_point && is_last_point;
+            if (!skip_point) {
+              printf("dst_r: %d\n", dst_i);
+              float3 pos = dst_positions_write[dst_src_i];
+              float3 handle_r = dst_handles_r_write[dst_src_i];
+              int8_t type_r = dst_types_r_write[dst_src_i];
+
+              dst_positions_write[dst_i] = pos;
+              dst_handles_r_write[dst_i] = handle_r;
+              dst_types_r_write[dst_i] = type_r;
+              dst_i++;
+            }
+            else {
+              printf("Skipping last point\n");
+            }
           }
-
-          float3 pos = elements_remain ? dst_positions_write[i_r] : float3{0.0f, 0.0f, 0.0f};
-          float3 handle_r = elements_remain ? dst_handles_r_write[i_r] : float3{0.0f, 0.0f, 0.0f};
-          int8_t type_r = elements_remain ? dst_types_r_write[i_r] : BEZIER_HANDLE_VECTOR;
-
-          dst_positions_write[dst_i] = pos;
-          dst_handles_l_write[dst_i] = handle_l;
-          dst_handles_r_write[dst_i] = handle_r;
-          dst_types_l_write[dst_i] = type_l;
-          dst_types_r_write[dst_i] = type_r;
-
-          i_r++;
         }
       }
     }
   });
+
+  if (limit_radius && remove_duplicated_points) {
+    // Temporary... figure out how to make a new set of destination curves based on what I now know
+    // CurvesGeometry dst_curves_2 = bke::curves::copy_only_curve_domain(src_curves);
+    // Copy unselected curve offsets
+    // OffsetIndices<int> offsets =
+    // offset_indices::accumulate_counts_to_offsets(result_point_counts);
+  }
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes,
@@ -517,7 +601,7 @@ static bke::CurvesGeometry fillet_curves(
            propagation_info,
            {"position", "handle_type_left", "handle_type_right", "handle_right", "handle_left"}))
   {
-    duplicate_fillet_point_data(src_points_by_curve,
+    duplicate_fillet_point_data(curve_start_indices,
                                 dst_points_by_curve,
                                 curve_selection,
                                 all_point_offsets,
@@ -530,7 +614,7 @@ static bke::CurvesGeometry fillet_curves(
                                       bke::AttrDomain::Point,
                                       propagation_info,
                                       {},
-                                      src_points_by_curve,
+                                      curve_start_indices,
                                       dst_points_by_curve,
                                       unselected,
                                       dst_attributes);
