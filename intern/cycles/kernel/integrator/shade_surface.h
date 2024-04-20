@@ -157,12 +157,12 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
       kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
 }
 
-ccl_device int integrate_surface_portal(KernelGlobals kg,
-                                        IntegratorState state,
-                                        ccl_private ShaderData *sd,
-                                        ccl_private const ShaderClosure *sc)
+ccl_device int integrate_surface_ray_portal(KernelGlobals kg,
+                                            IntegratorState state,
+                                            ccl_private ShaderData *sd,
+                                            ccl_private const ShaderClosure *sc)
 {
-  ccl_private const PortalClosure *pc = (ccl_private const PortalClosure *)sc;
+  ccl_private const RayPortalClosure *pc = (ccl_private const RayPortalClosure *)sc;
 
   float sum_sample_weight = 0.0f;
   for (int i = 0; i < sd->num_closure; i++) {
@@ -195,7 +195,7 @@ ccl_device int integrate_surface_portal(KernelGlobals kg,
   const float pick_pdf = pc->sample_weight / sum_sample_weight;
   INTEGRATOR_STATE_WRITE(state, path, throughput) *= pc->weight / pick_pdf;
 
-  int label = LABEL_TRANSMIT | LABEL_PORTAL;
+  int label = LABEL_TRANSMIT | LABEL_RAY_PORTAL;
   path_state_next(kg, state, label, sd->flag);
 
   return label;
@@ -465,8 +465,8 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     return subsurface_bounce(kg, state, sd, sc);
   }
 #endif
-  if (CLOSURE_IS_PORTAL(sc->type)) {
-    return integrate_surface_portal(kg, state, sd, sc);
+  if (CLOSURE_IS_RAY_PORTAL(sc->type)) {
+    return integrate_surface_ray_portal(kg, state, sd, sc);
   }
 
   /* BSDF closure, sample direction. */

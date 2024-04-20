@@ -561,9 +561,9 @@ class TransparentBsdfNode : public BsdfNode {
   }
 };
 
-class PortalBsdfNode : public BsdfNode {
+class RayPortalBsdfNode : public BsdfNode {
  public:
-  SHADER_NODE_CLASS(PortalBsdfNode)
+  SHADER_NODE_CLASS(RayPortalBsdfNode)
 
   NODE_SOCKET_API(float3, position)
   NODE_SOCKET_API(float3, direction)

@@ -221,7 +221,7 @@ class NODE_MT_category_shader_shader(Menu):
         )
         node_add_menu.add_node_type(
             layout,
-            "ShaderNodeBsdfPortal",
+            "ShaderNodeBsdfRayPortal",
             poll=object_not_eevee_shader_nodes_poll(context),
         )
         node_add_menu.add_node_type(

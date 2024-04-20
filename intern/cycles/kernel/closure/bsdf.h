@@ -13,7 +13,7 @@
 #include "kernel/closure/bsdf_microfacet.h"
 #include "kernel/closure/bsdf_sheen.h"
 #include "kernel/closure/bsdf_transparent.h"
-#include "kernel/closure/bsdf_portal.h"
+#include "kernel/closure/bsdf_ray_portal.h"
 #include "kernel/closure/bsdf_ashikhmin_shirley.h"
 #include "kernel/closure/bsdf_toon.h"
 #include "kernel/closure/bsdf_hair.h"
@@ -161,8 +161,8 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       *sampled_roughness = zero_float2();
       *eta = 1.0f;
       break;
-    case CLOSURE_BSDF_PORTAL_ID:
-      /* portals are not handled by the BSDF code, we should never get here */
+    case CLOSURE_BSDF_RAY_PORTAL_ID:
+      /* ray portals are not handled by the BSDF code, we should never get here */
       kernel_assert(false);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
@@ -297,7 +297,7 @@ ccl_device_inline void bsdf_roughness_eta(const KernelGlobals kg,
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_TRANSPARENT_ID:
-    case CLOSURE_BSDF_PORTAL_ID:
+    case CLOSURE_BSDF_RAY_PORTAL_ID:
       *roughness = zero_float2();
       *eta = 1.0f;
       break;
@@ -398,8 +398,8 @@ ccl_device_inline int bsdf_label(const KernelGlobals kg,
     case CLOSURE_BSDF_TRANSPARENT_ID:
       label = LABEL_TRANSMIT | LABEL_TRANSPARENT;
       break;
-    case CLOSURE_BSDF_PORTAL_ID:
-      label = LABEL_TRANSMIT | LABEL_PORTAL;
+    case CLOSURE_BSDF_RAY_PORTAL_ID:
+      label = LABEL_TRANSMIT | LABEL_RAY_PORTAL;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_ID:
@@ -500,8 +500,8 @@ ccl_device_inline
     case CLOSURE_BSDF_TRANSPARENT_ID:
       eval = bsdf_transparent_eval(sc, sd->wi, wo, pdf);
       break;
-    case CLOSURE_BSDF_PORTAL_ID:
-      eval = bsdf_portal_eval(sc, sd->wi, wo, pdf);
+    case CLOSURE_BSDF_RAY_PORTAL_ID:
+      eval = bsdf_ray_portal_eval(sc, sd->wi, wo, pdf);
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:

@@ -947,7 +947,7 @@ ccl_device Spectrum surface_shader_transparency(KernelGlobals kg, ccl_private co
   if (sd->flag & SD_HAS_ONLY_VOLUME) {
     return one_spectrum();
   }
-  else if (sd->flag & (SD_TRANSPARENT | SD_PORTAL)) {
+  else if (sd->flag & (SD_TRANSPARENT | SD_RAY_PORTAL)) {
     return sd->closure_transparent_extinction;
   }
   else {

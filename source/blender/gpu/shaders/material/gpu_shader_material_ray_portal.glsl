@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-void node_bsdf_portal(vec4 color, vec3 position, vec3 direction, float weight, out Closure result)
+void node_bsdf_ray_portal(vec4 color, vec3 position, vec3 direction, float weight, out Closure result)
 {
   ClosureTransparency transparency_data;
   transparency_data.weight = weight;

@@ -2872,11 +2872,11 @@ void TransparentBsdfNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_transparent_bsdf");
 }
 
-/* Portal BSDF Closure */
+/* Ray Portal BSDF Closure */
 
-NODE_DEFINE(PortalBsdfNode)
+NODE_DEFINE(RayPortalBsdfNode)
 {
-  NodeType *type = NodeType::add("portal_bsdf", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("ray_portal_bsdf", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Color", one_float3());
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
@@ -2889,19 +2889,19 @@ NODE_DEFINE(PortalBsdfNode)
   return type;
 }
 
-PortalBsdfNode::PortalBsdfNode() : BsdfNode(get_node_type())
+RayPortalBsdfNode::RayPortalBsdfNode() : BsdfNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_PORTAL_ID;
+  closure = CLOSURE_BSDF_RAY_PORTAL_ID;
 }
 
-void PortalBsdfNode::compile(SVMCompiler &compiler)
+void RayPortalBsdfNode::compile(SVMCompiler &compiler)
 {
   BsdfNode::compile(compiler, NULL, NULL, input("Position"), input("Direction"));
 }
 
-void PortalBsdfNode::compile(OSLCompiler &compiler)
+void RayPortalBsdfNode::compile(OSLCompiler &compiler)
 {
-  compiler.add(this, "node_portal_bsdf");
+  compiler.add(this, "node_ray_portal_bsdf");
 }
 
 /* Subsurface Scattering Closure */
