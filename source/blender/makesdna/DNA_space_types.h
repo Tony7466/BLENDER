@@ -1211,7 +1211,7 @@ enum {
 
 typedef struct SpaceImageOverlay {
   int flag;
-  char _pad[4];
+  float passepartout_alpha;
 } SpaceImageOverlay;
 
 typedef enum eSpaceImage_GridShapeSource {
@@ -1271,9 +1271,6 @@ typedef struct SpaceImage {
   char _pad1[6];
 
   int flag;
-
-  float passepartout_alpha;  // todo: maybe move to SpaceImageOverlay
-  char _pad2[4];
 
   float uv_opacity;
 
@@ -1365,14 +1362,13 @@ typedef enum eSpaceImage_Flag {
   SI_SHOW_B = (1 << 29),
 
   SI_GRID_OVER_IMAGE = (1 << 30),
-
-  SI_DRAW_RENDER_SIZE = (1 << 31),
-  SI_DRAW_COM_DOMAIN_SIZE = (1 << 24),
 } eSpaceImage_Flag;
 
 typedef enum eSpaceImageOverlay_Flag {
   SI_OVERLAY_SHOW_OVERLAYS = (1 << 0),
   SI_OVERLAY_SHOW_GRID_BACKGROUND = (1 << 1),
+  SI_OVERLAY_DRAW_RENDER_SIZE = (1 << 2),
+  SI_OVERLAY_DRAW_COM_DOMAIN_SIZE = (1 << 3),
 } eSpaceImageOverlay_Flag;
 
 /** #SpaceImage.gizmo_flag */

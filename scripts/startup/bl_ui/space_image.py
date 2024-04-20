@@ -1727,13 +1727,13 @@ class IMAGE_PT_overlay_render(Panel):
         layout.active = overlay.show_overlays
 
         row = layout.row(align=True)
-        row.prop(uvedit, "show_render_size")
+        row.prop(overlay, "show_render_size")
         subrow = row.row()
-        subrow.active = uvedit.show_render_size
-        subrow.prop(uvedit, "passepartout_alpha", text="Passepartout")
+        subrow.active = overlay.show_render_size
+        subrow.prop(overlay, "passepartout_alpha", text="Passepartout")
 
         row = layout.row(align=True)
-        layout.prop(uvedit, "show_domain_size")
+        layout.prop(overlay, "show_domain_size")
 
 
 # Grease Pencil properties

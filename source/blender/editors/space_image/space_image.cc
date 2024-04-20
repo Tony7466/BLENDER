@@ -680,7 +680,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     ED_space_image_release_buffer(sima, ibuf, lock);
   }
 
-  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS && sima->flag & SI_DRAW_RENDER_SIZE) {
+  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
+      sima->overlay.flag & SI_OVERLAY_DRAW_RENDER_SIZE)
+  {
     const int render_size_x = scene->r.xsch * scene->r.size * 0.01f;
     const int render_size_y = scene->r.ysch * scene->r.size * 0.01f;
 
@@ -710,11 +712,13 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                                      zoomx,
                                      zoomy,
                                      true,
-                                     sima->passepartout_alpha,
+                                     sima->overlay.passepartout_alpha,
                                      &region_size);
   }
 
-  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS && sima->flag & SI_DRAW_COM_DOMAIN_SIZE) {
+  if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
+      sima->overlay.flag & SI_OVERLAY_DRAW_COM_DOMAIN_SIZE)
+  {
 
     float zoomx, zoomy;
     ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
