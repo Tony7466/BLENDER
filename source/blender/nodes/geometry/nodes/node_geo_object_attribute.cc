@@ -77,6 +77,9 @@ static std::any get_attribute_value(PointerRNA *ptr, PropertyRNA *prop)
       }
       return (bool)RNA_property_boolean_get(ptr, prop);
     }
+    case PROP_ENUM: {
+      return (int)RNA_property_enum_get(ptr, prop);
+    }
     default: {
       return 0.0f;
     }
@@ -91,6 +94,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Object>("Object");
   b.add_input<decl::String>("Name");
 
+  // b.add_output<decl::Object>("Object");
   if (node != nullptr) {
     const GeometryNodeObjectAttribute &storage = node_storage(*node);
     const eCustomDataType data_type = eCustomDataType(storage.data_type);
@@ -133,6 +137,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   std::any value;
   PointerRNA ptr;
   PropertyRNA *property;
+
   if (RNA_path_resolve_property(
           get_object_type_rna_pointer(object), name.c_str(), &ptr, &property) ||
       RNA_path_resolve_property(&object_ptr, name.c_str(), &ptr, &property))
@@ -155,7 +160,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     else if (value_type == typeid(float4x4)) {
       params.set_output("Value", std::any_cast<float4x4>(value));
     }
-    else {
+    else if (value_type == typeid(float)) {
       params.set_output<float>("Value", std::any_cast<float>(value));
     }
   }
