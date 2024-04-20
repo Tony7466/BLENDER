@@ -423,10 +423,6 @@ static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
     const GSpan attrs_span_a = attrs_a.varray.get_internal_span();
     const GSpan attrs_span_b = attrs_b.varray.get_internal_span();
 
-    if (attrs_span_a.size() != attrs_span_b.size()) {
-      return false;
-    }
-
     if (attrs_span_a.data() == attrs_span_b.data()) {
       return true;
     }
