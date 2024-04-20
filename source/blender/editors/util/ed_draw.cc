@@ -875,6 +875,7 @@ void ED_region_image_render_size_draw(const char *title,
   }
 
   const uiStyle *style = UI_style_get_dpi();
+  /* Use a fixed text size that works well for 1k-4k images. */
   BLF_size(blf_mono_font, style->widgetlabel.points * UI_SCALE_FAC * 3);
   UI_FontThemeColor(blf_mono_font, TH_METADATA_TEXT);
   char temp_str[MAX_METADATA_STR];
