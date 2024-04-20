@@ -516,11 +516,7 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
     const Span<FramesMapKey> &keys = layer->sorted_keys();
     Vector<FramesMapKey> frames_to_delete = {};
 
-    for (size_t i = 0; i < keys.size(); ++i) {
-      if (i + 1 >= keys.size()) {
-        break;
-      }
-
+    for (const int i : keys.index_range().drop_back(1)) {
       const FramesMapKey current = keys[i];
       const FramesMapKey next = keys[i + 1];
 
