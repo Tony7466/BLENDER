@@ -42,6 +42,21 @@ vec4 colorspace_scene_linear_from_YCoCg(vec4 ycocg_color)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Hyperbolic space
+ *
+ * Allow non linear accumulations that reduces flickering.
+ * Slide 20 of "High Quality Temporal Supersampling" by Brian Karis at SIGGRAPH 2014.
+ * To preserve more details in dark areas, we use a bigger bias (4 instead of 1).
+ * \{ */
+
+float colorspace_hyperbolic_from_scene_linear(float value)
+{
+  return 1.0 / (4.0 + value);
+}
+
+/** \} */
+
 /**
  * Clamp components to avoid black square artifacts if a pixel goes NaN or negative.
  * Threshold is arbitrary.

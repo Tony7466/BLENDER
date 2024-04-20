@@ -56,6 +56,35 @@ vec3 volume_scatter_light_eval(
 
 #endif
 
+float luma_weight(vec3 YCoCg_color)
+{
+  float exposure = uniform_buf.film.exposure_scale;
+  return colorspace_hyperbolic_from_scene_linear(YCoCg_color.x * exposure);
+}
+
+void volume_history_blend(vec3 uvw_history, inout vec3 scattering, inout vec3 extinction)
+{
+  vec3 scattering_history = texture(scattering_history_tx, uvw_history).rgb;
+  vec3 extinction_history = texture(extinction_history_tx, uvw_history).rgb;
+
+  /* Similar to film accumulation when using reprojection, use luma weighted blend in YCoCg space
+   * to reduce flickering. The difference is that we do not clamp to the neighborhood Bounding box
+   * as it would be very costly. */
+  scattering = colorspace_YCoCg_from_scene_linear(scattering);
+  scattering_history = colorspace_YCoCg_from_scene_linear(scattering_history);
+
+  float blend = uniform_buf.volumes.history_opacity;
+  float weight_src = luma_weight(scattering.x) * (blend);
+  float weight_dst = luma_weight(scattering_history.x) * (1.0 - blend);
+  float weight_sum = weight_src + weight_dst;
+  scattering = (scattering * weight_src + scattering_history * weight_dst) * safe_rcp(weight_sum);
+
+  scattering = colorspace_scene_linear_from_YCoCg(scattering);
+
+  /* Extinction doesn't produce flicker. Do simple blend. */
+  extinction = mix(extinction, extinction_history, blend);
+}
+
 void main()
 {
   ivec3 froxel = ivec3(gl_GlobalInvocationID);
@@ -106,10 +135,7 @@ void main()
     /* Temporal reprojection. */
     vec3 uvw_history = volume_history_uvw_get(froxel);
     if (uvw_history.x != -1.0) {
-      vec3 scattering_history = texture(scattering_history_tx, uvw_history).rgb;
-      vec3 extinction_history = texture(extinction_history_tx, uvw_history).rgb;
-      scattering = mix(scattering, scattering_history, uniform_buf.volumes.history_opacity);
-      extinction = mix(extinction, extinction_history, uniform_buf.volumes.history_opacity);
+      volume_history_blend(uvw_history, scattering, extinction);
     }
   }
 

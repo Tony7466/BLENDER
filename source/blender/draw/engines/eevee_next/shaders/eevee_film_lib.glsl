@@ -37,9 +37,7 @@ vec4 film_texelfetch_as_YCoCg_opacity(sampler2D tx, ivec2 texel)
 /* Returns a weight based on Luma to reduce the flickering introduced by high energy pixels. */
 float film_luma_weight(float luma)
 {
-  /* Slide 20 of "High Quality Temporal Supersampling" by Brian Karis at SIGGRAPH 2014. */
-  /* To preserve more details in dark areas, we use a bigger bias. */
-  return 1.0 / (4.0 + luma * uniform_buf.film.exposure_scale);
+  return colorspace_hyperbolic_from_scene_linear(luma * uniform_buf.film.exposure_scale);
 }
 
 /* -------------------------------------------------------------------- */
