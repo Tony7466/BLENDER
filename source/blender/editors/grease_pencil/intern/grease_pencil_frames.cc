@@ -521,8 +521,8 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         break;
       }
 
-      FramesMapKey current = keys[i];
-      FramesMapKey next = keys[i + 1];
+      const FramesMapKey current = keys[i];
+      const FramesMapKey next = keys[i + 1];
 
       GreasePencilFrame frame = layer->frames().lookup(current);
 
