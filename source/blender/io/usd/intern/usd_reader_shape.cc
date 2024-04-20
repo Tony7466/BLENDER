@@ -13,9 +13,9 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "usd_reader_shape.hh"
 #include "usd_hash_types.hh"
 #include "usd_mesh_utils.hh"
+#include "usd_reader_shape.hh"
 
 #include <pxr/usd/usdGeom/capsule.h>
 #include <pxr/usd/usdGeom/cone.h>
@@ -143,8 +143,7 @@ Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
   }
 
   /* Should have a good set of data by this point-- copy over. */
-  Mesh *active_mesh = mesh_from_prim(
-      existing_mesh, params, face_indices, face_counts);
+  Mesh *active_mesh = mesh_from_prim(existing_mesh, params, face_indices, face_counts);
 
   if (active_mesh == existing_mesh) {
     return existing_mesh;

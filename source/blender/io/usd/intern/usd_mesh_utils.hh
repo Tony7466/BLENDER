@@ -29,4 +29,4 @@ void read_color_data_primvar(Mesh *mesh,
                              ReportList *reports,
                              bool is_left_handed);
 
-} // namespace blender::io::usd
+}  // namespace blender::io::usd

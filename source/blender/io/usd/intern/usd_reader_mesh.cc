@@ -159,7 +159,6 @@ USDMeshReader::USDMeshReader(const pxr::UsdPrim &prim,
 {
 }
 
-
 static const std::optional<bke::AttrDomain> convert_usd_varying_to_blender(
     const pxr::TfToken usd_domain, ReportList *reports)
 {
