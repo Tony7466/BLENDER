@@ -487,15 +487,15 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
       return false;
     }
 
-    bool attrs_equal = true;
+    bool attributes_are_equal = true;
 
     attribute_math::convert_to_static_type(attrs_a.varray.type(), [&](auto dummy) {
       using T = decltype(dummy);
 
-      attrs_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
+      attributes_are_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
     });
 
-    if (!attrs_equal) {
+    if (!attributes_are_equal) {
       return false;
     }
   }
