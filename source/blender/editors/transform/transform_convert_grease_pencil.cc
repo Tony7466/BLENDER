@@ -106,30 +106,19 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         value_attribute = opacities;
       }
 
-      if (use_proportional_edit) {
-        const IndexMask affected_strokes = ed::greasepencil::retrieve_editable_strokes(
-            *object, info.drawing, memory);
-        curve_populate_trans_data_structs(tc,
-                                          curves,
-                                          layer_space_to_world_space,
-                                          value_attribute,
-                                          points,
-                                          true,
-                                          affected_strokes,
-                                          use_connected_only,
-                                          layer_points_offset);
-      }
-      else {
-        curve_populate_trans_data_structs(tc,
-                                          curves,
-                                          layer_space_to_world_space,
-                                          value_attribute,
-                                          points,
-                                          false,
-                                          {},
-                                          use_connected_only,
-                                          layer_points_offset);
-      }
+      const IndexMask affected_strokes = use_proportional_edit ?
+                                             ed::greasepencil::retrieve_editable_strokes(
+                                                 *object, info.drawing, memory) :
+                                             IndexMask();
+      curve_populate_trans_data_structs(tc,
+                                        curves,
+                                        layer_space_to_world_space,
+                                        value_attribute,
+                                        points,
+                                        use_proportional_edit,
+                                        affected_strokes,
+                                        use_connected_only,
+                                        layer_points_offset);
 
       layer_points_offset += points.size();
       layer_offset++;
