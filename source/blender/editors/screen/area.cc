@@ -855,7 +855,7 @@ static void ed_workspace_status_item(WorkSpace *workspace,
   workspace->runtime->status.append(item);
 }
 
-static void ed_workspace_status_space(WorkSpace *workspace, const float space_factor)
+static void ed_workspace_status_space(WorkSpace *workspace, float space_factor)
 {
   ed_workspace_status_item(workspace, {}, ICON_NONE, space_factor);
 }
@@ -874,60 +874,72 @@ WorkspaceStatus::~WorkspaceStatus()
   ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C_), CTX_wm_screen(C_)));
 };
 
-void WorkspaceStatus::item(const std::string text, const int icon1, const int icon2)
+/* Private helper functions to help ensure consistant spacing. */
+
+#define STATUS_AFTER_TEXT 0.7f
+#define STATUS_BEFORE_TEXT 0.3f
+#define STATUS_MOUSE_ICON_ADJUSTMENT -0.7f
+
+static void ed_workspace_status_text_item(WorkSpace *workspace, const std::string text)
 {
-  if (icon1) {
-    ed_workspace_status_item(workspace_, {}, icon1);
-  }
-  if (icon2) {
-    ed_workspace_status_item(workspace_, {}, icon2);
-  }
   if (!text.empty()) {
-    ed_workspace_status_item(workspace_, text, ICON_NONE);
-    ed_workspace_status_space(workspace_, 0.7f);
+    ed_workspace_status_space(workspace, STATUS_BEFORE_TEXT);
+    ed_workspace_status_item(workspace, text, ICON_NONE);
+    ed_workspace_status_space(workspace, STATUS_AFTER_TEXT);
   }
 }
 
-void WorkspaceStatus::range(const std::string text, const int icon1, const int icon2)
+static void ed_workspace_status_mouse_item(WorkSpace *workspace, int icon, bool inverted = false)
+{
+  if (icon) {
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB_DRAG) {
+      /* Negative space before all narrow mice icons. */
+      ed_workspace_status_space(workspace, STATUS_MOUSE_ICON_ADJUSTMENT);
+    }
+    ed_workspace_status_item(workspace, {}, icon, 0.0f, inverted);
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
+      /* Negative space after non-drag mice icons. */
+      ed_workspace_status_space(workspace, STATUS_MOUSE_ICON_ADJUSTMENT);
+    }
+  }
+}
+
+#undef STATUS_AFTER_TEXT
+#undef STATUS_BEFORE_TEXT
+#undef STATUS_MOUSE_ICON_ADJUSTMENT
+
+/* Public functions. */
+
+void WorkspaceStatus::item(std::string text, int icon1, int icon2)
+{
+  ed_workspace_status_mouse_item(workspace_, icon1);
+  ed_workspace_status_mouse_item(workspace_, icon2);
+  ed_workspace_status_text_item(workspace_, text);
+}
+
+void WorkspaceStatus::range(std::string text, int icon1, int icon2)
 {
   ed_workspace_status_item(workspace_, {}, icon1);
   ed_workspace_status_item(workspace_, "-", ICON_NONE);
   ed_workspace_status_space(workspace_, -0.5f);
   ed_workspace_status_item(workspace_, {}, icon2);
-  ed_workspace_status_space(workspace_, 0.4f);
-  ed_workspace_status_item(workspace_, text, ICON_NONE);
-  ed_workspace_status_space(workspace_, 0.7f);
+  ed_workspace_status_text_item(workspace_, text);
 }
 
-void WorkspaceStatus::item_bool(std::string text,
-                                const bool enabled,
-                                const int icon1,
-                                const int icon2)
+void WorkspaceStatus::item_bool(std::string text, bool enabled, int icon1, int icon2)
 {
-  if (icon1) {
-    ed_workspace_status_item(workspace_, {}, icon1, 0.0f, enabled);
-  }
-  if (icon2) {
-    ed_workspace_status_item(workspace_, {}, icon2, 0.0f, enabled);
-  }
-  if (icon1 || icon2) {
-    ed_workspace_status_space(workspace_, 0.4f);
-  }
-  ed_workspace_status_item(workspace_, text, ICON_NONE, 0.0f, enabled);
-  ed_workspace_status_space(workspace_, 0.7f);
+  ed_workspace_status_mouse_item(workspace_, icon1, enabled);
+  ed_workspace_status_mouse_item(workspace_, icon2, enabled);
+  ed_workspace_status_text_item(workspace_, text);
 }
 
-void WorkspaceStatus::opmodal(const std::string text,
-                              wmOperatorType *ot,
-                              const int propvalue,
-                              bool inverted)
+void WorkspaceStatus::opmodal(std::string text, wmOperatorType *ot, int propvalue, bool inverted)
 {
   wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C_), ot->modalkeymap);
   if (keymap) {
     const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
     if (kmi) {
       int icon = UI_icon_from_event_type(kmi->type, kmi->val);
-
       if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
         ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT, 0.0f, inverted);
       }
@@ -940,32 +952,14 @@ void WorkspaceStatus::opmodal(const std::string text,
       if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
         ed_workspace_status_item(workspace_, {}, ICON_EVENT_OS, 0.0f, inverted);
       }
-
       if (kmi->val == KM_DBL_CLICK) {
         ed_workspace_status_item(workspace_, "2" BLI_STR_UTF8_MULTIPLICATION_SIGN, ICON_NONE);
-        ed_workspace_status_space(workspace_, -1.2f);
+        ed_workspace_status_space(workspace_, -0.5f);
       }
-
-      if (icon) {
-        ed_workspace_status_item(workspace_, {}, icon, 0.0f, inverted);
-        if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-          ed_workspace_status_space(workspace_, 0.4f);
-        }
-      }
-      if (!text.empty()) {
-        ed_workspace_status_item(workspace_, text, ICON_NONE);
-        ed_workspace_status_space(workspace_, 0.7f);
-      }
+      ed_workspace_status_mouse_item(workspace_, icon, inverted);
+      ed_workspace_status_text_item(workspace_, text);
     }
   }
-}
-
-void WorkspaceStatus::opmodal_bool(std::string text,
-                                   wmOperatorType *ot,
-                                   const int propvalue,
-                                   const bool enabled)
-{
-  this->opmodal(text, ot, propvalue, enabled);
 }
 
 void ED_workspace_status_text(bContext *C, const char *str)
