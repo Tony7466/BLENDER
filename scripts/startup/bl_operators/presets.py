@@ -541,7 +541,8 @@ class AddPresetEEVEERaytracing(AddPresetBase, Operator):
     preset_values = [
         "eevee.ray_tracing_method",
         "options.resolution_scale",
-        "options.screen_trace_max_roughness",
+        "options.sample_clamp",
+        "options.trace_max_roughness",
         "options.screen_trace_quality",
         "options.screen_trace_thickness",
         "options.use_denoise",
