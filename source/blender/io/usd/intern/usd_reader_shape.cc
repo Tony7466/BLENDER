@@ -14,6 +14,7 @@
 #include "DNA_windowmanager_types.h"
 
 #include "usd_reader_shape.hh"
+#include "usd_hash_types.hh"
 #include "usd_mesh_utils.hh"
 
 #include <pxr/usd/usdGeom/capsule.h>
@@ -143,12 +144,11 @@ Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
 
   /* Should have a good set of data by this point-- copy over. */
   Mesh *active_mesh = mesh_from_prim(
-      existing_mesh, params.motion_sample_time, face_indices, face_counts);
+      existing_mesh, params, face_indices, face_counts);
+
   if (active_mesh == existing_mesh) {
     return existing_mesh;
   }
-
-  apply_primvars_to_mesh(active_mesh, params.motion_sample_time);
 
   MutableSpan<int> face_offsets = active_mesh->face_offsets_for_write();
   for (const int i : IndexRange(active_mesh->faces_num)) {
@@ -180,10 +180,10 @@ void USDShapeReader::read_geometry(bke::GeometrySet &geometry_set,
   }
 }
 
-void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampleTime)
+void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampleTime) const
 {
   /* TODO: also handle the displayOpacity primvar. */
-  if (!mesh || !prim_ || !(import_params_.mesh_read_flag & MOD_MESHSEQ_READ_COLOR)) {
+  if (!mesh || !prim_) {
     return;
   }
 
@@ -208,6 +208,12 @@ void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampl
     }
 
     const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+
+    /* Skip reading primvars that have been read before and are not time varying. */
+    if (primvar_time_varying_map_.contains(name) && !primvar_time_varying_map_.lookup(name)) {
+      continue;
+    }
+
     const pxr::SdfValueTypeName sdf_type = pv.GetTypeName();
 
     const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type, reports());
@@ -220,6 +226,11 @@ void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampl
       }
 
       read_color_data_primvar(mesh, pv, motionSampleTime, reports(), false);
+
+      /* Record whether the primvar attribute might be time varying. */
+      if (!primvar_time_varying_map_.contains(name)) {
+        primvar_time_varying_map_.add(name, pv.ValueMightBeTimeVarying());
+      }
     }
   }
 
@@ -230,13 +241,13 @@ void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampl
 }
 
 Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
-                                     double motionSampleTime,
+                                     const USDMeshReadParams params,
                                      pxr::VtIntArray &face_indices,
                                      pxr::VtIntArray &face_counts) const
 {
   pxr::VtVec3fArray positions;
 
-  if (!read_mesh_values(motionSampleTime, positions, face_indices, face_counts)) {
+  if (!read_mesh_values(params.motion_sample_time, positions, face_indices, face_counts)) {
     return existing_mesh;
   }
 
@@ -262,11 +273,25 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
     vert_positions[i][2] = positions[i][2];
   }
 
+  if (params.read_flags & MOD_MESHSEQ_READ_COLOR) {
+    if (active_mesh != existing_mesh) {
+      /* Clear the primvar map to force attributes to be reloaded. */
+      this->primvar_time_varying_map_.clear();
+    }
+    apply_primvars_to_mesh(active_mesh, params.motion_sample_time);
+  }
+
   return active_mesh;
 }
 
 bool USDShapeReader::is_time_varying()
 {
+  for (const bool animating_flag : primvar_time_varying_map_.values()) {
+    if (animating_flag) {
+      return true;
+    }
+  }
+
   if (prim_.IsA<pxr::UsdGeomCapsule>()) {
     pxr::UsdGeomCapsule geom(prim_);
     return (geom.GetAxisAttr().ValueMightBeTimeVarying() ||
