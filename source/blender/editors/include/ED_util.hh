@@ -64,15 +64,18 @@ void ED_region_draw_mouse_line_cb(const bContext *C, ARegion *region, void *arg_
 void ED_region_image_metadata_draw(
     int x, int y, ImBuf *ibuf, const rctf *frame, float zoomx, float zoomy);
 
+enum OverlayTextPosition {
+  UPPER_LEFT = 0,
+  UPPER_RIGHT = 1,
+};
 void ED_region_image_render_size_draw(const char *title,
+                                      OverlayTextPosition text_position,
                                       int x,
                                       int y,
                                       const rcti *frame,
                                       float zoomx,
                                       float zoomy,
-                                      bool draw_inside,
-                                      float passepartout_alpha,
-                                      const rcti *region_size);
+                                      float passepartout_alpha);
 
 /* Slider */
 

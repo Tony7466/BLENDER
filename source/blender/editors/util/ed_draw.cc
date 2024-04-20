@@ -837,14 +837,13 @@ static float metadata_box_height_get(ImBuf *ibuf, int fontid, const bool is_top)
 }
 
 void ED_region_image_render_size_draw(const char *title,
+                                      OverlayTextPosition text_position,
                                       int x,
                                       int y,
                                       const rcti *frame,
                                       float zoomx,
                                       float zoomy,
-                                      bool upper_left,
-                                      float passepartout_alpha,
-                                      const rcti *region_size)
+                                      float passepartout_alpha)
 {
   /* find window pixel coordinates of origin */
   GPU_matrix_push();
@@ -867,9 +866,8 @@ void ED_region_image_render_size_draw(const char *title,
   float y2 = frame->ymax - frame_height / 2;
 
   if (passepartout_alpha > 0) {
-
+    /* Darken the area outside the render size. */
     immUniformColor4f(0, 0, 0, passepartout_alpha);
-    // todo: compute limits from region_size instead?
     immRectf(pos, -100000, y2, 100000, 100000);
     immRectf(pos, -100000, y1, 100000, -100000);
     immRectf(pos, -100000, y1, x1, y2);
@@ -882,17 +880,27 @@ void ED_region_image_render_size_draw(const char *title,
   char temp_str[MAX_METADATA_STR];
   SNPRINTF(temp_str, "%s: %dx%d", title, frame_width, frame_height);
 
-  if (upper_left) {
-    BLF_position(
-        blf_mono_font, frame->xmin - frame_width / 2, frame->ymax - frame_height / 2, 0.0f);
+  switch (text_position) {
+    case OverlayTextPosition::UPPER_LEFT: {
+      BLF_position(
+          blf_mono_font, frame->xmin - frame_width / 2, frame->ymax - frame_height / 2, 0.0f);
+      break;
+    }
+
+    case OverlayTextPosition::UPPER_RIGHT: {
+      int font_width = BLF_width(blf_mono_font, temp_str, sizeof(temp_str));
+      BLF_position(blf_mono_font,
+                   frame->xmax - frame_width / 2 - font_width,
+                   frame->ymax - frame_height / 2,
+                   0.0f);
+      break;
+    }
+    default: {
+      BLI_assert_msg(false, "Unknown text position.");
+      break;
+    }
   }
-  else {
-    int font_width = BLF_width(blf_mono_font, temp_str, sizeof(temp_str));
-    BLF_position(blf_mono_font,
-                 frame->xmax - frame_width / 2 - font_width,
-                 frame->ymax - frame_height / 2,
-                 0.0f);
-  }
+
   BLF_draw(blf_mono_font, temp_str, sizeof(temp_str));
 
   float wire_color[3];

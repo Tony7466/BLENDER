@@ -702,18 +702,14 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                   render_size_y + center_y);
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
 
-    rcti region_size;
-    UI_view2d_view_to_region_rcti_clip(&region->v2d, &region->v2d.cur, &region_size);
-
     ED_region_image_render_size_draw("Render Size",
+                                     OverlayTextPosition::UPPER_LEFT,
                                      x,
                                      y,
                                      &render_region,
                                      zoomx,
                                      zoomy,
-                                     true,
-                                     sima->overlay.passepartout_alpha,
-                                     &region_size);
+                                     sima->overlay.passepartout_alpha);
   }
 
   if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
@@ -740,7 +736,7 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     int x, y;
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
     ED_region_image_render_size_draw(
-        "Domain Size", x, y, &domain_region, zoomx, zoomy, false, 0.0f, nullptr);
+        "Domain Size", OverlayTextPosition::UPPER_RIGHT, x, y, &domain_region, zoomx, zoomy, 0.0f);
   }
 
   /* sample line */
