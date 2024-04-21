@@ -35,20 +35,6 @@ struct TLS {
   Vector<float3> translations;
 };
 
-/**
- * Note on the various positions arrays:
- * - positions_sculpt: The positions affected by brush strokes (maybe indirectly). Owned by the
- *   PBVH or mesh.
- * - positions_mesh: Positions owned by the original mesh. Not the same as `positions_sculpt` if
- *   there are deform modifiers.
- * - positions_eval: Positions after procedural deformation, used to build the PBVH. Translations
- *   are built for these values, then applied to `positions_sculpt`.
- *
- * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
- * currently stores its own copy of positions when there are deformations. If that was removed, the
- * situation would be clearer.
- */
-
 static void calc_faces(const Sculpt &sd,
                        const Brush &brush,
                        const float3 &offset,

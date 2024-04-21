@@ -2070,6 +2070,7 @@ inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttrib
   if (attr->data) {
     char *p = (char *)attr->data;
     int idx = (int)vertex.i;
+
     if (attr->data_for_bmesh) {
       BMElem *v = (BMElem *)vertex.i;
       idx = v->head.index;
@@ -2086,6 +2087,38 @@ inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttrib
 }
 
 namespace blender::ed::sculpt_paint {
+
+/**
+ * Note on the various positions arrays:
+ * - positions_sculpt: The positions affected by brush strokes (maybe indirectly). Owned by the
+ *   PBVH or mesh.
+ * - positions_mesh: Positions owned by the original mesh. Not the same as `positions_sculpt` if
+ *   there are deform modifiers.
+ * - positions_eval: Positions after procedural deformation, used to build the PBVH. Translations
+ *   are built for these values, then applied to `positions_sculpt`.
+ *
+ * Only two of these arrays are actually necessary. The third comes from the fact that the PBVH
+ * currently stores its own copy of positions when there are deformations. If that was removed, the
+ * situation would be clearer.
+ */
+
+// TODO: Remove call to `undo::push_node` deep inside `calc_mesh_automask` so the object argument
+// can be const. That may (hopefully) require pulling out the undo node push into this code. I
+// think various optimizations will depend on brush implementsions doing their own undo pushes
+// anyway.
+
+// TODO: Just try to get rid of one of the arrays mentioned above so we don't have this weird
+// situation with evaluated positions, original positions, and then some third copy that's just
+// there because of legacy code reasons.
+
+// TODO: Remove access to positions and normals from new PBVH structure. Reasoning: we should be
+// very strict about that just handling the separation of geometry into separate nodes.
+
+// TODO (longer term (TODO: Move this TODO elsewhere)): Don't invert `deform_imats` on object
+// evaluation. Instead just invert them on-demand in brush implementations. This would be better
+// because only the inversions required for affected vertices would be necessary.
+
+// TODO: Move these functions to proper new files.
 
 void calc_mesh_hide_and_mask(const Mesh &mesh,
                              const Span<int> vert_indices,
