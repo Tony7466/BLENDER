@@ -1569,7 +1569,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
   is_frame_update = (orig_data.timeline_frame != scene->r.cfra) ||
                     (orig_data.subframe != scene->r.subframe);
 
-  if ((sequencer_view3d_fn && do_seq_gl && camera)) {
+  if (sequencer_view3d_fn && do_seq_gl && camera) {
     char err_out[256] = "unknown";
     int width, height;
     BKE_render_resolution(&scene->r, false, &width, &height);
@@ -2253,7 +2253,7 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
                                                               upper_thumb_bound;
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, frame_step, view_area);
-  while ((timeline_frame < upper_thumb_bound) & !*stop) {
+  while ((timeline_frame < upper_thumb_bound) && !*stop) {
     ImBuf *ibuf = seq_cache_get(
         context, seq_orig, round_fl_to_int(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {

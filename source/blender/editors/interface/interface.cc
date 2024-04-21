@@ -2515,10 +2515,10 @@ double ui_but_value_get(uiBut *but)
     switch (RNA_property_type(prop)) {
       case PROP_BOOLEAN:
         if (RNA_property_array_check(prop)) {
-          value = RNA_property_boolean_get_index(&but->rnapoin, prop, but->rnaindex);
+          value = double(RNA_property_boolean_get_index(&but->rnapoin, prop, but->rnaindex));
         }
         else {
-          value = RNA_property_boolean_get(&but->rnapoin, prop);
+          value = double(RNA_property_boolean_get(&but->rnapoin, prop));
         }
         break;
       case PROP_INT:
@@ -3110,7 +3110,7 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
         {
           RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, nullptr);
         }
-        else if (search_but->item_active != nullptr) {
+        else if (search_but && search_but->item_active != nullptr) {
           rptr = RNA_pointer_create(nullptr,
                                     RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
                                     search_but->item_active);
@@ -6256,6 +6256,16 @@ void UI_but_hint_drawstr_set(uiBut *but, const char *string)
 void UI_but_icon_indicator_number_set(uiBut *but, const int indicator_number)
 {
   UI_icon_text_overlay_init_from_count(&but->icon_overlay_text, indicator_number);
+}
+
+void UI_but_icon_indicator_set(uiBut *but, const char *string)
+{
+  STRNCPY(but->icon_overlay_text.text, string);
+}
+
+void UI_but_icon_indicator_color_set(uiBut *but, const uchar color[4])
+{
+  copy_v4_v4_uchar(but->icon_overlay_text.color, color);
 }
 
 void UI_but_node_link_set(uiBut *but, bNodeSocket *socket, const float draw_color[4])

@@ -113,7 +113,6 @@ static void mesh_copy_data(Main *bmain,
   mesh_dst->runtime = new blender::bke::MeshRuntime();
   mesh_dst->runtime->deformed_only = mesh_src->runtime->deformed_only;
   mesh_dst->runtime->wrapper_type = mesh_src->runtime->wrapper_type;
-  mesh_dst->runtime->wrapper_type_finalize = mesh_src->runtime->wrapper_type_finalize;
   mesh_dst->runtime->subsurf_runtime_data = mesh_src->runtime->subsurf_runtime_data;
   mesh_dst->runtime->cd_mask_extra = mesh_src->runtime->cd_mask_extra;
   /* Copy face dot tags and edge tags, since meshes may be duplicated after a subsurf modifier or
@@ -205,15 +204,7 @@ static void mesh_copy_data(Main *bmain,
 
 void BKE_mesh_free_editmesh(Mesh *mesh)
 {
-  if (mesh->runtime->edit_mesh == nullptr) {
-    return;
-  }
-
-  if (mesh->runtime->edit_mesh->is_shallow_copy == false) {
-    BKE_editmesh_free_data(mesh->runtime->edit_mesh);
-  }
-  MEM_freeN(mesh->runtime->edit_mesh);
-  mesh->runtime->edit_mesh = nullptr;
+  mesh->runtime->edit_mesh.reset();
 }
 
 static void mesh_free_data(ID *id)
@@ -849,15 +840,6 @@ Mesh *BKE_mesh_new_nomain_from_template(const Mesh *me_src,
       me_src, verts_num, edges_num, 0, faces_num, corners_num, CD_MASK_EVERYTHING);
 }
 
-void BKE_mesh_eval_delete(Mesh *mesh_eval)
-{
-  /* Evaluated mesh may point to edit mesh, but never owns it. */
-  mesh_eval->runtime->edit_mesh = nullptr;
-  mesh_free_data(&mesh_eval->id);
-  BKE_libblock_free_data(&mesh_eval->id, false);
-  MEM_freeN(mesh_eval);
-}
-
 Mesh *BKE_mesh_copy_for_eval(const Mesh *source)
 {
   return reinterpret_cast<Mesh *>(
@@ -1156,8 +1138,7 @@ void BKE_mesh_material_remap(Mesh *mesh, const uint *remap, uint remap_len)
   } \
   ((void)0)
 
-  if (mesh->runtime->edit_mesh) {
-    BMEditMesh *em = mesh->runtime->edit_mesh;
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMIter iter;
     BMFace *efa;
 
@@ -1463,7 +1444,6 @@ void BKE_mesh_eval_geometry(Depsgraph *depsgraph, Mesh *mesh)
    * evaluated mesh, and we don't know what parts of the mesh did change. So we simply delete the
    * evaluated mesh and let objects to re-create it with updated settings. */
   if (mesh->runtime->mesh_eval != nullptr) {
-    mesh->runtime->mesh_eval->runtime->edit_mesh = nullptr;
     BKE_id_free(nullptr, mesh->runtime->mesh_eval);
     mesh->runtime->mesh_eval = nullptr;
   }
