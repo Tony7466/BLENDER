@@ -26,7 +26,7 @@
 
 namespace blender::ed::sculpt_paint {
 
-inline namespace draw_cc {
+inline namespace smooth_cc {
 
 namespace pbvh = bke::pbvh;
 
@@ -213,7 +213,7 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
   BKE_pbvh_vertex_iter_end;
 }
 
-}  // namespace draw_cc
+}  // namespace smooth_cc
 
 void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
