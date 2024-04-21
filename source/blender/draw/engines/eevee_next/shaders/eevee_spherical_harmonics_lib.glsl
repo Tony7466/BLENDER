@@ -723,9 +723,9 @@ SphericalHarmonicL1 spherical_harmonics_clamp(SphericalHarmonicL1 sh, float clam
                      reduce_max(abs(per_channel[1].yzw)),
                      reduce_max(abs(per_channel[2].yzw)));
   /* Find maximum of the sh function over all chanels. */
-  vec3 max_sh = abs(sh.L0.M0) * 0.282094792 + max_L1 * 0.488602512;
+  vec3 max_sh = abs(sh.L0.M0.rgb) * 0.282094792 + max_L1 * 0.488602512;
 
-  fac = clamp_value * safe_rcp(reduce_max(max_sh));
+  float fac = clamp_value * safe_rcp(reduce_max(max_sh));
   if (fac > 1.0) {
     return sh;
   }
