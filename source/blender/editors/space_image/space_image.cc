@@ -730,9 +730,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
 
     rcti domain_region;
     BLI_rcti_init(&domain_region,
-                  0.0f + center_x + offset_x,
+                  center_x + offset_x,
                   width + center_x + offset_x,
-                  0.0f + center_y + offset_y,
+                  center_y + offset_y,
                   height + center_y + offset_y);
     int x, y;
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);

@@ -866,7 +866,7 @@ void ED_region_image_render_size_draw(const char *title,
   const float y2 = frame->ymax - frame_height / 2;
 
   if (passepartout_alpha > 0) {
-    /* Darken the area outside the render size. */
+    /* Darken the area outside the frame. */
     immUniformColor4f(0, 0, 0, passepartout_alpha);
     immRectf(pos, -100000, y2, 100000, 100000);
     immRectf(pos, -100000, y1, 100000, -100000);
