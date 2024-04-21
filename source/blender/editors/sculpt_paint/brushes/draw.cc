@@ -62,7 +62,7 @@ static void calc_faces(const Sculpt &sd,
   StrokeCache &cache = *ss.cache;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  pbvh::Tree pbvh_tree(*ss.pbvh);
+  const pbvh::Tree pbvh_tree(*ss.pbvh);
 
   const Span<float3> positions_eval = pbvh_tree.vert_positions();
   const Span<float3> vert_normals = pbvh_tree.vert_normals();
@@ -179,7 +179,7 @@ static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset,
 
 void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
-  SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const float bstrength = ss.cache->bstrength;
 
