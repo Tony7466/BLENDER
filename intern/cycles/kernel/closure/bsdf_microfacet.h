@@ -421,21 +421,24 @@ ccl_device Spectrum bsdf_microfacet_estimate_albedo(KernelGlobals kg,
   if (!is_zero(reflectance) && bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
                                                          bsdf->fresnel;
-    /* TODO: Iridescence */
 
-    float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
-    float s;
-    if (fresnel->exponent < 0.0f) {
-      float z = sqrtf(fabsf((bsdf->ior - 1.0f) / (bsdf->ior + 1.0f)));
-      s = lookup_table_read_3D(
-          kg, rough, cos_NI, z, kernel_data.tables.ggx_gen_schlick_ior_s, 16, 16, 16);
+    /* Precomputing LUTs for thin-film iridescence isn't viable, so fall back to the specular
+     * reflection approximation from the microfacet_fresnel call above in that case. */
+    if (fresnel->thin_film.thickness <= 0.1f) {
+      float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
+      float s;
+      if (fresnel->exponent < 0.0f) {
+        float z = sqrtf(fabsf((bsdf->ior - 1.0f) / (bsdf->ior + 1.0f)));
+        s = lookup_table_read_3D(
+            kg, rough, cos_NI, z, kernel_data.tables.ggx_gen_schlick_ior_s, 16, 16, 16);
+      }
+      else {
+        float z = 1.0f / (0.2f * fresnel->exponent + 1.0f);
+        s = lookup_table_read_3D(
+            kg, rough, cos_NI, z, kernel_data.tables.ggx_gen_schlick_s, 16, 16, 16);
+      }
+      reflectance = mix(fresnel->f0, fresnel->f90, s) * fresnel->reflection_tint;
     }
-    else {
-      float z = 1.0f / (0.2f * fresnel->exponent + 1.0f);
-      s = lookup_table_read_3D(
-          kg, rough, cos_NI, z, kernel_data.tables.ggx_gen_schlick_s, 16, 16, 16);
-    }
-    reflectance = mix(fresnel->f0, fresnel->f90, s) * fresnel->reflection_tint;
   }
   else if (bsdf->fresnel_type == MicrofacetFresnel::F82_TINT) {
     ccl_private FresnelF82Tint *fresnel = (ccl_private FresnelF82Tint *)bsdf->fresnel;
