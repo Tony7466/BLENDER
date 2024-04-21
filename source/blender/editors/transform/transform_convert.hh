@@ -159,7 +159,8 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        bool use_proportional_edit,
                                        const blender::IndexMask &affected_curves,
                                        bool use_connected_only,
-                                       int trans_data_offset);
+                                       int trans_data_offset,
+                                       const std::optional<float> frame_falloff = std::nullopt);
 
 /* `transform_convert_action.cc` */
 

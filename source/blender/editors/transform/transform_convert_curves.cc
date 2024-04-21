@@ -161,7 +161,8 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const bool use_proportional_edit,
                                        const blender::IndexMask &affected_curves,
                                        bool use_connected_only,
-                                       int trans_data_offset)
+                                       int trans_data_offset,
+                                       const std::optional<float> frame_falloff)
 {
   using namespace blender;
 
@@ -212,6 +213,10 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
           }
 
           td.ext = nullptr;
+          if (frame_falloff) {
+            tc.frame_falloff[point_i + trans_data_offset] = frame_falloff.value();
+            td.extra = &tc.frame_falloff[point_i + trans_data_offset];
+          }
 
           copy_m3_m3(td.smtx, smtx);
           copy_m3_m3(td.mtx, mtx);
@@ -247,6 +252,10 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
 
         td->flag = TD_SELECTED;
         td->ext = nullptr;
+        if (frame_falloff) {
+          tc.frame_falloff[selection_i + trans_data_offset] = frame_falloff.value();
+          td->extra = &tc.frame_falloff[selection_i + trans_data_offset];
+        }
 
         copy_m3_m3(td->smtx, smtx);
         copy_m3_m3(td->mtx, mtx);

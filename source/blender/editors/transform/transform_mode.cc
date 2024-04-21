@@ -562,17 +562,19 @@ void ElementRotation_ex(const TransInfo *t,
 
     /* Apply gpencil falloff. */
     if (t->options & CTX_GPENCIL_STROKES) {
+      float ident_mat[3][3];
+      unit_m3(ident_mat);
       if (t->obedit_type == OB_GPENCIL_LEGACY) {
-
         bGPDstroke *gps = (bGPDstroke *)td->extra;
         if (gps->runtime.multi_frame_falloff != 1.0f) {
-          float ident_mat[3][3];
-          unit_m3(ident_mat);
           interp_m3_m3m3(smat, ident_mat, smat, gps->runtime.multi_frame_falloff);
         }
       }
       else if (t->obedit_type == OB_GREASE_PENCIL) {
-        /* Pass. */
+        const float frame_falloff = *static_cast<float *>(td->extra);
+        if (frame_falloff != 1.0f) {
+          interp_m3_m3m3(smat, ident_mat, smat, frame_falloff);
+        }
       }
     }
 
@@ -1055,7 +1057,8 @@ void ElementResize(const TransInfo *t,
       }
     }
     else if (t->obedit_type == OB_GREASE_PENCIL) {
-      mul_v3_fl(vec, td->factor);
+      const float frame_falloff = *static_cast<float *>(td->extra);
+      mul_v3_fl(vec, td->factor * frame_falloff);
     }
   }
   else {

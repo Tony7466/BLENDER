@@ -110,12 +110,18 @@ static void transdata_elem_bend(const TransInfo *t,
 
   if (t->options & CTX_GPENCIL_STROKES) {
     /* Grease pencil multi-frame falloff. */
-    bGPDstroke *gps = (bGPDstroke *)td->extra;
-    if (gps != nullptr) {
-      fac_scaled = fac * td->factor * gps->runtime.multi_frame_falloff;
+    if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPDstroke *gps = (bGPDstroke *)td->extra;
+      if (gps != nullptr) {
+        fac_scaled = fac * td->factor * gps->runtime.multi_frame_falloff;
+      }
+      else {
+        fac_scaled = fac * td->factor;
+      }
     }
-    else {
-      fac_scaled = fac * td->factor;
+    else if (t->obedit_type == OB_GREASE_PENCIL) {
+      const float frame_falloff = *static_cast<float *>(td->extra);
+      fac_scaled = fac * td->factor * frame_falloff;
     }
   }
   else {

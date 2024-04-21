@@ -21,6 +21,13 @@
 
 namespace blender::ed::transform::greasepencil {
 
+static void freeTransGreasePencilData(TransInfo * /*t*/,
+                                      TransDataContainer *tc,
+                                      TransCustomData * /*custom_data*/)
+{
+  MEM_freeN(tc->frame_falloff);
+}
+
 static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
@@ -38,7 +45,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
     GreasePencil &grease_pencil = *static_cast<GreasePencil *>(tc.obedit->data);
 
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
-        ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+        ed::greasepencil::retrieve_editable_drawings_with_falloff(*scene, grease_pencil);
     all_drawings.append(drawings);
     total_number_of_drawings += drawings.size();
   }
@@ -69,6 +76,8 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
+      tc.frame_falloff = MEM_cnew_array<float>(tc.data_len, __func__);
+      tc.custom.mode.free_cb = freeTransGreasePencilData;
     }
   }
 
@@ -114,7 +123,8 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
                                           true,
                                           affected_strokes,
                                           use_connected_only,
-                                          layer_points_offset);
+                                          layer_points_offset,
+                                          info.multi_frame_falloff);
       }
       else {
         curve_populate_trans_data_structs(tc,
@@ -125,7 +135,8 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
                                           false,
                                           {},
                                           use_connected_only,
-                                          layer_points_offset);
+                                          layer_points_offset,
+                                          info.multi_frame_falloff);
       }
 
       layer_points_offset += points.size();

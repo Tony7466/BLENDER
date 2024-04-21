@@ -57,6 +57,9 @@ static void applyCurveShrinkFatten(TransInfo *t)
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
+    const bool use_frame_falloff = ((t->options & CTX_GPENCIL_STROKES) &&
+                                    t->obedit_type == OB_GREASE_PENCIL);
+    float frame_falloff = 1.0f;
     for (i = 0; i < tc->data_len; i++, td++) {
       if (td->flag & TD_SKIP) {
         continue;
@@ -72,7 +75,10 @@ static void applyCurveShrinkFatten(TransInfo *t)
         }
 
         /* Apply proportional editing. */
-        *td->val = interpf(*td->val, td->ival, td->factor);
+        if (use_frame_falloff) {
+          frame_falloff = *static_cast<float *>(td->extra);
+        }
+        *td->val = interpf(*td->val, td->ival, td->factor * frame_falloff);
         CLAMP_MIN(*td->val, 0.0f);
       }
     }

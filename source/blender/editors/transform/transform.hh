@@ -488,6 +488,9 @@ struct TransDataContainer {
     char use_mirror_axis_any;
   };
 
+  /** Grease Pencil multi frame falloff factor for transformed data (array). */
+  float *frame_falloff;
+
   TransCustomDataContainer custom;
 };
 

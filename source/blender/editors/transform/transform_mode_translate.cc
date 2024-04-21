@@ -139,12 +139,18 @@ static void transdata_elem_translate(const TransInfo *t,
 
   if (t->options & CTX_GPENCIL_STROKES) {
     /* Grease pencil multi-frame falloff. */
-    bGPDstroke *gps = (bGPDstroke *)td->extra;
-    if (gps != nullptr) {
-      mul_v3_fl(tvec, td->factor * gps->runtime.multi_frame_falloff);
+    if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPDstroke *gps = (bGPDstroke *)td->extra;
+      if (gps != nullptr) {
+        mul_v3_fl(tvec, td->factor * gps->runtime.multi_frame_falloff);
+      }
+      else {
+        mul_v3_fl(tvec, td->factor);
+      }
     }
-    else {
-      mul_v3_fl(tvec, td->factor);
+    else if (t->obedit_type == OB_GREASE_PENCIL) {
+      const float frame_falloff = *static_cast<float *>(td->extra);
+      mul_v3_fl(tvec, td->factor * frame_falloff);
     }
   }
   else {
