@@ -91,6 +91,9 @@ void main()
   if (use_lightprobe_eval) {
     LightProbeSample samp = lightprobe_load(P, Ng, V);
 
+    float clamp_indirect = uniform_buf.clamp.surface_indirect;
+    samp.volume_irradiance = spherical_harmonics_clamp(samp.volume_irradiance, clamp_indirect);
+
     for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
       ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
       stack.cl[i].light_shadowed += lightprobe_eval(samp, cl, P, V, gbuf.thickness);
