@@ -9,9 +9,14 @@
 
 CCL_NAMESPACE_BEGIN
 
-/* Compute fresnel reflectance. Also return the dot product of the refracted ray and the normal as
- * `cos_theta_t`, as it is used when computing the direction of the refracted ray. */
-ccl_device float fresnel_dielectric(float cos_theta_i, float eta, ccl_private float *r_cos_theta_t)
+/* Compute fresnel reflectance for perpendicular (aka S-) and parallel (aka P-) polarized light.
+ * If requested by the caller, r_phi is set to the phase shift on reflection.
+ * Also returns the dot product of the refracted ray and the normal as `cos_theta_t`, as it is
+ * used when computing the direction of the refracted ray. */
+ccl_device float2 fresnel_dielectric_polarized(float cos_theta_i,
+                                               float eta,
+                                               ccl_private float *r_cos_theta_t,
+                                               ccl_private float2 *r_phi)
 {
   kernel_assert(!isnan_safe(cos_theta_i));
 
@@ -20,7 +25,18 @@ ccl_device float fresnel_dielectric(float cos_theta_i, float eta, ccl_private fl
   const float eta_cos_theta_t_sq = sqr(eta) - (1.0f - sqr(cos_theta_i));
   if (eta_cos_theta_t_sq <= 0) {
     /* Total internal reflection. */
-    return 1.0f;
+    if (r_phi) {
+      /* The following code would compute the proper phase shift on TIR.
+       * However, for the current user of this computation (the iridescence code),
+       * this doesn't actually affect the result, so don't bother with the computation for now.
+       *
+       * const float fac = sqrtf(1.0f - sqr(cosThetaI) - sqr(eta));
+       * r_phi->x = -2.0f * atanf(fac / cosThetaI);
+       * r_phi->y = -2.0f * atanf(fac / (cosThetaI * sqr(eta)));
+       */
+      *r_phi = zero_float2();
+    }
+    return one_float2();
   }
 
   cos_theta_i = fabsf(cos_theta_i);
@@ -33,9 +49,22 @@ ccl_device float fresnel_dielectric(float cos_theta_i, float eta, ccl_private fl
 
   /* Amplitudes of reflected waves. */
   const float r_s = (cos_theta_i + eta * cos_theta_t) / (cos_theta_i - eta * cos_theta_t);
-  const float r_p = (cos_theta_t + eta * cos_theta_i) / (cos_theta_t - eta * cos_theta_i);
+  const float r_p = (cos_theta_t + eta * cos_theta_i) / (eta * cos_theta_i - cos_theta_t);
 
-  return 0.5f * (sqr(r_s) + sqr(r_p));
+  if (r_phi) {
+    *r_phi = make_float2(r_s < 0.0f, r_p < 0.0f) * M_PI_F;
+  }
+
+  /* Return squared amplitude to get the fraction of reflected energy. */
+  return make_float2(sqr(r_s), sqr(r_p));
+}
+
+/* Compute fresnel reflectance for unpolarized light. */
+ccl_device_forceinline float fresnel_dielectric(float cos_theta_i,
+                                                float eta,
+                                                ccl_private float *r_cos_theta_t)
+{
+  return average(fresnel_dielectric_polarized(cos_theta_i, eta, r_cos_theta_t, NULL));
 }
 
 /* Refract the incident ray, given the cosine of the refraction angle and the relative refractive
@@ -272,7 +301,7 @@ iridescence_airy_summation(float T121, float R12, float R23, float OPD, float ph
   }
 
   float R123 = R12 * R23;
-  float r123 = sqrt(R123);
+  float r123 = sqrtf(R123);
   float Rs = sqr(T121) * R23 / (1.0f - R123);
 
   /* Perform summation over path order differences (equation 10). */
@@ -286,41 +315,13 @@ iridescence_airy_summation(float T121, float R12, float R23, float OPD, float ph
   return R;
 }
 
-/* Computes reflectivity (R) and phase shift (phi) for perpendicular (.x) and parallel (.y)
- * polarized light. */
-ccl_device_inline void fresnel_dielectric_polarized(const float cosThetaI,
-                                                    const float eta1,
-                                                    const float eta2,
-                                                    ccl_private float2 *R,
-                                                    ccl_private float2 *phi)
-{
-  float cosThetaT_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosThetaI));
-  if (cosThetaT_sq < 0.0f) {
-    *R = one_float2();
-    /* The following code would compute the proper phase shift on TIR.
-     * However, it turns out that the phase doesn't actually affect the result
-     * in that case, so don't bother with the computation for now.
-     *
-     * const float sinThetaI_sq = 1.0f - sqr(cosThetaI);
-     * const float etaR_sq = sqr(eta1 / eta2);
-     * const float fac = sqrtf(sinThetaI_sq - 1.0f / etaR_sq);
-     * phi->x = -2.0f * atanf(fac / ct1);
-     * phi->y = -2.0f * atanf(fac * etaR_sq / ct1);
-     */
-    *phi = zero_float2();
-    return;
-  }
-
-  float cosThetaT = sqrtf(cosThetaT_sq);
-  R->x = sqr((eta1 * cosThetaI - eta2 * cosThetaT) / (eta1 * cosThetaI + eta2 * cosThetaT));
-  R->y = sqr((eta2 * cosThetaI - eta1 * cosThetaT) / (eta2 * cosThetaI + eta1 * cosThetaT));
-
-  phi->x = (eta1 * cosThetaI < eta2 * cosThetaT) ? M_PI_F : 0.0f;
-  phi->y = (eta2 * cosThetaI < eta1 * cosThetaT) ? M_PI_F : 0.0f;
-}
-
-ccl_device Spectrum fresnel_iridescence(
-    KernelGlobals kg, float eta1, float eta2, float eta3, float cosTheta, float thickness)
+ccl_device Spectrum fresnel_iridescence(KernelGlobals kg,
+                                        float eta1,
+                                        float eta2,
+                                        float eta3,
+                                        float cos_theta_1,
+                                        float thickness,
+                                        ccl_private float *r_cos_theta_3)
 {
   /* For films below 30nm, the wave-optic-based Airy summation approach no longer applies,
    * so blend towards the case without coating. */
@@ -328,25 +329,21 @@ ccl_device Spectrum fresnel_iridescence(
     eta2 = mix(eta1, eta2, smoothstep(0.0f, 30.0f, thickness));
   }
 
-  /* Compute angle inside the thin film (after refraction at the top interface). */
-  float cosTheta2_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosTheta));
-  if (cosTheta2_sq < 0.0f) {
+  float cos_theta_2;
+  float2 phi12, phi23;
+
+  /* Compute reflection at the top interface (ambient to film). */
+  float2 R12 = fresnel_dielectric_polarized(cos_theta_1, eta2 / eta1, &cos_theta_2, &phi12);
+  if (isequal(R12, one_float2())) {
     /* TIR at the top interface. */
     return one_spectrum();
   }
 
   /* Compute optical path difference inside the thin film. */
-  float cosTheta2 = sqrtf(cosTheta2_sq);
-  float OPD = 2.0f * eta2 * thickness * cosTheta2;
+  float OPD = -2.0f * eta2 * thickness * cos_theta_2;
 
-  /* Compute complex coefficients for the reflection at the top interface (ambient to film). */
-  float2 R12, phi12;
-  fresnel_dielectric_polarized(cosTheta, eta1, eta2, &R12, &phi12);
-
-  /* Compute complex coefficients for the reflection at the bottom interface (film to medium). */
-  float2 R23, phi23;
-  fresnel_dielectric_polarized(cosTheta2, eta2, eta3, &R23, &phi23);
-
+  /* Compute reflection at the bottom interface (film to medium). */
+  float2 R23 = fresnel_dielectric_polarized(-cos_theta_2, eta3 / eta2, r_cos_theta_3, &phi23);
   if (isequal(R23, one_float2())) {
     /* TIR at the bottom interface.
      * All the Airy summation math still simplifies to 1.0 in this case. */

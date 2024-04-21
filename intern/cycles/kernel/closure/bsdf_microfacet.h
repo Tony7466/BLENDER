@@ -274,11 +274,13 @@ ccl_device_forceinline void microfacet_fresnel(KernelGlobals kg,
        * Principled BSDF for now, so it's fine to not support custom exponents and F90. */
       kernel_assert(fresnel->exponent < 0.0f);
       kernel_assert(fresnel->f90 == one_spectrum());
-      F = fresnel_iridescence(
-          kg, 1.0f, fresnel->thin_film.ior, bsdf->ior, cos_theta_i, fresnel->thin_film.thickness);
-      if (r_cos_theta_t) {
-        *r_cos_theta_t = -safe_sqrtf(1.0f - sqr(1.0f / bsdf->ior) * (1.0f - sqr(cos_theta_i)));
-      }
+      F = fresnel_iridescence(kg,
+                              1.0f,
+                              fresnel->thin_film.ior,
+                              bsdf->ior,
+                              cos_theta_i,
+                              fresnel->thin_film.thickness,
+                              r_cos_theta_t);
       /* Apply F0 scaling (here per-channel, since iridescence produces colored output).
        * Note that the usual approach (as used below) cannot be used here, since F may be below
        * F0_real. Therefore, use a different approach: Scale the result by (F0 / F0_real), with
