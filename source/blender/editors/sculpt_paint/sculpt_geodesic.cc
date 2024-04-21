@@ -48,7 +48,8 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
                                                const int v1,
                                                const int v2,
                                                float *dists,
-                                               GSet *initial_verts)
+                                               GSet *initial_verts,
+                                               std::mutex& mut)
 {
   if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(v0))) {
     return false;
@@ -75,7 +76,9 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   }
 
   if (dist0 < dists[v0]) {
+      mut.lock();
     dists[v0]= dist0;
+      mut.unlock();
     return true;
   }
 
@@ -86,6 +89,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 {
   SCOPED_TIMER("geodesic_mesh_create");
 
+    std::mutex mut;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -172,8 +176,6 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     }
   }
 
-#define USE_ORIGINAL_PR 0
-
   struct TLS {
     Set<int> new_edges;
   };
@@ -187,7 +189,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   BitVector<> is_edge_scheduled_map(totedge);
 
   while (!queue.is_empty()) {
-    threading::parallel_for(IndexRange(queue.size()),128, [&](IndexRange range) {
+    threading::parallel_for(IndexRange(queue.size()), 128, [&](IndexRange range) {
       TLS &tls = all_tls.local();
       Set<int> &new_edges = tls.new_edges;
 
@@ -207,7 +209,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
                                              edge_vert_a,
                                              SCULPT_GEODESIC_VERTEX_NONE,
                                              dists,
-                                             initial_verts);
+                                             initial_verts,
+                                             mut);
         }
 
         for (const int face : ss->edge_to_face_map[edge_index]) {
@@ -218,8 +221,13 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
               continue;
             }
-            if (!sculpt_geodesic_mesh_test_dist_add(
-                    vert_positions, vertex_other, edge_vert_a, edge_vert_b, dists, initial_verts))
+            if (!sculpt_geodesic_mesh_test_dist_add(vert_positions,
+                                                    vertex_other,
+                                                    edge_vert_a,
+                                                    edge_vert_b,
+                                                    dists,
+                                                    initial_verts,
+                                                    mut))
             {
               continue;
             }
@@ -229,7 +237,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
                                                                        vertex_other);
 
               if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
-                  edge_other == edge_index || 
+                  edge_other == edge_index ||
                   (!ss->edge_to_face_map[edge_other].is_empty() &&
                    dists[edge_vertex_other] == std::numeric_limits<float>::max()))
               {
@@ -252,7 +260,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
       }
       tls.new_edges.clear();
     }
-   // is_edge_scheduled_map.fill(false);
+    is_edge_scheduled_map.fill(false);
   }
 
   return dists;
