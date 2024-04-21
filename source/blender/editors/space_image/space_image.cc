@@ -24,6 +24,7 @@
 #include "BKE_layer.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
@@ -683,8 +684,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
   if (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS &&
       sima->overlay.flag & SI_OVERLAY_DRAW_RENDER_SIZE)
   {
-    const int render_size_x = scene->r.xsch * scene->r.size * 0.01f;
-    const int render_size_y = scene->r.ysch * scene->r.size * 0.01f;
+    int render_size_x, render_size_y;
+
+    BKE_render_resolution(&scene->r, true, &render_size_x, &render_size_y);
 
     float zoomx, zoomy;
     ED_space_image_get_zoom(sima, region, &zoomx, &zoomy);
@@ -695,11 +697,8 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
 
     int x, y;
     rcti render_region;
-    BLI_rcti_init(&render_region,
-                  0.0f + center_x,
-                  render_size_x + center_x,
-                  0.0f + center_y,
-                  render_size_y + center_y);
+    BLI_rcti_init(
+        &render_region, center_x, render_size_x + center_x, center_y, render_size_y + center_y);
     UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
 
     ED_region_image_render_size_draw("Render Size",
@@ -724,8 +723,10 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
     int center_y = height / 2;
 
     int offset_x = 0, offset_y = 0;
-    offset_x = sima->image->runtime.backdrop_offset[0];
-    offset_y = sima->image->runtime.backdrop_offset[1];
+    if (sima->image) {
+      offset_x = sima->image->runtime.backdrop_offset[0];
+      offset_y = sima->image->runtime.backdrop_offset[1];
+    }
 
     rcti domain_region;
     BLI_rcti_init(&domain_region,
