@@ -9,8 +9,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_key.h"
+#include "BKE_colortools.hh"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
@@ -59,7 +59,7 @@ static Array<Vector<int>> calc_vert_neighbors(const OffsetIndices<int> faces,
         /* Skip connectivity from hidden faces. */
         continue;
       }
-      const int2 verts = bke::mesh::face_find_adjecent_verts(faces[face], corner_verts, vert);
+      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
       if (!is_boundary || boundary_verts[verts[0]]) {
         vert_neighbors[i].append(verts[0]);
       }
@@ -120,7 +120,7 @@ static void calc_smooth_positions_faces(const Sculpt &sd,
 
   const GroupedSpan<int> vert_neighbors = calc_vert_neighbors(ss.faces,
                                                               ss.corner_verts,
-                                                              ss.pmap,
+                                                              ss.vert_to_face_map,
                                                               ss.vertex_info.boundary,
                                                               ss.hide_poly,
                                                               verts,
@@ -133,9 +133,6 @@ static void calc_smooth_positions_faces(const Sculpt &sd,
   for (const int i : verts.index_range()) {
     new_positions[i] = average_positions(positions_eval, vert_neighbors[i]);
   }
-
-  // XXX: Maybe try not to tag verts with factor == 0.0f
-  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -149,8 +146,8 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -188,8 +185,8 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
