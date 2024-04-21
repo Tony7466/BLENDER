@@ -500,6 +500,7 @@ void rna_property_rna_or_id_get(PropertyRNA *prop,
       }
 
       r_prop_rna_or_id->idprop = idprop;
+      r_prop_rna_or_id->is_rna_storage_idprop = true;
       r_prop_rna_or_id->is_set = idprop != nullptr && (idprop->flag & IDP_FLAG_GHOST) == 0;
     }
     else {
@@ -559,7 +560,7 @@ PropertyRNA *rna_ensure_property_realdata(PropertyRNA **prop, PointerRNA *ptr)
   rna_property_rna_or_id_get(*prop, ptr, &prop_rna_or_id);
 
   *prop = prop_rna_or_id.rnaprop;
-  return (prop_rna_or_id.is_idprop || prop_rna_or_id.idprop != nullptr) ?
+  return (prop_rna_or_id.is_idprop || prop_rna_or_id.is_rna_storage_idprop) ?
              (PropertyRNA *)prop_rna_or_id.idprop :
              prop_rna_or_id.rnaprop;
 }
@@ -4443,7 +4444,7 @@ bool RNA_property_collection_lookup_string_index(
   /* no callback defined, compare with name properties if they exist */
   CollectionPropertyIterator iter;
   PropertyRNA *nameprop;
-  char name[256], *nameptr;
+  char name_buf[256], *name;
   bool found = false;
   int keylen = strlen(key);
   int namelen;
@@ -4454,15 +4455,16 @@ bool RNA_property_collection_lookup_string_index(
     if (iter.ptr.data && iter.ptr.type->nameproperty) {
       nameprop = iter.ptr.type->nameproperty;
 
-      nameptr = RNA_property_string_get_alloc(&iter.ptr, nameprop, name, sizeof(name), &namelen);
+      name = RNA_property_string_get_alloc(
+          &iter.ptr, nameprop, name_buf, sizeof(name_buf), &namelen);
 
-      if ((keylen == namelen) && STREQ(nameptr, key)) {
+      if ((keylen == namelen) && STREQ(name, key)) {
         *r_ptr = iter.ptr;
         found = true;
       }
 
-      if (name != nameptr) {
-        MEM_freeN(nameptr);
+      if (name != name_buf) {
+        MEM_freeN(name);
       }
 
       if (found) {
