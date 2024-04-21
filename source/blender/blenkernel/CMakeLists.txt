@@ -240,6 +240,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
+  intern/node_tree_field_inferencing_legacy.cc
   intern/node_tree_interface.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
