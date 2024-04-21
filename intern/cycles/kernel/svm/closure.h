@@ -326,7 +326,7 @@ ccl_device
             fresnel->transmission_tint = refractive_caustics ?
                                              sqrt(rgb_to_spectrum(clamped_base_color)) :
                                              zero_spectrum();
-            fresnel->thin_film.d = thinfilm_thickness;
+            fresnel->thin_film.thickness = thinfilm_thickness;
             fresnel->thin_film.ior = thinfilm_ior;
 
             /* setup bsdf */
@@ -371,7 +371,7 @@ ccl_device
           fresnel->exponent = -eta;
           fresnel->reflection_tint = one_spectrum();
           fresnel->transmission_tint = zero_spectrum();
-          fresnel->thin_film.d = thinfilm_thickness;
+          fresnel->thin_film.thickness = thinfilm_thickness;
           fresnel->thin_film.ior = thinfilm_ior;
 
           /* setup bsdf */
@@ -608,7 +608,7 @@ ccl_device
         fresnel->reflection_tint = reflective_caustics ? rgb_to_spectrum(color) : zero_spectrum();
         fresnel->transmission_tint = refractive_caustics ? rgb_to_spectrum(color) :
                                                            zero_spectrum();
-        fresnel->thin_film.d = 0.0f;
+        fresnel->thin_film.thickness = 0.0f;
         fresnel->thin_film.ior = 0.0f;
 
         /* setup bsdf */

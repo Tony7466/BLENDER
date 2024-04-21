@@ -30,7 +30,7 @@ enum MicrofacetFresnel {
 };
 
 typedef struct FresnelThinFilm {
-  float d;
+  float thickness;
   float ior;
 } FresnelThinFilm;
 
@@ -268,13 +268,22 @@ ccl_device_forceinline void microfacet_fresnel(KernelGlobals kg,
   else if (bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
                                                          bsdf->fresnel;
-    float s;
-    if (fresnel->exponent < 0.0f) {
+    Spectrum F;
+    if (fresnel->thin_film.thickness > 0.1f) {
+      /* Iridescence doesn't combine well with the general case. We only expose it through the
+       * Principled BSDF for now, so it's fine to not support custom exponents and F90. */
+      kernel_assert(fresnel->exponent < 0.0f);
+      kernel_assert(fresnel->f90 == one_spectrum());
+      F = fresnel_iridescence(
+          kg, 1.0f, fresnel->thin_film.ior, bsdf->ior, cos_theta_i, fresnel->thin_film.thickness);
+    }
+    else if (fresnel->exponent < 0.0f) {
       /* Special case: Use real Fresnel curve to determine the interpolation between F0 and F90.
-       * Used by Principled v1. */
+       * Used by Principled BSDF. */
       const float F_real = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_t);
       const float F0_real = F0_from_ior(bsdf->ior);
-      s = saturatef(inverse_lerp(F0_real, 1.0f, F_real));
+      const float s = saturatef(inverse_lerp(F0_real, 1.0f, F_real));
+      F = mix(fresnel->f0, fresnel->f90, s);
     }
     else {
       /* Regular case: Generalized Schlick term. */
@@ -292,14 +301,9 @@ ccl_device_forceinline void microfacet_fresnel(KernelGlobals kg,
 
       /* TODO(lukas): Is a special case for exponent==5 worth it? */
       /* When going from a higher to a lower IOR, we must use the transmitted angle. */
-      s = powf(1.0f - ((bsdf->ior < 1.0f) ? cos_theta_t : cos_theta_i), fresnel->exponent);
-    }
-    Spectrum F = mix(fresnel->f0, fresnel->f90, s);
-    if (fresnel->thin_film.d > 1e-5f) {
-      /* TODO: Integrate this properly.
-       * Hard to combine with F0/F90 - maybe split out the "Special case" above into a separate
-       * Fresnel type and only apply thin film there (since Principled doesn't use F90). */
-      F = fresnel_iridescence(kg, 1.0f, fresnel->thin_film.ior, bsdf->ior, cos_theta_i, fresnel->thin_film.d);
+      const float fresnel_angle = ((bsdf->ior < 1.0f) ? cos_theta_t : cos_theta_i);
+      const float s = powf(1.0f - fresnel_angle, fresnel->exponent);
+      F = mix(fresnel->f0, fresnel->f90, s);
     }
     *r_reflectance = F * fresnel->reflection_tint;
     *r_transmittance = (one_spectrum() - F) * fresnel->transmission_tint;
