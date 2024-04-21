@@ -1225,11 +1225,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
           direction = 0;
 
           if (walk->active_directions & WALK_BIT_LOCAL_FORWARD) {
-            direction += 1;
+            direction = short(direction + 1);
           }
 
           if (walk->active_directions & WALK_BIT_LOCAL_BACKWARD) {
-            direction -= 1;
+            direction = short(direction - 1);
           }
 
           copy_v3_fl3(dvec_tmp, 0.0f, 0.0f, direction);
@@ -1249,11 +1249,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
           direction = 0;
 
           if (walk->active_directions & WALK_BIT_LOCAL_LEFT) {
-            direction += 1;
+            direction = short(direction + 1);
           }
 
           if (walk->active_directions & WALK_BIT_LOCAL_RIGHT) {
-            direction -= 1;
+            direction = short(direction - 1);
           }
 
           dvec_tmp[0] = direction * rv3d->viewinv[0][0];
@@ -1271,11 +1271,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
             direction = 0;
 
             if (walk->active_directions & WALK_BIT_GLOBAL_UP) {
-              direction -= 1;
+              direction = short(direction - 1);
             }
 
             if (walk->active_directions & WALK_BIT_GLOBAL_DOWN) {
-              direction += 1;
+              direction = short(direction + 1);
             }
 
             copy_v3_fl3(dvec_tmp, 0.0f, 0.0f, direction);
@@ -1287,11 +1287,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
             direction = 0;
 
             if (walk->active_directions & WALK_BIT_LOCAL_UP) {
-              direction -= 1;
+              direction = short(direction - 1);
             }
 
             if (walk->active_directions & WALK_BIT_LOCAL_DOWN) {
-              direction += 1;
+              direction = short(direction + 1);
             }
 
             madd_v3_v3fl(dvec, rv3d->viewinv[1], direction);

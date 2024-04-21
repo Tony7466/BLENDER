@@ -303,7 +303,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
       for (int i = 0; i < buffer_size; i++) {
 #ifdef BLF_GAMMA_CORRECT_GLYPHS
         /* Convert coverage amounts to perceptually-improved lightness values. */
-        g->bitmap[i] = blf_glyph_gamma(glyph->bitmap.buffer[i] * scale);
+        g->bitmap[i] = blf_glyph_gamma(char(glyph->bitmap.buffer[i] * scale));
 #else
         g->bitmap[i] = glyph->bitmap.buffer[i] * scale;
 #endif /* BLF_GAMMA_CORRECT_GLYPHS */
