@@ -1515,7 +1515,7 @@ static void blf_font_metrics(FT_Face face, FontMetrics *metrics)
 
   if (metrics->descender == 0) {
     /* Set a sane value for descender if not set in the font. */
-    metrics->descender = metrics->ascender - metrics->units_per_EM;
+    metrics->descender = short(metrics->ascender - metrics->units_per_EM);
   }
 
   if (metrics->weight == 400 && face->style_flags & FT_STYLE_FLAG_BOLD) {
