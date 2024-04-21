@@ -2805,12 +2805,13 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
                     subsurface_scale_offset,
                     subsurface_anisotropy_offset);
 
-  compiler.add_node(
-      compiler.encode_uchar4(
-          alpha_offset, emission_strength_offset, emission_color_offset, thin_film_thickness_offset),
-      __float_as_int(get_float(alpha_in->socket_type)),
-      __float_as_int(get_float(emission_strength_in->socket_type)),
-      thin_film_ior_offset);
+  compiler.add_node(compiler.encode_uchar4(alpha_offset,
+                                           emission_strength_offset,
+                                           emission_color_offset,
+                                           thin_film_thickness_offset),
+                    __float_as_int(get_float(alpha_in->socket_type)),
+                    __float_as_int(get_float(emission_strength_in->socket_type)),
+                    thin_film_ior_offset);
 }
 
 void PrincipledBsdfNode::compile(OSLCompiler &compiler)
