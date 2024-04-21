@@ -5,7 +5,6 @@
 #include "stdcycles.h"
 
 shader node_ray_portal_bsdf(color Color = 0.8,
-                            normal Normal = N,
                             vector Position = vector(0.0, 0.0, 0.0),
                             vector Direction = vector(0.0, 0.0, 0.0),
                             output closure color BSDF = 0)
