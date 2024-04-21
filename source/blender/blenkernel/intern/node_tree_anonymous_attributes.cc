@@ -66,8 +66,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
     for (const bNodeLink &link : node.internal_links()) {
       const bNodeSocket &input = *link.fromsock;
       const bNodeSocket &output = *link.tosock;
-      BLI_assert(socket_is_field(input) == socket_is_field(output));
-      if (socket_is_field(input)) {
+      if (socket_is_field(input) || socket_is_field(input)) {
         relations.reference_relations.append({input.index(), output.index()});
       }
       else {
