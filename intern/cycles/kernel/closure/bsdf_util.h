@@ -266,6 +266,11 @@ ccl_device_inline Spectrum iridescence_lookup_sensitivity(float OPD, float shift
 ccl_device_inline float3
 iridescence_airy_summation(float T121, float R12, float R23, float OPD, float phi)
 {
+  if (R23 == 1.0f) {
+    /* Shortcut for TIR on the bottom interface. */
+    return one_float3();
+  }
+
   float R123 = R12 * R23;
   float r123 = sqrt(R123);
   float Rs = sqr(T121) * R23 / (1.0f - R123);
@@ -292,6 +297,16 @@ ccl_device_inline void fresnel_dielectric_polarized(const float cosThetaI,
   float cosThetaT_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosThetaI));
   if (cosThetaT_sq < 0.0f) {
     *R = one_float2();
+    /* The following code would compute the proper phase shift on TIR.
+     * However, it turns out that the phase doesn't actually affect the result
+     * in that case, so don't bother with the computation for now.
+     *
+     * const float sinThetaI_sq = 1.0f - sqr(cosThetaI);
+     * const float etaR_sq = sqr(eta1 / eta2);
+     * const float fac = sqrtf(sinThetaI_sq - 1.0f / etaR_sq);
+     * phi->x = -2.0f * atanf(fac / ct1);
+     * phi->y = -2.0f * atanf(fac * etaR_sq / ct1);
+     */
     *phi = zero_float2();
     return;
   }
@@ -316,7 +331,7 @@ ccl_device Spectrum fresnel_iridescence(
   /* Compute angle inside the thin film (after refraction at the top interface). */
   float cosTheta2_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosTheta));
   if (cosTheta2_sq < 0.0f) {
-    /* TIR */
+    /* TIR at the top interface. */
     return one_spectrum();
   }
 
@@ -331,6 +346,12 @@ ccl_device Spectrum fresnel_iridescence(
   /* Compute complex coefficients for the reflection at the bottom interface (film to medium). */
   float2 R23, phi23;
   fresnel_dielectric_polarized(cosTheta2, eta2, eta3, &R23, &phi23);
+
+  if (isequal(R23, one_float2())) {
+    /* TIR at the bottom interface.
+     * All the Airy summation math still simplifies to 1.0 in this case. */
+    return one_spectrum();
+  }
 
   /* Compute helper parameters. */
   float2 T121 = one_float2() - R12;

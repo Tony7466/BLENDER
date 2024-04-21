@@ -130,6 +130,15 @@ ccl_device_inline float dot(const float2 a, const float2 b)
 }
 #endif
 
+ccl_device_inline bool isequal(const float2 a, const float2 b)
+{
+#if defined(__KERNEL_METAL__)
+  return all(a == b);
+#else
+  return a == b;
+#endif
+}
+
 ccl_device_inline float len(const float2 a)
 {
   return sqrtf(dot(a, a));
