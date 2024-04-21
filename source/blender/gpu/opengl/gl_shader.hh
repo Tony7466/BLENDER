@@ -17,21 +17,7 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
 
-namespace blender {
-template<>
-struct DefaultHash<Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value>> {
-  uint64_t operator()(
-      const Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value> &key) const
-  {
-    uint64_t hash = 0;
-    for (const gpu::shader::ShaderCreateInfo::SpecializationConstant::Value &value : key) {
-      hash = hash * 33 + value.u;
-    }
-    return hash;
-  }
-};
-
-namespace gpu {
+namespace blender::gpu {
 
 /**
  * Shaders that uses specialization constants must keep track of the sources in order to rebuild
@@ -153,7 +139,7 @@ class GLShader : public Shader {
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
-  void warm_cache(int /*limit*/) override{};
+  void warm_cache(int /*limit*/) override {};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
   std::string constants_declare() const;
@@ -231,5 +217,4 @@ class GLLogParser : public GPULogParser {
   MEM_CXX_CLASS_ALLOC_FUNCS("GLLogParser");
 };
 
-}  // namespace gpu
-}  // namespace blender
+}  // namespace blender::gpu
