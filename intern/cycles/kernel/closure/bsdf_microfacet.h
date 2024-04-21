@@ -286,9 +286,11 @@ ccl_device_forceinline void microfacet_fresnel(KernelGlobals kg,
        * There isn't one single "correct" way to do this, it's just for artistic control anyways.
        */
       const float F0_real = F0_from_ior(bsdf->ior);
-      FOREACH_SPECTRUM_CHANNEL (i) {
-        const float s = saturatef(inverse_lerp(1.0f, F0_real, GET_SPECTRUM_CHANNEL(F, i)));
-        GET_SPECTRUM_CHANNEL(F, i) *= s * (GET_SPECTRUM_CHANNEL(fresnel->f0, i) / F0_real);
+      if (F0_real > 1e-5f && !isequal(F, one_spectrum())) {
+        FOREACH_SPECTRUM_CHANNEL (i) {
+          const float s = saturatef(inverse_lerp(1.0f, F0_real, GET_SPECTRUM_CHANNEL(F, i)));
+          GET_SPECTRUM_CHANNEL(F, i) *= s * (GET_SPECTRUM_CHANNEL(fresnel->f0, i) / F0_real);
+        }
       }
     }
     else if (fresnel->exponent < 0.0f) {
