@@ -29,7 +29,14 @@ enum MicrofacetFresnel {
   F82_TINT,
 };
 
+typedef struct FresnelThinFilm {
+  float d;
+  float ior;
+} FresnelThinFilm;
+
 typedef struct FresnelDielectricTint {
+  FresnelThinFilm thin_film;
+
   Spectrum reflection_tint;
   Spectrum transmission_tint;
 } FresnelDielectricTint;
@@ -39,6 +46,8 @@ typedef struct FresnelConductor {
 } FresnelConductor;
 
 typedef struct FresnelGeneralizedSchlick {
+  FresnelThinFilm thin_film;
+
   Spectrum reflection_tint;
   Spectrum transmission_tint;
   /* Reflectivity at perpendicular (F0) and glancing (F90) angles. */
@@ -284,7 +293,13 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
       /* When going from a higher to a lower IOR, we must use the transmitted angle. */
       s = powf(1.0f - ((bsdf->ior < 1.0f) ? cos_theta_t : cos_theta_i), fresnel->exponent);
     }
-    const Spectrum F = mix(fresnel->f0, fresnel->f90, s);
+    Spectrum F = mix(fresnel->f0, fresnel->f90, s);
+    if (fresnel->thin_film.d > 1e-5f) {
+      /* TODO: Integrate this properly.
+       * Hard to combine with F0/F90 - maybe split out the "Special case" above into a separate
+       * Fresnel type and only apply thin film there (since Principled doesn't use F90). */
+      F = fresnel_iridescence(1.0f, fresnel->thin_film.ior, bsdf->ior, cos_theta_i, fresnel->thin_film.d);
+    }
     *r_reflectance = F * fresnel->reflection_tint;
     *r_transmittance = (one_spectrum() - F) * fresnel->transmission_tint;
   }
@@ -383,6 +398,7 @@ ccl_device Spectrum bsdf_microfacet_estimate_albedo(KernelGlobals kg,
   if (!is_zero(reflectance) && bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
                                                          bsdf->fresnel;
+    /* TODO: Iridescence */
 
     float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
     float s;
