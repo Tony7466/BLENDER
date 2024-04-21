@@ -96,7 +96,24 @@ void main()
 
     for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
       ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
-      stack.cl[i].light_shadowed += lightprobe_eval(samp, cl, P, V, gbuf.thickness);
+      vec3 indirect_light = lightprobe_eval(samp, cl, P, V, gbuf.thickness);
+
+      if (use_split_indirect) {
+        int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
+        /* TODO(fclem): Layered texture. */
+        if (layer_index == 0) {
+          imageStore(indirect_radiance_1_img, texel, vec4(indirect_light, 1.0));
+        }
+        else if (layer_index == 1) {
+          imageStore(indirect_radiance_2_img, texel, vec4(indirect_light, 1.0));
+        }
+        else if (layer_index == 2) {
+          imageStore(indirect_radiance_3_img, texel, vec4(indirect_light, 1.0));
+        }
+      }
+      else {
+        stack.cl[i].light_shadowed += indirect_light;
+      }
     }
   }
 

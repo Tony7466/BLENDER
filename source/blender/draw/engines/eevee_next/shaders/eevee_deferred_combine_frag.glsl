@@ -66,7 +66,7 @@ void main()
     vec3 closure_direct_light = load_radiance_direct(texel, layer_index);
     vec3 closure_indirect_light = vec3(0.0);
 
-    if (!use_combined_lightprobe_eval) {
+    if (use_split_radiance) {
       closure_indirect_light = load_radiance_indirect(texel, layer_index);
     }
 

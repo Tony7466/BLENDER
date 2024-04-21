@@ -530,7 +530,8 @@ void DeferredLayer::begin_sync()
 
 void DeferredLayer::end_sync()
 {
-  use_combined_lightprobe_eval = inst_.pipelines.data.use_combined_lightprobe_eval;
+  use_combined_lightprobe_eval = inst_.pipelines.deferred.use_combined_lightprobe_eval;
+  use_split_radiance = inst_.pipelines.deferred.use_split_radiance;
 
   {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
@@ -569,6 +570,7 @@ void DeferredLayer::end_sync()
       pass.init();
 
       {
+        const bool use_split_indirect = use_combined_lightprobe_eval && use_split_radiance;
         PassSimple::Sub &sub = pass.sub("Eval.Light");
         /* Use depth test to reject background pixels which have not been stencil cleared. */
         /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
@@ -585,6 +587,7 @@ void DeferredLayer::end_sync()
            * OpenGL and Vulkan implementation which aren't fully supporting the specialize
            * constant. */
           sub.specialize_constant(sh, "render_pass_shadow_enabled", rbuf_data.shadow_id != -1);
+          sub.specialize_constant(sh, "use_split_indirect", use_split_indirect);
           sub.specialize_constant(sh, "use_lightprobe_eval", use_combined_lightprobe_eval);
           const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
           sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
@@ -593,6 +596,11 @@ void DeferredLayer::end_sync()
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
           sub.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
+          if (use_split_indirect) {
+            sub.bind_image("indirect_radiance_1_img", &indirect_radiance_tx_refs_[0]);
+            sub.bind_image("indirect_radiance_2_img", &indirect_radiance_tx_refs_[1]);
+            sub.bind_image("indirect_radiance_3_img", &indirect_radiance_tx_refs_[2]);
+          }
           sub.bind_resources(inst_.uniform_data);
           sub.bind_resources(inst_.gbuffer);
           sub.bind_resources(inst_.lights);
@@ -621,9 +629,9 @@ void DeferredLayer::end_sync()
                                "render_pass_specular_light_enabled",
                                (rbuf_data.specular_light_id != -1) ||
                                    (rbuf_data.specular_color_id != -1));
+      pass.specialize_constant(sh, "use_split_radiance", use_split_radiance);
       pass.specialize_constant(sh, "use_radiance_feedback", use_radiance_feedback);
       pass.specialize_constant(sh, "render_pass_normal_enabled", rbuf_data.normal_id != -1);
-      pass.specialize_constant(sh, "use_combined_lightprobe_eval", use_combined_lightprobe_eval);
       pass.shader_set(sh);
       /* Use stencil test to reject pixels not written by this layer. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL | DRW_STATE_STENCIL_NEQUAL);
@@ -632,9 +640,9 @@ void DeferredLayer::end_sync()
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
-      pass.bind_texture("indirect_radiance_1_tx", &indirect_radiance_txs_[0]);
-      pass.bind_texture("indirect_radiance_2_tx", &indirect_radiance_txs_[1]);
-      pass.bind_texture("indirect_radiance_3_tx", &indirect_radiance_txs_[2]);
+      pass.bind_texture("indirect_radiance_1_tx", &indirect_radiance_tx_refs_[0]);
+      pass.bind_texture("indirect_radiance_2_tx", &indirect_radiance_tx_refs_[1]);
+      pass.bind_texture("indirect_radiance_3_tx", &indirect_radiance_tx_refs_[2]);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_image("radiance_feedback_img", &radiance_feedback_tx_);
@@ -744,11 +752,16 @@ void DeferredLayer::render(View &main_view,
   RayTraceResult indirect_result;
 
   if (use_combined_lightprobe_eval) {
-    float4 data(0.0f);
-    /* Subsurface writes (black) to that texture. */
-    dummy_black_tx.ensure_2d(RAYTRACE_RADIANCE_FORMAT, int2(1), usage_rw, data);
-    for (int i = 0; i < 3; i++) {
-      indirect_radiance_txs_[i] = dummy_black_tx;
+    for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
+      if (use_split_radiance) {
+        indirect_radiance_txs_[i].acquire(
+            (closure_count_ > i) ? extent : int2(1), RAYTRACE_RADIANCE_FORMAT, usage_rw);
+        indirect_radiance_tx_refs_[i] = indirect_radiance_txs_[i];
+      }
+      else {
+        /* Needed for subsurface evaluation. It writes (black) to that texture. */
+        indirect_radiance_tx_refs_[i] = dummy_black;
+      }
     }
   }
   else {
@@ -761,7 +774,7 @@ void DeferredLayer::render(View &main_view,
                                               render_view,
                                               do_screen_space_refraction);
     for (int i = 0; i < 3; i++) {
-      indirect_radiance_txs_[i] = indirect_result.closures[i].get();
+      indirect_radiance_tx_refs_[i] = indirect_result.closures[i].get();
     }
   }
 
@@ -769,13 +782,17 @@ void DeferredLayer::render(View &main_view,
   inst_.manager->submit(eval_light_ps_, render_view);
 
   inst_.subsurface.render(
-      direct_radiance_txs_[0], indirect_radiance_txs_[0], closure_bits_, render_view);
+      direct_radiance_txs_[0], indirect_radiance_tx_refs_[0], closure_bits_, render_view);
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
   if (!use_combined_lightprobe_eval) {
     indirect_result.release();
+  }
+
+  for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
+    indirect_radiance_txs_[i].release();
   }
 
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
@@ -801,9 +818,10 @@ void DeferredPipeline::begin_sync()
 {
   Instance &inst = opaque_layer_.inst_;
 
-  const bool use_raytracing = (inst.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED);
-  inst.pipelines.data.use_combined_lightprobe_eval = !use_raytracing;
+  const bool use_raytracing = (inst.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED) != 0;
   use_combined_lightprobe_eval = !use_raytracing;
+  use_split_radiance = use_raytracing || ((inst.scene->eevee.clamp_surface_direct != 0.0f) ||
+                                          (inst.scene->eevee.clamp_surface_indirect != 0.0f));
 
   opaque_layer_.begin_sync();
   refraction_layer_.begin_sync();

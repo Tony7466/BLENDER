@@ -248,9 +248,13 @@ class DeferredLayer : DeferredLayerBase {
    */
   TextureFromPool direct_radiance_txs_[3] = {
       {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
-  Texture dummy_black_tx = {"dummy_black_tx"};
+  /* NOTE: Only used when `use_split_radiance` is true. */
+  TextureFromPool indirect_radiance_txs_[3] = {
+      {"indirect_radiance_1"}, {"indirect_radiance_2"}, {"indirect_radiance_3"}};
+  /* Used when there is no indirect radiance buffer. */
+  Texture dummy_black = {"dummy_black"};
   /* Reference to ray-tracing results. */
-  GPUTexture *indirect_radiance_txs_[3] = {nullptr};
+  GPUTexture *indirect_radiance_tx_refs_[3] = {nullptr};
 
   /**
    * Tile texture containing several bool per tile indicating presence of feature.
@@ -266,9 +270,17 @@ class DeferredLayer : DeferredLayerBase {
 
   bool use_combined_lightprobe_eval = true;
   bool use_radiance_feedback = true;
+  bool use_split_radiance = true;
 
  public:
-  DeferredLayer(Instance &inst) : inst_(inst){};
+  DeferredLayer(Instance &inst) : inst_(inst)
+  {
+    float4 data(0.0f);
+    dummy_black.ensure_2d(RAYTRACE_RADIANCE_FORMAT,
+                          int2(1),
+                          GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE,
+                          data);
+  }
 
   void begin_sync();
   void end_sync();
@@ -287,6 +299,8 @@ class DeferredLayer : DeferredLayerBase {
 };
 
 class DeferredPipeline {
+  friend DeferredLayer;
+
  private:
   /* Gbuffer filling passes. We could have an arbitrary number of them but for now we just have
    * a hardcoded number of them. */
@@ -297,6 +311,7 @@ class DeferredPipeline {
   PassSimple debug_draw_ps_ = {"debug_gbuffer"};
 
   bool use_combined_lightprobe_eval;
+  bool use_split_radiance;
 
  public:
   DeferredPipeline(Instance &inst)
