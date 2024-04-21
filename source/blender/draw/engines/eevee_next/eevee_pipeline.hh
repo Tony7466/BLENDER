@@ -18,6 +18,7 @@
 #include "draw_shader_shared.hh"
 
 #include "eevee_lut.hh"
+#include "eevee_raytrace.hh"
 #include "eevee_subsurface.hh"
 
 namespace blender::eevee {
@@ -254,7 +255,7 @@ class DeferredLayer : DeferredLayerBase {
   /* Used when there is no indirect radiance buffer. */
   Texture dummy_black = {"dummy_black"};
   /* Reference to ray-tracing results. */
-  GPUTexture *indirect_radiance_tx_refs_[3] = {nullptr};
+  GPUTexture *radiance_feedback_tx_ = nullptr;
 
   /**
    * Tile texture containing several bool per tile indicating presence of feature.
@@ -262,15 +263,17 @@ class DeferredLayer : DeferredLayerBase {
    */
   Texture tile_mask_tx_ = {"tile_mask_tx_"};
 
-  /* TODO(fclem): This should be a TextureFromPool. */
-  Texture radiance_behind_tx_ = {"radiance_behind_tx"};
-  /* TODO(fclem): This shouldn't be part of the pipeline but of the view. */
-  Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
-  float4x4 radiance_feedback_persmat_;
+  RayTraceResult indirect_result_;
 
-  bool use_combined_lightprobe_eval = true;
-  bool use_radiance_feedback = true;
-  bool use_split_radiance = true;
+  bool use_radiance_feedback_ = true;
+  bool use_split_radiance_ = true;
+  /* Output radiance from the combine shader instead of copy. Allow passing unclamped result. */
+  bool use_feedback_output_ = false;
+  bool use_raytracing_ = false;
+  bool use_screen_transmission_ = false;
+  bool use_screen_reflection_ = false;
+  bool use_clamp_direct_ = false;
+  bool use_clamp_indirect_ = false;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst)
@@ -283,19 +286,25 @@ class DeferredLayer : DeferredLayerBase {
   }
 
   void begin_sync();
-  void end_sync();
+  void end_sync(bool is_first_pass, bool is_last_pass);
 
   PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat, bool has_motion);
   PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
 
-  void render(View &main_view,
-              View &render_view,
-              Framebuffer &prepass_fb,
-              Framebuffer &combined_fb,
-              Framebuffer &gbuffer_fb,
-              int2 extent,
-              RayTraceBuffer &rt_buffer,
-              bool is_first_pass);
+  bool is_empty() const
+  {
+    return closure_count_ != 0;
+  }
+
+  /* Returns the radiance buffer to feed the next layer. */
+  GPUTexture *render(View &main_view,
+                     View &render_view,
+                     Framebuffer &prepass_fb,
+                     Framebuffer &combined_fb,
+                     Framebuffer &gbuffer_fb,
+                     int2 extent,
+                     RayTraceBuffer &rt_buffer,
+                     GPUTexture *radiance_behind_tx);
 };
 
 class DeferredPipeline {
@@ -311,7 +320,6 @@ class DeferredPipeline {
   PassSimple debug_draw_ps_ = {"debug_gbuffer"};
 
   bool use_combined_lightprobe_eval;
-  bool use_split_radiance;
 
  public:
   DeferredPipeline(Instance &inst)

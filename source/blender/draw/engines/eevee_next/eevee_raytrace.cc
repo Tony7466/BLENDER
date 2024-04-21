@@ -323,13 +323,10 @@ void RayTraceModule::debug_draw(View & /*view*/, GPUFrameBuffer * /*view_fb*/) {
 
 RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                                       GPUTexture *screen_radiance_back_tx,
-                                      GPUTexture *screen_radiance_front_tx,
-                                      const float4x4 &screen_radiance_persmat,
                                       eClosureBits active_closures,
                                       /* TODO(fclem): Maybe wrap these two in some other class. */
                                       View &main_view,
-                                      View &render_view,
-                                      bool do_refraction_tracing)
+                                      View &render_view)
 {
   using namespace blender::math;
 
@@ -388,7 +385,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   /* Data for the radiance setup. */
   data_.resolution_scale = resolution_scale;
   data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
-  data_.radiance_persmat = screen_radiance_persmat;
+  data_.radiance_persmat = render_view.persmat();
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
 
@@ -409,7 +406,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
     inst_.manager->submit(tile_classify_ps_);
   }
 
-  data_.trace_refraction = do_refraction_tracing;
+  data_.trace_refraction = screen_radiance_back_tx != nullptr;
 
   for (int i = 0; i < 3; i++) {
     result.closures[i] = trace(i,
@@ -417,8 +414,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                                options,
                                rt_buffer,
                                screen_radiance_back_tx,
-                               screen_radiance_front_tx,
-                               screen_radiance_persmat,
+                               rt_buffer.radiance_feedback_tx,
                                main_view,
                                render_view);
   }
@@ -427,7 +423,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
     if (use_horizon_scan) {
       DRW_stats_group_start("Horizon Scan");
 
-      screen_radiance_front_tx_ = screen_radiance_front_tx;
+      screen_radiance_front_tx_ = rt_buffer.radiance_feedback_tx;
 
       downsampled_in_radiance_tx_.acquire(tracing_res_horizon, RAYTRACE_RADIANCE_FORMAT, usage_rw);
       downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGB10_A2, usage_rw);
@@ -464,6 +460,8 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_end();
 
+  rt_buffer.history_persmat = render_view.persmat();
+
   return result;
 }
 
@@ -474,7 +472,6 @@ RayTraceResultTexture RayTraceModule::trace(
     RayTraceBuffer &rt_buffer,
     GPUTexture *screen_radiance_back_tx,
     GPUTexture *screen_radiance_front_tx,
-    const float4x4 &screen_radiance_persmat,
     /* TODO(fclem): Maybe wrap these two in some other class. */
     View &main_view,
     View &render_view)
@@ -520,7 +517,7 @@ RayTraceResultTexture RayTraceModule::trace(
   data_.resolution_scale = resolution_scale;
   data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
-  data_.radiance_persmat = screen_radiance_persmat;
+  data_.radiance_persmat = render_view.persmat();
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
   data_.skip_denoise = !use_spatial_denoise;
@@ -539,7 +536,8 @@ RayTraceResultTexture RayTraceModule::trace(
     ray_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
 
     screen_radiance_front_tx_ = screen_radiance_front_tx;
-    screen_radiance_back_tx_ = screen_radiance_back_tx;
+    screen_radiance_back_tx_ = screen_radiance_back_tx ? screen_radiance_back_tx :
+                                                         screen_radiance_front_tx;
 
     inst_.manager->submit(generate_ps_, render_view);
     if (tracing_method_ == RAYTRACE_EEVEE_METHOD_SCREEN) {
@@ -636,6 +634,32 @@ RayTraceResultTexture RayTraceModule::trace(
   return result;
 }
 
+RayTraceResult RayTraceModule::alloc_only(RayTraceBuffer &rt_buffer)
+{
+  const int2 extent = inst_.film.render_extent_get();
+  eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+
+  RayTraceResult result;
+  for (int i = 0; i < 3; i++) {
+    RayTraceBuffer::DenoiseBuffer *denoise_buf = &rt_buffer.closures[i];
+    denoise_buf->denoised_bilateral_tx.acquire(extent, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+    result.closures[i] = {denoise_buf->denoised_bilateral_tx};
+  }
+  return result;
+}
+
+RayTraceResult RayTraceModule::alloc_dummy(RayTraceBuffer &rt_buffer)
+{
+  eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+
+  RayTraceResult result;
+  for (int i = 0; i < 3; i++) {
+    RayTraceBuffer::DenoiseBuffer *denoise_buf = &rt_buffer.closures[i];
+    denoise_buf->denoised_bilateral_tx.acquire(int2(1), RAYTRACE_RADIANCE_FORMAT, usage_rw);
+    result.closures[i] = {denoise_buf->denoised_bilateral_tx};
+  }
+  return result;
+}
 /** \} */
 
 }  // namespace blender::eevee

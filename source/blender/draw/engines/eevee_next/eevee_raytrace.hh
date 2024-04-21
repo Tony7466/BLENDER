@@ -28,7 +28,7 @@ class Instance;
  * \{ */
 
 /**
- * Contain persistent buffer that need to be stored per view, per layer.
+ * Contain persistent buffer that need to be stored per view, per deferred layer.
  */
 struct RayTraceBuffer {
   /** Set of buffers that need to be allocated for each ray type. */
@@ -54,6 +54,24 @@ struct RayTraceBuffer {
    * One for each closure. Not to be mistaken with deferred layer type.
    */
   DenoiseBuffer closures[3];
+
+  /**
+   * Radiance feedback of the deferred layer for next sample's reflection or next layer's
+   * transmission.
+   */
+  Texture radiance_feedback_tx = {"radiance_feedback_tx"};
+  /**
+   * Perspective matrix for which the radiance feedback buffer was recorded.
+   * Can be different from de-noise buffer's history matrix.
+   */
+  float4x4 history_persmat;
+
+  GPUTexture *alloc_feedback(bool is_dummy, int2 extent)
+  {
+    eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
+    radiance_feedback_tx.ensure_2d(GPU_RGBA16F, is_dummy ? int2(1) : extent, usage_rw);
+    return radiance_feedback_tx;
+  }
 };
 
 /**
@@ -77,6 +95,11 @@ class RayTraceResultTexture {
   GPUTexture *get()
   {
     return *result_;
+  }
+
+  GPUTexture **ref()
+  {
+    return &*result_;
   }
 
   void release()
@@ -223,13 +246,20 @@ class RayTraceModule {
    */
   RayTraceResult render(RayTraceBuffer &rt_buffer,
                         GPUTexture *screen_radiance_back_tx,
-                        GPUTexture *screen_radiance_front_tx,
-                        const float4x4 &screen_radiance_persmat,
                         eClosureBits active_closures,
                         /* TODO(fclem): Maybe wrap these two in some other class. */
                         View &main_view,
-                        View &render_view,
-                        bool do_refraction_tracing);
+                        View &render_view);
+
+  /**
+   * Only allocate the RayTraceResult results buffers to be used by other passes.
+   */
+  RayTraceResult alloc_only(RayTraceBuffer &rt_buffer);
+
+  /**
+   * Only allocate the RayTraceResult results buffers as dummy texture to ensure correct bindings.
+   */
+  RayTraceResult alloc_dummy(RayTraceBuffer &rt_buffer);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
@@ -241,7 +271,6 @@ class RayTraceModule {
                               RayTraceBuffer &rt_buffer,
                               GPUTexture *screen_radiance_back_tx,
                               GPUTexture *screen_radiance_front_tx,
-                              const float4x4 &screen_radiance_persmat,
                               /* TODO(fclem): Maybe wrap these two in some other class. */
                               View &main_view,
                               View &render_view);

@@ -528,10 +528,24 @@ void DeferredLayer::begin_sync()
   this->gbuffer_pass_sync(inst_);
 }
 
-void DeferredLayer::end_sync()
+void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
 {
-  use_combined_lightprobe_eval = inst_.pipelines.deferred.use_combined_lightprobe_eval;
-  use_split_radiance = inst_.pipelines.deferred.use_split_radiance;
+  const SceneEEVEE &sce_eevee = inst_.scene->eevee;
+  const bool has_transmit_closure = (closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_TRANSLUCENT));
+  const bool has_reflect_closure = (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
+  use_raytracing_ = (sce_eevee.flag & SCE_EEVEE_SSR_ENABLED) != 0;
+
+  use_clamp_direct_ = sce_eevee.clamp_surface_direct != 0.0f;
+  use_clamp_indirect_ = sce_eevee.clamp_surface_indirect != 0.0f;
+
+  /* The first pass will never have any surfaces behind it. Nothing is refracted except the
+   * environment. So in this case, disable tracing and fallback to probe. */
+  use_screen_transmission_ = use_raytracing_ && has_transmit_closure && !is_first_pass;
+  use_screen_reflection_ = use_raytracing_ && has_reflect_closure;
+
+  use_split_radiance_ = use_raytracing_ || use_clamp_direct_ || use_clamp_indirect_;
+  use_feedback_output_ = use_raytracing_ && (!is_last_pass || use_screen_reflection_) &&
+                         (sce_eevee.clamp_surface_direct != 0.0f);
 
   {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
@@ -570,7 +584,7 @@ void DeferredLayer::end_sync()
       pass.init();
 
       {
-        const bool use_split_indirect = use_combined_lightprobe_eval && use_split_radiance;
+        const bool use_split_indirect = !use_raytracing_ && use_split_radiance_;
         PassSimple::Sub &sub = pass.sub("Eval.Light");
         /* Use depth test to reject background pixels which have not been stencil cleared. */
         /* WORKAROUND: Avoid rasterizer discard by enabling stencil write, but the shaders actually
@@ -588,7 +602,7 @@ void DeferredLayer::end_sync()
            * constant. */
           sub.specialize_constant(sh, "render_pass_shadow_enabled", rbuf_data.shadow_id != -1);
           sub.specialize_constant(sh, "use_split_indirect", use_split_indirect);
-          sub.specialize_constant(sh, "use_lightprobe_eval", use_combined_lightprobe_eval);
+          sub.specialize_constant(sh, "use_lightprobe_eval", !use_raytracing_);
           const ShadowSceneData &shadow_scene = inst_.shadows.get_data();
           sub.specialize_constant(sh, "shadow_ray_count", &shadow_scene.ray_count);
           sub.specialize_constant(sh, "shadow_ray_step_count", &shadow_scene.step_count);
@@ -597,9 +611,9 @@ void DeferredLayer::end_sync()
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
           sub.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
           if (use_split_indirect) {
-            sub.bind_image("indirect_radiance_1_img", &indirect_radiance_tx_refs_[0]);
-            sub.bind_image("indirect_radiance_2_img", &indirect_radiance_tx_refs_[1]);
-            sub.bind_image("indirect_radiance_3_img", &indirect_radiance_tx_refs_[2]);
+            sub.bind_texture("indirect_radiance_1_img", indirect_result_.closures[0].ref());
+            sub.bind_texture("indirect_radiance_2_img", indirect_result_.closures[1].ref());
+            sub.bind_texture("indirect_radiance_3_img", indirect_result_.closures[2].ref());
           }
           sub.bind_resources(inst_.uniform_data);
           sub.bind_resources(inst_.gbuffer);
@@ -629,8 +643,8 @@ void DeferredLayer::end_sync()
                                "render_pass_specular_light_enabled",
                                (rbuf_data.specular_light_id != -1) ||
                                    (rbuf_data.specular_color_id != -1));
-      pass.specialize_constant(sh, "use_split_radiance", use_split_radiance);
-      pass.specialize_constant(sh, "use_radiance_feedback", use_radiance_feedback);
+      pass.specialize_constant(sh, "use_split_radiance", use_split_radiance_);
+      pass.specialize_constant(sh, "use_radiance_feedback", use_radiance_feedback_);
       pass.specialize_constant(sh, "render_pass_normal_enabled", rbuf_data.normal_id != -1);
       pass.shader_set(sh);
       /* Use stencil test to reject pixels not written by this layer. */
@@ -640,9 +654,9 @@ void DeferredLayer::end_sync()
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
-      pass.bind_texture("indirect_radiance_1_tx", &indirect_radiance_tx_refs_[0]);
-      pass.bind_texture("indirect_radiance_2_tx", &indirect_radiance_tx_refs_[1]);
-      pass.bind_texture("indirect_radiance_3_tx", &indirect_radiance_tx_refs_[2]);
+      pass.bind_texture("indirect_radiance_1_tx", indirect_result_.closures[0].ref());
+      pass.bind_texture("indirect_radiance_2_tx", indirect_result_.closures[1].ref());
+      pass.bind_texture("indirect_radiance_3_tx", indirect_result_.closures[2].ref());
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_image("radiance_feedback_img", &radiance_feedback_tx_);
@@ -685,50 +699,28 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   return &pass->sub(GPU_material_get_name(gpumat));
 }
 
-void DeferredLayer::render(View &main_view,
-                           View &render_view,
-                           Framebuffer &prepass_fb,
-                           Framebuffer &combined_fb,
-                           Framebuffer &gbuffer_fb,
-                           int2 extent,
-                           RayTraceBuffer &rt_buffer,
-                           bool is_first_pass)
+GPUTexture *DeferredLayer::render(View &main_view,
+                                  View &render_view,
+                                  Framebuffer &prepass_fb,
+                                  Framebuffer &combined_fb,
+                                  Framebuffer &gbuffer_fb,
+                                  int2 extent,
+                                  RayTraceBuffer &rt_buffer,
+                                  GPUTexture *radiance_behind_tx)
 {
   if (closure_count_ == 0) {
-    return;
+    return nullptr;
   }
 
   RenderBuffers &rb = inst_.render_buffers;
 
-  /* The first pass will never have any surfaces behind it. Nothing is refracted except the
-   * environment. So in this case, disable tracing and fallback to probe. */
-  bool do_screen_space_refraction = !is_first_pass &&
-                                    (closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_TRANSLUCENT));
-  bool do_screen_space_reflection = (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
   constexpr eGPUTextureUsage usage_read = GPU_TEXTURE_USAGE_SHADER_READ;
   constexpr eGPUTextureUsage usage_write = GPU_TEXTURE_USAGE_SHADER_WRITE;
   constexpr eGPUTextureUsage usage_rw = usage_read | usage_write;
 
-  if (do_screen_space_reflection) {
-    if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage_read)) {
-      radiance_feedback_tx_.clear(float4(0.0));
-      radiance_feedback_persmat_ = render_view.persmat();
-    }
-  }
-  else {
-    /* Dummy texture. Will not be used. */
-    radiance_feedback_tx_.ensure_2d(rb.color_format, int2(1), GPU_TEXTURE_USAGE_SHADER_READ);
-  }
-
-  if (do_screen_space_refraction) {
+  if (use_screen_transmission_) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
-    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage_read);
-    GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
-  }
-  else {
-    /* Dummy texture. Will not be used. */
-    radiance_behind_tx_.ensure_2d(rb.color_format, int2(1), GPU_TEXTURE_USAGE_SHADER_READ);
   }
 
   GPU_framebuffer_bind(prepass_fb);
@@ -749,61 +741,48 @@ void DeferredLayer::render(View &main_view,
         (closure_count_ > i) ? extent : int2(1), DEFERRED_RADIANCE_FORMAT, usage_rw);
   }
 
-  RayTraceResult indirect_result;
-
-  if (use_combined_lightprobe_eval) {
-    for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
-      if (use_split_radiance) {
-        indirect_radiance_txs_[i].acquire(
-            (closure_count_ > i) ? extent : int2(1), RAYTRACE_RADIANCE_FORMAT, usage_rw);
-        indirect_radiance_tx_refs_[i] = indirect_radiance_txs_[i];
-      }
-      else {
-        /* Needed for subsurface evaluation. It writes (black) to that texture. */
-        indirect_radiance_tx_refs_[i] = dummy_black;
-      }
-    }
+  if (use_raytracing_) {
+    indirect_result_ = inst_.raytracing.render(
+        rt_buffer, radiance_behind_tx, closure_bits_, main_view, render_view);
+  }
+  else if (use_split_radiance_) {
+    indirect_result_ = inst_.raytracing.alloc_only(rt_buffer);
   }
   else {
-    indirect_result = inst_.raytracing.render(rt_buffer,
-                                              radiance_behind_tx_,
-                                              radiance_feedback_tx_,
-                                              radiance_feedback_persmat_,
-                                              closure_bits_,
-                                              main_view,
-                                              render_view,
-                                              do_screen_space_refraction);
-    for (int i = 0; i < 3; i++) {
-      indirect_radiance_tx_refs_[i] = indirect_result.closures[i].get();
-    }
+    indirect_result_ = inst_.raytracing.alloc_dummy(rt_buffer);
   }
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(eval_light_ps_, render_view);
 
   inst_.subsurface.render(
-      direct_radiance_txs_[0], indirect_radiance_tx_refs_[0], closure_bits_, render_view);
+      direct_radiance_txs_[0], indirect_result_.closures[0].get(), closure_bits_, render_view);
+
+  radiance_feedback_tx_ = rt_buffer.alloc_feedback(use_feedback_output_, extent);
+
+  if (use_feedback_output_ && use_clamp_direct_) {
+    /* We need to do a copy before the combine pass (otherwise we have a dependency issue) to save
+     * the emission and the previous layer's radiance. */
+    GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
+  }
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  if (!use_combined_lightprobe_eval) {
-    indirect_result.release();
+  if (use_feedback_output_ && !use_clamp_direct_) {
+    /* We skip writting the radiance during the combine pass. Do a simple fast copy. */
+    GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
   }
 
-  for (int i = 0; i < ARRAY_SIZE(indirect_radiance_txs_); i++) {
-    indirect_radiance_txs_[i].release();
-  }
+  indirect_result_.release();
 
   for (int i = 0; i < ARRAY_SIZE(direct_radiance_txs_); i++) {
     direct_radiance_txs_[i].release();
   }
 
-  if (do_screen_space_reflection) {
-    radiance_feedback_persmat_ = render_view.persmat();
-  }
-
   inst_.pipelines.deferred.debug_draw(render_view, combined_fb);
+
+  return use_feedback_output_ ? radiance_feedback_tx_ : nullptr;
 }
 
 /** \} */
@@ -820,8 +799,6 @@ void DeferredPipeline::begin_sync()
 
   const bool use_raytracing = (inst.scene->eevee.flag & SCE_EEVEE_SSR_ENABLED) != 0;
   use_combined_lightprobe_eval = !use_raytracing;
-  use_split_radiance = use_raytracing || ((inst.scene->eevee.clamp_surface_direct != 0.0f) ||
-                                          (inst.scene->eevee.clamp_surface_indirect != 0.0f));
 
   opaque_layer_.begin_sync();
   refraction_layer_.begin_sync();
@@ -829,8 +806,8 @@ void DeferredPipeline::begin_sync()
 
 void DeferredPipeline::end_sync()
 {
-  opaque_layer_.end_sync();
-  refraction_layer_.end_sync();
+  opaque_layer_.end_sync(true, refraction_layer_.is_empty());
+  refraction_layer_.end_sync(opaque_layer_.is_empty(), true);
 
   debug_pass_sync();
 }
@@ -911,26 +888,28 @@ void DeferredPipeline::render(View &main_view,
                               RayTraceBuffer &rt_buffer_opaque_layer,
                               RayTraceBuffer &rt_buffer_refract_layer)
 {
+  GPUTexture *feedback_tx = nullptr;
+
   DRW_stats_group_start("Deferred.Opaque");
-  opaque_layer_.render(main_view,
-                       render_view,
-                       prepass_fb,
-                       combined_fb,
-                       gbuffer_fb,
-                       extent,
-                       rt_buffer_opaque_layer,
-                       true);
+  feedback_tx = opaque_layer_.render(main_view,
+                                     render_view,
+                                     prepass_fb,
+                                     combined_fb,
+                                     gbuffer_fb,
+                                     extent,
+                                     rt_buffer_opaque_layer,
+                                     feedback_tx);
   DRW_stats_group_end();
 
   DRW_stats_group_start("Deferred.Refract");
-  refraction_layer_.render(main_view,
-                           render_view,
-                           prepass_fb,
-                           combined_fb,
-                           gbuffer_fb,
-                           extent,
-                           rt_buffer_refract_layer,
-                           false);
+  feedback_tx = refraction_layer_.render(main_view,
+                                         render_view,
+                                         prepass_fb,
+                                         combined_fb,
+                                         gbuffer_fb,
+                                         extent,
+                                         rt_buffer_refract_layer,
+                                         feedback_tx);
   DRW_stats_group_end();
 }
 
