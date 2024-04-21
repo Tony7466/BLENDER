@@ -1,0 +1,110 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup gpu
+ */
+
+#pragma once
+
+#include <mutex>
+
+#include "BLI_map.hh"
+#include "BLI_utility_mixins.hh"
+
+#include "vk_common.hh"
+
+namespace blender {
+namespace gpu {
+
+/**
+ * Struct containing key information of a compute pipeline. Is used to identify similar compute
+ * pipelines.
+ */
+struct VKComputeInfo {
+  VkShaderModule vk_shader_module;
+  VkPipelineLayout vk_pipeline_layout;
+  Vector<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants;
+
+  bool operator==(const VKComputeInfo &other) const
+  {
+    return vk_shader_module == other.vk_shader_module &&
+           vk_pipeline_layout == other.vk_pipeline_layout &&
+           specialization_constants == other.specialization_constants;
+  };
+};
+
+}  // namespace gpu
+
+template<> struct DefaultHash<gpu::VKComputeInfo> {
+  uint64_t operator()(const gpu::VKComputeInfo &key) const
+  {
+    uint64_t hash = uint64_t(key.vk_shader_module);
+    hash = hash * 33 ^ uint64_t(key.vk_pipeline_layout);
+    hash = hash * 33 ^ get_default_hash(key.specialization_constants);
+    return hash;
+  }
+};
+
+namespace gpu {
+class VKDevice;
+
+/**
+ * Pipelines are lazy initialized and same pipelines should share their handle.
+ *
+ * To improve performance we want to keep track of pipelines globally. Same pipeline should share
+ * the same VKPipeline. This makes it easier to detect if pipelines are actually changed.
+ *
+ * VkPipelineCache is normally used to share internal resources of pipelines. However it the
+ * responsibility of the driver how this is handled. Some drivers might do ref-counting other may
+ * return a different pipeline handle. Due to this we cannot rely on the pipeline cache to merge
+ * same pipelines.
+ *
+ * Many information is needed to create a graphics pipeline. Some of the information is
+ * boilerplate; or at least from Blender point of view. To improve lookup performance we use a
+ * slimmed down version of the pipeline create info structs. The idea is that we can limit the
+ * required data because we control which data we actually use, removing te boiler plating and
+ * improve hashing performance. See #VKPipelines::ComputeInfo.
+ *
+ * NOTE: Extensions like `VK_EXT_graphics_pipeline_library` and acceleration structures like
+ * `VkPipelineCache` should fit in this class and will be added when we they have proven their
+ * value.
+ */
+class VKPipelinePool : public NonCopyable {
+ public:
+ private:
+  Map<VKComputeInfo, VkPipeline> compute_pipelines_;
+  /* Partially initialized structures to reuse. */
+  VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
+  VkSpecializationInfo vk_specialization_info_;
+  Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;
+  VkPushConstantRange vk_push_constant_range_;
+
+  std::mutex mutex_;
+
+ public:
+  VKPipelinePool();
+  /**
+   * Get an existing or create a new compute pipeline based on the provided ComputeInfo.
+   *
+   * When vk_pipeline_base is a valid pipeline handle, the pipeline base will be used to speed up
+   * pipeline creation process.
+   */
+  VkPipeline get_or_create_compute_pipeline(VKComputeInfo &compute_info,
+                                            VkPipeline vk_pipeline_base = VK_NULL_HANDLE);
+
+  /**
+   * Remove all shader pipelines that uses the given shader_module.
+   */
+  void remove(Span<VkShaderModule> vk_shader_modules);
+
+  /**
+   * Destroy all created pipelines.
+   */
+  void free_data();
+};
+
+}  // namespace gpu
+
+}  // namespace blender
