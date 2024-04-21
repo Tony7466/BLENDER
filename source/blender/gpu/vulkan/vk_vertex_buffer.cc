@@ -92,15 +92,17 @@ void VKVertexBuffer::update_sub(uint /*start*/, uint /*len*/, const void * /*dat
 void VKVertexBuffer::read(void *data) const
 {
   VKContext &context = *VKContext::get();
-  context.flush();
+  if (!use_render_graph) {
+    context.flush();
+  }
   if (buffer_.is_mapped()) {
-    buffer_.read(data);
+    buffer_.read(context, data);
     return;
   }
 
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
   staging_buffer.copy_from_device(context);
-  staging_buffer.host_buffer_get().read(data);
+  staging_buffer.host_buffer_get().read(context, data);
 }
 
 void VKVertexBuffer::acquire_data()
@@ -140,6 +142,9 @@ void VKVertexBuffer::upload_data_direct(const VKBuffer &host_buffer)
 {
   device_format_ensure();
   if (vertex_format_converter.needs_conversion()) {
+    if (G.debug & G_DEBUG_GPU) {
+      std::cout << "PERFORMANCE: Vertex buffer requires conversion.\n";
+    }
     vertex_format_converter.convert(host_buffer.mapped_memory_get(), data, vertex_len);
     host_buffer.flush();
   }

@@ -8,6 +8,7 @@ set(INC
   ../../blenloader
   ../../blentranslation
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../windowmanager
 
@@ -39,8 +40,8 @@ set(SRC
   tracking_ops_utils.cc
   tracking_select.cc
 
-  clip_intern.h
-  tracking_ops_intern.h
+  clip_intern.hh
+  tracking_ops_intern.hh
 )
 
 set(LIB
@@ -49,7 +50,6 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 

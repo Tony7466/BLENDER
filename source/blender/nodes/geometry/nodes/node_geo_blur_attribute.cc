@@ -11,9 +11,6 @@
 #include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_fields.hh"
@@ -89,6 +86,10 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
   if (fixed_data_type == CD_PROP_QUATERNION) {
     /* Don't implement quaternion blurring for now. */
+    return;
+  }
+  if (fixed_data_type == CD_PROP_FLOAT4X4) {
+    /* Don't implement matrix blurring for now. */
     return;
   }
   if (fixed_data_type == CD_PROP_BOOL) {
@@ -202,20 +203,20 @@ static void build_face_to_face_by_edge_map(const OffsetIndices<int> faces,
 }
 
 static GroupedSpan<int> create_mesh_map(const Mesh &mesh,
-                                        const eAttrDomain domain,
+                                        const AttrDomain domain,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
   switch (domain) {
-    case ATTR_DOMAIN_POINT:
-      build_vert_to_vert_by_edge_map(mesh.edges(), mesh.totvert, r_offsets, r_indices);
+    case AttrDomain::Point:
+      build_vert_to_vert_by_edge_map(mesh.edges(), mesh.verts_num, r_offsets, r_indices);
       break;
-    case ATTR_DOMAIN_EDGE:
-      build_edge_to_edge_by_vert_map(mesh.edges(), mesh.totvert, r_offsets, r_indices);
+    case AttrDomain::Edge:
+      build_edge_to_edge_by_vert_map(mesh.edges(), mesh.verts_num, r_offsets, r_indices);
       break;
-    case ATTR_DOMAIN_FACE:
+    case AttrDomain::Face:
       build_face_to_face_by_edge_map(
-          mesh.faces(), mesh.corner_edges(), mesh.totedge, r_offsets, r_indices);
+          mesh.faces(), mesh.corner_edges(), mesh.edges_num, r_offsets, r_indices);
       break;
     default:
       BLI_assert_unreachable();
@@ -255,8 +256,21 @@ static Span<T> blur_on_mesh_exec(const Span<float> neighbor_weights,
   return dst;
 }
 
+template<typename Func> static void to_static_type_for_blur(const CPPType &type, const Func &func)
+{
+  type.to_static_type_tag<int, float, float3, ColorGeometry4f>([&](auto type_tag) {
+    using T = typename decltype(type_tag)::type;
+    if constexpr (!std::is_same_v<T, void>) {
+      func(T());
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  });
+}
+
 static GSpan blur_on_mesh(const Mesh &mesh,
-                          const eAttrDomain domain,
+                          const AttrDomain domain,
                           const int iterations,
                           const Span<float> neighbor_weights,
                           const GMutableSpan buffer_a,
@@ -268,12 +282,10 @@ static GSpan blur_on_mesh(const Mesh &mesh,
       mesh, domain, neighbor_offsets, neighbor_indices);
 
   GSpan result_buffer;
-  bke::attribute_math::convert_to_static_type(buffer_a.type(), [&](auto dummy) {
+  to_static_type_for_blur(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    if constexpr (!std::is_same_v<T, bool>) {
-      result_buffer = blur_on_mesh_exec<T>(
-          neighbor_weights, neighbors_map, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
-    }
+    result_buffer = blur_on_mesh_exec<T>(
+        neighbor_weights, neighbors_map, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
   });
   return result_buffer;
 }
@@ -343,12 +355,10 @@ static GSpan blur_on_curves(const bke::CurvesGeometry &curves,
                             const GMutableSpan buffer_b)
 {
   GSpan result_buffer;
-  bke::attribute_math::convert_to_static_type(buffer_a.type(), [&](auto dummy) {
+  to_static_type_for_blur(buffer_a.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    if constexpr (!std::is_same_v<T, bool>) {
-      result_buffer = blur_on_curve_exec<T>(
-          curves, neighbor_weights, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
-    }
+    result_buffer = blur_on_curve_exec<T>(
+        curves, neighbor_weights, iterations, buffer_a.typed<T>(), buffer_b.typed<T>());
   });
   return result_buffer;
 }
@@ -396,7 +406,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     GSpan result_buffer = buffer_a.as_span();
     switch (context.type()) {
       case GeometryComponent::Type::Mesh:
-        if (ELEM(context.domain(), ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
+        if (ELEM(context.domain(), AttrDomain::Point, AttrDomain::Edge, AttrDomain::Face)) {
           if (const Mesh *mesh = context.mesh()) {
             result_buffer = blur_on_mesh(
                 *mesh, context.domain(), iterations_, neighbor_weights, buffer_a, buffer_b);
@@ -405,7 +415,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
         break;
       case GeometryComponent::Type::Curve:
       case GeometryComponent::Type::GreasePencil:
-        if (context.domain() == ATTR_DOMAIN_POINT) {
+        if (context.domain() == AttrDomain::Point) {
           if (const bke::CurvesGeometry *curves = context.curves_or_strokes()) {
             result_buffer = blur_on_curves(
                 *curves, iterations_, neighbor_weights, buffer_a, buffer_b);
@@ -431,7 +441,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_3(iterations_, weight_field_, value_field_);
+    return get_default_hash(iterations_, weight_field_, value_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -445,12 +455,11 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const override
+  std::optional<AttrDomain> preferred_domain(const GeometryComponent &component) const override
   {
-    const std::optional<eAttrDomain> domain = bke::try_detect_field_domain(component,
-                                                                           value_field_);
-    if (domain.has_value() && *domain == ATTR_DOMAIN_CORNER) {
-      return ATTR_DOMAIN_POINT;
+    const std::optional<AttrDomain> domain = bke::try_detect_field_domain(component, value_field_);
+    if (domain.has_value() && *domain == AttrDomain::Corner) {
+      return AttrDomain::Point;
     }
     return domain;
   }

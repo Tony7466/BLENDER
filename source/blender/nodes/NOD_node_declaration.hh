@@ -12,7 +12,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_node_types.h"
 
@@ -171,6 +171,8 @@ class SocketDeclaration : public ItemDeclaration {
   /** Defined by whether the socket is part of the node's input or
    * output socket declaration list. Included here for convenience. */
   eNodeSocketInOut in_out;
+  /** Socket type that corresponds to this socket declaration. */
+  eNodeSocketDatatype socket_type;
   bool hide_label = false;
   bool hide_value = false;
   bool compact = false;
@@ -179,6 +181,8 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_unavailable = false;
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
+  /** Puts this socket on the same line as the previous one in the UI. */
+  bool align_with_previous_socket = false;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -240,16 +244,13 @@ class NodeDeclarationBuilder;
 
 class BaseSocketDeclarationBuilder {
  protected:
-  /* Socket builder can hold both an input and an output declaration.
-   * Each socket declaration has its own index for dependencies. */
-  int index_in_ = -1;
-  int index_out_ = -1;
+  /* Index of the socket in the list of inputs or outputs. */
+  int index_ = -1;
   bool reference_pass_all_ = false;
   bool field_on_all_ = false;
   bool propagate_from_all_ = false;
   NodeDeclarationBuilder *node_decl_builder_ = nullptr;
-  SocketDeclaration *decl_in_base_ = nullptr;
-  SocketDeclaration *decl_out_base_ = nullptr;
+  SocketDeclaration *decl_base_ = nullptr;
 
   friend class NodeDeclarationBuilder;
 
@@ -303,7 +304,7 @@ class BaseSocketDeclarationBuilder {
 
   /** The input is evaluated on a subset of the geometry inputs. */
   BaseSocketDeclarationBuilder &implicit_field_on(ImplicitInputValueFn fn,
-                                                  const Span<int> input_indices);
+                                                  Span<int> input_indices);
 
   /** For inputs that are evaluated or available on a subset of the geometry sockets. */
   BaseSocketDeclarationBuilder &field_on(Span<int> indices);
@@ -356,17 +357,17 @@ class BaseSocketDeclarationBuilder {
    */
   BaseSocketDeclarationBuilder &make_available(std::function<void(bNode &)> fn);
 
-  int input_index() const
-  {
-    BLI_assert(decl_in_base_ != nullptr);
-    return index_in_;
-  }
+  /**
+   * Puts this socket on the same row as the previous socket. This only works when one of them is
+   * an input and the other is an output.
+   */
+  BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
 
-  int output_index() const
-  {
-    BLI_assert(decl_out_base_ != nullptr);
-    return index_out_;
-  }
+  /** Index in the list of inputs or outputs. */
+  int index() const;
+
+  bool is_input() const;
+  bool is_output() const;
 };
 
 /**
@@ -379,15 +380,14 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
  protected:
   using Self = typename SocketDecl::Builder;
   static_assert(std::is_base_of_v<SocketDeclaration, SocketDecl>);
-  SocketDecl *decl_in_;
-  SocketDecl *decl_out_;
+  SocketDecl *decl_;
 
   friend class NodeDeclarationBuilder;
 };
 
 using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 
-typedef void (*PanelDrawButtonsFunction)(uiLayout *, bContext *, PointerRNA *);
+using PanelDrawButtonsFunction = void (*)(uiLayout *, bContext *, PointerRNA *);
 
 /**
  * Describes a panel containing sockets or other panels.
@@ -459,6 +459,10 @@ class NodeDeclaration {
    * outputs | buttons | inputs order. Panels are only supported when using custom socket order. */
   bool use_custom_socket_order = false;
 
+  /** Usually output sockets come before input sockets currently. Only some specific nodes are
+   * exempt from that rule for now. */
+  bool allow_any_socket_order = false;
+
   /**
    * True if any context was used to build this declaration.
    */
@@ -486,6 +490,8 @@ class NodeDeclarationBuilder {
   const bNodeTree *ntree_ = nullptr;
   const bNode *node_ = nullptr;
   Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> socket_builders_;
+  Vector<BaseSocketDeclarationBuilder *> input_socket_builders_;
+  Vector<BaseSocketDeclarationBuilder *> output_socket_builders_;
   Vector<std::unique_ptr<PanelDeclarationBuilder>> panel_builders_;
   bool is_function_node_ = false;
 
@@ -521,6 +527,7 @@ class NodeDeclarationBuilder {
   void finalize();
 
   void use_custom_socket_order(bool enable = true);
+  void allow_any_socket_order(bool enable = true);
 
   template<typename DeclType>
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
@@ -555,8 +562,6 @@ class NodeDeclarationBuilder {
   }
 
  private:
-  /* Note: in_out can be a combination of SOCK_IN and SOCK_OUT.
-   * The generated socket declarations only have a single flag set. */
   template<typename DeclType>
   typename DeclType::Builder &add_socket(StringRef name,
                                          StringRef identifier_in,
@@ -566,6 +571,8 @@ class NodeDeclarationBuilder {
   /* Mark the most recent builder as 'complete' when changing builders
    * so no more items can be added. */
   void set_active_panel_builder(const PanelDeclarationBuilder *panel_builder);
+
+  void build_remaining_anonymous_attribute_relations();
 };
 
 namespace implicit_field_inputs {
@@ -616,6 +623,27 @@ typename DeclType::Builder &PanelDeclarationBuilder::add_output(StringRef name,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name #BaseSocketDeclarationBuilder Inline Methods
+ * \{ */
+
+inline int BaseSocketDeclarationBuilder::index() const
+{
+  return index_;
+}
+
+inline bool BaseSocketDeclarationBuilder::is_input() const
+{
+  return decl_base_->in_out == SOCK_IN;
+}
+
+inline bool BaseSocketDeclarationBuilder::is_output() const
+{
+  return decl_base_->in_out == SOCK_OUT;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name #NodeDeclarationBuilder Inline Methods
  * \{ */
 
@@ -644,28 +672,43 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   static_assert(std::is_base_of_v<SocketDeclaration, DeclType>);
   using Builder = typename DeclType::Builder;
 
+  BLI_assert(ELEM(in_out, SOCK_IN, SOCK_OUT));
+
   std::unique_ptr<Builder> socket_decl_builder = std::make_unique<Builder>();
   socket_decl_builder->node_decl_builder_ = this;
 
   if (in_out & SOCK_IN) {
     std::unique_ptr<DeclType> socket_decl = std::make_unique<DeclType>();
-    socket_decl_builder->decl_in_ = &*socket_decl;
-    socket_decl_builder->decl_in_base_ = &*socket_decl;
+    socket_decl_builder->decl_ = &*socket_decl;
+    socket_decl_builder->decl_base_ = &*socket_decl;
     socket_decl->name = name;
     socket_decl->identifier = identifier_in.is_empty() ? name : identifier_in;
     socket_decl->in_out = SOCK_IN;
-    socket_decl_builder->index_in_ = declaration_.inputs.append_and_get_index(socket_decl.get());
+    socket_decl->socket_type = DeclType::static_socket_type;
+    socket_decl_builder->index_ = declaration_.inputs.append_and_get_index(socket_decl.get());
     declaration_.items.append(std::move(socket_decl));
+    input_socket_builders_.append(&*socket_decl_builder);
   }
   if (in_out & SOCK_OUT) {
     std::unique_ptr<DeclType> socket_decl = std::make_unique<DeclType>();
-    socket_decl_builder->decl_out_ = &*socket_decl;
-    socket_decl_builder->decl_out_base_ = &*socket_decl;
+    socket_decl_builder->decl_ = &*socket_decl;
+    socket_decl_builder->decl_base_ = &*socket_decl;
     socket_decl->name = name;
     socket_decl->identifier = identifier_out.is_empty() ? name : identifier_out;
     socket_decl->in_out = SOCK_OUT;
-    socket_decl_builder->index_out_ = declaration_.outputs.append_and_get_index(socket_decl.get());
+    socket_decl->socket_type = DeclType::static_socket_type;
+    socket_decl_builder->index_ = declaration_.outputs.append_and_get_index(socket_decl.get());
     declaration_.items.append(std::move(socket_decl));
+    output_socket_builders_.append(&*socket_decl_builder);
+  }
+
+  if (is_function_node_) {
+    if (in_out == SOCK_IN) {
+      socket_decl_builder->supports_field();
+    }
+    else {
+      socket_decl_builder->dependent_field();
+    }
   }
 
   Builder &socket_decl_builder_ref = *socket_decl_builder;

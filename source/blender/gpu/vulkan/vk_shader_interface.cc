@@ -22,6 +22,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
 
   attr_len_ = info.vertex_inputs_.size();
   uniform_len_ = info.push_constants_.size();
+  constant_len_ = info.specialization_constants_.size();
   ssbo_len_ = 0;
   ubo_len_ = 0;
   image_offset_ = -1;
@@ -65,7 +66,7 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     image_offset_ = image_max_binding + 1;
   }
 
-  int32_t input_tot_len = attr_len_ + ubo_len_ + uniform_len_ + ssbo_len_;
+  int32_t input_tot_len = attr_len_ + ubo_len_ + uniform_len_ + ssbo_len_ + constant_len_;
   inputs_ = static_cast<ShaderInput *>(
       MEM_calloc_arrayN(input_tot_len, sizeof(ShaderInput), __func__));
   ShaderInput *input = inputs_;
@@ -135,6 +136,14 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
     }
   }
 
+  /* Constants */
+  int constant_id = 0;
+  for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
+    copy_input_name(input, constant.name, name_buffer_, name_buffer_offset);
+    input->location = constant_id++;
+    input++;
+  }
+
   sort_inputs();
 
   /* Builtin Uniforms */
@@ -154,13 +163,19 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   /* Determine the descriptor set locations after the inputs have been sorted. */
   /* Note: input_tot_len is sometimes more than we need. */
   const uint32_t resources_len = input_tot_len;
+
+  /* Initialize the descriptor set layout. */
+  init_descriptor_set_layout_info(info, resources_len, all_resources, push_constants_storage_type);
+
   descriptor_set_locations_ = Array<VKDescriptorSet::Location>(resources_len);
   descriptor_set_locations_.fill(-1);
+  descriptor_set_bind_types_ = Array<shader::ShaderCreateInfo::Resource::BindType>(resources_len);
+  descriptor_set_bind_types_.fill(shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER);
   uint32_t descriptor_set_location = 0;
   for (ShaderCreateInfo::Resource &res : all_resources) {
     const ShaderInput *input = shader_input_get(res);
     BLI_assert(input);
-    descriptor_set_location_update(input, descriptor_set_location++);
+    descriptor_set_location_update(input, descriptor_set_location++, res.bind_type);
   }
 
   /* Post initializing push constants. */
@@ -169,7 +184,9 @@ void VKShaderInterface::init(const shader::ShaderCreateInfo &info)
   if (push_constants_storage_type == VKPushConstants::StorageType::UNIFORM_BUFFER) {
     push_constant_descriptor_set_location = descriptor_set_location++;
     const ShaderInput *push_constant_input = ubo_get(PUSH_CONSTANTS_FALLBACK_NAME);
-    descriptor_set_location_update(push_constant_input, push_constants_fallback_location);
+    descriptor_set_location_update(push_constant_input,
+                                   push_constants_fallback_location,
+                                   shader::ShaderCreateInfo::Resource::UNIFORM_BUFFER);
   }
   push_constants_layout_.init(
       info, *this, push_constants_storage_type, push_constant_descriptor_set_location);
@@ -182,12 +199,15 @@ static int32_t shader_input_index(const ShaderInput *shader_inputs,
   return index;
 }
 
-void VKShaderInterface::descriptor_set_location_update(const ShaderInput *shader_input,
-                                                       const VKDescriptorSet::Location location)
+void VKShaderInterface::descriptor_set_location_update(
+    const ShaderInput *shader_input,
+    const VKDescriptorSet::Location location,
+    const shader::ShaderCreateInfo::Resource::BindType bind_type)
 {
   int32_t index = shader_input_index(inputs_, shader_input);
   BLI_assert(descriptor_set_locations_[index].binding == -1);
   descriptor_set_locations_[index] = location;
+  descriptor_set_bind_types_[index] = bind_type;
 }
 
 const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
@@ -195,6 +215,13 @@ const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
 {
   int32_t index = shader_input_index(inputs_, shader_input);
   return descriptor_set_locations_[index];
+}
+
+const shader::ShaderCreateInfo::Resource::BindType VKShaderInterface::descriptor_set_bind_type(
+    const ShaderInput *shader_input) const
+{
+  int32_t index = shader_input_index(inputs_, shader_input);
+  return descriptor_set_bind_types_[index];
 }
 
 const VKDescriptorSet::Location VKShaderInterface::descriptor_set_location(
@@ -210,6 +237,9 @@ const std::optional<VKDescriptorSet::Location> VKShaderInterface::descriptor_set
 {
   const ShaderInput *shader_input = shader_input_get(bind_type, binding);
   if (shader_input == nullptr) {
+    return std::nullopt;
+  }
+  if (descriptor_set_bind_type(shader_input) != bind_type) {
     return std::nullopt;
   }
   return descriptor_set_location(shader_input);
@@ -228,7 +258,7 @@ const ShaderInput *VKShaderInterface::shader_input_get(
     case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
       /* Not really nice, but the binding namespace between OpenGL and Vulkan don't match. To fix
        * this we need to check if one of both cases return a binding.
-       * TODO: we might want to introduce a different API to fix this.  */
+       * TODO: we might want to introduce a different API to fix this. */
       return texture_get((binding >= image_offset_) ? binding : binding + image_offset_);
     case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
       return texture_get(binding);
@@ -238,6 +268,26 @@ const ShaderInput *VKShaderInterface::shader_input_get(
       return ubo_get(binding);
   }
   return nullptr;
+}
+
+void VKShaderInterface::init_descriptor_set_layout_info(
+    const shader::ShaderCreateInfo &info,
+    int64_t resources_len,
+    Span<shader::ShaderCreateInfo::Resource> all_resources,
+    VKPushConstants::StorageType push_constants_storage)
+{
+  BLI_assert(descriptor_set_layout_info_.bindings.is_empty());
+  descriptor_set_layout_info_.bindings.reserve(resources_len);
+  descriptor_set_layout_info_.vk_shader_stage_flags =
+      info.compute_source_.is_empty() && info.compute_source_generated.empty() ?
+          VK_SHADER_STAGE_ALL_GRAPHICS :
+          VK_SHADER_STAGE_COMPUTE_BIT;
+  for (const shader::ShaderCreateInfo::Resource &res : all_resources) {
+    descriptor_set_layout_info_.bindings.append(to_vk_descriptor_type(res));
+  }
+  if (push_constants_storage == VKPushConstants::StorageType::UNIFORM_BUFFER) {
+    descriptor_set_layout_info_.bindings.append(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+  }
 }
 
 }  // namespace blender::gpu

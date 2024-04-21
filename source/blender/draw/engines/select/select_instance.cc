@@ -6,9 +6,9 @@
  * \ingroup select
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "select_engine.hh"
 

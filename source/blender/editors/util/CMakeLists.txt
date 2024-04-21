@@ -10,6 +10,7 @@ set(INC
   ../../blentranslation
   ../../bmesh
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../sequencer
   ../../windowmanager
@@ -66,6 +67,7 @@ set(SRC
   ../include/ED_node_preview.hh
   ../include/ED_numinput.hh
   ../include/ED_object.hh
+  ../include/ED_object_vgroup.hh
   ../include/ED_outliner.hh
   ../include/ED_paint.hh
   ../include/ED_particle.hh
@@ -111,7 +113,6 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )

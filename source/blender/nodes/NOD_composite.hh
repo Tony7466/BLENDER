@@ -8,7 +8,14 @@
 
 #pragma once
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
+
+namespace blender::realtime_compositor {
+class RenderContext;
+}
+namespace blender::compositor {
+class ProfilerData;
+}
 
 struct bNodeTreeType;
 struct CryptomatteSession;
@@ -34,9 +41,9 @@ void ntreeCompositExecTree(Render *render,
                            Scene *scene,
                            bNodeTree *ntree,
                            RenderData *rd,
-                           bool rendering,
-                           int do_previews,
-                           const char *view_name);
+                           const char *view_name,
+                           blender::realtime_compositor::RenderContext *render_context,
+                           blender::compositor::ProfilerData &profiler_data);
 
 /**
  * Called from render pipeline, to tag render input and output.

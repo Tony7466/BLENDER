@@ -9,8 +9,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
@@ -91,8 +90,7 @@ static void calc_faces(const Sculpt &sd,
   apply_translations(translations, verts, positions_orig);
   flush_positions_to_shape_keys(object, verts, positions_orig, mesh_positions);
 
-  // XXX: Maybe try not to tag verts with factor == 0.0f
-  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
+  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
 }
 
 static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
@@ -106,15 +104,15 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(&automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
     SCULPT_brush_strength_color(&ss,
@@ -144,15 +142,15 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(&automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     float r_rgba[4];
     SCULPT_brush_strength_color(&ss,
@@ -176,10 +174,6 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
 void do_draw_vector_displacement_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
 
   switch (BKE_pbvh_type(object.sculpt->pbvh)) {
     case PBVH_FACES: {

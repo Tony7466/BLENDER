@@ -9,8 +9,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
@@ -104,31 +103,27 @@ static void calc_faces(const Sculpt &sd,
   apply_translations(translations, verts, positions_sculpt);
   flush_positions_to_shape_keys(object, verts, positions_sculpt, positions_mesh);
 
-  // XXX: Maybe try not to tag verts with factor == 0.0f
-  BKE_pbvh_vert_tag_update_normals(*ss.pbvh, verts);
+  BKE_pbvh_node_mark_positions_update(&node.pbvh_node());
 }
 
 static void calc_grids(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
-
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
+  PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
-
-    SCULPT_automasking_node_update(&automask_data, &vd);
-
+    auto_mask::node_update(automask_data, vd);
     const float fade = SCULPT_brush_strength_factor(&ss,
                                                     &brush,
                                                     vd.co,
@@ -147,23 +142,22 @@ static void calc_grids(Object &object, const Brush &brush, const float3 &offset,
 static void calc_bmesh(Object &object, const Brush &brush, const float3 &offset, PBVHNode &node)
 {
   SculptSession &ss = *object.sculpt;
-  PBVHVertexIter vd;
-  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       &ss, &test, brush.falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      object, ss.cache->automasking.get(), node);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(&object, ss.cache->automasking, &automask_data, &node);
-
+  const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss.pbvh, node).co;
+  PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (ss.pbvh, &node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
 
-    SCULPT_automasking_node_update(&automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
     /* Offset vertex. */
     const float fade = SCULPT_brush_strength_factor(&ss,
@@ -195,10 +189,6 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
 
   const float3 offset = effective_normal * ss.cache->radius * ss.cache->scale * bstrength;
 
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
-
   switch (BKE_pbvh_type(object.sculpt->pbvh)) {
     case PBVH_FACES: {
       threading::EnumerableThreadSpecific<TLS> all_tls;
@@ -208,8 +198,8 @@ void do_draw_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         TLS &tls = all_tls.local();
         for (const int i : range) {
-          pbvh::mesh::Node face_node(*nodes[i]);
-          calc_faces(sd, brush, offset, object, face_node, tls, positions_sculpt, positions_mesh);
+          pbvh::mesh::Node node(*nodes[i]);
+          calc_faces(sd, brush, offset, object, node, tls, positions_sculpt, positions_mesh);
         }
       });
       break;

@@ -6,6 +6,8 @@
  * \ingroup edinterface
  */
 
+#include <cfloat>
+#include <cmath>
 #include <limits>
 #include <stdexcept>
 
@@ -34,7 +36,7 @@ AbstractGridViewItem &AbstractGridView::add_item(std::unique_ptr<AbstractGridVie
 
   AbstractGridViewItem &added_item = *items_.last();
   item_map_.add(added_item.identifier_, &added_item);
-  register_item(added_item);
+  this->register_item(added_item);
 
   return added_item;
 }
@@ -77,7 +79,7 @@ void AbstractGridView::update_children_from_old(const AbstractView &old_view)
 {
   const AbstractGridView &old_grid_view = dynamic_cast<const AbstractGridView &>(old_view);
 
-  foreach_item([this, &old_grid_view](AbstractGridViewItem &new_item) {
+  this->foreach_item([this, &old_grid_view](AbstractGridViewItem &new_item) {
     const AbstractGridViewItem *matching_old_item = find_matching_item(new_item, old_grid_view);
     if (!matching_old_item) {
       return;
@@ -104,9 +106,9 @@ int AbstractGridView::get_item_count_filtered() const
   }
 
   int i = 0;
-  foreach_filtered_item([&i](const auto &) { i++; });
+  this->foreach_filtered_item([&i](const auto &) { i++; });
 
-  BLI_assert(i <= get_item_count());
+  BLI_assert(i <= this->get_item_count());
   item_count_filtered_ = i;
   return i;
 }
@@ -140,7 +142,7 @@ void AbstractGridViewItem::grid_tile_click_fn(bContext *C, void *but_arg1, void 
 
 void AbstractGridViewItem::add_grid_tile_button(uiBlock &block)
 {
-  const GridViewStyle &style = get_view().get_style();
+  const GridViewStyle &style = this->get_view().get_style();
   view_item_but_ = (uiButViewItem *)uiDefBut(&block,
                                              UI_BTYPE_VIEW_ITEM,
                                              0,
@@ -152,11 +154,9 @@ void AbstractGridViewItem::add_grid_tile_button(uiBlock &block)
                                              nullptr,
                                              0,
                                              0,
-                                             0,
-                                             0,
                                              "");
 
-  view_item_but_->view_item = reinterpret_cast<uiViewItemHandle *>(this);
+  view_item_but_->view_item = this;
   UI_but_func_set(view_item_but_, grid_tile_click_fn, view_item_but_, nullptr);
 }
 
@@ -228,14 +228,14 @@ BuildOnlyVisibleButtonsHelper::BuildOnlyVisibleButtonsHelper(const View2D &v2d,
                                                              const int cols_per_row)
     : v2d_(v2d), grid_view_(grid_view), style_(grid_view.get_style()), cols_per_row_(cols_per_row)
 {
-  visible_items_range_ = get_visible_range();
+  visible_items_range_ = this->get_visible_range();
 }
 
 IndexRange BuildOnlyVisibleButtonsHelper::get_visible_range() const
 {
   int first_idx_in_view = 0;
 
-  const float scroll_ofs_y = abs(v2d_.cur.ymax - v2d_.tot.ymax);
+  const float scroll_ofs_y = std::abs(v2d_.cur.ymax - v2d_.tot.ymax);
   if (!IS_EQF(scroll_ofs_y, 0)) {
     const int scrolled_away_rows = int(scroll_ofs_y) / style_.tile_height;
 
@@ -263,7 +263,7 @@ void BuildOnlyVisibleButtonsHelper::fill_layout_before_visible(uiBlock &block) c
   }
   const int tot_tiles_before_visible = first_idx_in_view;
   const int scrolled_away_rows = tot_tiles_before_visible / cols_per_row_;
-  add_spacer_button(block, scrolled_away_rows);
+  this->add_spacer_button(block, scrolled_away_rows);
 }
 
 void BuildOnlyVisibleButtonsHelper::fill_layout_after_visible(uiBlock &block) const
@@ -296,8 +296,6 @@ void BuildOnlyVisibleButtonsHelper::add_spacer_button(uiBlock &block, const int 
              UI_UNIT_X,
              row_count_this_iter * style_.tile_height,
              nullptr,
-             0,
-             0,
              0,
              0,
              "");
@@ -340,9 +338,9 @@ void GridViewLayoutBuilder::build_grid_tile(uiLayout &grid_layout,
 void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
                                             const View2D &v2d) const
 {
-  uiLayout *parent_layout = current_layout();
+  uiLayout *parent_layout = this->current_layout();
 
-  uiLayout &layout = *uiLayoutColumn(current_layout(), true);
+  uiLayout &layout = *uiLayoutColumn(parent_layout, true);
   const GridViewStyle &style = grid_view.get_style();
 
   const int cols_per_row = std::max(uiLayoutGetWidth(&layout) / style.tile_width, 1);
@@ -365,7 +363,7 @@ void GridViewLayoutBuilder::build_from_view(const AbstractGridView &grid_view,
       row = uiLayoutRow(&layout, true);
     }
 
-    build_grid_tile(*row, item);
+    this->build_grid_tile(*row, item);
     item_idx++;
   });
 
@@ -409,20 +407,18 @@ PreviewGridItem::PreviewGridItem(StringRef identifier, StringRef label, int prev
 
 void PreviewGridItem::build_grid_tile(uiLayout &layout) const
 {
-  const GridViewStyle &style = get_view().get_style();
+  const GridViewStyle &style = this->get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
 
   uiBut *but = uiDefBut(block,
                         UI_BTYPE_PREVIEW_TILE,
                         0,
-                        hide_label_ ? "" : label.c_str(),
+                        hide_label_ ? "" : label,
                         0,
                         0,
                         style.tile_width,
                         style.tile_height,
                         nullptr,
-                        0,
-                        0,
                         0,
                         0,
                         "");

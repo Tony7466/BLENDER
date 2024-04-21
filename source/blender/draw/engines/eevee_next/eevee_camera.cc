@@ -8,7 +8,7 @@
 
 #include <array>
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_camera_types.h"
 #include "DNA_view3d_types.h"
@@ -110,7 +110,7 @@ void Camera::sync()
 
   if (inst_.is_baking()) {
     /* Any view so that shadows and light culling works during irradiance bake. */
-    draw::View &view = inst_.irradiance_cache.bake.view_z_;
+    draw::View &view = inst_.volume_probes.bake.view_z_;
     data.viewmat = view.viewmat();
     data.viewinv = view.viewinv();
     data.winmat = view.winmat();
@@ -166,6 +166,7 @@ void Camera::sync()
   data.persmat = data.winmat * data.viewmat;
   data.persinv = math::invert(data.persmat);
 
+  is_camera_object_ = false;
   if (camera_eval && camera_eval->type == OB_CAMERA) {
     const ::Camera *cam = reinterpret_cast<const ::Camera *>(camera_eval->data);
     data.clip_near = cam->clip_start;
@@ -187,6 +188,7 @@ void Camera::sync()
     data.equirect_bias = float2(0.0f);
     data.equirect_scale = float2(0.0f);
 #endif
+    is_camera_object_ = true;
   }
   else if (inst_.drw_view) {
     /* \note: Follow camera parameters where distances are positive in front of the camera. */

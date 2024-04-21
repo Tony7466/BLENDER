@@ -16,24 +16,26 @@
 
 #include "BLI_utildefines.h"
 
-#include "gpu_py_capabilities.h"
-#include "gpu_py_compute.h"
-#include "gpu_py_matrix.h"
-#include "gpu_py_platform.h"
-#include "gpu_py_select.h"
-#include "gpu_py_state.h"
-#include "gpu_py_types.h"
+#include "gpu_py_capabilities.hh"
+#include "gpu_py_compute.hh"
+#include "gpu_py_matrix.hh"
+#include "gpu_py_platform.hh"
+#include "gpu_py_select.hh"
+#include "gpu_py_state.hh"
+#include "gpu_py_types.hh"
 
-#include "gpu_py.h"
-#include "gpu_py_api.h" /* Own include. */
+#include "gpu_py.hh"
+#include "gpu_py_api.hh" /* Own include. */
 
 /* -------------------------------------------------------------------- */
 /** \name GPU Module
  * \{ */
 
-PyDoc_STRVAR(pygpu_doc,
-             "This module provides Python wrappers for the GPU implementation in Blender.\n"
-             "Some higher level functions can be found in the `gpu_extras` module.");
+PyDoc_STRVAR(
+    /* Wrap. */
+    pygpu_doc,
+    "This module provides Python wrappers for the GPU implementation in Blender.\n"
+    "Some higher level functions can be found in the `gpu_extras` module.");
 static PyModuleDef pygpu_module_def = {
     /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "gpu",

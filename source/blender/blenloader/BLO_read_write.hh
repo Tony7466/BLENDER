@@ -33,6 +33,11 @@
 
 #include "DNA_windowmanager_types.h" /* for eReportType */
 
+#include "BLI_function_ref.hh"
+
+namespace blender {
+class ImplicitSharingInfo;
+}
 struct BlendDataReader;
 struct BlendFileReadReport;
 struct BlendLibReader;
@@ -183,6 +188,21 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
 /* Misc. */
 
 /**
+ * Check if the data can be written more efficiently by making use of implicit-sharing. If yes, the
+ * user count of the sharing-info is increased making the data immutable. The provided callback
+ * should serialize the potentially shared data. It is only called when necessary.
+ *
+ * \param approximate_size_in_bytes: Used to be able to approximate how large the undo step is in
+ * total.
+ * \param write_fn: Use the #BlendWrite to serialize the potentially shared data.
+ */
+void BLO_write_shared(BlendWriter *writer,
+                      const void *data,
+                      size_t approximate_size_in_bytes,
+                      const blender::ImplicitSharingInfo *sharing_info,
+                      blender::FunctionRef<void()> write_fn);
+
+/**
  * Sometimes different data is written depending on whether the file is saved to disk or used for
  * undo. This function returns true when the current file-writing is done for undo.
  */
@@ -224,7 +244,7 @@ void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_a
 #define BLO_read_packed_address(reader, ptr_p) \
   *((void **)ptr_p) = BLO_read_get_new_packed_address((reader), *(ptr_p))
 
-typedef void (*BlendReadListFn)(BlendDataReader *reader, void *data);
+using BlendReadListFn = void (*)(BlendDataReader *reader, void *data);
 /**
  * Updates all `->prev` and `->next` pointers of the list elements.
  * Updates the `list->first` and `list->last` pointers.
@@ -244,6 +264,26 @@ void BLO_read_double_array(BlendDataReader *reader, int array_size, double **ptr
 void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 
 /* Misc. */
+
+void blo_read_shared_impl(BlendDataReader *reader,
+                          void *data,
+                          const blender::ImplicitSharingInfo **r_sharing_info,
+                          blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
+
+/**
+ * Check if there is any shared data for the given data pointer. If yes, return the existing
+ * sharing-info. If not, call the provided function to actually read the data now.
+ */
+template<typename T>
+const blender::ImplicitSharingInfo *BLO_read_shared(
+    BlendDataReader *reader,
+    T **data_ptr,
+    blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
+{
+  const blender::ImplicitSharingInfo *sharing_info;
+  blo_read_shared_impl(reader, *data_ptr, &sharing_info, read_fn);
+  return sharing_info;
+}
 
 int BLO_read_fileversion_get(BlendDataReader *reader);
 bool BLO_read_requires_endian_switch(BlendDataReader *reader);
@@ -277,9 +317,9 @@ ID *BLO_read_get_new_id_address(BlendLibReader *reader,
                                 ID *id) ATTR_NONNULL(2);
 
 /**
- * Search for the new address of the ID for the given `session_uuid`.
+ * Search for the new address of the ID for the given `session_uid`.
  *
- * Only IDs existing in the newly read Main will be returned. If no matching `session_uuid` in new
+ * Only IDs existing in the newly read Main will be returned. If no matching `session_uid` in new
  * main can be found, `nullptr` is returned.
  *
  * This expected to be used during library-linking and/or 'undo_preserve' processes in undo case
@@ -287,7 +327,7 @@ ID *BLO_read_get_new_id_address(BlendLibReader *reader,
  * coming from the previous, existing Main data, when it is preserved in newly read Main.
  * See e.g. the #scene_undo_preserve code-path.
  */
-ID *BLO_read_get_new_id_address_from_session_uuid(BlendLibReader *reader, uint session_uuid)
+ID *BLO_read_get_new_id_address_from_session_uid(BlendLibReader *reader, uint session_uid)
     ATTR_NONNULL(1);
 
 /* Misc. */

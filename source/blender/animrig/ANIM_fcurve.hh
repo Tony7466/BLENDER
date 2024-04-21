@@ -7,19 +7,42 @@
  *
  * \brief Functions to modify FCurves.
  */
+#pragma once
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_string_ref.hh"
+
 #include "DNA_anim_types.h"
+
 struct AnimData;
 struct FCurve;
 
 namespace blender::animrig {
 
+/* This is used to pass in the settings for a keyframe into a function. */
+struct KeyframeSettings {
+  eBezTriple_KeyframeType keyframe_type;
+  eBezTriple_Handle handle;
+  eBezTriple_Interpolation interpolation;
+};
+
+/**
+ * Helper function to generate the KeyframeSettings struct.
+ *
+ * \param from_userprefs: if true read the user preferences for the settings, else return static
+ * defaults.
+ */
+KeyframeSettings get_keyframe_settings(bool from_userprefs);
+
+/**
+ * Create an fcurve for a specific channel, pre-set-up with default flags and interpolation mode.
+ */
+FCurve *create_fcurve_for_channel(StringRef rna_path, int array_index);
+
 /** Initialize the given BezTriple with default values. */
 void initialize_bezt(BezTriple *beztr,
                      float2 position,
-                     eBezTriple_KeyframeType keyframe_type,
-                     eInsertKeyFlags flag,
+                     const KeyframeSettings &settings,
                      eFCurve_Flags fcu_flags);
 
 /**
@@ -61,7 +84,9 @@ int insert_bezt_fcurve(FCurve *fcu, const BezTriple *bezt, eInsertKeyFlags flag)
  * \param flag: Optional flags (#eInsertKeyFlags) for controlling how keys get added
  * and/or whether updates get done.
  */
-int insert_vert_fcurve(
-    FCurve *fcu, float x, float y, eBezTriple_KeyframeType keyframe_type, eInsertKeyFlags flag);
+int insert_vert_fcurve(FCurve *fcu,
+                       const float2 position,
+                       const KeyframeSettings &settings,
+                       eInsertKeyFlags flag);
 
 }  // namespace blender::animrig

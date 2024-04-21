@@ -26,15 +26,16 @@
 #  include "DNA_space_types.h"
 
 #  include "BKE_context.hh"
-#  include "BKE_main.h"
-#  include "BKE_report.h"
+#  include "BKE_file_handler.hh"
+#  include "BKE_main.hh"
+#  include "BKE_report.hh"
 
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
 #  include "BLI_vector.hh"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
@@ -52,6 +53,7 @@
 #  include "DEG_depsgraph.hh"
 
 #  include "io_alembic.hh"
+#  include "io_utils.hh"
 
 #  include "ABC_alembic.h"
 
@@ -127,6 +129,8 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
 
   params.global_scale = RNA_float_get(op->ptr, "global_scale");
 
+  RNA_string_get(op->ptr, "collection", params.collection);
+
   /* Take some defaults from the scene, if not specified explicitly. */
   Scene *scene = CTX_data_scene(C);
   if (params.frame_start == INT_MIN) {
@@ -142,7 +146,7 @@ static int wm_alembic_export_exec(bContext *C, wmOperator *op)
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void ui_alembic_export_settings(uiLayout *layout, PointerRNA *imfptr)
+static void ui_alembic_export_settings(const bContext *C, uiLayout *layout, PointerRNA *imfptr)
 {
   uiLayout *box, *row, *col, *sub;
 
@@ -183,9 +187,12 @@ static void ui_alembic_export_settings(uiLayout *layout, PointerRNA *imfptr)
           IFACE_("Custom Properties"),
           ICON_NONE);
 
-  sub = uiLayoutColumnWithHeading(col, true, IFACE_("Only"));
-  uiItemR(sub, imfptr, "selected", UI_ITEM_NONE, IFACE_("Selected Objects"), ICON_NONE);
-  uiItemR(sub, imfptr, "visible_objects_only", UI_ITEM_NONE, IFACE_("Visible Objects"), ICON_NONE);
+  if (CTX_wm_space_file(C)) {
+    sub = uiLayoutColumnWithHeading(col, true, IFACE_("Only"));
+    uiItemR(sub, imfptr, "selected", UI_ITEM_NONE, IFACE_("Selected Objects"), ICON_NONE);
+    uiItemR(
+        sub, imfptr, "visible_objects_only", UI_ITEM_NONE, IFACE_("Visible Objects"), ICON_NONE);
+  }
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, imfptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -245,7 +252,7 @@ static void wm_alembic_export_draw(bContext *C, wmOperator *op)
     RNA_boolean_set(op->ptr, "init_scene_frame_range", false);
   }
 
-  ui_alembic_export_settings(op->layout, op->ptr);
+  ui_alembic_export_settings(C, op->layout, op->ptr);
 }
 
 static bool wm_alembic_export_check(bContext * /*C*/, wmOperator *op)
@@ -349,27 +356,30 @@ void WM_OT_alembic_export(wmOperatorType *ot)
                 1.0f);
 
   RNA_def_boolean(
-      ot->srna, "selected", 0, "Selected Objects Only", "Export only selected objects");
+      ot->srna, "selected", false, "Selected Objects Only", "Export only selected objects");
 
   RNA_def_boolean(ot->srna,
                   "visible_objects_only",
-                  0,
+                  false,
                   "Visible Objects Only",
                   "Export only objects that are visible");
 
   RNA_def_boolean(ot->srna,
                   "flatten",
-                  0,
+                  false,
                   "Flatten Hierarchy",
                   "Do not preserve objects' parent/children relationship");
 
-  RNA_def_boolean(ot->srna, "uvs", 1, "UVs", "Export UVs");
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
-  RNA_def_boolean(ot->srna, "packuv", 1, "Pack UV Islands", "Export UVs with packed island");
+  RNA_def_boolean(ot->srna, "uvs", true, "UVs", "Export UVs");
 
-  RNA_def_boolean(ot->srna, "normals", 1, "Normals", "Export normals");
+  RNA_def_boolean(ot->srna, "packuv", true, "Pack UV Islands", "Export UVs with packed island");
 
-  RNA_def_boolean(ot->srna, "vcolors", 0, "Color Attributes", "Export color attributes");
+  RNA_def_boolean(ot->srna, "normals", true, "Normals", "Export normals");
+
+  RNA_def_boolean(ot->srna, "vcolors", false, "Color Attributes", "Export color attributes");
 
   RNA_def_boolean(ot->srna,
                   "orcos",
@@ -378,17 +388,17 @@ void WM_OT_alembic_export(wmOperatorType *ot)
                   "Export undeformed mesh vertex coordinates");
 
   RNA_def_boolean(
-      ot->srna, "face_sets", 0, "Face Sets", "Export per face shading group assignments");
+      ot->srna, "face_sets", false, "Face Sets", "Export per face shading group assignments");
 
   RNA_def_boolean(ot->srna,
                   "subdiv_schema",
-                  0,
+                  false,
                   "Use Subdivision Schema",
                   "Export meshes using Alembic's subdivision schema");
 
   RNA_def_boolean(ot->srna,
                   "apply_subdiv",
-                  0,
+                  false,
                   "Apply Subdivision Surface",
                   "Export subdivision surfaces as meshes");
 
@@ -438,11 +448,11 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "export_hair",
-                  1,
+                  true,
                   "Export Hair",
                   "Exports hair particle systems as animated curves");
   RNA_def_boolean(
-      ot->srna, "export_particles", 1, "Export Particles", "Exports non-hair particle systems");
+      ot->srna, "export_particles", true, "Export Particles", "Exports non-hair particle systems");
 
   RNA_def_boolean(ot->srna,
                   "export_custom_properties",
@@ -595,7 +605,7 @@ static int wm_alembic_import_invoke(bContext *C, wmOperator *op, const wmEvent *
   if (!RNA_struct_property_is_set(op->ptr, "as_background_job")) {
     RNA_boolean_set(op->ptr, "as_background_job", true);
   }
-  return WM_operator_filesel(C, op, event);
+  return blender::ed::io::filesel_drop_import_invoke(C, op, event);
 }
 
 static int wm_alembic_import_exec(bContext *C, wmOperator *op)
@@ -629,7 +639,7 @@ static int wm_alembic_import_exec(bContext *C, wmOperator *op)
   /* Switch out of edit mode to avoid being stuck in it (#54326). */
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
-    ED_object_mode_set(C, OB_MODE_OBJECT);
+    blender::ed::object::mode_set(C, OB_MODE_OBJECT);
   }
 
   AlembicImportParams params = {0};
@@ -651,7 +661,7 @@ void WM_OT_alembic_import(wmOperatorType *ot)
   ot->name = "Import Alembic";
   ot->description = "Load an Alembic archive";
   ot->idname = "WM_OT_alembic_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   ot->invoke = wm_alembic_import_invoke;
   ot->exec = wm_alembic_import_exec;
@@ -689,7 +699,7 @@ void WM_OT_alembic_import(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "validate_meshes",
-                  0,
+                  false,
                   "Validate Meshes",
                   "Check imported mesh objects for invalid data (slow)");
 
@@ -715,5 +725,19 @@ void WM_OT_alembic_import(wmOperatorType *ot)
       "This option is deprecated; EXECUTE this operator to run in the foreground, and INVOKE it "
       "to run as a background job");
 }
+
+namespace blender::ed::io {
+void alembic_file_handler_add()
+{
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_alembic");
+  STRNCPY(fh->import_operator, "WM_OT_alembic_import");
+  STRNCPY(fh->export_operator, "WM_OT_alembic_export");
+  STRNCPY(fh->label, "Alembic");
+  STRNCPY(fh->file_extensions_str, ".abc");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
+}
+}  // namespace blender::ed::io
 
 #endif

@@ -11,7 +11,7 @@
 #include "NOD_geometry.hh"
 
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 
@@ -19,12 +19,11 @@
 #include "DNA_node_types.h"
 #include "DNA_space_types.h"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "node_common.h"
 
@@ -97,6 +96,15 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
     /* Floats and vectors implicitly convert to rotations. */
     return true;
   }
+
+  /* Support implicit conversions between matrices and rotations. */
+  if (type_a == SOCK_MATRIX && type_b == SOCK_ROTATION) {
+    return true;
+  }
+  if (type_a == SOCK_ROTATION && type_b == SOCK_MATRIX) {
+    return true;
+  }
+
   if (type_a == SOCK_ROTATION && type_b == SOCK_VECTOR) {
     /* Rotations implicitly convert to vectors. */
     return true;
@@ -113,6 +121,7 @@ static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
                                                                    SOCK_RGBA,
                                                                    SOCK_BOOLEAN,
                                                                    SOCK_ROTATION,
+                                                                   SOCK_MATRIX,
                                                                    SOCK_INT,
                                                                    SOCK_STRING,
                                                                    SOCK_OBJECT,
@@ -120,7 +129,8 @@ static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
                                                                    SOCK_COLLECTION,
                                                                    SOCK_TEXTURE,
                                                                    SOCK_IMAGE,
-                                                                   SOCK_MATERIAL);
+                                                                   SOCK_MATERIAL,
+                                                                   SOCK_MENU);
 }
 
 void register_node_tree_type_geo()

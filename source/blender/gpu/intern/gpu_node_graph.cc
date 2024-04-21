@@ -20,11 +20,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "GPU_texture.h"
-#include "GPU_vertex_format.h"
+#include "GPU_texture.hh"
+#include "GPU_vertex_format.hh"
 
-#include "gpu_material_library.h"
-#include "gpu_node_graph.h"
+#include "gpu_material_library.hh"
+#include "gpu_node_graph.hh"
 
 /* Node Link Functions */
 
@@ -88,9 +88,10 @@ static void gpu_node_input_link(GPUNode *node, GPUNodeLink *link, const eGPUType
           input->layer_attr->users++;
           break;
         case GPU_SOURCE_TEX:
-        case GPU_SOURCE_TEX_TILED_MAPPING:
           input->texture->users++;
           break;
+        case GPU_SOURCE_TEX_TILED_MAPPING:
+          /* Already handled by GPU_SOURCE_TEX. */
         default:
           break;
       }
@@ -848,9 +849,10 @@ static void gpu_inputs_free(ListBase *inputs)
         input->layer_attr->users--;
         break;
       case GPU_SOURCE_TEX:
-      case GPU_SOURCE_TEX_TILED_MAPPING:
         input->texture->users--;
         break;
+      case GPU_SOURCE_TEX_TILED_MAPPING:
+        /* Already handled by GPU_SOURCE_TEX. */
       default:
         break;
     }

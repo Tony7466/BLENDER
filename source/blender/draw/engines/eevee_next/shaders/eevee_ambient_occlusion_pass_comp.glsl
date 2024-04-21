@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_ambient_occlusion_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_horizon_scan_eval_lib.glsl)
 
 void main()
@@ -32,21 +31,15 @@ void main()
   noise.y = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).r;
   noise = fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
 
-  ClosureOcclusion occlusion;
-  occlusion.N = vN;
+  HorizonScanResult scan = horizon_scan_eval(vP,
+                                             vN,
+                                             noise,
+                                             uniform_buf.ao.pixel_size,
+                                             uniform_buf.ao.distance,
+                                             uniform_buf.ao.thickness,
+                                             uniform_buf.ao.angle_bias,
+                                             10,
+                                             false);
 
-  HorizonScanContext ctx;
-  ctx.occlusion = occlusion;
-
-  horizon_scan_eval(vP,
-                    ctx,
-                    noise,
-                    uniform_buf.ao.pixel_size,
-                    uniform_buf.ao.distance,
-                    uniform_buf.ao.thickness,
-                    uniform_buf.ao.angle_bias,
-                    10);
-
-  imageStore(
-      out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(saturate(ctx.occlusion_result.r)));
+  imageStore(out_ao_img, ivec3(texel, out_ao_img_layer_index), vec4(saturate(scan.result)));
 }

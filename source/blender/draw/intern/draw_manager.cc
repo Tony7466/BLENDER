@@ -6,15 +6,15 @@
  * \ingroup draw
  */
 
-#include "BKE_global.h"
-#include "GPU_compute.h"
+#include "BKE_global.hh"
+#include "GPU_compute.hh"
 
 #include "draw_debug.hh"
-#include "draw_defines.h"
-#include "draw_manager.h"
+#include "draw_defines.hh"
 #include "draw_manager.hh"
+#include "draw_manager_c.hh"
 #include "draw_pass.hh"
-#include "draw_shader.h"
+#include "draw_shader.hh"
 
 namespace blender::draw {
 
@@ -47,7 +47,9 @@ void Manager::begin_sync()
   acquired_textures.clear();
   layer_attributes.clear();
 
-#ifdef DEBUG
+/* For some reason, if this uninitialized data pattern was enabled (ie release asserts enabled),
+ * The viewport just gives up rendering objects on ARM64 devices. Possibly Mesa GLOn12-related. */
+#if !defined(NDEBUG) && !defined(_M_ARM64)
   /* Detect uninitialized data. */
   memset(matrix_buf.current().data(),
          0xF0,
@@ -132,7 +134,7 @@ void Manager::end_sync()
 
 void Manager::debug_bind()
 {
-#ifdef DEBUG
+#ifdef _DEBUG
   if (DST.debug == nullptr) {
     return;
   }

@@ -12,7 +12,7 @@
 
 #include "BLI_math_rotation.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_action_types.h"
 #include "DNA_constraint_types.h"
@@ -23,7 +23,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -153,7 +153,7 @@ const EnumPropertyItem rna_enum_constraint_type_items[] = {
      ICON_CON_FLOOR,
      "Floor",
      "Use position (and optionally rotation) of target to define a 'wall' or 'floor' that the "
-     "owner can not cross"},
+     "owner cannot cross"},
     {CONSTRAINT_TYPE_FOLLOWPATH,
      "FOLLOW_PATH",
      ICON_CON_FOLLOWPATH,
@@ -320,6 +320,8 @@ static const EnumPropertyItem target_space_object_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+#  include <fmt/format.h>
+
 #  include "DNA_cachefile_types.h"
 
 #  include "BKE_action.h"
@@ -426,7 +428,7 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
   /* make sure name is unique */
   if (ptr->owner_id) {
     Object *ob = (Object *)ptr->owner_id;
-    ListBase *list = ED_object_constraint_list_from_constraint(ob, con, nullptr);
+    ListBase *list = blender::ed::object::constraint_list_from_constraint(ob, con, nullptr);
 
     /* if we have the list, check for unique name, otherwise give up */
     if (list) {
@@ -438,10 +440,10 @@ static void rna_Constraint_name_set(PointerRNA *ptr, const char *value)
   BKE_animdata_fix_paths_rename_all(nullptr, "constraints", oldname, con->name);
 }
 
-static char *rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
+static std::optional<std::string> rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
 {
   bPoseChannel *pchan;
-  ListBase *lb = ED_object_constraint_list_from_constraint(ob, con, &pchan);
+  ListBase *lb = blender::ed::object::constraint_list_from_constraint(ob, con, &pchan);
 
   if (lb == nullptr) {
     printf("%s: internal error, constraint '%s' not found in object '%s'\n",
@@ -455,16 +457,14 @@ static char *rna_Constraint_do_compute_path(Object *ob, bConstraint *con)
     char name_esc_const[sizeof(con->name) * 2];
     BLI_str_escape(name_esc_pchan, pchan->name, sizeof(name_esc_pchan));
     BLI_str_escape(name_esc_const, con->name, sizeof(name_esc_const));
-    return BLI_sprintfN("pose.bones[\"%s\"].constraints[\"%s\"]", name_esc_pchan, name_esc_const);
+    return fmt::format("pose.bones[\"{}\"].constraints[\"{}\"]", name_esc_pchan, name_esc_const);
   }
-  else {
-    char name_esc_const[sizeof(con->name) * 2];
-    BLI_str_escape(name_esc_const, con->name, sizeof(name_esc_const));
-    return BLI_sprintfN("constraints[\"%s\"]", name_esc_const);
-  }
+  char name_esc_const[sizeof(con->name) * 2];
+  BLI_str_escape(name_esc_const, con->name, sizeof(name_esc_const));
+  return fmt::format("constraints[\"{}\"]", name_esc_const);
 }
 
-static char *rna_Constraint_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_Constraint_path(const PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   bConstraint *con = static_cast<bConstraint *>(ptr->data);
@@ -480,7 +480,7 @@ static bConstraint *rna_constraint_from_target(const PointerRNA *ptr)
   return BKE_constraint_find_from_target(ob, tgt, nullptr);
 }
 
-static char *rna_ConstraintTarget_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ConstraintTarget_path(const PointerRNA *ptr)
 {
   Object *ob = (Object *)ptr->owner_id;
   bConstraintTarget *tgt = static_cast<bConstraintTarget *>(ptr->data);
@@ -499,42 +499,38 @@ static char *rna_ConstraintTarget_path(const PointerRNA *ptr)
   }
 
   if (index >= 0) {
-    char *con_path = rna_Constraint_do_compute_path(ob, con);
-    char *result = BLI_sprintfN("%s.targets[%d]", con_path, index);
-
-    MEM_freeN(con_path);
-    return result;
+    return fmt::format(
+        "{}.targets[{}]", rna_Constraint_do_compute_path(ob, con).value_or(""), index);
   }
-  else {
-    printf("%s: internal error, constraint '%s' of object '%s' does not contain the target\n",
-           __func__,
-           con->name,
-           ob->id.name);
-  }
+  printf("%s: internal error, constraint '%s' of object '%s' does not contain the target\n",
+         __func__,
+         con->name,
+         ob->id.name);
 
-  return nullptr;
+  return std::nullopt;
 }
 
 static void rna_Constraint_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(
+  blender::ed::object::constraint_tag_update(
       bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_Constraint_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(
+  blender::ed::object::constraint_dependency_tag_update(
       bmain, (Object *)ptr->owner_id, static_cast<bConstraint *>(ptr->data));
 }
 
 static void rna_ConstraintTarget_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_tag_update(bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
+  blender::ed::object::constraint_tag_update(
+      bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
 static void rna_ConstraintTarget_dependency_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
-  ED_object_constraint_dependency_tag_update(
+  blender::ed::object::constraint_dependency_tag_update(
       bmain, (Object *)ptr->owner_id, rna_constraint_from_target(ptr));
 }
 
@@ -648,7 +644,7 @@ static bConstraintTarget *rna_ArmatureConstraint_target_new(ID *id, bConstraint 
   tgt->weight = 1.0f;
   BLI_addtail(&acon->targets, tgt);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
   return tgt;
 }
 
@@ -665,7 +661,7 @@ static void rna_ArmatureConstraint_target_remove(
 
   BLI_freelinkN(&acon->targets, tgt);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
 }
 
 static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *bmain)
@@ -674,7 +670,7 @@ static void rna_ArmatureConstraint_target_clear(ID *id, bConstraint *con, Main *
 
   BLI_freelistN(&acon->targets);
 
-  ED_object_constraint_dependency_tag_update(bmain, (Object *)id, con);
+  blender::ed::object::constraint_dependency_tag_update(bmain, (Object *)id, con);
 }
 
 static void rna_ActionConstraint_mix_mode_set(PointerRNA *ptr, int value)
@@ -2643,37 +2639,43 @@ static void rna_def_constraint_rotation_limit(BlenderRNA *brna)
   prop = RNA_def_property(srna, "min_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum X", "Lowest X value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum X", "Lower X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum Y", "Lowest Y value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum Y", "Lower Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Minimum Z", "Lowest Z value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Minimum Z", "Lower Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum X", "Highest X value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum X", "Upper X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum Y", "Highest Y value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum Y", "Upper Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
-  RNA_def_property_ui_text(prop, "Maximum Z", "Highest Z value to allow");
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Maximum Z", "Upper Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "euler_order", PROP_ENUM, PROP_NONE);
@@ -3281,6 +3283,7 @@ static void rna_def_constraint_follow_track(BlenderRNA *brna)
   prop = RNA_def_property(srna, "track", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "track");
   RNA_def_property_ui_text(prop, "Track", "Movie tracking track to follow");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MOVIECLIP);
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_dependency_update");
 
   /* use default clip */
@@ -3543,7 +3546,7 @@ void RNA_def_constraint(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", 0);
   RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
-  RNA_def_property_ui_icon(prop, ICON_DISCLOSURE_TRI_RIGHT, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
 
   /* XXX this is really an internal flag,
    * but it may be useful for some tools to be able to access this... */

@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'd293f72ab6e7')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'c30667711948')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-11-27 10:28:34\n"
-"PO-Revision-Date: 2023-11-18 16:52+0000\n"
+"POT-Creation-Date: 2024-04-15 10:09+0000\n"
+"PO-Revision-Date: 2023-11-30 20:00+0000\n"
 "Last-Translator: \"M. Amin Taheri\" <amintaheri2001@gmail.com>\n"
 "Language-Team: Persian <https://translate.blender.org/projects/blender-ui/ui/fa/>\n"
 "Language: fa\n"
@@ -590,6 +590,10 @@ msgid "Slot to temporarily hold the main action while in tweak mode"
 msgstr "ﺖﺳﺍ ﯼﺯﺎﺳ ﻪﻨﯿﻬﺑ ﺖﻟﺎﺣ ﺭﺩ ﻪﮐ ﯽﻟﺎﺣ ﺭﺩ ﯽﻠﺻﺍ ﻡﺍﺪﻗﺍ ﺖﻗﻮﻣ ﻦﺘﺷﺍﺩ ﻪﮕﻧ ﯼﺍﺮﺑ ﯽﯾﺎﻀﻓ"
 
 
+msgid "Animation"
+msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
+
+
 msgid "Drivers"
 msgstr "ﺎﻫﺭﻮﯾﺍﺭﺩ"
 
@@ -818,6 +822,18 @@ msgid "Display Paths of poses within specified range"
 msgstr "ﻩﺪﺷ ﺺﺨﺸﻣ ﻩﺯﺎﺑ ﺭﺩ ﺎﻫ‌ﺖﺳﮊ ﯼﺎﻫﺮﯿﺴﻣ ﺶﯾﺎﻤﻧ"
 
 
+msgid "Influence"
+msgstr "ﺫﻮﻔﻧ"
+
+
+msgid "Mix Mode"
+msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
+
+
+msgid "Offset"
+msgstr "ﺖﺴﻓﺍ"
+
+
 msgid "Any Type"
 msgstr "ﻉﻮﻧ ﺮﻫ"
 
@@ -958,12 +974,40 @@ msgid "Info"
 msgstr "ﺕﺎﻋﻼ﻿ﻃﺍ"
 
 
+msgid "Log of operations, warnings and error messages"
+msgstr "ﺎﻄﺧ ﯼﺎﻫ ﻡﺎﯿﭘ ﻭ ﺎﻫﺭﺍﺪﺸﻫ ،ﺎﻫ‌ﺕﺎﯿﻠﻤﻋ ﺵﺭﺍﺰﮔ"
+
+
+msgid "Top Bar"
+msgstr "ﻻ﻿ﺎﺑ ﺭﺍﻮﻧ"
+
+
+msgid "Global bar at the top of the screen for global per-window settings"
+msgstr "ﻩﺮﺠﻨﭘ ﺮﻫ ﯽﻠﮐ ﺕﺎﻤﯿﻈﻨﺗ ﯼﺍﺮﺑ ﻪﺤﻔﺻ ﯼﻻ﻿ﺎﺑ ﺭﺩ ﯼﺮﺳﺍﺮﺳ ﺭﺍﻮﻧ"
+
+
+msgid "Status Bar"
+msgstr "ﺖﯿﻌﺿﻭ ﺭﺍﻮﻧ"
+
+
+msgid "Global bar at the bottom of the screen for general status information"
+msgstr "ﯽﻣﻮﻤﻋ ﺖﯿﻌﺿﻭ ﺕﺎﻋﻼ﻿ﻃﺍ ﯼﺍﺮﺑ ﻪﺤﻔﺻ ﻦﯿﯾﺎﭘ ﺭﺩ ﯼﺮﺳﺍﺮﺳ ﺭﺍﻮﻧ"
+
+
 msgid "Outliner"
 msgstr "ءﺎﯿﺷﺍ ﺖﯾﺮﯾﺪﻣ"
 
 
+msgid "Overview of scene graph and all available data-blocks"
+msgstr "ﺩﻮﺟﻮﻣ ﻩﺩﺍﺩ ﯼﺎﻫ ﮎﻮﻠﺑ ﻡﺎﻤﺗ ﻭ ﻪﻨﺤﺻ ﺭﺍﺩﻮﻤﻧ ﯽﻠﮐ ﯼﺎﻤﻧ"
+
+
 msgid "Properties"
 msgstr "ﺕﺎﻤﯿﻈﻨﺗ"
+
+
+msgid "Edit properties of active object and related data-blocks"
+msgstr "ﻦﮐ ﺶﯾﺍﺮﯾﻭ ﺍﺭ ﻂﺒﺗﺮﻣ ﻩﺩﺍﺩ ﯼﺎﻫ ﮎﻮﻠﺑ ﻭ ﻝﺎﻌﻓ ﯽﺷ ﯼﺎﻫ ﯽﮔﮋﯾﻭ"
 
 
 msgid "File Browser"
@@ -1341,10 +1385,6 @@ msgid "Image"
 msgstr "ﺮﯾﻮﺼﺗ"
 
 
-msgid "Offset"
-msgstr "ﺖﺴﻓﺍ"
-
-
 msgid "Rotation"
 msgstr "ﻥﺍﺭﻭﺩ"
 
@@ -1709,10 +1749,6 @@ msgid "Input"
 msgstr "ﯼﺩﻭﺭﻭ"
 
 
-msgid "Influence"
-msgstr "ﺫﻮﻔﻧ"
-
-
 msgid "Disable"
 msgstr "ﻝﺎﻌﻓﺮﯿﻏ"
 
@@ -1767,10 +1803,6 @@ msgstr "ﺮﭽﯿﻣﺭﺁ"
 
 msgid "Follow Path"
 msgstr "ﺮﯿﺴﻣ ﻩﺪﻨﻨﮐ ﻝﺎﺒﻧﺩ"
-
-
-msgid "Mix Mode"
-msgstr "ﯽﺒﯿﮐﺮﺗ ﺖﻟﺎﺣ"
 
 
 msgid "X Location"
@@ -2253,12 +2285,20 @@ msgid "Save"
 msgstr "ﻩﺮﯿﺧﺫ"
 
 
+msgid "Operator"
+msgstr "ﻞﻣﺎﻋ"
+
+
 msgid "Link"
 msgstr "ﺪﻧﻮﯿﭘ"
 
 
 msgid "Append"
 msgstr "ﻥﺩﻭﺰﻓﺍ"
+
+
+msgid "Matrix"
+msgstr "ﺲﯾﺮﺗﺎﻣ"
 
 
 msgid "End"
@@ -2368,10 +2408,6 @@ msgid "Constant"
 msgstr "ﺖﺑﺎﺛ"
 
 
-msgid "Matrix"
-msgstr "ﺲﯾﺮﺗﺎﻣ"
-
-
 msgid "Camera Object"
 msgstr "ﻦﯿﺑﺭﻭﺩ ءﯽﺷ"
 
@@ -2384,24 +2420,12 @@ msgid "Space"
 msgstr "ﺎﻀﻓ"
 
 
-msgid "R"
-msgstr "R"
-
-
 msgid "Red"
 msgstr "ﺰﻣﺮﻗ"
 
 
-msgid "G"
-msgstr "G"
-
-
 msgid "Green"
 msgstr "ﺰﺒﺳ"
-
-
-msgid "B"
-msgstr "B"
 
 
 msgid "Blue"
@@ -2454,6 +2478,10 @@ msgstr "ﻩﺮﺠﻨﭘ ﺖﯾﺮﯾﺪﻣ"
 
 msgid "World"
 msgstr "ﻥﺎﻬﺟ"
+
+
+msgid "Layers"
+msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
 
 
 msgid "B-Bone"
@@ -2629,10 +2657,6 @@ msgid "Paint"
 msgstr "ﮓﻧﺭ"
 
 
-msgid "Sculpt Tool"
-msgstr "ﯼﺭﺎﺠﺣ ﺭﺍﺰﺑﺍ"
-
-
 msgid "Relax"
 msgstr "ﻥﺩﺮﮐ‌ﻞﺷ"
 
@@ -2687,10 +2711,6 @@ msgid "Max"
 msgstr "ﻪﻨﯿﺸﯿﺑ"
 
 
-msgid "Layers"
-msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
-
-
 msgid "U"
 msgstr "U"
 
@@ -2727,10 +2747,6 @@ msgstr "ﻂﺳﺍﻭ"
 
 msgid "Nodes"
 msgstr "ﺎﻫ ﻩﺮﮔ"
-
-
-msgid "OpenCL"
-msgstr "OpenCL"
 
 
 msgid "Edit"
@@ -2944,10 +2960,6 @@ msgid "Weight 1"
 msgstr "ﯽﻨﯿﮕﻨﺳ"
 
 
-msgid "Animation"
-msgstr "ﻦﺸﯿﻤﯿﻧﺍ"
-
-
 msgid "Simulation"
 msgstr "ﯼﺯﺎﺳ ﻪﯿﺒﺷ"
 
@@ -3061,10 +3073,6 @@ msgstr "ﺶﺧﺮﭼ ﻪﻄﻘﻧ"
 
 msgid "Math"
 msgstr "ﯽﺿﺎﯾﺭ"
-
-
-msgid "Tracking"
-msgstr "ﯽﺑﺎﯾﺩﺭ"
 
 
 msgid "Layout"
@@ -3537,6 +3545,10 @@ msgid "Rotation to Euler"
 msgstr "ﺮﻟﻭﺍ ﻪﺑ ﺶﺧﺮﭼ"
 
 
+msgid "Bake"
+msgstr "ﻦﺘﺨﭘ"
+
+
 msgid "Original"
 msgstr "ﯽﻠﺻﺍ"
 
@@ -3961,6 +3973,10 @@ msgid "Flat"
 msgstr "ﺖﺨﺗ"
 
 
+msgid "By Material"
+msgstr "ﺩﺍﻮﻣ ﺎﺑ"
+
+
 msgid "X End"
 msgstr "X ﻥﺎﯾﺎﭘ"
 
@@ -4007,10 +4023,6 @@ msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ ﻪﺑ ﺱﺃﺭ ﺏﺎﺨﺘﻧﺍ"
 
 msgid "Select similar vertices, edges or faces by property types"
 msgstr "ﺖﯿﮑﻟﺎﻣ ﻉﻮﻧ ﺎﺑ ﻪﺑﺎﺸﻣ ﯼﺎﻫ‌ﺢﻄﺳ ﺎﯾ ﻭ ﺎﻫ‌ﻪﺒﻟ ٬ﺱﻮﺋﺭ ﺏﺎﺨﺘﻧﺍ"
-
-
-msgid "By Material"
-msgstr "ﺩﺍﻮﻣ ﺎﺑ"
 
 
 msgctxt "Operator"
@@ -4160,8 +4172,8 @@ msgid "Copy Pose"
 msgstr "ﺖﺳﮊ ﯽﭙﮐ"
 
 
-msgid "Bake"
-msgstr "ﻦﺘﺨﭘ"
+msgid "URL"
+msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgctxt "Operator"
@@ -4200,10 +4212,6 @@ msgstr "ﻞﯾﺎﻓ ﯼﺎﻫﺮﯿﺴﻣ"
 
 msgid "Experimental"
 msgstr "ﯽﺸﯾﺎﻣﺯﺁ"
-
-
-msgid "Operator"
-msgstr "ﻞﻣﺎﻋ"
 
 
 msgctxt "Operator"
@@ -4390,10 +4398,6 @@ msgstr "ﻥﺪﯿﺸﮐﺯﺎﺑ ﻥﺎﻣﺯ"
 msgctxt "Operator"
 msgid "Splash Screen"
 msgstr "ﺖﺴﺨﻧ ﻪﺤﻔﺻ"
-
-
-msgid "URL"
-msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgid "URL to open"
@@ -4840,6 +4844,10 @@ msgid "Render Settings:"
 msgstr ":ﺭﺪﻧﺭ ﺕﺎﻤﯿﻈﻨﺗ"
 
 
+msgid "Tracking"
+msgstr "ﯽﺑﺎﯾﺩﺭ"
+
+
 msgctxt "Operator"
 msgid "Import..."
 msgstr "...ﻥﺩﺮﮐ ﺩﺭﺍﻭ"
@@ -4852,10 +4860,6 @@ msgstr "...ﻦﺘﻓﺮﮔ ﯽﺟﻭﺮﺧ"
 
 msgid "3D View"
 msgstr "ﯼﺪﻌﺑ ﻪﺳ ﺪﯾﺩ"
-
-
-msgid "Spacebar"
-msgstr "Spacebar"
 
 
 msgid "Assign"
@@ -4972,6 +4976,10 @@ msgid "Limit Size"
 msgstr "ﺯﺎﺠﻣ ﻩﺯﺍﺪﻧﺍ"
 
 
+msgid "B"
+msgstr "B"
+
+
 msgid "Description:"
 msgstr ":ﺢﯿﺿﻮﺗ"
 
@@ -4998,14 +5006,6 @@ msgstr ":ﺭﺍﺪﺸﻫ"
 
 msgid "Internet:"
 msgstr ":ﺖﻧﺮﺘﻨﯾﺍ"
-
-
-msgid "description"
-msgstr "ﺡﺮﺷ"
-
-
-msgid "location"
-msgstr "ﻥﺎﮑﻣ"
 
 
 msgctxt "Operator"
@@ -5050,12 +5050,16 @@ msgid "IK"
 msgstr "(IK) ﺱﻮﮑﻌﻣ ﺖﮐﺮﺣ"
 
 
-msgid "Nothing selected"
-msgstr "ﻩﺪﺸﻧ ﺏﺎﺨﺘﻧﺍ ﺰﯿﭼ ﭻﯿﻫ"
+msgid "ShapeKey"
+msgstr "ShapeKey"
 
 
 msgid "Out"
 msgstr "ﯽﺟﻭﺮﺧ"
+
+
+msgid "Nothing selected"
+msgstr "ﻩﺪﺸﻧ ﺏﺎﺨﺘﻧﺍ ﺰﯿﭼ ﭻﯿﻫ"
 
 
 msgctxt "Operator"
@@ -5070,6 +5074,10 @@ msgstr "ﺽﺮﻓ ﺶﯿﭘ ﺭﺍﺪﻘﻣ ﻪﺑ ﯽﮑﺗ ﺩﺪﺠﻣ ﻢﯿ
 
 msgid "Active button not found"
 msgstr "ﺪﺸﻧ ﺖﻓﺎﯾ ﻝﺎﻌﻓ ﻪﻤﮐﺩ"
+
+
+msgid "%d items"
+msgstr "‬%d‪‪ ﻡﻼ﻿ﻗﺍ"
 
 
 msgid "Hex"
@@ -5115,38 +5123,6 @@ msgstr "(#RRGGBB) ﮓﻧﺭ ﯼﺍﺮﺑ ﻪﻧﺎﮔ ﻪﺳ ﺰﮕﻫ"
 msgctxt "Color"
 msgid "Value:"
 msgstr ":ﺭﺍﺪﻘﻣ"
-
-
-msgid "Shortcut: %s"
-msgstr "‬%s‪‪ :ﺮﺒﻧﺎﯿﻣ"
-
-
-msgid "Python: %s"
-msgstr "‬%s‪‪ :ﻥﻮﺘﯾﺎﭘ"
-
-
-msgid "Value: %s"
-msgstr "‬%s‪‪ :ﺭﺍﺪﻘﻣ"
-
-
-msgid "Radians: %f"
-msgstr "‬%f‪‪ :ﻥﺎﯾﺩﺍﺭ"
-
-
-msgid "Expression: %s"
-msgstr "Expression: ‪%s‬"
-
-
-msgid "Library: %s"
-msgstr "‬%s‪‪ :ﻪﻧﺎﺨﺑﺎﺘﮐ"
-
-
-msgid "Disabled: %s"
-msgstr "‬%s‪‪ :ﻝﺎﻌﻓﺮﯿﻏ"
-
-
-msgid "Python: %s.%s"
-msgstr "‬%s‬.‪%s‪‪ :ﻥﻮﺘﯾﺎﭘ"
 
 
 msgid "No Properties"
@@ -5289,10 +5265,6 @@ msgid "Browse ID data to be linked"
 msgstr "ﻥﺩﺮﮐ‌ﮏﻨﯿﻟ ﯼﺍﺮﺑ ﯼﺩ−ﯼﺁ ﻩٔﺩﺍﺩ ﺶﻨﯾﺰﮔ"
 
 
-msgid "%d items"
-msgstr "‬%d‪‪ ﻡﻼ﻿ﻗﺍ"
-
-
 msgid "3D View "
 msgstr " .ﯼﺪﻌﺑ ﻪﺳ ﺪﯾﺩ"
 
@@ -5315,10 +5287,6 @@ msgstr "ﮒﺮﺑﺮﺳ ﺶﯾﺎﻤﻧ"
 
 msgid " Materials,"
 msgstr "ﻩﺩﺎﻣ "
-
-
-msgid " Textures,"
-msgstr "ﺎﻫ‌ﺖﻓﺎﺑ "
 
 
 msgid "OK"
@@ -5427,10 +5395,6 @@ msgstr "ﺭﺪﻨﻠﺑ ﻞﯾﺎﻓ ﺶﯾﺎﻤﻧ"
 
 msgid "Esc"
 msgstr "Esc"
-
-
-msgid "OK?"
-msgstr "؟ﺪﯿﯾﺄﺗ"
 
 
 msgid "English (English)"

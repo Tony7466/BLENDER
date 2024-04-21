@@ -226,8 +226,7 @@ class ToolSelectPanelHelper:
     @staticmethod
     def _tool_class_from_space_type(space_type):
         return next(
-            (cls for cls in ToolSelectPanelHelper.__subclasses__()
-             if cls.bl_space_type == space_type),
+            (cls for cls in ToolSelectPanelHelper.__subclasses__() if cls.bl_space_type == space_type),
             None,
         )
 
@@ -259,9 +258,9 @@ class ToolSelectPanelHelper:
 
     # tool flattening
     #
-    # usually 'tools' is already expanded into `ToolDef`
+    # usually "tools" is already expanded into `ToolDef`
     # but when registering a tool, this can still be a function
-    # (_tools_flatten is usually called with cls.tools_from_context(context)
+    # (`_tools_flatten` is usually called with `cls.tools_from_context(context)`
     # [that already yields from the function])
     # so if item is still a function (e.g._defs_XXX.generate_from_brushes)
     # seems like we cannot expand here (have no context yet)
@@ -500,6 +499,15 @@ class ToolSelectPanelHelper:
             kc_default.keymaps.new(km_idname, **km_kwargs)
 
     @classmethod
+    def register_ensure(cls):
+        """
+        Ensure register has created key-map data, needed when key-map data is needed in background mode.
+        """
+        if cls._has_keymap_data:
+            return
+        cls.register()
+
+    @classmethod
     def register(cls):
         wm = bpy.context.window_manager
         # Write into defaults, users may modify in preferences.
@@ -513,6 +521,7 @@ class ToolSelectPanelHelper:
 
         # ignore in background mode
         if kc_default is None:
+            cls._has_keymap_data = False
             return
 
         for context_mode, tools in cls.tools_all():
@@ -529,6 +538,8 @@ class ToolSelectPanelHelper:
                     continue
                 if callable(keymap_data[0]):
                     cls._km_action_simple(kc_default, kc_default, context_descr, item.label, keymap_data)
+
+        cls._has_keymap_data = True
 
     @classmethod
     def keymap_ui_hierarchy(cls, context_mode):

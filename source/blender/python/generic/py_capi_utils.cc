@@ -1053,6 +1053,11 @@ PyObject *PyC_UnicodeFromBytes(const char *str)
   return PyC_UnicodeFromBytesAndSize(str, strlen(str));
 }
 
+PyObject *PyC_UnicodeFromStdStr(const std::string &str)
+{
+  return PyC_UnicodeFromBytesAndSize(str.c_str(), str.length());
+}
+
 int PyC_ParseUnicodeAsBytesAndSize(PyObject *o, void *p)
 {
   PyC_UnicodeAsBytesAndSize_Data *data = static_cast<PyC_UnicodeAsBytesAndSize_Data *>(p);
@@ -1166,7 +1171,7 @@ bool PyC_IsInterpreterActive()
 void PyC_RunQuicky(const char *filepath, int n, ...)
 {
   /* NOTE: Would be nice if python had this built in
-   * See: https://wiki.blender.org/wiki/Tools/Debugging/PyFromC */
+   * See: https://developer.blender.org/docs/handbook/tooling/pyfromc/ */
 
   FILE *fp = fopen(filepath, "r");
 
@@ -1619,6 +1624,64 @@ bool PyC_RunString_AsString(const char *imports[],
   return PyC_RunString_AsStringAndSize(imports, expr, filename, r_value, &value_size);
 }
 
+bool PyC_RunString_AsStringAndSizeOrNone(const char *imports[],
+                                         const char *expr,
+                                         const char *filename,
+                                         char **r_value,
+                                         size_t *r_value_size)
+{
+  PyObject *py_dict, *retval;
+  bool ok = true;
+  PyObject *main_mod = nullptr;
+
+  PyC_MainModule_Backup(&main_mod);
+
+  py_dict = PyC_DefaultNameSpace(filename);
+
+  if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
+    ok = false;
+  }
+  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == nullptr) {
+    ok = false;
+  }
+  else {
+    if (retval == Py_None) {
+      *r_value = nullptr;
+      *r_value_size = 0;
+    }
+    else {
+      const char *val;
+      Py_ssize_t val_len;
+
+      val = PyUnicode_AsUTF8AndSize(retval, &val_len);
+      if (val == nullptr && PyErr_Occurred()) {
+        ok = false;
+      }
+      else {
+        char *val_alloc = static_cast<char *>(MEM_mallocN(val_len + 1, __func__));
+        memcpy(val_alloc, val, val_len + 1);
+        *r_value = val_alloc;
+        *r_value_size = val_len;
+      }
+    }
+
+    Py_DECREF(retval);
+  }
+
+  PyC_MainModule_Restore(main_mod);
+
+  return ok;
+}
+
+bool PyC_RunString_AsStringOrNone(const char *imports[],
+                                  const char *expr,
+                                  const char *filename,
+                                  char **r_value)
+{
+  size_t value_size;
+  return PyC_RunString_AsStringAndSizeOrNone(imports, expr, filename, r_value, &value_size);
+}
+
 /** \} */
 
 #endif /* #ifndef MATH_STANDALONE */
@@ -1635,6 +1698,32 @@ bool PyC_RunString_AsString(const char *imports[],
 #  pragma warning(push)
 #  pragma GCC diagnostic ignored "-Wtype-limits"
 #endif
+
+/* #PyLong_AsUnsignedLong, unlike #PyLong_AsLong, does not fall back to calling #PyNumber_Index
+ * when its argument is not a `PyLongObject` instance. To match parsing signed integer types with
+ * #PyLong_AsLong, this function performs the #PyNumber_Index fallback, if necessary, before
+ * calling #PyLong_AsUnsignedLong. */
+static ulong pyc_Long_AsUnsignedLong(PyObject *value)
+{
+  if (value == nullptr) {
+    /* Let PyLong_AsUnsignedLong handle error raising. */
+    return PyLong_AsUnsignedLong(value);
+  }
+
+  if (PyLong_Check(value)) {
+    return PyLong_AsUnsignedLong(value);
+  }
+
+  /* Call `__index__` like PyLong_AsLong. */
+  PyObject *value_converted = PyNumber_Index(value);
+  if (value_converted == nullptr) {
+    /* A `TypeError` will have been raised. */
+    return ulong(-1);
+  }
+  ulong to_return = PyLong_AsUnsignedLong(value_converted);
+  Py_DECREF(value_converted);
+  return to_return;
+}
 
 int PyC_Long_AsBool(PyObject *value)
 {
@@ -1682,7 +1771,7 @@ int16_t PyC_Long_AsI16(PyObject *value)
 
 uint8_t PyC_Long_AsU8(PyObject *value)
 {
-  const ulong test = PyLong_AsUnsignedLong(value);
+  const ulong test = pyc_Long_AsUnsignedLong(value);
   if (UNLIKELY(test == ulong(-1) && PyErr_Occurred())) {
     return uint8_t(-1);
   }
@@ -1695,7 +1784,7 @@ uint8_t PyC_Long_AsU8(PyObject *value)
 
 uint16_t PyC_Long_AsU16(PyObject *value)
 {
-  const ulong test = PyLong_AsUnsignedLong(value);
+  const ulong test = pyc_Long_AsUnsignedLong(value);
   if (UNLIKELY(test == ulong(-1) && PyErr_Occurred())) {
     return uint16_t(-1);
   }
@@ -1708,7 +1797,7 @@ uint16_t PyC_Long_AsU16(PyObject *value)
 
 uint32_t PyC_Long_AsU32(PyObject *value)
 {
-  const ulong test = PyLong_AsUnsignedLong(value);
+  const ulong test = pyc_Long_AsUnsignedLong(value);
   if (UNLIKELY(test == ulong(-1) && PyErr_Occurred())) {
     return uint32_t(-1);
   }
@@ -1719,9 +1808,32 @@ uint32_t PyC_Long_AsU32(PyObject *value)
   return uint32_t(test);
 }
 
-/* Inlined in header:
- * PyC_Long_AsU64
- */
+/* #PyLong_AsUnsignedLongLong, unlike #PyLong_AsLongLong, does not fall back to calling
+ * #PyNumber_Index when its argument is not a `PyLongObject` instance. To match parsing signed
+ * integer types with #PyLong_AsLongLong, this function performs the #PyNumber_Index fallback, if
+ * necessary, before calling #PyLong_AsUnsignedLongLong. */
+uint64_t PyC_Long_AsU64(PyObject *value)
+{
+  if (value == nullptr) {
+    /* Let PyLong_AsUnsignedLongLong handle error raising. */
+    return uint64_t(PyLong_AsUnsignedLongLong(value));
+  }
+
+  if (PyLong_Check(value)) {
+    return uint64_t(PyLong_AsUnsignedLongLong(value));
+  }
+
+  /* Call `__index__` like PyLong_AsLongLong. */
+  PyObject *value_converted = PyNumber_Index(value);
+  if (value_converted == nullptr) {
+    /* A `TypeError` will have been raised. */
+    return uint64_t(-1);
+  }
+
+  uint64_t to_return = uint64_t(PyLong_AsUnsignedLongLong(value_converted));
+  Py_DECREF(value_converted);
+  return to_return;
+}
 
 #ifdef __GNUC__
 #  pragma warning(pop)

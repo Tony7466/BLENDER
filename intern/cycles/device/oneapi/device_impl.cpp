@@ -4,6 +4,10 @@
 
 #ifdef WITH_ONEAPI
 
+/* <algorithm> is needed until included upstream in sycl/detail/property_list_base.hpp */
+#  include <algorithm>
+#  include <sycl/sycl.hpp>
+
 #  include "device/oneapi/device_impl.h"
 
 #  include "util/debug.h"
@@ -24,6 +28,9 @@ extern "C" bool rtcIsSYCLDeviceSupported(const sycl::device sycl_device);
 #  endif
 
 CCL_NAMESPACE_BEGIN
+
+static std::vector<sycl::device> available_sycl_devices();
+static int parse_driver_build_version(const sycl::device &device);
 
 static void queue_error_cb(const char *message, void *user_ptr)
 {
@@ -545,7 +552,7 @@ void OneapiDevice::usm_free(void *usm_ptr)
 
 void OneapiDevice::check_usm(SyclQueue *queue_, const void *usm_ptr, bool allow_host = false)
 {
-#  ifdef _DEBUG
+#  ifndef NDEBUG
   sycl::queue *queue = reinterpret_cast<sycl::queue *>(queue_);
   sycl::info::device_type device_type =
       queue->get_device().get_info<sycl::info::device::device_type>();
@@ -574,7 +581,7 @@ bool OneapiDevice::create_queue(SyclQueue *&external_queue,
 {
   bool finished_correct = true;
   try {
-    std::vector<sycl::device> devices = OneapiDevice::available_devices();
+    std::vector<sycl::device> devices = available_sycl_devices();
     if (device_index < 0 || device_index >= devices.size()) {
       return false;
     }
@@ -766,8 +773,9 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
                                                        size_t &kernel_local_size)
 {
   assert(queue);
-
-  const static size_t preferred_work_group_size_intersect_shading = 32;
+  const static size_t preferred_work_group_size_intersect = 128;
+  const static size_t preferred_work_group_size_shading = 256;
+  const static size_t preferred_work_group_size_shading_simd8 = 64;
   /* Shader evaluation kernels seems to use some amount of shared memory, so better
    * to avoid usage of maximum work group sizes for them. */
   const static size_t preferred_work_group_size_shader_evaluation = 256;
@@ -775,6 +783,9 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
    * for now their work-group size is restricted to 512. */
   const static size_t preferred_work_group_size_cryptomatte = 512;
   const static size_t preferred_work_group_size_default = 1024;
+
+  const sycl::device &device = reinterpret_cast<sycl::queue *>(queue)->get_device();
+  const size_t max_work_group_size = device.get_info<sycl::info::device::max_work_group_size>();
 
   size_t preferred_work_group_size = 0;
   switch (kernel) {
@@ -785,6 +796,9 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
+      preferred_work_group_size = preferred_work_group_size_intersect;
+      break;
+
     case DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
@@ -792,9 +806,13 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:
-    case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT:
-      preferred_work_group_size = preferred_work_group_size_intersect_shading;
-      break;
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT: {
+      const bool device_is_simd8 =
+          (device.has(sycl::aspect::ext_intel_gpu_eu_simd_width) &&
+           device.get_info<sycl::ext::intel::info::device::gpu_eu_simd_width>() == 8);
+      preferred_work_group_size = (device_is_simd8) ? preferred_work_group_size_shading_simd8 :
+                                                      preferred_work_group_size_shading;
+    } break;
 
     case DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS:
       preferred_work_group_size = preferred_work_group_size_cryptomatte;
@@ -822,11 +840,7 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
     preferred_work_group_size = preferred_work_group_size_default;
   }
 
-  const size_t limit_work_group_size = reinterpret_cast<sycl::queue *>(queue)
-                                           ->get_device()
-                                           .get_info<sycl::info::device::max_work_group_size>();
-
-  kernel_local_size = std::min(limit_work_group_size, preferred_work_group_size);
+  kernel_local_size = std::min(max_work_group_size, preferred_work_group_size);
 
   /* NOTE(@nsirgien): As for now non-uniform work-groups don't work on most oneAPI devices,
    * we extend work size to fit uniformity requirements. */
@@ -853,16 +867,16 @@ void OneapiDevice::get_adjusted_global_and_local_sizes(SyclQueue *queue,
 
 /* Compute-runtime (ie. NEO) version is what gets returned by sycl/L0 on Windows
  * since Windows driver 101.3268. */
-static const int lowest_supported_driver_version_win = 1014824;
+static const int lowest_supported_driver_version_win = 1015186;
 #  ifdef _WIN32
-/* For Windows driver 101.4824, compute-runtime version is 26957.
+/* For Windows driver 101.5186, compute-runtime version is 28044.
  * This information is returned by `ocloc query OCL_DRIVER_VERSION`.*/
-static const int lowest_supported_driver_version_neo = 26957;
+static const int lowest_supported_driver_version_neo = 28044;
 #  else
-static const int lowest_supported_driver_version_neo = 26918;
+static const int lowest_supported_driver_version_neo = 27642;
 #  endif
 
-int OneapiDevice::parse_driver_build_version(const sycl::device &device)
+int parse_driver_build_version(const sycl::device &device)
 {
   const std::string &driver_version = device.get_info<sycl::info::device::driver_version>();
   int driver_build_version = 0;
@@ -901,7 +915,7 @@ int OneapiDevice::parse_driver_build_version(const sycl::device &device)
   return driver_build_version;
 }
 
-std::vector<sycl::device> OneapiDevice::available_devices()
+std::vector<sycl::device> available_sycl_devices()
 {
   bool allow_all_devices = false;
   if (getenv("CYCLES_ONEAPI_ALL_DEVICES") != nullptr) {
@@ -971,7 +985,7 @@ char *OneapiDevice::device_capabilities()
 {
   std::stringstream capabilities;
 
-  const std::vector<sycl::device> &oneapi_devices = available_devices();
+  const std::vector<sycl::device> &oneapi_devices = available_sycl_devices();
   for (const sycl::device &device : oneapi_devices) {
 #  ifndef WITH_ONEAPI_SYCL_HOST_TASK
     const std::string &name = device.get_info<sycl::info::device::name>();
@@ -1080,7 +1094,7 @@ char *OneapiDevice::device_capabilities()
 void OneapiDevice::iterate_devices(OneAPIDeviceIteratorCallback cb, void *user_ptr)
 {
   int num = 0;
-  std::vector<sycl::device> devices = OneapiDevice::available_devices();
+  std::vector<sycl::device> devices = available_sycl_devices();
   for (sycl::device &device : devices) {
     const std::string &platform_name =
         device.get_platform().get_info<sycl::info::platform::name>();

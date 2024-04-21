@@ -12,6 +12,7 @@ set(INC
   ../../bmesh
   ../../draw
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
@@ -72,7 +73,7 @@ set(SRC
   view3d_utils.cc
   view3d_view.cc
 
-  view3d_intern.h
+  view3d_intern.hh
   view3d_navigate.hh
 )
 
@@ -85,7 +86,6 @@ set(LIB
   bf_editor_curves
   bf_editor_lattice
   bf_editor_mesh
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::guardedalloc
 )
 

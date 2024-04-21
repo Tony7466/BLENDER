@@ -138,19 +138,8 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
 
   /* Evaluate emissive closure. */
   Spectrum L = surface_shader_emission(sd);
-  float mis_weight = 1.0f;
 
-  const bool has_mis = !(path_flag & PATH_RAY_MIS_SKIP) &&
-                       (sd->flag & ((sd->flag & SD_BACKFACING) ? SD_MIS_BACK : SD_MIS_FRONT));
-
-#ifdef __HAIR__
-  if (has_mis && (sd->type & PRIMITIVE_TRIANGLE))
-#else
-  if (has_mis)
-#endif
-  {
-    mis_weight = light_sample_mis_weight_forward_surface(kg, state, path_flag, sd);
-  }
+  const float mis_weight = light_sample_mis_weight_forward_surface(kg, state, path_flag, sd);
 
   guiding_record_surface_emission(kg, state, L, mis_weight);
   film_write_surface_emission(
@@ -238,10 +227,17 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
 /* Path tracing: sample point on light and evaluate light shader, then
  * queue shadow ray to be traced. */
 template<uint node_feature_mask>
-ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
-                                                           IntegratorState state,
-                                                           ccl_private ShaderData *sd,
-                                                           ccl_private const RNGState *rng_state)
+#if defined(__KERNEL_GPU__)
+ccl_device_forceinline
+#else
+/* MSVC has very long compilation time (x20) if we force inline this function */
+ccl_device
+#endif
+    void
+    integrate_surface_direct_light(KernelGlobals kg,
+                                   IntegratorState state,
+                                   ccl_private ShaderData *sd,
+                                   ccl_private const RNGState *rng_state)
 {
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
@@ -256,7 +252,6 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
     const float3 rand_light = path_state_rng_3D(kg, rng_state, PRNG_LIGHT);
 
     if (!light_sample_from_position(kg,
-                                    rng_state,
                                     rand_light,
                                     sd->time,
                                     sd->P,
@@ -273,6 +268,16 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
 
   kernel_assert(ls.pdf != 0.0f);
 
+  const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
+
+  if (ls.prim != PRIM_NONE && ls.prim == sd->prim && ls.object == sd->object) {
+    /* Skip self intersection if light direction lies in the same hemisphere as the geometric
+     * normal. */
+    if (dot(ls.D, is_transmission ? -sd->Ng : sd->Ng) > 0.0f) {
+      return;
+    }
+  }
+
   /* Evaluate light shader.
    *
    * TODO: can we reuse sd memory? In theory we can move this after
@@ -284,8 +289,6 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
 
   Ray ray ccl_optional_struct_init;
   BsdfEval bsdf_eval ccl_optional_struct_init;
-
-  const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
 
   int mnee_vertex_count = 0;
 #ifdef __MNEE__
@@ -324,16 +327,12 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
 
     /* Evaluate BSDF. */
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
-    bsdf_eval_mul(&bsdf_eval, light_eval / ls.pdf);
-
-    if (ls.shader & SHADER_USE_MIS) {
-      const float mis_weight = light_sample_mis_weight_nee(kg, ls.pdf, bsdf_pdf);
-      bsdf_eval_mul(&bsdf_eval, mis_weight);
-    }
+    const float mis_weight = light_sample_mis_weight_nee(kg, ls.pdf, bsdf_pdf);
+    bsdf_eval_mul(&bsdf_eval, light_eval / ls.pdf * mis_weight);
 
     /* Path termination. */
     const float terminate = path_state_rng_light_termination(kg, rng_state);
-    if (light_sample_terminate(kg, &ls, &bsdf_eval, terminate)) {
+    if (light_sample_terminate(kg, &bsdf_eval, terminate)) {
       return;
     }
 
@@ -346,13 +345,8 @@ ccl_device_forceinline void integrate_surface_direct_light(KernelGlobals kg,
   }
 
   /* Branch off shadow kernel. */
-
-  // TODO(: De-duplicate with the shade_Dedicated_light.
-  // Possibly by ensuring ls->group is always assigned properly.
-  const int light_group = ls.type != LIGHT_BACKGROUND ? ls.group :
-                                                        kernel_data.background.lightgroup;
   IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
-      kg, state, &ray, bsdf_eval_sum(&bsdf_eval), light_group, mnee_vertex_count);
+      kg, state, &ray, bsdf_eval_sum(&bsdf_eval), ls.group, mnee_vertex_count);
 
   if (is_transmission) {
 #ifdef __VOLUME__
@@ -492,15 +486,16 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
   /* Update path state */
   if (!(label & LABEL_TRANSPARENT)) {
     INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = mis_pdf;
-    INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = sc->N;
+    INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = sd->N;
     INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = fminf(
         unguided_bsdf_pdf, INTEGRATOR_STATE(state, path, min_ray_pdf));
-  }
+
 #ifdef __LIGHT_LINKING__
-  if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_LINKING) {
-    INTEGRATOR_STATE_WRITE(state, path, mis_ray_object) = sd->object;
-  }
+    if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_LINKING) {
+      INTEGRATOR_STATE_WRITE(state, path, mis_ray_object) = sd->object;
+    }
 #endif
+  }
 
   path_state_next(kg, state, label, sd->flag);
 
@@ -554,13 +549,13 @@ ccl_device_forceinline void integrate_surface_ao(KernelGlobals kg,
                                                  IntegratorState state,
                                                  ccl_private const ShaderData *ccl_restrict sd,
                                                  ccl_private const RNGState *ccl_restrict
-                                                     rng_state,
-                                                 ccl_global float *ccl_restrict render_buffer)
+                                                     rng_state)
 {
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
 
   if (!(kernel_data.kernel_features & KERNEL_FEATURE_AO_ADDITIVE) &&
-      !(path_flag & PATH_RAY_CAMERA)) {
+      !(path_flag & PATH_RAY_CAMERA))
+  {
     return;
   }
 
@@ -735,7 +730,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
     /* Ambient occlusion pass. */
     if (kernel_data.kernel_features & KERNEL_FEATURE_AO) {
       PROFILING_EVENT(PROFILING_SHADE_SURFACE_AO);
-      integrate_surface_ao(kg, state, &sd, &rng_state, render_buffer);
+      integrate_surface_ao(kg, state, &sd, &rng_state);
     }
 #endif
 

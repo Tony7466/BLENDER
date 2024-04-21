@@ -15,11 +15,11 @@
 #include "DNA_tracking_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -108,9 +108,7 @@ class KeyingScreenOperation : public NodeOperation {
     KeyingScreen &cached_keying_screen = context().cache_manager().keying_screens.get(
         context(), get_movie_clip(), movie_tracking_object, get_smoothness());
 
-    const Domain domain = compute_domain();
-    keying_screen.allocate_texture(domain);
-    GPU_texture_copy(keying_screen.texture(), cached_keying_screen.texture());
+    keying_screen.wrap_external(cached_keying_screen.texture());
   }
 
   Domain compute_domain() override

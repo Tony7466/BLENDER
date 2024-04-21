@@ -8,17 +8,14 @@
  */
 
 #include <algorithm> /* For `min/max`. */
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "DNA_listBase.h"
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_fnmatch.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
@@ -104,7 +101,7 @@ int BLI_path_sequence_decode(const char *path,
         BLI_strncpy(tail, &path[nume + 1], tail_maxncpy);
       }
       if (head) {
-        BLI_strncpy(head, path, MIN2(head_maxncpy, nums + 1));
+        BLI_strncpy(head, path, std::min<size_t>(head_maxncpy, nums + 1));
       }
       if (r_digits_len) {
         *r_digits_len = nume - nums + 1;
@@ -119,7 +116,7 @@ int BLI_path_sequence_decode(const char *path,
   if (head) {
     /* Name_end points to last character of head,
      * make it +1 so null-terminator is nicely placed. */
-    BLI_strncpy(head, path, MIN2(head_maxncpy, name_end + 1));
+    BLI_strncpy(head, path, std::min<size_t>(head_maxncpy, name_end + 1));
   }
   if (r_digits_len) {
     *r_digits_len = 0;
@@ -882,28 +879,28 @@ bool BLI_path_parent_dir(char *path)
   return true;
 }
 
-bool BLI_path_parent_dir_until_exists(char *dir)
+bool BLI_path_parent_dir_until_exists(char *path)
 {
   bool valid_path = true;
 
   /* Loop as long as cur path is not a dir, and we can get a parent path. */
-  while ((BLI_access(dir, R_OK) != 0) && (valid_path = BLI_path_parent_dir(dir))) {
+  while ((BLI_access(path, R_OK) != 0) && (valid_path = BLI_path_parent_dir(path))) {
     /* Pass. */
   }
-  return (valid_path && dir[0]);
+  return (valid_path && path[0]);
 }
 
 /**
  * Looks for a sequence of "#" characters in the last slash-separated component of `path`,
  * returning the indexes of the first and one past the last character in the sequence in
- * `char_start` and `char_end` respectively.
+ * `r_char_start` and `r_char_end` respectively.
  *
- * \param char_start: The first `#` character.
- * \param char_end: The last `#` character +1.
+ * \param r_char_start: The first `#` character.
+ * \param r_char_end: The last `#` character +1.
  *
  * \return true if a frame sequence range was found.
  */
-static bool path_frame_chars_find_range(const char *path, int *char_start, int *char_end)
+static bool path_frame_chars_find_range(const char *path, int *r_char_start, int *r_char_end)
 {
   uint ch_sta, ch_end, i;
   /* Insert current frame: `file###` -> `file001`. */
@@ -925,13 +922,13 @@ static bool path_frame_chars_find_range(const char *path, int *char_start, int *
   }
 
   if (ch_end) {
-    *char_start = ch_sta;
-    *char_end = ch_end;
+    *r_char_start = ch_sta;
+    *r_char_end = ch_end;
     return true;
   }
 
-  *char_start = -1;
-  *char_end = -1;
+  *r_char_start = -1;
+  *r_char_end = -1;
   return false;
 }
 
@@ -2015,4 +2012,40 @@ int BLI_path_cmp_normalized(const char *p1, const char *p2)
     MEM_freeN(norm_p2);
   }
   return result;
+}
+
+bool BLI_path_has_hidden_component(const char *path)
+{
+  bool component_start = true;
+  char cur_char = path[0];
+  char prev_char = '\0';
+
+  while (cur_char != '\0') {
+    char next_char = path[1];
+    /* If we're at a start of path component, current is '.'
+     * and next one is not '.', end or separator: hidden. */
+    if (component_start && cur_char == '.') {
+      if (!ELEM(path[1], '.', '\0', '/', '\\')) {
+        return true;
+      }
+    }
+
+    component_start = ELEM(cur_char, '/', '\\');
+    /* Separator, and previous was tilde: hidden. */
+    if (component_start && prev_char == '~') {
+      return true;
+    }
+
+    path++;
+    prev_char = cur_char;
+    cur_char = next_char;
+  }
+
+  /* Was a tilde right at end of path: hidden. */
+  if (prev_char == '~') {
+    return true;
+  }
+
+  /* Nothing was hidden. */
+  return false;
 }

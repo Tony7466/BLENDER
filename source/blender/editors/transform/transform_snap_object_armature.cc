@@ -10,19 +10,18 @@
 
 #include "BKE_armature.hh"
 #include "BKE_bvhutils.hh"
-#include "BKE_mesh.hh"
 #include "DNA_armature_types.h"
 
 #include "ED_transform_snap_object_context.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "transform_snap_object.hh"
 
 using blender::float4x4;
 
 eSnapMode snapArmature(SnapObjectContext *sctx,
-                       Object *ob_eval,
+                       const Object *ob_eval,
                        const float4x4 &obmat,
                        bool is_object_active)
 {

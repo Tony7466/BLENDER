@@ -43,7 +43,7 @@ static void node_declare(NodeDeclarationBuilder &b)
         BLI_assert_unreachable();
         break;
     }
-    value_declaration->supports_field().description(N_("The values to be accumulated"));
+    value_declaration->supports_field().description("The values to be accumulated");
   }
 
   b.add_input<decl::Int>("Group ID", "Group Index")
@@ -54,15 +54,14 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
     b.add_output(data_type, "Leading")
         .field_source_reference_all()
-        .description(N_("The running total of values in the corresponding group, starting at the "
-                        "first value"));
+        .description(
+            "The running total of values in the corresponding group, starting at the first value");
     b.add_output(data_type, "Trailing")
         .field_source_reference_all()
-        .description(
-            N_("The running total of values in the corresponding group, starting at zero"));
+        .description("The running total of values in the corresponding group, starting at zero");
     b.add_output(data_type, "Total")
         .field_source_reference_all()
-        .description(N_("The total of all of the values in the corresponding group"));
+        .description("The total of all of the values in the corresponding group");
   }
 }
 
@@ -76,7 +75,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeAccumulateField *data = MEM_cnew<NodeAccumulateField>(__func__);
   data->data_type = CD_PROP_FLOAT;
-  data->domain = ATTR_DOMAIN_POINT;
+  data->domain = int16_t(AttrDomain::Point);
   node->storage = data;
 }
 
@@ -149,11 +148,11 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
  private:
   GField input_;
   Field<int> group_index_;
-  eAttrDomain source_domain_;
+  AttrDomain source_domain_;
   AccumulationMode accumulation_mode_;
 
  public:
-  AccumulateFieldInput(const eAttrDomain source_domain,
+  AccumulateFieldInput(const AttrDomain source_domain,
                        GField input,
                        Field<int> group_index,
                        AccumulationMode accumulation_mode)
@@ -232,7 +231,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_4(input_, group_index_, source_domain_, accumulation_mode_);
+    return get_default_hash(input_, group_index_, source_domain_, accumulation_mode_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -248,7 +247,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(
+  std::optional<AttrDomain> preferred_domain(
       const GeometryComponent & /*component*/) const override
   {
     return source_domain_;
@@ -259,10 +258,10 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
  private:
   GField input_;
   Field<int> group_index_;
-  eAttrDomain source_domain_;
+  AttrDomain source_domain_;
 
  public:
-  TotalFieldInput(const eAttrDomain source_domain, GField input, Field<int> group_index)
+  TotalFieldInput(const AttrDomain source_domain, GField input, Field<int> group_index)
       : bke::GeometryFieldInput(input.cpp_type(), "Total Value"),
         input_(input),
         group_index_(group_index),
@@ -320,7 +319,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_3(input_, group_index_, source_domain_);
+    return get_default_hash(input_, group_index_, source_domain_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
@@ -332,7 +331,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(
+  std::optional<AttrDomain> preferred_domain(
       const GeometryComponent & /*component*/) const override
   {
     return source_domain_;
@@ -342,7 +341,7 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const NodeAccumulateField &storage = node_storage(params.node());
-  const eAttrDomain source_domain = eAttrDomain(storage.domain);
+  const AttrDomain source_domain = AttrDomain(storage.domain);
 
   const Field<int> group_index_field = params.extract_input<Field<int>>("Group Index");
   const GField input_field = params.extract_input<GField>("Value");
@@ -388,8 +387,9 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_enum_attribute_domain_items,
                     NOD_storage_enum_accessors(domain),
-                    ATTR_DOMAIN_POINT,
-                    enums::domain_experimental_grease_pencil_version3_fn);
+                    int(AttrDomain::Point),
+                    enums::domain_experimental_grease_pencil_version3_fn,
+                    true);
 }
 
 static void node_register()

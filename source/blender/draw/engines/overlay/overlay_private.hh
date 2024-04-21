@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "UI_resources.hh"
 
@@ -81,6 +81,7 @@ struct OVERLAY_PassList {
   DRWPass *edit_mesh_faces_ps[2];
   DRWPass *edit_mesh_faces_cage_ps[2];
   DRWPass *edit_curves_points_ps[2];
+  DRWPass *edit_curves_handles_ps;
   DRWPass *edit_curves_lines_ps[2];
   DRWPass *edit_mesh_analysis_ps;
   DRWPass *edit_mesh_normals_ps;
@@ -276,6 +277,7 @@ struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_uv_face_dots_grp;
   DRWShadingGroup *edit_uv_stretching_grp;
   DRWShadingGroup *edit_curves_points_grp[2];
+  DRWShadingGroup *edit_curves_handles_grp;
   DRWShadingGroup *edit_curves_lines_grp[2];
   DRWShadingGroup *extra_grid_grp;
   DRWShadingGroup *facing_grp[2];
@@ -395,6 +397,8 @@ struct OVERLAY_PrivateData {
 
     float uv_opacity;
 
+    float stretch_opacity;
+
     int image_size[2];
     float image_aspect[2];
 
@@ -408,11 +412,6 @@ struct OVERLAY_PrivateData {
     eSpaceImage_UVDT_Stretch draw_type;
     ListBase totals;
     float total_area_ratio;
-
-    /* stencil overlay */
-    Image *stencil_image;
-    ImBuf *stencil_ibuf;
-    void *stencil_lock;
 
     /* mask overlay */
     Mask *mask;
@@ -456,9 +455,9 @@ struct OVERLAY_DupliData {
   DRWShadingGroup *wire_shgrp;
   DRWShadingGroup *outline_shgrp;
   DRWShadingGroup *extra_shgrp;
-  GPUBatch *wire_geom;
-  GPUBatch *outline_geom;
-  GPUBatch *extra_geom;
+  blender::gpu::Batch *wire_geom;
+  blender::gpu::Batch *outline_geom;
+  blender::gpu::Batch *extra_geom;
   short base_flag;
 };
 
@@ -623,11 +622,11 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          char draw_type,
                          const float color[4]);
 void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
-                                GPUBatch *geom,
+                                blender::gpu::Batch *geom,
                                 const float mat[4][4],
                                 const float color[4]);
 void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
-                        GPUBatch *geom,
+                        blender::gpu::Batch *geom,
                         const float mat[4][4],
                         const float color[4]);
 
@@ -709,6 +708,8 @@ void OVERLAY_viewer_attribute_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_viewer_attribute_cache_populate(OVERLAY_Data *vedata, Object *object);
 void OVERLAY_viewer_attribute_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_viewer_attribute_text(const Object &object);
+
 void OVERLAY_wireframe_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
@@ -738,6 +739,7 @@ GPUShader *OVERLAY_shader_depth_only();
 GPUShader *OVERLAY_shader_edit_curve_handle();
 GPUShader *OVERLAY_shader_edit_curve_point();
 GPUShader *OVERLAY_shader_edit_curve_wire();
+GPUShader *OVERLAY_shader_edit_curves_handle();
 GPUShader *OVERLAY_shader_edit_gpencil_guide_point();
 GPUShader *OVERLAY_shader_edit_gpencil_point();
 GPUShader *OVERLAY_shader_edit_gpencil_wire();

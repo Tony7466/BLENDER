@@ -8,14 +8,14 @@
  * Gather all screen space effects technique such as Bloom, Motion Blur, DoF, SSAO, SSR, ...
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_rand.h"
 #include "BLI_string_utils.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_camera.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_object.hh"
 #include "BKE_screen.hh"
 
@@ -32,9 +32,9 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
-#include "GPU_texture.h"
-#include "eevee_private.h"
+#include "GPU_batch.hh"
+#include "GPU_texture.hh"
+#include "eevee_private.hh"
 
 int EEVEE_motion_blur_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 {
@@ -52,7 +52,7 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 
   effects->motion_blur_max = max_ii(0, scene->eevee.motion_blur_max);
 
-  if ((effects->motion_blur_max > 0) && (scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED)) {
+  if ((effects->motion_blur_max > 0) && (scene->r.mode & R_MBLUR)) {
     if (DRW_state_is_scene_render()) {
       int mb_step = effects->motion_blur_step;
       DRW_view_viewmat_get(nullptr, effects->motion_blur.camera[mb_step].viewmat, false);
@@ -278,6 +278,7 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
                                              EEVEE_Data *vedata,
                                              Object *ob)
 {
+  using namespace blender::draw;
   EEVEE_PassList *psl = vedata->psl;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
@@ -295,7 +296,7 @@ void EEVEE_motion_blur_curves_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
 
   int mb_step = effects->motion_blur_step;
   /* Store transform. */
-  copy_m4_m4(mb_data->obmat[mb_step], ob->object_to_world);
+  copy_m4_m4(mb_data->obmat[mb_step], ob->object_to_world().ptr());
 
   EEVEE_HairMotionData *mb_curves = EEVEE_motion_blur_curves_data_get(mb_data);
 
@@ -366,12 +367,12 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
   if (mb_data) {
     int mb_step = effects->motion_blur_step;
     /* Store transform. */
-    copy_m4_m4(mb_data->obmat[mb_step], ob->object_to_world);
+    copy_m4_m4(mb_data->obmat[mb_step], ob->object_to_world().ptr());
 
     EEVEE_GeometryMotionData *mb_geom = EEVEE_motion_blur_geometry_data_get(mb_data);
 
     if (mb_step == MB_CURR) {
-      GPUBatch *batch = DRW_cache_object_surface_get(ob);
+      blender::gpu::Batch *batch = DRW_cache_object_surface_get(ob);
       if (batch == nullptr) {
         return;
       }
@@ -418,9 +419,9 @@ void EEVEE_motion_blur_cache_populate(EEVEE_ViewLayerData * /*sldata*/,
   }
 }
 
-static void motion_blur_remove_vbo_reference_from_batch(GPUBatch *batch,
-                                                        GPUVertBuf *vbo1,
-                                                        GPUVertBuf *vbo2)
+static void motion_blur_remove_vbo_reference_from_batch(blender::gpu::Batch *batch,
+                                                        blender::gpu::VertBuf *vbo1,
+                                                        blender::gpu::VertBuf *vbo2)
 {
 
   for (int i = 0; i < GPU_BATCH_VBO_MAX_LEN; i++) {
@@ -433,6 +434,7 @@ static void motion_blur_remove_vbo_reference_from_batch(GPUBatch *batch,
 
 void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
 {
+  using namespace blender::draw;
   EEVEE_StorageList *stl = vedata->stl;
   EEVEE_EffectsInfo *effects = stl->effects;
   GHashIterator ghi;
@@ -470,7 +472,7 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
       }
       else {
         for (int i = 0; i < mb_hair->psys_len; i++) {
-          GPUVertBuf *vbo = mb_hair->psys[i].step_data[mb_step].hair_pos;
+          blender::gpu::VertBuf *vbo = mb_hair->psys[i].step_data[mb_step].hair_pos;
           if (vbo == nullptr) {
             continue;
           }
@@ -496,9 +498,9 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
     if (mb_geom != nullptr && mb_geom->use_deform) {
       if (mb_step == MB_CURR) {
         /* Modify batch to have data from adjacent frames. */
-        GPUBatch *batch = mb_geom->batch;
+        blender::gpu::Batch *batch = mb_geom->batch;
         for (int i = 0; i < MB_CURR; i++) {
-          GPUVertBuf *vbo = mb_geom->vbo[i];
+          blender::gpu::VertBuf *vbo = mb_geom->vbo[i];
           if (vbo && batch) {
             if (GPU_vertbuf_get_vertex_len(vbo) != GPU_vertbuf_get_vertex_len(batch->verts[0])) {
               /* Vertex count mismatch, disable deform motion blur. */
@@ -521,17 +523,17 @@ void EEVEE_motion_blur_cache_finish(EEVEE_Data *vedata)
         }
       }
       else {
-        GPUVertBuf *vbo = mb_geom->vbo[mb_step];
+        blender::gpu::VertBuf *vbo = mb_geom->vbo[mb_step];
         if (vbo) {
           /* Use the vbo to perform the copy on the GPU. */
           GPU_vertbuf_use(vbo);
           /* Perform a copy to avoid losing it after RE_engine_frame_set(). */
-          GPUVertBuf **vbo_cache_ptr;
+          blender::gpu::VertBuf **vbo_cache_ptr;
           if (!BLI_ghash_ensure_p(
                   effects->motion_blur.position_vbo_cache[mb_step], vbo, (void ***)&vbo_cache_ptr))
           {
             /* Duplicate the vbo, otherwise it would be lost when evaluating another frame. */
-            GPUVertBuf *duplicated_vbo = GPU_vertbuf_duplicate(vbo);
+            blender::gpu::VertBuf *duplicated_vbo = GPU_vertbuf_duplicate(vbo);
             *vbo_cache_ptr = duplicated_vbo;
             /* Find and replace "pos" attrib name. */
             GPUVertFormat *format = (GPUVertFormat *)GPU_vertbuf_get_format(duplicated_vbo);
@@ -586,7 +588,8 @@ void EEVEE_motion_blur_swap_data(EEVEE_Data *vedata)
        !BLI_ghashIterator_done(&ghi);
        BLI_ghashIterator_step(&ghi))
   {
-    GPUVertBuf *vbo = static_cast<GPUVertBuf *>(BLI_ghashIterator_getValue(&ghi));
+    blender::gpu::VertBuf *vbo = static_cast<blender::gpu::VertBuf *>(
+        BLI_ghashIterator_getValue(&ghi));
     GPUVertFormat *format = (GPUVertFormat *)GPU_vertbuf_get_format(vbo);
     int attrib_id = GPU_vertformat_attr_id_get(format, "nxt");
     GPU_vertformat_attr_rename(format, attrib_id, "prv");
