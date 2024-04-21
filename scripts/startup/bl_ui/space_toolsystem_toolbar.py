@@ -1833,12 +1833,13 @@ class _defs_paint_grease_pencil:
 
     @ToolDef.from_fn
     def cutter():
-        def draw_settings(_context, layout, tool):
-            props = tool.operator_properties("grease_pencil.stroke_cutter")
+        def draw_settings(context, layout, _tool):
+            brush = context.tool_settings.gpencil_paint.brush
+            gp_settings = brush.gpencil_settings
             row = layout.row()
             row.use_property_split = False
-            row.prop(props, "flat_caps")
-            row.prop(props, "active_layer")
+            row.prop(gp_settings, "use_keep_caps_eraser")
+            row.prop(gp_settings, "use_active_layer_only")
 
         return dict(
             idname="builtin.cutter",

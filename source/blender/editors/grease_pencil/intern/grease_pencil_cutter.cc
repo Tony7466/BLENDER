@@ -13,9 +13,11 @@
 #include "BLI_rect.h"
 #include "BLI_task.hh"
 
+#include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
+#include "BKE_paint.hh"
 #include "BKE_report.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -640,7 +642,7 @@ static bool execute_cutter_on_drawing(const int layer_index,
 /**
  * Apply the stroke cutter to all layers.
  */
-static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<int2> mcoords)
+static int stroke_cutter_execute(const bContext *C, const Span<int2> mcoords)
 {
   const Scene *scene = CTX_data_scene(C);
   const ARegion *region = CTX_wm_region(C);
@@ -651,8 +653,13 @@ static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<i
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
-  const bool keep_caps = !RNA_boolean_get(op->ptr, "flat_caps");
-  const bool active_layer_only = RNA_boolean_get(op->ptr, "active_layer");
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = BKE_paint_brush(paint);
+  if (brush->gpencil_settings == nullptr) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
+  const bool keep_caps = (brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0;
+  const bool active_layer_only = (brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0;
   std::atomic<bool> changed = false;
 
   if (active_layer_only) {
@@ -719,7 +726,7 @@ static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
     return OPERATOR_PASS_THROUGH;
   }
 
-  return stroke_cutter_execute(op, C, mcoords);
+  return stroke_cutter_execute(C, mcoords);
 }
 
 }  // namespace blender::ed::greasepencil
@@ -727,8 +734,6 @@ static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
 void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
 {
   using namespace blender::ed::greasepencil;
-
-  PropertyRNA *prop;
 
   ot->name = "Grease Pencil Cutter";
   ot->idname = "GREASE_PENCIL_OT_stroke_cutter";
@@ -743,10 +748,4 @@ void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
   WM_operator_properties_gesture_lasso(ot);
-
-  prop = RNA_def_boolean(ot->srna, "flat_caps", false, "Flat Caps", "");
-  RNA_def_property_flag(prop, PROP_HIDDEN);
-  prop = RNA_def_boolean(
-      ot->srna, "active_layer", false, "Active Layer", "Only edit the active layer of the object");
-  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
