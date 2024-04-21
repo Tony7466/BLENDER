@@ -21,6 +21,7 @@
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
+#include "BLI_virtual_array.hh"
 
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
@@ -33,42 +34,69 @@ namespace pbvh = bke::pbvh;
 struct TLS {
   Vector<float> factors;
   Vector<float> distances;
-  Vector<int> neighbor_offsets;
-  Vector<int> neighbor_indices;
+  // Vector<int> neighbor_offsets;
+  // Vector<int> neighbor_indices;
+  Array<Vector<int>> vert_neighbors;
   Vector<float3> translations;
 };
 
-static Array<Vector<int>> calc_vert_neighbors(const OffsetIndices<int> faces,
-                                              const Span<int> corner_verts,
-                                              const GroupedSpan<int> vert_to_face,
-                                              const BitSpan boundary_verts,
-                                              const bool *hide_poly,
-                                              const Span<int> verts)
+// template<typename FilterFn>
+// void foreach_vert_neighbor_by_face(const OffsetIndices<int> faces,
+//                                    const Span<int> corner_verts,
+//                                    const GroupedSpan<int> vert_to_face,
+//                                    const Span<bool> hide_poly,
+//                                    const FilterFn &filter_fn,
+//                                    const int vert)
+// {
+//   for (const int face : vert_to_face[vert]) {
+//     if (!hide_poly.is_empty() && hide_poly[face]) {
+//       /* Skip connectivity from hidden faces. */
+//       continue;
+//     }
+//     const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
+//     if (filter_fn[verts[0]]) {
+//     }
+//     if (!is_boundary || boundary_verts[verts[0]]) {
+//       vert_neighbors[i].append(verts[0]);
+//     }
+//     if (!is_boundary || boundary_verts[verts[1]]) {
+//       vert_neighbors[i].append(verts[1]);
+//     }
+//   }
+// }
+
+/* For boundary vertices, only include other boundary vertices. */
+static void calc_vert_neighbors(const OffsetIndices<int> faces,
+                                const Span<int> corner_verts,
+                                const GroupedSpan<int> vert_to_face,
+                                const BitSpan boundary_verts,
+                                const Span<bool> hide_poly,
+                                const Span<int> verts,
+                                MutableSpan<Vector<int>> neighbors)
 {
-  Array<Vector<int>> vert_neighbors(verts.size());
+  for (Vector<int> &vector : neighbors) {
+    vector.clear();
+  }
+
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     const bool is_boundary = boundary_verts[vert];
     if (boundary_verts[vert]) {
-    }
-    else {
-    }
-    int count = 0;
-    for (const int face : vert_to_face[vert]) {
-      if (hide_poly && hide_poly[face]) {
-        /* Skip connectivity from hidden faces. */
-        continue;
-      }
-      const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
-      if (!is_boundary || boundary_verts[verts[0]]) {
-        vert_neighbors[i].append(verts[0]);
-      }
-      if (!is_boundary || boundary_verts[verts[1]]) {
-        vert_neighbors[i].append(verts[1]);
+      for (const int face : vert_to_face[vert]) {
+        if (!hide_poly.is_empty() && hide_poly[face]) {
+          /* Skip connectivity from hidden faces. */
+          continue;
+        }
+        const int2 verts = bke::mesh::face_find_adjacent_verts(faces[face], corner_verts, vert);
+        if (!is_boundary || boundary_verts[verts[0]]) {
+          neighbors[i].append_non_duplicates(verts[0]);
+        }
+        if (!is_boundary || boundary_verts[verts[1]]) {
+          neighbors[i].append_non_duplicates(verts[1]);
+        }
       }
     }
   }
-  return vert_neighbors;
 }
 
 static float3 average_positions(const Span<float3> positions, const Span<int> indices)
@@ -81,12 +109,38 @@ static float3 average_positions(const Span<float3> positions, const Span<int> in
   return result;
 }
 
-static void calc_smooth_positions_faces(const Sculpt &sd,
-                                        const Brush &brush,
-                                        Object &object,
+static void calc_smooth_positions_faces(Object &object,
+                                        const Span<bool> hide_poly,
                                         pbvh::mesh::Node &node,
                                         TLS &tls,
                                         const MutableSpan<float3> new_positions)
+{
+  SculptSession &ss = *object.sculpt;
+
+  const Span<int> verts = node.unique_vert_indices();
+
+  tls.vert_neighbors.reinitialize(verts.size());
+  calc_vert_neighbors(ss.faces,
+                      ss.corner_verts,
+                      ss.vert_to_face_map,
+                      ss.vertex_info.boundary,
+                      hide_poly,
+                      verts,
+                      tls.vert_neighbors);
+  const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
+
+  for (const int i : verts.index_range()) {
+    new_positions[i] = average_positions(positions_eval, vert_neighbors[i]);
+  }
+}
+
+static void apply_positions_faces(const Sculpt &sd,
+                                  const Brush &brush,
+                                  Object &object,
+                                  const Span<bool> hide_poly,
+                                  pbvh::mesh::Node &node,
+                                  TLS &tls,
+                                  const Span<float3> new_positions)
 {
   SculptSession &ss = *object.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -118,17 +172,14 @@ static void calc_smooth_positions_faces(const Sculpt &sd,
 
   calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
-  const GroupedSpan<int> vert_neighbors = calc_vert_neighbors(ss.faces,
-                                                              ss.corner_verts,
-                                                              ss.vert_to_face_map,
-                                                              ss.vertex_info.boundary,
-                                                              ss.hide_poly,
-                                                              verts,
-                                                              tls.neighbor_offsets,
-                                                              tls.neighbor_indices);
-
-  tls.translations.reinitialize(verts.size());
-  const MutableSpan<float3> translations = tls.translations;
+  calc_vert_neighbors(ss.faces,
+                      ss.corner_verts,
+                      ss.vert_to_face_map,
+                      ss.vertex_info.boundary,
+                      hide_poly,
+                      verts,
+                      tls.vert_neighbors);
+  const Span<Vector<int>> vert_neighbors = tls.vert_neighbors;
 
   for (const int i : verts.index_range()) {
     new_positions[i] = average_positions(positions_eval, vert_neighbors[i]);
@@ -165,10 +216,9 @@ static void calc_grids(Object &object, const Brush &brush, PBVHNode &node)
                                                                 thread_id,
                                                                 &automask_data);
 
-    float avg[3], val[3];
-    SCULPT_neighbor_coords_average_interior(&ss, avg, vd.vertex);
-    sub_v3_v3v3(val, avg, vd.co);
-    madd_v3_v3v3fl(val, vd.co, val, fade);
+    float3 avg;
+    smooth::neighbor_coords_average_interior(&ss, avg, vd.vertex);
+    float3 final = float3(vd.co) + (avg - float3(vd.co)) * fade;
     SCULPT_clip(sd, &ss, vd.co, val);
   }
   BKE_pbvh_vertex_iter_end;
@@ -204,11 +254,10 @@ static void calc_bmesh(Object &object, const Brush &brush, PBVHNode &node)
                                                                 thread_id,
                                                                 &automask_data);
 
-    float avg[3], val[3];
-    SCULPT_neighbor_coords_average_interior(&ss, avg, vd.vertex);
-    sub_v3_v3v3(val, avg, vd.co);
-    madd_v3_v3v3fl(val, vd.co, val, fade);
-    SCULPT_clip(sd, &ss, vd.co, val);
+    float3 avg;
+    smooth::neighbor_coords_average_interior(&ss, avg, vd.vertex);
+    float3 final = float3(vd.co) + (avg - float3(vd.co)) * fade;
+    SCULPT_clip(sd, &ss, vd.co, final);
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -221,24 +270,18 @@ void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const float bstrength = ss.cache->bstrength;
 
-  /* Offset with as much as possible factored in already. */
-  float3 effective_normal;
-  SCULPT_tilt_effective_normal_get(&ss, &brush, effective_normal);
-
-  /* XXX: this shouldn't be necessary, but sculpting crashes in blender2.8 otherwise
-   * initialize before threads so they can do curve mapping. */
-  BKE_curvemapping_init(brush.curve);
-
   switch (BKE_pbvh_type(object.sculpt->pbvh)) {
     case PBVH_FACES: {
+      Mesh &mesh = *static_cast<Mesh *>(object.data);
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
       Array<int> node_vert_offset_data(nodes.size() + 1);
-      int offset = 0;
       for (const int i : nodes.index_range()) {
-        node_vert_offset_data[i] = offset;
-        offset += BKE_pbvh_node_get_unique_vert_indices(nodes[i]).size();
+        node_vert_offset_data[i] = BKE_pbvh_node_get_unique_vert_indices(nodes[i]).size();
       }
-      node_vert_offset_data.last() = offset;
-      const OffsetIndices<int> node_vert_offsets(node_vert_offset_data);
+      const OffsetIndices<int> node_vert_offsets = offset_indices::accumulate_counts_to_offsets(
+          node_vert_offset_data);
 
       Array<float3> new_positions(node_vert_offsets.total_size());
 
@@ -247,16 +290,14 @@ void do_smooth_brush(const Sculpt &sd, Object &object, Span<PBVHNode *> nodes)
         TLS &tls = all_tls.local();
         for (const int i : range) {
           pbvh::mesh::Node face_node(*nodes[i]);
-          calc_smooth_positions_faces(sd,
-                                      brush,
-                                      object,
+          calc_smooth_positions_faces(object,
+                                      hide_poly,
                                       face_node,
                                       tls,
                                       new_positions.as_mutable_span().slice(node_vert_offsets[i]));
         }
       });
 
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan<float3> positions_sculpt = mesh_brush_positions_for_write(*object.sculpt, mesh);
       MutableSpan<float3> positions_mesh = mesh.vert_positions_for_write();
       // TODO: clip_and_lock_translations
