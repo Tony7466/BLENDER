@@ -140,9 +140,11 @@ ccl_device Spectrum fresnel_iridescence(KernelGlobals kg, float eta1, float eta2
 {
   /* TODOs:
    * - Conductors
-   * - Transition eta2->eta1 at thickness below 300nm
    * - Figure out if not accounting for polarization is close enough
    */
+  if (thickness < 30.0f) {
+    eta2 = mix(eta1, eta2, smoothstep(0.0f, 30.0f, thickness));
+  }
 
   float cosTheta2_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosTheta));
   if (cosTheta2_sq < 0.0f) {
