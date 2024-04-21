@@ -26,6 +26,7 @@ class LayerDataButtonsPanel:
         grease_pencil = context.grease_pencil
         return grease_pencil and grease_pencil.layers.active
 
+
 class GREASE_PENCIL_UL_masks(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         mask = item
