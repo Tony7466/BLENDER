@@ -92,118 +92,6 @@ ccl_device float schlick_fresnel(float u)
   return m2 * m2 * m;  // pow(m, 5)
 }
 
-ccl_device_inline Spectrum iridescence_sensitivity(float OPD, float shift)
-{
-  float phase = M_2PI_F * OPD * 1e-9f;
-  float3 val = make_float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
-  float3 pos = make_float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
-  float3 var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
-
-  float3 xyz = val * sqrt(M_2PI_F * var) * cos(pos * phase + shift) * exp(-sqr(phase) * var);
-  xyz.x += 1.64408e-8f * cosf(2.2399e+06f * phase + shift) * expf(-4.5282e+09f * sqr(phase));
-  return xyz / 1.0685e-7f;
-}
-
-ccl_device_inline float3 iridescence_sum_terms(float T121, float R12, float R23, float OPD, float phi)
-{
-  float R123 = R12 * R23;
-  float r123 = sqrt(R123);
-  float Rs = sqr(T121) * R23 / (1.0f - R123);
-  float3 I = make_float3(R12 + Rs);
-  I += (Rs - T121) * r123 * 2.0f * iridescence_sensitivity(OPD, phi);
-  I += (Rs - T121) * R123 * 2.0f * iridescence_sensitivity(2.0f * OPD, 2.0f * phi);
-  return I;
-}
-
-#define IRIDESCENCE_POLARIZATION
-
-#ifdef IRIDESCENCE_POLARIZATION
-ccl_device_inline float4 iridescence_polarized_dielectric(float cosThetaI, float eta1, float eta2)
-{
-  float cosThetaT_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosThetaI));
-  if (cosThetaT_sq < 0.0f) {
-    return make_float4(1.0f, 1.0f, 0.0f, 0.0f);
-  }
-
-  float cosThetaT = sqrtf(cosThetaT_sq);
-  float r_s = (eta1 * cosThetaI - eta2 * cosThetaT) / (eta1 * cosThetaI + eta2 * cosThetaT);
-  float r_p = (eta2 * cosThetaI - eta1 * cosThetaT) / (eta2 * cosThetaI + eta1 * cosThetaT);
-
-  float phi_s = (eta1 * cosThetaI < eta2 * cosThetaT) ? M_PI_F : 0.0f;
-  float phi_p = (eta2 * cosThetaI < eta1 * cosThetaT) ? M_PI_F : 0.0f;
-
-  return make_float4(sqr(r_s), sqr(r_p), phi_s, phi_p);
-}
-#endif
-
-ccl_device Spectrum fresnel_iridescence(KernelGlobals kg, float eta1, float eta2, float eta3, float cosTheta, float thickness)
-{
-  /* TODOs:
-   * - Conductors
-   * - Figure out if not accounting for polarization is close enough
-   */
-  if (thickness < 30.0f) {
-    eta2 = mix(eta1, eta2, smoothstep(0.0f, 30.0f, thickness));
-  }
-
-  float cosTheta2_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosTheta));
-  if (cosTheta2_sq < 0.0f) {
-    /* TIR */
-    return one_spectrum();
-  }
-
-  float cosTheta2 = sqrtf(cosTheta2_sq);
-  float OPD = 2.0f * eta2 * thickness * cosTheta2;
-
-  float3 R = zero_spectrum();
-#ifdef IRIDESCENCE_POLARIZATION
-  float4 f12 = iridescence_polarized_dielectric(cosTheta, eta1, eta2);
-  float R12_s = f12.x, R12_p = f12.y, phi12_s = f12.z, phi12_p = f12.w;
-  float T121_s = 1.0f - R12_s, T121_p = 1.0f - R12_p;
-
-  float4 f23 = iridescence_polarized_dielectric(cosTheta2, eta2, eta3);
-  float R23_s = f23.x, R23_p = f23.y, phi23_s = f23.z, phi23_p = f23.w;
-
-  float phi_s = (M_PI_F - phi12_s) + phi23_s, phi_p = (M_PI_F - phi12_p) + phi23_p;
-
-  R = 0.5f * (iridescence_sum_terms(T121_p, R12_p, R23_p, OPD, phi_p) + iridescence_sum_terms(T121_s, R12_s, R23_s, OPD, phi_s));
-#else
-  float R12 = fresnel_dielectric_cos(cosTheta, eta2 / eta1);
-  float phi21 = (eta2 < eta1)? 0.0f : M_PI_F;
-  float T121 = 1.0f - R12;
-
-  float R23 = fresnel_dielectric_cos(cosTheta2, eta3 / eta2);
-  float phi23 = (eta3 < eta2)? M_PI_F : 0.0f;
-
-  float phi = phi21 + phi23;
-
-  R = iridescence_sum_terms(T121, R12, R23, OPD, phi);
-#endif
-
-  /* Color space conversion here is tricky.
-   * In theory, the correct thing would be to compute the spectral color matching functions
-   * for the RGB channels, take their Fourier transform in wavelength parametrization, and
-   * then use that in iridescence_sensitivity().
-   * To avoid this complexity, the code here instead uses the reference implementation's
-   * Gaussian fit of the CIE XYZ curves. However, this means that at this point, R is in
-   * XYZ values, not RGB.
-   * Additionally, since I is a reflectivity, not a luminance, the spectral color matching
-   * functions should be multiplied by the reference illuminant. Since the fit is based on
-   * the "raw" CIE XYZ curves, the reference illuminant implicitly is a constant spectrum,
-   * meaning Illuminant E.
-   * Therefore, we can't just use the regular XYZ->RGB conversion here, we need to include
-   * a chromatic adaption from E to whatever the white point of the working color space is.
-   * The proper way to do this would be a Von Kries-style transform, but to keep it simple,
-   * we just multiply by the white point here.
-   *
-   * Note: The reference implementation sidesteps all this by just hardcoding a XYZ->CIE RGB
-   * matrix. Since CIE RGB uses E as its white point, this sidesteps the chromatic adaption
-   * topic, but the primary colors don't match (unless you happen to actually work in CIE RGB.)
-   */
-  R *= float4_to_float3(kernel_data.film.white_xyz);
-  return saturate(xyz_to_rgb(kg, R));
-}
-
 /* Calculate the fresnel color, which is a blend between white and the F0 color */
 ccl_device_forceinline Spectrum interpolate_fresnel_color(float3 L,
                                                           float3 H,
@@ -345,6 +233,136 @@ ccl_device_inline Spectrum closure_layering_weight(const Spectrum layer_albedo,
                                                    const Spectrum weight)
 {
   return weight * saturatef(1.0f - reduce_max(safe_divide_color(layer_albedo, weight)));
+}
+
+/* ******** Thin-film iridescence implementation ********
+ *
+ * Based on "A Practical Extension to Microfacet Theory for the Modeling of Varying Iridescence"
+ * by Laurent Belcour and Pascal Barla.
+ * https://belcour.github.io/blog/research/publication/2017/05/01/brdf-thin-film.html.
+ */
+
+/* Evaluate the sensitivity functions for the Fourier-space spectral integration.
+ * The code here uses the Gaussian fit for the CIE XYZ curves that is provided
+ * in the reference implementation.
+ * For details on what this actually represents, see the paper.
+ * In theory we should pre-compute the sensitivity functions for the working RGB
+ * colorspace, remap them to be functions of (light) frequency, take their Fourier
+ * transform and store them as a LUT that gets looked up here.
+ * In practise, using the XYZ fit and converting the result from XYZ to RGB is easier.
+ */
+ccl_device_inline Spectrum iridescence_lookup_sensitivity(float OPD, float shift)
+{
+  float phase = M_2PI_F * OPD * 1e-9f;
+  float3 val = make_float3(5.4856e-13f, 4.4201e-13f, 5.2481e-13f);
+  float3 pos = make_float3(1.6810e+06f, 1.7953e+06f, 2.2084e+06f);
+  float3 var = make_float3(4.3278e+09f, 9.3046e+09f, 6.6121e+09f);
+
+  float3 xyz = val * sqrt(M_2PI_F * var) * cos(pos * phase + shift) * exp(-sqr(phase) * var);
+  xyz.x += 1.64408e-8f * cosf(2.2399e+06f * phase + shift) * expf(-4.5282e+09f * sqr(phase));
+  return xyz / 1.0685e-7f;
+}
+
+ccl_device_inline float3
+iridescence_airy_summation(float T121, float R12, float R23, float OPD, float phi)
+{
+  float R123 = R12 * R23;
+  float r123 = sqrt(R123);
+  float Rs = sqr(T121) * R23 / (1.0f - R123);
+
+  /* Perform summation over path order differences (equation 10). */
+  float3 R = make_float3(R12 + Rs); /* C0 */
+  float Cm = (Rs - T121);
+  /* Truncate after m=3, higher differences have barely any impact. */
+  for (int m = 1; m < 4; m++) {
+    Cm *= r123;
+    R += Cm * 2.0f * iridescence_lookup_sensitivity(m * OPD, m * phi);
+  }
+  return R;
+}
+
+/* Computes reflectivity (R) and phase shift (phi) for perpendicular (.x) and parallel (.y)
+ * polarized light. */
+ccl_device_inline void fresnel_dielectric_polarized(const float cosThetaI,
+                                                    const float eta1,
+                                                    const float eta2,
+                                                    ccl_private float2 *R,
+                                                    ccl_private float2 *phi)
+{
+  float cosThetaT_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosThetaI));
+  if (cosThetaT_sq < 0.0f) {
+    *R = one_float2();
+    *phi = zero_float2();
+    return;
+  }
+
+  float cosThetaT = sqrtf(cosThetaT_sq);
+  R->x = sqr((eta1 * cosThetaI - eta2 * cosThetaT) / (eta1 * cosThetaI + eta2 * cosThetaT));
+  R->y = sqr((eta2 * cosThetaI - eta1 * cosThetaT) / (eta2 * cosThetaI + eta1 * cosThetaT));
+
+  phi->x = (eta1 * cosThetaI < eta2 * cosThetaT) ? M_PI_F : 0.0f;
+  phi->y = (eta2 * cosThetaI < eta1 * cosThetaT) ? M_PI_F : 0.0f;
+}
+
+ccl_device Spectrum fresnel_iridescence(
+    KernelGlobals kg, float eta1, float eta2, float eta3, float cosTheta, float thickness)
+{
+  /* For films below 30nm, the wave-optic-based Airy summation approach no longer applies,
+   * so blend towards the case without coating. */
+  if (thickness < 30.0f) {
+    eta2 = mix(eta1, eta2, smoothstep(0.0f, 30.0f, thickness));
+  }
+
+  /* Compute angle inside the thin film (after refraction at the top interface). */
+  float cosTheta2_sq = 1.0f - sqr(eta1 / eta2) * (1.0f - sqr(cosTheta));
+  if (cosTheta2_sq < 0.0f) {
+    /* TIR */
+    return one_spectrum();
+  }
+
+  /* Compute optical path difference inside the thin film. */
+  float cosTheta2 = sqrtf(cosTheta2_sq);
+  float OPD = 2.0f * eta2 * thickness * cosTheta2;
+
+  /* Compute complex coefficients for the reflection at the top interface (ambient to film). */
+  float2 R12, phi12;
+  fresnel_dielectric_polarized(cosTheta, eta1, eta2, &R12, &phi12);
+
+  /* Compute complex coefficients for the reflection at the bottom interface (film to medium). */
+  float2 R23, phi23;
+  fresnel_dielectric_polarized(cosTheta2, eta2, eta3, &R23, &phi23);
+
+  /* Compute helper parameters. */
+  float2 T121 = one_float2() - R12;
+  float2 phi = make_float2(M_PI_F, M_PI_F) - phi12 + phi23;
+
+  /* Perform Airy summation and average the polarizations. */
+  float3 R = mix(iridescence_airy_summation(T121.x, R12.x, R23.x, OPD, phi.x),
+                 iridescence_airy_summation(T121.y, R12.y, R23.y, OPD, phi.y),
+                 0.5f);
+
+  /* Color space conversion here is tricky.
+   * In theory, the correct thing would be to compute the spectral color matching functions
+   * for the RGB channels, take their Fourier transform in wavelength parametrization, and
+   * then use that in iridescence_lookup_sensitivity().
+   * To avoid this complexity, the code here instead uses the reference implementation's
+   * Gaussian fit of the CIE XYZ curves. However, this means that at this point, R is in
+   * XYZ values, not RGB.
+   * Additionally, since I is a reflectivity, not a luminance, the spectral color matching
+   * functions should be multiplied by the reference illuminant. Since the fit is based on
+   * the "raw" CIE XYZ curves, the reference illuminant implicitly is a constant spectrum,
+   * meaning Illuminant E.
+   * Therefore, we can't just use the regular XYZ->RGB conversion here, we need to include
+   * a chromatic adaption from E to whatever the white point of the working color space is.
+   * The proper way to do this would be a Von Kries-style transform, but to keep it simple,
+   * we just multiply by the white point here.
+   *
+   * Note: The reference implementation sidesteps all this by just hardcoding a XYZ->CIE RGB
+   * matrix. Since CIE RGB uses E as its white point, this sidesteps the chromatic adaption
+   * topic, but the primary colors don't match (unless you happen to actually work in CIE RGB.)
+   */
+  R *= float4_to_float3(kernel_data.film.white_xyz);
+  return saturate(xyz_to_rgb(kg, R));
 }
 
 CCL_NAMESPACE_END
