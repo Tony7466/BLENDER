@@ -327,7 +327,7 @@ ccl_device
                                              sqrt(rgb_to_spectrum(clamped_base_color)) :
                                              zero_spectrum();
             fresnel->thin_film.thickness = thinfilm_thickness;
-            fresnel->thin_film.ior = (sd->flag & SD_BACKFACING) ? 1.0f / thinfilm_ior : thinfilm_ior;
+            fresnel->thin_film.ior = (sd->flag & SD_BACKFACING) ? thinfilm_ior / ior : thinfilm_ior;
 
             /* setup bsdf */
             sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);
