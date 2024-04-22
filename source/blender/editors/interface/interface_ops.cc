@@ -1384,7 +1384,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
                                        PropertyRNA *prop,
                                        const char *path,
                                        bool use_path_from_id,
-                                       bool check_drivable,
+                                       bool check_is_drivable,
                                        PointerRNA *r_ptr,
                                        PropertyRNA **r_prop)
 {
@@ -1462,7 +1462,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
     return false;
   }
 
-  if (check_drivable && !RNA_property_driver_editable(&lptr, lprop)) {
+  if (check_is_drivable && !RNA_property_driver_editable(&lptr, lprop)) {
     return false;
   }
 
@@ -1580,9 +1580,11 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 /**
  * Called from both exec & poll.
  *
- * \note Normally we wouldn't call a loop from within a poll function,
- * however this is a special case, and for regular poll calls, getting
- * the context from the button will fail early.
+ * \note This follows the same pattern as `copy_to_selected_button()` above,
+ * just adapted to copy drivers rather than values.  See that function's
+ * documentation for why we use this for both poll and exec.
+ *
+ * \returns true if any copies of the driver were successfully made, false otherwise.
  */
 static bool copy_driver_to_selected_button(bContext *C, bool poll)
 {
@@ -1590,105 +1592,109 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
   PropertyRNA *prop;
   PointerRNA ptr;
   int index;
+  FCurve *src_driver;
 
-  UI_context_active_but_prop_get(C, &ptr, &prop, &index);
-  if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
-    return false;
+  /* Get the property of the clicked button and its driver. */
+  {
+    /* Find the property. */
+    UI_context_active_but_prop_get(C, &ptr, &prop, &index);
+    if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
+      return false;
+    }
+
+    /* Find the real ID and the path from that ID. */
+    ID *real_id;
+    std::optional<std::string> real_path = RNA_path_from_real_ID_to_property_index(
+        bmain, &ptr, prop, 0, -1, &real_id);
+    if (!real_id || !real_path.has_value()) {
+      return false;
+    }
+
+    /* Find the driver. */
+    AnimData *adt = BKE_animdata_from_id(real_id);
+    if (!adt) {
+      return false;
+    }
+    src_driver = BKE_fcurve_find(&adt->drivers, real_path->c_str(), index);
+    if (!src_driver) {
+      return false;
+    }
   }
 
-  bool success = false;
+  /* Build the list of properties to copy the driver to, along with relevant side data. */
   std::optional<std::string> path;
   bool use_path_from_id;
   blender::Vector<PointerRNA> lb;
-
   if (!UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
     return false;
   }
 
-  /* Get the real ID and the path from that real ID of the property
-   * we're copying from. */
-  ID *real_id;
-  std::optional<std::string> real_path = RNA_path_from_real_ID_to_property_index(
-      bmain, &ptr, prop, 0, -1, &real_id);
-  if (real_id == nullptr) {
-    return false;
-  }
-
-  /* Find the driver we're copying. */
-  AnimData *adt = BKE_animdata_from_id(real_id);
-  if (adt == nullptr) {
-    return false;
-  }
-  FCurve *src_driver = BKE_fcurve_find(
-      &adt->drivers, real_path.has_value() ? real_path->c_str() : nullptr, index);
-  if (src_driver == nullptr) {
-    return false;
-  }
-
+  /* Copy the driver to the list of target properties. */
+  int copy_count = 0;
   for (PointerRNA &link : lb) {
     if (link.data == ptr.data) {
       continue;
     }
 
-    PropertyRNA *lprop;
-    PointerRNA lptr;
+    PropertyRNA *dst_prop;
+    PointerRNA dst_ptr;
     if (!UI_context_copy_to_selected_check(&ptr,
                                            &link,
                                            prop,
                                            path.has_value() ? path->c_str() : nullptr,
                                            use_path_from_id,
                                            true,
-                                           &lptr,
-                                           &lprop))
+                                           &dst_ptr,
+                                           &dst_prop))
     {
       continue;
     }
 
+    /* If we're just polling, then we early-out on the first property we
+     * could successfully copy to. */
     if (poll) {
-      success = true;
-      break;
+      return true;
     }
 
-    /* Get the real ID and the path from that real ID of the property
-     * we're copying to. */
-    ID *lreal_id;
-    std::optional<std::string> lreal_path = RNA_path_from_real_ID_to_property_index(
-        bmain, &lptr, lprop, 0, -1, &lreal_id);
-    if (lreal_id == nullptr) {
+    /* Get the actual ID that the property we're copying to belongs to, along
+     * with the path of the property from that ID. We need this to create the
+     * driver further below. */
+    ID *dst_id;
+    std::optional<std::string> dst_path = RNA_path_from_real_ID_to_property_index(
+        bmain, &dst_ptr, dst_prop, 0, -1, &dst_id);
+    if (!dst_id || !dst_path.has_value()) {
       return false;
     }
 
-    AnimData *ladt = BKE_animdata_ensure_id(lreal_id);
-    if (ladt == nullptr) {
-      continue;
-    }
+    AnimData *dst_adt = BKE_animdata_ensure_id(dst_id);
+    BLI_assert(dst_adt);
 
     /* If there's an existing matching driver, remove it first.
      *
-     * TODO: move this to be done all at once outside of this loop.
-     * Inside the loop this is has quadratic complexity, but doing
-     * it outside can make it linear if done right. */
+     * TODO: this has quadratic complexity when the drivers are within
+     * the same ID, due to this being inside of a loop and doing a linear
+     * scan of the drivers to find one that matches.  We should be able to
+     * make this more efficient with a little cleverness .*/
     {
-      FCurve *fcurve = BKE_fcurve_find(
-          &ladt->drivers, lreal_path.has_value() ? lreal_path->c_str() : nullptr, index);
-      if (fcurve != nullptr) {
-        BLI_remlink(&ladt->drivers, fcurve);
-        BKE_fcurve_free(fcurve);
+      FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), index);
+      if (old_driver != nullptr) {
+        BLI_remlink(&dst_adt->drivers, old_driver);
+        BKE_fcurve_free(old_driver);
       }
     }
 
     /* Create the new driver. */
     FCurve *new_driver = BKE_fcurve_copy(src_driver);
-    BLI_addtail(&ladt->drivers, new_driver);
+    BLI_addtail(&dst_adt->drivers, new_driver);
     MEM_SAFE_FREE(new_driver->rna_path);
-    new_driver->rna_path = BLI_strdup(lreal_path->c_str());
+    new_driver->rna_path = BLI_strdup(dst_path->c_str());
 
-    RNA_property_update(C, &lptr, prop);
+    RNA_property_update(C, &dst_ptr, dst_prop);
 
-    success = true;
+    copy_count++;
   }
 
-  return success;
+  return copy_count > 0;
 }
 
 static bool copy_driver_to_selected_button_poll(bContext *C)
@@ -1696,18 +1702,27 @@ static bool copy_driver_to_selected_button_poll(bContext *C)
   return copy_driver_to_selected_button(C, true);
 }
 
-static int copy_driver_to_selected_button_exec(bContext *C, wmOperator *op)
+static int copy_driver_to_selected_button_exec(bContext *C, wmOperator * /* op */)
 {
-  bool success;
-
-  success = copy_driver_to_selected_button(C, false);
-
-  if (success) {
+  if (copy_driver_to_selected_button(C, false)) {
     DEG_relations_tag_update(CTX_data_main(C));
-    // WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr); /* XXX */
+
+    /* TODO: ask someone in-the-know whether this call is needed or not.
+     *
+     * Just by trying it out, it seems to not be needed, but I don't feel
+     * confident from that. And looking at other places in Blender's code where
+     * drivers are added/removed/modified, different places do different things,
+     * so it's not clear from that whether this is neeeded or not, or if it is
+     * needed then whether these are even the right flags. And of course both
+     * this function and the flags themselves are undocumented, so figuring it
+     * out independently would likely require a deep dive into the
+     * implementation. */
+    WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);
+
+    return OPERATOR_FINISHED;
   }
 
-  return (success) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+  return OPERATOR_CANCELLED;
 }
 
 static void UI_OT_copy_driver_to_selected_button(wmOperatorType *ot)
