@@ -296,12 +296,12 @@ static Depsgraph *build_node_tree_depsgraph(const Depsgraph &depsgraph_active,
   return depsgraph;
 }
 
-static bool deg_has_evaluated_id(const Depsgraph &depsgraph, ID *id)
+static bool id_needs_evaluation(const Depsgraph &depsgraph, ID *id)
 {
   if (!ID_TYPE_USE_COPY_ON_EVAL(GS(id->name))) {
-    return true;
+    return false;
   }
-  return DEG_get_evaluated_id(&depsgraph, id) != id;
+  return DEG_get_evaluated_id(&depsgraph, id) == id;
 }
 
 static Depsgraph *build_inputs_depsgraph(const Depsgraph &depsgraph_active,
@@ -311,7 +311,7 @@ static Depsgraph *build_inputs_depsgraph(const Depsgraph &depsgraph_active,
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
-          if (!deg_has_evaluated_id(depsgraph_active, id)) {
+          if (id_needs_evaluation(depsgraph_active, id)) {
             input_ids.append_non_duplicates(id);
           }
         }
