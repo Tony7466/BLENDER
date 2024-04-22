@@ -72,12 +72,9 @@ void VKUniformBuffer::try_add_to_descriptor_set(
     MEM_SAFE_FREE(data_);
   }
 
-  VKContext &context = *VKContext::get();
   const std::optional<VKDescriptorSet::Location> location =
       data.shader_interface.descriptor_set_location(bind_type, slot);
   if (location) {
-    VKDescriptorSetTracker &descriptor_set = context.descriptor_set_get();
-    /* TODO: move to descriptor set. */
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
       data.descriptor_set.bind(*this, *location);
     }
