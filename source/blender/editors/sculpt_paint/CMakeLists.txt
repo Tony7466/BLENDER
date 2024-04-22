@@ -135,7 +135,7 @@ endif()
 
 # If compiling with msvc clang we need to add the D_LIBCPP_VERSION define
 # so we don't run into tbb errors when compiling with lib
-if(MSVC_CLANG)
+if(WITH_TBB AND MSVC_CLANG)
   string(APPEND CMAKE_CXX_FLAGS " /D_LIBCPP_VERSION")
 endif()
 
