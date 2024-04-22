@@ -1291,7 +1291,7 @@ static int adjacent_edge_point_index_from_coord(const SubdivCCG &subdiv_ccg,
                                                 const int adjacent_edge_index)
 {
   Subdiv *subdiv = subdiv_ccg.subdiv;
-  blender::opensubdiv::TopologyRefinerImpl *topology_refiner = subdiv->topology_refiner;
+  const blender::opensubdiv::TopologyRefinerImpl *topology_refiner = subdiv->topology_refiner;
 
   const int adjacent_vertex_index = adjacent_vertex_index_from_coord(subdiv_ccg, coord);
   const OpenSubdiv::Far::ConstIndexArray edge_vertices_indices =
@@ -1390,7 +1390,7 @@ static void neighbor_coords_edge_get(const SubdivCCG &subdiv_ccg,
 
   int duplicate_i = num_adjacent_faces;
   for (int i = 0; i < num_adjacent_faces; ++i) {
-    SubdivCCGCoord *boundary_coords = adjacent_edge->boundary_coords[i];
+    const SubdivCCGCoord *boundary_coords = adjacent_edge->boundary_coords[i];
     /* One step into the grid from the edge for each adjacent face. */
     SubdivCCGCoord grid_coord = boundary_coords[point_index];
     r_neighbors.coords[i + 2] = coord_step_inside_from_boundary(subdiv_ccg, grid_coord);
