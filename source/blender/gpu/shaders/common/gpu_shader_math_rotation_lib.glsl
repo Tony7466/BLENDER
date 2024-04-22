@@ -50,29 +50,14 @@ vec4 as_vec4(Quaternion quat)
   return vec4(quat.x, quat.y, quat.z, quat.w);
 }
 
-Quaternion Quaternion_identity()
-{
-  return Quaternion(1, 0, 0, 0);
-}
-
 Quaternion as_quaternion(vec4 quat)
 {
   return Quaternion(quat.x, quat.y, quat.z, quat.w);
 }
 
-Quaternion invert(Quaternion quat)
+Quaternion Quaternion_identity()
 {
-  quat.x *= -1.0;
-  quat.y *= -1.0;
-  quat.z *= -1.0;
-  return quat;
-}
-
-vec3 rotate(Quaternion quat, vec3 vec)
-{
-  vec4 q = as_vec4(quat);
-  vec3 t = cross(q.xyz, vec) * 2.0;
-  return vec + t * q.w + cross(q.xyz, t);
+  return Quaternion(1, 0, 0, 0);
 }
 
 struct EulerXYZ {
@@ -131,6 +116,19 @@ Quaternion interpolate(Quaternion a, Quaternion b, float t)
   vec2 w = interpolate_dot_slerp(t, cosom);
   quat = w.x * quat + w.y * as_vec4(b);
   return Quaternion(UNPACK4(quat));
+}
+
+Quaternion invert(Quaternion quat)
+{
+  return Quaternion(-quat.x, -quat.y, -quat.z, quat.w);
+}
+
+vec3 rotate(Quaternion quat, vec3 vec)
+{
+  /* https://fgiesen.wordpress.com/2019/02/09/rotating-a-single-vector-using-a-quaternion/ */
+  vec4 q = as_vec4(quat);
+  vec3 t = cross(q.xyz, vec) * 2.0;
+  return vec + t * q.w + cross(q.xyz, t);
 }
 
 Quaternion to_quaternion(EulerXYZ eul)

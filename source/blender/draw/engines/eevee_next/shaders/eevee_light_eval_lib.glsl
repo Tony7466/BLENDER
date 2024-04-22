@@ -70,7 +70,7 @@ void light_shadow_single(uint l_idx,
 #endif
 
   ShadowEvalResult result = shadow_eval(
-      light, is_directional, is_transmission, false, P, Ng, Ng, ray_count, ray_step_count);
+      light, is_directional, is_transmission, false, P, Ng, Ng, 0.0, ray_count, ray_step_count);
 
   shadow_bits |= shadow_pack(result.light_visibilty, ray_count, shift);
   shift += ray_count;
@@ -252,16 +252,14 @@ void light_eval_single(uint l_idx,
     shadow = shadow_unpack(packed_shadows, ray_count, shift);
     shift += ray_count;
 #else
-
-    vec3 L = shadow_vector_get(light, is_directional, P);
-    vec3 shadow_P = (is_transmission) ? P + L * stack.cl[0].shadow_offset : P;
     ShadowEvalResult result = shadow_eval(light,
                                           is_directional,
                                           is_transmission,
                                           is_translucent_with_thickness,
-                                          shadow_P,
+                                          P,
                                           Ng,
-                                          L,
+                                          shadow_vector_get(light, is_directional, P),
+                                          stack.cl[0].shadow_offset,
                                           ray_count,
                                           ray_step_count);
     shadow = result.light_visibilty;

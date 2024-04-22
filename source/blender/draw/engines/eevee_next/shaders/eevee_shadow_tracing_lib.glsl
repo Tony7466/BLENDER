@@ -185,16 +185,16 @@ ShadowMapTraceResult shadow_map_trace_finish(ShadowMapTracingState state)
 
 /** \} */
 
-/* If the ray direction `L`  is below the horizon defined by N (normalized) at the shading point,
- * push it just above the horizon so that this ray will never be below it and produce
+/* If the ray direction `shadow_dir`  is below the horizon defined by N (normalized) at the shading
+ * point, push it just above the horizon so that this ray will never be below it and produce
  * over-shadowing (since light evaluation already clips the light shape). */
-vec3 shadow_ray_above_horizon_ensure(vec3 L, vec3 N)
+vec3 shadow_ray_above_horizon_ensure(vec3 shadow_dir, vec3 N)
 {
-  float distance_to_plan = dot(L, -N);
+  float distance_to_plan = dot(shadow_dir, -N);
   if (distance_to_plan > 0.0) {
-    L += N * (0.01 + distance_to_plan);
+    shadow_dir += N * (0.01 + distance_to_plan);
   }
-  return L;
+  return shadow_dir;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -328,10 +328,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   }
   else {
     float dist;
-    vec3 L = normalize_and_get_length(lP, dist);
+    vec3 shadow_dir = normalize_and_get_length(lP, dist);
     /* Disk rotated towards light vector. */
     vec3 right, up;
-    make_orthonormal_basis(L, right, up);
+    make_orthonormal_basis(shadow_dir, right, up);
 
     float shape_radius = light_spot_data_get(light).radius;
     if (is_sphere_light(light.type)) {
@@ -403,14 +403,14 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(
-    LightData light, const bool is_directional, vec3 L, vec3 P, vec3 Ng, vec2 random)
+    LightData light, const bool is_directional, vec3 shadow_dir, vec3 P, vec3 Ng, vec2 random)
 {
   if (light.pcf_radius <= 0.001) {
     /* Early return. */
     return vec3(0.0);
   }
 
-  if (dot(L, Ng) < 0.001) {
+  if (dot(shadow_dir, Ng) < 0.001) {
     /* Don't apply PCF to almost perpendicular,
      * since we can't project the offset to the surface. */
     return vec3(0.0);
@@ -479,22 +479,22 @@ vec3 shadow_pcf_offset(
 
 #ifdef GPU_NVIDIA
   /* Workaround for a bug in the Nvidia shader compiler.
-   * If we don't compute L here again, it breaks shadows on reflection probes. */
-  L = shadow_vector_get(light, is_directional, P);
+   * If we don't compute shadow_dir here again, it breaks shadows on reflection probes. */
+  shadow_dir = shadow_vector_get(light, is_directional, P);
 #endif
 
-  if (abs(dot(Ng, L)) > 0.999) {
+  if (abs(dot(Ng, shadow_dir)) > 0.999) {
     return ws_offset;
   }
 
-  offset_P = line_plane_intersect(offset_P, L, P, Ng);
+  offset_P = line_plane_intersect(offset_P, shadow_dir, P, Ng);
   ws_offset = offset_P - P;
 
-  if (dot(ws_offset, L) < 0.0) {
+  if (dot(ws_offset, shadow_dir) < 0.0) {
     /* Project the offset position into the perpendicular plane, since it's closer to the light
      * (avoids overshadowing at geometry angles). */
-    vec3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, L)));
-    offset_P = line_plane_intersect(offset_P, L, P, perpendicular_plane_normal);
+    vec3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, shadow_dir)));
+    offset_P = line_plane_intersect(offset_P, shadow_dir, P, perpendicular_plane_normal);
     ws_offset = offset_P - P;
   }
 
@@ -510,7 +510,8 @@ ShadowEvalResult shadow_eval(LightData light,
                              bool is_translucent_with_thickness,
                              vec3 P,
                              vec3 Ng,
-                             vec3 L,
+                             vec3 shadow_dir,
+                             float shadow_offset,
                              int ray_count,
                              int ray_step_count)
 {
@@ -532,13 +533,15 @@ ShadowEvalResult shadow_eval(LightData light,
   float normal_offset = 0.02;
 #endif
 
-  P += shadow_pcf_offset(light, is_directional, L, P, Ng, random_pcf_2d);
+  P = is_transmission ? (P + shadow_dir * shadow_offset) : P;
+
+  P += shadow_pcf_offset(light, is_directional, shadow_dir, P, Ng, random_pcf_2d);
 
   /* We want to bias inside the object for transmission to go through the object itself.
    * But doing so split the shadow in two different directions at the horizon. Also this
    * doesn't fix the the aliasing issue. So we reflect the normal so that it always go towards
    * the light. */
-  vec3 N_bias = is_transmission ? reflect(Ng, L) : Ng;
+  vec3 N_bias = is_transmission ? reflect(Ng, shadow_dir) : Ng;
 
   /* Avoid self intersection. */
   P = offset_ray(P, N_bias);

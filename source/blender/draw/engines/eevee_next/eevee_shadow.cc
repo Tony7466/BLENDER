@@ -785,8 +785,9 @@ void ShadowModule::init()
     }
   }
 
-  do_jittering_ = !inst_.is_viewport() || (scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT &&
-                                           !inst_.is_navigating() && !inst_.is_playback());
+  do_jittering_ = !inst_.is_viewport() ||
+                  ((scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT) &&
+                   !inst_.is_navigating() && !inst_.is_playback());
 
   data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
