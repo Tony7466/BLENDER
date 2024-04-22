@@ -83,7 +83,7 @@ typedef struct Light {
   float shadow_trace_distance;
   float shadow_filter_radius;
   float shadow_resolution_scale;
-  float shadow_jitter_overblur;
+  float shadow_jitter_overblur_percentage;
 
   float _pad2;
 

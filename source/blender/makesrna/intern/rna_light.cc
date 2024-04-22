@@ -331,9 +331,9 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
-  prop = RNA_def_property(srna, "shadow_jitter_overblur", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_range(prop, 0.0f, 1.0);
-  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.1f, 2);
+  prop = RNA_def_property(srna, "shadow_jitter_overblur_percentage", PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_range(prop, 0.0f, 100.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 20.0f, 10.0f, 0);
   RNA_def_property_ui_text(
       prop,
       "Shadow Jitter Overblur",

@@ -238,7 +238,7 @@ void ShadowPunctual::sync(const ::Light *bl_light,
   position_ = object_mat.location();
   max_distance_ = max_distance;
   softness_factor_ = bl_light->shadow_softness_factor;
-  jitter_overblur_ = bl_light->shadow_jitter_overblur;
+  jitter_overblur_ = bl_light->shadow_jitter_overblur_percentage / 100.0f;
 
   if (is_area_light(light_type)) {
     const bool is_irregular = ELEM(bl_light->area_shape, LA_AREA_RECT, LA_AREA_ELLIPSE);
@@ -643,7 +643,7 @@ void ShadowDirectional::sync(const ::Light *bl_light,
   min_resolution_ = min_resolution;
   trace_distance_ = bl_light->shadow_trace_distance;
   softness_factor_ = bl_light->shadow_softness_factor;
-  jitter_overblur_ = bl_light->shadow_jitter_overblur;
+  jitter_overblur_ = bl_light->shadow_jitter_overblur_percentage / 100.0f;
 }
 
 void ShadowDirectional::release_excess_tilemaps(const Camera &camera, float lod_bias)

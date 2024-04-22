@@ -46,7 +46,7 @@
     .shadow_trace_distance = 10.0f, \
     .shadow_filter_radius = 3.0f, \
     .shadow_resolution_scale = 1.0f, \
-    .shadow_jitter_overblur = 0.1f, \
+    .shadow_jitter_overblur_percentage = 10.0f, \
     .att_dist = 40.0f, \
     .sun_angle = DEG2RADF(0.526f), \
     .area_spread = DEG2RADF(180.0f), \

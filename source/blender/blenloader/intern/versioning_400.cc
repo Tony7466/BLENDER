@@ -3186,7 +3186,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 20)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-      light->shadow_jitter_overblur = 0.1f;
+      light->shadow_jitter_overblur_percentage = 10.0f;
     }
   }
 

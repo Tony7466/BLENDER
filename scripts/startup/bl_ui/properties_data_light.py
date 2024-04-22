@@ -170,7 +170,7 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         sub.prop(light, "use_shadow_jittering", text="")
         sub = sub.row(align=True)
         sub.active = light.use_shadow_jittering
-        sub.prop(light, "shadow_jitter_overblur", text="Overblur")
+        sub.prop(light, "shadow_jitter_overblur_percentage", text="Overblur")
 
 
 
