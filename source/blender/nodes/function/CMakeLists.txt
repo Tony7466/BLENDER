@@ -21,6 +21,7 @@ set(SRC
   nodes/node_fn_align_euler_to_vector.cc
   nodes/node_fn_axis_angle_to_rotation.cc
   nodes/node_fn_boolean_math.cc
+  nodes/node_fn_character_at_index.cc
   nodes/node_fn_combine_color.cc
   nodes/node_fn_combine_transform.cc
   nodes/node_fn_compare.cc
