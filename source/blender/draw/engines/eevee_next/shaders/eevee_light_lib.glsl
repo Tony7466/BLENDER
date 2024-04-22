@@ -216,7 +216,7 @@ float light_sphere_disk_radius(float sphere_radius, float distance_to_sphere)
 {
   /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
    * half-angle spanned by a disk light with the same radius. */
-  return sphere_radius * inversesqrt(1.0 - square(sphere_radius / distance_to_sphere));
+  return sphere_radius * inversesqrt(max(1e-8, 1.0 - square(sphere_radius / distance_to_sphere)));
 }
 
 float light_ltc(

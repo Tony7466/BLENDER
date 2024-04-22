@@ -335,7 +335,6 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
 
     float shape_radius = light_spot_data_get(light).radius;
     if (is_sphere_light(light.type)) {
-      /* FIXME(weizhen): this is not well-defined when `dist < light.spot.radius`. */
       shape_radius = light_sphere_disk_radius(shape_radius, dist);
     }
     random_2d *= shape_radius;
