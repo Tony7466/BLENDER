@@ -334,7 +334,7 @@ static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
              VArray<ColorGeometry4f>::ForSingle(tint_color, num_points) :
              VArray<ColorGeometry4f>::ForFunc(
                  num_points,
-                 [tint_color, opacities, material_alpha, alpha_threshold](const int64_t index) {
+                 [tint_color, &opacities, material_alpha, alpha_threshold](const int64_t index) {
                    float alpha = std::clamp(material_alpha * opacities[index], 0.0f, 1.0f);
                    ColorGeometry4f color = tint_color;
                    color.a = (alpha > alpha_threshold ? 255 : 0);
@@ -439,7 +439,9 @@ static void draw_datablock(const Object &object,
     const IndexMask curve_mask = get_boundary_curve_mask(
         object, info, is_boundary_layer, curve_mask_memory);
 
-    curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+    /* Note: Serial loop without GrainSize, since immediate mode drawing can't happen in worker
+     * threads, has to be from the main thread. */
+    curve_mask.foreach_index([&](const int curve_i) {
       const IndexRange points = strokes.points_by_curve()[curve_i];
       const bool is_cyclic = cyclic[curve_i];
       const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
@@ -805,9 +807,7 @@ static FillBoundary build_fill_boundary(Image &ima)
       return this->front() == other.front();
     }
   };
-  using BoundaryStartMap = VectorSet<BoundarySection>;
-
-  BoundaryStartMap boundary_sections;
+  using BoundaryStartMap = Map<int, BoundarySection>;
 
   /* Find possible starting points for boundary sections.
    * Direction 3 == (1, 0) is the starting direction. */
@@ -822,7 +822,7 @@ static FillBoundary build_fill_boundary(Image &ima)
         if (!get_flag(pixels[index_empty], ColorFlag::Fill) &&
             get_flag(pixels[index_filled], ColorFlag::Fill))
         {
-          starts.add({index_filled});
+          starts.add(index_filled, {index_filled});
         }
       }
     }
@@ -859,23 +859,31 @@ static FillBoundary build_fill_boundary(Image &ima)
 
   /* Find directions and connectivity for all boundary pixels. */
   Vector<BoundarySection> final_boundary_sections;
-  while (!boundary_starts.is_empty()) {
-    BoundarySection section = boundary_starts.pop();
-    const int start_index = section.front();
+  for (const int start_index : boundary_starts.keys()) {
+    /* Entries may be removed from the map by joining previous sections.
+     * Check if the index is still contained before starting a new section. */
+    if (!boundary_starts.contains(start_index)) {
+      continue;
+    }
+    BoundarySection section = boundary_starts.pop(start_index);
 
     set_flag(pixels[start_index], ColorFlag::Boundary, true);
 
     NeighborIterator iter = {start_index, start_direction};
     while (find_next_neighbor(iter)) {
+      /* Close the loop when returning to the start. */
       if (iter.index == start_index) {
-        /* Closed the loop. */
         break;
       }
-      ColorGeometry4b &color = pixels[iter.index];
-      /* Remove other boundary starts that get included in this stroke. */
-      boundary_starts.remove({iter.index, 0});
+      /* Join sections when encountering another section start. */
+      if (boundary_starts.contains(iter.index)) {
+        BoundarySection &next_section = boundary_starts.lookup(iter.index);
+        section.splice_after(section.before_begin(), next_section);
+        boundary_starts.remove(iter.index);
+        break;
+      }
 
-      set_flag(color, ColorFlag::Boundary, true);
+      set_flag(pixels[iter.index], ColorFlag::Boundary, true);
       section.push_front(iter.index);
     }
 
