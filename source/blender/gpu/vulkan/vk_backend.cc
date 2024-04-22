@@ -169,7 +169,7 @@ Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
     device_.init(ghost_context);
   }
 
-  VKContext *context = new VKContext(ghost_window, ghost_context);
+  VKContext *context = new VKContext(ghost_window, ghost_context, device_.resources);
   device_.context_register(*context);
   GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
                                       VKContext::swap_buffers_pre_callback,
@@ -255,7 +255,6 @@ void VKBackend::capabilities_init(VKDevice &device)
 
   /* Reset all capabilities from previous context. */
   GCaps = {};
-  GCaps.compute_shader_support = true;
   GCaps.geometry_shader_support = true;
   GCaps.shader_draw_parameters_support =
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;
