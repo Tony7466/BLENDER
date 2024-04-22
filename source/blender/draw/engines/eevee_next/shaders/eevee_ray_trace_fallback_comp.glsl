@@ -13,6 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 void main()
 {
@@ -60,6 +61,10 @@ void main()
    * direction over many rays. */
   vec3 Ng = ray.direction;
   LightProbeSample samp = lightprobe_load(ray.origin, Ng, V);
+  /* Clamp SH to have parity with forward evaluation. */
+  float clamp_indirect = uniform_buf.clamp.surface_indirect;
+  samp.volume_irradiance = spherical_harmonics_clamp(samp.volume_irradiance, clamp_indirect);
+
   vec3 radiance = lightprobe_eval_direction(
       samp, ray.origin, ray.direction, safe_rcp(ray_pdf_inv));
   /* Set point really far for correct reprojection of background. */

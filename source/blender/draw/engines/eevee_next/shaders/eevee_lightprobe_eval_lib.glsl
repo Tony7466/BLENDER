@@ -68,7 +68,7 @@ vec3 lightprobe_spherical_sample_normalized_with_parallax(
 {
   SphereProbeData probe = reflection_probe_buf[probe_index];
   ReflectionProbeLowFreqLight shading_sh = reflection_probes_extract_low_freq(P_sh);
-  vec3 normalization_factor = reflection_probes_normalization_eval(
+  float normalization_factor = reflection_probes_normalization_eval(
       L, shading_sh, probe.low_freq_light);
   L = lightprobe_sphere_parallax(probe, P, L);
   return normalization_factor * reflection_probes_sample(L, lod, probe.atlas_coord).rgb;

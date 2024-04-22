@@ -757,7 +757,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.subsurface.render(
       direct_radiance_txs_[0], indirect_result_.closures[0], closure_bits_, render_view);
 
-  radiance_feedback_tx_ = rt_buffer.alloc_feedback(!use_feedback_output_, extent);
+  radiance_feedback_tx_ = rt_buffer.feedback_ensure(!use_feedback_output_, extent);
 
   if (use_feedback_output_ && use_clamp_direct_) {
     /* We need to do a copy before the combine pass (otherwise we have a dependency issue) to save
