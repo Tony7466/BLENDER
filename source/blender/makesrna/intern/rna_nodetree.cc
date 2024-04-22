@@ -64,6 +64,8 @@
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
+#include "NOD_geo_index_switch.hh"
+
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 

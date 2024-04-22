@@ -83,6 +83,7 @@
 
 #include "NOD_common.h"
 #include "NOD_composite.hh"
+#include "NOD_geo_index_switch.hh"
 #include "NOD_geometry.hh"
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
