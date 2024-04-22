@@ -282,10 +282,6 @@ void USDAbstractWriter::write_id_properties(const pxr::UsdPrim &prim,
     return;
   }
 
-  if (!id.properties) {
-    return;
-  }
-
   if (usd_export_context_.export_params.author_blender_name) {
     if (GS(id.name) == ID_OB) {
       /* Author property of original blender Object name. */
@@ -330,12 +326,7 @@ void USDAbstractWriter::write_user_properties(const pxr::UsdPrim &prim,
     }
 
     std::string prop_name = pxr::TfMakeValidIdentifier(prop->name);
-
-    std::string full_prop_name;
-    if (usd_export_context_.export_params.add_properties_namespace) {
-      full_prop_name = "userProperties:";
-    }
-    full_prop_name += prop_name;
+    std::string full_prop_name = "userProperties:" + prop_name;
 
     pxr::TfToken prop_token = pxr::TfToken(full_prop_name);
 

@@ -208,7 +208,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool only_deform_bones = RNA_boolean_get(op->ptr, "only_deform_bones");
 
   const bool export_custom_properties = RNA_boolean_get(op->ptr, "export_custom_properties");
-  const bool add_properties_namespace = RNA_boolean_get(op->ptr, "add_properties_namespace");
   const bool author_blender_name = RNA_boolean_get(op->ptr, "author_blender_name");
 
   char root_prim_path[FILE_MAX];
@@ -234,7 +233,6 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_textures,
       overwrite_textures,
       relative_paths,
-      add_properties_namespace,
       export_custom_properties,
       author_blender_name,
   };
@@ -491,12 +489,6 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   true,
                   "Export Custom Properties",
                   "When checked, custom properties will be exported as USD User Properties");
-  RNA_def_boolean(
-      ot->srna,
-      "add_properties_namespace",
-      true,
-      "Add Properties Namespace",
-      "Add exported custom properties to the 'userProperties' USD attribute namespace");
 
   RNA_def_boolean(ot->srna,
                   "author_blender_name",
@@ -890,7 +882,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                "attr_import_mode",
                rna_enum_usd_attr_import_mode_items,
                USD_ATTR_IMPORT_ALL,
-               "Import Attributes",
+               "Import Custom Properties",
                "Behavior when importing USD attributes as Blender custom properties");
 }
 

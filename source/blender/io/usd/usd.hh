@@ -96,7 +96,6 @@ struct USDExportParams {
   bool overwrite_textures = true;
   bool relative_paths = true;
   bool export_custom_properties = true;
-  bool add_properties_namespace = true;
   bool author_blender_name = true;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
