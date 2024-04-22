@@ -51,23 +51,25 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
   }
 
   int layer_offset = 0;
-  IndexMaskMemory memory;
   Array<IndexMask> points_per_layer_per_object(total_number_of_drawings);
 
   /* Count selected elements per layer per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
     TransDataContainer &tc = trans_data_contrainers[i];
+    CurvesTransformData *curves_transform_data = create_curves_transform_custom_data(
+        tc.custom.type);
 
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings = all_drawings[i];
     for (ed::greasepencil::MutableDrawingInfo info : drawings) {
       if (use_proportional_edit) {
         points_per_layer_per_object[layer_offset] = ed::greasepencil::retrieve_editable_points(
-            *object, info.drawing, memory);
+            *object, info.drawing, curves_transform_data->memory);
         tc.data_len += points_per_layer_per_object[layer_offset].size();
       }
       else {
         points_per_layer_per_object[layer_offset] =
-            ed::greasepencil::retrieve_editable_and_selected_points(*object, info.drawing, memory);
+            ed::greasepencil::retrieve_editable_and_selected_points(
+                *object, info.drawing, curves_transform_data->memory);
         tc.data_len += points_per_layer_per_object[layer_offset].size();
       }
 
@@ -76,6 +78,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
+      curves_transform_data->positions.reinitialize(tc.data_len);
       tc.frame_falloff = MEM_cnew_array<float>(tc.data_len, __func__);
       tc.custom.mode.free_cb = freeTransGreasePencilData;
     }
@@ -83,6 +86,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
   /* Reuse the variable `layer_offset`. */
   layer_offset = 0;
+  IndexMaskMemory memory;
 
   /* Populate TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
@@ -112,32 +116,20 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
         value_attribute = opacities;
       }
 
-      if (use_proportional_edit) {
-        const IndexMask affected_strokes = ed::greasepencil::retrieve_editable_strokes(
-            *object, info.drawing, memory);
-        curve_populate_trans_data_structs(tc,
-                                          curves,
-                                          layer_space_to_world_space,
-                                          value_attribute,
-                                          points,
-                                          true,
-                                          affected_strokes,
-                                          use_connected_only,
-                                          layer_points_offset,
-                                          info.multi_frame_falloff);
-      }
-      else {
-        curve_populate_trans_data_structs(tc,
-                                          curves,
-                                          layer_space_to_world_space,
-                                          value_attribute,
-                                          points,
-                                          false,
-                                          {},
-                                          use_connected_only,
-                                          layer_points_offset,
-                                          info.multi_frame_falloff);
-      }
+      const IndexMask affected_strokes = use_proportional_edit ?
+                                             ed::greasepencil::retrieve_editable_strokes(
+                                                 *object, info.drawing, memory) :
+                                             IndexMask();
+      curve_populate_trans_data_structs(tc,
+                                        curves,
+                                        layer_space_to_world_space,
+                                        value_attribute,
+                                        points,
+                                        use_proportional_edit,
+                                        affected_strokes,
+                                        use_connected_only,
+                                        layer_points_offset,
+                                        info.multi_frame_falloff);
 
       layer_points_offset += points.size();
       layer_offset++;
@@ -156,8 +148,11 @@ static void recalcData_grease_pencil(TransInfo *t)
 
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
-    for (ed::greasepencil::MutableDrawingInfo info : drawings) {
+    for (const int64_t i : drawings.index_range()) {
+      ed::greasepencil::MutableDrawingInfo info = drawings[i];
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+      copy_positions_from_curves_transform_custom_data(
+          tc.custom.type, i, curves.positions_for_write());
 
       curves.calculate_bezier_auto_handles();
       curves.tag_positions_changed();
