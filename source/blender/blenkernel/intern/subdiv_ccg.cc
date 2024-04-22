@@ -335,8 +335,8 @@ static void subdiv_ccg_init_faces_edge_neighborhood(SubdivCCG &subdiv_ccg)
 {
   Subdiv *subdiv = subdiv_ccg.subdiv;
   const OffsetIndices<int> faces = subdiv_ccg.faces;
-  blender::opensubdiv::TopologyRefinerImpl *topology_refiner = subdiv->topology_refiner;
-  const int num_edges = topology_refiner->base_level().GetNumEdges();
+  const OpenSubdiv::Far::TopologyLevel &base_level = subdiv->topology_refiner->base_level();
+  const int num_edges = base_level.GetNumEdges();
   const int grid_size = subdiv_ccg.grid_size;
   if (num_edges == 0) {
     /* Early output, nothing to do in this case. */
@@ -348,18 +348,16 @@ static void subdiv_ccg_init_faces_edge_neighborhood(SubdivCCG &subdiv_ccg)
   for (const int face_index : faces.index_range()) {
     const IndexRange face = faces[face_index];
     const int num_face_grids = face.size();
-    const OpenSubdiv::Far::ConstIndexArray face_vertices =
-        topology_refiner->base_level().GetFaceVertices(face_index);
+    const OpenSubdiv::Far::ConstIndexArray face_vertices = base_level.GetFaceVertices(face_index);
     /* Note that order of edges is same as order of MLoops, which also
      * means it's the same as order of grids. */
-    const OpenSubdiv::Far::ConstIndexArray face_edges =
-        topology_refiner->base_level().GetFaceEdges(face_index);
+    const OpenSubdiv::Far::ConstIndexArray face_edges = base_level.GetFaceEdges(face_index);
     /* Store grids adjacency for this edge. */
     for (int corner = 0; corner < num_face_grids; corner++) {
       const int vertex_index = face_vertices[corner];
       const int edge_index = face_edges[corner];
-      const OpenSubdiv::Far::ConstIndexArray edge_vertices =
-          topology_refiner->base_level().GetEdgeVertices(edge_index);
+      const OpenSubdiv::Far::ConstIndexArray edge_vertices = base_level.GetEdgeVertices(
+          edge_index);
       const bool is_edge_flipped = (edge_vertices[0] != vertex_index);
       /* Grid which is adjacent to the current corner. */
       const int current_grid_index = face.start() + corner;
