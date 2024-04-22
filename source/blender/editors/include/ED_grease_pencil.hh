@@ -292,4 +292,32 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const float2 &fill_point,
                                  bool keep_image);
 
+namespace image_render {
+
+struct ImageRenderData;
+
+ImageRenderData *image_render_begin(ARegion &region, const int2 &win_size);
+Image *image_render_end(Main &bmain, ARegion &region, ImageRenderData *data);
+
+void set_viewmat(ARegion &region,
+                 View3D &view3d,
+                 RegionView3D &rv3d,
+                 Depsgraph &depsgraph,
+                 const Scene &scene,
+                 const int2 &win_size,
+                 const float2 &zoom,
+                 const float2 &offset);
+void clear_viewmat();
+
+void draw_dot(const float3 &position, const float point_size, const ColorGeometry4f &color);
+/* Draw a line from points. */
+void draw_curve(Span<float3> positions,
+                const VArray<ColorGeometry4f> &colors,
+                const IndexRange indices,
+                const float4x4 &layer_to_world,
+                const bool cyclic,
+                const float line_width);
+
+}  // namespace image_render
+
 }  // namespace blender::ed::greasepencil
