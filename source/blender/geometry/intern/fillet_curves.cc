@@ -403,6 +403,7 @@ static bke::CurvesGeometry fillet_curves(
 
   // Create mostly un-initialized curve geometry
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  bke::CurvesGeometry dst_curves_2;
   /* Stores the offset of every result point for every original point.
    * The extra length is used in order to store an extra zero for every curve. */
   Array<int> dst_point_offsets(src_curves.points_num() + src_curves.curves_num());
@@ -415,16 +416,10 @@ static bke::CurvesGeometry fillet_curves(
                            cyclic,
                            dst_curve_offsets,
                            dst_point_offsets);
-  const OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
-  const Span<int> all_point_offsets = dst_point_offsets.as_span();
-
-  printf("Destination Curve offests\n");
-  print_spani(dst_curve_offsets);
-
-  printf("Destination point offsets\n");
-  print_spani(all_point_offsets);
-
+  OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
+  Span<int> all_point_offsets = dst_point_offsets.as_span();
   const int dst_curve_size = dst_curve_offsets.last();
+
   dst_curves.resize(dst_curve_size, dst_curves.curves_num());
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
@@ -449,12 +444,21 @@ static bke::CurvesGeometry fillet_curves(
     dst_handles_r = dst_curves.handle_positions_right_for_write();
   }
 
-  MutableSpan<int> result_point_counts;
-  if (limit_radius && remove_duplicated_points) {
-    // All points will be given a count of 1 except for limit
-    result_point_counts = Array<int>(dst_curves.points_num() + dst_curves.curves_num());
-    result_point_counts.fill(1);
+  // Kludge - copy over the point counts for unselected curves
+  Array<int> dst_2_curve_sizes(dst_curves.curves_num());
+  Array<int> src_to_dst2_offsets(all_point_offsets.size());
+  for (const int to_i : all_point_offsets.index_range()) {
+    src_to_dst2_offsets[to_i] = all_point_offsets[to_i];
   }
+
+  // Initialize to 0
+  dst_2_curve_sizes.fill(0);
+  unselected.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
+    for (const int curve_i : segment) {
+      IndexRange curve_range = curve_start_indices[curve_i];
+      dst_2_curve_sizes[curve_i] = curve_range.size();
+    }
+  });
 
   curve_selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
     Array<float3> directions;
@@ -535,7 +539,7 @@ static bke::CurvesGeometry fillet_curves(
 
       if (limit_radius && remove_duplicated_points) {
         // Get input counts for the curve
-        MutableSpan<int> result_point_counts_for_curve = result_point_counts.slice(offsets_range);
+        int new_curve_size = 0;
 
         int dst_i = 0;
         const int src_point_num = src_positions.size();
@@ -544,30 +548,23 @@ static bke::CurvesGeometry fillet_curves(
         for (int src_i = 0; src_i < src_point_num; src_i++) {
           IndexRange dst_src_range = offsets[src_i];
           const bool skip_last_point = is_duplicated_r[src_i];
-          printf("src_i: %d\n", src_i);
-          // Offset [0,3]
-          // Src: (0, 1, 2, 3, 4), (5, 6, 7)-> Drop 3
-          // Lef: (0, 1, 2, 3), (5, 6, 7)
-          // Rig: (0, 1, 2, 4), (5, 6, 7)
           int dst_src_i_last = dst_src_range.last();
 
           for (const int dst_src_i : dst_src_range) {
-            printf("dst_src_i: %d\n", dst_src_i);
-
             if (!skip_point) {
-              /* Data associated with left-edge is "skipped" on the next loop */
               float3 handle_l = dst_handles_l_write[dst_src_i];
               int8_t type_l = dst_types_l_write[dst_src_i];
 
-              printf("dst_l: %d\n", dst_i);
               dst_handles_l_write[dst_i] = handle_l;
               dst_types_l_write[dst_i] = type_l;
             }
 
             bool is_last_point = dst_src_i == dst_src_i_last;
+            /* Skip the the last point of a curve and its right-side handles.
+             * On the next loop, the left side handles will be skipped
+             */
             skip_point = skip_last_point && is_last_point;
             if (!skip_point) {
-              printf("dst_r: %d\n", dst_i);
               float3 pos = dst_positions_write[dst_src_i];
               float3 handle_r = dst_handles_r_write[dst_src_i];
               int8_t type_r = dst_types_r_write[dst_src_i];
@@ -576,22 +573,77 @@ static bke::CurvesGeometry fillet_curves(
               dst_handles_r_write[dst_i] = handle_r;
               dst_types_r_write[dst_i] = type_r;
               dst_i++;
+              new_curve_size++;
             }
             else {
-              printf("Skipping last point\n");
+              // Decrement all offsets
+              int offsets_size = src_to_dst2_offsets.size();
+              for (int dec_i = src_i; dec_i < offsets_size; dec_i++) {
+                src_to_dst2_offsets[dec_i] = src_to_dst2_offsets[dec_i] - 1;
+              }
             }
           }
         }
+        dst_2_curve_sizes[curve_i] = new_curve_size;
       }
     }
   });
 
+  OffsetIndices<int> curve_ranges_2;
   if (limit_radius && remove_duplicated_points) {
     // Temporary... figure out how to make a new set of destination curves based on what I now know
-    // CurvesGeometry dst_curves_2 = bke::curves::copy_only_curve_domain(src_curves);
-    // Copy unselected curve offsets
-    // OffsetIndices<int> offsets =
-    // offset_indices::accumulate_counts_to_offsets(result_point_counts);
+    dst_curves_2 = bke::curves::copy_only_curve_domain(src_curves);
+
+    // Copy the new positions, handles, and types to the new destination curve object
+    // This is a hack to understand how to work the destination in the final and is not the final
+    MutableSpan<int> dst_curves_2_offsets = dst_curves_2.offsets_for_write();
+
+    dst_curves_2_offsets[0] = 0;
+    for (const int i : dst_2_curve_sizes.index_range()) {
+      dst_curves_2_offsets[i + 1] = dst_curves_2_offsets[i] + dst_2_curve_sizes[i];
+    }
+
+    // Resize the new destination curves
+    const int dst_curves_2_size = dst_curves_2_offsets.last();
+    const int curve_num_2 = dst_2_curve_sizes.size();
+    dst_curves_2.resize(dst_curves_2_size, curve_num_2);
+    dst_attributes = dst_curves_2.attributes_for_write();
+
+    // Duplicate points using destination curves 2
+    OffsetIndices<int> curve_ranges = dst_curves.points_by_curve();
+    curve_ranges_2 = dst_curves_2.points_by_curve();
+    for (const int curve_i : curve_ranges_2.index_range()) {
+      IndexRange dst_range = curve_ranges[curve_i];
+      IndexRange dst_2_range = curve_ranges_2[curve_i];
+
+      MutableSpan<float3> handle_l_w = dst_curves_2.handle_positions_left_for_write();
+      MutableSpan<float3> handle_r_w = dst_curves_2.handle_positions_right_for_write();
+      MutableSpan<int8_t> handle_l_t = dst_curves_2.handle_types_left_for_write();
+      MutableSpan<int8_t> handle_r_t = dst_curves_2.handle_types_right_for_write();
+      MutableSpan<float3> pos_w = dst_curves_2.positions_for_write();
+
+      Span<float3> handle_l = dst_curves.handle_positions_left();
+      Span<float3> handle_r = dst_curves.handle_positions_right();
+      VArray<int8_t> handle_l_t_s = dst_curves.handle_types_left();
+      VArray<int8_t> handle_r_t_s = dst_curves.handle_types_right();
+      Span<float3> pos = dst_curves.positions();
+
+      int i = dst_range.start();
+      int end_2 = dst_2_range.last();
+      for (int i_2 = dst_2_range.start(); i_2 < end_2; i_2++) {
+        printf("i: %d i_2: %d\n", i, i_2);
+        handle_l_w[i_2] = handle_l[i];
+        handle_r_w[i_2] = handle_r[i];
+        handle_l_t[i_2] = handle_l_t_s[i];
+        handle_r_t[i_2] = handle_r_t_s[i];
+        pos_w[i_2] = pos[i];
+        i++;
+      }
+    }
+    
+    dst_curves = dst_curves_2;
+    dst_points_by_curve = curve_ranges_2;
+    all_point_offsets = src_to_dst2_offsets.as_span();
   }
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
@@ -607,6 +659,7 @@ static bke::CurvesGeometry fillet_curves(
                                 all_point_offsets,
                                 attribute.src,
                                 attribute.dst.span);
+
     attribute.dst.finish();
   }
 
