@@ -50,7 +50,7 @@ struct TransConvertTypeInfo {
  */
 struct TransDataEdgeSlideVert {
   TransData *td;
-  blender::float3 dir_side[2]; /* Directional vectors on the sides.*/
+  blender::float3 dir_side[2]; /* Directional vectors on the sides. */
   float edge_len;              /* Distance between vectors. */
   int loop_nr;                 /* Number that identifies the group of connected edges. */
 
@@ -66,7 +66,7 @@ struct TransDataEdgeSlideVert {
  */
 struct TransDataVertSlideVert {
   TransData *td;
-  blender::Span<blender::float3> co_link_orig_3d; /* Target locations.*/
+  blender::Span<blender::float3> co_link_orig_3d; /* Target locations. */
   int co_link_curr;
 
   const float *co_orig_3d() const
@@ -78,6 +78,26 @@ struct TransDataVertSlideVert {
   {
     return this->co_link_orig_3d[this->co_link_curr];
   }
+};
+
+/**
+ * Structure used for curves transform operation.
+ * Used for both curves and grease pencil objects.
+ */
+struct CurvesTransformData {
+  blender::IndexMaskMemory memory;
+  blender::Vector<blender::IndexMask> selection_by_layer;
+
+  /**
+   * The offsets of every grease pencil layer into `positions` array.
+   * For curves only one layer is used.
+   */
+  blender::Vector<int> layer_offsets;
+
+  /**
+   * Copy of all positions being transformed.
+   */
+  blender::Array<blender::float3> positions;
 };
 
 /* `transform_convert.cc` */
@@ -161,6 +181,13 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        bool use_connected_only,
                                        int trans_data_offset,
                                        const blender::IndexMask &bezier_curves);
+
+CurvesTransformData *create_curves_transform_custom_data(TransCustomData &custom_data);
+
+void copy_positions_from_curves_transform_custom_data(
+    const TransCustomData &custom_data,
+    const int layer,
+    blender::MutableSpan<blender::float3> positions_dst);
 
 /* `transform_convert_action.cc` */
 

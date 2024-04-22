@@ -83,7 +83,7 @@
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_unit.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -1136,13 +1136,12 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   if (sce->nodetree) {
     BLO_write_init_id_buffer_from_id(
         temp_embedded_id_buffer, &sce->nodetree->id, BLO_write_is_undo(writer));
-    BLO_write_struct_at_address(writer,
-                                bNodeTree,
-                                sce->nodetree,
-                                BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
-    ntreeBlendWrite(
-        writer,
-        reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
+    bNodeTree *temp_nodetree = reinterpret_cast<bNodeTree *>(
+        BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    /* Set deprecated chunksize for forward compatibility. */
+    temp_nodetree->chunksize = 256;
+    BLO_write_struct_at_address(writer, bNodeTree, sce->nodetree, temp_nodetree);
+    ntreeBlendWrite(writer, temp_nodetree);
   }
 
   BKE_color_managed_view_settings_blend_write(writer, &sce->view_settings);
@@ -1544,6 +1543,12 @@ static void scene_blend_read_after_liblink(BlendLibReader *reader, ID *id)
     sce->flag |= SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK;
   }
 #endif
+  if (ID_IS_LINKED(sce)) {
+    /* Linked scenes never have NLA tweak mode enabled. This works in concert with code in
+     * BKE_animdata_blend_read_data, which also ensures that linked AnimData structs are never
+     * linked in NLA tweak mode. */
+    sce->flag &= ~SCE_NLA_EDIT_ON;
+  }
 }
 
 static void scene_undo_preserve(BlendLibReader *reader, ID *id_new, ID *id_old)
@@ -2922,6 +2927,7 @@ double BKE_scene_unit_scale(const UnitSettings *unit, const int unit_type, doubl
     case B_UNIT_MASS:
       return value * pow(unit->scale_length, 3);
     case B_UNIT_CAMERA: /* *Do not* use scene's unit scale for camera focal lens! See #42026. */
+    case B_UNIT_WAVELENGTH: /* Wavelength values are independent of the scene scale. */
     default:
       return value;
   }

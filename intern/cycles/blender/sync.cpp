@@ -294,8 +294,6 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
    * false = don't delete unused shaders, not supported. */
   shader_map.post_sync(false);
 
-  free_data_after_sync(b_depsgraph);
-
   VLOG_INFO << "Total time spent synchronizing data: " << timer.get_time();
 
   has_updates_ = false;
@@ -797,6 +795,11 @@ void BlenderSync::free_data_after_sync(BL::Depsgraph &b_depsgraph)
    * but that will need some API support first.
    */
   for (BL::Object &b_ob : b_depsgraph.objects) {
+    /* Grease pencil render requires all evaluated objects available as-is after Cycles is done
+     * with its part. */
+    if (b_ob.type() == BL::Object::type_GREASEPENCIL || b_ob.type() == BL::Object::type_GPENCIL) {
+      continue;
+    }
     b_ob.cache_release();
   }
 }

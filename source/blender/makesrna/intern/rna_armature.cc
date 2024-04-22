@@ -1060,7 +1060,7 @@ static void rna_Armature_bones_next(CollectionPropertyIterator *iter)
 }
 
 /* not essential, but much faster than the default lookup function */
-static int rna_Armature_bones_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+static bool rna_Armature_bones_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
 {
   bArmature *arm = (bArmature *)ptr->data;
   Bone *bone = BKE_armature_find_bone_name(arm, key);
@@ -1903,7 +1903,7 @@ static void rna_def_edit_bone(BlenderRNA *brna)
   RNA_define_verify_sdna(true);
 }
 
-/* armature.bones.* */
+/* `armature.bones.*`. */
 static void rna_def_armature_bones(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -1929,7 +1929,7 @@ static void rna_def_armature_bones(BlenderRNA *brna, PropertyRNA *cprop)
   // RNA_def_property_collection_active(prop, prop_act);
 }
 
-/* armature.bones.* */
+/* `armature.bones.*`. */
 static void rna_def_armature_edit_bones(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
