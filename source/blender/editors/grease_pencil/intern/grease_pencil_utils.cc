@@ -552,7 +552,6 @@ IndexMask retrieve_editable_strokes(Object &object,
     return {};
   }
 
-
   const bke::AttributeAccessor attributes = curves.attributes();
 
   const VArray<int> materials = *attributes.lookup<int>("material_index", bke::AttrDomain::Curve);
@@ -623,7 +622,6 @@ IndexMask retrieve_editable_points(Object &object,
   if (editable_material_indices.is_empty()) {
     return {};
   }
-
 
   const bke::AttributeAccessor attributes = curves.attributes();
 
