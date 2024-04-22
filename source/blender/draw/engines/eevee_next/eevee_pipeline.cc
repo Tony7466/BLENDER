@@ -533,7 +533,8 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
   const SceneEEVEE &sce_eevee = inst_.scene->eevee;
   const bool has_transmit_closure = (closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_TRANSLUCENT));
   const bool has_reflect_closure = (closure_bits_ & (CLOSURE_REFLECTION | CLOSURE_DIFFUSE));
-  use_raytracing_ = (sce_eevee.flag & SCE_EEVEE_SSR_ENABLED) != 0;
+  use_raytracing_ = (has_transmit_closure || has_reflect_closure) &&
+                    (sce_eevee.flag & SCE_EEVEE_SSR_ENABLED) != 0;
 
   use_clamp_direct_ = sce_eevee.clamp_surface_direct != 0.0f;
   use_clamp_indirect_ = sce_eevee.clamp_surface_indirect != 0.0f;
@@ -543,9 +544,8 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
   use_screen_transmission_ = use_raytracing_ && has_transmit_closure && !is_first_pass;
   use_screen_reflection_ = use_raytracing_ && has_reflect_closure;
 
-  use_split_radiance_ = use_raytracing_ || use_clamp_direct_ || use_clamp_indirect_;
-  use_feedback_output_ = use_raytracing_ && (!is_last_pass || use_screen_reflection_) &&
-                         (sce_eevee.clamp_surface_direct != 0.0f);
+  use_split_radiance_ = use_raytracing_ || (use_clamp_direct_ || use_clamp_indirect_);
+  use_feedback_output_ = use_raytracing_ && (!is_last_pass || use_screen_reflection_);
 
   {
     RenderBuffersInfoData &rbuf_data = inst_.render_buffers.data;
@@ -610,11 +610,9 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
           sub.bind_image("direct_radiance_1_img", &direct_radiance_txs_[0]);
           sub.bind_image("direct_radiance_2_img", &direct_radiance_txs_[1]);
           sub.bind_image("direct_radiance_3_img", &direct_radiance_txs_[2]);
-          if (use_split_indirect) {
-            sub.bind_texture("indirect_radiance_1_img", indirect_result_.closures[0].ref());
-            sub.bind_texture("indirect_radiance_2_img", indirect_result_.closures[1].ref());
-            sub.bind_texture("indirect_radiance_3_img", indirect_result_.closures[2].ref());
-          }
+          sub.bind_image("indirect_radiance_1_img", &indirect_result_.closures[0]);
+          sub.bind_image("indirect_radiance_2_img", &indirect_result_.closures[1]);
+          sub.bind_image("indirect_radiance_3_img", &indirect_result_.closures[2]);
           sub.bind_resources(inst_.uniform_data);
           sub.bind_resources(inst_.gbuffer);
           sub.bind_resources(inst_.lights);
@@ -644,7 +642,8 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
                                (rbuf_data.specular_light_id != -1) ||
                                    (rbuf_data.specular_color_id != -1));
       pass.specialize_constant(sh, "use_split_radiance", use_split_radiance_);
-      pass.specialize_constant(sh, "use_radiance_feedback", use_radiance_feedback_);
+      pass.specialize_constant(
+          sh, "use_radiance_feedback", use_feedback_output_ && use_clamp_direct_);
       pass.specialize_constant(sh, "render_pass_normal_enabled", rbuf_data.normal_id != -1);
       pass.shader_set(sh);
       /* Use stencil test to reject pixels not written by this layer. */
@@ -654,9 +653,9 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);
       pass.bind_texture("direct_radiance_2_tx", &direct_radiance_txs_[1]);
       pass.bind_texture("direct_radiance_3_tx", &direct_radiance_txs_[2]);
-      pass.bind_texture("indirect_radiance_1_tx", indirect_result_.closures[0].ref());
-      pass.bind_texture("indirect_radiance_2_tx", indirect_result_.closures[1].ref());
-      pass.bind_texture("indirect_radiance_3_tx", indirect_result_.closures[2].ref());
+      pass.bind_texture("indirect_radiance_1_tx", &indirect_result_.closures[0]);
+      pass.bind_texture("indirect_radiance_2_tx", &indirect_result_.closures[1]);
+      pass.bind_texture("indirect_radiance_3_tx", &indirect_result_.closures[2]);
       pass.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
       pass.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
       pass.bind_image("radiance_feedback_img", &radiance_feedback_tx_);
@@ -756,9 +755,9 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.manager->submit(eval_light_ps_, render_view);
 
   inst_.subsurface.render(
-      direct_radiance_txs_[0], indirect_result_.closures[0].get(), closure_bits_, render_view);
+      direct_radiance_txs_[0], indirect_result_.closures[0], closure_bits_, render_view);
 
-  radiance_feedback_tx_ = rt_buffer.alloc_feedback(use_feedback_output_, extent);
+  radiance_feedback_tx_ = rt_buffer.alloc_feedback(!use_feedback_output_, extent);
 
   if (use_feedback_output_ && use_clamp_direct_) {
     /* We need to do a copy before the combine pass (otherwise we have a dependency issue) to save

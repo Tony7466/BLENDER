@@ -265,7 +265,6 @@ class DeferredLayer : DeferredLayerBase {
 
   RayTraceResult indirect_result_;
 
-  bool use_radiance_feedback_ = true;
   bool use_split_radiance_ = true;
   /* Output radiance from the combine shader instead of copy. Allow passing unclamped result. */
   bool use_feedback_output_ = false;

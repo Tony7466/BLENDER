@@ -82,6 +82,7 @@ void SphereProbeModule::begin_sync()
     pass.bind_ssbo("reflection_probe_buf", &data_buf_);
     instance_.volume_probes.bind_resources(pass);
     instance_.sampling.bind_resources(pass);
+    pass.bind_resources(instance_.uniform_data);
     pass.dispatch(&dispatch_probe_select_);
     pass.barrier(GPU_BARRIER_UNIFORM);
   }

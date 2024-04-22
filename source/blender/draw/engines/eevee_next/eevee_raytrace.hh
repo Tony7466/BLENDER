@@ -83,23 +83,26 @@ class RayTraceResultTexture {
  private:
   /** Result is in a temporary texture that needs to be released. */
   TextureFromPool *result_ = nullptr;
+  /** Value of `result_->tx_` that can be referenced in advance. */
+  GPUTexture *tx_ = nullptr;
   /** History buffer to swap the temporary texture that does not need to be released. */
   Texture *history_ = nullptr;
 
  public:
   RayTraceResultTexture() = default;
-  RayTraceResultTexture(TextureFromPool &result) : result_(result.ptr()){};
+  RayTraceResultTexture(TextureFromPool &result) : result_(result.ptr()), tx_(result){};
   RayTraceResultTexture(TextureFromPool &result, Texture &history)
-      : result_(result.ptr()), history_(history.ptr()){};
+      : result_(result.ptr()), tx_(result), history_(history.ptr()){};
 
-  GPUTexture *get()
+  operator GPUTexture *() const
   {
-    return *result_;
+    BLI_assert(tx_ != nullptr);
+    return tx_;
   }
 
-  GPUTexture **ref()
+  GPUTexture **operator&()
   {
-    return &*result_;
+    return &tx_;
   }
 
   void release()
@@ -209,6 +212,7 @@ class RayTraceModule {
   GPUTexture *screen_radiance_front_tx_ = nullptr;
   GPUTexture *screen_radiance_back_tx_ = nullptr;
 
+  Texture radiance_dummy_black_tx_ = {"radiance_dummy_black_tx"};
   /** Dummy texture when the tracing is disabled. */
   TextureFromPool dummy_result_tx_ = {"dummy_result_tx"};
   /** Pointer to `inst_.render_buffers.depth_tx` updated before submission. */
@@ -269,8 +273,6 @@ class RayTraceModule {
                               bool active_layer,
                               RaytraceEEVEE options,
                               RayTraceBuffer &rt_buffer,
-                              GPUTexture *screen_radiance_back_tx,
-                              GPUTexture *screen_radiance_front_tx,
                               /* TODO(fclem): Maybe wrap these two in some other class. */
                               View &main_view,
                               View &render_view);

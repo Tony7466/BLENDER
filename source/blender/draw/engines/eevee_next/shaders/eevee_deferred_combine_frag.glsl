@@ -102,7 +102,8 @@ void main()
 
   if (use_radiance_feedback) {
     /* Output unmodified radiance for indirect lighting. */
-    vec3 out_radiance = out_direct + out_indirect;
+    vec3 out_radiance = imageLoad(radiance_feedback_img, texel).rgb;
+    out_radiance += out_direct + out_indirect;
     imageStore(radiance_feedback_img, texel, vec4(out_radiance, 0.0));
   }
 

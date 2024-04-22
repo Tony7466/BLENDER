@@ -30,6 +30,10 @@ void RayTraceModule::init()
 
   ray_tracing_options_ = sce_eevee.ray_tracing_options;
   tracing_method_ = RaytraceEEVEE_Method(sce_eevee.ray_tracing_method);
+
+  float4 data(0.0f);
+  radiance_dummy_black_tx_.ensure_2d(
+      RAYTRACE_RADIANCE_FORMAT, int2(1), GPU_TEXTURE_USAGE_SHADER_READ, data);
 }
 
 void RayTraceModule::sync()
@@ -330,6 +334,12 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 {
   using namespace blender::math;
 
+  screen_radiance_front_tx_ = rt_buffer.radiance_feedback_tx.is_valid() ?
+                                  rt_buffer.radiance_feedback_tx :
+                                  radiance_dummy_black_tx_;
+  screen_radiance_back_tx_ = screen_radiance_back_tx ? screen_radiance_back_tx :
+                                                       screen_radiance_front_tx_;
+
   RaytraceEEVEE options = ray_tracing_options_;
 
   bool use_horizon_scan = options.trace_max_roughness < 1.0f;
@@ -409,21 +419,12 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   data_.trace_refraction = screen_radiance_back_tx != nullptr;
 
   for (int i = 0; i < 3; i++) {
-    result.closures[i] = trace(i,
-                               (closure_count > i),
-                               options,
-                               rt_buffer,
-                               screen_radiance_back_tx,
-                               rt_buffer.radiance_feedback_tx,
-                               main_view,
-                               render_view);
+    result.closures[i] = trace(i, (closure_count > i), options, rt_buffer, main_view, render_view);
   }
 
   if (has_active_closure) {
     if (use_horizon_scan) {
       DRW_stats_group_start("Horizon Scan");
-
-      screen_radiance_front_tx_ = rt_buffer.radiance_feedback_tx;
 
       downsampled_in_radiance_tx_.acquire(tracing_res_horizon, RAYTRACE_RADIANCE_FORMAT, usage_rw);
       downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGB10_A2, usage_rw);
@@ -435,7 +436,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
         horizon_radiance_denoised_tx_[i].acquire(tracing_res_horizon, GPU_RGBA8, usage_rw);
       }
       for (int i : IndexRange(3)) {
-        horizon_scan_output_tx_[i] = result.closures[i].get();
+        horizon_scan_output_tx_[i] = result.closures[i];
       }
 
       horizon_tracing_dispatch_buf_.clear_to_zero();
@@ -470,8 +471,6 @@ RayTraceResultTexture RayTraceModule::trace(
     bool active_layer,
     RaytraceEEVEE options,
     RayTraceBuffer &rt_buffer,
-    GPUTexture *screen_radiance_back_tx,
-    GPUTexture *screen_radiance_front_tx,
     /* TODO(fclem): Maybe wrap these two in some other class. */
     View &main_view,
     View &render_view)
@@ -534,10 +533,6 @@ RayTraceResultTexture RayTraceModule::trace(
     ray_data_tx_.acquire(tracing_res, GPU_RGBA16F);
     ray_time_tx_.acquire(tracing_res, RAYTRACE_RAYTIME_FORMAT);
     ray_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT);
-
-    screen_radiance_front_tx_ = screen_radiance_front_tx;
-    screen_radiance_back_tx_ = screen_radiance_back_tx ? screen_radiance_back_tx :
-                                                         screen_radiance_front_tx;
 
     inst_.manager->submit(generate_ps_, render_view);
     if (tracing_method_ == RAYTRACE_EEVEE_METHOD_SCREEN) {

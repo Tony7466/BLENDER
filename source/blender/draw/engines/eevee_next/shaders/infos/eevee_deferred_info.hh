@@ -108,7 +108,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .sampler(5, ImageType::FLOAT_2D, "indirect_radiance_1_tx")
     .sampler(6, ImageType::FLOAT_2D, "indirect_radiance_2_tx")
     .sampler(7, ImageType::FLOAT_2D, "indirect_radiance_3_tx")
-    .image(5, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "radiance_feedback_img")
+    .image(5, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_feedback_img")
     .fragment_out(0, Type::VEC4, "out_combined")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
