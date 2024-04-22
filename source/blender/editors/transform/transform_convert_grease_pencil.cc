@@ -49,7 +49,8 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
   /* Count selected elements per layer per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
     TransDataContainer &tc = trans_data_contrainers[i];
-    CurvesTransformData *curves_transform_data = create_curves_custom_data(tc.custom.type);
+    CurvesTransformData *curves_transform_data = create_curves_transform_custom_data(
+        tc.custom.type);
 
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings = all_drawings[i];
     for (ed::greasepencil::MutableDrawingInfo info : drawings) {
@@ -140,7 +141,8 @@ static void recalcData_grease_pencil(TransInfo *t)
     for (const int64_t i : drawings.index_range()) {
       ed::greasepencil::MutableDrawingInfo info = drawings[i];
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-      selected_positions_from_custom_data(tc.custom.type, i, curves.positions_for_write());
+      copy_positions_from_curves_transform_custom_data(
+          tc.custom.type, i, curves.positions_for_write());
 
       curves.calculate_bezier_auto_handles();
       curves.tag_positions_changed();

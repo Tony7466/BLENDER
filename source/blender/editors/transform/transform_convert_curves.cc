@@ -73,7 +73,7 @@ static void append_positions_to_custom_data(const IndexMask selection,
   transform_data.layer_offsets.append(data_offset + selection.size());
   array_utils::gather(
       positions,
-      transform_data.selection_by_layer.last(),
+      selection,
       transform_data.positions.as_mutable_span().slice(data_offset, selection.size()));
 }
 
@@ -91,7 +91,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
 
-    CurvesTransformData *curves_transform_data = create_curves_custom_data(tc.custom.type);
+    CurvesTransformData *curves_transform_data = create_curves_transform_custom_data(
+        tc.custom.type);
 
     if (use_proportional_edit) {
       selection_per_object[i] = curves.points_range();
@@ -164,7 +165,8 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
-      selected_positions_from_custom_data(tc.custom.type, 0, curves.positions_for_write());
+      copy_positions_from_curves_transform_custom_data(
+          tc.custom.type, 0, curves.positions_for_write());
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
     }
@@ -174,7 +176,7 @@ static void recalcData_curves(TransInfo *t)
 
 }  // namespace blender::ed::transform::curves
 
-CurvesTransformData *create_curves_custom_data(TransCustomData &custom_data)
+CurvesTransformData *create_curves_transform_custom_data(TransCustomData &custom_data)
 {
   CurvesTransformData *transform_data = MEM_new<CurvesTransformData>(__func__);
   transform_data->layer_offsets.append(0);
@@ -187,9 +189,10 @@ CurvesTransformData *create_curves_custom_data(TransCustomData &custom_data)
   return transform_data;
 }
 
-void selected_positions_from_custom_data(const TransCustomData &custom_data,
-                                         const int layer,
-                                         blender::MutableSpan<blender::float3> positions_dst)
+void copy_positions_from_curves_transform_custom_data(
+    const TransCustomData &custom_data,
+    const int layer,
+    blender::MutableSpan<blender::float3> positions_dst)
 {
   using namespace blender;
   const CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(

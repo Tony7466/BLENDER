@@ -87,7 +87,16 @@ struct TransDataVertSlideVert {
 struct CurvesTransformData {
   blender::IndexMaskMemory memory;
   blender::Vector<blender::IndexMask> selection_by_layer;
+
+  /**
+   * The offsets of every grease pencil layer into `positions` array.
+   * For curves only one layer is used.
+   */
   blender::Vector<int> layer_offsets;
+
+  /**
+   * Copy of all positions being transformed.
+   */
   blender::Array<blender::float3> positions;
 };
 
@@ -172,11 +181,12 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        bool use_connected_only,
                                        int trans_data_offset);
 
-CurvesTransformData *create_curves_custom_data(TransCustomData &custom_data);
+CurvesTransformData *create_curves_transform_custom_data(TransCustomData &custom_data);
 
-void selected_positions_from_custom_data(const TransCustomData &custom_data,
-                                         const int layer,
-                                         blender::MutableSpan<blender::float3> positions_dst);
+void copy_positions_from_curves_transform_custom_data(
+    const TransCustomData &custom_data,
+    const int layer,
+    blender::MutableSpan<blender::float3> positions_dst);
 
 /* `transform_convert_action.cc` */
 
