@@ -483,7 +483,6 @@ static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
   ot->description = "Delete selected strokes or points";
 
   /* Callbacks. */
-  ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_delete_exec;
   ot->poll = editable_grease_pencil_poll;
 
@@ -644,6 +643,7 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
                                  "Type",
                                  "Method used for dissolving stroke points");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
 }
 
 /** \} */
@@ -2463,4 +2463,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);
   WM_operatortype_append(GREASE_PENCIL_OT_copy);
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
 }

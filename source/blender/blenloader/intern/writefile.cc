@@ -114,7 +114,7 @@
 #include "BKE_node.hh"
 #include "BKE_packedFile.h"
 #include "BKE_report.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_blend_defs.hh"
 #include "BLO_blend_validate.hh"
@@ -621,9 +621,9 @@ static void mywrite_id_begin(WriteData *wd, ID *id)
     MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
                                       static_cast<MemFileChunk *>(curr_memchunk->prev) :
                                       nullptr;
-    if ((curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
-         (prev_memchunk != nullptr &&
-          (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid))))
+    if (curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
+        (prev_memchunk != nullptr &&
+         (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid)))
     {
       if (MemFileChunk *ref = wd->mem.id_session_uid_mapping.lookup_default(id->session_uid,
                                                                             nullptr))
