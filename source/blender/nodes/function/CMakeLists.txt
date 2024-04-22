@@ -23,6 +23,7 @@ set(SRC
   nodes/node_fn_axis_angle_to_rotation.cc
   nodes/node_fn_boolean_math.cc
   nodes/node_fn_combine_color.cc
+  nodes/node_fn_combine_transform.cc
   nodes/node_fn_compare.cc
   nodes/node_fn_euler_to_rotation.cc
   nodes/node_fn_float_to_int.cc
@@ -34,7 +35,6 @@ set(SRC
   nodes/node_fn_input_vector.cc
   nodes/node_fn_invert_matrix.cc
   nodes/node_fn_invert_rotation.cc
-  nodes/node_fn_combine_transform.cc
   nodes/node_fn_matrix_multiply.cc
   nodes/node_fn_quaternion_to_rotation.cc
   nodes/node_fn_random_value.cc

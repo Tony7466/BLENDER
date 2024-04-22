@@ -1466,7 +1466,7 @@ class edit_generators:
         is_default = False
 
         @staticmethod
-        def _header_exclude(f_basename: str) -> str:
+        def _header_exclude(f_basename: str) -> bool:
             # This header only exists to add additional warnings, removing it doesn't impact generated output.
             # Skip this file.
             if f_basename == "BLI_strict_flags.h":
@@ -1638,7 +1638,7 @@ class edit_generators:
             ):
                 edits.append(Edit(
                     span=match.span(),
-                    content='%s' % match.group(2),
+                    content=match.group(2),
                     content_fail='__ALWAYS_FAIL__',
                 ))
 

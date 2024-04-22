@@ -23,7 +23,7 @@ class NODE_MT_geometry_node_GEO_ATTRIBUTE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeBlurAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeCaptureAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeRemoveAttribute")
-        node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedAttribute")
+        node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedAttribute", search_weight=1.0)
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -169,7 +169,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY(Menu):
         layout.menu("NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeGeometryToInstance")
-        node_add_menu.add_node_type(layout, "GeometryNodeJoinGeometry")
+        node_add_menu.add_node_type(layout, "GeometryNodeJoinGeometry", search_weight=1.0)
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -181,9 +181,9 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_READ(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeInputID")
         node_add_menu.add_node_type(layout, "GeometryNodeInputIndex")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputNamedAttribute")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputNamedAttribute", search_weight=1.0)
         node_add_menu.add_node_type(layout, "GeometryNodeInputNormal")
-        node_add_menu.add_node_type(layout, "GeometryNodeInputPosition")
+        node_add_menu.add_node_type(layout, "GeometryNodeInputPosition", search_weight=1.0)
         node_add_menu.add_node_type(layout, "GeometryNodeInputRadius")
         if context.space_data.geometry_nodes_type == 'TOOL':
             node_add_menu.add_node_type(layout, "GeometryNodeToolSelection")
@@ -197,7 +197,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_WRITE(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeSetID")
-        node_add_menu.add_node_type(layout, "GeometryNodeSetPosition")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetPosition", search_weight=1.0)
         if context.space_data.geometry_nodes_type == 'TOOL':
             node_add_menu.add_node_type(layout, "GeometryNodeToolSetSelection")
         node_add_menu.draw_assets_for_catalog(layout, "Geometry/Write")
@@ -216,7 +216,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeDuplicateElements")
         node_add_menu.add_node_type(layout, "GeometryNodeMergeByDistance")
         node_add_menu.add_node_type(layout, "GeometryNodeSortElements")
-        node_add_menu.add_node_type(layout, "GeometryNodeTransform")
+        node_add_menu.add_node_type(layout, "GeometryNodeTransform", search_weight=1.0)
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeSeparateComponents")
         node_add_menu.add_node_type(layout, "GeometryNodeSeparateGeometry")
@@ -304,10 +304,10 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
 
     def draw(self, _context):
         layout = self.layout
-        node_add_menu.add_node_type(layout, "GeometryNodeInstanceOnPoints")
+        node_add_menu.add_node_type(layout, "GeometryNodeInstanceOnPoints", search_weight=2.0)
         node_add_menu.add_node_type(layout, "GeometryNodeInstancesToPoints")
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeRealizeInstances")
+        node_add_menu.add_node_type(layout, "GeometryNodeRealizeInstances", search_weight=1.0)
         node_add_menu.add_node_type(layout, "GeometryNodeRotateInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleInstances")
         node_add_menu.add_node_type(layout, "GeometryNodeTranslateInstances")
@@ -328,7 +328,7 @@ class NODE_MT_geometry_node_GEO_MATERIAL(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterialIndex")
         node_add_menu.add_node_type(layout, "GeometryNodeMaterialSelection")
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeSetMaterial")
+        node_add_menu.add_node_type(layout, "GeometryNodeSetMaterial", search_weight=1.0)
         node_add_menu.add_node_type(layout, "GeometryNodeSetMaterialIndex")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -410,7 +410,11 @@ class NODE_MT_geometry_node_GEO_MESH_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeFlipFaces")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshBoolean")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToCurve")
+        if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeMeshToDensityGrid")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToPoints")
+        if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeMeshToSDFGrid")
         node_add_menu.add_node_type(layout, "GeometryNodeMeshToVolume")
         node_add_menu.add_node_type(layout, "GeometryNodeScaleElements")
         node_add_menu.add_node_type(layout, "GeometryNodeSplitEdges")
@@ -472,10 +476,14 @@ class NODE_MT_category_GEO_POINT(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeDistributePointsInVolume")
+        if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeDistributePointsInGrid")
         node_add_menu.add_node_type(layout, "GeometryNodeDistributePointsOnFaces")
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodePoints")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToCurves")
+        if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodePointsToSDFGrid")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVertices")
         node_add_menu.add_node_type(layout, "GeometryNodePointsToVolume")
         layout.separator()
@@ -541,8 +549,7 @@ class NODE_MT_category_GEO_UTILITIES(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_GEO_UTILITIES_FIELD")
         layout.menu("NODE_MT_category_GEO_UTILITIES_MATH")
-        if context.preferences.experimental.use_new_matrix_socket:
-            layout.menu("NODE_MT_category_utilities_matrix")
+        layout.menu("NODE_MT_category_utilities_matrix")
         layout.menu("NODE_MT_category_GEO_UTILITIES_ROTATION")
         layout.menu("NODE_MT_category_GEO_UTILITIES_DEPRECATED")
         layout.separator()
@@ -667,6 +674,7 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         layout = self.layout
         if context.preferences.experimental.use_new_volume_nodes:
             layout.menu("NODE_MT_geometry_node_GEO_VOLUME_READ")
+            layout.menu("NODE_MT_geometry_node_volume_sample")
             layout.menu("NODE_MT_geometry_node_GEO_VOLUME_WRITE")
             layout.separator()
         layout.menu("NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS")
@@ -694,6 +702,16 @@ class NODE_MT_geometry_node_GEO_VOLUME_WRITE(Menu):
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Write")
 
 
+class NODE_MT_geometry_node_volume_sample(Menu):
+    bl_idname = "NODE_MT_geometry_node_volume_sample"
+    bl_label = "Sample"
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.add_node_type(layout, "GeometryNodeSampleGrid")
+        node_add_menu.draw_assets_for_catalog(layout, "Volume/Sample")
+
+
 class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS"
     bl_label = "Operations"
@@ -701,6 +719,8 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
+        if context.preferences.experimental.use_new_volume_nodes:
+            node_add_menu.add_node_type(layout, "GeometryNodeGridToMesh")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 
@@ -786,6 +806,7 @@ classes = (
     NODE_MT_category_simulation,
     NODE_MT_category_GEO_VOLUME,
     NODE_MT_geometry_node_GEO_VOLUME_READ,
+    NODE_MT_geometry_node_volume_sample,
     NODE_MT_geometry_node_GEO_VOLUME_WRITE,
     NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS,
     NODE_MT_geometry_node_GEO_VOLUME_PRIMITIVES,

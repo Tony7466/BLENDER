@@ -459,10 +459,6 @@ class SEQUENCER_MT_view(Menu):
                 layout.menu("SEQUENCER_MT_preview_zoom")
             layout.prop(st, "use_zoom_to_fit")
 
-            if st.display_mode == 'WAVEFORM':
-                layout.separator()
-                layout.prop(st, "show_separate_color", text="Show Separate Color Channels")
-
             layout.separator()
             layout.menu("SEQUENCER_MT_proxy")
             layout.operator_context = 'INVOKE_DEFAULT'
@@ -2470,9 +2466,6 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
         if st.display_mode == 'IMAGE':
             col.prop(st, "show_overexposed")
 
-        elif st.display_mode == 'WAVEFORM':
-            col.prop(st, "show_separate_color")
-
 
 class SEQUENCER_PT_view_cursor(SequencerButtonsPanel_Output, Panel):
     bl_category = "View"
@@ -2669,7 +2662,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                             col.prop(mod, "gamma")
                 else:
                     if mod.type == 'SOUND_EQUALIZER':
-                        eq_row = box.row()
+                        # eq_row = box.row()
                         # eq_graphs = eq_row.operator_menu_enum("sequencer.strip_modifier_equalizer_redefine", "graphs")
                         # eq_graphs.name = mod.name
                         flow = box.grid_flow(

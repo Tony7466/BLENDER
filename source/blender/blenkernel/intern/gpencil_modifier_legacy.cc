@@ -98,18 +98,19 @@ void BKE_gpencil_cache_data_init(Depsgraph *depsgraph, Object *ob)
         }
         if (mmd->cache_data) {
           BKE_shrinkwrap_free_tree(mmd->cache_data);
-          MEM_SAFE_FREE(mmd->cache_data);
+          MEM_delete(mmd->cache_data);
+          mmd->cache_data = nullptr;
         }
         Object *ob_target = DEG_get_evaluated_object(depsgraph, ob);
         Mesh *target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
-        mmd->cache_data = static_cast<ShrinkwrapTreeData *>(
-            MEM_callocN(sizeof(ShrinkwrapTreeData), __func__));
+        mmd->cache_data = MEM_new<ShrinkwrapTreeData>(__func__);
         if (BKE_shrinkwrap_init_tree(
                 mmd->cache_data, target, mmd->shrink_type, mmd->shrink_mode, false))
         {
         }
         else {
-          MEM_SAFE_FREE(mmd->cache_data);
+          MEM_delete(mmd->cache_data);
+          mmd->cache_data = nullptr;
         }
         break;
       }
@@ -136,7 +137,8 @@ void BKE_gpencil_cache_data_clear(Object *ob)
         ShrinkwrapGpencilModifierData *mmd = (ShrinkwrapGpencilModifierData *)md;
         if ((mmd) && (mmd->cache_data)) {
           BKE_shrinkwrap_free_tree(mmd->cache_data);
-          MEM_SAFE_FREE(mmd->cache_data);
+          MEM_delete(mmd->cache_data);
+          mmd->cache_data = nullptr;
         }
         break;
       }
@@ -227,7 +229,7 @@ GpencilLineartLimitInfo BKE_gpencil_get_lineart_modifier_limits(const Object *ob
   LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
     if (md->type == eGpencilModifierType_Lineart) {
       LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-      if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+      if (is_first || (lmd->flags & MOD_LINEART_USE_CACHE)) {
         info.min_level = std::min<char>(info.min_level, lmd->level_start);
         info.max_level = std::max<char>(
             info.max_level, (lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
@@ -248,7 +250,7 @@ void BKE_gpencil_set_lineart_modifier_limits(GpencilModifierData *md,
 {
   BLI_assert(md->type == eGpencilModifierType_Lineart);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-  if (is_first_lineart || lmd->flags & LRT_GPENCIL_USE_CACHE) {
+  if (is_first_lineart || lmd->flags & MOD_LINEART_USE_CACHE) {
     lmd->level_start_override = info->min_level;
     lmd->level_end_override = info->max_level;
     lmd->edge_types_override = info->edge_types;

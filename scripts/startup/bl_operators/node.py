@@ -23,6 +23,7 @@ from mathutils import (
 from bpy.app.translations import (
     pgettext_tip as tip_,
     pgettext_rpt as rpt_,
+    pgettext_data as data_,
 )
 
 
@@ -58,8 +59,7 @@ class NodeAddOperator:
         # convert mouse position to the View2D for later node placement
         if context.region.type == 'WINDOW':
             # convert mouse position to the View2D for later node placement
-            space.cursor_location_from_region(
-                event.mouse_region_x, event.mouse_region_y)
+            space.cursor_location_from_region(event.mouse_region_x, event.mouse_region_y)
         else:
             space.cursor_location = tree.view_center
 
@@ -395,7 +395,7 @@ class NODE_OT_enum_definition_item_add(Operator):
     def execute(self, context):
         node = context.active_node
         enum_def = node.enum_definition
-        item = enum_def.enum_items.new("Item")
+        item = enum_def.enum_items.new(data_("Item"))
         enum_def.active_index = enum_def.enum_items[:].index(item)
         return {'FINISHED'}
 
