@@ -167,10 +167,11 @@ struct GeoNodesModifierData {
 struct GeoNodesOperatorDepsgraphs {
   /** Current evaluated depsgraph from the viewport. Shouldn't be null. */
   const Depsgraph *active;
-  /** Depsgraph containing IDs referenced by the node tree and the node tree itself. */
-  Depsgraph *node_tree;
-  /** Depsgraph containing IDs from node group inputs (the redo panel). */
-  Depsgraph *inputs_extra;
+  /**
+   * Depsgraph containing IDs referenced by the node tree and the node tree itself and from node
+   * group inputs (the redo panel).
+   */
+  Depsgraph *extra;
 
   ~GeoNodesOperatorDepsgraphs();
 

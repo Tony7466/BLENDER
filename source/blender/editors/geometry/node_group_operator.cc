@@ -274,26 +274,19 @@ static void store_result_geometry(
   }
 }
 
-/** Create a dependency graph referencing all data-blocks used by the node group. */
-static Depsgraph *build_node_tree_depsgraph(const Depsgraph &depsgraph_active,
-                                            const bNodeTree &node_tree)
+static void gather_node_group_ids(const bNodeTree &node_tree, Set<ID *> &ids)
 {
-  Set<ID *> ids;
+  const int orig_size = ids.size();
+
   bool needs_own_transform_relation = false;
   bool needs_scene_camera_relation = false;
   nodes::find_node_tree_dependencies(
       node_tree, ids, needs_own_transform_relation, needs_scene_camera_relation);
-  if (ids.is_empty()) {
-    return nullptr;
+  if (ids.size() != orig_size) {
+    /* Only evaluate the node group if it references data-blocks. In that case it needs to be
+     * evaluated so that ID pointers are switched to point to evaluated data-blocks. */
+    ids.add(const_cast<ID *>(&node_tree.id));
   }
-  ids.add(const_cast<ID *>(&node_tree.id));
-  Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&depsgraph_active),
-                                       DEG_get_input_scene(&depsgraph_active),
-                                       DEG_get_input_view_layer(&depsgraph_active),
-                                       DEG_get_mode(&depsgraph_active));
-  DEG_graph_build_from_ids(depsgraph, Vector<ID *>(ids.begin(), ids.end()));
-  DEG_evaluate_on_refresh(depsgraph);
-  return depsgraph;
 }
 
 static bool id_needs_evaluation(const Depsgraph &depsgraph, ID *id)
@@ -304,26 +297,27 @@ static bool id_needs_evaluation(const Depsgraph &depsgraph, ID *id)
   return DEG_get_evaluated_id(&depsgraph, id) == id;
 }
 
-static Depsgraph *build_inputs_depsgraph(const Depsgraph &depsgraph_active,
-                                         const IDProperty &properties)
+static void gather_input_ids(const Depsgraph &depsgraph_active,
+                             const IDProperty &properties,
+                             Set<ID *> &ids)
 {
-  Vector<ID *> input_ids;
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
           if (id_needs_evaluation(depsgraph_active, id)) {
-            input_ids.append_non_duplicates(id);
+            ids.add(id);
           }
         }
       });
-  if (input_ids.is_empty()) {
-    return nullptr;
-  }
+}
+
+static Depsgraph *build_extra_depsgraph(const Depsgraph &depsgraph_active, const Set<ID *> &ids)
+{
   Depsgraph *depsgraph = DEG_graph_new(DEG_get_bmain(&depsgraph_active),
                                        DEG_get_input_scene(&depsgraph_active),
                                        DEG_get_input_view_layer(&depsgraph_active),
                                        DEG_get_mode(&depsgraph_active));
-  DEG_graph_build_from_ids(depsgraph, input_ids);
+  DEG_graph_build_from_ids(depsgraph, Vector<ID *>(ids.begin(), ids.end()));
   DEG_evaluate_on_refresh(depsgraph);
   return depsgraph;
 }
@@ -411,18 +405,21 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   const Vector<Object *> objects = gather_supported_objects(*C, *bmain, mode);
 
   Depsgraph *depsgraph_active = CTX_data_ensure_evaluated_depsgraph(C);
+  Set<ID *> extra_ids;
+  gather_node_group_ids(*node_tree_orig, extra_ids);
+  gather_input_ids(*depsgraph_active, *op->properties, extra_ids);
   const nodes::GeoNodesOperatorDepsgraphs depsgraphs{
       depsgraph_active,
-      build_node_tree_depsgraph(*depsgraph_active, *node_tree_orig),
-      build_inputs_depsgraph(*depsgraph_active, *op->properties)};
+      extra_ids.is_empty() ? nullptr : build_extra_depsgraph(*depsgraph_active, extra_ids),
+  };
 
   IDProperty *properties = replace_inputs_evaluated_data_blocks(*op->properties, depsgraphs);
   BLI_SCOPED_DEFER([&]() { IDP_FreeProperty_ex(properties, false); });
 
   const bNodeTree *node_tree = nullptr;
-  if (depsgraphs.node_tree) {
+  if (depsgraphs.extra) {
     node_tree = reinterpret_cast<const bNodeTree *>(
-        DEG_get_evaluated_id(depsgraphs.node_tree, const_cast<ID *>(&node_tree_orig->id)));
+        DEG_get_evaluated_id(depsgraphs.extra, const_cast<ID *>(&node_tree_orig->id)));
   }
   else {
     node_tree = node_tree_orig;

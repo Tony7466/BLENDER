@@ -4329,11 +4329,8 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
 
 GeoNodesOperatorDepsgraphs::~GeoNodesOperatorDepsgraphs()
 {
-  if (this->node_tree) {
-    DEG_graph_free(this->node_tree);
-  }
-  if (this->inputs_extra) {
-    DEG_graph_free(this->inputs_extra);
+  if (Depsgraph *graph = this->extra) {
+    DEG_graph_free(graph);
   }
 }
 
@@ -4353,12 +4350,7 @@ const ID *GeoNodesOperatorDepsgraphs::get_evaluated_id(const ID &id_orig) const
       return id;
     }
   }
-  if (const Depsgraph *graph = this->node_tree) {
-    if (const ID *id = get_only_evaluated_id(*graph, id_orig)) {
-      return id;
-    }
-  }
-  if (const Depsgraph *graph = this->inputs_extra) {
+  if (const Depsgraph *graph = this->extra) {
     if (const ID *id = get_only_evaluated_id(*graph, id_orig)) {
       return id;
     }
