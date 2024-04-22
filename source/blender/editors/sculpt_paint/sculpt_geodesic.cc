@@ -192,6 +192,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
     threading::parallel_for(IndexRange(queue.size()), 128, [&](IndexRange range) {
       TLS &tls = all_tls.local();
       Set<int> &new_edges = tls.new_edges;
+      new_edges.reserve(4 * range.size());
 
       for (const int value : range) {
         const int edge_index = queue[value];
@@ -220,12 +221,8 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
               continue;
             }
-            if (!sculpt_geodesic_mesh_test_dist_add(vert_positions,
-                                                    vertex_other,
-                                                    edge_vert_a,
-                                                    edge_vert_b,
-                                                    dists,
-                                                    initial_verts))
+            if (!sculpt_geodesic_mesh_test_dist_add(
+                    vert_positions, vertex_other, edge_vert_a, edge_vert_b, dists, initial_verts))
             {
               continue;
             }
