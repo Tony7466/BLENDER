@@ -854,7 +854,6 @@ static FillBoundary build_fill_boundary(Image &ima)
     }
     BoundarySection &section = boundary_starts.lookup(start_index);
     section.push_back(start_index);
-
     NeighborIterator iter = {start_index, start_direction};
     while (find_next_neighbor(iter)) {
       /* Loop closed when arriving at start again. */
@@ -865,12 +864,16 @@ static FillBoundary build_fill_boundary(Image &ima)
       /* Join existing sections. */
       if (boundary_starts.contains(iter.index)) {
         BoundarySection &next_section = boundary_starts.lookup(iter.index);
+        if (next_section.empty()) {
+          /* Empty sections are only start indices, remove and continue. */
+          boundary_starts.remove(iter.index);
+          continue;
+        }
+
+        /* Merge existing points into the current section before removing. */
         section.splice(section.end(), next_section);
         boundary_starts.remove(iter.index);
-        /* If the joined section contains any points it is finished and we can stop. */
-        if (!next_section.empty()) {
-          break;
-        }
+        break;
       }
 
       section.push_back(iter.index);
@@ -1044,8 +1047,9 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   // TODO based on the fill_factor (aka "Precision") setting.
   constexpr const int min_window_size = 128;
   const float pixel_scale = 1.0f;
-  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-                                  int2(min_window_size));
+  // const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+  //                                 int2(min_window_size));
+  const int2 win_size = int2(min_window_size);
 
   // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
