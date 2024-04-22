@@ -1379,9 +1379,25 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     BLI_assert(BKE_object_get_editmesh_eval_final(ob) != nullptr);
   }
 
-  const bool is_editmode = (mesh->runtime->edit_mesh != nullptr) &&
-                           (BKE_object_get_editmesh_eval_final(ob) != nullptr) &&
-                           DRW_object_is_in_edit_mode(ob);
+  const bool is_editmode = [&]() {
+    if (!mesh->runtime->edit_mesh) {
+      return false;
+    }
+    if (!BKE_object_get_editmesh_eval_final(ob)) {
+      return false;
+    }
+    if (!object_orig) {
+      return false;
+    }
+    if (object_orig->type != OB_MESH) {
+      return false;
+    }
+    const Mesh &mesh_orig = *static_cast<const Mesh *>(object_orig->data);
+    if (mesh_orig.runtime->edit_mesh.get() != mesh->runtime->edit_mesh.get()) {
+      return false;
+    }
+    return true;
+  }();
 
   /* This could be set for paint mode too, currently it's only used for edit-mode. */
   const bool edit_mode_active = is_editmode && DRW_object_is_in_edit_mode(ob);
