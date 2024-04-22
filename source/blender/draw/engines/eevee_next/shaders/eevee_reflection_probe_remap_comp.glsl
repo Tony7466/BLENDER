@@ -110,8 +110,11 @@ void main()
         local_radiance[local_index] += local_radiance[local_index + stride];
       }
     }
+  }
 
-    barrier();
+  barrier();
+
+  if (extract_sh) {
     if (gl_LocalInvocationIndex == 0u) {
       /* Find the middle point of the whole thread-group. Use it as light vector.
        * Note that this is an approximation since the footprint of a thread-group is not
