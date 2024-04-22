@@ -23,7 +23,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Realize All")
       .default_value(true)
       .field_on_all()
-      .description("Determine wether to realize nested instances completly");
+      .description(
+          "Realize all levels of nested instances for a top-level instances. Overrides the value "
+          "of the Depth input");
   b.add_input<decl::Int>("Depth").default_value(0).min(0).field_on_all().description(
       "Number of levels of nested instances to realize for each top-level instance");
   b.add_output<decl::Geometry>("Geometry").propagate_all();
