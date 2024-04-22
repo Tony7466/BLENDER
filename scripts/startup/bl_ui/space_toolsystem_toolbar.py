@@ -767,8 +767,29 @@ class _defs_edit_mesh:
             props = tool.operator_properties("mesh.polybuild_face_at_cursor_move")
             props_macro = props.MESH_OT_polybuild_face_at_cursor
             layout.prop(props_macro, "create_quads")
+
+        def description(_context, _item, km):
+            if km is not None:
+                kmi_add = km.keymap_items.find_from_operator("mesh.polybuild_face_at_cursor_move")
+                kmi_extrude = km.keymap_items.find_from_operator("mesh.polybuild_extrude_at_cursor_move")
+                kmi_delete = km.keymap_items.find_from_operator("mesh.polybuild_delete_at_cursor")
+            else:
+                kmi_add = None
+                kmi_extrude = None
+                kmi_delete = None
+            return tip_(
+                "Use multiple operators in an interactive way to add, delete, or move geometry.\n"
+                "\u2022 %s - Add geometry by moving the cursor close to an element.\n"
+                "\u2022 %s - Extrude edges by moving the cursor.\n"
+                "\u2022 %s - Delete mesh element"
+            ) % (
+                kmi_to_string_or_none(kmi_add),
+                kmi_to_string_or_none(kmi_extrude),
+                kmi_to_string_or_none(kmi_delete),
+            )
         return dict(
             idname="builtin.poly_build",
+            description=description,
             label="Poly Build",
             icon="ops.mesh.polybuild_hover",
             widget="VIEW3D_GGT_mesh_preselect_elem",
@@ -1829,6 +1850,25 @@ class _defs_paint_grease_pencil:
             label="Erase",
             icon="brush.gpencil_draw.erase",
             data_block='ERASE',
+        )
+
+    @ToolDef.from_fn
+    def cutter():
+        def draw_settings(context, layout, _tool):
+            brush = context.tool_settings.gpencil_paint.brush
+            gp_settings = brush.gpencil_settings
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(gp_settings, "use_keep_caps_eraser")
+            row.prop(gp_settings, "use_active_layer_only")
+
+        return dict(
+            idname="builtin.cutter",
+            label="Cutter",
+            icon="ops.gpencil.stroke_cutter",
+            cursor='KNIFE',
+            keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -3367,6 +3407,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_paint_grease_pencil.draw,
             _defs_paint_grease_pencil.erase,
+            _defs_paint_grease_pencil.cutter,
             _defs_paint_grease_pencil.tint,
             None,
             _defs_paint_grease_pencil.line,
