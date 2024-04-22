@@ -514,6 +514,18 @@ ShadowEvalResult shadow_eval(LightData light,
                              int ray_count,
                              int ray_step_count)
 {
+  if (!is_directional && (is_point_light(light.type) || is_spot_light(light.type))) {
+    bool inside_light = distance_squared(P, light._position) <
+                        light_spot_data_get(light).radius_squared;
+    if (inside_light) {
+      /* Early out. */
+      ShadowEvalResult result;
+      result.light_visibilty = 1.0;
+      result.occluder_distance = 0.0;
+      return result;
+    }
+  }
+
 #ifdef EEVEE_SAMPLING_DATA
 #  ifdef GPU_FRAGMENT_SHADER
   vec2 pixel = floor(gl_FragCoord.xy);
