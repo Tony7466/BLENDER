@@ -1663,8 +1663,12 @@ static const bNodeSocket *target_for_reroute(const bNodeSocket &reroute_output)
 }
 
 static std::optional<std::string> create_dangling_reroute_inspection_string(
-    const bNodeSocket &socket)
+    const bNodeTree &ntree, const bNodeSocket &socket)
 {
+  if (ntree.type != NTREE_GEOMETRY) {
+    return std::nullopt;
+  }
+
   const bNode &node = socket.owner_node();
   if (!node.is_dangling_reroute()) {
     return std::nullopt;
@@ -1721,7 +1725,9 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
     inspection_strings.append(std::move(*info));
   }
-  else if (std::optional<std::string> info = create_dangling_reroute_inspection_string(socket)) {
+  else if (std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
+                                                                                       socket))
+  {
     inspection_strings.append(std::move(*info));
   }
   else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
