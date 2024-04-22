@@ -66,10 +66,11 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
     for (const bNodeLink &link : node.internal_links()) {
       const bNodeSocket &input = *link.fromsock;
       const bNodeSocket &output = *link.tosock;
-      if (socket_is_field(input) || socket_is_field(input)) {
+      if (socket_is_field(input) || socket_is_field(output)) {
         relations.reference_relations.append({input.index(), output.index()});
       }
-      else {
+      else if (input.type == SOCK_GEOMETRY) {
+        BLI_assert(input.type == output.type);
         relations.propagate_relations.append({input.index(), output.index()});
       }
     }
