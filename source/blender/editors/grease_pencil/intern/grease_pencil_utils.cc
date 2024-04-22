@@ -486,6 +486,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
   const bool use_multi_frame_falloff = use_multi_frame_editing &&
                                        (toolsettings->gp_sculpt.flag &
                                         GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
+  const int layer_index = *grease_pencil.get_layer_index(layer);
   int center_frame;
   std::pair<int, int> minmax_frame;
   if (use_multi_frame_falloff) {
@@ -506,8 +507,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
                                                         minmax_frame.second,
                                                         toolsettings->gp_sculpt.cur_falloff) :
                                 1.0f;
-      editable_drawings.append(
-          {*drawing, layer.drawing_index_at(frame_number), frame_number, falloff});
+      editable_drawings.append({*drawing, layer_index, frame_number, falloff});
     }
   }
 
