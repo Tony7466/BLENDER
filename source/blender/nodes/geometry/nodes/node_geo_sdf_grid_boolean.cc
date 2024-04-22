@@ -29,7 +29,8 @@ enum class Operation {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Float>("Grid 1").hide_value();
-  b.add_input<decl::Float>("Grid 2").hide_value().multi_input();
+  b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(
+      [](bNode &node) {  node.custom1 =  int16_t(Operation::Difference); });
   b.add_output<decl::Float>("Grid").hide_value();
 }
 
@@ -53,6 +54,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
       node_sock_label(grid_2_socket, "Grid 2");
       break;
   }
+}
+
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = int16_t(Operation::Difference);
 }
 
 #ifdef WITH_OPENVDB
@@ -159,6 +165,7 @@ static void node_register()
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_SDF_GRID_BOOLEAN, "SDF Grid Boolean", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
