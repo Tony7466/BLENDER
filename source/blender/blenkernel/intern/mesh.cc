@@ -215,7 +215,8 @@ static void mesh_free_data(ID *id)
 {
   Mesh *mesh = reinterpret_cast<Mesh *>(id);
 
-  /* Purposely avoid freeing the BMesh, which is freed when leaving edit mode. */
+  /* Purposely avoid freeing the BMesh, which is freed when leaving edit mode.
+   * Deleting a mesh data-block without leaving edit mode isn't correct anyway. */
   mesh->runtime->edit_mesh.reset();
 
   BKE_mesh_clear_geometry_and_metadata(mesh);
