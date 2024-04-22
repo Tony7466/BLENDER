@@ -1047,9 +1047,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   // TODO based on the fill_factor (aka "Precision") setting.
   constexpr const int min_window_size = 128;
   const float pixel_scale = 1.0f;
-  // const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-  //                                 int2(min_window_size));
-  const int2 win_size = int2(min_window_size);
+  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+                                  int2(min_window_size));
 
   // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
