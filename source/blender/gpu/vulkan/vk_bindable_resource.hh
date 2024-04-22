@@ -51,7 +51,7 @@ class VKBindableResource {
   /**
    * Bind the resource to the given descriptor set and add the access mask to the resources.
    */
-  virtual void try_add_to_descriptor_set(
+  virtual void add_to_descriptor_set(
       AddToDescriptorSetData &data,
       int binding,
       shader::ShaderCreateInfo::Resource::BindType bind_type,
@@ -103,7 +103,7 @@ template<shader::ShaderCreateInfo::Resource::BindType BindType> class VKBindSpac
   void apply_bindings(AddToDescriptorSetData &data)
   {
     for (ResourceBinding &binding : bindings_) {
-      binding.resource->try_add_to_descriptor_set(
+      binding.resource->add_to_descriptor_set(
           data, binding.binding, BindType, binding.sampler_state);
     }
   }

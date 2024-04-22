@@ -51,11 +51,10 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
   VKContext::get()->state_manager_get().storage_buffer_bind(*this, binding);
 }
 
-void VKIndexBuffer::try_add_to_descriptor_set(
-    AddToDescriptorSetData &data,
-    int binding,
-    shader::ShaderCreateInfo::Resource::BindType bind_type,
-    const GPUSamplerState /*sampler_state*/)
+void VKIndexBuffer::add_to_descriptor_set(AddToDescriptorSetData &data,
+                                          int binding,
+                                          shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                          const GPUSamplerState /*sampler_state*/)
 {
   BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();
