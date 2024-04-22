@@ -2545,15 +2545,11 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const wmKeyMapItem *kmi,
                                    bool text_fallback);
 
-/**
- * Draw keymap items TFM_MODAL_AXIS_X, TFM_MODAL_AXIS_Y, TFM_MODAL_AXIS_Z, TFM_MODAL_PLANE_X,
- * TFM_MODAL_PLANE_Y, TFM_MODAL_PLANE_Z, in a way that requires less horizontal space.
- */
-bool uiTemplateEventFromKeymapItemXYZ(uiLayout *layout,
-                                      EnumPropertyItem item,
-                                      const wmKeyMapItem *kmi,
-                                      const bool collapse_axis,
-                                      const bool collapse_planes);
+/* Draw keymap item for status bar. Returns number of items consumed,
+ * as X/Y/Z items may get merged to use less space. */
+int uiTemplateStatusBarModalItem(uiLayout *layout,
+                                 const wmKeyMap *keymap,
+                                 const EnumPropertyItem *item);
 
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,

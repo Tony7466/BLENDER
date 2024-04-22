@@ -6352,29 +6352,6 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
 /** \name Modal Keymap Status
  * \{ */
 
-static bool can_collapse_keymap_items(const EnumPropertyItem *modal_items,
-                         wmKeyMap *keymap,
-                         const char *item1, const char *item2, const char *item3)
-{
-  blender::Vector<wmKeyMapItem *> kmi_list;
-  for (int i = 0; modal_items[i].identifier; i++) {
-    if (STR_ELEM(modal_items[i].identifier, item1, item2, item3)) {
-      for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi;
-           kmi = kmi->next)
-      {
-        if (kmi->propvalue == modal_items[i].value) {
-          kmi_list.append(kmi);
-        }
-      }
-    }
-  }
-  return (kmi_list.size() == 3 && (kmi_list[0]->shift == kmi_list[1]->shift) &&
-          (kmi_list[0]->shift == kmi_list[2]->shift) && (kmi_list[0]->ctrl == kmi_list[1]->ctrl) &&
-          (kmi_list[0]->ctrl == kmi_list[2]->ctrl) && (kmi_list[0]->alt == kmi_list[1]->alt) &&
-          (kmi_list[0]->alt == kmi_list[2]->alt) && (kmi_list[0]->oskey == kmi_list[1]->oskey) &&
-          (kmi_list[0]->oskey == kmi_list[2]->oskey));
-}
-
 bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *layout)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -6399,10 +6376,6 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
     return false;
   }
   const EnumPropertyItem *items = static_cast<const EnumPropertyItem *>(keymap->modal_items);
-  const bool collapse_axis = can_collapse_keymap_items(
-      items, keymap, "AXIS_X", "AXIS_Y", "AXIS_Z");
-  const bool collapse_planes = can_collapse_keymap_items(
-      items, keymap, "PLANE_X", "PLANE_Y", "PLANE_Z");
 
   uiLayout *row = uiLayoutRow(layout, true);
   for (int i = 0; items[i].identifier; i++) {
@@ -6415,35 +6388,16 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       continue;
     }
 
-    bool show_text = true;
-
-    {
-      /* WARNING: O(n^2). */
-      wmKeyMapItem *kmi = nullptr;
-      for (kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi; kmi = kmi->next) {
-        if (kmi->propvalue == items[i].value) {
-          break;
-        }
-      }
-      if (kmi != nullptr) {
-        if (kmi->val == KM_RELEASE) {
-          /* Assume release events just disable something which was toggled on. */
-          continue;
-        }
-        if (uiTemplateEventFromKeymapItemXYZ(row, items[i], kmi, collapse_axis, collapse_planes)) {
-          continue;
-        }
-        if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {
-          show_text = false;
-        }
-      }
+    const int num_items_used = uiTemplateStatusBarModalItem(row, keymap, items + i);
+    if (num_items_used > 0) {
+      /* Skip items in case consecutive items were merged. */
+      i += num_items_used - 1;
     }
-    if (show_text) {
-      if (std::optional<std::string> str = WM_modalkeymap_operator_items_to_string(
-              op->type, items[i].value, true))
-      {
-        uiItemL(row, fmt::format("{}: {}", *str, items[i].name).c_str(), ICON_NONE);
-      }
+    else if (std::optional<std::string> str = WM_modalkeymap_operator_items_to_string(
+                 op->type, items[i].value, true))
+    {
+      /*  Show text instead */
+      uiItemL(row, fmt::format("{}: {}", *str, items[i].name).c_str(), ICON_NONE);
     }
   }
   return true;
