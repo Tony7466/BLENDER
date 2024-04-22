@@ -542,6 +542,11 @@ ShadowEvalResult shadow_eval(LightData light,
    * the light. */
   vec3 N_bias = is_transmission ? reflect(Ng, shadow_dir) : Ng;
 
+  if (dot(Ng, shadow_dir) < 0.0) {
+    /* Always bias towards the light. */
+    N_bias -= 2.0;
+  }
+
   /* Avoid self intersection. */
   P = offset_ray(P, N_bias);
   /* The above offset isn't enough in most situation. Still add a bigger bias. */
