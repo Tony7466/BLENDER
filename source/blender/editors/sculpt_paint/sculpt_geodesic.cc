@@ -49,7 +49,7 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
                                                const int v2,
                                                float *dists,
                                                GSet *initial_verts,
-                                               std::mutex& mut)
+                                               std::mutex &mut)
 {
   if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(v0))) {
     return false;
@@ -76,9 +76,9 @@ static bool sculpt_geodesic_mesh_test_dist_add(Span<float3> vert_positions,
   }
 
   if (dist0 < dists[v0]) {
-      mut.lock();
-    dists[v0]= dist0;
-      mut.unlock();
+    // mut.lock();
+    dists[v0] = dist0;
+    // mut.unlock();
     return true;
   }
 
@@ -89,7 +89,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
 {
   SCOPED_TIMER("geodesic_mesh_create");
 
-    std::mutex mut;
+  std::mutex mut;
   SculptSession *ss = ob->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
@@ -204,13 +204,33 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
           if (dists[edge_vert_a] > dists[edge_vert_b]) {
             std::swap(edge_vert_a, edge_vert_b);
           }
-          sculpt_geodesic_mesh_test_dist_add(vert_positions,
+          /*sculpt_geodesic_mesh_test_dist_add(vert_positions,
                                              edge_vert_b,
                                              edge_vert_a,
                                              SCULPT_GEODESIC_VERTEX_NONE,
                                              dists,
                                              initial_verts,
-                                             mut);
+                                             mut);*/
+          if (!BLI_gset_haskey(initial_verts, POINTER_FROM_INT(edge_vert_b))) {
+
+            BLI_assert(dists[v1] != std::numeric_limits<float>::max());
+            if (dists[edge_vert_b] > dists[edge_vert_a]) {
+
+              float dist0;
+
+              float vec[3];
+              sub_v3_v3v3(vec, vert_positions[edge_vert_a], vert_positions[edge_vert_b]);
+              dist0 = dists[edge_vert_a] + len_v3(vec);
+
+              if (dist0 < dists[edge_vert_b]) {
+                std::atomic<float> &atomic_dist_b = reinterpret_cast<std::atomic<float> &>(
+                    dists[edge_vert_b]);
+                if (atomic_dist_b.load() > dist0) {
+                  atomic_dist_b.store(dist0);
+                }
+              }
+            }
+          }
         }
 
         for (const int face : ss->edge_to_face_map[edge_index]) {
@@ -221,6 +241,7 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             if (ELEM(vertex_other, edge_vert_a, edge_vert_b)) {
               continue;
             }
+            /*//--------------------
             if (!sculpt_geodesic_mesh_test_dist_add(vert_positions,
                                                     vertex_other,
                                                     edge_vert_a,
@@ -231,20 +252,58 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
             {
               continue;
             }
+            ///------------------------*/
+            if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(vertex_other))) {
+              continue;
+            }
 
-            for (const int edge_other : ss->vert_to_edge_map[vertex_other]) {
-              const int edge_vertex_other = bke::mesh::edge_other_vert(edges[edge_other],
-                                                                       vertex_other);
+            BLI_assert(dists[edge_vert_a] != std::numeric_limits<float>::max());
+            if (dists[vertex_other] <= dists[edge_vert_a]) {
+              continue;
+            }
 
-              if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
-                  edge_other == edge_index ||
-                  (!ss->edge_to_face_map[edge_other].is_empty() &&
-                   dists[edge_vertex_other] == std::numeric_limits<float>::max()))
-              {
+            float dist0;
+            if (edge_vert_b != SCULPT_GEODESIC_VERTEX_NONE) {
+              BLI_assert(dists[edge_vert_b] != std::numeric_limits<float>::max());
+              if (dists[vertex_other] <= dists[edge_vert_b]) {
                 continue;
               }
-              new_edges.add(edge_other);
+              dist0 = geodesic_distance_propagate_across_triangle(vert_positions[vertex_other],
+                                                                  vert_positions[edge_vert_a],
+                                                                  vert_positions[edge_vert_b],
+                                                                  dists[edge_vert_a],
+                                                                  dists[edge_vert_b]);
             }
+            else {
+              float vec[3];
+              sub_v3_v3v3(vec, vert_positions[edge_vert_a], vert_positions[vertex_other]);
+              dist0 = dists[edge_vert_a] + len_v3(vec);
+            }
+
+            if (dist0 < dists[vertex_other]) {
+
+              std::atomic<float> &atomic_dist_other = reinterpret_cast<std::atomic<float> &>(
+                  dists[vertex_other]);
+              if (atomic_dist_other.load() > dist0) {
+                atomic_dist_other.store(dist0);
+              }
+
+              for (const int edge_other : ss->vert_to_edge_map[vertex_other]) {
+                const int edge_vertex_other = bke::mesh::edge_other_vert(edges[edge_other],
+                                                                         vertex_other);
+
+                if (!(affected_vert[vertex_other] || affected_vert[edge_vertex_other]) ||
+                    edge_other == edge_index ||
+                    (!ss->edge_to_face_map[edge_other].is_empty() &&
+                     dists[edge_vertex_other] == std::numeric_limits<float>::max()))
+                {
+                  continue;
+                }
+                new_edges.add(edge_other);
+              }
+            }
+
+            //--------------
           }
         }
       }
