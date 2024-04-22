@@ -6316,13 +6316,13 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   /* Workspace status text has priority. */
   if (!workspace->runtime->status.is_empty()) {
     uiLayout *row = uiLayoutRow(layout, true);
-    for (WorkSpaceStatusItem *item : workspace->runtime->status) {
-      if (item->space_factor != 0.0f) {
-        uiItemS_ex(row, item->space_factor);
+    for (WorkSpaceStatusItem item : workspace->runtime->status) {
+      if (item.space_factor != 0.0f) {
+        uiItemS_ex(row, item.space_factor);
       }
       else {
-        uiBut *but = uiItemL_ex(row, item->text.c_str(), item->icon, false, false);
-        if (item->inverted) {
+        uiBut *but = uiItemL_ex(row, item.text.c_str(), item.icon, false, false);
+        if (item.inverted) {
           but->drawflag |= UI_BUT_ICON_INVERT;
         }
       }

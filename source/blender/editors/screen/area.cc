@@ -847,11 +847,11 @@ static void ed_workspace_status_item(WorkSpace *workspace,
     return;
   }
 
-  WorkSpaceStatusItem *item = new WorkSpaceStatusItem();
-  item->text = text;
-  item->icon = icon;
-  item->space_factor = space_factor;
-  item->inverted = inverted;
+  WorkSpaceStatusItem item;
+  item.text = text;
+  item.icon = icon;
+  item.space_factor = space_factor;
+  item.inverted = inverted;
   workspace->runtime->status.append(item);
 }
 
@@ -928,10 +928,10 @@ void WorkspaceStatus::range(std::string text, int icon1, int icon2)
   ed_workspace_status_text_item(workspace_, text);
 }
 
-void WorkspaceStatus::item_bool(std::string text, bool enabled, int icon1, int icon2)
+void WorkspaceStatus::item_bool(std::string text, bool interted, int icon1, int icon2)
 {
-  ed_workspace_status_mouse_item(workspace_, icon1, enabled);
-  ed_workspace_status_mouse_item(workspace_, icon2, enabled);
+  ed_workspace_status_mouse_item(workspace_, icon1, interted);
+  ed_workspace_status_mouse_item(workspace_, icon2, interted);
   ed_workspace_status_text_item(workspace_, text);
 }
 

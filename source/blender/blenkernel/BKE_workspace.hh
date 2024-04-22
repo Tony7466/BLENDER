@@ -18,17 +18,16 @@ struct WorkSpaceInstanceHook;
 struct WorkSpaceLayout;
 
 struct WorkSpaceStatusItem {
-  struct WorkSpaceStatusItem *next, *prev;
   int icon = 0;
-  std::string text;
-  float space_factor;
-  bool inverted;
+  std::string text = {};
+  float space_factor = 0.0f;
+  bool inverted = false;
 };
 
 namespace blender::bke {
 
 struct WorkSpaceRuntime {
-  blender::Vector<WorkSpaceStatusItem *> status = {};
+  blender::Vector<WorkSpaceStatusItem> status;
 };
 
 }  // namespace blender::bke
