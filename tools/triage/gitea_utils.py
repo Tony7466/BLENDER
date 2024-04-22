@@ -40,10 +40,10 @@ def url_json_get(url: str) -> Optional[Union[Dict[str, Any], List[Dict[str, Any]
 
 def url_json_get_all_pages(
         url: str,
-        limit: int = 50,
+        limit: int = 30,
         verbose: bool = False,
 ) -> List[Dict[str, Any]]:
-    assert limit <= 50, "50 is the maximum limit of items per page"
+    assert limit <= 30, "30 is the maximum limit of items per page"
     result: List[Dict[str, Any]] = []
     page = 1
     while True:
