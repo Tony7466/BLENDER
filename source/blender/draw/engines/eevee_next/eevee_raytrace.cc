@@ -138,7 +138,9 @@ void RayTraceModule::sync()
   {
     PassSimple &pass = trace_fallback_ps_;
     pass.init();
-    pass.shader_set(inst_.shaders.static_shader_get(RAY_TRACE_FALLBACK));
+    GPUShader *sh = inst_.shaders.static_shader_get(RAY_TRACE_FALLBACK);
+    pass.specialize_constant(sh, "closure_index", &data_.closure_index);
+    pass.shader_set(sh);
     pass.bind_ssbo("tiles_coord_buf", &raytrace_tracing_tiles_buf_);
     pass.bind_image("ray_data_img", &ray_data_tx_);
     pass.bind_image("ray_time_img", &ray_time_tx_);
@@ -148,6 +150,7 @@ void RayTraceModule::sync()
     pass.bind_resources(inst_.volume_probes);
     pass.bind_resources(inst_.sphere_probes);
     pass.bind_resources(inst_.sampling);
+    pass.bind_resources(inst_.gbuffer);
     pass.dispatch(raytrace_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
@@ -332,7 +335,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   RaytraceEEVEE options = ray_tracing_options_;
 
-  bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
+  bool use_horizon_scan = options.trace_max_roughness < 1.0f;
 
   const int resolution_scale = max_ii(1, power_of_2_max_i(options.resolution_scale));
   const int horizon_resolution_scale = max_ii(
@@ -377,7 +380,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   raytrace_denoise_tiles_buf_.resize(ceil_to_multiple_u(denoise_tile_count, 512));
 
   /* Data for tile classification. */
-  float roughness_mask_start = options.screen_trace_max_roughness;
+  float roughness_mask_start = options.trace_max_roughness;
   float roughness_mask_fade = 0.2f;
   data_.roughness_mask_scale = 1.0 / roughness_mask_fade;
   data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
@@ -511,7 +514,7 @@ RayTraceResultTexture RayTraceModule::trace(
   data_.quality = 1.0f - 0.95f * options.screen_trace_quality;
   data_.brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
 
-  float roughness_mask_start = options.screen_trace_max_roughness;
+  float roughness_mask_start = options.trace_max_roughness;
   float roughness_mask_fade = 0.2f;
   data_.roughness_mask_scale = 1.0 / roughness_mask_fade;
   data_.roughness_mask_bias = data_.roughness_mask_scale * roughness_mask_start;
