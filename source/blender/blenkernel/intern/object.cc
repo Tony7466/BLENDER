@@ -1639,7 +1639,7 @@ void BKE_object_free_derived_caches(Object *ob)
   if (ob->runtime->editmesh_eval_cage &&
       ob->runtime->editmesh_eval_cage != reinterpret_cast<Mesh *>(ob->runtime->data_eval))
   {
-    BKE_mesh_eval_delete(ob->runtime->editmesh_eval_cage);
+    BKE_id_free(nullptr, ob->runtime->editmesh_eval_cage);
   }
   ob->runtime->editmesh_eval_cage = nullptr;
 
@@ -1647,7 +1647,7 @@ void BKE_object_free_derived_caches(Object *ob)
     if (ob->runtime->is_data_eval_owned) {
       ID *data_eval = ob->runtime->data_eval;
       if (GS(data_eval->name) == ID_ME) {
-        BKE_mesh_eval_delete((Mesh *)data_eval);
+        BKE_id_free(nullptr, (Mesh *)data_eval);
       }
       else {
         BKE_libblock_free_data(data_eval, false);
@@ -1659,7 +1659,7 @@ void BKE_object_free_derived_caches(Object *ob)
   }
   if (ob->runtime->mesh_deform_eval != nullptr) {
     Mesh *mesh_deform_eval = ob->runtime->mesh_deform_eval;
-    BKE_mesh_eval_delete(mesh_deform_eval);
+    BKE_id_free(nullptr, mesh_deform_eval);
     ob->runtime->mesh_deform_eval = nullptr;
   }
 

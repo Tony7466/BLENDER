@@ -603,6 +603,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surf_lib.glsl
   engines/eevee_next/shaders/eevee_surf_occupancy_frag.glsl
   engines/eevee_next/shaders/eevee_surf_shadow_frag.glsl
+  engines/eevee_next/shaders/eevee_surf_volume_frag.glsl
   engines/eevee_next/shaders/eevee_shadow_page_tile_vert.glsl
   engines/eevee_next/shaders/eevee_shadow_page_tile_frag.glsl
   engines/eevee_next/shaders/eevee_surf_world_frag.glsl
@@ -612,13 +613,13 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surfel_list_lib.glsl
   engines/eevee_next/shaders/eevee_surfel_list_sort_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_ray_comp.glsl
+  engines/eevee_next/shaders/eevee_thickness_amend_lib.glsl
   engines/eevee_next/shaders/eevee_thickness_lib.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
   engines/eevee_next/shaders/eevee_vertex_copy_comp.glsl
   engines/eevee_next/shaders/eevee_volume_integration_comp.glsl
   engines/eevee_next/shaders/eevee_volume_lib.glsl
-  engines/eevee_next/shaders/eevee_volume_material_comp.glsl
   engines/eevee_next/shaders/eevee_volume_resolve_frag.glsl
   engines/eevee_next/shaders/eevee_volume_scatter_comp.glsl
 
@@ -955,6 +956,11 @@ if(WITH_GTESTS)
       list(APPEND INC_SYS
         PUBLIC ${VULKAN_INCLUDE_DIRS}
       )
+      if(APPLE)
+        list(APPEND INC_SYS
+          ${MOLTENVK_INCLUDE_DIRS}
+        )
+      endif()
     endif()
   endif()
 endif()

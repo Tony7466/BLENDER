@@ -52,7 +52,7 @@
 using blender::float3;
 using blender::Span;
 
-Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
+Mesh *BKE_mesh_wrapper_from_editmesh(std::shared_ptr<BMEditMesh> em,
                                      const CustomData_MeshMasks *cd_mask_extra,
                                      const Mesh *me_settings)
 {
@@ -68,7 +68,7 @@ Mesh *BKE_mesh_wrapper_from_editmesh(BMEditMesh *em,
   /* Use edit-mesh directly where possible. */
   mesh->runtime->is_original_bmesh = true;
 
-  mesh->runtime->edit_mesh = std::make_shared<BMEditMesh>(*em);
+  mesh->runtime->edit_mesh = std::move(em);
 
   /* Make sure we crash if these are ever used. */
 #ifndef NDEBUG
@@ -319,6 +319,7 @@ int BKE_mesh_wrapper_face_len(const Mesh *mesh)
 
 static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
 {
+  using namespace blender::bke;
   SubsurfRuntimeData *runtime_data = (SubsurfRuntimeData *)mesh->runtime->subsurf_runtime_data;
   if (runtime_data == nullptr || runtime_data->settings.level == 0) {
     return mesh;
@@ -327,7 +328,7 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
   /* Initialize the settings before ensuring the descriptor as this is checked to decide whether
    * subdivision is needed at all, and checking the descriptor status might involve checking if the
    * data is out-of-date, which is a very expensive operation. */
-  SubdivToMeshSettings mesh_settings;
+  subdiv::ToMeshSettings mesh_settings;
   mesh_settings.resolution = runtime_data->resolution;
   mesh_settings.use_optimal_display = runtime_data->use_optimal_display;
 
@@ -335,7 +336,8 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
     return mesh;
   }
 
-  Subdiv *subdiv = BKE_subsurf_modifier_subdiv_descriptor_ensure(runtime_data, mesh, false);
+  subdiv::Subdiv *subdiv = BKE_subsurf_modifier_subdiv_descriptor_ensure(
+      runtime_data, mesh, false);
   if (subdiv == nullptr) {
     /* Happens on bad topology, but also on empty input mesh. */
     return mesh;
@@ -349,7 +351,7 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
     memcpy(data, mesh->corner_normals().data(), mesh->corner_normals().size_in_bytes());
   }
 
-  Mesh *subdiv_mesh = BKE_subdiv_to_mesh(subdiv, &mesh_settings, mesh);
+  Mesh *subdiv_mesh = subdiv::subdiv_to_mesh(subdiv, &mesh_settings, mesh);
 
   if (use_clnors) {
     BKE_mesh_set_custom_normals(subdiv_mesh,
@@ -359,7 +361,7 @@ static Mesh *mesh_wrapper_ensure_subdivision(Mesh *mesh)
   }
 
   if (!ELEM(subdiv, runtime_data->subdiv_cpu, runtime_data->subdiv_gpu)) {
-    BKE_subdiv_free(subdiv);
+    subdiv::free(subdiv);
   }
 
   if (subdiv_mesh != mesh) {

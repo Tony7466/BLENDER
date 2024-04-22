@@ -206,6 +206,11 @@ static void mesh_copy_data(Main *bmain,
   }
 }
 
+void BKE_mesh_free_editmesh(Mesh *mesh)
+{
+  mesh->runtime->edit_mesh.reset();
+}
+
 static void mesh_free_data(ID *id)
 {
   Mesh *mesh = reinterpret_cast<Mesh *>(id);
@@ -838,14 +843,6 @@ Mesh *BKE_mesh_new_nomain_from_template(const Mesh *me_src,
 {
   return BKE_mesh_new_nomain_from_template_ex(
       me_src, verts_num, edges_num, 0, faces_num, corners_num, CD_MASK_EVERYTHING);
-}
-
-void BKE_mesh_eval_delete(Mesh *mesh_eval)
-{
-  /* Evaluated mesh may point to edit mesh, but never owns it. */
-  mesh_free_data(&mesh_eval->id);
-  BKE_libblock_free_data(&mesh_eval->id, false);
-  MEM_freeN(mesh_eval);
 }
 
 Mesh *BKE_mesh_copy_for_eval(const Mesh *source)
