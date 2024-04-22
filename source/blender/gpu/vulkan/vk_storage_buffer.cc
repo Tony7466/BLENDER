@@ -53,11 +53,10 @@ void VKStorageBuffer::bind(int slot)
   context.state_manager_get().storage_buffer_bind(*this, slot);
 }
 
-void VKStorageBuffer::try_add_to_descriptor_set(
-    AddToDescriptorSetData &data,
-    int binding,
-    shader::ShaderCreateInfo::Resource::BindType bind_type,
-    const GPUSamplerState /*sampler_state*/)
+void VKStorageBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
+                                            int binding,
+                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                            const GPUSamplerState /*sampler_state*/)
 {
   ensure_allocated();
   const std::optional<VKDescriptorSet::Location> location =

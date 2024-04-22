@@ -56,11 +56,10 @@ void VKUniformBuffer::clear_to_zero()
   buffer_.clear(context, 0);
 }
 
-void VKUniformBuffer::try_add_to_descriptor_set(
-    AddToDescriptorSetData &data,
-    int slot,
-    shader::ShaderCreateInfo::Resource::BindType bind_type,
-    const GPUSamplerState /*sampler_state*/)
+void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
+                                            int slot,
+                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                            const GPUSamplerState /*sampler_state*/)
 {
   if (!buffer_.is_allocated()) {
     allocate();

@@ -44,10 +44,10 @@ class VKUniformBuffer : public UniformBuf, public VKBindableResource, NonCopyabl
   }
 
   /* Bindable resource */
-  void try_add_to_descriptor_set(AddToDescriptorSetData &data,
-                                 int binding,
-                                 shader::ShaderCreateInfo::Resource::BindType bind_type,
-                                 const GPUSamplerState sampler_state) override;
+  void add_to_descriptor_set(AddToDescriptorSetContext &data,
+                             int binding,
+                             shader::ShaderCreateInfo::Resource::BindType bind_type,
+                             const GPUSamplerState sampler_state) override;
 
  private:
   void allocate();

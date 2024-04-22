@@ -625,10 +625,10 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
-void VKTexture::try_add_to_descriptor_set(AddToDescriptorSetData &data,
-                                          int binding,
-                                          shader::ShaderCreateInfo::Resource::BindType bind_type,
-                                          const GPUSamplerState sampler_state)
+void VKTexture::add_to_descriptor_set(AddToDescriptorSetContext &data,
+                                      int binding,
+                                      shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                      const GPUSamplerState sampler_state)
 {
   const std::optional<VKDescriptorSet::Location> location =
       data.shader_interface.descriptor_set_location(bind_type, binding);
