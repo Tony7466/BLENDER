@@ -1396,6 +1396,17 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
 #  endif
     (void)rd;
   }
+
+  /* Verify `imf->views_format`. */
+  if (imf->imtype == R_IMF_IMTYPE_MULTILAYER) {
+    if (imf->views_format == R_IMF_VIEWS_STEREO_3D) {
+      imf->views_format = R_IMF_VIEWS_MULTIVIEW;
+    }
+  }else if(imf->imtype != R_IMF_IMTYPE_OPENEXR){
+    if (imf->views_format == R_IMF_VIEWS_MULTIVIEW) {
+      imf->views_format = R_IMF_VIEWS_INDIVIDUAL;
+    }
+  }
 }
 
 static const EnumPropertyItem *rna_ImageFormatSettings_file_format_itemf(bContext * /*C*/,
