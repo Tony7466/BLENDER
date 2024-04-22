@@ -309,7 +309,9 @@ BMFace *BKE_bmbvh_ray_cast(BMBVHTree *bmtree,
   hit.index = -1;
 
   /* ok to leave 'uv' uninitialized */
-  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr}; bmcb_data.looptris = &tmp_looptris; memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
+  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr};
+  bmcb_data.looptris = &tmp_looptris;
+  memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
   bmcb_data.cos_cage = bmtree->cos_cage;
 
   BLI_bvhtree_ray_cast(bmtree->tree, co, dir, radius, &hit, bmbvh_ray_cast_cb, &bmcb_data);
@@ -374,7 +376,9 @@ BMFace *BKE_bmbvh_ray_cast_filter(BMBVHTree *bmtree,
   hit.index = -1;
 
   /* ok to leave 'uv' uninitialized */
-  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr}; bmcb_data->looptris = &tmp_looptris; memcpy(bmcb_data->looptris, bmtree->looptris, sizeof(*bmtree->looptris));
+  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr};
+  bmcb_data->looptris = &tmp_looptris;
+  memcpy(bmcb_data->looptris, bmtree->looptris, sizeof(*bmtree->looptris));
   bmcb_data->cos_cage = bmtree->cos_cage;
 
   BLI_bvhtree_ray_cast(
@@ -437,7 +441,9 @@ BMVert *BKE_bmbvh_find_vert_closest(BMBVHTree *bmtree, const float co[3], const 
   hit.dist_sq = dist_max_sq;
   hit.index = -1;
 
-  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr}; bmcb_data.looptris = &tmp_looptris; memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
+  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr};
+  bmcb_data.looptris = &tmp_looptris;
+  memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
   bmcb_data.cos_cage = bmtree->cos_cage;
   bmcb_data.dist_max_sq = dist_max_sq;
 
@@ -496,7 +502,9 @@ BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *bmtree, const float co[3], const 
   hit.dist_sq = dist_max_sq;
   hit.index = -1;
 
-  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr}; bmcb_data.looptris = &tmp_looptris; memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
+  const BMLoop *tmp_looptris[3] = {nullptr, nullptr, nullptr};
+  bmcb_data.looptris = &tmp_looptris;
+  memcpy(bmcb_data.looptris, bmtree->looptris, sizeof(*bmtree->looptris));
   bmcb_data.cos_cage = bmtree->cos_cage;
   bmcb_data.dist_max_sq = dist_max_sq;
 
