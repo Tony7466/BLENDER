@@ -779,9 +779,6 @@ class RENDER_PT_eevee_next_sampling_shadows(RenderButtonsPanel, Panel):
         col = layout.column()
         col.prop(props, "shadow_normal_bias", text="Normal Bias")
 
-        col = layout.column()
-        col.prop(props, "use_shadow_jittered_viewport", text="Jittered Shadows (Viewport)")
-        
         col = layout.column(align=False, heading="Volume Shadows")
         row = col.row(align=True)
         sub = row.row(align=True)

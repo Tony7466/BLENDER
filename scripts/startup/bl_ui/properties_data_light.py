@@ -153,10 +153,6 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         layout.active = context.scene.eevee.use_shadows and light.use_shadow
 
         col = layout.column()
-        col.prop(light, "use_shadow_jittering")
-        sub = col.column(align=True)
-        sub.active = light.use_shadow_jittering
-        sub.prop(light, "shadow_jitter_overblur", text="Jittering Overblur")
         col.prop(light, "shadow_softness_factor", text="Softness")
         if light.type == 'SUN':
             col.prop(light, "shadow_trace_distance", text="Distance")
@@ -165,6 +161,17 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
 
         col.prop(light, "shadow_filter_radius", text="Filter")
         col.prop(light, "shadow_resolution_scale", text="Resolution")
+
+        col.separator()
+
+        col = layout.column(align=False, heading="Jitter")
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(light, "use_shadow_jittering", text="")
+        sub = sub.row(align=True)
+        sub.active = light.use_shadow_jittering
+        sub.prop(light, "shadow_jitter_overblur", text="Overblur")
+
 
 
 class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
