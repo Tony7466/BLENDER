@@ -959,7 +959,7 @@ static BVHTree *bvhtree_from_editmesh_corner_tris_create_tree(float epsilon,
     return nullptr;
   }
 
-  const BMLoop *(*corner_tris)[3] = const_cast<const BMLoop *(*)[3]>(em->looptris);
+  const BMLoop *(*corner_tris)[3];memcpy(corner_tris, em->looptris, sizeof(*em->looptris));
 
   /* Insert BMesh-tessellation triangles into the BVH-tree, unless they are hidden
    * and/or selected. Even if the faces themselves are not selected for the snapped
