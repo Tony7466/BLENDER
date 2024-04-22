@@ -105,7 +105,8 @@ bool BKE_collection_has_object_recursive_instanced(Collection *collection, Objec
  * Find whether an evaluated object's original ID is contained or instanced by any object in this
  * collection. The collection is expected to be an evaluated data-block too.
  */
-bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection, Object *ob);
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection_eval,
+                                                           Object *object_eval);
 Collection *BKE_collection_object_find(Main *bmain,
                                        Scene *scene,
                                        Collection *collection,
