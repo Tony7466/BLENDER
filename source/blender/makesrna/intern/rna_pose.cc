@@ -459,8 +459,8 @@ bool rna_PoseChannel_constraints_override_apply(Main *bmain,
   PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
   IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
 
-  BLI_assert(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER &&
-             "Unsupported RNA override operation on constraints collection");
+  BLI_assert_msg(opop->operation == LIBOVERRIDE_OP_INSERT_AFTER,
+                 "Unsupported RNA override operation on constraints collection");
 
   bPoseChannel *pchan_dst = (bPoseChannel *)ptr_dst->data;
   bPoseChannel *pchan_src = (bPoseChannel *)ptr_src->data;
@@ -597,7 +597,7 @@ static int rna_PoseChannel_rotation_4d_editable(const PointerRNA *ptr, int index
 }
 
 /* not essential, but much faster than the default lookup function */
-static int rna_PoseBones_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+static bool rna_PoseBones_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
 {
   bPose *pose = (bPose *)ptr->data;
   bPoseChannel *pchan = BKE_pose_channel_find_name(pose, key);

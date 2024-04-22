@@ -29,6 +29,7 @@ struct Scene;
 struct UndoType;
 struct ViewDepths;
 struct View3D;
+struct ViewContext;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
@@ -51,8 +52,11 @@ void ED_operatortypes_grease_pencil_layers();
 void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
+void ED_operatortypes_grease_pencil_primitives();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
+void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
+
 void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
@@ -176,11 +180,29 @@ bool editable_grease_pencil_poll(bContext *C);
 bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+bool grease_pencil_sculpting_poll(bContext *C);
+
+float opacity_from_input_sample(const float pressure,
+                                const Brush *brush,
+                                const Scene *scene,
+                                const BrushGpencilSettings *settings);
+float radius_from_input_sample(const float pressure,
+                               const float3 location,
+                               ViewContext vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const BrushGpencilSettings *settings);
+int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  /* This is used by the onion skinning system. A value of 0 means the drawing is on the current
+   * frame. Negative values are before the current frame, positive values are drawings after the
+   * current frame. The magnitude of the value indicates how far the drawing is from the current
+   * frame (either in absolute frames, or in number of keyframes). */
+  const int onion_id;
 };
 struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
@@ -195,7 +217,8 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
-                                              const GreasePencil &grease_pencil);
+                                              const GreasePencil &grease_pencil,
+                                              bool do_onion_skinning);
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,

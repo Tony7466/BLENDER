@@ -2287,7 +2287,7 @@ void clip_ray_ortho(
   axis_dominant_v3_to_m3(mat, ray_normal);
   float a[3], b[3], min[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, max[3] = {FLT_MIN, FLT_MIN, FLT_MIN};
 
-  /* Compute AABB bounds rotated along ray_normal.*/
+  /* Compute AABB bounds rotated along ray_normal. */
   copy_v3_v3(a, bb_root.min);
   copy_v3_v3(b, bb_root.max);
   mul_m3_v3(mat, a);
@@ -2982,7 +2982,7 @@ bool pbvh_has_mask(const PBVH *pbvh)
       return pbvh->mesh->attributes().contains(".sculpt_mask");
     case PBVH_BMESH:
       return pbvh->header.bm &&
-             (CustomData_has_layer_named(&pbvh->header.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask"));
+             CustomData_has_layer_named(&pbvh->header.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
   }
 
   return false;
