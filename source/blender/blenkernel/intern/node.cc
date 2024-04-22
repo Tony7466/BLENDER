@@ -527,6 +527,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatTimeAbsolute";
       case PROP_DISTANCE:
         return "NodeSocketFloatDistance";
+      case PROP_WAVELENGTH:
+        return "NodeSocketFloatWavelength";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -2089,6 +2091,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeSocketFloatDistance";
+        case PROP_WAVELENGTH:
+          return "NodeSocketFloatWavelength";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2174,6 +2178,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
           return "NodeTreeInterfaceSocketFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeTreeInterfaceSocketFloatDistance";
+        case PROP_WAVELENGTH:
+          return "NodeTreeInterfaceSocketFloatWavelength";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
@@ -3142,8 +3148,12 @@ void nodePositionPropagate(bNode *node)
 
 }  // namespace blender::bke
 
-static bNodeTree *ntreeAddTree_do(
-    Main *bmain, ID *owner_id, const bool is_embedded, const char *name, const char *idname)
+static bNodeTree *ntreeAddTree_do(Main *bmain,
+                                  std::optional<Library *> owner_library,
+                                  ID *owner_id,
+                                  const bool is_embedded,
+                                  const char *name,
+                                  const char *idname)
 {
   /* trees are created as local trees for compositor, material or texture nodes,
    * node groups and other tree types are created as library data.
@@ -3152,7 +3162,10 @@ static bNodeTree *ntreeAddTree_do(
   if (is_embedded || bmain == nullptr) {
     flag |= LIB_ID_CREATE_NO_MAIN;
   }
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(BKE_libblock_alloc(bmain, ID_NT, name, flag));
+  BLI_assert_msg(!owner_library || !owner_id,
+                 "Embedded NTrees should never have a defined owner library here");
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(
+      BKE_libblock_alloc_in_lib(bmain, owner_library, ID_NT, name, flag));
   BKE_libblock_init_empty(&ntree->id);
   if (is_embedded) {
     BLI_assert(owner_id != nullptr);
@@ -3174,7 +3187,15 @@ static bNodeTree *ntreeAddTree_do(
 
 bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
 {
-  return ntreeAddTree_do(bmain, nullptr, false, name, idname);
+  return ntreeAddTree_do(bmain, std::nullopt, nullptr, false, name, idname);
+}
+
+bNodeTree *BKE_node_tree_add_in_lib(Main *bmain,
+                                    Library *owner_library,
+                                    const char *name,
+                                    const char *idname)
+{
+  return ntreeAddTree_do(bmain, owner_library, nullptr, false, name, idname);
 }
 
 namespace blender::bke {
@@ -3184,7 +3205,7 @@ bNodeTree *ntreeAddTreeEmbedded(Main * /*bmain*/,
                                 const char *name,
                                 const char *idname)
 {
-  return ntreeAddTree_do(nullptr, owner_id, true, name, idname);
+  return ntreeAddTree_do(nullptr, std::nullopt, owner_id, true, name, idname);
 }
 
 bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)

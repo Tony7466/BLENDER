@@ -7,12 +7,17 @@
  */
 
 #include "BKE_attribute.hh"
+#include "BKE_brush.hh"
 #include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 #include "BKE_scene.hh"
 
 #include "BLI_math_geom.h"
+#include "BLI_math_numbers.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_vector_set.hh"
 
@@ -221,7 +226,7 @@ static std::pair<int, int> get_minmax_selected_frame_numbers(const GreasePencil 
     for (const auto [frame_number, frame] : layer.frames().items()) {
       if (frame_number != current_frame && frame.is_selected()) {
         frame_min = math::min(frame_min, frame_number);
-        frame_max = math::min(frame_max, frame_number);
+        frame_max = math::max(frame_max, frame_number);
       }
     }
   }
@@ -459,14 +464,14 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
   const ToolSettings *toolsettings = scene.toolsettings;
   const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
                                         GP_USE_MULTI_FRAME_EDITING) != 0;
+  const int layer_index = *grease_pencil.get_layer_index(layer);
 
   Vector<MutableDrawingInfo> editable_drawings;
   const Array<int> frame_numbers = get_editable_frames_for_layer(
       layer, current_frame, use_multi_frame_editing);
   for (const int frame_number : frame_numbers) {
     if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
-      editable_drawings.append(
-          {*drawing, layer.drawing_index_at(frame_number), frame_number, 1.0f});
+      editable_drawings.append({*drawing, layer_index, frame_number, 1.0f});
     }
   }
 
@@ -539,6 +544,12 @@ IndexMask retrieve_editable_strokes(Object &object,
                                     IndexMaskMemory &memory)
 {
   using namespace blender;
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange curves_range = drawing.strokes().curves_range();
+
+  if (object.totcol == 0) {
+    return IndexMask(curves_range);
+  }
 
   /* Get all the editable material indices */
   VectorSet<int> editable_material_indices = get_editable_material_indices(object);
@@ -546,8 +557,6 @@ IndexMask retrieve_editable_strokes(Object &object,
     return {};
   }
 
-  const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange curves_range = drawing.strokes().curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();
 
   const VArray<int> materials = *attributes.lookup<int>("material_index", bke::AttrDomain::Curve);
@@ -606,14 +615,19 @@ IndexMask retrieve_editable_points(Object &object,
                                    const bke::greasepencil::Drawing &drawing,
                                    IndexMaskMemory &memory)
 {
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = drawing.strokes().points_range();
+
+  if (object.totcol == 0) {
+    return IndexMask(points_range);
+  }
+
   /* Get all the editable material indices */
   VectorSet<int> editable_material_indices = get_editable_material_indices(object);
   if (editable_material_indices.is_empty()) {
     return {};
   }
 
-  const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = drawing.strokes().points_range();
   const bke::AttributeAccessor attributes = curves.attributes();
 
   /* Propagate the material index to the points. */
@@ -712,6 +726,99 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
     return ed::greasepencil::retrieve_editable_and_selected_points(object, drawing, memory);
   }
   return {};
+}
+
+static float paint_calc_object_space_radius(ViewContext *vc,
+                                            const float3 center,
+                                            float pixel_radius)
+{
+  Object *ob = vc->obact;
+  const float2 xy_delta = float2(pixel_radius, 0.0f);
+  const float4x4 mat = ob->object_to_world();
+
+  const float3 loc = math::transform_point(mat, center);
+
+  const float zfac = ED_view3d_calc_zfac(vc->rv3d, loc);
+  float3 delta;
+  ED_view3d_win_to_delta(vc->region, xy_delta, zfac, delta);
+
+  const float scale = math::length(
+      math::transform_direction(mat, float3(math::numbers::inv_sqrt3)));
+
+  return math::safe_divide(math::length(delta), scale);
+}
+
+static float calc_brush_radius(ViewContext *vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const float3 location)
+{
+  if (!BKE_brush_use_locked_size(scene, brush)) {
+    return paint_calc_object_space_radius(vc, location, BKE_brush_size_get(scene, brush));
+  }
+  return BKE_brush_unprojected_radius_get(scene, brush);
+}
+
+float radius_from_input_sample(const float pressure,
+                               const float3 location,
+                               ViewContext vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const BrushGpencilSettings *settings)
+{
+  float radius = calc_brush_radius(&vc, brush, scene, location);
+  if (BKE_brush_use_size_pressure(brush)) {
+    radius *= BKE_curvemapping_evaluateF(settings->curve_sensitivity, 0, pressure);
+  }
+  return radius;
+}
+
+float opacity_from_input_sample(const float pressure,
+                                const Brush *brush,
+                                const Scene *scene,
+                                const BrushGpencilSettings *settings)
+{
+  float opacity = BKE_brush_alpha_get(scene, brush);
+  if (BKE_brush_use_alpha_pressure(brush)) {
+    opacity *= BKE_curvemapping_evaluateF(settings->curve_strength, 0, pressure);
+  }
+  return opacity;
+}
+
+int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_GREASE_PENCIL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  if (!grease_pencil.has_active_layer()) {
+    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
+    return OPERATOR_CANCELLED;
+  }
+
+  const Paint *paint = BKE_paint_get_active_from_context(C);
+  const Brush *brush = BKE_paint_brush_for_read(paint);
+  if (brush == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+
+  if (!active_layer.is_editable()) {
+    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Ensure a drawing at the current keyframe. */
+  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+    return OPERATOR_CANCELLED;
+  }
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 }  // namespace blender::ed::greasepencil

@@ -29,6 +29,7 @@ struct Scene;
 struct UndoType;
 struct ViewDepths;
 struct View3D;
+struct ViewContext;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
@@ -51,8 +52,10 @@ void ED_operatortypes_grease_pencil_layers();
 void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
+void ED_operatortypes_grease_pencil_primitives();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
+void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
 /**
@@ -131,6 +134,41 @@ bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::
 
 void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer);
 
+struct KeyframeClipboard {
+  /* Datatype for use in copy/paste buffer. */
+  struct DrawingBufferItem {
+    blender::bke::greasepencil::FramesMapKey frame_number;
+    bke::greasepencil::Drawing drawing;
+    int duration;
+  };
+
+  struct LayerBufferItem {
+    Vector<DrawingBufferItem> drawing_buffers;
+    blender::bke::greasepencil::FramesMapKey first_frame;
+    blender::bke::greasepencil::FramesMapKey last_frame;
+  };
+
+  Map<std::string, LayerBufferItem> copy_buffer{};
+  int first_frame{std::numeric_limits<int>::max()};
+  int last_frame{std::numeric_limits<int>::min()};
+  int cfra{0};
+
+  void clear()
+  {
+    copy_buffer.clear();
+    first_frame = std::numeric_limits<int>::max();
+    last_frame = std::numeric_limits<int>::min();
+    cfra = 0;
+  }
+};
+
+bool grease_pencil_copy_keyframes(bAnimContext *ac, KeyframeClipboard &clipboard);
+
+bool grease_pencil_paste_keyframes(bAnimContext *ac,
+                                   const eKeyPasteOffset offset_mode,
+                                   const eKeyMergeMode merge_mode,
+                                   const KeyframeClipboard &clipboard);
+
 /**
  * Sets the selection flag, according to \a selection_mode to the frame at \a frame_number in the
  * \a layer if such frame exists. Returns false if no such frame exists.
@@ -176,6 +214,18 @@ bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 bool grease_pencil_sculpting_poll(bContext *C);
+
+float opacity_from_input_sample(const float pressure,
+                                const Brush *brush,
+                                const Scene *scene,
+                                const BrushGpencilSettings *settings);
+float radius_from_input_sample(const float pressure,
+                               const float3 location,
+                               ViewContext vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const BrushGpencilSettings *settings);
+int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
