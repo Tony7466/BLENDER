@@ -198,7 +198,7 @@ void select_id_draw_object(void *vedata,
 
   switch (ob->type) {
     case OB_MESH:
-      if (ob->mode & OB_MODE_EDIT) {
+      if (DRW_object_is_in_edit_mode(ob)) {
         bool draw_facedot = check_ob_drawface_dot(select_mode, v3d, eDrawType(ob->dt));
         draw_select_id_edit_mesh(stl,
                                  ob,
