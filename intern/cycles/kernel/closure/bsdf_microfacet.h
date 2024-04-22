@@ -422,9 +422,11 @@ ccl_device Spectrum bsdf_microfacet_estimate_albedo(KernelGlobals kg,
     ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
                                                          bsdf->fresnel;
 
-    /* Precomputing LUTs for thin-film iridescence isn't viable, so fall back to the specular
-     * reflection approximation from the microfacet_fresnel call above in that case. */
-    if (fresnel->thin_film.thickness <= 0.1f) {
+    if (fresnel->thin_film.thickness > 0.1f) {
+      /* Precomputing LUTs for thin-film iridescence isn't viable, so fall back to the specular
+       * reflection approximation from the microfacet_fresnel call above in that case. */
+    }
+    else {
       float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
       float s;
       if (fresnel->exponent < 0.0f) {
@@ -541,7 +543,7 @@ ccl_device_forceinline int bsdf_microfacet_eval_flag(const ccl_private Microface
 
 template<MicrofacetType m_type>
 ccl_device Spectrum bsdf_microfacet_eval(KernelGlobals kg,
-                                         const ShaderClosure *sc,
+                                         ccl_private const ShaderClosure *sc,
                                          const float3 Ng,
                                          const float3 wi,
                                          const float3 wo,

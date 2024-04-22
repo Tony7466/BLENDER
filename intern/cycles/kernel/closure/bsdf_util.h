@@ -64,7 +64,7 @@ ccl_device_forceinline float fresnel_dielectric(float cos_theta_i,
                                                 float eta,
                                                 ccl_private float *r_cos_theta_t)
 {
-  return average(fresnel_dielectric_polarized(cos_theta_i, eta, r_cos_theta_t, NULL));
+  return average(fresnel_dielectric_polarized(cos_theta_i, eta, r_cos_theta_t, nullptr));
 }
 
 /* Refract the incident ray, given the cosine of the refraction angle and the relative refractive
