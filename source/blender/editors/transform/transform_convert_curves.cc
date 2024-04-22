@@ -138,13 +138,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     }
 
     if (tc.data_len > 0) {
-      tc.data = static_cast<TransData *>(MEM_callocN(
-          tc.data_len * sizeof(TransData) + sizeof(std::array<MutableSpan<float3>, 3>), __func__));
-      std::array<MutableSpan<float3>, 3> &positions =
-          *reinterpret_cast<std::array<MutableSpan<float3>, 3> *>(tc.data + tc.data_len);
-      positions[0] = curves.positions_for_write();
-      positions[1] = curves.handle_positions_left_for_write();
-      positions[2] = curves.handle_positions_right_for_write();
+      tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
     }
   }
 
@@ -206,10 +200,8 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
-      const std::array<MutableSpan<float3>, 3> &positions_per_layer =
-          *reinterpret_cast<std::array<MutableSpan<float3>, 3> *>(tc.data + tc.data_len);
-      curves.calculate_bezier_auto_handles(positions_per_layer[1], positions_per_layer[2]);
       curves.tag_positions_changed();
+      // curves.calculate_bezier_auto_handles();
     }
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
   }
@@ -236,8 +228,10 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   static const Array<int> layer_shift_in_bezier = {1, 0, 2};
   static const Array<int> layer_shift_in_others = {0};
 
-  const std::array<MutableSpan<float3>, 3> &positions_per_layer =
-      *reinterpret_cast<std::array<MutableSpan<float3>, 3> *>(tc.data + tc.data_len);
+  const std::array<MutableSpan<float3>, 3> positions_per_layer{
+      curves.positions_for_write(),
+      curves.handle_positions_left_for_write(),
+      curves.handle_positions_right_for_write()};
 
   float mtx[3][3], smtx[3][3];
   copy_m3_m4(mtx, transform.ptr());
