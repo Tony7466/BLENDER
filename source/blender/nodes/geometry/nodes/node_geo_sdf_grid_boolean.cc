@@ -30,7 +30,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Float>("Grid 1").hide_value();
   b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(
-      [](bNode &node) {  node.custom1 =  int16_t(Operation::Difference); });
+      [](bNode &node) { node.custom1 = int16_t(Operation::Difference); });
   b.add_output<decl::Float>("Grid").hide_value();
 }
 
