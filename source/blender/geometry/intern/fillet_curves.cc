@@ -630,7 +630,7 @@ static bke::CurvesGeometry fillet_curves(
 
       int i = dst_range.start();
       int end_2 = dst_2_range.last();
-      for (int i_2 = dst_2_range.start(); i_2 < end_2; i_2++) {
+      for (int i_2 = dst_2_range.start(); i_2 <= end_2; i_2++) {
         printf("i: %d i_2: %d\n", i, i_2);
         handle_l_w[i_2] = handle_l[i];
         handle_r_w[i_2] = handle_r[i];
@@ -640,11 +640,20 @@ static bke::CurvesGeometry fillet_curves(
         i++;
       }
     }
-    
+
     dst_curves = dst_curves_2;
     dst_points_by_curve = curve_ranges_2;
     all_point_offsets = src_to_dst2_offsets.as_span();
   }
+
+  printf("Right side Handles");
+  print_span3f(dst_curves.handle_positions_right());
+
+  printf("Left side Handles");
+  print_span3f(dst_curves.handle_positions_left());
+
+  printf("Positions");
+  print_span3f(dst_curves.positions());
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes,
