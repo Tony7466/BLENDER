@@ -14,6 +14,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "DEG_depsgraph_query.hh"
+
 #include "GEO_transform.hh"
 
 #include "node_geometry_util.hh"
@@ -71,7 +73,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   if (params.output_is_required("Geometry")) {
     /* Compare by `orig_id` because objects may be copied into separate depsgraphs. */
-    if (object->id.orig_id == self_object->id.orig_id) {
+    if (DEG_get_original_id(&object->id) ==
+        DEG_get_original_id(const_cast<ID *>(&self_object->id)))
+    {
       params.error_message_add(NodeWarningType::Error,
                                TIP_("Geometry cannot be retrieved from the modifier object"));
       params.set_default_remaining_outputs();

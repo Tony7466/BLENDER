@@ -1057,9 +1057,11 @@ bool BKE_collection_has_object_recursive_instanced(Collection *collection, Objec
 
 bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection, Object *ob)
 {
+  BLI_assert(collection->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  const ID *ob_orig = DEG_get_original_id(&ob->id);
   const ListBase objects = BKE_collection_object_cache_instanced_get(collection);
   LISTBASE_FOREACH (Base *, base, &objects) {
-    if (base->object->id.orig_id == ob->id.orig_id) {
+    if (DEG_get_original_id(&base->object->id) == ob_orig) {
       return true;
     }
   }
