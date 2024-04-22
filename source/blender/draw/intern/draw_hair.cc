@@ -72,12 +72,7 @@ static void drw_hair_ensure_vbo()
 
 void DRW_hair_init()
 {
-  if (GPU_transform_feedback_support() || GPU_compute_shader_support()) {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
-  }
-  else {
-    g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_WRITE_COLOR);
-  }
+  g_tf_pass = DRW_pass_create("Update Hair Pass", DRW_STATE_NO_DRAW);
 
   drw_hair_ensure_vbo();
 }
@@ -247,7 +242,7 @@ DRWShadingGroup *DRW_shgroup_hair_create_sub(Object *object,
   }
   /* TODO(fclem): Until we have a better way to cull the hair and render with orco, bypass
    * culling test. */
-  GPUBatch *geom = hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
+  blender::gpu::Batch *geom = hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
   DRW_shgroup_call_no_cull(shgrp, geom, object);
 
   return shgrp;
@@ -352,12 +347,12 @@ void hair_free()
 }
 
 template<typename PassT>
-GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
-                                             const Scene *scene,
-                                             Object *object,
-                                             ParticleSystem *psys,
-                                             ModifierData *md,
-                                             GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup_implementation(PassT &sub_ps,
+                                                        const Scene *scene,
+                                                        Object *object,
+                                                        ParticleSystem *psys,
+                                                        ModifierData *md,
+                                                        GPUMaterial *gpu_material)
 {
   /** NOTE: This still relies on the old DRW_hair implementation. */
 
@@ -416,22 +411,22 @@ GPUBatch *hair_sub_pass_setup_implementation(PassT &sub_ps,
   return hair_cache->final[subdiv].proc_hairs[thickness_res - 1];
 }
 
-GPUBatch *hair_sub_pass_setup(PassMain::Sub &sub_ps,
-                              const Scene *scene,
-                              Object *object,
-                              ParticleSystem *psys,
-                              ModifierData *md,
-                              GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup(PassMain::Sub &sub_ps,
+                                         const Scene *scene,
+                                         Object *object,
+                                         ParticleSystem *psys,
+                                         ModifierData *md,
+                                         GPUMaterial *gpu_material)
 {
   return hair_sub_pass_setup_implementation(sub_ps, scene, object, psys, md, gpu_material);
 }
 
-GPUBatch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
-                              const Scene *scene,
-                              Object *object,
-                              ParticleSystem *psys,
-                              ModifierData *md,
-                              GPUMaterial *gpu_material)
+blender::gpu::Batch *hair_sub_pass_setup(PassSimple::Sub &sub_ps,
+                                         const Scene *scene,
+                                         Object *object,
+                                         ParticleSystem *psys,
+                                         ModifierData *md,
+                                         GPUMaterial *gpu_material)
 {
   return hair_sub_pass_setup_implementation(sub_ps, scene, object, psys, md, gpu_material);
 }

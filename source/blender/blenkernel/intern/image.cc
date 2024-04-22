@@ -79,7 +79,7 @@
 #include "BKE_preview_image.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLF_api.hh"
 
@@ -133,6 +133,9 @@ static void image_runtime_reset_on_copy(Image *image)
 
   image->runtime.partial_update_register = nullptr;
   image->runtime.partial_update_user = nullptr;
+
+  image->runtime.backdrop_offset[0] = 0.0f;
+  image->runtime.backdrop_offset[1] = 0.0f;
 }
 
 static void image_runtime_free_data(Image *image)
@@ -2000,7 +2003,7 @@ void BKE_image_stamp_buf(Scene *scene,
 
   /* must enable BLF_WORD_WRAP before using */
 #define TEXT_SIZE_CHECK_WORD_WRAP(str, w, h) \
-  ((str[0]) && (BLF_boundbox_ex(mono, str, sizeof(str), &wrap.rect, &wrap.info), \
+  ((str[0]) && (BLF_boundbox(mono, str, sizeof(str), &wrap.rect, &wrap.info), \
                 (void)(h = h_fixed * wrap.info.lines), \
                 (w = BLI_rcti_size_x(&wrap.rect))))
 

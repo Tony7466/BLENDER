@@ -15,6 +15,7 @@
 #include <array>
 
 #include "BLI_array.hh"
+#include "BLI_math_vector_types.hh"
 
 #include "DNA_customdata_types.h"
 
@@ -58,11 +59,6 @@ struct BMEditMesh {
   int mirror_cdlayer;
 
   /**
-   * Enable for evaluated copies, causes the edit-mesh to free the memory, not its contents.
-   */
-  char is_shallow_copy;
-
-  /**
    * ID data is older than edit-mode data.
    * Set #Main.is_memfile_undo_flush_needed when enabling.
    */
@@ -103,14 +99,16 @@ BMEditMesh *BKE_editmesh_from_object(Object *ob);
  */
 void BKE_editmesh_free_data(BMEditMesh *em);
 
-float (*BKE_editmesh_vert_coords_alloc(
-    Depsgraph *depsgraph, BMEditMesh *em, Scene *scene, Object *ob, int *r_vert_len))[3];
-float (*BKE_editmesh_vert_coords_alloc_orco(BMEditMesh *em, int *r_vert_len))[3];
-const float (*BKE_editmesh_vert_coords_when_deformed(Depsgraph *depsgraph,
-                                                     BMEditMesh *em,
-                                                     Scene *scene,
-                                                     Object *obedit,
-                                                     int *r_vert_len,
-                                                     bool *r_is_alloc))[3];
+blender::Array<blender::float3> BKE_editmesh_vert_coords_alloc(Depsgraph *depsgraph,
+                                                               BMEditMesh *em,
+                                                               Scene *scene,
+                                                               Object *ob);
+blender::Array<blender::float3> BKE_editmesh_vert_coords_alloc_orco(BMEditMesh *em);
+blender::Span<blender::float3> BKE_editmesh_vert_coords_when_deformed(
+    Depsgraph *depsgraph,
+    BMEditMesh *em,
+    Scene *scene,
+    Object *obedit,
+    blender::Array<blender::float3> &r_alloc);
 
 void BKE_editmesh_lnorspace_update(BMEditMesh *em);

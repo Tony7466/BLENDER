@@ -87,6 +87,8 @@
 #define SHADOW_TILEDATA_PER_TILEMAP \
   (SHADOW_TILEMAP_LOD0_LEN + SHADOW_TILEMAP_LOD1_LEN + SHADOW_TILEMAP_LOD2_LEN + \
    SHADOW_TILEMAP_LOD3_LEN + SHADOW_TILEMAP_LOD4_LEN + SHADOW_TILEMAP_LOD5_LEN)
+/* Maximum number of relative LOD distance we can store. */
+#define SHADOW_TILEMAP_MAX_CLIPMAP_LOD 8
 #if 0
 /* Useful for debugging the tile-copy version of the shadow rendering without making debugging
  * tools unresponsive. */
@@ -134,9 +136,6 @@
 #define SUBSURFACE_GROUP_SIZE RAYTRACE_GROUP_SIZE
 #define SUBSURFACE_RADIANCE_FORMAT GPU_R11F_G11F_B10F
 #define SUBSURFACE_OBJECT_ID_FORMAT GPU_R16UI
-
-/* Minimum visibility size. */
-#define LIGHTPROBE_FILTER_VIS_GROUP_SIZE 16
 
 /* Film. */
 #define FILM_GROUP_SIZE 16

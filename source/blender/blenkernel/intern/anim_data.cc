@@ -10,6 +10,8 @@
 #include <cstring>
 #include <optional>
 
+#include "ANIM_animation.hh"
+
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
@@ -278,7 +280,15 @@ bool BKE_animdata_id_is_animated(const ID *id)
     return false;
   }
 
-  if (adt->action != nullptr && !BLI_listbase_is_empty(&adt->action->curves)) {
+  /* If an Animation is assigned, it takes precedence over the Action, even when
+   * this Animation has no F-Curves and the Action does. */
+  if (adt->animation) {
+    const blender::animrig::Animation &anim = adt->animation->wrap();
+    if (anim.is_binding_animated(adt->binding_handle)) {
+      return true;
+    }
+  }
+  else if (adt->action != nullptr && !BLI_listbase_is_empty(&adt->action->curves)) {
     return true;
   }
 
@@ -882,8 +892,12 @@ static bool nlastrips_path_rename_fix(ID *owner_id,
   LISTBASE_FOREACH (NlaStrip *, strip, strips) {
     /* fix strip's action */
     if (strip->act != nullptr) {
-      is_changed |= fcurves_path_rename_fix(
+      const bool is_changed_action = fcurves_path_rename_fix(
           owner_id, prefix, oldName, newName, oldKey, newKey, &strip->act->curves, verify_paths);
+      if (is_changed_action) {
+        DEG_id_tag_update(&strip->act->id, ID_RECALC_ANIMATION);
+      }
+      is_changed |= is_changed_action;
     }
     /* Ignore own F-Curves, since those are local. */
     /* Check sub-strips (if meta-strips). */
@@ -1510,4 +1524,19 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
    *       state, but it's going to be too hard to enforce this single case. */
   BLO_read_data_address(reader, &adt->act_track);
   BLO_read_data_address(reader, &adt->actstrip);
+
+  if (ID_IS_LINKED(id)) {
+    /* Linked NLAs should never be in tweak mode, as you cannot exit that on linked data. */
+    BKE_nla_tweakmode_exit_nofollowptr(adt);
+  }
+}
+
+void BKE_animdata_liboverride_post_process(ID *id)
+{
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (!adt) {
+    return;
+  }
+
+  BKE_nla_liboverride_post_process(id, adt);
 }

@@ -7,6 +7,7 @@ from bpy.types import (
     Menu,
     Operator,
     OperatorFileListElement,
+    Panel,
     WindowManager,
 )
 from bpy.props import (
@@ -18,6 +19,7 @@ from bpy.app.translations import (
     pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
+from bl_ui.utils import PresetPanel
 
 
 # For preset popover menu
@@ -26,6 +28,25 @@ WindowManager.preset_name = StringProperty(
     description="Name for new preset",
     default=data_("New Preset"),
 )
+
+
+def _call_preset_cb(fn, context, filepath):
+    # Allow "None" so the caller doesn't have to assign a variable and check it.
+    if fn is None:
+        return
+
+    # Support a `filepath` argument, optional for backwards compatibility.
+    fn_arg_count = getattr(getattr(fn, "__code__", None), "co_argcount", None)
+    if fn_arg_count == 2:
+        args = (context, filepath)
+    else:
+        print("Deprecated since Blender 4.2, a filepath argument should be included in:", fn)
+        args = (context, )
+
+    try:
+        fn(*args)
+    except BaseException as ex:
+        print("Internal error running", fn, str(ex))
 
 
 class AddPresetBase:
@@ -145,7 +166,7 @@ class AddPresetBase:
 
                             file_preset.write("%s = %r\n" % (rna_path_step, value))
 
-                    file_preset = open(filepath, 'w', encoding="utf-8")
+                    file_preset = open(filepath, "w", encoding="utf-8")
                     file_preset.write("import bpy\n")
 
                     if hasattr(self, "preset_defines"):
@@ -239,8 +260,7 @@ class ExecutePreset(Operator):
             self.report({'ERROR'}, rpt_("Unknown file type: %r") % ext)
             return {'CANCELLED'}
 
-        if hasattr(preset_class, "reset_cb"):
-            preset_class.reset_cb(context)
+        _call_preset_cb(getattr(preset_class, "reset_cb", None), context, filepath)
 
         if ext == ".py":
             try:
@@ -252,8 +272,7 @@ class ExecutePreset(Operator):
             import rna_xml
             rna_xml.xml_file_run(context, filepath, preset_class.preset_xml_map)
 
-        if hasattr(preset_class, "post_cb"):
-            preset_class.post_cb(context)
+        _call_preset_cb(getattr(preset_class, "post_cb", None), context, filepath)
 
         return {'FINISHED'}
 
@@ -523,7 +542,7 @@ class AddPresetEEVEERaytracing(AddPresetBase, Operator):
         "eevee.ray_tracing_method",
         "options.resolution_scale",
         "options.sample_clamp",
-        "options.screen_trace_max_roughness",
+        "options.trace_max_roughness",
         "options.screen_trace_quality",
         "options.screen_trace_thickness",
         "options.use_denoise",
@@ -586,6 +605,61 @@ class RemovePresetInterfaceTheme(AddPresetBase, Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event, title="Remove Custom Theme", confirm_text="Delete")
+
+    def post_cb(self, context):
+        # Without this, the name & colors are kept after removing the theme.
+        # Even though the theme is removed from the list, it's seems like a bug to keep it displayed after removal.
+        bpy.ops.preferences.reset_default_theme()
+
+
+class SavePresetInterfaceTheme(AddPresetBase, Operator):
+    """Save a custom theme in the preset list"""
+    bl_idname = "wm.interface_theme_preset_save"
+    bl_label = "Save Theme"
+    preset_menu = "USERPREF_MT_interface_theme_presets"
+    preset_subdir = "interface_theme"
+
+    remove_active: BoolProperty(
+        default=True,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
+
+    @classmethod
+    def poll(cls, context):
+        from bpy.utils import is_path_builtin
+
+        preset_menu_class = getattr(bpy.types, cls.preset_menu)
+        name = preset_menu_class.bl_label
+        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
+        if (not filepath) or is_path_builtin(filepath):
+            cls.poll_message_set("Built-in themes cannot be overwritten")
+            return False
+        return True
+
+    def execute(self, context):
+        from bpy.utils import is_path_builtin
+        import rna_xml
+        preset_menu_class = getattr(bpy.types, self.preset_menu)
+        name = preset_menu_class.bl_label
+        filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=".xml")
+        if not bool(filepath) or is_path_builtin(filepath):
+            self.report({'ERROR'}, "Built-in themes cannot be overwritten")
+            return {'CANCELLED'}
+
+        try:
+            rna_xml.xml_file_write(context, filepath, preset_menu_class.preset_xml_map)
+        except BaseException as ex:
+            self.report({'ERROR'}, "Unable to overwrite preset: %s" % str(ex))
+            import traceback
+            traceback.print_exc()
+            return {'CANCELLED'}
+
+        context.preferences.themes[0].filepath = filepath
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event, title="Overwrite Custom Theme?", confirm_text="Save")
 
 
 class AddPresetKeyconfig(AddPresetBase, Operator):
@@ -700,6 +774,24 @@ class WM_MT_operator_presets(Menu):
         return AddPresetOperator.operator_path(self.operator)
 
     preset_operator = "script.execute_preset"
+
+
+class WM_PT_operator_presets(PresetPanel, Panel):
+    bl_label = "Operator Presets"
+    preset_add_operator = "wm.operator_preset_add"
+    preset_operator = "script.execute_preset"
+
+    @property
+    def preset_subdir(self):
+        return AddPresetOperator.operator_path(self.operator)
+
+    @property
+    def preset_add_operator_properties(self):
+        return {"operator": self.operator}
+
+    def draw(self, context):
+        self.operator = context.active_operator.bl_idname
+        PresetPanel.draw(self, context)
 
 
 class WM_OT_operator_presets_cleanup(Operator):
@@ -857,6 +949,7 @@ classes = (
     AddPresetHairDynamics,
     AddPresetInterfaceTheme,
     RemovePresetInterfaceTheme,
+    SavePresetInterfaceTheme,
     AddPresetKeyconfig,
     RemovePresetKeyconfig,
     AddPresetNodeColor,
@@ -872,5 +965,6 @@ classes = (
     AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
+    WM_PT_operator_presets,
     WM_OT_operator_presets_cleanup,
 )

@@ -97,12 +97,7 @@ void DRW_curves_init(DRWData *drw_data)
   CurvesUniformBufPool *pool = drw_data->curves_ubos;
   pool->reset();
 
-  if (GPU_transform_feedback_support() || GPU_compute_shader_support()) {
-    g_tf_pass = DRW_pass_create("Update Curves Pass", (DRWState)0);
-  }
-  else {
-    g_tf_pass = DRW_pass_create("Update Curves Pass", DRW_STATE_WRITE_COLOR);
-  }
+  g_tf_pass = DRW_pass_create("Update Curves Pass", (DRWState)0);
 
   drw_curves_ensure_dummy_vbo();
 }
@@ -127,6 +122,8 @@ static void drw_curves_cache_update_compute(CurvesEvalCache *cache,
                                             gpu::VertBuf *output_buf,
                                             gpu::VertBuf *input_buf)
 {
+  BLI_assert(input_buf != nullptr);
+  BLI_assert(output_buf != nullptr);
   GPUShader *shader = DRW_shader_curves_refine_get(CURVES_EVAL_CATMULL_ROM);
   DRWShadingGroup *shgrp = DRW_shgroup_create(shader, g_tf_pass);
   drw_curves_cache_shgrp_attach_resources(shgrp, cache, input_buf);
@@ -317,7 +314,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   }
   /* TODO(fclem): Until we have a better way to cull the curves and render with orco, bypass
    * culling test. */
-  GPUBatch *geom = curves_cache->final.proc_hairs;
+  gpu::Batch *geom = curves_cache->final.proc_hairs;
   DRW_shgroup_call_no_cull(shgrp, geom, object);
 
   return shgrp;
@@ -441,10 +438,10 @@ void curves_free()
 }
 
 template<typename PassT>
-GPUBatch *curves_sub_pass_setup_implementation(PassT &sub_ps,
-                                               const Scene *scene,
-                                               Object *ob,
-                                               GPUMaterial *gpu_material)
+gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
+                                                 const Scene *scene,
+                                                 Object *ob,
+                                                 GPUMaterial *gpu_material)
 {
   /** NOTE: This still relies on the old DRW_curves implementation. */
 
@@ -540,18 +537,18 @@ GPUBatch *curves_sub_pass_setup_implementation(PassT &sub_ps,
   return curves_cache->final.proc_hairs;
 }
 
-GPUBatch *curves_sub_pass_setup(PassMain::Sub &ps,
-                                const Scene *scene,
-                                Object *ob,
-                                GPUMaterial *gpu_material)
+gpu::Batch *curves_sub_pass_setup(PassMain::Sub &ps,
+                                  const Scene *scene,
+                                  Object *ob,
+                                  GPUMaterial *gpu_material)
 {
   return curves_sub_pass_setup_implementation(ps, scene, ob, gpu_material);
 }
 
-GPUBatch *curves_sub_pass_setup(PassSimple::Sub &ps,
-                                const Scene *scene,
-                                Object *ob,
-                                GPUMaterial *gpu_material)
+gpu::Batch *curves_sub_pass_setup(PassSimple::Sub &ps,
+                                  const Scene *scene,
+                                  Object *ob,
+                                  GPUMaterial *gpu_material)
 {
   return curves_sub_pass_setup_implementation(ps, scene, ob, gpu_material);
 }
