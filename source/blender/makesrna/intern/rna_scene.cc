@@ -1402,7 +1402,8 @@ static void rna_ImageFormatSettings_file_format_set(PointerRNA *ptr, int value)
     if (imf->views_format == R_IMF_VIEWS_STEREO_3D) {
       imf->views_format = R_IMF_VIEWS_MULTIVIEW;
     }
-  }else if(imf->imtype != R_IMF_IMTYPE_OPENEXR){
+  }
+  else if (imf->imtype != R_IMF_IMTYPE_OPENEXR) {
     if (imf->views_format == R_IMF_VIEWS_MULTIVIEW) {
       imf->views_format = R_IMF_VIEWS_INDIVIDUAL;
     }
