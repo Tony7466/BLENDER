@@ -1182,8 +1182,6 @@ static void node_socket_draw(const bNodeSocket &sock,
   immVertex2f(pos_id, locx, locy);
 }
 
-/* Ideally sockets themselves should be buttons, but they aren't currently. So add an invisible
- * button on top of them for the tooltip. */
 static void node_socket_tooltip_set(uiBlock &block,
                                     const int socket_index_in_tree,
                                     const float2 location,
@@ -1726,11 +1724,12 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
     }
   }
 
-  if (const std::string str = ss.str(); !str.empty()) {
-    return str;
+  const std::string str = ss.str();
+  if (str.empty()) {
+    return std::nullopt;
   }
 
-  return std::nullopt;
+  return str;
 }
 
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
