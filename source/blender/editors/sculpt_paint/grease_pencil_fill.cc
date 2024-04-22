@@ -795,13 +795,13 @@ static FillBoundary build_fill_boundary(Image &ima)
   };
 
   using BoundarySection = std::list<int>;
-  using BoundaryStartSet = Set<int>;
+  using BoundaryStartMap = Map<int, BoundarySection>;
 
   /* Find possible starting points for boundary sections.
    * Direction 3 == (1, 0) is the starting direction. */
   constexpr const uint8_t start_direction = 3;
-  auto find_start_coordinates = [&]() -> BoundaryStartSet {
-    BoundaryStartSet starts;
+  auto find_start_coordinates = [&]() -> BoundaryStartMap {
+    BoundaryStartMap starts;
     for (const int y : IndexRange(height)) {
       /* Check for empty pixels next to filled pixels. */
       for (const int x : IndexRange(width).drop_back(1)) {
@@ -811,7 +811,7 @@ static FillBoundary build_fill_boundary(Image &ima)
             get_flag(pixels[index_filled], ColorFlag::Fill))
         {
           /* Empty index list indicates uninitialized section. */
-          starts.add(index_filled);
+          starts.add(index_filled, {});
         }
       }
     }
@@ -844,44 +844,42 @@ static FillBoundary build_fill_boundary(Image &ima)
     return false;
   };
 
-  BoundaryStartSet boundary_starts = find_start_coordinates();
+  BoundaryStartMap boundary_starts = find_start_coordinates();
 
   /* Find directions and connectivity for all boundary pixels. */
-  Map<int, BoundarySection> final_sections;
-  while (!boundary_starts.is_empty()) {
-    const int start_index = *boundary_starts.begin();
-    boundary_starts.remove(start_index);
-    BoundarySection section = {start_index};
+  for (const int start_index : boundary_starts.keys()) {
+    /* Boundary map entries may get removed, only handle active starts. */
+    if (!boundary_starts.contains(start_index)) {
+      continue;
+    }
+    BoundarySection &section = boundary_starts.lookup(start_index);
+    section.push_back(start_index);
 
     NeighborIterator iter = {start_index, start_direction};
     while (find_next_neighbor(iter)) {
-      /* Remove other start points that are covered by this section. */
-      boundary_starts.remove(iter.index);
-
       /* Loop closed when arriving at start again. */
       if (iter.index == start_index) {
         break;
       }
 
       /* Join existing sections. */
-      if (final_sections.contains(iter.index)) {
-        BoundarySection &next_section = final_sections.lookup(iter.index);
-
-        /* Splice in the next section after the current section. */
+      if (boundary_starts.contains(iter.index)) {
+        BoundarySection &next_section = boundary_starts.lookup(iter.index);
         section.splice(section.end(), next_section);
-        final_sections.remove(iter.index);
-        break;
+        boundary_starts.remove(iter.index);
+        /* If the joined section contains any points it is finished and we can stop. */
+        if (!next_section.empty()) {
+          break;
+        }
       }
 
       section.push_back(iter.index);
     }
-
-    final_sections.add(start_index, std::move(section));
   }
 
   /* Construct final strokes by tracing the boundary. */
   FillBoundary final_boundary;
-  for (const BoundarySection &section : final_sections.values()) {
+  for (const BoundarySection &section : boundary_starts.values()) {
     final_boundary.offset_indices.append(final_boundary.pixels.size());
     for (const int index : section) {
       final_boundary.pixels.append(index);
