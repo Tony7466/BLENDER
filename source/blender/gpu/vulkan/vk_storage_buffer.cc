@@ -53,7 +53,7 @@ void VKStorageBuffer::bind(int slot)
   context.state_manager_get().storage_buffer_bind(*this, slot);
 }
 
-void VKStorageBuffer::add_to_descriptor_set(AddToDescriptorSetData &data,
+void VKStorageBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
                                             int binding,
                                             shader::ShaderCreateInfo::Resource::BindType bind_type,
                                             const GPUSamplerState /*sampler_state*/)

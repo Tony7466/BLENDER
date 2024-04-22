@@ -51,7 +51,7 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
   VKContext::get()->state_manager_get().storage_buffer_bind(*this, binding);
 }
 
-void VKIndexBuffer::add_to_descriptor_set(AddToDescriptorSetData &data,
+void VKIndexBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
                                           int binding,
                                           shader::ShaderCreateInfo::Resource::BindType bind_type,
                                           const GPUSamplerState /*sampler_state*/)
@@ -59,11 +59,10 @@ void VKIndexBuffer::add_to_descriptor_set(AddToDescriptorSetData &data,
   BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();
 
-  VKContext &context = *VKContext::get();
   const std::optional<VKDescriptorSet::Location> location =
       data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    context.descriptor_set_get().bind_as_ssbo(*this, *location);
+    data.descriptor_set.bind_as_ssbo(*this, *location);
     render_graph::VKBufferAccess buffer_access = {};
     buffer_access.vk_buffer = buffer_.vk_handle();
     buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);

@@ -21,18 +21,35 @@ struct VKResourceAccessInfo;
 }
 
 /**
- * When applying the bindings many data is repeatably being retrieved.
- * This struct contains data so we don't need to retrieve them for each resource that is being
- * bound.
+ * Access to the descriptor set, shader interface is needed when adding state manager bindings to a
+ * descriptor set.
+ *
+ * When adding the bindings to the descriptor set we also record the access flag in
+ * resource_access_info.\
+ *
+ * AddToDescriptorSetContext is a convenience structure so we don't need to pass the references to
+ * the descriptor set, shader interface and resource access info to each method call.
  */
-struct AddToDescriptorSetData : NonCopyable {
+struct AddToDescriptorSetContext : NonCopyable {
+  /** Descriptor set where to bind/add resources to. */
   VKDescriptorSetTracker &descriptor_set;
+
+  /**
+   * Shader interface of the active shader to query shader binding locations and the used access
+   * flags.
+   */
   const VKShaderInterface &shader_interface;
+
+  /**
+   * When adding resources to the descriptor set, its access info should be added to the
+   * resource_access_info. When adding a dispatch/draw node to the render graph, this structure is
+   * passed to make links with the resources and the exact access.
+   */
   render_graph::VKResourceAccessInfo &resource_access_info;
 
-  AddToDescriptorSetData(VKDescriptorSetTracker &descriptor_set,
-                         const VKShaderInterface &shader_interface,
-                         render_graph::VKResourceAccessInfo &resource_access_info)
+  AddToDescriptorSetContext(VKDescriptorSetTracker &descriptor_set,
+                            const VKShaderInterface &shader_interface,
+                            render_graph::VKResourceAccessInfo &resource_access_info)
       : descriptor_set(descriptor_set),
         shader_interface(shader_interface),
         resource_access_info(resource_access_info)
@@ -49,10 +66,14 @@ class VKBindableResource {
 
  public:
   /**
-   * Bind the resource to the given descriptor set and add the access mask to the resources.
+   * Add/bind a resource to a descriptor set (`data.descriptor_set`) and the access info
+   * (`data.resource_access_info`).
+   *
+   * `binding` parameter is the binding as specified in the ShaderCreateInfo.
+   * `bind_type` to make distinction between samples, image load/store, buffer texture binding.
    */
   virtual void add_to_descriptor_set(
-      AddToDescriptorSetData &data,
+      AddToDescriptorSetContext &data,
       int binding,
       shader::ShaderCreateInfo::Resource::BindType bind_type,
       const GPUSamplerState sampler_state = GPUSamplerState::default_sampler()) = 0;
@@ -100,7 +121,7 @@ template<shader::ShaderCreateInfo::Resource::BindType BindType> class VKBindSpac
   /**
    * Apply registered bindings to the active shader.
    */
-  void apply_bindings(AddToDescriptorSetData &data)
+  void add_to_descriptor_set(AddToDescriptorSetContext &data)
   {
     for (ResourceBinding &binding : bindings_) {
       binding.resource->add_to_descriptor_set(

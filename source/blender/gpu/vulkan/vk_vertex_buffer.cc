@@ -37,7 +37,7 @@ void VKVertexBuffer::bind_as_texture(uint binding)
   state_manager.texel_buffer_bind(*this, binding);
 }
 
-void VKVertexBuffer::add_to_descriptor_set(AddToDescriptorSetData &data,
+void VKVertexBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
                                            int binding,
                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
                                            const GPUSamplerState /*sampler_state*/)

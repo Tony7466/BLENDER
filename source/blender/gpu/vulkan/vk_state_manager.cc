@@ -36,12 +36,12 @@ void VKStateManager::apply_bindings(VKContext &context,
   if (shader == nullptr) {
     return;
   }
-  AddToDescriptorSetData data(
+  AddToDescriptorSetContext data(
       context.descriptor_set_get(), shader->interface_get(), resource_access_info);
-  textures_.apply_bindings(data);
-  images_.apply_bindings(data);
-  uniform_buffers_.apply_bindings(data);
-  storage_buffers_.apply_bindings(data);
+  textures_.add_to_descriptor_set(data);
+  images_.add_to_descriptor_set(data);
+  uniform_buffers_.add_to_descriptor_set(data);
+  storage_buffers_.add_to_descriptor_set(data);
 }
 
 void VKStateManager::force_state()
