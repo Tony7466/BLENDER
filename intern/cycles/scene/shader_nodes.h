@@ -482,7 +482,8 @@ class BsdfNode : public BsdfBaseNode {
                ShaderInput *param1,
                ShaderInput *param2,
                ShaderInput *param3 = NULL,
-               ShaderInput *param4 = NULL);
+               ShaderInput *param4 = NULL,
+               ShaderInput *param5 = NULL);
 
   NODE_SOCKET_API(float3, color)
   NODE_SOCKET_API(float3, normal)

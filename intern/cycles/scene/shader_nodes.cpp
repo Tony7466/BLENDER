@@ -2286,11 +2286,11 @@ void BsdfNode::compile(SVMCompiler &compiler,
                        ShaderInput *param1,
                        ShaderInput *param2,
                        ShaderInput *param3,
-                       ShaderInput *param4)
+                       ShaderInput *param4,
+                       ShaderInput *param5)
 {
   ShaderInput *color_in = input("Color");
   ShaderInput *normal_in = input("Normal");
-  ShaderInput *tangent_in = input("Tangent");
 
   if (color_in->link) {
     compiler.add_node(NODE_CLOSURE_WEIGHT, compiler.stack_assign(color_in));
@@ -2300,10 +2300,9 @@ void BsdfNode::compile(SVMCompiler &compiler,
   }
 
   int normal_offset = (normal_in) ? compiler.stack_assign_if_linked(normal_in) : SVM_STACK_INVALID;
-  int tangent_offset = (tangent_in) ? compiler.stack_assign_if_linked(tangent_in) :
-                                      SVM_STACK_INVALID;
   int param3_offset = (param3) ? compiler.stack_assign(param3) : SVM_STACK_INVALID;
   int param4_offset = (param4) ? compiler.stack_assign(param4) : SVM_STACK_INVALID;
+  int param5_offset = (param5) ? compiler.stack_assign(param5) : SVM_STACK_INVALID;
 
   compiler.add_node(
       NODE_CLOSURE_BSDF,
@@ -2314,7 +2313,7 @@ void BsdfNode::compile(SVMCompiler &compiler,
       __float_as_int((param1) ? get_float(param1->socket_type) : 0.0f),
       __float_as_int((param2) ? get_float(param2->socket_type) : 0.0f));
 
-  compiler.add_node(normal_offset, tangent_offset, param3_offset, param4_offset);
+  compiler.add_node(normal_offset, param5_offset, param3_offset, param4_offset);
 }
 
 void BsdfNode::compile(SVMCompiler &compiler)
@@ -2394,11 +2393,20 @@ void GlossyBsdfNode::compile(SVMCompiler &compiler)
 
   /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
   if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
-    BsdfNode::compile(
-        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), input("Color"));
+    BsdfNode::compile(compiler,
+                      input("Roughness"),
+                      input("Anisotropy"),
+                      input("Rotation"),
+                      input("Color"),
+                      input("Tangent"));
   }
   else {
-    BsdfNode::compile(compiler, input("Roughness"), input("Anisotropy"), input("Rotation"));
+    BsdfNode::compile(compiler,
+                      input("Roughness"),
+                      input("Anisotropy"),
+                      input("Rotation"),
+                      NULL,
+                      input("Tangent"));
   }
 }
 
@@ -3535,7 +3543,11 @@ void HairBsdfNode::compile(SVMCompiler &compiler)
 {
   closure = component;
 
-  BsdfNode::compile(compiler, input("RoughnessU"), input("RoughnessV"), input("Offset"));
+  ShaderInput *tangent = input("Tangent");
+  tangent = tangent->link || tangent->constant_folded_in ? tangent : NULL;
+
+  BsdfNode::compile(
+      compiler, input("RoughnessU"), input("RoughnessV"), input("Offset"), NULL, tangent);
 }
 
 void HairBsdfNode::compile(OSLCompiler &compiler)
