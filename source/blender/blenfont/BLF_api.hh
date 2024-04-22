@@ -93,7 +93,7 @@ bool BLF_has_glyph(int fontid, unsigned int unicode) ATTR_WARN_UNUSED_RESULT;
 /**
  * Attach a file with metrics information from memory.
  */
-void BLF_metrics_attach(int fontid, unsigned char *mem, int mem_size) ATTR_NONNULL(2);
+void BLF_metrics_attach(int fontid, const unsigned char *mem, int mem_size) ATTR_NONNULL(2);
 
 void BLF_aspect(int fontid, float x, float y, float z);
 void BLF_position(int fontid, float x, float y, float z);
@@ -144,8 +144,8 @@ void BLF_batch_draw_end();
 /**
  * Draw the string using the current font.
  */
-void BLF_draw_ex(int fontid, const char *str, size_t str_len, ResultBLF *r_info) ATTR_NONNULL(2);
-void BLF_draw(int fontid, const char *str, size_t str_len) ATTR_NONNULL(2);
+void BLF_draw(int fontid, const char *str, size_t str_len, ResultBLF *r_info = nullptr)
+    ATTR_NONNULL(2);
 int BLF_draw_mono(int fontid, const char *str, size_t str_len, int cwidth, int tab_columns)
     ATTR_NONNULL(2);
 
@@ -185,6 +185,12 @@ bool BLF_str_offset_to_glyph_bounds(int fontid,
                                     rcti *glyph_bounds) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(2, 4);
 
 /**
+ * Return left edge of text cursor (caret), given a character offset and cursor width.
+ */
+int BLF_str_offset_to_cursor(
+    int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width);
+
+/**
  * Get the string byte offset that fits within a given width.
  */
 size_t BLF_width_to_strlen(int fontid,
@@ -205,23 +211,21 @@ size_t BLF_width_to_rstrlen(int fontid,
  * This function return the bounding box of the string
  * and are not multiplied by the aspect.
  */
-void BLF_boundbox_ex(int fontid, const char *str, size_t str_len, rcti *box, ResultBLF *r_info)
-    ATTR_NONNULL(2);
-void BLF_boundbox(int fontid, const char *str, size_t str_len, rcti *box) ATTR_NONNULL();
+void BLF_boundbox(int fontid,
+                  const char *str,
+                  size_t str_len,
+                  rcti *r_box,
+                  ResultBLF *r_info = nullptr) ATTR_NONNULL(2);
 
 /**
  * The next both function return the width and height
  * of the string, using the current font and both value
  * are multiplied by the aspect of the font.
  */
-float BLF_width_ex(int fontid, const char *str, size_t str_len, ResultBLF *r_info)
+float BLF_width(int fontid, const char *str, size_t str_len, ResultBLF *r_info = nullptr)
     ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(2);
-float BLF_width(int fontid, const char *str, size_t str_len) ATTR_WARN_UNUSED_RESULT
-    ATTR_NONNULL();
-float BLF_height_ex(int fontid, const char *str, size_t str_len, ResultBLF *r_info)
+float BLF_height(int fontid, const char *str, size_t str_len, ResultBLF *r_info = nullptr)
     ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(2);
-float BLF_height(int fontid, const char *str, size_t str_len) ATTR_WARN_UNUSED_RESULT
-    ATTR_NONNULL();
 
 /**
  * Return dimensions of the font without any sample text.
@@ -306,9 +310,8 @@ void BLF_buffer_col(int fontid, const float rgba[4]) ATTR_NONNULL(2);
  * Draw the string into the buffer, this function draw in both buffer,
  * float and unsigned char _BUT_ it's not necessary set both buffer, NULL is valid here.
  */
-void BLF_draw_buffer_ex(int fontid, const char *str, size_t str_len, ResultBLF *r_info)
+void BLF_draw_buffer(int fontid, const char *str, size_t str_len, ResultBLF *r_info = nullptr)
     ATTR_NONNULL(2);
-void BLF_draw_buffer(int fontid, const char *str, size_t str_len) ATTR_NONNULL(2);
 
 /* `blf_thumbs.cc` */
 

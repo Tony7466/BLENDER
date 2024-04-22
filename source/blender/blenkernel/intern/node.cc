@@ -527,6 +527,8 @@ static StringRef get_legacy_socket_subtype_idname(StringRef idname, const void *
         return "NodeSocketFloatTimeAbsolute";
       case PROP_DISTANCE:
         return "NodeSocketFloatDistance";
+      case PROP_WAVELENGTH:
+        return "NodeSocketFloatWavelength";
     }
   }
   if (idname == "NodeSocketInt") {
@@ -975,17 +977,29 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   }
 }
 
-static void direct_link_node_socket_list(BlendDataReader *reader, ListBase *socket_list)
+static void remove_unsupported_sockets(ListBase *sockets, ListBase *links)
 {
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, socket_list) {
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, sockets) {
     if (is_node_socket_supported(sock)) {
-      direct_link_node_socket(reader, sock);
+      continue;
     }
-    else {
-      /* Remove unsupported sockets. */
-      BLI_remlink(socket_list, sock);
-      MEM_SAFE_FREE(sock);
+
+    /* First remove any link pointing to the socket. */
+    if (links) {
+      LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, links) {
+        if (link->fromsock == sock || link->tosock == sock) {
+          BLI_remlink(links, link);
+          if (link->tosock) {
+            link->tosock->link = nullptr;
+          }
+          MEM_freeN(link);
+        }
+      }
     }
+
+    BLI_remlink(sockets, sock);
+    MEM_delete(sock->runtime);
+    MEM_freeN(sock);
   }
 }
 
@@ -1157,8 +1171,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     BLO_read_data_address(reader, &node->parent);
 
-    direct_link_node_socket_list(reader, &node->inputs);
-    direct_link_node_socket_list(reader, &node->outputs);
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->inputs) {
+      direct_link_node_socket(reader, sock);
+    }
+    LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &node->outputs) {
+      direct_link_node_socket(reader, sock);
+    }
 
     /* Socket storage. */
     if (node->type == CMP_NODE_OUTPUT_FILE) {
@@ -1173,8 +1191,12 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   /* Read legacy interface socket lists for versioning. */
   BLO_read_list(reader, &ntree->inputs_legacy);
   BLO_read_list(reader, &ntree->outputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->inputs_legacy);
-  direct_link_node_socket_list(reader, &ntree->outputs_legacy);
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
+    direct_link_node_socket(reader, sock);
+  }
 
   ntree->tree_interface.read_data(reader);
 
@@ -1184,6 +1206,13 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &link->fromsock);
     BLO_read_data_address(reader, &link->tosock);
   }
+
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    remove_unsupported_sockets(&node->inputs, &ntree->links);
+    remove_unsupported_sockets(&node->outputs, &ntree->links);
+  }
+  remove_unsupported_sockets(&ntree->inputs_legacy, nullptr);
+  remove_unsupported_sockets(&ntree->outputs_legacy, nullptr);
 
   BLO_read_data_address(reader, &ntree->geometry_node_asset_traits);
   BLO_read_data_address(reader, &ntree->nested_node_refs);
@@ -2062,6 +2091,8 @@ const char *nodeStaticSocketType(const int type, const int subtype)
           return "NodeSocketFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeSocketFloatDistance";
+        case PROP_WAVELENGTH:
+          return "NodeSocketFloatWavelength";
         case PROP_NONE:
         default:
           return "NodeSocketFloat";
@@ -2147,6 +2178,8 @@ const char *nodeStaticSocketInterfaceTypeNew(const int type, const int subtype)
           return "NodeTreeInterfaceSocketFloatTimeAbsolute";
         case PROP_DISTANCE:
           return "NodeTreeInterfaceSocketFloatDistance";
+        case PROP_WAVELENGTH:
+          return "NodeTreeInterfaceSocketFloatWavelength";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
@@ -2498,37 +2531,6 @@ void nodeParentsIter(bNode *node, bool (*callback)(bNode *, void *), void *userd
       return;
     }
     nodeParentsIter(node->parent, callback, userdata);
-  }
-}
-
-bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
-{
-  ntree->ensure_topology_cache();
-  BLI_assert(node_tree_runtime::topology_cache_is_available(*ntree));
-
-  const bNode *iter_node = node;
-  Set<const bNode *> visited_nodes;
-  while (true) {
-    if (!iter_node->is_reroute()) {
-      return false;
-    }
-    if (!visited_nodes.add(iter_node)) {
-      /* Treat cycle of reroute as dangling reroute branch. */
-      return true;
-    }
-    const Span<const bNodeLink *> links = iter_node->input_socket(0).directly_linked_links();
-    BLI_assert(links.size() <= 1);
-    if (links.is_empty()) {
-      return true;
-    }
-    const bNodeLink &link = *links[0];
-    if (!link.is_available()) {
-      return false;
-    }
-    if (link.is_muted()) {
-      return false;
-    }
-    iter_node = link.fromnode;
   }
 }
 
@@ -3146,8 +3148,12 @@ void nodePositionPropagate(bNode *node)
 
 }  // namespace blender::bke
 
-static bNodeTree *ntreeAddTree_do(
-    Main *bmain, ID *owner_id, const bool is_embedded, const char *name, const char *idname)
+static bNodeTree *ntreeAddTree_do(Main *bmain,
+                                  std::optional<Library *> owner_library,
+                                  ID *owner_id,
+                                  const bool is_embedded,
+                                  const char *name,
+                                  const char *idname)
 {
   /* trees are created as local trees for compositor, material or texture nodes,
    * node groups and other tree types are created as library data.
@@ -3156,7 +3162,10 @@ static bNodeTree *ntreeAddTree_do(
   if (is_embedded || bmain == nullptr) {
     flag |= LIB_ID_CREATE_NO_MAIN;
   }
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(BKE_libblock_alloc(bmain, ID_NT, name, flag));
+  BLI_assert_msg(!owner_library || !owner_id,
+                 "Embedded NTrees should never have a defined owner library here");
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(
+      BKE_libblock_alloc_in_lib(bmain, owner_library, ID_NT, name, flag));
   BKE_libblock_init_empty(&ntree->id);
   if (is_embedded) {
     BLI_assert(owner_id != nullptr);
@@ -3178,7 +3187,15 @@ static bNodeTree *ntreeAddTree_do(
 
 bNodeTree *ntreeAddTree(Main *bmain, const char *name, const char *idname)
 {
-  return ntreeAddTree_do(bmain, nullptr, false, name, idname);
+  return ntreeAddTree_do(bmain, std::nullopt, nullptr, false, name, idname);
+}
+
+bNodeTree *BKE_node_tree_add_in_lib(Main *bmain,
+                                    Library *owner_library,
+                                    const char *name,
+                                    const char *idname)
+{
+  return ntreeAddTree_do(bmain, owner_library, nullptr, false, name, idname);
 }
 
 namespace blender::bke {
@@ -3188,7 +3205,7 @@ bNodeTree *ntreeAddTreeEmbedded(Main * /*bmain*/,
                                 const char *name,
                                 const char *idname)
 {
-  return ntreeAddTree_do(nullptr, owner_id, true, name, idname);
+  return ntreeAddTree_do(nullptr, std::nullopt, owner_id, true, name, idname);
 }
 
 bNodeTree *ntreeCopyTree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)
@@ -4157,7 +4174,7 @@ static blender::Set<int> get_known_node_types_set()
 static bool can_read_node_type(const int type)
 {
   /* Can always read custom node types. */
-  if (type == NODE_CUSTOM) {
+  if (ELEM(type, NODE_CUSTOM, NODE_CUSTOM_GROUP)) {
     return true;
   }
 

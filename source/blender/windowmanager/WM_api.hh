@@ -187,7 +187,7 @@ enum eWM_CapabilitiesFlag {
   /** Support for IME input methods. */
   WM_CAPABILITY_INPUT_IME = (1 << 6),
   /** The initial value, indicates the value needs to be set by inspecting GHOST. */
-  WM_CAPABILITY_INITIALIZED = (1 << 31),
+  WM_CAPABILITY_INITIALIZED = (1u << 31),
 };
 ENUM_OPERATORS(eWM_CapabilitiesFlag, WM_CAPABILITY_CLIPBOARD_IMAGES)
 
@@ -1873,6 +1873,13 @@ void WM_generic_callback_free(wmGenericCallback *callback);
 void WM_generic_user_data_free(wmGenericUserData *wm_userdata);
 
 bool WM_region_use_viewport(ScrArea *area, ARegion *region);
+
+/* `wm_platform.cc` */
+
+/**
+ * \return Success.
+ */
+bool WM_platform_assosiate_set(bool do_register, bool all_users, char **r_error_msg);
 
 #ifdef WITH_XR_OPENXR
 /* `wm_xr_session.cc` */

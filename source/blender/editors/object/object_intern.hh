@@ -8,12 +8,18 @@
 
 #pragma once
 
+#include "BLI_vector.hh"
+
+#include "RNA_types.hh"
+
 struct bContext;
 struct ModifierData;
 struct Object;
 struct StructRNA;
 struct wmOperator;
 struct wmOperatorType;
+
+namespace blender::ed::object {
 
 /* add hook menu */
 enum eObject_Hook_Add_Mode {
@@ -345,11 +351,15 @@ void OBJECT_OT_bake(wmOperatorType *ot);
 
 /* object_bake_simulation.cc */
 
+namespace bake_simulation {
+
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
 void OBJECT_OT_geometry_node_bake_single(wmOperatorType *ot);
 void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot);
+
+}  // namespace bake_simulation
 
 /* `object_random.cc` */
 
@@ -369,8 +379,11 @@ void OBJECT_OT_quadriflow_remesh(wmOperatorType *ot);
 void OBJECT_OT_data_transfer(wmOperatorType *ot);
 void OBJECT_OT_datalayout_transfer(wmOperatorType *ot);
 
-namespace blender::ed::object {
-
 void object_modifier_add_asset_register();
 
-}
+void collection_exporter_register();
+
+Vector<PointerRNA> modifier_get_edit_objects(const bContext &C, const wmOperator &op);
+void modifier_register_use_selected_objects_prop(wmOperatorType *ot);
+
+}  // namespace blender::ed::object

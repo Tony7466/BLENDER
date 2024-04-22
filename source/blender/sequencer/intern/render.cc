@@ -1014,11 +1014,15 @@ static ImBuf *seq_render_image_strip_view(const SeqRenderData *context,
   return ibuf;
 }
 
-static bool seq_image_strip_is_multiview_render(
-    Scene *scene, Sequence *seq, int totfiles, char *name, char *r_prefix, const char *r_ext)
+static bool seq_image_strip_is_multiview_render(Scene *scene,
+                                                Sequence *seq,
+                                                int totfiles,
+                                                const char *filepath,
+                                                char *r_prefix,
+                                                const char *r_ext)
 {
   if (totfiles > 1) {
-    BKE_scene_multiview_view_prefix_get(scene, name, r_prefix, &r_ext);
+    BKE_scene_multiview_view_prefix_get(scene, filepath, r_prefix, &r_ext);
     if (r_prefix[0] == '\0') {
       return false;
     }
@@ -1565,7 +1569,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
   is_frame_update = (orig_data.timeline_frame != scene->r.cfra) ||
                     (orig_data.subframe != scene->r.subframe);
 
-  if ((sequencer_view3d_fn && do_seq_gl && camera)) {
+  if (sequencer_view3d_fn && do_seq_gl && camera) {
     char err_out[256] = "unknown";
     int width, height;
     BKE_render_resolution(&scene->r, false, &width, &height);
@@ -2249,7 +2253,7 @@ void SEQ_render_thumbnails(const SeqRenderData *context,
                                                               upper_thumb_bound;
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, frame_step, view_area);
-  while ((timeline_frame < upper_thumb_bound) & !*stop) {
+  while ((timeline_frame < upper_thumb_bound) && !*stop) {
     ImBuf *ibuf = seq_cache_get(
         context, seq_orig, round_fl_to_int(timeline_frame), SEQ_CACHE_STORE_THUMBNAIL);
     if (ibuf) {

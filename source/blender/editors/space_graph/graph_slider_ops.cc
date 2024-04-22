@@ -339,6 +339,12 @@ static int graph_slider_modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
     }
 
+    case EVT_TABKEY:
+      /* Switch between acting on different properties. If this is not handled
+       * by the caller, it's explicitly gobbled up here to avoid it being passed
+       * through via the 'default' case. */
+      break;
+
     /* When the mouse is moved, the percentage and the keyframes update. */
     case MOUSEMOVE: {
       if (has_numinput == false) {
@@ -2025,8 +2031,8 @@ struct tBtwOperatorData {
   ListBase anim_data;     /* bAnimListElem */
 };
 
-static int btw_calculate_sample_count(BezTriple *right_bezt,
-                                      BezTriple *left_bezt,
+static int btw_calculate_sample_count(const BezTriple *right_bezt,
+                                      const BezTriple *left_bezt,
                                       const int filter_order,
                                       const int samples_per_frame)
 {

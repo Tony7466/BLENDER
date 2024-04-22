@@ -396,10 +396,9 @@ class LazyFunctionForMultiInput : public LazyFunction {
     base_type_ = get_socket_cpp_type(socket);
     BLI_assert(base_type_ != nullptr);
     BLI_assert(socket.is_multi_input());
-    const bNodeTree &btree = socket.owner_tree();
     for (const bNodeLink *link : socket.directly_linked_links()) {
       if (link->is_muted() || !link->fromsock->is_available() ||
-          bke::nodeIsDanglingReroute(&btree, link->fromnode))
+          link->fromnode->is_dangling_reroute())
       {
         continue;
       }
@@ -777,9 +776,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
         continue;
       }
       const Span<const bNodeLink *> links = bsocket->directly_linked_links();
-      if (links.is_empty() ||
-          bke::nodeIsDanglingReroute(&bnode.owner_tree(), links.first()->fromnode))
-      {
+      if (links.is_empty() || links.first()->fromnode->is_dangling_reroute()) {
         use_field_input_ = false;
         inputs_.pop_last();
         r_lf_index_by_bsocket[bsocket->index_in_tree()] = -1;
@@ -3030,7 +3027,11 @@ struct GeometryNodesLazyFunctionBuilder {
       const CPPType &type = *typeinfo->geometry_nodes_cpp_type;
       lf::GraphOutputSocket &lf_socket = lf_graph.add_output(
           type, interface_output->name ? interface_output->name : "");
-      lf_socket.set_default_value(type.default_value());
+      const void *default_value = typeinfo->geometry_nodes_default_cpp_value;
+      if (default_value == nullptr) {
+        default_value = type.default_value();
+      }
+      lf_socket.set_default_value(default_value);
       standard_group_output_sockets_.append(&lf_socket);
     }
   }
@@ -3784,7 +3785,7 @@ struct GeometryNodesLazyFunctionBuilder {
                                 lf::OutputSocket &from_lf_socket,
                                 BuildGraphParams &graph_params)
   {
-    if (bke::nodeIsDanglingReroute(&btree_, &from_bsocket.owner_node())) {
+    if (from_bsocket.owner_node().is_dangling_reroute()) {
       return;
     }
 
@@ -3871,7 +3872,7 @@ struct GeometryNodesLazyFunctionBuilder {
           break;
         }
         if (multi_input_link->is_muted() || !multi_input_link->fromsock->is_available() ||
-            bke::nodeIsDanglingReroute(&btree_, multi_input_link->fromnode))
+            multi_input_link->fromnode->is_dangling_reroute())
         {
           continue;
         }

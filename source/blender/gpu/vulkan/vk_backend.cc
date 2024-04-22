@@ -103,7 +103,9 @@ void VKBackend::detect_workarounds(VKDevice &device)
       !device.physical_device_vulkan_12_features_get().shaderOutputViewportIndex;
 
   /* AMD GPUs don't support texture formats that use are aligned to 24 or 48 bits. */
-  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY) ||
+      GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_MAC, GPU_DRIVER_ANY))
+  {
     workarounds.not_aligned_pixel_formats = true;
   }
 
@@ -167,7 +169,7 @@ Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
     device_.init(ghost_context);
   }
 
-  VKContext *context = new VKContext(ghost_window, ghost_context);
+  VKContext *context = new VKContext(ghost_window, ghost_context, device_.resources);
   device_.context_register(*context);
   GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
                                       VKContext::swap_buffers_pre_callback,
@@ -253,7 +255,6 @@ void VKBackend::capabilities_init(VKDevice &device)
 
   /* Reset all capabilities from previous context. */
   GCaps = {};
-  GCaps.compute_shader_support = true;
   GCaps.geometry_shader_support = true;
   GCaps.shader_draw_parameters_support =
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;
