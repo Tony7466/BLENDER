@@ -3074,6 +3074,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
                                        PropertyRNA *prop,
                                        const char *path,
                                        bool use_path_from_id,
+                                       bool check_drivable,
                                        PointerRNA *r_ptr,
                                        PropertyRNA **r_prop);
 

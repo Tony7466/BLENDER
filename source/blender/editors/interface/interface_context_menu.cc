@@ -755,6 +755,10 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                   ICON_NONE,
                   "ANIM_OT_paste_driver_button");
         }
+        uiItemO(layout,
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver to Selected"),
+                ICON_NONE,
+                "UI_OT_copy_driver_to_selected_button");
 
         uiItemO(layout,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Edit Driver"),

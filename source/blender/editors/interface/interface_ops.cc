@@ -25,7 +25,9 @@
 #include "BLT_lang.hh"
 #include "BLT_translation.hh"
 
+#include "BKE_anim_data.hh"
 #include "BKE_context.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -39,6 +41,7 @@
 #include "IMB_colormanagement.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -1381,6 +1384,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
                                        PropertyRNA *prop,
                                        const char *path,
                                        bool use_path_from_id,
+                                       bool check_drivable,
                                        PointerRNA *r_ptr,
                                        PropertyRNA **r_prop)
 {
@@ -1458,6 +1462,10 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
     return false;
   }
 
+  if (check_drivable && !RNA_property_driver_editable(&lptr, lprop)) {
+    return false;
+  }
+
   if (r_ptr) {
     *r_ptr = lptr;
   }
@@ -1506,6 +1514,7 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
                                              prop,
                                              path.has_value() ? path->c_str() : nullptr,
                                              use_path_from_id,
+                                             false,
                                              &lptr,
                                              &lprop))
       {
@@ -1560,6 +1569,162 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 
   /* properties */
   RNA_def_boolean(ot->srna, "all", true, "All", "Copy to selected all elements of the array");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Copy Driver To Selected Operator
+ * \{ */
+
+/**
+ * Called from both exec & poll.
+ *
+ * \note Normally we wouldn't call a loop from within a poll function,
+ * however this is a special case, and for regular poll calls, getting
+ * the context from the button will fail early.
+ */
+static bool copy_driver_to_selected_button(bContext *C, bool poll)
+{
+  Main *bmain = CTX_data_main(C);
+  PropertyRNA *prop;
+  PointerRNA ptr;
+  int index;
+
+  UI_context_active_but_prop_get(C, &ptr, &prop, &index);
+  if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
+    return false;
+  }
+
+  bool success = false;
+  std::optional<std::string> path;
+  bool use_path_from_id;
+  blender::Vector<PointerRNA> lb;
+
+  if (!UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
+    return false;
+  }
+
+  /* Get the real ID and the path from that real ID of the property
+   * we're copying from. */
+  ID *real_id;
+  std::optional<std::string> real_path = RNA_path_from_real_ID_to_property_index(
+      bmain, &ptr, prop, 0, -1, &real_id);
+  if (real_id == nullptr) {
+    return false;
+  }
+
+  /* Find the driver we're copying. */
+  AnimData *adt = BKE_animdata_from_id(real_id);
+  if (adt == nullptr) {
+    return false;
+  }
+  FCurve *src_driver = BKE_fcurve_find(
+      &adt->drivers, real_path.has_value() ? real_path->c_str() : nullptr, index);
+  if (src_driver == nullptr) {
+    return false;
+  }
+
+  for (PointerRNA &link : lb) {
+    if (link.data == ptr.data) {
+      continue;
+    }
+
+    PropertyRNA *lprop;
+    PointerRNA lptr;
+    if (!UI_context_copy_to_selected_check(&ptr,
+                                           &link,
+                                           prop,
+                                           path.has_value() ? path->c_str() : nullptr,
+                                           use_path_from_id,
+                                           true,
+                                           &lptr,
+                                           &lprop))
+    {
+      continue;
+    }
+
+    if (poll) {
+      success = true;
+      break;
+    }
+
+    /* Get the real ID and the path from that real ID of the property
+     * we're copying to. */
+    ID *lreal_id;
+    std::optional<std::string> lreal_path = RNA_path_from_real_ID_to_property_index(
+        bmain, &lptr, lprop, 0, -1, &lreal_id);
+    if (lreal_id == nullptr) {
+      return false;
+    }
+
+    AnimData *ladt = BKE_animdata_ensure_id(lreal_id);
+    if (ladt == nullptr) {
+      continue;
+    }
+
+    /* If there's an existing matching driver, remove it first.
+     *
+     * TODO: move this to be done all at once outside of this loop.
+     * Inside the loop this is has quadratic complexity, but doing
+     * it outside can make it linear if done right. */
+    {
+      FCurve *fcurve = BKE_fcurve_find(
+          &ladt->drivers, lreal_path.has_value() ? lreal_path->c_str() : nullptr, index);
+      if (fcurve != nullptr) {
+        BLI_remlink(&ladt->drivers, fcurve);
+        BKE_fcurve_free(fcurve);
+      }
+    }
+
+    /* Create the new driver. */
+    FCurve *new_driver = BKE_fcurve_copy(src_driver);
+    BLI_addtail(&ladt->drivers, new_driver);
+    MEM_SAFE_FREE(new_driver->rna_path);
+    new_driver->rna_path = BLI_strdup(lreal_path->c_str());
+
+    RNA_property_update(C, &lptr, prop);
+
+    success = true;
+  }
+
+  return success;
+}
+
+static bool copy_driver_to_selected_button_poll(bContext *C)
+{
+  return copy_driver_to_selected_button(C, true);
+}
+
+static int copy_driver_to_selected_button_exec(bContext *C, wmOperator *op)
+{
+  bool success;
+
+  success = copy_driver_to_selected_button(C, false);
+
+  if (success) {
+    DEG_relations_tag_update(CTX_data_main(C));
+    // WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr); /* XXX */
+  }
+
+  return (success) ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
+}
+
+static void UI_OT_copy_driver_to_selected_button(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Copy Driver to Selected";
+  ot->idname = "UI_OT_copy_driver_to_selected_button";
+  ot->description =
+      "Copy the property's driver from the active item to the same property of all selected items "
+      "if the same property exists";
+
+  /* callbacks */
+  ot->poll = copy_driver_to_selected_button_poll;
+  ot->exec = copy_driver_to_selected_button_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /** \} */
@@ -2602,6 +2767,7 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_assign_default_button);
   WM_operatortype_append(UI_OT_unset_property_button);
   WM_operatortype_append(UI_OT_copy_to_selected_button);
+  WM_operatortype_append(UI_OT_copy_driver_to_selected_button);
   WM_operatortype_append(UI_OT_jump_to_target_button);
   WM_operatortype_append(UI_OT_drop_color);
   WM_operatortype_append(UI_OT_drop_name);
