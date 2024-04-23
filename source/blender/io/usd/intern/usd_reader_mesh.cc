@@ -52,9 +52,6 @@ static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
 static const pxr::TfToken Cd("Cd", pxr::TfToken::Immortal);
 static const pxr::TfToken displayColor("displayColor", pxr::TfToken::Immortal);
 static const pxr::TfToken normalsPrimvar("normals", pxr::TfToken::Immortal);
-
-/* Non-standard primvar written by Blender versions prior to 4.2. */
-static const pxr::TfToken velocityPrimvar("velocity", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
 namespace utils {
@@ -742,17 +739,8 @@ void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTim
 
 void USDMeshReader::read_velocities(Mesh *mesh, const double motionSampleTime)
 {
-  pxr::UsdGeomPrimvarsAPI primvarsAPI(mesh_prim_);
-  pxr::UsdGeomPrimvar primvar = primvarsAPI.GetPrimvar(usdtokens::velocityPrimvar);
   pxr::VtVec3fArray velocities;
-
-  /* If 'velocities' and 'primvars:velocity' are both specified, the latter has precedence. */
-  if (primvar.HasValue()) {
-    primvar.ComputeFlattened(&velocities, motionSampleTime);
-  }
-  else {
-    mesh_prim_.GetVelocitiesAttr().Get(&velocities, motionSampleTime);
-  }
+  mesh_prim_.GetVelocitiesAttr().Get(&velocities, motionSampleTime);
 
   if (!velocities.empty()) {
     bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
