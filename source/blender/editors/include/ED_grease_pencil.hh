@@ -397,7 +397,9 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  bool invert,
                                  const float2 &fill_point,
                                  FillToolFitMethod fit_method,
-                                 bool keep_image);
+                                 bool keep_image,
+                                 const bool use_onion_skinning,
+                                 const bool allow_fill_material);
 
 namespace image_render {
 

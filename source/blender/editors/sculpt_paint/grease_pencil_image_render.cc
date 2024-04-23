@@ -327,7 +327,6 @@ void draw_dots(const IndexRange indices,
   UNUSED_VARS(indices, positions, radii, colors, layer_to_world);
 }
 
-/* draw a set of strokes */
 void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 const int2 &win_size,
                                 const Object &object,
@@ -359,29 +358,6 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
   /* Note: Serial loop without GrainSize, since immediate mode drawing can't happen in worker
    * threads, has to be from the main thread. */
   strokes_mask.foreach_index([&](const int stroke_i) {
-    ///* check if stroke can be drawn */
-    // if (gpencil_can_draw_stroke(gps, tgpw->dflag) == false) {
-    //   continue;
-    // }
-    ///* check if the color is visible */
-    // Material *ma = (use_mat) ? tgpw->gpd->mat[gps->mat_nr] : BKE_material_default_gpencil();
-    // MaterialGPencilStyle *gp_style = (ma) ? ma->gp_style : nullptr;
-
-    // if ((gp_style == nullptr) || (gp_style->flag & GP_MATERIAL_HIDE) ||
-    //     /* If onion and ghost flag do not draw. */
-    //     (tgpw->onion && (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN)))
-    //{
-    //   continue;
-    // }
-
-    ///* if disable fill, the colors with fill must be omitted too except fill boundary strokes
-    ///*/
-    // if ((tgpw->disable_fill == 1) && (gp_style->fill_rgba[3] > 0.0f) &&
-    //     ((gps->flag & GP_STROKE_NOFILL) == 0) && (gp_style->flag & GP_MATERIAL_FILL_SHOW))
-    //{
-    //   continue;
-    // }
-
     const float stroke_radius = radii[stroke_i];
     if (stroke_radius <= 0) {
       return;
@@ -394,30 +370,6 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
        * available here and seems to work quite well without */
       GPU_polygon_offset(1.0f, 1.0f);
     }
-
-    /* 3D Stroke */
-    ///* set color using material tint color and opacity */
-    // if (!tgpw->onion) {
-    //   interp_v3_v3v3(tcolor, gp_style->stroke_rgba, tgpw->tintcolor, tgpw->tintcolor[3]);
-    //   tcolor[3] = gp_style->stroke_rgba[3] * tgpw->opacity;
-    //   copy_v4_v4(ink, tcolor);
-    // }
-    // else {
-    //   if (tgpw->custonion) {
-    //     copy_v4_v4(ink, tgpw->tintcolor);
-    //   }
-    //   else {
-    //     ARRAY_SET_ITEMS(tcolor, UNPACK3(gp_style->stroke_rgba), tgpw->opacity);
-    //     copy_v4_v4(ink, tcolor);
-    //   }
-    // }
-
-    ///* if used for fill, set opacity to 1 */
-    // if (tgpw->is_fill_stroke) {
-    //   if (ink[3] >= GPENCIL_ALPHA_OPACITY_THRESH) {
-    //     ink[3] = 1.0f;
-    //   }
-    // }
 
     switch (eMaterialGPencilStyle_Mode(mode)) {
       case GP_MATERIAL_MODE_LINE:
@@ -440,19 +392,6 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
         break;
     }
 
-    // if (gp_style->mode == GP_MATERIAL_MODE_DOT) {
-    //   /* volumetric stroke drawing */
-    //   if (tgpw->disable_fill != 1) {
-    //     gpencil_draw_stroke_volumetric_3d(gps->points, gps->totpoints, sthickness, ink);
-    //   }
-    // }
-    // else {
-    //   /* 3D Lines - OpenGL primitives-based */
-    //   if (gps->totpoints > 1) {
-    //     tgpw->gps = gps;
-    //     gpencil_draw_stroke_3d(tgpw, sthickness, ink, gps->flag & GP_STROKE_CYCLIC);
-    //   }
-    // }
     if (!use_xray) {
       GPU_depth_test(GPU_DEPTH_NONE);
 

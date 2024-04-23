@@ -585,6 +585,8 @@ static bool grease_pencil_apply_fill(bContext &C,
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
   constexpr const bool keep_images = true;
+  constexpr const bool use_onion_skinning = false;
+  constexpr const bool allow_fill_material = true;
 
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
   if (!region || region->regiontype != RGN_TYPE_WINDOW) {
@@ -638,7 +640,9 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    is_inverted,
                                                    mouse_position,
                                                    fit_method,
-                                                   keep_images);
+                                                   keep_images,
+                                                   use_onion_skinning,
+                                                   allow_fill_material);
 
     Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
     Curves *fill_curves_id = curves_new_nomain(fill_curves);
