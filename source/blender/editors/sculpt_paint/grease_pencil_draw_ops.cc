@@ -581,6 +581,8 @@ static bool grease_pencil_apply_fill(bContext &C,
   using ed::greasepencil::DrawingInfo;
   using ed::greasepencil::MutableDrawingInfo;
 
+  constexpr const ed::greasepencil::FillToolFitMethod fit_method =
+      ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
   constexpr const bool keep_images = true;
 
@@ -635,6 +637,7 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    src_drawings,
                                                    is_inverted,
                                                    mouse_position,
+                                                   fit_method,
                                                    keep_images);
 
     Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));

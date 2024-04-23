@@ -2,11 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_array_utils.hh"
 #include "BLI_color.hh"
-#include "BLI_hash.hh"
 #include "BLI_index_mask.hh"
-#include "BLI_linear_allocator.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_rect.h"
@@ -38,17 +35,9 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "GPU_framebuffer.hh"
-#include "GPU_immediate.hh"
-#include "GPU_matrix.hh"
 #include "GPU_state.hh"
-#include "GPU_texture.hh"
-#include "GPU_vertex_format.hh"
 
-#include <forward_list>
-#include <iostream>
 #include <list>
-#include <numeric>
 #include <optional>
 
 namespace blender::ed::greasepencil {
@@ -74,12 +63,12 @@ enum ColorFlag {
 };
 ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
 
-bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
+static bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
 {
   return (color.r & flag) != 0;
 }
 
-void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
+static void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
 {
   color.r = value ? (color.r | flag) : (color.r & (~flag));
 }
@@ -131,190 +120,34 @@ static IndexMask get_boundary_curve_mask(const Object &object,
       strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
 }
 
-static VArray<ColorGeometry4f> stroke_colors(const VArray<float> &opacities,
+static VArray<ColorGeometry4f> stroke_colors(const Object &object,
+                                             const bke::CurvesGeometry &curves,
+                                             const VArray<float> &opacities,
+                                             const VArray<int> materials,
                                              const ColorGeometry4f &tint_color,
-                                             const int64_t num_points,
-                                             const float material_alpha,
                                              const float alpha_threshold,
                                              const bool brush_fill_hide)
 {
-  return brush_fill_hide ?
-             VArray<ColorGeometry4f>::ForSingle(tint_color, num_points) :
-             VArray<ColorGeometry4f>::ForFunc(
-                 num_points,
-                 [tint_color, &opacities, material_alpha, alpha_threshold](const int64_t index) {
-                   float alpha = std::clamp(material_alpha * opacities[index], 0.0f, 1.0f);
-                   ColorGeometry4f color = tint_color;
-                   color.a = (alpha > alpha_threshold ? 255 : 0);
-                   return color;
-                 });
-}
+  if (brush_fill_hide) {
+    return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
+  }
 
-/* Draw a regular stroke. */
-static void draw_basic_stroke(const Span<float3> positions,
-                              const VArray<float> &opacities,
-                              const IndexRange indices,
-                              const float4x4 &mat,
-                              const bool cyclic,
-                              const float material_alpha,
-                              const ColorGeometry4f tint_color,
-                              const bool brush_fill_hide,
-                              const float alpha_threshold,
-                              const float thickness)
-{
-  const VArray<ColorGeometry4f> colors = stroke_colors(
-      opacities, tint_color, positions.size(), material_alpha, alpha_threshold, brush_fill_hide);
-
-  image_render::draw_curve(positions, colors, indices, mat, cyclic, thickness);
-}
-
-/* Draw a extension stroke. */
-static void draw_extension_stroke(const Span<float3> positions,
-                                  const VArray<float> &opacities,
-                                  const IndexRange indices,
-                                  const float4x4 &mat,
-                                  const bool cyclic,
-                                  const float material_alpha,
-                                  const bool brush_fill_hide,
-                                  const float alpha_threshold,
-                                  const float thickness,
-                                  const bool draw_as_helper)
-{
-  const ColorGeometry4f &color = draw_as_helper ? output_helper_color.decode() :
-                                                  output_extend_color.decode();
-  const VArray<ColorGeometry4f> colors = stroke_colors(
-      opacities, color, positions.size(), material_alpha, alpha_threshold, brush_fill_hide);
-
-  image_render::draw_curve(positions, colors, indices, mat, cyclic, thickness * 2.0f);
-}
-
-/* Draw a helper stroke (viewport only). */
-static void draw_helper_stroke(Span<float3> positions,
-                               const VArray<float> &opacities,
-                               const IndexRange indices,
-                               const float4x4 &mat,
-                               const bool cyclic,
-                               const float material_alpha,
-                               const bool brush_fill_hide,
-                               const float alpha_threshold,
-                               const float thickness,
-                               const bool transparent)
-{
-  const ColorGeometry4f helper_color_transparent =
-      ColorGeometry4b(output_helper_color.r, output_helper_color.g, output_helper_color.b, 0.0f)
-          .decode();
-  const VArray<ColorGeometry4f> colors = transparent ?
-                                             VArray<ColorGeometry4f>::ForSingle(
-                                                 helper_color_transparent, positions.size()) :
-                                             stroke_colors(opacities,
-                                                           output_helper_color.decode(),
-                                                           positions.size(),
-                                                           material_alpha,
-                                                           alpha_threshold,
-                                                           brush_fill_hide);
-
-  image_render::draw_curve(positions, colors, indices, mat, cyclic, thickness * 2.0f);
-}
-
-/* Loop all layers to draw strokes. */
-static void draw_datablock(const Object &object,
-                           const GreasePencil &grease_pencil,
-                           const Span<DrawingInfo> drawings,
-                           const VArray<bool> &boundary_layers,
-                           const ColorGeometry4f &ink,
-                           const eGP_FillDrawModes /*fill_draw_mode*/,
-                           const float alpha_threshold,
-                           const float thickness)
-{
-  using bke::greasepencil::Layer;
-
-  for (const DrawingInfo &info : drawings) {
-    const Layer &layer = *grease_pencil.layers()[info.layer_index];
-    if (!layer.is_visible()) {
-      continue;
-    }
-    const float4x4 layer_to_world = layer.to_world_space(object);
-    const bool is_boundary_layer = boundary_layers[info.layer_index];
-    const bke::CurvesGeometry &strokes = info.drawing.strokes();
-    const bke::AttributeAccessor attributes = strokes.attributes();
-    const Span<float3> positions = strokes.positions();
-    const VArray<float> opacities = info.drawing.opacities();
-    const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
-                                                          bke::AttrDomain::Curve);
-    const VArray<bool> cyclic = strokes.cyclic();
-
-    IndexMaskMemory curve_mask_memory;
-    const IndexMask curve_mask = get_boundary_curve_mask(
-        object, info, is_boundary_layer, curve_mask_memory);
-
-    /* Note: Serial loop without GrainSize, since immediate mode drawing can't happen in worker
-     * threads, has to be from the main thread. */
-    curve_mask.foreach_index([&](const int curve_i) {
-      const IndexRange points = strokes.points_by_curve()[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
+  Array<ColorGeometry4f> colors(curves.points_num());
+  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+    for (const int curve_i : range) {
       const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
                                                          materials[curve_i] + 1);
-
       const float material_alpha = material && material->gp_style ?
                                        material->gp_style->stroke_rgba[3] :
                                        1.0f;
-
-      // tgpw.is_fill_stroke = (tgpf->fill_draw_mode == GP_FILL_DMODE_CONTROL) ? false : true;
-      ///* Reduce thickness to avoid gaps. */
-      // tgpw.lthick = gpl->line_change;
-      // tgpw.opacity = 1.0;
-      // copy_v4_v4(tgpw.tintcolor, ink);
-      // tgpw.onion = true;
-      // tgpw.custonion = true;
-
-      // TODO brush flag
-      const bool brush_fill_hide = false;
-
-      draw_basic_stroke(positions,
-                        opacities,
-                        points,
-                        layer_to_world,
-                        is_cyclic,
-                        material_alpha,
-                        ink,
-                        brush_fill_hide,
-                        alpha_threshold,
-                        thickness);
-      /* Normal strokes. */
-      // if (ELEM(fill_draw_mode, GP_FILL_DMODE_STROKE, GP_FILL_DMODE_BOTH)) {
-      //   if (gpencil_stroke_is_drawable(tgpf, gps) && ((gps->flag & GP_STROKE_TAG) == 0) &&
-      //       ((gps->flag & GP_STROKE_HELP) == 0))
-      //   {
-      //     ED_gpencil_draw_fill(&tgpw);
-      //   }
-      //   /* In stroke mode, still must draw the extend lines. */
-      //   if (extend_lines && (tgpf->fill_draw_mode == GP_FILL_DMODE_STROKE)) {
-      //     if ((gps->flag & GP_STROKE_NOFILL) && (gps->flag & GP_STROKE_TAG)) {
-      //       gpencil_draw_basic_stroke(tgpf,
-      //                                 gps,
-      //                                 tgpw.diff_mat,
-      //                                 gps->flag & GP_STROKE_CYCLIC,
-      //                                 ink,
-      //                                 tgpf->flag,
-      //                                 tgpf->fill_threshold,
-      //                                 1.0f);
-      //     }
-      //   }
-      // }
-
-      ///* 3D Lines with basic shapes and invisible lines. */
-      // if (ELEM(tgpf->fill_draw_mode, GP_FILL_DMODE_CONTROL, GP_FILL_DMODE_BOTH)) {
-      //   gpencil_draw_basic_stroke(tgpf,
-      //                             gps,
-      //                             tgpw.diff_mat,
-      //                             gps->flag & GP_STROKE_CYCLIC,
-      //                             ink,
-      //                             tgpf->flag,
-      //                             tgpf->fill_threshold,
-      //                             1.0f);
-      // }
-    });
-  }
+      const IndexRange points = curves.points_by_curve()[curve_i];
+      for (const int point_i : points) {
+        const float alpha = (material_alpha * opacities[point_i] > alpha_threshold ? 1.0f : 0.0f);
+        colors[point_i] = ColorGeometry4f(tint_color.r, tint_color.g, tint_color.b, alpha);
+      }
+    }
+  });
+  return VArray<ColorGeometry4f>::ForContainer(colors);
 }
 
 /* Set a border to create image limits. */
@@ -536,7 +369,7 @@ FillResult flood_fill(Image &ima, const int leak_filter_width = 0)
   return border_contact ? FillResult::BorderContact : FillResult::Success;
 }
 
-void invert_fill(Image &ima)
+static void invert_fill(Image &ima)
 {
   void *lock;
   ImBuf *ibuf = BKE_image_acquire_ibuf(&ima, nullptr, &lock);
@@ -597,7 +430,7 @@ static FillBoundary build_fill_boundary(Image &ima)
     return int2{d.rem, d.quot};
   };
   auto index_from_coord = [&](const int2 &c) { return c.x + c.y * width; };
-  auto pixel_from_coord = [&](const int2 &c) { return pixels[index_from_coord(c)]; };
+  // auto pixel_from_coord = [&](const int2 &c) { return pixels[index_from_coord(c)]; };
   auto is_valid_coord = [width, height](const int2 &c) -> bool {
     return c.x >= 0 && c.x < width && c.y >= 0 && c.y < height;
   };
@@ -749,7 +582,6 @@ static rctf get_region_bounds(const ARegion &region)
  * For each stroke, the 2D projected bounding box is calculated and using this data, the total
  * object bounding box (all strokes) is calculated. */
 static rctf get_boundary_bounds(const ARegion &region,
-                                const Brush &brush,
                                 const Object &object,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
@@ -760,10 +592,6 @@ static rctf get_boundary_bounds(const ARegion &region,
 
   rctf bounds;
   BLI_rctf_init_minmax(&bounds);
-
-  if (brush.gpencil_settings->flag & GP_BRUSH_FILL_FIT_DISABLE) {
-    return bounds;
-  }
 
   BLI_assert(object.type == OB_GREASE_PENCIL);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -822,14 +650,41 @@ static rctf get_boundary_bounds(const ARegion &region,
   return bounds;
 }
 
-Curves *curves_new_nomain(const int points_num, const int curves_num)
+static auto fit_strokes_to_view(const ARegion &region,
+                                const Object &object,
+                                const Object &object_eval,
+                                const VArray<bool> &boundary_layers,
+                                const Span<DrawingInfo> src_drawings,
+                                const FillToolFitMethod fit_method)
 {
-  BLI_assert(points_num >= 0);
-  BLI_assert(curves_num >= 0);
-  Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
-  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-  curves.resize(points_num, curves_num);
-  return curves_id;
+  switch (fit_method) {
+    case FillToolFitMethod::None:
+      return std::make_pair(float2(1.0f), float2(0.0f));
+    case FillToolFitMethod::FitToView:
+      /* Zoom and offset based on bounds, to fit all strokes within the render. */
+      const rctf bounds = get_boundary_bounds(
+          region, object, object_eval, boundary_layers, src_drawings);
+      const rctf region_bounds = get_region_bounds(region);
+      UNUSED_VARS(bounds, region_bounds);
+#if 0  // TODO doesn't quite work yet, use identity for now.
+    const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
+    const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
+    // const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
+    const float2 bounds_extent = bounds_max - bounds_min;
+    const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
+    const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
+    // const float2 region_center = 0.5f * (region_min + region_max);
+    const float2 region_extent = region_max - region_min;
+    const float2 zoom = math::safe_divide(bounds_extent, region_extent);
+    const float2 offset = math::safe_divide(-bounds_min, region_extent);
+    std::cout << "region " << region_min << ".." << region_max << ", bounds " << bounds_min << ".."
+              << bounds_max << " zoom=" << zoom << " offset=" << offset << std::endl;
+      return std::make_pair(float2(1.0f), float2(0.0f));
+#else
+      return std::make_pair(float2(1.0f), float2(0.0f));
+#endif
+  }
+  return std::make_pair(float2(1.0f), float2(0.0f));
 }
 
 bke::CurvesGeometry fill_strokes(ARegion &region,
@@ -844,6 +699,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const Span<DrawingInfo> src_drawings,
                                  const bool invert,
                                  const float2 &fill_point,
+                                 const FillToolFitMethod fit_method,
                                  const bool keep_image)
 {
   using bke::greasepencil::Layer;
@@ -858,38 +714,21 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
                                   int2(min_window_size));
 
-  // TODO
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
-  const float thickness = 1.0f;
   const int leak_filter_width = 3;
+  const bool brush_fill_hide = false;
+  const bool use_xray = false;
+  const bool fill_strokes = false;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
   const float3 fill_point_world = math::transform_point(layer_to_world,
                                                         placement.project(fill_point));
 
-#if 0  // TODO doesn't quite work yet, use identity for now.
-    /* Zoom and offset based on bounds, to fit all strokes within the render. */
-    const rctf bounds = get_boundary_bounds(
-        region, brush, object, object_eval, boundary_layers, src_drawings);
-    const rctf region_bounds = get_region_bounds(region);
-    const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
-    const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
-    // const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
-    const float2 bounds_extent = bounds_max - bounds_min;
-    const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
-    const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
-    // const float2 region_center = 0.5f * (region_min + region_max);
-    const float2 region_extent = region_max - region_min;
-    const float2 zoom = math::safe_divide(bounds_extent, region_extent);
-    const float2 offset = math::safe_divide(-bounds_min, region_extent);
-    std::cout << "region " << region_min << ".." << region_max << ", bounds " << bounds_min << ".."
-              << bounds_max << " zoom=" << zoom << " offset=" << offset << std::endl;
-#else
-  const float2 zoom = float2(1);
-  const float2 offset = float2(0);
-#endif
+  /* Zoom and offset based on bounds, to fit all strokes within the render. */
+  const auto [zoom, offset] = fit_strokes_to_view(
+      region, object, object_eval, boundary_layers, src_drawings, fit_method);
 
   image_render::ImageRenderData *data = image_render::image_render_begin(region, win_size);
   GPU_blend(GPU_BLEND_ALPHA);
@@ -900,14 +739,42 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const float mouse_dot_size = 4.0f;
   image_render::draw_dot(fill_point_world, mouse_dot_size, draw_seed_color);
 
-  draw_datablock(object,
-                  grease_pencil,
-                  src_drawings,
-                  boundary_layers,
-                  draw_boundary_color,
-                  fill_draw_mode,
-                  alpha_threshold,
-                  thickness);
+  for (const DrawingInfo &info : src_drawings) {
+    const Layer &layer = *grease_pencil.layers()[info.layer_index];
+    if (!layer.is_visible()) {
+      continue;
+    }
+    const float4x4 layer_to_world = layer.to_world_space(object);
+    const bool is_boundary_layer = boundary_layers[info.layer_index];
+    const bke::CurvesGeometry &strokes = info.drawing.strokes();
+    const bke::AttributeAccessor attributes = strokes.attributes();
+    const VArray<float> opacities = info.drawing.opacities();
+    const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
+                                                          bke::AttrDomain::Curve);
+
+    IndexMaskMemory curve_mask_memory;
+    const IndexMask curve_mask = get_boundary_curve_mask(
+        object, info, is_boundary_layer, curve_mask_memory);
+
+    const VArray<ColorGeometry4f> colors = stroke_colors(object,
+                                                         info.drawing.strokes(),
+                                                         opacities,
+                                                         materials,
+                                                         draw_boundary_color,
+                                                         alpha_threshold,
+                                                         brush_fill_hide);
+
+    image_render::draw_grease_pencil_strokes(rv3d,
+                                             win_size,
+                                             object,
+                                             info.drawing,
+                                             curve_mask,
+                                             colors,
+                                             layer_to_world,
+                                             fill_draw_mode,
+                                             use_xray,
+                                             fill_strokes);
+  }
 
   image_render::clear_viewmat();
   GPU_depth_mask(false);

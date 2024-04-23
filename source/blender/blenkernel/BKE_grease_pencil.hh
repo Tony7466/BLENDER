@@ -35,6 +35,12 @@ namespace blender::bke {
 
 namespace greasepencil {
 
+/**
+ * Grease Pencil v2 used "thickness" settings in pixels.
+ * To convert a world-space radius to equivalent shader settings multiply by this factor.
+ */
+constexpr const float legacy_radius_to_pixel_factor = 2000;
+
 class DrawingRuntime {
  public:
   /**
