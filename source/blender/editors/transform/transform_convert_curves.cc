@@ -250,28 +250,13 @@ static void recalcData_curves(TransInfo *t)
 
 static OffsetIndices<int> expand_selected_offsets(const OffsetIndices<int> src_offsets,
                                                   const IndexMask &selection,
-                                                  const int multiplier,
+                                                  const int factor,
                                                   MutableSpan<int> dst_offsets)
 {
-  int offset = 0;
-  auto fill = [&](const IndexRange range, const int _multiplier) {
-    for (const int i : range) {
-      dst_offsets[i] = offset;
-      offset += src_offsets[i].size() * _multiplier;
-    }
-  };
-  int from = 0;
-  selection.foreach_range([&](const IndexRange range) {
-    if (range.start() > from) {
-      fill(IndexRange::from_begin_end(from, range.start()), 1);
-    }
-    fill(range, multiplier);
-    from = range.one_after_last();
-  });
-  if (from < src_offsets.size()) {
-    fill(IndexRange::from_begin_end(from, src_offsets.size()), 1);
-  }
-  dst_offsets.last() = offset;
+  offset_indices::copy_group_sizes(src_offsets, src_offsets.index_range(), dst_offsets);
+  selection.foreach_index_optimized<int>(
+      GrainSize(4096), [factor, &dst_offsets](const int i) { dst_offsets[i] *= factor; });
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
   return OffsetIndices<int>(dst_offsets);
 }
 
