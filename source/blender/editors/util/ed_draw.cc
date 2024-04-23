@@ -384,14 +384,14 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
     float property_name_pixel_size[2];
     BLF_width_and_height(fontid,
                          slider->property_label.c_str(),
-                         sizeof(slider->property_label),
+                         slider->property_label.length(),
                          &property_name_pixel_size[0],
                          &property_name_pixel_size[1]);
     BLF_position(fontid,
                  main_line_rect.xmin - text_padding - property_name_pixel_size[0],
                  (region->winy / 2) - property_name_pixel_size[1] / 2,
                  0.0f);
-    BLF_draw(fontid, slider->property_label.c_str(), sizeof(slider->property_label));
+    BLF_draw(fontid, slider->property_label.c_str(), slider->property_label.length());
   }
 }
 
