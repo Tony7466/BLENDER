@@ -89,4 +89,26 @@ int insert_vert_fcurve(FCurve *fcu,
                        const KeyframeSettings &settings,
                        eInsertKeyFlags flag);
 
+/**
+ * \param sample_rate: indicates how many samples per frame should be generated.
+ */
+void sample_fcurve_segment(
+    FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
+
+enum class BakeCurveRemove {
+  REMOVE_NONE = 0,
+  REMOVE_IN_RANGE = 1,
+  REMOVE_OUT_RANGE = 2,
+  REMOVE_ALL = 3,
+};
+
+/** Creates keyframes in the given range at the given step interval.
+ * \param range: start and end frame to bake. Is inclusive on both ends.
+ * \param remove_existing: choice which keys to remove in relation to the given range.
+ */
+void bake_fcurve(FCurve *fcu, blender::int2 range, float step, BakeCurveRemove remove_existing);
+
+/*  */
+void bake_fcurve_segments(FCurve *fcu);
+
 }  // namespace blender::animrig
