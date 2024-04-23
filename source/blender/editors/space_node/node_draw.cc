@@ -1816,7 +1816,9 @@ static std::optional<std::string> create_dangling_reroute_inspection_string(
   if (target_socket != nullptr) {
     std::stringstream ss;
     create_inspection_string_for_default_socket_value(*target_socket, ss);
-    BLI_assert(!ss.str().empty());
+    if (ss.str().empty()) {
+      return TIP_("Dangling reroute is ignored");
+    }
     ss << ".\n\n";
     ss << TIP_("Dangling reroute is ignored and default value of target socket is used");
     return ss.str();
