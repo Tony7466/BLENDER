@@ -12,3 +12,4 @@ Referenced by issue #120465, Crash when snapping Measure Tool with CTRL
 Referenced by issue #120556, Crash on start
 Referenced by issue #112742, Color Space override in file output node does not override scene colors
 Referenced by issue #120736, Snap Closest from Bezier Curve object has one unit offset in Blender 4.1
+Referenced by issue #120990, EXCEPTION_ACCESS_VIOLATION
