@@ -1574,11 +1574,18 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 /**
  * Called from both exec & poll.
  *
- * \note This follows the same pattern as `copy_to_selected_button()` above,
- * just adapted to copy drivers rather than values.  See that function's
- * documentation for why we use this for both poll and exec.
+ * \note We use this function for both poll and exec because the logic for
+ * whether there is a valid selection to copy to is baked into
+ * `UI_context_copy_to_selected_list()`, and the setup required to call that
+ * would either be duplicated or need to be split out into its own awkward
+ * difficult-to-name function with a large number of parameters.  So instead we
+ * follow the same pattern as `copy_to_selected_button()` further above, with a
+ * bool to switch between exec and poll behavior.  This isn't great, but seems
+ * like the lesser evil under the circumstances.
  *
- * \returns true if any copies of the driver were successfully made, false otherwise.
+ * \returns true in exec mode if any copies were successfully made, and false
+ * otherwise.  Returns true in poll mode if a copy could be successfully made,
+ * and false otherwise.
  */
 static bool copy_driver_to_selected_button(bContext *C, bool poll)
 {
@@ -1589,28 +1596,29 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
 
   /* Get the property of the clicked button and its driver. */
   {
-    /* Find the property and its RNA path. */
     UI_context_active_but_prop_get(C, &ptr, &prop, &index);
     if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
       return false;
     }
+
     const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
     if (!path.has_value()) {
       return false;
     }
 
-    /* Find the driver. */
     AnimData *adt = BKE_animdata_from_id(ptr.owner_id);
     if (!adt) {
       return false;
     }
+
     src_driver = BKE_fcurve_find(&adt->drivers, path->c_str(), index);
     if (!src_driver) {
       return false;
     }
   }
 
-  /* Build the list of properties to copy the driver to, along with relevant side data. */
+  /* Build the list of properties to copy the driver to, along with relevant
+   * side data. */
   std::optional<std::string> path;
   bool use_path_from_id;
   blender::Vector<PointerRNA> lb;
@@ -1625,8 +1633,8 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
       continue;
     }
 
-    /* Get the target property and ensure that it's appropriate
-     * for adding a driver. */
+    /* Get the target property and ensure that it's appropriate for adding a
+     * driver. */
     PropertyRNA *dst_prop;
     PointerRNA dst_ptr;
     if (!UI_context_copy_to_selected_check(&ptr,
@@ -1643,27 +1651,26 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
       continue;
     }
 
-    /* If we're just polling, then we early-out on the first property we
-     * could successfully copy to. */
+    /* If we're just polling, then we early-out on the first property we could
+     * successfully copy to. */
     if (poll) {
       return true;
     }
 
-    /* Get RNA path of the property we're copying to. */
+    /* Get the RNA path and relevant animdata for the property we're copying to. */
     const std::optional<std::string> dst_path = RNA_path_from_ID_to_property(&dst_ptr, dst_prop);
     if (!dst_path.has_value()) {
       return false;
     }
-
     AnimData *dst_adt = BKE_animdata_ensure_id(dst_ptr.owner_id);
     BLI_assert(dst_adt);
 
     /* If there's an existing matching driver, remove it first.
      *
-     * TODO: this has quadratic complexity when the drivers are within
-     * the same ID, due to this being inside of a loop and doing a linear
-     * scan of the drivers to find one that matches.  We should be able to
-     * make this more efficient with a little cleverness .*/
+     * TODO: this has quadratic complexity when the drivers are within the same
+     * ID, due to this being inside of a loop and doing a linear scan of the
+     * drivers to find one that matches.  We should be able to make this more
+     * efficient with a little cleverness .*/
     {
       FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), index);
       if (old_driver != nullptr) {
