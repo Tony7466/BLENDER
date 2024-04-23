@@ -274,6 +274,9 @@ static PointerRNA rna_Paint_brush_get(PointerRNA *ptr)
 {
   Paint *paint = static_cast<Paint *>(ptr->data);
   Brush *brush = BKE_paint_brush(paint);
+  if (!brush) {
+    return PointerRNA_NULL;
+  }
   return RNA_id_pointer_create(&brush->id);
 }
 
@@ -1357,7 +1360,7 @@ static void rna_def_gpencil_guides(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GPencilSculptGuide", nullptr);
   RNA_def_struct_sdna(srna, "GP_Sculpt_Guide");
   RNA_def_struct_path_func(srna, "rna_GPencilSculptGuide_path");
-  RNA_def_struct_ui_text(srna, "GPencil Sculpt Guide", "Guides for drawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Sculpt Guide", "Guides for drawing");
 
   static const EnumPropertyItem prop_gpencil_guidetypes[] = {
       {GP_GUIDE_CIRCULAR, "CIRCULAR", 0, "Circular", "Use single point to create rings"},

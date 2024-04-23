@@ -82,7 +82,7 @@
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_writefile.hh"
 
@@ -955,7 +955,7 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
   if (bf_reports->resynced_lib_overrides_libraries_count != 0) {
     BKE_reportf(bf_reports->reports,
                 RPT_WARNING,
-                "%d libraries have overrides needing resync (auto resynced in %.0fm%.2fs),  "
+                "%d libraries have overrides needing resync (auto resynced in %.0fm%.2fs), "
                 "please check the Info editor for details",
                 bf_reports->resynced_lib_overrides_libraries_count,
                 duration_lib_override_recursive_resync_minutes,
@@ -2568,7 +2568,7 @@ static int wm_userpref_read_invoke(bContext *C, wmOperator *op, const wmEvent * 
       C,
       op,
       title.c_str(),
-      IFACE_("To make changes to Preferences permanent, use \"Save Preferences.\""),
+      IFACE_("To make changes to Preferences permanent, use \"Save Preferences\""),
       IFACE_("Load"),
       ALERT_ICON_WARNING,
       false);
@@ -4021,10 +4021,9 @@ static void file_overwrite_detailed_info_show(uiLayout *parent_layout, Main *bma
       uiItemS_ex(layout, 1.4f);
     }
 
-    uiItemL(layout, RPT_("This file is managed by the Blender asset system"), ICON_NONE);
-    uiItemL(
-        layout, RPT_("By overwriting it as a regular blend file, it will no longer "), ICON_NONE);
-    uiItemL(layout, RPT_("be possible to update its assets through the asset browser"), ICON_NONE);
+    uiItemL(layout, RPT_("This file is managed by the Blender asset system."), ICON_NONE);
+    uiItemL(layout, RPT_("and is expected to contain a single asset data-block."), ICON_NONE);
+    uiItemL(layout, RPT_("Take care to avoid data loss when editing assets."), ICON_NONE);
   }
 }
 
@@ -4087,24 +4086,12 @@ static void save_file_overwrite_confirm_button(uiBlock *block, wmGenericCallback
 
 static void save_file_overwrite_saveas(bContext *C, void *arg_block, void * /*arg_data*/)
 {
-  Main *bmain = CTX_data_main(C);
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
 
   PointerRNA props_ptr;
   wmOperatorType *ot = WM_operatortype_find("WM_OT_save_as_mainfile", false);
   WM_operator_properties_create_ptr(&props_ptr, ot);
-
-  if (bmain->is_asset_repository) {
-    /* If needed, substitute the 'proposed' Save As filepath by replacing the `.asset.blend` part
-     * of it by just `.blend`. */
-    std::string filepath = BKE_main_blendfile_path(bmain);
-    if (blender::StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX)) {
-      filepath.replace(
-          filepath.rfind(BLENDER_ASSET_FILE_SUFFIX), strlen(BLENDER_ASSET_FILE_SUFFIX), ".blend");
-      RNA_string_set(&props_ptr, "filepath", filepath.c_str());
-    }
-  }
 
   WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, nullptr);
   WM_operator_properties_free(&props_ptr);

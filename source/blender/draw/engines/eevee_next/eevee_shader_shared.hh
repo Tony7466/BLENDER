@@ -717,7 +717,7 @@ enum eLightType : uint32_t {
 enum LightingType : uint32_t {
   LIGHT_DIFFUSE = 0u,
   LIGHT_SPECULAR = 1u,
-  LIGHT_TRANSMIT = 2u,
+  LIGHT_TRANSMISSION = 2u,
   LIGHT_VOLUME = 3u,
 };
 
@@ -1510,7 +1510,7 @@ struct Surfel {
 BLI_STATIC_ASSERT_ALIGN(Surfel, 16)
 
 struct CaptureInfoData {
-  /** Number of surfels inside the surfel buffer or the needed len. */
+  /** Grid size without padding. */
   packed_int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
   bool32_t do_surfel_output;
@@ -1574,7 +1574,7 @@ struct VolumeProbeData {
   /** World to non-normalized local grid space [0..size-1]. Stored transposed for compactness. */
   float3x4 world_to_grid_transposed;
   /** Number of bricks for this grid. */
-  packed_int3 grid_size;
+  packed_int3 grid_size_padded;
   /** Index in brick descriptor list of the first brick of this grid. */
   int brick_offset;
   /** Biases to apply to the shading point in order to sample a valid probe. */
@@ -1619,6 +1619,20 @@ struct HiZData {
   float2 _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Light Clamping
+ * \{ */
+
+struct ClampData {
+  float surface_direct;
+  float surface_indirect;
+  float volume_direct;
+  float volume_indirect;
+};
+BLI_STATIC_ASSERT_ALIGN(ClampData, 16)
 
 /** \} */
 
@@ -1685,8 +1699,6 @@ struct RayTraceData {
   int horizon_resolution_scale;
   /** Determine how fast the sample steps are getting bigger. */
   float quality;
-  /** Maximum brightness during lighting evaluation. */
-  float brightness_clamp;
   /** Maximum roughness for which we will trace a ray. */
   float roughness_mask_scale;
   float roughness_mask_bias;
@@ -1697,6 +1709,7 @@ struct RayTraceData {
   /** Closure being ray-traced. */
   int closure_index;
   int _pad0;
+  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
@@ -1821,7 +1834,7 @@ BLI_STATIC_ASSERT_ALIGN(PlanarProbeDisplayData, 16)
 struct PipelineInfoData {
   float alpha_hash_scale;
   bool32_t is_probe_reflection;
-  bool32_t use_combined_lightprobe_eval;
+  float _pad1;
   float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
@@ -1836,6 +1849,7 @@ BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
 struct UniformData {
   AOData ao;
   CameraData camera;
+  ClampData clamp;
   FilmData film;
   HiZData hiz;
   RayTraceData raytrace;

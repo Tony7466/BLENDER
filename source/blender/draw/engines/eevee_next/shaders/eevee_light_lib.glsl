@@ -125,8 +125,18 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
  * L is normalized vector to light shape center.
  * Ng is ideally the geometric normal.
  */
-vec2 light_attenuation_facing(LightData light, vec3 L, float distance_to_light, vec3 Ng)
+float light_attenuation_facing(LightData light,
+                               vec3 L,
+                               float distance_to_light,
+                               vec3 Ng,
+                               const bool is_transmission,
+                               bool is_translucent_with_thickness)
 {
+  if (is_translucent_with_thickness) {
+    /* No attenuation in this case since we integrate the whole sphere. */
+    return 1.0;
+  }
+
   float radius;
   if (is_sun_light(light.type)) {
     radius = light_sun_data_get(light).radius;
@@ -143,13 +153,19 @@ vec2 light_attenuation_facing(LightData light, vec3 L, float distance_to_light, 
   float sin_light_angle = dot(L, Ng);
   /* Do attenuation after the horizon line to avoid harsh cut
    * or biasing of surfaces without light bleeding. */
-  /* Compute for both front facing and back-facing. */
-  return saturate((vec2(sin_light_angle, -sin_light_angle) + sin_solid_angle + 0.1) * 10.0);
+  float dist = sin_solid_angle + (is_transmission ? -sin_light_angle : sin_light_angle);
+  return saturate((dist + 0.1) * 10.0);
 }
 
-vec2 light_attenuation_surface(LightData light, const bool is_directional, vec3 Ng, LightVector lv)
+float light_attenuation_surface(LightData light,
+                                const bool is_directional,
+                                const bool is_transmission,
+                                bool is_translucency_with_thickness,
+                                vec3 Ng,
+                                LightVector lv)
 {
-  vec2 result = light_attenuation_facing(light, lv.L, lv.dist, Ng);
+  float result = light_attenuation_facing(
+      light, lv.L, lv.dist, Ng, is_transmission, is_translucency_with_thickness);
   result *= light_attenuation_common(light, is_directional, lv.L);
   if (!is_directional) {
     result *= light_influence_attenuation(
@@ -194,13 +210,13 @@ float light_point_light(LightData light, const bool is_directional, LightVector 
 /**
  * Return the radius of the disk at the sphere origin spanning the same solid angle as the sphere
  * from a given distance.
- * Assumes `distance_to_sphere > sphere_radius`.
+ * Assume `distance_to_sphere > sphere_radius`, otherwise return almost infinite radius.
  */
 float light_sphere_disk_radius(float sphere_radius, float distance_to_sphere)
 {
   /* The sine of the half-angle spanned by a sphere light is equal to the tangent of the
    * half-angle spanned by a disk light with the same radius. */
-  return sphere_radius * inversesqrt(1.0 - square(sphere_radius / distance_to_sphere));
+  return sphere_radius * inversesqrt(max(1e-8, 1.0 - square(sphere_radius / distance_to_sphere)));
 }
 
 float light_ltc(
