@@ -1582,7 +1582,6 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
  */
 static bool copy_driver_to_selected_button(bContext *C, bool poll)
 {
-  Main *bmain = CTX_data_main(C);
   PropertyRNA *prop;
   PointerRNA ptr;
   int index;
@@ -1590,26 +1589,22 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
 
   /* Get the property of the clicked button and its driver. */
   {
-    /* Find the property. */
+    /* Find the property and its RNA path. */
     UI_context_active_but_prop_get(C, &ptr, &prop, &index);
     if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
       return false;
     }
-
-    /* Find the real ID and the path from that ID. */
-    ID *real_id;
-    std::optional<std::string> real_path = RNA_path_from_real_ID_to_property_index(
-        bmain, &ptr, prop, 0, -1, &real_id);
-    if (!real_id || !real_path.has_value()) {
+    const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
+    if (!path.has_value()) {
       return false;
     }
 
     /* Find the driver. */
-    AnimData *adt = BKE_animdata_from_id(real_id);
+    AnimData *adt = BKE_animdata_from_id(ptr.owner_id);
     if (!adt) {
       return false;
     }
-    src_driver = BKE_fcurve_find(&adt->drivers, real_path->c_str(), index);
+    src_driver = BKE_fcurve_find(&adt->drivers, path->c_str(), index);
     if (!src_driver) {
       return false;
     }
@@ -1654,17 +1649,13 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
       return true;
     }
 
-    /* Get the actual ID that the property we're copying to belongs to, along
-     * with the path of the property from that ID. We need this to create the
-     * driver further below. */
-    ID *dst_id;
-    std::optional<std::string> dst_path = RNA_path_from_real_ID_to_property_index(
-        bmain, &dst_ptr, dst_prop, 0, -1, &dst_id);
-    if (!dst_id || !dst_path.has_value()) {
+    /* Get RNA path of the property we're copying to. */
+    const std::optional<std::string> dst_path = RNA_path_from_ID_to_property(&dst_ptr, dst_prop);
+    if (!dst_path.has_value()) {
       return false;
     }
 
-    AnimData *dst_adt = BKE_animdata_ensure_id(dst_id);
+    AnimData *dst_adt = BKE_animdata_ensure_id(dst_ptr.owner_id);
     BLI_assert(dst_adt);
 
     /* If there's an existing matching driver, remove it first.
