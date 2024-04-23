@@ -116,7 +116,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
                                                      curves.curves_range(),
                                                      curves_transform_data->memory);
     /* Alter selection as in legacy curves bezt_select_to_transform_triple_flag(). */
-    if (bezier_curves[i].size()) {
+    if (!bezier_curves[i].is_empty()) {
       const OffsetIndices<int> points_by_curve = curves.points_by_curve();
       const VArray<int8_t> handle_types_left = curves.handle_types_left();
       const VArray<int8_t> handle_types_right = curves.handle_types_right();
@@ -135,6 +135,8 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
           }
         }
       });
+
+      /* Select bezier handles that must be transformed if the main control point is selected. */
       IndexMask must_be_selected_mask = IndexMask::from_indices(must_be_selected.as_span(),
                                                                 curves_transform_data->memory);
       if (must_be_selected.size()) {
@@ -145,7 +147,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       }
     }
 
-    int positions_in_custom_data = 0;
+    int points_to_transform_num = 0;
     if (use_proportional_edit) {
       Array<int> bezier_point_offset_data(bezier_curves[i].size() + 1);
       OffsetIndices<int> bezier_offsets = offset_indices::gather_selected_offsets(
@@ -153,21 +155,21 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
       const int bezier_point_count = bezier_offsets.total_size();
       tc.data_len = curves.points_num() + 2 * bezier_point_count;
-      /* `tc.data_len` and `positions_in_custom_data` differ because full copies of Bezier handle
+      /* `tc.data_len` and `points_to_transform_num` differ because full copies of Bezier handle
        * domains are made into `CurvesTransformData::positions`. */
-      positions_in_custom_data = curves.points_num() * selection_attribute_names.size();
+      points_to_transform_num = curves.points_num() * selection_attribute_names.size();
     }
     else {
       tc.data_len = 0;
       for (const IndexMask &selection : selection_per_attribute[i]) {
         tc.data_len += selection.size();
       }
-      positions_in_custom_data = tc.data_len;
+      points_to_transform_num = tc.data_len;
     }
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
-      curves_transform_data->positions.reinitialize(positions_in_custom_data);
+      curves_transform_data->positions.reinitialize(points_to_transform_num);
     }
   }
 
