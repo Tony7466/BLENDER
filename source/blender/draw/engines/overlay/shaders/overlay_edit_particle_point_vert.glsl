@@ -33,7 +33,7 @@ void main()
   else {
     finalColor = mix(colorWire, colorVertexSelect, selection);
   }
-  
+
   gl_PointSize = sizeVertex * 2.0;
 
   view_clipping_distances(world_pos);
