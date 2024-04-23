@@ -560,12 +560,15 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 
 #  include "NOD_common.h"
 #  include "NOD_composite.hh"
+#  include "NOD_geo_bake.hh"
+#  include "NOD_geo_index_switch.hh"
+#  include "NOD_geo_repeat.hh"
+#  include "NOD_geo_simulation.hh"
 #  include "NOD_geometry.hh"
 #  include "NOD_shader.h"
 #  include "NOD_socket.hh"
 #  include "NOD_socket_items.hh"
 #  include "NOD_texture.h"
-#  include "NOD_zone_socket_items.hh"
 
 #  include "RE_engine.h"
 #  include "RE_pipeline.h"
@@ -2112,7 +2115,7 @@ static bNodeSocket *find_socket_by_key(bNode &node,
   return nullptr;
 }
 
-static int rna_NodeInputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+static bool rna_NodeInputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
   if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_IN, key)) {
@@ -2122,7 +2125,7 @@ static int rna_NodeInputs_lookup_string(PointerRNA *ptr, const char *key, Pointe
   return false;
 }
 
-static int rna_NodeOutputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
+static bool rna_NodeOutputs_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr)
 {
   bNode *node = static_cast<bNode *>(ptr->data);
   if (bNodeSocket *socket = find_socket_by_key(*node, SOCK_OUT, key)) {
@@ -4648,12 +4651,12 @@ static void def_sh_vector_rotate(StructRNA *srna)
   prop = RNA_def_property(srna, "rotation_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, rna_enum_vector_rotate_type_items);
-  RNA_def_property_ui_text(prop, "Type", "Type of rotation");
+  RNA_def_property_ui_text(prop, "Type", "Type of angle input");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "custom2", 0);
-  RNA_def_property_ui_text(prop, "Invert", "Invert angle");
+  RNA_def_property_ui_text(prop, "Invert", "Invert the rotation angle");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -6548,7 +6551,7 @@ static void def_cmp_dilate_erode(StructRNA *srna)
   prop = RNA_def_property(srna, "falloff", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "falloff");
   RNA_def_property_enum_items(prop, rna_enum_proportional_falloff_curve_only_items);
-  RNA_def_property_ui_text(prop, "Falloff", "Falloff type the feather");
+  RNA_def_property_ui_text(prop, "Falloff", "Falloff type of the feather");
   RNA_def_property_translation_context(prop,
                                        BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
@@ -6782,6 +6785,7 @@ static void def_cmp_color_spill(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "custom1");
   RNA_def_property_enum_items(prop, channel_items);
   RNA_def_property_ui_text(prop, "Channel", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "limit_method", PROP_ENUM, PROP_NONE);
@@ -6796,6 +6800,7 @@ static void def_cmp_color_spill(StructRNA *srna)
   RNA_def_property_enum_sdna(prop, nullptr, "limchan");
   RNA_def_property_enum_items(prop, limit_channel_items);
   RNA_def_property_ui_text(prop, "Limit Channel", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "ratio", PROP_FLOAT, PROP_NONE);
@@ -6813,18 +6818,21 @@ static void def_cmp_color_spill(StructRNA *srna)
   RNA_def_property_float_sdna(prop, nullptr, "uspillr");
   RNA_def_property_range(prop, 0.0f, 1.5f);
   RNA_def_property_ui_text(prop, "R", "Red spillmap scale");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "unspill_green", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "uspillg");
   RNA_def_property_range(prop, 0.0f, 1.5f);
   RNA_def_property_ui_text(prop, "G", "Green spillmap scale");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "unspill_blue", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "uspillb");
   RNA_def_property_range(prop, 0.0f, 1.5f);
   RNA_def_property_ui_text(prop, "B", "Blue spillmap scale");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -6930,6 +6938,7 @@ static void def_cmp_channel_matte(StructRNA *srna)
   RNA_def_property_enum_items(prop, prop_tri_channel_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_Node_channel_itemf");
   RNA_def_property_ui_text(prop, "Channel", "Channel used to determine matte");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   RNA_def_struct_sdna_from(srna, "NodeChroma", "storage");
@@ -6945,6 +6954,7 @@ static void def_cmp_channel_matte(StructRNA *srna)
   RNA_def_property_enum_items(prop, prop_tri_channel_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_Node_channel_itemf");
   RNA_def_property_ui_text(prop, "Limit Channel", "Limit by this channel's value");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_COLOR);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "limit_max", PROP_FLOAT, PROP_NONE);
@@ -8361,7 +8371,7 @@ static void def_cmp_keying(StructRNA *srna)
   prop = RNA_def_property(srna, "feather_falloff", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "feather_falloff");
   RNA_def_property_enum_items(prop, rna_enum_proportional_falloff_curve_only_items);
-  RNA_def_property_ui_text(prop, "Feather Falloff", "Falloff type the feather");
+  RNA_def_property_ui_text(prop, "Feather Falloff", "Falloff type of the feather");
   RNA_def_property_translation_context(prop,
                                        BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
