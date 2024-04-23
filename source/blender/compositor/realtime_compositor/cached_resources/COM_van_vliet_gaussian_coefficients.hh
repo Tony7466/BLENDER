@@ -17,7 +17,7 @@ namespace blender::realtime_compositor {
 class Context;
 
 /* ------------------------------------------------------------------------------------------------
- * VanVliet Gaussian Coefficients Key.
+ * Van Vliet Gaussian Coefficients Key.
  */
 class VanVlietGaussianCoefficientsKey {
  public:
@@ -32,26 +32,38 @@ bool operator==(const VanVlietGaussianCoefficientsKey &a,
                 const VanVlietGaussianCoefficientsKey &b);
 
 /* -------------------------------------------------------------------------------------------------
- * VanVliet Gaussian Coefficients.
+ * Van Vliet Gaussian Coefficients.
  *
  * A caches resource that computes and caches the coefficients of the fourth order IIR filter
  * approximating a Gaussian filter computed using Van Vliet's design method. */
 class VanVlietGaussianCoefficients : public CachedResource {
  private:
-  double4 feedback_coefficients_;
-  double feedforward_coefficient_;
+  double2 first_causal_feedforward_coefficients_;
+  double2 first_non_causal_feedforward_coefficients_;
+  double2 first_feedback_coefficients_;
+
+  double2 second_causal_feedforward_coefficients_;
+  double2 second_non_causal_feedforward_coefficients_;
+  double2 second_feedback_coefficients_;
+
   double boundary_coefficient_;
 
  public:
   VanVlietGaussianCoefficients(Context &context, float sigma);
 
-  const double4 &feedback_coefficients() const;
-  double feedforward_coefficient() const;
+  const double2 &first_causal_feedforward_coefficients() const;
+  const double2 &first_non_causal_feedforward_coefficients() const;
+  const double2 &first_feedback_coefficients() const;
+
+  const double2 &second_causal_feedforward_coefficients() const;
+  const double2 &second_non_causal_feedforward_coefficients() const;
+  const double2 &second_feedback_coefficients() const;
+
   double boundary_coefficient() const;
 };
 
 /* ------------------------------------------------------------------------------------------------
- * VanVliet Gaussian Coefficients Container.
+ * Van Vliet Gaussian Coefficients Container.
  */
 class VanVlietGaussianCoefficientsContainer : CachedResourceContainer {
  private:

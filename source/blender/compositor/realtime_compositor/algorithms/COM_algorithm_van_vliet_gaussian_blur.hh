@@ -11,6 +11,6 @@
 
 namespace blender::realtime_compositor {
 
-void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, float2 radius);
+void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, float2 sigma);
 
 }  // namespace blender::realtime_compositor

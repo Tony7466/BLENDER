@@ -16,19 +16,30 @@
 
 namespace blender::realtime_compositor {
 
-static Result horizontal_pass(Context &context, Result &input, float radius)
+static Result horizontal_pass(Context &context, Result &input, float sigma)
 {
   GPUShader *shader = context.get_shader("compositor_van_vliet_gaussian_blur");
   GPU_shader_bind(shader);
 
-  const float sigma = radius / 2.0f;
   const VanVlietGaussianCoefficients &coefficients =
       context.cache_manager().van_vliet_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_1f(
-      shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
-  GPU_shader_uniform_4fv(
-      shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
+  GPU_shader_uniform_2fv(
+      shader, "first_feedback_coefficients", float2(coefficients.first_feedback_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "first_causal_feedforward_coefficients",
+                         float2(coefficients.first_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "first_non_causal_feedforward_coefficients",
+                         float2(coefficients.first_non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(
+      shader, "second_feedback_coefficients", float2(coefficients.second_feedback_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "second_causal_feedforward_coefficients",
+                         float2(coefficients.second_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "second_non_causal_feedforward_coefficients",
+                         float2(coefficients.second_non_causal_feedforward_coefficients()));
   GPU_shader_uniform_1f(
       shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
 
@@ -64,19 +75,30 @@ static void vertical_pass(Context &context,
                           Result &original_input,
                           Result &horizontal_pass_result,
                           Result &output,
-                          float radius)
+                          float sigma)
 {
   GPUShader *shader = context.get_shader("compositor_van_vliet_gaussian_blur");
   GPU_shader_bind(shader);
 
-  const float sigma = radius / 2.0f;
   const VanVlietGaussianCoefficients &coefficients =
       context.cache_manager().van_vliet_gaussian_coefficients.get(context, sigma);
 
-  GPU_shader_uniform_1f(
-      shader, "feedforward_coefficient", float(coefficients.feedforward_coefficient()));
-  GPU_shader_uniform_4fv(
-      shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
+  GPU_shader_uniform_2fv(
+      shader, "first_feedback_coefficients", float2(coefficients.first_feedback_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "first_causal_feedforward_coefficients",
+                         float2(coefficients.first_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "first_non_causal_feedforward_coefficients",
+                         float2(coefficients.first_non_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(
+      shader, "second_feedback_coefficients", float2(coefficients.second_feedback_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "second_causal_feedforward_coefficients",
+                         float2(coefficients.second_causal_feedforward_coefficients()));
+  GPU_shader_uniform_2fv(shader,
+                         "second_non_causal_feedforward_coefficients",
+                         float2(coefficients.second_non_causal_feedforward_coefficients()));
   GPU_shader_uniform_1f(
       shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
 
@@ -95,10 +117,10 @@ static void vertical_pass(Context &context,
   horizontal_pass_result.unbind_as_texture();
 }
 
-void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, float2 radius)
+void van_vliet_gaussian_blur(Context &context, Result &input, Result &output, float2 sigma)
 {
-  Result horizontal_pass_result = horizontal_pass(context, input, radius.x);
-  vertical_pass(context, input, horizontal_pass_result, output, radius.y);
+  Result horizontal_pass_result = horizontal_pass(context, input, sigma.x);
+  vertical_pass(context, input, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();
 }
 

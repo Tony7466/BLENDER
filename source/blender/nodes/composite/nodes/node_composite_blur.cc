@@ -110,7 +110,7 @@ class BlurOperation : public NodeOperation {
 
     if (node_storage(bnode()).filtertype == R_FILTER_FAST_GAUSS) {
       van_vliet_gaussian_blur(
-          context(), get_input("Image"), get_result("Image"), compute_blur_radius());
+          context(), get_input("Image"), get_result("Image"), compute_blur_radius() / 2.0f);
     }
     else if (use_variable_size()) {
       execute_variable_size();

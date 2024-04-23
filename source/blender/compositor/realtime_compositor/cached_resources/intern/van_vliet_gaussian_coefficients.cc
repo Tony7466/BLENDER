@@ -168,7 +168,7 @@ static std::array<std::complex<double>, 4> scale_poles(
     const std::complex<double> &pole = poles[i];
     const double magnitude = std::pow(std::abs(pole), 1.0 / scale_factor);
     const double phase = std::arg(pole) / scale_factor;
-    scaled_poles[i] = std::polar(magnitude, phase);
+    scaled_poles[i] = 1.0 / std::polar(magnitude, phase);
   }
 
   return scaled_poles;
@@ -231,6 +231,56 @@ static double compute_feedforward_coefficient(const double4 &feedback_coefficien
   return 1.0 + math::reduce_add(feedback_coefficients);
 }
 
+static double compute_gain(const std::array<std::complex<double>, 4> &poles)
+{
+  std::complex<double> gain = std::complex<double>(1.0, 0.0);
+  for (const std::complex<double> &pole : poles) {
+    gain *= 1.0 - pole;
+  }
+
+  return gain.real();
+}
+
+static std::complex<double> compute_partial_fraction_residue(
+    const std::array<std::complex<double>, 4> &poles, const std::complex<double> &target_pole)
+{
+  std::complex<double> target_pole_inverse = 1.0 / target_pole;
+  std::complex<double> residue = std::complex<double>(1.0, 0.0);
+  for (const std::complex<double> &pole : poles) {
+    if (pole != target_pole && pole != std::conj(target_pole)) {
+      residue *= 1.0 - pole * target_pole_inverse;
+    }
+
+    residue *= 1.0 - pole * target_pole;
+  }
+
+  const double gain = math::square(compute_gain(poles));
+
+  return (1.0 / residue) * gain;
+}
+
+static void compute_second_order_section(const std::array<std::complex<double>, 4> &poles,
+                                         const std::complex<double> &pole,
+                                         double2 &r_feedback_coefficients,
+                                         double2 &r_causal_feedforward_coefficients,
+                                         double2 &r_non_causal_feedforward_coefficients)
+{
+  const std::complex<double> pole_inverse = 1.0 / pole;
+  const std::complex<double> residue = compute_partial_fraction_residue(poles, pole);
+
+  r_feedback_coefficients = double2(-2.0 * pole.real(), std::norm(pole));
+
+  const double causal_feedforward_1 = residue.imag() / pole_inverse.imag();
+  const double causal_feedforward_0 = residue.real() - causal_feedforward_1 * pole_inverse.real();
+  r_causal_feedforward_coefficients = double2(causal_feedforward_0, causal_feedforward_1);
+
+  const double non_causal_feedforward_1 = causal_feedforward_1 -
+                                          causal_feedforward_0 * r_feedback_coefficients[0];
+  const double non_causal_feedforward_2 = -causal_feedforward_0 * r_feedback_coefficients[1];
+  r_non_causal_feedforward_coefficients = double2(non_causal_feedforward_1,
+                                                  non_causal_feedforward_2);
+}
+
 /* Computes the coefficient that needs to be multiplied to the boundary value in order to simulate
  * an infinite previous stream of that value. The boundary value is used to initialize the previous
  * outputs for the causal and non-causal filters. This works for both Dirichlet and Neumann
@@ -263,22 +313,54 @@ VanVlietGaussianCoefficients::VanVlietGaussianCoefficients(Context & /*context*/
 
   const std::array<std::complex<double>, 4> scaled_poles = scale_poles(poles, sigma);
 
-  feedback_coefficients_ = compute_feedback_coefficients(scaled_poles);
+  const double4 feedback_coefficients = compute_feedback_coefficients(scaled_poles);
 
-  feedforward_coefficient_ = compute_feedforward_coefficient(feedback_coefficients_);
+  const double feedforward_coefficient = compute_feedforward_coefficient(feedback_coefficients);
 
-  boundary_coefficient_ = compute_boundary_coefficient(feedback_coefficients_,
-                                                       feedforward_coefficient_);
+  compute_second_order_section(scaled_poles,
+                               scaled_poles[0],
+                               first_feedback_coefficients_,
+                               first_causal_feedforward_coefficients_,
+                               first_non_causal_feedforward_coefficients_);
+
+  compute_second_order_section(scaled_poles,
+                               scaled_poles[2],
+                               second_feedback_coefficients_,
+                               second_causal_feedforward_coefficients_,
+                               second_non_causal_feedforward_coefficients_);
+
+  boundary_coefficient_ = compute_boundary_coefficient(feedback_coefficients,
+                                                       feedforward_coefficient);
 }
 
-const double4 &VanVlietGaussianCoefficients::feedback_coefficients() const
+const double2 &VanVlietGaussianCoefficients::first_causal_feedforward_coefficients() const
 {
-  return feedback_coefficients_;
+  return first_causal_feedforward_coefficients_;
 }
 
-double VanVlietGaussianCoefficients::feedforward_coefficient() const
+const double2 &VanVlietGaussianCoefficients::first_non_causal_feedforward_coefficients() const
 {
-  return feedforward_coefficient_;
+  return first_non_causal_feedforward_coefficients_;
+}
+
+const double2 &VanVlietGaussianCoefficients::first_feedback_coefficients() const
+{
+  return first_feedback_coefficients_;
+}
+
+const double2 &VanVlietGaussianCoefficients::second_causal_feedforward_coefficients() const
+{
+  return second_causal_feedforward_coefficients_;
+}
+
+const double2 &VanVlietGaussianCoefficients::second_non_causal_feedforward_coefficients() const
+{
+  return second_non_causal_feedforward_coefficients_;
+}
+
+const double2 &VanVlietGaussianCoefficients::second_feedback_coefficients() const
+{
+  return second_feedback_coefficients_;
 }
 
 double VanVlietGaussianCoefficients::boundary_coefficient() const
