@@ -2117,80 +2117,36 @@ static void view3d_status_bar(
   Object *obedit = OBEDIT_FROM_OBACT(ob);
   eObjectMode object_mode = ob ? (eObjectMode)ob->mode : eObjectMode::OB_MODE_OBJECT;
 
-  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
-  uiItemL(layout, "Rotate View", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
+  wmKeyMap *view3d_km = WM_keymap_find_all(
+      CTX_wm_manager(C), "3D View", SPACE_VIEW3D, RGN_TYPE_WINDOW);
+  wmKeyMap *obnm_km = WM_keymap_find_all(
+      CTX_wm_manager(C), "Object Non-modal", SPACE_EMPTY, RGN_TYPE_WINDOW);
 
-  uiItemL(layout, "", ICON_EVENT_SHIFT);
-  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
-  uiItemL(layout, "Pan", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", ICON_EVENT_CTRL);
-  uiItemL(layout, "", UI_icon_from_event_type(MIDDLEMOUSE, KM_CLICK));
-  uiItemL(layout, "Zoom", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", UI_icon_from_event_type(LEFTMOUSE, KM_CLICK));
-  uiItemL(layout, "Select", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", UI_icon_from_event_type(EVT_GKEY, KM_ANY));
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, "Move", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", UI_icon_from_event_type(EVT_RKEY, KM_ANY));
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, "Rotate", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", UI_icon_from_event_type(EVT_SKEY, KM_ANY));
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, "Scale", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
+  WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_rotate", IFACE_("Rotate View"), layout);
+  WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_move", IFACE_("Pan"), layout);
+  WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_zoom", IFACE_("Zoom"), layout);
+  WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_select", IFACE_("Select"), layout);
   if (obedit) {
-    uiItemL(layout, "", UI_icon_from_event_type(EVT_EKEY, KM_ANY));
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Extrude", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-
-    uiItemL(layout, "", UI_icon_from_event_type(EVT_XKEY, KM_ANY));
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Delete", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-
-    uiItemL(layout, "", ICON_EVENT_TAB);
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Object Mode", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
+    wmKeyMap *edmode_km = WM_keymap_find_all(CTX_wm_manager(C), "Mesh", SPACE_EMPTY, RGN_TYPE_WINDOW);
+    WM_keymap_operator_statusbar_item(edmode_km, "MESH_OT_select_all", IFACE_("All"), layout);
+    WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_translate", IFACE_("Move"), layout);
+    WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_rotate", IFACE_("Rotate"), layout);
+    WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_resize", IFACE_("Scale"), layout);
+    WM_keymap_operator_statusbar_item(edmode_km, "MESH_OT_duplicate_move", IFACE_("Duplicate"), layout);
+    WM_keymap_operator_statusbar_item(obnm_km, "OBJECT_OT_mode_set", IFACE_("Object Mode"), layout);
   }
   else {
-    uiItemL(layout, "", ICON_EVENT_SHIFT);
-    uiItemL(layout, "", UI_icon_from_event_type(EVT_AKEY, KM_ANY));
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Add", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-
-    uiItemL(layout, "", UI_icon_from_event_type(EVT_XKEY, KM_ANY));
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Delete", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
-
-    uiItemL(layout, "", ICON_EVENT_TAB);
-    uiItemS_ex(layout, 0.6f);
-    uiItemL(layout, "Edit Mode", ICON_NONE);
-    uiItemS_ex(layout, 0.7f);
+    wmKeyMap *obmode_km = WM_keymap_find_all(
+        CTX_wm_manager(C), "Object Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
+    WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_select_all", IFACE_("All"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_translate", IFACE_("Move"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_rotate", IFACE_("Rotate"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_resize", IFACE_("Scale"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_duplicate_move", IFACE_("Duplicate"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_join", IFACE_("Join"), layout);
+    WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_delete", IFACE_("Delete"), layout);
+    WM_keymap_operator_statusbar_item(obnm_km, "OBJECT_OT_mode_set", IFACE_("Edit Mode"), layout);
   }
-  uiItemL(layout, "", UI_icon_from_event_type(RIGHTMOUSE, KM_CLICK));
-  uiItemL(layout, "Options", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
-
-  uiItemL(layout, "", UI_icon_from_event_type(EVT_F3KEY, KM_ANY));
-  uiItemS_ex(layout, 0.6f);
-  uiItemL(layout, "Search", ICON_NONE);
-  uiItemS_ex(layout, 0.7f);
 }
 
 void ED_spacetype_view3d()

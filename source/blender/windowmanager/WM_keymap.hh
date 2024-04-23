@@ -91,6 +91,7 @@ void WM_keymap_remove(wmKeyConfig *keyconfig, wmKeyMap *keymap);
 bool WM_keymap_poll(bContext *C, wmKeyMap *keymap);
 
 wmKeyMapItem *WM_keymap_item_find_id(wmKeyMap *keymap, int id);
+wmKeyMapItem *WM_keymap_item_find_name(wmKeyMap *keymap, const char *name);
 bool WM_keymap_item_compare(const wmKeyMapItem *k1, const wmKeyMapItem *k2);
 
 /* `wm_keymap_utils.cc`. */
@@ -192,6 +193,8 @@ std::optional<std::string> WM_key_event_operator_string(const bContext *C,
                                                         wmOperatorCallContext opcontext,
                                                         IDProperty *properties,
                                                         bool is_strict);
+
+wmKeyMapItem *WM_key_event_operator_keymap(const bContext *C, const char *opname, wmWindow *win, ScrArea *area, ARegion *region);
 
 wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
                                                 const char *opname,

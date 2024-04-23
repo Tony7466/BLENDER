@@ -985,6 +985,40 @@ static bool ui_key_event_property_match(const char *opname,
   return match;
 }
 
+void WM_keymap_operator_statusbar_item(wmKeyMap *keymap,
+                                       const char *opname,
+                                       const char *name,
+                                       uiLayout *layout)
+{
+  if (!keymap) {
+    return;
+  }
+
+  int icon_mod[4];
+  int icon = 0;
+
+  LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
+    if (kmi->flag & KMI_INACTIVE) {
+      continue;
+    }
+    if (STREQ(opname, kmi->idname)) {
+      icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      if (icon) {
+        break;
+      }
+    }
+  }
+
+  if (icon) {
+    for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+      uiItemL(layout, "", icon_mod[j]);
+    }
+    uiItemL(layout, "", icon);
+    uiItemL(layout, name, ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+  }
+}
+
 std::optional<std::string> UI_key_event_operator_string(const bContext *C,
                                                         const char *opname,
                                                         IDProperty *properties,

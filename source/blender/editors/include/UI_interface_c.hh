@@ -3289,6 +3289,11 @@ std::optional<std::string> UI_key_event_operator_string(const bContext *C,
                                                         IDProperty *properties,
                                                         bool is_strict);
 
+void WM_keymap_operator_statusbar_item(wmKeyMap *keymap,
+                                       const char *opname,
+                                       const char *name,
+                                       uiLayout *layout);
+
 /* ui_interface_region_tooltip.c */
 
 /**
