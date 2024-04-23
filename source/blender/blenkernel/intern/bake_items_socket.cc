@@ -81,12 +81,14 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
           }
           bake_items[i] = std::make_unique<AttributeBakeItem>(attribute_name);
         }
+#ifdef WITH_OPENVDB
         else if (value_variant.is_volume_grid()) {
           bke::GVolumeGrid grid = value_variant.get<bke::GVolumeGrid>();
           grid.get_for_write().set_name(config.names[i]);
           bake_items[i] = std::make_unique<VolumeGridBakeItem>(
               std::make_unique<bke::GVolumeGrid>(std::move(grid)));
         }
+#endif
         else {
           value_variant.convert_to_single();
           GPointer value = value_variant.get_single_ptr();
@@ -159,6 +161,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         r_attribute_map.add(item->name(), attribute_id);
         return true;
       }
+#ifdef WITH_OPENVDB
       if (const auto *item = dynamic_cast<const VolumeGridBakeItem *>(&bake_item)) {
         const GVolumeGrid &grid = *item->grid;
         const VolumeGridType grid_type = grid->grid_type();
@@ -173,6 +176,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         }
         return false;
       }
+#endif
       return false;
     }
     case SOCK_STRING: {

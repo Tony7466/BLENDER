@@ -135,11 +135,13 @@ void GeometryBakeItem::try_restore_data_blocks(GeometrySet &main_geometry,
   });
 }
 
+#ifdef WITH_OPENVDB
 VolumeGridBakeItem::VolumeGridBakeItem(std::unique_ptr<GVolumeGrid> grid) : grid(std::move(grid))
 {
 }
 
 VolumeGridBakeItem::~VolumeGridBakeItem() = default;
+#endif
 
 PrimitiveBakeItem::PrimitiveBakeItem(const CPPType &type, const void *value) : type_(type)
 {

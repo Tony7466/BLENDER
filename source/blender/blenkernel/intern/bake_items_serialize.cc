@@ -1197,6 +1197,7 @@ static void serialize_bake_item(const BakeItem &item,
     r_io_item.append_str("type", "ATTRIBUTE");
     r_io_item.append_str("name", attribute_state_item->name());
   }
+#ifdef WITH_OPENVDB
   else if (const auto *grid_state_item = dynamic_cast<const VolumeGridBakeItem *>(&item)) {
     r_io_item.append_str("type", "GRID");
     const GVolumeGrid &grid = *grid_state_item->grid;
@@ -1212,6 +1213,7 @@ static void serialize_bake_item(const BakeItem &item,
                       .serialize();
     r_io_item.append("vdb", std::move(io_vdb));
   }
+#endif
   else if (const auto *string_state_item = dynamic_cast<const StringBakeItem *>(&item)) {
     r_io_item.append_str("type", "STRING");
     const StringRefNull str = string_state_item->value();
@@ -1261,6 +1263,7 @@ static std::unique_ptr<BakeItem> deserialize_bake_item(const DictionaryValue &io
     }
     return std::make_unique<AttributeBakeItem>(std::move(*name));
   }
+#ifdef WITH_OPENVDB
   if (*state_item_type == StringRef("GRID")) {
     const DictionaryValue &io_grid = io_item;
     const auto *io_vdb = io_grid.lookup_dict("vdb");
@@ -1292,6 +1295,7 @@ static std::unique_ptr<BakeItem> deserialize_bake_item(const DictionaryValue &io
     GVolumeGrid grid{std::move(vdb_grid)};
     return std::make_unique<VolumeGridBakeItem>(std::make_unique<GVolumeGrid>(grid));
   }
+#endif
   if (*state_item_type == StringRef("STRING")) {
     const std::shared_ptr<io::serialize::Value> *io_data = io_item.lookup("data");
     if (!io_data) {

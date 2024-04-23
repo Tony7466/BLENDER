@@ -82,6 +82,7 @@ class AttributeBakeItem : public BakeItem {
   }
 };
 
+#ifdef WITH_OPENVDB
 class VolumeGridBakeItem : public BakeItem {
  public:
   /** Using #unique_ptr so that `BKE_volume_grid_fwd.hh` can be used. */
@@ -90,6 +91,7 @@ class VolumeGridBakeItem : public BakeItem {
   VolumeGridBakeItem(std::unique_ptr<GVolumeGrid> grid);
   ~VolumeGridBakeItem();
 };
+#endif
 
 /** Storage for a single value of a trivial type like `float`, `int`, etc. */
 class PrimitiveBakeItem : public BakeItem {
