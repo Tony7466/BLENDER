@@ -6,6 +6,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_volume_grid.hh"
 
 namespace blender::bke::bake {
 
@@ -80,6 +81,11 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
           }
           bake_items[i] = std::make_unique<AttributeBakeItem>(attribute_name);
         }
+        else if (value_variant.is_volume_grid()) {
+          bke::GVolumeGrid grid = value_variant.get<bke::GVolumeGrid>();
+          bake_items[i] = std::make_unique<VolumeGridBakeItem>(
+              std::make_unique<bke::GVolumeGrid>(std::move(grid)));
+        }
         else {
           value_variant.convert_to_single();
           GPointer value = value_variant.get_single_ptr();
@@ -151,6 +157,20 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         new (r_value) SocketValueVariant(std::move(field));
         r_attribute_map.add(item->name(), attribute_id);
         return true;
+      }
+      if (const auto *item = dynamic_cast<const VolumeGridBakeItem *>(&bake_item)) {
+        const GVolumeGrid &grid = *item->grid;
+        const VolumeGridType grid_type = grid->grid_type();
+        const std::optional<eNodeSocketDatatype> grid_socket_type = grid_type_to_socket_type(
+            grid_type);
+        if (!grid_socket_type) {
+          return false;
+        }
+        if (grid_socket_type == socket_type) {
+          new (r_value) SocketValueVariant(*item->grid);
+          return true;
+        }
+        return false;
       }
       return false;
     }
