@@ -248,6 +248,33 @@ static void recalcData_curves(TransInfo *t)
   }
 }
 
+static OffsetIndices<int> expand_selected_offsets(const OffsetIndices<int> src_offsets,
+                                                  const IndexMask &selection,
+                                                  const int multiplier,
+                                                  MutableSpan<int> dst_offsets)
+{
+  int offset = 0;
+  auto fill = [&](const IndexRange range, const int _multiplier) {
+    for (const int i : range) {
+      dst_offsets[i] = offset;
+      offset += src_offsets[i].size() * _multiplier;
+    }
+  };
+  int from = 0;
+  selection.foreach_range([&](const IndexRange range) {
+    if (range.start() > from) {
+      fill(IndexRange::from_begin_end(from, range.start()), 1);
+    }
+    fill(range, multiplier);
+    from = range.one_after_last();
+  });
+  if (from < src_offsets.size()) {
+    fill(IndexRange::from_begin_end(from, src_offsets.size()), 1);
+  }
+  dst_offsets.last() = offset;
+  return OffsetIndices<int>(dst_offsets);
+}
+
 }  // namespace blender::ed::transform::curves
 
 CurvesTransformData *create_curves_transform_custom_data(TransCustomData &custom_data)
@@ -327,7 +354,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
     }
     const VArray<int8_t> curve_types = curves.curve_types();
     Array<int> flat_offset_data(points_by_curve.size() + 1);
-    const OffsetIndices<int> flat_points_by_curve = expand_selected_offsets(
+    const OffsetIndices<int> flat_points_by_curve = ed::transform::curves::expand_selected_offsets(
         points_by_curve, bezier_curves, 3, flat_offset_data);
     affected_curves.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
       Vector<float> closest_distances;
