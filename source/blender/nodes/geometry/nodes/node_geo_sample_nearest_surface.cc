@@ -46,7 +46,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Bool>("Is Valid")
       .dependent_field({3, 4})
       .description(
-          "Whether the sampling was successfull. It can fail when the sampled group is empty");
+          "Whether the sampling was successful. It can fail when the sampled group is empty");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -116,13 +116,17 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
 
     /* Construct BVH tree for each group. */
     bvh_trees_.reinitialize(groups_num);
-    threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
-      for (const int group_i : range) {
-        const IndexMask &group_mask = group_masks[group_i];
-        BVHTreeFromMesh &bvh = bvh_trees_[group_i];
-        BKE_bvhtree_from_mesh_tris_init(mesh, group_mask, bvh);
-      }
-    });
+    threading::parallel_for_weighted(
+        IndexRange(groups_num),
+        512,
+        [&](const IndexRange range) {
+          for (const int group_i : range) {
+            const IndexMask &group_mask = group_masks[group_i];
+            BVHTreeFromMesh &bvh = bvh_trees_[group_i];
+            BKE_bvhtree_from_mesh_tris_init(mesh, group_mask, bvh);
+          }
+        },
+        [&](const int group_i) { return group_masks[group_i].size(); });
   }
 
   ~SampleNearestSurfaceFunction()

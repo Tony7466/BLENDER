@@ -84,10 +84,11 @@ void LightProbeModule::sync_volume(const Object *ob, ObjectHandle &handle)
     grid.updated = true;
     grid.surfel_density = static_cast<const ::LightProbe *>(ob->data)->surfel_density;
     grid.object_to_world = ob->object_to_world();
+    grid.cache = ob->lightprobe_cache;
+
     grid.world_to_object = float4x4(
         math::normalize(math::transpose(float3x3(grid.object_to_world))));
 
-    grid.cache = ob->lightprobe_cache;
     grid.normal_bias = lightprobe->grid_normal_bias;
     grid.view_bias = lightprobe->grid_view_bias;
     grid.facing_bias = lightprobe->grid_facing_bias;
@@ -141,7 +142,8 @@ void LightProbeModule::sync_sphere(const Object *ob, ObjectHandle &handle)
       return (bl_shape_type == LIGHTPROBE_SHAPE_BOX) ? SHAPE_CUBOID : SHAPE_ELIPSOID;
     };
     cube.influence_shape = to_eevee_shape(light_probe.attenuation_type);
-    cube.parallax_shape = to_eevee_shape(light_probe.parallax_type);
+    cube.parallax_shape = to_eevee_shape(use_custom_parallax ? light_probe.parallax_type :
+                                                               light_probe.attenuation_type);
 
     float4x4 object_to_world = math::scale(ob->object_to_world(), float3(influence_distance));
     cube.location = object_to_world.location();
@@ -210,7 +212,6 @@ void LightProbeModule::sync_world(const ::World *world, bool has_update)
 
   if (has_update) {
     world_sphere_.do_render = true;
-    sph_module.tag_world_irradiance_for_update();
   }
 }
 

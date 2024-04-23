@@ -24,7 +24,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       draw_ctx->scene->toolsettings);
   const View3D *v3d = draw_ctx->v3d;
-  const bool use_weight = (draw_ctx->object_mode & OB_MODE_WEIGHT_PAINT) != 0;
+  const bool use_weight = (draw_ctx->object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
 
   GPUShader *sh;
   DRWShadingGroup *grp;
@@ -61,14 +61,15 @@ void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRWShadingGroup *lines_grp = pd->edit_grease_pencil_wires_grp;
   if (lines_grp) {
-    GPUBatch *geom_lines = DRW_cache_grease_pencil_edit_lines_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_lines = DRW_cache_grease_pencil_edit_lines_get(draw_ctx->scene, ob);
 
     DRW_shgroup_call_no_cull(lines_grp, geom_lines, ob);
   }
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
   if (points_grp) {
-    GPUBatch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene,
+                                                                               ob);
     DRW_shgroup_call_no_cull(points_grp, geom_points, ob);
   }
 }
@@ -81,14 +82,14 @@ void OVERLAY_weight_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *o
 
   DRWShadingGroup *lines_grp = pd->edit_grease_pencil_wires_grp;
   if (lines_grp) {
-    GPUBatch *geom_lines = DRW_cache_grease_pencil_weight_lines_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_lines = DRW_cache_grease_pencil_weight_lines_get(draw_ctx->scene, ob);
 
     DRW_shgroup_call_no_cull(lines_grp, geom_lines, ob);
   }
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
   if (points_grp) {
-    GPUBatch *geom_points = DRW_cache_grease_pencil_weight_points_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_points = DRW_cache_grease_pencil_weight_points_get(draw_ctx->scene, ob);
     DRW_shgroup_call_no_cull(points_grp, geom_points, ob);
   }
 }

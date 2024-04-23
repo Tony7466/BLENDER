@@ -77,6 +77,12 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   /* Do not allow in DynTopo just yet. */
   if (!ss || (ss && ss->bm)) {
     return OPERATOR_FINISHED;
@@ -175,6 +181,12 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
   const float dist = RNA_float_get(op->ptr, "merge_tolerance");
 
   if (!pbvh) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -502,7 +514,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
+    if (!object::mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -769,14 +781,15 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
   }
 }
 
-static bool sculpt_mask_by_color_contiguous_floodfill(
-    SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate, void *userdata)
+static bool sculpt_mask_by_color_contiguous_floodfill(SculptSession *ss,
+                                                      PBVHVertRef from_v,
+                                                      PBVHVertRef to_v,
+                                                      bool is_duplicate,
+                                                      MaskByColorContiguousFloodFillData *data)
 {
   int from_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, from_v);
   int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
 
-  MaskByColorContiguousFloodFillData *data = static_cast<MaskByColorContiguousFloodFillData *>(
-      userdata);
   float current_color[4];
 
   SCULPT_vertex_color_get(ss, to_v, current_color);
@@ -813,7 +826,7 @@ static void sculpt_mask_by_color_contiguous(Object *object,
     }
   }
 
-  SculptFloodFill flood;
+  flood_fill::FillData flood;
   flood_fill::init_fill(ss, &flood);
   flood_fill::add_initial(&flood, vertex);
 
@@ -827,7 +840,10 @@ static void sculpt_mask_by_color_contiguous(Object *object,
 
   copy_v3_v3(ffd.initial_color, color);
 
-  flood_fill::execute(ss, &flood, sculpt_mask_by_color_contiguous_floodfill, &ffd);
+  flood_fill::execute(
+      ss, &flood, [&](SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+        return sculpt_mask_by_color_contiguous_floodfill(ss, from_v, to_v, is_duplicate, &ffd);
+      });
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
@@ -1303,11 +1319,11 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_init);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_edit);
   WM_operatortype_append(cloth::SCULPT_OT_cloth_filter);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_project_line_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_lasso_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_lasso_gesture);
+  WM_operatortype_append(project::SCULPT_OT_project_line_gesture);
 
   WM_operatortype_append(SCULPT_OT_sample_color);
   WM_operatortype_append(color::SCULPT_OT_color_filter);

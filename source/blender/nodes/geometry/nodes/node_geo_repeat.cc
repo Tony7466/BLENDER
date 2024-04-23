@@ -5,10 +5,14 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
+#include "NOD_geo_repeat.hh"
 #include "NOD_socket.hh"
-#include "NOD_zone_socket_items.hh"
+
+#include "BLO_read_write.hh"
 
 #include "BLI_string_utils.hh"
+
+#include "RNA_prototypes.h"
 
 #include "node_geometry_util.hh"
 
@@ -41,7 +45,7 @@ static void node_declare(NodeDeclarationBuilder &b)
         auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
         if (socket_type_supports_fields(socket_type)) {
           input_decl.supports_field();
-          output_decl.dependent_field({input_decl.input_index()});
+          output_decl.dependent_field({input_decl.index()});
         }
       }
     }
@@ -114,7 +118,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
       if (socket_type_supports_fields(socket_type)) {
         input_decl.supports_field();
-        output_decl.dependent_field({input_decl.input_index()});
+        output_decl.dependent_field({input_decl.index()});
       }
     }
   }
@@ -175,6 +179,31 @@ NOD_REGISTER_NODE(node_register)
 }  // namespace repeat_output_node
 
 }  // namespace blender::nodes::node_geo_repeat_cc
+
+namespace blender::nodes {
+
+StructRNA *RepeatItemsAccessor::item_srna = &RNA_RepeatItem;
+int RepeatItemsAccessor::node_type = GEO_NODE_REPEAT_OUTPUT;
+
+void RepeatItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
+{
+  const auto &storage = *static_cast<const NodeGeometryRepeatOutput *>(node.storage);
+  BLO_write_struct_array(writer, NodeRepeatItem, storage.items_num, storage.items);
+  for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+void RepeatItemsAccessor::blend_read_data(BlendDataReader *reader, bNode &node)
+{
+  auto &storage = *static_cast<NodeGeometryRepeatOutput *>(node.storage);
+  BLO_read_data_address(reader, &storage.items);
+  for (const NodeRepeatItem &item : Span(storage.items, storage.items_num)) {
+    BLO_read_data_address(reader, &item.name);
+  }
+}
+
+}  // namespace blender::nodes
 
 blender::Span<NodeRepeatItem> NodeGeometryRepeatOutput::items_span() const
 {
