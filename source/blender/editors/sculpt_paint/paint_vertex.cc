@@ -409,7 +409,7 @@ void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
 bool mode_toggle_poll_test(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob == nullptr || !ELEM(ob->type, OB_MESH, OB_GREASE_PENCIL)) {
+  if (ob == nullptr || ob->type != OB_MESH) {
     return false;
   }
   if (!ob->data || ID_IS_LINKED(ob->data)) {
@@ -2147,7 +2147,7 @@ static void fill_mesh_color(Mesh &mesh,
                             const bool use_face_sel,
                             const bool affect_alpha)
 {
-  if (BMEditMesh *em = mesh.runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
     BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());

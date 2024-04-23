@@ -66,6 +66,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -1063,9 +1064,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     }
     else {
       if (*detail < 1.0f) {
-        if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-            (noise_type != SHD_NOISE_HETERO_TERRAIN))
-        {
+        if (!ELEM(noise_type, SHD_NOISE_RIDGED_MULTIFRACTAL, SHD_NOISE_HETERO_TERRAIN)) {
           /* Add Multiply Math node behind Fac output. */
 
           bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -2860,8 +2859,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                                                           RAYTRACE_EEVEE_DENOISE_BILATERAL;
         scene->eevee.ray_tracing_options.screen_trace_quality = 0.25f;
         scene->eevee.ray_tracing_options.screen_trace_thickness = 0.2f;
-        scene->eevee.ray_tracing_options.screen_trace_max_roughness = 0.5f;
-        scene->eevee.ray_tracing_options.sample_clamp = 10.0f;
+        scene->eevee.ray_tracing_options.trace_max_roughness = 0.5f;
         scene->eevee.ray_tracing_options.resolution_scale = 2;
       }
     }
@@ -3184,6 +3182,54 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 14)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (bMotionPath *mpath = ob->mpath) {
+        mpath->color_post[0] = 0.1f;
+        mpath->color_post[1] = 1.0f;
+        mpath->color_post[2] = 0.1f;
+      }
+      if (!ob->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+        if (bMotionPath *mpath = pchan->mpath) {
+          mpath->color_post[0] = 0.1f;
+          mpath->color_post[1] = 1.0f;
+          mpath->color_post[2] = 0.1f;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 18)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "transmission_fac")) {
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        /* Refracted light was not supported in legacy EEVEE. Set it to zero for compatibility with
+         * older files. */
+        light->transmission_fac = 0.0f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 19)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Keep legacy EEVEE old behavior. */
+      scene->eevee.flag |= SCE_EEVEE_VOLUME_CUSTOM_RANGE;
+    }
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.clamp_surface_indirect = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 20)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_MARKERS;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 20)) {
     update_paint_modes_for_brush_assets(*bmain);
   }
 
