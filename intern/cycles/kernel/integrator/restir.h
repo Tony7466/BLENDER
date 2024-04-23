@@ -52,15 +52,14 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   int i = 0;
   /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
    * instead. */
-
-#ifdef __LIGHT_TREE__
-  if (kernel_data.integrator.use_light_tree) {
-    reservoir->ls.emitter_id = (int)buffer[i++];
-  }
-  else
-#endif
-  {
+  reservoir->ls.object = (int)buffer[i++];
+  if (reservoir->ls.object == OBJECT_NONE) {
+    /* Analytic light. */
     reservoir->ls.lamp = (int)buffer[i++];
+  }
+  else {
+    /* Mesh light. */
+    reservoir->ls.prim = (int)buffer[i++];
   }
 
   reservoir->ls.u = buffer[i++];
@@ -74,7 +73,7 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
                                                        ccl_private uint32_t *path_flag,
                                                        const ccl_global float *buffer)
 {
-  int i = 4;
+  int i = 5;
 
   *path_flag = (uint32_t)buffer[i++];
 
@@ -260,8 +259,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     return false;
   }
 
-  /* Loop over neighborhood again to determine valid samples. Start with one because if the
-   * reservoir is not empty, then at least the current pixel should be valid. */
+  /* Loop over neighborhood again to determine valid samples. Skip the current pixel, because if
+   * the reservoir is not empty it must be valid. */
   int valid_neighbors = 1;
   for (int i = 1; i < samples; i++) {
     const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);

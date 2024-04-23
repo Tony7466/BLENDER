@@ -601,9 +601,6 @@ ccl_device
               uint triangle = kernel_data_fetch(triangle_to_tree,
                                                 emission_sd.prim - prim_offset + lookup_offset);
 
-              /* TODO(weizhen): ensure `emitter_id` is written in other cases. */
-              ls.emitter_id = triangle;
-
               ls.pdf *= light_tree_pdf<false>(kg,
                                               sd->P,
                                               sd->N,

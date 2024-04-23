@@ -222,15 +222,9 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     float *ptr = buffer + kernel_data.film.pass_restir_reservoir;
     /* TODO(weizhen): it is possible to compress the LightSample. */
 
-#ifdef __LIGHT_TREE__
-    if (kernel_data.integrator.use_light_tree) {
-      film_overwrite_pass_float(ptr++, (float)reservoir->ls.emitter_id);
-    }
-    else
-#endif
-    {
-      film_overwrite_pass_float(ptr++, (float)reservoir->ls.lamp);
-    }
+    film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
+    film_overwrite_pass_float(
+        ptr++, float(reservoir->ls.prim == PRIM_NONE ? reservoir->ls.lamp : reservoir->ls.prim));
 
     film_overwrite_pass_float(ptr++, reservoir->ls.u);
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
