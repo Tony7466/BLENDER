@@ -6,8 +6,8 @@
 
 void main()
 {
-  uint vertices_per_thread = gl_NumWorkGroups.x /
-                             divide_ceil(uint(vertex_count), uint(VERTEX_COPY_GROUP_SIZE));
+  uint vertices_per_thread = divide_ceil(uint(vertex_count), uint(VERTEX_COPY_GROUP_SIZE)) /
+                             gl_NumWorkGroups.x;
   uint vertex_start = min(gl_GlobalInvocationID.x * vertices_per_thread, uint(vertex_count));
   uint vertex_end = min(vertex_start + vertices_per_thread, uint(vertex_count));
 
