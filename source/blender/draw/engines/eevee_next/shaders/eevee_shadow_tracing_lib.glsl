@@ -314,8 +314,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     random_2d *= light_area_data_get(light).size;
 
     vec3 point_on_light_shape = vec3(random_2d, 0.0);
-    /* Progressively blend the shape back to the projection origin. */
     point_on_light_shape = point_on_light_shape * light_local_data_get(light).shadow_scale;
+    point_on_light_shape.z -= light_local_data_get(light).shadow_projection_shift.z;
 
     direction = point_on_light_shape - lP;
     direction = shadow_ray_above_horizon_ensure(direction, lNg);
