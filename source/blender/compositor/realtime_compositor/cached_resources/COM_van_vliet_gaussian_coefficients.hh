@@ -46,7 +46,10 @@ class VanVlietGaussianCoefficients : public CachedResource {
   double2 second_non_causal_feedforward_coefficients_;
   double2 second_feedback_coefficients_;
 
-  double boundary_coefficient_;
+  double first_causal_boundary_coefficient_;
+  double first_non_causal_boundary_coefficient_;
+  double second_causal_boundary_coefficient_;
+  double second_non_causal_boundary_coefficient_;
 
  public:
   VanVlietGaussianCoefficients(Context &context, float sigma);
@@ -59,7 +62,10 @@ class VanVlietGaussianCoefficients : public CachedResource {
   const double2 &second_non_causal_feedforward_coefficients() const;
   const double2 &second_feedback_coefficients() const;
 
-  double boundary_coefficient() const;
+  double first_causal_boundary_coefficient() const;
+  double first_non_causal_boundary_coefficient() const;
+  double second_causal_boundary_coefficient() const;
+  double second_non_causal_boundary_coefficient() const;
 };
 
 /* ------------------------------------------------------------------------------------------------

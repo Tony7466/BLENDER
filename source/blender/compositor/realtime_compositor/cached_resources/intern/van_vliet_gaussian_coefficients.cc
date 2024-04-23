@@ -287,10 +287,19 @@ static void compute_second_order_section(const std::array<std::complex<double>, 
  * boundaries. The equation for that coefficient can be derived by rearranging the difference
  * equation to compute the current input from the output and previous outputs, substituting the
  * boundary value for previous outputs. */
-static double compute_boundary_coefficient(const double4 &feedback_coefficients,
-                                           double feedforward_coefficient)
+static double compute_boundary_coefficient(const double2 &feedback_coefficients,
+                                           const double2 &feedforward_coefficients)
 {
-  return 1.0 / (feedforward_coefficient - math::reduce_add(feedback_coefficients));
+  return math::reduce_add(feedforward_coefficients) /
+         (1.0 + math::reduce_add(feedback_coefficients));
+#if 0
+  return (math::reduce_add(coefficients.first_causal_feedforward_coefficients()) +
+          math::reduce_add(coefficients.first_non_causal_feedforward_coefficients()) +
+          math::reduce_add(coefficients.second_causal_feedforward_coefficients()) +
+          math::reduce_add(coefficients.second_non_causal_feedforward_coefficients()) - 1.0) /
+         (2.0 * (math::reduce_add(coefficients.first_feedback_coefficients()) +
+                 math::reduce_add(coefficients.second_feedback_coefficients())));
+#endif
 }
 
 /* Computes the feedback and feedforward coefficients for the 4th order Van Vliet Gaussian filter
@@ -329,8 +338,14 @@ VanVlietGaussianCoefficients::VanVlietGaussianCoefficients(Context & /*context*/
                                second_causal_feedforward_coefficients_,
                                second_non_causal_feedforward_coefficients_);
 
-  boundary_coefficient_ = compute_boundary_coefficient(feedback_coefficients,
-                                                       feedforward_coefficient);
+  first_causal_boundary_coefficient_ = compute_boundary_coefficient(
+      first_feedback_coefficients_, first_causal_feedforward_coefficients_);
+  first_non_causal_boundary_coefficient_ = compute_boundary_coefficient(
+      first_feedback_coefficients_, first_non_causal_feedforward_coefficients_);
+  second_causal_boundary_coefficient_ = compute_boundary_coefficient(
+      second_feedback_coefficients_, second_causal_feedforward_coefficients_);
+  second_non_causal_boundary_coefficient_ = compute_boundary_coefficient(
+      second_feedback_coefficients_, second_non_causal_feedforward_coefficients_);
 }
 
 const double2 &VanVlietGaussianCoefficients::first_causal_feedforward_coefficients() const
@@ -363,9 +378,24 @@ const double2 &VanVlietGaussianCoefficients::second_feedback_coefficients() cons
   return second_feedback_coefficients_;
 }
 
-double VanVlietGaussianCoefficients::boundary_coefficient() const
+double VanVlietGaussianCoefficients::first_causal_boundary_coefficient() const
 {
-  return boundary_coefficient_;
+  return first_causal_boundary_coefficient_;
+}
+
+double VanVlietGaussianCoefficients::first_non_causal_boundary_coefficient() const
+{
+  return first_non_causal_boundary_coefficient_;
+}
+
+double VanVlietGaussianCoefficients::second_causal_boundary_coefficient() const
+{
+  return second_causal_boundary_coefficient_;
+}
+
+double VanVlietGaussianCoefficients::second_non_causal_boundary_coefficient() const
+{
+  return second_non_causal_boundary_coefficient_;
 }
 
 /* --------------------------------------------------------------------

@@ -17,7 +17,7 @@ void main()
     vec4 input_boundary = texture_load(input_tx, ivec2(0, y));
     vec4 inputs[FILTER_ORDER] = vec4[](input_boundary, input_boundary);
 
-    vec4 output_boundary = input_boundary * boundary_coefficient;
+    vec4 output_boundary = input_boundary * first_causal_boundary_coefficient;
     vec4 outputs[FILTER_ORDER + 1] = vec4[](output_boundary, output_boundary, output_boundary);
 
     for (int x = 0; x < width; x++) {
@@ -48,7 +48,7 @@ void main()
     vec4 input_boundary = texture_load(input_tx, ivec2(width - 1, y));
     vec4 inputs[FILTER_ORDER + 1] = vec4[](input_boundary, input_boundary, input_boundary);
 
-    vec4 output_boundary = input_boundary * boundary_coefficient;
+    vec4 output_boundary = input_boundary * first_non_causal_boundary_coefficient;
     vec4 outputs[FILTER_ORDER + 1] = vec4[](output_boundary, output_boundary, output_boundary);
 
     for (int x = width - 1; x >= 0; x--) {
@@ -80,7 +80,7 @@ void main()
     vec4 input_boundary = texture_load(input_tx, ivec2(0, y));
     vec4 inputs[FILTER_ORDER] = vec4[](input_boundary, input_boundary);
 
-    vec4 output_boundary = input_boundary * boundary_coefficient;
+    vec4 output_boundary = input_boundary * second_causal_boundary_coefficient;
     vec4 outputs[FILTER_ORDER + 1] = vec4[](output_boundary, output_boundary, output_boundary);
 
     for (int x = 0; x < width; x++) {
@@ -112,7 +112,7 @@ void main()
     vec4 input_boundary = texture_load(input_tx, ivec2(width - 1, y));
     vec4 inputs[FILTER_ORDER + 1] = vec4[](input_boundary, input_boundary, input_boundary);
 
-    vec4 output_boundary = input_boundary * boundary_coefficient;
+    vec4 output_boundary = input_boundary * second_non_causal_boundary_coefficient;
     vec4 outputs[FILTER_ORDER + 1] = vec4[](output_boundary, output_boundary, output_boundary);
 
     for (int x = width - 1; x >= 0; x--) {

@@ -40,8 +40,18 @@ static Result horizontal_pass(Context &context, Result &input, float sigma)
   GPU_shader_uniform_2fv(shader,
                          "second_non_causal_feedforward_coefficients",
                          float2(coefficients.second_non_causal_feedforward_coefficients()));
-  GPU_shader_uniform_1f(
-      shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "first_causal_boundary_coefficient",
+                        float(coefficients.first_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "first_non_causal_boundary_coefficient",
+                        float(coefficients.first_non_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "second_causal_boundary_coefficient",
+                        float(coefficients.second_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "second_non_causal_boundary_coefficient",
+                        float(coefficients.second_non_causal_boundary_coefficient()));
 
   input.bind_as_texture(shader, "input_tx");
 
@@ -99,8 +109,18 @@ static void vertical_pass(Context &context,
   GPU_shader_uniform_2fv(shader,
                          "second_non_causal_feedforward_coefficients",
                          float2(coefficients.second_non_causal_feedforward_coefficients()));
-  GPU_shader_uniform_1f(
-      shader, "boundary_coefficient", float(coefficients.boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "first_causal_boundary_coefficient",
+                        float(coefficients.first_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "first_non_causal_boundary_coefficient",
+                        float(coefficients.first_non_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "second_causal_boundary_coefficient",
+                        float(coefficients.second_causal_boundary_coefficient()));
+  GPU_shader_uniform_1f(shader,
+                        "second_non_causal_boundary_coefficient",
+                        float(coefficients.second_non_causal_boundary_coefficient()));
 
   horizontal_pass_result.bind_as_texture(shader, "input_tx");
 
