@@ -83,6 +83,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         }
         else if (value_variant.is_volume_grid()) {
           bke::GVolumeGrid grid = value_variant.get<bke::GVolumeGrid>();
+          grid.get_for_write().set_name(config.names[i]);
           bake_items[i] = std::make_unique<VolumeGridBakeItem>(
               std::make_unique<bke::GVolumeGrid>(std::move(grid)));
         }
