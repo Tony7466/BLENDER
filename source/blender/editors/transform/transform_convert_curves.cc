@@ -87,16 +87,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
 
-  Vector<bool> must_be_selected;
+  Vector<int> must_be_selected;
 
   /* Count selected elements per object and create TransData structs. */
   for (const int i : trans_data_contrainers.index_range()) {
     TransDataContainer &tc = trans_data_contrainers[i];
     Curves *curves_id = static_cast<Curves *>(tc.obedit->data);
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    const VArray<int8_t> handle_types_left = curves.handle_types_left();
-    const VArray<int8_t> handle_types_right = curves.handle_types_right();
     CurvesTransformData *curves_transform_data = create_curves_transform_custom_data(
         tc.custom.type);
     Span<StringRef> selection_attribute_names = ed::curves::get_curves_selection_attribute_names(
@@ -120,7 +117,11 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
                                                      curves_transform_data->memory);
     /* Alter selection as in legacy curves bezt_select_to_transform_triple_flag(). */
     if (bezier_curves[i].size()) {
-      must_be_selected.reinitialize(curves.points_num());
+      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+      const VArray<int8_t> handle_types_left = curves.handle_types_left();
+      const VArray<int8_t> handle_types_right = curves.handle_types_right();
+
+      must_be_selected.clear();
       bezier_curves[i].foreach_index(GrainSize(128), [&](const int bezier_index) {
         for (const int point_i : points_by_curve[bezier_index]) {
           if (selection_per_attribute[i][0].contains(point_i)) {
@@ -129,13 +130,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
             if (ELEM(type_left, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN) &&
                 ELEM(type_right, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN))
             {
-              must_be_selected[point_i] = true;
+              must_be_selected.append(point_i);
             }
           }
         }
       });
-      IndexMask must_be_selected_mask = IndexMask::from_bools(must_be_selected.as_span(),
-                                                              curves_transform_data->memory);
+      IndexMask must_be_selected_mask = IndexMask::from_indices(must_be_selected.as_span(),
+                                                                curves_transform_data->memory);
       if (must_be_selected.size()) {
         selection_per_attribute[i][1] = IndexMask::from_union(
             selection_per_attribute[i][1], must_be_selected_mask, curves_transform_data->memory);
