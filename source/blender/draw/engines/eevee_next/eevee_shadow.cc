@@ -96,6 +96,7 @@ void ShadowTileMap::sync_cubeface(eLightType light_type_,
 
   clip_near = near_;
   clip_far = far_;
+  area_shift = shift;
   half_size = side_;
   center_offset = float2(0.0f);
 
@@ -273,30 +274,34 @@ void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
                                                    float &side,
                                                    float &back_shift)
 {
-  /* Alpha */
+  /* Alpha i */
   float cos_alpha = shadow_radius / max_lit_distance;
   float sin_alpha = sqrt(1.0f - math::square(cos_alpha));
   float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
   float side_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha + cos_alpha);
   float origin_shift = M_SQRT2 * shadow_radius / (sin_alpha - cos_alpha);
-  /* Make near plane to be inside the inscribed cube of the sphere. */
-  near = max_ff(light_radius, max_lit_distance / 4000.0f) / M_SQRT3;
+
+  float min_near = (max_lit_distance / 4000.0f) / M_SQRT3;
+
+  if (is_area_light(light_type)) {
+    /* Make near plane to be inside the inscribed cube of the shadow sphere. */
+    near = max_ff(shadow_radius / M_SQRT3, min_near);
+    /* Subtract min_near to make the shadow center match the light center if there is no shadow
+     * tracing required. This avoid light leaking issues near the light plane caused by the
+     * shadow discard clipping. */
+    back_shift = (near - min_near);
+  }
+  else {
+    /* Make near plane to be inside the inscribed cube of the light sphere. */
+    near = max_ff(light_radius / M_SQRT3, min_near);
+    back_shift = 0.0f;
+  }
   far = max_lit_distance;
   if (shadow_radius > 1e-5f) {
     side = ((side_shift / (origin_shift - near_shift)) * (origin_shift + near));
   }
   else {
     side = near;
-  }
-
-  if (is_area_light(light_type)) {
-    /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
-    near *= (shadow_radius / light_radius);
-    side *= (shadow_radius / light_radius);
-    back_shift = near;
-  }
-  else {
-    back_shift = 0.0f;
   }
 }
 

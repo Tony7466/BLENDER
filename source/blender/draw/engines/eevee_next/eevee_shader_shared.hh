@@ -1146,11 +1146,12 @@ struct ShadowTileMapData {
   int clip_data_index;
   /** Bias LOD to tag for usage to lower the amount of tile used. */
   float lod_bias;
-  int _pad0;
   /** Light type this tilemap is from. */
   eLightType light_type;
   /** True if the tilemap is part of area light shadow and is one of the side projections. */
-  bool is_area_side;
+  bool32_t is_area_side;
+  /** Distance behind the area light a shadow is shifted. */
+  float area_shift;
   /** Near and far clip distances for punctual. */
   float clip_near;
   float clip_far;
