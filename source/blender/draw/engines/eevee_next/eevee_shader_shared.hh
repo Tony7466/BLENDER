@@ -1615,8 +1615,8 @@ static inline IrradianceBrick irradiance_brick_unpack(IrradianceBrickPacked bric
 struct HiZData {
   /** Scale factor to remove HiZBuffer padding. */
   float2 uv_scale;
-
-  float2 _pad0;
+  /** Pixel count of the source texture used to generate the HiZ. Doesn't have the HiZ padding. */
+  int2 source_extent;
 };
 BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
 
