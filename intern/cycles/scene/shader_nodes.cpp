@@ -2392,7 +2392,7 @@ void GlossyBsdfNode::compile(SVMCompiler &compiler)
   closure = distribution;
 
   ShaderInput *tangent = input("Tangent");
-  tangent = tangent->link || tangent->constant_folded_in ? tangent : NULL;
+  tangent = compiler.is_linked(tangent) ? tangent : nullptr;
 
   /* TODO: Just use weight for legacy MultiGGX? Would also simplify OSL. */
   if (closure == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
@@ -2405,7 +2405,7 @@ void GlossyBsdfNode::compile(SVMCompiler &compiler)
   }
   else {
     BsdfNode::compile(
-        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), NULL, tangent);
+        compiler, input("Roughness"), input("Anisotropy"), input("Rotation"), nullptr, tangent);
   }
 }
 
@@ -3543,10 +3543,10 @@ void HairBsdfNode::compile(SVMCompiler &compiler)
   closure = component;
 
   ShaderInput *tangent = input("Tangent");
-  tangent = tangent->link || tangent->constant_folded_in ? tangent : NULL;
+  tangent = compiler.is_linked(tangent) ? tangent : nullptr;
 
   BsdfNode::compile(
-      compiler, input("RoughnessU"), input("RoughnessV"), input("Offset"), NULL, tangent);
+      compiler, input("RoughnessU"), input("RoughnessV"), input("Offset"), nullptr, tangent);
 }
 
 void HairBsdfNode::compile(OSLCompiler &compiler)
