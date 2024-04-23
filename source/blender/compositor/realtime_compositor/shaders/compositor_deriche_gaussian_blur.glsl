@@ -17,7 +17,7 @@ void main()
   vec4 causal_inputs[FILTER_ORDER] = vec4[](
       causal_input_boundary, causal_input_boundary, causal_input_boundary, causal_input_boundary);
 
-  vec4 causal_output_boundary = causal_input_boundary * causal_boundary_coefficient * 0.5;
+  vec4 causal_output_boundary = causal_input_boundary * causal_boundary_coefficient;
   vec4 causal_outputs[FILTER_ORDER + 1] = vec4[](causal_output_boundary,
                                                  causal_output_boundary,
                                                  causal_output_boundary,
@@ -54,8 +54,7 @@ void main()
                                                     non_causal_input_boundary,
                                                     non_causal_input_boundary);
 
-  vec4 non_causal_output_boundary = non_causal_input_boundary * non_causal_boundary_coefficient *
-                                    0.5;
+  vec4 non_causal_output_boundary = non_causal_input_boundary * non_causal_boundary_coefficient;
   vec4 non_causal_outputs[FILTER_ORDER + 1] = vec4[](non_causal_output_boundary,
                                                      non_causal_output_boundary,
                                                      non_causal_output_boundary,

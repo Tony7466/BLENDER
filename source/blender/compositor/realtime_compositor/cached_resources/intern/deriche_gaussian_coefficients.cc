@@ -211,7 +211,7 @@ static double compute_causal_boundary_coefficient(const DericheGaussianCoefficie
   const double4 &causal_feedforward = coefficients.causal_feedforward_coefficients();
   const double4 &feedback = coefficients.feedback_coefficients();
 
-  return (math::reduce_add(causal_feedforward) - 1.0) / (math::reduce_add(feedback) * 2.0);
+  return math::reduce_add(causal_feedforward) / (1.0 + math::reduce_add(feedback));
 }
 
 /* Identical to compute_causal_boundary_coefficient except it computes the coefficient for the
@@ -222,7 +222,7 @@ static double compute_non_causal_boundary_coefficient(
   const double4 &non_causal_feedforward = coefficients.non_causal_feedforward_coefficients();
   const double4 &feedback = coefficients.feedback_coefficients();
 
-  return (math::reduce_add(non_causal_feedforward) - 1.0) / (math::reduce_add(feedback) * 2.0);
+  return math::reduce_add(non_causal_feedforward) / (1.0 + math::reduce_add(feedback));
 }
 
 /* Computes the feedback, causal feedforward, and non causal feedforward coefficients given a

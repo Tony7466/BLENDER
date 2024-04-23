@@ -16,12 +16,11 @@
 
 namespace blender::realtime_compositor {
 
-static Result horizontal_pass(Context &context, Result &input, float radius)
+static Result horizontal_pass(Context &context, Result &input, float sigma)
 {
   GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur");
   GPU_shader_bind(shader);
 
-  const float sigma = radius / 2.0f;
   const DericheGaussianCoefficients &coefficients =
       context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
 
@@ -71,12 +70,11 @@ static void vertical_pass(Context &context,
                           Result &original_input,
                           Result &horizontal_pass_result,
                           Result &output,
-                          float radius)
+                          float sigma)
 {
   GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur");
   GPU_shader_bind(shader);
 
-  const float sigma = radius / 2.0f;
   const DericheGaussianCoefficients &coefficients =
       context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
 
@@ -109,10 +107,10 @@ static void vertical_pass(Context &context,
   horizontal_pass_result.unbind_as_texture();
 }
 
-void deriche_gaussian_blur(Context &context, Result &input, Result &output, float2 radius)
+void deriche_gaussian_blur(Context &context, Result &input, Result &output, float2 sigma)
 {
-  Result horizontal_pass_result = horizontal_pass(context, input, radius.x);
-  vertical_pass(context, input, horizontal_pass_result, output, radius.y);
+  Result horizontal_pass_result = horizontal_pass(context, input, sigma.x);
+  vertical_pass(context, input, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();
 }
 
