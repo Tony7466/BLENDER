@@ -266,7 +266,7 @@ vec3 shadow_punctual_face_local_to_local_position(int face_id, vec3 fL)
   }
 }
 
-/* Turns local light coordinate into shadow region index. Matches eCubeFace order.
+/* Turns local shadow coordinate into shadow region index. Matches eCubeFace order.
  * \note lL does not need to be normalized. */
 int shadow_punctual_face_index_get(vec3 lL)
 {

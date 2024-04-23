@@ -385,7 +385,7 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
   }
 
   if (is_area_light(light.type)) {
-    /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
+    /* Shift shadow map origin, so the near plane overlaps with the area light plane. */
     origin_shift.z += near;
   }
 

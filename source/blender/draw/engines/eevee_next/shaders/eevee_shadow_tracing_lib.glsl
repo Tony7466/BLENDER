@@ -357,7 +357,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   /* Use an offset in the ray direction to jitter which face is traced.
    * This helps hiding some harsh discontinuity. */
   int face_id = shadow_punctual_face_index_get(local_ray_start + direction * 0.5);
-  /* Local Light Space > Face Local (View) Space. */
+  /* Local Shadow Space > Face Local (View) Space. */
   vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray_start);
   vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray_end);
 
