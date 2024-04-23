@@ -33,10 +33,13 @@ class VKShader : public Shader {
    * The handle is owned by `VKDescriptorSetLayouts` of the device.
    */
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
 
  public:
+  VKPushConstants push_constants;
+
   VKShader(const char *name);
   virtual ~VKShader();
 
