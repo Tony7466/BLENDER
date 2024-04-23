@@ -2482,6 +2482,35 @@ IndexRange clipboard_paste_strokes(Main &bmain,
   return pasted_curves_range;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Extrude Operator
+ * \{ */
+
+static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_extrude(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Extrude Stroke Points";
+  ot->idname = "GREASE_PENCIL_OT_extrude";
+  ot->description = "Extrude the selected points";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_extrude_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -2509,4 +2538,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_copy);
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
+  WM_operatortype_append(GREASE_PENCIL_OT_extrude);
 }
