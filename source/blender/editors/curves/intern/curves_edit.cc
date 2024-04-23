@@ -225,4 +225,6 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
   }
 }
 
+void extrude_curve_points(bke::CurvesGeometry &curves, const IndexMask &points_mask) {}
+
 }  // namespace blender::ed::curves

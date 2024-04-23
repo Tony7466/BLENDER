@@ -2492,6 +2492,29 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    /* Extrusion always happens in the point domain. */
+    IndexMaskMemory memory;
+    const IndexMask points_to_extrude = retrieve_editable_and_selected_elements(
+        *object, info.drawing, bke::AttrDomain::Point, memory);
+    if (points_to_extrude.is_empty()) {
+      return;
+    }
+
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    curves::extrude_curve_points(curves, points_to_extrude);
+
+    info.drawing.tag_topology_changed();
+    changed.store(true, std::memory_order_relaxed);
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
   return OPERATOR_FINISHED;
 }
 
