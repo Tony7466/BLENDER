@@ -19,8 +19,7 @@ namespace blender {
 namespace gpu {
 
 /**
- * Struct containing key information of a compute pipeline. Is used to identify similar compute
- * pipelines.
+ * Struct containing key information to identify a compute pipeline.
  */
 struct VKComputeInfo {
   VkShaderModule vk_shader_module;
@@ -54,7 +53,8 @@ class VKDevice;
  * Pipelines are lazy initialized and same pipelines should share their handle.
  *
  * To improve performance we want to keep track of pipelines globally. Same pipeline should share
- * the same VKPipeline. This makes it easier to detect if pipelines are actually changed.
+ * the same VKPipeline. This makes it easier to detect if pipelines are actually changed between
+ * dispatch/draw commands.
  *
  * VkPipelineCache is normally used to share internal resources of pipelines. However it the
  * responsibility of the driver how this is handled. Some drivers might do ref-counting other may

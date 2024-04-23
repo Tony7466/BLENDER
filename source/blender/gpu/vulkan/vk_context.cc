@@ -251,6 +251,7 @@ void VKContext::update_dispatch_info()
 render_graph::VKDispatchNode::CreateInfo &VKContext::update_and_get_dispatch_info()
 {
   VKShader *shader = unwrap(this->shader);
+  /* TODO(#120959): Push constants should be moved outside VKPipeline. */
   VKPipeline &pipeline = shader->pipeline_get();
   pipeline.update_push_constants(*this);
   update_dispatch_info();
