@@ -156,7 +156,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       const int bezier_point_count = bezier_offsets.total_size();
       tc.data_len = curves.points_num() + 2 * bezier_point_count;
       /* `tc.data_len` and `points_to_transform_num` differ because full copies of Bezier handle
-       * domains are made into `CurvesTransformData::positions`. */
+       * attributes are made into `CurvesTransformData::positions`. */
       points_to_transform_num = curves.points_num() * selection_attribute_names.size();
     }
     else {
@@ -231,15 +231,15 @@ static void recalcData_curves(TransInfo *t)
       curves.tag_normals_changed();
     }
     else {
-      const std::array<MutableSpan<float3>, 3> positions_per_layer = {
+      const std::array<MutableSpan<float3>, 3> positions_per_selection_attr = {
           curves.positions_for_write(),
           curves.handle_positions_left_for_write(),
           curves.handle_positions_right_for_write()};
-      for (const int layer :
+      for (const int selection_i :
            ed::curves::get_curves_selection_attribute_names(curves).index_range())
       {
         copy_positions_from_curves_transform_custom_data(
-            tc.custom.type, layer, positions_per_layer[layer]);
+            tc.custom.type, selection_i, positions_per_selection_attr[selection_i]);
       }
       curves.tag_positions_changed();
       curves.calculate_bezier_auto_handles();
@@ -302,24 +302,17 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                        const blender::IndexMask &bezier_curves)
 {
   using namespace blender;
-  /* Term layer in function is used to refer Bezier curve points, left and right handles as layers
-   * 0, 1 and 2 respectively. For given Bezier curve in layers with points [P0, P1, P2], left
-   * handles [L0, L1, L2] and [R0, R1, R2] flattened  version version will be [L0, P0, R0, L1, P1,
-   * R1, L2, P2, R2]. */
-  static const Array<int> layer_shift_in_bezier = {1, 0, 2};
-  static const Array<int> layer_shift_in_others = {0};
-
-  const std::array<Span<float3>, 3> src_positions_per_layer = {
+  const std::array<Span<float3>, 3> src_positions_per_selection_attr = {
       curves.positions(), curves.handle_positions_left(), curves.handle_positions_right()};
 
-  std::array<MutableSpan<float3>, 3> positions_per_layer;
+  std::array<MutableSpan<float3>, 3> positions_per_selection_attr;
   CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(tc.custom.type.data);
 
-  for (const int layer : selected_indices.index_range()) {
-    const IndexMask &selection = selected_indices[layer];
+  for (const int selection_i : selected_indices.index_range()) {
+    const IndexMask &selection = selected_indices[selection_i];
     ed::transform::curves::append_positions_to_custom_data(
-        selection, src_positions_per_layer[layer], tc.custom.type);
-    positions_per_layer[layer] = transform_data.positions.as_mutable_span().slice(
+        selection, src_positions_per_selection_attr[selection_i], tc.custom.type);
+    positions_per_selection_attr[selection_i] = transform_data.positions.as_mutable_span().slice(
         transform_data.layer_offsets.last(1), selection.size());
   }
 
@@ -365,35 +358,45 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         closest_distances.fill(std::numeric_limits<float>::max());
         all_curve_positions.reinitialize(all_curve_points.size());
 
-        IndexRange layers_range = IndexRange(curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1);
+        IndexRange selection_attrs_range = IndexRange(
+            curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1);
+        /* `shifts_per_attr` are used to layout `positions`, `handle_positions_left` and
+         * `handle_positions_right` into single array. For given Bezier curve in layers with points
+         * [P0, P1, P2], left handles [L0, L1, L2] and [R0, R1, R2] flattened version version will
+         * be [L0, P0, R0, L1, P1, R1, L2, P2, R2]. This layout is need for `use_connected_only`
+         * case. */
+        static const Array<int> shifts_per_attr_for_bezier = {1, 0, 2};
+        static const Array<int> shifts_per_for_others = {0};
+        Span<int> shifts_per_attr = (curve_types[curve_i] == CURVE_TYPE_BEZIER) ?
+                                        shifts_per_attr_for_bezier :
+                                        shifts_per_for_others;
 
-        Span<int> layer_shift = (curve_types[curve_i] == CURVE_TYPE_BEZIER) ?
-                                    layer_shift_in_bezier :
-                                    layer_shift_in_others;
-
-        for (const int layer : layers_range) {
+        for (const int selection_i : selection_attrs_range) {
           for (const int i : points.index_range()) {
-            const int point_in_layer_i = points[i];
-            const int flat_i = layer_shift[layer] + layers_range.size() * i;
-            const int point_i = all_curve_points[flat_i];
+            /* Usual index in curves point domain. */
+            const int point_in_domain_i = points[i];
+            /* Curve scope index in array of positions and handles. */
+            const int flat_i = shifts_per_attr[selection_i] + selection_attrs_range.size() * i;
+            const int point_in_tc_i = all_curve_points[flat_i];
 
-            all_curve_positions[flat_i] = positions_per_layer[layer][point_in_layer_i];
+            all_curve_positions[flat_i] =
+                positions_per_selection_attr[selection_i][point_in_domain_i];
 
-            TransData &td = tc.data[point_i + trans_data_offset];
-            float3 *elem = &positions_per_layer[layer][point_in_layer_i];
+            TransData &td = tc.data[point_in_tc_i + trans_data_offset];
+            float3 *elem = &positions_per_selection_attr[selection_i][point_in_domain_i];
 
             copy_v3_v3(td.iloc, *elem);
             copy_v3_v3(td.center, td.iloc);
             td.loc = *elem;
 
             td.flag = 0;
-            if (selection_attrs[layer][point_in_layer_i]) {
+            if (selection_attrs[selection_i][point_in_domain_i]) {
               closest_distances[flat_i] = 0.0f;
               td.flag = TD_SELECTED;
             }
 
-            if (value_attribute && layer == 0) {
-              float *value = &((*value_attribute)[point_in_layer_i]);
+            if (value_attribute && selection_i == 0) {
+              float *value = &((*value_attribute)[point_in_domain_i]);
               td.val = value;
               td.ival = *value;
             }
@@ -418,9 +421,9 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   }
   else {
     int layer_offset = 0;
-    for (const int layer : selected_indices.index_range()) {
-      MutableSpan<float3> positions = positions_per_layer[layer];
-      const IndexMask &selection = selected_indices[layer];
+    for (const int selection_i : selected_indices.index_range()) {
+      MutableSpan<float3> positions = positions_per_selection_attr[selection_i];
+      const IndexMask &selection = selected_indices[selection_i];
       threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
         for (const int selection_i : range) {
           TransData *td = &tc.data[selection_i + trans_data_offset + layer_offset];
