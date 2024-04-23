@@ -463,13 +463,19 @@ class RENDER_PT_eevee_next_volumes_range(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
+    def draw_header(self, context):
         scene = context.scene
         props = scene.eevee
+        self.layout.prop(props, "use_volume_custom_range", text="")
+
+    def draw(self, context):
+        scene = context.scene
+        props = scene.eevee
+
+        layout = self.layout
+        layout.active = props.use_volume_custom_range
+        layout.use_property_split = True
+        layout.use_property_decorate = False
 
         col = layout.column(align=True)
         col.prop(props, "volumetric_start")
@@ -567,7 +573,7 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
         options = context.scene.eevee.ray_tracing_options
 
         col.prop(options, "resolution_scale")
-        col.prop(options, "screen_trace_max_roughness", text="Max Roughness")
+        col.prop(options, "trace_max_roughness", text="Max Roughness")
         # TODO Move it to raytracing options
         col.prop(props, "horizon_bias", text="Bias")
 
@@ -715,11 +721,9 @@ class RENDER_PT_eevee_next_clamping_surface(RenderButtonsPanel, Panel):
         scene = context.scene
         props = scene.eevee
 
-        # TODO(fclem): Add clamp properties
-        options = props.ray_tracing_options
-        layout.prop(options, "sample_clamp", text="Indirect Light")
-        # layout.prop(props, "clamp_surface_direct", text="Direct Light")
-        # layout.prop(props, "clamp_surface_indirect", text="Indirect Light")
+        col = layout.column(align=True)
+        col.prop(props, "clamp_surface_direct", text="Direct Light")
+        col.prop(props, "clamp_surface_indirect", text="Indirect Light")
 
 
 class RENDER_PT_eevee_next_clamping_volume(RenderButtonsPanel, Panel):
@@ -737,9 +741,10 @@ class RENDER_PT_eevee_next_clamping_volume(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False
         scene = context.scene
         props = scene.eevee
-        layout.prop(props, "volumetric_light_clamp", text="Direct Light")
-        # layout.prop(props, "clamp_volumetric_direct", text="Direct Light")
-        # layout.prop(props, "clamp_volumetric_indirect", text="Indirect Light")
+
+        col = layout.column(align=True)
+        col.prop(props, "clamp_volume_direct", text="Direct Light")
+        col.prop(props, "clamp_volume_indirect", text="Indirect Light")
 
 
 class RENDER_PT_eevee_next_sampling_shadows(RenderButtonsPanel, Panel):

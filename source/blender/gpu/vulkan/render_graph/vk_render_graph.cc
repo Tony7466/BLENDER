@@ -29,6 +29,9 @@ void VKRenderGraph::remove_nodes(Span<NodeHandle> node_handles)
                  "nodes, and will use incorrect ordering when not all nodes are removed. This "
                  "needs to be fixed when implementing a better scheduler.");
   links_.clear();
+  for (VKRenderGraphNode &node : nodes_) {
+    node.free_data();
+  }
   nodes_.clear();
 }
 
@@ -44,6 +47,7 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   VKSynchronizationNode::CreateInfo synchronization = {};
   synchronization.vk_image = vk_swapchain_image;
   synchronization.vk_image_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  synchronization.vk_image_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   add_node<VKSynchronizationNode>(synchronization);
 
   std::scoped_lock lock(resources_.mutex);

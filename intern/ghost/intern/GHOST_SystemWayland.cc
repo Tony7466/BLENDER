@@ -723,6 +723,8 @@ struct GWL_SeatStatePointerScroll {
   int32_t discrete_xy[2] = {0, 0};
   /** Discrete scrolling, v8 of the seat API (handled & reset with pointer "frame" callback). */
   int32_t discrete120_xy[2] = {0, 0};
+  /** Accumulated value from `discrete120_xy`, not reset between "frame" callbacks. */
+  int32_t discrete120_xy_accum[2] = {0, 0};
   /** True when the axis is inverted (also known is "natural" scrolling). */
   bool inverted_xy[2] = {false, false};
   /** The source of scroll event. */
@@ -3616,7 +3618,7 @@ static void cursor_surface_handle_leave(void *data, wl_surface *wl_surface, wl_o
 }
 
 static void cursor_surface_handle_preferred_buffer_scale(void * /*data*/,
-                                                         struct wl_surface * /*wl_surface*/,
+                                                         wl_surface * /*wl_surface*/,
                                                          int32_t factor)
 {
   /* Only available in interface version 6. */
@@ -3624,7 +3626,7 @@ static void cursor_surface_handle_preferred_buffer_scale(void * /*data*/,
 }
 
 static void cursor_surface_handle_preferred_buffer_transform(void * /*data*/,
-                                                             struct wl_surface * /*wl_surface*/,
+                                                             wl_surface * /*wl_surface*/,
                                                              uint32_t transform)
 {
   /* Only available in interface version 6. */
@@ -3813,12 +3815,13 @@ static void pointer_handle_frame(void *data, wl_pointer * /*wl_pointer*/)
 
   /* Handle value120 to discrete steps first. */
   if (seat->pointer_scroll.discrete120_xy[0] || seat->pointer_scroll.discrete120_xy[1]) {
-    /* The values will have been normalized so 120 represents a single click-step. */
-    seat->pointer_scroll.discrete_xy[0] = seat->pointer_scroll.discrete120_xy[0] / 120;
-    seat->pointer_scroll.discrete_xy[1] = seat->pointer_scroll.discrete120_xy[1] / 120;
-
-    seat->pointer_scroll.discrete120_xy[0] = 0;
-    seat->pointer_scroll.discrete120_xy[1] = 0;
+    for (int i = 0; i < 2; i++) {
+      seat->pointer_scroll.discrete120_xy_accum[i] += seat->pointer_scroll.discrete120_xy[i];
+      seat->pointer_scroll.discrete120_xy[i] = 0;
+      /* The values will have been normalized so 120 represents a single click-step. */
+      seat->pointer_scroll.discrete_xy[i] = seat->pointer_scroll.discrete120_xy_accum[i] / 120;
+      seat->pointer_scroll.discrete120_xy_accum[i] -= seat->pointer_scroll.discrete_xy[i] * 120;
+    }
   }
 
   /* Multiple wheel events may have been generated and it's not known which.
@@ -6143,13 +6146,13 @@ static void output_handle_scale(void *data, wl_output * /*wl_output*/, const int
   output->system->output_scale_update(output);
 }
 
-static void output_handle_name(void * /*data*/, struct wl_output * /*wl_output*/, const char *name)
+static void output_handle_name(void * /*data*/, wl_output * /*wl_output*/, const char *name)
 {
   /* Only available in interface version 4. */
   CLOG_INFO(LOG, 2, "name (%s)", name);
 }
 static void output_handle_description(void * /*data*/,
-                                      struct wl_output * /*wl_output*/,
+                                      wl_output * /*wl_output*/,
                                       const char *description)
 {
   /* Only available in interface version 4. */
