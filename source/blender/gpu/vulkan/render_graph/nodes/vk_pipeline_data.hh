@@ -11,6 +11,9 @@
 #include "vk_common.hh"
 
 namespace blender::gpu::render_graph {
+struct VKBoundPipelines;
+class VKCommandBufferInterface;
+
 /**
  * Container for storing shader descriptor set and push constants.
  *
@@ -42,6 +45,11 @@ BLI_INLINE void vk_pipeline_data_copy(VKPipelineData &dst, const VKPipelineData 
     dst.push_constants_data = data;
   }
 }
+
+void vk_pipeline_data_build_commands(VKCommandBufferInterface &command_buffer,
+                                     const VKPipelineData &pipeline_data,
+                                     VKBoundPipelines &r_bound_pipelines,
+                                     VkPipelineBindPoint vk_pipeline_bind_point);
 
 /**
  * Free localized data created by `vk_pipeline_data_copy`.
