@@ -735,13 +735,13 @@ struct BeztMap {
 /**
  * Converts an FCurve's BezTriple array to a BeztMap vector.
  */
-static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int totvert)
+static blender::Array<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int totvert)
 {
   if (totvert == 0 || bezts == nullptr) {
     return {};
   }
 
-  blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
+  blender::Array<BeztMap> bezms(totvert);
 
   BezTriple *prevbezt = nullptr;
   for (const int i : bezms.index_range()) {
@@ -895,7 +895,7 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
 
       /* Adjust transform-data pointers. */
       /* NOTE: none of these functions use 'use_handle', it could be removed. */
-      blender::Vector<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+      blender::Array<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
       sort_time_beztmaps(bezms);
       beztmap_to_data(t, fcu, bezms);
 
