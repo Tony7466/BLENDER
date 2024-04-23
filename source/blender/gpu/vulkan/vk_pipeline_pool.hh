@@ -70,6 +70,14 @@ class VKDevice;
  * NOTE: Extensions like `VK_EXT_graphics_pipeline_library` and acceleration structures like
  * `VkPipelineCache` should fit in this class and will be added when we they have proven their
  * value.
+ *
+ * TODO: In future the creation of shader modules needs to be revisited.
+ * VK_EXT_graphics_pipeline_library deprecates the use of shader modules and use the spriv bin
+ * directly. In this extension the pipeline and shader module are the same. The current approach
+ * should also be revisited as the latest drivers all implement pipeline libraries, but there are
+ * some platforms where the driver isn't been updated and doesn't implement this extension. In
+ * that case shader modules should still be used.
+ * NOTE: shader modules are still in used when creating compute pipelines.
  */
 class VKPipelinePool : public NonCopyable {
  public:
