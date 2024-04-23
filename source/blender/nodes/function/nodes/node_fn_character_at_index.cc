@@ -10,6 +10,7 @@ namespace blender::nodes::node_fn_character_at_index_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.is_function_node();
   b.add_input<decl::String>("String");
   b.add_input<decl::Int>("Index");
   b.add_output<decl::String>("Character");
