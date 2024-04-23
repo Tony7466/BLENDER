@@ -35,6 +35,8 @@
 
 #include "CLG_log.h"
 
+#include <iostream>
+
 static CLG_LogRef LOG = {"draw.manager.shader"};
 
 extern "C" char datatoc_gpu_shader_depth_only_frag_glsl[];
@@ -101,6 +103,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 
     if (mat) {
       /* Do the compilation. */
+      std::cout << "Compile : " << GPU_material_get_name(mat) << "\n";
       GPU_material_compile(mat);
       GPU_material_release(mat);
       MEM_freeN(link);
@@ -121,6 +124,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 
       if (optimize_mat) {
         /* Compile optimized material shader. */
+        std::cout << "Optimize : " << (mat ? GPU_material_get_name(mat) : "?") << "\n";
         GPU_material_optimize(optimize_mat);
         GPU_material_release(optimize_mat);
         MEM_freeN(link);

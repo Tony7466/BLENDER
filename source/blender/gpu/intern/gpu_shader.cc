@@ -40,6 +40,11 @@ std::string Shader::defines_declare(const shader::ShaderCreateInfo &info) const
     defines += def[1];
     defines += "\n";
   }
+
+  for (const auto &dir : info.directives_) {
+    defines += "#pragma " + dir + "\n";
+  }
+
   return defines;
 }
 
