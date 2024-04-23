@@ -960,7 +960,7 @@ static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
   BLO_read_struct(reader, IDProperty, &sock->prop);
   IDP_BlendDataRead(reader, &sock->prop);
 
-  BLO_read_struct(reader, bNodeLink, &sock->link);
+  BLO_read_struct_allow_broken_pointer(reader, bNodeLink, &sock->link);
   sock->typeinfo = nullptr;
   BLO_read_data_address(reader, &sock->storage);
   BLO_read_data_address(reader, &sock->default_value);
@@ -1070,7 +1070,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
        * `IDTypeInfo.foreach_cache` callback. */
     }
     else {
-      BLO_read_data_address(reader, &node->storage);
+      BLO_read_data_address_allow_broken_pointer(reader, &node->storage);
     }
 
     if (node->storage) {

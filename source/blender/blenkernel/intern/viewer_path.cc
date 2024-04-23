@@ -102,7 +102,7 @@ void BKE_viewer_path_blend_write(BlendWriter *writer, const ViewerPath *viewer_p
 
 void BKE_viewer_path_blend_read_data(BlendDataReader *reader, ViewerPath *viewer_path)
 {
-  BLO_read_struct_list(reader, ViewerPathElem, &viewer_path->path);
+  BLO_read_struct_list_allow_broken_pointer(reader, ViewerPathElem, &viewer_path->path);
   LISTBASE_FOREACH (ViewerPathElem *, elem, &viewer_path->path) {
     BLO_read_string(reader, &elem->ui_name);
     switch (ViewerPathElemType(elem->type)) {

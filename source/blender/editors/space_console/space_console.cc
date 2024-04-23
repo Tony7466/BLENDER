@@ -312,7 +312,7 @@ static void console_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceConsole *sconsole = (SpaceConsole *)sl;
 
-  BLO_read_struct_list(reader, ConsoleLine, &sconsole->scrollback);
+  BLO_read_struct_list_allow_broken_pointer(reader, ConsoleLine, &sconsole->scrollback);
   BLO_read_struct_list(reader, ConsoleLine, &sconsole->history);
 
   /* Comma expressions, (e.g. expr1, expr2, expr3) evaluate each expression,

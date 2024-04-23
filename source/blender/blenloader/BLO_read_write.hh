@@ -241,14 +241,20 @@ bool BLO_write_is_undo(BlendWriter *writer);
  * Avoid using the generic BLO_read_data_address when possible, use typed functions instead.
  * \{ */
 
-void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_address);
+void *BLO_read_get_new_data_address(BlendDataReader *reader,
+                                    const void *old_address,
+                                    bool allow_broken_pointer = false);
 void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader,
                                           const void *old_address,
-                                          size_t data_size);
-void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address);
+                                          size_t expected_size,
+                                          bool allow_broken_pointer = false);
+void *BLO_read_get_new_packed_address(BlendDataReader *reader,
+                                      const void *old_address,
+                                      bool allow_broken_pointer = false);
 void *BLO_read_struct_array_with_size(BlendDataReader *reader,
                                       const void *old_address,
-                                      size_t data_size);
+                                      size_t expected_size,
+                                      bool allow_broken_pointer = false);
 
 #define BLO_read_data_address(reader, ptr_p) \
   *((void **)ptr_p) = BLO_read_get_new_data_address((reader), *(ptr_p))
@@ -261,15 +267,36 @@ void *BLO_read_struct_array_with_size(BlendDataReader *reader,
 #define BLO_read_packed_address(reader, ptr_p) \
   *((void **)ptr_p) = BLO_read_get_new_packed_address((reader), *(ptr_p))
 
+/* Variations for cases where pointer may exist but is not able
+ * to be resolved. This is generally due to deprecated struct members
+ * that should have been set to null in versioning but were not.
+ *
+ * When using these, the following code must be able to handle the
+ * resulting null pointers.
+ */
+#define BLO_read_data_address_allow_broken_pointer(reader, ptr_p) \
+  *((void **)ptr_p) = BLO_read_get_new_data_address((reader), *(ptr_p), true)
+#define BLO_read_struct_allow_broken_pointer(reader, struct_name, ptr_p) \
+  *((void **)ptr_p) = BLO_read_struct_array_with_size( \
+      reader, *((void **)ptr_p), sizeof(struct_name), true)
+#define BLO_read_struct_array_allow_broken_pointer(reader, struct_name, array_size, ptr_p) \
+  *((void **)ptr_p) = BLO_read_struct_array_with_size( \
+      reader, *((void **)ptr_p), sizeof(struct_name) * (array_size), true)
+
 /* Read all elements in list
  *
  * Updates all `->prev` and `->next` pointers of the list elements.
  * Updates the `list->first` and `list->last` pointers.
  */
-void BLO_read_struct_list_with_size(BlendDataReader *reader, size_t elem_size, ListBase *list);
+void BLO_read_struct_list_with_size(BlendDataReader *reader,
+                                    size_t elem_size,
+                                    bool allow_broken_pointer,
+                                    ListBase *list);
 
 #define BLO_read_struct_list(reader, struct_name, list) \
-  BLO_read_struct_list_with_size(reader, sizeof(struct_name), list)
+  BLO_read_struct_list_with_size(reader, sizeof(struct_name), false, list)
+#define BLO_read_struct_list_allow_broken_pointer(reader, struct_name, list) \
+  BLO_read_struct_list_with_size(reader, sizeof(struct_name), true, list)
 
 /* Update data pointers and correct byte-order if necessary. */
 

@@ -728,7 +728,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   }
 
   /* Only for versioning, vertex group names are now stored on object data. */
-  BLO_read_struct_list(reader, bDeformGroup, &ob->defbase);
+  BLO_read_struct_list_allow_broken_pointer(reader, bDeformGroup, &ob->defbase);
   BLO_read_struct_list(reader, bFaceMap, &ob->fmaps);
 
   /* XXX deprecated - old animation system <<< */

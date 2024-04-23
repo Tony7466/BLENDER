@@ -1356,7 +1356,8 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
       else {
         seqbase_poin = POINTER_OFFSET(ed->seqbasep, -seqbase_offset);
 
-        seqbase_poin = BLO_read_get_new_data_address(reader, seqbase_poin);
+        const bool allow_broken_pointer = true;
+        seqbase_poin = BLO_read_get_new_data_address(reader, seqbase_poin, allow_broken_pointer);
 
         if (seqbase_poin) {
           ed->seqbasep = (ListBase *)POINTER_OFFSET(seqbase_poin, seqbase_offset);

@@ -1136,7 +1136,7 @@ void BKE_screen_area_map_blend_write(BlendWriter *writer, ScrAreaMap *area_map)
 
 static void direct_link_panel_list(BlendDataReader *reader, ListBase *lb)
 {
-  BLO_read_struct_list(reader, Panel, lb);
+  BLO_read_struct_list_allow_broken_pointer(reader, Panel, lb);
 
   LISTBASE_FOREACH (Panel *, panel, lb) {
     panel->runtime = MEM_new<Panel_Runtime>(__func__);
@@ -1158,9 +1158,10 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
 
   direct_link_panel_list(reader, &region->panels);
 
-  BLO_read_struct_list(reader, PanelCategoryStack, &region->panels_category_active);
+  BLO_read_struct_list_allow_broken_pointer(
+      reader, PanelCategoryStack, &region->panels_category_active);
 
-  BLO_read_struct_list(reader, uiList, &region->ui_lists);
+  BLO_read_struct_list_allow_broken_pointer(reader, uiList, &region->ui_lists);
 
   /* The area's search filter is runtime only, so we need to clear the active flag on read. */
   /* Clear runtime flags (e.g. search filter is runtime only). */
@@ -1173,7 +1174,7 @@ static void direct_link_region(BlendDataReader *reader, ARegion *region, int spa
     IDP_BlendDataRead(reader, &ui_list->properties);
   }
 
-  BLO_read_struct_list(reader, uiPreview, &region->ui_previews);
+  BLO_read_struct_list_allow_broken_pointer(reader, uiPreview, &region->ui_previews);
 
   if (spacetype == SPACE_EMPTY) {
     /* unknown space type, don't leak regiondata */
@@ -1250,7 +1251,7 @@ void BKE_screen_view3d_do_versions_250(View3D *v3d, ListBase *regions)
 
 static void direct_link_area(BlendDataReader *reader, ScrArea *area)
 {
-  BLO_read_struct_list(reader, SpaceLink, &(area->spacedata));
+  BLO_read_struct_list_allow_broken_pointer(reader, SpaceLink, &(area->spacedata));
   BLO_read_struct_list(reader, ARegion, &(area->regionbase));
 
   BLI_listbase_clear(&area->handlers);

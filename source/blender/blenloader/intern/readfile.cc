@@ -2117,7 +2117,7 @@ static void direct_link_id_common(
 
   /* Link direct data of ID properties. */
   if (id->properties) {
-    BLO_read_struct(reader, IDProperty, &id->properties);
+    BLO_read_struct_allow_broken_pointer(reader, IDProperty, &id->properties);
     /* this case means the data was written incorrectly, it should not happen */
     IDP_BlendDataRead(reader, &id->properties);
   }
@@ -4781,43 +4781,73 @@ static void read_libraries(FileData *basefd, ListBase *mainlist)
 }
 
 static void *blo_verify_data_address(void *new_address,
-                                     const void * /*old_address*/,
-                                     const size_t expected_size)
+                                     const void *old_address,
+                                     const size_t expected_size,
+                                     const bool allow_broken_pointer = false)
 {
-  if (new_address != nullptr) {
+  if (new_address == nullptr) {
+    if (old_address == nullptr) {
+      return nullptr;
+    }
+
+    if (!allow_broken_pointer) {
+      BLI_assert_msg(expected_size == 0, "Corrupt .blend file, expected non-zero data.");
+    }
+  }
+  else {
     /* Not testing equality, since size might have been aligned up,
      * or might be passed the size of a base struct with inheritance. */
-    BLI_assert_msg(MEM_allocN_len(new_address) >= expected_size,
-                   "Corrupt .blend file, unexpected data size.");
+    BLI_assert_msg(expected_size == 0 || MEM_allocN_len(new_address) >= expected_size,
+                   "Corrupt .blend file, unexpected data size");
   }
 
   return new_address;
 }
 
-void *BLO_read_get_new_data_address(BlendDataReader *reader, const void *old_address)
+void *BLO_read_get_new_data_address(BlendDataReader *reader,
+                                    const void *old_address,
+                                    const bool allow_broken_pointer)
 {
-  return newdataadr(reader->fd, old_address);
+  void *new_address = newdataadr(reader->fd, old_address);
+
+  if (!allow_broken_pointer) {
+    BLI_assert_msg(old_address == nullptr || new_address != nullptr,
+                   "Corrupt .blend file, expected non-zero pointer.");
+  }
+
+  return new_address;
 }
 
 void *BLO_read_get_new_data_address_no_us(BlendDataReader *reader,
                                           const void *old_address,
-                                          const size_t expected_size)
+                                          const size_t expected_size,
+                                          const bool allow_broken_pointer)
 {
   void *new_address = newdataadr_no_us(reader->fd, old_address);
-  return blo_verify_data_address(new_address, old_address, expected_size);
+  return blo_verify_data_address(new_address, old_address, expected_size, allow_broken_pointer);
 }
 
-void *BLO_read_get_new_packed_address(BlendDataReader *reader, const void *old_address)
+void *BLO_read_get_new_packed_address(BlendDataReader *reader,
+                                      const void *old_address,
+                                      const bool allow_broken_pointer)
 {
-  return newpackedadr(reader->fd, old_address);
+  void *new_address = newpackedadr(reader->fd, old_address);
+
+  if (!allow_broken_pointer) {
+    BLI_assert_msg(old_address == nullptr || new_address != nullptr,
+                   "Corrupt .blend file, expected non-zero pointer.");
+  }
+
+  return new_address;
 }
 
 void *BLO_read_struct_array_with_size(BlendDataReader *reader,
                                       const void *old_address,
-                                      const size_t expected_size)
+                                      const size_t expected_size,
+                                      const bool allow_broken_pointer)
 {
   void *new_address = newdataadr(reader->fd, old_address);
-  return blo_verify_data_address(new_address, old_address, expected_size);
+  return blo_verify_data_address(new_address, old_address, expected_size, allow_broken_pointer);
 }
 
 ID *BLO_read_get_new_id_address(BlendLibReader *reader,
@@ -4845,18 +4875,20 @@ bool BLO_read_requires_endian_switch(BlendDataReader *reader)
 
 void BLO_read_struct_list_with_size(BlendDataReader *reader,
                                     const size_t expected_elem_size,
+                                    const bool allow_broken_pointer,
                                     ListBase *list)
 {
   if (BLI_listbase_is_empty(list)) {
     return;
   }
 
-  list->first = BLO_read_struct_array_with_size(reader, list->first, expected_elem_size);
+  list->first = BLO_read_struct_array_with_size(
+      reader, list->first, expected_elem_size, allow_broken_pointer);
   Link *ln = static_cast<Link *>(list->first);
   Link *prev = nullptr;
   while (ln) {
-    ln->next = static_cast<Link *>(
-        BLO_read_struct_array_with_size(reader, ln->next, expected_elem_size));
+    ln->next = static_cast<Link *>(BLO_read_struct_array_with_size(
+        reader, ln->next, expected_elem_size, allow_broken_pointer));
     ln->prev = prev;
     prev = ln;
     ln = ln->next;

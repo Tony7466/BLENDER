@@ -337,7 +337,7 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_struct_array(reader, MEdge, mesh->edges_num, &mesh->medge);
   BLO_read_struct_array(reader, MFace, mesh->totface_legacy, &mesh->mface);
   BLO_read_struct_array(reader, MTFace, mesh->totface_legacy, &mesh->mtface);
-  BLO_read_struct_array(reader, MDeformVert, mesh->verts_num, &mesh->dvert);
+  BLO_read_struct_array_allow_broken_pointer(reader, MDeformVert, mesh->verts_num, &mesh->dvert);
   BLO_read_struct_array(reader, TFace, mesh->totface_legacy, &mesh->tface);
   BLO_read_struct_array(reader, MCol, mesh->totface_legacy, &mesh->mcol);
 

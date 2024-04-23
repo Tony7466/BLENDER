@@ -5435,7 +5435,7 @@ static void blend_read_paint_mask(BlendDataReader *reader,
 static void blend_read_layer_data(BlendDataReader *reader, CustomDataLayer &layer, const int count)
 {
   const size_t elem_size = CustomData_sizeof(eCustomDataType(layer.type));
-  BLO_read_struct_array(reader, char, elem_size *count, &layer.data);
+  BLO_read_struct_array_allow_broken_pointer(reader, char, elem_size *count, &layer.data);
   if (CustomData_layer_ensure_data_exists(&layer, count)) {
     /* Under normal operations, this shouldn't happen, but...
      * For a CD_PROP_BOOL example, see #84935.
