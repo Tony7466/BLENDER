@@ -317,6 +317,24 @@ void draw_curve(Span<float3> positions,
                 const float4x4 &layer_to_world,
                 const bool cyclic,
                 const float line_width);
+/* Draw points as quads or circles. */
+void draw_dots(Span<float3> positions,
+               const VArray<ColorGeometry4f> &colors,
+               const IndexRange indices,
+               const float4x4 &layer_to_world,
+               const bool cyclic,
+               const float line_width);
+
+/**
+ * Draw curves geometry.
+ * \param mode Mode of \a eMaterialGPencilStyle_Mode.
+ */
+void draw_curves_geometry(const bke::CurvesGeometry &curves,
+                          const IndexMask &strokes_mask,
+                          const VArray<ColorGeometry4f> &stroke_colors,
+                          const float4x4 &layer_to_world,
+                          const int mode,
+                          const bool use_xray);
 
 }  // namespace image_render
 
