@@ -396,7 +396,7 @@ static void gpencil_reproject_toplane(tGPsdata *p, bGPDstroke *gps)
   if ((*p->align_flag & GP_PROJECT_VIEWSPACE) == 0) {
     return;
   }
-  if ((*p->align_flag & GP_PROJECT_DEPTH_VIEW) || (*p->align_flag & GP_PROJECT_DEPTH_STROKE)) {
+  if (*p->align_flag & GP_PROJECT_DEPTH_VIEW) {
     return;
   }
 
