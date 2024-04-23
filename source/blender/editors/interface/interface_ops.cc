@@ -1587,7 +1587,7 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
  * otherwise.  Returns true in poll mode if a copy could be successfully made,
  * and false otherwise.
  */
-static bool copy_driver_to_selected_button(bContext *C, bool poll)
+static bool copy_driver_to_selected_button(bContext *C, const bool poll)
 {
   PropertyRNA *prop;
   PointerRNA ptr;
