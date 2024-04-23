@@ -70,14 +70,18 @@ static void rna_FCurve_bake(FCurve *fcu,
                             int start_frame,
                             int end_frame,
                             float step,
-                            int remove_option)
+                            int remove_existing_as_int)
 {
   if (start_frame >= end_frame) {
-    BKE_reportf(reports, RPT_ERROR, "Invalid frame range (%d - %d)", start_frame, end_frame);
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Invalid frame range (%d - %d). End Frame is larger than Start Frame",
+                start_frame,
+                end_frame);
     return;
   }
 
-  const BakeCurveRemove remove_existing = BakeCurveRemove(remove_option);
+  const BakeCurveRemove remove_existing = BakeCurveRemove(remove_existing_as_int);
   bake_fcurve(fcu, {start_frame, end_frame}, step, remove_existing);
   WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 }
