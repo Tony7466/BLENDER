@@ -24,6 +24,7 @@ struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
 struct wmOperator;
+struct GPUOffScreen;
 struct ToolSettings;
 struct Scene;
 struct UndoType;
@@ -403,10 +404,16 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
 namespace image_render {
 
-struct ImageRenderData;
+struct RegionViewData {
+  int2 region_winsize;
+  rcti region_winrct;
+};
 
-ImageRenderData *image_render_begin(ARegion &region, const int2 &win_size);
-Image *image_render_end(Main &bmain, ARegion &region, ImageRenderData *data);
+RegionViewData region_init(ARegion &region, const int2 &win_size);
+void region_reset(ARegion &region, const RegionViewData &data);
+
+GPUOffScreen *image_render_begin(const int2 &win_size);
+Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 
 void set_viewmat(ARegion &region,
                  View3D &view3d,

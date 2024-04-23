@@ -32,23 +32,9 @@
 
 namespace blender::ed::greasepencil::image_render {
 
-struct ImageRenderData {
-  GPUOffScreen *offscreen;
-  int2 region_winsize;
-  rcti region_winrct;
-};
-
-ImageRenderData *image_render_begin(ARegion &region, const int2 &win_size)
+RegionViewData region_init(ARegion &region, const int2 &win_size)
 {
-  char err_out[256] = "unknown";
-  GPUOffScreen *offscreen = GPU_offscreen_create(
-      win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
-  if (offscreen == nullptr) {
-    return nullptr;
-  }
-
-  const int2 region_winsize = {region.winx, region.winy};
-  const rcti region_winrct = region.winrct;
+  const RegionViewData data = {int2{region.winx, region.winy}, region.winrct};
 
   /* Resize region. */
   region.winrct.xmin = 0;
@@ -57,6 +43,25 @@ ImageRenderData *image_render_begin(ARegion &region, const int2 &win_size)
   region.winrct.ymax = win_size.y;
   region.winx = short(win_size.x);
   region.winy = short(win_size.y);
+
+  return data;
+}
+
+void region_reset(ARegion &region, const RegionViewData &data)
+{
+  region.winx = data.region_winsize.x;
+  region.winy = data.region_winsize.y;
+  region.winrct = data.region_winrct;
+}
+
+GPUOffScreen *image_render_begin(const int2 &win_size)
+{
+  char err_out[256] = "unknown";
+  GPUOffScreen *offscreen = GPU_offscreen_create(
+      win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
+  if (offscreen == nullptr) {
+    return nullptr;
+  }
 
   GPU_offscreen_bind(offscreen, true);
 
@@ -68,21 +73,20 @@ ImageRenderData *image_render_begin(ARegion &region, const int2 &win_size)
   GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
   GPU_clear_depth(1.0f);
 
-  return new ImageRenderData{offscreen, region_winsize, region_winrct};
+  return offscreen;
 }
 
-Image *image_render_end(Main &bmain, ARegion &region, ImageRenderData *data)
+Image *image_render_end(Main &bmain, GPUOffScreen *buffer)
 {
-  const int2 win_size = {GPU_offscreen_width(data->offscreen),
-                         GPU_offscreen_height(data->offscreen)};
+  const int2 win_size = {GPU_offscreen_width(buffer), GPU_offscreen_height(buffer)};
   /* create a image to see result of template */
   const uint imb_flag = IB_rect;
   ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
   if (ibuf->float_buffer.data) {
-    GPU_offscreen_read_color(data->offscreen, GPU_DATA_FLOAT, ibuf->float_buffer.data);
+    GPU_offscreen_read_color(buffer, GPU_DATA_FLOAT, ibuf->float_buffer.data);
   }
   else if (ibuf->byte_buffer.data) {
-    GPU_offscreen_read_color(data->offscreen, GPU_DATA_UBYTE, ibuf->byte_buffer.data);
+    GPU_offscreen_read_color(buffer, GPU_DATA_UBYTE, ibuf->byte_buffer.data);
   }
   if (ibuf->float_buffer.data && ibuf->byte_buffer.data) {
     IMB_rect_from_float(ibuf);
@@ -94,14 +98,8 @@ Image *image_render_end(Main &bmain, ARegion &region, ImageRenderData *data)
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
   /* Switch back to window-system-provided frame-buffer. */
-  GPU_offscreen_unbind(data->offscreen, true);
-  GPU_offscreen_free(data->offscreen);
-
-  region.winx = data->region_winsize.x;
-  region.winy = data->region_winsize.y;
-  region.winrct = data->region_winrct;
-
-  delete data;
+  GPU_offscreen_unbind(buffer, true);
+  GPU_offscreen_free(buffer);
 
   return ima;
 }

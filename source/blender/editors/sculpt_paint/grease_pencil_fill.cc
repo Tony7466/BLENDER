@@ -738,9 +738,10 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
   // TODO based on the fill_factor (aka "Precision") setting.
   constexpr const int min_window_size = 128;
-  const float pixel_scale = 1.0f;
-  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-                                  int2(min_window_size));
+  // const float pixel_scale = 1.0f;
+  // const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+  //                                 int2(min_window_size));
+  const int2 win_size = int2(min_window_size);
 
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
@@ -763,8 +764,9 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                                   fit_method,
                                                   use_onion_skinning,
                                                   allow_fill_material);
+  image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
 
-  image_render::ImageRenderData *data = image_render::image_render_begin(region, win_size);
+  GPUOffScreen *offscreen_buffer = image_render::image_render_begin(win_size);
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_depth_mask(true);
   image_render::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
@@ -817,7 +819,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   image_render::clear_viewmat();
   GPU_depth_mask(false);
   GPU_blend(GPU_BLEND_NONE);
-  Image *ima = image_render::image_render_end(bmain, region, data);
+  Image *ima = image_render::image_render_end(bmain, offscreen_buffer);
 
   if (!ima) {
     return {};
@@ -848,6 +850,12 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
   FillBoundary boundary = build_fill_boundary(*ima);
   bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
+
+  /* Note: Region view reset has to happen after final curve construction, otherwise the curve
+   * placement, used to re-project from the 2D pixel coordinates, will have the wrong view
+   * transform. */
+  image_render::region_reset(region, region_view_data);
+
   /* Delete temp image. */
   if (keep_image) {
     convert_flags_to_colors(*ima);
