@@ -120,6 +120,7 @@ class SocketValueVariant {
    * If true, the stored value cannot be converted to a single value without loss of information.
    */
   bool is_context_dependent_field() const;
+
   /**
    * The stored value is a volume grid.
    */
