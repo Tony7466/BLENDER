@@ -274,6 +274,11 @@ static void store_result_geometry(
   }
 }
 
+/**
+ * Gather IDs used by the node group, and the node group itself if there are any. We need to use
+ * *all* IDs because the only mechanism we have to replace the socket ID pointers with their
+ * evaluated counterparts is evaluating the node group data-block itself.
+ */
 static void gather_node_group_ids(const bNodeTree &node_tree, Set<ID *> &ids)
 {
   const int orig_size = ids.size();
@@ -289,14 +294,11 @@ static void gather_node_group_ids(const bNodeTree &node_tree, Set<ID *> &ids)
   }
 }
 
-static bool id_needs_evaluation(const Depsgraph &depsgraph, ID *id)
-{
-  if (!ID_TYPE_USE_COPY_ON_EVAL(GS(id->name))) {
-    return false;
-  }
-  return DEG_get_evaluated_id(&depsgraph, id) == id;
-}
-
+/**
+ * Gather IDs referenced from node group input properties (the redo panel). Skip IDs that are
+ * already fully evaluated in the active depsgraph. In the end, the group input properties will be
+ * copied to contain evaluated data-blocks from the active and/or an extra depsgraph.
+ */
 static void gather_input_ids(const Depsgraph &depsgraph_active,
                              const IDProperty &properties,
                              Set<ID *> &ids)
@@ -304,7 +306,7 @@ static void gather_input_ids(const Depsgraph &depsgraph_active,
   IDP_foreach_property(
       &const_cast<IDProperty &>(properties), IDP_TYPE_FILTER_ID, [&](IDProperty *property) {
         if (ID *id = IDP_Id(property)) {
-          if (id_needs_evaluation(depsgraph_active, id)) {
+          if (!DEG_id_is_fully_evaluated(&depsgraph_active, id)) {
             ids.add(id);
           }
         }
