@@ -494,6 +494,8 @@ bool GLContext::shader_draw_parameters_support = false;
 bool GLContext::stencil_texturing_support = false;
 bool GLContext::texture_barrier_support = false;
 bool GLContext::texture_filter_anisotropic_support = false;
+bool GLContext::arb_parallel_shader_compile_support = false;
+bool GLContext::khr_parallel_shader_compile_support = false;
 
 /** Workarounds. */
 
@@ -581,6 +583,20 @@ void GLBackend::capabilities_init()
   GLContext::stencil_texturing_support = epoxy_gl_version() >= 43;
   GLContext::texture_filter_anisotropic_support = epoxy_has_gl_extension(
       "GL_EXT_texture_filter_anisotropic");
+
+  GLContext::arb_parallel_shader_compile_support = epoxy_has_gl_extension(
+      "GL_ARB_parallel_shader_compile");
+  GLContext::khr_parallel_shader_compile_support = epoxy_has_gl_extension(
+      "GL_KHR_parallel_shader_compile");
+
+  if (GLContext::arb_parallel_shader_compile_support) {
+    /*Request the max number of threads available.*/
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
+  }
+  else if (GLContext::khr_parallel_shader_compile_support) {
+    /*Request the max number of threads available.*/
+    glMaxShaderCompilerThreadsKHR(0xFFFFFFFF);
+  }
 
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;
