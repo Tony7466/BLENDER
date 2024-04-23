@@ -2283,11 +2283,11 @@ bool BsdfBaseNode::has_bump()
 BsdfNode::BsdfNode(const NodeType *node_type) : BsdfBaseNode(node_type) {}
 
 void BsdfNode::compile(SVMCompiler &compiler,
-                       ShaderInput *param1,
-                       ShaderInput *param2,
-                       ShaderInput *param3,
-                       ShaderInput *param4,
-                       ShaderInput *param5)
+                       ShaderInput *bsdf_y,
+                       ShaderInput *bsdf_z,
+                       ShaderInput *data_y,
+                       ShaderInput *data_z,
+                       ShaderInput *data_w)
 {
   ShaderInput *color_in = input("Color");
   ShaderInput *normal_in = input("Normal");
@@ -2300,20 +2300,20 @@ void BsdfNode::compile(SVMCompiler &compiler,
   }
 
   int normal_offset = (normal_in) ? compiler.stack_assign_if_linked(normal_in) : SVM_STACK_INVALID;
-  int param3_offset = (param3) ? compiler.stack_assign(param3) : SVM_STACK_INVALID;
-  int param4_offset = (param4) ? compiler.stack_assign(param4) : SVM_STACK_INVALID;
-  int param5_offset = (param5) ? compiler.stack_assign(param5) : SVM_STACK_INVALID;
+  int data_y_offset = (data_y) ? compiler.stack_assign(data_y) : SVM_STACK_INVALID;
+  int data_z_offset = (data_z) ? compiler.stack_assign(data_z) : SVM_STACK_INVALID;
+  int data_w_offset = (data_w) ? compiler.stack_assign(data_w) : SVM_STACK_INVALID;
 
   compiler.add_node(
       NODE_CLOSURE_BSDF,
       compiler.encode_uchar4(closure,
-                             (param1) ? compiler.stack_assign(param1) : SVM_STACK_INVALID,
-                             (param2) ? compiler.stack_assign(param2) : SVM_STACK_INVALID,
+                             (bsdf_y) ? compiler.stack_assign(bsdf_y) : SVM_STACK_INVALID,
+                             (bsdf_z) ? compiler.stack_assign(bsdf_z) : SVM_STACK_INVALID,
                              compiler.closure_mix_weight_offset()),
-      __float_as_int((param1) ? get_float(param1->socket_type) : 0.0f),
-      __float_as_int((param2) ? get_float(param2->socket_type) : 0.0f));
+      __float_as_int((bsdf_y) ? get_float(bsdf_y->socket_type) : 0.0f),
+      __float_as_int((bsdf_z) ? get_float(bsdf_z->socket_type) : 0.0f));
 
-  compiler.add_node(normal_offset, param3_offset, param4_offset, param5_offset);
+  compiler.add_node(normal_offset, data_y_offset, data_z_offset, data_w_offset);
 }
 
 void BsdfNode::compile(SVMCompiler &compiler)
