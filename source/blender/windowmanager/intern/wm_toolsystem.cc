@@ -32,7 +32,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -720,8 +720,10 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
         case CTX_MODE_PAINT_GREASE_PENCIL:
           return "builtin_brush.Draw";
         case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+        case CTX_MODE_SCULPT_GREASE_PENCIL:
           return "builtin_brush.Push";
         case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
+        case CTX_MODE_WEIGHT_GREASE_PENCIL:
           return "builtin_brush.Weight";
         case CTX_MODE_VERTEX_GPENCIL_LEGACY:
           return "builtin_brush.Draw";

@@ -613,6 +613,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surfel_list_lib.glsl
   engines/eevee_next/shaders/eevee_surfel_list_sort_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_ray_comp.glsl
+  engines/eevee_next/shaders/eevee_thickness_amend_lib.glsl
   engines/eevee_next/shaders/eevee_thickness_lib.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
@@ -955,6 +956,11 @@ if(WITH_GTESTS)
       list(APPEND INC_SYS
         PUBLIC ${VULKAN_INCLUDE_DIRS}
       )
+      if(APPLE)
+        list(APPEND INC_SYS
+          ${MOLTENVK_INCLUDE_DIRS}
+        )
+      endif()
     endif()
   endif()
 endif()

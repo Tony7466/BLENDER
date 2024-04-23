@@ -571,7 +571,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 
                                         const bool is_editmode,
                                         const bool is_paint_mode,
-                                        const bool is_mode_active,
+                                        const bool edit_mode_active,
                                         const float4x4 &object_to_world,
                                         const bool do_final,
                                         const bool do_uvedit,
@@ -611,7 +611,6 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
    */
   const bool do_hq_normals = (scene->r.perf_flag & SCE_PERF_HQ_NORMALS) != 0 ||
                              GPU_use_hq_normals_workaround();
-  const bool override_single_mat = mesh_render_mat_len_get(object, mesh) <= 1;
 
   /* Create an array containing all the extractors that needs to be executed. */
   ExtractorRunDatas extractors;
@@ -621,8 +620,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 #define EXTRACT_ADD_REQUESTED(type, name) \
   do { \
     if (DRW_##type##_requested(mbuflist->type.name)) { \
-      const MeshExtract *extractor = mesh_extract_override_get( \
-          &extract_##name, do_hq_normals, override_single_mat); \
+      const MeshExtract *extractor = mesh_extract_override_get(&extract_##name, do_hq_normals); \
       extractors.append(extractor); \
     } \
   } while (0)
@@ -700,7 +698,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                                mesh,
                                                is_editmode,
                                                is_paint_mode,
-                                               is_mode_active,
+                                               edit_mode_active,
                                                object_to_world,
                                                do_final,
                                                do_uvedit,

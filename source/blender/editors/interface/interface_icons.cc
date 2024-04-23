@@ -328,6 +328,11 @@ static void vicon_keytype_moving_hold_draw(int x, int y, int w, int h, float alp
   vicon_keytype_draw_wrapper(x, y, w, h, alpha, BEZT_KEYTYPE_MOVEHOLD, KEYFRAME_HANDLE_NONE);
 }
 
+static void vicon_keytype_generated_draw(int x, int y, int w, int h, float alpha)
+{
+  vicon_keytype_draw_wrapper(x, y, w, h, alpha, BEZT_KEYTYPE_GENERATED, KEYFRAME_HANDLE_NONE);
+}
+
 static void vicon_handletype_free_draw(int x, int y, int w, int h, float alpha)
 {
   vicon_keytype_draw_wrapper(x, y, w, h, alpha, BEZT_KEYTYPE_KEYFRAME, KEYFRAME_HANDLE_FREE);
@@ -543,11 +548,9 @@ static void init_brush_icons()
 
 #  define INIT_BRUSH_ICON(icon_id, name) \
     { \
-      uchar *rect = (uchar *)datatoc_##name##_png; \
+      const uchar *rect = (const uchar *)datatoc_##name##_png; \
       const int size = datatoc_##name##_png_size; \
-      DrawInfo *di; \
-\
-      di = def_internal_icon(nullptr, icon_id, 0, 0, w, ICON_TYPE_BUFFER, 0); \
+      DrawInfo *di = def_internal_icon(nullptr, icon_id, 0, 0, w, ICON_TYPE_BUFFER, 0); \
       di->data.buffer.image->datatoc_rect = rect; \
       di->data.buffer.image->datatoc_size = size; \
     } \
@@ -1120,6 +1123,7 @@ static void init_internal_icons()
   def_internal_vicon(ICON_KEYTYPE_EXTREME_VEC, vicon_keytype_extreme_draw);
   def_internal_vicon(ICON_KEYTYPE_JITTER_VEC, vicon_keytype_jitter_draw);
   def_internal_vicon(ICON_KEYTYPE_MOVING_HOLD_VEC, vicon_keytype_moving_hold_draw);
+  def_internal_vicon(ICON_KEYTYPE_GENERATED_VEC, vicon_keytype_generated_draw);
 
   def_internal_vicon(ICON_HANDLETYPE_FREE_VEC, vicon_handletype_free_draw);
   def_internal_vicon(ICON_HANDLETYPE_ALIGNED_VEC, vicon_handletype_aligned_draw);
@@ -1610,8 +1614,8 @@ PreviewImage *UI_icon_to_preview(int icon_id)
   }
 
   if (di->type == ICON_TYPE_PREVIEW) {
-    PreviewImage *prv = (icon->id_type != 0) ? BKE_previewimg_id_ensure((ID *)icon->obj) :
-                                               static_cast<PreviewImage *>(icon->obj);
+    const PreviewImage *prv = (icon->id_type != 0) ? BKE_previewimg_id_ensure((ID *)icon->obj) :
+                                                     static_cast<const PreviewImage *>(icon->obj);
 
     if (prv) {
       return BKE_previewimg_copy(prv);
@@ -1877,8 +1881,12 @@ static void icon_draw_texture(float x,
   if (show_indicator) {
     /* Handle the little numbers on top of the icon. */
     uchar text_color[4];
-    UI_GetThemeColor3ubv(TH_TEXT, text_color);
-    text_color[3] = 255;
+    if (text_overlay->color[3]) {
+      copy_v4_v4_uchar(text_color, text_overlay->color);
+    }
+    else {
+      UI_GetThemeColor4ubv(TH_TEXT, text_color);
+    }
 
     uiFontStyle fstyle_small = *UI_FSTYLE_WIDGET;
     fstyle_small.points *= zoom_factor;
@@ -2473,7 +2481,7 @@ int UI_icon_from_rnaptr(const bContext *C, PointerRNA *ptr, int rnaicon, const b
     return RNA_int_get(ptr, "icon");
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_DynamicPaintSurface)) {
-    DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(ptr->data);
+    const DynamicPaintSurface *surface = static_cast<const DynamicPaintSurface *>(ptr->data);
 
     if (surface->format == MOD_DPAINT_SURFACE_F_PTEX) {
       return ICON_SHADING_TEXTURE;

@@ -1320,7 +1320,7 @@ static int ptcache_path(PTCacheID *pid, char dirname[MAX_PTCACHE_PATH])
   const char *blendfile_path = BKE_main_blendfile_path_from_global();
   Library *lib = (pid->owner_id) ? pid->owner_id->lib : nullptr;
   const char *blendfile_path_lib = (lib && (pid->cache->flag & PTCACHE_IGNORE_LIBPATH) == 0) ?
-                                       lib->filepath_abs :
+                                       lib->runtime.filepath_abs :
                                        blendfile_path;
 
   if (pid->cache->flag & PTCACHE_EXTERNAL) {
@@ -1412,7 +1412,7 @@ static int ptcache_filepath(PTCacheID *pid,
                             const bool do_ext)
 {
   int len = 0;
-  char *idname;
+  const char *idname;
   char *newname;
   filepath[0] = '\0';
   newname = filepath;
@@ -1444,6 +1444,7 @@ static int ptcache_filepath(PTCacheID *pid,
     newname += temp;
     len += temp;
   }
+  UNUSED_VARS(newname);
 
   if (do_ext) {
     len += ptcache_filepath_ext_append(pid, filepath, size_t(len), true, cfra);

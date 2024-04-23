@@ -260,7 +260,7 @@ class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel)
 
         layout.prop(view, "language")
 
-        col = layout.column(heading="Translate")
+        col = layout.column(heading="Translate", heading_ctxt=i18n_contexts.editor_preferences)
         col.active = (bpy.app.translations.locale != "en_US")
         col.prop(view, "use_translate_tooltips", text="Tooltips")
         col.prop(view, "use_translate_interface", text="Interface")
@@ -667,15 +667,22 @@ class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
 
     @classmethod
     def poll(cls, _context):
-        # Only for Windows so far
-        import sys
-        return sys.platform[:3] == "win"
+        # macOS isn't supported.
+        from sys import platform
+        if platform == "darwin":
+            return False
+        return True
 
     def draw_centered(self, context, layout):
-        if context.preferences.system.is_microsoft_store_install:
-            layout.label(text="Microsoft Store installation")
-            layout.label(text="Use Windows 'Default Apps' to associate with blend files")
-        else:
+        from sys import platform
+        associate_supported = True
+        if platform[:3] == "win":
+            if context.preferences.system.is_microsoft_store_install:
+                layout.label(text="Microsoft Store installation")
+                layout.label(text="Use Windows 'Default Apps' to associate with blend files")
+                associate_supported = False
+
+        if associate_supported:
             layout.label(text="Open blend files with this Blender version")
             split = layout.split(factor=0.5)
             split.alignment = 'LEFT'
@@ -860,21 +867,37 @@ class USERPREF_MT_interface_theme_presets(Menu):
     draw = Menu.draw_preset
 
     @staticmethod
-    def reset_cb(context):
+    def reset_cb(_context, _filepath):
         bpy.ops.preferences.reset_default_theme()
+
+    @staticmethod
+    def post_cb(context, filepath):
+        context.preferences.themes[0].filepath = filepath
 
 
 class USERPREF_PT_theme(ThemePanel, Panel):
     bl_label = "Themes"
     bl_options = {'HIDE_HEADER'}
 
-    def draw(self, _context):
+    def draw(self, context):
+        import os
+
         layout = self.layout
 
         split = layout.split(factor=0.6)
 
         row = split.row(align=True)
-        row.menu("USERPREF_MT_interface_theme_presets", text=USERPREF_MT_interface_theme_presets.bl_label)
+
+        # Unlike most presets (which use the classes bl_label),
+        # themes store the path, use this when set.
+        if filepath := context.preferences.themes[0].filepath:
+            preset_label = bpy.path.display_name(os.path.basename(filepath))
+        else:
+            preset_label = USERPREF_MT_interface_theme_presets.bl_label
+
+        row.menu("USERPREF_MT_interface_theme_presets", text=preset_label)
+        del filepath, preset_label
+
         row.operator("wm.interface_theme_preset_add", text="", icon='ADD')
         row.operator("wm.interface_theme_preset_remove", text="", icon='REMOVE')
         row.operator("wm.interface_theme_preset_save", text="", icon='FILE_TICK')
@@ -1796,9 +1819,7 @@ class USERPREF_PT_input_ndof(InputPanel, CenterAlignMixIn, Panel):
 
     @classmethod
     def poll(cls, context):
-        prefs = context.preferences
-        inputs = prefs.inputs
-        return inputs.use_ndof
+        return bpy.app.build_options.input_ndof
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
@@ -2053,8 +2074,6 @@ class USERPREF_PT_extensions_repos(Panel):
         paths = context.preferences.filepaths
         active_repo_index = paths.active_extension_repo
 
-        layout.label(text="Repositories")
-
         row = layout.row()
 
         row.template_list(
@@ -2090,7 +2109,7 @@ class USERPREF_PT_extensions_repos(Panel):
             split = row.split(factor=0.936)
             if active_repo.remote_path == "":
                 split.alert = True
-            split.prop(active_repo, "remote_path", text="URL")
+            split.prop(active_repo, "remote_path", text="", icon="URL", placeholder="Repository URL")
             split = row.split()
 
         layout_header, layout_panel = layout.panel("advanced", default_closed=True)
@@ -2110,11 +2129,10 @@ class USERPREF_PT_extensions_repos(Panel):
                 # valid UTF-8 which will raise a Python exception when passed in as text.
                 row.prop(active_repo, "directory", text="")
 
+            layout_panel.prop(active_repo, "use_cache")
             layout_panel.separator()
 
-            row = layout_panel.row()
-            row.prop(active_repo, "use_cache")
-            row.prop(active_repo, "module")
+            layout_panel.prop(active_repo, "module")
 
 
 # -----------------------------------------------------------------------------
@@ -2676,10 +2694,10 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "use_grease_pencil_version3_convert_on_load"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
-                ({"property": "use_new_matrix_socket"}, ("blender/blender/issues/116067", "Matrix Socket")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/117286", "#117286")),
                 ({"property": "use_extension_utils"}, ("/blender/blender/issues/117286", "#117286")),
+                ({"property": "use_animation_baklava"}, ("/blender/blender/issues/120406", "#120406")),
             ),
         )
 

@@ -483,7 +483,6 @@ static void GREASE_PENCIL_OT_delete(wmOperatorType *ot)
   ot->description = "Delete selected strokes or points";
 
   /* Callbacks. */
-  ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_delete_exec;
   ot->poll = editable_grease_pencil_poll;
 
@@ -644,6 +643,7 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
                                  "Type",
                                  "Method used for dissolving stroke points");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
 }
 
 /** \} */
@@ -2239,12 +2239,15 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* Deselect everything in the target layer. The pasted strokes are the only ones then after the
-   * paste. That's convenient for the user. */
-  bke::GSpanAttributeWriter selection_in_target = ed::curves::ensure_selection_attribute(
-      target_drawing->strokes_for_write(), selection_domain, CD_PROP_BOOL);
-  ed::curves::fill_selection_false(selection_in_target.span);
-  selection_in_target.finish();
+  /* Deselect everything from editable drawings. The pasted strokes are the only ones then after
+   * the paste. That's convenient for the user. */
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::GSpanAttributeWriter selection_in_target = ed::curves::ensure_selection_attribute(
+        info.drawing.strokes_for_write(), selection_domain, CD_PROP_BOOL);
+    ed::curves::fill_selection_false(selection_in_target.span);
+    selection_in_target.finish();
+  });
 
   /* Get a list of all materials in the scene. */
   Map<uint, Material *> scene_materials;
@@ -2354,6 +2357,7 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
   }
 
   if (!anything_copied) {
+    clipboard.curves.resize(0, 0);
     return OPERATOR_CANCELLED;
   }
 
@@ -2527,4 +2531,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_copy);
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_merge_by_distance);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
 }
