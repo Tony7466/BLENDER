@@ -2313,7 +2313,7 @@ void BsdfNode::compile(SVMCompiler &compiler,
       __float_as_int((param1) ? get_float(param1->socket_type) : 0.0f),
       __float_as_int((param2) ? get_float(param2->socket_type) : 0.0f));
 
-  compiler.add_node(normal_offset, param5_offset, param3_offset, param4_offset);
+  compiler.add_node(normal_offset, param3_offset, param4_offset, param5_offset);
 }
 
 void BsdfNode::compile(SVMCompiler &compiler)
