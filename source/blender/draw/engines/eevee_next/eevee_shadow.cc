@@ -360,9 +360,13 @@ void ShadowPunctual::end_sync(Light &light, bool is_render_sync)
     }
   }
 
+  float shadow_radius = shadow_radius_get();
+  if (light.do_jittering) {
+    shadow_radius *= jitter_overblur_;
+  }
+
   float side, near, far;
-  compute_projection_boundaries(
-      light_radius_, shadow_radius_get(), max_distance_, near, far, side);
+  compute_projection_boundaries(light_radius_, shadow_radius, max_distance_, near, far, side);
 
   float3 origin_shift = float3(0.0f);
 
