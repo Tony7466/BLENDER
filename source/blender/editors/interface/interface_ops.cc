@@ -1384,7 +1384,6 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
                                        PropertyRNA *prop,
                                        const char *path,
                                        bool use_path_from_id,
-                                       bool check_is_drivable,
                                        PointerRNA *r_ptr,
                                        PropertyRNA **r_prop)
 {
@@ -1462,10 +1461,6 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
     return false;
   }
 
-  if (check_is_drivable && !RNA_property_driver_editable(&lptr, lprop)) {
-    return false;
-  }
-
   if (r_ptr) {
     *r_ptr = lptr;
   }
@@ -1514,7 +1509,6 @@ static bool copy_to_selected_button(bContext *C, bool all, bool poll)
                                              prop,
                                              path.has_value() ? path->c_str() : nullptr,
                                              use_path_from_id,
-                                             false,
                                              &lptr,
                                              &lprop))
       {
@@ -1636,6 +1630,8 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
       continue;
     }
 
+    /* Get the target property and ensure that it's appropriate
+     * for adding a driver. */
     PropertyRNA *dst_prop;
     PointerRNA dst_ptr;
     if (!UI_context_copy_to_selected_check(&ptr,
@@ -1643,10 +1639,12 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
                                            prop,
                                            path.has_value() ? path->c_str() : nullptr,
                                            use_path_from_id,
-                                           true,
                                            &dst_ptr,
                                            &dst_prop))
     {
+      continue;
+    }
+    if (!RNA_property_driver_editable(&dst_ptr, dst_prop)) {
       continue;
     }
 
