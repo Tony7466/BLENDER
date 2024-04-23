@@ -72,8 +72,8 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_common)
     .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ, "CaptureInfoData", "capture_info_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_surfel_light)
-    .define("SURFEL_LIGHT")
     .define("LIGHT_ITER_FORCE_NO_CULLING")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "1")
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "draw_view",
@@ -174,7 +174,7 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_world)
                       IRRADIANCE_GRID_BRICK_SIZE,
                       IRRADIANCE_GRID_BRICK_SIZE)
     .define("IRRADIANCE_GRID_UPLOAD")
-    .additional_info("eevee_shared")
+    .additional_info("eevee_shared", "eevee_global_ubo")
     .push_constant(Type::INT, "grid_index")
     .storage_buf(0, Qualifier::READ, "uint", "bricks_infos_buf[]")
     .storage_buf(1, Qualifier::READ, "SphereProbeHarmonic", "harmonic_buf")
@@ -188,7 +188,7 @@ GPU_SHADER_CREATE_INFO(eevee_lightprobe_irradiance_load)
                       IRRADIANCE_GRID_BRICK_SIZE,
                       IRRADIANCE_GRID_BRICK_SIZE)
     .define("IRRADIANCE_GRID_UPLOAD")
-    .additional_info("eevee_shared")
+    .additional_info("eevee_shared", "eevee_global_ubo")
     .push_constant(Type::MAT4, "grid_local_to_world")
     .push_constant(Type::INT, "grid_index")
     .push_constant(Type::INT, "grid_start_index")

@@ -2869,7 +2869,7 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   const Layer *active_layer = this->get_active_layer();
   if (active_layer == &layer) {
     Span<const Layer *> layers = this->layers();
-    /* If there is no other layer available , unset the active layer. */
+    /* If there is no other layer available, unset the active layer. */
     if (layers.size() == 1) {
       this->set_active_layer(nullptr);
     }
@@ -2934,9 +2934,6 @@ static void read_drawing_array(GreasePencil &grease_pencil, BlendDataReader *rea
         break;
       }
       case GP_DRAWING_REFERENCE: {
-        GreasePencilDrawingReference *drawing_reference =
-            reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
-        BLO_read_data_address(reader, &drawing_reference->id_reference);
         break;
       }
     }
