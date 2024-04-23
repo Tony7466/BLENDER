@@ -194,7 +194,8 @@ std::optional<std::string> WM_key_event_operator_string(const bContext *C,
                                                         IDProperty *properties,
                                                         bool is_strict);
 
-wmKeyMapItem *WM_key_event_operator_keymap(const bContext *C, const char *opname, wmWindow *win, ScrArea *area, ARegion *region);
+wmKeyMapItem *WM_key_event_operator_keymap(
+    const bContext *C, const char *opname, wmWindow *win, ScrArea *area, ARegion *region);
 
 wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
                                                 const char *opname,

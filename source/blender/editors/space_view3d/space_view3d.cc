@@ -2127,13 +2127,16 @@ static void view3d_status_bar(
   WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_zoom", IFACE_("Zoom"), layout);
   WM_keymap_operator_statusbar_item(view3d_km, "VIEW3D_OT_select", IFACE_("Select"), layout);
   if (obedit) {
-    wmKeyMap *edmode_km = WM_keymap_find_all(CTX_wm_manager(C), "Mesh", SPACE_EMPTY, RGN_TYPE_WINDOW);
+    wmKeyMap *edmode_km = WM_keymap_find_all(
+        CTX_wm_manager(C), "Mesh", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_keymap_operator_statusbar_item(edmode_km, "MESH_OT_select_all", IFACE_("All"), layout);
     WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_translate", IFACE_("Move"), layout);
     WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_rotate", IFACE_("Rotate"), layout);
     WM_keymap_operator_statusbar_item(edmode_km, "TRANSFORM_OT_resize", IFACE_("Scale"), layout);
-    WM_keymap_operator_statusbar_item(edmode_km, "MESH_OT_duplicate_move", IFACE_("Duplicate"), layout);
-    WM_keymap_operator_statusbar_item(obnm_km, "OBJECT_OT_mode_set", IFACE_("Object Mode"), layout);
+    WM_keymap_operator_statusbar_item(
+        edmode_km, "MESH_OT_duplicate_move", IFACE_("Duplicate"), layout);
+    WM_keymap_operator_statusbar_item(
+        obnm_km, "OBJECT_OT_mode_set", IFACE_("Object Mode"), layout);
   }
   else {
     wmKeyMap *obmode_km = WM_keymap_find_all(
@@ -2142,7 +2145,8 @@ static void view3d_status_bar(
     WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_translate", IFACE_("Move"), layout);
     WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_rotate", IFACE_("Rotate"), layout);
     WM_keymap_operator_statusbar_item(obmode_km, "TRANSFORM_OT_resize", IFACE_("Scale"), layout);
-    WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_duplicate_move", IFACE_("Duplicate"), layout);
+    WM_keymap_operator_statusbar_item(
+        obmode_km, "OBJECT_OT_duplicate_move", IFACE_("Duplicate"), layout);
     WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_join", IFACE_("Join"), layout);
     WM_keymap_operator_statusbar_item(obmode_km, "OBJECT_OT_delete", IFACE_("Delete"), layout);
     WM_keymap_operator_statusbar_item(obnm_km, "OBJECT_OT_mode_set", IFACE_("Edit Mode"), layout);
