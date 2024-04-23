@@ -10,6 +10,18 @@
 #include "render_graph/vk_command_buffer_wrapper.hh"
 
 namespace blender::gpu::render_graph {
+void vk_pipeline_data_copy(VKPipelineData &dst, const VKPipelineData &src)
+{
+  dst.push_constants_data = nullptr;
+  dst.push_constants_size = src.push_constants_size;
+  if (src.push_constants_size) {
+    BLI_assert(src.push_constants_data);
+    void *data = MEM_mallocN(src.push_constants_size, __func__);
+    memcpy(data, src.push_constants_data, src.push_constants_size);
+    dst.push_constants_data = data;
+  }
+}
+
 void vk_pipeline_data_build_commands(VKCommandBufferInterface &command_buffer,
                                      const VKPipelineData &pipeline_data,
                                      VKBoundPipelines &r_bound_pipelines,
@@ -38,6 +50,11 @@ void vk_pipeline_data_build_commands(VKCommandBufferInterface &command_buffer,
                                   pipeline_data.push_constants_size,
                                   pipeline_data.push_constants_data);
   }
+}
+
+void vk_pipeline_data_free(VKPipelineData &data)
+{
+  MEM_SAFE_FREE(data.push_constants_data);
 }
 
 }  // namespace blender::gpu::render_graph
