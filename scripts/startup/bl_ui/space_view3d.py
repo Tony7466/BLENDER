@@ -45,7 +45,6 @@ class VIEW3D_HT_tool_header(Header):
     def draw_tool_settings(self, context):
         layout = self.layout
         tool_mode = context.mode
-        is_greasepencil = context.object.type == 'GREASEPENCIL'
 
         # Active Tool
         # -----------
@@ -84,13 +83,7 @@ class VIEW3D_HT_tool_header(Header):
                 draw_3d_brush_settings(layout, tool_mode)
         elif tool_mode == 'PAINT_WEIGHT':
             if is_valid_context:
-                if not is_greasepencil:
-                    draw_3d_brush_settings(layout, tool_mode)
-                else:
-                    layout.popover("VIEW3D_PT_tools_grease_pencil_weight_options", text="Options")
-                    layout.popover("VIEW3D_PT_tools_brush_falloff")
-                    layout.popover("VIEW3D_PT_tools_brush_display")
-
+                draw_3d_brush_settings(layout, tool_mode)
         elif tool_mode == 'PAINT_TEXTURE':
             if is_valid_context:
                 draw_3d_brush_settings(layout, tool_mode)
@@ -145,7 +138,6 @@ class VIEW3D_HT_tool_header(Header):
     def draw_mode_settings(self, context):
         layout = self.layout
         mode_string = context.mode
-        is_greasepencil = context.object.type == 'GREASEPENCIL'
 
         def row_for_mirror():
             row = layout.row(align=True)
@@ -162,8 +154,7 @@ class VIEW3D_HT_tool_header(Header):
             ob = context.object
             _row, sub = row_for_mirror()
             sub.prop(ob.pose, "use_mirror_x", text="X", toggle=True)
-        elif ((not is_greasepencil) and
-              (mode_string in {'EDIT_MESH', 'PAINT_WEIGHT', 'SCULPT', 'PAINT_VERTEX', 'PAINT_TEXTURE'})):
+        elif mode_string in {'EDIT_MESH', 'PAINT_WEIGHT', 'SCULPT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             # Mesh Modes, Use Mesh Symmetry
             ob = context.object
             row, sub = row_for_mirror()
@@ -174,8 +165,7 @@ class VIEW3D_HT_tool_header(Header):
                 tool_settings = context.tool_settings
                 layout.prop(tool_settings, "use_mesh_automerge", text="")
             elif mode_string == 'PAINT_WEIGHT':
-                if not is_greasepencil:
-                    row.popover(panel="VIEW3D_PT_tools_weightpaint_symmetry_for_topbar", text="")
+                row.popover(panel="VIEW3D_PT_tools_weightpaint_symmetry_for_topbar", text="")
             elif mode_string == 'SCULPT':
                 row.popover(panel="VIEW3D_PT_sculpt_symmetry_for_topbar", text="")
             elif mode_string == 'PAINT_VERTEX':
@@ -197,8 +187,7 @@ class VIEW3D_HT_tool_header(Header):
         elif mode_string == 'PAINT_VERTEX':
             layout.popover_group(context=".vertexpaint", **popover_kw)
         elif mode_string == 'PAINT_WEIGHT':
-            if not is_greasepencil:
-                layout.popover_group(context=".weightpaint", **popover_kw)
+            layout.popover_group(context=".weightpaint", **popover_kw)
         elif mode_string == 'PAINT_TEXTURE':
             layout.popover_group(context=".imagepaint", **popover_kw)
         elif mode_string == 'EDIT_TEXT':
@@ -344,74 +333,37 @@ class _draw_tool_settings_context_mode:
             return False
 
         capabilities = brush.weight_paint_capabilities
-
-        if context.object.type != 'GREASEPENCIL':
-            if capabilities.has_weight:
-                UnifiedPaintPanel.prop_unified(
-                    layout,
-                    context,
-                    brush,
-                    "weight",
-                    unified_name="use_unified_weight",
-                    slider=True,
-                    header=True,
-                )
-
+        if capabilities.has_weight:
             UnifiedPaintPanel.prop_unified(
                 layout,
                 context,
                 brush,
-                "size",
-                pressure_name="use_pressure_size",
-                unified_name="use_unified_size",
+                "weight",
+                unified_name="use_unified_weight",
                 slider=True,
-                text="Radius",
-                header=True,
-            )
-            UnifiedPaintPanel.prop_unified(
-                layout,
-                context,
-                brush,
-                "strength",
-                pressure_name="use_pressure_strength",
-                unified_name="use_unified_strength",
-                header=True,
-            )
-        else:
-            UnifiedPaintPanel.prop_unified(
-                layout,
-                context,
-                brush,
-                "size",
-                pressure_name="use_pressure_size",
-                unified_name="use_unified_size",
-                slider=True,
-                text="Radius",
-                header=True,
-            )
-            UnifiedPaintPanel.prop_unified(
-                layout,
-                context,
-                brush,
-                "strength",
-                pressure_name="use_pressure_strength",
-                unified_name="use_unified_strength",
                 header=True,
             )
 
-            if capabilities.has_weight:
-                UnifiedPaintPanel.prop_unified(
-                    layout,
-                    context,
-                    brush,
-                    "weight",
-                    unified_name="use_unified_weight",
-                    slider=True,
-                    header=True,
-                )
-
-            if brush.weight_tool in {'DRAW'}:
-                layout.prop(brush, "direction", expand=True, text="")
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "size",
+            pressure_name="use_pressure_size",
+            unified_name="use_unified_size",
+            slider=True,
+            text="Radius",
+            header=True,
+        )
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            header=True,
+        )
 
         return True
 
@@ -1133,8 +1085,7 @@ class VIEW3D_HT_header(Header):
         elif mode_string == 'SCULPT_CURVES':
             sub.popover(panel="VIEW3D_PT_overlay_sculpt_curves", text="", icon='SCULPTMODE_HLT')
         elif mode_string == 'PAINT_WEIGHT':
-            if obj is None or obj.type != 'GREASEPENCIL':
-                sub.popover(panel="VIEW3D_PT_overlay_weight_paint", text="", icon='WPAINT_HLT')
+            sub.popover(panel="VIEW3D_PT_overlay_weight_paint", text="", icon='WPAINT_HLT')
         elif mode_string == 'PAINT_TEXTURE':
             sub.popover(panel="VIEW3D_PT_overlay_texture_paint", text="", icon='TPAINT_HLT')
         elif mode_string == 'PAINT_VERTEX':
@@ -1237,12 +1188,11 @@ class VIEW3D_MT_editor_menus(Menu):
                 elif mode_string == 'VERTEX_GPENCIL':
                     layout.menu("VIEW3D_MT_select_edit_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
-            if obj.type == 'MESH':
-                mesh = obj.data
-                if mesh.use_paint_mask:
-                    layout.menu("VIEW3D_MT_select_paint_mask")
-                elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
-                    layout.menu("VIEW3D_MT_select_paint_mask_vertex")
+            mesh = obj.data
+            if mesh.use_paint_mask:
+                layout.menu("VIEW3D_MT_select_paint_mask")
+            elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
+                layout.menu("VIEW3D_MT_select_paint_mask_vertex")
         elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL'}:
             layout.menu("VIEW3D_MT_select_%s" % mode_string.lower())
 
@@ -3677,10 +3627,8 @@ class VIEW3D_MT_paint_weight(Menu):
 
         layout.menu("VIEW3D_MT_paint_weight_lock", text="Locks")
 
-    def draw(self, context):
-        obj = context.active_object
-        if obj.type == 'MESH':
-            self.draw_generic(self.layout, is_editmode=False)
+    def draw(self, _context):
+        self.draw_generic(self.layout, is_editmode=False)
 
 
 class VIEW3D_MT_sculpt(Menu):

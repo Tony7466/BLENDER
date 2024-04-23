@@ -104,11 +104,11 @@ bool grease_pencil_weight_painting_poll(bContext *C)
     return false;
   }
   Object *object = CTX_data_active_object(C);
-  if ((object->mode & OB_MODE_WEIGHT_PAINT) == 0) {
+  if ((object->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) {
     return false;
   }
   ToolSettings *ts = CTX_data_tool_settings(C);
-  if (!ts || !ts->wpaint) {
+  if (!ts || !ts->gp_weightpaint) {
     return false;
   }
   return true;

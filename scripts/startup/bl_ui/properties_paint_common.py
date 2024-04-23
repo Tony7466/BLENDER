@@ -86,6 +86,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_paint
         elif mode == 'SCULPT_GREASE_PENCIL':
             return tool_settings.gpencil_sculpt_paint
+        elif mode == 'WEIGHT_GREASE_PENCIL':
+            return tool_settings.gpencil_weight_paint
         return None
 
     @staticmethod

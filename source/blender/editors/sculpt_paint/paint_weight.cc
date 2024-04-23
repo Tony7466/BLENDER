@@ -1544,41 +1544,9 @@ static void wpaint_paint_leaves(bContext *C,
 /** \name Enter Weight Paint Mode
  * \{ */
 
-static bool grease_pencil_poll_weight_cursor(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  return ob && (ob->mode & OB_MODE_WEIGHT_PAINT) && (ob->type == OB_GREASE_PENCIL) &&
-         CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
-}
-
-static void grease_pencil_wpaintmode_enter(Scene *scene, Object *ob)
-{
-  const PaintMode paint_mode = PaintMode::Weight;
-  Paint *weight_paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
-  BKE_paint_ensure(scene->toolsettings, &weight_paint);
-
-  ob->mode |= OB_MODE_WEIGHT_PAINT;
-
-  ED_paint_cursor_start(weight_paint, grease_pencil_poll_weight_cursor);
-  paint_init_pivot(ob, scene);
-
-  /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
-}
-
 void ED_object_wpaintmode_enter_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  switch (ob->type) {
-    case OB_MESH:
-      vwpaint::mode_enter_generic(bmain, depsgraph, scene, ob, OB_MODE_WEIGHT_PAINT);
-      break;
-    case OB_GREASE_PENCIL:
-      grease_pencil_wpaintmode_enter(scene, ob);
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
+  vwpaint::mode_enter_generic(bmain, depsgraph, scene, ob, OB_MODE_WEIGHT_PAINT);
 }
 void ED_object_wpaintmode_enter(bContext *C, Depsgraph *depsgraph)
 {
@@ -1595,18 +1563,7 @@ void ED_object_wpaintmode_enter(bContext *C, Depsgraph *depsgraph)
 
 void ED_object_wpaintmode_exit_ex(Object *ob)
 {
-  switch (ob->type) {
-    case OB_MESH:
-      vwpaint::mode_exit_generic(ob, OB_MODE_WEIGHT_PAINT);
-      break;
-    case OB_GREASE_PENCIL: {
-      ob->mode &= ~OB_MODE_WEIGHT_PAINT;
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
+  vwpaint::mode_exit_generic(ob, OB_MODE_WEIGHT_PAINT);
 }
 void ED_object_wpaintmode_exit(bContext *C)
 {
@@ -1680,6 +1637,8 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
     }
   }
 
+  Mesh *mesh = BKE_mesh_from_object(ob);
+
   if (is_mode_set) {
     ED_object_wpaintmode_exit_ex(ob);
   }
@@ -1695,15 +1654,12 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   /* Prepare armature posemode. */
   blender::ed::object::posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
 
-  if (ob->type == OB_MESH) {
-    /* Weight-paint works by overriding colors in mesh,
-     * so need to make sure we recalculate on enter and
-     * exit (exit needs doing regardless because we
-     * should re-deform).
-     */
-    Mesh *mesh = BKE_mesh_from_object(ob);
-    DEG_id_tag_update(&mesh->id, 0);
-  }
+  /* Weight-paint works by overriding colors in mesh,
+   * so need to make sure we recalculate on enter and
+   * exit (exit needs doing regardless because we
+   * should re-deform).
+   */
+  DEG_id_tag_update(&mesh->id, 0);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, scene);
 
