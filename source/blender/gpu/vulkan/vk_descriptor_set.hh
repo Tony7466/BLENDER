@@ -189,6 +189,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
  private:
   Binding &ensure_location(VKDescriptorSet::Location location);
+
   /**
    * Update the descriptor set on the device.
    */
