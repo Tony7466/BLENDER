@@ -87,6 +87,7 @@
 #include "DNA_curves_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_gpencil_modifier_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_image_types.h"
 #include "DNA_key_types.h"
 #include "DNA_lattice_types.h"
@@ -120,6 +121,7 @@
 #include "DNA_curves_defaults.h"
 #include "DNA_fluid_defaults.h"
 #include "DNA_gpencil_modifier_defaults.h"
+#include "DNA_grease_pencil_defaults.h"
 #include "DNA_image_defaults.h"
 #include "DNA_lattice_defaults.h"
 #include "DNA_light_defaults.h"
@@ -180,6 +182,9 @@ SDNA_DEFAULT_DECL_STRUCT(Image);
 
 /* DNA_curves_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Curves);
+
+/* DNA_grease_pencil_defaults.h */
+SDNA_DEFAULT_DECL_STRUCT(GreasePencil);
 
 /* DNA_lattice_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(Lattice);
@@ -429,6 +434,9 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     /* DNA_curves_defaults.h */
     SDNA_DEFAULT_DECL(Curves),
 
+    /* DNA_grease_pencil_defaults.h */
+    SDNA_DEFAULT_DECL(GreasePencil),
+
     /* DNA_lattice_defaults.h */
     SDNA_DEFAULT_DECL(Lattice),
 
@@ -480,6 +488,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL_EX(PhysicsSettings, Scene.physics_settings),
     SDNA_DEFAULT_DECL_EX(SceneDisplay, Scene.display),
     SDNA_DEFAULT_DECL_EX(SceneEEVEE, Scene.eevee),
+    SDNA_DEFAULT_DECL_EX(RaytraceEEVEE, Scene.eevee.ray_tracing_options),
 
     SDNA_DEFAULT_DECL(ToolSettings),
     SDNA_DEFAULT_DECL_EX(CurvePaintSettings, ToolSettings.curve_paint_settings),

@@ -896,22 +896,6 @@ static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
   return {};
 }
 
-// TODO: Make generic mesh copy handle all this.
-static Mesh *mesh_copy_with_edit_data(const Mesh &mesh)
-{
-  Mesh *result = BKE_mesh_copy_for_eval(&mesh);
-  if (mesh.runtime->edit_mesh) {
-    result->runtime->edit_mesh = static_cast<BMEditMesh *>(MEM_dupallocN(mesh.runtime->edit_mesh));
-    result->runtime->edit_mesh->is_shallow_copy = true;
-    result->runtime->is_original_bmesh = true;
-    if (mesh.runtime->edit_data) {
-      result->runtime->edit_data = std::make_unique<blender::bke::EditMeshData>(
-          *mesh.runtime->edit_data);
-    }
-  }
-  return result;
-}
-
 static void save_cage_mesh(GeometrySet &geometry)
 {
   if (const Mesh *mesh = geometry.get_mesh()) {
@@ -923,10 +907,10 @@ static void save_cage_mesh(GeometrySet &geometry)
 static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
                                             const Scene *scene,
                                             Object *ob,
-                                            BMEditMesh *em_input,
                                             const CustomData_MeshMasks *dataMask)
 {
   const Mesh *mesh_input = static_cast<const Mesh *>(ob->data);
+  const BMEditMesh *em_input = mesh_input->runtime->edit_mesh.get();
 
   /* Mesh with constructive modifiers but no deformation applied. Tracked
    * along with final mesh if undeformed / orco coordinates are requested
@@ -957,7 +941,7 @@ static GeometrySet editbmesh_calc_modifiers(Depsgraph *depsgraph,
   CustomData_MeshMasks append_mask = CD_MASK_BAREMESH;
 
   GeometrySet geometry_set = GeometrySet::from_mesh(
-      BKE_mesh_wrapper_from_editmesh(em_input, &final_datamask, mesh_input));
+      BKE_mesh_wrapper_from_editmesh(mesh_input->runtime->edit_mesh, &final_datamask, mesh_input));
 
   int cageIndex = BKE_modifiers_get_cage_index(scene, ob, nullptr, true);
   if (cageIndex == -1) {
@@ -1139,11 +1123,10 @@ static void mesh_build_data(Depsgraph *depsgraph,
 static void editbmesh_build_data(Depsgraph *depsgraph,
                                  const Scene *scene,
                                  Object *obedit,
-                                 BMEditMesh *em,
                                  CustomData_MeshMasks *dataMask)
 {
   Mesh *mesh = static_cast<Mesh *>(obedit->data);
-  GeometrySet geometry_set = editbmesh_calc_modifiers(depsgraph, scene, obedit, em, dataMask);
+  GeometrySet geometry_set = editbmesh_calc_modifiers(depsgraph, scene, obedit, dataMask);
 
   Mesh *mesh_final = const_cast<Mesh *>(geometry_set.get_mesh());
 
@@ -1262,14 +1245,13 @@ void makeDerivedMesh(Depsgraph *depsgraph,
    * `edit_mesh` pointer with the input. For example, if the object is first evaluated in the
    * object mode, and then user in another scene moves object to edit mode. */
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
 
   bool need_mapping;
   CustomData_MeshMasks cddata_masks = *dataMask;
   object_get_datamask(depsgraph, ob, &cddata_masks, &need_mapping);
 
-  if (em) {
-    editbmesh_build_data(depsgraph, scene, ob, em, &cddata_masks);
+  if (mesh->runtime->edit_mesh) {
+    editbmesh_build_data(depsgraph, scene, ob, &cddata_masks);
   }
   else {
     mesh_build_data(depsgraph, scene, ob, &cddata_masks, need_mapping);
@@ -1283,8 +1265,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
                            Object *ob,
                            const CustomData_MeshMasks *dataMask)
 {
-  using namespace blender::bke;
-  BMEditMesh *em = ((Mesh *)ob->data)->runtime->edit_mesh;
+  BMEditMesh *em = ((Mesh *)ob->data)->runtime->edit_mesh.get();
   if (em != nullptr) {
     /* There is no such a concept as deformed mesh in edit mode.
      * Explicitly disallow this request so that the evaluated result is not modified with evaluated
@@ -1361,7 +1342,7 @@ Mesh *mesh_create_eval_no_deform_render(Depsgraph *depsgraph,
 Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
                               const Scene *scene,
                               Object *obedit,
-                              BMEditMesh *em,
+                              BMEditMesh * /*em*/,
                               const CustomData_MeshMasks *dataMask)
 {
   using namespace blender::bke;
@@ -1375,7 +1356,7 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
   if (!BKE_object_get_editmesh_eval_cage(obedit) ||
       !CustomData_MeshMasks_are_matching(&(obedit->runtime->last_data_mask), &cddata_masks))
   {
-    editbmesh_build_data(depsgraph, scene, obedit, em, &cddata_masks);
+    editbmesh_build_data(depsgraph, scene, obedit, &cddata_masks);
   }
 
   return const_cast<Mesh *>(BKE_object_get_editmesh_eval_cage(obedit));

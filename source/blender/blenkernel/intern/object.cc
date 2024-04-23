@@ -1455,7 +1455,7 @@ bool BKE_object_modifier_stack_copy(Object *ob_dst,
                                     const int flag_subdata)
 {
   if ((ob_dst->type == OB_GPENCIL_LEGACY) != (ob_src->type == OB_GPENCIL_LEGACY)) {
-    BLI_assert_msg(0,
+    BLI_assert_msg(false,
                    "Trying to copy a modifier stack between a GPencil object and another type.");
     return false;
   }
@@ -1463,8 +1463,9 @@ bool BKE_object_modifier_stack_copy(Object *ob_dst,
   if (!BLI_listbase_is_empty(&ob_dst->modifiers) ||
       !BLI_listbase_is_empty(&ob_dst->greasepencil_modifiers))
   {
-    BLI_assert(
-        !"Trying to copy a modifier stack into an object having a non-empty modifier stack.");
+    BLI_assert_msg(
+        false,
+        "Trying to copy a modifier stack into an object having a non-empty modifier stack.");
     return false;
   }
 
@@ -1639,7 +1640,7 @@ void BKE_object_free_derived_caches(Object *ob)
     if (ob->runtime->is_data_eval_owned) {
       ID *data_eval = ob->runtime->data_eval;
       if (GS(data_eval->name) == ID_ME) {
-        BKE_mesh_eval_delete((Mesh *)data_eval);
+        BKE_id_free(nullptr, (Mesh *)data_eval);
       }
       else {
         BKE_libblock_free_data(data_eval, false);
@@ -1791,8 +1792,7 @@ char *BKE_object_data_editmode_flush_ptr_get(ID *id)
   const short type = GS(id->name);
   switch (type) {
     case ID_ME: {
-      BMEditMesh *em = ((Mesh *)id)->runtime->edit_mesh;
-      if (em != nullptr) {
+      if (BMEditMesh *em = ((Mesh *)id)->runtime->edit_mesh.get()) {
         return &em->needs_flush_to_id;
       }
       break;
@@ -3072,7 +3072,7 @@ static void give_parvert(const Object *par, int nr, float vec[3])
 
   if (par->type == OB_MESH) {
     const Mesh *mesh = (const Mesh *)par->data;
-    const BMEditMesh *em = mesh->runtime->edit_mesh;
+    const BMEditMesh *em = mesh->runtime->edit_mesh.get();
     const Mesh *mesh_eval = (em) ? BKE_object_get_editmesh_eval_final(par) :
                                    BKE_object_get_evaluated_mesh(par);
 
