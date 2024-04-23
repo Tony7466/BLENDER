@@ -104,8 +104,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
     selection_counts[i] = selection_attribute_names.size();
     for (const int attribute_i : selection_attribute_names.index_range()) {
       const StringRef &selection_name = selection_attribute_names[attribute_i];
-      selection_per_attribute[i][attribute_i] = ed::curves::retrieve_selected_points(
-          curves, selection_name, curves_transform_data->memory);
+      /* Transform all points in proportional mode. */
+      selection_per_attribute[i][attribute_i] = use_proportional_edit ?
+                                                    curves.points_range() :
+                                                    ed::curves::retrieve_selected_points(
+                                                        curves,
+                                                        selection_name,
+                                                        curves_transform_data->memory);
     }
 
     bezier_curves[i] = bke::curves::indices_for_type(curves.curve_types(),
@@ -139,6 +144,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       }
     }
 
+    int positions_in_custom_data = 0;
     if (use_proportional_edit) {
       Array<int> bezier_point_offset_data(bezier_curves[i].size() + 1);
       OffsetIndices<int> bezier_offsets = offset_indices::gather_selected_offsets(
@@ -146,17 +152,21 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
       const int bezier_point_count = bezier_offsets.total_size();
       tc.data_len = curves.points_num() + 2 * bezier_point_count;
+      /* `tc.data_len` and `positions_in_custom_data` differ because full copies of Bezier handle
+       * domains are made into `CurvesTransformData::positions`. */
+      positions_in_custom_data = curves.points_num() * selection_attribute_names.size();
     }
     else {
       tc.data_len = 0;
       for (const IndexMask &selection : selection_per_attribute[i]) {
         tc.data_len += selection.size();
       }
+      positions_in_custom_data = tc.data_len;
     }
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
-      curves_transform_data->positions.reinitialize(tc.data_len);
+      curves_transform_data->positions.reinitialize(positions_in_custom_data);
     }
   }
 
@@ -229,7 +239,7 @@ static void recalcData_curves(TransInfo *t)
             tc.custom.type, layer, positions_per_layer[layer]);
       }
       curves.tag_positions_changed();
-      // curves.calculate_bezier_auto_handles();
+      curves.calculate_bezier_auto_handles();
     }
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
   }
@@ -304,6 +314,14 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
 
   if (use_proportional_edit) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    Vector<VArray<bool>> selection_attrs;
+    Span<StringRef> selection_attribute_names = ed::curves::get_curves_selection_attribute_names(
+        curves);
+    for (const StringRef selection_name : selection_attribute_names) {
+      const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
+          selection_name, bke::AttrDomain::Point, true);
+      selection_attrs.append(selection_attr);
+    }
     const VArray<int8_t> curve_types = curves.curve_types();
     Array<int> flat_offset_data(points_by_curve.size() + 1);
     const OffsetIndices<int> flat_points_by_curve = expand_selected_offsets(
@@ -315,11 +333,11 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
       for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         const IndexRange all_curve_points = flat_points_by_curve[curve_i];
-        int selected_point_count = 0;
-        for (const IndexMask &selection : selected_indices) {
-          selected_point_count += selection.slice_content(points).size();
+        bool has_any_selected = false;
+        for (const VArray<bool> &selection_attr : selection_attrs) {
+          has_any_selected = has_any_selected ||
+                             ed::curves::has_anything_selected(selection_attr, points);
         }
-        const bool has_any_selected = selected_point_count > 0;
         if (!has_any_selected && use_connected_only) {
           for (const int point_i : all_curve_points) {
             TransData &td = tc.data[point_i + trans_data_offset];
@@ -354,7 +372,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
             td.loc = *elem;
 
             td.flag = 0;
-            if (selected_indices[layer].contains(point_in_layer_i)) {
+            if (selection_attrs[layer][point_in_layer_i]) {
               closest_distances[flat_i] = 0.0f;
               td.flag = TD_SELECTED;
             }

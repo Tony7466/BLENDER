@@ -90,7 +90,8 @@ struct CurvesTransformData {
 
   /**
    * The offsets of every grease pencil layer into `positions` array.
-   * For curves only one layer is used.
+   * For curves layers are used to store: positions, handle_positions_left and
+   * handle_positions_right.
    */
   blender::Vector<int> layer_offsets;
 
