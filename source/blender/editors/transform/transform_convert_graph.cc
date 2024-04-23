@@ -816,15 +816,11 @@ static inline void update_trans_data(TransData *td,
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
-static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztMap> bezms)
+static void beztmap_to_data(TransDataContainer *tc,
+                            const blender::Map<float *, int> &trans_data_map,
+                            const FCurve *fcu,
+                            const blender::Span<BeztMap> bezms)
 {
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-
-  blender::Map<float *, int> trans_info_map;
-  for (int i = 0; i < tc->data_len; i++) {
-    trans_info_map.add(tc->data_2d[i].loc2d, i);
-  }
-
   /* At this point, beztmaps are already sorted, so their current index is assumed to be what the
    * BezTriple index will be after sorting. */
   for (const int new_index : bezms.index_range()) {
@@ -839,8 +835,8 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztM
     TransData2D *td2d;
     TransData *td;
 
-    if (trans_info_map.contains(bezm->bezt->vec[0])) {
-      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[0]);
+    if (trans_data_map.contains(bezm->bezt->vec[0])) {
+      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[0]);
       td2d = &tc->data_2d[trans_data_index];
       if (bezm->swap_handles == 1) {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
@@ -851,8 +847,8 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztM
       td = &tc->data[trans_data_index];
       update_trans_data(td, fcu, new_index, bezm->swap_handles);
     }
-    if (trans_info_map.contains(bezm->bezt->vec[2])) {
-      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[2]);
+    if (trans_data_map.contains(bezm->bezt->vec[2])) {
+      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[2]);
       td2d = &tc->data_2d[trans_data_index];
       if (bezm->swap_handles == 1) {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
@@ -863,8 +859,8 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztM
       td = &tc->data[trans_data_index];
       update_trans_data(td, fcu, new_index, bezm->swap_handles);
     }
-    if (trans_info_map.contains(bezm->bezt->vec[1])) {
-      const int trans_data_index = trans_info_map.lookup(bezm->bezt->vec[1]);
+    if (trans_data_map.contains(bezm->bezt->vec[1])) {
+      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[1]);
       td2d = &tc->data_2d[trans_data_index];
       td2d->loc2d = fcu->bezt[new_index].vec[1];
 
@@ -887,8 +883,18 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztM
  */
 static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
+  SCOPED_TIMER_AVERAGED("remake");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  /* Build a map from the data that is being modified to its index. This is used to quickly update
+   * the pointers to where the data ends up after sorting. */
+  blender::Map<float *, int> trans_data_map;
+  for (int i = 0; i < tc->data_len; i++) {
+    trans_data_map.add(tc->data_2d[i].loc2d, i);
+  }
 
   /* The grain size of 8 was chosen based on measured runtimes of this function. While 1 is the
    * fastest, larger grain sizes are generally preferred and the difference between 1 and 8 was
@@ -905,7 +911,7 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
       /* NOTE: none of these functions use 'use_handle', it could be removed. */
       blender::Vector<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
       sort_time_beztmaps(bezms);
-      beztmap_to_data(t, fcu, bezms);
+      beztmap_to_data(tc, trans_data_map, fcu, bezms);
 
       /* Re-sort actual beztriples
        * (perhaps this could be done using the beztmaps to save time?). */
