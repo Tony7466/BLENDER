@@ -633,9 +633,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
   EXTRACT_ADD_REQUESTED(vbo, orco);
   EXTRACT_ADD_REQUESTED(vbo, edge_fac);
   EXTRACT_ADD_REQUESTED(vbo, weights);
-  if (is_editmode) {
-    EXTRACT_ADD_REQUESTED(vbo, edit_data);
-  }
+  EXTRACT_ADD_REQUESTED(vbo, edit_data);
   EXTRACT_ADD_REQUESTED(vbo, edituv_data);
   EXTRACT_ADD_REQUESTED(vbo, edituv_stretch_area);
   EXTRACT_ADD_REQUESTED(vbo, edituv_stretch_angle);

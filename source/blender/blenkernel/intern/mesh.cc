@@ -774,6 +774,8 @@ void BKE_mesh_copy_parameters_for_eval(Mesh *me_dst, const Mesh *me_src)
   }
   me_dst->mat = (Material **)MEM_dupallocN(me_src->mat);
   me_dst->totcol = me_src->totcol;
+
+  me_dst->runtime->edit_mesh = me_src->runtime->edit_mesh;
 }
 
 Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,

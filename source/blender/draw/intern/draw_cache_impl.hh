@@ -184,9 +184,9 @@ blender::gpu::Batch *DRW_volume_batch_cache_get_selection_surface(Volume *volume
  * Can be called for any surface type. Mesh *mesh is the final mesh.
  */
 void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
-                                           Object *object_eval,
+                                           Object *ob,
                                            Mesh *mesh,
-                                           Object *object_orig,
+                                           const Object *object_orig,
                                            const Scene *scene,
                                            bool is_paint_mode,
                                            bool use_hide);

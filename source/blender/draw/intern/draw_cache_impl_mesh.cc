@@ -1335,7 +1335,7 @@ static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me
 void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                            Object *ob,
                                            Mesh *mesh,
-                                           Object *object_orig,
+                                           const Object *object_orig,
                                            const Scene *scene,
                                            const bool is_paint_mode,
                                            const bool use_hide)
@@ -1386,6 +1386,15 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     if (!BKE_object_get_editmesh_eval_final(ob)) {
       return false;
     }
+    if (!DRW_object_is_in_edit_mode(ob)) {
+      return false;
+    }
+    return true;
+  }();
+
+  /* In order to properly extract edit mode data, the edit mode data of the evaluated mesh has to
+   * match the edit mode data from the original object. */
+  const bool edit_mode_active = [&]() {
     if (!object_orig) {
       return false;
     }
@@ -1398,9 +1407,6 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     }
     return true;
   }();
-
-  /* This could be set for paint mode too, currently it's only used for edit-mode. */
-  const bool edit_mode_active = is_editmode && DRW_object_is_in_edit_mode(ob);
 
   DRWBatchFlag batch_requested = cache.batch_requested;
   cache.batch_requested = (DRWBatchFlag)0;
@@ -1682,9 +1688,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   if (DRW_batch_requested(cache.batch.edit_triangles, GPU_PRIM_TRIS)) {
     DRW_ibo_request(cache.batch.edit_triangles, &mbuflist->ibo.tris);
     DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.pos);
-    if (!is_editmode) {
-      DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
-    }
+    DRW_vbo_request(cache.batch.edit_triangles, &mbuflist->vbo.edit_data);
   }
   assert_deps_valid(
       MBC_EDIT_VERTICES,
@@ -1692,18 +1696,14 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   if (DRW_batch_requested(cache.batch.edit_vertices, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache.batch.edit_vertices, &mbuflist->ibo.points);
     DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.pos);
-    if (!is_editmode) {
-      DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.edit_data);
-    }
+    DRW_vbo_request(cache.batch.edit_vertices, &mbuflist->vbo.edit_data);
   }
   assert_deps_valid(MBC_EDIT_EDGES,
                     {BUFFER_INDEX(ibo.lines), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.edit_data)});
   if (DRW_batch_requested(cache.batch.edit_edges, GPU_PRIM_LINES)) {
     DRW_ibo_request(cache.batch.edit_edges, &mbuflist->ibo.lines);
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.pos);
-    if (!is_editmode) {
-      DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
-    }
+    DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
   }
   assert_deps_valid(MBC_EDIT_VNOR,
                     {BUFFER_INDEX(ibo.points), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.vnor)});
