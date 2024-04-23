@@ -177,13 +177,13 @@ struct PaintOperationExecutor {
   static void create_blank_curve(bke::CurvesGeometry &curves, const bool on_back)
   {
     if (on_back) {
-      const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
-      const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+      const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
+      const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
 
       curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
       curves.offsets_for_write().first() = 0;
-      for (const int src_curve : TempCurve.curves_range()) {
-        curves.offsets_for_write()[src_curve + 1] = TempCurve.offsets()[src_curve] + 1;
+      for (const int src_curve : temporal_copy.curves_range()) {
+        curves.offsets_for_write()[src_curve + 1] = temporal_copy.offsets()[src_curve] + 1;
       }
 
       bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -220,12 +220,13 @@ struct PaintOperationExecutor {
       const int active_curve = curves.curves_range().first();
       const int last_active_point = curves.points_by_curve()[active_curve].last();
 
-      const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
-      const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+      const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
+      const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
 
-      curves.resize(TempCurve.points_num() + new_points_num, TempCurve.curves_num());
-      for (const int src_curve : TempCurve.curves_range().drop_front(1)) {
-        curves.offsets_for_write()[src_curve] = TempCurve.offsets()[src_curve] + new_points_num;
+      curves.resize(temporal_copy.points_num() + new_points_num, temporal_copy.curves_num());
+      for (const int src_curve : temporal_copy.curves_range().drop_front(1)) {
+        curves.offsets_for_write()[src_curve] = temporal_copy.offsets()[src_curve] +
+                                                new_points_num;
       }
       curves.offsets_for_write().last() = curves.points_num();
 
@@ -686,12 +687,12 @@ static void remove_points_from_end_of_active_curve(bke::CurvesGeometry &curves,
     const int active_curve = curves.curves_range().first();
     const int last_active_point = curves.points_by_curve()[active_curve].last();
 
-    const bke::CurvesGeometry TempCurve = bke::CurvesGeometry(curves);
-    const bke::AttributeAccessor src_attributes = TempCurve.attributes();
+    const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
+    const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
 
-    curves.resize(TempCurve.points_num() - rem_points_num, TempCurve.curves_num());
-    for (const int src_curve : TempCurve.curves_range().drop_front(1)) {
-      curves.offsets_for_write()[src_curve] = TempCurve.offsets()[src_curve] - rem_points_num;
+    curves.resize(temporal_copy.points_num() - rem_points_num, temporal_copy.curves_num());
+    for (const int src_curve : temporal_copy.curves_range().drop_front(1)) {
+      curves.offsets_for_write()[src_curve] = temporal_copy.offsets()[src_curve] - rem_points_num;
     }
     curves.offsets_for_write().last() = curves.points_num();
 
