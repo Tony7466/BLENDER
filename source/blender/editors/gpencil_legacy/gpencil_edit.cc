@@ -600,7 +600,7 @@ void GPENCIL_OT_sculptmode_toggle(wmOperatorType *ot)
 static bool grease_pencil_poll_weight_cursor(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  return ob && (ob->mode & OB_MODE_WEIGHT_PAINT) && (ob->type == OB_GREASE_PENCIL) &&
+  return ob && (ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) && (ob->type == OB_GREASE_PENCIL) &&
          CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
 }
 

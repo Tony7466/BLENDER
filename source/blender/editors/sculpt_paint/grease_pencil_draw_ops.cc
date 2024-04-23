@@ -427,17 +427,17 @@ static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mo
   Brush *brush = BKE_paint_brush(paint);
   const BrushStrokeMode brush_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
 
-  switch (eBrushWeightPaintTool(brush->weightpaint_tool)) {
-    case WPAINT_TOOL_DRAW:
+  switch (eBrushGPWeightTool(brush->gpencil_weight_tool)) {
+    case GPWEIGHT_TOOL_DRAW:
       operation = greasepencil::new_weight_paint_draw_operation(brush_mode).release();
       break;
-    case WPAINT_TOOL_BLUR:
+    case GPWEIGHT_TOOL_BLUR:
       operation = greasepencil::new_weight_paint_blur_operation().release();
       break;
-    case WPAINT_TOOL_AVERAGE:
+    case GPWEIGHT_TOOL_AVERAGE:
       operation = greasepencil::new_weight_paint_average_operation().release();
       break;
-    case WPAINT_TOOL_SMEAR:
+    case GPWEIGHT_TOOL_SMEAR:
       operation = greasepencil::new_weight_paint_smear_operation().release();
       break;
   }
