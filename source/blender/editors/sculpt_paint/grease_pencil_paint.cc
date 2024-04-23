@@ -174,29 +174,6 @@ struct PaintOperationExecutor {
     BLI_assert(drawing_ != nullptr);
   }
 
-  float radius_from_input_sample(PaintOperation &self,
-                                 const bContext &C,
-                                 const InputSample &sample)
-  {
-    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
-                                                CTX_data_depsgraph_pointer(&C));
-    float radius = calc_brush_radius(
-        &vc, brush_, scene_, self.placement_.project(sample.mouse_position));
-    if (BKE_brush_use_size_pressure(brush_)) {
-      radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
-    }
-    return radius;
-  }
-
-  float opacity_from_input_sample(const InputSample &sample)
-  {
-    float opacity = BKE_brush_alpha_get(scene_, brush_);
-    if (BKE_brush_use_alpha_pressure(brush_)) {
-      opacity *= BKE_curvemapping_evaluateF(settings_->curve_strength, 0, sample.pressure);
-    }
-    return opacity;
-  }
-
   static void create_blank_curve(bke::CurvesGeometry &curves, const bool on_back)
   {
     if (on_back) {
