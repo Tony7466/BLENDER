@@ -4,12 +4,14 @@
 
 void main()
 {
-  uint vertex_id = gl_GlobalInvocationID.x;
-  if (vertex_id >= uint(vertex_count)) {
-    return;
+  uint vertices_per_thread = vertex_count / (gl_NumWorkGroups.x * VERTEX_COPY_GROUP_SIZE);
+  uint vertex_start = min(gl_GlobalInvocationID.x * vertices_per_thread, uint(vertex_count));
+  uint vertex_end = min(vertex_start + vertices_per_thread, uint(vertex_count));
+
+  for (uint vertex_id = vertex_start; vertex_id < vertex_end; vertex_id++) {
+    out_buf[start_offset + vertex_id] = vec4(in_buf[vertex_id * vertex_stride + 0],
+                                             in_buf[vertex_id * vertex_stride + 1],
+                                             in_buf[vertex_id * vertex_stride + 2],
+                                             1.0);
   }
-  out_buf[start_offset + vertex_id] = vec4(in_buf[vertex_id * vertex_stride + 0],
-                                           in_buf[vertex_id * vertex_stride + 1],
-                                           in_buf[vertex_id * vertex_stride + 2],
-                                           1.0);
 }

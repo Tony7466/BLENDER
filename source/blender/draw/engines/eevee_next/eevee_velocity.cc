@@ -276,21 +276,12 @@ void VelocityModule::geometry_steps_fill()
     else {
       BLI_assert(format->stride % 4 == 0);
       copy_ps.bind_ssbo("in_buf", geom.pos_buf);
+      copy_ps.push_constant("start_offset", geom.ofs);
       copy_ps.push_constant("vertex_stride", int(format->stride / 4));
-      int sub_offset = geom.ofs;
-      int sub_len_left = geom.len;
-      while (sub_len_left != 0) {
-        PassSimple::Sub &copy_sub_ps = copy_ps.sub("PartialCopy");
-        copy_sub_ps.push_constant("vertex_count", sub_len_left);
-        copy_sub_ps.push_constant("start_offset", sub_offset);
-        int group_len_x = min_ii(divide_ceil_u(sub_len_left, VERTEX_COPY_GROUP_SIZE),
-                                 GPU_max_work_group_count(0));
-        int vertices = group_len_x * VERTEX_COPY_GROUP_SIZE;
-        copy_sub_ps.dispatch(int3(group_len_x, 1, 1));
-
-        sub_offset += vertices;
-        sub_len_left = max_ii(sub_len_left - vertices, 0);
-      }
+      copy_ps.push_constant("vertex_count", geom.len);
+      uint group_len_x = divide_ceil_u(geom.len, VERTEX_COPY_GROUP_SIZE);
+      uint verts_per_thread = divide_ceil_u(group_len_x, GPU_max_work_group_count(0));
+      copy_ps.dispatch(int3(group_len_x / verts_per_thread, 1, 1));
     }
   }
 

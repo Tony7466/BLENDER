@@ -46,6 +46,7 @@ GPU_SHADER_CREATE_INFO(eevee_vertex_copy)
     .push_constant(Type::INT, "start_offset")
     .push_constant(Type::INT, "vertex_stride")
     .push_constant(Type::INT, "vertex_count")
+    .additional_info("eevee_shared")
     .do_static_compilation(true);
 
 /** \} */
