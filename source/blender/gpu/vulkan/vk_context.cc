@@ -213,51 +213,6 @@ void VKContext::bind_compute_pipeline()
   }
 }
 
-void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data)
-{
-  VKShader &vk_shader = unwrap(*shader);
-  pipeline_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
-
-  /* Update descriptor set. */
-  pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
-  if (vk_shader.has_descriptor_set()) {
-    descriptor_set_.update(*this);
-    pipeline_data.vk_descriptor_set = descriptor_set_get().active_descriptor_set()->vk_handle();
-  }
-
-  /* Update push constants. */
-  pipeline_data.push_constants_data = nullptr;
-  pipeline_data.push_constants_size = 0;
-  const VKPushConstants::Layout &push_constants_layout =
-      vk_shader.interface_get().push_constants_layout_get();
-  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
-    pipeline_data.push_constants_size = push_constants_layout.size_in_bytes();
-    pipeline_data.push_constants_data = vk_shader.pipeline_get().push_constants_get().data();
-  }
-}
-
-void VKContext::update_dispatch_info()
-{
-  dispatch_info_.dispatch_node = {};
-  dispatch_info_.resources.reset();
-  state_manager_get().apply_bindings(*this, dispatch_info_.resources);
-
-  update_pipeline_data(dispatch_info_.dispatch_node.pipeline_data);
-  VKShader &vk_shader = unwrap(*shader);
-  VkPipeline vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
-  dispatch_info_.dispatch_node.pipeline_data.vk_pipeline = vk_pipeline;
-}
-
-render_graph::VKDispatchNode::CreateInfo &VKContext::update_and_get_dispatch_info()
-{
-  VKShader *shader = unwrap(this->shader);
-  /* TODO(#120959): Push constants should be moved outside VKPipeline. */
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.update_push_constants(*this);
-  update_dispatch_info();
-  return dispatch_info_;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
