@@ -1621,15 +1621,17 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
    * side data. */
   std::optional<std::string> path;
   bool use_path_from_id;
-  blender::Vector<PointerRNA> lb;
-  if (!UI_context_copy_to_selected_list(C, &ptr, prop, &lb, &use_path_from_id, &path)) {
+  blender::Vector<PointerRNA> target_properties;
+  if (!UI_context_copy_to_selected_list(
+          C, &ptr, prop, &target_properties, &use_path_from_id, &path))
+  {
     return false;
   }
 
   /* Copy the driver to the list of target properties. */
   int copy_count = 0;
-  for (PointerRNA &link : lb) {
-    if (link.data == ptr.data) {
+  for (PointerRNA &target_prop : target_properties) {
+    if (target_prop.data == ptr.data) {
       continue;
     }
 
@@ -1638,7 +1640,7 @@ static bool copy_driver_to_selected_button(bContext *C, bool poll)
     PropertyRNA *dst_prop;
     PointerRNA dst_ptr;
     if (!UI_context_copy_to_selected_check(&ptr,
-                                           &link,
+                                           &target_prop,
                                            prop,
                                            path.has_value() ? path->c_str() : nullptr,
                                            use_path_from_id,
@@ -1700,41 +1702,30 @@ static bool copy_driver_to_selected_button_poll(bContext *C)
 
 static int copy_driver_to_selected_button_exec(bContext *C, wmOperator * /* op */)
 {
-  if (copy_driver_to_selected_button(C, false)) {
-    DEG_relations_tag_update(CTX_data_main(C));
-
-    /* TODO: ask someone in-the-know whether this call is needed or not.
-     *
-     * Just by trying it out, it seems to not be needed, but I don't feel
-     * confident from that. And looking at other places in Blender's code where
-     * drivers are added/removed/modified, different places do different things,
-     * so it's not clear from that whether this is neeeded or not, or if it is
-     * needed then whether these are even the right flags. And of course both
-     * this function and the flags themselves are undocumented, so figuring it
-     * out independently would likely require a deep dive into the
-     * implementation. */
-    WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);
-
-    return OPERATOR_FINISHED;
+  if (!copy_driver_to_selected_button(C, false)) {
+    return OPERATOR_CANCELLED;
   }
 
-  return OPERATOR_CANCELLED;
+  DEG_relations_tag_update(CTX_data_main(C));
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, nullptr);
+  return OPERATOR_FINISHED;
 }
 
 static void UI_OT_copy_driver_to_selected_button(wmOperatorType *ot)
 {
-  /* identifiers */
+  /* Identifiers. */
   ot->name = "Copy Driver to Selected";
   ot->idname = "UI_OT_copy_driver_to_selected_button";
   ot->description =
-      "Copy the property's driver from the active item to the same property of all selected items "
+      "Copy the property's driver from the active item to the same property of all selected "
+      "items, "
       "if the same property exists";
 
-  /* callbacks */
+  /* Callbacks. */
   ot->poll = copy_driver_to_selected_button_poll;
   ot->exec = copy_driver_to_selected_button_exec;
 
-  /* flags */
+  /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
