@@ -521,13 +521,13 @@ static FillBoundary build_fill_boundary(Image &ima)
         if (next_section.empty()) {
           /* Empty sections are only start indices, remove and continue. */
           boundary_starts.remove(iter.index);
-          continue;
         }
-
-        /* Merge existing points into the current section before removing. */
-        section.splice(section.end(), next_section);
-        boundary_starts.remove(iter.index);
-        break;
+        else {
+          /* Merge existing points into the current section. */
+          section.splice(section.end(), next_section);
+          boundary_starts.remove(iter.index);
+          break;
+        }
       }
 
       section.push_back(iter.index);
@@ -738,10 +738,9 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
   // TODO based on the fill_factor (aka "Precision") setting.
   constexpr const int min_window_size = 128;
-  // const float pixel_scale = 1.0f;
-  // const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
-  //                                 int2(min_window_size));
-  const int2 win_size = int2(min_window_size);
+  const float pixel_scale = 1.0f;
+  const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
+                                  int2(min_window_size));
 
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
@@ -764,6 +763,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                                   fit_method,
                                                   use_onion_skinning,
                                                   allow_fill_material);
+
   image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
 
   GPUOffScreen *offscreen_buffer = image_render::image_render_begin(win_size);
