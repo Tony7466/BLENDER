@@ -1650,11 +1650,21 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
       continue;
     }
     if (!RNA_property_driver_editable(&dst_ptr, dst_prop)) {
+      /* Not drivable, so skip. */
       continue;
     }
+    {
+      /* If it's already animated by something other than a driver, skip. */
+      bool driven;
+      const FCurve *fcu = BKE_fcurve_find_by_rna(
+          &dst_ptr, dst_prop, index, nullptr, nullptr, &driven, nullptr);
+      if (fcu && !driven) {
+        continue;
+      }
+    }
 
-    /* If we're just polling, then we early-out on the first property we could
-     * successfully copy to. */
+    /* If we're just polling, then we early-out on the first property we would
+     * be able to copy to. */
     if (poll) {
       return true;
     }
