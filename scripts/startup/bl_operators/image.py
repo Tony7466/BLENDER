@@ -258,7 +258,8 @@ class IMAGE_OT_open_images(Operator):
                 use_sequence_detection=self.use_sequence_detection,
                 use_udim_detecting=self.use_udim_detection,
                 relative_path=self.relative_path)
-            if len(files) > 1 and self.use_sequence_detection:
+            is_tiled = context.edit_image.source == 'TILED'
+            if len(files) > 1 and self.use_sequence_detection and is_tiled:
                 context.edit_image.name = "{prefix}{hash}{ext}".format(
                     prefix=seq['prefix'], hash=("#" * seq['frame_size']), ext=seq['ext'])
 
