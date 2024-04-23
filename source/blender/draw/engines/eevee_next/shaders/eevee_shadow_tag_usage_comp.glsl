@@ -15,7 +15,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec2 tex_size = uniform_buf.hiz.source_extent;
+  ivec2 tex_size = input_depth_extent;
 
   if (!in_range_inclusive(texel, ivec2(0), ivec2(tex_size - 1))) {
     return;

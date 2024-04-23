@@ -260,6 +260,7 @@ class ShadowModule {
   int2 usage_tag_fb_resolution_;
   int usage_tag_fb_lod_ = 5;
   int max_view_per_tilemap_ = 1;
+  int2 input_depth_extent_;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
   SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;

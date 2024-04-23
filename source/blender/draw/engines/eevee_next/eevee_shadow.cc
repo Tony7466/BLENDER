@@ -863,6 +863,7 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_texture("depth_tx", &src_depth_tx_);
       sub.push_constant("tilemap_proj_ratio", &data_.tilemap_projection_ratio);
+      sub.push_constant("input_depth_extent", &input_depth_extent_);
       sub.bind_resources(inst_.lights);
       sub.bind_resources(inst_.hiz_buffer.front);
       sub.dispatch(&dispatch_depth_scan_size_);
@@ -1364,6 +1365,8 @@ void ShadowModule::set_view(View &view, int2 extent)
     /* All lights have been tagged to have no shadow. */
     return;
   }
+
+  input_depth_extent_ = extent;
 
   GPUFrameBuffer *prev_fb = GPU_framebuffer_active_get();
 

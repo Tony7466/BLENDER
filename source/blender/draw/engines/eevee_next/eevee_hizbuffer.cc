@@ -33,7 +33,6 @@ void HiZBuffer::sync()
   }
 
   data_.uv_scale = float2(render_extent) / float2(hiz_extent);
-  data_.source_extent = render_extent;
 
   /* TODO(@fclem): There might be occasions where we might not want to
    * copy mip 0 for performance reasons if there is no need for it. */
