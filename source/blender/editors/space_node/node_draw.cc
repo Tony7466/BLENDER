@@ -1809,23 +1809,25 @@ static std::optional<std::string> create_dangling_reroute_inspection_string(
   const bNodeSocket &output_socket = *node.output_sockets()[0];
   const bNodeSocket *target_socket = target_for_reroute(output_socket);
 
-  if (target_socket != nullptr && target_socket->is_multi_input()) {
+  if (target_socket == nullptr) {
+    if (!output_socket.directly_linked_sockets().is_empty()) {
+      return TIP_("Dangling reroute is ignored by all targets");
+    }
+    return std::nullopt;
+  }
+
+  if (target_socket->is_multi_input()) {
     return TIP_("Dangling reroute branch is ignored by multi input socket");
   }
 
-  if (target_socket != nullptr) {
-    std::stringstream ss;
-    create_inspection_string_for_default_socket_value(*target_socket, ss);
-    if (ss.str().empty()) {
-      return TIP_("Dangling reroute is ignored");
-    }
-    ss << ".\n\n";
-    ss << TIP_("Dangling reroute is ignored and default value of target socket is used");
-    return ss.str();
+  std::stringstream ss;
+  create_inspection_string_for_default_socket_value(*target_socket, ss);
+  if (ss.str().empty()) {
+    return TIP_("Dangling reroute is ignored");
   }
-  else if (!output_socket.directly_linked_sockets().is_empty()) {
-    return TIP_("Dangling reroute is ignored by all targets");
-  }
+  ss << ".\n\n";
+  ss << TIP_("Dangling reroute is ignored and default value of target socket is used");
+  return ss.str();
 
   return std::nullopt;
 }
