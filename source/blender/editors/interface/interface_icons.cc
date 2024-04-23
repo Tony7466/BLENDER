@@ -548,11 +548,9 @@ static void init_brush_icons()
 
 #  define INIT_BRUSH_ICON(icon_id, name) \
     { \
-      uchar *rect = (uchar *)datatoc_##name##_png; \
+      const uchar *rect = (const uchar *)datatoc_##name##_png; \
       const int size = datatoc_##name##_png_size; \
-      DrawInfo *di; \
-\
-      di = def_internal_icon(nullptr, icon_id, 0, 0, w, ICON_TYPE_BUFFER, 0); \
+      DrawInfo *di = def_internal_icon(nullptr, icon_id, 0, 0, w, ICON_TYPE_BUFFER, 0); \
       di->data.buffer.image->datatoc_rect = rect; \
       di->data.buffer.image->datatoc_size = size; \
     } \
@@ -1616,8 +1614,8 @@ PreviewImage *UI_icon_to_preview(int icon_id)
   }
 
   if (di->type == ICON_TYPE_PREVIEW) {
-    PreviewImage *prv = (icon->id_type != 0) ? BKE_previewimg_id_ensure((ID *)icon->obj) :
-                                               static_cast<PreviewImage *>(icon->obj);
+    const PreviewImage *prv = (icon->id_type != 0) ? BKE_previewimg_id_ensure((ID *)icon->obj) :
+                                                     static_cast<const PreviewImage *>(icon->obj);
 
     if (prv) {
       return BKE_previewimg_copy(prv);
@@ -1883,8 +1881,12 @@ static void icon_draw_texture(float x,
   if (show_indicator) {
     /* Handle the little numbers on top of the icon. */
     uchar text_color[4];
-    UI_GetThemeColor3ubv(TH_TEXT, text_color);
-    text_color[3] = 255;
+    if (text_overlay->color[3]) {
+      copy_v4_v4_uchar(text_color, text_overlay->color);
+    }
+    else {
+      UI_GetThemeColor4ubv(TH_TEXT, text_color);
+    }
 
     uiFontStyle fstyle_small = *UI_FSTYLE_WIDGET;
     fstyle_small.points *= zoom_factor;
@@ -2479,7 +2481,7 @@ int UI_icon_from_rnaptr(const bContext *C, PointerRNA *ptr, int rnaicon, const b
     return RNA_int_get(ptr, "icon");
   }
   else if (RNA_struct_is_a(ptr->type, &RNA_DynamicPaintSurface)) {
-    DynamicPaintSurface *surface = static_cast<DynamicPaintSurface *>(ptr->data);
+    const DynamicPaintSurface *surface = static_cast<const DynamicPaintSurface *>(ptr->data);
 
     if (surface->format == MOD_DPAINT_SURFACE_F_PTEX) {
       return ICON_SHADING_TEXTURE;
