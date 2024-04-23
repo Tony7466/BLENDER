@@ -52,24 +52,34 @@ class VKDevice;
 /**
  * Pipelines are lazy initialized and same pipelines should share their handle.
  *
- * To improve performance we want to keep track of pipelines globally. Same pipeline should share
- * the same VKPipeline. This makes it easier to detect if pipelines are actually changed between
- * dispatch/draw commands.
+ * A requirement of our render graph implementation is that changes of the pipeline can be detected
+ * based on the VkPipeline handle. We only want to rebind the pipeline handle when the handle
+ * actually changes. This improves performance (especially on NVIDIA) devices where pipeline binds
+ * are known to be costly.
  *
- * VkPipelineCache is normally used to share internal resources of pipelines. However it the
- * responsibility of the driver how this is handled. Some drivers might do ref-counting other may
- * return a different pipeline handle. Due to this we cannot rely on the pipeline cache to merge
- * same pipelines.
+ * Especially for graphics pipelines many parameters are needed to compile a graphics pipeline.
+ * Some of the information would be boiler plating; or at least from Blender point of view. To
+ * improve lookup performance we use a slimmed down version of the pipeline create info structs.
+ * The idea is that we can limit the required data because we control which data we actually use,
+ * removing te boiler plating and improve hashing performance better than the VkPipelineCache can
+ * give us.
  *
- * Many information is needed to create a graphics pipeline. Some of the information is
- * boilerplate; or at least from Blender point of view. To improve lookup performance we use a
- * slimmed down version of the pipeline create info structs. The idea is that we can limit the
- * required data because we control which data we actually use, removing te boiler plating and
- * improve hashing performance. See #VKPipelines::ComputeInfo.
+ * TODO: Extensions like `VK_EXT_graphics_pipeline_library` should fit in this class and ease the
+ * development for graphics pipelines. Geometry in and framebuffer out could be cached separately
+ * to reduce pipeline creation times. Most likely we will add support when we work on graphic
+ * pipelines. Recent drivers all support this extension, but the full coverage is still <20%. A
+ * fallback should made available for older drivers is required.
  *
- * NOTE: Extensions like `VK_EXT_graphics_pipeline_library` and acceleration structures like
- * `VkPipelineCache` should fit in this class and will be added when we they have proven their
- * value.
+ * TODO: Creation of shader modules needs to be revisited.
+ * VK_EXT_graphics_pipeline_library deprecates the use of shader modules and use the spriv bin
+ * directly. In this extension the pipeline and shader module are the same. The current approach
+ * should also be revisited as the latest drivers all implement pipeline libraries, but there are
+ * some platforms where the driver isn't been updated and doesn't implement this extension. In
+ * that case shader modules should still be used.
+ *
+ * TODO: GPUMaterials (or any other large shader) should be unloaded when the GPUShader is
+ * destroyed. Exact details what the best approach is unclear as support for EEVEE is still
+ * lacking.
  */
 class VKPipelinePool : public NonCopyable {
  public:
@@ -101,6 +111,9 @@ class VKPipelinePool : public NonCopyable {
 
   /**
    * Destroy all created pipelines.
+   *
+   * Function is called just before the device is removed. This cannot be done in the destructor as
+   * that would be called after the device is removed.
    */
   void free_data();
 };

@@ -44,6 +44,8 @@ class VKShader : public Shader {
   VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
 
  public:
+  VKPushConstants push_constants;
+
   VKShader(const char *name);
   virtual ~VKShader();
 

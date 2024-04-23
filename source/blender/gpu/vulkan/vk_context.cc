@@ -207,7 +207,7 @@ void VKContext::bind_compute_pipeline()
   BLI_assert(shader);
   VKPipeline &pipeline = shader->pipeline_get();
   pipeline.bind(*this, VK_PIPELINE_BIND_POINT_COMPUTE);
-  pipeline.update_push_constants(*this);
+  shader->push_constants.update(*this);
   if (shader->has_descriptor_set()) {
     descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_COMPUTE);
   }
@@ -232,7 +232,7 @@ void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data
       vk_shader.interface_get().push_constants_layout_get();
   if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
     pipeline_data.push_constants_size = push_constants_layout.size_in_bytes();
-    pipeline_data.push_constants_data = vk_shader.pipeline_get().push_constants_get().data();
+    pipeline_data.push_constants_data = vk_shader.push_constants.data();
   }
 }
 
@@ -251,9 +251,7 @@ void VKContext::update_dispatch_info()
 render_graph::VKDispatchNode::CreateInfo &VKContext::update_and_get_dispatch_info()
 {
   VKShader *shader = unwrap(this->shader);
-  /* TODO(#120959): Push constants should be moved outside VKPipeline. */
-  VKPipeline &pipeline = shader->pipeline_get();
-  pipeline.update_push_constants(*this);
+  shader->push_constants.update(*this);
   update_dispatch_info();
   return dispatch_info_;
 }
@@ -279,7 +277,7 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
 
   VKPipeline &pipeline = shader->pipeline_get();
   pipeline.bind(*this, VK_PIPELINE_BIND_POINT_GRAPHICS);
-  pipeline.update_push_constants(*this);
+  shader->push_constants.update(*this);
   if (shader->has_descriptor_set()) {
     descriptor_set_.bind(*this, shader->vk_pipeline_layout_get(), VK_PIPELINE_BIND_POINT_GRAPHICS);
   }
