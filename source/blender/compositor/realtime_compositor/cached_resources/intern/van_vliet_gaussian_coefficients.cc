@@ -292,14 +292,6 @@ static double compute_boundary_coefficient(const double2 &feedback_coefficients,
 {
   return math::reduce_add(feedforward_coefficients) /
          (1.0 + math::reduce_add(feedback_coefficients));
-#if 0
-  return (math::reduce_add(coefficients.first_causal_feedforward_coefficients()) +
-          math::reduce_add(coefficients.first_non_causal_feedforward_coefficients()) +
-          math::reduce_add(coefficients.second_causal_feedforward_coefficients()) +
-          math::reduce_add(coefficients.second_non_causal_feedforward_coefficients()) - 1.0) /
-         (2.0 * (math::reduce_add(coefficients.first_feedback_coefficients()) +
-                 math::reduce_add(coefficients.second_feedback_coefficients())));
-#endif
 }
 
 /* Computes the feedback and feedforward coefficients for the 4th order Van Vliet Gaussian filter
