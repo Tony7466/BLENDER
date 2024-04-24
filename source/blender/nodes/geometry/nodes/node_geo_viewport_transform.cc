@@ -12,8 +12,10 @@ namespace blender::nodes::node_geo_viewport_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Matrix>("Viewport Transform")
-      .description("The view direction and location of the 3D viewport");
+  b.add_output<decl::Matrix>("View").description(
+      "The view direction and location of the 3D viewport");
+  b.add_output<decl::Matrix>("Projection")
+      .description("The 3D viewport's perspective projection matrix");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -23,7 +25,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   const Object &self_object = *params.self_object();
   const RegionView3D &rv3d = *params.user_data()->call_data->operator_data->rv3d;
-  params.set_output("Viewport Transform", float4x4(rv3d.persmat) * self_object.object_to_world());
+  params.set_output("View", float4x4(rv3d.viewmat) * self_object.object_to_world());
+  params.set_output("Projection", float4x4(rv3d.winmat) * self_object.object_to_world());
 }
 
 static void node_register()
