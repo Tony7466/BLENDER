@@ -274,7 +274,63 @@ void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
                                                    float &side,
                                                    float &back_shift)
 {
-  /* Alpha i */
+  /*
+   * In order to make sure we can trace any ray in its entirety using a single tile-map, we have
+   * to make sure that the tile-map cover all potential occluder that can intersect any ray shot
+   * in this particular shadow quadrant.
+   *
+   * To this end, we inflate the tile-map perspective sides to make sure the
+   * tile-map frustum starts where the rays cannot go.
+   *
+   * We are interesting in finding `I` the new origin and `n` the new near plane distances.
+   *
+   *                                              I .... Intersection between tangent and
+   *                                             /|      projection center axis
+   *                                            / |
+   *                                           /  |
+   *                                          /   |
+   *                                         /    |
+   *                                        /     |
+   *                                       /      |
+   *                                      /       |
+   *                                     /        |
+   *                                    /         |
+   *                                   /      ....|
+   *                                  /   ....    |
+   *                                 / ...        |
+   *                                /.            |
+   *                               /              |
+   *  Tangent to light shape .... T\--------------N
+   *                             /  --\ Beta      |
+   *                            /      -\         |
+   *                           /         --\      |
+   *                          /.            --\   |
+   *                         / .               -\ |
+   *                        /  .           Alpha -O .... Light center
+   *                       /   .              /-/ |
+   *  Inflated side       /    .        /--- -/   |
+   *                 .   /      . /----  --/      |
+   *                  . /   /---- .   --/         |
+   *                   /-------------/------------X .... Desired near plane (inscribed cube)
+   *              /----         --/ ..            |
+   *         /----   /       --/      ...         |
+   *    /----       /     --/            ....     |
+   *               /    -/                    ....| .... Shadow radius
+   *              /  --/                          |
+   *             /--/                             |
+   *            F .... Most distant shadow receiver possible.
+   *
+   * F: The most distant shadowed point at the edge of the 45° cube-face pyramid.
+   * O: The light origin.
+   * T: The tangent to the circle of radius `radius` centered at the origin and passing through F.
+   * I: Intersection between tangent and the projection center axis.
+   * N: The shifted near plane center.
+   * X: Intersection between the near plane and the projection center axis.
+   * Alpha: FOT angle.
+   * Beta: OTN angle.
+   *
+   * Note: FTO, ONT and TNI are right angles.
+   */
   float cos_alpha = shadow_radius / max_lit_distance;
   float sin_alpha = sqrt(1.0f - math::square(cos_alpha));
   float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
@@ -284,7 +340,7 @@ void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
   float min_near = (max_lit_distance / 4000.0f) / M_SQRT3;
 
   if (is_area_light(light_type)) {
-    /* Make near plane to be inside the inscribed cube of the shadow sphere. */
+    /* Make near plane be inside the inscribed cube of the shadow sphere. */
     near = max_ff(shadow_radius / M_SQRT3, min_near);
     /* Subtract min_near to make the shadow center match the light center if there is no shadow
      * tracing required. This avoid light leaking issues near the light plane caused by the
@@ -292,10 +348,11 @@ void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
     back_shift = (near - min_near);
   }
   else {
-    /* Make near plane to be inside the inscribed cube of the light sphere. */
+    /* Make near plane be inside the inscribed cube of the light sphere. */
     near = max_ff(light_radius / M_SQRT3, min_near);
     back_shift = 0.0f;
   }
+
   far = max_lit_distance;
   if (shadow_radius > 1e-5f) {
     side = ((side_shift / (origin_shift - near_shift)) * (origin_shift + near));
