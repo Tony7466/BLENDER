@@ -36,6 +36,7 @@ class VKContext : public Context, NonCopyable {
   void *ghost_context_;
 
   render_graph::VKDispatchNode::CreateInfo dispatch_info_ = {};
+  render_graph::VKDispatchIndirectNode::CreateInfo dispatch_indirect_info_ = {};
 
  public:
   render_graph::VKRenderGraph render_graph;
@@ -72,8 +73,8 @@ class VKContext : public Context, NonCopyable {
   VKFrameBuffer *active_framebuffer_get() const;
 
   void bind_compute_pipeline();
-  void update_dispatch_info();
   render_graph::VKDispatchNode::CreateInfo &update_and_get_dispatch_info();
+  render_graph::VKDispatchIndirectNode::CreateInfo &update_and_get_dispatch_indirect_info();
 
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
@@ -114,6 +115,9 @@ class VKContext : public Context, NonCopyable {
    * NOTE: Shader data structure is reused between render graph nodes.
    */
   void update_pipeline_data(render_graph::VKPipelineData &pipeline_data);
+
+  void update_dispatch_info(render_graph::VKPipelineData &r_pipeline_data,
+                            render_graph::VKResourceAccessInfo &r_resources);
 };
 
 BLI_INLINE bool operator==(const VKContext &a, const VKContext &b)

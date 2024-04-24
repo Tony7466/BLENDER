@@ -236,24 +236,35 @@ void VKContext::update_pipeline_data(render_graph::VKPipelineData &pipeline_data
   }
 }
 
-void VKContext::update_dispatch_info()
+void VKContext::update_dispatch_info(render_graph::VKPipelineData &r_pipeline_data,
+                                     render_graph::VKResourceAccessInfo &r_resources)
 {
-  dispatch_info_.dispatch_node = {};
-  dispatch_info_.resources.reset();
-  state_manager_get().apply_bindings(*this, dispatch_info_.resources);
+  r_pipeline_data = {};
+  r_resources.reset();
+  state_manager_get().apply_bindings(*this, r_resources);
 
-  update_pipeline_data(dispatch_info_.dispatch_node.pipeline_data);
+  update_pipeline_data(r_pipeline_data);
   VKShader &vk_shader = unwrap(*shader);
   VkPipeline vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
-  dispatch_info_.dispatch_node.pipeline_data.vk_pipeline = vk_pipeline;
+  r_pipeline_data.vk_pipeline = vk_pipeline;
 }
 
 render_graph::VKDispatchNode::CreateInfo &VKContext::update_and_get_dispatch_info()
 {
   VKShader *shader = unwrap(this->shader);
   shader->push_constants.update(*this);
-  update_dispatch_info();
+  update_dispatch_info(dispatch_info_.dispatch_node.pipeline_data, dispatch_info_.resources);
   return dispatch_info_;
+}
+
+render_graph::VKDispatchIndirectNode::CreateInfo &VKContext::
+    update_and_get_dispatch_indirect_info()
+{
+  VKShader *shader = unwrap(this->shader);
+  shader->push_constants.update(*this);
+  update_dispatch_info(dispatch_indirect_info_.dispatch_indirect_node.pipeline_data,
+                       dispatch_indirect_info_.resources);
+  return dispatch_indirect_info_;
 }
 
 /** \} */
