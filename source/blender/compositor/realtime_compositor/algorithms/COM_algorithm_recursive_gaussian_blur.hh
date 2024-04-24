@@ -15,8 +15,10 @@ namespace blender::realtime_compositor {
  * from the standard symmetric separable blur algorithm in that it is orders of magnitude faster
  * for very high radius value, the downside is that it consumes more memory and is only an
  * approximation that might suffer from fringing and artifacts, though those are typically
- * unnoticeable. Neumann boundary is assumed. The output is written to the given output result,
- * which will be allocated internally and is thus expected not to be previously allocated. */
+ * unnoticeable. Neumann boundary is assumed.
+ *
+ * The output is written to the given output result, which will be allocated internally and is thus
+ * expected not to be previously allocated. */
 void recursive_gaussian_blur(Context &context, Result &input, Result &output, float2 radius);
 
 }  // namespace blender::realtime_compositor

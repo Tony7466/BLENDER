@@ -2,8 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_assert.h"
 #include "BLI_math_base.hh"
-#include "BLI_math_vector_types.hh"
+#include "BLI_math_vector.hh"
 
 #include "GPU_shader.hh"
 
@@ -109,6 +110,13 @@ static void vertical_pass(Context &context,
 
 void deriche_gaussian_blur(Context &context, Result &input, Result &output, float2 sigma)
 {
+  BLI_assert_msg(math::reduce_max(sigma) >= 3.0f,
+                 "Deriche filter is slower and less accurate than direct convolution for sigma "
+                 "values less 3. Use direct convolution blur instead.");
+  BLI_assert_msg(math::reduce_max(sigma) < 32.0f,
+                 "Deriche filter is not accurate nor numerically stable for sigma values larger "
+                 "than 32. Use Van Vliet filter instead.");
+
   Result horizontal_pass_result = horizontal_pass(context, input, sigma.x);
   vertical_pass(context, input, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();
