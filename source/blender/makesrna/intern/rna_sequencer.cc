@@ -2476,7 +2476,7 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(
       prop, nullptr, "show_missing_media_flag", SEQ_EDIT_SHOW_MISSING_MEDIA);
   RNA_def_property_ui_text(
-      prop, "Show Missing Media", "Render missing images/movies as solid color");
+      prop, "Show Missing Media", "Render missing images/movies with a solid magenta color");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
 
   /* access to fixed and relative frame */
