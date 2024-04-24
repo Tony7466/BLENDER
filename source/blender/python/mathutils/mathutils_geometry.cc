@@ -1146,17 +1146,17 @@ static void points_in_planes_fn(const float co[3], int i, int j, int k, void *us
 PyDoc_STRVAR(
     /* Wrap. */
     M_Geometry_points_in_planes_doc,
-    ".. function:: points_in_planes(planes, eps_coplanar=1e-4f, eps_isect=1e-6f)\n"
+    ".. function:: points_in_planes(planes, epsilon_coplanar=1e-4f, epsilon_isect=1e-6f)\n"
     "\n"
     "   Returns a list of points inside all planes given and a list of index values for "
     "the planes used.\n"
     "\n"
     "   :arg planes: List of planes (4D vectors).\n"
     "   :type planes: list of :class:`mathutils.Vector`\n"
-    "   :arg eps_coplanar: Epsilon value for interpreting plane pairs as co-plannar.\n"
-    "   :type eps_coplanar: float\n"
-    "   :arg eps_isect: Epsilon value for intersection.\n"
-    "   :type eps_isect: float\n"
+    "   :arg epsilon_coplanar: Epsilon value for interpreting plane pairs as co-plannar.\n"
+    "   :type epsilon_coplanar: float\n"
+    "   :arg epsilon_isect: Epsilon value for intersection.\n"
+    "   :type epsilon_isect: float\n"
     "   :return: two lists, once containing the vertices inside the planes, another "
     "containing the plane indices used\n"
     "   :rtype: pair of lists\n");
