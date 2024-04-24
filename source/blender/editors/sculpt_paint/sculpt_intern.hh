@@ -121,12 +121,6 @@ struct SculptOrigFaceData {
   int face_set;
 };
 
-/* Flood Fill. */
-struct SculptFloodFill {
-  std::queue<PBVHVertRef> queue;
-  blender::BitVector<> visited_verts;
-};
-
 enum eBoundaryAutomaskMode {
   AUTOMASK_INIT_BOUNDARY_EDGES = 1,
   AUTOMASK_INIT_BOUNDARY_FACE_SETS = 2,
@@ -170,7 +164,7 @@ struct Node {
   Type type;
 
   char idname[MAX_ID_NAME]; /* Name instead of pointer. */
-  void *node;               /* only during push, not valid afterwards! */
+  const void *node;         /* only during push, not valid afterwards! */
 
   Array<float3> position;
   Array<float3> orig_position;
@@ -578,7 +572,7 @@ struct Cache {
 
   /* Indexed by vertex index, precalculated falloff value of that vertex (without any falloff
    * editing modification applied). */
-  float *vert_falloff;
+  Array<float> vert_falloff;
   /* Max falloff value in *vert_falloff. */
   float max_vert_falloff;
 
@@ -1175,20 +1169,22 @@ void SCULPT_tilt_effective_normal_get(const SculptSession *ss, const Brush *brus
 
 namespace blender::ed::sculpt_paint::flood_fill {
 
-void init_fill(SculptSession *ss, SculptFloodFill *flood);
-void add_active(Object *ob, SculptSession *ss, SculptFloodFill *flood, float radius);
+struct FillData {
+  std::queue<PBVHVertRef> queue;
+  blender::BitVector<> visited_verts;
+};
+
+void init_fill(SculptSession *ss, FillData *flood);
+void add_active(Object *ob, SculptSession *ss, FillData *flood, float radius);
 void add_initial_with_symmetry(
-    Object *ob, SculptSession *ss, SculptFloodFill *flood, PBVHVertRef vertex, float radius);
-void add_initial(SculptFloodFill *flood, PBVHVertRef vertex);
-void add_and_skip_initial(SculptFloodFill *flood, PBVHVertRef vertex);
-void execute(SculptSession *ss,
-             SculptFloodFill *flood,
-             bool (*func)(SculptSession *ss,
-                          PBVHVertRef from_v,
-                          PBVHVertRef to_v,
-                          bool is_duplicate,
-                          void *userdata),
-             void *userdata);
+    Object *ob, SculptSession *ss, FillData *flood, PBVHVertRef vertex, float radius);
+void add_initial(FillData *flood, PBVHVertRef vertex);
+void add_and_skip_initial(FillData *flood, PBVHVertRef vertex);
+void execute(
+    SculptSession *ss,
+    FillData *flood,
+    FunctionRef<bool(SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)>
+        func);
 
 }
 
@@ -1319,7 +1315,7 @@ NodeData node_begin(Object &object, const Cache *automasking, PBVHNode &node);
 /* Call before factor_get and SCULPT_brush_strength_factor. */
 void node_update(NodeData &automask_data, PBVHVertexIter &vd);
 
-float factor_get(Cache *automasking,
+float factor_get(const Cache *automasking,
                  SculptSession *ss,
                  PBVHVertRef vertex,
                  const NodeData *automask_data);
@@ -1362,8 +1358,10 @@ namespace blender::ed::sculpt_paint::geodesic {
  * Geodesic distances will only work when used with PBVH_FACES, for other types of PBVH it will
  * fallback to euclidean distances to one of the initial vertices in the set.
  */
-float *distances_create(Object *ob, GSet *initial_verts, float limit_radius);
-float *distances_create_from_vert_and_symm(Object *ob, PBVHVertRef vertex, float limit_radius);
+Array<float> distances_create(Object *ob, const Set<int> &initial_verts, float limit_radius);
+Array<float> distances_create_from_vert_and_symm(Object *ob,
+                                                 PBVHVertRef vertex,
+                                                 float limit_radius);
 
 }
 
@@ -1614,8 +1612,8 @@ void SCULPT_cache_free(blender::ed::sculpt_paint::StrokeCache *cache);
 
 namespace blender::ed::sculpt_paint::undo {
 
-undo::Node *push_node(Object *ob, PBVHNode *node, undo::Type type);
-undo::Node *get_node(PBVHNode *node, undo::Type type);
+undo::Node *push_node(const Object &object, const PBVHNode *node, undo::Type type);
+undo::Node *get_node(const PBVHNode *node, undo::Type type);
 
 /**
  * Pushes an undo step using the operator name. This is necessary for
@@ -1804,14 +1802,21 @@ void SCULPT_OT_face_sets_edit(wmOperatorType *ot);
 
 void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot);
+
 }
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Transform Operators
  * \{ */
 
+namespace blender::ed::sculpt_paint {
+
 void SCULPT_OT_set_pivot_position(wmOperatorType *ot);
+
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
