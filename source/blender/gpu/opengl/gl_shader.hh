@@ -50,30 +50,63 @@ class GLShader : public Shader {
   friend shader::StageInterfaceInfo;
 
  private:
-  struct GLProgram {
+  class GLProgram {
+   private:
     /** Handle for program. */
-    GLuint program_id = 0;
+    GLuint program_id_ = 0;
     /** Handle for individual shader stages. */
-    GLuint vert_shader = 0;
-    GLuint geom_shader = 0;
-    GLuint frag_shader = 0;
-    GLuint compute_shader = 0;
+    GLuint vert_shader_ = 0;
+    GLuint geom_shader_ = 0;
+    GLuint frag_shader_ = 0;
+    GLuint compute_shader_ = 0;
 
+    bool is_ready_ = false;
+
+   public:
     GLProgram() {}
     GLProgram(GLProgram &&other)
     {
-      program_id = other.program_id;
-      vert_shader = other.vert_shader;
-      geom_shader = other.geom_shader;
-      frag_shader = other.frag_shader;
-      compute_shader = other.compute_shader;
-      other.program_id = 0;
-      other.vert_shader = 0;
-      other.geom_shader = 0;
-      other.frag_shader = 0;
-      other.compute_shader = 0;
+      program_id_ = other.program_id_;
+      vert_shader_ = other.vert_shader_;
+      geom_shader_ = other.geom_shader_;
+      frag_shader_ = other.frag_shader_;
+      compute_shader_ = other.compute_shader_;
+      is_ready_ = other.is_ready_;
+      other.program_id_ = 0;
+      other.vert_shader_ = 0;
+      other.geom_shader_ = 0;
+      other.frag_shader_ = 0;
+      other.compute_shader_ = 0;
+      other.is_ready_ = false;
     }
     ~GLProgram();
+
+    void init(StringRefNull name);
+
+    void set_vert(GLuint stage_shader)
+    {
+      vert_shader_ = stage_shader;
+    };
+    void set_geom(GLuint stage_shader)
+    {
+      geom_shader_ = stage_shader;
+    };
+    void set_frag(GLuint stage_shader)
+    {
+      frag_shader_ = stage_shader;
+    };
+    void set_compute(GLuint stage_shader)
+    {
+      compute_shader_ = stage_shader;
+    };
+
+    bool is_compute()
+    {
+      return compute_shader_ != 0;
+    }
+
+    void link();
+    GLuint get_program();
   };
 
   using GLProgramCacheKey = Vector<shader::ShaderCreateInfo::SpecializationConstant::Value>;
@@ -112,7 +145,10 @@ class GLShader : public Shader {
   /**
    * Link the active program.
    */
-  bool program_link();
+  void program_link();
+
+  bool is_program_ready_ = false;
+  bool finish_program();
 
   /**
    * Return a GLProgram program id that reflects the current state of shader.constants.values.
@@ -127,17 +163,20 @@ class GLShader : public Shader {
 
   std::string debug_source;
 
+  bool has_info_ = false;
+  shader::ShaderCreateInfo info_ = {"uninitialized"};
+
  public:
   GLShader(const char *name);
   ~GLShader();
 
   void init(const shader::ShaderCreateInfo &info) override;
 
-  /** Return true on success. */
   void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
   void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
+  /** Return true on success. */
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
   void warm_cache(int /*limit*/) override{};
 
@@ -161,6 +200,8 @@ class GLShader : public Shader {
   void uniform_float(int location, int comp_len, int array_size, const float *data) override;
   void uniform_int(int location, int comp_len, int array_size, const int *data) override;
 
+  virtual const ShaderInterface *interface_get() override;
+
   /* Unused: SSBO vertex fetch draw parameters. */
   bool get_uses_ssbo_vertex_fetch() const override
   {
@@ -182,7 +223,7 @@ class GLShader : public Shader {
     if (!compute_sources_.is_empty()) {
       return true;
     }
-    return program_active_->compute_shader != 0;
+    return program_active_->is_compute();
   }
 
  private:
