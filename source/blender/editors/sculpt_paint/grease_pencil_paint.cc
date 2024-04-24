@@ -198,16 +198,16 @@ struct PaintOperationExecutor {
                                    bke::AttrDomain::Point,
                                    {},
                                    {},
-                                   OffsetIndices<int>(Array<int>({0, curves.points_num() - 1})),
-                                   OffsetIndices<int>(Array<int>({1, curves.points_num()})),
+                                   Span<int>{0, curves.points_num() - 1},
+                                   Span<int>{1, curves.points_num()},
                                    IndexMask(IndexRange(1)),
                                    attributes);
     copy_attributes_group_to_group(src_attributes,
                                    bke::AttrDomain::Curve,
                                    {},
                                    {},
-                                   OffsetIndices<int>(Array<int>({0, curves.curves_num() - 1})),
-                                   OffsetIndices<int>(Array<int>({1, curves.curves_num()})),
+                                   Span<int>{0, curves.curves_num() - 1},
+                                   Span<int>{1, curves.curves_num()},
                                    IndexMask(IndexRange(1)),
                                    attributes);
   }
@@ -241,8 +241,8 @@ struct PaintOperationExecutor {
         bke::AttrDomain::Point,
         {},
         {},
-        OffsetIndices<int>(Array<int>({last_active_point, curves.points_num() - new_points_num})),
-        OffsetIndices<int>(Array<int>({last_active_point + new_points_num, curves.points_num()})),
+        Span<int>{last_active_point, curves.points_num() - new_points_num},
+        Span<int>{last_active_point + new_points_num, curves.points_num()},
         IndexMask(IndexRange(1)),
         attributes);
 
@@ -705,8 +705,8 @@ static void remove_points_from_end_of_active_curve(bke::CurvesGeometry &curves,
       bke::AttrDomain::Point,
       {},
       {},
-      OffsetIndices<int>(Array<int>({last_active_point, curves.points_num() + rem_points_num})),
-      OffsetIndices<int>(Array<int>({last_active_point - rem_points_num, curves.points_num()})),
+      Span<int>{last_active_point, curves.points_num() + rem_points_num},
+      Span<int>{last_active_point - rem_points_num, curves.points_num()},
       IndexMask(IndexRange(1)),
       attributes);
 
