@@ -2466,6 +2466,9 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
         if st.display_mode == 'IMAGE':
             col.prop(st, "show_overexposed")
 
+        if ed:
+            col.prop(ed, "show_missing_media")
+
 
 class SEQUENCER_PT_view_cursor(SequencerButtonsPanel_Output, Panel):
     bl_category = "View"
@@ -2764,6 +2767,7 @@ class SEQUENCER_PT_snapping(Panel):
         col = layout.column(heading="Snap to", align=True)
         col.prop(sequencer_tool_settings, "snap_to_current_frame")
         col.prop(sequencer_tool_settings, "snap_to_hold_offset")
+        col.prop(sequencer_tool_settings, "snap_to_markers")
 
         col = layout.column(heading="Ignore", align=True)
         col.prop(sequencer_tool_settings, "snap_ignore_muted", text="Muted Strips")
