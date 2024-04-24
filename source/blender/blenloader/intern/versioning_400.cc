@@ -62,6 +62,8 @@
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
+#include "IMB_imbuf_enums.h"
+
 #include "SEQ_iterator.hh"
 
 #include "ANIM_armature_iter.hh"
@@ -2047,6 +2049,27 @@ static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+static void versioning_update_timecode(short int *tc)
+{
+  if (ELEM(*tc, 2, 4)) { /* IMB_TC_FREE_RUN, IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN: */
+    *tc = IMB_TC_INVERSE_MAPPING;
+  }
+  /* IMB_TC_RECORD_RUN_NO_GAPS was renamed to IMB_TC_UNIQUE_MAPPING, bit changed from 8 to 2. */
+  if (*tc == 8) {
+    *tc = IMB_TC_UNIQUE_MAPPING;
+  }
+}
+
+static bool seq_proxies_timecode_update(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->strip == nullptr || seq->strip->proxy == nullptr) {
+    return true;
+  }
+  StripProxy *proxy = seq->strip->proxy;
+  versioning_update_timecode(&proxy->tc);
+  return true;
+}
+
 static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
 {
   if (ntree->type == NTREE_COMPOSIT) {
@@ -3182,6 +3205,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->eevee.clamp_surface_indirect = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 21)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_proxies_timecode_update, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
+      MovieClipProxy proxy = clip->proxy;
+      versioning_update_timecode(&proxy.tc);
     }
   }
 

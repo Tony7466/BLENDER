@@ -46,10 +46,8 @@ static const float proxy_fac[] = {0.25, 0.50, 0.75, 1.00};
 
 #ifdef WITH_FFMPEG
 static IMB_Timecode_Type tc_types[] = {
-    IMB_TC_RECORD_RUN,
-    IMB_TC_FREE_RUN,
-    IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN,
-    IMB_TC_RECORD_RUN_NO_GAPS,
+    IMB_TC_INVERSE_MAPPING,
+    IMB_TC_UNIQUE_MAPPING,
 };
 #endif
 
@@ -356,13 +354,9 @@ int IMB_timecode_to_array_index(IMB_Timecode_Type tc)
   switch (tc) {
     case IMB_TC_NONE:
       return -1;
-    case IMB_TC_RECORD_RUN:
+    case IMB_TC_INVERSE_MAPPING:
       return 0;
-    case IMB_TC_FREE_RUN:
-      return 1;
-    case IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN:
-      return 2;
-    case IMB_TC_RECORD_RUN_NO_GAPS:
+    case IMB_TC_UNIQUE_MAPPING:
       return 3;
     default:
       BLI_assert_msg(0, "Unhandled timecode type enum!");
@@ -1006,7 +1000,7 @@ static void index_rebuild_ffmpeg_proc_decoded_frame(FFmpegIndexBuilderContext *c
     if (context->tcs_in_use & tc_types[i]) {
       int tc_frameno = context->frameno;
 
-      if (tc_types[i] == IMB_TC_RECORD_RUN_NO_GAPS) {
+      if (tc_types[i] == IMB_TC_UNIQUE_MAPPING) {
         tc_frameno = context->frameno_gapless;
       }
 
