@@ -87,6 +87,7 @@ struct StripDrawContext {
   bool is_single_image; /* Strip has single frame of content. */
   bool show_strip_color_tag;
   bool missing_data_block;
+  bool missing_media;
 };
 
 struct TimelineDrawContext {
@@ -182,27 +183,9 @@ static void strip_draw_context_set_strip_content_visibility(TimelineDrawContext 
                                       threshold;
 }
 
-static bool meta_strip_has_missing_data(const Sequence *seq)
-{
-  if (seq->type != SEQ_TYPE_META) {
-    return false;
-  }
-
-  const ListBase *seqbase = &seq->seqbase;
-  if (!seqbase || BLI_listbase_is_empty(seqbase)) {
-    return false;
-  }
-
-  LISTBASE_FOREACH (const Sequence *, sub, seqbase) {
-    if (!SEQ_sequence_has_source(sub)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequence *seq)
 {
+  using namespace blender::seq;
   StripDrawContext strip_ctx;
   Scene *scene = ctx->scene;
 
@@ -235,7 +218,23 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   strip_ctx.handle_width = sequence_handle_size_get_clamped(ctx->scene, seq, ctx->pixelx);
   strip_ctx.show_strip_color_tag = (ctx->sseq->timeline_overlay.flag &
                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
-  strip_ctx.missing_data_block = !SEQ_sequence_has_source(seq) || meta_strip_has_missing_data(seq);
+
+  /* Determine if strip (or contents of meta strip) has missing data/media. */
+  strip_ctx.missing_data_block = !SEQ_sequence_has_valid_data(seq);
+  strip_ctx.missing_media = media_presence_is_missing(scene, seq);
+  if (seq->type == SEQ_TYPE_META) {
+    const ListBase *seqbase = &seq->seqbase;
+    if (seqbase != nullptr) {
+      LISTBASE_FOREACH (const Sequence *, sub, seqbase) {
+        if (!SEQ_sequence_has_valid_data(sub)) {
+          strip_ctx.missing_data_block = true;
+        }
+        if (media_presence_is_missing(scene, sub)) {
+          strip_ctx.missing_media = true;
+        }
+      }
+    }
+  }
 
   if (strip_ctx.can_draw_text_overlay) {
     strip_ctx.strip_content_top = strip_ctx.top - min_ff(0.40f, 20 * UI_SCALE_FAC * ctx->pixely);
@@ -585,6 +584,7 @@ static void draw_seq_waveform_overlay(TimelineDrawContext *timeline_ctx,
 
 static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
+  using namespace blender::seq;
   Sequence *seq_meta = strip_ctx->seq;
   if (!strip_ctx->can_draw_strip_content || (timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
     return;
@@ -595,7 +595,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
     return;
   }
 
-  const Scene *scene = timeline_ctx->scene;
+  Scene *scene = timeline_ctx->scene;
 
   uchar col[4];
 
@@ -660,7 +660,9 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
         col[3] = 196;
       }
 
-      if (!SEQ_sequence_has_source(seq)) {
+      const bool missing_data = !SEQ_sequence_has_valid_data(seq);
+      const bool missing_media = media_presence_is_missing(scene, seq);
+      if (missing_data || missing_media) {
         col[0] = 112;
         col[1] = 0;
         col[2] = 0;
@@ -994,7 +996,9 @@ static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
   const float icon_size_x = MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
 
   for (const StripDrawContext &strip : strips) {
-    if (!strip.missing_data_block) {
+    const bool missing_data = strip.missing_data_block;
+    const bool missing_media = strip.missing_media;
+    if (!missing_data && !missing_media) {
       continue;
     }
 
@@ -1007,11 +1011,18 @@ static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
 
       float icon_indent = 2.0f * strip.handle_width - 4 * timeline_ctx->pixelx * UI_SCALE_FAC;
       rctf rect;
-      rect.xmin = max_ff(strip.left_handle, timeline_ctx->v2d->cur.xmin) + icon_indent;
-      rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
       rect.ymin = strip.strip_content_top;
       rect.ymax = strip.top;
-      draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+      rect.xmin = max_ff(strip.left_handle, timeline_ctx->v2d->cur.xmin) + icon_indent;
+      if (missing_data) {
+        rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
+        draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+        rect.xmin = rect.xmax;
+      }
+      if (missing_media) {
+        rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
+        draw_icon_centered(*timeline_ctx, rect, ICON_ERROR, col);
+      }
     }
 
     /* Draw icon in center of content. */
@@ -1022,7 +1033,12 @@ static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
       rect.ymin = strip.bottom;
       rect.ymax = strip.strip_content_top;
       uchar col[4] = {112, 0, 0, 255};
-      draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+      if (missing_data) {
+        draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+      }
+      if (missing_media) {
+        draw_icon_centered(*timeline_ctx, rect, ICON_ERROR, col);
+      }
     }
   }
 
@@ -1067,9 +1083,15 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
   if (strip_ctx->missing_data_block) {
     rect.xmin += MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
   }
+  if (strip_ctx->missing_media) {
+    rect.xmin += MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+  }
   rect.xmin = min_ff(rect.xmin, timeline_ctx->v2d->cur.xmax);
 
   CLAMP(rect.xmax, timeline_ctx->v2d->cur.xmin + text_margin, timeline_ctx->v2d->cur.xmax);
+  if (rect.xmin >= rect.xmax) { /* No space for label left. */
+    return;
+  }
 
   UI_view2d_text_cache_add_rectf(
       timeline_ctx->v2d, &rect, overlay_string, overlay_string_len, col);
@@ -1294,53 +1316,9 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void draw_seq_missing_media(TimelineDrawContext *timeline_ctx,
-                                   const blender::Vector<StripDrawContext> &strips)
+static void draw_seq_missing(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_2D_DIAG_STRIPES);
-
-  /* Make stripe size dependent on strip vertical zoom level. */
-  float size = 0.25f / timeline_ctx->pixely;
-  /* Clamp so it's not thinner than 8px and not larger than 64px. */
-  size = clamp_f(size, 8.0f, 64.0f);
-
-  immUniform4f("color1", 0.9f, 0.0f, 0.0f, 0.1f);
-  immUniform4f("color2", 0.9f, 0.0f, 0.0f, 0.8f);
-  immUniform1i("size1", size);
-  immUniform1i("size2", size);
-  immUniform1f("xscale", -1.5f);
-
-  for (const StripDrawContext &strip_ctx : strips) {
-    bool missing = blender::seq::media_presence_is_missing(timeline_ctx->scene, strip_ctx.seq);
-    if (missing) {
-      immRectf(
-          pos, strip_ctx.left_handle, strip_ctx.bottom, strip_ctx.right_handle, strip_ctx.top);
-    }
-  }
-
-  immUnbindProgram();
-
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-static void draw_seq_missing_datablock(TimelineDrawContext *timeline_ctx,
-                                       const StripDrawContext *strip_ctx)
-{
-    /*
-  if (SEQ_sequence_has_valid_data(strip_ctx->seq)) {
-    return;
-  }
-  uchar color[4] = {230, 0, 0, 204};
-  timeline_ctx->quads->add_quad(strip_ctx->left_handle,
-                                strip_ctx->top,
-                                strip_ctx->right_handle,
-                                strip_ctx->strip_content_top,
-                                color);
-     */
-  if (!strip_ctx->missing_data_block) {
+  if (!strip_ctx->missing_data_block && !strip_ctx->missing_media) {
     return;
   }
   /* Do not tint title area for muted strips; we want to see gray for them. */
@@ -1611,14 +1589,13 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
     draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
-    draw_seq_invalid(timeline_ctx, &strip_ctx);
+    draw_seq_missing(timeline_ctx, &strip_ctx);
   }
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
 
-  /* Locked and missing media states are drawn separately since they use a different shader. */
+  /* Locked state is drawn separately since it uses a different shader. */
   draw_seq_locked(timeline_ctx, strips);
-  draw_seq_missing_media(timeline_ctx, strips);
 
   /* Draw the rest. */
   GPU_blend(GPU_BLEND_ALPHA);
