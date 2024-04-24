@@ -219,7 +219,7 @@ void check_gl_resources(const char *info)
   }
 
   GLContext *ctx = GLContext::get();
-  ShaderInterface *interface = ctx->shader->interface;
+  const ShaderInterface *interface = ctx->shader->interface_get();
   /* NOTE: This only check binding. To be valid, the bound ubo needs to
    * be big enough to feed the data range the shader awaits. */
   uint16_t ubo_needed = interface->enabled_ubo_mask_;

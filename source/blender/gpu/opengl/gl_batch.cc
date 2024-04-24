@@ -213,7 +213,8 @@ GLuint GLVaoCache::vao_get(Batch *batch)
   this->context_check();
 
   Shader *shader = GLContext::get()->shader;
-  GLShaderInterface *interface = static_cast<GLShaderInterface *>(shader->interface);
+  const GLShaderInterface *interface = static_cast<const GLShaderInterface *>(
+      shader->interface_get());
   if (interface_ != interface) {
     interface_ = interface;
     vao_id_ = this->lookup(interface_);

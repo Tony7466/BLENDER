@@ -1237,10 +1237,10 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
 
   GLuint program_id = program_get();
   if (info != nullptr && info->legacy_resource_location_ == false) {
-    interface = new GLShaderInterface(program_id, *info);
+    interface_ = new GLShaderInterface(program_id, *info);
   }
   else {
-    interface = new GLShaderInterface(program_id);
+    interface_ = new GLShaderInterface(program_id);
   }
 
   return true;

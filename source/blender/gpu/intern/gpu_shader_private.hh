@@ -41,9 +41,6 @@ class GPULogParser;
  */
 class Shader {
  public:
-  /** Uniform & attribute locations for shader. */
-  ShaderInterface *interface = nullptr;
-
   /**
    * Specialization constants as a Struct-of-Arrays. Allow simpler comparison and reset.
    * The backend is free to implement their support as they see fit.
@@ -66,6 +63,9 @@ class Shader {
  protected:
   /** For debugging purpose. */
   char name[64];
+
+  /** Uniform & attribute locations for shader. */
+  ShaderInterface *interface_ = nullptr;
 
   /* Parent shader can be used for shaders which are derived from the same source material.
    * The child shader can pull information from its parent to prepare additional resources
@@ -100,6 +100,8 @@ class Shader {
 
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
+
+  virtual const ShaderInterface *interface_get();
 
   /* Add specialization constant declarations to shader instance. */
   void specialization_constants_init(const shader::ShaderCreateInfo &info);

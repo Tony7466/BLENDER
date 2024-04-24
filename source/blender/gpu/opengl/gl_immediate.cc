@@ -142,7 +142,7 @@ void GLImmediate::end()
      * This works because we added some padding to align the first vertex. */
     uint v_first = buffer_offset() / vertex_format.stride;
     GLVertArray::update_bindings(
-        vao_id_, v_first, &vertex_format, reinterpret_cast<Shader *>(shader)->interface);
+        vao_id_, v_first, &vertex_format, reinterpret_cast<Shader *>(shader)->interface_get());
 
     /* Update matrices. */
     GPU_shader_bind(shader);

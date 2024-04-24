@@ -64,7 +64,7 @@ Shader::Shader(const char *sh_name)
 
 Shader::~Shader()
 {
-  delete interface;
+  delete interface_;
 }
 
 static void standard_defines(Vector<const char *> &sources)
@@ -567,6 +567,11 @@ void GPU_shader_transform_feedback_disable(GPUShader *shader)
 
 /** \} */
 
+const ShaderInterface *Shader::interface_get()
+{
+  return interface_;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Assign specialization constants.
  * \{ */
@@ -609,19 +614,22 @@ void GPU_shader_constant_bool_ex(GPUShader *sh, int location, bool value)
 
 void GPU_shader_constant_int(GPUShader *sh, const char *name, int value)
 {
-  GPU_shader_constant_int_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+  GPU_shader_constant_int_ex(sh, unwrap(sh)->interface_get()->constant_get(name)->location, value);
 }
 void GPU_shader_constant_uint(GPUShader *sh, const char *name, uint value)
 {
-  GPU_shader_constant_uint_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+  GPU_shader_constant_uint_ex(
+      sh, unwrap(sh)->interface_get()->constant_get(name)->location, value);
 }
 void GPU_shader_constant_float(GPUShader *sh, const char *name, float value)
 {
-  GPU_shader_constant_float_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+  GPU_shader_constant_float_ex(
+      sh, unwrap(sh)->interface_get()->constant_get(name)->location, value);
 }
 void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value)
 {
-  GPU_shader_constant_bool_ex(sh, unwrap(sh)->interface->constant_get(name)->location, value);
+  GPU_shader_constant_bool_ex(
+      sh, unwrap(sh)->interface_get()->constant_get(name)->location, value);
 }
 
 /** \} */
@@ -632,77 +640,77 @@ void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value)
 
 int GPU_shader_get_uniform(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *uniform = interface->uniform_get(name);
   return uniform ? uniform->location : -1;
 }
 
 int GPU_shader_get_constant(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *constant = interface->constant_get(name);
   return constant ? constant->location : -1;
 }
 
 int GPU_shader_get_builtin_uniform(GPUShader *shader, int builtin)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   return interface->uniform_builtin((GPUUniformBuiltin)builtin);
 }
 
 int GPU_shader_get_builtin_block(GPUShader *shader, int builtin)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   return interface->ubo_builtin((GPUUniformBlockBuiltin)builtin);
 }
 
 int GPU_shader_get_ssbo_binding(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *ssbo = interface->ssbo_get(name);
   return ssbo ? ssbo->location : -1;
 }
 
 int GPU_shader_get_uniform_block(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *ubo = interface->ubo_get(name);
   return ubo ? ubo->location : -1;
 }
 
 int GPU_shader_get_ubo_binding(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *ubo = interface->ubo_get(name);
   return ubo ? ubo->binding : -1;
 }
 
 int GPU_shader_get_sampler_binding(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *tex = interface->uniform_get(name);
   return tex ? tex->binding : -1;
 }
 
-uint GPU_shader_get_attribute_len(const GPUShader *shader)
+uint GPU_shader_get_attribute_len(GPUShader *shader)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   return interface->attr_len_;
 }
 
-int GPU_shader_get_attribute(const GPUShader *shader, const char *name)
+int GPU_shader_get_attribute(GPUShader *shader, const char *name)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
   const ShaderInput *attr = interface->attr_get(name);
   return attr ? attr->location : -1;
 }
 
-bool GPU_shader_get_attribute_info(const GPUShader *shader,
+bool GPU_shader_get_attribute_info(GPUShader *shader,
                                    int attr_location,
                                    char r_name[256],
                                    int *r_type)
 {
-  const ShaderInterface *interface = unwrap(shader)->interface;
+  const ShaderInterface *interface = unwrap(shader)->interface_get();
 
   const ShaderInput *attr = interface->attr_get(attr_location);
   if (!attr) {
