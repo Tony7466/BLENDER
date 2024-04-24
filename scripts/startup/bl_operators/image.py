@@ -161,7 +161,7 @@ class ProjectEdit(Operator):
         i = 0
 
         while os.path.exists(bpy.path.abspath(filepath_final)):
-            filepath_final = filepath + "{:03d}.{:s}".format(i, EXT)
+            filepath_final = filepath + "{:03d}.{!s}".format(i, EXT)
             i += 1
 
         image_new.name = bpy.path.basename(filepath_final)
@@ -191,7 +191,7 @@ class ProjectApply(Operator):
         image_name = ProjectEdit._proj_hack[0]  # TODO, deal with this nicer
         image = bpy.data.images.get((image_name, None))
         if image is None:
-            self.report({'ERROR'}, rpt_("Could not find image '{:s}'").format(image_name))
+            self.report({'ERROR'}, rpt_("Could not find image '{!s}'").format(image_name))
             return {'CANCELLED'}
 
         image.reload()
