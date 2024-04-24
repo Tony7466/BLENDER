@@ -2060,6 +2060,7 @@ static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
     }
   }
 }
+
 static void add_image_editor_asset_shelf(Main &bmain)
 {
   LISTBASE_FOREACH (bScreen *, screen, &bmain.screens) {
@@ -2087,6 +2088,7 @@ static void add_image_editor_asset_shelf(Main &bmain)
     }
   }
 }
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
