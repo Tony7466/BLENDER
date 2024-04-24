@@ -4075,12 +4075,12 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
 
     /* let's initialize this user */
     if (ia->anim && iuser && iuser->frames == 0) {
-      iuser->frames = IMB_anim_get_duration(ia->anim, IMB_TC_INVERSE_MAPPING);
+      iuser->frames = IMB_anim_get_duration(ia->anim, IMB_TC_NORMAL_PLAYBACK);
     }
   }
 
   if (ia->anim) {
-    int dur = IMB_anim_get_duration(ia->anim, IMB_TC_INVERSE_MAPPING);
+    int dur = IMB_anim_get_duration(ia->anim, IMB_TC_NORMAL_PLAYBACK);
     int fra = frame - 1;
 
     if (fra < 0) {
@@ -4090,7 +4090,7 @@ static ImBuf *load_movie_single(Image *ima, ImageUser *iuser, int frame, const i
       fra = dur - 1;
     }
     ibuf = IMB_makeSingleUser(
-        IMB_anim_absolute(ia->anim, fra, IMB_TC_INVERSE_MAPPING, IMB_PROXY_NONE));
+        IMB_anim_absolute(ia->anim, fra, IMB_TC_NORMAL_PLAYBACK, IMB_PROXY_NONE));
 
     if (ibuf) {
       image_init_after_load(ima, iuser, ibuf);

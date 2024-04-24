@@ -148,7 +148,7 @@ static void rna_def_movieclip_proxy(BlenderRNA *brna)
        0,
        "None",
        "Ignore generated timecodes, seek in movie stream based on calculated timestamp"},
-      {IMB_TC_INVERSE_MAPPING,
+      {IMB_TC_NORMAL_PLAYBACK,
        "USE_MOVIE_TIMESTAMPS",
        0,
        "Use Movie Timestamps",
@@ -218,7 +218,7 @@ static void rna_def_movieclip_proxy(BlenderRNA *brna)
 
   /* Build time-codes. */
   prop = RNA_def_property(srna, "build_record_run", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "build_tc_flag", IMB_TC_INVERSE_MAPPING);
+  RNA_def_property_boolean_sdna(prop, nullptr, "build_tc_flag", IMB_TC_NORMAL_PLAYBACK);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Rec Run", "Build record run time code index");
 

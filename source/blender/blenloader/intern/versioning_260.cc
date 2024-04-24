@@ -1253,7 +1253,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
           clip->aspy = 1.0f;
         }
 
-        clip->proxy.build_tc_flag = IMB_TC_INVERSE_MAPPING;
+        clip->proxy.build_tc_flag = IMB_TC_NORMAL_PLAYBACK;
 
         if (clip->proxy.build_size_flag == 0) {
           clip->proxy.build_size_flag = IMB_PROXY_25;

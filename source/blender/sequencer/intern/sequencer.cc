@@ -62,7 +62,7 @@ StripProxy *seq_strip_proxy_alloc()
       MEM_callocN(sizeof(StripProxy), "StripProxy"));
   strip_proxy->quality = 50;
   strip_proxy->build_tc_flags = SEQ_PROXY_TC_ALL;
-  strip_proxy->tc = SEQ_PROXY_TC_INVERSE_MAPPING;
+  strip_proxy->tc = SEQ_PROXY_TC_NORMAL_PLAYBACK;
   return strip_proxy;
 }
 

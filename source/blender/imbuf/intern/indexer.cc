@@ -46,7 +46,7 @@ static const float proxy_fac[] = {0.25, 0.50, 0.75, 1.00};
 
 #ifdef WITH_FFMPEG
 static IMB_Timecode_Type tc_types[] = {
-    IMB_TC_INVERSE_MAPPING,
+    IMB_TC_NORMAL_PLAYBACK,
     IMB_TC_UNIQUE_MAPPING,
 };
 #endif
@@ -354,7 +354,7 @@ int IMB_timecode_to_array_index(IMB_Timecode_Type tc)
   switch (tc) {
     case IMB_TC_NONE:
       return -1;
-    case IMB_TC_INVERSE_MAPPING:
+    case IMB_TC_NORMAL_PLAYBACK:
       return 0;
     case IMB_TC_UNIQUE_MAPPING:
       return 3;

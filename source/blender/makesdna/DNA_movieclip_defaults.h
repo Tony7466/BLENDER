@@ -17,7 +17,7 @@
 #define _DNA_DEFAULT_MovieClipProxy \
   { \
     .build_size_flag = IMB_PROXY_25, \
-    .build_tc_flag = IMB_TC_INVERSE_MAPPING | IMB_TC_UNIQUE_MAPPING, \
+    .build_tc_flag = IMB_TC_NORMAL_PLAYBACK | IMB_TC_UNIQUE_MAPPING, \
     .quality = 50, \
   }
 

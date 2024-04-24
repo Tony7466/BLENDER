@@ -354,7 +354,7 @@ bool IMB_get_gop_decode_time(ImBufAnim *anim);
 
 ImBuf *IMB_anim_absolute(ImBufAnim *anim,
                          int position,
-                         IMB_Timecode_Type tc /* = 1 = IMB_TC_INVERSE_MAPPING */,
+                         IMB_Timecode_Type tc /* = 1 = IMB_TC_NORMAL_PLAYBACK */,
                          IMB_Proxy_Size preview_size /* = 0 = IMB_PROXY_NONE */);
 
 /**
