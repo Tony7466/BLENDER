@@ -422,7 +422,6 @@ const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(const PaintMode m
     case PaintMode::Texture2D:
     case PaintMode::Texture3D:
       return rna_enum_brush_image_tool_items;
-
     case PaintMode::GPencil:
       return rna_enum_brush_gpencil_types_items;
     case PaintMode::VertexGPencil:

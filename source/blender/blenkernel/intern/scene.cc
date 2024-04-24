@@ -1050,7 +1050,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   if (tos->uvsculpt.strength_curve) {
     BKE_curvemapping_blend_write(writer, tos->uvsculpt.strength_curve);
   }
-
   if (tos->gp_paint) {
     BLO_write_struct(writer, GpPaint, tos->gp_paint);
     BKE_paint_blend_write(writer, &tos->gp_paint->paint);
