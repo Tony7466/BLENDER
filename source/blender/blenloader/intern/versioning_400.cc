@@ -3249,6 +3249,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                   "asset shelf for spaceimage (versioning)",
                   RGN_TYPE_TOOL_HEADER))
           {
+            new_shelf_region->regiondata = MEM_cnew<RegionAssetShelf>(
+                "shelf regiondata for spaceimage (versioning)");
             new_shelf_region->alignment = RGN_ALIGN_BOTTOM;
           }
           if (ARegion *new_shelf_header = do_versions_add_region_if_not_found(
