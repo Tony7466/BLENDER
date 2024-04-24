@@ -261,6 +261,7 @@ class ShadowModule {
   int2 usage_tag_fb_resolution_;
   int usage_tag_fb_lod_ = 5;
   int max_view_per_tilemap_ = 1;
+  int2 input_depth_extent_;
 
   /* Statistics that are read back to CPU after a few frame (to avoid stall). */
   SwapChain<ShadowStatisticsBuf, 5> statistics_buf_;
@@ -350,8 +351,9 @@ class ShadowModule {
   /* Update all shadow regions visible inside the view.
    * If called multiple time for the same view, it will only do the depth buffer scanning
    * to check any new opaque surfaces.
+   * Expect the HiZ buffer to be up to date.
    * Needs to be called after `LightModule::set_view();`. */
-  void set_view(View &view, GPUTexture *depth_tx = nullptr);
+  void set_view(View &view, int2 extent);
 
   void debug_end_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);
@@ -510,7 +512,7 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   static float coverage_get(int lvl)
   {
     /* This function should be kept in sync with shadow_directional_level(). */
-    /* \note: If we would to introduce a global scaling option it would be here. */
+    /* \note If we would to introduce a global scaling option it would be here. */
     return exp2(lvl);
   }
 
