@@ -839,19 +839,29 @@ static void multires_unsubdivide_get_grid_corners_on_base_mesh(BMFace *f1,
   BMEdge *edge_y = initial_edge_y;
 
   /* Do an edge step until it finds a tagged vertex, which is part of the base mesh. */
+  /*  edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
+   while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG))
+   this test with hidden faces enter in an infinite loop by returning the same null
+   edge in edge_step() and the same current_vertex_y
+
+   */
   /* x axis */
   edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
-  while (!BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
+  while (edge_x && !BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
     edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
   }
-  (*r_corner_x) = current_vertex_x;
+  if (edge_x) {
+    (*r_corner_x) = current_vertex_x;
+  }
 
   /* Same for y axis */
   edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
-  while (!BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
+  while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
     edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
   }
-  (*r_corner_y) = current_vertex_y;
+  if (edge_y) {
+    (*r_corner_y) = current_vertex_y;
+  }
 }
 
 static BMesh *get_bmesh_from_mesh(Mesh *mesh)
