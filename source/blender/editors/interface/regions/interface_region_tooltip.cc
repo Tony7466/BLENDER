@@ -1062,7 +1062,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
       ui_block_cm_to_display_space_v3(but->block, color);
     }
 
-    const std::string hex_st = fmt::format("#{:X}{:X}{:X}{:X}",
+    const std::string hex_st = fmt::format("Hex: {:X}{:X}{:X}{:X}",
                                            int(color[0] * 255.0f),
                                            int(color[1] * 255.0f),
                                            int(color[2] * 255.0f),
@@ -1087,7 +1087,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
 
     uiTooltipImage image_data;
     image_data.width = int(w);
-    image_data.height = int(w / 3.2361f);
+    image_data.height = int(w / 4.0f);
     image_data.ibuf = IMB_allocImBuf(image_data.width, image_data.height, 32, IB_rect);
     image_data.border = true;
     image_data.background = uiTooltipImageBackground::Checkerboard_Fixed;
@@ -1114,17 +1114,15 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
 
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-
     UI_tooltip_image_field_add(data, image_data);
-    /* Tooltip now owns a copy of the ImBuf, so we can delete ours.*/
-    IMB_freeImBuf(image_data.ibuf);
-
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-
     UI_tooltip_text_field_add(data, hex_st, {}, UI_TIP_STYLE_MONO, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(data, rgba_st, {}, UI_TIP_STYLE_MONO, UI_TIP_LC_NORMAL, false);
     UI_tooltip_text_field_add(data, hsva_st, {}, UI_TIP_STYLE_MONO, UI_TIP_LC_NORMAL, false);
+
+    /* Tooltip now owns a copy of the ImBuf, so we can delete ours.*/
+    IMB_freeImBuf(image_data.ibuf);
   }
 
   if (data->fields.is_empty()) {
