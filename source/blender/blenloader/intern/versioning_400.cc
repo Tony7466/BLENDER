@@ -3252,6 +3252,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 21)) {
+    add_image_editor_asset_shelf(*bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 22)) {
+    /* Display missing media in sequencer by default. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 23)) {
     update_paint_modes_for_brush_assets(*bmain);
   }
 
