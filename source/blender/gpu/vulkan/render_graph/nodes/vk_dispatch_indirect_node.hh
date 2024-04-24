@@ -26,8 +26,9 @@ struct VKDispatchIndirectData {
  * Information needed to add a node to the render graph.
  */
 struct VKDispatchIndirectCreateInfo : NonCopyable {
-  VKDispatchIndirectData dispatch_indirect_node;
-  VKResourceAccessInfo resources;
+  VKDispatchIndirectData dispatch_indirect_node = {};
+  const VKResourceAccessInfo &resources;
+  VKDispatchIndirectCreateInfo(const VKResourceAccessInfo &resources) : resources(resources) {}
 };
 
 class VKDispatchIndirectNode : public VKNodeInfo<VKNodeType::DISPATCH_INDIRECT,

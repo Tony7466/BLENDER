@@ -27,8 +27,9 @@ struct VKDispatchData {
  * Information needed to add a node to the render graph.
  */
 struct VKDispatchCreateInfo : NonCopyable {
-  VKDispatchData dispatch_node;
-  VKResourceAccessInfo resources;
+  VKDispatchData dispatch_node = {};
+  const VKResourceAccessInfo &resources;
+  VKDispatchCreateInfo(const VKResourceAccessInfo &resources) : resources(resources) {}
 };
 
 class VKDispatchNode : public VKNodeInfo<VKNodeType::DISPATCH,

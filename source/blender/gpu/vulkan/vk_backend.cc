@@ -141,8 +141,9 @@ void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_
 {
   VKContext &context = *VKContext::get();
   if (use_render_graph) {
-    render_graph::VKDispatchNode::CreateInfo &dispatch_info =
-        context.update_and_get_dispatch_info();
+    render_graph::VKResourceAccessInfo &resources = context.update_and_get_access_info();
+    render_graph::VKDispatchNode::CreateInfo dispatch_info(resources);
+    context.update_pipeline_data(dispatch_info.dispatch_node.pipeline_data);
     dispatch_info.dispatch_node.group_count_x = groups_x_len;
     dispatch_info.dispatch_node.group_count_y = groups_y_len;
     dispatch_info.dispatch_node.group_count_z = groups_z_len;
@@ -163,8 +164,9 @@ void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
   VKContext &context = *VKContext::get();
   VKStorageBuffer &indirect_buffer = *unwrap(indirect_buf);
   if (use_render_graph) {
-    render_graph::VKDispatchIndirectNode::CreateInfo &dispatch_indirect_info =
-        context.update_and_get_dispatch_indirect_info();
+    render_graph::VKResourceAccessInfo &resources = context.update_and_get_access_info();
+    render_graph::VKDispatchIndirectNode::CreateInfo dispatch_indirect_info(resources);
+    context.update_pipeline_data(dispatch_indirect_info.dispatch_indirect_node.pipeline_data);
     dispatch_indirect_info.dispatch_indirect_node.buffer = indirect_buffer.vk_handle();
     dispatch_indirect_info.dispatch_indirect_node.offset = 0;
     context.render_graph.add_node(dispatch_indirect_info);
