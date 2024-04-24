@@ -1798,17 +1798,13 @@ typedef struct RaytraceEEVEE {
   /** Thickness in world space each surface will have during screen space tracing. */
   float screen_trace_thickness;
   /** Maximum roughness before using horizon scan. */
-  float screen_trace_max_roughness;
+  float trace_max_roughness;
   /** Resolution downscale factor. */
   int resolution_scale;
-  /** Maximum intensity a ray can have. */
-  float sample_clamp;
   /** #RaytraceEEVEE_Flag. */
   int flag;
   /** #RaytraceEEVEE_DenoiseStages. */
   int denoise_stages;
-
-  char _pad0[4];
 } RaytraceEEVEE;
 
 typedef struct SceneEEVEE {
@@ -1878,6 +1874,11 @@ typedef struct SceneEEVEE {
   int shadow_ray_count;
   int shadow_step_count;
   float shadow_normal_bias;
+
+  float clamp_surface_direct;
+  float clamp_surface_indirect;
+  float clamp_volume_direct;
+  float clamp_volume_indirect;
 
   int ray_tracing_method;
 
@@ -2414,6 +2415,7 @@ enum {
   SEQ_SNAP_TO_STRIPS = 1 << 0,
   SEQ_SNAP_TO_CURRENT_FRAME = 1 << 1,
   SEQ_SNAP_TO_STRIP_HOLD = 1 << 2,
+  SEQ_SNAP_TO_MARKERS = 1 << 3,
 };
 
 /** #SequencerToolSettings::snap_flag */
@@ -2842,6 +2844,7 @@ enum {
   SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
   SCE_EEVEE_RAYTRACE_OPTIONS_SPLIT = (1 << 25),
   SCE_EEVEE_SHADOW_JITTERED_VIEWPORT = (1 << 26),
+  SCE_EEVEE_VOLUME_CUSTOM_RANGE = (1 << 27),
 };
 
 typedef enum RaytraceEEVEE_Flag {
@@ -2855,7 +2858,8 @@ typedef enum RaytraceEEVEE_DenoiseStages {
 } RaytraceEEVEE_DenoiseStages;
 
 typedef enum RaytraceEEVEE_Method {
-  RAYTRACE_EEVEE_METHOD_NONE = 0,
+  /* NOTE: Each method contains the previous one. */
+  RAYTRACE_EEVEE_METHOD_PROBE = 0,
   RAYTRACE_EEVEE_METHOD_SCREEN = 1,
   /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,

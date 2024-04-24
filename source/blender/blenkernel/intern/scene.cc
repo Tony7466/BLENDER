@@ -21,6 +21,7 @@
 #include "DNA_curveprofile_types.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_lightprobe_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
@@ -1191,7 +1192,7 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 static void direct_link_paint_helper(BlendDataReader *reader, const Scene *scene, Paint **paint)
 {
   /* TODO: is this needed. */
-  BLO_read_data_address(reader, paint);
+  BLO_read_struct(reader, Paint, paint);
 
   if (*paint) {
     BKE_paint_blend_read_data(reader, scene, *paint);
@@ -1200,7 +1201,7 @@ static void direct_link_paint_helper(BlendDataReader *reader, const Scene *scene
 
 static void link_recurs_seq(BlendDataReader *reader, ListBase *lb)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, Sequence, lb);
 
   LISTBASE_FOREACH_MUTABLE (Sequence *, seq, lb) {
     /* Sanity check. */
@@ -1231,14 +1232,14 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   sce->runtime = MEM_new<SceneRuntime>(__func__);
 
-  BLO_read_list(reader, &(sce->base));
+  BLO_read_struct_list(reader, Base, &(sce->base));
 
-  BLO_read_list(reader, &sce->keyingsets);
+  BLO_read_struct_list(reader, KeyingSet, &sce->keyingsets);
   BKE_keyingsets_blend_read_data(reader, &sce->keyingsets);
 
-  BLO_read_data_address(reader, &sce->basact);
+  BLO_read_struct(reader, Base, &sce->basact);
 
-  BLO_read_data_address(reader, &sce->toolsettings);
+  BLO_read_struct(reader, ToolSettings, &sce->toolsettings);
   if (sce->toolsettings) {
 
     /* Reset last_location and last_hit, so they are not remembered across sessions. In some files
@@ -1267,8 +1268,9 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     }
 
     if (sce->toolsettings->sculpt) {
-      BLO_read_data_address(reader, &sce->toolsettings->sculpt->automasking_cavity_curve);
-      BLO_read_data_address(reader, &sce->toolsettings->sculpt->automasking_cavity_curve_op);
+      BLO_read_struct(reader, CurveMapping, &sce->toolsettings->sculpt->automasking_cavity_curve);
+      BLO_read_struct(
+          reader, CurveMapping, &sce->toolsettings->sculpt->automasking_cavity_curve_op);
 
       if (sce->toolsettings->sculpt->automasking_cavity_curve) {
         BKE_curvemapping_blend_read(reader, sce->toolsettings->sculpt->automasking_cavity_curve);
@@ -1285,49 +1287,50 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     }
 
     /* Relink grease pencil interpolation curves. */
-    BLO_read_data_address(reader, &sce->toolsettings->gp_interpolate.custom_ipo);
+    BLO_read_struct(reader, CurveMapping, &sce->toolsettings->gp_interpolate.custom_ipo);
     if (sce->toolsettings->gp_interpolate.custom_ipo) {
       BKE_curvemapping_blend_read(reader, sce->toolsettings->gp_interpolate.custom_ipo);
     }
     /* Relink grease pencil multi-frame falloff curve. */
-    BLO_read_data_address(reader, &sce->toolsettings->gp_sculpt.cur_falloff);
+    BLO_read_struct(reader, CurveMapping, &sce->toolsettings->gp_sculpt.cur_falloff);
     if (sce->toolsettings->gp_sculpt.cur_falloff) {
       BKE_curvemapping_blend_read(reader, sce->toolsettings->gp_sculpt.cur_falloff);
     }
     /* Relink grease pencil primitive curve. */
-    BLO_read_data_address(reader, &sce->toolsettings->gp_sculpt.cur_primitive);
+    BLO_read_struct(reader, CurveMapping, &sce->toolsettings->gp_sculpt.cur_primitive);
     if (sce->toolsettings->gp_sculpt.cur_primitive) {
       BKE_curvemapping_blend_read(reader, sce->toolsettings->gp_sculpt.cur_primitive);
     }
 
     /* Relink toolsettings curve profile. */
-    BLO_read_data_address(reader, &sce->toolsettings->custom_bevel_profile_preset);
+    BLO_read_struct(reader, CurveProfile, &sce->toolsettings->custom_bevel_profile_preset);
     if (sce->toolsettings->custom_bevel_profile_preset) {
       BKE_curveprofile_blend_read(reader, sce->toolsettings->custom_bevel_profile_preset);
     }
 
     BLO_read_data_address(reader, &sce->toolsettings->paint_mode.canvas_image);
-    BLO_read_data_address(reader, &sce->toolsettings->sequencer_tool_settings);
+    BLO_read_struct(reader, SequencerToolSettings, &sce->toolsettings->sequencer_tool_settings);
   }
 
   if (sce->ed) {
     ListBase *old_seqbasep = &sce->ed->seqbase;
     ListBase *old_displayed_channels = &sce->ed->channels;
 
-    BLO_read_data_address(reader, &sce->ed);
+    BLO_read_struct(reader, Editing, &sce->ed);
     Editing *ed = sce->ed;
 
-    BLO_read_data_address(reader, &ed->act_seq);
+    BLO_read_struct(reader, Sequence, &ed->act_seq);
     ed->cache = nullptr;
     ed->prefetch_job = nullptr;
     ed->runtime.sequence_lookup = nullptr;
+    ed->runtime.media_presence = nullptr;
 
     /* recursive link sequences, lb will be correctly initialized */
     link_recurs_seq(reader, &ed->seqbase);
 
     /* Read in sequence member data. */
     SEQ_blend_read(reader, &ed->seqbase);
-    BLO_read_list(reader, &ed->channels);
+    BLO_read_struct_list(reader, SeqTimelineChannel, &ed->channels);
 
     /* link metastack, slight abuse of structs here,
      * have to restore pointer to internal part in struct */
@@ -1375,10 +1378,10 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
       }
 
       /* stack */
-      BLO_read_list(reader, &(ed->metastack));
+      BLO_read_struct_list(reader, MetaStack, &(ed->metastack));
 
       LISTBASE_FOREACH (MetaStack *, ms, &ed->metastack) {
-        BLO_read_data_address(reader, &ms->parseq);
+        BLO_read_struct(reader, Sequence, &ms->parseq);
 
         if (ms->oldbasep == old_seqbasep) {
           ms->oldbasep = &ed->seqbase;
@@ -1417,31 +1420,31 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   sce->r.mode &= ~R_NO_CAMERA_SWITCH;
 #endif
 
-  BLO_read_list(reader, &(sce->markers));
+  BLO_read_struct_list(reader, TimeMarker, &(sce->markers));
   LISTBASE_FOREACH (TimeMarker *, marker, &sce->markers) {
-    BLO_read_data_address(reader, &marker->prop);
+    BLO_read_struct(reader, IDProperty, &marker->prop);
     IDP_BlendDataRead(reader, &marker->prop);
   }
 
-  BLO_read_list(reader, &(sce->transform_spaces));
-  BLO_read_list(reader, &(sce->r.layers));
-  BLO_read_list(reader, &(sce->r.views));
+  BLO_read_struct_list(reader, TransformOrientation, &(sce->transform_spaces));
+  BLO_read_struct_list(reader, SceneRenderLayer, &(sce->r.layers));
+  BLO_read_struct_list(reader, SceneRenderView, &(sce->r.views));
 
   LISTBASE_FOREACH (SceneRenderLayer *, srl, &sce->r.layers) {
-    BLO_read_data_address(reader, &srl->prop);
+    BLO_read_struct(reader, IDProperty, &srl->prop);
     IDP_BlendDataRead(reader, &srl->prop);
-    BLO_read_list(reader, &(srl->freestyleConfig.modules));
-    BLO_read_list(reader, &(srl->freestyleConfig.linesets));
+    BLO_read_struct_list(reader, FreestyleModuleConfig, &(srl->freestyleConfig.modules));
+    BLO_read_struct_list(reader, FreestyleLineSet, &(srl->freestyleConfig.linesets));
   }
 
   BKE_color_managed_view_settings_blend_read_data(reader, &sce->view_settings);
   BKE_image_format_blend_read_data(reader, &sce->r.im_format);
   BKE_image_format_blend_read_data(reader, &sce->r.bake.im_format);
 
-  BLO_read_data_address(reader, &sce->rigidbody_world);
+  BLO_read_struct(reader, RigidBodyWorld, &sce->rigidbody_world);
   RigidBodyWorld *rbw = sce->rigidbody_world;
   if (rbw) {
-    BLO_read_data_address(reader, &rbw->shared);
+    BLO_read_struct(reader, RigidBodyWorld_Shared, &rbw->shared);
 
     if (rbw->shared == nullptr) {
       /* Link deprecated caches if they exist, so we can use them for versioning.
@@ -1473,13 +1476,13 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     rbw->numbodies = 0;
 
     /* set effector weights */
-    BLO_read_data_address(reader, &rbw->effector_weights);
+    BLO_read_struct(reader, EffectorWeights, &rbw->effector_weights);
     if (!rbw->effector_weights) {
       rbw->effector_weights = BKE_effector_add_weights(nullptr);
     }
   }
 
-  BLO_read_data_address(reader, &sce->preview);
+  BLO_read_struct(reader, PreviewImage, &sce->preview);
   BKE_previewimg_blend_read(reader, sce->preview);
 
   BKE_curvemapping_blend_read(reader, &sce->r.mblur_shutter_curve);
@@ -1495,7 +1498,7 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   }
   else {
     /* else try to read the cache from file. */
-    BLO_read_data_address(reader, &sce->eevee.light_cache_data);
+    BLO_read_struct(reader, LightCache, &sce->eevee.light_cache_data);
     if (sce->eevee.light_cache_data) {
       EEVEE_lightcache_blend_read_data(reader, sce->eevee.light_cache_data);
     }
@@ -1505,7 +1508,7 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   BKE_screen_view3d_shading_blend_read_data(reader, &sce->display.shading);
 
-  BLO_read_data_address(reader, &sce->layer_properties);
+  BLO_read_struct(reader, IDProperty, &sce->layer_properties);
   IDP_BlendDataRead(reader, &sce->layer_properties);
 }
 
@@ -1537,6 +1540,12 @@ static void scene_blend_read_after_liblink(BlendLibReader *reader, ID *id)
     sce->flag |= SCE_READFILE_LIBLINK_NEED_SETSCENE_CHECK;
   }
 #endif
+  if (ID_IS_LINKED(sce)) {
+    /* Linked scenes never have NLA tweak mode enabled. This works in concert with code in
+     * BKE_animdata_blend_read_data, which also ensures that linked AnimData structs are never
+     * linked in NLA tweak mode. */
+    sce->flag &= ~SCE_NLA_EDIT_ON;
+  }
 }
 
 static void scene_undo_preserve(BlendLibReader *reader, ID *id_new, ID *id_old)
@@ -2913,6 +2922,7 @@ double BKE_scene_unit_scale(const UnitSettings *unit, const int unit_type, doubl
     case B_UNIT_MASS:
       return value * pow(unit->scale_length, 3);
     case B_UNIT_CAMERA: /* *Do not* use scene's unit scale for camera focal lens! See #42026. */
+    case B_UNIT_WAVELENGTH: /* Wavelength values are independent of the scene scale. */
     default:
       return value;
   }
