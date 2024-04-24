@@ -501,6 +501,7 @@ ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
                                             const uint32_t path_flag,
                                             ccl_private LightSample *ls)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_LIGHT_SETUP);
   if (ls->object == OBJECT_NONE) {
     /* Analytic light. */
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);

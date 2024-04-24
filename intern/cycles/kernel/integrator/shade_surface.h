@@ -374,6 +374,7 @@ ccl_device
                                    ccl_private const RNGState *rng_state,
                                    ccl_global float *ccl_restrict render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_INITIAL_RESAMPLING);
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
     /* TODO(weizhen): we still need to write to the reservoir in this case. */
@@ -396,6 +397,7 @@ ccl_device
   int samples_seen = 0;
 
   for (int i = 0; i < reservoir.num_light_samples; i++) {
+    PROFILING_EVENT(PROFILING_RESTIR_LIGHT_RESAMPLING);
     LightSample ls ccl_optional_struct_init;
     BsdfEval bsdf_eval ccl_optional_struct_init;
 
@@ -445,18 +447,22 @@ ccl_device
 
     const bool check_visibility = kernel_data.integrator.restir_initial_visibility &&
                                   is_direct_light;
+    PROFILING_EVENT(PROFILING_RESTIR_LIGHT_EVAL);
     const Spectrum L = light_sample_shader_eval(
         kg, state, emission_sd, &ls, sd->time, sd, check_visibility);
 
     /* Evaluate BSDF. */
+    PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
 
     bsdf_eval_mul(&bsdf_eval, L);
+    PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
   for (int i = 0; i < reservoir.num_bsdf_samples * use_bsdf_samples; i++) {
+    PROFILING_EVENT(PROFILING_RESTIR_BSDF_RESAMPLING);
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
@@ -649,8 +655,11 @@ ccl_device
     }
 
     bsdf_eval_mul(&bsdf_eval, L);
+    PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
   }
+
+  PROFILING_EVENT(PROFILING_RESTIR_INITIAL_RESAMPLING);
 
   kernel_assert(samples_seen <= max_samples);
 
@@ -661,6 +670,7 @@ ccl_device
 
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
+    PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }
   else {

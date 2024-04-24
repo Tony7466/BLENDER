@@ -3,6 +3,7 @@
 
 #include "kernel/integrator/reservoir.h"
 #include "kernel/integrator/state.h"
+#include "kernel/util/profiling.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -49,6 +50,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           ccl_private Reservoir *reservoir,
                                                           const ccl_global float *buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   int i = 0;
   /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
    * instead. */
@@ -104,6 +106,7 @@ ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
                                                        ccl_global float *ccl_restrict
                                                            render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
     ccl_global const float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
                                      kernel_data.film.pass_restir_reservoir;
@@ -118,6 +121,7 @@ ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
                                                        const ccl_global float *ccl_restrict
                                                            render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
     const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
     ccl_global const float *buffer = render_buffer + render_buffer_offset +
@@ -134,6 +138,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           const ccl_global float *ccl_restrict
                                                               render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
     const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
     ccl_global const float *buffer = render_buffer + render_buffer_offset +
@@ -152,8 +157,10 @@ ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
                                                           ccl_global float *ccl_restrict
                                                               render_buffer)
 {
+  PROFILING_INIT(kg, PROFILING_RESTIR_SURFACE_DATA_SETUP);
   shader_setup_from_restir(kg, sd);
 
+  PROFILING_EVENT(PROFILING_RESTIR_SHADER_SETUP);
   /* TODO(weizhen): what features are needed here? Is this the right state? */
   surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
       kg, state, sd, render_buffer, path_flag);
@@ -172,9 +179,10 @@ ccl_device_forceinline void radiance_eval(KernelGlobals kg,
 
   /* TODO(weizhen): where should we check visibility? */
   const bool check_visibility = kernel_data.integrator.restir_spatial_visibility;
+  PROFILING_INIT(kg, PROFILING_RESTIR_LIGHT_EVAL);
   const Spectrum light_eval = light_sample_shader_eval(
       kg, state, emission_sd, ls, sd->time, sd, check_visibility);
-
+  PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
   surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
 
   bsdf_eval_mul(radiance, light_eval);
@@ -188,8 +196,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                   const int y,
                                   const int scheduled_sample)
 {
-  PROFILING_INIT(kg, PROFILING_SHADE_RESTIR);
-
+  PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
   uint32_t path_flag;
   ShaderData sd;
   integrator_restir_unpack_shader(kg, state, &sd, &path_flag, render_buffer);
@@ -219,6 +226,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
    * samples are used.  */
   for (int i = 0; i < samples; i++) {
+    PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
     const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
     const float2 rand_disk = float3_to_float2(rand);
     const float rand_pick = rand.z;
@@ -253,10 +261,11 @@ ccl_device bool integrator_restir(KernelGlobals kg,
       continue;
     }
     radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
-
+    PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_reservoir(neighbor_reservoir, rand_pick);
   }
 
+  PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
   if (reservoir.is_empty()) {
     return false;
   }
