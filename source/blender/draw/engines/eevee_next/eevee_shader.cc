@@ -53,6 +53,10 @@ ShaderModule::ShaderModule()
     shader = nullptr;
   }
 
+  for (int i : IndexRange(MAX_SHADER_TYPE)) {
+    static_shader_get(eShaderType(i));
+  }
+
 #ifndef NDEBUG
   /* Ensure all shader are described. */
   for (auto i : IndexRange(MAX_SHADER_TYPE)) {
