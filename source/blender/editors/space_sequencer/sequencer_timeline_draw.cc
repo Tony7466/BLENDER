@@ -1301,7 +1301,6 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
   immUniform4f("color2", 0.0f, 0.0f, 0.0f, 0.25f);
   immUniform1i("size1", 8);
   immUniform1i("size2", 4);
-  immUniform1f("xscale", 1.0f);
 
   for (const StripDrawContext &strip : strips) {
     if (!SEQ_transform_is_locked(timeline_ctx->channels, strip.seq)) {
