@@ -500,7 +500,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
   light.sun.clipmap_base_offset_pos = (offset_vector * (1 << 16)) /
                                       max_ii(levels_range.size() - 1, 1);
 
-  /* \note: cascade_level_range starts the range at the unique LOD to apply to all tile-maps. */
+  /* \note cascade_level_range starts the range at the unique LOD to apply to all tile-maps. */
   int level = levels_range.first();
   for (int i : IndexRange(levels_range.size())) {
     ShadowTileMap *tilemap = tilemaps_[i];
@@ -865,6 +865,7 @@ void ShadowModule::begin_sync()
       sub.push_constant("tilemap_proj_ratio", &data_.tilemap_projection_ratio);
       sub.push_constant("input_depth_extent", &input_depth_extent_);
       sub.bind_resources(inst_.lights);
+      sub.bind_resources(inst_.uniform_data);
       sub.bind_resources(inst_.hiz_buffer.front);
       sub.dispatch(&dispatch_depth_scan_size_);
     }
