@@ -805,23 +805,30 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
     }
   }
 
-  /* 2px wide selected outline: draw as four quads. */
+  /* Selected outline: 2px wide outline, plus 1px wide background inset. */
   const float x0 = strip_ctx->left_handle;
   const float x1 = strip_ctx->right_handle;
   const float y0 = strip_ctx->bottom;
   const float y1 = strip_ctx->top;
   if (selected) {
     const float dx = timeline_ctx->pixelx;
-    const float dy = timeline_ctx->pixely * 2.0f;
+    const float dy = timeline_ctx->pixely;
 
     /* Left, right, bottom, top. */
     timeline_ctx->quads->add_quad(x0 - dx, y0, x0 + dx, y1, col);
     timeline_ctx->quads->add_quad(x1 - dx, y0, x1 + dx, y1, col);
-    timeline_ctx->quads->add_quad(x0, y0, x1, y0 + dy, col);
-    timeline_ctx->quads->add_quad(x0, y1 - dy, x1, y1, col);
+    timeline_ctx->quads->add_quad(x0, y0, x1, y0 + dy * 2, col);
+    timeline_ctx->quads->add_quad(x0, y1 - dy * 2, x1, y1, col);
+
+    /* Inset. */
+    UI_GetThemeColor3ubv(TH_BACK, col);
+    timeline_ctx->quads->add_quad(x0 + dx, y0 + dy * 2, x0 + dx * 2, y1 - dy * 2, col);
+    timeline_ctx->quads->add_quad(x1 - dx * 2, y0 + dy * 2, x1 - dx, y1 - dy * 2, col);
+    timeline_ctx->quads->add_quad(x0 + dx, y0 + dy * 2, x1 - dx, y0 + dy * 3, col);
+    timeline_ctx->quads->add_quad(x0 + dx, y1 - dy * 3, x1 - dx, y1 - dy * 2, col);
   }
   else {
-    /* 1px wide outline for unselected strips. */
+    /* Thin wireframe outline for unselected strips. */
     timeline_ctx->quads->add_wire_quad(x0, y0, x1, y1, col);
   }
 }
@@ -1581,7 +1588,14 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   draw_strip_icons(timeline_ctx, strips);
 
   timeline_ctx->quads->draw();
+
+  /* Draw text labels with a drop shadow. */
+  const int font_id = BLF_default();
+  BLF_enable(font_id, BLF_SHADOW);
+  BLF_shadow(font_id, 3, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+  BLF_shadow_offset(font_id, 1, -1);
   UI_view2d_text_cache_draw(timeline_ctx->region);
+  BLF_disable(font_id, BLF_SHADOW);
   GPU_blend(GPU_BLEND_NONE);
 }
 
