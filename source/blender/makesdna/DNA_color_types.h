@@ -29,8 +29,8 @@ typedef struct CurveMapPoint {
 
 typedef struct CurveMap_Runtime {
   /** Temp storage for multiple selections operation. */
-  /** Center of selected points */
-  float center_x, center_y;
+  void *runtime_storage;
+  void (*runtime_storage_free)(void *properties_storage);
 } CurveMap_Runtime;
 
 /** #CurveMapPoint.flag */

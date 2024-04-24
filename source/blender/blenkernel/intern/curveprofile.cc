@@ -47,6 +47,9 @@ void BKE_curveprofile_free_data(CurveProfile *profile)
   MEM_SAFE_FREE(profile->path);
   MEM_SAFE_FREE(profile->table);
   MEM_SAFE_FREE(profile->segments);
+  if (profile->runtime.runtime_storage) {
+    profile->runtime.runtime_storage_free(profile->runtime.runtime_storage);
+  }
 }
 
 void BKE_curveprofile_free(CurveProfile *profile)
@@ -64,6 +67,7 @@ void BKE_curveprofile_copy_data(CurveProfile *target, const CurveProfile *profil
   target->path = (CurveProfilePoint *)MEM_dupallocN(profile->path);
   target->table = (CurveProfilePoint *)MEM_dupallocN(profile->table);
   target->segments = (CurveProfilePoint *)MEM_dupallocN(profile->segments);
+  target->runtime.runtime_storage = MEM_dupallocN(profile->runtime.runtime_storage);
 
   /* Update the reference the points have to the profile. */
   for (int i = 0; i < target->path_len; i++) {
@@ -92,6 +96,8 @@ void BKE_curveprofile_blend_read(BlendDataReader *reader, CurveProfile *profile)
   BLO_read_data_address(reader, &profile->path);
   profile->table = nullptr;
   profile->segments = nullptr;
+  profile->runtime.runtime_storage = nullptr;
+  profile->runtime.runtime_storage_free = nullptr;
 
   /* Reset the points' pointers to the profile. */
   for (int i = 0; i < profile->path_len; i++) {

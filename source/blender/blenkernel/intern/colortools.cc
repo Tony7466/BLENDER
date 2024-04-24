@@ -113,6 +113,9 @@ void BKE_curvemapping_free_data(CurveMapping *cumap)
       MEM_freeN(cumap->cm[a].premultable);
       cumap->cm[a].premultable = nullptr;
     }
+    if (cumap->cm[a].runtime.runtime_storage) {
+      cumap->cm[a].runtime.runtime_storage_free(cumap->cm[a].runtime.runtime_storage);
+    }
   }
 }
 
@@ -140,6 +143,9 @@ void BKE_curvemapping_copy_data(CurveMapping *target, const CurveMapping *cumap)
     if (cumap->cm[a].premultable) {
       target->cm[a].premultable = static_cast<CurveMapPoint *>(
           MEM_dupallocN(cumap->cm[a].premultable));
+    }
+    if (cumap->cm[a].runtime.runtime_storage) {
+      target->cm[a].runtime.runtime_storage = MEM_dupallocN(cumap->cm[a].runtime.runtime_storage);
     }
   }
 }
@@ -1417,6 +1423,8 @@ void BKE_curvemapping_blend_read(BlendDataReader *reader, CurveMapping *cumap)
     BLO_read_data_address(reader, &cumap->cm[a].curve);
     cumap->cm[a].table = nullptr;
     cumap->cm[a].premultable = nullptr;
+    cumap->cm[a].runtime.runtime_storage = nullptr;
+    cumap->cm[a].runtime.runtime_storage_free = nullptr;
   }
 }
 
