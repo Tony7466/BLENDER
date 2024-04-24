@@ -204,7 +204,7 @@ void ShadowPipeline::sync()
     draw::PassMain::Sub &pass = render_ps_.sub("Shadow.Surface");
     pass.state_set(state);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-    pass.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
+    pass.bind_ssbo(SHADOW_RENDER_VIEW_BUF_SLOT, &inst_.shadows.render_view_buf_);
     if (!shadow_update_tbdr) {
       /* We do not need all of the shadow information when using the TBDR-optimized approach. */
       pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
@@ -403,7 +403,10 @@ PassMain::Sub *ForwardPipeline::material_transparent_add(const Object *ob,
   return pass;
 }
 
-void ForwardPipeline::render(View &view, Framebuffer &prepass_fb, Framebuffer &combined_fb)
+void ForwardPipeline::render(View &view,
+                             Framebuffer &prepass_fb,
+                             Framebuffer &combined_fb,
+                             int2 extent)
 {
   if (!has_transparent_ && !has_opaque_) {
     inst_.volume.draw_resolve(view);
@@ -417,7 +420,7 @@ void ForwardPipeline::render(View &view, Framebuffer &prepass_fb, Framebuffer &c
 
   inst_.hiz_buffer.set_dirty();
 
-  inst_.shadows.set_view(view, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(view, extent);
   inst_.volume_probes.set_view(view);
 
   if (has_opaque_) {
@@ -730,7 +733,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.hiz_buffer.update();
 
   inst_.volume_probes.set_view(render_view);
-  inst_.shadows.set_view(render_view, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(render_view, extent);
 
   inst_.gbuffer.bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, render_view);
@@ -769,7 +772,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
   inst_.manager->submit(combine_ps_);
 
   if (use_feedback_output_ && !use_clamp_direct_) {
-    /* We skip writting the radiance during the combine pass. Do a simple fast copy. */
+    /* We skip writing the radiance during the combine pass. Do a simple fast copy. */
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
   }
 
@@ -1219,8 +1222,10 @@ void DeferredProbePipeline::render(View &view,
   inst_.manager->submit(opaque_layer_.prepass_ps_, view);
 
   inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
+  inst_.hiz_buffer.update();
+
   inst_.lights.set_view(view, extent);
-  inst_.shadows.set_view(view, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(view, extent);
   inst_.volume_probes.set_view(view);
 
   /* Update for lighting pass. */
@@ -1333,12 +1338,11 @@ void PlanarProbePipeline::render(View &view,
   /* TODO(fclem): This is the only place where we use the layer source to HiZ.
    * This is because the texture layer view is still a layer texture. */
   inst_.hiz_buffer.set_source(&depth_layer_tx, 0);
-  inst_.lights.set_view(view, extent);
-  inst_.shadows.set_view(view, depth_layer_tx);
-  inst_.volume_probes.set_view(view);
-
-  /* Update for lighting pass. */
   inst_.hiz_buffer.update();
+
+  inst_.lights.set_view(view, extent);
+  inst_.shadows.set_view(view, extent);
+  inst_.volume_probes.set_view(view);
 
   inst_.gbuffer.bind(gbuffer_fb);
   inst_.manager->submit(gbuffer_ps_, view);
