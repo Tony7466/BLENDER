@@ -171,6 +171,7 @@ class NODE_HT_header(Header):
                 if snode.node_tree:
                     layout.popover(panel="NODE_PT_geometry_node_tool_object_types", text="Types")
                     layout.popover(panel="NODE_PT_geometry_node_tool_mode", text="Modes")
+                    layout.prop(snode.node_tree, "use_wait_for_cursor")
                 display_pin = False
         else:
             # Custom node tree is edited as independent ID block
