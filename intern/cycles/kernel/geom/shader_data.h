@@ -440,12 +440,12 @@ ccl_device_inline void shader_setup_from_restir(KernelGlobals kg,
 #endif
   }
 
-  /* #ifdef __RAY_DIFFERENTIALS__ */
-  /*   /\* differentials *\/ */
+#ifdef __RAY_DIFFERENTIALS__
+  /* differentials */
   /*   sd->dP = differential_transfer_compact(ray->dP, ray->D, ray->dD, sd->ray_length); */
   /*   sd->dI = differential_incoming_compact(ray->dD); */
-  /*   differential_dudv_compact(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng); */
-  /* #endif */
+  differential_dudv_compact(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng);
+#endif
 }
 
 /* ShaderData setup from point inside volume */

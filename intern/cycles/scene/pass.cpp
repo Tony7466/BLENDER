@@ -363,7 +363,7 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       pass_info.num_components = 1;
       break;
     case PASS_RESTIR_RESERVOIR:
-      pass_info.num_components = 17;
+      pass_info.num_components = 19;
       break;
   }
 

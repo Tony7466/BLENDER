@@ -241,6 +241,8 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, (float)sd->prim);
     film_overwrite_pass_float(ptr++, (float)sd->lcg_state);
     film_overwrite_pass_float(ptr++, sd->time);
+    film_overwrite_pass_float(ptr++, sd->dP);
+    film_overwrite_pass_float(ptr++, sd->dI);
     film_overwrite_pass_float3(ptr, sd->wi);
   }
 }

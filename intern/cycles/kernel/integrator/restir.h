@@ -89,6 +89,8 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
   /* TODO(weizhen): only Huang Hair BSDF needs LCG now. Can we find a way to remove the usage? */
   sd->lcg_state = (uint)buffer[i++];
   sd->time = buffer[i++];
+  sd->dP = buffer[i++];
+  sd->dI = buffer[i++];
   sd->wi = make_float3(buffer[i], buffer[i + 1], buffer[i + 2]);
 
   /* (TODO): do I need to write to this? */
