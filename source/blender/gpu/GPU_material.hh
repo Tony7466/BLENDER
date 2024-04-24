@@ -250,6 +250,8 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         void *thunk);
 
 void GPU_material_compile(GPUMaterial *mat);
+void GPU_material_compile_deferred_begin(GPUMaterial *mat);
+void GPU_material_compile_deferred_end(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);
 void GPU_material_free(ListBase *gpumaterial);
 

@@ -84,6 +84,10 @@ class Shader {
   virtual void fragment_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void compute_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual bool finalize(const shader::ShaderCreateInfo *info = nullptr) = 0;
+  virtual bool deferred_compilation_is_ready()
+  {
+    return true;
+  }
   /* Pre-warms PSOs using parent shader's cached PSO descriptors. Limit specifies maximum PSOs to
    * warm. If -1, compiles all PSO permutations in parent shader.
    *

@@ -279,6 +279,11 @@ bool GPU_shader_create_info_check_error(const GPUShaderCreateInfo *_info, char r
   return false;
 }
 
+bool GPU_shader_deferred_compilation_is_ready(GPUShader *gpu_shader)
+{
+  return unwrap(gpu_shader)->deferred_compilation_is_ready();
+}
+
 GPUShader *GPU_shader_create_from_info_name(const char *info_name)
 {
   using namespace blender::gpu::shader;

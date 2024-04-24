@@ -60,7 +60,7 @@ class GLShader : public Shader {
     GLuint frag_shader_ = 0;
     GLuint compute_shader_ = 0;
 
-    bool is_ready_ = false;
+    bool is_checked_ = false;
 
    public:
     GLProgram() {}
@@ -71,13 +71,13 @@ class GLShader : public Shader {
       geom_shader_ = other.geom_shader_;
       frag_shader_ = other.frag_shader_;
       compute_shader_ = other.compute_shader_;
-      is_ready_ = other.is_ready_;
+      is_checked_ = other.is_checked_;
       other.program_id_ = 0;
       other.vert_shader_ = 0;
       other.geom_shader_ = 0;
       other.frag_shader_ = 0;
       other.compute_shader_ = 0;
-      other.is_ready_ = false;
+      other.is_checked_ = false;
     }
     ~GLProgram();
 
@@ -106,6 +106,7 @@ class GLShader : public Shader {
     }
 
     void link();
+    bool is_ready();
     GLuint get_program();
   };
 
@@ -178,6 +179,10 @@ class GLShader : public Shader {
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
   /** Return true on success. */
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
+  virtual bool deferred_compilation_is_ready() override
+  {
+    return program_active_->is_ready();
+  }
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;

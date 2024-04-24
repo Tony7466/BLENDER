@@ -944,8 +944,13 @@ void GPU_material_release(GPUMaterial *mat)
 
 void GPU_material_compile(GPUMaterial *mat)
 {
-  bool success;
+  GPU_material_compile_deferred_begin(mat);
+  GPU_material_compile_deferred_end(mat);
+}
 
+void GPU_material_compile_deferred_begin(GPUMaterial *mat)
+{
+  bool success;
   BLI_assert(ELEM(mat->status, GPU_MAT_QUEUED, GPU_MAT_CREATED));
   BLI_assert(mat->pass);
 
@@ -957,54 +962,62 @@ void GPU_material_compile(GPUMaterial *mat)
   success = GPU_pass_compile(mat->pass, __func__);
 #endif
 
-  mat->flag |= GPU_MATFLAG_UPDATED;
-
-  if (success) {
-    GPUShader *sh = GPU_pass_shader_get(mat->pass);
-    if (sh != nullptr) {
-
-      /** Perform asynchronous Render Pipeline State Object (PSO) compilation.
-       *
-       * Warm PSO cache within asynchronous compilation thread using default material as source.
-       * GPU_shader_warm_cache(..) performs the API-specific PSO compilation using the assigned
-       * parent shader's cached PSO descriptors as an input.
-       *
-       * This is only applied if the given material has a specified default reference
-       * material available, and the default material is already compiled.
-       *
-       * As PSOs do not always match for default shaders, we limit warming for PSO
-       * configurations to ensure compile time remains fast, as these first
-       * entries will be the most commonly used PSOs. As not all PSOs are necessarily
-       * required immediately, this limit should remain low (1-3 at most). */
-      if (!ELEM(mat->default_mat, nullptr, mat)) {
-        if (mat->default_mat->pass != nullptr) {
-          GPUShader *parent_sh = GPU_pass_shader_get(mat->default_mat->pass);
-          if (parent_sh) {
-            /* Skip warming if cached pass is identical to the default material. */
-            if (mat->default_mat->pass != mat->pass && parent_sh != sh) {
-              GPU_shader_set_parent(sh, parent_sh);
-              GPU_shader_warm_cache(sh, 1);
-            }
-          }
-        }
-      }
-
-      /* Flag success. */
-      mat->status = GPU_MAT_SUCCESS;
-      if (mat->optimization_status == GPU_MAT_OPTIMIZATION_SKIP) {
-        /* Only free node graph nodes if not required by secondary optimization pass. */
-        gpu_node_graph_free_nodes(&mat->graph);
-      }
-    }
-    else {
-      mat->status = GPU_MAT_FAILED;
-    }
-  }
-  else {
+  if (!success) {
     mat->status = GPU_MAT_FAILED;
     GPU_pass_release(mat->pass);
     mat->pass = nullptr;
     gpu_node_graph_free(&mat->graph);
+  }
+  else {
+    /* TODO: Why this path doesn't do the same cleanup. */
+    GPUShader *sh = GPU_pass_shader_get(mat->pass);
+    if (sh == nullptr) {
+      mat->status = GPU_MAT_FAILED;
+    }
+  }
+}
+
+void GPU_material_compile_deferred_end(GPUMaterial *mat)
+{
+  mat->flag |= GPU_MATFLAG_UPDATED;
+
+  if (mat->status == GPU_MAT_FAILED) {
+    return;
+  }
+  GPUShader *sh = GPU_pass_shader_get(mat->pass);
+  BLI_assert(sh != nullptr);
+
+  /** Perform asynchronous Render Pipeline State Object (PSO) compilation.
+   *
+   * Warm PSO cache within asynchronous compilation thread using default material as source.
+   * GPU_shader_warm_cache(..) performs the API-specific PSO compilation using the assigned
+   * parent shader's cached PSO descriptors as an input.
+   *
+   * This is only applied if the given material has a specified default reference
+   * material available, and the default material is already compiled.
+   *
+   * As PSOs do not always match for default shaders, we limit warming for PSO
+   * configurations to ensure compile time remains fast, as these first
+   * entries will be the most commonly used PSOs. As not all PSOs are necessarily
+   * required immediately, this limit should remain low (1-3 at most). */
+  if (!ELEM(mat->default_mat, nullptr, mat)) {
+    if (mat->default_mat->pass != nullptr) {
+      GPUShader *parent_sh = GPU_pass_shader_get(mat->default_mat->pass);
+      if (parent_sh) {
+        /* Skip warming if cached pass is identical to the default material. */
+        if (mat->default_mat->pass != mat->pass && parent_sh != sh) {
+          GPU_shader_set_parent(sh, parent_sh);
+          GPU_shader_warm_cache(sh, 1);
+        }
+      }
+    }
+  }
+
+  /* Flag success. */
+  mat->status = GPU_MAT_SUCCESS;
+  if (mat->optimization_status == GPU_MAT_OPTIMIZATION_SKIP) {
+    /* Only free node graph nodes if not required by secondary optimization pass. */
+    gpu_node_graph_free_nodes(&mat->graph);
   }
 }
 

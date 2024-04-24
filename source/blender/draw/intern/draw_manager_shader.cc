@@ -57,6 +57,8 @@ struct DRWShaderCompiler {
   ListBase queue; /* GPUMaterial */
   SpinLock list_lock;
 
+  ListBase deferred_compilation_queue; /* GPUMaterial */
+
   /** Optimization queue. */
   ListBase optimize_queue; /* GPUMaterial */
 
@@ -104,9 +106,14 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
     if (mat) {
       /* Do the compilation. */
       std::cout << "Compile : " << GPU_material_get_name(mat) << "\n";
-      GPU_material_compile(mat);
-      GPU_material_release(mat);
-      MEM_freeN(link);
+      GPU_material_compile_deferred_begin(mat);
+      if (GPU_material_status(mat) == GPU_MAT_FAILED) {
+        GPU_material_release(mat);
+        MEM_freeN(link);
+      }
+      else {
+        BLI_addtail(&comp->deferred_compilation_queue, (void *)link);
+      }
     }
     else {
       /* Check for Material Optimization job once there are no more
@@ -135,6 +142,18 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       }
     }
 
+    LISTBASE_FOREACH_MUTABLE (LinkData *, link, &comp->deferred_compilation_queue) {
+      GPUMaterial *mat = (GPUMaterial *)link->data;
+      GPUShader *shader = GPU_material_get_shader(mat);
+      BLI_assert(shader != nullptr);
+      if (GPU_shader_deferred_compilation_is_ready(shader)) {
+        GPU_material_compile_deferred_end(mat);
+        BLI_remlink(&comp->deferred_compilation_queue, link);
+        GPU_material_release(mat);
+        MEM_freeN(link);
+      }
+    }
+
     if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
       GPU_flush();
     }
@@ -156,11 +175,15 @@ static void drw_deferred_shader_compilation_free(void *custom_data)
   LISTBASE_FOREACH (LinkData *, link, &comp->queue) {
     GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
   }
+  LISTBASE_FOREACH (LinkData *, link, &comp->deferred_compilation_queue) {
+    GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
+  }
   LISTBASE_FOREACH (LinkData *, link, &comp->optimize_queue) {
     GPU_material_optimization_status_set(static_cast<GPUMaterial *>(link->data),
                                          GPU_MAT_OPTIMIZATION_READY);
   }
   BLI_freelistN(&comp->queue);
+  BLI_freelistN(&comp->deferred_compilation_queue);
   BLI_freelistN(&comp->optimize_queue);
   BLI_spin_unlock(&comp->list_lock);
 
@@ -205,6 +228,7 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   if (old_comp) {
     BLI_spin_lock(&old_comp->list_lock);
     BLI_movelisttolist(&comp->queue, &old_comp->queue);
+    BLI_movelisttolist(&comp->deferred_compilation_queue, &old_comp->deferred_compilation_queue);
     BLI_movelisttolist(&comp->optimize_queue, &old_comp->optimize_queue);
     BLI_spin_unlock(&old_comp->list_lock);
     /* Do not recreate context, just pass ownership. */
@@ -349,6 +373,16 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
         }
 
         MEM_SAFE_FREE(link);
+
+        LinkData *deferred_link = (LinkData *)BLI_findptr(
+            &comp->deferred_compilation_queue, mat, offsetof(LinkData, data));
+        if (deferred_link) {
+          BLI_remlink(&comp->deferred_compilation_queue, deferred_link);
+          GPU_material_status_set(static_cast<GPUMaterial *>(deferred_link->data),
+                                  GPU_MAT_CREATED);
+        }
+
+        MEM_SAFE_FREE(deferred_link);
 
         /* Search for optimization job in queue. */
         LinkData *opti_link = (LinkData *)BLI_findptr(

@@ -59,6 +59,8 @@ const GPUShaderCreateInfo *GPU_shader_create_info_get(const char *info_name);
  */
 bool GPU_shader_create_info_check_error(const GPUShaderCreateInfo *_info, char r_error[128]);
 
+bool GPU_shader_deferred_compilation_is_ready(GPUShader *gpu_shader);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

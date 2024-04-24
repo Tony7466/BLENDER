@@ -1485,16 +1485,28 @@ void GLShader::GLProgram::link()
     glAttachShader(program_id_, compute_shader_);
   }
   glLinkProgram(program_id_);
-  is_ready_ = false;
+  is_checked_ = false;
 
   std::cout << "GL PROGRAM LINK: (" << program_id_ << ")\n";
+}
+
+bool GLShader::GLProgram::is_ready()
+{
+  GLint is_ready = true;
+  if (GLContext::arb_parallel_shader_compile_support) {
+    glGetProgramiv(program_id_, GL_COMPLETION_STATUS_ARB, &is_ready);
+  }
+  else if (GLContext::khr_parallel_shader_compile_support) {
+    glGetProgramiv(program_id_, GL_COMPLETION_STATUS_KHR, &is_ready);
+  }
+  return is_ready;
 }
 
 GLuint GLShader::GLProgram::get_program()
 {
   BLI_assert(program_id_ != 0);
 
-  if (is_ready_) {
+  if (is_checked_) {
     return program_id_;
   }
 
@@ -1510,7 +1522,7 @@ GLuint GLShader::GLProgram::get_program()
     // print_log(sources, log, "Linking", true, &parser);
   }
 
-  is_ready_ = true;
+  is_checked_ = true;
   return program_id_;
 }
 
