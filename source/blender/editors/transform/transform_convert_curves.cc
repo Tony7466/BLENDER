@@ -319,6 +319,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   float mtx[3][3], smtx[3][3];
   copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
+  TransData *tc_data = tc.data + trans_data_offset;
 
   if (use_proportional_edit) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -331,13 +332,13 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
       selection_attrs.append(selection_attr);
     }
     const VArray<int8_t> curve_types = curves.curve_types();
+    Vector<float> closest_distances;
+    Vector<float3> all_curve_positions;
     Array<int> flat_offset_data(points_by_curve.size() + 1);
     const OffsetIndices<int> flat_points_by_curve = ed::transform::curves::expand_selected_offsets(
         points_by_curve, bezier_curves, 3, flat_offset_data);
-    affected_curves.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
-      Vector<float> closest_distances;
-      Vector<float3> all_curve_positions;
 
+    affected_curves.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
       for (const int curve_i : segment) {
         const IndexRange points = points_by_curve[curve_i];
         const IndexRange all_curve_points = flat_points_by_curve[curve_i];
@@ -348,7 +349,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         }
         if (!has_any_selected && use_connected_only) {
           for (const int point_i : all_curve_points) {
-            TransData &td = tc.data[point_i + trans_data_offset];
+            TransData &td = tc_data[point_i];
             td.flag |= TD_SKIP;
           }
           continue;
@@ -358,8 +359,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
         closest_distances.fill(std::numeric_limits<float>::max());
         all_curve_positions.reinitialize(all_curve_points.size());
 
-        IndexRange selection_attrs_range = IndexRange(
-            curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1);
+        const int selection_attrs_num = curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1;
         /* `shifts_per_attr` are used to layout `positions`, `handle_positions_left` and
          * `handle_positions_right` into single array. For given Bezier curve in layers with points
          * [P0, P1, P2], left handles [L0, L1, L2] and [R0, R1, R2] flattened version version will
@@ -371,31 +371,38 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
                                         shifts_per_attr_for_bezier :
                                         shifts_per_for_others;
 
-        for (const int selection_i : selection_attrs_range) {
+        for (const int selection_attr_i : IndexRange(selection_attrs_num)) {
+          MutableSpan<float3> positions = positions_per_selection_attr[selection_attr_i];
+
           for (const int i : points.index_range()) {
             /* Usual index in curves point domain. */
             const int point_in_domain_i = points[i];
-            /* Curve scope index in array of positions and handles. */
-            const int flat_i = shifts_per_attr[selection_i] + selection_attrs_range.size() * i;
+            /* Curve scope index in array of positions and handles.
+             * For ex. third right handle's reference in array:
+             * [L0, P0, R0, L1, P1, R1, L2, P2, R2]
+             *          |                       |
+             *  shifts_per_attr[2]              |
+             *                     + selection_attrs_num * 2 = 8
+             */
+            const int flat_i = shifts_per_attr[selection_attr_i] + selection_attrs_num * i;
             const int point_in_tc_i = all_curve_points[flat_i];
 
-            all_curve_positions[flat_i] =
-                positions_per_selection_attr[selection_i][point_in_domain_i];
+            all_curve_positions[flat_i] = positions[point_in_domain_i];
 
-            TransData &td = tc.data[point_in_tc_i + trans_data_offset];
-            float3 *elem = &positions_per_selection_attr[selection_i][point_in_domain_i];
+            TransData &td = tc_data[point_in_tc_i];
+            float3 *elem = &positions[point_in_domain_i];
 
             copy_v3_v3(td.iloc, *elem);
             copy_v3_v3(td.center, td.iloc);
             td.loc = *elem;
 
             td.flag = 0;
-            if (selection_attrs[selection_i][point_in_domain_i]) {
+            if (selection_attrs[selection_attr_i][point_in_domain_i]) {
               closest_distances[flat_i] = 0.0f;
               td.flag = TD_SELECTED;
             }
 
-            if (value_attribute && selection_i == 0) {
+            if (value_attribute && selection_attr_i == 0) {
               float *value = &((*value_attribute)[point_in_domain_i]);
               td.val = value;
               td.ival = *value;
@@ -412,7 +419,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
           blender::ed::transform::curves::calculate_curve_point_distances_for_proportional_editing(
               all_curve_positions.as_span(), closest_distances.as_mutable_span());
           for (const int i : all_curve_points.index_range()) {
-            TransData &td = tc.data[all_curve_points[i] + trans_data_offset];
+            TransData &td = tc_data[all_curve_points[i]];
             td.dist = closest_distances[i];
           }
         }
@@ -420,14 +427,14 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
     });
   }
   else {
-    int layer_offset = 0;
+    int selection_attr_offset = 0;
     for (const int selection_i : selected_indices.index_range()) {
       MutableSpan<float3> positions = positions_per_selection_attr[selection_i];
       const IndexMask &selection = selected_indices[selection_i];
       threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
         for (const int selection_i : range) {
-          TransData *td = &tc.data[selection_i + trans_data_offset + layer_offset];
-          const int point_i = selection[selection_i];
+          TransData *td = &tc_data[selection_i + selection_attr_offset];
+          const int point_in_domain_i = selection[selection_i];
           float3 *elem = &positions[selection_i];
 
           copy_v3_v3(td->iloc, *elem);
@@ -435,7 +442,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
           td->loc = *elem;
 
           if (value_attribute) {
-            float *value = &((*value_attribute)[point_i]);
+            float *value = &((*value_attribute)[point_in_domain_i]);
             td->val = value;
             td->ival = *value;
           }
@@ -447,7 +454,7 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
           copy_m3_m3(td->mtx, mtx);
         }
       });
-      layer_offset += selection.size();
+      selection_attr_offset += selection.size();
     }
   }
 }
