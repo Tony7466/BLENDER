@@ -12,10 +12,10 @@ namespace blender::nodes::node_geo_viewport_transform_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Matrix>("View").description(
-      "The view direction and location of the 3D viewport");
   b.add_output<decl::Matrix>("Projection")
       .description("The 3D viewport's perspective projection matrix");
+  b.add_output<decl::Matrix>("View").description(
+      "The view direction and location of the 3D viewport");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
