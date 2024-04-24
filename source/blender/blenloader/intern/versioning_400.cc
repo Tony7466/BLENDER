@@ -2082,7 +2082,6 @@ static void add_image_editor_asset_shelf(Main &bmain)
                 regionbase, RGN_TYPE_ASSET_SHELF_HEADER, __func__, RGN_TYPE_ASSET_SHELF))
         {
           new_shelf_header->alignment = RGN_ALIGN_BOTTOM | RGN_ALIGN_HIDE_WITH_PREV;
-          new_shelf_header->flag |= RGN_FLAG_HIDDEN;
         }
       }
     }
