@@ -764,7 +764,6 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
     nodeSetSelected(node, true);
   }
   ED_node_set_active(bmain, &snode, &node_tree, nodes[0], nullptr);
-  ED_node_tree_propagate_change(C, bmain, &node_tree);
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
