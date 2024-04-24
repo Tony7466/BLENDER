@@ -936,22 +936,17 @@ static void get_strip_text_color(const TimelineDrawContext *ctx,
                                  const StripDrawContext *strip,
                                  uchar r_col[4])
 {
-  /* Text: white at 75% opacity, fully opaque when selected/active. */
+  /* Text: 75% opacity, fully opaque when selected/active. */
   const Sequence *seq = strip->seq;
-  const bool selected = seq->flag & SELECT;
-  const bool active = strip->is_active_strip;
-  if (active) {
+  const bool active_or_selected = (seq->flag & SELECT) || strip->is_active_strip;
+  if (active_or_selected) {
     UI_GetThemeColor3ubv(TH_SEQ_ACTIVE, r_col);
-  }
-  else if (selected) {
-    UI_GetThemeColor3ubv(TH_SEQ_SELECTED, r_col);
-    /* Make text slightly brighter. */
-    UI_GetColorPtrShade3ubv(r_col, r_col, 50);
+    r_col[3] = 255;
   }
   else {
     r_col[0] = r_col[1] = r_col[2] = 224;
+    r_col[3] = 192;
   }
-  r_col[3] = (active || selected) ? 255 : 192;
 
   /* Muted strips: gray color, reduce opacity. */
   if (SEQ_render_is_muted(ctx->channels, seq)) {
