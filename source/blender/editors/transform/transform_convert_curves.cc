@@ -64,9 +64,9 @@ static void calculate_curve_point_distances_for_proportional_editing(
   }
 }
 
-static void append_positions_to_custom_data(const IndexMask selection,
-                                            Span<float3> positions,
-                                            TransCustomData &custom_data)
+static MutableSpan<float3> append_positions_to_custom_data(const IndexMask selection,
+                                                           Span<float3> positions,
+                                                           TransCustomData &custom_data)
 {
   CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(custom_data.data);
   transform_data.selection_by_layer.append(selection);
@@ -76,6 +76,8 @@ static void append_positions_to_custom_data(const IndexMask selection,
       positions,
       selection,
       transform_data.positions.as_mutable_span().slice(data_offset, selection.size()));
+  return transform_data.positions.as_mutable_span().slice(transform_data.layer_offsets.last(1),
+                                                          selection.size());
 }
 
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
@@ -304,16 +306,14 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   using namespace blender;
   const std::array<Span<float3>, 3> src_positions_per_selection_attr = {
       curves.positions(), curves.handle_positions_left(), curves.handle_positions_right()};
-
   std::array<MutableSpan<float3>, 3> positions_per_selection_attr;
-  CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(tc.custom.type.data);
 
   for (const int selection_i : selected_indices.index_range()) {
-    const IndexMask &selection = selected_indices[selection_i];
-    ed::transform::curves::append_positions_to_custom_data(
-        selection, src_positions_per_selection_attr[selection_i], tc.custom.type);
-    positions_per_selection_attr[selection_i] = transform_data.positions.as_mutable_span().slice(
-        transform_data.layer_offsets.last(1), selection.size());
+    positions_per_selection_attr[selection_i] =
+        ed::transform::curves::append_positions_to_custom_data(
+            selected_indices[selection_i],
+            src_positions_per_selection_attr[selection_i],
+            tc.custom.type);
   }
 
   float mtx[3][3], smtx[3][3];
