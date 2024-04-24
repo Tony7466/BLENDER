@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-import bpy
 from bpy.types import (
+    AssetShelf,
     Header,
     Menu,
     Panel,
@@ -1726,37 +1726,12 @@ class IMAGE_PT_annotation(AnnotationDataPanel, Panel):
 
 # Grease Pencil drawing tools.
 
-class BrushAssetShelf:
-    bl_space_type = 'IMAGE_EDITOR'
-    bl_options = {'DEFAULT_VISIBLE', 'NO_ASSET_DRAG'}
-    bl_activate_operator = "BRUSH_OT_asset_select"
-    bl_default_preview_size = 48
 
-    @classmethod
-    def poll(cls, context):
-        return context.object and context.object.mode == cls.mode
-
-    @classmethod
-    def asset_poll(cls, asset):
-        if asset.id_type != 'BRUSH':
-            return False
-
-        return asset.metadata.get(cls.mode_prop, False)
-
-    @classmethod
-    def get_active_asset(cls):
-        paint_settings = UnifiedPaintPanel.paint_settings(bpy.context)
-        return paint_settings.brush_asset_reference if paint_settings else None
-
-    @classmethod
-    def draw_context_menu(self, context, asset, layout):
-        # Currently this menu adds operators that deal with the affected brush and don't take the
-        # asset into account. Luckily that is okay for now, since right clicking in the grid view
-        # also activates the item.
-        layout.menu_contents("VIEW3D_MT_brush_context_menu")
+class ImageAssetShelf(BrushAssetShelf):
+    bl_space_type = "IMAGE_EDITOR"
 
 
-class IMAGE_AST_brush_sculpt(BrushAssetShelf, bpy.types.AssetShelf):
+class IMAGE_AST_brush_sculpt(ImageAssetShelf, AssetShelf):
     mode = 'TEXTURE_PAINT'
     mode_prop = "use_paint_image"
 
