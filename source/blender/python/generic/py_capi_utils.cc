@@ -1053,6 +1053,11 @@ PyObject *PyC_UnicodeFromBytes(const char *str)
   return PyC_UnicodeFromBytesAndSize(str, strlen(str));
 }
 
+PyObject *PyC_UnicodeFromStdStr(const std::string &str)
+{
+  return PyC_UnicodeFromBytesAndSize(str.c_str(), str.length());
+}
+
 int PyC_ParseUnicodeAsBytesAndSize(PyObject *o, void *p)
 {
   PyC_UnicodeAsBytesAndSize_Data *data = static_cast<PyC_UnicodeAsBytesAndSize_Data *>(p);
@@ -1166,7 +1171,7 @@ bool PyC_IsInterpreterActive()
 void PyC_RunQuicky(const char *filepath, int n, ...)
 {
   /* NOTE: Would be nice if python had this built in
-   * See: https://wiki.blender.org/wiki/Tools/Debugging/PyFromC */
+   * See: https://developer.blender.org/docs/handbook/tooling/pyfromc/ */
 
   FILE *fp = fopen(filepath, "r");
 
@@ -1617,6 +1622,64 @@ bool PyC_RunString_AsString(const char *imports[],
 {
   size_t value_size;
   return PyC_RunString_AsStringAndSize(imports, expr, filename, r_value, &value_size);
+}
+
+bool PyC_RunString_AsStringAndSizeOrNone(const char *imports[],
+                                         const char *expr,
+                                         const char *filename,
+                                         char **r_value,
+                                         size_t *r_value_size)
+{
+  PyObject *py_dict, *retval;
+  bool ok = true;
+  PyObject *main_mod = nullptr;
+
+  PyC_MainModule_Backup(&main_mod);
+
+  py_dict = PyC_DefaultNameSpace(filename);
+
+  if (imports && !PyC_NameSpace_ImportArray(py_dict, imports)) {
+    ok = false;
+  }
+  else if ((retval = PyRun_String(expr, Py_eval_input, py_dict, py_dict)) == nullptr) {
+    ok = false;
+  }
+  else {
+    if (retval == Py_None) {
+      *r_value = nullptr;
+      *r_value_size = 0;
+    }
+    else {
+      const char *val;
+      Py_ssize_t val_len;
+
+      val = PyUnicode_AsUTF8AndSize(retval, &val_len);
+      if (val == nullptr && PyErr_Occurred()) {
+        ok = false;
+      }
+      else {
+        char *val_alloc = static_cast<char *>(MEM_mallocN(val_len + 1, __func__));
+        memcpy(val_alloc, val, val_len + 1);
+        *r_value = val_alloc;
+        *r_value_size = val_len;
+      }
+    }
+
+    Py_DECREF(retval);
+  }
+
+  PyC_MainModule_Restore(main_mod);
+
+  return ok;
+}
+
+bool PyC_RunString_AsStringOrNone(const char *imports[],
+                                  const char *expr,
+                                  const char *filename,
+                                  char **r_value)
+{
+  size_t value_size;
+  return PyC_RunString_AsStringAndSizeOrNone(imports, expr, filename, r_value, &value_size);
 }
 
 /** \} */

@@ -1,8 +1,8 @@
 /* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-#include "usd_writer_light.h"
-#include "usd_hierarchy_iterator.h"
+#include "usd_writer_light.hh"
+#include "usd_hierarchy_iterator.hh"
 
 #include <pxr/usd/usdLux/diskLight.h>
 #include <pxr/usd/usdLux/distantLight.h>
@@ -12,10 +12,8 @@
 
 #include "BLI_assert.h"
 #include "BLI_math_rotation.h"
-#include "BLI_utildefines.h"
 
 #include "DNA_light_types.h"
-#include "DNA_object_types.h"
 
 namespace blender::io::usd {
 
@@ -127,6 +125,9 @@ void USDLightWriter::do_write(HierarchyContext &context)
   usd_light_api.CreateDiffuseAttr().Set(light->diff_fac, timecode);
   usd_light_api.CreateSpecularAttr().Set(light->spec_fac, timecode);
   usd_light_api.CreateNormalizeAttr().Set(true, timecode);
+
+  auto prim = usd_light_api.GetPrim();
+  write_id_properties(prim, light->id, timecode);
 
   set_light_extents(usd_light_api.GetPrim(), timecode);
 }

@@ -15,7 +15,6 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_mask_types.h"
-#include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
@@ -24,13 +23,10 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
-#include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_anim_data.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_main.hh"
-#include "BKE_node.h"
 
 #include "DEG_depsgraph.hh"
 
@@ -59,7 +55,10 @@ void ANIM_list_elem_update(Main *bmain, Scene *scene, bAnimListElem *ale)
   adt = BKE_animdata_from_id(id);
   if (adt) {
     DEG_id_tag_update(id, ID_RECALC_ANIMATION);
-    if (adt->action != nullptr) {
+    if (adt->animation != nullptr) {
+      DEG_id_tag_update(&adt->animation->id, ID_RECALC_ANIMATION);
+    }
+    else if (adt->action != nullptr) {
       DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION);
     }
   }

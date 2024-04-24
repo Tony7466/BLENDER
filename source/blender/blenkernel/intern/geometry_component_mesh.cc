@@ -9,10 +9,10 @@
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -27,6 +27,11 @@ namespace blender::bke {
  * \{ */
 
 MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
+
+MeshComponent::MeshComponent(Mesh *mesh, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Mesh), mesh_(mesh), ownership_(ownership)
+{
+}
 
 MeshComponent::~MeshComponent()
 {
@@ -1005,8 +1010,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider position("position",
                                                  AttrDomain::Point,
                                                  CD_PROP_FLOAT3,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
@@ -1014,8 +1017,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider id("id",
                                            AttrDomain::Point,
                                            CD_PROP_INT32,
-                                           CD_PROP_INT32,
-                                           BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            nullptr);
@@ -1030,8 +1031,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider material_index("material_index",
                                                        AttrDomain::Face,
                                                        CD_PROP_INT32,
-                                                       CD_PROP_INT32,
-                                                       BuiltinAttributeProvider::Creatable,
                                                        BuiltinAttributeProvider::Deletable,
                                                        face_access,
                                                        nullptr,
@@ -1044,8 +1043,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
                                                    AttrDomain::Edge,
                                                    CD_PROP_INT32_2D,
-                                                   CD_PROP_INT32_2D,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,
                                                    nullptr,
@@ -1060,8 +1057,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider corner_vert(".corner_vert",
                                                     AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
@@ -1069,8 +1064,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider corner_edge(".corner_edge",
                                                     AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
@@ -1079,8 +1072,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider sharp_face("sharp_face",
                                                    AttrDomain::Face,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
                                                    tag_component_sharpness_changed);
@@ -1088,8 +1079,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    AttrDomain::Edge,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
                                                    tag_component_sharpness_changed);

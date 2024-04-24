@@ -14,8 +14,8 @@
 
 #include "BKE_action.h"
 #include "BKE_constraint.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 
@@ -257,7 +257,7 @@ void BCAnimationSampler::find_depending_animated(std::set<Object *> &animated_ob
     std::set<Object *>::iterator it;
     for (it = candidates.begin(); it != candidates.end(); ++it) {
       Object *cob = *it;
-      ListBase *conlist = ED_object_constraint_active_list(cob);
+      ListBase *conlist = blender::ed::object::constraint_active_list(cob);
       if (is_animated_by_constraint(cob, conlist, animated_objects)) {
         animated_objects.insert(cob);
         candidates.erase(cob);

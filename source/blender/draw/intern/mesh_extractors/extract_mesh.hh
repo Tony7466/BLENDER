@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_virtual_array.hh"
 
@@ -19,8 +20,8 @@
 
 #include "bmesh.hh"
 
-#include "GPU_vertex_buffer.h"
-#include "GPU_vertex_format.h"
+#include "GPU_vertex_buffer.hh"
+#include "GPU_vertex_format.hh"
 
 #include "draw_cache_extract.hh"
 
@@ -47,12 +48,17 @@ enum eMRExtractType {
 struct MeshRenderData {
   eMRExtractType extract_type;
 
-  int face_len, edge_len, vert_len, loop_len;
-  int edge_loose_len;
-  int vert_loose_len;
-  int loop_loose_len;
-  int tri_len;
-  int mat_len;
+  int verts_num;
+  int edges_num;
+  int faces_num;
+  int corners_num;
+
+  int loose_edges_num;
+  int loose_verts_num;
+  int loose_indices_num;
+
+  int corner_tris_num;
+  int materials_num;
 
   bool use_hide;
   bool use_subsurf_fdots;
@@ -61,7 +67,7 @@ struct MeshRenderData {
   bool use_simplify_normals;
 
   /** Use for #MeshStatVis calculation which use world-space coords. */
-  float obmat[4][4];
+  float4x4 object_to_world;
 
   const ToolSettings *toolsettings;
   /** Edit Mesh */
@@ -74,7 +80,6 @@ struct MeshRenderData {
   Span<float3> bm_vert_coords;
   Span<float3> bm_vert_normals;
   Span<float3> bm_face_normals;
-  Span<float3> bm_face_centers;
   Array<float3> bm_loop_normals;
 
   const int *v_origindex, *e_origindex, *p_origindex;
@@ -84,12 +89,13 @@ struct MeshRenderData {
   int freestyle_edge_ofs;
   int freestyle_face_ofs;
   /** Mesh */
-  Mesh *mesh;
+  const Mesh *mesh;
   Span<float3> vert_positions;
   Span<int2> edges;
   OffsetIndices<int> faces;
   Span<int> corner_verts;
   Span<int> corner_edges;
+
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
@@ -102,7 +108,7 @@ struct MeshRenderData {
   bke::MeshNormalDomain normals_domain;
   Span<float3> vert_normals;
   Span<float3> face_normals;
-  Span<float3> loop_normals;
+  Span<float3> corner_normals;
 
   VArraySpan<bool> hide_vert;
   VArraySpan<bool> hide_edge;
@@ -272,17 +278,18 @@ struct MeshExtract {
 /* `draw_cache_extract_mesh_render_data.cc` */
 
 /**
- * \param is_mode_active: When true, use the modifiers from the edit-data,
+ * \param edit_mode_active: When true, use the modifiers from the edit-data,
  * otherwise don't use modifiers as they are not from this object.
  */
 MeshRenderData *mesh_render_data_create(Object *object,
                                         Mesh *mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
-                                        bool is_mode_active,
-                                        const float obmat[4][4],
+                                        bool edit_mode_active,
+                                        const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
+                                        bool use_hide,
                                         const ToolSettings *ts);
 void mesh_render_data_free(MeshRenderData *mr);
 void mesh_render_data_update_normals(MeshRenderData &mr, eMRDataType data_flag);
@@ -313,9 +320,7 @@ struct EditLoopData {
 
 void *mesh_extract_buffer_get(const MeshExtract *extractor, MeshBufferList *mbuflist);
 eMRIterType mesh_extract_iter_type(const MeshExtract *ext);
-const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
-                                             bool do_hq_normals,
-                                             bool do_single_mat);
+const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor, bool do_hq_normals);
 void mesh_render_data_face_flag(const MeshRenderData &mr,
                                 const BMFace *efa,
                                 BMUVOffsets offsets,
@@ -329,8 +334,10 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
                                      BMUVOffsets offsets,
                                      EditLoopData *eattr);
 
+template<typename GPUType>
+void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
+
 extern const MeshExtract extract_tris;
-extern const MeshExtract extract_tris_single_mat;
 extern const MeshExtract extract_lines;
 extern const MeshExtract extract_lines_with_lines_loose;
 extern const MeshExtract extract_lines_loose_only;
@@ -342,10 +349,9 @@ extern const MeshExtract extract_edituv_tris;
 extern const MeshExtract extract_edituv_lines;
 extern const MeshExtract extract_edituv_points;
 extern const MeshExtract extract_edituv_fdots;
-extern const MeshExtract extract_pos_nor;
-extern const MeshExtract extract_pos_nor_hq;
-extern const MeshExtract extract_lnor_hq;
-extern const MeshExtract extract_lnor;
+extern const MeshExtract extract_pos;
+extern const MeshExtract extract_nor_hq;
+extern const MeshExtract extract_nor;
 extern const MeshExtract extract_uv;
 extern const MeshExtract extract_tan;
 extern const MeshExtract extract_tan_hq;
@@ -371,5 +377,6 @@ extern const MeshExtract extract_vert_idx;
 extern const MeshExtract extract_fdot_idx;
 extern const MeshExtract extract_attr[GPU_MAX_ATTR];
 extern const MeshExtract extract_attr_viewer;
+extern const MeshExtract extract_vnor;
 
 }  // namespace blender::draw

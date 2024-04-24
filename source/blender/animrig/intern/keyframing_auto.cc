@@ -8,10 +8,8 @@
 
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_layer.h"
-#include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_fcurve.hh"
+#include "BKE_scene.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -22,16 +20,40 @@
 #include "RNA_prototypes.h"
 
 #include "ED_keyframing.hh"
-#include "ED_scene.hh"
-#include "ED_transform.hh"
 
 #include "ANIM_keyframing.hh"
-#include "ANIM_rna.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 namespace blender::animrig {
+
+static eInsertKeyFlags get_autokey_flags(Scene *scene)
+{
+  eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
+
+  /* Visual keying. */
+  if (is_keying_flag(scene, KEYING_FLAG_VISUALKEY)) {
+    flag |= INSERTKEY_MATRIX;
+  }
+
+  /* Only needed. */
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+    flag |= INSERTKEY_NEEDED;
+  }
+
+  /* Keyframing mode - only replace existing keyframes. */
+  if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
+    flag |= INSERTKEY_REPLACE;
+  }
+
+  /* Cycle-aware keyframe insertion - preserve cycle period and flow. */
+  if (is_keying_flag(scene, KEYING_FLAG_CYCLEAWARE)) {
+    flag |= INSERTKEY_CYCLE_AWARE;
+  }
+
+  return flag;
+}
 
 bool is_autokey_on(const Scene *scene)
 {
@@ -47,14 +69,6 @@ bool is_autokey_mode(const Scene *scene, const eAutokey_Mode mode)
     return scene->toolsettings->autokey_mode == mode;
   }
   return U.autokey_mode == mode;
-}
-
-bool is_autokey_flag(const Scene *scene, const eKeyInsert_Flag flag)
-{
-  if (scene) {
-    return (scene->toolsettings->autokey_flag & flag) || (U.autokey_flag & flag);
-  }
-  return U.autokey_flag & flag;
 }
 
 bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
@@ -85,6 +99,10 @@ bool autokeyframe_cfra_can_key(const Scene *scene, ID *id)
 
 void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string> rna_paths)
 {
+  BLI_assert(ob != nullptr);
+  BLI_assert(scene != nullptr);
+  BLI_assert(C != nullptr);
+
   ID *id = &ob->id;
   if (!autokeyframe_cfra_can_key(scene, id)) {
     return;
@@ -97,13 +115,13 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
       depsgraph, BKE_scene_frame_get(scene));
 
   /* Get flags used for inserting keyframes. */
-  const eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
+  const eInsertKeyFlags flag = get_autokey_flags(scene);
 
   /* Add data-source override for the object. */
   blender::Vector<PointerRNA> sources;
   ANIM_relative_keyingset_add_source(sources, id);
 
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
     /* Only insert into active keyingset
      * NOTE: we assume here that the active Keying Set
      * does not need to have its iterator overridden.
@@ -113,24 +131,27 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     return;
   }
 
-  if (is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     /* Only key on available channels. */
     AnimData *adt = ob->adt;
     ToolSettings *ts = scene->toolsettings;
     Main *bmain = CTX_data_main(C);
 
     if (adt && adt->action) {
+      CombinedKeyingResult combined_result;
       LISTBASE_FOREACH (FCurve *, fcu, &adt->action->curves) {
-        insert_keyframe(bmain,
-                        reports,
-                        id,
-                        adt->action,
-                        (fcu->grp ? fcu->grp->name : nullptr),
-                        fcu->rna_path,
-                        fcu->array_index,
-                        &anim_eval_context,
-                        eBezTriple_KeyframeType(ts->keyframe_type),
-                        flag);
+        CombinedKeyingResult result = insert_keyframe(bmain,
+                                                      *id,
+                                                      (fcu->grp ? fcu->grp->name : nullptr),
+                                                      fcu->rna_path,
+                                                      fcu->array_index,
+                                                      &anim_eval_context,
+                                                      eBezTriple_KeyframeType(ts->keyframe_type),
+                                                      flag);
+        combined_result.merge(result);
+      }
+      if (combined_result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+        combined_result.generate_reports(reports);
       }
     }
     return;
@@ -146,7 +167,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
                    bmain,
-                   reports);
+                   anim_eval_context);
   }
 }
 
@@ -193,6 +214,11 @@ void autokeyframe_pose_channel(bContext *C,
                                Span<std::string> rna_paths,
                                short targetless_ik)
 {
+  BLI_assert(C != nullptr);
+  BLI_assert(scene != nullptr);
+  BLI_assert(ob != nullptr);
+  BLI_assert(pose_channel != nullptr);
+
   Main *bmain = CTX_data_main(C);
   ID *id = &ob->id;
   AnimData *adt = ob->adt;
@@ -215,18 +241,18 @@ void autokeyframe_pose_channel(bContext *C,
    *   visual keyframes even if flag not set, as it's not that useful otherwise
    *   (for quick animation recording)
    */
-  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
+  eInsertKeyFlags flag = get_autokey_flags(scene);
 
   if (targetless_ik) {
     flag |= INSERTKEY_MATRIX;
   }
 
-  blender::Vector<PointerRNA> sources;
+  Vector<PointerRNA> sources;
   /* Add data-source override for the camera object. */
   ANIM_relative_keyingset_add_source(sources, id, &RNA_PoseBone, pose_channel);
 
   /* only insert into active keyingset? */
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_ONLYKEYINGSET) && (active_ks)) {
     /* Run the active Keying Set on the current data-source. */
     ANIM_apply_keyingset(
         C, &sources, active_ks, MODIFYKEY_MODE_INSERT, anim_eval_context.eval_time);
@@ -234,7 +260,7 @@ void autokeyframe_pose_channel(bContext *C,
   }
 
   /* only insert into available channels? */
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
     if (!act) {
       return;
     }
@@ -249,16 +275,17 @@ void autokeyframe_pose_channel(bContext *C,
        * NOTE: this will do constraints too, but those are ok to do here too?
        */
       if (STREQ(pchan_name, pose_channel->name)) {
-        blender::animrig::insert_keyframe(bmain,
-                                          reports,
-                                          id,
-                                          act,
-                                          ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                          fcu->rna_path,
-                                          fcu->array_index,
-                                          &anim_eval_context,
-                                          eBezTriple_KeyframeType(ts->keyframe_type),
-                                          flag);
+        CombinedKeyingResult result = insert_keyframe(bmain,
+                                                      *id,
+                                                      ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                                                      fcu->rna_path,
+                                                      fcu->array_index,
+                                                      &anim_eval_context,
+                                                      eBezTriple_KeyframeType(ts->keyframe_type),
+                                                      flag);
+        if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+          result.generate_reports(reports);
+        }
       }
     }
     return;
@@ -271,7 +298,7 @@ void autokeyframe_pose_channel(bContext *C,
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
                    bmain,
-                   reports);
+                   anim_eval_context);
   }
 }
 
@@ -290,7 +317,6 @@ bool autokeyframe_property(bContext *C,
   bAction *action;
   bool driven;
   bool special;
-  bool changed = false;
 
   /* For entire array buttons we check the first component, it's not perfect
    * but works well enough in typical cases. */
@@ -301,9 +327,14 @@ bool autokeyframe_property(bContext *C,
   /* Only early out when we actually want an existing F-curve already
    * (e.g. auto-keyframing from buttons). */
   if (fcu == nullptr && (driven || special || only_if_property_keyed)) {
-    return changed;
+    return false;
   }
 
+  if (driven) {
+    return false;
+  }
+
+  bool changed = false;
   if (special) {
     /* NLA Strip property. */
     if (is_autokey_on(scene)) {
@@ -321,35 +352,15 @@ bool autokeyframe_property(bContext *C,
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
   }
-  else if (driven) {
-    /* Driver - Try to insert keyframe using the driver's input as the frame,
-     * making it easier to set up corrective drivers.
-     */
-    if (is_autokey_on(scene)) {
-      ReportList *reports = CTX_wm_reports(C);
-      ToolSettings *ts = scene->toolsettings;
-
-      changed = insert_keyframe_direct(reports,
-                                       *ptr,
-                                       prop,
-                                       fcu,
-                                       &anim_eval_context,
-                                       eBezTriple_KeyframeType(ts->keyframe_type),
-                                       nullptr,
-                                       INSERTKEY_DRIVER);
-      WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
-    }
-  }
   else {
     ID *id = ptr->owner_id;
     Main *bmain = CTX_data_main(C);
 
     /* TODO: this should probably respect the keyingset only option for anim */
     if (autokeyframe_cfra_can_key(scene, id)) {
-      ReportList *reports = CTX_wm_reports(C);
       ToolSettings *ts = scene->toolsettings;
-      const eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene, true);
-      char *path = RNA_path_from_ID_to_property(ptr, prop);
+      const eInsertKeyFlags flag = get_autokey_flags(scene);
+      const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
 
       if (only_if_property_keyed) {
         /* NOTE: We use rnaindex instead of fcu->array_index,
@@ -357,19 +368,16 @@ bool autokeyframe_property(bContext *C,
          *       E.g., color wheels (see #42567). */
         BLI_assert((fcu->array_index == rnaindex) || (rnaindex == -1));
       }
-      changed = insert_keyframe(bmain,
-                                reports,
-                                id,
-                                action,
-                                (fcu && fcu->grp) ? fcu->grp->name : nullptr,
-                                fcu ? fcu->rna_path : path,
-                                rnaindex,
-                                &anim_eval_context,
-                                eBezTriple_KeyframeType(ts->keyframe_type),
-                                flag) != 0;
-      if (path) {
-        MEM_freeN(path);
-      }
+      CombinedKeyingResult result = insert_keyframe(bmain,
+                                                    *id,
+                                                    (fcu && fcu->grp) ? fcu->grp->name : nullptr,
+                                                    fcu ? fcu->rna_path :
+                                                          (path ? path->c_str() : nullptr),
+                                                    rnaindex,
+                                                    &anim_eval_context,
+                                                    eBezTriple_KeyframeType(ts->keyframe_type),
+                                                    flag);
+      changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
     }
   }

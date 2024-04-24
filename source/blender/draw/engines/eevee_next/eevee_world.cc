@@ -6,7 +6,7 @@
  * \ingroup eevee
  */
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_node.hh"
 #include "BKE_world.h"
 #include "DEG_depsgraph_query.hh"
@@ -78,11 +78,9 @@ World::~World()
 
 void World::sync()
 {
-  ::World *bl_world = inst_.use_studio_light() ? nullptr : inst_.scene->world;
-
   bool has_update = false;
 
-  if (bl_world) {
+  if (inst_.scene->world != nullptr) {
     /* Detect world update before overriding it. */
     WorldHandle wo_handle = inst_.sync.sync_world();
     has_update = wo_handle.recalc != 0;
@@ -91,9 +89,13 @@ void World::sync()
   /* Sync volume first since its result can override the surface world. */
   sync_volume();
 
+  ::World *bl_world;
   if (inst_.use_studio_light()) {
-    has_update = lookdev_world_.sync(LookdevParameters(inst_.v3d));
+    has_update |= lookdev_world_.sync(LookdevParameters(inst_.v3d));
     bl_world = lookdev_world_.world_get();
+  }
+  else if ((inst_.view_layer->layflag & SCE_LAY_SKY) == 0) {
+    bl_world = default_world_get();
   }
   else if (has_volume_absorption_) {
     bl_world = default_world_get();
@@ -116,16 +118,13 @@ void World::sync()
     }
   }
 
-  inst_.reflection_probes.sync_world(bl_world);
-  if (has_update) {
-    inst_.reflection_probes.do_world_update_set(true);
-  }
-
   /* We have to manually test here because we have overrides. */
   ::World *orig_world = (::World *)DEG_get_original_id(&bl_world->id);
   if (assign_if_different(prev_original_world, orig_world)) {
-    inst_.reflection_probes.do_world_update_set(true);
+    has_update = true;
   }
+
+  inst_.light_probes.sync_world(bl_world, has_update);
 
   GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_DEFERRED);
 
@@ -133,8 +132,9 @@ void World::sync()
 
   float opacity = inst_.use_studio_light() ? lookdev_world_.background_opacity_get() :
                                              inst_.film.background_opacity_get();
+  float background_blur = inst_.use_studio_light() ? lookdev_world_.background_blur_get() : 0.0;
 
-  inst_.pipelines.background.sync(gpumat, opacity);
+  inst_.pipelines.background.sync(gpumat, opacity, background_blur);
   inst_.pipelines.world.sync(gpumat);
 }
 

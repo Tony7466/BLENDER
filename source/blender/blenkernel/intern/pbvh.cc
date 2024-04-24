@@ -22,6 +22,7 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 #include "BLI_task.hh"
+#include "BLI_time.h"
 #include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -36,8 +37,6 @@
 #include "BKE_subdiv_ccg.hh"
 
 #include "DRW_pbvh.hh"
-
-#include "PIL_time.h"
 
 #include "bmesh.hh"
 
@@ -1282,6 +1281,9 @@ void update_normals(PBVH &pbvh, SubdivCCG *subdiv_ccg)
 {
   Vector<PBVHNode *> nodes = search_gather(
       &pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateNormals); });
+  if (nodes.is_empty()) {
+    return;
+  }
 
   if (pbvh.header.type == PBVH_BMESH) {
     bmesh_normals_update(nodes);
@@ -1730,9 +1732,9 @@ void BKE_pbvh_node_mark_redraw(PBVHNode *node)
   node->flag |= PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
 }
 
-void BKE_pbvh_node_mark_normals_update(PBVHNode *node)
+void BKE_pbvh_node_mark_positions_update(PBVHNode *node)
 {
-  node->flag |= PBVH_UpdateNormals | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
+  node->flag |= PBVH_UpdateNormals | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw | PBVH_UpdateBB;
 }
 
 void BKE_pbvh_node_fully_hidden_set(PBVHNode *node, int fully_hidden)
@@ -1786,9 +1788,9 @@ bool BKE_pbvh_node_fully_unmasked_get(const PBVHNode *node)
   return (node->flag & PBVH_Leaf) && (node->flag & PBVH_FullyUnmasked);
 }
 
-blender::Span<int> BKE_pbvh_node_get_loops(const PBVHNode *node)
+blender::Span<int> BKE_pbvh_node_get_corner_indices(const PBVHNode *node)
 {
-  return node->loop_indices;
+  return node->corner_indices;
 }
 
 blender::Span<int> BKE_pbvh_node_get_vert_indices(const PBVHNode *node)
@@ -1834,26 +1836,6 @@ Span<int> node_face_indices_calc_grids(const PBVH &pbvh, const PBVHNode &node, V
 }
 
 }  // namespace blender::bke::pbvh
-
-blender::Vector<int> BKE_pbvh_node_calc_face_indices(const PBVH &pbvh, const PBVHNode &node)
-{
-  using namespace blender::bke::pbvh;
-  Vector<int> faces;
-  switch (pbvh.header.type) {
-    case PBVH_FACES: {
-      node_face_indices_calc_mesh(pbvh, node, faces);
-      break;
-    }
-    case PBVH_GRIDS: {
-      node_face_indices_calc_grids(pbvh, node, faces);
-      break;
-    }
-    case PBVH_BMESH:
-      BLI_assert_unreachable();
-      break;
-  }
-  return faces;
-}
 
 int BKE_pbvh_node_num_unique_verts(const PBVH &pbvh, const PBVHNode &node)
 {
@@ -2305,7 +2287,7 @@ void clip_ray_ortho(
   axis_dominant_v3_to_m3(mat, ray_normal);
   float a[3], b[3], min[3] = {FLT_MAX, FLT_MAX, FLT_MAX}, max[3] = {FLT_MIN, FLT_MIN, FLT_MIN};
 
-  /* Compute AABB bounds rotated along ray_normal.*/
+  /* Compute AABB bounds rotated along ray_normal. */
   copy_v3_v3(a, bb_root.min);
   copy_v3_v3(b, bb_root.max);
   mul_m3_v3(mat, a);
@@ -2368,16 +2350,13 @@ void clip_ray_ortho(
 
 /* -------------------------------------------------------------------- */
 
-struct FindNearestRayData {
-  DistRayAABB_Precalc dist_ray_to_aabb_precalc;
-  bool original;
-};
-
-static bool nearest_to_ray_aabb_dist_sq(PBVHNode *node, FindNearestRayData *rcd)
+static bool nearest_to_ray_aabb_dist_sq(PBVHNode *node,
+                                        const DistRayAABB_Precalc &dist_ray_to_aabb_precalc,
+                                        const bool original)
 {
   const float *bb_min, *bb_max;
 
-  if (rcd->original) {
+  if (original) {
     /* BKE_pbvh_node_get_original_BB */
     bb_min = node->orig_vb.min;
     bb_max = node->orig_vb.max;
@@ -2390,7 +2369,7 @@ static bool nearest_to_ray_aabb_dist_sq(PBVHNode *node, FindNearestRayData *rcd)
 
   float co_dummy[3], depth;
   node->tmin = dist_squared_ray_to_aabb_v3(
-      &rcd->dist_ray_to_aabb_precalc, bb_min, bb_max, co_dummy, &depth);
+      &dist_ray_to_aabb_precalc, bb_min, bb_max, co_dummy, &depth);
   /* Ideally we would skip distances outside the range. */
   return depth > 0.0f;
 }
@@ -2399,15 +2378,17 @@ void find_nearest_to_ray(PBVH *pbvh,
                          const FunctionRef<void(PBVHNode &node, float *tmin)> fn,
                          const float ray_start[3],
                          const float ray_normal[3],
-                         bool original)
+                         const bool original)
 {
-  FindNearestRayData ncd;
-
-  dist_squared_ray_to_aabb_v3_precalc(&ncd.dist_ray_to_aabb_precalc, ray_start, ray_normal);
-  ncd.original = original;
+  const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(ray_start,
+                                                                                   ray_normal);
 
   search_callback_occluded(
-      pbvh, [&](PBVHNode &node) { return nearest_to_ray_aabb_dist_sq(&node, &ncd); }, fn);
+      pbvh,
+      [&](PBVHNode &node) {
+        return nearest_to_ray_aabb_dist_sq(&node, ray_dist_precalc, original);
+      },
+      fn);
 }
 
 static bool pbvh_faces_node_nearest_to_ray(PBVH *pbvh,
@@ -3001,7 +2982,7 @@ bool pbvh_has_mask(const PBVH *pbvh)
       return pbvh->mesh->attributes().contains(".sculpt_mask");
     case PBVH_BMESH:
       return pbvh->header.bm &&
-             (CustomData_has_layer_named(&pbvh->header.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask"));
+             CustomData_has_layer_named(&pbvh->header.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
   }
 
   return false;
@@ -3100,7 +3081,7 @@ void BKE_pbvh_ensure_node_loops(PBVH *pbvh)
       continue;
     }
 
-    if (!node.loop_indices.is_empty()) {
+    if (!node.corner_indices.is_empty()) {
       return;
     }
 
@@ -3110,27 +3091,26 @@ void BKE_pbvh_ensure_node_loops(PBVH *pbvh)
   BLI_bitmap *visit = BLI_BITMAP_NEW(totloop, __func__);
 
   /* Create loop indices from node loop triangles. */
-  Vector<int> loop_indices;
+  Vector<int> corner_indices;
   for (PBVHNode &node : pbvh->nodes) {
     if (!(node.flag & PBVH_Leaf)) {
       continue;
     }
 
-    loop_indices.clear();
+    corner_indices.clear();
 
     for (const int i : node.prim_indices) {
       const int3 &tri = pbvh->corner_tris[i];
 
       for (int k = 0; k < 3; k++) {
         if (!BLI_BITMAP_TEST(visit, tri[k])) {
-          loop_indices.append(tri[k]);
+          corner_indices.append(tri[k]);
           BLI_BITMAP_ENABLE(visit, tri[k]);
         }
       }
     }
 
-    node.loop_indices.reinitialize(loop_indices.size());
-    node.loop_indices.as_mutable_span().copy_from(loop_indices);
+    node.corner_indices = corner_indices.as_span();
   }
 
   MEM_SAFE_FREE(visit);

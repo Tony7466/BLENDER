@@ -10,6 +10,8 @@
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
 
+#include "BKE_instances.hh"
+#include "BKE_mesh.hh"
 #include "BKE_type_conversions.hh"
 
 #include "NOD_rna_define.hh"
@@ -102,13 +104,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
 
   GField field = params.extract_input<GField>("Value");
-  if (data_type == CD_PROP_FLOAT2) {
-    field = bke::get_implicit_type_conversions().try_convert(std::move(field),
-                                                             CPPType::get<float2>());
-  }
-  if (data_type == CD_PROP_BYTE_COLOR) {
-    field = bke::get_implicit_type_conversions().try_convert(std::move(field),
-                                                             CPPType::get<ColorGeometry4b>());
+  if (ELEM(data_type, CD_PROP_FLOAT2, CD_PROP_BYTE_COLOR, CD_PROP_INT8)) {
+    field = bke::get_implicit_type_conversions().try_convert(
+        std::move(field), *bke::custom_data_type_to_cpp_type(data_type));
   }
 
   std::atomic<bool> failure = false;
@@ -118,9 +116,21 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (geometry_set.has_instances()) {
       GeometryComponent &component = geometry_set.get_component_for_write(
           GeometryComponent::Type::Instance);
-      if (!bke::try_capture_field_on_geometry(component, name, domain, selection, field)) {
-        if (component.attribute_domain_size(domain) != 0) {
-          failure.store(true);
+
+      if (name == "position" && data_type == CD_PROP_FLOAT3) {
+        /* Special case for "position" which is no longer an attribute on instances. */
+        bke::Instances &instances = *geometry_set.get_instances_for_write();
+        bke::InstancesFieldContext context(instances);
+        fn::FieldEvaluator evaluator{context, instances.instances_num()};
+        evaluator.set_selection(selection);
+        evaluator.add_with_destination(field, bke::instance_position_varray_for_write(instances));
+        evaluator.evaluate();
+      }
+      else {
+        if (!bke::try_capture_field_on_geometry(component, name, domain, selection, field)) {
+          if (component.attribute_domain_size(domain) != 0) {
+            failure.store(true);
+          }
         }
       }
     }
@@ -134,10 +144,14 @@ static void node_geo_exec(GeoNodeExecParams params)
       {
         if (geometry_set.has(type)) {
           GeometryComponent &component = geometry_set.get_component_for_write(type);
-          if (!bke::try_capture_field_on_geometry(component, name, domain, selection, field)) {
-            if (component.attribute_domain_size(domain) != 0) {
-              failure.store(true);
+          if (bke::try_capture_field_on_geometry(component, name, domain, selection, field)) {
+            if (component.type() == GeometryComponent::Type::Mesh) {
+              Mesh &mesh = *geometry_set.get_mesh_for_write();
+              bke::mesh_ensure_default_color_attribute_on_add(mesh, name, domain, data_type);
             }
+          }
+          else if (component.attribute_domain_size(domain) != 0) {
+            failure.store(true);
           }
         }
       }

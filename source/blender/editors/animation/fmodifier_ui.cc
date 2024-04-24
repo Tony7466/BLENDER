@@ -21,13 +21,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
@@ -199,6 +199,7 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
 {
   PanelType *panel_type = static_cast<PanelType *>(MEM_callocN(sizeof(PanelType), __func__));
 
+  BLI_assert(parent != nullptr);
   SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
   STRNCPY(panel_type->label, label);
   STRNCPY(panel_type->category, "Modifiers");
@@ -209,7 +210,6 @@ static PanelType *fmodifier_subpanel_register(ARegionType *region_type,
   panel_type->poll = poll;
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
-  BLI_assert(parent != nullptr);
   STRNCPY(panel_type->parent_id, parent->idname);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
@@ -335,8 +335,6 @@ static void fmodifier_panel_header(const bContext *C, Panel *panel)
                             nullptr,
                             0.0,
                             0.0,
-                            0.0,
-                            0.0,
                             TIP_("Delete Modifier"));
   FModifierDeleteContext *ctx = static_cast<FModifierDeleteContext *>(
       MEM_mallocN(sizeof(FModifierDeleteContext), __func__));
@@ -407,9 +405,9 @@ static void generator_panel_draw(const bContext *C, Panel *panel)
       uiItemFullR(first_row, ptr, prop, 0, 0, UI_ITEM_NONE, IFACE_("y = (Ax + B)"), ICON_NONE);
       uiItemFullR(first_row, ptr, prop, 1, 0, UI_ITEM_NONE, "", ICON_NONE);
       for (int i = 2; i < data->arraysize - 1; i += 2) {
-        /* \u2715 is the multiplication symbol. */
+        /* \u00d7 is the multiplication symbol. */
         uiLayout *row = uiLayoutRow(col, true);
-        uiItemFullR(row, ptr, prop, i, 0, UI_ITEM_NONE, IFACE_("\u2715 (Ax + B)"), ICON_NONE);
+        uiItemFullR(row, ptr, prop, i, 0, UI_ITEM_NONE, IFACE_("\u00d7 (Ax + B)"), ICON_NONE);
         uiItemFullR(row, ptr, prop, i + 1, 0, UI_ITEM_NONE, "", ICON_NONE);
       }
       break;
@@ -695,8 +693,6 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
                         nullptr,
                         0,
                         0,
-                        0,
-                        0,
                         TIP_("Add a new control-point to the envelope on the current frame"));
   UI_but_func_set(but, fmod_envelope_addpoint_cb, env, nullptr);
 
@@ -724,8 +720,6 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
                        0.9 * UI_UNIT_X,
                        UI_UNIT_Y,
                        nullptr,
-                       0.0,
-                       0.0,
                        0.0,
                        0.0,
                        TIP_("Delete envelope control point"));

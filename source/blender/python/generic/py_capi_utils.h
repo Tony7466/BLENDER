@@ -242,6 +242,19 @@ bool PyC_RunString_AsString(const char **imports,
                             char **r_value);
 
 /**
+ * \param r_value_size: The length of the string assigned: `strlen(*r_value)`.
+ */
+bool PyC_RunString_AsStringAndSizeOrNone(const char **imports,
+                                         const char *expr,
+                                         const char *filename,
+                                         char **r_value,
+                                         size_t *r_value_size);
+bool PyC_RunString_AsStringOrNone(const char **imports,
+                                  const char *expr,
+                                  const char *filename,
+                                  char **r_value);
+
+/**
  * Use with PyArg_ParseTuple's "O&" formatting.
  *
  * \see #PyC_Long_AsBool for a similar function to use outside of argument parsing.
@@ -334,6 +347,13 @@ bool PyC_StructFmt_type_is_bool(char format);
 
 #ifdef __cplusplus
 #  include "BLI_span.hh"
+
+#  include <string>
+
+/**
+ * Create a `str` from `std::string`, wraps #PyC_UnicodeFromBytesAndSize.
+ */
+PyObject *PyC_UnicodeFromStdStr(const std::string &str);
 
 inline PyObject *PyC_Tuple_Pack_F32(const blender::Span<float> values)
 {

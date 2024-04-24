@@ -24,6 +24,8 @@
 
 #include "interface_intern.hh"
 
+#include "UI_abstract_view.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -96,7 +98,7 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
   }
   if (but->type == UI_BTYPE_VIEW_ITEM) {
     const uiButViewItem *but_item = static_cast<const uiButViewItem *>(but);
-    return UI_view_item_is_interactive(but_item->view_item);
+    return but_item->view_item->is_interactive();
   }
 
   return true;
@@ -499,7 +501,7 @@ static bool ui_but_is_active_view_item(const uiBut *but, const void * /*customda
   }
 
   const uiButViewItem *view_item_but = (const uiButViewItem *)but;
-  return UI_view_item_is_active(view_item_but->view_item);
+  return view_item_but->view_item->is_active();
 }
 
 uiBut *ui_view_item_find_active(const ARegion *region)
@@ -590,18 +592,18 @@ bool ui_but_contains_password(const uiBut *but)
 size_t ui_but_drawstr_len_without_sep_char(const uiBut *but)
 {
   if (but->flag & UI_BUT_HAS_SEP_CHAR) {
-    const char *str_sep = strrchr(but->drawstr, UI_SEP_CHAR);
-    if (str_sep != nullptr) {
-      return (str_sep - but->drawstr);
+    const size_t sep_index = but->drawstr.find(UI_SEP_CHAR);
+    if (sep_index != std::string::npos) {
+      return sep_index;
     }
   }
-  return strlen(but->drawstr);
+  return but->drawstr.size();
 }
 
-size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxncpy)
+blender::StringRef ui_but_drawstr_without_sep_char(const uiBut *but)
 {
   size_t str_len_clip = ui_but_drawstr_len_without_sep_char(but);
-  return BLI_strncpy_rlen(str, but->drawstr, min_zz(str_len_clip + 1, str_maxncpy));
+  return blender::StringRef(but->drawstr).substr(0, str_len_clip);
 }
 
 size_t ui_but_tip_len_only_first_line(const uiBut *but)

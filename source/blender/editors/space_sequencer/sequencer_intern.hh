@@ -41,7 +41,6 @@ struct Editing;
 struct ListBase;
 
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
-#define OVERLAP_ALPHA 180
 
 namespace blender::ed::seq {
 
@@ -186,8 +185,8 @@ blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C);
 
 /* Externals. */
 
-extern EnumPropertyItem sequencer_prop_effect_types[];
-extern EnumPropertyItem prop_side_types[];
+extern const EnumPropertyItem sequencer_prop_effect_types[];
+extern const EnumPropertyItem prop_side_types[];
 
 /* Operators. */
 

@@ -19,7 +19,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_query.h"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_outliner_treehash.hh"
 #include "BKE_screen.hh"
@@ -30,8 +30,6 @@
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_types.hh"
-
-#include "RNA_access.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -412,7 +410,9 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
   return (SpaceLink *)space_outliner_new;
 }
 
-static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper *mappings)
+static void outliner_id_remap(ScrArea *area,
+                              SpaceLink *slink,
+                              const blender::bke::id::IDRemapper &mappings)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)slink;
 
@@ -427,7 +427,7 @@ static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper 
 
   BLI_mempool_iternew(space_outliner->treestore, &iter);
   while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
-    switch (BKE_id_remapper_apply(mappings, &tselem->id, ID_REMAP_APPLY_DEFAULT)) {
+    switch (mappings.apply(&tselem->id, ID_REMAP_APPLY_DEFAULT)) {
       case ID_REMAP_RESULT_SOURCE_REMAPPED:
         changed = true;
         break;
@@ -460,32 +460,31 @@ static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper 
 static void outliner_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 {
   SpaceOutliner *space_outliner = reinterpret_cast<SpaceOutliner *>(space_link);
+  if (!space_outliner->treestore) {
+    return;
+  }
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
   const bool allow_pointer_access = (data_flags & IDWALK_NO_ORIG_POINTERS_ACCESS) == 0;
 
-  if (space_outliner->treestore != nullptr) {
-    TreeStoreElem *tselem;
-    BLI_mempool_iter iter;
-
-    BLI_mempool_iternew(space_outliner->treestore, &iter);
-    while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
-      /* Do not try to restore non-ID pointers (drivers/sequence/etc.). */
-      if (TSE_IS_REAL_ID(tselem)) {
-        const int cb_flag = (tselem->id != nullptr && allow_pointer_access &&
-                             (tselem->id->flag & LIB_EMBEDDED_DATA) != 0) ?
-                                IDWALK_CB_EMBEDDED_NOT_OWNING :
-                                IDWALK_CB_NOP;
-        BKE_LIB_FOREACHID_PROCESS_ID(data, tselem->id, cb_flag);
-      }
-      else if (!is_readonly) {
-        tselem->id = nullptr;
-      }
+  BLI_mempool_iter iter;
+  BLI_mempool_iternew(space_outliner->treestore, &iter);
+  while (TreeStoreElem *tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter))) {
+    /* Do not try to restore non-ID pointers (drivers/sequence/etc.). */
+    if (TSE_IS_REAL_ID(tselem)) {
+      const int cb_flag = (tselem->id != nullptr && allow_pointer_access &&
+                           (tselem->id->flag & LIB_EMBEDDED_DATA) != 0) ?
+                              IDWALK_CB_EMBEDDED_NOT_OWNING :
+                              IDWALK_CB_NOP;
+      BKE_LIB_FOREACHID_PROCESS_ID(data, tselem->id, cb_flag);
     }
-    if (!is_readonly) {
-      /* rebuild hash table, because it depends on ids too */
-      space_outliner->storeflag |= SO_TREESTORE_REBUILD;
+    else if (!is_readonly) {
+      tselem->id = nullptr;
     }
+  }
+  if (!is_readonly) {
+    /* rebuild hash table, because it depends on ids too */
+    space_outliner->storeflag |= SO_TREESTORE_REBUILD;
   }
 }
 
@@ -616,7 +615,7 @@ void ED_spacetype_outliner()
 {
   using namespace blender::ed::outliner;
 
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype time");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_OUTLINER;
@@ -661,5 +660,5 @@ void ED_spacetype_outliner()
   art->listener = outliner_header_region_listener;
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

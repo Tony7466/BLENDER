@@ -55,8 +55,8 @@ typedef struct RenderView {
 typedef struct RenderPass {
   struct RenderPass *next, *prev;
   int channels;
-  char name[64];   /* amount defined in IMB_openexr.h */
-  char chan_id[8]; /* amount defined in IMB_openexr.h */
+  char name[64];   /* amount defined in IMB_openexr.hh */
+  char chan_id[8]; /* amount defined in IMB_openexr.hh */
 
   /* Image buffer which contains data of this pass.
    *
@@ -392,7 +392,7 @@ struct RenderResult *RE_MultilayerConvert(
 /* Display and event callbacks. */
 
 /**
- * Image and movie output has to move to either imbuf or kernel.
+ * Image and movie output has to move to either #ImBuf or kernel.
  */
 void RE_display_init_cb(struct Render *re,
                         void *handle,
@@ -501,6 +501,9 @@ RenderResult *RE_DuplicateRenderResult(RenderResult *rr);
 
 struct ImBuf *RE_RenderPassEnsureImBuf(RenderPass *render_pass);
 struct ImBuf *RE_RenderViewEnsureImBuf(const RenderResult *render_result, RenderView *render_view);
+
+/* Returns true if the pass is a color (as opposite of data) and needs to be color managed. */
+bool RE_RenderPassIsColor(const RenderPass *render_pass);
 
 #ifdef __cplusplus
 }

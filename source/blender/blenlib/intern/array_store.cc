@@ -6,7 +6,7 @@
  * \ingroup bli
  * \brief Array storage to minimize duplication.
  *
- * This is done by splitting arrays into chunks and using copy-on-write (COW),
+ * This is done by splitting arrays into chunks and using copy-on-evaluation,
  * to de-duplicate chunks, from the users perspective this is an implementation detail.
  *
  * Overview
@@ -87,6 +87,7 @@
  * Otherwise new chunks are created.
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
@@ -95,12 +96,12 @@
 #include "BLI_listbase.h"
 #include "BLI_mempool.h"
 
-#include "BLI_strict_flags.h"
-
 #include "BLI_array_store.h" /* Own include. */
+#include "BLI_ghash.h"       /* Only for #BLI_array_store_is_valid. */
 
-/* Only for #BLI_array_store_is_valid. */
-#include "BLI_ghash.h"
+#include "BLI_strict_flags.h" /* Keep last. */
+
+struct BChunkList;
 
 /* -------------------------------------------------------------------- */
 /** \name Defines
@@ -156,11 +157,11 @@
 #  define BCHUNK_HASH_TABLE_ACCUMULATE_STEPS_32BITS 4
 #  define BCHUNK_HASH_TABLE_ACCUMULATE_STEPS_16BITS 5
 /**
- * Singe bytes (or boolean) arrays need a higher number of steps
+ * Single bytes (or boolean) arrays need a higher number of steps
  * because the resulting values are not unique enough to result in evenly distributed values.
  * Use more accumulation when the size of the structs is small, see: #105046.
  *
- * With 6 -> 22, one byte each - means an array of booleans can be combine into 22 bits
+ * With 6 -> 22, one byte each - means an array of booleans can be combined into 22 bits
  * representing 4,194,303 different combinations.
  */
 #  define BCHUNK_HASH_TABLE_ACCUMULATE_STEPS_8BITS 6
@@ -236,9 +237,9 @@
 /** \name Internal Structs
  * \{ */
 
-typedef uint32_t hash_key;
+using hash_key = uint32_t;
 
-typedef struct BArrayInfo {
+struct BArrayInfo {
   size_t chunk_stride;
   // uint chunk_count;  /* UNUSED (other values are derived from this) */
 
@@ -256,13 +257,13 @@ typedef struct BArrayInfo {
   size_t accum_steps;
   size_t accum_read_ahead_len;
 #endif
-} BArrayInfo;
+};
 
-typedef struct BArrayMemory {
+struct BArrayMemory {
   BLI_mempool *chunk_list; /* #BChunkList. */
   BLI_mempool *chunk_ref;  /* #BChunkRef. */
   BLI_mempool *chunk;      /* #BChunk. */
-} BArrayMemory;
+};
 
 /**
  * Main storage for all states.
@@ -294,10 +295,10 @@ struct BArrayState {
   /** linked list in #BArrayStore.states. */
   BArrayState *next, *prev;
   /** Shared chunk list, this reference must hold a #BChunkList::users. */
-  struct BChunkList *chunk_list;
+  BChunkList *chunk_list;
 };
 
-typedef struct BChunkList {
+struct BChunkList {
   /** List of #BChunkRef's. */
   ListBase chunk_refs;
   /** Result of `BLI_listbase_count(chunks)`, store for reuse. */
@@ -307,10 +308,10 @@ typedef struct BChunkList {
 
   /** Number of #BArrayState using this. */
   int users;
-} BChunkList;
+};
 
 /** A chunk of memory in an array (unit of de-duplication). */
-typedef struct BChunk {
+struct BChunk {
   const uchar *data;
   size_t data_len;
   /** number of #BChunkList using this. */
@@ -319,15 +320,15 @@ typedef struct BChunk {
 #ifdef USE_HASH_TABLE_KEY_CACHE
   hash_key key;
 #endif
-} BChunk;
+};
 
 /**
  * Links to store #BChunk data in #BChunkList.chunk_refs.
  */
-typedef struct BChunkRef {
+struct BChunkRef {
   BChunkRef *next, *prev;
   BChunk *link;
-} BChunkRef;
+};
 
 /**
  * Single linked list used when putting chunks into a temporary table,
@@ -337,10 +338,10 @@ typedef struct BChunkRef {
  * to allow talking down the chunks in-order until a mismatch is found,
  * this avoids having to do so many table lookups.
  */
-typedef struct BTableRef {
+struct BTableRef {
   BTableRef *next;
   const BChunkRef *cref;
-} BTableRef;
+};
 
 /** \} */
 
@@ -386,7 +387,7 @@ BLI_INLINE bool bchunk_data_compare_unchecked(const BChunk *chunk,
                                               const size_t data_base_len,
                                               const size_t offset)
 {
-  BLI_assert(offset + (size_t)chunk->data_len <= data_base_len);
+  BLI_assert(offset + size_t(chunk->data_len) <= data_base_len);
   UNUSED_VARS_NDEBUG(data_base_len);
   return (memcmp(&data_base[offset], chunk->data, chunk->data_len) == 0);
 }
@@ -396,7 +397,7 @@ static bool bchunk_data_compare(const BChunk *chunk,
                                 const size_t data_base_len,
                                 const size_t offset)
 {
-  if (offset + (size_t)chunk->data_len <= data_base_len) {
+  if (offset + size_t(chunk->data_len) <= data_base_len) {
     return bchunk_data_compare_unchecked(chunk, data_base, data_base_len, offset);
   }
   return false;
@@ -471,13 +472,13 @@ static void bchunk_list_ensure_min_size_last(const BArrayInfo *info,
                                              BArrayMemory *bs_mem,
                                              BChunkList *chunk_list)
 {
-  BChunkRef *cref = static_cast<BChunkRef *>((chunk_list->chunk_refs.last));
+  BChunkRef *cref = static_cast<BChunkRef *>(chunk_list->chunk_refs.last);
   if (cref && cref->prev) {
     /* Both are decrefed after use (end of this block). */
     BChunk *chunk_curr = cref->link;
     BChunk *chunk_prev = cref->prev->link;
 
-    if (MIN2(chunk_prev->data_len, chunk_curr->data_len) < info->chunk_byte_size_min) {
+    if (std::min(chunk_prev->data_len, chunk_curr->data_len) < info->chunk_byte_size_min) {
       const size_t data_merge_len = chunk_prev->data_len + chunk_curr->data_len;
       /* We could pass, but no need. */
       if (data_merge_len <= info->chunk_byte_size_max) {
@@ -630,7 +631,7 @@ static void bchunk_list_append_data(const BArrayInfo *info,
     BChunkRef *cref = static_cast<BChunkRef *>(chunk_list->chunk_refs.last);
     BChunk *chunk_prev = cref->link;
 
-    if (MIN2(chunk_prev->data_len, data_len) < info->chunk_byte_size_min) {
+    if (std::min(chunk_prev->data_len, data_len) < info->chunk_byte_size_min) {
       const size_t data_merge_len = chunk_prev->data_len + data_len;
       /* Re-allocate for single user. */
       if (cref->link->users == 1) {
@@ -971,7 +972,7 @@ static const BChunkRef *table_lookup(const BArrayInfo *info,
                                      const hash_key *table_hash_array)
 {
   const hash_key key = table_hash_array[((offset - i_table_start) / info->chunk_stride)];
-  const uint key_index = (uint)(key % (hash_key)table_len);
+  const uint key_index = uint(key % (hash_key)table_len);
   const BTableRef *tref = table[key_index];
   if (tref != nullptr) {
     const size_t size_left = data_len - offset;
@@ -981,7 +982,7 @@ static const BChunkRef *table_lookup(const BArrayInfo *info,
       if (cref->link->key == key)
 #  endif
       {
-        BChunk *chunk_test = cref->link;
+        const BChunk *chunk_test = cref->link;
         if (chunk_test->data_len <= size_left) {
           if (bchunk_data_compare_unchecked(chunk_test, data, data_len, offset)) {
             /* We could remove the chunk from the table, to avoid multiple hits. */
@@ -1002,7 +1003,7 @@ static hash_key key_from_chunk_ref(const BArrayInfo *info, const BChunkRef *cref
 {
   hash_key key;
   BChunk *chunk = cref->link;
-  const size_t data_hash_len = MIN2(chunk->data_len, BCHUNK_HASH_LEN * info->chunk_stride);
+  const size_t data_hash_len = std::min(chunk->data_len, BCHUNK_HASH_LEN * info->chunk_stride);
 
 #  ifdef USE_HASH_TABLE_KEY_CACHE
   key = chunk->key;
@@ -1037,8 +1038,8 @@ static const BChunkRef *table_lookup(const BArrayInfo *info,
   const size_t data_hash_len = BCHUNK_HASH_LEN * info->chunk_stride; /* TODO: cache. */
 
   const size_t size_left = data_len - offset;
-  const hash_key key = hash_data(&data[offset], MIN2(data_hash_len, size_left));
-  const uint key_index = (uint)(key % (hash_key)table_len);
+  const hash_key key = hash_data(&data[offset], std::min(data_hash_len, size_left));
+  const uint key_index = uint(key % (hash_key)table_len);
   for (BTableRef *tref = table[key_index]; tref; tref = tref->next) {
     const BChunkRef *cref = tref->cref;
 #  ifdef USE_HASH_TABLE_KEY_CACHE
@@ -1175,7 +1176,7 @@ static BChunkList *bchunk_list_from_data_merge(const BArrayInfo *info,
     while ((cref->prev != nullptr) && (cref != cref_match_first) &&
            (cref->link->data_len <= data_len - i_prev))
     {
-      BChunk *chunk_test = cref->link;
+      const BChunk *chunk_test = cref->link;
       size_t offset = data_len - chunk_test->data_len;
       if (bchunk_data_compare(chunk_test, data, data_len, offset)) {
         data_len = offset;
@@ -1328,7 +1329,7 @@ static BChunkList *bchunk_list_from_data_merge(const BArrayInfo *info,
                                           hash_store_len
 #endif
         );
-        const uint key_index = (uint)(key % (hash_key)table_len);
+        const uint key_index = uint(key % (hash_key)table_len);
         BTableRef *tref_prev = table[key_index];
         BLI_assert(table_ref_stack_n < chunk_list_reference_remaining_len);
 #ifdef USE_HASH_TABLE_DEDUPLICATE
@@ -1499,7 +1500,7 @@ BArrayStore *BLI_array_store_create(uint stride, uint chunk_count)
 
   bs->info.chunk_byte_size = chunk_count * stride;
 #ifdef USE_MERGE_CHUNKS
-  bs->info.chunk_byte_size_min = MAX2(1u, chunk_count / BCHUNK_SIZE_MIN_DIV) * stride;
+  bs->info.chunk_byte_size_min = std::max(1u, chunk_count / BCHUNK_SIZE_MIN_DIV) * stride;
   bs->info.chunk_byte_size_max = (chunk_count * BCHUNK_SIZE_MAX_MUL) * stride;
 #endif
 
@@ -1529,7 +1530,7 @@ BArrayStore *BLI_array_store_create(uint stride, uint chunk_count)
 
   bs->info.accum_read_ahead_bytes = bs->info.accum_read_ahead_len * stride;
 #else
-  bs->info.accum_read_ahead_bytes = MIN2((size_t)BCHUNK_HASH_LEN, chunk_count) * stride;
+  bs->info.accum_read_ahead_bytes = std::min(size_t(BCHUNK_HASH_LEN), chunk_count) * stride;
 #endif
 
   bs->memory.chunk_list = BLI_mempool_create(sizeof(BChunkList), 0, 512, BLI_MEMPOOL_NOP);
@@ -1606,7 +1607,7 @@ size_t BLI_array_store_calc_size_compacted_get(const BArrayStore *bs)
 {
   size_t size_total = 0;
   BLI_mempool_iter iter;
-  BChunk *chunk;
+  const BChunk *chunk;
   BLI_mempool_iternew(bs->memory.chunk, &iter);
   while ((chunk = static_cast<BChunk *>(BLI_mempool_iterstep(&iter)))) {
     BLI_assert(chunk->users > 0);
@@ -1686,7 +1687,7 @@ size_t BLI_array_store_state_size_get(BArrayState *state)
   return state->chunk_list->total_expanded_size;
 }
 
-void BLI_array_store_state_data_get(BArrayState *state, void *data)
+void BLI_array_store_state_data_get(const BArrayState *state, void *data)
 {
 #ifdef USE_PARANOID_CHECKS
   size_t data_test_len = 0;
@@ -1802,7 +1803,7 @@ bool BLI_array_store_is_valid(BArrayStore *bs)
         goto user_finally;
       }
     }
-    if (!(BLI_mempool_len(bs->memory.chunk_list) == (int)BLI_ghash_len(chunk_list_map))) {
+    if (!(BLI_mempool_len(bs->memory.chunk_list) == int(BLI_ghash_len(chunk_list_map)))) {
       ok = false;
       goto user_finally;
     }
@@ -1816,7 +1817,7 @@ bool BLI_array_store_is_valid(BArrayStore *bs)
         totrefs += 1;
       }
     }
-    if (!(BLI_mempool_len(bs->memory.chunk) == (int)BLI_ghash_len(chunk_map))) {
+    if (!(BLI_mempool_len(bs->memory.chunk) == int(BLI_ghash_len(chunk_map)))) {
       ok = false;
       goto user_finally;
     }

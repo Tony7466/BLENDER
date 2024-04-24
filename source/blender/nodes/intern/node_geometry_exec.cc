@@ -9,7 +9,7 @@
 #include "BKE_curves.hh"
 #include "BKE_type_conversions.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "NOD_geometry_exec.hh"
 
@@ -17,11 +17,17 @@
 
 namespace blender::nodes {
 
+Main *GeoNodeExecParams::bmain() const
+{
+  return DEG_get_bmain(this->depsgraph());
+}
+
 void GeoNodeExecParams::error_message_add(const NodeWarningType type,
                                           const StringRef message) const
 {
   if (geo_eval_log::GeoTreeLogger *tree_logger = this->get_local_tree_logger()) {
     tree_logger->node_warnings.append(
+        *tree_logger->allocator,
         {node_.identifier, {type, tree_logger->allocator->copy_string(message)}});
   }
 }
@@ -31,6 +37,7 @@ void GeoNodeExecParams::used_named_attribute(const StringRef attribute_name,
 {
   if (geo_eval_log::GeoTreeLogger *tree_logger = this->get_local_tree_logger()) {
     tree_logger->used_named_attributes.append(
+        *tree_logger->allocator,
         {node_.identifier, tree_logger->allocator->copy_string(attribute_name), usage});
   }
 }
@@ -73,14 +80,14 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
     if (supported_types.contains(type)) {
       continue;
     }
-    std::string message = TIP_("Input geometry has unsupported type: ");
+    std::string message = RPT_("Input geometry has unsupported type: ");
     switch (type) {
       case GeometryComponent::Type::Mesh: {
-        message += TIP_("Mesh");
+        message += RPT_("Mesh");
         break;
       }
       case GeometryComponent::Type::PointCloud: {
-        message += TIP_("Point Cloud");
+        message += RPT_("Point Cloud");
         break;
       }
       case GeometryComponent::Type::Instance: {
@@ -88,18 +95,18 @@ void GeoNodeExecParams::check_input_geometry_set(StringRef identifier,
         break;
       }
       case GeometryComponent::Type::Volume: {
-        message += CTX_TIP_(BLT_I18NCONTEXT_ID_ID, "Volume");
+        message += CTX_RPT_(BLT_I18NCONTEXT_ID_ID, "Volume");
         break;
       }
       case GeometryComponent::Type::Curve: {
-        message += TIP_("Curve");
+        message += RPT_("Curve");
         break;
       }
       case GeometryComponent::Type::Edit: {
         continue;
       }
       case GeometryComponent::Type::GreasePencil: {
-        message += TIP_("Grease Pencil");
+        message += RPT_("Grease Pencil");
         break;
       }
     }
