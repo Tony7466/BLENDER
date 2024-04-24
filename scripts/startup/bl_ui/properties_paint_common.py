@@ -1582,6 +1582,46 @@ def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=Fals
         row.prop(gp_settings, "vertex_mode", text="Mode")
 
 
+def brush_basic_grease_pencil_weight_settings(layout, context, brush, *, compact=False):
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "size",
+        pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
+        text="Radius",
+        slider=True,
+        header=compact,
+    )
+
+    capabilities = brush.sculpt_capabilities
+    pressure_name = "use_pressure_strength" if capabilities.has_strength_pressure else None
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "strength",
+        pressure_name=pressure_name,
+        unified_name="use_unified_strength",
+        text="Strength",
+        header=compact,
+    )
+
+    if brush.gpencil_weight_tool in {'WEIGHT'}:
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "weight",
+            unified_name="use_unified_weight",
+            text="Weight",
+            slider=True,
+            header=compact,
+        )
+        layout.prop(brush, "direction", expand=True, text="" if compact else "Direction")
+
+
 classes = (
     VIEW3D_MT_tools_projectpaint_clone,
 )

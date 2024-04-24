@@ -1566,6 +1566,9 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       }
     }
   }
+  else if (pcontext->mode == PaintMode::WeightGPencil) {
+    copy_v3_v3(color, brush->add_col);
+  }
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */

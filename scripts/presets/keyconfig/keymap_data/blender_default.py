@@ -4721,15 +4721,15 @@ def km_grease_pencil_weight_paint(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         # Radial controls
-        *_template_paint_radial_control("weight_paint"),
+        *_template_paint_radial_control("gpencil_weight_paint"),
         ("wm.radial_control", {"type": 'F', "value": 'PRESS', "ctrl": True},
-         radial_control_properties("weight_paint", 'weight', 'use_unified_weight')),
+         radial_control_properties("gpencil_weight_paint", 'weight', 'use_unified_weight')),
         # Toggle Add/Subtract for weight draw tool
         ("grease_pencil.weight_toggle_direction", {"type": 'D', "value": 'PRESS'}, None),
         # Sample weight
         ("grease_pencil.weight_sample", {"type": 'X', "value": 'PRESS', "shift": True}, None),
         # Context menu
-        *_template_items_context_panel("VIEW3D_PT_paint_weight_context_menu", params.context_menu_event),
+        *_template_items_context_panel("VIEW3D_PT_gpencil_weight_context_menu", params.context_menu_event),
 
         # Show/hide layer
         *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
