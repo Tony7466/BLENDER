@@ -31,8 +31,6 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.hh"
-
 #include "MEM_guardedalloc.h"
 
 #include <pxr/base/gf/matrix4f.h>
@@ -955,7 +953,7 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 
   if (settings.validate_meshes) {
     if (BKE_mesh_validate(active_mesh, false, false)) {
-      WM_reportf(RPT_INFO, "Fixed mesh for prim: %s", mesh_prim_.GetPath().GetText());
+      BKE_reportf(reports(), RPT_INFO, "Fixed mesh for prim: %s", mesh_prim_.GetPath().GetText());
     }
   }
 

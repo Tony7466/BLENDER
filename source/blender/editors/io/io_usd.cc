@@ -891,7 +891,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
                   "validate_meshes",
                   false,
                   "Validate Meshes",
-                  "Validate meshes for degenerate geometry on import");
+                  "Check imported mesh objects for invalid data (slow)");
 }
 
 namespace blender::ed::io {
