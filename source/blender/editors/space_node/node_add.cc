@@ -50,6 +50,9 @@
 
 #include "UI_view2d.hh"
 
+#include "io_utils.hh"
+#include <fmt/format.h>
+
 #include "node_intern.hh" /* own include */
 
 namespace blender::ed::space_node {
@@ -688,12 +691,6 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
   int type = 0;
-
-  Image *ima = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
-  if (!ima) {
-    return OPERATOR_CANCELLED;
-  }
-
   switch (snode.nodetree->type) {
     case NTREE_SHADER:
       type = SH_NODE_TEX_IMAGE;
@@ -710,31 +707,66 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
     default:
       return OPERATOR_CANCELLED;
   }
+  Vector<Image *> images;
+  /* Load all paths as Id Images. */
+  const Vector<std::string> paths = ed::io::paths_from_operator_properties(op->ptr);
+  for (const std::string &path : paths) {
+    RNA_string_set(op->ptr, "filepath", path.c_str());
+    Image *image = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
+    if (!image) {
+      BKE_report(op->reports, RPT_WARNING, fmt::format("Could not load {}", path).c_str());
+      continue;
+    }
+    images.append(image);
+    /* When adding new image file via drag-drop we need to load #ImBuf in order
+     * to get proper image source. */
+    BKE_image_signal(bmain, image, nullptr, IMA_SIGNAL_RELOAD);
+    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, image);
+  }
 
-  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
+  /* If not path is provided, try to get a ID Image from operator. */
+  if (paths.is_empty()) {
+    Image *image = (Image *)WM_operator_drop_load_path(C, op, ID_IM);
+    if (image) {
+      images.append(image);
+    }
+  }
 
-  bNode *node = add_static_node(*C, type, snode.runtime->cursor);
+  float2 position = snode.runtime->cursor;
+  Vector<bNode *> nodes;
+  /* Add a node for each image. */
+  for (Image *image : images) {
+    bNode *node = add_static_node(*C, type, position);
+    if (!node) {
+      BKE_report(op->reports, RPT_WARNING, "Could not add an image node");
+      continue;
+    }
+    if (type == GEO_NODE_IMAGE_TEXTURE) {
+      bNodeSocket *image_socket = (bNodeSocket *)node->inputs.first;
+      bNodeSocketValueImage *socket_value = (bNodeSocketValueImage *)image_socket->default_value;
+      socket_value->value = image;
+    }
+    else {
+      node->id = (ID *)image;
+    }
+    nodes.append(node);
+    position[1] -= node->height * 2;
+  }
 
-  if (!node) {
-    BKE_report(op->reports, RPT_WARNING, "Could not add an image node");
+  if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
-  if (type == GEO_NODE_IMAGE_TEXTURE) {
-    bNodeSocket *image_socket = (bNodeSocket *)node->inputs.first;
-    bNodeSocketValueImage *socket_value = (bNodeSocketValueImage *)image_socket->default_value;
-    socket_value->value = ima;
+  /* Set new nodes as selected. */
+  bNodeTree &node_tree = *snode.edittree;
+  node_deselect_all(node_tree);
+  for (bNode *node : nodes) {
+    nodeSetSelected(node, true);
   }
-  else {
-    node->id = (ID *)ima;
-  }
+  ED_node_set_active(bmain, &snode, &node_tree, nodes[0], nullptr);
+  ED_node_tree_propagate_change(C, bmain, &node_tree);
 
-  /* When adding new image file via drag-drop we need to load #ImBuf in order
-   * to get proper image source. */
-  if (RNA_struct_property_is_set(op->ptr, "filepath")) {
-    BKE_image_signal(bmain, ima, nullptr, IMA_SIGNAL_RELOAD);
-    WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
-  }
+  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
 
   ED_node_tree_propagate_change(C, bmain, snode.edittree);
   DEG_relations_tag_update(bmain);
@@ -784,7 +816,8 @@ void NODE_OT_add_file(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_IMAGE | FILE_TYPE_MOVIE,
                                  FILE_SPECIAL,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_DIRECTORY |
+                                     WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
   WM_operator_properties_id_lookup(ot, true);

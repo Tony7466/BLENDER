@@ -8,6 +8,7 @@ import bpy
 from bpy.types import (
     Operator,
     PropertyGroup,
+    FileHandler,
 )
 from bpy.props import (
     BoolProperty,
@@ -441,6 +442,17 @@ class NODE_OT_enum_definition_item_move(Operator):
         return {'FINISHED'}
 
 
+class NODE_FH_image_node(FileHandler):
+    bl_idname = "NODE_FH_image_node"
+    bl_label = "Image node"
+    bl_import_operator = "node.add_file"
+    bl_file_extensions = ';'.join((*bpy.path.extensions_image, *bpy.path.extensions_movie))
+
+    @classmethod
+    def poll_drop(cls, context):
+        return (context.area and context.area.type == 'NODE_EDITOR' and context.region and context.region.type == 'WINDOW')
+
+
 classes = (
     NodeSetting,
 
@@ -455,4 +467,5 @@ classes = (
     NODE_OT_enum_definition_item_add,
     NODE_OT_enum_definition_item_remove,
     NODE_OT_enum_definition_item_move,
+    NODE_FH_image_node,
 )
