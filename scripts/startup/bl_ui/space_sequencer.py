@@ -2469,6 +2469,7 @@ class SEQUENCER_PT_view(SequencerButtonsPanel_Output, Panel):
         if ed:
             col.prop(ed, "show_missing_media")
 
+
 class SEQUENCER_PT_view_cursor(SequencerButtonsPanel_Output, Panel):
     bl_category = "View"
     bl_label = "2D Cursor"
