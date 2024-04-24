@@ -888,10 +888,10 @@ void WM_OT_usd_import(wmOperatorType *ot)
                "Behavior when importing USD attributes as Blender custom properties");
 
   RNA_def_boolean(ot->srna,
-                "validate_meshes",
-                false,
-                "Validate Meshes",
-                "Validate meshes for degenerate geometry on import");
+                  "validate_meshes",
+                  false,
+                  "Validate Meshes",
+                  "Validate meshes for degenerate geometry on import");
 }
 
 namespace blender::ed::io {
