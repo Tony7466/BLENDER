@@ -950,7 +950,7 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(402, 13)) {
+  if (!USER_VERSION_ATLEAST(402, 23)) {
     userdef->text_cursor_blink = true;
   }
 
