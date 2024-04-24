@@ -9,9 +9,11 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_report.hh"
 #include "BKE_scene.hh"
 
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_geom.h"
 
@@ -33,23 +35,23 @@ namespace blender::ed::sculpt_paint::greasepencil {
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
 static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
-static float calc_brush_radius(ViewContext *vc,
-                               const Brush *brush,
-                               const Scene *scene,
-                               const float3 location)
-{
-  if (!BKE_brush_use_locked_size(scene, brush)) {
-    return paint_calc_object_space_radius(vc, location, BKE_brush_size_get(scene, brush));
-  }
-  return BKE_brush_unprojected_radius_get(scene, brush);
-}
-
 template<typename T>
-static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
+static inline void linear_interpolation(const T &a,
+                                        const T &b,
+                                        MutableSpan<T> dst,
+                                        const bool include_first_point)
 {
-  const float step = 1.0f / float(dst.size());
-  for (const int i : dst.index_range()) {
-    dst[i] = bke::attribute_math::mix2(float(i + 1) * step, a, b);
+  if (include_first_point) {
+    const float step = math::safe_rcp(float(dst.size() - 1));
+    for (const int i : dst.index_range()) {
+      dst[i] = bke::attribute_math::mix2(float(i) * step, a, b);
+    }
+  }
+  else {
+    const float step = 1.0f / float(dst.size());
+    for (const int i : dst.index_range()) {
+      dst[i] = bke::attribute_math::mix2(float(i + 1) * step, a, b);
+    }
   }
 }
 
@@ -184,37 +186,23 @@ struct PaintOperationExecutor {
     BLI_assert(drawing_ != nullptr);
   }
 
-  float radius_from_input_sample(PaintOperation &self,
-                                 const bContext &C,
-                                 const InputSample &sample)
-  {
-    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
-                                                CTX_data_depsgraph_pointer(&C));
-    float radius = calc_brush_radius(
-        &vc, brush_, scene_, self.placement_.project(sample.mouse_position));
-    if (BKE_brush_use_size_pressure(brush_)) {
-      radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
-    }
-    return radius;
-  }
-
-  float opacity_from_input_sample(const InputSample &sample)
-  {
-    float opacity = BKE_brush_alpha_get(scene_, brush_);
-    if (BKE_brush_use_alpha_pressure(brush_)) {
-      opacity *= BKE_curvemapping_evaluateF(settings_->curve_strength, 0, sample.pressure);
-    }
-    return opacity;
-  }
-
   void process_start_sample(PaintOperation &self,
                             const bContext &C,
                             const InputSample &start_sample,
                             const int material_index)
   {
     const float2 start_coords = start_sample.mouse_position;
-    const float start_radius = this->radius_from_input_sample(self, C, start_sample);
-    const float start_opacity = this->opacity_from_input_sample(start_sample);
+    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
+                                                CTX_data_depsgraph_pointer(&C));
+    const float start_radius = ed::greasepencil::radius_from_input_sample(
+        start_sample.pressure,
+        self.placement_.project(start_sample.mouse_position),
+        vc,
+        brush_,
+        scene_,
+        settings_);
+    const float start_opacity = ed::greasepencil::opacity_from_input_sample(
+        start_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
     self.screen_space_coords_orig_.append(start_coords);
@@ -368,8 +356,17 @@ struct PaintOperationExecutor {
                                 const InputSample &extension_sample)
   {
     const float2 coords = extension_sample.mouse_position;
-    const float radius = this->radius_from_input_sample(self, C, extension_sample);
-    const float opacity = this->opacity_from_input_sample(extension_sample);
+    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
+                                                CTX_data_depsgraph_pointer(&C));
+    const float radius = ed::greasepencil::radius_from_input_sample(
+        extension_sample.pressure,
+        self.placement_.project(extension_sample.mouse_position),
+        vc,
+        brush_,
+        scene_,
+        settings_);
+    const float opacity = ed::greasepencil::opacity_from_input_sample(
+        extension_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
@@ -381,8 +378,13 @@ struct PaintOperationExecutor {
     const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
+    const IndexRange points_range = curves.points_by_curve()[curves.curves_range().last()];
+    const bool is_first_sample = (points_range.size() == 1);
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
-      curves.positions_for_write().last() = self.placement_.project(coords);
+      /* Don't move the first point of the stroke. */
+      if (!is_first_sample) {
+        curves.positions_for_write().last() = self.placement_.project(coords);
+      }
       drawing_->radii_for_write().last() = math::max(radius, prev_radius);
       drawing_->opacities_for_write().last() = math::max(opacity, prev_opacity);
       return;
@@ -410,10 +412,11 @@ struct PaintOperationExecutor {
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_points);
     MutableSpan<ColorGeometry4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
         new_points);
-    linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords);
-    linear_interpolation<float>(prev_radius, radius, new_radii);
-    linear_interpolation<float>(prev_opacity, opacity, new_opacities);
-    linear_interpolation<ColorGeometry4f>(prev_vertex_color, vertex_color, new_vertex_colors);
+    linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords, is_first_sample);
+    linear_interpolation<float>(prev_radius, radius, new_radii, is_first_sample);
+    linear_interpolation<float>(prev_opacity, opacity, new_opacities, is_first_sample);
+    linear_interpolation<ColorGeometry4f>(
+        prev_vertex_color, vertex_color, new_vertex_colors, is_first_sample);
 
     /* Update screen space buffers with new points. */
     self.screen_space_coords_orig_.extend(new_screen_space_coords);
