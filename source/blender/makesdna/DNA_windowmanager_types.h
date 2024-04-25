@@ -397,8 +397,7 @@ typedef struct wmWindow {
   /** Custom drawing callbacks. */
   ListBase drawcalls;
 
-  /** Private runtime info to show text in the status bar. */
-  void *cursor_keymap_status;
+  void *_pad2;
 
   /**
    * The time when the key is pressed in milliseconds (see #GHOST_GetEventTime).

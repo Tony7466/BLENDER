@@ -6322,7 +6322,6 @@ static wmKeyMapItem *keymapItem(bContext *C,
   test_event.modifier = modifier;
   test_event.flag = (eWM_EventFlag)0;
   wmKeyMapItem *kmi = nullptr;
-
   ListBase *handlers[] = {
       &region->handlers,
       &area->handlers,
@@ -6358,16 +6357,16 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
+  /* Otherwise should cursor keymap status. */
+
   bScreen *screen = CTX_wm_screen(C);
   ARegion *region = screen->active_region;
-
   if (region == nullptr) {
     return;
   }
 
-  /* Otherwise region keymap status. */
   wmWindowManager *wm = CTX_wm_manager(C);
-  ScrArea *area = nullptr;  // ScrArea will be status bar, I think
+  ScrArea *area = nullptr;
 
   ED_screen_areas_iter (win, screen, area_iter) {
     LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
@@ -6392,14 +6391,12 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   CTX_wm_window_set(C, win);
   CTX_wm_area_set(C, area);
   CTX_wm_region_set(C, region);
+  uiLayout *row = uiLayoutRow(layout, true);
 
   wmKeyMapItem *kmi;
+  blender::Set<std::string> op_names;
   uint8_t modifiers[] = {
       0, KM_SHIFT, KM_CTRL, KM_ALT, KM_OSKEY, KM_SHIFT | KM_CTRL, KM_SHIFT | KM_ALT};
-
-  blender::Set<std::string> op_names;
-
-  uiLayout *row = uiLayoutRow(layout, true);
 
   for (int mod_index = 0; mod_index < ARRAY_SIZE(modifiers); mod_index++) {
     for (short button = LEFTMOUSE; button <= RIGHTMOUSE; button++) {
@@ -6420,7 +6417,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
             }
             uiItemL(row, "", icon);
             if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
-              /* Negative space after non-drag mice icons. */
               uiItemS_ex(row, -0.7f);
             }
             uiItemL(row, name, ICON_NONE);
