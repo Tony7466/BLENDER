@@ -235,6 +235,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   DRW_shgroup_buffer_texture(shgrp, "au", g_dummy_vbo);
   DRW_shgroup_buffer_texture(shgrp, "c", g_dummy_vbo);
   DRW_shgroup_buffer_texture(shgrp, "ac", g_dummy_vbo);
+  DRW_shgroup_buffer_texture(shgrp, "a", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
@@ -462,6 +463,7 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
   sub_ps.bind_texture("au", g_dummy_vbo);
   sub_ps.bind_texture("c", g_dummy_vbo);
   sub_ps.bind_texture("ac", g_dummy_vbo);
+  sub_ps.bind_texture("a", g_dummy_vbo);
 
   /* TODO: Generalize radius implementation for curves data type. */
   float hair_rad_shape = 0.0f;
