@@ -741,16 +741,12 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int tot
 
   blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
 
-  BezTriple *prevbezt = nullptr;
   for (const int i : bezms.index_range()) {
     BezTriple *bezt = &bezts[i];
     BeztMap &bezm = bezms[i];
     bezm.bezt = bezt;
     bezm.swap_handles = false;
-
     bezm.oldIndex = i;
-
-    prevbezt = bezt;
   }
 
   return bezms;
