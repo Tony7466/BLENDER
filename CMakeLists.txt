@@ -2032,7 +2032,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
     add_check_c_compiler_flags(
       C_WARNINGS
-      C_WARN_W3 /W3
+      C_WARN_CLANG_CL_W3 /W3
       # The number behind each warn is the number of unique warning were
       # generated on 2024-04-24 (d2be9cecc28a03ff1f799e8c63f1f9f8eda7cce3)
       # especially the ones in the single and low double digits are likely
@@ -2167,7 +2167,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
   add_check_cxx_compiler_flags(
     CXX_WARNINGS
-      C_WARN_W3 /W3
+      CXX_WARN_CLANG_CL_W3 /W3
       CXX_WARN_CLANG_CL_C++98_COMPAT -Wno-c++98-compat # 352692
       CXX_WARN_CLANG_CL_OLD_STYLE_CAST -Wno-old-style-cast # 178608
       CXX_WARN_CLANG_CL_UNSAFE_BUFFER_USAGE -Wno-unsafe-buffer-usage # 89032
