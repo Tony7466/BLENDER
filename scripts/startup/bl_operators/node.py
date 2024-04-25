@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import bpy
 from bpy.types import (
+    FileHandler,
     Operator,
     PropertyGroup,
-    FileHandler,
 )
 from bpy.props import (
     BoolProperty,
@@ -446,12 +446,16 @@ class NODE_FH_image_node(FileHandler):
     bl_idname = "NODE_FH_image_node"
     bl_label = "Image node"
     bl_import_operator = "node.add_file"
-    bl_file_extensions = ';'.join((*bpy.path.extensions_image, *bpy.path.extensions_movie))
+    bl_file_extensions = ";".join((*bpy.path.extensions_image, *bpy.path.extensions_movie))
 
     @classmethod
     def poll_drop(cls, context):
-        return (context.area and context.area.type == 'NODE_EDITOR'
-                and context.region and context.region.type == 'WINDOW')
+        return (
+            (context.area is not None) and
+            (context.area.type == 'NODE_EDITOR') and
+            (context.region) and
+            (context.region.type == 'WINDOW')
+        )
 
 
 classes = (
