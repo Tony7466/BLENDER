@@ -24,7 +24,7 @@ vec4 closure_to_rgba(Closure cl)
 
 void main()
 {
-  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
+  float f_depth = gl_FragCoord.z;
 
   /* Clip to light shape. */
   if (length_squared(shadow_clip.vector) < 1.0) {

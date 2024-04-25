@@ -505,6 +505,46 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 }
 
 /**
+ * Returns the world space radius of a shadow map texel at a given position.
+ * This is a smooth (not discretized to the LOD transitions) conservative (always above actual
+ * density) estimate value.
+ */
+float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 P)
+{
+  float scale_dist = 1.0;
+  /* Footprint of a tilemap at unit distance from the camera. */
+  float diameter_unit = M_SQRT2 / SHADOW_MAP_MAX_RES;
+  if (is_directional) {
+    if (light.type == LIGHT_SUN) {
+      /* TODO(fclem): Min-Max clamping. */
+      scale_dist = exp2(distance(P, drw_view_position()));
+    }
+    else {
+      /* Uniform distribution everywhere. No distance scaling. */
+      diameter_unit /= exp2(light_sun_data_get(light).clipmap_lod_min);
+    }
+  }
+  else {
+    /* TODO(fclem): Should depend on distance to the camera too. */
+    scale_dist = distance(P, light._position);
+    /* TODO(fclem): Should depend on cubemap density. */
+    diameter_unit = M_SQRT2 / SHADOW_MAP_MAX_RES;
+  }
+  return diameter_unit * scale_dist;
+}
+
+/**
+ * Compute the amount of offset to add to the shading point in the normal direction to avoid self
+ * shadowing caused by aliasing artifacts.
+ */
+float shadow_normal_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec3 L)
+{
+  /* Compute the size of a shadow map texel radius at the receiver position. */
+
+  return shadow_texel_diameter_at(light, is_directional, P);
+}
+
+/**
  * Evaluate shadowing by casting rays toward the light direction.
  */
 ShadowEvalResult shadow_eval(LightData light,
@@ -535,19 +575,18 @@ ShadowEvalResult shadow_eval(LightData light,
   float normal_offset = 0.02;
 #endif
 
-  P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
+  // P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
 
   /* We want to bias inside the object for transmission to go through the object itself.
-   * But doing so split the shadow in two different directions at the horizon. Also this
+   * But doing so splits the shadow in two different directions at the horizon. Also this
    * doesn't fix the the aliasing issue. So we reflect the normal so that it always go towards
    * the light. */
   vec3 N_bias = is_transmission ? reflect(Ng, L) : Ng;
 
-  /* Avoid self intersection. */
+  /* Avoid self intersection with respect to numerical precision. */
   P = offset_ray(P, N_bias);
   /* The above offset isn't enough in most situation. Still add a bigger bias. */
-  /* TODO(fclem): Scale based on depth. */
-  P += N_bias * normal_offset;
+  P += N_bias * shadow_normal_offset(light, is_directional, P, Ng, L);
 
   vec3 lP = is_directional ? light_world_to_local(light, P) :
                              light_world_to_local(light, P - light._position);
