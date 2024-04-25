@@ -453,7 +453,7 @@ class NODE_FH_image_node(FileHandler):
         return (
             (context.area is not None) and
             (context.area.type == 'NODE_EDITOR') and
-            (context.region) and
+            (context.region is not None) and
             (context.region.type == 'WINDOW')
         )
 

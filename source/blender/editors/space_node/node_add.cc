@@ -16,6 +16,7 @@
 #include "DNA_node_types.h"
 #include "DNA_texture_types.h"
 
+#include "BLI_easing.h"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 
@@ -686,6 +687,53 @@ static bool node_add_file_poll(bContext *C)
          ELEM(snode->nodetree->type, NTREE_SHADER, NTREE_TEXTURE, NTREE_COMPOSIT, NTREE_GEOMETRY);
 }
 
+/** Node stack animation data, sorts nodes so each node is placed on top of each other. */
+struct NodeStackAnimationData {
+  Vector<bNode *> nodes;
+  wmTimer *anim_timer;
+};
+
+static int node_add_file_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  NodeStackAnimationData *data = static_cast<NodeStackAnimationData *>(op->customdata);
+
+  if (event->type != TIMER || data == nullptr || data->anim_timer != event->customdata) {
+    return OPERATOR_PASS_THROUGH;
+  }
+
+  const float node_stack_anim_duration = 0.25f;
+  const float duration = float(data->anim_timer->time_duration);
+  const float prev_duration = duration - float(data->anim_timer->time_delta);
+  const float clamped_duration = math::min(duration, node_stack_anim_duration);
+  const float delta_factor =
+      BLI_easing_cubic_ease_in_out(clamped_duration, 0.0f, 1.0f, node_stack_anim_duration) -
+      BLI_easing_cubic_ease_in_out(prev_duration, 0.0f, 1.0f, node_stack_anim_duration);
+
+  bool redraw = false;
+  /* Each node is pushed by all previous nodes in the stack. */
+  float stack_offset = 0.0f;
+
+  for (bNode *node : data->nodes) {
+    node->locy -= stack_offset;
+    stack_offset += (node->runtime->totr.ymax - node->runtime->totr.ymin) * delta_factor;
+    redraw = true;
+  }
+
+  if (redraw) {
+    ED_region_tag_redraw(CTX_wm_region(C));
+  }
+
+  /* End stack animation. */
+  if (duration > node_stack_anim_duration) {
+    WM_event_timer_remove(CTX_wm_manager(C), nullptr, data->anim_timer);
+    MEM_delete(data);
+    op->customdata = nullptr;
+    return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
+  }
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
 static int node_add_file_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -750,7 +798,8 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
       node->id = (ID *)image;
     }
     nodes.append(node);
-    position[1] -= node->height * 2;
+    /* Initial offset between nodes. */
+    position[1] -= 20.0f;
   }
 
   if (nodes.is_empty()) {
@@ -770,7 +819,18 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
   ED_node_tree_propagate_change(C, bmain, snode.edittree);
   DEG_relations_tag_update(bmain);
 
-  return OPERATOR_FINISHED;
+  if (nodes.size() == 1) {
+    return OPERATOR_FINISHED;
+  }
+
+  /* Start the stack animation, so each node is placed on top of each other. */
+  NodeStackAnimationData *data = MEM_new<NodeStackAnimationData>(__func__);
+  data->nodes = std::move(nodes);
+  data->anim_timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
+  op->customdata = data;
+  WM_event_add_modal_handler(C, op);
+
+  return OPERATOR_RUNNING_MODAL;
 }
 
 static int node_add_file_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -805,6 +865,7 @@ void NODE_OT_add_file(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = node_add_file_exec;
+  ot->modal = node_add_file_modal;
   ot->invoke = node_add_file_invoke;
   ot->poll = node_add_file_poll;
 
