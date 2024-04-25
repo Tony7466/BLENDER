@@ -25,9 +25,9 @@
 #include "UI_interface.hh"
 
 #include "NOD_common.h"
+#include "NOD_geo_simulation.hh"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
-#include "NOD_zone_socket_items.hh"
 
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
@@ -47,6 +47,8 @@
 #include "GEO_mix_geometries.hh"
 
 #include "WM_api.hh"
+
+#include "BLO_read_write.hh"
 
 #include "node_geometry_util.hh"
 
@@ -341,6 +343,8 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.use_custom_socket_order();
+  b.allow_any_socket_order();
   b.add_output<decl::Float>("Delta Time");
 
   const bNode *node = b.node_or_null();
@@ -362,14 +366,14 @@ static void node_declare(NodeDeclarationBuilder &b)
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
     auto &input_decl = b.add_input(socket_type, name, identifier);
-    auto &output_decl = b.add_output(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
-      output_decl.dependent_field({input_decl.input_index()});
+      output_decl.dependent_field({input_decl.index()});
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
-  b.add_output<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__").align_with_previous();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -681,6 +685,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
+  b.use_custom_socket_order();
+  b.allow_any_socket_order();
   b.add_input<decl::Bool>("Skip").description(
       "Forward the output of the simulation input node directly to the output node and ignore "
       "the nodes in the simulation zone");
@@ -698,14 +704,14 @@ static void node_declare(NodeDeclarationBuilder &b)
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
     auto &input_decl = b.add_input(socket_type, name, identifier);
-    auto &output_decl = b.add_output(socket_type, name, identifier);
+    auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
     if (socket_type_supports_fields(socket_type)) {
       input_decl.supports_field();
-      output_decl.dependent_field({input_decl.input_index()});
+      output_decl.dependent_field({input_decl.index()});
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
-  b.add_output<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__").align_with_previous();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -972,6 +978,27 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
     }
     default:
       break;
+  }
+}
+
+StructRNA *SimulationItemsAccessor::item_srna = &RNA_SimulationStateItem;
+int SimulationItemsAccessor::node_type = GEO_NODE_SIMULATION_OUTPUT;
+
+void SimulationItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
+{
+  const auto &storage = *static_cast<const NodeGeometrySimulationOutput *>(node.storage);
+  BLO_write_struct_array(writer, NodeSimulationItem, storage.items_num, storage.items);
+  for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+void SimulationItemsAccessor::blend_read_data(BlendDataReader *reader, bNode &node)
+{
+  auto &storage = *static_cast<NodeGeometrySimulationOutput *>(node.storage);
+  BLO_read_struct_array(reader, NodeSimulationItem, storage.items_num, &storage.items);
+  for (const NodeSimulationItem &item : Span(storage.items, storage.items_num)) {
+    BLO_read_string(reader, &item.name);
   }
 }
 

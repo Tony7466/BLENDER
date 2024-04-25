@@ -72,11 +72,11 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 #  include "BKE_grease_pencil.hh"
 #  include "BKE_main.hh"
 #  include "BKE_material.h"
-#  include "BKE_node.h"
+#  include "BKE_node.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_scene.hh"
 #  include "BKE_texture.h"
-#  include "BKE_workspace.h"
+#  include "BKE_workspace.hh"
 
 #  include "DEG_depsgraph.hh"
 #  include "DEG_depsgraph_build.hh"
@@ -200,7 +200,7 @@ static void rna_Material_use_nodes_update(bContext *C, PointerRNA *ptr)
     ED_node_shader_default(C, &ma->id);
   }
 
-  DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   rna_Material_draw_update(bmain, CTX_data_scene(C), ptr);
 }
@@ -958,7 +958,7 @@ void RNA_def_material(BlenderRNA *brna)
       "Additionally helps rejecting probes inside the object to avoid light leaks");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
-  /* TODO(fclem): Should be renamed to use_raytraced_refraction. */
+  /* TODO(fclem): Should be renamed to use_raytraced_transmission. */
   prop = RNA_def_property(srna, "use_screen_refraction", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "blend_flag", MA_BL_SS_REFRACTION);
   RNA_def_property_ui_text(
@@ -1058,7 +1058,7 @@ void RNA_def_material(BlenderRNA *brna)
   /* line art */
   prop = RNA_def_property(srna, "lineart", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, nullptr, "lineart");
-  RNA_def_property_ui_text(prop, "Line Art Settings", "Line art settings for material");
+  RNA_def_property_ui_text(prop, "Line Art Settings", "Line Art settings for material");
 
   rna_def_material_greasepencil(brna);
   rna_def_material_lineart(brna);

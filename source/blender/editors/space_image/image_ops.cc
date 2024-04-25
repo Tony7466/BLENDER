@@ -2683,7 +2683,8 @@ void IMAGE_OT_new(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_string(ot->srna, "name", IMA_DEF_NAME, MAX_ID_NAME - 2, "Name", "Image data-block name");
+  ot->prop = RNA_def_string(
+      ot->srna, "name", IMA_DEF_NAME, MAX_ID_NAME - 2, "Name", "Image data-block name");
   prop = RNA_def_int(ot->srna, "width", 1024, 1, INT_MAX, "Width", "Image width", 1, 16384);
   RNA_def_property_subtype(prop, PROP_PIXEL);
   prop = RNA_def_int(ot->srna, "height", 1024, 1, INT_MAX, "Height", "Image height", 1, 16384);
@@ -2805,6 +2806,7 @@ static int image_flip_exec(bContext *C, wmOperator *op)
 
   BKE_image_partial_update_mark_full_update(ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -2880,6 +2882,7 @@ static int image_rotate_orthogonal_exec(bContext *C, wmOperator *op)
 
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
   return OPERATOR_FINISHED;
@@ -3121,6 +3124,8 @@ static int image_invert_exec(bContext *C, wmOperator *op)
 
   BKE_image_partial_update_mark_full_update(ima);
 
+  DEG_id_tag_update(&ima->id, ID_RECALC_EDITORS);
+
   WM_event_add_notifier(C, NC_IMAGE | NA_EDITED, ima);
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -3172,7 +3177,8 @@ static int image_scale_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
     RNA_property_int_set_array(op->ptr, prop, size);
     BKE_image_release_ibuf(ima, ibuf, nullptr);
   }
-  return WM_operator_props_dialog_popup(C, op, 200);
+  return WM_operator_props_dialog_popup(
+      C, op, 200, IFACE_("Scale Image to New Size"), IFACE_("Resize"));
 }
 
 static int image_scale_exec(bContext *C, wmOperator *op)
@@ -3997,7 +4003,7 @@ static int render_border_exec(bContext *C, wmOperator *op)
     scene->r.mode |= R_BORDER;
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   return OPERATOR_FINISHED;
@@ -4211,7 +4217,7 @@ static int tile_add_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
   RNA_int_set(op->ptr, "count", 1);
   RNA_string_set(op->ptr, "label", "");
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(C, op, 300, IFACE_("Add Tile to Image"), IFACE_("Add"));
 }
 
 static void tile_add_draw(bContext * /*C*/, wmOperator *op)
@@ -4344,7 +4350,8 @@ static int tile_fill_invoke(bContext *C, wmOperator *op, const wmEvent * /*event
 {
   tile_fill_init(op->ptr, CTX_data_edit_image(C), nullptr);
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(
+      C, op, 300, IFACE_("Fill Tile With Generated Image"), IFACE_("Fill"));
 }
 
 static void tile_fill_draw(bContext * /*C*/, wmOperator *op)

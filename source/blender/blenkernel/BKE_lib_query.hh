@@ -21,6 +21,7 @@
 
 #include "DNA_ID.h"
 
+#include "BLI_function_ref.hh"
 #include "BLI_sys_types.h"
 
 #include <array>
@@ -142,7 +143,7 @@ struct LibraryIDLinkCallbackData {
  *
  * \return a set of flags to control further iteration (0 to keep going).
  */
-using LibraryIDLinkCallback = int (*)(LibraryIDLinkCallbackData *cb_data);
+using LibraryIDLinkCallback = int(LibraryIDLinkCallbackData *cb_data);
 
 /* Flags for the foreach function itself. */
 enum {
@@ -270,8 +271,11 @@ void BKE_lib_query_idpropertiesForeachIDLink_callback(IDProperty *id_prop, void 
 /**
  * Loop over all of the ID's this data-block links to.
  */
-void BKE_library_foreach_ID_link(
-    Main *bmain, ID *id, LibraryIDLinkCallback callback, void *user_data, int flag);
+void BKE_library_foreach_ID_link(Main *bmain,
+                                 ID *id,
+                                 blender::FunctionRef<LibraryIDLinkCallback> callback,
+                                 void *user_data,
+                                 int flag);
 /**
  * Re-usable function, use when replacing ID's.
  */
@@ -324,35 +328,44 @@ void BKE_library_ID_test_usages(Main *bmain,
 /** Parameters and result data structure for the 'unused IDs' functions below. */
 struct LibQueryUnusedIDsData {
   /** Process local data-blocks. */
-  bool do_local_ids;
+  bool do_local_ids = false;
   /** Process linked data-blocks. */
-  bool do_linked_ids;
+  bool do_linked_ids = false;
   /**
    * Process all actually unused data-blocks, including these that are currently only used by
    * other unused data-blocks, and 'dependency islands' of several data-blocks using each-other,
    * without any external valid user.
    */
-  bool do_recursive;
+  bool do_recursive = false;
+
+  /**
+   * Callback filter, if defined and it returns `true`, the given `id` may be considered as unused,
+   * otherwise it will always be considered as used.
+   *
+   * Allows for more complex handling of which IDs should be deleted, on top of the basic
+   * local/linked choices.
+   */
+  blender::FunctionRef<bool(ID *id)> filter_fn = nullptr;
 
   /**
    * Amount of detected as unused data-blocks, per type and total as the last value of the array
    * (#INDEX_ID_NULL).
    *
-   * \note: Return value, set by the executed function.
+   * \note Return value, set by the executed function.
    */
   std::array<int, INDEX_ID_MAX> num_total;
   /**
    * Amount of detected as unused local data-blocks, per type and total as the last value of the
    * array (#INDEX_ID_NULL).
    *
-   * \note: Return value, set by the executed function.
+   * \note Return value, set by the executed function.
    */
   std::array<int, INDEX_ID_MAX> num_local;
   /**
    * Amount of detected as unused linked data-blocks, per type and total as the last value of the
    * array (#INDEX_ID_NULL).
    *
-   * \note: Return value, set by the executed function.
+   * \note Return value, set by the executed function.
    */
   std::array<int, INDEX_ID_MAX> num_linked;
 };

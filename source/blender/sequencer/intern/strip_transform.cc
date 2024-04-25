@@ -116,10 +116,7 @@ void SEQ_transform_translate_sequence(Scene *evil_scene, Sequence *seq, int delt
    * updated based on nested strips. This won't work for empty meta-strips,
    * so they can be treated as normal strip. */
   if (seq->type == SEQ_TYPE_META && !BLI_listbase_is_empty(&seq->seqbase)) {
-    Sequence *seq_child;
-    for (seq_child = static_cast<Sequence *>(seq->seqbase.first); seq_child;
-         seq_child = seq_child->next)
-    {
+    LISTBASE_FOREACH (Sequence *, seq_child, &seq->seqbase) {
       SEQ_transform_translate_sequence(evil_scene, seq_child, delta);
     }
     /* Move meta start/end points. */
@@ -602,7 +599,7 @@ void SEQ_transform_offset_after_frame(Scene *scene,
   }
 }
 
-bool SEQ_transform_is_locked(ListBase *channels, Sequence *seq)
+bool SEQ_transform_is_locked(ListBase *channels, const Sequence *seq)
 {
   const SeqTimelineChannel *channel = SEQ_channel_get_by_index(channels, seq->machine);
   return seq->flag & SEQ_LOCK ||
@@ -676,7 +673,7 @@ static void seq_image_transform_quad_get_ex(const Scene *scene,
 
   float quad_temp[4][3];
   for (int i = 0; i < 4; i++) {
-    zero_v2(quad_temp[i]);
+    zero_v3(quad_temp[i]);
   }
 
   quad_temp[0][0] = (image_size[0] / 2) - crop->right;

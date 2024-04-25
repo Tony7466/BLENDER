@@ -2976,7 +2976,6 @@ static void curve_surf_to_softbody(Object *ob)
   SoftBody *sb;
   BodyPoint *bp;
   BodySpring *bs;
-  Nurb *nu;
   BezTriple *bezt;
   BPoint *bpnt;
   int a, curindex = 0;
@@ -3005,7 +3004,7 @@ static void curve_surf_to_softbody(Object *ob)
     setgoal = 1;
   }
 
-  for (nu = static_cast<Nurb *>(cu->nurb.first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, &cu->nurb) {
     if (nu->bezt) {
       /* Bezier case; this is nicely said naive; who ever wrote this part,
        * it was not me (JOW) :).
@@ -3173,12 +3172,12 @@ void sbFree(Object *ob)
     return;
   }
 
-  const bool is_orig = (ob->id.tag & LIB_TAG_COPIED_ON_WRITE) == 0;
+  const bool is_orig = (ob->id.tag & LIB_TAG_COPIED_ON_EVAL) == 0;
 
   free_softbody_intern(sb);
 
   if (is_orig) {
-    /* Only free shared data on non-CoW copies */
+    /* Only free shared data on non-evaluated copies */
     BKE_ptcache_free_list(&sb->shared->ptcaches);
     sb->shared->pointcache = nullptr;
     MEM_freeN(sb->shared);

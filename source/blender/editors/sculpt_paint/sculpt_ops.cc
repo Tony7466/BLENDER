@@ -77,6 +77,12 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   /* Do not allow in DynTopo just yet. */
   if (!ss || (ss && ss->bm)) {
     return OPERATOR_FINISHED;
@@ -178,6 +184,12 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_BMESH: {
       /* Dyntopo Symmetrize. */
@@ -187,7 +199,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
        * are logged as added (as opposed to attempting to store just the
        * parts that symmetrize modifies). */
       undo::push_begin(ob, op);
-      undo::push_node(ob, nullptr, undo::Type::DyntopoSymmetrize);
+      undo::push_node(*ob, nullptr, undo::Type::DyntopoSymmetrize);
       BM_log_before_all_removed(ss->bm, ss->bm_log);
 
       BM_mesh_toolflags_set(ss->bm, true);
@@ -317,7 +329,7 @@ void ensure_valid_pivot(const Object *ob, Scene *scene)
 
   /* No valid pivot? Use bounding box center. */
   if (ups->average_stroke_counter == 0 || !ups->last_stroke_valid) {
-    const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob->sculpt->pbvh);
+    const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob->sculpt->pbvh);
     const float3 center = math::midpoint(bounds.min, bounds.max);
     const float3 location = math::transform_point(ob->object_to_world(), center);
 
@@ -405,7 +417,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
       }
       dyntopo::enable_ex(bmain, depsgraph, ob);
       if (has_undo) {
-        undo::push_node(ob, nullptr, undo::Type::DyntopoBegin);
+        undo::push_node(*ob, nullptr, undo::Type::DyntopoBegin);
         undo::push_end(ob);
       }
     }
@@ -419,7 +431,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
   ensure_valid_pivot(ob, scene);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_enter(bContext *C, Depsgraph *depsgraph, ReportList *reports)
@@ -473,7 +485,7 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
   BKE_object_free_derived_caches(ob);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_exit(bContext *C, Depsgraph *depsgraph)
@@ -502,7 +514,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
+    if (!object::mode_compat_set(C, ob, eObjectMode(mode_flag), op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -746,7 +758,7 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
   using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
-  undo::push_node(ob, node, undo::Type::Mask);
+  undo::push_node(*ob, node, undo::Type::Mask);
   bool update_node = false;
 
   PBVHVertexIter vd;
@@ -769,14 +781,15 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
   }
 }
 
-static bool sculpt_mask_by_color_contiguous_floodfill(
-    SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate, void *userdata)
+static bool sculpt_mask_by_color_contiguous_floodfill(SculptSession *ss,
+                                                      PBVHVertRef from_v,
+                                                      PBVHVertRef to_v,
+                                                      bool is_duplicate,
+                                                      MaskByColorContiguousFloodFillData *data)
 {
   int from_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, from_v);
   int to_v_i = BKE_pbvh_vertex_to_index(ss->pbvh, to_v);
 
-  MaskByColorContiguousFloodFillData *data = static_cast<MaskByColorContiguousFloodFillData *>(
-      userdata);
   float current_color[4];
 
   SCULPT_vertex_color_get(ss, to_v, current_color);
@@ -813,7 +826,7 @@ static void sculpt_mask_by_color_contiguous(Object *object,
     }
   }
 
-  SculptFloodFill flood;
+  flood_fill::FillData flood;
   flood_fill::init_fill(ss, &flood);
   flood_fill::add_initial(&flood, vertex);
 
@@ -827,7 +840,10 @@ static void sculpt_mask_by_color_contiguous(Object *object,
 
   copy_v3_v3(ffd.initial_color, color);
 
-  flood_fill::execute(ss, &flood, sculpt_mask_by_color_contiguous_floodfill, &ffd);
+  flood_fill::execute(
+      ss, &flood, [&](SculptSession *ss, PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate) {
+        return sculpt_mask_by_color_contiguous_floodfill(ss, from_v, to_v, is_duplicate, &ffd);
+      });
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
@@ -853,7 +869,7 @@ static void do_mask_by_color_task(Object *ob,
   using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
-  undo::push_node(ob, node, undo::Type::Mask);
+  undo::push_node(*ob, node, undo::Type::Mask);
   bool update_node = false;
 
   float active_color[4];
@@ -1028,7 +1044,7 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
   SculptSession *ss = ob->sculpt;
   PBVHVertexIter vd;
 
-  undo::push_node(ob, node, undo::Type::Mask);
+  undo::push_node(*ob, node, undo::Type::Mask);
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, &automasking, *node);
 
@@ -1294,7 +1310,6 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(SCULPT_OT_symmetrize);
   WM_operatortype_append(dyntopo::SCULPT_OT_detail_flood_fill);
   WM_operatortype_append(dyntopo::SCULPT_OT_sample_detail_size);
-  WM_operatortype_append(dyntopo::SCULPT_OT_set_detail_size);
   WM_operatortype_append(filter::SCULPT_OT_mesh_filter);
   WM_operatortype_append(mask::SCULPT_OT_mask_filter);
   WM_operatortype_append(SCULPT_OT_set_pivot_position);
@@ -1304,11 +1319,11 @@ void ED_operatortypes_sculpt()
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_init);
   WM_operatortype_append(face_set::SCULPT_OT_face_sets_edit);
   WM_operatortype_append(cloth::SCULPT_OT_cloth_filter);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_face_set_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_box_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_trim_lasso_gesture);
-  WM_operatortype_append(mask::SCULPT_OT_project_line_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_lasso_gesture);
+  WM_operatortype_append(face_set::SCULPT_OT_face_set_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_box_gesture);
+  WM_operatortype_append(trim::SCULPT_OT_trim_lasso_gesture);
+  WM_operatortype_append(project::SCULPT_OT_project_line_gesture);
 
   WM_operatortype_append(SCULPT_OT_sample_color);
   WM_operatortype_append(color::SCULPT_OT_color_filter);

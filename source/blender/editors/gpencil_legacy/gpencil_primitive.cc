@@ -62,7 +62,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define MIN_EDGES 2
 #define MAX_EDGES 128
@@ -366,7 +366,7 @@ static void gpencil_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
   tgpi->rng = BLI_rng_new(rng_seed);
 
-  DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 /* add new segment to curve */
@@ -1093,7 +1093,7 @@ static void gpencil_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
   MEM_SAFE_FREE(depth_arr);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 }
@@ -1163,7 +1163,7 @@ static void gpencil_primitive_exit(bContext *C, wmOperator *op)
     gpd->runtime.sbuffer_sflag = 0;
   }
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
 
   /* clear pointer */
@@ -1211,12 +1211,13 @@ static void gpencil_primitive_init(bContext *C, wmOperator *op)
   gpencil_point_conversion_init(C, &tgpi->gsc);
 
   /* if brush doesn't exist, create a new set (fix damaged files from old versions) */
-  if ((paint->brush == nullptr) || (paint->brush->gpencil_settings == nullptr)) {
+  Brush *brush = BKE_paint_brush(paint);
+  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
     BKE_brush_gpencil_paint_presets(bmain, ts, true);
   }
 
   /* Set Draw brush. */
-  Brush *brush = BKE_paint_toolslots_brush_get(paint, 0);
+  brush = BKE_paint_toolslots_brush_get(paint, 0);
 
   BKE_brush_tool_set(brush, paint, 0);
   BKE_paint_brush_set(paint, brush);
@@ -1414,7 +1415,7 @@ static void gpencil_primitive_interaction_end(bContext *C,
     BKE_gpencil_stroke_copy_to_keyframes(tgpi->gpd, tgpi->gpl, gpf, gps, tail);
   }
 
-  DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
   /* clean up temp data */

@@ -43,6 +43,7 @@ set(SRC
   grease_pencil_draw_ops.cc
   grease_pencil_erase.cc
   grease_pencil_paint.cc
+  grease_pencil_tint.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.cc
@@ -76,14 +77,17 @@ set(SRC
   sculpt_filter_mask.cc
   sculpt_filter_mesh.cc
   sculpt_geodesic.cc
+  sculpt_gesture.cc
   sculpt_mask_init.cc
   sculpt_multiplane_scrape.cc
   sculpt_ops.cc
   sculpt_paint_color.cc
   sculpt_paint_image.cc
   sculpt_pose.cc
+  sculpt_project.cc
   sculpt_smooth.cc
   sculpt_transform.cc
+  sculpt_trim.cc
   sculpt_undo.cc
   sculpt_uv.cc
 
@@ -116,7 +120,25 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
 endif()
 
-blender_add_lib(bf_editor_sculpt_paint "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+if(WITH_GTESTS)
+  set(TEST_SRC
+    sculpt_detail_test.cc
+  )
+  set(TEST_INC
+  )
+  set(TEST_LIB
+    ${LIB}
+    bf_rna  # RNA_prototypes.h
+  )
+  blender_add_test_suite_lib(editor_sculpt_paint "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${TEST_LIB}")
+endif()
 
+# If compiling with msvc clang we need to add the D_LIBCPP_VERSION define
+# so we don't run into tbb errors when compiling with lib
+if(WITH_TBB AND MSVC_CLANG)
+  string(APPEND CMAKE_CXX_FLAGS " /D_LIBCPP_VERSION")
+endif()
+
+blender_add_lib(bf_editor_sculpt_paint "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 # RNA_prototypes.h
 add_dependencies(bf_editor_sculpt_paint bf_rna)

@@ -55,6 +55,12 @@ enum BVHCacheType {
   BVHTREE_FROM_LOOSEVERTS,
   BVHTREE_FROM_LOOSEEDGES,
 
+  /* These types consider geometry visibility when getting loose elements.
+   * NOTE: If the element is linked to a face or edge that is hidden, but the element itself is not
+   * hidden, it is considered a loose element. */
+  BVHTREE_FROM_LOOSEVERTS_NO_HIDDEN,
+  BVHTREE_FROM_LOOSEEDGES_NO_HIDDEN,
+
   /* Keep `BVHTREE_MAX_ITEM` as last item. */
   BVHTREE_MAX_ITEM,
 };
@@ -92,7 +98,7 @@ BVHTree *bvhtree_from_mesh_edges_ex(BVHTreeFromMesh *data,
                                     int axis);
 
 /**
- * Builds a BVH-tree where nodes are the triangle faces (#MLoopTri) of the given mesh.
+ * Builds a BVH-tree where nodes are the triangle faces (#Mesh::corner_tris()) of the given mesh.
  */
 BVHTree *bvhtree_from_mesh_corner_tris_ex(BVHTreeFromMesh *data,
                                           blender::Span<blender::float3> vert_positions,
@@ -123,6 +129,20 @@ void BKE_bvhtree_from_mesh_tris_init(const Mesh &mesh,
                                      BVHTreeFromMesh &r_data);
 
 /**
+ * Build a bvh tree containing the given edges.
+ */
+void BKE_bvhtree_from_mesh_edges_init(const Mesh &mesh,
+                                      const blender::IndexMask &edges_mask,
+                                      BVHTreeFromMesh &r_data);
+
+/**
+ * Build a bvh tree containing the given vertices.
+ */
+void BKE_bvhtree_from_mesh_verts_init(const Mesh &mesh,
+                                      const blender::IndexMask &verts_mask,
+                                      BVHTreeFromMesh &r_data);
+
+/**
  * Frees data allocated by a call to `bvhtree_from_mesh_*`.
  */
 void free_bvhtree_from_mesh(BVHTreeFromMesh *data);
@@ -147,9 +167,9 @@ struct BVHTreeFromPointCloud {
   const float (*coords)[3];
 };
 
-[[nodiscard]] BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
-                                                       const PointCloud *pointcloud,
-                                                       int tree_type);
+void BKE_bvhtree_from_pointcloud_get(const PointCloud &pointcloud,
+                                     const blender::IndexMask &points_mask,
+                                     BVHTreeFromPointCloud &r_data);
 
 void free_bvhtree_from_pointcloud(BVHTreeFromPointCloud *data);
 
