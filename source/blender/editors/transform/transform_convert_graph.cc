@@ -816,7 +816,6 @@ static void beztmap_to_data(TransDataContainer *tc,
       continue;
     }
 
-    /* For the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
     TransData2D *td2d;
     TransData *td;
 
