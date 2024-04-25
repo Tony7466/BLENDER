@@ -114,7 +114,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
                                         curves,
                                         layer_space_to_world_space,
                                         value_attribute,
-                                        Span(&points, 1),
+                                        {points},
                                         affected_strokes,
                                         use_connected_only,
                                         IndexMask());

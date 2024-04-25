@@ -119,7 +119,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       const VArray<int8_t> handle_types_right = curves.handle_types_right();
 
       must_be_selected.clear();
-      bezier_curves[i].foreach_index(GrainSize(128), [&](const int bezier_index) {
+      bezier_curves[i].foreach_index([&](const int bezier_index) {
         for (const int point_i : points_by_curve[bezier_index]) {
           if (selection_per_attribute[0].contains(point_i)) {
             const HandleType type_left = HandleType(handle_types_left[point_i]);
@@ -259,15 +259,15 @@ static OffsetIndices<int> recent_position_offsets(TransCustomData &custom_data, 
 }
 
 /**
- * Creates map of indexes to `tc.data` representing curve in layout
+ * Creates map of indices to `tc.data` representing curve in layout
  * [L0, P0, R0, L1, P1, R1, L2,P2, R2], where [P0, P1, P2], [L0, L1, L2] and [R0, R1, R2] are
  * positions, left handles and right handles respectively.
  */
 static void fill_map(const CurveType curve_type,
-                     MutableSpan<int> map,
-                     IndexRange curve_points,
-                     OffsetIndices<int> position_offsets_in_td,
-                     int handles_offset)
+                     const IndexRange curve_points,
+                     const OffsetIndices<int> position_offsets_in_td,
+                     const int handles_offset,
+                     MutableSpan<int> map)
 {
   const int attr_num = (curve_type == CURVE_TYPE_BEZIER) ? 3 : 1;
   const int left_handle_index = handles_offset + position_offsets_in_td[1].start();
@@ -396,9 +396,6 @@ void curve_populate_trans_data_structs(
     });
   }
   if (use_connected_only) {
-    Vector<int> map;
-    Vector<float> closest_distances;
-    Vector<float3> mapped_curve_positions;
     const VArray<int8_t> curve_types = curves.curve_types();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     Array<int> bezier_offsets_in_td(curves.curves_num() + 1, 0);
@@ -406,6 +403,10 @@ void curve_populate_trans_data_structs(
     offset_indices::accumulate_counts_to_offsets(bezier_offsets_in_td);
 
     affected_curves.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
+      Array<int> map;
+      Array<float> closest_distances;
+      Array<float3> mapped_curve_positions;
+
       for (const int curve_i : segment) {
         const int selection_attrs_num = curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1;
         const IndexRange curve_points = points_by_curve[curve_i];
@@ -416,10 +417,10 @@ void curve_populate_trans_data_structs(
         mapped_curve_positions.reinitialize(total_curve_points);
 
         ed::transform::curves::fill_map(CurveType(curve_types[curve_i]),
-                                        map,
                                         curve_points,
                                         position_offsets_in_td,
-                                        bezier_offsets_in_td[curve_i]);
+                                        bezier_offsets_in_td[curve_i],
+                                        map);
 
         bool has_any_selected = false;
         for (const int selection_attr_i : IndexRange(selection_attrs_num)) {
