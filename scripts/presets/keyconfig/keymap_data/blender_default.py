@@ -7154,9 +7154,9 @@ def km_image_editor_tool_uv_grab(params):
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
         ]},
     )
 
@@ -7171,9 +7171,9 @@ def km_image_editor_tool_uv_relax(params):
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
         ]},
     )
 
@@ -7188,9 +7188,9 @@ def km_image_editor_tool_uv_pinch(params):
              {"properties": [("use_invert", True)]}),
             ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
             ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
-             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"),],}),
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
         ]},
     )
 
