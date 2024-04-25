@@ -45,6 +45,8 @@
 #include "WM_api.hh"
 
 #include "draw_manager_text.hh"
+
+#include "DRW_render.hh"
 #include "intern/bmesh_polygon.hh"
 
 using blender::float3;
@@ -766,8 +768,8 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   bool show_text = DRW_state_show_text();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
-  Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
-  BMEditMesh *em = mesh->edit_mesh;
+  const Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
+  const BMEditMesh *em = mesh->runtime->edit_mesh.get();
   bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
   if (!(sima->flag & SI_SHOW_INDICES) || !show_text || !uv_layer) {
     return;
