@@ -6307,6 +6307,42 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   UI_block_emboss_set(block, previous_emboss);
 }
 
+static wmKeyMapItem *keymapItem(bContext *C,
+                                wmWindowManager *wm,
+                                wmWindow *win,
+                                ScrArea *area,
+                                ARegion *region,
+                                short type,
+                                short val,
+                                uint8_t modifier)
+{
+  wmEvent test_event = *win->eventstate;
+  test_event.type = type;
+  test_event.val = val;
+  test_event.modifier = modifier;
+  test_event.flag = (eWM_EventFlag)0;
+  wmKeyMapItem *kmi = nullptr;
+
+  ListBase *handlers[] = {
+      &region->handlers,
+      &area->handlers,
+      &win->handlers,
+  };
+
+  for (int handler_index = 0; handler_index < ARRAY_SIZE(handlers); handler_index++) {
+    if (!handlers[handler_index]) {
+      continue;
+    }
+    kmi = WM_event_match_keymap_item_from_handlers(
+        C, wm, win, handlers[handler_index], &test_event);
+    if (kmi) {
+      break;
+    }
+  }
+
+  return kmi;
+}
+
 void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -6322,33 +6358,81 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
-  /* Otherwise should cursor keymap status. */
-  for (int i = 0; i < 3; i++) {
-    uiLayout *box = uiLayoutRow(layout, false);
-    uiLayout *col = uiLayoutColumn(box, false);
-    uiLayout *row = uiLayoutRow(col, true);
-    uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
+  bScreen *screen = CTX_wm_screen(C);
+  ARegion *region = screen->active_region;
 
-    const char *msg = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
-                                 WM_window_cursor_keymap_status_get(win, i, 0));
-    const char *msg_drag = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
-                                      WM_window_cursor_keymap_status_get(win, i, 1));
-
-    if (msg || (msg_drag == nullptr)) {
-      /* Icon and text separately are closer together with aligned layout. */
-      uiItemL(row, "", (ICON_MOUSE_LMB + i));
-      uiItemL(row, msg ? msg : "", ICON_NONE);
-    }
-
-    if (msg_drag) {
-      uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
-      uiItemL(row, msg_drag, ICON_NONE);
-    }
-
-    /* Use trick with empty string to keep icons in same position. */
-    row = uiLayoutRow(col, false);
-    uiItemL(row, "                                                                   ", ICON_NONE);
+  if (region == nullptr) {
+    return;
   }
+
+  /* Otherwise region keymap status. */
+  wmWindowManager *wm = CTX_wm_manager(C);
+  ScrArea *area = nullptr;  // ScrArea will be status bar, I think
+
+  ED_screen_areas_iter (win, screen, area_iter) {
+    LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
+      if (region == region_iter) {
+        area = area_iter;
+        break;
+      }
+    }
+  }
+
+  if (area == nullptr) {
+    return;
+  }
+
+  /* Fallback to window. */
+  if (ELEM(region->regiontype, RGN_TYPE_TOOLS, RGN_TYPE_TOOL_PROPS)) {
+    region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+  }
+
+  ScrArea *save_area = CTX_wm_area(C);
+  ARegion *save_region = CTX_wm_region(C);
+  CTX_wm_window_set(C, win);
+  CTX_wm_area_set(C, area);
+  CTX_wm_region_set(C, region);
+
+  wmKeyMapItem *kmi;
+  uint8_t modifiers[] = {
+      0, KM_SHIFT, KM_CTRL, KM_ALT, KM_OSKEY, KM_SHIFT | KM_CTRL, KM_SHIFT | KM_ALT};
+
+  blender::Set<std::string> op_names;
+
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  for (int mod_index = 0; mod_index < ARRAY_SIZE(modifiers); mod_index++) {
+    for (short button = LEFTMOUSE; button <= RIGHTMOUSE; button++) {
+      for (short action = KM_PRESS; action <= KM_CLICK_DRAG; action++) {
+        kmi = keymapItem(C, wm, win, area, region, button, action, modifiers[mod_index]);
+        if (kmi && !(kmi->flag & KMI_INACTIVE)) {
+          wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
+          const std::string operator_name = WM_operatortype_name(ot, kmi->ptr);
+          const char *name = (ot) ? operator_name.c_str() : kmi->idname;
+          if (op_names.add(name)) {
+            int icon_mod[4];
+            int icon = UI_icon_from_keymap_item(kmi, icon_mod);
+            for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+              uiItemL(row, "", icon_mod[j]);
+            }
+            if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
+              uiItemS_ex(row, -0.5f);
+            }
+            uiItemL(row, "", icon);
+            if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
+              /* Negative space after non-drag mice icons. */
+              uiItemS_ex(row, -0.7f);
+            }
+            uiItemL(row, name, ICON_NONE);
+            uiItemS_ex(row, 0.7f);
+          }
+        }
+      }
+    }
+  }
+
+  CTX_wm_area_set(C, save_area);
+  CTX_wm_region_set(C, save_region);
 }
 
 void uiTemplateStatusInfo(uiLayout *layout, bContext *C)

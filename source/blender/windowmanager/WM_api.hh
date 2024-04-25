@@ -1738,11 +1738,6 @@ void WM_event_tablet_data_default_set(wmTabletData *tablet_data);
  */
 wmEvent *WM_event_add_simulate(wmWindow *win, const wmEvent *event_to_add);
 
-const char *WM_window_cursor_keymap_status_get(const wmWindow *win,
-                                               int button_index,
-                                               int type_index);
-void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win);
-
 void WM_window_status_area_tag_redraw(wmWindow *win);
 /**
  * Similar to #BKE_screen_area_map_find_area_xy and related functions,

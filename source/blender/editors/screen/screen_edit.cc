@@ -976,6 +976,8 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
   /* Check for redraw headers. */
   if (region_prev != screen->active_region) {
 
+    WM_window_status_area_tag_redraw(win);
+
     ED_screen_areas_iter (win, screen, area_iter) {
       bool do_draw = false;
 
