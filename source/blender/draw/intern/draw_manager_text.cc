@@ -766,17 +766,15 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   using namespace blender::draw;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  bool show_text = DRW_state_show_text();
-  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   const Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
   const BMEditMesh *em = mesh->runtime->edit_mesh.get();
   bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+  bool show_text = DRW_state_show_text();
+  const SpaceImage *sima = (const SpaceImage *)draw_ctx->space_data;
   if (!(sima->flag & SI_SHOW_INDICES) || !show_text || !uv_layer) {
     return;
   }
-  Scene *scene = draw_ctx->scene;
-  DRWTextStore *dt = DRW_text_cache_ensure();
-  const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+  const Scene *scene = draw_ctx->scene;
   const ToolSettings *ts = scene->toolsettings;
   const bool uv_sync = ts->uv_flag & UV_SYNC_SELECTION;
   const bool use_edge = uv_sync ? ts->selectmode & SCE_SELECT_EDGE :
@@ -786,6 +784,8 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   const bool use_vert = uv_sync ? ts->selectmode & SCE_SELECT_VERTEX :
                                   ts->uv_selectmode & UV_SELECT_VERTEX;
 
+  DRWTextStore *dt = DRW_text_cache_ensure();
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
   if (use_vert) {
     overlay_edit_uv_display_vert_id(em, offsets, dt);
   }
