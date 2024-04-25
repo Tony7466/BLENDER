@@ -49,10 +49,11 @@ const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
 const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
 
 enum ColorFlag {
-  Border = 1 << 0,
-  Stroke = 1 << 1,
-  Fill = 1 << 2,
-  Seed = 1 << 3,
+  Border = (1 << 0),
+  Stroke = (1 << 1),
+  Fill = (1 << 2),
+  Seed = (1 << 3),
+  Debug = (1 << 7),
 };
 ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
 
@@ -254,9 +255,9 @@ class ImageBufferAccessor {
 static void convert_colors_to_flags(ImageBufferAccessor &buffer)
 {
   for (ColorGeometry4b &color : buffer.pixels()) {
-    const bool is_boundary = color.r > 0.0f;
+    const bool is_stroke = color.r > 0.0f;
     const bool is_seed = color.g > 0.0f;
-    color.r = (is_boundary ? ColorFlag::Stroke : 0) | (is_seed ? ColorFlag::Seed : 0);
+    color.r = (is_stroke ? ColorFlag::Stroke : 0) | (is_seed ? ColorFlag::Seed : 0);
     color.g = 0;
     color.b = 0;
     color.a = 0;
@@ -266,25 +267,29 @@ static void convert_colors_to_flags(ImageBufferAccessor &buffer)
 /* Set a border to create image limits. */
 static void convert_flags_to_colors(ImageBufferAccessor &buffer)
 {
-  constexpr const ColorGeometry4b output_boundary_color = {255, 0, 0, 255};
+  constexpr const ColorGeometry4b output_stroke_color = {255, 0, 0, 255};
   constexpr const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
   constexpr const ColorGeometry4b output_border_color = {0, 0, 255, 255};
   constexpr const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
   constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
   constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
+  constexpr const ColorGeometry4b output_debug_color = {255, 127, 0, 255};
 
   for (ColorGeometry4b &color : buffer.pixels()) {
-    if (color.r & ColorFlag::Stroke) {
-      color = output_boundary_color;
+    if (color.r & ColorFlag::Debug) {
+      color = output_debug_color;
+    }
+    else if (color.r & ColorFlag::Fill) {
+      color = output_fill_color;
+    }
+    else if (color.r & ColorFlag::Stroke) {
+      color = output_stroke_color;
     }
     else if (color.r & ColorFlag::Border) {
       color = output_border_color;
     }
     else if (color.r & ColorFlag::Seed) {
       color = output_seed_color;
-    }
-    else if (color.r & ColorFlag::Fill) {
-      color = output_fill_color;
     }
     else {
       color = ColorGeometry4b(0, 0, 0, 0);
@@ -326,8 +331,7 @@ enum FillBorderMode {
 };
 
 template<FillBorderMode border_mode>
-FillResult flood_fill(ImageBufferAccessor &buffer,
-                      const int leak_filter_width = 0)
+FillResult flood_fill(ImageBufferAccessor &buffer, const int leak_filter_width = 0)
 {
   const MutableSpan<ColorGeometry4b> pixels = buffer.pixels();
   const int width = buffer.width();
@@ -483,13 +487,13 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
     for (const int y : IndexRange(height)) {
       /* Check for empty pixels next to filled pixels. */
       for (const int x : IndexRange(width).drop_back(1)) {
-        const int index_empty = buffer.index_from_coord({x, y});
-        const int index_filled = buffer.index_from_coord({x + 1, y});
-        if (!get_flag(pixels[index_empty], ColorFlag::Fill) &&
-            get_flag(pixels[index_filled], ColorFlag::Fill))
-        {
+        const int index_left = buffer.index_from_coord({x, y});
+        const int index_right = buffer.index_from_coord({x + 1, y});
+        const bool filled_left = get_flag(pixels[index_left], ColorFlag::Fill);
+        const bool filled_right = get_flag(pixels[index_right], ColorFlag::Fill);
+        if (!filled_left && filled_right) {
           /* Empty index list indicates uninitialized section. */
-          starts.add(index_filled, {});
+          starts.add(index_right, {});
         }
       }
     }
@@ -602,12 +606,14 @@ static FillBoundary process_image(Image &ima, const bool invert, const bool outp
     }
   }
 
+  const FillBoundary boundary = build_fill_boundary(accessor);
+
   if (output_as_colors) {
     /* For visual output convert bit flags back to colors. */
     convert_flags_to_colors(accessor);
   }
 
-  return build_fill_boundary(accessor);
+  return boundary;
 }
 
 /* Create curves geometry from boundary positions. */
@@ -883,10 +889,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     return {};
   }
 
-  //FillBoundary boundary = process_image(*ima, invert, keep_image);
-  FillBoundary boundary;
-  //bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
-  bke::CurvesGeometry fill_curves;
+  FillBoundary boundary = process_image(*ima, invert, keep_image);
+  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
 
   /* Note: Region view reset has to happen after final curve construction, otherwise the curve
    * placement, used to re-project from the 2D pixel coordinates, will have the wrong view
