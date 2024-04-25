@@ -290,7 +290,7 @@ class IMAGE_OT_open_images(Operator):
             )
             is_tiled = context.edit_image.source == 'TILED'
             if len(files) > 1 and self.use_sequence_detection and not is_tiled:
-                context.edit_image.name = "%s%s%s" % (seq["prefix"], ("#" * seq["frame_size"]), seq["ext"])
+                context.edit_image.name = "{!s}{!s}{!s}".format(seq["prefix"], ("#" * seq["frame_size"]), seq["ext"])
 
         return {'FINISHED'}
 
