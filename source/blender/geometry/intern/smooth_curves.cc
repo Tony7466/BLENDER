@@ -133,36 +133,16 @@ static void gaussian_blur_1D(const Span<T> src,
   }
 
   /* Normalize the weights. */
-  auto mix_smoothed = [&](const int index, const float influence) {
-    if (!is_end_and_fixed(index)) {
-      total_weight[index] += w - w2;
-      dst[index] = src[index] + influence * dst[index] / total_weight[index];
-    }
-  };
-
-  if (influence_by_point.is_single()) {
-    const float influence = influence_by_point.get_internal_single();
+  devirtualize_varray(influence_by_point, [&](const auto influence_by_point) {
     threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
       for (const int64_t index : range) {
-        mix_smoothed(index, influence);
+        if (!is_end_and_fixed(index)) {
+          total_weight[index] += w - w2;
+          dst[index] = src[index] + influence_by_point[index] * dst[index] / total_weight[index];
+        }
       }
     });
-  }
-  else if (influence_by_point.is_span()) {
-    const Span<float> influence_span = influence_by_point.get_internal_span();
-    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-      for (const int64_t index : range) {
-        mix_smoothed(index, influence_span[index]);
-      }
-    });
-  }
-  else if (influence_by_point) {
-    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-      for (const int64_t index : range) {
-        mix_smoothed(index, influence_by_point[index]);
-      }
-    });
-  }
+  });
 }
 
 void gaussian_blur_1D(const GSpan src,
