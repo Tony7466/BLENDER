@@ -1664,18 +1664,19 @@ static void create_inspection_string_for_default_socket_value(const bNodeSocket 
   value_type.destruct(socket_value);
 }
 
-static std::optional<std::string> create_description_inspection_string(const bNodeSocket &socket)
+static Vector<nodes::NodeTooltipRow, 1> create_description_inspection_string(
+    const bNodeSocket &socket)
 {
   if (socket.runtime->declaration == nullptr) {
-    return std::nullopt;
+    return {};
   }
   const blender::nodes::SocketDeclaration &socket_decl = *socket.runtime->declaration;
   blender::StringRefNull description = socket_decl.description;
   if (description.is_empty()) {
-    return std::nullopt;
+    return {};
   }
 
-  return TIP_(description.c_str());
+  return {nodes::NodeTooltipRow{TIP_(description.c_str()), UI_TIP_LC_MAIN}};
 }
 
 static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeLog *geo_tree_log,
@@ -1716,7 +1717,8 @@ static std::optional<std::string> create_log_inspection_string(geo_log::GeoTreeL
   return str;
 }
 
-static std::optional<std::string> create_declaration_inspection_string(const bNodeSocket &socket)
+static Vector<nodes::NodeTooltipRow, 1> create_declaration_inspection_string(
+    const bNodeSocket &socket)
 {
   std::stringstream ss;
   if (const nodes::decl::Geometry *socket_decl = dynamic_cast<const nodes::decl::Geometry *>(
@@ -1727,9 +1729,9 @@ static std::optional<std::string> create_declaration_inspection_string(const bNo
 
   std::string str = ss.str();
   if (str.empty()) {
-    return std::nullopt;
+    return {};
   }
-  return str;
+  return {nodes::NodeTooltipRow{str, UI_TIP_LC_MAIN}};
 }
 
 static geo_log::GeoTreeLog *geo_tree_log_for_socket(const bNodeTree &ntree,
@@ -1754,11 +1756,11 @@ static Vector<std::string> lines_of_text(std::string text)
   return result;
 }
 
-static std::optional<std::string> create_multi_input_log_inspection_string(
+static Vector<nodes::NodeTooltipRow, 1> create_multi_input_log_inspection_string(
     const bNodeTree &ntree, const bNodeSocket &socket, TreeDrawContext &tree_draw_ctx)
 {
   if (!socket.is_multi_input()) {
-    return std::nullopt;
+    return {};
   }
 
   Vector<std::pair<int, std::string>, 8> numerated_info;
@@ -1788,7 +1790,7 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
   }
 
   if (numerated_info.is_empty()) {
-    return std::nullopt;
+    return {};
   }
 
   constexpr const char *indentation = "  ";
@@ -1807,22 +1809,22 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
 
   const std::string str = ss.str();
   if (str.empty()) {
-    return std::nullopt;
+    return {};
   }
-
-  return str;
+  return {nodes::NodeTooltipRow{str, UI_TIP_LC_MAIN}};
 }
 
-static std::optional<std::string> create_default_value_inspection_string(const bNodeSocket &socket)
+static Vector<nodes::NodeTooltipRow, 1> create_default_value_inspection_string(
+    const bNodeSocket &socket)
 {
   std::stringstream ss;
   create_inspection_string_for_default_socket_value(socket, ss);
 
   std::string str = ss.str();
   if (str.empty()) {
-    return std::nullopt;
+    return {};
   }
-  return str;
+  return {nodes::NodeTooltipRow{str, UI_TIP_LC_MAIN}};
 }
 
 static const bNodeSocket *target_for_reroute(const bNodeSocket &reroute_output)
@@ -1846,16 +1848,16 @@ static const bNodeSocket *target_for_reroute(const bNodeSocket &reroute_output)
   }
 }
 
-static std::optional<std::string> create_dangling_reroute_inspection_string(
+static Vector<nodes::NodeTooltipRow, 2> create_dangling_reroute_inspection_string(
     const bNodeTree &ntree, const bNodeSocket &socket)
 {
   if (ntree.type != NTREE_GEOMETRY) {
-    return std::nullopt;
+    return {};
   }
 
   const bNode &node = socket.owner_node();
   if (!node.is_dangling_reroute()) {
-    return std::nullopt;
+    return {};
   }
 
   const bNodeSocket &output_socket = *node.output_sockets()[0];
@@ -1863,25 +1865,26 @@ static std::optional<std::string> create_dangling_reroute_inspection_string(
 
   if (target_socket == nullptr) {
     if (!output_socket.directly_linked_sockets().is_empty()) {
-      return TIP_("Dangling reroute is ignored by all targets");
+      return {nodes::NodeTooltipRow{TIP_("Dangling reroute is ignored by all targets"),
+                                    UI_TIP_LC_NORMAL}};
     }
-    return std::nullopt;
+    return {};
   }
 
   if (target_socket->is_multi_input()) {
-    return TIP_("Dangling reroute branch is ignored by multi input socket");
+    return {nodes::NodeTooltipRow{TIP_("Dangling reroute branch is ignored by multi input socket"),
+                                  UI_TIP_LC_NORMAL}};
   }
 
   std::stringstream ss;
   create_inspection_string_for_default_socket_value(*target_socket, ss);
   if (ss.str().empty()) {
-    return TIP_("Dangling reroute is ignored");
+    return {nodes::NodeTooltipRow{TIP_("Dangling reroute is ignored"), UI_TIP_LC_NORMAL}};
   }
-  ss << ".\n\n";
-  ss << TIP_("Dangling reroute is ignored, default value of target socket is used");
-  return ss.str();
-
-  return std::nullopt;
+  return {nodes::NodeTooltipRow{ss.str(), UI_TIP_LC_MAIN},
+          nodes::NodeTooltipRow{
+              TIP_("Dangling reroute is ignored, default value of target socket is used"),
+              UI_TIP_LC_MAIN}};
 }
 
 static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode *snode,
@@ -1900,29 +1903,37 @@ static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode 
 
   Vector<nodes::NodeTooltipRow, 8> inspections;
 
-  if (std::optional<std::string> info = create_description_inspection_string(socket)) {
-    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
+  if (Vector<nodes::NodeTooltipRow, 1> info = create_description_inspection_string(socket);
+      !info.is_empty())
+  {
+    inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
   }
 
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
     inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
-  else if (std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
-                                                                                       socket))
+  else if (Vector<nodes::NodeTooltipRow, 2> info = create_dangling_reroute_inspection_string(
+               ntree, socket);
+           !info.is_empty())
   {
-    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
+    inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
   }
-  else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
-    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
-  }
-  else if (std::optional<std::string> info = create_multi_input_log_inspection_string(
-               ntree, socket, tree_draw_ctx))
+  else if (Vector<nodes::NodeTooltipRow, 1> info = create_default_value_inspection_string(socket);
+           !info.is_empty())
   {
-    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
+    inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
+  }
+  else if (Vector<nodes::NodeTooltipRow, 1> info = create_multi_input_log_inspection_string(
+               ntree, socket, tree_draw_ctx);
+           !info.is_empty())
+  {
+    inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
   }
 
-  if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
-    inspections.append({std::move(*info), UI_TIP_LC_MAIN});
+  if (Vector<nodes::NodeTooltipRow, 1> info = create_declaration_inspection_string(socket);
+      !info.is_empty())
+  {
+    inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
   }
 
   /*
