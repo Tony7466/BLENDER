@@ -65,7 +65,7 @@ class AbstractView {
 
  public:
   virtual ~AbstractView() = default;
-
+  std::string label;
   /**
    * If a view wants to support dropping data into it, it has to return a drop target here.
    * That is an object implementing #DropTargetInterface.

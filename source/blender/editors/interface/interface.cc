@@ -6421,6 +6421,12 @@ std::string UI_but_string_get_label(uiBut &but)
     }
     return but.str.substr(0, str_len);
   }
+
+  if (but.type == UI_BTYPE_VIEW_ITEM) {
+    uiButViewItem *view_item_but = static_cast<uiButViewItem *>(&but);
+    blender::ui::AbstractView &tree_view = view_item_but->view_item->get_view();
+    return tree_view.label;
+  }
   return UI_but_string_get_rna_label(but);
 }
 
