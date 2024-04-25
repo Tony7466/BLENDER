@@ -49,9 +49,6 @@ AssetShelfSettings &AssetShelfSettings::operator=(const AssetShelfSettings &othe
   if (active_catalog_path) {
     active_catalog_path = BLI_strdup(other.active_catalog_path);
   }
-  if (active_catalog_path_popup) {
-    active_catalog_path_popup = BLI_strdup(other.active_catalog_path_popup);
-  }
   BKE_asset_catalog_path_list_free(enabled_catalog_paths);
   enabled_catalog_paths = BKE_asset_catalog_path_list_duplicate(other.enabled_catalog_paths);
 
@@ -62,7 +59,6 @@ AssetShelfSettings::~AssetShelfSettings()
 {
   BKE_asset_catalog_path_list_free(enabled_catalog_paths);
   MEM_delete(active_catalog_path);
-  MEM_delete(active_catalog_path_popup);
 }
 
 namespace blender::ed::asset::shelf {
@@ -73,53 +69,41 @@ void settings_blend_write(BlendWriter *writer, const AssetShelfSettings &setting
 
   BKE_asset_catalog_path_list_blend_write(writer, settings.enabled_catalog_paths);
   BLO_write_string(writer, settings.active_catalog_path);
-  BLO_write_string(writer, settings.active_catalog_path_popup);
 }
 
 void settings_blend_read_data(BlendDataReader *reader, AssetShelfSettings &settings)
 {
   BKE_asset_catalog_path_list_blend_read_data(reader, settings.enabled_catalog_paths);
   BLO_read_string(reader, &settings.active_catalog_path);
-  BLO_read_string(reader, &settings.active_catalog_path_popup);
 }
 
 void settings_set_active_catalog(AssetShelfSettings &settings,
-                                 const asset_system::AssetCatalogPath &path,
-                                 const bool is_popup)
+                                 const asset_system::AssetCatalogPath &path)
 {
-  const char **active_catalog_path = is_popup ? &settings.active_catalog_path_popup :
-                                                &settings.active_catalog_path;
-  MEM_delete(*active_catalog_path);
-  *active_catalog_path = BLI_strdupn(path.c_str(), path.length());
+  MEM_delete(settings.active_catalog_path);
+  settings.active_catalog_path = BLI_strdupn(path.c_str(), path.length());
 }
 
-StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings, const bool is_popup)
+StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings)
 {
-  return is_popup ? settings.active_catalog_path_popup : settings.active_catalog_path;
+  return settings.active_catalog_path;
 }
 
-void settings_set_all_catalog_active(AssetShelfSettings &settings, const bool is_popup)
+void settings_set_all_catalog_active(AssetShelfSettings &settings)
 {
-  const char **active_catalog_path = is_popup ? &settings.active_catalog_path_popup :
-                                                &settings.active_catalog_path;
-  MEM_delete(*active_catalog_path);
-  *active_catalog_path = nullptr;
+  MEM_delete(settings.active_catalog_path);
+  settings.active_catalog_path = nullptr;
 }
 
 bool settings_is_active_catalog(const AssetShelfSettings &settings,
-                                const asset_system::AssetCatalogPath &path,
-                                const bool is_popup)
+                                const asset_system::AssetCatalogPath &path)
 {
-  const char *active_catalog_path = is_popup ? settings.active_catalog_path_popup :
-                                               settings.active_catalog_path;
-  return active_catalog_path && active_catalog_path == path.str();
+  return settings.active_catalog_path && settings.active_catalog_path == path.str();
 }
 
-bool settings_is_all_catalog_active(const AssetShelfSettings &settings, const bool is_popup)
+bool settings_is_all_catalog_active(const AssetShelfSettings &settings)
 {
-  const char *active_catalog_path = is_popup ? settings.active_catalog_path_popup :
-                                               settings.active_catalog_path;
-  return !active_catalog_path || !active_catalog_path[0];
+  return !settings.active_catalog_path || !settings.active_catalog_path[0];
 }
 
 static bool use_enabled_catalogs_from_prefs(const AssetShelf &shelf)

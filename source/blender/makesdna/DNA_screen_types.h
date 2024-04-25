@@ -802,7 +802,6 @@ typedef struct AssetShelfSettings {
   ListBase enabled_catalog_paths; /* #AssetCatalogPathLink */
   /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
   const char *active_catalog_path;
-  const char *active_catalog_path_popup;
 
   /** For filtering assets displayed in the asset view. */
   char search_string[64];
@@ -834,6 +833,7 @@ typedef struct AssetShelf {
 
   AssetShelfSettings settings;
 
+  /** Only for the permanent asset shelf regions, not asset shelves in temporary popups. */
   short preferred_row_count;
   char _pad[6];
 } AssetShelf;

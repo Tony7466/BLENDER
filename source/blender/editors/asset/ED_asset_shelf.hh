@@ -80,6 +80,7 @@ AssetShelfType *asset_shelf_type_find_from_idname(const SpaceType &space_type,
 /** \name Asset shelf popup */
 
 uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type);
+void asset_shelf_type_popup_unlink(const AssetShelfType &shelf_type);
 
 /** \} */
 

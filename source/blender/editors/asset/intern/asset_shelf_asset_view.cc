@@ -179,11 +179,9 @@ void AssetView::set_catalog_filter(
 }
 
 static std::optional<asset_system::AssetCatalogFilter> catalog_filter_from_shelf_settings(
-    const AssetShelfSettings &settings,
-    const asset_system::AssetLibrary &library,
-    const bool is_popup)
+    const AssetShelfSettings &settings, const asset_system::AssetLibrary &library)
 {
-  StringRef catalog_path = settings_get_active_catalog_path(settings, is_popup);
+  StringRef catalog_path = settings_get_active_catalog_path(settings);
   if (catalog_path.is_empty()) {
     return {};
   }
@@ -284,7 +282,7 @@ void build_asset_view(uiLayout &layout,
                       const AssetLibraryReference &library_ref,
                       const AssetShelf &shelf,
                       const bContext &C,
-                      ARegion &region)
+                      const ARegion &region)
 {
   list::storage_fetch(&library_ref, &C);
   list::ensure_previews_job(&library_ref, &C);
@@ -301,8 +299,7 @@ void build_asset_view(uiLayout &layout,
 
   const bool is_popup = region.regiontype == RGN_TYPE_TEMPORARY;
   std::unique_ptr asset_view = std::make_unique<AssetView>(library_ref, shelf, is_popup);
-  asset_view->set_catalog_filter(
-      catalog_filter_from_shelf_settings(shelf.settings, *library, is_popup));
+  asset_view->set_catalog_filter(catalog_filter_from_shelf_settings(shelf.settings, *library));
   asset_view->set_tile_size(tile_width, tile_height);
 
   uiBlock *block = uiLayoutGetBlock(&layout);

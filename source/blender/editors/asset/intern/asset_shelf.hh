@@ -36,7 +36,7 @@ void build_asset_view(uiLayout &layout,
                       const AssetLibraryReference &library_ref,
                       const AssetShelf &shelf,
                       const bContext &C,
-                      ARegion &region);
+                      const ARegion &region);
 
 void catalog_selector_panel_register(ARegionType *region_type);
 
@@ -63,15 +63,12 @@ void settings_blend_write(BlendWriter *writer, const AssetShelfSettings &setting
 void settings_blend_read_data(BlendDataReader *reader, AssetShelfSettings &settings);
 
 void settings_set_active_catalog(AssetShelfSettings &settings,
-                                 const asset_system::AssetCatalogPath &path,
-                                 bool is_popup = false);
-blender::StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings,
-                                                    const bool is_popup = false);
-void settings_set_all_catalog_active(AssetShelfSettings &settings, bool is_popup = false);
+                                 const asset_system::AssetCatalogPath &path);
+blender::StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings);
+void settings_set_all_catalog_active(AssetShelfSettings &settings);
 bool settings_is_active_catalog(const AssetShelfSettings &settings,
-                                const asset_system::AssetCatalogPath &path,
-                                bool is_popup = false);
-bool settings_is_all_catalog_active(const AssetShelfSettings &settings, bool is_popup = false);
+                                const asset_system::AssetCatalogPath &path);
+bool settings_is_all_catalog_active(const AssetShelfSettings &settings);
 /**
  * Clears the list of enabled catalogs in either the Preferences (if any) or the asset shelf
  * settings (if any), depending on the #ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS flag.

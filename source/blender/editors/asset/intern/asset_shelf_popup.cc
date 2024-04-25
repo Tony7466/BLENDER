@@ -26,21 +26,41 @@
 
 namespace blender::ed::asset::shelf {
 
-static AssetShelf *get_shelf_for_popup(const bContext *C,
-                                       const ScrArea *area,
-                                       AssetShelfType &shelf_type)
-{
-  ARegion *shelf_region = BKE_area_find_region_type(area, RGN_TYPE_ASSET_SHELF);
-  if (!shelf_region) {
-    BLI_assert_unreachable();
-    return nullptr;
+class PopupAssetShelfStorage {
+ public:
+  ListBase popup_shelves;
+
+  ~PopupAssetShelfStorage()
+  {
+    LISTBASE_FOREACH_MUTABLE (
+        AssetShelf *, shelf, &PopupAssetShelfStorage::get_popup_asset_shelves())
+    {
+      MEM_delete(shelf);
+    }
   }
+  static ListBase &get_popup_asset_shelves()
+  {
+    static PopupAssetShelfStorage storage;
+    return storage.popup_shelves;
+  }
+};
 
-  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::ensure_from_asset_shelf_region(
-      *shelf_region);
+void asset_shelf_type_popup_unlink(const AssetShelfType &shelf_type)
+{
+  LISTBASE_FOREACH (AssetShelf *, shelf, &PopupAssetShelfStorage::get_popup_asset_shelves()) {
+    if (shelf->type == &shelf_type) {
+      shelf->type = nullptr;
+    }
+  }
+}
 
-  const SpaceType *space_type = area->type;
-  LISTBASE_FOREACH (AssetShelf *, shelf, &shelf_regiondata->shelves) {
+static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_type)
+{
+  const SpaceType *space_type = BKE_spacetype_from_id(shelf_type.space_type);
+
+  ListBase &popup_shelves = PopupAssetShelfStorage::get_popup_asset_shelves();
+
+  LISTBASE_FOREACH (AssetShelf *, shelf, &popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
       if (asset_shelf_type_poll(*C, *space_type, asset_shelf_type_ensure(*space_type, *shelf))) {
         return shelf;
@@ -51,7 +71,7 @@ static AssetShelf *get_shelf_for_popup(const bContext *C,
 
   if (asset_shelf_type_poll(*C, *space_type, &shelf_type)) {
     AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
-    BLI_addtail(&shelf_regiondata->shelves, new_shelf);
+    BLI_addtail(&popup_shelves, new_shelf);
     return new_shelf;
   }
 
@@ -85,11 +105,11 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
 
     auto &all_item = this->add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
     all_item.set_on_activate_fn([this](bContext &C, ui::BasicTreeViewItem &) {
-      settings_set_all_catalog_active(shelf_.settings, true);
+      settings_set_all_catalog_active(shelf_.settings);
       send_redraw_notifier(C);
     });
     all_item.set_is_active_fn(
-        [this]() { return settings_is_all_catalog_active(shelf_.settings, true); });
+        [this]() { return settings_is_all_catalog_active(shelf_.settings); });
     all_item.uncollapse_by_default();
 
     catalog_tree_.foreach_root_item([&, this](
@@ -108,11 +128,11 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
 
     std::string catalog_path = catalog_item.catalog_path().str();
     view_item.set_on_activate_fn([this, catalog_path](bContext &C, ui::BasicTreeViewItem &) {
-      settings_set_active_catalog(shelf_.settings, catalog_path, true);
+      settings_set_active_catalog(shelf_.settings, catalog_path);
       send_redraw_notifier(C);
     });
     view_item.set_is_active_fn([this, catalog_path]() {
-      return settings_is_active_catalog(shelf_.settings, catalog_path, true);
+      return settings_is_active_catalog(shelf_.settings, catalog_path);
     });
 
     catalog_item.foreach_child(
@@ -147,7 +167,7 @@ uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfT
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  AssetShelf *shelf = get_shelf_for_popup(C, CTX_wm_area(C), *shelf_type);
+  AssetShelf *shelf = get_shelf_for_popup(C, *shelf_type);
   if (!shelf) {
     BLI_assert_unreachable();
     return block;

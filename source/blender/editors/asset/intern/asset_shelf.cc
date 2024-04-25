@@ -817,6 +817,8 @@ void type_unlink(const Main &bmain, const AssetShelfType &shelf_type)
       }
     }
   }
+
+  asset_shelf_type_popup_unlink(shelf_type);
 }
 
 /** \} */
