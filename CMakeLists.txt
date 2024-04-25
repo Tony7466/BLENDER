@@ -2011,7 +2011,6 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     CXX_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new
   )
   if(MSVC_CLANG)
-    remove_cc_flag("/W3")
     # clang-cl produces an unhealthy ammount of warnings in its default
     # configuration as it for reasons unknown decided to enable all
     # warnings known to mankind. Resulting in a 5.5GB build log containing
@@ -2024,8 +2023,16 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     # manually auditing every single one of them just isn't in the cards
     # right now.
 
+    # /W3 is being removed, then added back again, this is because order
+    # matters for clang and these flags are being placed before the
+    # CMAKE_[LANGUAGE]_FLAGS which normally contain /W3, so we would
+    # disable certain warings here only for them to be re-enabled by /W3
+    # later on.
+    remove_cc_flag("/W3")
+
     add_check_c_compiler_flags(
       C_WARNINGS
+      C_WARN_W3 /W3
       # The number behind each warn is the number of unique warning were
       # generated on 2024-04-24 (d2be9cecc28a03ff1f799e8c63f1f9f8eda7cce3)
       # especially the ones in the single and low double digits are likely
@@ -2160,6 +2167,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 
   add_check_cxx_compiler_flags(
     CXX_WARNINGS
+      C_WARN_W3 /W3
       CXX_WARN_CLANG_CL_C++98_COMPAT -Wno-c++98-compat # 352692
       CXX_WARN_CLANG_CL_OLD_STYLE_CAST -Wno-old-style-cast # 178608
       CXX_WARN_CLANG_CL_UNSAFE_BUFFER_USAGE -Wno-unsafe-buffer-usage # 89032
@@ -2511,8 +2519,6 @@ endif()
 # eg: -Wno-uninitialized
 set(CMAKE_C_FLAGS "${C_WARNINGS} ${CMAKE_C_FLAGS} ${PLATFORM_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CXX_WARNINGS} ${CMAKE_CXX_FLAGS} ${PLATFORM_CFLAGS}")
-message("CXX FLAGS = ${CMAKE_CXX_FLAGS}")
-message("PLATFORM_CFLAGS = ${PLATFORM_CFLAGS}")
 
 # defined above, platform specific but shared names
 mark_as_advanced(
