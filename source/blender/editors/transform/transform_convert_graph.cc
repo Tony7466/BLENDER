@@ -786,10 +786,10 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 static inline void update_trans_data(TransData *td,
                                      const FCurve *fcu,
                                      const int new_index,
-                                     const short swap_handles)
+                                     const bool swap_handles)
 {
   if (td->flag & TD_BEZTRIPLE && td->hdata) {
-    if (swap_handles == 1) {
+    if (swap_handles) {
       td->hdata->h1 = &fcu->bezt[new_index].h2;
       td->hdata->h2 = &fcu->bezt[new_index].h1;
     }
@@ -823,7 +823,7 @@ static void beztmap_to_data(TransDataContainer *tc,
     if (trans_data_map.contains(bezm.bezt->vec[0])) {
       const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[0]);
       td2d = &tc->data_2d[trans_data_index];
-      if (bezm.swap_handles == 1) {
+      if (bezm.swap_handles) {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
       else {
@@ -835,7 +835,7 @@ static void beztmap_to_data(TransDataContainer *tc,
     if (trans_data_map.contains(bezm.bezt->vec[2])) {
       const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[2]);
       td2d = &tc->data_2d[trans_data_index];
-      if (bezm.swap_handles == 1) {
+      if (bezm.swap_handles) {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
       else {
