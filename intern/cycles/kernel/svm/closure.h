@@ -512,7 +512,7 @@ ccl_device
       else {
         sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
         if (type == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID) {
-          kernel_assert(stack_valid(data_node.w));
+          kernel_assert(stack_valid(data_node.z));
           const Spectrum color = rgb_to_spectrum(stack_load_float3(stack, data_node.z));
           bsdf_microfacet_setup_fresnel_constant(kg, bsdf, sd, color);
         }
