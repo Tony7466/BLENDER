@@ -764,7 +764,7 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
   /* Check if handles need to be swapped. */
   for (BeztMap &bezm : bezms) {
     /* Handles are only swapped if they are both on the wrong side of the key. Otherwise the one
-     * handles  out of place is just clamped at the key position later. */
+     * handle out of place is just clamped at the key position later. */
     if ((bezm.bezt->vec[0][0] > bezm.bezt->vec[1][0]) &&
         (bezm.bezt->vec[2][0] < bezm.bezt->vec[1][0]))
     {
