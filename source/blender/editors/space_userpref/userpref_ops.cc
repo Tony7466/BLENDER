@@ -785,10 +785,11 @@ static bool associate_blend_poll(bContext *C)
 #endif
 }
 
+#if !defined(__APPLE__)
 static bool assosiate_blend(bool do_register, bool all_users, char **error_msg)
 {
   const bool result = WM_platform_assosiate_set(do_register, all_users, error_msg);
-#ifdef WIN32
+#  ifdef WIN32
   if ((result == false) &&
       /* For some reason the message box isn't shown in this case. */
       (all_users == false))
@@ -797,9 +798,10 @@ static bool assosiate_blend(bool do_register, bool all_users, char **error_msg)
                                     "Unable to unregister file association";
     MessageBox(0, msg, "Blender", MB_OK | MB_ICONERROR);
   }
-#endif /* !WIN32 */
+#  endif /* !WIN32 */
   return result;
 }
+#endif
 
 static int associate_blend_exec(bContext * /*C*/, wmOperator *op)
 {
@@ -935,7 +937,7 @@ static bool drop_extension_url_poll(bContext * /*C*/, wmDrag *drag, const wmEven
   /* Check the URL has a `.zip` suffix OR has a known repository as a prefix.
    * This is needed to support redirects which don't contain an extension. */
   if (!(cstr_ext && STRCASEEQ(cstr_ext, ".zip")) &&
-      !(BKE_preferences_extension_repo_find_by_remote_path_prefix(&U, cstr, true)))
+      !BKE_preferences_extension_repo_find_by_remote_path_prefix(&U, cstr, true))
   {
     return false;
   }
