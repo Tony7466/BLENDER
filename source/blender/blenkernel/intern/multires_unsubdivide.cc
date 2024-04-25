@@ -839,12 +839,6 @@ static void multires_unsubdivide_get_grid_corners_on_base_mesh(BMFace *f1,
   BMEdge *edge_y = initial_edge_y;
 
   /* Do an edge step until it finds a tagged vertex, which is part of the base mesh. */
-  /*  edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
-   while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG))
-   this test with hidden faces enter in an infinite loop by returning the same null
-   edge in edge_step() and the same current_vertex_y
-
-   */
   /* x axis */
   edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
   while (edge_x && !BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
