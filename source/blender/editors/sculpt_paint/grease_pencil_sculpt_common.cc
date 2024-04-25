@@ -12,16 +12,17 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
-
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
+
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
-#include "DNA_node_tree_interface_types.h"
 #include "grease_pencil_intern.hh"
 
 namespace blender::ed::sculpt_paint::greasepencil {
@@ -120,27 +121,32 @@ IndexMask brush_influence_mask(const Scene &scene,
                                (use_pressure ? pressure : 1.0f);
   const int2 mval_i = int2(math::round(mouse_position));
 
-  Vector<int> indices;
-  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+  auto calculate_influence = [&](int64_t point_i) -> float {
     /* Distance falloff. */
-    const int2 delta = int2(view_positions[point_i]) - mval_i;
-    const float distance_squared = math::length_squared(delta);
+    const float distance_squared = math::distance_squared(int2(view_positions[point_i]), mval_i);
     if (distance_squared > radius_squared) {
-      return;
+      return 0.0f;
     }
-
     /* Apply Brush curve. */
     const float brush_falloff = BKE_brush_curve_strength(
         &brush, math::sqrt(distance_squared), radius);
-    const float influence = influence_base * brush_falloff;
+    return influence_base * brush_falloff;
+  };
 
-    if (influence > 0.0f) {
-      indices.append(point_i);
-      influences.append(influence);
-    }
+  IndexMask index_mask = IndexMask::from_predicate(
+      selection, GrainSize(4096), memory, [&](const int point_i) {
+        const float influence = calculate_influence(point_i);
+        return influence > 0.0f;
+      });
+
+  /* Serial loop for safe write access to the influences array. */
+  influences.reinitialize(index_mask.size());
+  index_mask.foreach_index(GrainSize(4096), [&](const int point_i, const int mask_i) {
+    const float influence = calculate_influence(point_i);
+    influences[mask_i] = influence;
   });
 
-  return IndexMask::from_indices(indices.as_span(), memory);
+  return index_mask;
 }
 
 bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
