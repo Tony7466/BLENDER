@@ -273,10 +273,8 @@ enum class BuiltinBits {
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
   USE_DEBUG_DRAW = (1 << 29),
   USE_DEBUG_PRINT = (1 << 30),
-
-  SKIP_OPTIMIZATIONS = (1 << 31),
 };
-ENUM_OPERATORS(BuiltinBits, BuiltinBits::SKIP_OPTIMIZATIONS);
+ENUM_OPERATORS(BuiltinBits, BuiltinBits::USE_DEBUG_PRINT);
 
 /**
  * Follow convention described in:
@@ -689,7 +687,6 @@ struct ShaderCreateInfo {
   StringRefNull vertex_source_, geometry_source_, fragment_source_, compute_source_;
 
   Vector<std::array<StringRefNull, 2>> defines_;
-  Vector<StringRefNull> directives_;
   /**
    * Name of other infos to recursively merge with this one.
    * No data slot must overlap otherwise we throw an error.
@@ -984,12 +981,6 @@ struct ShaderCreateInfo {
   Self &define(StringRefNull name, StringRefNull value = "")
   {
     defines_.append({name, value});
-    return *(Self *)this;
-  }
-
-  Self &directive(StringRefNull directive)
-  {
-    directives_.append(directive);
     return *(Self *)this;
   }
 

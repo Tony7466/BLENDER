@@ -309,19 +309,10 @@ class GPUCodegen {
    * more optimal variant of this material should be compiled. */
   bool should_optimize_heuristic() const
   {
-    bool do_optimize = false;
-    if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-      /* If each of the maximal attributes are exceeded, we can optimize, but we should also ensure
-       * the baseline is met. */
-      do_optimize = (nodes_total_ >= 60 || textures_total_ >= 4 || uniforms_total_ >= 64) &&
-                    (textures_total_ >= 1 && uniforms_total_ >= 8 && nodes_total_ >= 4);
-    }
-    else if (GPU_type_matches_ex(
-                 GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL))
-    {
-      /* TODO: Only for MA_SURFACE_METHOD_FORWARD and GPU_MATFLAG_SHADER_TO_RGBA. */
-      do_optimize = true;
-    }
+    /* If each of the maximal attributes are exceeded, we can optimize, but we should also ensure
+     * the baseline is met. */
+    bool do_optimize = (nodes_total_ >= 60 || textures_total_ >= 4 || uniforms_total_ >= 64) &&
+                       (textures_total_ >= 1 && uniforms_total_ >= 8 && nodes_total_ >= 4);
     return do_optimize;
   }
 
@@ -784,16 +775,6 @@ GPUPass *GPU_generate_pass(GPUMaterial *material,
   codegen.generate_resources();
   codegen.generate_library();
 
-  if (codegen.should_optimize_heuristic()) {
-    if (!optimize_graph) {
-      codegen.create_info->directive("optionNV(unroll none)");
-      std::cout << GPU_material_get_name(material) << " : NO UNROLL\n";
-    }
-    else {
-      std::cout << GPU_material_get_name(material) << " : UNROLL\n";
-    }
-  }
-
   /* Make engine add its own code and implement the generated functions. */
   finalize_source_cb(thunk, material, &codegen.output);
 
@@ -845,8 +826,11 @@ GPUPass *GPU_generate_pass(GPUMaterial *material,
 
 bool GPU_pass_should_optimize(GPUPass *pass)
 {
-  /* Returns optimization heuristic prepared during initial codegen. */
-  return pass->should_optimize;
+  /* Returns optimization heuristic prepared during
+   * initial codegen.
+   * NOTE: Optimization currently limited to Metal backend as repeated compilations required for
+   * material specialization cause impactful CPU stalls on OpenGL platforms. */
+  return (GPU_backend_get_type() == GPU_BACKEND_METAL) && pass->should_optimize;
 }
 
 /** \} */
