@@ -89,12 +89,9 @@ float brush_influence(const Scene &scene,
 {
   const float radius = brush_radius(scene, brush, sample.pressure);
   /* Basic strength factor from brush settings. */
-  const bool use_pressure = (brush.gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
-  const float brush_pressure = BKE_brush_use_alpha_pressure(&brush) ?
-                                   BKE_brush_alpha_get(&scene, &brush) :
-                                   1.0f;
-  const float influence_base = brush_pressure * multi_frame_falloff *
-                               (use_pressure ? sample.pressure : 1.0f);
+  const float brush_pressure = BKE_brush_use_alpha_pressure(&brush) ? sample.pressure : 1.0f;
+  const float influence_base = BKE_brush_alpha_get(&scene, &brush) * brush_pressure *
+                               multi_frame_falloff;
 
   /* Distance falloff. */
   const int2 mval_i = int2(math::round(sample.mouse_position));
@@ -121,12 +118,9 @@ IndexMask brush_influence_mask(const Scene &scene,
 
   const float radius = brush_radius(scene, brush, pressure);
   const float radius_squared = radius * radius;
-  const bool use_pressure = (brush.gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
-  const float brush_pressure = BKE_brush_use_alpha_pressure(&brush) ?
-                                   BKE_brush_alpha_get(&scene, &brush) :
-                                   1.0f;
-  const float influence_base = brush_pressure * multi_frame_falloff *
-                               (use_pressure ? pressure : 1.0f);
+  const float brush_pressure = BKE_brush_use_alpha_pressure(&brush) ? pressure : 1.0f;
+  const float influence_base = BKE_brush_alpha_get(&scene, &brush) * brush_pressure *
+                               multi_frame_falloff;
   const int2 mval_i = int2(math::round(mouse_position));
 
   Array<float> all_influences(selection.min_array_size());
