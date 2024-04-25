@@ -1572,6 +1572,155 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
  * \{ */
 
 /**
+ * Gets the driver(s) of the given property.
+ *
+ * Note: intended to be used in conjunction with `paste_property_drivers()` below.
+ *
+ * \param ptr The RNA pointer of the property.
+ * \param prop The property RNA of the property.
+ * \param get_all Whether to get all drivers of an array property, or just the
+ * one specified by `index`.  Ignored if the property is not an array property.
+ * \param index Which element of an array property to get.  Ignored if `get_all`
+ * is true or if the property is not an array propery.
+ * \param r_is_array_prop Output parameter, that stores whether the passed
+ * property is an array property or not.
+ *
+ * \returns A vector of pointers to the drivers of the property.  It will be
+ * zero-sized if no drivers were fetched (e.g. if the property had no drivers).
+ * Otherwise the vector will be the size of the underlying property (e.g. 4 for
+ * an array property with 4 elements, 1 for a non-array property).  For array
+ * properties, elements without drivers will be nullptrs.
+ */
+static blender::Vector<FCurve *> get_property_drivers(
+    PointerRNA *ptr, PropertyRNA *prop, const bool get_all, const int index, bool *r_is_array_prop)
+{
+  BLI_assert(ptr && prop);
+
+  const bool is_array_prop = RNA_property_array_check(prop);
+  if (r_is_array_prop != nullptr) {
+    *r_is_array_prop = is_array_prop;
+  }
+
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
+  if (!path.has_value()) {
+    return {};
+  }
+
+  AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
+  if (!adt) {
+    return {};
+  }
+
+  blender::Vector<FCurve *> drivers = {};
+  if (!is_array_prop) {
+    drivers.append(BKE_fcurve_find(&adt->drivers, path->c_str(), index));
+  }
+  else {
+    /* For array properties, we always allocate space for all elements of an
+     * array property, and the unused ones just remain null. */
+    drivers.resize(RNA_property_array_length(ptr, prop), nullptr);
+    for (int i = 0; i < drivers.size(); i++) {
+      if (get_all || i == index) {
+        drivers[i] = BKE_fcurve_find(&adt->drivers, path->c_str(), i);
+      }
+    }
+  }
+
+  /* If we didn't get any drivers to copy, early-out. */
+  bool fetched_at_least_one = false;
+  for (FCurve *driver : drivers) {
+    fetched_at_least_one |= driver != nullptr;
+  }
+  if (!fetched_at_least_one) {
+    return {};
+  }
+
+  return drivers;
+}
+
+/**
+ * Pastes the drivers from `src_drivers` to the destination property.
+ *
+ * This function can be used for pasting drivers for all elements of an array
+ * property, just some elements of an array property, or a single driver for a
+ * non-array property.
+ *
+ * Note: intended to be used in conjunction with `get_property_drivers()` above.
+ *
+ * \param src_drivers The array of drivers to paste.  If `is_array_prop`
+ * is false, this must be a single element.  Nullptr elements are skipped
+ * when pasting.
+ * \param is_array_prop Whether `src_drivers` are drivers for the elements
+ * of an array property.
+ * \param dst_ptr The RNA pointer for the destination property.
+ * \param dist_prop The destination property RNA.
+ *
+ * \returns The number of successfully pasted drivers.
+ */
+static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
+                                  const bool is_array_prop,
+                                  PointerRNA *dst_ptr,
+                                  PropertyRNA *dst_prop)
+{
+  BLI_assert(dst_ptr && dst_prop);
+  BLI_assert(src_drivers.size() > 0);
+  BLI_assert(is_array_prop || src_drivers.size() == 1);
+
+  /* Get the RNA path and relevant animdata for the property we're copying to. */
+  const std::optional<std::string> dst_path = RNA_path_from_ID_to_property(dst_ptr, dst_prop);
+  if (!dst_path.has_value()) {
+    return 0;
+  }
+  AnimData *dst_adt = BKE_animdata_ensure_id(dst_ptr->owner_id);
+  if (!dst_adt) {
+    return 0;
+  }
+
+  /* Do the copying. */
+  int paste_count = 0;
+  for (int i = 0; i < src_drivers.size(); i++) {
+    if (!src_drivers[i]) {
+      continue;
+    }
+    const int dst_index = is_array_prop ? i : -1;
+
+    /* If it's already animated by something other than a driver, skip. */
+    {
+      bool driven;
+      const FCurve *fcu = BKE_fcurve_find_by_rna(
+          dst_ptr, dst_prop, dst_index, nullptr, nullptr, &driven, nullptr);
+      if (fcu && !driven) {
+        continue;
+      }
+    }
+
+    /* If there's an existing matching driver, remove it first.
+     *
+     * TODO: this has quadratic complexity when the drivers are within the same
+     * ID, due to this being inside of a loop and doing a linear scan of the
+     * drivers to find one that matches.  We should be able to make this more
+     * efficient with a little cleverness .*/
+    {
+      FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), dst_index);
+      if (old_driver) {
+        BLI_remlink(&dst_adt->drivers, old_driver);
+        BKE_fcurve_free(old_driver);
+      }
+    }
+
+    /* Create the new driver. */
+    FCurve *new_driver = BKE_fcurve_copy(src_drivers[i]);
+    BLI_addtail(&dst_adt->drivers, new_driver);
+    MEM_SAFE_FREE(new_driver->rna_path);
+    new_driver->rna_path = BLI_strdup(dst_path->c_str());
+
+    paste_count++;
+  }
+
+  return paste_count;
+}
+
+/**
  * Called from both exec & poll.
  *
  * \note We use this function for both poll and exec because the logic for
@@ -1603,47 +1752,17 @@ static bool copy_driver_to_selected_button(bContext *C, bool all, const bool pol
   if (!ptr.data || !ptr.owner_id || !prop) {
     return false;
   }
-  const bool is_array_prop = RNA_property_array_check(prop);
   all |= index == -1; /* -1 implies `all` for array properties. */
 
   /* Get the property's driver(s). */
-  blender::Vector<FCurve *> src_drivers = {};
-  {
-    const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
-    if (!path.has_value()) {
-      return false;
-    }
-
-    AnimData *adt = BKE_animdata_from_id(ptr.owner_id);
-    if (!adt) {
-      return false;
-    }
-
-    if (!is_array_prop) {
-      src_drivers.append(BKE_fcurve_find(&adt->drivers, path->c_str(), index));
-    }
-    else {
-      /* To keep the code simpler further down, we always allocate space for all
-       * elements of an array property, and the unused ones just remain null. */
-      src_drivers.resize(RNA_property_array_length(&ptr, prop), nullptr);
-      for (int i = 0; i < src_drivers.size(); i++) {
-        if (all || i == index) {
-          src_drivers[i] = BKE_fcurve_find(&adt->drivers, path->c_str(), i);
-        }
-      }
-    }
-
-    /* If we didn't get any drivers to copy, early-out. */
-    bool fetched_at_least_one = false;
-    for (FCurve *driver : src_drivers) {
-      fetched_at_least_one |= driver != nullptr;
-    }
-    if (!fetched_at_least_one) {
-      return false;
-    }
+  bool is_array_prop = false;
+  const blender::Vector<FCurve *> src_drivers = get_property_drivers(
+      &ptr, prop, all, index, &is_array_prop);
+  if (src_drivers.is_empty()) {
+    return false;
   }
 
-  /* Build the list of properties to copy the driver to, along with relevant
+  /* Build the list of properties to copy the driver(s) to, along with relevant
    * side data. */
   std::optional<std::string> path;
   bool use_path_from_id;
@@ -1655,7 +1774,7 @@ static bool copy_driver_to_selected_button(bContext *C, bool all, const bool pol
   }
 
   /* Copy the driver(s) to the list of target properties. */
-  int copy_count = 0;
+  int total_copy_count = 0;
   for (PointerRNA &target_prop : target_properties) {
     if (target_prop.data == ptr.data) {
       continue;
@@ -1685,58 +1804,16 @@ static bool copy_driver_to_selected_button(bContext *C, bool all, const bool pol
       return true;
     }
 
-    /* Get the RNA path and relevant animdata for the property we're copying to. */
-    const std::optional<std::string> dst_path = RNA_path_from_ID_to_property(&dst_ptr, dst_prop);
-    if (!dst_path.has_value()) {
-      return false;
-    }
-    AnimData *dst_adt = BKE_animdata_ensure_id(dst_ptr.owner_id);
-    BLI_assert(dst_adt);
-
-    /* Do the copying. */
-    for (int i = 0; i < src_drivers.size(); i++) {
-      if (!src_drivers[i]) {
-        continue;
-      }
-      const int dst_index = is_array_prop ? i : index;
-
-      /* If it's already animated by something other than a driver, skip. */
-      {
-        bool driven;
-        const FCurve *fcu = BKE_fcurve_find_by_rna(
-            &dst_ptr, dst_prop, dst_index, nullptr, nullptr, &driven, nullptr);
-        if (fcu && !driven) {
-          continue;
-        }
-      }
-
-      /* If there's an existing matching driver, remove it first.
-       *
-       * TODO: this has quadratic complexity when the drivers are within the same
-       * ID, due to this being inside of a loop and doing a linear scan of the
-       * drivers to find one that matches.  We should be able to make this more
-       * efficient with a little cleverness .*/
-      {
-        FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), dst_index);
-        if (old_driver) {
-          BLI_remlink(&dst_adt->drivers, old_driver);
-          BKE_fcurve_free(old_driver);
-        }
-      }
-
-      /* Create the new driver. */
-      FCurve *new_driver = BKE_fcurve_copy(src_drivers[i]);
-      BLI_addtail(&dst_adt->drivers, new_driver);
-      MEM_SAFE_FREE(new_driver->rna_path);
-      new_driver->rna_path = BLI_strdup(dst_path->c_str());
-
+    const int paste_count = paste_property_drivers(
+        src_drivers.as_span(), is_array_prop, &dst_ptr, dst_prop);
+    if (paste_count > 0) {
       RNA_property_update(C, &dst_ptr, dst_prop);
-
-      copy_count++;
     }
+
+    total_copy_count += paste_count;
   }
 
-  return copy_count > 0;
+  return total_copy_count > 0;
 }
 
 static bool copy_driver_to_selected_button_poll(bContext *C)
