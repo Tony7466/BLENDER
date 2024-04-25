@@ -269,19 +269,21 @@ static void fill_map(const CurveType curve_type,
                      OffsetIndices<int> position_offsets_in_td,
                      int handles_offset)
 {
-  static const Array<int> attr_shifts_for_bezier = {1, 0, 2};
-  static const Array<int> attr_shifts_for_others = {0};
-  Span<int> attr_shifts = (curve_type == CURVE_TYPE_BEZIER) ? attr_shifts_for_bezier :
-                                                              attr_shifts_for_others;
-  std::array<int, 3> curve_offset_per_attr = {
-      int(curve_points.first()), handles_offset, handles_offset};
+  const int attr_num = (curve_type == CURVE_TYPE_BEZIER) ? 3 : 1;
+  const int left_handle_index = handles_offset + position_offsets_in_td[1].start();
+  const int position_index = curve_points.start() + position_offsets_in_td[0].start();
+  const int right_handle_index = handles_offset + position_offsets_in_td[2].start();
+
+  std::array<int, 3> first_per_attr = {curve_type == CURVE_TYPE_BEZIER ? left_handle_index :
+                                                                         position_index,
+                                       /* Next two unused for non Bezier curves. */
+                                       position_index,
+                                       right_handle_index};
 
   threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
-    for (const int j : attr_shifts.index_range()) {
-      const int selection_attr_offset = position_offsets_in_td[attr_shifts[j]].start();
-      const int curve_offset = curve_offset_per_attr[attr_shifts[j]];
-      for (const int i : range) {
-        map[i * attr_shifts.size() + j] = selection_attr_offset + curve_offset + i;
+    for (const int i : range) {
+      for (const int attr : IndexRange(attr_num)) {
+        map[i * attr_num + attr] = first_per_attr[attr] + i;
       }
     }
   });
