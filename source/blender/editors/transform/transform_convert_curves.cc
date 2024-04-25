@@ -83,8 +83,7 @@ static MutableSpan<float3> append_positions_to_custom_data(const IndexMask selec
 static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 {
   MutableSpan<TransDataContainer> trans_data_contrainers(t->data_container, t->data_container_len);
-  Array<std::array<IndexMask, 3>> selection_per_attribute(t->data_container_len);
-  Array<int> selection_counts(t->data_container_len);
+  Array<Vector<IndexMask>> points_to_transform_per_attribute(t->data_container_len);
   Array<IndexMask> bezier_curves(t->data_container_len);
   const bool use_proportional_edit = (t->flag & T_PROP_EDIT_ALL) != 0;
   const bool use_connected_only = (t->flag & T_PROP_CONNECTED) != 0;
@@ -100,16 +99,12 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
         tc.custom.type);
     Span<StringRef> selection_attribute_names = ed::curves::get_curves_selection_attribute_names(
         curves);
-    selection_counts[i] = selection_attribute_names.size();
+    std::array<IndexMask, 3> selection_per_attribute;
+
     for (const int attribute_i : selection_attribute_names.index_range()) {
       const StringRef &selection_name = selection_attribute_names[attribute_i];
-      /* Transform all points in proportional mode. */
-      selection_per_attribute[i][attribute_i] = use_proportional_edit ?
-                                                    curves.points_range() :
-                                                    ed::curves::retrieve_selected_points(
-                                                        curves,
-                                                        selection_name,
-                                                        curves_transform_data->memory);
+      selection_per_attribute[attribute_i] = ed::curves::retrieve_selected_points(
+          curves, selection_name, curves_transform_data->memory);
     }
 
     bezier_curves[i] = bke::curves::indices_for_type(curves.curve_types(),
@@ -126,7 +121,7 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       must_be_selected.clear();
       bezier_curves[i].foreach_index(GrainSize(128), [&](const int bezier_index) {
         for (const int point_i : points_by_curve[bezier_index]) {
-          if (selection_per_attribute[i][0].contains(point_i)) {
+          if (selection_per_attribute[0].contains(point_i)) {
             const HandleType type_left = HandleType(handle_types_left[point_i]);
             const HandleType type_right = HandleType(handle_types_right[point_i]);
             if (ELEM(type_left, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_ALIGN) &&
@@ -142,14 +137,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       IndexMask must_be_selected_mask = IndexMask::from_indices(must_be_selected.as_span(),
                                                                 curves_transform_data->memory);
       if (must_be_selected.size()) {
-        selection_per_attribute[i][1] = IndexMask::from_union(
-            selection_per_attribute[i][1], must_be_selected_mask, curves_transform_data->memory);
-        selection_per_attribute[i][2] = IndexMask::from_union(
-            selection_per_attribute[i][2], must_be_selected_mask, curves_transform_data->memory);
+        selection_per_attribute[1] = IndexMask::from_union(
+            selection_per_attribute[1], must_be_selected_mask, curves_transform_data->memory);
+        selection_per_attribute[2] = IndexMask::from_union(
+            selection_per_attribute[2], must_be_selected_mask, curves_transform_data->memory);
       }
     }
 
-    int points_to_transform_num = 0;
     if (use_proportional_edit) {
       Array<int> bezier_point_offset_data(bezier_curves[i].size() + 1);
       OffsetIndices<int> bezier_offsets = offset_indices::gather_selected_offsets(
@@ -157,21 +151,31 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
 
       const int bezier_point_count = bezier_offsets.total_size();
       tc.data_len = curves.points_num() + 2 * bezier_point_count;
-      /* `tc.data_len` and `points_to_transform_num` differ because full copies of Bezier handle
-       * attributes are made into `CurvesTransformData::positions`. */
-      points_to_transform_num = curves.points_num() * selection_attribute_names.size();
+      points_to_transform_per_attribute[i].append(curves.points_range());
+
+      if (bezier_point_count > 0) {
+        Vector<index_mask::IndexMask::Initializer> bezier_point_ranges;
+        OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        bezier_curves[i].foreach_index(GrainSize(512), [&](const int bezier_curve_i) {
+          bezier_point_ranges.append(points_by_curve[bezier_curve_i]);
+        });
+        IndexMask bezier_points = IndexMask::from_initializers(bezier_point_ranges,
+                                                               curves_transform_data->memory);
+        points_to_transform_per_attribute[i].append(bezier_points);
+        points_to_transform_per_attribute[i].append(bezier_points);
+      }
     }
     else {
       tc.data_len = 0;
-      for (const IndexMask &selection : selection_per_attribute[i]) {
-        tc.data_len += selection.size();
+      for (const int selection_i : selection_attribute_names.index_range()) {
+        points_to_transform_per_attribute[i].append(selection_per_attribute[selection_i]);
+        tc.data_len += points_to_transform_per_attribute[i][selection_i].size();
       }
-      points_to_transform_num = tc.data_len;
     }
 
     if (tc.data_len > 0) {
       tc.data = MEM_cnew_array<TransData>(tc.data_len, __func__);
-      curves_transform_data->positions.reinitialize(points_to_transform_num);
+      curves_transform_data->positions.reinitialize(tc.data_len);
     }
   }
 
@@ -202,17 +206,13 @@ static void createTransCurvesVerts(bContext * /*C*/, TransInfo *t)
       value_attribute = attribute_writer.span;
     }
 
-    Span<IndexMask> selections_per_attribute(selection_per_attribute[i].data(),
-                                             selection_counts[i]);
     curve_populate_trans_data_structs(tc,
                                       curves,
                                       object->object_to_world(),
                                       value_attribute,
-                                      selections_per_attribute,
-                                      use_proportional_edit,
+                                      points_to_transform_per_attribute[i],
                                       curves.curves_range(),
                                       use_connected_only,
-                                      0,
                                       bezier_curves[i]);
 
     /* TODO: This is wrong. The attribute writer should live at least as long as the span. */
@@ -250,16 +250,41 @@ static void recalcData_curves(TransInfo *t)
   }
 }
 
-static OffsetIndices<int> expand_selected_offsets(const OffsetIndices<int> src_offsets,
-                                                  const IndexMask &selection,
-                                                  const int factor,
-                                                  MutableSpan<int> dst_offsets)
+static OffsetIndices<int> recent_position_offsets(TransCustomData &custom_data, int num)
 {
-  offset_indices::copy_group_sizes(src_offsets, src_offsets.index_range(), dst_offsets);
-  selection.foreach_index_optimized<int>(
-      GrainSize(4096), [factor, &dst_offsets](const int i) { dst_offsets[i] *= factor; });
-  offset_indices::accumulate_counts_to_offsets(dst_offsets);
-  return OffsetIndices<int>(dst_offsets);
+  const CurvesTransformData &transform_data = *static_cast<CurvesTransformData *>(
+      custom_data.data);
+  return OffsetIndices(transform_data.layer_offsets.as_span().slice(
+      transform_data.layer_offsets.size() - num - 1, num + 1));
+}
+
+/**
+ * Creates map of indexes to `tc.data` representing curve in layout
+ * [L0, P0, R0, L1, P1, R1, L2,P2, R2], where [P0, P1, P2], [L0, L1, L2] and [R0, R1, R2] are
+ * positions, left handles and right handles respectively.
+ */
+static void fill_map(const CurveType curve_type,
+                     MutableSpan<int> map,
+                     IndexRange curve_points,
+                     OffsetIndices<int> position_offsets_in_td,
+                     int handles_offset)
+{
+  static const Array<int> attr_shifts_for_bezier = {1, 0, 2};
+  static const Array<int> attr_shifts_for_others = {0};
+  Span<int> attr_shifts = (curve_type == CURVE_TYPE_BEZIER) ? attr_shifts_for_bezier :
+                                                              attr_shifts_for_others;
+  std::array<int, 3> curve_offset_per_attr = {
+      int(curve_points.first()), handles_offset, handles_offset};
+
+  threading::parallel_for(curve_points.index_range(), 4096, [&](const IndexRange range) {
+    for (const int j : attr_shifts.index_range()) {
+      const int selection_attr_offset = position_offsets_in_td[attr_shifts[j]].start();
+      const int curve_offset = curve_offset_per_attr[attr_shifts[j]];
+      for (const int i : range) {
+        map[i * attr_shifts.size() + j] = selection_attr_offset + curve_offset + i;
+      }
+    }
+  });
 }
 
 }  // namespace blender::ed::transform::curves
@@ -292,26 +317,25 @@ void copy_positions_from_curves_transform_custom_data(
   array_utils::scatter(positions, selection, positions_dst);
 }
 
-void curve_populate_trans_data_structs(TransDataContainer &tc,
-                                       blender::bke::CurvesGeometry &curves,
-                                       const blender::float4x4 &transform,
-                                       std::optional<blender::MutableSpan<float>> value_attribute,
-                                       const blender::Span<blender::IndexMask> selected_indices,
-                                       const bool use_proportional_edit,
-                                       const blender::IndexMask &affected_curves,
-                                       bool use_connected_only,
-                                       int trans_data_offset,
-                                       const blender::IndexMask &bezier_curves)
+void curve_populate_trans_data_structs(
+    TransDataContainer &tc,
+    blender::bke::CurvesGeometry &curves,
+    const blender::float4x4 &transform,
+    std::optional<blender::MutableSpan<float>> value_attribute,
+    const blender::Span<blender::IndexMask> points_to_transform_per_attr,
+    const blender::IndexMask &affected_curves,
+    bool use_connected_only,
+    const blender::IndexMask &bezier_curves)
 {
   using namespace blender;
   const std::array<Span<float3>, 3> src_positions_per_selection_attr = {
       curves.positions(), curves.handle_positions_left(), curves.handle_positions_right()};
   std::array<MutableSpan<float3>, 3> positions_per_selection_attr;
 
-  for (const int selection_i : selected_indices.index_range()) {
+  for (const int selection_i : points_to_transform_per_attr.index_range()) {
     positions_per_selection_attr[selection_i] =
         ed::transform::curves::append_positions_to_custom_data(
-            selected_indices[selection_i],
+            points_to_transform_per_attr[selection_i],
             src_positions_per_selection_attr[selection_i],
             tc.custom.type);
   }
@@ -319,143 +343,111 @@ void curve_populate_trans_data_structs(TransDataContainer &tc,
   float mtx[3][3], smtx[3][3];
   copy_m3_m4(mtx, transform.ptr());
   pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
-  TransData *tc_data = tc.data + trans_data_offset;
 
-  if (use_proportional_edit) {
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    Vector<VArray<bool>> selection_attrs;
-    Span<StringRef> selection_attribute_names = ed::curves::get_curves_selection_attribute_names(
-        curves);
-    for (const StringRef selection_name : selection_attribute_names) {
-      const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
-          selection_name, bke::AttrDomain::Point, true);
-      selection_attrs.append(selection_attr);
+  MutableSpan<TransData> all_tc_data = MutableSpan(tc.data, tc.data_len);
+  OffsetIndices<int> position_offsets_in_td = ed::transform::curves::recent_position_offsets(
+      tc.custom.type, points_to_transform_per_attr.size());
+
+  Vector<VArray<bool>> selection_attrs;
+  Span<StringRef> selection_attribute_names = ed::curves::get_curves_selection_attribute_names(
+      curves);
+  for (const StringRef selection_name : selection_attribute_names) {
+    const VArray<bool> selection_attr = *curves.attributes().lookup_or_default<bool>(
+        selection_name, bke::AttrDomain::Point, true);
+    selection_attrs.append(selection_attr);
+  }
+
+  for (const int selection_i : position_offsets_in_td.index_range()) {
+    if (position_offsets_in_td[selection_i].is_empty()) {
+      continue;
     }
-    const VArray<int8_t> curve_types = curves.curve_types();
+    MutableSpan<TransData> tc_data = all_tc_data.slice(position_offsets_in_td[selection_i]);
+    MutableSpan<float3> positions = positions_per_selection_attr[selection_i];
+    IndexMask points_to_transform = points_to_transform_per_attr[selection_i];
+    VArray<bool> selection = selection_attrs[selection_i];
+
+    threading::parallel_for(points_to_transform.index_range(), 1024, [&](const IndexRange range) {
+      for (const int tranform_point_i : range) {
+        const int point_in_domain_i = points_to_transform[tranform_point_i];
+        TransData &td = tc_data[tranform_point_i];
+        float3 *elem = &positions[tranform_point_i];
+
+        copy_v3_v3(td.iloc, *elem);
+        copy_v3_v3(td.center, td.iloc);
+        td.loc = *elem;
+
+        td.flag = 0;
+        if (selection[point_in_domain_i]) {
+          td.flag = TD_SELECTED;
+        }
+
+        if (value_attribute) {
+          float *value = &((*value_attribute)[point_in_domain_i]);
+          td.val = value;
+          td.ival = *value;
+        }
+        td.ext = nullptr;
+
+        copy_m3_m3(td.smtx, smtx);
+        copy_m3_m3(td.mtx, mtx);
+      }
+    });
+  }
+  if (use_connected_only) {
+    Vector<int> map;
     Vector<float> closest_distances;
-    Vector<float3> all_curve_positions;
-    Array<int> flat_offset_data(points_by_curve.size() + 1);
-    const OffsetIndices<int> flat_points_by_curve = ed::transform::curves::expand_selected_offsets(
-        points_by_curve, bezier_curves, 3, flat_offset_data);
+    Vector<float3> mapped_curve_positions;
+    const VArray<int8_t> curve_types = curves.curve_types();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    Array<int> bezier_offsets_in_td(curves.curves_num() + 1, 0);
+    offset_indices::copy_group_sizes(points_by_curve, bezier_curves, bezier_offsets_in_td);
+    offset_indices::accumulate_counts_to_offsets(bezier_offsets_in_td);
 
     affected_curves.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
       for (const int curve_i : segment) {
-        const IndexRange points = points_by_curve[curve_i];
-        const IndexRange all_curve_points = flat_points_by_curve[curve_i];
+        const int selection_attrs_num = curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1;
+        const IndexRange curve_points = points_by_curve[curve_i];
+        const int total_curve_points = selection_attrs_num * curve_points.size();
+        map.reinitialize(total_curve_points);
+        closest_distances.reinitialize(total_curve_points);
+        closest_distances.fill(std::numeric_limits<float>::max());
+        mapped_curve_positions.reinitialize(total_curve_points);
+
+        ed::transform::curves::fill_map(CurveType(curve_types[curve_i]),
+                                        map,
+                                        curve_points,
+                                        position_offsets_in_td,
+                                        bezier_offsets_in_td[curve_i]);
+
         bool has_any_selected = false;
-        for (const VArray<bool> &selection_attr : selection_attrs) {
+        for (const int selection_attr_i : IndexRange(selection_attrs_num)) {
           has_any_selected = has_any_selected ||
-                             ed::curves::has_anything_selected(selection_attr, points);
+                             ed::curves::has_anything_selected(selection_attrs[selection_attr_i],
+                                                               curve_points);
         }
-        if (!has_any_selected && use_connected_only) {
-          for (const int point_i : all_curve_points) {
-            TransData &td = tc_data[point_i];
+        if (!has_any_selected) {
+          for (const int i : map) {
+            TransData &td = all_tc_data[i];
             td.flag |= TD_SKIP;
           }
           continue;
         }
 
-        closest_distances.reinitialize(all_curve_points.size());
-        closest_distances.fill(std::numeric_limits<float>::max());
-        all_curve_positions.reinitialize(all_curve_points.size());
-
-        const int selection_attrs_num = curve_types[curve_i] == CURVE_TYPE_BEZIER ? 3 : 1;
-        /* `shifts_per_attr` are used to layout `positions`, `handle_positions_left` and
-         * `handle_positions_right` into single array. For given Bezier curve in layers with points
-         * [P0, P1, P2], left handles [L0, L1, L2] and [R0, R1, R2] flattened version version will
-         * be [L0, P0, R0, L1, P1, R1, L2, P2, R2]. This layout is need for `use_connected_only`
-         * case. */
-        static const Array<int> shifts_per_attr_for_bezier = {1, 0, 2};
-        static const Array<int> shifts_per_for_others = {0};
-        Span<int> shifts_per_attr = (curve_types[curve_i] == CURVE_TYPE_BEZIER) ?
-                                        shifts_per_attr_for_bezier :
-                                        shifts_per_for_others;
-
-        for (const int selection_attr_i : IndexRange(selection_attrs_num)) {
-          MutableSpan<float3> positions = positions_per_selection_attr[selection_attr_i];
-
-          for (const int i : points.index_range()) {
-            /* Usual index in curves point domain. */
-            const int point_in_domain_i = points[i];
-            /* Curve scope index in array of positions and handles.
-             * For ex. third right handle's reference in array:
-             * [L0, P0, R0, L1, P1, R1, L2, P2, R2]
-             *          |                       |
-             *  shifts_per_attr[2]              |
-             *                     + selection_attrs_num * 2 = 8
-             */
-            const int flat_i = shifts_per_attr[selection_attr_i] + selection_attrs_num * i;
-            const int point_in_tc_i = all_curve_points[flat_i];
-
-            all_curve_positions[flat_i] = positions[point_in_domain_i];
-
-            TransData &td = tc_data[point_in_tc_i];
-            float3 *elem = &positions[point_in_domain_i];
-
-            copy_v3_v3(td.iloc, *elem);
-            copy_v3_v3(td.center, td.iloc);
-            td.loc = *elem;
-
-            td.flag = 0;
-            if (selection_attrs[selection_attr_i][point_in_domain_i]) {
-              closest_distances[flat_i] = 0.0f;
-              td.flag = TD_SELECTED;
-            }
-
-            if (value_attribute && selection_attr_i == 0) {
-              float *value = &((*value_attribute)[point_in_domain_i]);
-              td.val = value;
-              td.ival = *value;
-            }
-
-            td.ext = nullptr;
-
-            copy_m3_m3(td.smtx, smtx);
-            copy_m3_m3(td.mtx, mtx);
+        for (const int i : closest_distances.index_range()) {
+          TransData &td = all_tc_data[map[i]];
+          mapped_curve_positions[i] = td.loc;
+          if (td.flag & TD_SELECTED) {
+            closest_distances[i] = 0.0f;
           }
         }
-
-        if (use_connected_only) {
-          blender::ed::transform::curves::calculate_curve_point_distances_for_proportional_editing(
-              all_curve_positions.as_span(), closest_distances.as_mutable_span());
-          for (const int i : all_curve_points.index_range()) {
-            TransData &td = tc_data[all_curve_points[i]];
-            td.dist = closest_distances[i];
-          }
+        blender::ed::transform::curves::calculate_curve_point_distances_for_proportional_editing(
+            mapped_curve_positions.as_span(), closest_distances.as_mutable_span());
+        for (const int i : closest_distances.index_range()) {
+          TransData &td = all_tc_data[map[i]];
+          td.dist = closest_distances[i];
         }
       }
     });
-  }
-  else {
-    int selection_attr_offset = 0;
-    for (const int selection_i : selected_indices.index_range()) {
-      MutableSpan<float3> positions = positions_per_selection_attr[selection_i];
-      const IndexMask &selection = selected_indices[selection_i];
-      threading::parallel_for(selection.index_range(), 1024, [&](const IndexRange range) {
-        for (const int selection_i : range) {
-          TransData *td = &tc_data[selection_i + selection_attr_offset];
-          const int point_in_domain_i = selection[selection_i];
-          float3 *elem = &positions[selection_i];
-
-          copy_v3_v3(td->iloc, *elem);
-          copy_v3_v3(td->center, td->iloc);
-          td->loc = *elem;
-
-          if (value_attribute) {
-            float *value = &((*value_attribute)[point_in_domain_i]);
-            td->val = value;
-            td->ival = *value;
-          }
-
-          td->flag = TD_SELECTED;
-          td->ext = nullptr;
-
-          copy_m3_m3(td->smtx, smtx);
-          copy_m3_m3(td->mtx, mtx);
-        }
-      });
-      selection_attr_offset += selection.size();
-    }
   }
 }
 
