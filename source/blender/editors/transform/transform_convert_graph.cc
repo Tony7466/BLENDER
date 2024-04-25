@@ -801,7 +801,7 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 static inline void update_trans_data(TransData *td,
                                      const FCurve *fcu,
                                      const int new_index,
-                                     const int swap_handles)
+                                     const short swap_handles)
 {
   if (td->flag & TD_BEZTRIPLE && td->hdata) {
     if (swap_handles == 1) {
@@ -815,7 +815,7 @@ static inline void update_trans_data(TransData *td,
   }
 }
 
-/* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
+/* Adjust the pointers that the transdata has to each BezTriple. */
 static void beztmap_to_data(TransDataContainer *tc,
                             const blender::Map<float *, int> &trans_data_map,
                             const FCurve *fcu,
@@ -824,10 +824,10 @@ static void beztmap_to_data(TransDataContainer *tc,
   /* At this point, beztmaps are already sorted, so their current index is assumed to be what the
    * BezTriple index will be after sorting. */
   for (const int new_index : bezms.index_range()) {
-    const BeztMap *bezm = &bezms[new_index];
-    if (new_index == bezm->oldIndex) {
-      /* If the index is the same,
-       * any pointers to BezTriple will still point to the correct data. */
+    const BeztMap &bezm = bezms[new_index];
+    if (new_index == bezm.oldIndex) {
+      /* If the index is the same, any pointers to BezTriple
+       * will still point to the correct data. */
       continue;
     }
 
@@ -835,32 +835,32 @@ static void beztmap_to_data(TransDataContainer *tc,
     TransData2D *td2d;
     TransData *td;
 
-    if (trans_data_map.contains(bezm->bezt->vec[0])) {
-      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[0]);
+    if (trans_data_map.contains(bezm.bezt->vec[0])) {
+      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[0]);
       td2d = &tc->data_2d[trans_data_index];
-      if (bezm->swap_handles == 1) {
+      if (bezm.swap_handles == 1) {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
       else {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
       td = &tc->data[trans_data_index];
-      update_trans_data(td, fcu, new_index, bezm->swap_handles);
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
-    if (trans_data_map.contains(bezm->bezt->vec[2])) {
-      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[2]);
+    if (trans_data_map.contains(bezm.bezt->vec[2])) {
+      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[2]);
       td2d = &tc->data_2d[trans_data_index];
-      if (bezm->swap_handles == 1) {
+      if (bezm.swap_handles == 1) {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
       else {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
       td = &tc->data[trans_data_index];
-      update_trans_data(td, fcu, new_index, bezm->swap_handles);
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
-    if (trans_data_map.contains(bezm->bezt->vec[1])) {
-      const int trans_data_index = trans_data_map.lookup(bezm->bezt->vec[1]);
+    if (trans_data_map.contains(bezm.bezt->vec[1])) {
+      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[1]);
       td2d = &tc->data_2d[trans_data_index];
       td2d->loc2d = fcu->bezt[new_index].vec[1];
 
@@ -872,7 +872,7 @@ static void beztmap_to_data(TransDataContainer *tc,
         td2d->h2 = fcu->bezt[new_index].vec[2];
       }
       td = &tc->data[trans_data_index];
-      update_trans_data(td, fcu, new_index, bezm->swap_handles);
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
   }
 }
