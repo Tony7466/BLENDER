@@ -565,13 +565,13 @@ static bke::CurvesGeometry fillet_curves(
                                  zero_edge_buffer,
                                  dst_positions.slice(dst_points));
 
-      MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
-      MutableSpan<float3> dst_handles_l_write = dst_handles_l.slice(dst_points);
-      MutableSpan<float3> dst_handles_r_write = dst_handles_r.slice(dst_points);
-      MutableSpan<int8_t> dst_types_l_write = dst_types_l.slice(dst_points);
-      MutableSpan<int8_t> dst_types_r_write = dst_types_r.slice(dst_points);
 
       if (src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
+        MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
+        MutableSpan<float3> dst_handles_l_write = dst_handles_l.slice(dst_points);
+        MutableSpan<float3> dst_handles_r_write = dst_handles_r.slice(dst_points);
+        MutableSpan<int8_t> dst_types_l_write = dst_types_l.slice(dst_points);
+        MutableSpan<int8_t> dst_types_r_write = dst_types_r.slice(dst_points);
         if (use_bezier_mode) {
           calculate_bezier_handles_bezier_mode(src_handles_l.slice(src_points),
                                                src_handles_r.slice(src_points),
