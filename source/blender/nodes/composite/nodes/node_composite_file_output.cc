@@ -311,13 +311,10 @@ static void update_output_file(bNodeTree *ntree, bNode *node)
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   if (params.in_out() == SOCK_IN) {
-    params.add_item(
-        IFACE_("Image"),
-        [](LinkSearchOpParams &params) {
-          bNode &node = params.add_node("CompositorNodeOutputFile");
-          params.update_and_connect_available_socket(node, "Image");
-        },
-        0);
+    params.add_item(IFACE_("Image"), [](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("CompositorNodeOutputFile");
+      params.update_and_connect_available_socket(node, "Image");
+    });
   }
 }
 
