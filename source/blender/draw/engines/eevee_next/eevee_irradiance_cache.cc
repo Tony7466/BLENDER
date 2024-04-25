@@ -44,7 +44,7 @@ void VolumeProbeModule::init()
 
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ |
                            GPU_TEXTURE_USAGE_ATTACHMENT;
-  do_full_update_ = irradiance_atlas_tx_.ensure_3d(GPU_RGBA16F, atlas_extent, usage);
+  do_full_update_ = irradiance_atlas_tx_.ensure_3d(VOLUME_PROBE_FORMAT, atlas_extent, usage);
 
   if (do_full_update_) {
     /* Delete all references to existing bricks. */
@@ -1036,7 +1036,7 @@ void IrradianceBake::surfels_lights_eval()
   inst_.render_buffers.acquire(int2(1));
   inst_.hiz_buffer.set_source(&inst_.render_buffers.depth_tx);
   inst_.lights.set_view(view_z_, grid_pixel_extent_.xy());
-  inst_.shadows.set_view(view_z_, inst_.render_buffers.depth_tx);
+  inst_.shadows.set_view(view_z_, grid_pixel_extent_.xy());
   inst_.render_buffers.release();
 
   inst_.manager->submit(surfel_light_eval_ps_, view_z_);
