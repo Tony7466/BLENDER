@@ -1438,7 +1438,7 @@ static void CURVES_OT_curve_type_set(wmOperatorType *ot)
                   "use_handles",
                   false,
                   "Handles",
-                  "Use handle information into account in the conversion");
+                  "Take handle information into account in the conversion");
 }
 
 namespace switch_direction {
