@@ -175,13 +175,12 @@ static double4 compute_denominator(float sigma)
  * match the unit integral of the Gaussian. The scaling factor proposed by Deriche's paper in
  * Equation (50) is wrong due to missing terms. A correct scaling factor is presented in
  * Farneback's paper in Equation (25), which is implemented in this method. */
-static float compute_normalization_scale(const DericheGaussianCoefficients &coefficients)
+static float compute_normalization_scale(const double4 &causal_feedforward_coefficients,
+                                         const double4 &feedback_coefficients)
 {
-  const double4 &causal_feedforward = coefficients.causal_feedforward_coefficients();
-  const double4 &feedback = coefficients.feedback_coefficients();
-  const double causal_feedforwad_sum = math::reduce_add(causal_feedforward);
-  const double feedback_sum = 1.0 + math::reduce_add(feedback);
-  return 2.0 * (causal_feedforwad_sum / feedback_sum) - causal_feedforward[0];
+  const double causal_feedforwad_sum = math::reduce_add(causal_feedforward_coefficients);
+  const double feedback_sum = 1.0 + math::reduce_add(feedback_coefficients);
+  return 2.0 * (causal_feedforwad_sum / feedback_sum) - causal_feedforward_coefficients[0];
 }
 
 /* Computes the non causal feedforward coefficients from the feedback and causal feedforward
@@ -189,15 +188,15 @@ static float compute_normalization_scale(const DericheGaussianCoefficients &coef
  * the coefficients can be computed after the normalization of the causal feedforward
  * coefficients. */
 static double4 compute_non_causal_feedforward_coefficients(
-    const DericheGaussianCoefficients &coefficients)
+    const double4 &causal_feedforward_coefficients, const double4 &feedback_coefficients)
 {
-  const double4 &causal_feedforward = coefficients.causal_feedforward_coefficients();
-  const double4 &feedback = coefficients.feedback_coefficients();
-
-  const double n1 = causal_feedforward[1] - feedback[0] * causal_feedforward[0];
-  const double n2 = causal_feedforward[2] - feedback[1] * causal_feedforward[0];
-  const double n3 = causal_feedforward[3] - feedback[2] * causal_feedforward[0];
-  const double n4 = -feedback[3] * causal_feedforward[0];
+  const double n1 = causal_feedforward_coefficients[1] -
+                    feedback_coefficients[0] * causal_feedforward_coefficients[0];
+  const double n2 = causal_feedforward_coefficients[2] -
+                    feedback_coefficients[1] * causal_feedforward_coefficients[0];
+  const double n3 = causal_feedforward_coefficients[3] -
+                    feedback_coefficients[2] * causal_feedforward_coefficients[0];
+  const double n4 = -feedback_coefficients[3] * causal_feedforward_coefficients[0];
 
   return double4(n1, n2, n3, n4);
 }
@@ -248,12 +247,14 @@ DericheGaussianCoefficients::DericheGaussianCoefficients(Context & /*context*/, 
 
   /* Normalize the feedforward coefficients as discussed in Section "5.4 Normalization" in
    * Deriche's paper. Feedback coefficients do not need normalization. */
-  causal_feedforward_coefficients_ /= compute_normalization_scale(*this);
+  causal_feedforward_coefficients_ /= compute_normalization_scale(causal_feedforward_coefficients_,
+                                                                  feedback_coefficients_);
 
   /* Compute the non causal feedforward coefficients from the feedback and normalized causal
    * feedforward coefficients based on Equation (31) from Deriche's paper. Since the causal
    * coefficients are already normalized, this doesn't need normalization. */
-  non_causal_feedforward_coefficients_ = compute_non_causal_feedforward_coefficients(*this);
+  non_causal_feedforward_coefficients_ = compute_non_causal_feedforward_coefficients(
+      causal_feedforward_coefficients_, feedback_coefficients_);
 
   /* Compute the boundary coefficient for both the causal and non causal filters. */
   causal_boundary_coefficient_ = compute_boundary_coefficient(causal_feedforward_coefficients_,
