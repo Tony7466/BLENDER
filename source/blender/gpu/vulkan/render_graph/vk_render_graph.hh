@@ -128,6 +128,10 @@ class VKRenderGraph : public NonCopyable {
   }
 
  public:
+  void add_node(const VKClearAttachmentsNode::CreateInfo &clear_attachments)
+  {
+    add_node<VKClearAttachmentsNode>(clear_attachments);
+  }
   void add_node(const VKClearColorImageNode::CreateInfo &clear_color_image)
   {
     add_node<VKClearColorImageNode>(clear_color_image);

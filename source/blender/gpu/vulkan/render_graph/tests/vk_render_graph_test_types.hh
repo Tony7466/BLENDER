@@ -409,20 +409,26 @@ class CommandBufferLog : public VKCommandBufferInterface {
     BLI_assert_unreachable();
   }
 
-  void begin_render_pass(const VkRenderPassBeginInfo *p_render_pass_begin,
-                         VkSubpassContents contents) override
+  void begin_rendering(const VkRenderingInfo *p_rendering_info) override
   {
-    UNUSED_VARS(p_render_pass_begin, contents);
+    UNUSED_VARS(p_rendering_info);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "begin_rendering(";
+    ss << "p_rendering_info=" << to_string(*p_rendering_info);
+    ss << ")";
+    log_.append(ss.str());
   }
 
-  void end_render_pass() override
+  void end_rendering() override
   {
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "end_rendering()";
+    log_.append(ss.str());
   }
 };
 
