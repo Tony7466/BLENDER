@@ -825,9 +825,9 @@ static void beztmap_to_data(TransDataContainer *tc,
    * BezTriple index will be after sorting. */
   for (const int new_index : bezms.index_range()) {
     const BeztMap &bezm = bezms[new_index];
-    if (new_index == bezm.oldIndex) {
-      /* If the index is the same, any pointers to BezTriple
-       * will still point to the correct data. */
+    if (new_index == bezm.oldIndex && !bezm.swap_handles) {
+      /* If the index is the same, any pointers to BezTriple will still point to the correct data.
+       * Handles might need to be swapped though. */
       continue;
     }
 
