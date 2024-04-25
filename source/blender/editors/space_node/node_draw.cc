@@ -1266,6 +1266,10 @@ static void node_socket_tooltip_set(uiBlock &block,
         POINTER_FROM_INT(socket_index_in_tree),
         nullptr);
   }
+
+  /* Disable the button so that clicks on it are ignored the link operator still works. */
+  UI_but_flag_enable(but, UI_BUT_DISABLED);
+  UI_block_emboss_set(&block, old_emboss);
 }
 
 static void node_socket_draw_multi_input(uiBlock &block,
@@ -1899,6 +1903,7 @@ static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode 
   if (std::optional<std::string> info = create_description_inspection_string(socket)) {
     inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
+
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
     inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
@@ -1915,6 +1920,7 @@ static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode 
   {
     inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
+
   if (std::optional<std::string> info = create_declaration_inspection_string(socket)) {
     inspections.append({std::move(*info), UI_TIP_LC_MAIN});
   }
@@ -1936,11 +1942,11 @@ static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode 
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
       // output << reroute_name;
 
-      inspections.append({std::string(reroute_name), UI_TIP_LC_NORMAL});
+      inspections.append({std::string(reroute_name), UI_TIP_LC_MAIN});
     }
     else {
       // output << bke::nodeSocketLabel(&socket);
-      inspections.append({std::string(bke::nodeSocketLabel(&socket)), UI_TIP_LC_NORMAL});
+      inspections.append({std::string(bke::nodeSocketLabel(&socket)), UI_TIP_LC_MAIN});
     }
 
     if (ntree.type == NTREE_GEOMETRY) {
