@@ -38,28 +38,29 @@ static void calculate_result_offsets(const OffsetIndices<int> curve_start_indice
                                      const VArray<int> &counts,
                                      const Span<bool> cyclic,
                                      MutableSpan<int> dst_curve_offsets,
-                                     MutableSpan<int> dst_point_offsets)
+                                     MutableSpan<int> dst_point_offsets,
+                                     Span<bool> ends_with_zero_edge)
 {
   /* Fill the offsets array with the curve point counts, then accumulate them to form offsets. */
   offset_indices::copy_group_sizes(curve_start_indices, unselected, dst_curve_offsets);
   selection.foreach_index(GrainSize(512), [&](const int curve_i) {
-    // This is the points representing a single curve in the curve list
     const IndexRange src_points = curve_start_indices[curve_i];
-    // ??? [INSPECT] I don't understand this one
     const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                 curve_i);
 
-    // Get the mutable span of point offsets for the destination
     MutableSpan<int> point_offsets = dst_point_offsets.slice(offsets_range);
-    // The last elements is the total count of points in the curve
     MutableSpan<int> point_counts = point_offsets.drop_back(1);
-
-    // Copy the "counts" array into the "dst_point_offsets" array at the indices defined by
-    // "src_points_by_curve"
     counts.materialize_compressed(src_points, point_counts);
-    for (int &count : point_counts) {
-      /* Make sure the number of cuts is greater than zero and add one for the existing point. */
+
+    Span<bool> zero_edge_buffer = ends_with_zero_edge.slice(src_points);
+    for (const int i : src_points.index_range()) {
+      int &count = point_counts[i];
       count = std::max(count, 0) + 1;
+
+      bool has_zero_edge = zero_edge_buffer[i];
+      if (has_zero_edge) {
+        count -= 1;
+      }
     }
 
     if (!cyclic[curve_i]) {
@@ -105,7 +106,7 @@ static void limit_radii(const Span<float3> positions,
                         const Span<float> radii,
                         const bool cyclic,
                         MutableSpan<float> radii_clamped,
-                        MutableSpan<bool> isDuplicated)
+                        MutableSpan<bool> has_zero_length_edge)
 {
   /* Previous, current, and next values will be needed simultaneously.
    * Calculate the variables needed at each stage in advance.
@@ -131,6 +132,7 @@ static void limit_radii(const Span<float3> positions,
         /* Use a zero radius for the first and last points, because they don't have fillets.
          * This logic could potentially be unrolled, but it doesn't seem worth it. */
         radii_clamped.first() = 0.0f;
+        has_zero_length_edge[i] = false;
         continue;
       }
     }
@@ -143,6 +145,7 @@ static void limit_radii(const Span<float3> positions,
       }
       else {
         radii_clamped.last() = 0.0f;
+        has_zero_length_edge[i] = false;
         continue;
       }
     }
@@ -177,7 +180,8 @@ static void limit_radii(const Span<float3> positions,
 
     const float min_factor = std::min(factor_prev, factor_next);
     radii_clamped[i] = radius * min_factor;
-    isDuplicated[i] = min_factor < 1 && factor_next <= factor_prev;
+
+    has_zero_length_edge[i] = min_factor < 1 && factor_next <= factor_prev;
   }
 }
 
@@ -186,6 +190,7 @@ static void calculate_fillet_positions(const Span<float3> src_positions,
                                        const Span<float> radii,
                                        const Span<float3> directions,
                                        const OffsetIndices<int> dst_offsets,
+                                       Span<bool> zero_edge_buffer,
                                        MutableSpan<float3> dst)
 {
   const int i_src_last = src_positions.index_range().last();
@@ -193,7 +198,8 @@ static void calculate_fillet_positions(const Span<float3> src_positions,
     for (const int i_src : range) {
       const IndexRange arc = dst_offsets[i_src];
       const float3 &src = src_positions[i_src];
-      if (arc.size() == 1) {
+      bool is_zero_edge = zero_edge_buffer[i_src];
+      if (arc.size() == 1 && !is_zero_edge) {
         dst[arc.first()] = src;
         continue;
       }
@@ -208,9 +214,15 @@ static void calculate_fillet_positions(const Span<float3> src_positions,
       const float3 arc_end = src + next_dir * displacement;
 
       dst[arc.first()] = arc_start;
-      dst[arc.last()] = arc_end;
+      IndexRange middle = arc.drop_front(1);
+      /* If this is a zero-length edge, the endpoint of the arc is the startpoint of the following
+       * point. Therefore last point is actually still considered the "middle" of the arc
+       */
+      if (!is_zero_edge) {
+        dst[arc.last()] = arc_end;
+        middle = middle.drop_back(1);
+      }
 
-      const IndexRange middle = arc.drop_front(1).drop_back(1);
       if (middle.is_empty()) {
         continue;
       }
@@ -242,6 +254,7 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
                                                  const Span<float> angles,
                                                  const Span<float> radii,
                                                  const Span<float3> directions,
+                                                 const Span<bool> zero_edge_buffer,
                                                  const OffsetIndices<int> dst_offsets,
                                                  const Span<float3> dst_positions,
                                                  MutableSpan<float3> dst_handles_l,
@@ -254,43 +267,59 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
   threading::parallel_for(src_handles_l.index_range(), 512, [&](IndexRange range) {
     for (const int i_src : range) {
       const IndexRange arc = dst_offsets[i_src];
-      if (arc.size() == 1) {
-        dst_handles_l[arc.first()] = src_handles_l[i_src];
-        dst_handles_r[arc.first()] = src_handles_r[i_src];
-        dst_types_l[arc.first()] = src_types_l[i_src];
-        dst_types_r[arc.first()] = src_types_r[i_src];
+      bool is_zero_edge = zero_edge_buffer[i_src];
+      const int i_dst_a = arc.first();
+
+      if (arc.size() == 1 && !is_zero_edge) {
+        dst_handles_l[i_dst_a] = src_handles_l[i_src];
+        dst_handles_r[i_dst_a] = src_handles_r[i_src];
+        dst_types_l[i_dst_a] = src_types_l[i_src];
+        dst_types_r[i_dst_a] = src_types_r[i_src];
         continue;
       }
-      BLI_assert(arc.size() == 2);
-      const int i_dst_a = arc.first();
-      const int i_dst_b = arc.last();
 
+      /* Calculate the point's handles on the outside of the fillet segment,
+       * connecting to the next or previous result points.
+       *
+       * The inner handles are aligned with the aligned with the outer vector
+       * handles, but have a specific length to best approximate a circle.
+       *
+       * When two fillets meet and zero-length edges are removed
+       */
+
+      const int i_dst_b = arc.last() + (is_zero_edge ? 1 : 0);
+
+      /* The first point can only be filleted if the curve is cyclic */
+      bool is_previous_zero_edge = i_src == 0 ? zero_edge_buffer[i_src_last] :
+                                                zero_edge_buffer[i_src - 1];
       const int i_src_prev = i_src == 0 ? i_src_last : i_src - 1;
       const float angle = angles[i_src];
       const float radius = radii[i_src];
+      const float handle_length = (4.0f / 3.0f) * radius * std::tan(angle / 4.0f);
       const float3 prev_dir = -directions[i_src_prev];
       const float3 &next_dir = directions[i_src];
 
-      const float3 &arc_start = dst_positions[arc.first()];
-      const float3 &arc_end = dst_positions[arc.last()];
+      const float3 &arc_start = dst_positions[i_dst_a];
+      const float3 &arc_end = dst_positions[i_dst_b];
 
-      /* Calculate the point's handles on the outside of the fillet segment,
-       * connecting to the next or previous result points. */
-      const int i_dst_prev = i_dst_a == 0 ? i_dst_last : i_dst_a - 1;
+      if (!is_previous_zero_edge) {
+        const int i_dst_prev = i_dst_a == 0 ? i_dst_last : i_dst_a - 1;
+
+        dst_handles_l[i_dst_a] = bke::curves::bezier::calculate_vector_handle(
+            dst_positions[i_dst_a], dst_positions[i_dst_prev]);
+        dst_types_l[i_dst_a] = BEZIER_HANDLE_VECTOR;
+      }
+
+      dst_handles_r[i_dst_a] = arc_start - prev_dir * handle_length;
+      dst_types_r[i_dst_a] = BEZIER_HANDLE_ALIGN;
+
       const int i_dst_next = i_dst_b == i_dst_last ? 0 : i_dst_b + 1;
-      dst_handles_l[i_dst_a] = bke::curves::bezier::calculate_vector_handle(
-          dst_positions[i_dst_a], dst_positions[i_dst_prev]);
+
       dst_handles_r[i_dst_b] = bke::curves::bezier::calculate_vector_handle(
           dst_positions[i_dst_b], dst_positions[i_dst_next]);
-      dst_types_l[i_dst_a] = BEZIER_HANDLE_VECTOR;
       dst_types_r[i_dst_b] = BEZIER_HANDLE_VECTOR;
 
-      /* The inner handles are aligned with the aligned with the outer vector
-       * handles, but have a specific length to best approximate a circle. */
-      const float handle_length = (4.0f / 3.0f) * radius * std::tan(angle / 4.0f);
-      dst_handles_r[i_dst_a] = arc_start - prev_dir * handle_length;
       dst_handles_l[i_dst_b] = arc_end - next_dir * handle_length;
-      dst_types_r[i_dst_a] = BEZIER_HANDLE_ALIGN;
       dst_types_l[i_dst_b] = BEZIER_HANDLE_ALIGN;
     }
   });
@@ -354,7 +383,7 @@ static void calculate_bezier_handles_poly_mode(const Span<float3> src_handles_l,
 static void print_spanf(const Span<float> span)
 {
   for (const int i : span.index_range()) {
-    printf("%f ", span[i]);
+    printf("[%d] = %f ", i, span[i]);
   }
   printf("\n");
 }
@@ -364,7 +393,7 @@ static void print_spanf(const Span<float> span)
 static void print_span3f(const Span<float3> span)
 {
   for (const int i : span.index_range()) {
-    printf("%f %f %f\n", span[i].x, span[i].y, span[i].z);
+    printf("[%d] = (%f,%f,%f)\n", i, span[i].x, span[i].y, span[i].z);
   }
   printf("\n");
 }
@@ -374,7 +403,17 @@ static void print_span3f(const Span<float3> span)
 static void print_spani(const Span<int> span)
 {
   for (const int i : span.index_range()) {
-    printf("%d ", span[i]);
+    printf("[%d] = %d ", i, span[i]);
+  }
+  printf("\n");
+}
+
+/** Print contents of span
+ */
+static void print_spanb(const Span<bool> span)
+{
+  for (const int i : span.index_range()) {
+    printf("[%d] = %d ", i, span[i]);
   }
   printf("\n");
 }
@@ -403,7 +442,65 @@ static bke::CurvesGeometry fillet_curves(
 
   // Create mostly un-initialized curve geometry
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
-  bke::CurvesGeometry dst_curves_2;
+
+  Array<float3> directions;
+  Array<float> angles;
+  Array<float> radii;
+  Array<bool> ends_with_zero_edge;
+  const int src_points_num = src_curves.points_num();
+  bool has_zero_edge_removal = limit_radius && remove_duplicated_points;
+  /*
+   * Pre-calculate radii for all curves if zero-length edges will be removed.
+   * Allocating these arrays on a curve-by-curve basis would conserve memory
+   * and is possible if zero-length edges are not removed
+   *
+   * Currently, memory is allocated for all curves, even those that are not selected.
+   */
+  directions = Array<float3>(src_points_num);
+  angles = Array<float>(src_points_num);
+  radii = Array<float>(src_points_num);
+  ends_with_zero_edge = Array<bool>(src_points_num);
+
+  curve_selection.foreach_index(GrainSize(512), [&](const int curve_i) {
+    const IndexRange src_points = curve_start_indices[curve_i];
+    const Span<float3> positions_buffer = positions.slice(src_points);
+
+    MutableSpan<float3> directions_buffer = directions.as_mutable_span().slice(src_points);
+    calculate_directions(positions_buffer, directions_buffer);
+
+    MutableSpan<float> angles_buffer = angles.as_mutable_span().slice(src_points);
+    calculate_angles(directions_buffer, angles_buffer);
+
+    MutableSpan<float> radii_buffer = radii.as_mutable_span().slice(src_points);
+    MutableSpan<bool> zero_edge_buffer = ends_with_zero_edge.as_mutable_span().slice(src_points);
+
+    if (limit_radius) {
+      Array<float> input_radii_buffer = Array<float>(src_points.size());
+      radius_input.materialize_compressed(src_points, input_radii_buffer);
+
+      limit_radii(positions_buffer,
+                  angles_buffer,
+                  input_radii_buffer,
+                  cyclic[curve_i],
+                  radii_buffer,
+                  zero_edge_buffer);
+
+      printf("Radii: \n");
+      print_spanf(radii_buffer);
+
+      printf("Zero edge: \n");
+      print_spanb(zero_edge_buffer);
+
+      if (!remove_duplicated_points) {
+        zero_edge_buffer.fill(false);
+      }
+    }
+    else {
+      radius_input.materialize_compressed(src_points, radii);
+      zero_edge_buffer.fill(false);
+    }
+  });
+
   /* Stores the offset of every result point for every original point.
    * The extra length is used in order to store an extra zero for every curve. */
   Array<int> dst_point_offsets(src_curves.points_num() + src_curves.curves_num());
@@ -415,7 +512,9 @@ static bke::CurvesGeometry fillet_curves(
                            counts,
                            cyclic,
                            dst_curve_offsets,
-                           dst_point_offsets);
+                           dst_point_offsets,
+                           ends_with_zero_edge);
+
   OffsetIndices dst_points_by_curve = dst_curves.points_by_curve();
   Span<int> all_point_offsets = dst_point_offsets.as_span();
   const int dst_curve_size = dst_curve_offsets.last();
@@ -444,29 +543,7 @@ static bke::CurvesGeometry fillet_curves(
     dst_handles_r = dst_curves.handle_positions_right_for_write();
   }
 
-  // Kludge - copy over the point counts for unselected curves
-  Array<int> dst_2_curve_sizes(dst_curves.curves_num());
-  Array<int> src_to_dst2_offsets(all_point_offsets.size());
-  for (const int to_i : all_point_offsets.index_range()) {
-    src_to_dst2_offsets[to_i] = all_point_offsets[to_i];
-  }
-
-  // Initialize to 0
-  dst_2_curve_sizes.fill(0);
-  unselected.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
-    for (const int curve_i : segment) {
-      IndexRange curve_range = curve_start_indices[curve_i];
-      dst_2_curve_sizes[curve_i] = curve_range.size();
-    }
-  });
-
   curve_selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
-    Array<float3> directions;
-    Array<float> angles;
-    Array<float> radii;
-    Array<float> input_radii_buffer;
-    Array<bool> is_duplicated_r;
-
     for (const int curve_i : segment) {
       const IndexRange src_points = curve_start_indices[curve_i];
       const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
@@ -475,30 +552,17 @@ static bke::CurvesGeometry fillet_curves(
       const IndexRange dst_points = dst_points_by_curve[curve_i];
       const Span<float3> src_positions = positions.slice(src_points);
 
-      directions.reinitialize(src_points.size());
-      calculate_directions(src_positions, directions);
-
-      angles.reinitialize(src_points.size());
-      calculate_angles(directions, angles);
-
-      radii.reinitialize(src_points.size());
-      is_duplicated_r.reinitialize(src_points.size());
-
-      if (limit_radius) {
-        input_radii_buffer.reinitialize(src_points.size());
-        radius_input.materialize_compressed(src_points, input_radii_buffer);
-        limit_radii(
-            src_positions, angles, input_radii_buffer, cyclic[curve_i], radii, is_duplicated_r);
-      }
-      else {
-        radius_input.materialize_compressed(src_points, radii);
-      }
+      Span<float3> directions_buffer = directions.as_span().slice(src_points);
+      Span<float> angles_buffer = angles.as_span().slice(src_points);
+      Span<float> radii_buffer = radii.as_span().slice(src_points);
+      Span<bool> zero_edge_buffer = ends_with_zero_edge.as_span().slice(src_points);
 
       calculate_fillet_positions(positions.slice(src_points),
-                                 angles,
-                                 radii,
-                                 directions,
+                                 angles_buffer,
+                                 radii_buffer,
+                                 directions_buffer,
                                  offsets,
+                                 zero_edge_buffer,
                                  dst_positions.slice(dst_points));
 
       MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
@@ -513,9 +577,10 @@ static bke::CurvesGeometry fillet_curves(
                                                src_handles_r.slice(src_points),
                                                src_types_l.slice(src_points),
                                                src_types_r.slice(src_points),
-                                               angles,
-                                               radii,
-                                               directions,
+                                               angles_buffer,
+                                               radii_buffer,
+                                               directions_buffer,
+                                               zero_edge_buffer,
                                                offsets,
                                                dst_positions_write,
                                                dst_handles_l_write,
@@ -536,124 +601,8 @@ static bke::CurvesGeometry fillet_curves(
                                              dst_types_r_write);
         }
       }
-
-      if (limit_radius && remove_duplicated_points) {
-        // Get input counts for the curve
-        int new_curve_size = 0;
-
-        int dst_i = 0;
-        const int src_point_num = src_positions.size();
-
-        bool skip_point = false;
-        for (int src_i = 0; src_i < src_point_num; src_i++) {
-          IndexRange dst_src_range = offsets[src_i];
-          const bool skip_last_point = is_duplicated_r[src_i];
-          int dst_src_i_last = dst_src_range.last();
-
-          for (const int dst_src_i : dst_src_range) {
-            if (!skip_point) {
-              float3 handle_l = dst_handles_l_write[dst_src_i];
-              int8_t type_l = dst_types_l_write[dst_src_i];
-
-              dst_handles_l_write[dst_i] = handle_l;
-              dst_types_l_write[dst_i] = type_l;
-            }
-
-            bool is_last_point = dst_src_i == dst_src_i_last;
-            /* Skip the the last point of a curve and its right-side handles.
-             * On the next loop, the left side handles will be skipped
-             */
-            skip_point = skip_last_point && is_last_point;
-            if (!skip_point) {
-              float3 pos = dst_positions_write[dst_src_i];
-              float3 handle_r = dst_handles_r_write[dst_src_i];
-              int8_t type_r = dst_types_r_write[dst_src_i];
-
-              dst_positions_write[dst_i] = pos;
-              dst_handles_r_write[dst_i] = handle_r;
-              dst_types_r_write[dst_i] = type_r;
-              dst_i++;
-              new_curve_size++;
-            }
-            else {
-              // Decrement all offsets
-              int offsets_size = src_to_dst2_offsets.size();
-              for (int dec_i = src_i; dec_i < offsets_size; dec_i++) {
-                src_to_dst2_offsets[dec_i] = src_to_dst2_offsets[dec_i] - 1;
-              }
-            }
-          }
-        }
-        dst_2_curve_sizes[curve_i] = new_curve_size;
-      }
     }
   });
-
-  OffsetIndices<int> curve_ranges_2;
-  if (limit_radius && remove_duplicated_points) {
-    // Temporary... figure out how to make a new set of destination curves based on what I now know
-    dst_curves_2 = bke::curves::copy_only_curve_domain(src_curves);
-
-    // Copy the new positions, handles, and types to the new destination curve object
-    // This is a hack to understand how to work the destination in the final and is not the final
-    MutableSpan<int> dst_curves_2_offsets = dst_curves_2.offsets_for_write();
-
-    dst_curves_2_offsets[0] = 0;
-    for (const int i : dst_2_curve_sizes.index_range()) {
-      dst_curves_2_offsets[i + 1] = dst_curves_2_offsets[i] + dst_2_curve_sizes[i];
-    }
-
-    // Resize the new destination curves
-    const int dst_curves_2_size = dst_curves_2_offsets.last();
-    const int curve_num_2 = dst_2_curve_sizes.size();
-    dst_curves_2.resize(dst_curves_2_size, curve_num_2);
-    dst_attributes = dst_curves_2.attributes_for_write();
-
-    // Duplicate points using destination curves 2
-    OffsetIndices<int> curve_ranges = dst_curves.points_by_curve();
-    curve_ranges_2 = dst_curves_2.points_by_curve();
-    for (const int curve_i : curve_ranges_2.index_range()) {
-      IndexRange dst_range = curve_ranges[curve_i];
-      IndexRange dst_2_range = curve_ranges_2[curve_i];
-
-      MutableSpan<float3> handle_l_w = dst_curves_2.handle_positions_left_for_write();
-      MutableSpan<float3> handle_r_w = dst_curves_2.handle_positions_right_for_write();
-      MutableSpan<int8_t> handle_l_t = dst_curves_2.handle_types_left_for_write();
-      MutableSpan<int8_t> handle_r_t = dst_curves_2.handle_types_right_for_write();
-      MutableSpan<float3> pos_w = dst_curves_2.positions_for_write();
-
-      Span<float3> handle_l = dst_curves.handle_positions_left();
-      Span<float3> handle_r = dst_curves.handle_positions_right();
-      VArray<int8_t> handle_l_t_s = dst_curves.handle_types_left();
-      VArray<int8_t> handle_r_t_s = dst_curves.handle_types_right();
-      Span<float3> pos = dst_curves.positions();
-
-      int i = dst_range.start();
-      int end_2 = dst_2_range.last();
-      for (int i_2 = dst_2_range.start(); i_2 <= end_2; i_2++) {
-        printf("i: %d i_2: %d\n", i, i_2);
-        handle_l_w[i_2] = handle_l[i];
-        handle_r_w[i_2] = handle_r[i];
-        handle_l_t[i_2] = handle_l_t_s[i];
-        handle_r_t[i_2] = handle_r_t_s[i];
-        pos_w[i_2] = pos[i];
-        i++;
-      }
-    }
-
-    dst_curves = dst_curves_2;
-    dst_points_by_curve = curve_ranges_2;
-    all_point_offsets = src_to_dst2_offsets.as_span();
-  }
-
-  printf("Right side Handles");
-  print_span3f(dst_curves.handle_positions_right());
-
-  printf("Left side Handles");
-  print_span3f(dst_curves.handle_positions_left());
-
-  printf("Positions");
-  print_span3f(dst_curves.positions());
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
            src_attributes,
