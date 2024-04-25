@@ -38,6 +38,7 @@ struct Reservoir {
                   const float mis_weight,
                   const float rand)
   {
+    /* TODO(weizhen): replace `reduce_add()` with luminance. */
     const float weight = reduce_add(fabs(radiance.sum)) * mis_weight;
     if (!(weight > 0.0f)) {
       return;

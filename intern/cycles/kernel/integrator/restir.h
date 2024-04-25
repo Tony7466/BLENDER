@@ -312,7 +312,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   }
 
   BsdfEval radiance = reservoir.radiance;
-  const float unbiased_contribution_weight = reservoir.total_weight /
+  const float unbiased_contribution_weight = reservoir.total_weight *
+                                             reservoir.ls.jacobian_solid_angle_to_area() /
                                              reduce_add(fabs(radiance.sum)) / valid_neighbors;
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 

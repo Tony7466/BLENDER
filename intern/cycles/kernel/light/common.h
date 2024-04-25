@@ -13,7 +13,7 @@ CCL_NAMESPACE_BEGIN
 /* TODO(weizhen): make sure `prim` is PRIM_NONE when it's lamp, and `lamp` is LAMP_NONE when it's
  * a primitive. Could also write `~lamp` to `prim` for lamps. Anyway make sure things are
  * consistent. Can write utility functions if needed. */
-typedef struct LightSample {
+struct LightSample {
   float3 P;            /* position on light, or direction for distant light */
   packed_float3 Ng;    /* normal on light */
   float t;             /* distance to light (FLT_MAX for distant light) */
@@ -29,7 +29,30 @@ typedef struct LightSample {
   int group;           /* lightgroup */
   LightType type;      /* type of light */
   int emitter_id;      /* index in the emitter array */
-} LightSample;
+
+  float jacobian_area_to_solid_angle()
+  {
+    float cos_pi = dot(Ng, -D);
+
+    if (cos_pi <= 0.0f) {
+      return 0.0f;
+    }
+
+    return sqr(t) / cos_pi;
+  }
+
+  float jacobian_solid_angle_to_area()
+  {
+    float cos_pi = dot(Ng, -D);
+
+    /* TODO(weizhen): how to handle when t is smaller than zero? */
+    if (cos_pi <= 0.0f || t <= 0.0f) {
+      return 0.0f;
+    }
+
+    return cos_pi / sqr(t);
+  }
+};
 
 /* Utilities */
 

@@ -671,6 +671,8 @@ ccl_device
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+    /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
+    reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }
   else {
