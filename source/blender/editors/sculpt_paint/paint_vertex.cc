@@ -1703,7 +1703,8 @@ static void vpaint_do_draw(bContext *C,
             /* If the active area is being applied for symmetry, flip it
              * across the symmetry axis and rotate it back to the original
              * position in order to project it. This insures that the
-             * brush texture will be oriented correctly. */
+             * brush texture will be oriented correctly.
+             * This is the method also used in #sculpt_apply_texture(). */
             float symm_point[3];
             if (cache->radial_symmetry_pass) {
               mul_m4_v3(cache->symm_rot_mat_inv.ptr(), vpd->vertexcosnos[v_index].co);
