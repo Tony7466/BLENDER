@@ -327,15 +327,6 @@ static int action_pushdown_exec(bContext *C, wmOperator *op)
 
   /* Do the deed... */
   if (adt) {
-    /* Perform the push-down operation
-     * - This will deal with all the AnimData-side user-counts. */
-    if (BKE_action_has_motion(adt->action) == 0) {
-      /* action may not be suitable... */
-      BKE_report(op->reports, RPT_WARNING, "Action must have at least one keyframe or F-Modifier");
-      return OPERATOR_CANCELLED;
-    }
-
-    /* action can be safely added */
     BKE_nla_action_pushdown(adt, ID_IS_OVERRIDE_LIBRARY(adt_id_owner));
 
     Main *bmain = CTX_data_main(C);

@@ -2150,15 +2150,6 @@ void BKE_nla_action_pushdown(AnimData *adt, const bool is_liboverride)
     return;
   }
 
-  /* if the action is empty, we also shouldn't try to add to stack,
-   * as that will cause us grief down the track
-   */
-  /* TODO: what about modifiers? */
-  if (BKE_action_has_motion(adt->action) == 0) {
-    CLOG_ERROR(&LOG, "action has no data");
-    return;
-  }
-
   /* add a new NLA strip to the track, which references the active action */
   strip = BKE_nlastack_add_strip(adt, adt->action, is_liboverride);
   if (strip == nullptr) {
