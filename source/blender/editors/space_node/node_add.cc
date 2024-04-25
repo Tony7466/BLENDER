@@ -708,7 +708,7 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
       return OPERATOR_CANCELLED;
   }
   Vector<Image *> images;
-  /* Load all paths as Id Images. */
+  /* Load all paths as ID Images. */
   const Vector<std::string> paths = ed::io::paths_from_operator_properties(op->ptr);
   for (const std::string &path : paths) {
     RNA_string_set(op->ptr, "filepath", path.c_str());

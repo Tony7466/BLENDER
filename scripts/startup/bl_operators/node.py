@@ -450,11 +450,14 @@ class NODE_FH_image_node(FileHandler):
 
     @classmethod
     def poll_drop(cls, context):
-        return (context.area and context.area.type == 'NODE_EDITOR' and context.region and context.region.type == 'WINDOW')
+        return (context.area and context.area.type == 'NODE_EDITOR'
+                and context.region and context.region.type == 'WINDOW')
 
 
 classes = (
     NodeSetting,
+
+    NODE_FH_image_node,
 
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
@@ -467,5 +470,4 @@ classes = (
     NODE_OT_enum_definition_item_add,
     NODE_OT_enum_definition_item_remove,
     NODE_OT_enum_definition_item_move,
-    NODE_FH_image_node,
 )
