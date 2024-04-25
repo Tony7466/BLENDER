@@ -1583,24 +1583,32 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
  * bool to switch between exec and poll behavior.  This isn't great, but seems
  * like the lesser evil under the circumstances.
  *
+ * \param all If true, copies drivers of all elements of an array property.
+ * Otherwise only copies one specific element.
+ * \param poll If true, only checks if the driver(s) could be copied rather than
+ * actually performing the copy.
+ *
  * \returns true in exec mode if any copies were successfully made, and false
  * otherwise.  Returns true in poll mode if a copy could be successfully made,
  * and false otherwise.
  */
-static bool copy_driver_to_selected_button(bContext *C, const bool poll)
+static bool copy_driver_to_selected_button(bContext *C, bool all, const bool poll)
 {
   PropertyRNA *prop;
   PointerRNA ptr;
   int index;
-  FCurve *src_driver;
 
-  /* Get the property of the clicked button and its driver. */
+  /* Get the property of the clicked button. */
+  UI_context_active_but_prop_get(C, &ptr, &prop, &index);
+  if (!ptr.data || !ptr.owner_id || !prop) {
+    return false;
+  }
+  const bool is_array_prop = RNA_property_array_check(prop);
+  all |= index == -1; /* -1 implies `all` for array properties. */
+
+  /* Get the property's driver(s). */
+  blender::Vector<FCurve *> src_drivers = {};
   {
-    UI_context_active_but_prop_get(C, &ptr, &prop, &index);
-    if (ptr.data == nullptr || ptr.owner_id == nullptr || prop == nullptr) {
-      return false;
-    }
-
     const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop);
     if (!path.has_value()) {
       return false;
@@ -1611,8 +1619,26 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
       return false;
     }
 
-    src_driver = BKE_fcurve_find(&adt->drivers, path->c_str(), index);
-    if (!src_driver) {
+    if (!is_array_prop) {
+      src_drivers.append(BKE_fcurve_find(&adt->drivers, path->c_str(), index));
+    }
+    else {
+      /* To keep the code simpler further down, we always allocate space for all
+       * elements of an array property, and the unused ones just remain null. */
+      src_drivers.resize(RNA_property_array_length(&ptr, prop), nullptr);
+      for (int i = 0; i < src_drivers.size(); i++) {
+        if (all || i == index) {
+          src_drivers[i] = BKE_fcurve_find(&adt->drivers, path->c_str(), i);
+        }
+      }
+    }
+
+    /* If we didn't get any drivers to copy, early-out. */
+    bool fetched_at_least_one = false;
+    for (FCurve *driver : src_drivers) {
+      fetched_at_least_one |= driver != nullptr;
+    }
+    if (!fetched_at_least_one) {
       return false;
     }
   }
@@ -1628,15 +1654,15 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
     return false;
   }
 
-  /* Copy the driver to the list of target properties. */
+  /* Copy the driver(s) to the list of target properties. */
   int copy_count = 0;
   for (PointerRNA &target_prop : target_properties) {
     if (target_prop.data == ptr.data) {
       continue;
     }
 
-    /* Get the target property and ensure that it's appropriate for adding a
-     * driver. */
+    /* Get the target property and ensure that it's appropriate for adding
+     * drivers. */
     PropertyRNA *dst_prop;
     PointerRNA dst_ptr;
     if (!UI_context_copy_to_selected_check(&ptr,
@@ -1650,17 +1676,7 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
       continue;
     }
     if (!RNA_property_driver_editable(&dst_ptr, dst_prop)) {
-      /* Not drivable, so skip. */
       continue;
-    }
-    {
-      /* If it's already animated by something other than a driver, skip. */
-      bool driven;
-      const FCurve *fcu = BKE_fcurve_find_by_rna(
-          &dst_ptr, dst_prop, index, nullptr, nullptr, &driven, nullptr);
-      if (fcu && !driven) {
-        continue;
-      }
     }
 
     /* If we're just polling, then we early-out on the first property we would
@@ -1677,29 +1693,47 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
     AnimData *dst_adt = BKE_animdata_ensure_id(dst_ptr.owner_id);
     BLI_assert(dst_adt);
 
-    /* If there's an existing matching driver, remove it first.
-     *
-     * TODO: this has quadratic complexity when the drivers are within the same
-     * ID, due to this being inside of a loop and doing a linear scan of the
-     * drivers to find one that matches.  We should be able to make this more
-     * efficient with a little cleverness .*/
-    {
-      FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), index);
-      if (old_driver != nullptr) {
-        BLI_remlink(&dst_adt->drivers, old_driver);
-        BKE_fcurve_free(old_driver);
+    /* Do the copying. */
+    for (int i = 0; i < src_drivers.size(); i++) {
+      if (!src_drivers[i]) {
+        continue;
       }
+      const int dst_index = is_array_prop ? i : index;
+
+      /* If it's already animated by something other than a driver, skip. */
+      {
+        bool driven;
+        const FCurve *fcu = BKE_fcurve_find_by_rna(
+            &dst_ptr, dst_prop, dst_index, nullptr, nullptr, &driven, nullptr);
+        if (fcu && !driven) {
+          continue;
+        }
+      }
+
+      /* If there's an existing matching driver, remove it first.
+       *
+       * TODO: this has quadratic complexity when the drivers are within the same
+       * ID, due to this being inside of a loop and doing a linear scan of the
+       * drivers to find one that matches.  We should be able to make this more
+       * efficient with a little cleverness .*/
+      {
+        FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), dst_index);
+        if (old_driver) {
+          BLI_remlink(&dst_adt->drivers, old_driver);
+          BKE_fcurve_free(old_driver);
+        }
+      }
+
+      /* Create the new driver. */
+      FCurve *new_driver = BKE_fcurve_copy(src_drivers[i]);
+      BLI_addtail(&dst_adt->drivers, new_driver);
+      MEM_SAFE_FREE(new_driver->rna_path);
+      new_driver->rna_path = BLI_strdup(dst_path->c_str());
+
+      RNA_property_update(C, &dst_ptr, dst_prop);
+
+      copy_count++;
     }
-
-    /* Create the new driver. */
-    FCurve *new_driver = BKE_fcurve_copy(src_driver);
-    BLI_addtail(&dst_adt->drivers, new_driver);
-    MEM_SAFE_FREE(new_driver->rna_path);
-    new_driver->rna_path = BLI_strdup(dst_path->c_str());
-
-    RNA_property_update(C, &dst_ptr, dst_prop);
-
-    copy_count++;
   }
 
   return copy_count > 0;
@@ -1707,12 +1741,14 @@ static bool copy_driver_to_selected_button(bContext *C, const bool poll)
 
 static bool copy_driver_to_selected_button_poll(bContext *C)
 {
-  return copy_driver_to_selected_button(C, true);
+  return copy_driver_to_selected_button(C, false, true);
 }
 
-static int copy_driver_to_selected_button_exec(bContext *C, wmOperator * /* op */)
+static int copy_driver_to_selected_button_exec(bContext *C, wmOperator *op)
 {
-  if (!copy_driver_to_selected_button(C, false)) {
+  const bool all = RNA_boolean_get(op->ptr, "all");
+
+  if (!copy_driver_to_selected_button(C, all, false)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1737,6 +1773,10 @@ static void UI_OT_copy_driver_to_selected_button(wmOperatorType *ot)
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Properties. */
+  RNA_def_boolean(
+      ot->srna, "all", false, "All", "Copy to selected the drivers of all elements of the array");
 }
 
 /** \} */
