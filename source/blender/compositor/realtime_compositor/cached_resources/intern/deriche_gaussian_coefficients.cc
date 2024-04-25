@@ -17,8 +17,10 @@
  *   Farneback, Gunnar, and Carl-Fredrik Westin. Improving Deriche-style recursive Gaussian
  *   filters. Journal of Mathematical Imaging and Vision 26.3 (2006): 293-299.
  *
- * The filter is computed as the sum of a causal and a non causal sequences of second order
- * difference equations as can be seen in Equation (30) in Deriche's paper. */
+ * The Deriche filter is computed as the sum of a causal and a non causal sequence of second order
+ * difference equations as can be seen in Equation (30) in Deriche's paper, and the target of this
+ * class is to compute the feedback, causal feedforward, and non causal feedforward coefficients of
+ * the filter. */
 
 #include <cstdint>
 #include <memory>
@@ -200,29 +202,39 @@ static double4 compute_non_causal_feedforward_coefficients(
   return double4(n1, n2, n3, n4);
 }
 
-/* Computes the coefficient that needs to be multiplied to the boundary value in order to simulate
- * an infinite previous stream of that value. The boundary value is used to initialize the previous
- * outputs for the causal filter. This works for both Dirichlet and Neumann boundaries. The
- * equation for that coefficient can be derived by rearranging the difference equation to compute
- * the current input from the output, previous outputs, and inputs, substituting the boundary value
- * for previous outputs. */
-static double compute_causal_boundary_coefficient(const DericheGaussianCoefficients &coefficients)
+/* The IIR filter difference equation relies on previous outputs to compute new outputs, those
+ * previous outputs are not really defined at the start of the filter. To do Neumann boundary
+ * condition, we initialize the previous output with a special value that is a function of the
+ * boundary value. This special value is computed by multiply the boundary value with a coefficient
+ * to simulate an infinite stream of the boundary value.
+ *
+ * The function for the coefficient can be derived by substituting the boundary value for previous
+ * inputs, equating all current and previous outputs to the same value, and finally rearranging to
+ * compute that same output value.
+ *
+ * Start by the difference equation where b_i are the feedforward coefficients and a_i are the
+ * feedback coefficients:
+ *
+ *   y[n] = \sum_{i = 0}^3 b_i x[n - i] - \sum_{i = 0}^3 a_i y[n - i]
+ *
+ * Assume all outputs are y and all inputs are x, which is the boundary value:
+ *
+ *   y = \sum_{i = 0}^3 b_i x - \sum_{i = 0}^3 a_i y
+ *
+ * Now rearrange to compute y:
+ *
+ *   y = x \sum_{i = 0}^3 b_i - y \sum_{i = 0}^3 a_i
+ *   y + y \sum_{i = 0}^3 a_i = x \sum_{i = 0}^3 b_i
+ *   y (1 + \sum_{i = 0}^3 a_i) = x \sum_{i = 0}^3 b_i
+ *   y = x \cdot \frac{\sum_{i = 0}^3 b_i}{1 + \sum_{i = 0}^3 a_i}
+ *
+ * So our coefficient is the value that is multiplied by the boundary value x. Had x been zero,
+ * that is, we are doing Dirichlet boundary condition, the equations still hold. */
+static double compute_boundary_coefficient(const double4 &feedforward_coefficients,
+                                           const double4 &feedback_coefficients)
 {
-  const double4 &causal_feedforward = coefficients.causal_feedforward_coefficients();
-  const double4 &feedback = coefficients.feedback_coefficients();
-
-  return math::reduce_add(causal_feedforward) / (1.0 + math::reduce_add(feedback));
-}
-
-/* Identical to compute_causal_boundary_coefficient except it computes the coefficient for the
- * non-causal filter using the non-causal feedforward coefficients. */
-static double compute_non_causal_boundary_coefficient(
-    const DericheGaussianCoefficients &coefficients)
-{
-  const double4 &non_causal_feedforward = coefficients.non_causal_feedforward_coefficients();
-  const double4 &feedback = coefficients.feedback_coefficients();
-
-  return math::reduce_add(non_causal_feedforward) / (1.0 + math::reduce_add(feedback));
+  return math::reduce_add(feedforward_coefficients) /
+         (1.0 + math::reduce_add(feedback_coefficients));
 }
 
 /* Computes the feedback, causal feedforward, and non causal feedforward coefficients given a
@@ -243,8 +255,11 @@ DericheGaussianCoefficients::DericheGaussianCoefficients(Context & /*context*/, 
    * coefficients are already normalized, this doesn't need normalization. */
   non_causal_feedforward_coefficients_ = compute_non_causal_feedforward_coefficients(*this);
 
-  causal_boundary_coefficient_ = compute_causal_boundary_coefficient(*this);
-  non_causal_boundary_coefficient_ = compute_non_causal_boundary_coefficient(*this);
+  /* Compute the boundary coefficient for both the causal and non causal filters. */
+  causal_boundary_coefficient_ = compute_boundary_coefficient(causal_feedforward_coefficients_,
+                                                              feedback_coefficients_);
+  non_causal_boundary_coefficient_ = compute_boundary_coefficient(
+      non_causal_feedforward_coefficients_, feedback_coefficients_);
 }
 
 const double4 &DericheGaussianCoefficients::feedback_coefficients() const

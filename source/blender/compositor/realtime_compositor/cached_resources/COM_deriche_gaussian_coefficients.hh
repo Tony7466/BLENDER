@@ -34,13 +34,27 @@ bool operator==(const DericheGaussianCoefficientsKey &a, const DericheGaussianCo
  * Deriche Gaussian Coefficients.
  *
  * A caches resource that computes and caches the coefficients of the fourth order IIR filter
- * approximating a Gaussian filter computed using Deriche's design method. */
+ * approximating a Gaussian filter computed using Deriche's design method. This is based on the
+ * following paper:
+ *
+ *   Deriche, Rachid. Recursively implementating the Gaussian and its derivatives. Diss. INRIA,
+ *   1993.
+ */
 class DericheGaussianCoefficients : public CachedResource {
  private:
+  /* The d_ii coefficients in Equation (28) and (29). Those are the same for the causal and non
+   * causal filters as can be seen in Equation (31). */
   double4 feedback_coefficients_;
+  /* The n_ii^+ coefficients in Equation (28). */
   double4 causal_feedforward_coefficients_;
+  /* The n_ii^- coefficients in Equation (29). */
   double4 non_causal_feedforward_coefficients_;
+  /* The difference equation in Equation (28) rely on previous outputs to compute the new output,
+   * and those previous outputs need to be properly initialized somehow. To do Neumann boundary
+   * condition, we multiply the boundary value with this coefficient to simulate an infinite stream
+   * of the boundary value. See the implementation for more information. */
   double causal_boundary_coefficient_;
+  /* Same as causal_boundary_coefficient_ but for the non causal filter. */
   double non_causal_boundary_coefficient_;
 
  public:

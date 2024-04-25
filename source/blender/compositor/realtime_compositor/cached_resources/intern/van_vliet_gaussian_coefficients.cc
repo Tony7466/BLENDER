@@ -78,17 +78,10 @@ static double compute_scaled_poles_variance(const std::array<std::complex<double
  * The derivative is not listed in the paper, but was computed manually as the sum of the following
  * for each of the poles:
  *
- *   \dfrac{
- *     2a^\frac{1}{x}\mathrm{e}^\frac{\mathrm{i}b}{x}
- *     \cdot
- *     \left(\mathrm{e}^\frac{\mathrm{i}b}{x}+a^\frac{1}{x}\right)
- *     \cdot
- *     \left(\ln\left(a\right)-\mathrm{i}b\right)
- *   }
- *   {
- *     x^2
- *     \cdot
- *     \left(a^\frac{1}{x}-\mathrm{e}^\frac{\mathrm{i}b}{x}\right)^3
+ *   \frac{
+ *     2a^\frac{1}{x}e^\frac{ib}{x} (e^\frac{ib}{x}+a^\frac{1}{x}) (\ln(a)-ib)
+ *   }{
+ *     x^2 (a^\frac{1}{x}-e^\frac{ib}{x})^3
  *   }
  *
  * Where "x" is the scale factor, "a" is the magnitude of the pole, and "b" is its phase. */
@@ -281,12 +274,34 @@ static void compute_second_order_section(const std::array<std::complex<double>, 
                                                   non_causal_feedforward_2);
 }
 
-/* Computes the coefficient that needs to be multiplied to the boundary value in order to simulate
- * an infinite previous stream of that value. The boundary value is used to initialize the previous
- * outputs for the causal and non-causal filters. This works for both Dirichlet and Neumann
- * boundaries. The equation for that coefficient can be derived by rearranging the difference
- * equation to compute the current input from the output and previous outputs, substituting the
- * boundary value for previous outputs. */
+/* The IIR filter difference equation relies on previous outputs to compute new outputs, those
+ * previous outputs are not really defined at the start of the filter. To do Neumann boundary
+ * condition, we initialize the previous output with a special value that is a function of the
+ * boundary value. This special value is computed by multiply the boundary value with a coefficient
+ * to simulate an infinite stream of the boundary value.
+ *
+ * The function for the coefficient can be derived by substituting the boundary value for previous
+ * inputs, equating all current and previous outputs to the same value, and finally rearranging to
+ * compute that same output value.
+ *
+ * Start by the difference equation where b_i are the feedforward coefficients and a_i are the
+ * feedback coefficients:
+ *
+ *   y[n] = \sum_{i = 0}^3 b_i x[n - i] - \sum_{i = 0}^3 a_i y[n - i]
+ *
+ * Assume all outputs are y and all inputs are x, which is the boundary value:
+ *
+ *   y = \sum_{i = 0}^3 b_i x - \sum_{i = 0}^3 a_i y
+ *
+ * Now rearrange to compute y:
+ *
+ *   y = x \sum_{i = 0}^3 b_i - y \sum_{i = 0}^3 a_i
+ *   y + y \sum_{i = 0}^3 a_i = x \sum_{i = 0}^3 b_i
+ *   y (1 + \sum_{i = 0}^3 a_i) = x \sum_{i = 0}^3 b_i
+ *   y = x \cdot \frac{\sum_{i = 0}^3 b_i}{1 + \sum_{i = 0}^3 a_i}
+ *
+ * So our coefficient is the value that is multiplied by the boundary value x. Had x been zero,
+ * that is, we are doing Dirichlet boundary condition, the equations still hold. */
 static double compute_boundary_coefficient(const double2 &feedback_coefficients,
                                            const double2 &feedforward_coefficients)
 {
