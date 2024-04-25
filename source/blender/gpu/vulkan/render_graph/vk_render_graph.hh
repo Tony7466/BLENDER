@@ -128,6 +128,14 @@ class VKRenderGraph : public NonCopyable {
   }
 
  public:
+  void add_node(const VKBeginRenderingNode::CreateInfo &begin_rendering)
+  {
+    add_node<VKBeginRenderingNode>(begin_rendering);
+  }
+  void add_node(const VKEndRenderingNode::CreateInfo &end_rendering)
+  {
+    add_node<VKEndRenderingNode>(end_rendering);
+  }
   void add_node(const VKClearAttachmentsNode::CreateInfo &clear_attachments)
   {
     add_node<VKClearAttachmentsNode>(clear_attachments);

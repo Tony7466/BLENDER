@@ -61,8 +61,6 @@ COMMANDS_TO_GEN = [
 
     "vkCmdBeginRendering",
     "vkCmdEndRendering",
-    "vkCmdBeginRenderPass",
-    "vkCmdEndRenderPass",
     "vkCmdDraw",
     "vkCmdDrawIndexed",
     "vkCmdDrawIndirect",

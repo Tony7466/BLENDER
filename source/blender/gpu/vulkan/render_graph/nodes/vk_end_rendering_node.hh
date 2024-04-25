@@ -18,7 +18,7 @@ namespace blender::gpu::render_graph {
 struct VKEndRenderingData {};
 
 /**
- * Blit Image Node
+ * End rendering node
  *
  * - Contains logic to copy relevant data to the VKRenderGraphNode.
  * - Determine read/write resource dependencies.
@@ -39,7 +39,7 @@ class VKEndRenderingNode : public VKNodeInfo<VKNodeType::END_RENDERING,
    */
   template<typename Node> void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.begin_rendering = create_info;
+    node.end_rendering = create_info;
   }
 
   /**

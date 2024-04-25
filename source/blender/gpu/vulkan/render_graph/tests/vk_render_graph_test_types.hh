@@ -411,7 +411,6 @@ class CommandBufferLog : public VKCommandBufferInterface {
 
   void begin_rendering(const VkRenderingInfo *p_rendering_info) override
   {
-    UNUSED_VARS(p_rendering_info);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
