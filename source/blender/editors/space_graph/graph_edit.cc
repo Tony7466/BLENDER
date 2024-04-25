@@ -206,15 +206,17 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
        *   up adding the keyframes on a new F-Curve in the action data instead.
        */
       if (ale->id && !ale->owner && !fcu->driver) {
-        insert_keyframe(ac->bmain,
-                        reports,
-                        ale->id,
-                        ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                        fcu->rna_path,
-                        fcu->array_index,
-                        &anim_eval_context,
-                        eBezTriple_KeyframeType(ts->keyframe_type),
-                        flag);
+        CombinedKeyingResult result = insert_keyframe(ac->bmain,
+                                                      *ale->id,
+                                                      ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                                                      fcu->rna_path,
+                                                      fcu->array_index,
+                                                      &anim_eval_context,
+                                                      eBezTriple_KeyframeType(ts->keyframe_type),
+                                                      flag);
+        if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+          result.generate_reports(reports);
+        }
       }
       else {
         AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -980,20 +982,6 @@ static int graphkeys_keys_to_samples_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static int graphkeys_keys_to_samples_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  if (RNA_boolean_get(op->ptr, "confirm")) {
-    return WM_operator_confirm_ex(C,
-                                  op,
-                                  IFACE_("Convert selected keys to samples?"),
-                                  nullptr,
-                                  IFACE_("Convert"),
-                                  ALERT_ICON_NONE,
-                                  false);
-  }
-  return graphkeys_keys_to_samples_exec(C, op);
-}
-
 void GRAPH_OT_keys_to_samples(wmOperatorType *ot)
 {
   /* Identifiers */
@@ -1003,13 +991,11 @@ void GRAPH_OT_keys_to_samples(wmOperatorType *ot)
       "Convert selected channels to an uneditable set of samples to save storage space";
 
   /* API callbacks */
-  ot->invoke = graphkeys_keys_to_samples_invoke;
   ot->exec = graphkeys_keys_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 
   /* TODO: add props for start/end frames (Joshua Leung 2009) */
 }

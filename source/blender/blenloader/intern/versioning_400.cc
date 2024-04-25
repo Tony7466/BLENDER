@@ -63,6 +63,7 @@
 #include "BKE_tracking.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_sequencer.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -243,6 +244,23 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
      * groups will not be updated any more, but this way the data at least survives an accidental
      * save with Blender 4.0. */
   }
+}
+
+/**
+ * Change animation/drivers from "collections[..." to "collections_all[..." so
+ * they remain stable when the bone collection hierarchy structure changes.
+ */
+static void version_bonecollection_anim(FCurve *fcurve)
+{
+  const blender::StringRef rna_path(fcurve->rna_path);
+  constexpr char const *rna_path_prefix = "collections[";
+  if (!rna_path.startswith(rna_path_prefix)) {
+    return;
+  }
+
+  const std::string path_remainder(rna_path.drop_known_prefix(rna_path_prefix));
+  MEM_freeN(fcurve->rna_path);
+  fcurve->rna_path = BLI_sprintfN("collections_all[%s", path_remainder.c_str());
 }
 
 static void version_principled_bsdf_update_animdata(ID *owner_id, bNodeTree *ntree)
@@ -493,6 +511,27 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 23)) {
     version_nla_tweakmode_incomplete(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 15)) {
+    /* Change drivers and animation on "armature.collections" to
+     * ".collections_all", so that they are drawn correctly in the tree view,
+     * and keep working when the collection is moved around in the hierarchy. */
+    LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
+      AnimData *adt = BKE_animdata_from_id(&arm->id);
+      if (!adt) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (FCurve *, fcurve, &adt->drivers) {
+        version_bonecollection_anim(fcurve);
+      }
+      if (adt->action) {
+        LISTBASE_FOREACH (FCurve *, fcurve, &adt->action->curves) {
+          version_bonecollection_anim(fcurve);
+        }
+      }
+    }
   }
 
   /**
@@ -1022,9 +1061,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
     }
     else {
       if (*detail < 1.0f) {
-        if ((noise_type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-            (noise_type != SHD_NOISE_HETERO_TERRAIN))
-        {
+        if (!ELEM(noise_type, SHD_NOISE_RIDGED_MULTIFRACTAL, SHD_NOISE_HETERO_TERRAIN)) {
           /* Add Multiply Math node behind Fac output. */
 
           bNode *mul_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
@@ -2024,6 +2061,34 @@ static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
   }
 }
 
+static void add_image_editor_asset_shelf(Main &bmain)
+{
+  LISTBASE_FOREACH (bScreen *, screen, &bmain.screens) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+        if (sl->spacetype != SPACE_IMAGE) {
+          continue;
+        }
+
+        ListBase *regionbase = (sl == area->spacedata.first) ? &area->regionbase : &sl->regionbase;
+
+        if (ARegion *new_shelf_region = do_versions_add_region_if_not_found(
+                regionbase, RGN_TYPE_ASSET_SHELF, __func__, RGN_TYPE_TOOL_HEADER))
+        {
+          new_shelf_region->regiondata = MEM_cnew<RegionAssetShelf>(__func__);
+          new_shelf_region->alignment = RGN_ALIGN_BOTTOM;
+          new_shelf_region->flag |= RGN_FLAG_HIDDEN;
+        }
+        if (ARegion *new_shelf_header = do_versions_add_region_if_not_found(
+                regionbase, RGN_TYPE_ASSET_SHELF_HEADER, __func__, RGN_TYPE_ASSET_SHELF))
+        {
+          new_shelf_header->alignment = RGN_ALIGN_BOTTOM | RGN_ALIGN_HIDE_WITH_PREV;
+        }
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2792,8 +2857,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
                                                           RAYTRACE_EEVEE_DENOISE_BILATERAL;
         scene->eevee.ray_tracing_options.screen_trace_quality = 0.25f;
         scene->eevee.ray_tracing_options.screen_trace_thickness = 0.2f;
-        scene->eevee.ray_tracing_options.screen_trace_max_roughness = 0.5f;
-        scene->eevee.ray_tracing_options.sample_clamp = 10.0f;
+        scene->eevee.ray_tracing_options.trace_max_roughness = 0.5f;
         scene->eevee.ray_tracing_options.resolution_scale = 2;
       }
     }
@@ -3105,6 +3169,67 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->ed != nullptr) {
         SEQ_for_each_callback(&scene->ed->seqbase, seq_hue_correct_set_wrapping, nullptr);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 14)) {
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (bMotionPath *mpath = ob->mpath) {
+        mpath->color_post[0] = 0.1f;
+        mpath->color_post[1] = 1.0f;
+        mpath->color_post[2] = 0.1f;
+      }
+      if (!ob->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
+        if (bMotionPath *mpath = pchan->mpath) {
+          mpath->color_post[0] = 0.1f;
+          mpath->color_post[1] = 1.0f;
+          mpath->color_post[2] = 0.1f;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 18)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "transmission_fac")) {
+      LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+        /* Refracted light was not supported in legacy EEVEE. Set it to zero for compatibility with
+         * older files. */
+        light->transmission_fac = 0.0f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 19)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      /* Keep legacy EEVEE old behavior. */
+      scene->eevee.flag |= SCE_EEVEE_VOLUME_CUSTOM_RANGE;
+    }
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.clamp_surface_indirect = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 20)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_MARKERS;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 21)) {
+    add_image_editor_asset_shelf(*bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 22)) {
+    /* Display missing media in sequencer by default. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
       }
     }
   }

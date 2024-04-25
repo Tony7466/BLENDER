@@ -408,7 +408,7 @@ void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
 bool mode_toggle_poll_test(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob == nullptr || !ELEM(ob->type, OB_MESH, OB_GREASE_PENCIL)) {
+  if (ob == nullptr || ob->type != OB_MESH) {
     return false;
   }
   if (!ob->data || ID_IS_LINKED(ob->data)) {
@@ -1787,7 +1787,7 @@ static void vpaint_paint_leaves(bContext *C,
                                 Span<PBVHNode *> nodes)
 {
   for (PBVHNode *node : nodes) {
-    undo::push_node(ob, node, undo::Type::Color);
+    undo::push_node(*ob, node, undo::Type::Color);
   }
 
   const Brush *brush = ob->sculpt->cache->brush;
@@ -2142,7 +2142,7 @@ static void fill_mesh_color(Mesh &mesh,
                             const bool use_face_sel,
                             const bool affect_alpha)
 {
-  if (BMEditMesh *em = mesh.runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
     BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
@@ -2235,7 +2235,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   undo::push_begin(obact, op);
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(obact->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
-    undo::push_node(obact, node, undo::Type::Color);
+    undo::push_node(*obact, node, undo::Type::Color);
   }
 
   paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha);

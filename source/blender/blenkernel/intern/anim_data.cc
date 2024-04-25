@@ -892,8 +892,12 @@ static bool nlastrips_path_rename_fix(ID *owner_id,
   LISTBASE_FOREACH (NlaStrip *, strip, strips) {
     /* fix strip's action */
     if (strip->act != nullptr) {
-      is_changed |= fcurves_path_rename_fix(
+      const bool is_changed_action = fcurves_path_rename_fix(
           owner_id, prefix, oldName, newName, oldKey, newKey, &strip->act->curves, verify_paths);
+      if (is_changed_action) {
+        DEG_id_tag_update(&strip->act->id, ID_RECALC_ANIMATION);
+      }
+      is_changed |= is_changed_action;
     }
     /* Ignore own F-Curves, since those are local. */
     /* Check sub-strips (if meta-strips). */
@@ -1495,13 +1499,13 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
     return;
   }
 
-  AnimData *adt = static_cast<AnimData *>(BLO_read_data_address(reader, &iat->adt));
+  AnimData *adt = static_cast<AnimData *>(BLO_read_struct(reader, AnimData, &iat->adt));
   if (adt == nullptr) {
     return;
   }
 
   /* link drivers */
-  BLO_read_list(reader, &adt->drivers);
+  BLO_read_struct_list(reader, FCurve, &adt->drivers);
   BKE_fcurve_blend_read_data_listbase(reader, &adt->drivers);
   adt->driver_array = nullptr;
 
@@ -1509,7 +1513,7 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
   /* TODO... */
 
   /* link NLA-data */
-  BLO_read_list(reader, &adt->nla_tracks);
+  BLO_read_struct_list(reader, NlaTrack, &adt->nla_tracks);
   BKE_nla_blend_read_data(reader, id, &adt->nla_tracks);
 
   /* relink active track/strip - even though strictly speaking this should only be used
@@ -1518,6 +1522,21 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
    */
   /* TODO: it's not really nice that anyone should be able to save the file in this
    *       state, but it's going to be too hard to enforce this single case. */
-  BLO_read_data_address(reader, &adt->act_track);
-  BLO_read_data_address(reader, &adt->actstrip);
+  BLO_read_struct(reader, NlaTrack, &adt->act_track);
+  BLO_read_struct(reader, NlaStrip, &adt->actstrip);
+
+  if (ID_IS_LINKED(id)) {
+    /* Linked NLAs should never be in tweak mode, as you cannot exit that on linked data. */
+    BKE_nla_tweakmode_exit_nofollowptr(adt);
+  }
+}
+
+void BKE_animdata_liboverride_post_process(ID *id)
+{
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (!adt) {
+    return;
+  }
+
+  BKE_nla_liboverride_post_process(id, adt);
 }

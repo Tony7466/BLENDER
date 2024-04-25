@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 
 #include "BLI_array.hh"
@@ -36,6 +37,9 @@ enum class SingleKeyingResult {
   FCURVE_NOT_KEYFRAMEABLE,
   NO_KEY_NEEDED,
   UNABLE_TO_INSERT_TO_NLA_STACK,
+  ID_NOT_EDITABLE,
+  ID_NOT_ANIMATABLE,
+  CANNOT_RESOLVE_PATH,
   /* Make sure to always keep this at the end of the enum. */
   _KEYING_RESULT_MAX,
 };
@@ -48,7 +52,7 @@ class CombinedKeyingResult {
  private:
   /* The index to the array maps a `SingleKeyingResult` to the number of times this result has
    * occurred. */
-  Array<int> result_counter;
+  std::array<int, size_t(SingleKeyingResult::_KEYING_RESULT_MAX)> result_counter;
 
  public:
   CombinedKeyingResult();
@@ -84,15 +88,14 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
  * \param array_index: The index to key or -1 keys all array indices.
  * \return The number of key-frames inserted.
  */
-int insert_keyframe(Main *bmain,
-                    ReportList *reports,
-                    ID *id,
-                    const char group[],
-                    const char rna_path[],
-                    int array_index,
-                    const AnimationEvalContext *anim_eval_context,
-                    eBezTriple_KeyframeType keytype,
-                    eInsertKeyFlags flag);
+CombinedKeyingResult insert_keyframe(Main *bmain,
+                                     ID &id,
+                                     const char group[],
+                                     const char rna_path[],
+                                     int array_index,
+                                     const AnimationEvalContext *anim_eval_context,
+                                     eBezTriple_KeyframeType keytype,
+                                     eInsertKeyFlags flag);
 
 /**
  * \brief Secondary Insert Key-framing API call.
@@ -228,8 +231,8 @@ bool autokeyframe_property(bContext *C,
  * expected to be the size of the property array.
  * \param frame: is expected to be in the local time of the action, meaning it has to be NLA mapped
  * already.
- * \param keying_mask is expected to have the same size as `rna_path`. A false bit means that index
- * will be skipped.
+ * \param keying_mask: is expected to have the same size as `rna_path`.
+ * A false bit means that index will be skipped.
  * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_action(Main *bmain,

@@ -84,7 +84,9 @@ static inline void volume_call(
 {
   if (matpass.sub_pass != nullptr) {
     PassMain::Sub *object_pass = volume_sub_pass(*matpass.sub_pass, scene, ob, matpass.gpumat);
-    object_pass->draw(geom, res_handle);
+    if (object_pass != nullptr) {
+      object_pass->draw(geom, res_handle);
+    }
   }
 }
 
@@ -249,7 +251,7 @@ bool SyncModule::sync_sculpt(Object *ob,
 
   /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
   /* bounding box is still needed for directional shadow tile-map bounds computation. */
-  const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh);
+  const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob_ref.object->sculpt->pbvh);
   const float3 center = math::midpoint(bounds.min, bounds.max);
   const float3 half_extent = bounds.max - center + inflate_bounds;
   inst_.manager->update_handle_bounds(res_handle, center, half_extent);
@@ -359,7 +361,9 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
     }
     PassMain::Sub *object_pass = volume_sub_pass(
         *matpass.sub_pass, inst_.scene, ob, matpass.gpumat);
-    object_pass->draw(geom, res_handle);
+    if (object_pass != nullptr) {
+      object_pass->draw(geom, res_handle);
+    }
   };
 
   drawcall_add(material.volume_occupancy, geom, res_handle);
