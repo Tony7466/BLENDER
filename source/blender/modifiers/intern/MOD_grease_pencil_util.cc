@@ -23,12 +23,6 @@
 
 #include "BLO_read_write.hh"
 
-#include "DNA_defaults.h"
-
-#include "DEG_depsgraph_query.hh"
-
-#include "MOD_ui_common.hh"
-
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
@@ -84,7 +78,7 @@ void write_influence_data(BlendWriter *writer,
 void read_influence_data(BlendDataReader *reader,
                          GreasePencilModifierInfluenceData *influence_data)
 {
-  BLO_read_data_address(reader, &influence_data->custom_curve);
+  BLO_read_struct(reader, CurveMapping, &influence_data->custom_curve);
   if (influence_data->custom_curve) {
     BKE_curvemapping_blend_read(reader, influence_data->custom_curve);
     /* Make sure the internal table exists. */
@@ -210,7 +204,7 @@ static IndexMask get_filtered_layer_mask(const GreasePencil &grease_pencil,
   bke::AttributeAccessor layer_attributes = grease_pencil.attributes();
   const Span<const Layer *> layers = grease_pencil.layers();
   const VArray<int> layer_passes =
-      layer_attributes.lookup_or_default<int>("pass", bke::AttrDomain::Layer, 0).varray;
+      layer_attributes.lookup_or_default<int>("pass_index", bke::AttrDomain::Layer, 0).varray;
 
   IndexMask result = IndexMask::from_predicate(
       full_mask, GrainSize(4096), memory, [&](const int64_t layer_i) {

@@ -16,6 +16,13 @@
 
 struct Main;
 
+/**
+ * Global data, typically accessed from #G.
+ * See: #BKE_blender_globals_init & #BKE_blender_globals_clear.
+ *
+ * \note This is run-time only but some global data is written
+ * to #FileGlobal which is used to initialize members of #Global.
+ */
 struct Global {
 
   /**
@@ -57,6 +64,14 @@ struct Global {
    * (which use background mode by definition).
    */
   bool background;
+
+  /**
+   * When true, suppress any non-error print messages such as files saves, loaded, quitting etc.
+   * This is used so command line tools can control output without unnecessary noise.
+   *
+   * \note This should only be used to suppress printing (not reports or other kinds of logging).
+   */
+  bool quiet;
 
   /**
    * Skip reading the startup file and user preferences.
@@ -212,12 +227,13 @@ enum {
   G_DEBUG_GPU = (1 << 16),                   /* gpu debug */
   G_DEBUG_IO = (1 << 17),                    /* IO Debugging (for Collada, ...). */
   G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 18), /* force gpu workarounds bypassing detections. */
-  G_DEBUG_GPU_RENDERDOC = (1 << 19),         /* Enable RenderDoc integration. */
-  G_DEBUG_XR = (1 << 20),                    /* XR/OpenXR messages */
-  G_DEBUG_XR_TIME = (1 << 21),               /* XR/OpenXR timing messages */
+  G_DEBUG_GPU_COMPILE_SHADERS = (1 << 19),   /* Compile all statically defined shaders. . */
+  G_DEBUG_GPU_RENDERDOC = (1 << 20),         /* Enable RenderDoc integration. */
+  G_DEBUG_XR = (1 << 21),                    /* XR/OpenXR messages */
+  G_DEBUG_XR_TIME = (1 << 22),               /* XR/OpenXR timing messages */
 
-  G_DEBUG_GHOST = (1 << 22),  /* Debug GHOST module. */
-  G_DEBUG_WINTAB = (1 << 23), /* Debug Wintab. */
+  G_DEBUG_GHOST = (1 << 23),  /* Debug GHOST module. */
+  G_DEBUG_WINTAB = (1 << 24), /* Debug Wintab. */
 };
 
 #define G_DEBUG_ALL \

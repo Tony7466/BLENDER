@@ -22,13 +22,13 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
     .fragment_source("eevee_deferred_tile_classify_frag.glsl")
     .additional_info("eevee_shared", "draw_fullscreen")
     .subpass_in(1, Type::UINT, "in_gbuffer_header", DEFERRED_GBUFFER_ROG_ID)
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .push_constant(Type::INT, "current_bit")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_tile_compact)
     .additional_info("eevee_shared")
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .vertex_source("eevee_deferred_tile_compact_vert.glsl")
     /* Reuse dummy stencil frag. */
     .fragment_source("eevee_deferred_tile_stencil_frag.glsl")
@@ -49,7 +49,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_tile_stencil)
     .sampler(0, ImageType::FLOAT_2D, "direct_radiance_tx")
     .storage_buf(4, Qualifier::READ, "uint", "closure_tile_buf[]")
     .push_constant(Type::INT, "closure_tile_size_shift")
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light)
@@ -61,6 +61,11 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .image_out(2, DEFERRED_RADIANCE_FORMAT, "direct_radiance_1_img")
     .image_out(3, DEFERRED_RADIANCE_FORMAT, "direct_radiance_2_img")
     .image_out(4, DEFERRED_RADIANCE_FORMAT, "direct_radiance_3_img")
+    /* Optimized out if use_split_indirect is false. */
+    .image_out(5, DEFERRED_RADIANCE_FORMAT, "indirect_radiance_1_img")
+    .image_out(6, DEFERRED_RADIANCE_FORMAT, "indirect_radiance_2_img")
+    .image_out(7, DEFERRED_RADIANCE_FORMAT, "indirect_radiance_3_img")
+    .specialization_constant(Type::BOOL, "use_split_indirect", false)
     .specialization_constant(Type::BOOL, "use_lightprobe_eval", false)
     .specialization_constant(Type::BOOL, "render_pass_shadow_enabled", true)
     .define("SPECIALIZED_SHADOW_PARAMS")
@@ -90,8 +95,6 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_double)
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light_triple)
     .additional_info("eevee_deferred_light")
-    .define("SHADOW_SUBSURFACE")
-    .define("MAT_SUBSURFACE")
     .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .do_static_compilation(true);
 
@@ -105,6 +108,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .sampler(5, ImageType::FLOAT_2D, "indirect_radiance_1_tx")
     .sampler(6, ImageType::FLOAT_2D, "indirect_radiance_2_tx")
     .sampler(7, ImageType::FLOAT_2D, "indirect_radiance_3_tx")
+    .image(5, GPU_RGBA16F, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_feedback_img")
     .fragment_out(0, Type::VEC4, "out_combined")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
@@ -116,7 +120,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_combine)
     .specialization_constant(Type::BOOL, "render_pass_diffuse_light_enabled", true)
     .specialization_constant(Type::BOOL, "render_pass_specular_light_enabled", true)
     .specialization_constant(Type::BOOL, "render_pass_normal_enabled", true)
-    .specialization_constant(Type::BOOL, "use_combined_lightprobe_eval", false)
+    .specialization_constant(Type::BOOL, "use_radiance_feedback", false)
+    .specialization_constant(Type::BOOL, "use_split_radiance", false)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)
@@ -124,8 +129,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_capture_eval)
     .early_fragment_test(true)
     /* Inputs. */
     .fragment_out(0, Type::VEC4, "out_radiance")
-    .define("SHADOW_SUBSURFACE")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "1")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",
@@ -145,8 +149,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_planar_eval)
     /* Inputs. */
     .fragment_out(0, Type::VEC4, "out_radiance")
     .define("SPHERE_PROBE")
-    .define("SHADOW_SUBSURFACE")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
+    .define("LIGHT_CLOSURE_EVAL_COUNT", "1")
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_utility_texture",

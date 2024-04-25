@@ -8,14 +8,16 @@
 
 #pragma once
 
+#include <string>
+
 #include "DNA_customdata_types.h" /* for eCustomDataType */
 #include "DNA_image_types.h"
 #include "DNA_listBase.h"
 
 #include "BLI_sys_types.h" /* for bool */
 
-#include "GPU_shader.h"  /* for GPUShaderCreateInfo */
-#include "GPU_texture.h" /* for GPUSamplerState */
+#include "GPU_shader.hh"  /* for GPUShaderCreateInfo */
+#include "GPU_texture.hh" /* for GPUSamplerState */
 
 struct GHash;
 struct GPUMaterial;
@@ -71,6 +73,7 @@ enum eGPUMaterialFlag {
   GPU_MATFLAG_HOLDOUT = (1 << 6),
   GPU_MATFLAG_SHADER_TO_RGBA = (1 << 7),
   GPU_MATFLAG_AO = (1 << 8),
+  /* Signals the presence of multiple reflection closures. */
   GPU_MATFLAG_COAT = (1 << 9),
   GPU_MATFLAG_TRANSLUCENT = (1 << 10),
 
@@ -130,14 +133,14 @@ enum eGPUDefaultValue {
 };
 
 struct GPUCodegenOutput {
-  char *attr_load;
+  std::string attr_load;
   /* Node-tree functions calls. */
-  char *displacement;
-  char *surface;
-  char *volume;
-  char *thickness;
-  char *composite;
-  char *material_functions;
+  std::string displacement;
+  std::string surface;
+  std::string volume;
+  std::string thickness;
+  std::string composite;
+  std::string material_functions;
 
   GPUShaderCreateInfo *create_info;
 };
@@ -272,7 +275,7 @@ const char *GPU_material_get_name(GPUMaterial *material);
 void GPU_material_optimize(GPUMaterial *mat);
 
 /**
- * Return can be NULL if it's a world material.
+ * Return can be null if it's a world material.
  */
 Material *GPU_material_get_material(GPUMaterial *material);
 /**

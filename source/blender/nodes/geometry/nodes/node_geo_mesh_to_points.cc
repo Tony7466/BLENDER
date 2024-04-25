@@ -10,7 +10,6 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_customdata.hh"
-#include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
 #include "NOD_rna_define.hh"
@@ -234,7 +233,9 @@ static void node_rna(StructRNA *srna)
                     "",
                     mode_items,
                     NOD_storage_enum_accessors(mode),
-                    GEO_NODE_MESH_TO_POINTS_VERTICES);
+                    GEO_NODE_MESH_TO_POINTS_VERTICES,
+                    nullptr,
+                    true);
 }
 
 static void node_register()

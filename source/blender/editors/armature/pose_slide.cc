@@ -32,7 +32,6 @@
 
 #include "BLI_array.hh"
 #include "BLI_blenlib.h"
-#include "BLI_dlrbTree.h"
 #include "BLI_math_rotation.h"
 
 #include "BLT_translation.hh"
@@ -43,20 +42,17 @@
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
-#include "BKE_object.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
-#include "BKE_screen.hh"
 #include "BKE_unit.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -65,25 +61,16 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "ED_armature.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
 #include "ED_markers.hh"
 #include "ED_numinput.hh"
 #include "ED_screen.hh"
-#include "ED_space_api.hh"
 #include "ED_util.hh"
 
 #include "ANIM_fcurve.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
-
 #include "armature_intern.hh"
-
-#include "BLF_api.hh"
 
 using blender::Vector;
 
@@ -552,10 +539,10 @@ static void pose_slide_apply_props(tPoseSlideOp *pso,
               if (UNLIKELY(uint(fcu->array_index) >= RNA_property_array_length(&ptr, prop))) {
                 break; /* Out of range, skip. */
               }
-              tval = RNA_property_boolean_get_index(&ptr, prop, fcu->array_index);
+              tval = float(RNA_property_boolean_get_index(&ptr, prop, fcu->array_index));
             }
             else {
-              tval = RNA_property_boolean_get(&ptr, prop);
+              tval = float(RNA_property_boolean_get(&ptr, prop));
             }
 
             pose_slide_apply_val(pso, fcu, pfl->ob, &tval);

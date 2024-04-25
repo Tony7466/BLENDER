@@ -18,8 +18,6 @@
 
 #include "BLT_translation.hh"
 
-#include "WM_api.hh"
-
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -53,11 +51,10 @@ void operator_asset_reference_props_register(StructRNA &srna)
 void operator_asset_reference_props_set(const asset_system::AssetRepresentation &asset,
                                         PointerRNA &ptr)
 {
-  AssetWeakReference *weak_ref = asset.make_weak_reference();
-  RNA_enum_set(&ptr, "asset_library_type", weak_ref->asset_library_type);
-  RNA_string_set(&ptr, "asset_library_identifier", weak_ref->asset_library_identifier);
-  RNA_string_set(&ptr, "relative_asset_identifier", weak_ref->relative_asset_identifier);
-  BKE_asset_weak_reference_free(&weak_ref);
+  const AssetWeakReference weak_ref = asset.make_weak_reference();
+  RNA_enum_set(&ptr, "asset_library_type", weak_ref.asset_library_type);
+  RNA_string_set(&ptr, "asset_library_identifier", weak_ref.asset_library_identifier);
+  RNA_string_set(&ptr, "relative_asset_identifier", weak_ref.relative_asset_identifier);
 }
 
 /**
@@ -106,6 +103,7 @@ static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
       asset_system::all_library_reference());
   if (!all_library) {
     BKE_report(reports, RPT_WARNING, "Asset loading is unfinished");
+    return nullptr;
   }
 
   const std::string full_path = all_library->resolve_asset_weak_reference_to_full_path(weak_ref);
@@ -143,7 +141,7 @@ PointerRNA persistent_catalog_path_rna_pointer(const bScreen &owner_screen,
                                                const asset_system::AssetLibrary &library,
                                                const asset_system::AssetCatalogTreeItem &item)
 {
-  const asset_system::AssetCatalog *catalog = library.catalog_service->find_catalog_by_path(
+  const asset_system::AssetCatalog *catalog = library.catalog_service().find_catalog_by_path(
       item.catalog_path());
   if (!catalog) {
     return PointerRNA_NULL;

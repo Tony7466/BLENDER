@@ -2,14 +2,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
+#include "testing/testing.h"
+
 #include "BLI_array.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
-#include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
 
-#include "testing/testing.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 namespace blender::index_mask::tests {
 
@@ -23,7 +24,7 @@ TEST(index_mask, IndicesToMask)
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
   EXPECT_EQ(mask.min_array_size(), 101001);
-  EXPECT_EQ(mask.bounds(), IndexRange(5, 101001 - 5));
+  EXPECT_EQ(mask.bounds(), IndexRange::from_begin_end_inclusive(5, 101000));
 }
 
 TEST(index_mask, FromBits)
@@ -100,6 +101,62 @@ TEST(index_mask, FromUnion)
     EXPECT_EQ(mask_union[3], 20000);
     EXPECT_EQ(mask_union[4], 20001);
     EXPECT_EQ(mask_union[5], 20002);
+  }
+}
+
+TEST(index_mask, FromDifference)
+{
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2, 3};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {2, 20000, 20001};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_difference = IndexMask::from_difference(mask_a, mask_b, memory);
+
+    EXPECT_EQ(mask_difference.size(), 2);
+    EXPECT_EQ(mask_difference[0], 1);
+    EXPECT_EQ(mask_difference[1], 3);
+  }
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2, 3};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {1, 2, 3};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_difference = IndexMask::from_difference(mask_a, mask_b, memory);
+
+    EXPECT_TRUE(mask_difference.is_empty());
+  }
+}
+
+TEST(index_mask, FromIntersection)
+{
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2, 20000};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {2, 20000, 20001};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_intersection = IndexMask::from_intersection(mask_a, mask_b, memory);
+
+    EXPECT_EQ(mask_intersection.size(), 2);
+    EXPECT_EQ(mask_intersection[0], 2);
+    EXPECT_EQ(mask_intersection[1], 20000);
+  }
+  {
+    IndexMaskMemory memory;
+    Array<int> data_a = {1, 2, 3};
+    IndexMask mask_a = IndexMask::from_indices<int>(data_a, memory);
+    Array<int> data_b = {20000, 20001, 20002};
+    IndexMask mask_b = IndexMask::from_indices<int>(data_b, memory);
+
+    IndexMask mask_intersection = IndexMask::from_intersection(mask_a, mask_b, memory);
+
+    EXPECT_TRUE(mask_intersection.is_empty());
   }
 }
 
@@ -794,6 +851,60 @@ TEST(index_mask, FromEveryNth)
   {
     const IndexMask mask = IndexMask::from_every_nth(100'000, 5, 0, memory);
     EXPECT_EQ(mask, IndexMask::from_initializers({0, 100'000, 200'000, 300'000, 400'000}, memory));
+  }
+}
+
+TEST(index_mask, Shift)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask;
+    const IndexMask shifted_mask = mask.shift(10, memory);
+    EXPECT_TRUE(shifted_mask.is_empty());
+    EXPECT_EQ(mask, shifted_mask);
+  }
+  {
+    const IndexMask mask{IndexRange(100, 10)};
+    const IndexMask shifted_mask = mask.shift(1000, memory);
+    EXPECT_EQ(shifted_mask.size(), 10);
+    EXPECT_EQ(shifted_mask[0], 1100);
+    EXPECT_EQ(shifted_mask[9], 1109);
+  }
+  {
+    const IndexMask mask = IndexMask::from_initializers({4, 6, 7, IndexRange(100, 100)}, memory);
+    const IndexMask shifted_mask = mask.shift(1000, memory).shift(-1000, memory);
+    EXPECT_EQ(mask, shifted_mask);
+  }
+  {
+    const IndexMask mask{IndexRange(100, 10)};
+    const IndexMask shifted_mask = mask.shift(0, memory);
+    EXPECT_EQ(mask, shifted_mask);
+  }
+}
+
+TEST(index_mask, SliceAndShift)
+{
+  IndexMaskMemory memory;
+  {
+    const IndexMask mask{IndexRange(100, 10)};
+    const IndexMask new_mask = mask.slice_and_shift(5, 5, 1000, memory);
+    EXPECT_EQ(new_mask.size(), 5);
+    EXPECT_EQ(new_mask[0], 1105);
+    EXPECT_EQ(new_mask[1], 1106);
+  }
+  {
+    const IndexMask mask = IndexMask::from_indices<int>({10, 100, 1'000, 10'000, 100'000}, memory);
+    const IndexMask new_mask = mask.slice_and_shift(IndexRange(1, 4), -100, memory);
+    EXPECT_EQ(new_mask.size(), 4);
+    EXPECT_EQ(new_mask[0], 0);
+    EXPECT_EQ(new_mask[1], 900);
+    EXPECT_EQ(new_mask[2], 9'900);
+    EXPECT_EQ(new_mask[3], 99'900);
+  }
+  {
+    const IndexMask mask = IndexMask::from_indices<int>({10, 100}, memory);
+    const IndexMask new_mask = mask.slice_and_shift(1, 0, 100, memory);
+    EXPECT_TRUE(new_mask.is_empty());
   }
 }
 

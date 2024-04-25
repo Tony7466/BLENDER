@@ -13,9 +13,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_armature.hh"
-#include "BKE_context.hh"
-
 #include "ED_screen.hh"
 
 #include "UI_interface.hh"
@@ -163,7 +160,7 @@ static void applyMirror(TransInfo *t)
    * This still recalculates transformation on mouse move
    * while it should only recalculate on constraint change. */
 
-  /* if an axis has been selected */
+  /* If an axis has been selected. */
   if (t->con.mode & CON_APPLY) {
     /* #special_axis is either the constraint plane normal or the constraint axis.
      * Assuming that CON_AXIS0 < CON_AXIS1 < CON_AXIS2 and CON_AXIS2 is CON_AXIS0 << 2 */

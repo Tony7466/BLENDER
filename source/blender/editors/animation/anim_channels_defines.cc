@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "ANIM_action.hh"
+#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_keyframing.hh"
 
@@ -51,19 +52,17 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_key.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_nla.h"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -77,6 +76,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+using namespace blender;
 
 /* *********************************************** */
 /* XXX constant defines to be moved elsewhere? */
@@ -1247,6 +1248,94 @@ static bAnimChannelType ACF_NLACURVE = {
     /*setting_flag*/ acf_fcurve_setting_flag,
     /*setting_ptr*/ acf_fcurve_setting_ptr,
 };
+
+/* Object Animation Expander  ------------------------------------------- */
+
+#ifdef WITH_ANIM_BAKLAVA
+
+/* TODO: just get this from RNA? */
+static int acf_fillanim_icon(bAnimListElem * /*ale*/)
+{
+  return ICON_ACTION; /* TODO: give Animation its own icon? */
+}
+
+/* check if some setting exists for this channel */
+static bool acf_fillanim_setting_valid(bAnimContext * /*ac*/,
+                                       bAnimListElem * /*ale*/,
+                                       eAnimChannel_Settings setting)
+{
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+    case ACHANNEL_SETTING_EXPAND:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+/* Get the appropriate flag(s) for the setting when it is valid. */
+static int acf_fillanim_setting_flag(bAnimContext * /*ac*/,
+                                     eAnimChannel_Settings setting,
+                                     bool *r_neg)
+{
+  *r_neg = false;
+
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+      return ADT_UI_SELECTED;
+
+    case ACHANNEL_SETTING_EXPAND:
+      return ADT_UI_EXPANDED;
+
+    default:
+      return 0;
+  }
+}
+
+/* get pointer to the setting */
+static void *acf_fillanim_setting_ptr(bAnimListElem *ale,
+                                      eAnimChannel_Settings setting,
+                                      short *r_type)
+{
+  AnimData *adt = ale->adt;
+  BLI_assert(adt);
+
+  *r_type = 0;
+
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+      return GET_ACF_FLAG_PTR(adt->flag, r_type);
+
+    case ACHANNEL_SETTING_EXPAND:
+      return GET_ACF_FLAG_PTR(adt->flag, r_type);
+
+    default:
+      return nullptr;
+  }
+}
+
+/** Object Animation expander type define. */
+static bAnimChannelType ACF_FILLANIM = {
+    /*channel_type_name*/ "Ob-Animation Filler",
+    /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
+
+    /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
+    /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_1,
+    /*get_offset*/ acf_generic_basic_offset,
+
+    /*name*/ acf_generic_idblock_name,
+    /*name_prop*/ acf_generic_idfill_name_prop,
+    /*icon*/ acf_fillanim_icon,
+
+    /*has_setting*/ acf_fillanim_setting_valid,
+    /*setting_flag*/ acf_fillanim_setting_flag,
+    /*setting_ptr*/ acf_fillanim_setting_ptr,
+};
+
+#endif
 
 /* Object Action Expander  ------------------------------------------- */
 
@@ -4282,6 +4371,11 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_NLACONTROLS; /* NLA Control FCurve Expander */
     animchannelTypeInfo[type++] = &ACF_NLACURVE;    /* NLA Control FCurve Channel */
 
+#ifdef WITH_ANIM_BAKLAVA
+    animchannelTypeInfo[type++] = &ACF_FILLANIM; /* Object Animation Expander */
+#else
+    animchannelTypeInfo[type++] = nullptr;
+#endif
     animchannelTypeInfo[type++] = &ACF_FILLACTD;    /* Object Action Expander */
     animchannelTypeInfo[type++] = &ACF_FILLDRIVERS; /* Drivers Expander */
 
@@ -4327,6 +4421,11 @@ static void ANIM_init_channel_typeinfo_data()
 
     animchannelTypeInfo[type++] = &ACF_NLATRACK;  /* NLA Track */
     animchannelTypeInfo[type++] = &ACF_NLAACTION; /* NLA Action */
+
+#ifdef WITH_ANIM_BAKLAVA
+    BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_FILLANIM] == &ACF_FILLANIM,
+                   "ANIMTYPE_FILLANIM does not match ACF_FILLANIM");
+#endif
   }
 }
 
@@ -4568,7 +4667,7 @@ static bool achannel_is_broken(const bAnimListElem *ale)
       const FCurve *fcu = static_cast<const FCurve *>(ale->data);
 
       /* The channel is disabled (has a bad rna path), or it's a driver that failed to evaluate. */
-      return (ale->flag & FCURVE_DISABLED) ||
+      return (fcu->flag & FCURVE_DISABLED) ||
              (fcu->driver != nullptr && (fcu->driver->flag & DRIVER_FLAG_INVALID));
     }
     default:
@@ -5350,8 +5449,6 @@ static void draw_setting_widget(bAnimContext *ac,
                              static_cast<int *>(ptr),
                              0,
                              0,
-                             0,
-                             0,
                              tooltip);
       break;
 
@@ -5368,8 +5465,6 @@ static void draw_setting_widget(bAnimContext *ac,
                              static_cast<short *>(ptr),
                              0,
                              0,
-                             0,
-                             0,
                              tooltip);
       break;
 
@@ -5384,8 +5479,6 @@ static void draw_setting_widget(bAnimContext *ac,
                              ICON_WIDTH,
                              ICON_WIDTH,
                              static_cast<char *>(ptr),
-                             0,
-                             0,
                              0,
                              0,
                              tooltip);

@@ -14,10 +14,8 @@
 
 #  include "BKE_context.hh"
 #  include "BKE_file_handler.hh"
-#  include "BKE_main.hh"
 #  include "BKE_report.hh"
 
-#  include "BLI_blenlib.h"
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
@@ -31,8 +29,6 @@
 
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
-
-#  include "RNA_enum_types.hh"
 
 #  include "UI_interface.hh"
 #  include "UI_resources.hh"
@@ -75,6 +71,24 @@ const EnumPropertyItem rna_enum_usd_mtl_name_collision_mode_items[] = {
      0,
      "Reference Existing",
      "If a material with the same name already exists, reference that instead of importing"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_usd_attr_import_mode_items[] = {
+    {USD_ATTR_IMPORT_NONE, "NONE", 0, "None", "Do not import attributes"},
+    {USD_ATTR_IMPORT_USER,
+     "USER",
+     0,
+     "User",
+     "Import attributes in the 'userProperties' namespace as "
+     "Blender custom properties.  The namespace will "
+     "be stripped from the property names"},
+    {USD_ATTR_IMPORT_ALL,
+     "ALL",
+     0,
+     "All Custom",
+     "Import all USD custom attributes as Blender custom properties. "
+     "Namespaces will be retained in the property names"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -193,6 +207,9 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_shapekeys = RNA_boolean_get(op->ptr, "export_shapekeys");
   const bool only_deform_bones = RNA_boolean_get(op->ptr, "only_deform_bones");
 
+  const bool export_custom_properties = RNA_boolean_get(op->ptr, "export_custom_properties");
+  const bool author_blender_name = RNA_boolean_get(op->ptr, "author_blender_name");
+
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
@@ -216,16 +233,19 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_textures,
       overwrite_textures,
       relative_paths,
+      export_custom_properties,
+      author_blender_name,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
+  RNA_string_get(op->ptr, "collection", params.collection);
 
   bool ok = USD_export(C, filepath, &params, as_background_job, op->reports);
 
   return as_background_job || ok ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
+static void wm_usd_export_draw(bContext *C, wmOperator *op)
 {
   uiLayout *layout = op->layout;
   uiLayout *col;
@@ -235,9 +255,18 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
 
   uiLayout *box = uiLayoutBox(layout);
 
+  if (CTX_wm_space_file(C)) {
+    col = uiLayoutColumn(box, true);
+    uiItemR(col, ptr, "selected_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "visible_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+
   col = uiLayoutColumn(box, true);
-  uiItemR(col, ptr, "selected_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "visible_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_custom_properties", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  col = uiLayoutColumn(box, true);
+  uiItemR(col, ptr, "author_blender_name", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayoutSetActive(col, RNA_boolean_get(op->ptr, "export_custom_properties"));
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "export_animation", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -281,8 +310,8 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "relative_paths", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
-  uiItemL(box, IFACE_("Experimental"), ICON_NONE);
-  uiItemR(box, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
+  col = uiLayoutColumnWithHeading(box, true, IFACE_("Experimental"));
+  uiItemR(col, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void free_operator_customdata(wmOperator *op)
@@ -351,6 +380,9 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Visible Only",
                   "Only export visible objects. Invisible parents of exported objects are "
                   "exported as empty transforms");
+
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   RNA_def_boolean(
       ot->srna,
@@ -451,6 +483,18 @@ void WM_OT_usd_export(wmOperatorType *ot)
                  "Root Prim",
                  "If set, add a transform primitive with the given path to the stage "
                  "as the parent of all exported data");
+
+  RNA_def_boolean(ot->srna,
+                  "export_custom_properties",
+                  true,
+                  "Export Custom Properties",
+                  "When checked, custom properties will be exported as USD User Properties");
+
+  RNA_def_boolean(ot->srna,
+                  "author_blender_name",
+                  true,
+                  "Author Blender Name",
+                  "When checked, custom userProperties will be authored to allow a round trip");
 }
 
 /* ====== USD Import ====== */
@@ -531,6 +575,11 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   const eUSDMtlNameCollisionMode mtl_name_collision_mode = eUSDMtlNameCollisionMode(
       RNA_enum_get(op->ptr, "mtl_name_collision_mode"));
 
+  const eUSDAttrImportMode attr_import_mode = eUSDAttrImportMode(
+      RNA_enum_get(op->ptr, "attr_import_mode"));
+
+  const bool validate_meshes = RNA_boolean_get(op->ptr, "validate_meshes");
+
   /* TODO(makowalski): Add support for sequences. */
   const bool is_sequence = false;
   int offset = 0;
@@ -539,10 +588,9 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   /* Switch out of edit mode to avoid being stuck in it (#54326). */
   Object *obedit = CTX_data_edit_object(C);
   if (obedit) {
-    ED_object_mode_set(C, OB_MODE_EDIT);
+    blender::ed::object::mode_set(C, OB_MODE_EDIT);
   }
 
-  const bool validate_meshes = false;
   const bool use_instancing = false;
 
   const eUSDTexImportMode import_textures_mode = eUSDTexImportMode(
@@ -587,6 +635,7 @@ static int wm_usd_import_exec(bContext *C, wmOperator *op)
   params.import_textures_mode = import_textures_mode;
   params.tex_name_collision_mode = tex_name_collision_mode;
   params.import_all_materials = import_all_materials;
+  params.attr_import_mode = attr_import_mode;
 
   STRNCPY(params.import_textures_dir, import_textures_dir);
 
@@ -626,6 +675,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "read_mesh_uvs", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "read_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Include"));
   uiItemR(col, ptr, "import_subdiv", UI_ITEM_NONE, IFACE_("Subdivision"), ICON_NONE);
   uiItemR(col, ptr, "support_scene_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -639,6 +689,7 @@ static void wm_usd_import_draw(bContext * /*C*/, wmOperator *op)
   uiItemR(col, ptr, "relative_path", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(box, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "attr_import_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Materials"));
@@ -828,6 +879,19 @@ void WM_OT_usd_import(wmOperatorType *ot)
       USD_TEX_NAME_COLLISION_USE_EXISTING,
       "File Name Collision",
       "Behavior when the name of an imported texture file conflicts with an existing file");
+
+  RNA_def_enum(ot->srna,
+               "attr_import_mode",
+               rna_enum_usd_attr_import_mode_items,
+               USD_ATTR_IMPORT_ALL,
+               "Import Custom Properties",
+               "Behavior when importing USD attributes as Blender custom properties");
+
+  RNA_def_boolean(ot->srna,
+                  "validate_meshes",
+                  false,
+                  "Validate Meshes",
+                  "Check imported mesh objects for invalid data (slow)");
 }
 
 namespace blender::ed::io {
@@ -836,6 +900,7 @@ void usd_file_handler_add()
   auto fh = std::make_unique<blender::bke::FileHandlerType>();
   STRNCPY(fh->idname, "IO_FH_usd");
   STRNCPY(fh->import_operator, "WM_OT_usd_import");
+  STRNCPY(fh->export_operator, "WM_OT_usd_export");
   STRNCPY(fh->label, "Universal Scene Description");
   STRNCPY(fh->file_extensions_str, ".usd;.usda;.usdc;.usdz");
   fh->poll_drop = poll_file_object_drop;

@@ -8,13 +8,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_set.hh"
 
-#include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BKE_context.hh"
 #include "BKE_report.hh"
@@ -32,14 +29,10 @@
 #include "SEQ_transform.hh"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.hh"
 
 #include "RNA_define.hh"
 
-#include "UI_interface.hh"
 #include "UI_view2d.hh"
-
-#include "DEG_depsgraph.hh"
 
 /* Own include. */
 #include "sequencer_intern.hh"
@@ -776,7 +769,7 @@ int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   return changed ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
-static void realize_fake_keys_in_rect(bContext *C, Sequence *seq, rctf &rectf)
+static void realize_fake_keys_in_rect(bContext *C, Sequence *seq, const rctf &rectf)
 {
   const Scene *scene = CTX_data_scene(C);
 

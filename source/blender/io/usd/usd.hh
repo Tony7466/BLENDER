@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "DEG_depsgraph.hh"
 
 #include "RNA_types.hh"
@@ -17,6 +19,10 @@ struct Object;
 struct ReportList;
 struct wmJobWorkerStatus;
 
+namespace blender::bke {
+struct GeometrySet;
+}
+
 namespace blender::io::usd {
 
 /**
@@ -27,6 +33,17 @@ enum eUSDMtlNameCollisionMode {
   USD_MTL_NAME_COLLISION_MAKE_UNIQUE = 0,
   USD_MTL_NAME_COLLISION_REFERENCE_EXISTING = 1,
 };
+
+/**
+ *  Behavior for importing of custom
+ *  attributes / properties outside
+ *  a prim's regular schema.
+ */
+typedef enum eUSDAttrImportMode {
+  USD_ATTR_IMPORT_NONE = 0,
+  USD_ATTR_IMPORT_USER = 1,
+  USD_ATTR_IMPORT_ALL = 2,
+} eUSDAttrImportMode;
 
 /**
  *  Behavior when importing textures from a package
@@ -78,11 +95,14 @@ struct USDExportParams {
   bool export_textures = true;
   bool overwrite_textures = true;
   bool relative_paths = true;
+  bool export_custom_properties = true;
+  bool author_blender_name = true;
   char root_prim_path[1024] = ""; /* FILE_MAX */
+  char collection[MAX_IDPROP_NAME] = "";
 
   /** Communication structure between the wmJob management code and the worker code. Currently used
    * to generate safely reports from the worker thread. */
-  wmJobWorkerStatus *worker_status;
+  wmJobWorkerStatus *worker_status = nullptr;
 };
 
 struct USDImportParams {
@@ -119,6 +139,7 @@ struct USDImportParams {
   char import_textures_dir[768]; /* FILE_MAXDIR */
   eUSDTexNameCollisionMode tex_name_collision_mode;
   bool import_all_materials;
+  eUSDAttrImportMode attr_import_mode;
 
   /**
    * Communication structure between the wmJob management code and the worker code. Currently used
@@ -159,7 +180,7 @@ bool USD_import(bContext *C,
                 bool as_background_job,
                 ReportList *reports);
 
-int USD_get_version(void);
+int USD_get_version();
 
 /* USD Import and Mesh Cache interface. */
 
@@ -170,11 +191,11 @@ void USD_free_handle(CacheArchiveHandle *handle);
 void USD_get_transform(CacheReader *reader, float r_mat[4][4], float time, float scale);
 
 /** Either modifies current_mesh in-place or constructs a new mesh. */
-Mesh *USD_read_mesh(CacheReader *reader,
-                    Object *ob,
-                    Mesh *existing_mesh,
-                    USDMeshReadParams params,
-                    const char **err_str);
+void USD_read_geometry(CacheReader *reader,
+                       Object *ob,
+                       blender::bke::GeometrySet &geometry_set,
+                       USDMeshReadParams params,
+                       const char **err_str);
 
 bool USD_mesh_topology_changed(CacheReader *reader,
                                const Object *ob,
@@ -204,13 +225,12 @@ struct USDHook {
   ExtensionRNA rna_ext;
 };
 
-void USD_register_hook(USDHook *hook);
+void USD_register_hook(std::unique_ptr<USDHook> hook);
 /**
- * Remove the given entry from the list of registered hooks.
- * Note that this does not free the allocated memory for the
- * hook instance, so a separate call to `MEM_freeN(hook)` is required.
+ * Remove the given entry from the list of registered hooks and
+ * free the allocated memory for the hook instance.
  */
 void USD_unregister_hook(USDHook *hook);
-USDHook *USD_find_hook_name(const char name[]);
+USDHook *USD_find_hook_name(const char idname[]);
 
 };  // namespace blender::io::usd

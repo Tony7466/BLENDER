@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'3d7e84f57d8a')\n"
+"Project-Id-Version: Blender 4.2.0 Alpha (b'7b7e9f224c89')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-02-05 09:44+0000\n"
+"POT-Creation-Date: 2024-04-22 07:36+0000\n"
 "PO-Revision-Date: 2019-12-08 17:40+0700\n"
 "Last-Translator: gongpha <gongpha@gmail.com>\n"
 "Language-Team: Thai Translation Team <gongpha@gmail.com>\n"
@@ -230,6 +230,10 @@ msgid "Multiply"
 msgstr "คูณ"
 
 
+msgid "Animation"
+msgstr "แอนิเมชัน"
+
+
 msgid "End Frame"
 msgstr "เฟรมสิ้นสุด"
 
@@ -248,6 +252,14 @@ msgstr "ชนิดของเส้นทาง"
 
 msgid "In Range"
 msgstr "ในระยะ"
+
+
+msgid "Mix Mode"
+msgstr "โหมดผสม"
+
+
+msgid "Keyframe"
+msgstr "คีย์เฟรม"
 
 
 msgid "Height"
@@ -809,10 +821,6 @@ msgid "Armature"
 msgstr "โครงร่าง"
 
 
-msgid "Mix Mode"
-msgstr "โหมดผสม"
-
-
 msgid "Rotation X"
 msgstr "หมุน X"
 
@@ -861,6 +869,7 @@ msgid "Camera"
 msgstr "กล้อง"
 
 
+msgctxt "MovieClip"
 msgid "Track"
 msgstr "แทร็ค"
 
@@ -879,10 +888,6 @@ msgstr "ตำแหน่ง"
 
 msgid "Standard"
 msgstr "มาตรฐาน"
-
-
-msgid "Bezier"
-msgstr "เบซิเยร์"
 
 
 msgid "Depth"
@@ -1128,6 +1133,10 @@ msgid "Link"
 msgstr "เชื่อมโยง"
 
 
+msgid "Matrix"
+msgstr "เมทริกซ์"
+
+
 msgid "End"
 msgstr "สิ้นสุด"
 
@@ -1190,10 +1199,6 @@ msgstr "สไตล์เส้น"
 
 msgid "Use"
 msgstr "ใช้"
-
-
-msgid "Keyframe"
-msgstr "คีย์เฟรม"
 
 
 msgid "Frames"
@@ -1271,10 +1276,6 @@ msgid "Constant"
 msgstr "คงที่"
 
 
-msgid "Matrix"
-msgstr "เมทริกซ์"
-
-
 msgid "Step"
 msgstr "ขั้นตอน"
 
@@ -1311,16 +1312,20 @@ msgid "Grid scale"
 msgstr "ขนาดตะแกรง"
 
 
+msgid "Translation"
+msgstr "แปลภาษา"
+
+
+msgid "Repeat"
+msgstr "ทำซ้ำ"
+
+
 msgid "Red Green Blue"
 msgstr "แดง เขียน น้ำเงิน"
 
 
 msgid "Red"
 msgstr "แดง"
-
-
-msgid "B"
-msgstr "B"
 
 
 msgid "Font"
@@ -1375,6 +1380,10 @@ msgid "Users"
 msgstr "ผู้ใช้"
 
 
+msgid "Layers"
+msgstr "ชั้น"
+
+
 msgid "Wire"
 msgstr "เส้น"
 
@@ -1395,16 +1404,8 @@ msgid "Add Color"
 msgstr "เพิ่มสี"
 
 
-msgid "Repeat"
-msgstr "ทำซ้ำ"
-
-
 msgid "Mask Texture"
 msgstr "พื้นผิวหน้ากาก"
-
-
-msgid "Sculpt Tool"
-msgstr "เครื่องแกะสลัก"
 
 
 msgid "Grab UVs"
@@ -1517,10 +1518,6 @@ msgstr "เรียงตาม"
 
 msgid "Grid Settings"
 msgstr "การตั้งค่าตะแกรง"
-
-
-msgid "Layers"
-msgstr "ชั้น"
 
 
 msgid "Selected"
@@ -1912,10 +1909,6 @@ msgid "Rings"
 msgstr "แหวน"
 
 
-msgid "Animation"
-msgstr "แอนิเมชัน"
-
-
 msgid "ZIP (lossless)"
 msgstr "ZIP (ไม่สูญเสียข้อมูล)"
 
@@ -2053,6 +2046,10 @@ msgstr "ผสมสี"
 
 msgid "Pivot Point"
 msgstr "จุดหมุน"
+
+
+msgid "Track"
+msgstr "แทร็ค"
 
 
 msgid "Snap"
@@ -2530,10 +2527,6 @@ msgid "Round"
 msgstr "มน"
 
 
-msgid "Translation"
-msgstr "แปลภาษา"
-
-
 msgctxt "Operator"
 msgid "Select"
 msgstr "เลือก"
@@ -2568,26 +2561,17 @@ msgid "Report"
 msgstr "รายงาน"
 
 
-msgid "Duplicate"
-msgstr "ทำซ้ำ"
-
-
-msgctxt "Operator"
-msgid "Add Bezier Circle"
-msgstr "เพิ่มวงกลมเบซิเยร์"
-
-
 msgid "Enter Edit Mode"
 msgstr "เข้าสู่โหมดแก้ไข"
 
 
 msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "เพิ่มเบซิเยร์"
+msgid "Add Circle"
+msgstr "เพิ่มวงกลม"
 
 
-msgid "Construct a Bezier Curve"
-msgstr "สร้างเส้นโค้งเบซิเยร์"
+msgid "Duplicate"
+msgstr "ทำซ้ำ"
 
 
 msgctxt "Operator"
@@ -2808,11 +2792,6 @@ msgstr "เพิ่มจุดยอด"
 
 
 msgctxt "Operator"
-msgid "Add Circle"
-msgstr "เพิ่มวงกลม"
-
-
-msgctxt "Operator"
 msgid "New Material"
 msgstr "วัสดุใหม่"
 
@@ -2902,10 +2881,6 @@ msgid "Add Ico Sphere"
 msgstr "เพิ่มทรงกลม Ico"
 
 
-msgid "Construct an Icosphere mesh"
-msgstr "สร้างเมชทรงกลม Ico"
-
-
 msgctxt "Operator"
 msgid "Add Monkey"
 msgstr "เพิ่มลิง"
@@ -2928,10 +2903,6 @@ msgstr "เพิ่มทอรัส"
 msgctxt "Operator"
 msgid "Add UV Sphere"
 msgstr "เพิ่มทรงกลม UV"
-
-
-msgid "Construct a UV sphere mesh"
-msgstr "สร้างเมชทรงกลม UV"
 
 
 msgid "Axis Mode"
@@ -2983,10 +2954,6 @@ msgstr "เพิ่มกล้องไปยังฉาก"
 
 msgid "Vertex Group(s)"
 msgstr "กลุ่มจุดยอด"
-
-
-msgid "Path to image file"
-msgstr "ตำแหน่งไปยังไฟล์ภาพ"
 
 
 msgid "Add an empty object to the scene"
@@ -3239,6 +3206,10 @@ msgid "Transformation orientation"
 msgstr "ทิศทางการแปลง"
 
 
+msgid "Snap to grid"
+msgstr "ยึดตามตาราง"
+
+
 msgid "Snap to vertices"
 msgstr "ยึดตามจุดยอด"
 
@@ -3300,6 +3271,10 @@ msgstr "หน้า"
 msgctxt "Operator"
 msgid "Zoom 2D View"
 msgstr "ซูมมุมมองสองมิติ"
+
+
+msgid "Path to image file"
+msgstr "ตำแหน่งไปยังไฟล์ภาพ"
 
 
 msgctxt "Operator"
@@ -3397,11 +3372,6 @@ msgid "Mask Display"
 msgstr "การแสดงหน้ากาก"
 
 
-msgctxt "MovieClip"
-msgid "Scene Setup"
-msgstr "การติดตั้งฉาก"
-
-
 msgid "Transparent"
 msgstr "โปร่งใส"
 
@@ -3470,11 +3440,6 @@ msgstr "เมนู"
 
 msgid "Text Rendering"
 msgstr "เรนเดอร์ข้อความ"
-
-
-msgctxt "WindowManager"
-msgid "Translation"
-msgstr "แปลภาษา"
 
 
 msgid "3D Mouse Settings"
@@ -3745,11 +3710,6 @@ msgid "Mask Color"
 msgstr "สีหน้ากาก"
 
 
-msgctxt "MovieClip"
-msgid "Track"
-msgstr "แทร็ค"
-
-
 msgid "Pivot center for rotation/scaling"
 msgstr "ศูนย์หมุนสำหรับการหมุน/ย่อขยาย"
 
@@ -3886,10 +3846,6 @@ msgstr "ชนิดของส่วนประกอบที่จะยึ
 
 msgid "Snap Element"
 msgstr "ยึดตามส่วนประกอบ"
-
-
-msgid "Snap to grid"
-msgstr "ยึดตามตาราง"
 
 
 msgid "Snap Target"
@@ -4157,14 +4113,6 @@ msgstr "ไม่มี"
 
 msgid "Date"
 msgstr "วันที่"
-
-
-msgid "CCW"
-msgstr "ทวนเข็มนาฬิกา"
-
-
-msgid "CW"
-msgstr "ตามเข็มนาฬิกา"
 
 
 msgid "Render As"
@@ -4605,6 +4553,10 @@ msgid "Axis X"
 msgstr "แกน X"
 
 
+msgid "B"
+msgstr "B"
+
+
 msgid "Panel Title"
 msgstr "ชื่อแผง"
 
@@ -4778,11 +4730,6 @@ msgstr "ลิง"
 
 
 msgctxt "Operator"
-msgid "Bezier"
-msgstr "เบซิเยร์"
-
-
-msgctxt "Operator"
 msgid "Path"
 msgstr "เส้นทาง"
 
@@ -4800,16 +4747,6 @@ msgstr "กล้อง"
 msgctxt "Operator"
 msgid "Speaker"
 msgstr "ลำโพง"
-
-
-msgctxt "Operator"
-msgid "Reference"
-msgstr "อ้างอิง"
-
-
-msgctxt "Operator"
-msgid "Background"
-msgstr "พื้นหลัง"
 
 
 msgctxt "Operator"
@@ -4959,6 +4896,16 @@ msgid "Armature"
 msgstr "โครงร่าง"
 
 
+msgctxt "Operator"
+msgid "Reference"
+msgstr "อ้างอิง"
+
+
+msgctxt "Operator"
+msgid "Background"
+msgstr "พื้นหลัง"
+
+
 msgid "Mirror Vertices"
 msgstr "สะท้อนจุดยอด"
 
@@ -5031,16 +4978,6 @@ msgstr "ตัวแปร"
 
 msgid "Key %d"
 msgstr "คีย์ %d"
-
-
-msgctxt "Curve"
-msgid "BezierCurve"
-msgstr "เส้นโค้งเบซิเยร์"
-
-
-msgctxt "Curve"
-msgid "BezierCircle"
-msgstr "วงกลมเบซิเยร์"
 
 
 msgctxt "Curve"
@@ -5337,10 +5274,6 @@ msgid "Verts:%s/%s"
 msgstr "จุดยอด:%s/%s"
 
 
-msgid "). Click here to proceed..."
-msgstr "). คลิกที่นี่เพื่อดำเนินการ..."
-
-
 msgid "(empty)"
 msgstr "(ว่างเปล่า)"
 
@@ -5537,10 +5470,6 @@ msgstr "เปิด"
 
 msgid "OFF"
 msgstr "ปิด"
-
-
-msgid "OK?"
-msgstr "ตกลง?"
 
 
 msgid "%s '%s' not found"
