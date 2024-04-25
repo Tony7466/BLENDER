@@ -48,13 +48,6 @@ constexpr const char *attr_is_boundary = "is_boundary";
 const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
 const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
 
-const ColorGeometry4b output_boundary_color = {255, 0, 0, 255};
-const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
-const ColorGeometry4b output_border_color = {0, 0, 255, 255};
-const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
-const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
-const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
-
 enum ColorFlag {
   Border = 1 << 0,
   Stroke = 1 << 1,
@@ -180,11 +173,12 @@ class ImageBufferAccessor {
 
   ~ImageBufferAccessor()
   {
-    BLI_assert(!has_buffer());
+    BLI_assert(!this->has_buffer());
   }
 
   void acquire(Image &ima)
   {
+    BLI_assert(!this->has_buffer());
     ima_ = &ima;
     ibuf_ = BKE_image_acquire_ibuf(&ima, nullptr, &lock_);
     size_ = {ibuf_->x, ibuf_->y};
@@ -194,7 +188,9 @@ class ImageBufferAccessor {
 
   void release()
   {
+    BLI_assert(this->has_buffer());
     BKE_image_release_ibuf(ima_, ibuf_, lock_);
+    lock_ = nullptr;
     ima_ = nullptr;
     ibuf_ = nullptr;
     data_ = {};
@@ -270,6 +266,13 @@ static void convert_colors_to_flags(ImageBufferAccessor &buffer)
 /* Set a border to create image limits. */
 static void convert_flags_to_colors(ImageBufferAccessor &buffer)
 {
+  constexpr const ColorGeometry4b output_boundary_color = {255, 0, 0, 255};
+  constexpr const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
+  constexpr const ColorGeometry4b output_border_color = {0, 0, 255, 255};
+  constexpr const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
+  constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
+  constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
+
   for (ColorGeometry4b &color : buffer.pixels()) {
     if (color.r & ColorFlag::Stroke) {
       color = output_boundary_color;
@@ -290,24 +293,23 @@ static void convert_flags_to_colors(ImageBufferAccessor &buffer)
 }
 
 /* Set a border to create image limits. */
-static void mark_borders(ImageBufferAccessor &buffer,
-                         const ColorGeometry4b &color)
+static void mark_borders(ImageBufferAccessor &buffer)
 {
   int row_start = 0;
   /* Fill first row */
   for (const int i : IndexRange(buffer.width())) {
-    buffer.pixels()[row_start + i] = color;
+    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
   }
   row_start += buffer.width();
   /* Fill first and last pixel of middle rows. */
   for ([[maybe_unused]] const int i : IndexRange(buffer.height()).drop_front(1).drop_back(1)) {
-    buffer.pixels()[row_start] = color;
-    buffer.pixels()[row_start + buffer.width() - 1] = color;
+    set_flag(buffer.pixels()[row_start], ColorFlag::Border, true);
+    set_flag(buffer.pixels()[row_start + buffer.width() - 1], ColorFlag::Border, true);
     row_start += buffer.width();
   }
   /* Fill last row */
   for (const int i : IndexRange(buffer.width())) {
-    buffer.pixels()[row_start + i] = color;
+    set_flag(buffer.pixels()[row_start + i], ColorFlag::Border, true);
   }
 }
 
@@ -569,6 +571,45 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
   return final_boundary;
 }
 
+static FillBoundary process_image(Image &ima, const bool invert, const bool output_as_colors)
+{
+  constexpr const int leak_filter_width = 3;
+
+  ImageBufferAccessor accessor;
+  accessor.acquire(ima);
+  BLI_SCOPED_DEFER([&]() { accessor.release(); });
+
+  convert_colors_to_flags(accessor);
+
+  /* Set red borders to create a external limit. */
+  mark_borders(accessor);
+
+  /* Apply boundary fill */
+  if (invert) {
+    /* When inverted accept border fill, image borders are valid boundaries. */
+    FillResult fill_result = flood_fill<FillBorderMode::Ignore>(accessor, leak_filter_width);
+    if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
+      return {};
+    }
+    /* Make fills into boundaries and vice versa for finding exterior boundaries. */
+    invert_fill(accessor);
+  }
+  else {
+    /* Cancel when encountering a border, counts as failure. */
+    FillResult fill_result = flood_fill<FillBorderMode::Cancel>(accessor, leak_filter_width);
+    if (fill_result != FillResult::Success) {
+      return {};
+    }
+  }
+
+  if (output_as_colors) {
+    /* For visual output convert bit flags back to colors. */
+    convert_flags_to_colors(accessor);
+  }
+
+  return build_fill_boundary(accessor);
+}
+
 /* Create curves geometry from boundary positions. */
 static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPlacement &placement,
                                               const FillBoundary &boundary,
@@ -763,7 +804,6 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
 
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
-  const int leak_filter_width = 3;
   const bool brush_fill_hide = false;
   const bool use_xray = false;
   const bool fill_strokes = false;
@@ -839,56 +879,26 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   GPU_depth_mask(false);
   GPU_blend(GPU_BLEND_NONE);
   Image *ima = image_render::image_render_end(bmain, offscreen_buffer);
-
   if (!ima) {
     return {};
   }
 
-  ImageBufferAccessor accessor;
-  accessor.acquire(*ima);
-
-  convert_colors_to_flags(accessor);
-
-  /* Set red borders to create a external limit. */
-  mark_borders(accessor, output_border_color);
-
-  /* Apply boundary fill */
-  if (invert) {
-    /* When inverted accept border fill, image borders are valid boundaries. */
-    FillResult fill_result = flood_fill<FillBorderMode::Ignore>(accessor, leak_filter_width);
-    if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
-      return {};
-    }
-    /* Make fills into boundaries and vice versa for finding exterior boundaries. */
-    invert_fill(accessor);
-  }
-  else {
-    /* Cancel when encountering a border, counts as failure. */
-    FillResult fill_result = flood_fill<FillBorderMode::Cancel>(accessor, leak_filter_width);
-    if (fill_result != FillResult::Success) {
-      return {};
-    }
-  }
-
-  const FillBoundary boundary = build_fill_boundary(accessor);
-
-  if (keep_image) {
-    /* For visual output convert bit flags back to colors. */
-    convert_flags_to_colors(accessor);
-    ima->id.tag |= LIB_TAG_DOIT;
-    accessor.release();
-  }
-  else {
-    accessor.release();
-    BKE_id_free(&bmain, ima);
-  }
-
-  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
+  //FillBoundary boundary = process_image(*ima, invert, keep_image);
+  FillBoundary boundary;
+  //bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
+  bke::CurvesGeometry fill_curves;
 
   /* Note: Region view reset has to happen after final curve construction, otherwise the curve
    * placement, used to re-project from the 2D pixel coordinates, will have the wrong view
    * transform. */
   image_render::region_reset(region, region_view_data);
+
+  if (keep_image) {
+    ima->id.tag |= LIB_TAG_DOIT;
+  }
+  else {
+    BKE_id_free(&bmain, &ima);
+  }
 
   return fill_curves;
 }
