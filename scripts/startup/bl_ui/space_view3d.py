@@ -476,10 +476,10 @@ class _draw_tool_settings_context_mode:
         # direction
         if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             layout.row().prop(brush, "direction", expand=True, text="")
-        
+
         # Brush falloff
         layout.popover("VIEW3D_PT_tools_brush_falloff")
-        
+
         # Active layer only switch
         layout.prop(brush.gpencil_settings, "use_active_layer_only")
         return True
