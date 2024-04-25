@@ -42,8 +42,9 @@
 
 namespace blender::ed::greasepencil {
 
-constexpr const char *attr_material_index = "material_index";
-constexpr const char *attr_is_boundary = "is_boundary";
+/* -------------------------------------------------------------------- */
+/** \name Color Values and Flags
+ * \{ */
 
 const ColorGeometry4f draw_boundary_color = {1, 0, 0, 1};
 const ColorGeometry4f draw_seed_color = {0, 1, 0, 1};
@@ -57,105 +58,11 @@ enum ColorFlag {
 };
 ENUM_OPERATORS(ColorFlag, ColorFlag::Seed)
 
-static bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
-{
-  return (color.r & flag) != 0;
-}
+/** \} */
 
-static void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
-{
-  color.r = value ? (color.r | flag) : (color.r & (~flag));
-}
-
-static IndexMask get_curve_mask(const Object &object,
-                                const DrawingInfo &info,
-                                const bool is_boundary_layer,
-                                const bool use_onion_skinning,
-                                const bool allow_fill_material,
-                                IndexMaskMemory &memory)
-{
-  const bke::CurvesGeometry &strokes = info.drawing.strokes();
-  const bke::AttributeAccessor attributes = strokes.attributes();
-  const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
-                                                        bke::AttrDomain::Curve);
-
-  auto is_visible_curve = [&](const int curve_i) {
-    /* Check if stroke can be drawn. */
-    const IndexRange points = strokes.points_by_curve()[curve_i];
-    if (points.size() < 2) {
-      return false;
-    }
-
-    /* Check if the material is visible. */
-    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
-                                                       materials[curve_i] + 1);
-    const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
-    const bool is_hidden_material = (gp_style->flag & GP_MATERIAL_HIDE) ||
-                                    (use_onion_skinning &&
-                                     (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN));
-    if (gp_style == nullptr || is_hidden_material) {
-      return false;
-    }
-
-    /* TODO was based on GP_STROKE_NOFILL flag, which does not seem used any more. */
-    const bool is_fill_stroke = false;
-    const bool show_fill_material = (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-                                    (gp_style->fill_rgba[3] > 0.0f);
-    if (!allow_fill_material && show_fill_material && is_fill_stroke) {
-      return false;
-    }
-
-    return true;
-  };
-
-  /* On boundary layers only boundary strokes are rendered. */
-  if (is_boundary_layer) {
-    const VArray<bool> boundary_strokes = *attributes.lookup_or_default<bool>(
-        attr_is_boundary, bke::AttrDomain::Curve, false);
-
-    return IndexMask::from_predicate(
-        strokes.curves_range(), GrainSize(512), memory, [&](const int curve_i) {
-          if (!is_visible_curve(curve_i)) {
-            return false;
-          }
-          const bool is_boundary_stroke = boundary_strokes[curve_i];
-          return is_boundary_stroke;
-        });
-  }
-
-  return IndexMask::from_predicate(
-      strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
-}
-
-static VArray<ColorGeometry4f> stroke_colors(const Object &object,
-                                             const bke::CurvesGeometry &curves,
-                                             const VArray<float> &opacities,
-                                             const VArray<int> materials,
-                                             const ColorGeometry4f &tint_color,
-                                             const float alpha_threshold,
-                                             const bool brush_fill_hide)
-{
-  if (brush_fill_hide) {
-    return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
-  }
-
-  Array<ColorGeometry4f> colors(curves.points_num());
-  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
-                                                         materials[curve_i] + 1);
-      const float material_alpha = material && material->gp_style ?
-                                       material->gp_style->stroke_rgba[3] :
-                                       1.0f;
-      const IndexRange points = curves.points_by_curve()[curve_i];
-      for (const int point_i : points) {
-        const float alpha = (material_alpha * opacities[point_i] > alpha_threshold ? 1.0f : 0.0f);
-        colors[point_i] = ColorGeometry4f(tint_color.r, tint_color.g, tint_color.b, alpha);
-      }
-    }
-  });
-  return VArray<ColorGeometry4f>::ForContainer(colors);
-}
+/* -------------------------------------------------------------------- */
+/** \name Boundary from Pixel Buffer
+ * \{ */
 
 /* Utility class for access to pixel buffer data. */
 class ImageBufferAccessor {
@@ -249,6 +156,16 @@ class ImageBufferAccessor {
     return this->data_[index_from_coord(c)];
   }
 };
+
+static bool get_flag(const ColorGeometry4b &color, const ColorFlag flag)
+{
+  return (color.r & flag) != 0;
+}
+
+static void set_flag(ColorGeometry4b &color, const ColorFlag flag, bool value)
+{
+  color.r = value ? (color.r | flag) : (color.r & (~flag));
+}
 
 /* Set a border to create image limits. */
 /* TODO this shouldn't be necessary if drawing could accurately save flag values. */
@@ -576,57 +493,11 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
   return final_boundary;
 }
 
-static FillBoundary process_image(Image &ima, const bool invert, const bool output_as_colors)
-{
-  constexpr const int leak_filter_width = 3;
-
-  ImageBufferAccessor accessor;
-  accessor.acquire(ima);
-  BLI_SCOPED_DEFER([&]() { accessor.release(); });
-
-  convert_colors_to_flags(accessor);
-
-  /* Set red borders to create a external limit. */
-  mark_borders(accessor);
-
-  /* Apply boundary fill */
-  if (invert) {
-    /* When inverted accept border fill, image borders are valid boundaries. */
-    FillResult fill_result = flood_fill<FillBorderMode::Ignore>(accessor, leak_filter_width);
-    if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
-      return {};
-    }
-    /* Make fills into boundaries and vice versa for finding exterior boundaries. */
-    invert_fill(accessor);
-  }
-  else {
-    /* Cancel when encountering a border, counts as failure. */
-    FillResult fill_result = flood_fill<FillBorderMode::Cancel>(accessor, leak_filter_width);
-    if (fill_result != FillResult::Success) {
-      return {};
-    }
-  }
-
-  const FillBoundary boundary = build_fill_boundary(accessor);
-
-  if (output_as_colors) {
-    /* For visual output convert bit flags back to colors. */
-    convert_flags_to_colors(accessor);
-  }
-
-  return boundary;
-}
-
 /* Create curves geometry from boundary positions. */
-static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPlacement &placement,
-                                              const FillBoundary &boundary,
-                                              const int2 win_size)
+static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
+                                              const ImageBufferAccessor &buffer,
+                                              const ed::greasepencil::DrawingPlacement &placement)
 {
-  auto coord_from_index = [&](const int index) {
-    const div_t d = div(index, win_size.x);
-    return int2{d.rem, d.quot};
-  };
-
   /* Curve cannot have 0 points. */
   if (boundary.offset_indices.is_empty() || boundary.pixels.is_empty()) {
     return {};
@@ -642,12 +513,151 @@ static bke::CurvesGeometry boundary_to_curves(const ed::greasepencil::DrawingPla
     const IndexRange points = points_by_curve[curve_i];
     for (const int point_i : points) {
       const int pixel_index = boundary.pixels[point_i];
-      const int2 pixel_coord = coord_from_index(pixel_index);
+      const int2 pixel_coord = buffer.coord_from_index(pixel_index);
       positions[point_i] = placement.project(float2(pixel_coord));
     }
   }
 
   return curves;
+}
+
+static bke::CurvesGeometry process_image(Image &ima,
+                                         const ed::greasepencil::DrawingPlacement &placement,
+                                         const bool invert,
+                                         const bool output_as_colors)
+{
+  constexpr const int leak_filter_width = 3;
+
+  ImageBufferAccessor buffer;
+  buffer.acquire(ima);
+  BLI_SCOPED_DEFER([&]() { buffer.release(); });
+
+  convert_colors_to_flags(buffer);
+
+  /* Set red borders to create a external limit. */
+  mark_borders(buffer);
+
+  /* Apply boundary fill */
+  if (invert) {
+    /* When inverted accept border fill, image borders are valid boundaries. */
+    FillResult fill_result = flood_fill<FillBorderMode::Ignore>(buffer, leak_filter_width);
+    if (!ELEM(fill_result, FillResult::Success, FillResult::BorderContact)) {
+      return {};
+    }
+    /* Make fills into boundaries and vice versa for finding exterior boundaries. */
+    invert_fill(buffer);
+  }
+  else {
+    /* Cancel when encountering a border, counts as failure. */
+    FillResult fill_result = flood_fill<FillBorderMode::Cancel>(buffer, leak_filter_width);
+    if (fill_result != FillResult::Success) {
+      return {};
+    }
+  }
+
+  const FillBoundary boundary = build_fill_boundary(buffer);
+
+  if (output_as_colors) {
+    /* For visual output convert bit flags back to colors. */
+    convert_flags_to_colors(buffer);
+  }
+
+  return boundary_to_curves(boundary, buffer, placement);
+}
+
+/** \} */
+
+constexpr const char *attr_material_index = "material_index";
+constexpr const char *attr_is_boundary = "is_boundary";
+
+static IndexMask get_curve_mask(const Object &object,
+                                const DrawingInfo &info,
+                                const bool is_boundary_layer,
+                                const bool use_onion_skinning,
+                                const bool allow_fill_material,
+                                IndexMaskMemory &memory)
+{
+  const bke::CurvesGeometry &strokes = info.drawing.strokes();
+  const bke::AttributeAccessor attributes = strokes.attributes();
+  const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
+                                                        bke::AttrDomain::Curve);
+
+  auto is_visible_curve = [&](const int curve_i) {
+    /* Check if stroke can be drawn. */
+    const IndexRange points = strokes.points_by_curve()[curve_i];
+    if (points.size() < 2) {
+      return false;
+    }
+
+    /* Check if the material is visible. */
+    const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                       materials[curve_i] + 1);
+    const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
+    const bool is_hidden_material = (gp_style->flag & GP_MATERIAL_HIDE) ||
+                                    (use_onion_skinning &&
+                                     (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN));
+    if (gp_style == nullptr || is_hidden_material) {
+      return false;
+    }
+
+    /* TODO was based on GP_STROKE_NOFILL flag, which does not seem used any more. */
+    const bool is_fill_stroke = false;
+    const bool show_fill_material = (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
+                                    (gp_style->fill_rgba[3] > 0.0f);
+    if (!allow_fill_material && show_fill_material && is_fill_stroke) {
+      return false;
+    }
+
+    return true;
+  };
+
+  /* On boundary layers only boundary strokes are rendered. */
+  if (is_boundary_layer) {
+    const VArray<bool> boundary_strokes = *attributes.lookup_or_default<bool>(
+        attr_is_boundary, bke::AttrDomain::Curve, false);
+
+    return IndexMask::from_predicate(
+        strokes.curves_range(), GrainSize(512), memory, [&](const int curve_i) {
+          if (!is_visible_curve(curve_i)) {
+            return false;
+          }
+          const bool is_boundary_stroke = boundary_strokes[curve_i];
+          return is_boundary_stroke;
+        });
+  }
+
+  return IndexMask::from_predicate(
+      strokes.curves_range(), GrainSize(512), memory, is_visible_curve);
+}
+
+static VArray<ColorGeometry4f> stroke_colors(const Object &object,
+                                             const bke::CurvesGeometry &curves,
+                                             const VArray<float> &opacities,
+                                             const VArray<int> materials,
+                                             const ColorGeometry4f &tint_color,
+                                             const float alpha_threshold,
+                                             const bool brush_fill_hide)
+{
+  if (brush_fill_hide) {
+    return VArray<ColorGeometry4f>::ForSingle(tint_color, curves.points_num());
+  }
+
+  Array<ColorGeometry4f> colors(curves.points_num());
+  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
+                                                         materials[curve_i] + 1);
+      const float material_alpha = material && material->gp_style ?
+                                       material->gp_style->stroke_rgba[3] :
+                                       1.0f;
+      const IndexRange points = curves.points_by_curve()[curve_i];
+      for (const int point_i : points) {
+        const float alpha = (material_alpha * opacities[point_i] > alpha_threshold ? 1.0f : 0.0f);
+        colors[point_i] = ColorGeometry4f(tint_color.r, tint_color.g, tint_color.b, alpha);
+      }
+    }
+  });
+  return VArray<ColorGeometry4f>::ForContainer(colors);
 }
 
 static rctf get_region_bounds(const ARegion &region)
@@ -890,8 +900,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     return {};
   }
 
-  FillBoundary boundary = process_image(*ima, invert, keep_image);
-  bke::CurvesGeometry fill_curves = boundary_to_curves(placement, boundary, win_size);
+  bke::CurvesGeometry fill_curves = process_image(*ima, placement, invert, keep_image);
 
   /* Note: Region view reset has to happen after final curve construction, otherwise the curve
    * placement, used to re-project from the 2D pixel coordinates, will have the wrong view
