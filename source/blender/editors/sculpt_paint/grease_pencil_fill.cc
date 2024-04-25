@@ -431,12 +431,13 @@ FillResult flood_fill(ImageBufferAccessor &buffer, const int leak_filter_width =
   return border_contact ? FillResult::BorderContact : FillResult::Success;
 }
 
+/* Turn unfilled areas into filled and vice versa. */
 static void invert_fill(ImageBufferAccessor &buffer)
 {
   for (ColorGeometry4b &color : buffer.pixels()) {
     const bool is_filled = get_flag(color, ColorFlag::Fill);
-    set_flag(color, ColorFlag::Stroke, is_filled);
-    set_flag(color, ColorFlag::Fill, !is_filled);
+    const bool is_border = get_flag(color, ColorFlag::Border);
+    set_flag(color, ColorFlag::Fill, !is_filled && !is_border);
   }
 }
 
