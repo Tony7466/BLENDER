@@ -1221,7 +1221,8 @@ static void node_socket_tooltip_set(uiBlock &block,
             &snode, ntree, *ntree.all_sockets()[index_in_tree]);
 
         for (nodes::NodeTooltipRow &info : info_list) {
-          UI_tooltip_text_field_add(tip, info.text, {}, UI_TIP_STYLE_NORMAL, info.color);
+          UI_tooltip_text_field_add(
+              tip, std::move(info.text), {}, UI_TIP_STYLE_NORMAL, info.color);
 
           if (info.image != nullptr) {
             Image *image = info.image;
@@ -1246,6 +1247,10 @@ static void node_socket_tooltip_set(uiBlock &block,
               image_data.premultiplied = true;
               UI_tooltip_image_field_add(tip, image_data);
             }
+          }
+
+          if (&info != &info_list.last()) {
+            UI_tooltip_text_field_add(tip, ".\n\n", {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_MAIN);
           }
         }
       },
@@ -1936,33 +1941,18 @@ static Vector<nodes::NodeTooltipRow, 8> node_socket_get_tooltip(const SpaceNode 
     inspections.extend(std::make_move_iterator(info.begin()), std::make_move_iterator(info.end()));
   }
 
-  /*
-    std::stringstream output;
-    for (const std::string &info : inspection_strings) {
-      output << info;
-      if (&info != &inspection_strings.last()) {
-        output << ".\n\n";
-      }
-    }
-  */
-
   if (inspections.is_empty()) {
     const bNode &node = socket.owner_node();
     if (node.is_reroute()) {
       char reroute_name[MAX_NAME];
       bke::nodeLabel(&ntree, &node, reroute_name, sizeof(reroute_name));
-      // output << reroute_name;
-
       inspections.append({std::string(reroute_name), UI_TIP_LC_MAIN});
     }
     else {
-      // output << bke::nodeSocketLabel(&socket);
       inspections.append({std::string(bke::nodeSocketLabel(&socket)), UI_TIP_LC_MAIN});
     }
 
     if (ntree.type == NTREE_GEOMETRY) {
-      // output << TIP_("Unknown socket value. Either the socket was not used or its value was not
-      // logged during the last evaluation");
       inspections.append({std::string("Unknown socket value. Either the socket was not used or "
                                       "its value was not logged during the last evaluation"),
                           UI_TIP_LC_NORMAL});
