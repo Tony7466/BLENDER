@@ -228,6 +228,7 @@ set(GLSL_SRC
   shaders/compositor_tone_map_photoreceptor.glsl
   shaders/compositor_tone_map_simple.glsl
   shaders/compositor_van_vliet_gaussian_blur.glsl
+  shaders/compositor_van_vliet_gaussian_blur_sum.glsl
   shaders/compositor_write_output.glsl
   shaders/compositor_z_combine_compute_mask.glsl
   shaders/compositor_z_combine_from_mask.glsl

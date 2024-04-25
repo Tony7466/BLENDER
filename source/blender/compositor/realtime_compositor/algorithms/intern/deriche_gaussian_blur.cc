@@ -17,7 +17,7 @@
 
 namespace blender::realtime_compositor {
 
-/* Sum the causal and non causal outputs of the filter and write them to the output. This is
+/* Sum the causal and non causal outputs of the filter and write the sum to the output. This is
  * because the Deriche filter is a parallel interconnection filter, meaning its output is the sum
  * of its causal and non causal filters. The output is expected not to be allocated as it will be
  * allocated internally.

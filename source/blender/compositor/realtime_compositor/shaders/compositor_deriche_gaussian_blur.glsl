@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
-
 /* Blur the input horizontally by applying a fourth order IIR filter approximating a Gaussian
  * filter using Deriche's design method. This is based on the following paper:
  *
@@ -13,6 +11,8 @@
  * We run two filters per row in parallel, one for the causal filter and one for the non causal
  * filter, storing the result of each separately. See the DericheGaussianCoefficients class and the
  * implementation for more information. */
+
+#pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
 
 #define FILTER_ORDER 4
 
