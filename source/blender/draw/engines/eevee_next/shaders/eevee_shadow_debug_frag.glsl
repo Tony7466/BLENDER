@@ -126,7 +126,7 @@ bool debug_tilemaps(vec3 P, LightData light)
 
 #  ifdef DRW_DEBUG_PRINT
       if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
-        drw_print(light.object_mat);
+        drw_print(light.object_to_world_transposed);
       }
 #  endif
       return true;
@@ -146,7 +146,7 @@ bool debug_tilemaps(vec3 P, LightData light)
 
 #  ifdef DRW_DEBUG_PRINT
       if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
-        drw_print(light.object_mat);
+        drw_print(light.object_to_world_transposed);
       }
 #  endif
       return true;
@@ -186,7 +186,7 @@ void debug_random_tilemap_color(vec3 P, LightData light)
     coord = shadow_directional_coordinates(light, lP);
   }
   else {
-    vec3 lP = light_world_to_local(light, P - light._position);
+    vec3 lP = light_world_to_local(light, P - light_position_get(light));
     int face_id = shadow_punctual_face_index_get(lP);
     lP = shadow_punctual_local_position_to_face_local(face_id, lP);
     coord = shadow_punctual_coordinates(light, lP, face_id);

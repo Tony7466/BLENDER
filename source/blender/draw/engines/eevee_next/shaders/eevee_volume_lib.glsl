@@ -199,7 +199,7 @@ vec3 volume_light(LightData light, const bool is_directional, LightVector lv)
 
     if (light.type == LIGHT_RECT || light.type == LIGHT_ELLIPSE) {
       /* Modulate by light plane orientation / solid angle. */
-      power *= saturate(dot(light._back, lv.L));
+      power *= saturate(dot(transpose(light.object_to_world_transposed)[2].xyz, lv.L));
     }
   }
   return light.color * light.power[LIGHT_VOLUME] * power;

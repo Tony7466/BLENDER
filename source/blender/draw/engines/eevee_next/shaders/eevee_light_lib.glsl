@@ -24,11 +24,11 @@ LightVector light_vector_get(LightData light, const bool is_directional, vec3 P)
 {
   LightVector lv;
   if (is_directional) {
-    lv.L = light._back;
+    lv.L = transpose(light.object_to_world_transposed)[2].xyz;
     lv.dist = 1.0;
   }
   else {
-    lv.L = light._position - P;
+    lv.L = light_position_get(light) - P;
     float inv_distance = inversesqrt(length_squared(lv.L));
     lv.L *= inv_distance;
     lv.dist = 1.0 / inv_distance;
@@ -42,8 +42,9 @@ LightVector light_shape_vector_get(LightData light, const bool is_directional, v
   if (!is_directional && is_area_light(light.type)) {
     LightAreaData area = light_area_data_get(light);
 
-    vec3 L = P - light._position;
-    vec2 closest_point = vec2(dot(light._right, L), dot(light._up, L));
+    vec3 L = P - light_position_get(light);
+    vec2 closest_point = vec2(dot(transpose(light.object_to_world_transposed)[0].xyz, L),
+                              dot(transpose(light.object_to_world_transposed)[1].xyz, L));
     closest_point /= area.size;
 
     if (light.type == LIGHT_ELLIPSE) {
@@ -54,7 +55,8 @@ LightVector light_shape_vector_get(LightData light, const bool is_directional, v
     }
     closest_point *= area.size;
 
-    vec3 L_prime = light._right * closest_point.x + light._up * closest_point.y;
+    vec3 L_prime = transpose(light.object_to_world_transposed)[0].xyz * closest_point.x +
+                   transpose(light.object_to_world_transposed)[1].xyz * closest_point.y;
 
     L = L_prime - L;
     float inv_distance = inversesqrt(length_squared(L));
@@ -70,19 +72,13 @@ LightVector light_shape_vector_get(LightData light, const bool is_directional, v
 /* Rotate vector to light's local space. Does not translate. */
 vec3 light_world_to_local(LightData light, vec3 L)
 {
-  /* Avoid relying on compiler to optimize this.
-   * vec3 lL = transpose(mat3(light.object_mat)) * L; */
-  vec3 lL;
-  lL.x = dot(light.object_mat[0].xyz, L);
-  lL.y = dot(light.object_mat[1].xyz, L);
-  lL.z = dot(light.object_mat[2].xyz, L);
-  return lL;
+  return mat3x3(light.object_to_world_transposed) * L;
 }
 
 /* Transform position from light's local space to world space. Does translation. */
 vec3 light_local_position_to_world(LightData light, vec3 lP)
 {
-  return mat3(light.object_mat) * lP + light._position;
+  return (vec4(lP, 1.0) * light.object_to_world_transposed).xyz;
 }
 
 /* From Frostbite PBR Course
@@ -101,7 +97,7 @@ float light_spot_attenuation(LightData light, vec3 L)
   vec3 lL = light_world_to_local(light, L);
   float ellipse = inversesqrt(1.0 + length_squared(lL.xy * spot.spot_size_inv / lL.z));
   float spotmask = smoothstep(0.0, 1.0, ellipse * spot.spot_mul + spot.spot_bias);
-  return spotmask * step(0.0, -dot(L, -light._back));
+  return spotmask * step(0.0, -dot(L, -transpose(light.object_to_world_transposed)[2].xyz));
 }
 
 float light_attenuation_common(LightData light, const bool is_directional, vec3 L)
@@ -113,7 +109,7 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
     return light_spot_attenuation(light, L);
   }
   if (is_area_light(light.type)) {
-    return step(0.0, -dot(L, -light._back));
+    return step(0.0, -dot(L, -transpose(light.object_to_world_transposed)[2].xyz));
   }
   return 1.0;
 }
@@ -202,7 +198,7 @@ float light_point_light(LightData light, const bool is_directional, LightVector 
 
   if (is_area_light(light.type)) {
     /* Modulate by light plane orientation / solid angle. */
-    power *= saturate(dot(light._back, lv.L));
+    power *= saturate(dot(transpose(light.object_to_world_transposed)[2].xyz, lv.L));
   }
   return power;
 }
@@ -231,8 +227,10 @@ float light_ltc(
     LightAreaData area = light_area_data_get(light);
 
     vec3 corners[4];
-    corners[0] = light._right * area.size.x + light._up * -area.size.y;
-    corners[1] = light._right * area.size.x + light._up * area.size.y;
+    corners[0] = transpose(light.object_to_world_transposed)[0].xyz * area.size.x +
+                 transpose(light.object_to_world_transposed)[1].xyz * -area.size.y;
+    corners[1] = transpose(light.object_to_world_transposed)[0].xyz * area.size.x +
+                 transpose(light.object_to_world_transposed)[1].xyz * area.size.y;
     corners[2] = -corners[0];
     corners[3] = -corners[1];
 
@@ -247,8 +245,8 @@ float light_ltc(
     return ltc_evaluate_quad(utility_tx, corners, vec3(0.0, 0.0, 1.0));
   }
   else {
-    vec3 Px = light._right;
-    vec3 Py = light._up;
+    vec3 Px = transpose(light.object_to_world_transposed)[0].xyz;
+    vec3 Py = transpose(light.object_to_world_transposed)[1].xyz;
 
     if (!is_area_light(light.type)) {
       make_orthonormal_basis(lv.L, Px, Py);

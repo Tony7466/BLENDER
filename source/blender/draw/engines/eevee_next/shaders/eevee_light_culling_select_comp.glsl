@@ -39,10 +39,13 @@ void main()
       /* Only for < ~170 degree Cone due to plane extraction precision. */
       if (spot.spot_tan < 10.0) {
         Pyramid pyramid = shape_pyramid_non_oblique(
-            light._position,
-            light._position - light._back * spot.influence_radius_max,
-            light._right * spot.influence_radius_max * spot.spot_tan / spot.spot_size_inv.x,
-            light._up * spot.influence_radius_max * spot.spot_tan / spot.spot_size_inv.y);
+            light_position_get(light),
+            light_position_get(light) -
+                transpose(light.object_to_world_transposed)[2].xyz * spot.influence_radius_max,
+            transpose(light.object_to_world_transposed)[0].xyz * spot.influence_radius_max *
+                spot.spot_tan / spot.spot_size_inv.x,
+            transpose(light.object_to_world_transposed)[1].xyz * spot.influence_radius_max *
+                spot.spot_tan / spot.spot_size_inv.y);
         if (!intersect_view(pyramid)) {
           return;
         }
@@ -52,7 +55,7 @@ void main()
     case LIGHT_ELLIPSE:
     case LIGHT_OMNI_SPHERE:
     case LIGHT_OMNI_DISK:
-      sphere.center = light._position;
+      sphere.center = light_position_get(light);
       sphere.radius = light_local_data_get(light).influence_radius_max;
       break;
     default:
@@ -66,7 +69,7 @@ void main()
   if (intersect_view(sphere)) {
     uint index = atomicAdd(light_cull_buf.visible_count, 1u);
 
-    float z_dist = dot(drw_view_forward(), light._position) -
+    float z_dist = dot(drw_view_forward(), light_position_get(light)) -
                    dot(drw_view_forward(), drw_view_position());
     out_zdist_buf[index] = z_dist;
     out_key_buf[index] = l_idx;
