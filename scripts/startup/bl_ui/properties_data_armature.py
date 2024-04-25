@@ -156,9 +156,6 @@ class ARMATURE_MT_collection_tree_context_menu(Menu):
         # The poll function doesn't have access to the parent index property, so
         # it cannot disable this operator depending on whether the parent is
         # editable or not. That means this menu has to do the disabling for it.
-        layout.label(text="Bone Collections")
-        layout.separator()
-
         sub = layout.column()
         sub.enabled = not active_bcoll_is_locked
         sub.operator("armature.collection_add", text="Add Bone Collection")

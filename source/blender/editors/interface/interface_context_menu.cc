@@ -1057,9 +1057,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       /* Reset context. */
       CTX_store_set(C, prev_ctx);
 
-      if (U.flag & USER_DEVELOPER_UI) {
-        uiItemS(layout);
-      }
+      uiItemS(layout);
     }
   }
 
