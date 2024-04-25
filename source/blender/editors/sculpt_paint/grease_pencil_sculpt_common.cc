@@ -25,6 +25,8 @@
 
 #include "grease_pencil_intern.hh"
 
+#include <iostream>
+
 namespace blender::ed::sculpt_paint::greasepencil {
 
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C)
@@ -151,16 +153,9 @@ IndexMask brush_influence_mask(const Scene &scene,
 
 bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
 {
-  /* The basic setting is the brush's setting. */
-  bool invert = ((brush.gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
-                (brush.gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
-  /* During runtime, the user can hold down the Ctrl key to invert the basic behavior. */
-  if (stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT) {
-    invert ^= true;
-  }
-  /* Set temporary status */
-  SET_FLAG_FROM_TEST(brush.gpencil_settings->sculpt_flag, invert, GP_SCULPT_FLAG_TMP_INVERT);
-  return invert;
+  /* The basic setting is the brush's setting. During runtime, the user can hold down the Ctrl key
+   * to invert the basic behavior. */
+  return bool(brush.flag & BRUSH_DIR_IN) ^ (stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT);
 }
 
 GreasePencilStrokeParams GreasePencilStrokeParams::from_context(

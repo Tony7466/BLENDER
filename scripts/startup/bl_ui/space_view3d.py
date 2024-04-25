@@ -473,9 +473,14 @@ class _draw_tool_settings_context_mode:
         )
 
         # direction
-        if not capabilities.has_direction:
+        if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             layout.row().prop(brush, "direction", expand=True, text="")
-
+        
+        # Brush falloff
+        layout.popover("VIEW3D_PT_tools_brush_falloff")
+        
+        # Active layer only switch
+        layout.prop(brush.gpencil_settings, "use_active_layer_only")
         return True
 
     @staticmethod
@@ -874,11 +879,11 @@ class VIEW3D_HT_header(Header):
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
 
-            if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'WEIGHT_PAINT'}:
+            if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'SCULPT_GPENCIL', 'WEIGHT_PAINT'}:
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_grease_pencil_multi_frame_editing", text="")
 
-                if object_mode in {'EDIT', 'WEIGHT_PAINT'}:
+                if object_mode in {'EDIT', 'SCULPT_GPENCIL', 'WEIGHT_PAINT'}:
                     sub = row.row(align=True)
                     sub.enabled = tool_settings.use_grease_pencil_multi_frame_editing
                     sub.popover(
