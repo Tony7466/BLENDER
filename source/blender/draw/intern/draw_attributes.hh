@@ -29,6 +29,7 @@ struct DRW_AttributeRequest {
   int layer_index;
   blender::bke::AttrDomain domain;
   char attribute_name[64];
+  char shader_input_name[64];
 };
 
 struct DRW_Attributes {
@@ -64,6 +65,7 @@ bool drw_attributes_overlap(const DRW_Attributes *a, const DRW_Attributes *b);
 
 void drw_attributes_add_request(DRW_Attributes *attrs,
                                 const char *name,
+                                const char *shader_input_name,
                                 eCustomDataType data_type,
                                 int layer_index,
                                 blender::bke::AttrDomain domain);

@@ -271,7 +271,8 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
     const DRW_AttributeRequest &request = attrs.requests[i];
 
     char sampler_name[32];
-    drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
+    drw_curves_get_attribute_sampler_name(
+        request.attribute_name, request.shader_input_name, sampler_name);
 
     if (request.domain == bke::AttrDomain::Curve) {
       if (!curves_cache->proc_attributes_buf[i]) {
@@ -497,9 +498,9 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
   const DRW_Attributes &attrs = curves_cache->final.attr_used;
   for (int i = 0; i < attrs.num_requests; i++) {
     const DRW_AttributeRequest &request = attrs.requests[i];
-
     char sampler_name[32];
-    drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
+    drw_curves_get_attribute_sampler_name(
+        request.attribute_name, request.shader_input_name, sampler_name);
 
     if (request.domain == bke::AttrDomain::Curve) {
       if (!curves_cache->proc_attributes_buf[i]) {

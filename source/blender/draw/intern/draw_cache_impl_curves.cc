@@ -561,7 +561,8 @@ static void ensure_final_attribute(const Curves &curves,
                                    const int index)
 {
   char sampler_name[32];
-  drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
+  drw_curves_get_attribute_sampler_name(
+      request.attribute_name, request.shader_input_name, sampler_name);
 
   GPUVertFormat format = {0};
   GPU_vertformat_deinterleave(&format);
@@ -686,21 +687,47 @@ static bool ensure_attributes(const Curves &curves,
     ListBase gpu_attrs = GPU_material_attributes(gpu_material);
     LISTBASE_FOREACH (const GPUMaterialAttribute *, gpu_attr, &gpu_attrs) {
       const char *name = gpu_attr->name;
-
+      const char *input_name = nullptr;
       int layer_index;
       eCustomDataType type;
       bke::AttrDomain domain;
-      if (drw_custom_data_match_attribute(cd_curve, name, &layer_index, &type)) {
-        domain = bke::AttrDomain::Curve;
-      }
-      else if (drw_custom_data_match_attribute(cd_point, name, &layer_index, &type)) {
-        domain = bke::AttrDomain::Point;
+
+      if (gpu_attr->type == CD_AUTO_FROM_NAME) {
+        input_name = gpu_attr->input_name;
+        if (StringRefNull(input_name) == "a") {
+          type = CD_PROP_FLOAT2;
+        }
+        else {
+          continue;
+        }
+
+        layer_index = CustomData_get_active_layer(cd_curve, type);
+        if (layer_index != -1) {
+          domain = bke::AttrDomain::Curve;
+          name = CustomData_get_active_layer_name(cd_curve, type);
+        }
+        else {
+          layer_index = CustomData_get_active_layer(cd_point, type);
+          if (layer_index == -1) {
+            continue;
+          }
+          domain = bke::AttrDomain::Point;
+          name = CustomData_get_active_layer_name(cd_point, type);
+        }
       }
       else {
-        continue;
+        if (drw_custom_data_match_attribute(cd_curve, name, &layer_index, &type)) {
+          domain = bke::AttrDomain::Curve;
+        }
+        else if (drw_custom_data_match_attribute(cd_point, name, &layer_index, &type)) {
+          domain = bke::AttrDomain::Point;
+        }
+        else {
+          continue;
+        }
       }
 
-      drw_attributes_add_request(&attrs_needed, name, type, layer_index, domain);
+      drw_attributes_add_request(&attrs_needed, name, input_name, type, layer_index, domain);
     }
 
     if (!drw_attributes_overlap(&final_cache.attr_used, &attrs_needed)) {
@@ -751,14 +778,25 @@ static void request_attribute(Curves &curves, const char *name)
   const CustomData &custom_data = domain == bke::AttrDomain::Point ? curves.geometry.point_data :
                                                                      curves.geometry.curve_data;
 
-  drw_attributes_add_request(
-      &attributes, name, type, CustomData_get_named_layer(&custom_data, type, name), domain);
+  drw_attributes_add_request(&attributes,
+                             name,
+                             nullptr,
+                             type,
+                             CustomData_get_named_layer(&custom_data, type, name),
+                             domain);
 
   drw_attributes_merge(&final_cache.attr_used, &attributes, cache.render_mutex);
 }
 
-void drw_curves_get_attribute_sampler_name(const char *layer_name, char r_sampler_name[32])
+void drw_curves_get_attribute_sampler_name(const char *layer_name,
+                                           const char *shader_input_name,
+                                           char r_sampler_name[32])
 {
+  if (shader_input_name && shader_input_name[0] != '\0') {
+    BLI_snprintf(r_sampler_name, 32, "%s", shader_input_name);
+    return;
+  }
+
   char attr_safe_name[GPU_MAX_SAFE_ATTR_NAME];
   GPU_vertformat_safe_attr_name(layer_name, attr_safe_name, GPU_MAX_SAFE_ATTR_NAME);
   /* Attributes use auto-name. */
