@@ -153,6 +153,7 @@ set(GLSL_SRC
   shaders/compositor_defocus_radius_from_scale.glsl
   shaders/compositor_despeckle.glsl
   shaders/compositor_deriche_gaussian_blur.glsl
+  shaders/compositor_deriche_gaussian_blur_sum.glsl
   shaders/compositor_directional_blur.glsl
   shaders/compositor_displace.glsl
   shaders/compositor_double_edge_mask_compute_boundary.glsl

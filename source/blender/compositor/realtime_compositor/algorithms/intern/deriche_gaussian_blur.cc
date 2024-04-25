@@ -17,7 +17,43 @@
 
 namespace blender::realtime_compositor {
 
-static Result horizontal_pass(Context &context, Result &input, float sigma)
+/* Sum the causal and non causal outputs of the filter and write them to the output. This is
+ * because the Deriche filter is a parallel interconnection filter, meaning its output is the sum
+ * of its causal and non causal filters. The output is expected not to be allocated as it will be
+ * allocated internally.
+ *
+ * The output is allocated and written transposed, that is, with a height equivalent to the width
+ * of the input and vice versa. This is done as a performance optimization. The blur pass will
+ * blur the image horizontally and write it to the intermediate output transposed. Then the
+ * vertical pass will execute the same horizontal blur shader, but since its input is transposed,
+ * it will effectively do a vertical blur and write to the output transposed, effectively undoing
+ * the transposition in the horizontal pass. This is done to improve spatial cache locality in the
+ * shader and to avoid having two separate shaders for each blur pass. */
+static void sum_causal_and_non_causal_results(Context &context,
+                                              Result &causal_input,
+                                              Result &non_causal_input,
+                                              Result &output)
+{
+  GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur_sum");
+  GPU_shader_bind(shader);
+
+  causal_input.bind_as_texture(shader, "causal_input_tx");
+  non_causal_input.bind_as_texture(shader, "non_causal_input_tx");
+
+  const Domain domain = causal_input.domain();
+  const int2 transposed_domain = int2(domain.size.y, domain.size.x);
+  output.allocate_texture(transposed_domain);
+  output.bind_as_image(shader, "output_img");
+
+  compute_dispatch_threads_at_least(shader, domain.size);
+
+  GPU_shader_unbind();
+  causal_input.unbind_as_texture();
+  non_causal_input.unbind_as_texture();
+  output.unbind_as_image();
+}
+
+static void blur_pass(Context &context, Result &input, Result &output, float sigma)
 {
   GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur");
   GPU_shader_bind(shader);
@@ -43,69 +79,26 @@ static Result horizontal_pass(Context &context, Result &input, float sigma)
 
   const Domain domain = input.domain();
 
-  /* We allocate an output image of a transposed size, that is, with a height equivalent to the
-   * width of the input and vice versa. This is done as a performance optimization. The shader
-   * will blur the image horizontally and write it to the intermediate output transposed. Then
-   * the vertical pass will execute the same horizontal blur shader, but since its input is
-   * transposed, it will effectively do a vertical blur and write to the output transposed,
-   * effectively undoing the transposition in the horizontal pass. This is done to improve
-   * spatial cache locality in the shader and to avoid having two separate shaders for each blur
-   * pass. */
-  const int2 transposed_domain = int2(domain.size.y, domain.size.x);
+  Result causal_result = context.create_temporary_result(ResultType::Color);
+  causal_result.allocate_texture(domain);
+  causal_result.bind_as_image(shader, "causal_output_img");
 
-  Result horizontal_pass_result = context.create_temporary_result(ResultType::Color,
-                                                                  ResultPrecision::Full);
-  horizontal_pass_result.allocate_texture(transposed_domain);
-  horizontal_pass_result.bind_as_image(shader, "output_img");
+  Result non_causal_result = context.create_temporary_result(ResultType::Color);
+  non_causal_result.allocate_texture(domain);
+  non_causal_result.bind_as_image(shader, "non_causal_output_img");
 
-  compute_dispatch_threads_at_least(shader, int2(domain.size.y, 1), int2(256, 1));
+  /* The second dispatch dimension is two dispatches, one for the causal filter and one for the non
+   * causal one. */
+  compute_dispatch_threads_at_least(shader, int2(domain.size.y, 2), int2(128, 2));
 
   GPU_shader_unbind();
   input.unbind_as_texture();
-  horizontal_pass_result.unbind_as_image();
+  causal_result.unbind_as_image();
+  non_causal_result.unbind_as_image();
 
-  return horizontal_pass_result;
-}
-
-static void vertical_pass(Context &context,
-                          Result &original_input,
-                          Result &horizontal_pass_result,
-                          Result &output,
-                          float sigma)
-{
-  GPUShader *shader = context.get_shader("compositor_deriche_gaussian_blur");
-  GPU_shader_bind(shader);
-
-  const DericheGaussianCoefficients &coefficients =
-      context.cache_manager().deriche_gaussian_coefficients.get(context, sigma);
-
-  GPU_shader_uniform_4fv(shader,
-                         "causal_feedforward_coefficients",
-                         float4(coefficients.causal_feedforward_coefficients()));
-  GPU_shader_uniform_4fv(shader,
-                         "non_causal_feedforward_coefficients",
-                         float4(coefficients.non_causal_feedforward_coefficients()));
-  GPU_shader_uniform_4fv(
-      shader, "feedback_coefficients", float4(coefficients.feedback_coefficients()));
-  GPU_shader_uniform_1f(
-      shader, "causal_boundary_coefficient", float(coefficients.causal_boundary_coefficient()));
-  GPU_shader_uniform_1f(shader,
-                        "non_causal_boundary_coefficient",
-                        float(coefficients.non_causal_boundary_coefficient()));
-
-  horizontal_pass_result.bind_as_texture(shader, "input_tx");
-
-  const Domain domain = original_input.domain();
-  output.allocate_texture(domain);
-  output.bind_as_image(shader, "output_img");
-
-  /* Notice that the domain is transposed, see the note on the horizontal pass method for more
-   * information on the reasoning behind this. */
-  compute_dispatch_threads_at_least(shader, int2(domain.size.x, 1), int2(256, 1));
-
-  GPU_shader_unbind();
-  output.unbind_as_image();
-  horizontal_pass_result.unbind_as_texture();
+  sum_causal_and_non_causal_results(context, causal_result, non_causal_result, output);
+  causal_result.release();
+  non_causal_result.release();
 }
 
 void deriche_gaussian_blur(Context &context, Result &input, Result &output, float2 sigma)
@@ -117,8 +110,9 @@ void deriche_gaussian_blur(Context &context, Result &input, Result &output, floa
                  "Deriche filter is not accurate nor numerically stable for sigma values larger "
                  "than 32. Use Van Vliet filter instead.");
 
-  Result horizontal_pass_result = horizontal_pass(context, input, sigma.x);
-  vertical_pass(context, input, horizontal_pass_result, output, sigma.y);
+  Result horizontal_pass_result = context.create_temporary_result(ResultType::Color);
+  blur_pass(context, input, horizontal_pass_result, sigma.x);
+  blur_pass(context, horizontal_pass_result, output, sigma.y);
   horizontal_pass_result.release();
 }
 
