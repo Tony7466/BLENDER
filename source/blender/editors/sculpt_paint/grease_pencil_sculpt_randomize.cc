@@ -24,9 +24,9 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 /* Use a hash to generate random numbers. */
-static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
+static float hash_rng(uint32_t seed1, uint32_t seed2, int index)
 {
-  return BLI_hash_int_01(BLI_hash_int_3d(seed1, seed2, (unsigned int)index));
+  return BLI_hash_int_01(BLI_hash_int_3d(seed1, seed2, uint32_t(index)));
 }
 
 class RandomizeOperation : public GreasePencilStrokeOperationCommon {
@@ -34,14 +34,14 @@ class RandomizeOperation : public GreasePencilStrokeOperationCommon {
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   /* Get a different seed value for each stroke. */
-  unsigned int unique_seed() const;
+  uint32_t unique_seed() const;
 
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext & /*C*/) override {}
 };
 
-unsigned int RandomizeOperation::unique_seed() const
+uint32_t RandomizeOperation::unique_seed() const
 {
   return RandomNumberGenerator::from_random_seed().get_uint32();
 }
@@ -59,7 +59,7 @@ void RandomizeOperation::on_stroke_extended(const bContext &C, const InputSample
   const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
 
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
-    const unsigned int seed = this->unique_seed();
+    const uint32_t seed = this->unique_seed();
 
     IndexMaskMemory selection_memory;
     const IndexMask selection = point_selection_mask(params, selection_memory);
