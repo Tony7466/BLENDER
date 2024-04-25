@@ -152,6 +152,9 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
         GPU_material_release(mat);
         MEM_freeN(link);
       }
+      else {
+        break;
+      }
     }
 
     if (GPU_type_matches_ex(GPU_DEVICE_ANY, GPU_OS_ANY, GPU_DRIVER_ANY, GPU_BACKEND_OPENGL)) {
