@@ -251,6 +251,7 @@ const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
+const uchar PAINT_CURSOR_PAINT_GREASE_PENCIL[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_SCULPT_GREASE_PENCIL[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
@@ -522,8 +523,6 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
           return &ts->gp_weightpaint->paint;
         case OB_MODE_SCULPT_CURVES:
           return &ts->curves_sculpt->paint;
-        case OB_MODE_PAINT_GREASE_PENCIL:
-          return &ts->gp_paint->paint;
         default:
           break;
       }
@@ -597,6 +596,8 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
             return PaintMode::SculptGreasePencil;
           }
           return PaintMode::Invalid;
+        case OB_MODE_PAINT_GPENCIL_LEGACY:
+          return PaintMode::GPencil;
         case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return PaintMode::WeightGPencil;
         case OB_MODE_VERTEX_PAINT:
@@ -607,8 +608,6 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PaintMode::Texture3D;
         case OB_MODE_SCULPT_CURVES:
           return PaintMode::SculptCurves;
-        case OB_MODE_PAINT_GREASE_PENCIL:
-          return PaintMode::GPencil;
         default:
           return PaintMode::Texture2D;
       }
@@ -702,12 +701,7 @@ void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
   }
   else if (ts->gp_paint && paint == &ts->gp_paint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_tool);
-    if (U.experimental.use_grease_pencil_version3) {
-      paint->runtime.ob_mode = OB_MODE_PAINT_GREASE_PENCIL;
-    }
-    else {
-      paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
-    }
+    paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
   }
   else if (ts->gp_vertexpaint && paint == &ts->gp_vertexpaint->paint) {
     paint->runtime.tool_offset = offsetof(Brush, gpencil_vertex_tool);
@@ -1085,7 +1079,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(const PaintMode mode)
     case PaintMode::SculptCurves:
       return OB_MODE_SCULPT_CURVES;
     case PaintMode::GPencil:
-      return OB_MODE_PAINT_GREASE_PENCIL;
+      return OB_MODE_PAINT_GPENCIL_LEGACY;
     case PaintMode::SculptGreasePencil:
       return OB_MODE_SCULPT_GPENCIL_LEGACY;
     case PaintMode::Invalid:
@@ -1496,14 +1490,6 @@ void BKE_sculptsession_free(Object *ob)
 
     if (ss->tex_pool) {
       BKE_image_pool_free(ss->tex_pool);
-    }
-
-    if (ss->pose_ik_chain_preview) {
-      for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
-        MEM_SAFE_FREE(ss->pose_ik_chain_preview->segments[i].weights);
-      }
-      MEM_SAFE_FREE(ss->pose_ik_chain_preview->segments);
-      MEM_SAFE_FREE(ss->pose_ik_chain_preview);
     }
 
     if (ss->boundary_preview) {
