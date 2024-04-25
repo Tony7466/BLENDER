@@ -40,6 +40,15 @@ GLContext::GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list
     debug::init_gl_callbacks();
   }
 
+  if (GLContext::khr_parallel_shader_compile_support) {
+    /*Request the max number of threads available.*/
+    glMaxShaderCompilerThreadsKHR(0xFFFFFFFF);
+  }
+  else if (GLContext::arb_parallel_shader_compile_support) {
+    /*Request the max number of threads available.*/
+    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
+  }
+
   float data[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   glGenBuffers(1, &default_attr_vbo_);
   glBindBuffer(GL_ARRAY_BUFFER, default_attr_vbo_);

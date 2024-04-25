@@ -1493,11 +1493,11 @@ void GLShader::GLProgram::link()
 bool GLShader::GLProgram::is_ready()
 {
   GLint is_ready = true;
-  if (GLContext::arb_parallel_shader_compile_support) {
-    glGetProgramiv(program_id_, GL_COMPLETION_STATUS_ARB, &is_ready);
-  }
-  else if (GLContext::khr_parallel_shader_compile_support) {
+  if (GLContext::khr_parallel_shader_compile_support) {
     glGetProgramiv(program_id_, GL_COMPLETION_STATUS_KHR, &is_ready);
+  }
+  else if (GLContext::arb_parallel_shader_compile_support) {
+    glGetProgramiv(program_id_, GL_COMPLETION_STATUS_ARB, &is_ready);
   }
   return is_ready;
 }

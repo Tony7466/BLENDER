@@ -589,15 +589,6 @@ void GLBackend::capabilities_init()
   GLContext::khr_parallel_shader_compile_support = epoxy_has_gl_extension(
       "GL_KHR_parallel_shader_compile");
 
-  if (GLContext::arb_parallel_shader_compile_support) {
-    /*Request the max number of threads available.*/
-    glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
-  }
-  else if (GLContext::khr_parallel_shader_compile_support) {
-    /*Request the max number of threads available.*/
-    glMaxShaderCompilerThreadsKHR(0xFFFFFFFF);
-  }
-
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;
 
