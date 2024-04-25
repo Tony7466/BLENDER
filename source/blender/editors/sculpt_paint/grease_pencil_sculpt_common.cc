@@ -129,32 +129,25 @@ IndexMask brush_influence_mask(const Scene &scene,
                                (use_pressure ? pressure : 1.0f);
   const int2 mval_i = int2(math::round(mouse_position));
 
-  auto calculate_influence = [&](int64_t point_i) -> float {
-    /* Distance falloff. */
-    const float distance_squared = math::distance_squared(int2(view_positions[point_i]), mval_i);
-    if (distance_squared > radius_squared) {
-      return 0.0f;
-    }
-    /* Apply Brush curve. */
-    const float brush_falloff = BKE_brush_curve_strength(
-        &brush, math::sqrt(distance_squared), radius);
-    return influence_base * brush_falloff;
-  };
-
-  IndexMask index_mask = IndexMask::from_predicate(
-      selection, GrainSize(4096), memory, [&](const int point_i) {
-        const float influence = calculate_influence(point_i);
-        return influence > 0.0f;
+  Array<float> all_influences(selection.min_array_size());
+  const IndexMask influence_mask = IndexMask::from_predicate(
+      selection, GrainSize(4096), memory, [&](const int point) {
+        /* Distance falloff. */
+        const float distance_squared = math::distance_squared(int2(view_positions[point]), mval_i);
+        if (distance_squared > radius_squared) {
+          all_influences[point] = 0.0f;
+          return false;
+        }
+        /* Apply Brush curve. */
+        const float brush_falloff = BKE_brush_curve_strength(
+            &brush, math::sqrt(distance_squared), radius);
+        all_influences[point] = influence_base * brush_falloff;
+        return all_influences[point] > 0.0f;
       });
+  influences.reinitialize(influence_mask.size());
+  array_utils::gather(all_influences.as_span(), influence_mask, influences.as_mutable_span());
 
-  /* Serial loop for safe write access to the influences array. */
-  influences.reinitialize(index_mask.size());
-  index_mask.foreach_index(GrainSize(4096), [&](const int point_i, const int mask_i) {
-    const float influence = calculate_influence(point_i);
-    influences[mask_i] = influence;
-  });
-
-  return index_mask;
+  return influence_mask;
 }
 
 bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
