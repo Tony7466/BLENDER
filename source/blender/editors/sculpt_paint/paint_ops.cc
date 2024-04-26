@@ -47,6 +47,7 @@
 #include "ED_asset_list.hh"
 #include "ED_asset_mark_clear.hh"
 #include "ED_asset_menu_utils.hh"
+#include "ED_asset_shelf.hh"
 #include "ED_image.hh"
 #include "ED_paint.hh"
 #include "ED_screen.hh"
@@ -891,16 +892,9 @@ static void show_catalog_in_asset_shelf(const bContext &C, const StringRefNull c
   if (!area) {
     return;
   }
-  const ARegion *shelf_region = BKE_area_find_region_type(area, RGN_TYPE_ASSET_SHELF);
-  if (!shelf_region) {
-    return;
-  }
-  if (shelf_region->flag & RGN_FLAG_POLL_FAILED) {
-    return;
-  }
-  const RegionAssetShelf &shelf = *static_cast<const RegionAssetShelf *>(shelf_region->regiondata);
+  const AssetShelf *shelf = asset::shelf::active_shelf_from_area(area);
   if (!BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
-          &U, shelf.active_shelf->idname, catalog_path.c_str()))
+          &U, shelf->idname, catalog_path.c_str()))
   {
     return;
   }
