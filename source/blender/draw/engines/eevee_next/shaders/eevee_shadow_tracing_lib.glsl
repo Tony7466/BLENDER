@@ -468,7 +468,11 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     bool is_perspective = drw_view_is_perspective();
     float dist_to_cam = distance(P, drw_view_position());
     float footprint_ratio = shadow_punctual_footprint_ratio(
-        light, P, is_perspective, dist_to_cam, uniform_buf.shadow.tilemap_projection_ratio);
+        light,
+        P - light_position_get(light),
+        is_perspective,
+        dist_to_cam,
+        uniform_buf.shadow.tilemap_projection_ratio);
     float lod = -log2(footprint_ratio) + light.lod_bias;
     lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
     float pcf_scale = exp2(lod);
@@ -509,30 +513,40 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
  * This is a smooth (not discretized to the LOD transitions) conservative (always above actual
  * density) estimate value.
  */
-float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 lP)
+float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 P)
 {
+  vec3 lP = light_world_to_local_point(light, P);
+
   float scale = 1.0;
   if (is_directional) {
+    LightSunData sun = light_sun_data_get(light);
     if (light.type == LIGHT_SUN) {
       /* Simplification of `coverage_get(shadow_directional_level_fractional)`. */
       const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 1.0001);
       scale = length(lP) * narrowing;
-      scale *= exp2(light.lod_bias + 1.0);
-      scale = clamp(scale,
-                    float(1 << light_sun_data_get(light).clipmap_lod_min),
-                    float(1 << light_sun_data_get(light).clipmap_lod_max));
+      scale *= exp2(light.lod_bias);
+      scale = clamp(scale, float(1 << sun.clipmap_lod_min), float(1 << sun.clipmap_lod_max));
     }
     else {
       /* Uniform distribution everywhere. No distance scaling. */
-      scale /= float(1 << light_sun_data_get(light).clipmap_lod_min);
+      scale = 1.0 / float(1 << sun.clipmap_lod_min);
     }
   }
   else {
-    /* TODO(fclem): Should depend on distance to the camera too. */
-    scale = reduce_max(abs(lP));
+    float dist_to_cam = distance(P, drw_view_position());
+    scale = shadow_punctual_footprint_ratio(light,
+                                            lP,
+                                            drw_view_is_perspective(),
+                                            dist_to_cam,
+                                            uniform_buf.shadow.tilemap_projection_ratio);
+    /* This gives the size of pixels at Z = 1. */
+    scale *= exp2(light.lod_bias);
+    scale = clamp(scale, float(1 << 0), float(1 << SHADOW_TILEMAP_LOD));
+    /* Now scale by distance to the light. */
+    scale *= length(lP);
   }
   /* Footprint of a tilemap at unit distance from the camera. */
-  float texel_footprint = M_SQRT2 / SHADOW_MAP_MAX_RES;
+  const float texel_footprint = 2.0 * M_SQRT2 / SHADOW_MAP_MAX_RES;
   return texel_footprint * scale;
 }
 
@@ -542,9 +556,8 @@ float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 
  */
 float shadow_normal_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec3 L)
 {
-  vec3 lP = light_world_to_local_point(light, P);
   /* Compute the size of a shadow map texel radius at the receiver position. */
-  float texel_diameter = shadow_texel_diameter_at(light, is_directional, lP);
+  float texel_diameter = shadow_texel_diameter_at(light, is_directional, P);
 #ifdef GPU_FRAGMENT_SHADER
   if (ivec2(gl_FragCoord.xy) == ivec2(512)) {
     drw_debug_point(P, texel_diameter);
