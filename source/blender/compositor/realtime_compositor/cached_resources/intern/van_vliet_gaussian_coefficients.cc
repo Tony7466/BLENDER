@@ -151,7 +151,7 @@ static double find_scale_factor(const std::array<std::complex<double>, 4> &poles
  * Equation (19) in Van Vliet's paper to have the given sigma value. This involves finding the
  * appropriate scale factor based on Equation (20), see Section 4.2 and the find_scale_factor
  * method for more information. */
-static std::array<std::complex<double>, 4> scale_poles(
+static std::array<std::complex<double>, 4> computed_scaled_poles(
     const std::array<std::complex<double>, 4> &poles, float sigma)
 {
   const double scale_factor = find_scale_factor(poles, sigma);
@@ -161,10 +161,24 @@ static std::array<std::complex<double>, 4> scale_poles(
     const std::complex<double> &pole = poles[i];
     const double magnitude = std::pow(std::abs(pole), 1.0 / scale_factor);
     const double phase = std::arg(pole) / scale_factor;
-    scaled_poles[i] = 1.0 / std::polar(magnitude, phase);
+    scaled_poles[i] = std::polar(magnitude, phase);
   }
 
   return scaled_poles;
+}
+
+/* Compute the causal poles from the non causal ones. Since the Gaussian is a real even function,
+ * the causal poles are just the inverse of the non causal poles, as noted in Equation (2) in Van
+ * Vliet's paper. */
+static std::array<std::complex<double>, 4> compute_causal_poles(
+    const std::array<std::complex<double>, 4> &non_causal_poles)
+{
+  std::array<std::complex<double>, 4> causal_poles;
+  for (int i = 0; i < non_causal_poles.size(); i++) {
+    causal_poles[i] = 1.0 / non_causal_poles[i];
+  }
+
+  return causal_poles;
 }
 
 /* Computes the feedback coefficients from the given poles based on the equations in Equation (13)
@@ -327,20 +341,25 @@ VanVlietGaussianCoefficients::VanVlietGaussianCoefficients(Context & /*context*/
       std::complex<double>(1.76952, -0.46611),
   };
 
-  const std::array<std::complex<double>, 4> scaled_poles = scale_poles(poles, sigma);
+  const std::array<std::complex<double>, 4> scaled_poles = computed_scaled_poles(poles, sigma);
 
-  const double4 feedback_coefficients = compute_feedback_coefficients(scaled_poles);
+  /* The given poles are actually the non causal poles, since they are outside of the unit circle,
+   * as demonstrated in Section 3.4 of Van Vliet's paper. And we compute the causal poles from
+   * those. */
+  const std::array<std::complex<double>, 4> non_causal_poles = scaled_poles;
+  const std::array<std::complex<double>, 4> causal_poles = compute_causal_poles(non_causal_poles);
 
+  const double4 feedback_coefficients = compute_feedback_coefficients(non_causal_poles);
   const double feedforward_coefficient = compute_feedforward_coefficient(feedback_coefficients);
 
-  compute_second_order_section(scaled_poles,
-                               scaled_poles[0],
+  compute_second_order_section(causal_poles,
+                               causal_poles[0],
                                first_feedback_coefficients_,
                                first_causal_feedforward_coefficients_,
                                first_non_causal_feedforward_coefficients_);
 
-  compute_second_order_section(scaled_poles,
-                               scaled_poles[2],
+  compute_second_order_section(causal_poles,
+                               causal_poles[2],
                                second_feedback_coefficients_,
                                second_causal_feedforward_coefficients_,
                                second_non_causal_feedforward_coefficients_);
