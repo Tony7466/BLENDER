@@ -1760,8 +1760,7 @@ static void wpaint_do_radial_symmetry(bContext *C,
   }
 }
 
-/* near duplicate of: sculpt.cc's,
- * 'do_symmetrical_brush_actions' and 'vpaint_do_symmetrical_brush_actions'. */
+/* near duplicate of: #do_symmetrical_brush_actions and #vpaint_do_symmetrical_brush_actions. */
 static void wpaint_do_symmetrical_brush_actions(
     bContext *C, Object *ob, VPaint *wp, WPaintData *wpd, WeightPaintInfo *wpi)
 {

@@ -1853,8 +1853,7 @@ static void vpaint_do_radial_symmetry(bContext *C,
   }
 }
 
-/* near duplicate of: sculpt.cc's,
- * 'do_symmetrical_brush_actions' and 'wpaint_do_symmetrical_brush_actions'. */
+/* near duplicate of: #do_symmetrical_brush_actions and #wpaint_do_symmetrical_brush_actions. */
 static void vpaint_do_symmetrical_brush_actions(bContext *C,
                                                 VPaint *vp,
                                                 VPaintData *vpd,
