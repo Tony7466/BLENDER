@@ -130,7 +130,7 @@ vec4 tangent_get(vec4 attr, mat3 normalmat)
 
 /* Can't use enum here because not a header file. But would be great to do. */
 #ifdef GPU_METAL
-using ClosureType = uint8_t;
+using ClosureType = uchar;
 #else
 #  define ClosureType uint
 #endif
@@ -309,9 +309,9 @@ struct GlobalData {
   /** Index of the strand for per strand effects. */
   int hair_strand_id;
   /** Is hair. */
-  bool8_t is_strand;
+  bool is_strand;
   /** Ray type. */
-  uint8_t ray_type;
+  uchar ray_type;
 };
 
 GlobalData g_data;

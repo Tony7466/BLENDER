@@ -56,11 +56,11 @@ struct GBufferWriter {
   uint header;
   /** Only used for book-keeping. Not actually written. Can be derived from header. */
   /* Number of bins written in the header. Counts empty bins. */
-  uint8_t bins_len;
+  uchar bins_len;
   /* Number of data written in the data array. */
-  uint8_t data_len;
+  uchar data_len;
   /* Number of normal written in the normal array. */
-  uint8_t normal_len;
+  uchar normal_len;
 };
 
 /* Result of loading the GBuffer. */
@@ -76,11 +76,11 @@ struct GBufferReader {
 
   uint header;
   /* Number of valid closure encoded in the gbuffer. */
-  uint8_t closure_count;
+  uchar closure_count;
   /* Only used for book-keeping when reading. */
-  uint8_t data_len;
+  uchar data_len;
   /* Only used for debugging and testing. */
-  uint8_t normal_len;
+  uchar normal_len;
 };
 
 ClosureType gbuffer_mode_to_closure_type(uint mode)
@@ -483,7 +483,7 @@ vec3 gbuffer_normal_get(inout GBufferReader gbuf, int bin_id, samplerGBufferNorm
 {
   int normal_layer_id = gbuffer_header_normal_layer_id_get(gbuf.header, bin_id);
   vec2 normal_packed = fetchGBuffer(normal_tx, gbuf.texel, normal_layer_id).rg;
-  gbuf.normal_len = max(gbuf.normal_len, uint8_t(normal_layer_id + 1));
+  gbuf.normal_len = max(gbuf.normal_len, uchar(normal_layer_id + 1));
   return gbuffer_normal_unpack(normal_packed);
 }
 void gbuffer_skip_normal(inout GBufferReader gbuf)

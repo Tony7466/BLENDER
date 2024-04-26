@@ -63,9 +63,6 @@
 /* Aliases for supported fixed width types. */
 #define int32_t int
 #define uint32_t uint
-#define uint8_t uint
-#define uint16_t uint
-#define bool8_t bool
 
 /* Fast store variant macro. In GLSL this is the same as imageStore, but assumes no bounds
  * checking. */
