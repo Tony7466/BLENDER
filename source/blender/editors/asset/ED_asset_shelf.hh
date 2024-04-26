@@ -68,19 +68,16 @@ void header_regiontype_register(ARegionType *region_type, const int space_type);
 /* -------------------------------------------------------------------- */
 /** \name Asset shelf type */
 
-bool asset_shelf_type_poll(const bContext &C,
-                           const SpaceType &space_type,
-                           const AssetShelfType *shelf_type);
-AssetShelfType *asset_shelf_type_find_from_idname(const SpaceType &space_type,
-                                                  blender::StringRefNull idname);
+bool type_poll(const bContext &C, const SpaceType &space_type, const AssetShelfType *shelf_type);
+AssetShelfType *type_find_from_idname(const SpaceType &space_type, StringRefNull idname);
 
 /** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Asset shelf popup */
 
-uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type);
-void asset_shelf_type_popup_unlink(const AssetShelfType &shelf_type);
+uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *shelf_type);
+void type_popup_unlink(const AssetShelfType &shelf_type);
 
 /** \} */
 

@@ -45,7 +45,7 @@ class PopupAssetShelfStorage {
   }
 };
 
-void asset_shelf_type_popup_unlink(const AssetShelfType &shelf_type)
+void type_popup_unlink(const AssetShelfType &shelf_type)
 {
   LISTBASE_FOREACH (AssetShelf *, shelf, &PopupAssetShelfStorage::get_popup_asset_shelves()) {
     if (shelf->type == &shelf_type) {
@@ -62,14 +62,14 @@ static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_
 
   LISTBASE_FOREACH (AssetShelf *, shelf, &popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
-      if (asset_shelf_type_poll(*C, *space_type, asset_shelf_type_ensure(*space_type, *shelf))) {
+      if (type_poll(*C, *space_type, type_ensure(*space_type, *shelf))) {
         return shelf;
       }
       break;
     }
   }
 
-  if (asset_shelf_type_poll(*C, *space_type, &shelf_type)) {
+  if (type_poll(*C, *space_type, &shelf_type)) {
     AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
     BLI_addtail(&popup_shelves, new_shelf);
     return new_shelf;
@@ -161,7 +161,7 @@ static void catalog_tree_draw(uiLayout &layout, AssetShelf &shelf)
   ui::TreeViewBuilder::build_tree_view(*tree_view, layout);
 }
 
-uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
+uiBlock *popup_block_create(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
 {
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);

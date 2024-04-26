@@ -22,7 +22,7 @@ using namespace blender;
 static uiBlock *asset_shelf_block_fn(bContext *C, ARegion *region, void *arg_shelf_type)
 {
   AssetShelfType *shelf_type = reinterpret_cast<AssetShelfType *>(arg_shelf_type);
-  return ed::asset::shelf::asset_shelf_popup_block(C, region, shelf_type);
+  return ed::asset::shelf::popup_block_create(C, region, shelf_type);
 }
 
 void uiTemplateAssetShelfPopover(uiLayout *layout,
@@ -32,7 +32,7 @@ void uiTemplateAssetShelfPopover(uiLayout *layout,
                                  const BIFIconID icon)
 {
   const ScrArea *area = CTX_wm_area(C);
-  AssetShelfType *shelf_type = ed::asset::shelf::asset_shelf_type_find_from_idname(*area->type,
+  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(*area->type,
                                                                                    asset_shelf_id);
   if (!shelf_type) {
     RNA_warning("Asset shelf type not found: %s", asset_shelf_id);
@@ -55,7 +55,7 @@ void uiTemplateAssetShelfPopover(uiLayout *layout,
   ui_def_but_icon(but, icon, UI_HAS_ICON);
   UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
 
-  if (ed::asset::shelf::asset_shelf_type_poll(*C, *area->type, shelf_type) == false) {
+  if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
     UI_but_flag_enable(but, UI_BUT_DISABLED);
   }
 }
