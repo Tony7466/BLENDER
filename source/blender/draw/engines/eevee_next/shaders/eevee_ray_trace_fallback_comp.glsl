@@ -24,16 +24,26 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
+  /* Check whether texel_fullres and texel are out of bounds for all cases, so we can utilise fast
+   * texture funcs and early exit if not. */
+  if (any(greaterThanEqual(texel_fullres, textureSize(depth_tx, 0).xy)) ||
+      any(lessThan(texel_fullres, ivec2(0))) ||
+      any(greaterThanEqual(texel, textureSize(ray_time_img, 0).xy)) ||
+      any(lessThan(texel, ivec2(0))))
+  {
+    return;
+  }
+
   float depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
-  vec4 ray_data = imageLoad(ray_data_img, texel);
-  float ray_pdf_inv = ray_data.w;
+  vec4 ray_data_im = imageLoadFast(ray_data_img, texel);
+  float ray_pdf_inv = ray_data_im.w;
 
   if (ray_pdf_inv == 0.0) {
     /* Invalid ray or pixels without ray. Do not trace. */
-    imageStore(ray_time_img, texel, vec4(0.0));
-    imageStore(ray_radiance_img, texel, vec4(0.0));
+    imageStoreFast(ray_time_img, texel, vec4(0.0));
+    imageStoreFast(ray_radiance_img, texel, vec4(0.0));
     return;
   }
 
@@ -42,7 +52,7 @@ void main()
 
   Ray ray;
   ray.origin = P;
-  ray.direction = ray_data.xyz;
+  ray.direction = ray_data_im.xyz;
 
   /* Only closure 0 can be a transmission closure. */
   if (closure_index == 0) {
@@ -72,6 +82,6 @@ void main()
 
   radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.clamp.surface_indirect);
 
-  imageStore(ray_time_img, texel, vec4(hit_time));
-  imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
+  imageStoreFast(ray_time_img, texel, vec4(hit_time));
+  imageStoreFast(ray_radiance_img, texel, vec4(radiance, 0.0));
 }
