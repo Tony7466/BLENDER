@@ -363,13 +363,14 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
   bool use_restir = get_boolean(cscene, "use_restir");
 
   bool use_initial_resampling = get_boolean(cscene, "use_initial_resampling");
+  bool initial_visibility = get_boolean(cscene, "restir_initial_visibility");
+  bool use_spatial_resampling = get_boolean(cscene, "use_spatial_resampling");
   const int light_samples = get_int(cscene, "restir_light_samples");
   const int bsdf_samples = get_int(cscene, "restir_bsdf_samples");
-  if (light_samples == 1 && bsdf_samples == 1) {
+
+  if (light_samples == 1 && bsdf_samples == 1 && !(use_spatial_resampling && initial_visibility)) {
     use_initial_resampling = false;
   }
-
-  bool use_spatial_resampling = get_boolean(cscene, "use_spatial_resampling");
 
   if (!use_restir) {
     use_initial_resampling = false;
@@ -377,8 +378,7 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
   }
 
   integrator->set_use_restir(use_initial_resampling + (use_spatial_resampling << 1));
-  integrator->set_restir_initial_visibility(use_initial_resampling &&
-                                            get_boolean(cscene, "restir_initial_visibility"));
+  integrator->set_restir_initial_visibility(use_initial_resampling && initial_visibility);
   integrator->set_restir_light_samples(light_samples);
   integrator->set_restir_bsdf_samples(bsdf_samples);
   integrator->set_restir_spatial_radius(get_int(cscene, "restir_spatial_radius"));
