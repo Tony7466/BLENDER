@@ -510,13 +510,10 @@ ShadowEvalResult shadow_eval(LightData light,
   vec3 blue_noise_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
   vec3 random_shadow_3d = blue_noise_3d + sampling_rng_3D_get(SAMPLING_SHADOW_U);
   vec2 random_pcf_2d = fract(blue_noise_3d.xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
-  float normal_offset = uniform_buf.shadow.normal_bias;
 #else
   /* Case of surfel light eval. */
   vec3 random_shadow_3d = vec3(0.5);
   vec2 random_pcf_2d = vec2(0.0);
-  /* TODO(fclem): Parameter on irradiance volumes? */
-  float normal_offset = 0.02;
 #endif
 
   /* Shadow map texel radius at the receiver position. */

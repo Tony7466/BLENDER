@@ -1479,10 +1479,10 @@ struct ShadowSceneData {
   int ray_count;
   /* Number of shadow samples to take for each shadow ray. */
   int step_count;
-  /* Bias the shading point by using the normal to avoid self intersection. */
-  float normal_bias;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
   float tilemap_projection_ratio;
+
+  float _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
