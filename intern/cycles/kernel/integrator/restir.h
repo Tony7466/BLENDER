@@ -22,6 +22,7 @@ struct SpatialResampling {
     return (uint)tile->offset + x + y * tile->stride;
   }
 
+  /* Get neighbors in a square. */
   uint get_next_neighbor(const float2 rand)
   {
     const float2 offset = floor(rand * radius + 0.5f);
@@ -228,14 +229,13 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   for (int i = 0; i < samples; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
     const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
-    const float2 rand_disk = float3_to_float2(rand);
+    const float2 rand_neighbor = float3_to_float2(rand) * 2.0f - 1.0f;
     const float rand_pick = rand.z;
 
     /* Always put the current sample in the reservoir. */
     const uint neighbor_pixel_index = (i == 0) ?
                                           INTEGRATOR_STATE(state, path, render_pixel_index) :
-                                          spatial_resampling.get_next_neighbor(
-                                              sample_uniform_disk(rand_disk));
+                                          spatial_resampling.get_next_neighbor(rand_neighbor);
 
     if (neighbor_pixel_index == -1) {
       continue;
@@ -274,10 +274,10 @@ ccl_device bool integrator_restir(KernelGlobals kg,
    * the reservoir is not empty it must be valid. */
   int valid_neighbors = 1;
   for (int i = 1; i < samples; i++) {
-    const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
-    const float2 rand_disk = sample_uniform_disk(float3_to_float2(rand));
+    const float2 rand_neighbor =
+        path_branched_rng_2D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING) * 2.0f - 1.0f;
 
-    const uint neighbor_pixel_index = spatial_resampling.get_next_neighbor(rand_disk);
+    const uint neighbor_pixel_index = spatial_resampling.get_next_neighbor(rand_neighbor);
 
     if (neighbor_pixel_index == -1) {
       continue;

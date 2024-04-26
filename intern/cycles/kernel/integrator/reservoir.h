@@ -39,15 +39,12 @@ struct Reservoir {
                   const float rand)
   {
     /* TODO(weizhen): replace `reduce_add()` with luminance. */
+    /* TODO(weizhen): could there be NaN weights? */
     const float weight = reduce_add(fabs(radiance.sum)) * mis_weight;
-    if (!(weight > 0.0f)) {
-      return;
-    }
 
     total_weight += weight;
-    const float thresh = weight / total_weight;
 
-    if (rand <= thresh) {
+    if (rand * total_weight <= weight) {
       this->ls = ls;
       this->radiance = radiance;
     }
