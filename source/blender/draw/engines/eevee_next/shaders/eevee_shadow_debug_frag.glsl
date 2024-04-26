@@ -124,11 +124,6 @@ bool debug_tilemaps(vec3 P, LightData light)
       out_color_add = vec4(debug_tile_state_color(light.type, tile), 0.0);
       out_color_mul = vec4(0.0);
 
-#  ifdef DRW_DEBUG_PRINT
-      if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
-        drw_print(light.object_to_world_transposed);
-      }
-#  endif
       return true;
     }
 #else
@@ -144,11 +139,6 @@ bool debug_tilemaps(vec3 P, LightData light)
       out_color_add = vec4(debug_tile_state_color(tile), 0.0);
       out_color_mul = vec4(0.0);
 
-#  ifdef DRW_DEBUG_PRINT
-      if (all(equal(ivec2(gl_FragCoord.xy), ivec2(0)))) {
-        drw_print(light.object_to_world_transposed);
-      }
-#  endif
       return true;
     }
 #endif

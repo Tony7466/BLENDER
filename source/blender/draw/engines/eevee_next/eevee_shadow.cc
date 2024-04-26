@@ -370,11 +370,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   compute_projection_boundaries(
       light.type, light_radius_, shadow_radius_, max_distance_, near, far, side, shift);
 
-  float4x4 obmat_tmp = float4x4(math::transpose(light.object_to_world_transposed));
-
-  /* Clear embedded custom data. */
-  obmat_tmp[0][3] = obmat_tmp[1][3] = obmat_tmp[2][3] = 0.0f;
-  obmat_tmp[3][3] = 1.0f;
+  float4x4 obmat_tmp = light.object_to_world;
 
   /* Acquire missing tile-maps. */
   while (tilemaps_.size() < tilemaps_needed_) {
@@ -519,9 +515,9 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
   float2 farthest_tilemap_center = local_view_direction * half_size * (levels_range.size() - 1);
 
   /* Offset for smooth level transitions. */
-  light.object_to_world_transposed[0][3] = near_point[0];
-  light.object_to_world_transposed[1][3] = near_point[1];
-  light.object_to_world_transposed[2][3] = near_point[2];
+  light.object_to_world.x.w = near_point.x;
+  light.object_to_world.y.w = near_point.y;
+  light.object_to_world.z.w = near_point.z;
 
   /* Offset in tiles from the scene origin to the center of the first tile-maps. */
   int2 origin_offset = int2(round(float2(near_point) / tile_size));
@@ -640,9 +636,9 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
 
   /* Used for selecting the clipmap level. */
   float3 location = camera.position() * float3x3(object_mat_.view<3, 3>());
-  light.object_to_world_transposed[0][3] = location[0];
-  light.object_to_world_transposed[1][3] = location[1];
-  light.object_to_world_transposed[2][3] = location[2];
+  light.object_to_world.x.w = location.x;
+  light.object_to_world.y.w = location.y;
+  light.object_to_world.z.w = location.z;
   /* Used as origin for the clipmap_base_offset trick. */
   light.sun.clipmap_origin = float2(level_offset_max * tile_size_max);
 

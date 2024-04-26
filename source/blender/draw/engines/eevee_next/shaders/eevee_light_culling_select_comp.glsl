@@ -38,14 +38,14 @@ void main()
       LightSpotData spot = light_spot_data_get(light);
       /* Only for < ~170 degree Cone due to plane extraction precision. */
       if (spot.spot_tan < 10.0) {
+        vec3 x_axis = transform_x_axis(light.object_to_world);
+        vec3 y_axis = transform_y_axis(light.object_to_world);
+        vec3 z_axis = transform_z_axis(light.object_to_world);
         Pyramid pyramid = shape_pyramid_non_oblique(
             light_position_get(light),
-            light_position_get(light) -
-                transpose(light.object_to_world_transposed)[2].xyz * spot.influence_radius_max,
-            transpose(light.object_to_world_transposed)[0].xyz * spot.influence_radius_max *
-                spot.spot_tan / spot.spot_size_inv.x,
-            transpose(light.object_to_world_transposed)[1].xyz * spot.influence_radius_max *
-                spot.spot_tan / spot.spot_size_inv.y);
+            light_position_get(light) - z_axis * spot.influence_radius_max,
+            x_axis * spot.influence_radius_max * spot.spot_tan / spot.spot_size_inv.x,
+            y_axis * spot.influence_radius_max * spot.spot_tan / spot.spot_size_inv.y);
         if (!intersect_view(pyramid)) {
           return;
         }

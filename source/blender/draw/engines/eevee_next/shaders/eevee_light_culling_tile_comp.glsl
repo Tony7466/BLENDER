@@ -147,12 +147,11 @@ void main()
   for (; l_idx < l_end; l_idx++) {
     LightData light = light_buf[l_idx];
 
-    float4x3 object_to_world = transpose(light.object_to_world_transposed);
     /* Culling in view space for precision and simplicity. */
-    vec3 vP = drw_point_world_to_view(object_to_world[3]);
-    vec3 v_right = drw_normal_world_to_view(object_to_world[0]);
-    vec3 v_up = drw_normal_world_to_view(object_to_world[1]);
-    vec3 v_back = drw_normal_world_to_view(object_to_world[2]);
+    vec3 vP = drw_point_world_to_view(light_position_get(light));
+    vec3 v_right = drw_normal_world_to_view(transform_x_axis(light.object_to_world));
+    vec3 v_up = drw_normal_world_to_view(transform_y_axis(light.object_to_world));
+    vec3 v_back = drw_normal_world_to_view(transform_z_axis(light.object_to_world));
     float radius = light_local_data_get(light).influence_radius_max;
 
     Sphere sphere = shape_sphere(vP, radius);

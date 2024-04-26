@@ -68,7 +68,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
     negate_v3(object_to_world.y_axis());
   }
 
-  this->object_to_world_transposed = math::transpose(float4x3(object_to_world));
+  this->object_to_world = object_to_world;
 
   shape_parameters_set(la, scale, threshold);
 
@@ -295,7 +295,7 @@ float Light::point_radiance_get()
 void Light::debug_draw()
 {
 #ifndef NDEBUG
-  drw_debug_sphere(math::transpose(object_to_world_transposed).location(),
+  drw_debug_sphere(transform_location(this->object_to_world),
                    local.influence_radius_max,
                    float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
