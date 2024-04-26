@@ -217,11 +217,11 @@ static void parallel_for_impl_range_size(const IndexRange range,
                                          const TaskSizeHints &size_hints)
 {
   const int64_t total_size = size_hints.lookup_range_size(range);
-  if (total_size <= grain_size) {
+  if (total_size <= grain_size || range.size() == 1) {
     function(range);
     return;
   }
-  const int64_t middle = range.start() + range.size() / 2;
+  const int64_t middle = range.size() / 2;
   const IndexRange left_range = range.take_front(middle);
   const IndexRange right_range = range.drop_front(middle);
   threading::parallel_invoke(
