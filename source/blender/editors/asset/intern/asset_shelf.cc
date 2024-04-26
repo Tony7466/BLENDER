@@ -72,7 +72,7 @@ bool type_poll(const bContext &C, const SpaceType &space_type, const AssetShelfT
 AssetShelfType *type_find_from_idname(const SpaceType &space_type, StringRefNull idname)
 {
   for (const std::unique_ptr<AssetShelfType> &shelf_type : space_type.asset_shelf_types) {
-    if (idname.c_str() == shelf_type->idname) {
+    if (idname == shelf_type->idname) {
       return shelf_type.get();
     }
   }

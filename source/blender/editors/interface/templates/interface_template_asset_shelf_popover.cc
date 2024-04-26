@@ -33,7 +33,7 @@ void uiTemplateAssetShelfPopover(uiLayout *layout,
 {
   const ScrArea *area = CTX_wm_area(C);
   AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(*area->type,
-                                                                                   asset_shelf_id);
+                                                                       asset_shelf_id);
   if (!shelf_type) {
     RNA_warning("Asset shelf type not found: %s", asset_shelf_id);
     return;

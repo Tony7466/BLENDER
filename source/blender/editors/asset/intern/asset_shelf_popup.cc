@@ -12,8 +12,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BLI_string.h"
-
 #include "UI_interface_c.hh"
 #include "UI_tree_view.hh"
 
