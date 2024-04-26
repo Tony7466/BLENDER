@@ -26,17 +26,15 @@ namespace blender::ed::asset::shelf {
 
 class PopupAssetShelfStorage {
  public:
-  ListBase popup_shelves;
+  Vector<AssetShelf *> popup_shelves;
 
   ~PopupAssetShelfStorage()
   {
-    LISTBASE_FOREACH_MUTABLE (
-        AssetShelf *, shelf, &PopupAssetShelfStorage::get_popup_asset_shelves())
-    {
+    for (AssetShelf *shelf : popup_shelves) {
       MEM_delete(shelf);
     }
   }
-  static ListBase &get_popup_asset_shelves()
+  static Vector<AssetShelf *> &get_popup_asset_shelves()
   {
     static PopupAssetShelfStorage storage;
     return storage.popup_shelves;
@@ -45,7 +43,7 @@ class PopupAssetShelfStorage {
 
 void type_popup_unlink(const AssetShelfType &shelf_type)
 {
-  LISTBASE_FOREACH (AssetShelf *, shelf, &PopupAssetShelfStorage::get_popup_asset_shelves()) {
+  for (AssetShelf *shelf : PopupAssetShelfStorage::get_popup_asset_shelves()) {
     if (shelf->type == &shelf_type) {
       shelf->type = nullptr;
     }
@@ -56,9 +54,9 @@ static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_
 {
   const SpaceType *space_type = BKE_spacetype_from_id(shelf_type.space_type);
 
-  ListBase &popup_shelves = PopupAssetShelfStorage::get_popup_asset_shelves();
+  Vector<AssetShelf *> &popup_shelves = PopupAssetShelfStorage::get_popup_asset_shelves();
 
-  LISTBASE_FOREACH (AssetShelf *, shelf, &popup_shelves) {
+  for (AssetShelf *shelf : popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
       if (type_poll(*C, *space_type, type_ensure(*space_type, *shelf))) {
         return shelf;
@@ -69,7 +67,7 @@ static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_
 
   if (type_poll(*C, *space_type, &shelf_type)) {
     AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
-    BLI_addtail(&popup_shelves, new_shelf);
+    popup_shelves.append(new_shelf);
     return new_shelf;
   }
 
