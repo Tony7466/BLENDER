@@ -179,14 +179,14 @@ void AssetView::set_catalog_filter(
 }
 
 static std::optional<asset_system::AssetCatalogFilter> catalog_filter_from_shelf_settings(
-    const AssetShelfSettings &settings, const asset_system::AssetLibrary &library)
+    const AssetShelfSettings &shelf_settings, const asset_system::AssetLibrary &library)
 {
-  if (!settings.active_catalog_path || !settings.active_catalog_path[0]) {
+  if (!shelf_settings.active_catalog_path) {
     return {};
   }
 
   asset_system::AssetCatalog *active_catalog = library.catalog_service().find_catalog_by_path(
-      settings.active_catalog_path);
+      shelf_settings.active_catalog_path);
   if (!active_catalog) {
     return {};
   }
