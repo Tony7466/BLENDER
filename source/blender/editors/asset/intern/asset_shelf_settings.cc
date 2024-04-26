@@ -84,11 +84,6 @@ void settings_set_active_catalog(AssetShelfSettings &settings,
   settings.active_catalog_path = BLI_strdupn(path.c_str(), path.length());
 }
 
-StringRef settings_get_active_catalog_path(const AssetShelfSettings &settings)
-{
-  return settings.active_catalog_path;
-}
-
 void settings_set_all_catalog_active(AssetShelfSettings &settings)
 {
   MEM_delete(settings.active_catalog_path);
