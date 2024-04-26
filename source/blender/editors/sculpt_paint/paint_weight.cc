@@ -55,6 +55,7 @@
 #include "ED_image.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
@@ -184,7 +185,7 @@ static float wpaint_blend(const VPaint *wp,
                           const float /*brush_alpha_value*/,
                           const bool do_flip)
 {
-  const Brush *brush = wp->paint.brush;
+  const Brush *brush = BKE_paint_brush_for_read(&wp->paint);
   IMB_BlendMode blend = (IMB_BlendMode)brush->blend;
 
   if (do_flip) {
@@ -932,9 +933,11 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   wpd = (WPaintData *)MEM_callocN(sizeof(WPaintData), "WPaintData");
   paint_stroke_set_mode_data(stroke, wpd);
   wpd->vc = ED_view3d_viewcontext_init(C, depsgraph);
+
+  const Brush *brush = BKE_paint_brush(&vp->paint);
   vwpaint::view_angle_limits_init(&wpd->normal_angle_precalc,
-                                  vp->paint.brush->falloff_angle,
-                                  (vp->paint.brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
+                                  brush->falloff_angle,
+                                  (brush->flag & BRUSH_FRONTFACE_FALLOFF) != 0);
 
   wpd->active.index = vgroup_index.active;
   wpd->mirror.index = vgroup_index.mirror;
@@ -1007,7 +1010,9 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   vwpaint::update_cache_invariants(C, vp, ss, op, mouse);
   vwpaint::init_session_data(ts, ob);
 
-  if (ELEM(vp->paint.brush->weightpaint_tool, WPAINT_TOOL_SMEAR, WPAINT_TOOL_BLUR)) {
+  /* Brush may have changed after initialization. */
+  brush = BKE_paint_brush(&vp->paint);
+  if (ELEM(brush->weightpaint_tool, WPAINT_TOOL_SMEAR, WPAINT_TOOL_BLUR)) {
     wpd->precomputed_weight = (float *)MEM_mallocN(sizeof(float) * mesh->verts_num, __func__);
   }
 
@@ -1538,31 +1543,9 @@ static void wpaint_paint_leaves(bContext *C,
 /** \name Enter Weight Paint Mode
  * \{ */
 
-static void grease_pencil_wpaintmode_enter(Scene *scene, Object *ob)
-{
-  const PaintMode paint_mode = PaintMode::Weight;
-  Paint *weight_paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
-  BKE_paint_ensure(scene->toolsettings, &weight_paint);
-
-  ob->mode |= OB_MODE_WEIGHT_PAINT;
-
-  /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
-}
-
 void ED_object_wpaintmode_enter_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  switch (ob->type) {
-    case OB_MESH:
-      vwpaint::mode_enter_generic(bmain, depsgraph, scene, ob, OB_MODE_WEIGHT_PAINT);
-      break;
-    case OB_GREASE_PENCIL:
-      grease_pencil_wpaintmode_enter(scene, ob);
-      break;
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
+  vwpaint::mode_enter_generic(bmain, depsgraph, scene, ob, OB_MODE_WEIGHT_PAINT);
 }
 void ED_object_wpaintmode_enter(bContext *C, Depsgraph *depsgraph)
 {
@@ -1579,18 +1562,7 @@ void ED_object_wpaintmode_enter(bContext *C, Depsgraph *depsgraph)
 
 void ED_object_wpaintmode_exit_ex(Object *ob)
 {
-  switch (ob->type) {
-    case OB_MESH:
-      vwpaint::mode_exit_generic(ob, OB_MODE_WEIGHT_PAINT);
-      break;
-    case OB_GREASE_PENCIL: {
-      ob->mode &= ~OB_MODE_WEIGHT_PAINT;
-      break;
-    }
-    default:
-      BLI_assert_unreachable();
-      break;
-  }
+  vwpaint::mode_exit_generic(ob, OB_MODE_WEIGHT_PAINT);
 }
 void ED_object_wpaintmode_exit(bContext *C)
 {
@@ -1658,10 +1630,12 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
+    if (!blender::ed::object::mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
+
+  Mesh *mesh = BKE_mesh_from_object(ob);
 
   if (is_mode_set) {
     ED_object_wpaintmode_exit_ex(ob);
@@ -1676,17 +1650,14 @@ static int wpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   }
 
   /* Prepare armature posemode. */
-  ED_object_posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
+  blender::ed::object::posemode_set_for_weight_paint(C, bmain, ob, is_mode_set);
 
-  if (ob->type == OB_MESH) {
-    /* Weight-paint works by overriding colors in mesh,
-     * so need to make sure we recalculate on enter and
-     * exit (exit needs doing regardless because we
-     * should re-deform).
-     */
-    Mesh *mesh = BKE_mesh_from_object(ob);
-    DEG_id_tag_update(&mesh->id, 0);
-  }
+  /* Weight-paint works by overriding colors in mesh,
+   * so need to make sure we recalculate on enter and
+   * exit (exit needs doing regardless because we
+   * should re-deform).
+   */
+  DEG_id_tag_update(&mesh->id, 0);
 
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, scene);
 
@@ -1755,8 +1726,7 @@ static void wpaint_do_radial_symmetry(bContext *C,
   }
 }
 
-/* near duplicate of: sculpt.cc's,
- * 'do_symmetrical_brush_actions' and 'vpaint_do_symmetrical_brush_actions'. */
+/* near duplicate of: #do_symmetrical_brush_actions and #vpaint_do_symmetrical_brush_actions. */
 static void wpaint_do_symmetrical_brush_actions(
     bContext *C, Object *ob, VPaint *wp, WPaintData *wpd, WeightPaintInfo *wpi)
 {
@@ -1765,14 +1735,6 @@ static void wpaint_do_symmetrical_brush_actions(
   SculptSession *ss = ob->sculpt;
   StrokeCache *cache = ss->cache;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
-  int i = 0;
-
-  /* initial stroke */
-  cache->mirror_symmetry_pass = ePaintSymmetryFlags(0);
-  wpaint_do_paint(C, ob, wp, wpd, wpi, mesh, brush, ePaintSymmetryFlags(0), 'X', 0, 0);
-  wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, ePaintSymmetryFlags(0), 'X');
-  wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, ePaintSymmetryFlags(0), 'Y');
-  wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, ePaintSymmetryFlags(0), 'Z');
 
   cache->symmetry = symm;
 
@@ -1783,28 +1745,22 @@ static void wpaint_do_symmetrical_brush_actions(
     return;
   }
 
-  /* symm is a bit combination of XYZ - 1 is mirror
-   * X; 2 is Y; 3 is XY; 4 is Z; 5 is XZ; 6 is YZ; 7 is XYZ */
-  for (i = 1; i <= symm; i++) {
-    if (symm & i && (symm != 5 || i != 3) && (symm != 6 || !ELEM(i, 3, 5))) {
-      const ePaintSymmetryFlags symm = ePaintSymmetryFlags(i);
-      cache->mirror_symmetry_pass = symm;
-      cache->radial_symmetry_pass = 0;
-      SCULPT_cache_calc_brushdata_symm(cache, symm, 0, 0);
-
-      if (i & (1 << 0)) {
-        wpaint_do_paint(C, ob, wp, wpd, wpi, mesh, brush, symm, 'X', 0, 0);
-        wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'X');
-      }
-      if (i & (1 << 1)) {
-        wpaint_do_paint(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Y', 0, 0);
-        wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Y');
-      }
-      if (i & (1 << 2)) {
-        wpaint_do_paint(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Z', 0, 0);
-        wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Z');
-      }
+  /* symm is a bit combination of XYZ -
+   * 1 is mirror X; 2 is Y; 3 is XY; 4 is Z; 5 is XZ; 6 is YZ; 7 is XYZ */
+  for (int i = 0; i <= symm; i++) {
+    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+      continue;
     }
+
+    const ePaintSymmetryFlags symm = ePaintSymmetryFlags(i);
+    cache->mirror_symmetry_pass = symm;
+    cache->radial_symmetry_pass = 0;
+    SCULPT_cache_calc_brushdata_symm(cache, symm, 0, 0);
+
+    wpaint_do_paint(C, ob, wp, wpd, wpi, mesh, brush, symm, 'X', 0, 0);
+    wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'X');
+    wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Y');
+    wpaint_do_radial_symmetry(C, ob, wp, wpd, wpi, mesh, brush, symm, 'Z');
   }
   copy_v3_v3(cache->true_last_location, cache->true_location);
   cache->is_last_valid = true;

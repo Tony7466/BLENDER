@@ -36,7 +36,8 @@ void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level
 
   vec3 lP = light_world_to_local(light, P);
 
-  level = clamp(level, light.clipmap_lod_min, light.clipmap_lod_max);
+  level = clamp(
+      level, light_sun_data_get(light).clipmap_lod_min, light_sun_data_get(light).clipmap_lod_max);
 
   ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
   shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
@@ -54,15 +55,15 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
 
   /* TODO(Miguel Pozo): Implement lod_bias support. */
   if (radius == 0.0) {
-    int level = shadow_directional_level(light, lP - light._position);
+    int level = shadow_directional_level(light, lP - light_position_get(light));
     ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
     shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
   }
   else {
     vec3 start_lP = light_world_to_local(light, P - V * radius);
     vec3 end_lP = light_world_to_local(light, P + V * radius);
-    int min_level = shadow_directional_level(light, start_lP - light._position);
-    int max_level = shadow_directional_level(light, end_lP - light._position);
+    int min_level = shadow_directional_level(light, start_lP - light_position_get(light));
+    int max_level = shadow_directional_level(light, end_lP - light_position_get(light));
 
     for (int level = min_level; level <= max_level; level++) {
       ShadowCoordinates coord_min = shadow_directional_coordinates_at_level(
@@ -88,15 +89,15 @@ void shadow_tag_usage_tilemap_punctual(
     return;
   }
 
-  vec3 lP = light_world_to_local(light, P - light._position);
+  vec3 lP = light_world_to_local(light, P - light_position_get(light));
   float dist_to_light = max(length(lP) - radius, 1e-5);
-  if (dist_to_light > light.influence_radius_max) {
+  if (dist_to_light > light_local_data_get(light).influence_radius_max) {
     return;
   }
   if (is_spot_light(light.type)) {
     /* Early out if out of cone. */
     float angle_tan = length(lP.xy / dist_to_light);
-    if (angle_tan > light.spot_tan) {
+    if (angle_tan > light_spot_data_get(light).spot_tan) {
       return;
     }
   }
@@ -108,31 +109,17 @@ void shadow_tag_usage_tilemap_punctual(
   }
 
   /* TODO(fclem): 3D shift for jittered soft shadows. */
-  lP += vec3(0.0, 0.0, -light.shadow_projection_shift);
+  lP += vec3(0.0, 0.0, -light_local_data_get(light).shadow_projection_shift);
 
-  /* How much a shadow map pixel covers a final image pixel.
-   * We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
-   * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
-   * This gives a good approximation of what LOD to select to get a somewhat uniform shadow map
-   * resolution in screen space. */
-  float footprint_ratio = dist_to_light;
-  /* Project the radius to the screen. 1 unit away from the camera the same way
-   * pixel_world_radius_inv was computed. Not needed in orthographic mode. */
-  bool is_persp = (ProjectionMatrix[3][3] == 0.0);
-  if (is_persp) {
-    footprint_ratio /= dist_to_cam;
-  }
-  /* Apply resolution ratio. */
-  footprint_ratio *= tilemap_projection_ratio;
-  /* Take the frustum padding into account. */
-  footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
+  float footprint_ratio = shadow_punctual_footprint_ratio(
+      light, P, drw_view_is_perspective(), dist_to_cam, tilemap_proj_ratio);
 
   if (radius == 0) {
     int face_id = shadow_punctual_face_index_get(lP);
     lP = shadow_punctual_local_position_to_face_local(face_id, lP);
     ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
 
-    int lod = int(ceil(-log2(footprint_ratio) + tilemaps_buf[coord.tilemap_index].lod_bias));
+    int lod = int(floor(-log2(footprint_ratio) + tilemaps_buf[coord.tilemap_index].lod_bias));
     lod += lod_bias;
     lod = clamp(lod, 0, SHADOW_TILEMAP_LOD);
 

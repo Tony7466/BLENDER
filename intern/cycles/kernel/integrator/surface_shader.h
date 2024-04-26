@@ -212,7 +212,7 @@ ccl_device_inline void surface_shader_prepare_closures(KernelGlobals kg,
 /* BSDF */
 #ifdef WITH_CYCLES_DEBUG
 ccl_device_inline void surface_shader_validate_bsdf_sample(const KernelGlobals kg,
-                                                           const ShaderClosure *sc,
+                                                           ccl_private const ShaderClosure *sc,
                                                            const float3 wo,
                                                            const int org_label,
                                                            const float2 org_roughness,
@@ -363,6 +363,12 @@ ccl_device_inline
 
   float pdf = _surface_shader_bsdf_eval_mis(
       kg, sd, wo, NULL, bsdf_eval, 0.0f, 0.0f, light_shader_flags);
+
+  /* If the light does not use MIS, then it is only sampled via NEE, so the probability of hitting
+   * the light using BSDF sampling is zero. */
+  if (!(light_shader_flags & SHADER_USE_MIS)) {
+    pdf = 0.0f;
+  }
 
 #if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
   if (pdf > 0.0f && state->guiding.use_surface_guiding) {

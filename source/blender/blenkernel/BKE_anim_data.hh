@@ -8,13 +8,15 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "BLI_sys_types.h" /* for bool */
 
 struct AnimData;
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct ID;
+struct Library;
 struct LibraryForeachIDData;
 struct Main;
 struct ReportList;
@@ -84,11 +86,28 @@ void BKE_animdata_foreach_id(AnimData *adt, LibraryForeachIDData *data);
 
 /**
  * Make a copy of the given AnimData - to be used when copying data-blocks.
- * \param flag: Control ID pointers management,
- * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_lib_id.hh
+ *
+ * \note Regarding handling of IDs managed by the #AnimData struct, this function follows the
+ * behaviors of the generic #BKE_id_copy_ex, please see its documentation for more details.
+ *
+ * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in
+ * `BKE_lib_id.hh`.
+ *
  * \return The copied animdata.
  */
 AnimData *BKE_animdata_copy(Main *bmain, AnimData *adt, int flag);
+
+/**
+ * Same as #BKE_animdata_copy, but allows to duplicate Action IDs into a library.
+ *
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * not use any library (i.e. become a local ID). Use `std::nullopt` for default behavior (i.e.
+ * behavior of the #BKE_animdata_copy function).
+ */
+AnimData *BKE_animdata_copy_in_lib(Main *bmain,
+                                   std::optional<Library *> owner_library,
+                                   AnimData *adt,
+                                   int flag);
 
 /**
  * \param flag: Control ID pointers management,
@@ -124,3 +143,12 @@ void BKE_animdata_merge_copy(
 
 void BKE_animdata_blend_write(BlendWriter *writer, ID *id);
 void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id);
+
+/**
+ * Process the AnimData struct after all library overrides have been applied.
+ *
+ * This is necessary as an extra step to fix the NLA, as that requires multiple pointers & various
+ * sets of flags to all be consistent. It's much easier to do that once all overrides have been
+ * applied.
+ */
+void BKE_animdata_liboverride_post_process(ID *id);

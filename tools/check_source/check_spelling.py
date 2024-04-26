@@ -272,7 +272,7 @@ def words_from_text(text: str, check_type: str) -> List[Tuple[str, int]]:
             w_prev = w_lower
             w_prev_start = w_start
     else:
-        assert False
+        assert False, "unreachable"
 
     return words
 
@@ -308,7 +308,6 @@ class Comment:
 
 
 def extract_code_strings(filepath: str) -> Tuple[List[Comment], Set[str]]:
-    import pygments
     from pygments import lexers
     from pygments.token import Token
 
@@ -551,7 +550,7 @@ def spell_check_file(
                 # print(filepath + ":" + str(slineno + 1) + ":" + str(scol), w, "(duplicates)")
                 yield (w, slineno, scol)
     else:
-        assert False
+        assert False, "unreachable"
 
 
 def spell_check_file_recursive(

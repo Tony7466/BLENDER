@@ -12,8 +12,10 @@
 #include "BLI_math_base.hh"
 #include "BLI_math_interp.hh"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 
+#include <cstdint>
 #include <cstring>
 
 struct ColormanageProcessor;
@@ -89,6 +91,11 @@ class MemoryBuffer {
   int to_positive_y_stride_;
 
  public:
+  /**
+   * \brief construct new temporarily MemoryBuffer for a width and height.
+   */
+  MemoryBuffer(DataType data_type, int width, int height);
+
   /**
    * \brief construct new temporarily MemoryBuffer for an area
    */
@@ -201,6 +208,36 @@ class MemoryBuffer {
     read_elem_checked(floor_x(x), floor_y(y), out);
   }
 
+  /* Equivalent to the GLSL texture() function with bilinear interpolation and extended boundary
+   * conditions. The coordinates are thus expected to have half-pixels offsets. A float4 is always
+   * returned regardless of the number of channels of the buffer, the remaining channels will be
+   * initialized with the template float4(0, 0, 0, 1). */
+  float4 texture_bilinear_extend(float2 coordinates) const
+  {
+    const int2 size = int2(get_width(), get_height());
+    const float2 texel_coordinates = (coordinates * float2(size)) - 0.5f;
+
+    float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    math::interpolate_bilinear_fl(
+        buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
+    return result;
+  }
+
+  /* Equivalent to the GLSL texture() function with nearest interpolation and extended boundary
+   * conditions. The coordinates are thus expected to have half-pixels offsets. A float4 is always
+   * returned regardless of the number of channels of the buffer, the remaining channels will be
+   * initialized with the template float4(0, 0, 0, 1). */
+  float4 texture_nearest_extend(float2 coordinates) const
+  {
+    const int2 size = int2(get_width(), get_height());
+    const float2 texel_coordinates = coordinates * float2(size);
+
+    float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    math::interpolate_nearest_fl(
+        buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
+    return result;
+  }
+
   void read_elem_bilinear(float x, float y, float *out) const
   {
     /* Only clear past +/-1 borders to be able to smooth edges. */
@@ -249,6 +286,12 @@ class MemoryBuffer {
                                          get_relative_y(y));
   }
 
+  void read_elem_bicubic_bspline(float x, float y, float *out) const
+  {
+    math::interpolate_cubic_bspline_fl(
+        buffer_, out, this->get_width(), this->get_height(), num_channels_, x, y);
+  }
+
   void read_elem_sampled(float x, float y, PixelSampler sampler, float *out) const
   {
     switch (sampler) {
@@ -256,9 +299,11 @@ class MemoryBuffer {
         read_elem_checked(x, y, out);
         break;
       case PixelSampler::Bilinear:
-      case PixelSampler::Bicubic:
-        /* No bicubic. Current implementation produces fuzzy results. */
         read_elem_bilinear(x, y, out);
+        break;
+      case PixelSampler::Bicubic:
+        /* Using same method as GPU compositor. Final results may still vary. */
+        read_elem_bicubic_bspline(x, y, out);
         break;
     }
   }
@@ -613,9 +658,9 @@ class MemoryBuffer {
 
  private:
   void set_strides();
-  const int buffer_len() const
+  const int64_t buffer_len() const
   {
-    return get_memory_width() * get_memory_height();
+    return int64_t(get_memory_width()) * int64_t(get_memory_height());
   }
 
   void clear_elem(float *out) const

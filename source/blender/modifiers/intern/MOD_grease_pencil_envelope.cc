@@ -316,9 +316,9 @@ static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &e
     const IndexRange points = points_by_curve[curve_i];
     const bool cyclic = cyclic_flags[curve_i];
     const int point_num = points.size();
-    const int spread = cyclic ? (math::abs(((emd.spread + point_num / 2) % point_num) -
-                                           point_num / 2)) :
-                                std::min(emd.spread, point_num - 1);
+    const int spread = cyclic ?
+                           math::abs(((emd.spread + point_num / 2) % point_num) - point_num / 2) :
+                           std::min(emd.spread, point_num - 1);
 
     for (const int64_t i : points.index_range()) {
       const int64_t point_i = points[i];
@@ -482,16 +482,17 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
    * Each span only gets added once since it repeats for neighboring points.
    */
 
-  for (const int i : IndexRange(num_strokes)) {
-    const IndexRange dst_envelope_points = {i * info.points_per_curve, info.points_per_curve};
+  for (const int dst_i : IndexRange(num_strokes)) {
+    const int src_i = dst_i * (1 + info.skip);
+    const IndexRange dst_envelope_points = {dst_i * info.points_per_curve, info.points_per_curve};
 
-    curve_offsets[i] = dst_points[dst_envelope_points.start()];
-    material_indices[i] = info.material_index >= 0 ? info.material_index :
-                                                     src_material_indices[src_curve_index];
+    curve_offsets[dst_i] = dst_points[dst_envelope_points.start()];
+    material_indices[dst_i] = info.material_index >= 0 ? info.material_index :
+                                                         src_material_indices[src_curve_index];
 
     create_envelope_stroke_for_point(src_curve_points,
                                      src_curve_cyclic,
-                                     i,
+                                     src_i,
                                      spread,
                                      base_length,
                                      point_src_indices.slice(dst_envelope_points));

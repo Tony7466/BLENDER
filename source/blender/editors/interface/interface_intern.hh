@@ -28,7 +28,9 @@ struct bContextStore;
 struct ColorManagedDisplay;
 struct CurveMapping;
 struct CurveProfile;
-struct GPUBatch;
+namespace blender::gpu {
+class Batch;
+}
 struct IconTextOverlay;
 struct ID;
 struct ImBuf;
@@ -243,6 +245,9 @@ struct uiBut {
   uchar unit_type = 0;
   short iconadd = 0;
 
+  /** Affects the order if this uiBut is used in menu-search. */
+  float search_weight = 0.0f;
+
   /** #UI_BTYPE_BLOCK data */
   uiBlockCreateFunc block_create_func = nullptr;
 
@@ -355,7 +360,7 @@ struct uiButSearch : public uiBut {
 
 /**
  * Derived struct for #UI_BTYPE_DECORATOR
- * Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects.
+ * Decorators have their own RNA data, using the normal #uiBut RNA members has many side-effects.
  */
 struct uiButDecorator : public uiBut {
   struct PointerRNA decorated_rnapoin = {};
@@ -388,8 +393,8 @@ struct uiButScrollBar : public uiBut {
 };
 
 struct uiButViewItem : public uiBut {
-  /* C-Handle to the view item this button was created for. */
-  uiViewItemHandle *view_item = nullptr;
+  /* The view item this button was created for. */
+  blender::ui::AbstractViewItem *view_item = nullptr;
   /* Some items want to have a fixed size for drawing, differing from the interaction rectangle
    * (e.g. so highlights are drawn smaller). */
   int draw_width = 0;
@@ -611,13 +616,14 @@ struct uiBlock {
   /** use so presets can find the operator,
    * across menus and from nested popups which fail for operator context. */
   wmOperator *ui_operator;
+  bool ui_operator_free;
 
   /** XXX hack for dynamic operator enums */
   void *evil_C;
 
   /** unit system, used a lot for numeric buttons so include here
    * rather than fetching through the scene every time. */
-  UnitSettings *unit;
+  const UnitSettings *unit;
   /** \note only accessed by color picker templates. */
   ColorPickerData color_pickers;
 
@@ -1195,8 +1201,8 @@ enum {
   ROUNDBOX_TRIA_MAX, /* don't use */
 };
 
-GPUBatch *ui_batch_roundbox_widget_get();
-GPUBatch *ui_batch_roundbox_shadow_get();
+blender::gpu::Batch *ui_batch_roundbox_widget_get();
+blender::gpu::Batch *ui_batch_roundbox_shadow_get();
 
 void ui_draw_menu_back(uiStyle *style, uiBlock *block, rcti *rect);
 void ui_draw_popover_back(ARegion *region, uiStyle *style, uiBlock *block, rcti *rect);
@@ -1482,8 +1488,10 @@ void UI_OT_eyedropper_color(wmOperatorType *ot);
 
 /* interface_eyedropper_colorband.c */
 
+namespace blender::ui {
 void UI_OT_eyedropper_colorramp(wmOperatorType *ot);
 void UI_OT_eyedropper_colorramp_point(wmOperatorType *ot);
+}  // namespace blender::ui
 
 /* interface_eyedropper_datablock.c */
 
@@ -1538,15 +1546,16 @@ void ui_block_free_views(uiBlock *block);
 void ui_block_views_bounds_calc(const uiBlock *block);
 void ui_block_views_listen(const uiBlock *block, const wmRegionListenerParams *listener_params);
 void ui_block_views_draw_overlays(const ARegion *region, const uiBlock *block);
-uiViewHandle *ui_block_view_find_matching_in_old_block(const uiBlock *new_block,
-                                                       const uiViewHandle *new_view);
+blender::ui::AbstractView *ui_block_view_find_matching_in_old_block(
+    const uiBlock &new_block, const blender::ui::AbstractView &new_view);
 
 uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
-    const uiBlock *new_block, const uiViewItemHandle *new_item_handle);
+    const uiBlock &new_block, const blender::ui::AbstractViewItem &new_item);
 
 /* abstract_view_item.cc */
 
-void ui_view_item_swap_button_pointers(uiViewItemHandle *a_handle, uiViewItemHandle *b_handle);
+void ui_view_item_swap_button_pointers(blender::ui::AbstractViewItem &a,
+                                       blender::ui::AbstractViewItem &b);
 
 /* interface_templates.cc */
 

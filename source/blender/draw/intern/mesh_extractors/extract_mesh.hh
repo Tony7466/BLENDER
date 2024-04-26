@@ -20,8 +20,8 @@
 
 #include "bmesh.hh"
 
-#include "GPU_vertex_buffer.h"
-#include "GPU_vertex_format.h"
+#include "GPU_vertex_buffer.hh"
+#include "GPU_vertex_format.hh"
 
 #include "draw_cache_extract.hh"
 
@@ -48,12 +48,17 @@ enum eMRExtractType {
 struct MeshRenderData {
   eMRExtractType extract_type;
 
-  int face_len, edge_len, vert_len, loop_len;
-  int edge_loose_len;
-  int vert_loose_len;
-  int loop_loose_len;
-  int tri_len;
-  int mat_len;
+  int verts_num;
+  int edges_num;
+  int faces_num;
+  int corners_num;
+
+  int loose_edges_num;
+  int loose_verts_num;
+  int loose_indices_num;
+
+  int corner_tris_num;
+  int materials_num;
 
   bool use_hide;
   bool use_subsurf_fdots;
@@ -75,7 +80,6 @@ struct MeshRenderData {
   Span<float3> bm_vert_coords;
   Span<float3> bm_vert_normals;
   Span<float3> bm_face_normals;
-  Span<float3> bm_face_centers;
   Array<float3> bm_loop_normals;
 
   const int *v_origindex, *e_origindex, *p_origindex;
@@ -85,12 +89,13 @@ struct MeshRenderData {
   int freestyle_edge_ofs;
   int freestyle_face_ofs;
   /** Mesh */
-  Mesh *mesh;
+  const Mesh *mesh;
   Span<float3> vert_positions;
   Span<int2> edges;
   OffsetIndices<int> faces;
   Span<int> corner_verts;
   Span<int> corner_edges;
+
   BMVert *eve_act;
   BMEdge *eed_act;
   BMFace *efa_act;
@@ -273,14 +278,14 @@ struct MeshExtract {
 /* `draw_cache_extract_mesh_render_data.cc` */
 
 /**
- * \param is_mode_active: When true, use the modifiers from the edit-data,
+ * \param edit_mode_active: When true, use the modifiers from the edit-data,
  * otherwise don't use modifiers as they are not from this object.
  */
 MeshRenderData *mesh_render_data_create(Object *object,
                                         Mesh *mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
-                                        bool is_mode_active,
+                                        bool edit_mode_active,
                                         const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
@@ -315,9 +320,7 @@ struct EditLoopData {
 
 void *mesh_extract_buffer_get(const MeshExtract *extractor, MeshBufferList *mbuflist);
 eMRIterType mesh_extract_iter_type(const MeshExtract *ext);
-const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor,
-                                             bool do_hq_normals,
-                                             bool do_single_mat);
+const MeshExtract *mesh_extract_override_get(const MeshExtract *extractor, bool do_hq_normals);
 void mesh_render_data_face_flag(const MeshRenderData &mr,
                                 const BMFace *efa,
                                 BMUVOffsets offsets,
@@ -335,7 +338,6 @@ template<typename GPUType>
 void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
 
 extern const MeshExtract extract_tris;
-extern const MeshExtract extract_tris_single_mat;
 extern const MeshExtract extract_lines;
 extern const MeshExtract extract_lines_with_lines_loose;
 extern const MeshExtract extract_lines_loose_only;

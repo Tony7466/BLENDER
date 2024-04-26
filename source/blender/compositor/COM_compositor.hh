@@ -104,7 +104,6 @@ void COM_execute(Render *render,
                  RenderData *render_data,
                  Scene *scene,
                  bNodeTree *node_tree,
-                 bool rendering,
                  const char *view_name,
                  blender::realtime_compositor::RenderContext *render_context,
                  blender::compositor::ProfilerData &profiler_data);
@@ -113,10 +112,10 @@ void COM_execute(Render *render,
  * \brief Deinitialize the compositor caches and allocated memory.
  * Use COM_clear_caches to only free the caches.
  */
-void COM_deinitialize(void);
+void COM_deinitialize();
 
 /**
  * \brief Clear all compositor caches. (Compositor system will still remain available).
  * To deinitialize the compositor use the COM_deinitialize method.
  */
-// void COM_clear_caches(void); // NOT YET WRITTEN
+// void COM_clear_caches(); // NOT YET WRITTEN
