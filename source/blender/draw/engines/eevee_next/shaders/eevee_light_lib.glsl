@@ -24,7 +24,7 @@ LightVector light_vector_get(LightData light, const bool is_directional, vec3 P)
 {
   LightVector lv;
   if (is_directional) {
-    lv.L = transform_z_axis(light.object_to_world);
+    lv.L = light_z_axis(light);
     lv.dist = 1.0;
   }
   else {
@@ -97,7 +97,7 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
     return light_spot_attenuation(light, L);
   }
   if (is_area_light(light.type)) {
-    return float(dot(L, transform_z_axis(light.object_to_world)) > 0.0);
+    return float(dot(L, light_z_axis(light)) > 0.0);
   }
   return 1.0;
 }
@@ -186,7 +186,7 @@ float light_point_light(LightData light, const bool is_directional, LightVector 
 
   if (is_area_light(light.type)) {
     /* Modulate by light plane orientation / solid angle. */
-    power *= saturate(dot(transform_z_axis(light.object_to_world), lv.L));
+    power *= saturate(dot(light_z_axis(light), lv.L));
   }
   return power;
 }
@@ -211,8 +211,8 @@ float light_ltc(
     return 1.0;
   }
 
-  vec3 Px = transform_x_axis(light.object_to_world);
-  vec3 Py = transform_y_axis(light.object_to_world);
+  vec3 Px = light_x_axis(light);
+  vec3 Py = light_y_axis(light);
 
   if (light.type == LIGHT_RECT) {
     LightAreaData area = light_area_data_get(light);

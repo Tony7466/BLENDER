@@ -983,6 +983,18 @@ struct LightData {
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
+static inline float3 light_x_axis(LightData light)
+{
+  return transform_x_axis(light.object_to_world);
+}
+static inline float3 light_y_axis(LightData light)
+{
+  return transform_y_axis(light.object_to_world);
+}
+static inline float3 light_z_axis(LightData light)
+{
+  return transform_z_axis(light.object_to_world);
+}
 static inline float3 light_position_get(LightData light)
 {
   return transform_location(light.object_to_world);

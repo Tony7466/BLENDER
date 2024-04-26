@@ -149,9 +149,9 @@ void main()
 
     /* Culling in view space for precision and simplicity. */
     vec3 vP = drw_point_world_to_view(light_position_get(light));
-    vec3 v_right = drw_normal_world_to_view(transform_x_axis(light.object_to_world));
-    vec3 v_up = drw_normal_world_to_view(transform_y_axis(light.object_to_world));
-    vec3 v_back = drw_normal_world_to_view(transform_z_axis(light.object_to_world));
+    vec3 v_right = drw_normal_world_to_view(light_x_axis(light));
+    vec3 v_up = drw_normal_world_to_view(light_y_axis(light));
+    vec3 v_back = drw_normal_world_to_view(light_z_axis(light));
     float radius = light_local_data_get(light).influence_radius_max;
 
     Sphere sphere = shape_sphere(vP, radius);
