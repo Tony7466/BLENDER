@@ -45,7 +45,7 @@ LightVector light_shape_vector_get(LightData light, const bool is_directional, v
     vec3 lP = transform_point_inversed(light.object_to_world, P);
     vec2 ls_closest_point = lP.xy;
     if (light.type == LIGHT_ELLIPSE) {
-      ls_closest_point /= saturate(length(ls_closest_point / area.size));
+      ls_closest_point /= max(1.0, length(ls_closest_point / area.size));
     }
     else {
       ls_closest_point = clamp(ls_closest_point, -area.size, area.size);
