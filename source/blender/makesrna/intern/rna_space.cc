@@ -2514,7 +2514,6 @@ static std::optional<std::string> rna_SpaceSequencerTimelineOverlay_path(
 
 static float rna_SpaceSequenceEditor_zoom_percentage_get(PointerRNA *ptr)
 {
-  SpaceSeq *sseq = static_cast<SpaceSeq *>(ptr->data);
   ScrArea *area = rna_area_from_space(ptr);
   if (area == nullptr) {
     return 100.0f;
@@ -2532,7 +2531,6 @@ static float rna_SpaceSequenceEditor_zoom_percentage_get(PointerRNA *ptr)
 
 static void rna_SpaceSequenceEditor_zoom_percentage_set(PointerRNA *ptr, const float value)
 {
-  SpaceSeq *sseq = static_cast<SpaceSeq *>(ptr->data);
   ScrArea *area = rna_area_from_space(ptr);
   if (area == nullptr) {
     return;
