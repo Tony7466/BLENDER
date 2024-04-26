@@ -130,6 +130,7 @@ set(SRC
 
   intern/usd_armature_utils.hh
   intern/usd_asset_utils.hh
+  intern/usd_attribute_utils.hh
   intern/usd_blend_shape_utils.hh
   intern/usd_exporter_context.hh
   intern/usd_hash_types.hh
