@@ -2312,7 +2312,9 @@ void RNA_api_ui_layout(StructRNA *srna)
                         "",
                         "Identifier of the asset shelf to display (`bl_idname`)");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_string(func, "name", nullptr, 0, "", "Optional name to indicate the active asset");
+  parm = RNA_def_string(
+      func, "name", nullptr, 0, "", "Optional name to indicate the active asset");
+  RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
   parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(parm, rna_enum_icon_items);
   RNA_def_property_ui_text(parm, "Icon", "Override automatic icon of the item");
