@@ -22,3 +22,4 @@ Referenced by issue #113358, Regression: EEVEE: Crash on extract UV from evaluat
 Referenced by issue #113611, Convert Attribute Mode does not have "UVMap" in Blender ver.3.6.4. (also ver.3.5.1)
 Referenced by issue #121004, Regression: stale BMesh UV data
 Referenced by pull request #121033, Fix #121004: bmesh.ops.dissolve_limit wrong in certain cases
+Referenced by commit e816b481e02683a3af21b098b363a215aa0ca87a, Fix #121004: bmesh.ops.dissolve_limit wrong in certain cases
