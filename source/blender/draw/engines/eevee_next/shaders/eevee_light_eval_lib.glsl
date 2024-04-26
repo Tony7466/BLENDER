@@ -115,6 +115,28 @@ struct ClosureLightStack {
   ClosureLight cl[LIGHT_CLOSURE_EVAL_COUNT];
 };
 
+ClosureLight closure_light_get(ClosureLightStack stack, int index)
+{
+  switch (index) {
+    case 0:
+      return stack.cl[0];
+#if LIGHT_CLOSURE_EVAL_COUNT > 1
+    case 1:
+      return stack.cl[1];
+#endif
+#if LIGHT_CLOSURE_EVAL_COUNT > 2
+    case 2:
+      return stack.cl[2];
+#endif
+#if LIGHT_CLOSURE_EVAL_COUNT > 3
+#  error
+#endif
+  }
+
+  ClosureLight closure_null;
+  return closure_null;
+}
+
 ClosureLight closure_light_new_ex(ClosureUndetermined cl,
                                   vec3 V,
                                   float thickness,
