@@ -3439,17 +3439,40 @@ static void outliner_draw_tree_element(bContext *C,
     else if (te->subtree.first || ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_SCE)) ||
              (te->flag & TE_PRETEND_HAS_CHILDREN))
     {
+
+      Collection *collection = nullptr;
+      bTheme *btheme = UI_GetTheme();
+      if (outliner_is_collection_tree_element(te)) {
+        collection = outliner_collection_from_tree_element(te);
+      }
+      const uchar *color = (collection && collection->color_tag != COLLECTION_COLOR_NONE) ?
+                               btheme->collection_color[collection->color_tag].color :
+                               nullptr;
+
       /* Open/close icon, only when sub-levels, except for scene. */
       int icon_x = startx;
-
       /* Icons a bit higher. */
       if (TSELEM_OPEN(tselem, space_outliner)) {
-        UI_icon_draw_alpha(
-            float(icon_x) + 2 * ufac, float(*starty) + 1 * ufac, ICON_DOWNARROW_HLT, alpha_fac);
+        UI_icon_draw_ex(float(icon_x) + 2 * ufac,
+                        float(*starty) + 1 * ufac,
+                        ICON_DOWNARROW_HLT,
+                        UI_INV_SCALE_FAC,
+                        alpha_fac,
+                        0.0,
+                        color,
+                        false,
+                        UI_NO_ICON_OVERLAY_TEXT);
       }
       else {
-        UI_icon_draw_alpha(
-            float(icon_x) + 2 * ufac, float(*starty) + 1 * ufac, ICON_RIGHTARROW, alpha_fac);
+        UI_icon_draw_ex(float(icon_x) + 2 * ufac,
+                        float(*starty) + 1 * ufac,
+                        ICON_RIGHTARROW,
+                        UI_INV_SCALE_FAC,
+                        alpha_fac,
+                        0.0,
+                        color,
+                        false,
+                        UI_NO_ICON_OVERLAY_TEXT);
       }
     }
     offsx += UI_UNIT_X;
