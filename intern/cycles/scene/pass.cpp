@@ -95,6 +95,7 @@ const NodeEnum *Pass::get_type_enum()
     pass_type_enum.insert("shadow_catcher_matte", PASS_SHADOW_CATCHER_MATTE);
 
     pass_type_enum.insert("restir_reservoir", PASS_RESTIR_RESERVOIR);
+    pass_type_enum.insert("surface_data", PASS_SURFACE_DATA);
 
     pass_type_enum.insert("bake_primitive", PASS_BAKE_PRIMITIVE);
     pass_type_enum.insert("bake_seed", PASS_BAKE_SEED);
@@ -363,7 +364,10 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       pass_info.num_components = 1;
       break;
     case PASS_RESTIR_RESERVOIR:
-      pass_info.num_components = 19;
+      pass_info.num_components = 5;
+      break;
+    case PASS_SURFACE_DATA:
+      pass_info.num_components = 14;
       break;
   }
 

@@ -76,7 +76,7 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
                                                        ccl_private uint32_t *path_flag,
                                                        const ccl_global float *buffer)
 {
-  int i = 5;
+  int i = 0;
 
   *path_flag = (uint32_t)buffer[i++];
 
@@ -101,41 +101,37 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
 }
 
 ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
+                                                       ccl_private ShaderData *sd,
+                                                       ccl_private uint32_t *path_flag,
+                                                       const uint32_t render_pixel_index,
+                                                       const ccl_global float *ccl_restrict
+                                                           render_buffer)
+{
+  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
+  if (kernel_data.film.pass_surface_data != PASS_UNUSED) {
+    const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
+    ccl_global const float *buffer = render_buffer + render_buffer_offset +
+                                     kernel_data.film.pass_surface_data;
+    integrator_restir_unpack_shader(sd, path_flag, buffer);
+  }
+}
+
+ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
                                                        IntegratorState state,
                                                        ccl_private ShaderData *sd,
                                                        ccl_private uint32_t *path_flag,
                                                        ccl_global float *ccl_restrict
                                                            render_buffer)
 {
-  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-  if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
-    ccl_global const float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer) +
-                                     kernel_data.film.pass_restir_reservoir;
-    integrator_restir_unpack_shader(sd, path_flag, buffer);
-  }
-}
-
-ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
-                                                       ccl_private ShaderData *sd,
-                                                       ccl_private uint32_t *path_flag,
-                                                       const uint64_t render_pixel_index,
-                                                       const ccl_global float *ccl_restrict
-                                                           render_buffer)
-{
-  PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-  if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
-    const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
-    ccl_global const float *buffer = render_buffer + render_buffer_offset +
-                                     kernel_data.film.pass_restir_reservoir;
-    integrator_restir_unpack_shader(sd, path_flag, buffer);
-  }
+  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
+  integrator_restir_unpack_shader(kg, sd, path_flag, render_pixel_index, render_buffer);
 }
 
 ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           ccl_private Reservoir *reservoir,
                                                           ccl_private ShaderData *sd,
                                                           ccl_private uint32_t *path_flag,
-                                                          const uint64_t render_pixel_index,
+                                                          const uint32_t render_pixel_index,
                                                           const ccl_global float *ccl_restrict
                                                               render_buffer)
 {
@@ -144,10 +140,9 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
     const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
     ccl_global const float *buffer = render_buffer + render_buffer_offset +
                                      kernel_data.film.pass_restir_reservoir;
-
     integrator_restir_unpack_reservoir(kg, reservoir, buffer);
-    integrator_restir_unpack_shader(sd, path_flag, buffer);
   }
+  integrator_restir_unpack_shader(kg, sd, path_flag, render_pixel_index, render_buffer);
 }
 
 /* TODO(weizhen): move these radiance function to somewhere else. */

@@ -572,6 +572,7 @@ typedef enum PassType {
   PASS_SHADOW_CATCHER_MATTE,
 
   PASS_RESTIR_RESERVOIR,
+  PASS_SURFACE_DATA,
 
   /* Guiding related debug rendering passes */
   /* The estimated sample color from the PathSegmentStorage. If everything is integrated correctly

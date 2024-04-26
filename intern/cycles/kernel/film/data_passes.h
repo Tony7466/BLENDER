@@ -220,6 +220,7 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
   ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
   if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
     float *ptr = buffer + kernel_data.film.pass_restir_reservoir;
+
     /* TODO(weizhen): it is possible to compress the LightSample. */
 
     film_overwrite_pass_float(ptr++, (float)reservoir->ls.object);
@@ -230,7 +231,10 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
     film_overwrite_pass_float(ptr++, reservoir->total_weight);
+  }
 
+  if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
+    float *ptr = buffer + kernel_data.film.pass_surface_data;
     film_overwrite_pass_float(ptr++, (float)path_flag);
 
     film_overwrite_pass_float(ptr++, sd->u);
