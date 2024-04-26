@@ -24,9 +24,13 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
   const Object &self_object = *params.self_object();
-  const RegionView3D &rv3d = *params.user_data()->call_data->operator_data->rv3d;
-  params.set_output("Projection", float4x4(rv3d.winmat) * self_object.object_to_world());
-  params.set_output("View", float4x4(rv3d.viewmat) * self_object.object_to_world());
+  const RegionView3D *rv3d = params.user_data()->call_data->operator_data->rv3d;
+  if (!rv3d) {
+    params.set_default_remaining_outputs();
+    return;
+  }
+  params.set_output("Projection", float4x4(rv3d->winmat) * self_object.object_to_world());
+  params.set_output("View", float4x4(rv3d->viewmat) * self_object.object_to_world());
 }
 
 static void node_register()
