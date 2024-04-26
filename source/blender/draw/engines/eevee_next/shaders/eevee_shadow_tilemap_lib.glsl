@@ -138,11 +138,8 @@ int shadow_directional_level(LightData light, vec3 lP)
 }
 
 /* How much a tilemap pixel covers a final image pixel. */
-float shadow_punctual_footprint_ratio(LightData light,
-                                      vec3 P,
-                                      bool is_perspective,
-                                      float dist_to_cam,
-                                      float tilemap_proj_ratio_arg)
+float shadow_punctual_footprint_ratio(
+    LightData light, vec3 P, bool is_perspective, float dist_to_cam, float tilemap_proj_ratio_arg)
 {
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.

@@ -99,7 +99,7 @@ struct ClosureLight {
   vec4 ltc_mat;
   /* Shading normal. */
   packed_float3 N;
- 
+
   /* Output both shadowed and unshadowed for shadow denoising. */
   packed_float3 light_shadowed;
   packed_float3 light_unshadowed;
