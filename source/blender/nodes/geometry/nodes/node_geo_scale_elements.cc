@@ -317,7 +317,9 @@ static void scale_on_axis(const GroupedSpan<int> elem_islands,
           });
         }
       },
-      threading::individual_task_sizes([&](const int64_t i) { return vert_islands[i].size(); }));
+      threading::accumulated_task_sizes([&](const IndexRange range) {
+        return vert_islands.offsets[range].size() + elem_islands.offsets[range].size();
+      }));
 }
 
 static int face_to_vert_islands(const Mesh &mesh,
