@@ -611,6 +611,7 @@ class NODE_MT_category_utilities_matrix(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeCombineTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
+        node_add_menu.add_node_type(layout, "FunctionNodeProjectPoint")
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
         node_add_menu.add_node_type(layout, "FunctionNodeTransformPoint")
@@ -721,6 +722,7 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeGridToMesh")
+            node_add_menu.add_node_type(layout, "GeometryNodeSDFGridBoolean")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 
