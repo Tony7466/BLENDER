@@ -44,12 +44,18 @@ static Array<int> calc_curve_offsets(const pxr::VtIntArray &usdCounts,
                                      const CurveType curve_type,
                                      bool is_cyclic)
 {
-  Array<int> offsets(usdCounts.size() + 1);
+  /* The returned `offsets` array is one item bigger than `usdCounts`: its last item contains the
+   * total amount of points needed (i.e. the offset to the start of the last last curve, plus the
+   * number of points in that last curve). */
+  const size_t usd_counts_size = usdCounts.size();
+  Array<int> offsets(usd_counts_size + 1);
   int offset = 0;
-  for (const int i : offsets.index_range()) {
+  int i = 0;
+  for (; i < usd_counts_size; i++) {
     offsets[i] = offset;
     offset += point_count(usdCounts[i], curve_type, is_cyclic);
   }
+  offsets[i] = offset;
   return offsets;
 }
 
