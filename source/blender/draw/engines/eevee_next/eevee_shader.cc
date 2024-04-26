@@ -764,6 +764,32 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
   reinterpret_cast<ShaderModule *>(thunk)->material_create_info_ammend(mat, codegen);
 }
 
+static bool is_default_callback(GPUMaterial *mat)
+{
+  using namespace blender::gpu::shader;
+
+  uint64_t shader_uuid = GPU_material_uuid_get(mat);
+
+  eMaterialPipeline pipeline_type;
+  eMaterialGeometry geometry_type;
+  eMaterialDisplacement displacement_type;
+  bool transparent_shadows;
+  material_type_from_shader_uuid(
+      shader_uuid, pipeline_type, geometry_type, displacement_type, transparent_shadows);
+
+  return ((!GPU_material_has_displacement_output(mat) ||
+           displacement_type == eMaterialDisplacement::MAT_DISPLACEMENT_BUMP) &&
+          !GPU_material_flag_get(mat, GPU_MATFLAG_TRANSPARENT) &&
+          ELEM(pipeline_type,
+               eMaterialPipeline::MAT_PIPE_SHADOW,
+               eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED,
+               eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED_VELOCITY,
+               eMaterialPipeline::MAT_PIPE_PREPASS_OVERLAP,
+               eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD,
+               eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD_VELOCITY,
+               eMaterialPipeline::MAT_PIPE_PREPASS_PLANAR));
+}
+
 GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                bNodeTree *nodetree,
                                                eMaterialPipeline pipeline_type,
@@ -777,14 +803,28 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
   uint64_t shader_uuid = shader_uuid_from_material_type(
       pipeline_type, geometry_type, displacement_type, blender_mat->blend_flag);
 
-  return DRW_shader_from_material(blender_mat,
-                                  nodetree,
-                                  GPU_MAT_EEVEE,
-                                  shader_uuid,
-                                  is_volume,
-                                  deferred_compilation,
-                                  codegen_callback,
-                                  this);
+  GPUMaterial *mat = DRW_shader_from_material(blender_mat,
+                                              nodetree,
+                                              GPU_MAT_EEVEE,
+                                              shader_uuid,
+                                              is_volume,
+                                              deferred_compilation,
+                                              codegen_callback,
+                                              this,
+                                              is_default_callback);
+
+  if (mat == nullptr) {
+    mat = DRW_shader_from_material(BKE_material_default_surface(),
+                                   BKE_material_default_surface()->nodetree,
+                                   GPU_MAT_EEVEE,
+                                   shader_uuid,
+                                   is_volume,
+                                   false,
+                                   codegen_callback,
+                                   this);
+  }
+
+  return mat;
 }
 
 GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,

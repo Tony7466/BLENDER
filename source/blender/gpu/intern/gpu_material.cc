@@ -831,7 +831,8 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         bool is_volume_shader,
                                         bool is_lookdev,
                                         GPUCodegenCallbackFn callback,
-                                        void *thunk)
+                                        void *thunk,
+                                        GPUMaterialIsDefaultCallbackFn is_default_callback)
 {
   /* Search if this material is not already compiled. */
   LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
@@ -861,6 +862,11 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   /* Localize tree to create links for reroute and mute. */
   bNodeTree *localtree = ntreeLocalize(ntree);
   ntreeGPUMaterialNodes(localtree, mat);
+
+  if (is_default_callback && is_default_callback(mat)) {
+    MEM_freeN(mat);
+    return nullptr;
+  }
 
   gpu_material_ramp_texture_build(mat);
   gpu_material_sky_texture_build(mat);
