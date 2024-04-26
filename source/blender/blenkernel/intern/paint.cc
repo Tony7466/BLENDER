@@ -138,7 +138,7 @@ static void palette_blend_write(BlendWriter *writer, ID *id, const void *id_addr
 static void palette_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Palette *palette = (Palette *)id;
-  BLO_read_list(reader, &palette->colors);
+  BLO_read_struct_list(reader, PaletteColor, &palette->colors);
 }
 
 static void palette_undo_preserve(BlendLibReader * /*reader*/, ID *id_new, ID *id_old)
@@ -217,7 +217,7 @@ static void paint_curve_blend_write(BlendWriter *writer, ID *id, const void *id_
 static void paint_curve_blend_read_data(BlendDataReader *reader, ID *id)
 {
   PaintCurve *pc = (PaintCurve *)id;
-  BLO_read_data_address(reader, &pc->points);
+  BLO_read_struct_array(reader, PaintCurvePoint, pc->tot_points, &pc->points);
 }
 
 IDTypeInfo IDType_ID_PC = {
@@ -255,6 +255,7 @@ const uchar PAINT_CURSOR_VERTEX_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_WEIGHT_PAINT[3] = {200, 200, 255};
 const uchar PAINT_CURSOR_TEXTURE_PAINT[3] = {255, 255, 255};
 const uchar PAINT_CURSOR_SCULPT_CURVES[3] = {255, 100, 100};
+const uchar PAINT_CURSOR_PAINT_GREASE_PENCIL[3] = {255, 100, 100};
 const uchar PAINT_CURSOR_SCULPT_GREASE_PENCIL[3] = {255, 100, 100};
 
 static ePaintOverlayControlFlags overlay_flags = (ePaintOverlayControlFlags)0;
@@ -478,8 +479,6 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
           return &ts->gp_weightpaint->paint;
         case OB_MODE_SCULPT_CURVES:
           return &ts->curves_sculpt->paint;
-        case OB_MODE_PAINT_GREASE_PENCIL:
-          return &ts->gp_paint->paint;
         case OB_MODE_EDIT:
           return ts->uvsculpt ? &ts->uvsculpt->paint : nullptr;
         default:
@@ -561,6 +560,8 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
             return PaintMode::SculptGreasePencil;
           }
           return PaintMode::Invalid;
+        case OB_MODE_PAINT_GPENCIL_LEGACY:
+          return PaintMode::GPencil;
         case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return PaintMode::WeightGPencil;
         case OB_MODE_VERTEX_PAINT:
@@ -573,8 +574,6 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PaintMode::SculptUV;
         case OB_MODE_SCULPT_CURVES:
           return PaintMode::SculptCurves;
-        case OB_MODE_PAINT_GREASE_PENCIL:
-          return PaintMode::GPencil;
         default:
           return PaintMode::Texture2D;
       }
@@ -744,7 +743,6 @@ static void paint_brush_set_default_reference(Paint *paint)
     case OB_MODE_EDIT:
       /* TODO: UV sculpt. */
       break;
-    case OB_MODE_PAINT_GREASE_PENCIL:
     case OB_MODE_PAINT_GPENCIL_LEGACY:
       name = "Pencil";
       break;
@@ -840,12 +838,7 @@ static void paint_runtime_init(const ToolSettings *ts, Paint *paint)
     paint->runtime.ob_mode = OB_MODE_EDIT;
   }
   else if (ts->gp_paint && paint == &ts->gp_paint->paint) {
-    if (U.experimental.use_grease_pencil_version3) {
-      paint->runtime.ob_mode = OB_MODE_PAINT_GREASE_PENCIL;
-    }
-    else {
-      paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
-    }
+    paint->runtime.ob_mode = OB_MODE_PAINT_GPENCIL_LEGACY;
   }
   else if (ts->gp_vertexpaint && paint == &ts->gp_vertexpaint->paint) {
     paint->runtime.ob_mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
@@ -1225,7 +1218,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(const PaintMode mode)
     case PaintMode::SculptCurves:
       return OB_MODE_SCULPT_CURVES;
     case PaintMode::GPencil:
-      return OB_MODE_PAINT_GREASE_PENCIL;
+      return OB_MODE_PAINT_GPENCIL_LEGACY;
     case PaintMode::SculptGreasePencil:
       return OB_MODE_SCULPT_GPENCIL_LEGACY;
     case PaintMode::Invalid:
@@ -1380,7 +1373,7 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *p)
 
 void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Paint *p)
 {
-  BLO_read_data_address(reader, &p->cavity_curve);
+  BLO_read_struct(reader, CurveMapping, &p->cavity_curve);
   if (p->cavity_curve) {
     BKE_curvemapping_blend_read(reader, p->cavity_curve);
   }
@@ -1388,7 +1381,7 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     BKE_paint_cavity_curve_preset(p, CURVE_PRESET_LINE);
   }
 
-  BLO_read_data_address(reader, &p->brush_asset_reference);
+  BLO_read_struct(reader, AssetWeakReference, &p->brush_asset_reference);
   if (p->brush_asset_reference) {
     BKE_asset_weak_reference_read(reader, p->brush_asset_reference);
   }
@@ -1624,14 +1617,6 @@ void BKE_sculptsession_free(Object *ob)
 
     if (ss->tex_pool) {
       BKE_image_pool_free(ss->tex_pool);
-    }
-
-    if (ss->pose_ik_chain_preview) {
-      for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
-        MEM_SAFE_FREE(ss->pose_ik_chain_preview->segments[i].weights);
-      }
-      MEM_SAFE_FREE(ss->pose_ik_chain_preview->segments);
-      MEM_SAFE_FREE(ss->pose_ik_chain_preview);
     }
 
     if (ss->boundary_preview) {
