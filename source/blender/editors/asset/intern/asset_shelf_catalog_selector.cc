@@ -205,7 +205,7 @@ static void catalog_selector_panel_draw(const bContext *C, Panel *panel)
       *block,
       "asset catalog tree view",
       std::make_unique<AssetCatalogSelectorTree>(*library, *shelf));
-
+  tree_view->label = "Catalog";
   ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
 }
 

@@ -517,6 +517,7 @@ void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr)
       *block,
       "Node Tree Declaration Tree View",
       std::make_unique<blender::ui::nodes::NodeTreeInterfaceView>(nodetree, interface));
+  tree_view->label = "Node Tree Interface";
   tree_view->set_min_rows(3);
 
   blender::ui::TreeViewBuilder::build_tree_view(*tree_view, *layout);
