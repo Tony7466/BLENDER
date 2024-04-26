@@ -192,6 +192,7 @@ struct GeoNodesOperatorData {
   Scene *scene_orig = nullptr;
   int2 mouse_position;
   int2 region_size;
+  const RegionView3D *rv3d = nullptr;
 };
 
 struct GeoNodesCallData {
