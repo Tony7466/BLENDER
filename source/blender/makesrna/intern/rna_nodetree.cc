@@ -1846,11 +1846,11 @@ static void rna_GeometryNodeTree_is_type_point_cloud_set(PointerRNA *ptr, bool v
   geometry_node_asset_trait_flag_set(ptr, GEO_NODE_ASSET_POINT_CLOUD, value);
 }
 
-static bool rna_GeometryNodeTree_use_wait_for_cursor_get(PointerRNA *ptr)
+static bool rna_GeometryNodeTree_use_wait_for_click_get(PointerRNA *ptr)
 {
   return geometry_node_asset_trait_flag_get(ptr, GEO_NODE_ASSET_WAIT_FOR_CURSOR);
 }
-static void rna_GeometryNodeTree_use_wait_for_cursor_set(PointerRNA *ptr, bool value)
+static void rna_GeometryNodeTree_use_wait_for_click_set(PointerRNA *ptr, bool value)
 {
   geometry_node_asset_trait_flag_set(ptr, GEO_NODE_ASSET_WAIT_FOR_CURSOR, value);
 }
@@ -10773,15 +10773,15 @@ static void rna_def_geometry_nodetree(BlenderRNA *brna)
                                  "rna_GeometryNodeTree_is_type_point_cloud_set");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_NodeTree_update_asset");
 
-  prop = RNA_def_property(srna, "use_wait_for_cursor", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_wait_for_click", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GEO_NODE_ASSET_POINT_CLOUD);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop,
-                           "Wait for Cursor",
+                           "Wait for Click",
                            "Wait for mouse click input before running the operator from a menu");
   RNA_def_property_boolean_funcs(prop,
-                                 "rna_GeometryNodeTree_use_wait_for_cursor_get",
-                                 "rna_GeometryNodeTree_use_wait_for_cursor_set");
+                                 "rna_GeometryNodeTree_use_wait_for_click_get",
+                                 "rna_GeometryNodeTree_use_wait_for_click_set");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_NodeTree_update_asset");
 }
 

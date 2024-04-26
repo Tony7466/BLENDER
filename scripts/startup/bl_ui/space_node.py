@@ -503,7 +503,7 @@ class NODE_PT_geometry_node_tool_options(Panel):
         snode = context.space_data
         group = snode.node_tree
 
-        layout.prop(group, "use_wait_for_cursor")
+        layout.prop(group, "use_wait_for_click")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
