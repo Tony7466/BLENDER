@@ -165,6 +165,11 @@ inline auto individual_task_sizes(Fn &&fn, const std::optional<int64_t> full_siz
   return TaskSizeHints_IndividualLookup<decltype(array_fn)>(std::move(array_fn), full_size);
 }
 
+template<typename Fn> inline auto range_task_sizes(Fn &&fn)
+{
+  return TaskSizeHints_RangeLookup<decltype(fn)>(std::forward<Fn>(fn));
+}
+
 namespace detail {
 void parallel_for_impl(IndexRange range,
                        int64_t grain_size,

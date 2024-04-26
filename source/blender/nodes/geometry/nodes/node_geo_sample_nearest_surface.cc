@@ -127,7 +127,7 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
           }
         },
         threading::individual_task_sizes(
-            [&](const int group_i) { return group_masks[group_i].size(); }));
+            [&](const int group_i) { return group_masks[group_i].size(); }, mesh.faces_num));
   }
 
   ~SampleNearestSurfaceFunction()

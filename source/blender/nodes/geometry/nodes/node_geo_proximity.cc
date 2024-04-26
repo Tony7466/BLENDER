@@ -137,7 +137,7 @@ class ProximityFunction : public mf::MultiFunction {
           }
         },
         threading::individual_task_sizes(
-            [&](const int group_i) { return group_masks[group_i].size(); }));
+            [&](const int group_i) { return group_masks[group_i].size(); }, pointcloud.totpoint));
   }
 
   void init_for_mesh(const Mesh &mesh, const Field<int> &group_id_field)
@@ -184,7 +184,7 @@ class ProximityFunction : public mf::MultiFunction {
           }
         },
         threading::individual_task_sizes(
-            [&](const int group_i) { return group_masks[group_i].size(); }));
+            [&](const int group_i) { return group_masks[group_i].size(); }, domain_size));
   }
 
   bke::AttrDomain get_domain_on_mesh() const

@@ -243,7 +243,9 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
           });
         }
       },
-      threading::individual_task_sizes([&](const int64_t i) { return vert_islands[i].size(); }));
+      threading::range_task_sizes([&](const IndexRange range) {
+        return elem_islands.offsets[range].size() + vert_islands.offsets[range].size();
+      }));
 }
 
 static float4x4 create_single_axis_transform(const float3 &center,
