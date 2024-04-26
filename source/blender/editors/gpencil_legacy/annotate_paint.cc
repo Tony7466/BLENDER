@@ -51,7 +51,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************* */
 /* 'Globals' and Defines */
@@ -302,7 +302,7 @@ static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], const
 static void annotation_stroke_convertcoords(tGPsdata *p,
                                             const float mval[2],
                                             float out[3],
-                                            float *depth)
+                                            const float *depth)
 {
   bGPdata *gpd = p->gpd;
   if (depth && (*depth == DEPTH_INVALID)) {

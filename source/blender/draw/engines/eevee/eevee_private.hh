@@ -596,13 +596,13 @@ struct EEVEE_MotionBlurData {
    */
   GHash *object;
   /**
-   * Maps original #GPUVertBuf to duplicated #GPUVertBuf.
+   * Maps original #gpu::VertBuf to duplicated #gpu::VertBuf.
    * There are two maps for #MB_PREV and #MB_NEXT.
    * Only the values are owned.
    */
   GHash *position_vbo_cache[2];
   /**
-   * Maps original #GPUVertBuf to #EEVEE_HairMotionStepData.
+   * Maps original #gpu::VertBuf to #EEVEE_HairMotionStepData.
    * There are two maps for #MB_PREV and #MB_NEXT.
    * Only the values are owned.
    */
@@ -633,7 +633,7 @@ enum eEEVEEMotionData {
 };
 
 struct EEVEE_HairMotionStepData {
-  GPUVertBuf *hair_pos;
+  blender::gpu::VertBuf *hair_pos;
   GPUTexture *hair_pos_tx;
 };
 
@@ -656,8 +656,8 @@ struct EEVEE_GeometryMotionData {
   int use_deform;
 
   /* The batch and VBOs are not owned. */
-  GPUBatch *batch;    /* Batch for time = t. */
-  GPUVertBuf *vbo[2]; /* VBO for time = t +/- step. */
+  blender::gpu::Batch *batch;    /* Batch for time = t. */
+  blender::gpu::VertBuf *vbo[2]; /* VBO for time = t +/- step. */
 };
 
 struct EEVEE_ObjectMotionData {
@@ -681,11 +681,11 @@ enum EEVEE_EffectsFlag {
   EFFECT_TAA = (1 << 8),
   EFFECT_POST_BUFFER = (1 << 9),      /* Not really an effect but a feature */
   EFFECT_NORMAL_BUFFER = (1 << 10),   /* Not really an effect but a feature */
-  EFFECT_RADIANCE_BUFFER = (1 << 10), /* Not really an effect but a feature */
-  EFFECT_SSS = (1 << 11),
-  EFFECT_VELOCITY_BUFFER = (1 << 12),     /* Not really an effect but a feature */
-  EFFECT_TAA_REPROJECT = (1 << 13),       /* should be mutually exclusive with EFFECT_TAA */
-  EFFECT_DEPTH_DOUBLE_BUFFER = (1 << 14), /* Not really an effect but a feature */
+  EFFECT_RADIANCE_BUFFER = (1 << 11), /* Not really an effect but a feature */
+  EFFECT_SSS = (1 << 12),
+  EFFECT_VELOCITY_BUFFER = (1 << 13),     /* Not really an effect but a feature */
+  EFFECT_TAA_REPROJECT = (1 << 14),       /* should be mutually exclusive with EFFECT_TAA */
+  EFFECT_DEPTH_DOUBLE_BUFFER = (1 << 15), /* Not really an effect but a feature */
 };
 ENUM_OPERATORS(EEVEE_EffectsFlag, EFFECT_DEPTH_DOUBLE_BUFFER)
 

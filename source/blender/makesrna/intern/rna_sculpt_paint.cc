@@ -345,12 +345,7 @@ static bool rna_Brush_mode_with_tool_poll(PointerRNA *ptr, PointerRNA value)
     if (slot_index != brush->gpencil_tool) {
       return false;
     }
-    if (U.experimental.use_grease_pencil_version3) {
-      mode = OB_MODE_PAINT_GREASE_PENCIL;
-    }
-    else {
-      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
-    }
+    mode = OB_MODE_PAINT_GPENCIL_LEGACY;
   }
   else if (paint_contains_brush_slot(&ts->gp_vertexpaint->paint, tslot, &slot_index)) {
     if (slot_index != brush->gpencil_vertex_tool) {
@@ -1475,7 +1470,7 @@ static void rna_def_gpencil_guides(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "GPencilSculptGuide", nullptr);
   RNA_def_struct_sdna(srna, "GP_Sculpt_Guide");
   RNA_def_struct_path_func(srna, "rna_GPencilSculptGuide_path");
-  RNA_def_struct_ui_text(srna, "GPencil Sculpt Guide", "Guides for drawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Sculpt Guide", "Guides for drawing");
 
   static const EnumPropertyItem prop_gpencil_guidetypes[] = {
       {GP_GUIDE_CIRCULAR, "CIRCULAR", 0, "Circular", "Use single point to create rings"},

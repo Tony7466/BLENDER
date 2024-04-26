@@ -75,6 +75,7 @@ class IMAGE_MT_view(Menu):
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
         layout.prop(sima, "show_region_tool_header")
+        layout.prop(sima, "show_region_asset_shelf")
         layout.prop(sima, "show_region_hud")
 
         layout.separator()
@@ -1014,17 +1015,15 @@ class IMAGE_PT_snapping(Panel):
 
         layout = self.layout
         col = layout.column()
-        col.label(text="Snapping")
+        col.label(text="Snap Target")
         col.prop(tool_settings, "snap_uv_element", expand=True)
 
         if tool_settings.snap_uv_element != 'INCREMENT':
-            col.label(text="Target")
+            col.label(text="Snap Base")
             row = col.row(align=True)
             row.prop(tool_settings, "snap_target", expand=True)
 
         col.separator()
-        if 'INCREMENT' in tool_settings.snap_uv_element:
-            col.prop(tool_settings, "use_snap_uv_grid_absolute")
 
         col.label(text="Affect")
         row = col.row(align=True)

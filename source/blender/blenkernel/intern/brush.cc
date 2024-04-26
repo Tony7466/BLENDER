@@ -277,9 +277,9 @@ static void brush_blend_read_data(BlendDataReader *reader, ID *id)
   Brush *brush = (Brush *)id;
 
   /* Falloff curve. */
-  BLO_read_data_address(reader, &brush->curve);
+  BLO_read_struct(reader, CurveMapping, &brush->curve);
 
-  BLO_read_data_address(reader, &brush->gradient);
+  BLO_read_struct(reader, ColorBand, &brush->gradient);
 
   if (brush->curve) {
     BKE_curvemapping_blend_read(reader, brush->curve);
@@ -288,7 +288,7 @@ static void brush_blend_read_data(BlendDataReader *reader, ID *id)
     BKE_brush_curve_preset(brush, CURVE_PRESET_SHARP);
   }
 
-  BLO_read_data_address(reader, &brush->automasking_cavity_curve);
+  BLO_read_struct(reader, CurveMapping, &brush->automasking_cavity_curve);
   if (brush->automasking_cavity_curve) {
     BKE_curvemapping_blend_read(reader, brush->automasking_cavity_curve);
   }
@@ -297,18 +297,18 @@ static void brush_blend_read_data(BlendDataReader *reader, ID *id)
   }
 
   /* grease pencil */
-  BLO_read_data_address(reader, &brush->gpencil_settings);
+  BLO_read_struct(reader, BrushGpencilSettings, &brush->gpencil_settings);
   if (brush->gpencil_settings != nullptr) {
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_sensitivity);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_strength);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_jitter);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_sensitivity);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_strength);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_jitter);
 
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_pressure);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_strength);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_uv);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_hue);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_saturation);
-    BLO_read_data_address(reader, &brush->gpencil_settings->curve_rand_value);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_pressure);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_strength);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_uv);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_hue);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_saturation);
+    BLO_read_struct(reader, CurveMapping, &brush->gpencil_settings->curve_rand_value);
 
     if (brush->gpencil_settings->curve_sensitivity) {
       BKE_curvemapping_blend_read(reader, brush->gpencil_settings->curve_sensitivity);
@@ -347,15 +347,15 @@ static void brush_blend_read_data(BlendDataReader *reader, ID *id)
     }
   }
 
-  BLO_read_data_address(reader, &brush->curves_sculpt_settings);
+  BLO_read_struct(reader, BrushCurvesSculptSettings, &brush->curves_sculpt_settings);
   if (brush->curves_sculpt_settings) {
-    BLO_read_data_address(reader, &brush->curves_sculpt_settings->curve_parameter_falloff);
+    BLO_read_struct(reader, CurveMapping, &brush->curves_sculpt_settings->curve_parameter_falloff);
     if (brush->curves_sculpt_settings->curve_parameter_falloff) {
       BKE_curvemapping_blend_read(reader, brush->curves_sculpt_settings->curve_parameter_falloff);
     }
   }
 
-  BLO_read_data_address(reader, &brush->preview);
+  BLO_read_struct(reader, PreviewImage, &brush->preview);
   BKE_previewimg_blend_read(reader, brush->preview);
 
   brush->icon_imbuf = nullptr;
@@ -1510,13 +1510,11 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts, const bool 
   }
 
   /* Set default Vertex brush. */
-  if (reset || brush_prev == nullptr) {
-    BKE_paint_brush_set(vertexpaint, deft_vertex);
+  if ((reset == false) && (brush_prev != nullptr)) {
+    BKE_paint_brush_set(vertexpaint, brush_prev);
   }
   else {
-    if (brush_prev != nullptr) {
-      BKE_paint_brush_set(vertexpaint, brush_prev);
-    }
+    BKE_paint_brush_set(vertexpaint, deft_vertex);
   }
 }
 
@@ -1587,13 +1585,11 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts, const bool 
   }
 
   /* Set default brush. */
-  if (reset || brush_prev == nullptr) {
-    BKE_paint_brush_set(sculptpaint, deft_sculpt);
+  if ((reset == false) && (brush_prev != nullptr)) {
+    BKE_paint_brush_set(sculptpaint, brush_prev);
   }
   else {
-    if (brush_prev != nullptr) {
-      BKE_paint_brush_set(sculptpaint, brush_prev);
-    }
+    BKE_paint_brush_set(sculptpaint, deft_sculpt);
   }
 }
 
@@ -1632,13 +1628,11 @@ void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts, const bool 
   }
 
   /* Set default brush. */
-  if (reset || brush_prev == nullptr) {
-    BKE_paint_brush_set(weightpaint, deft_weight);
+  if ((reset == false) && (brush_prev != nullptr)) {
+    BKE_paint_brush_set(weightpaint, brush_prev);
   }
   else {
-    if (brush_prev != nullptr) {
-      BKE_paint_brush_set(weightpaint, brush_prev);
-    }
+    BKE_paint_brush_set(weightpaint, deft_weight);
   }
 }
 

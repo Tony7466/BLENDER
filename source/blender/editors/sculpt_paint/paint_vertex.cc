@@ -61,6 +61,8 @@
 #include "ED_image.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_object_vgroup.hh"
+#include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
@@ -334,7 +336,7 @@ void mode_enter_generic(
 
     /* weight paint specific */
     ED_mesh_mirror_spatial_table_end(ob);
-    ED_vgroup_sync_from_pose(ob);
+    blender::ed::object::vgroup_sync_from_pose(ob);
   }
   else {
     BLI_assert(0);
@@ -406,7 +408,7 @@ void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
 bool mode_toggle_poll_test(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob == nullptr || !ELEM(ob->type, OB_MESH, OB_GREASE_PENCIL)) {
+  if (ob == nullptr || ob->type != OB_MESH) {
     return false;
   }
   if (!ob->data || ID_IS_LINKED(ob->data)) {
@@ -599,24 +601,6 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 /** \} */
 }  // namespace blender::ed::sculpt_paint::vwpaint
 
-static bool color_attribute_supported(const std::optional<bke::AttributeMetaData> meta_data)
-{
-  if (!meta_data) {
-    return false;
-  }
-  if (!(ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) ||
-      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
-  {
-    return false;
-  }
-  return true;
-}
-
-static bool color_attribute_supported(const Mesh &mesh, const StringRef name)
-{
-  return color_attribute_supported(mesh.attributes().lookup_meta_data(name));
-}
-
 bool vertex_paint_mode_poll(bContext *C)
 {
   const Object *ob = CTX_data_active_object(C);
@@ -629,7 +613,7 @@ bool vertex_paint_mode_poll(bContext *C)
     return false;
   }
 
-  if (!color_attribute_supported(*mesh, mesh->active_color_attribute)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -838,7 +822,7 @@ static int vpaint_mode_toggle_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
 
   if (!is_mode_set) {
-    if (!ED_object_mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
+    if (!blender::ed::object::mode_compat_set(C, ob, (eObjectMode)mode_flag, op->reports)) {
       return OPERATOR_CANCELLED;
     }
   }
@@ -1012,7 +996,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 
   const std::optional<bke::AttributeMetaData> meta_data = *mesh->attributes().lookup_meta_data(
       mesh->active_color_attribute);
-  if (!color_attribute_supported(meta_data)) {
+  if (!BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -1715,8 +1699,19 @@ static void vpaint_do_draw(bContext *C,
           float tex_alpha = 1.0;
           if (vpd->is_texbrush) {
             /* NOTE: we may want to paint alpha as vertex color alpha. */
-            tex_alpha = paint_and_tex_color_alpha<Color>(
-                vp, vpd, vpd->vertexcosnos[v_index].co, &color_final);
+
+            /* If the active area is being applied for symmetry, flip it
+             * across the symmetry axis and rotate it back to the original
+             * position in order to project it. This insures that the
+             * brush texture will be oriented correctly.
+             * This is the method also used in #sculpt_apply_texture(). */
+            float symm_point[3];
+            if (cache->radial_symmetry_pass) {
+              mul_m4_v3(cache->symm_rot_mat_inv.ptr(), vpd->vertexcosnos[v_index].co);
+            }
+            flip_v3_v3(symm_point, vpd->vertexcosnos[v_index].co, cache->mirror_symmetry_pass);
+
+            tex_alpha = paint_and_tex_color_alpha<Color>(vp, vpd, symm_point, &color_final);
           }
 
           Color color_orig(0, 0, 0, 0);
@@ -1803,7 +1798,7 @@ static void vpaint_paint_leaves(bContext *C,
                                 Span<PBVHNode *> nodes)
 {
   for (PBVHNode *node : nodes) {
-    undo::push_node(ob, node, undo::Type::Color);
+    undo::push_node(*ob, node, undo::Type::Color);
   }
 
   const Brush *brush = ob->sculpt->cache->brush;
@@ -1869,8 +1864,7 @@ static void vpaint_do_radial_symmetry(bContext *C,
   }
 }
 
-/* near duplicate of: sculpt.cc's,
- * 'do_symmetrical_brush_actions' and 'wpaint_do_symmetrical_brush_actions'. */
+/* near duplicate of: #do_symmetrical_brush_actions and #wpaint_do_symmetrical_brush_actions. */
 static void vpaint_do_symmetrical_brush_actions(bContext *C,
                                                 VPaint *vp,
                                                 VPaintData *vpd,
@@ -1881,40 +1875,26 @@ static void vpaint_do_symmetrical_brush_actions(bContext *C,
   SculptSession *ss = ob->sculpt;
   StrokeCache *cache = ss->cache;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
-  int i = 0;
-
-  /* initial stroke */
-  const ePaintSymmetryFlags initial_symm = ePaintSymmetryFlags(0);
-  cache->mirror_symmetry_pass = ePaintSymmetryFlags(0);
-  vpaint_do_paint(C, vp, vpd, ob, mesh, brush, initial_symm, 'X', 0, 0);
-  vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, initial_symm, 'X');
-  vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, initial_symm, 'Y');
-  vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, initial_symm, 'Z');
 
   cache->symmetry = symm;
 
-  /* symm is a bit combination of XYZ - 1 is mirror
-   * X; 2 is Y; 3 is XY; 4 is Z; 5 is XZ; 6 is YZ; 7 is XYZ */
-  for (i = 1; i <= symm; i++) {
-    if (symm & i && (symm != 5 || i != 3) && (symm != 6 || !ELEM(i, 3, 5))) {
-      const ePaintSymmetryFlags symm_pass = ePaintSymmetryFlags(i);
-      cache->mirror_symmetry_pass = symm_pass;
-      cache->radial_symmetry_pass = 0;
-      SCULPT_cache_calc_brushdata_symm(cache, symm_pass, 0, 0);
+  /* symm is a bit combination of XYZ -
+   * 1 is mirror X; 2 is Y; 3 is XY; 4 is Z; 5 is XZ; 6 is YZ; 7 is XYZ */
+  for (int i = 0; i <= symm; i++) {
 
-      if (i & (1 << 0)) {
-        vpaint_do_paint(C, vp, vpd, ob, mesh, brush, symm_pass, 'X', 0, 0);
-        vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'X');
-      }
-      if (i & (1 << 1)) {
-        vpaint_do_paint(C, vp, vpd, ob, mesh, brush, symm_pass, 'Y', 0, 0);
-        vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'Y');
-      }
-      if (i & (1 << 2)) {
-        vpaint_do_paint(C, vp, vpd, ob, mesh, brush, symm_pass, 'Z', 0, 0);
-        vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'Z');
-      }
+    if (!SCULPT_is_symmetry_iteration_valid(i, symm)) {
+      continue;
     }
+
+    const ePaintSymmetryFlags symm_pass = ePaintSymmetryFlags(i);
+    cache->mirror_symmetry_pass = symm_pass;
+    cache->radial_symmetry_pass = 0;
+    SCULPT_cache_calc_brushdata_symm(cache, symm_pass, 0, 0);
+
+    vpaint_do_paint(C, vp, vpd, ob, mesh, brush, symm_pass, 'X', 0, 0);
+    vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'X');
+    vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'Y');
+    vpaint_do_radial_symmetry(C, vp, vpd, ob, mesh, brush, symm_pass, 'Z');
   }
 
   copy_v3_v3(cache->true_last_location, cache->true_location);
@@ -2158,7 +2138,7 @@ static void fill_mesh_color(Mesh &mesh,
                             const bool use_face_sel,
                             const bool affect_alpha)
 {
-  if (BMEditMesh *em = mesh.runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
     BMesh *bm = em->bm;
     const std::string name = attribute_name;
     const CustomDataLayer *layer = BKE_id_attributes_color_find(&mesh.id, name.c_str());
@@ -2251,7 +2231,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   undo::push_begin(obact, op);
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(obact->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
-    undo::push_node(obact, node, undo::Type::Color);
+    undo::push_node(*obact, node, undo::Type::Color);
   }
 
   paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha);

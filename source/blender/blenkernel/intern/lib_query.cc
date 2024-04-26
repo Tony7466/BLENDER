@@ -18,7 +18,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -52,7 +52,7 @@ struct LibraryForeachIDData {
 
   /* Function to call for every ID pointers of current processed data, and its opaque user data
    * pointer. */
-  LibraryIDLinkCallback callback;
+  blender::FunctionRef<LibraryIDLinkCallback> callback;
   void *user_data;
   /** Store the returned value from the callback, to decide how to continue the processing of ID
    * pointers for current data. */
@@ -132,7 +132,7 @@ int BKE_lib_query_foreachid_process_callback_flag_override(LibraryForeachIDData 
 static bool library_foreach_ID_link(Main *bmain,
                                     ID *owner_id,
                                     ID *id,
-                                    LibraryIDLinkCallback callback,
+                                    blender::FunctionRef<LibraryIDLinkCallback> callback,
                                     void *user_data,
                                     int flag,
                                     LibraryForeachIDData *inherit_data);
@@ -198,7 +198,7 @@ static void library_foreach_ID_data_cleanup(LibraryForeachIDData *data)
 static bool library_foreach_ID_link(Main *bmain,
                                     ID *owner_id,
                                     ID *id,
-                                    LibraryIDLinkCallback callback,
+                                    blender::FunctionRef<LibraryIDLinkCallback> callback,
                                     void *user_data,
                                     int flag,
                                     LibraryForeachIDData *inherit_data)
@@ -344,10 +344,9 @@ static bool library_foreach_ID_link(Main *bmain,
       }
     }
 
-    IDP_foreach_property(id->properties,
-                         IDP_TYPE_FILTER_ID,
-                         BKE_lib_query_idpropertiesForeachIDLink_callback,
-                         &data);
+    IDP_foreach_property(id->properties, IDP_TYPE_FILTER_ID, [&](IDProperty *prop) {
+      BKE_lib_query_idpropertiesForeachIDLink_callback(prop, &data);
+    });
     if (BKE_lib_query_foreachid_iter_stop(&data)) {
       library_foreach_ID_data_cleanup(&data);
       return false;
@@ -380,8 +379,11 @@ static bool library_foreach_ID_link(Main *bmain,
 #undef CALLBACK_INVOKE
 }
 
-void BKE_library_foreach_ID_link(
-    Main *bmain, ID *id, LibraryIDLinkCallback callback, void *user_data, int flag)
+void BKE_library_foreach_ID_link(Main *bmain,
+                                 ID *id,
+                                 blender::FunctionRef<LibraryIDLinkCallback> callback,
+                                 void *user_data,
+                                 int flag)
 {
   library_foreach_ID_link(bmain, nullptr, id, callback, user_data, flag, nullptr);
 }

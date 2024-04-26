@@ -157,6 +157,7 @@ const EnumPropertyItem rna_enum_mesh_select_mode_uv_items[] = {
 /* clang-format off */
 #define RNA_SNAP_ELEMENTS_BASE \
   {SCE_SNAP_TO_INCREMENT, "INCREMENT", ICON_SNAP_INCREMENT, "Increment", "Snap to increments"}, \
+  {SCE_SNAP_TO_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"}, \
   {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"}, \
   {SCE_SNAP_TO_EDGE, "EDGE", ICON_SNAP_EDGE, "Edge", "Snap to edges"}, \
   {SCE_SNAP_TO_FACE, "FACE", ICON_SNAP_FACE, "Face", "Snap by projecting onto faces"}, \
@@ -217,6 +218,7 @@ static const EnumPropertyItem snap_uv_element_items[] = {
      ICON_SNAP_INCREMENT,
      "Increment",
      "Snap to increments of grid"},
+    {SCE_SNAP_TO_GRID, "GRID", ICON_SNAP_GRID, "Grid", "Snap to grid"},
     {SCE_SNAP_TO_VERTEX, "VERTEX", ICON_SNAP_VERTEX, "Vertex", "Snap to vertices"},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -695,6 +697,15 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem eevee_resolution_scale_items[] = {
+    {1, "1", 0, "1:1", "Full resolution"},
+    {2, "2", 0, "1:2", "Render this effect at 50% render resolution"},
+    {4, "4", 0, "1:4", "Render this effect at 25% render resolution"},
+    {8, "8", 0, "1:8", "Render this effect at 12.5% render resolution"},
+    {16, "16", 0, "1:16", "Render this effect at 6.25% render resolution"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifdef RNA_RUNTIME
 
 #  include <algorithm>
@@ -724,7 +735,7 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "BKE_freestyle.h"
 #  include "BKE_global.hh"
 #  include "BKE_gpencil_legacy.h"
-#  include "BKE_idprop.h"
+#  include "BKE_idprop.hh"
 #  include "BKE_image.h"
 #  include "BKE_image_format.h"
 #  include "BKE_layer.hh"
@@ -1170,7 +1181,7 @@ static void rna_Scene_active_keying_set_index_set(PointerRNA *ptr, int value)
 
 /* XXX: evil... builtin_keyingsets is defined in `keyingsets.cc`! */
 /* TODO: make API function to retrieve this... */
-extern "C" ListBase builtin_keyingsets;
+extern ListBase builtin_keyingsets;
 
 static void rna_Scene_all_keyingsets_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
@@ -1209,6 +1220,11 @@ static std::optional<std::string> rna_SceneEEVEE_path(const PointerRNA * /*ptr*/
   return "eevee";
 }
 
+static std::optional<std::string> rna_RaytraceEEVEE_path(const PointerRNA * /*ptr*/)
+{
+  return "eevee.ray_tracing_options";
+}
+
 static std::optional<std::string> rna_SceneGpencil_path(const PointerRNA * /*ptr*/)
 {
   return "grease_pencil_settings";
@@ -1219,16 +1235,16 @@ static std::optional<std::string> rna_SceneHydra_path(const PointerRNA * /*ptr*/
   return "hydra";
 }
 
-static int rna_RenderSettings_stereoViews_skip(CollectionPropertyIterator *iter, void * /*data*/)
+static bool rna_RenderSettings_stereoViews_skip(CollectionPropertyIterator *iter, void * /*data*/)
 {
   ListBaseIterator *internal = &iter->internal.listbase;
   SceneRenderView *srv = (SceneRenderView *)internal->link;
 
   if (STR_ELEM(srv->name, STEREO_LEFT_NAME, STEREO_RIGHT_NAME)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 };
 
 static void rna_RenderSettings_stereoViews_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -1931,6 +1947,22 @@ static void rna_SceneEEVEE_gi_cubemap_resolution_update(Main * /*main*/,
   FOREACH_SCENE_OBJECT_END;
 }
 
+static void rna_SceneEEVEE_clamp_surface_indirect_update(Main * /*main*/,
+                                                         Scene *scene,
+                                                         PointerRNA * /*ptr*/)
+{
+  /* Tag all light probes to recalc transform. This signals EEVEE to update the light probes. */
+  FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
+    if (ob->type == OB_LIGHTPROBE) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+    }
+  }
+  FOREACH_SCENE_OBJECT_END;
+
+  /* Also tag the world. */
+  DEG_id_tag_update(&scene->world->id, ID_RECALC_SHADING);
+}
+
 static std::optional<std::string> rna_SceneRenderView_path(const PointerRNA *ptr)
 {
   const SceneRenderView *srv = (SceneRenderView *)ptr->data;
@@ -1985,7 +2017,7 @@ static void rna_Scene_editmesh_select_mode_set(PointerRNA *ptr, const bool *valu
           Mesh *mesh = BKE_mesh_from_object(object);
           if (mesh && mesh->runtime->edit_mesh && mesh->runtime->edit_mesh->selectmode != flag) {
             mesh->runtime->edit_mesh->selectmode = flag;
-            EDBM_selectmode_set(mesh->runtime->edit_mesh);
+            EDBM_selectmode_set(mesh->runtime->edit_mesh.get());
           }
         }
       }
@@ -2858,7 +2890,7 @@ const EnumPropertyItem *rna_UnitSettings_length_unit_itemf(bContext * /*C*/,
                                                            PropertyRNA * /*prop*/,
                                                            bool *r_free)
 {
-  UnitSettings *units = static_cast<UnitSettings *>(ptr->data);
+  const UnitSettings *units = static_cast<const UnitSettings *>(ptr->data);
   return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_LENGTH, r_free);
 }
 
@@ -2867,7 +2899,7 @@ const EnumPropertyItem *rna_UnitSettings_mass_unit_itemf(bContext * /*C*/,
                                                          PropertyRNA * /*prop*/,
                                                          bool *r_free)
 {
-  UnitSettings *units = static_cast<UnitSettings *>(ptr->data);
+  const UnitSettings *units = static_cast<const UnitSettings *>(ptr->data);
   return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_MASS, r_free);
 }
 
@@ -2876,7 +2908,7 @@ const EnumPropertyItem *rna_UnitSettings_time_unit_itemf(bContext * /*C*/,
                                                          PropertyRNA * /*prop*/,
                                                          bool *r_free)
 {
-  UnitSettings *units = static_cast<UnitSettings *>(ptr->data);
+  const UnitSettings *units = static_cast<const UnitSettings *>(ptr->data);
   return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_TIME, r_free);
 }
 
@@ -2885,7 +2917,7 @@ const EnumPropertyItem *rna_UnitSettings_temperature_unit_itemf(bContext * /*C*/
                                                                 PropertyRNA * /*prop*/,
                                                                 bool *r_free)
 {
-  UnitSettings *units = static_cast<UnitSettings *>(ptr->data);
+  const UnitSettings *units = static_cast<const UnitSettings *>(ptr->data);
   return rna_UnitSettings_itemf_wrapper(units->system, B_UNIT_TEMPERATURE, r_free);
 }
 
@@ -3513,15 +3545,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       prop, "Align Rotation to Target", "Align rotation with the snapping target");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
-  prop = RNA_def_property(srna, "use_snap_grid_absolute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag", SCE_SNAP_ABS_GRID);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
-  RNA_def_property_ui_text(
-      prop,
-      "Absolute Grid Snap",
-      "Absolute grid alignment while translating (based on the pivot center)");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
-
   prop = RNA_def_property(srna, "snap_angle_increment_2d", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "snap_angle_increment_2d");
   RNA_def_property_ui_text(
@@ -3574,7 +3597,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       prop, "rna_ToolSettings_snap_mode_get", "rna_ToolSettings_snap_mode_set", nullptr);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_ui_text(
-      prop, "Snap Element", "Type of element for the \"Snap With\" to snap to");
+      prop, "Snap Element", "Type of element for the \"Snap Base\" to snap to");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_elements_individual", PROP_ENUM, PROP_NONE);
@@ -3641,15 +3664,6 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_enum_items(prop, snap_uv_element_items);
   RNA_def_property_ui_text(prop, "Snap UV Element", "Type of element to snap to");
-  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
-
-  prop = RNA_def_property(srna, "use_snap_uv_grid_absolute", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "snap_uv_flag", SCE_SNAP_ABS_GRID);
-  RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
-  RNA_def_property_ui_text(
-      prop,
-      "Absolute Grid Snap",
-      "Absolute grid alignment while translating (based on the pivot center)");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   /* TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of "target"
@@ -4174,6 +4188,11 @@ static void rna_def_sequencer_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "snap_to_hold_offset", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_mode", SEQ_SNAP_TO_STRIP_HOLD);
   RNA_def_property_ui_text(prop, "Hold Offset", "Snap to strip hold offsets");
+  RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
+
+  prop = RNA_def_property(srna, "snap_to_markers", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "snap_mode", SEQ_SNAP_TO_MARKERS);
+  RNA_def_property_ui_text(prop, "Markers", "Snap to markers");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_ignore_muted", PROP_BOOLEAN, PROP_NONE);
@@ -6349,7 +6368,7 @@ static void rna_def_scene_ffmpeg_settings(BlenderRNA *brna)
       {AV_CODEC_ID_MPEG2VIDEO, "MPEG2", 0, "MPEG-2", ""},
       {AV_CODEC_ID_MPEG4, "MPEG4", 0, "MPEG-4 (divx)", ""},
       {AV_CODEC_ID_PNG, "PNG", 0, "PNG", ""},
-      {AV_CODEC_ID_QTRLE, "QTRLE", 0, "QT rle / QT Animation", ""},
+      {AV_CODEC_ID_QTRLE, "QTRLE", 0, "QuickTime Animation", ""},
       {AV_CODEC_ID_THEORA, "THEORA", 0, "Theora", ""},
       {AV_CODEC_ID_VP9, "WEBM", 0, "WebM / VP9", ""},
       {AV_CODEC_ID_AV1, "AV1", 0, "AV1", ""},
@@ -7703,18 +7722,17 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  static const EnumPropertyItem pixel_rate_items[] = {
-      {1, "1", 0, "1 rpp", "1 ray per pixel"},
-      {2, "2", 0, "1/4 rpp", "1 ray for every 4 pixels"},
-      {4, "4", 0, "1/16 rpp", "1 ray for every 16 pixels"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   srna = RNA_def_struct(brna, "RaytraceEEVEE", nullptr);
+  RNA_def_struct_path_func(srna, "rna_RaytraceEEVEE_path");
+  RNA_def_struct_ui_text(
+      srna, "EEVEE Raytrace Options", "Quality options for the raytracing pipeline");
 
   prop = RNA_def_property(srna, "resolution_scale", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, pixel_rate_items);
-  RNA_def_property_ui_text(prop, "Resolution", "Number of rays per pixel");
+  RNA_def_property_enum_items(prop, eevee_resolution_scale_items);
+  RNA_def_property_ui_text(prop,
+                           "Resolution",
+                           "Determines the number of rays per pixel. "
+                           "Higher resolution uses more memory");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
@@ -7745,12 +7763,6 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "sample_clamp", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Clamp", "Clamp ray intensity to reduce noise (0 to disable)");
-  RNA_def_property_range(prop, 0.0f, FLT_MAX);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
-
   prop = RNA_def_property(srna, "screen_trace_thickness", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_ui_text(
       prop,
@@ -7761,10 +7773,10 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(srna, "screen_trace_max_roughness", PROP_FLOAT, PROP_FACTOR);
+  prop = RNA_def_property(srna, "trace_max_roughness", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_ui_text(
       prop,
-      "Screen-Trace Max Roughness",
+      "Raytrace Max Roughness",
       "Maximum roughness to use the tracing pipeline for. Higher "
       "roughness surfaces will use horizon scan. A value of 1 will disable horizon scan");
   RNA_def_property_range(prop, 0.0f, 1.0f);
@@ -7814,28 +7826,17 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem eevee_volumetric_tile_size_items[] = {
-      {2, "2", 0, "2 px", ""},
-      {4, "4", 0, "4 px", ""},
-      {8, "8", 0, "8 px", ""},
-      {16, "16", 0, "16 px", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem eevee_horizon_pixel_rate_items[] = {
-      {1, "1", 0, "1 px", ""},
-      {2, "2", 0, "4 px", ""},
-      {4, "4", 0, "16 px", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   static const EnumPropertyItem ray_tracing_method_items[] = {
-      {RAYTRACE_EEVEE_METHOD_NONE, "NONE", 0, "None", "No intersection with scene geometry"},
+      {RAYTRACE_EEVEE_METHOD_PROBE,
+       "PROBE",
+       0,
+       "Light Probe",
+       "Use light probes to find scene intersection"},
       {RAYTRACE_EEVEE_METHOD_SCREEN,
        "SCREEN",
        0,
        "Screen-Trace",
-       "Raytrace against the depth buffer"},
+       "Raytrace against the depth buffer. Fallback to light probes for invalid rays"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -8046,6 +8047,52 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
                            "enabled for final renders)");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
+  /* Clamping */
+  prop = RNA_def_property(srna, "clamp_surface_direct", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Surface Direct",
+                           "If non-zero, the maximum value for lights contribution on a surface. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light objects");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "clamp_surface_indirect", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Surface Indirect",
+                           "If non-zero, the maximum value for indirect lighting on surface. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by ray-tracing and light-probes");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(
+      prop, NC_SCENE | ND_RENDER_OPTIONS, "rna_SceneEEVEE_clamp_surface_indirect_update");
+
+  prop = RNA_def_property(srna, "clamp_volume_direct", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Volume Direct",
+                           "If non-zero, the maximum value for lights contribution in volumes. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light objects");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "clamp_volume_indirect", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_text(prop,
+                           "Clamp Volume Indirect",
+                           "If non-zero, the maximum value for indirect lighting in volumes. "
+                           "Higher values will be scaled down to avoid too "
+                           "much noise and slow convergence at the cost of accuracy. "
+                           "Used by light-probes");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
   /* Volumetrics */
   prop = RNA_def_property(srna, "volumetric_start", PROP_FLOAT, PROP_DISTANCE);
   RNA_def_property_ui_text(prop, "Start", "Start distance of the volumetric effect");
@@ -8062,16 +8109,19 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "volumetric_tile_size", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, eevee_volumetric_tile_size_items);
+  RNA_def_property_enum_items(prop, eevee_resolution_scale_items);
   RNA_def_property_ui_text(prop,
-                           "Tile Size",
-                           "Control the quality of the volumetric effects "
-                           "(lower size increase vram usage and quality)");
+                           "Resolution",
+                           "Control the quality of the volumetric effects. "
+                           "Higher resolution uses more memory");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "volumetric_samples", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Samples", "Number of samples to compute volumetric effects");
+  RNA_def_property_ui_text(prop,
+                           "Steps",
+                           "Number of steps to compute volumetric effects. "
+                           "Higher step count increase VRAM usage and quality");
   RNA_def_property_range(prop, 1, 256);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
@@ -8086,7 +8136,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Volume Max Ray Depth",
                            "Maximum surface intersection count used by the accurate volume "
-                           "intersection method. Will create artifact if it is exceeded");
+                           "intersection method. Will create artifact if it is exceeded. "
+                           "Higher count increases VRAM usage");
   RNA_def_property_range(prop, 1, 16);
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
@@ -8116,6 +8167,13 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Volumetric Shadow Samples", "Number of samples to compute volumetric shadowing");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "use_volume_custom_range", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_VOLUME_CUSTOM_RANGE);
+  RNA_def_property_ui_text(prop,
+                           "Volume Custom Range",
+                           "Enable custom start and end clip distances for volume computation");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Ambient Occlusion */
@@ -8194,11 +8252,11 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "horizon_resolution", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "gtao_resolution");
-  RNA_def_property_enum_items(prop, eevee_horizon_pixel_rate_items);
+  RNA_def_property_enum_items(prop, eevee_resolution_scale_items);
   RNA_def_property_ui_text(prop,
                            "Resolution",
-                           "Control the quality of the horizon scan lighting "
-                           "(lower size increase vram usage and quality)");
+                           "Control the quality of the horizon scan lighting. "
+                           "Higher resolution uses more memory");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
@@ -8314,7 +8372,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   /* Motion blur */
   prop = RNA_def_property(srna, "motion_blur_depth_scale", PROP_FLOAT, PROP_NONE);
   RNA_def_property_ui_text(prop,
-                           "Background Separation",
+                           "Bleeding Bias",
                            "Lower values will reduce background"
                            " bleeding onto foreground elements");
   RNA_def_property_range(prop, 0.0f, FLT_MAX);

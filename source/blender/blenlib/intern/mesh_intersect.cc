@@ -11,6 +11,7 @@
 
 #  include <algorithm>
 #  include <fstream>
+#  include <functional>
 #  include <iostream>
 #  include <memory>
 
@@ -945,7 +946,7 @@ class CoplanarClusterInfo {
     return tri_cluster_[t];
   }
 
-  int add_cluster(CoplanarCluster cl)
+  int add_cluster(const CoplanarCluster &cl)
   {
     int c_index = clusters_.append_and_get_index(cl);
     for (int t : cl) {
@@ -2310,7 +2311,7 @@ static bool bvhtreeverlap_cmp(const BVHTreeOverlap &a, const BVHTreeOverlap &b)
   if (a.indexA < b.indexA) {
     return true;
   }
-  if ((a.indexA == b.indexA) & (a.indexB < b.indexB)) {
+  if ((a.indexA == b.indexA) && (a.indexB < b.indexB)) {
     return true;
   }
   return false;
