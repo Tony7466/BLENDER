@@ -392,7 +392,6 @@ class SEQUENCER_MT_preview_zoom(Menu):
         layout.operator("view2d.zoom_border", text="Zoom Region...")
 
 
-
 class SEQUENCER_MT_proxy(Menu):
     bl_label = "Proxy"
 
