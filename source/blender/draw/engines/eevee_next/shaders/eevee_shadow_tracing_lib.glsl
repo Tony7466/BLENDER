@@ -405,107 +405,28 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
-vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec2 random)
+vec3 shadow_pcf_offset(
+    LightData light, const bool is_directional, vec3 L, vec3 Ng, float texel_radius, vec2 random)
 {
   if (light.pcf_radius <= 0.001) {
     /* Early return. */
     return vec3(0.0);
   }
 
-  vec3 L = light_vector_get(light, is_directional, P).L;
-  if (dot(L, Ng) < 0.001) {
-    /* Don't apply PCF to almost perpendicular,
-     * since we can't project the offset to the surface. */
-    return vec3(0.0);
+  /* We choose a random disk distribution because it is rotationally invariant.
+   * This sames us the trouble of getting the correct orientation for punctual. */
+  vec2 disk_sample = sample_disk(random) * (texel_radius * light.pcf_radius);
+  /* Compute the offset as a disk around the normal. */
+  mat3x3 tangent_frame = from_up_axis(Ng);
+  vec3 pcf_offset = tangent_frame[0] * disk_sample.x + tangent_frame[1] * disk_sample.y;
+
+  if (dot(pcf_offset, L) < 0.0) {
+    /* Reflect the offset to avoid overshadowing caused by moving the sampling point below another
+     * polygon behind the shading point. */
+    pcf_offset = reflect(pcf_offset, L);
   }
 
-  ShadowSampleParams params;
-  if (is_directional) {
-    params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, P);
-  }
-  else {
-    params = shadow_punctual_sample_params_get(light, P);
-  }
-  ShadowSamplingTile tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
-  if (!tile.is_valid) {
-    return vec3(0.0);
-  }
-
-  /* Compute the shadow-map tangent-bitangent matrix. */
-
-  float uv_offset = 1.0 / float(SHADOW_MAP_MAX_RES);
-  vec3 TP, BP;
-  if (is_directional) {
-    TP = shadow_directional_reconstruct_position(
-        params, light, params.uv + vec3(uv_offset, 0.0, 0.0));
-    BP = shadow_directional_reconstruct_position(
-        params, light, params.uv + vec3(0.0, uv_offset, 0.0));
-  }
-  else {
-    mat4 wininv = shadow_punctual_projection_perspective_inverse(light);
-    TP = shadow_punctual_reconstruct_position(
-        params, wininv, light, params.uv + vec3(uv_offset, 0.0, 0.0));
-    BP = shadow_punctual_reconstruct_position(
-        params, wininv, light, params.uv + vec3(0.0, uv_offset, 0.0));
-  }
-
-  /* TODO: Use a mat2x3 (Currently not supported by the Metal backend). */
-  mat3 TBN = mat3(TP - P, BP - P, Ng);
-
-  /* Compute the actual offset. */
-
-  vec2 pcf_offset = random * 2.0 - 1.0;
-  pcf_offset *= light.pcf_radius;
-
-  /* Scale the offset based on shadow LOD. */
-  if (is_directional) {
-    vec3 lP = light_world_to_local(light, P);
-    float level = shadow_directional_level_fractional(light, lP - light_position_get(light));
-    float pcf_scale = mix(0.5, 1.0, fract(level));
-    pcf_offset *= pcf_scale;
-  }
-  else {
-    bool is_perspective = drw_view_is_perspective();
-    float dist_to_cam = distance(P, drw_view_position());
-    float footprint_ratio = shadow_punctual_footprint_ratio(
-        light,
-        P - light_position_get(light),
-        is_perspective,
-        dist_to_cam,
-        uniform_buf.shadow.tilemap_projection_ratio);
-    float lod = -log2(footprint_ratio) + light.lod_bias;
-    lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
-    float pcf_scale = exp2(lod);
-    pcf_offset *= pcf_scale;
-  }
-
-  vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
-  vec3 offset_P = P + ws_offset;
-
-  /* Project the offset position into the surface */
-
-#ifdef GPU_NVIDIA
-  /* Workaround for a bug in the Nvidia shader compiler.
-   * If we don't compute L here again, it breaks shadows on reflection probes. */
-  L = light_vector_get(light, is_directional, P).L;
-#endif
-
-  if (abs(dot(Ng, L)) > 0.999) {
-    return ws_offset;
-  }
-
-  offset_P = line_plane_intersect(offset_P, L, P, Ng);
-  ws_offset = offset_P - P;
-
-  if (dot(ws_offset, L) < 0.0) {
-    /* Project the offset position into the perpendicular plane, since it's closer to the light
-     * (avoids overshadowing at geometry angles). */
-    vec3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, L)));
-    offset_P = line_plane_intersect(offset_P, L, P, perpendicular_plane_normal);
-    ws_offset = offset_P - P;
-  }
-
-  return ws_offset;
+  return pcf_offset;
 }
 
 /**
@@ -606,7 +527,7 @@ ShadowEvalResult shadow_eval(LightData light,
   }
 #endif
 
-  // P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
+  P += shadow_pcf_offset(light, is_directional, L, Ng, texel_radius, random_pcf_2d);
 
   /* We want to bias inside the object for transmission to go through the object itself.
    * But doing so splits the shadow in two different directions at the horizon. Also this
