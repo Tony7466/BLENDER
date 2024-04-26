@@ -1242,14 +1242,22 @@ static void legacy_object_thickness_modifier_thickness_anim(ConversionData &conv
       object.id,
       {{".thickness", ".thickness", fcurve_convert_thickness_cb}});
 
-  animdata_convert_thickness.root_path_src = "modifiers[\"Thickness\"]";
-  animdata_convert_thickness.root_path_dst = "modifiers[\"Thickness\"]";
+  LISTBASE_FOREACH (ModifierData *, tmd, &object.modifiers) {
+    if (ModifierType(tmd->type) != eModifierType_GreasePencilThickness) {
+      continue;
+    }
 
-  if (!animdata_convert_thickness.source_has_animation_to_convert()) {
-    return;
+    char modifier_name[MAX_NAME * 2];
+    BLI_str_escape(modifier_name, tmd->name, sizeof(modifier_name));
+    animdata_convert_thickness.root_path_src = fmt::format("modifiers[\"{}\"]", modifier_name);
+    animdata_convert_thickness.root_path_dst = fmt::format("modifiers[\"{}\"]", modifier_name);
+
+    if (!animdata_convert_thickness.source_has_animation_to_convert()) {
+      continue;
+    }
+    animdata_convert_thickness.fcurves_convert();
   }
 
-  animdata_convert_thickness.fcurves_convert();
   animdata_convert_thickness.fcurves_convert_finalize();
   DEG_relations_tag_update(&conversion_data.bmain);
 }
