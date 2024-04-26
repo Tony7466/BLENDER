@@ -70,8 +70,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
 
   void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "bind_pipeline(";
     ss << "pipeline_bind_point=" << to_string(pipeline_bind_point);
@@ -95,8 +94,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                 p_descriptor_sets,
                 dynamic_offset_count,
                 p_dynamic_offsets);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "bind_descriptor_sets(";
     ss << "pipeline_bind_point=" << to_string(pipeline_bind_point);
@@ -109,8 +107,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType index_type) override
   {
     UNUSED_VARS(buffer, offset, index_type);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -120,8 +117,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                            const VkDeviceSize *p_offsets) override
   {
     UNUSED_VARS(first_binding, binding_count, p_buffers, p_offsets);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -131,8 +127,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
             uint32_t first_instance) override
   {
     UNUSED_VARS(vertex_count, instance_count, first_vertex, first_instance);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -143,8 +138,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                     uint32_t first_instance) override
   {
     UNUSED_VARS(index_count, instance_count, first_index, vertex_offset, first_instance);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -154,8 +148,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                      uint32_t stride) override
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -165,16 +158,14 @@ class CommandBufferLog : public VKCommandBufferInterface {
                              uint32_t stride) override
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
   void dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) override
   {
     UNUSED_VARS(group_count_x, group_count_y, group_count_z);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "dispatch(";
     ss << "group_count_x=" << group_count_x;
@@ -186,8 +177,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
 
   void dispatch_indirect(VkBuffer buffer, VkDeviceSize offset) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "dispatch_indirect(";
     ss << "buffer=" << to_string(buffer);
@@ -201,8 +191,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    uint32_t region_count,
                    const VkBufferCopy *p_regions) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "copy_buffer(";
     ss << "src_buffer=" << to_string(src_buffer);
@@ -222,8 +211,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                   uint32_t region_count,
                   const VkImageCopy *p_regions) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "copy_image(";
     ss << "src_image=" << to_string(src_image);
@@ -246,8 +234,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                   const VkImageBlit *p_regions,
                   VkFilter filter) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "blit_image(";
     ss << "src_image=" << to_string(src_image);
@@ -269,8 +256,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "copy_buffer_to_image(";
     ss << "src_buffer=" << to_string(src_buffer);
@@ -291,8 +277,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "copy_image_to_buffer(";
     ss << "src_image=" << to_string(src_image);
@@ -312,8 +297,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                    VkDeviceSize size,
                    uint32_t data) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "fill_buffer(";
     ss << "dst_buffer=" << to_string(dst_buffer);
@@ -331,8 +315,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                          const VkImageSubresourceRange *p_ranges) override
   {
     UNUSED_VARS(p_color, range_count, p_ranges);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "clear_color_image(";
     ss << "image=" << to_string(image);
@@ -348,8 +331,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                                  const VkImageSubresourceRange *p_ranges) override
   {
     UNUSED_VARS(image, image_layout, p_depth_stencil, range_count, p_ranges);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -359,8 +341,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                          const VkClearRect *p_rects) override
   {
     UNUSED_VARS(attachment_count, p_attachments, rect_count, p_rects);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
@@ -375,8 +356,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
                         const VkImageMemoryBarrier *p_image_memory_barriers) override
   {
     UNUSED_VARS(dependency_flags, memory_barrier_count, p_memory_barriers);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "pipeline_barrier(";
     ss << "src_stage_mask=" << to_string_vk_pipeline_stage_flags(src_stage_mask);
@@ -404,16 +384,13 @@ class CommandBufferLog : public VKCommandBufferInterface {
                       const void *p_values) override
   {
     UNUSED_VARS(layout, stage_flags, offset, size, p_values);
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     BLI_assert_unreachable();
   }
 
   void begin_rendering(const VkRenderingInfo *p_rendering_info) override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "begin_rendering(";
     ss << "p_rendering_info=" << to_string(*p_rendering_info);
@@ -423,8 +400,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
 
   void end_rendering() override
   {
-    BLI_assert_msg(is_recording_,
-                   "Command is added to command buffer, which isn't in recording state.");
+    EXPECT_TRUE(is_recording_);
     std::stringstream ss;
     ss << "end_rendering()";
     log_.append(ss.str());

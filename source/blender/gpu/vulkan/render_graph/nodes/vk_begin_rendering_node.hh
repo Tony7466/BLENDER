@@ -17,16 +17,15 @@ namespace blender::gpu::render_graph {
  * Information stored inside the render graph node. See `VKRenderGraphNode`.
  */
 struct VKBeginRenderingData {
-  VkRenderingAttachmentInfoKHR color_attachments[8];
-  VkRenderingAttachmentInfoKHR depth_attachment;
-  VkRenderingAttachmentInfoKHR stencil_attachment;
-  VkClearColorValue clear_values[8];
+  VkRenderingAttachmentInfo color_attachments[8];
+  VkRenderingAttachmentInfo depth_attachment;
+  VkRenderingAttachmentInfo stencil_attachment;
   uint32_t color_attachment_count;
   VkRenderingInfoKHR vk_rendering_info;
 };
 
 struct VKBeginRenderingCreateInfo {
-  VKBeginRenderingData node_data;
+  VKBeginRenderingData node_data = {};
   const VKResourceAccessInfo &resources;
   VKBeginRenderingCreateInfo(const VKResourceAccessInfo &resources) : resources(resources) {}
 };
@@ -53,7 +52,35 @@ class VKBeginRenderingNode : public VKNodeInfo<VKNodeType::BEGIN_RENDERING,
    */
   template<typename Node> void set_node_data(Node &node, const CreateInfo &create_info)
   {
+    BLI_assert_msg(ELEM(create_info.node_data.vk_rendering_info.pColorAttachments,
+                        nullptr,
+                        create_info.node_data.color_attachments),
+                   "When create_info.node_data.vk_rendering_info.pColorAttachments points to "
+                   "something, it should point to create_info.node_data.color_attachments.");
+    BLI_assert_msg(ELEM(create_info.node_data.vk_rendering_info.pDepthAttachment,
+                        nullptr,
+                        &create_info.node_data.depth_attachment),
+                   "When create_info.node_data.vk_rendering_info.pDepthAttachment points to "
+                   "something, it should point to create_info.node_data.depth_attachment.");
+    BLI_assert_msg(ELEM(create_info.node_data.vk_rendering_info.pStencilAttachment,
+                        nullptr,
+                        &create_info.node_data.stencil_attachment),
+                   "When create_info.node_data.vk_rendering_info.pStencilAttachment points to "
+                   "something, it should point to create_info.node_data.stencil_attachment.");
     node.begin_rendering = create_info.node_data;
+    /* Localize pointers when set.*/
+    if (node.begin_rendering.vk_rendering_info.pColorAttachments) {
+      node.begin_rendering.vk_rendering_info.pColorAttachments =
+          node.begin_rendering.color_attachments;
+    }
+    if (node.begin_rendering.vk_rendering_info.pDepthAttachment) {
+      node.begin_rendering.vk_rendering_info.pDepthAttachment =
+          &node.begin_rendering.depth_attachment;
+    }
+    if (node.begin_rendering.vk_rendering_info.pStencilAttachment) {
+      node.begin_rendering.vk_rendering_info.pStencilAttachment =
+          &node.begin_rendering.stencil_attachment;
+    }
   }
 
   /**

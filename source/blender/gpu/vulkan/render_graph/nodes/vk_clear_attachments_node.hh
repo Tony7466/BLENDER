@@ -23,7 +23,7 @@ struct VKClearAttachmentsData {
 };
 
 struct VKClearAttachmentsCreateInfo {
-  VKClearAttachmentsData node_data;
+  VKClearAttachmentsData node_data = {};
   const VKResourceAccessInfo &resources;
   VKClearAttachmentsCreateInfo(const VKResourceAccessInfo &resources) : resources(resources) {}
 };
