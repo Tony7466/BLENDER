@@ -1309,7 +1309,6 @@ class CLIP_MT_view_zoom(Menu):
         layout.operator("clip.view_zoom_in")
         layout.operator("clip.view_zoom_out")
         layout.operator("clip.view_all", text="Zoom to Fit").fit_view = True
-        layout.operator("view2d.zoom_border", text="Zoom Region...")
 
 
 class CLIP_MT_view(Menu):
