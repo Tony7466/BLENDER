@@ -726,6 +726,18 @@ static int node_add_file_modal(bContext *C, wmOperator *op, const wmEvent *event
   /* End stack animation. */
   if (duration > node_stack_anim_duration) {
     WM_event_timer_remove(CTX_wm_manager(C), nullptr, data->anim_timer);
+    /* Enable back node previews. Only enabled by default to compositor nodes. */
+    SpaceNode &snode = *CTX_wm_space_node(C);
+    bNodeTree &node_tree = *snode.edittree;
+    if (node_tree.type == NTREE_COMPOSIT) {
+      for (bNode *node : data->nodes) {
+        if (node_is_previewable(snode, node_tree, *node)) {
+          node->flag |= NODE_PREVIEW;
+        }
+      }
+      Main *bmain = CTX_data_main(C);
+      ED_node_tree_propagate_change(C, bmain, &node_tree);
+    }
     MEM_delete(data);
     op->customdata = nullptr;
     return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
@@ -811,6 +823,10 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
   node_deselect_all(node_tree);
   for (bNode *node : nodes) {
     nodeSetSelected(node, true);
+    /* Temporarily disable node preview for smoother stack animation. */
+    if (nodes.size() > 1 && node_is_previewable(snode, node_tree, *node)) {
+      node->flag &= ~NODE_PREVIEW;
+    }
   }
   ED_node_set_active(bmain, &snode, &node_tree, nodes[0], nullptr);
 
