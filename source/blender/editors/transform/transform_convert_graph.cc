@@ -802,9 +802,9 @@ static inline void update_trans_data(TransData *td,
 
 /* Adjust the pointers that the transdata has to each BezTriple. */
 static void update_transdata_bezt_pointers(TransDataContainer *tc,
-                            const blender::Map<float *, int> &trans_data_map,
-                            const FCurve *fcu,
-                            const blender::Span<BeztMap> bezms)
+                                           const blender::Map<float *, int> &trans_data_map,
+                                           const FCurve *fcu,
+                                           const blender::Span<BeztMap> bezms)
 {
   /* At this point, beztmaps are already sorted, so their current index is assumed to be what the
    * BezTriple index will be after sorting. */
