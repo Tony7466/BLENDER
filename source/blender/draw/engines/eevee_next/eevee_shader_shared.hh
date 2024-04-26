@@ -1237,6 +1237,11 @@ struct ShadowTileMapData {
   float half_size;
   /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
   float2 center_offset;
+  /** Filter radius of the light in pixels. */
+  float filter_radius;
+  float _pad0;
+  float _pad1;
+  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 
@@ -1254,8 +1259,8 @@ struct ShadowRenderView {
   float clip_distance_inv;
   /* Viewport to submit the geometry of this tilemap view to. */
   uint viewport_index;
-
-  uint _pad0;
+  /* Filter radius for this view. */
+  float filter_radius;
   uint _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowRenderView, 16)

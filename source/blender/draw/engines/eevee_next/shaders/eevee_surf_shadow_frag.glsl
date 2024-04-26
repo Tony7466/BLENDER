@@ -29,8 +29,7 @@ void main()
    * Note that we always need a minimum slope bias of 1 pixel to avoid slanted surfaces aliasing
    * onto facing surfaces.
    * IMPORTANT: `fwidth` needs to be inside uniform control flow. */
-  /* TODO(fclem): Scale slope bias by filter radius. */
-  f_depth += fwidth(f_depth);
+  f_depth += fwidth(f_depth) * shadow_flat.filter_radius;
 
   /* Clip to light shape. */
   if (length_squared(shadow_clip.vector) < 1.0) {
