@@ -1168,7 +1168,7 @@ static void rna_def_pose_channel(BlenderRNA *brna)
       prop, "Custom Shape Wire Width", "Adjust the line thickness of custom shapes");
   /* When increasing the property range,
    * also modify the geometry shader and overlay_armature.cc. */
-  RNA_def_property_range(prop, 1.0f, 16.0f);
+  RNA_def_property_range(prop, 1.0f, WIRE_WIDTH_COMPRESSION);
   RNA_def_property_ui_range(prop, 1.0f, 10.0f, 1, 1);
   RNA_def_property_update(prop, NC_OBJECT | ND_POSE, "rna_Pose_update");
 

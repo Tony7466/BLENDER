@@ -889,9 +889,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const ArmatureDrawContext *ctx,
     buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
     inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
-    /* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down.
-     * Keep in sync with the max value of RNA. */
-    inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / 16.0);
+    inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
@@ -918,9 +916,7 @@ static void drw_shgroup_bone_custom_mesh_wire(const ArmatureDrawContext *ctx,
     mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
     inst_data.color_a = encode_2f_to_float(color[0], color[1]);
-    /* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down.
-     * Keep in sync with the max value of RNA. */
-    inst_data.color_b = encode_2f_to_float(color[2], wire_width / 16.0);
+    inst_data.color_b = encode_2f_to_float(color[2], wire_width / WIRE_WIDTH_COMPRESSION);
     DRW_buffer_add_entry_struct(buf, inst_data.mat);
   }
 
