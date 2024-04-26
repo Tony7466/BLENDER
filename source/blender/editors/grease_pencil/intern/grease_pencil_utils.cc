@@ -879,7 +879,8 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
   const bke::greasepencil::Drawing &drawing = info.drawing;
   const bke::CurvesGeometry &curves = drawing.strokes();
 
-  const IndexMask editable_points = retrieve_editable_points(object, drawing, info.layer_index, memory);
+  const IndexMask editable_points = retrieve_editable_points(
+      object, drawing, info.layer_index, memory);
   const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
 
   return IndexMask::from_intersection(editable_points, selected_points, memory);
