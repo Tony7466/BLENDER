@@ -12,8 +12,8 @@ static void node_declare(NodeDeclarationBuilder &b)
       "The region-space mouse X location, in pixels, increasing from 0 at the left");
   b.add_output<decl::Int>("Mouse Y").description(
       "The region-space mouse Y location, in pixels, increasing from 0 at the bottom");
-  b.add_output<decl::Int>("Region Size X").description("The total X size of the region in pixels");
-  b.add_output<decl::Int>("Region Size Y").description("The total Y size of the region in pixels");
+  b.add_output<decl::Int>("Region Width").description("The total X size of the region in pixels");
+  b.add_output<decl::Int>("Region Height").description("The total Y size of the region in pixels");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -25,8 +25,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const int2 size = params.user_data()->call_data->operator_data->region_size;
   params.set_output("Mouse X", mouse.x);
   params.set_output("Mouse Y", mouse.y);
-  params.set_output("Region Size X", size.x);
-  params.set_output("Region Size Y", size.y);
+  params.set_output("Region Width", size.x);
+  params.set_output("Region Height", size.y);
 }
 
 static void node_register()
