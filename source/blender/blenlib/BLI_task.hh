@@ -65,62 +65,129 @@ inline void parallel_for_each(Range &&range, const Function &function)
 #endif
 }
 
+class TaskSizeHints {
+ public:
+  enum class Type {
+    /** All tasks have the same size. */
+    Static,
+    /** All tasks can have different sizes and one has to look up the sizes one by one. */
+    IndividualLookup,
+    /**
+     * All tasks can have different sizes but one can efficiently determine the size of a
+     * consecutive range of tasks.
+     */
+    RangeLookup,
+  };
+
+  Type type;
+  std::optional<int64_t> size;
+  std::optional<int64_t> full_size;
+
+ protected:
+  TaskSizeHints(const Type type) : type(type) {}
+
+ public:
+  TaskSizeHints(const int64_t size) : type(Type::Static), size(size) {}
+
+  bool use_single_thread(const IndexRange range, const int64_t threshold) const
+  {
+    switch (this->type) {
+      case Type::Static: {
+        return *this->size * range.size() <= threshold;
+      }
+      case Type::IndividualLookup: {
+        if (full_size.has_value()) {
+          if (*full_size <= threshold) {
+            return true;
+          }
+        }
+        return false;
+      }
+      case Type::RangeLookup: {
+        return this->lookup_range_size(range) <= threshold;
+      }
+    }
+    BLI_assert_unreachable();
+    return true;
+  }
+
+  virtual void lookup_individual_sizes(IndexRange /*range*/, MutableSpan<int64_t> r_sizes) const
+  {
+    BLI_assert_unreachable();
+    r_sizes.fill(1);
+  }
+  virtual int64_t lookup_range_size(IndexRange range) const
+  {
+    BLI_assert_unreachable();
+    return range.size();
+  }
+};
+
+template<typename Fn> class TaskSizeHints_IndividualLookup : public TaskSizeHints {
+ private:
+  Fn fn_;
+
+ public:
+  TaskSizeHints_IndividualLookup(Fn fn, const std::optional<int64_t> full_size)
+      : TaskSizeHints(Type::IndividualLookup), fn_(std::move(fn))
+  {
+    this->full_size = full_size;
+  }
+
+  void lookup_individual_sizes(const IndexRange range, MutableSpan<int64_t> r_sizes) const override
+  {
+    fn_(range, r_sizes);
+  }
+};
+
+template<typename Fn> class TaskSizeHints_RangeLookup : public TaskSizeHints {
+ private:
+  Fn fn_;
+
+ public:
+  TaskSizeHints_RangeLookup(Fn fn) : TaskSizeHints(Type::RangeLookup), fn_(std::move(fn)) {}
+
+  int64_t lookup_range_size(const IndexRange range)
+  {
+    return fn_(range);
+  }
+};
+
+template<typename Fn>
+inline auto individual_task_sizes(Fn &&fn, const std::optional<int64_t> full_size = std::nullopt)
+{
+  auto array_fn = [fn = std::forward<Fn>(fn)](const IndexRange range,
+                                              MutableSpan<int64_t> r_sizes) {
+    for (const int64_t i : range.index_range()) {
+      r_sizes[i] = fn(range[i]);
+    }
+  };
+  return TaskSizeHints_IndividualLookup<decltype(array_fn)>(std::move(array_fn), full_size);
+}
+
 namespace detail {
 void parallel_for_impl(IndexRange range,
                        int64_t grain_size,
-                       FunctionRef<void(IndexRange)> function);
-void parallel_for_weighted_impl(IndexRange range,
-                                int64_t grain_size,
-                                FunctionRef<void(IndexRange)> function,
-                                FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn);
+                       FunctionRef<void(IndexRange)> function,
+                       const TaskSizeHints &size_hints);
 void memory_bandwidth_bound_task_impl(FunctionRef<void()> function);
 }  // namespace detail
 
 template<typename Function>
-inline void parallel_for(IndexRange range, int64_t grain_size, const Function &function)
+inline void parallel_for(const IndexRange range,
+                         const int64_t grain_size,
+                         const Function &function,
+                         const TaskSizeHints &size_hints = TaskSizeHints(1))
 {
   if (range.is_empty()) {
     return;
   }
-  if (range.size() <= grain_size) {
+  /* Invoking tbb for small workloads has a large overhead. */
+  if (size_hints.use_single_thread(range, grain_size)) {
     function(range);
     return;
   }
-  detail::parallel_for_impl(range, grain_size, function);
-}
-
-/**
- * Almost like `parallel_for` but allows passing in a function that estimates the amount of work
- * per index. This allows distributing work to threads more evenly.
- *
- * Using this function makes sense when the work load for each index can differ significantly, so
- * that it is impossible to determine a good constant grain size.
- *
- * This function has a bit more overhead than the unweighted #parallel_for. If that is noticeable
- * highly depends on the use-case. So the overhead should be measured when trying to use this
- * function for cases where all tasks may be very small.
- *
- * \param task_size_fn: Gets the task index as input and computes that tasks size.
- * \param grain_size: Determines approximately how large a combined task should be. For example, if
- * the grain size is 100, then 5 tasks of size 20 fit into it.
- */
-template<typename Function, typename TaskSizeFn>
-inline void parallel_for_weighted(IndexRange range,
-                                  int64_t grain_size,
-                                  const Function &function,
-                                  const TaskSizeFn &task_size_fn)
-{
-  if (range.is_empty()) {
-    return;
-  }
-  detail::parallel_for_weighted_impl(
-      range, grain_size, function, [&](const IndexRange sub_range, MutableSpan<int64_t> r_sizes) {
-        for (const int64_t i : sub_range.index_range()) {
-          const int64_t task_size = task_size_fn(sub_range[i]);
-          BLI_assert(task_size >= 0);
-          r_sizes[i] = task_size;
-        }
-      });
+  detail::parallel_for_impl(range, grain_size, function, size_hints);
 }
 
 /**
