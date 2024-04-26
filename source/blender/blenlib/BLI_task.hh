@@ -65,6 +65,12 @@ inline void parallel_for_each(Range &&range, const Function &function)
 #endif
 }
 
+/**
+ * Specifies how large the individual tasks are relative to each other. It's common that all tasks
+ * have a very similar size in which case one can just ignore this. However, sometimes tasks have
+ * very different sizes and it makes sense for the scheduler to e.g. group fewer big tasks and many
+ * small tasks together.
+ */
 class TaskSizeHints {
  public:
   enum class Type {
@@ -76,7 +82,7 @@ class TaskSizeHints {
      * All tasks can have different sizes but one can efficiently determine the size of a
      * consecutive range of tasks.
      */
-    RangeLookup,
+    AccumulatedLookup,
   };
 
   Type type;
@@ -103,25 +109,36 @@ class TaskSizeHints {
         }
         return false;
       }
-      case Type::RangeLookup: {
-        return this->lookup_range_size(range) <= threshold;
+      case Type::AccumulatedLookup: {
+        return this->lookup_accumulated_size(range) <= threshold;
       }
     }
     BLI_assert_unreachable();
     return true;
   }
 
+  /**
+   * Get the individual size of all tasks in the range. This must only be used if the type is
+   * #Type::IndividualLookup.
+   */
   virtual void lookup_individual_sizes(IndexRange /*range*/, MutableSpan<int64_t> r_sizes) const
   {
     BLI_assert_unreachable();
     r_sizes.fill(1);
   }
-  virtual int64_t lookup_range_size(IndexRange range) const
+
+  /**
+   * Get the accumulated size of a range of tasks. This must only be used if the type is
+   * #Type::AccumulatedLookup.
+   */
+  virtual int64_t lookup_accumulated_size(IndexRange range) const
   {
     BLI_assert_unreachable();
     return range.size();
   }
 };
+
+namespace detail {
 
 template<typename Fn> class TaskSizeHints_IndividualLookup : public TaskSizeHints {
  private:
@@ -140,19 +157,33 @@ template<typename Fn> class TaskSizeHints_IndividualLookup : public TaskSizeHint
   }
 };
 
-template<typename Fn> class TaskSizeHints_RangeLookup : public TaskSizeHints {
+template<typename Fn> class TaskSizeHints_AccumulatedLookup : public TaskSizeHints {
  private:
   Fn fn_;
 
  public:
-  TaskSizeHints_RangeLookup(Fn fn) : TaskSizeHints(Type::RangeLookup), fn_(std::move(fn)) {}
+  TaskSizeHints_AccumulatedLookup(Fn fn)
+      : TaskSizeHints(Type::AccumulatedLookup), fn_(std::move(fn))
+  {
+  }
 
-  int64_t lookup_range_size(const IndexRange range) const override
+  int64_t lookup_accumulated_size(const IndexRange range) const override
   {
     return fn_(range);
   }
 };
 
+}  // namespace detail
+
+/**
+ * Specify how large the task at each index is with a callback. This is especially useful if the
+ * size of each individual task can be very different. Specifying the size allows the scheduler to
+ * distribute the work across threads more equally.
+ *
+ * \param fn: A function that returns the size for a single task: `(int64_t index) -> int64_t`.
+ * \param full_size: The (approximate) accumulated size of all tasks. This is optional and should
+ *   only be passed in if it is trivially accessible already.
+ */
 template<typename Fn>
 inline auto individual_task_sizes(Fn &&fn, const std::optional<int64_t> full_size = std::nullopt)
 {
@@ -162,12 +193,21 @@ inline auto individual_task_sizes(Fn &&fn, const std::optional<int64_t> full_siz
       r_sizes[i] = fn(range[i]);
     }
   };
-  return TaskSizeHints_IndividualLookup<decltype(array_fn)>(std::move(array_fn), full_size);
+  return detail::TaskSizeHints_IndividualLookup<decltype(array_fn)>(std::move(array_fn),
+                                                                    full_size);
 }
 
-template<typename Fn> inline auto range_task_sizes(Fn &&fn)
+/**
+ * Very similar to #individual_task_sizes, but should be used if one can very efficiently compute
+ * the accumulated task size (in O(1) time). This is often the case when e.g. working with
+ * #OffsetIndices.
+ *
+ * \param fn: A function that returns the accumulated size for a range of tasks:
+ * `(IndexRange indices) -> int64_t`.
+ */
+template<typename Fn> inline auto accumulated_task_sizes(Fn &&fn)
 {
-  return TaskSizeHints_RangeLookup<decltype(fn)>(std::forward<Fn>(fn));
+  return detail::TaskSizeHints_AccumulatedLookup<decltype(fn)>(std::forward<Fn>(fn));
 }
 
 namespace detail {
@@ -178,6 +218,23 @@ void parallel_for_impl(IndexRange range,
 void memory_bandwidth_bound_task_impl(FunctionRef<void()> function);
 }  // namespace detail
 
+/**
+ * Executes the given function for sub-ranges of the given range, potentialy in parallel.
+ * This is the main primitive for parallelizing code.
+ *
+ * \param range: The indices that should be iterated over in parallel.
+ * \param grain_size: The approximate amount of work that should be scheduled at once.
+ *   For example of the range is [0 - 1000] and the grain size is 200, then the function will be
+ *   called 5 times with [0 - 200], [201 - 400], ... (approximately). The `size_hints` parameter
+ *   can be used to adjust how the work is split up if the tasks have different sizes.
+ * \param function: A callback that actually does the work in parallel. It should have one
+ *   #IndexRange parameter.
+ * \param size_hints: Can be used to specify the size of the tasks *relative to* each other and the
+ *   grain size. If all tasks have approximately the same size, this can be ignored. Otherwise, one
+ *   can use `threading::individual_task_sizes(...)` or `threading::accumulated_task_sizes(...)`.
+ *   If the grain size is e.g. 200 and each task has the size 100, then only two tasks will be
+ *   scheduled at once.
+ */
 template<typename Function>
 inline void parallel_for(const IndexRange range,
                          const int64_t grain_size,

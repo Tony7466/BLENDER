@@ -216,8 +216,14 @@ static void parallel_for_impl_range_size(const IndexRange range,
                                          const FunctionRef<void(IndexRange)> function,
                                          const TaskSizeHints &size_hints)
 {
-  const int64_t total_size = size_hints.lookup_range_size(range);
-  if (total_size <= grain_size || range.size() == 1) {
+  BLI_assert(!range.is_empty());
+  if (range.size() == 1) {
+    /* Can't subdivide further. */
+    function(range);
+    return;
+  }
+  const int64_t total_size = size_hints.lookup_accumulated_size(range);
+  if (total_size <= grain_size) {
     function(range);
     return;
   }
@@ -249,7 +255,7 @@ void parallel_for_impl(const IndexRange range,
       parallel_for_impl_individual_sizes(range, grain_size, function, size_hints);
       break;
     }
-    case TaskSizeHints::Type::RangeLookup: {
+    case TaskSizeHints::Type::AccumulatedLookup: {
       parallel_for_impl_range_size(range, grain_size, function, size_hints);
       break;
     }
