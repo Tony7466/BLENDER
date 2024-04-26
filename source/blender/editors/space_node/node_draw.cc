@@ -3277,7 +3277,7 @@ static void node_draw_basis(const bContext &C,
     UI_GetThemeColorBlendShade4fv(TH_SELECT, color_id, 0.4f, 10, color);
   }
 
-  /* Collapse button. */
+  /* Collapse/expand icon. */
   {
     const int but_size = U.widget_unit * 0.8f;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
@@ -3317,11 +3317,6 @@ static void node_draw_basis(const bContext &C,
                         0,
                         0,
                         TIP_(node.typeinfo->ui_description));
-  UI_but_func_tooltip_set(
-      but,
-      [](bContext * /*C*/, void * /*argN*/, const char *tip) { return std::string(tip); },
-      nullptr,
-      nullptr);
 
   if (node.flag & NODE_MUTED) {
     UI_but_flag_enable(but, UI_BUT_INACTIVE);
@@ -3520,7 +3515,7 @@ static void node_draw_hidden(const bContext &C,
     UI_GetThemeColorBlendShade4fv(TH_SELECT, color_id, 0.4f, 10, color);
   }
 
-  /* Expand button. */
+  /* Collapse/expand icon. */
   {
     const int but_size = U.widget_unit * 1.0f;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
@@ -3547,6 +3542,7 @@ static void node_draw_hidden(const bContext &C,
 
   char showname[128];
   bke::nodeLabel(&ntree, &node, showname, sizeof(showname));
+
   uiBut *but = uiDefBut(&block,
                         UI_BTYPE_LABEL,
                         0,
@@ -3559,11 +3555,6 @@ static void node_draw_hidden(const bContext &C,
                         0,
                         0,
                         TIP_(node.typeinfo->ui_description));
-  UI_but_func_tooltip_set(
-      but,
-      [](bContext * /*C*/, void * /*argN*/, const char *tip) { return std::string(tip); },
-      nullptr,
-      nullptr);
 
   /* Outline. */
   {
