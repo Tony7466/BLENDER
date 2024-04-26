@@ -35,36 +35,26 @@ class CommandBufferLog : public VKCommandBufferInterface {
 
   void begin_recording() override
   {
-    BLI_assert_msg(!is_recording_,
-                   "`CommandBufferLog::begin_recording` is called, when the command buffer is "
-                   "already recording.");
+    EXPECT_FALSE(is_recording_);
     is_recording_ = true;
   }
 
   void end_recording() override
   {
-    BLI_assert_msg(is_recording_,
-                   "`CommandBufferLog::end_recording` is called, when the command buffer is "
-                   "not recording.");
+    EXPECT_TRUE(is_recording_);
     is_recording_ = false;
   }
 
   void submit_with_cpu_synchronization() override
   {
-    BLI_assert_msg(!is_recording_, "`CommandBufferLog` is submitted when still recording.");
-    BLI_assert_msg(!is_cpu_synchronizing_,
-                   "`CommandBufferLog::submit_with_cpu_synchronization` is called, when the "
-                   "command buffer is "
-                   "still synchronizing.");
+    EXPECT_FALSE(is_recording_);
+    EXPECT_FALSE(is_cpu_synchronizing_);
     is_cpu_synchronizing_ = true;
   };
   void wait_for_cpu_synchronization() override
   {
-    BLI_assert_msg(!is_recording_, "`CommandBufferLog` is synchronizing when still recording.");
-    BLI_assert_msg(
-        is_cpu_synchronizing_,
-        "`CommandBufferLog::wait_for_cpu_synchronization` is called, when the command buffer is "
-        "not synchronizing.");
+    EXPECT_FALSE(is_recording_);
+    EXPECT_TRUE(is_cpu_synchronizing_);
     is_cpu_synchronizing_ = false;
   };
 
@@ -108,7 +98,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(buffer, offset, index_type);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void bind_vertex_buffers(uint32_t first_binding,
@@ -118,7 +108,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(first_binding, binding_count, p_buffers, p_offsets);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void draw(uint32_t vertex_count,
@@ -128,7 +118,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(vertex_count, instance_count, first_vertex, first_instance);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void draw_indexed(uint32_t index_count,
@@ -139,7 +129,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(index_count, instance_count, first_index, vertex_offset, first_instance);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void draw_indirect(VkBuffer buffer,
@@ -149,7 +139,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void draw_indexed_indirect(VkBuffer buffer,
@@ -159,7 +149,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) override
@@ -332,7 +322,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(image, image_layout, p_depth_stencil, range_count, p_ranges);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void clear_attachments(uint32_t attachment_count,
@@ -342,7 +332,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(attachment_count, p_attachments, rect_count, p_rects);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void pipeline_barrier(VkPipelineStageFlags src_stage_mask,
@@ -385,7 +375,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
   {
     UNUSED_VARS(layout, stage_flags, offset, size, p_values);
     EXPECT_TRUE(is_recording_);
-    BLI_assert_unreachable();
+    GTEST_FAIL() << __func__ << " not implemented!";
   }
 
   void begin_rendering(const VkRenderingInfo *p_rendering_info) override

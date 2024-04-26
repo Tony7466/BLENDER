@@ -813,13 +813,7 @@ static void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     BLI_assert(points.size() == gps->totpoints);
 
     const Span<bGPDspoint> src_points{gps->points, gps->totpoints};
-    /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
-     * was the brush size which would be stored in the stroke thickness and then scaled by the
-     * point pressure factor. Finally, the render engine would divide this thickness value by
-     * 2000 (we're going from a thickness to a radius, hence the factor of two) to convert back
-     * into blender units. Store the radius now directly in blender units. This makes it
-     * consistent with how hair curves handle the radius. */
-    const float stroke_thickness = float(gps->thickness) / 2000.0f;
+    const float stroke_thickness = float(gps->thickness) * LEGACY_RADIUS_CONVERSION_FACTOR;
     MutableSpan<float3> dst_positions = positions.slice(points);
     MutableSpan<float3> dst_handle_positions_left = has_bezier_stroke ?
                                                         handle_positions_left.slice(points) :
@@ -1225,21 +1219,19 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       src_object_data.id,
       {{".tint_color", ".color"}, {".tint_factor", ".factor"}});
 
-  /* Ensure values are divided by 2k, to match conversion done for non-animated value. */
-  constexpr float thickness_adjustement_factor = 1.0f / 2000.0f;
   auto fcurve_convert_thickness_cb = [&](FCurve &fcurve) {
     if (fcurve.bezt) {
       for (uint i = 0; i < fcurve.totvert; i++) {
         BezTriple &bezier_triple = fcurve.bezt[i];
-        bezier_triple.vec[0][1] *= thickness_adjustement_factor;
-        bezier_triple.vec[1][1] *= thickness_adjustement_factor;
-        bezier_triple.vec[2][1] *= thickness_adjustement_factor;
+        bezier_triple.vec[0][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+        bezier_triple.vec[1][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+        bezier_triple.vec[2][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
       }
     }
     if (fcurve.fpt) {
       for (uint i = 0; i < fcurve.totvert; i++) {
         FPoint &fpoint = fcurve.fpt[i];
-        fpoint.vec[1] *= thickness_adjustement_factor;
+        fpoint.vec[1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
       }
     }
     fcurve.flag &= ~FCURVE_INT_VALUES;
@@ -1301,7 +1293,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       /* Convert the "pixel" offset value into a radius value.
        * GPv2 used a conversion of 1 "px" = 0.001. */
       /* Note: this offset may be negative. */
-      const float radius_offset = float(thickness_px) * thickness_adjustement_factor;
+      const float radius_offset = float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR;
 
       const auto offset_radius_ntree_ensure = [&](Library *owner_library) {
         if (bNodeTree **ntree = conversion_data.offset_radius_ntree_by_library.lookup_ptr(
@@ -2975,95 +2967,87 @@ void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
 void lineart_wrap_v3(const LineartGpencilModifierData *lmd_legacy,
                      GreasePencilLineartModifierData *lmd)
 {
-#define LMD_WRAP(var) lmd->var = lmd_legacy->var
-
-  LMD_WRAP(edge_types);
-  LMD_WRAP(source_type);
-  LMD_WRAP(use_multiple_levels);
-  LMD_WRAP(level_start);
-  LMD_WRAP(level_end);
-  LMD_WRAP(source_camera);
-  LMD_WRAP(light_contour_object);
-  LMD_WRAP(source_object);
-  LMD_WRAP(source_collection);
-  LMD_WRAP(target_material);
+  lmd->edge_types = lmd_legacy->edge_types;
+  lmd->source_type = lmd_legacy->source_type;
+  lmd->use_multiple_levels = lmd_legacy->use_multiple_levels;
+  lmd->level_start = lmd_legacy->level_start;
+  lmd->level_end = lmd_legacy->level_end;
+  lmd->source_camera = lmd_legacy->source_camera;
+  lmd->light_contour_object = lmd_legacy->light_contour_object;
+  lmd->source_object = lmd_legacy->source_object;
+  lmd->source_collection = lmd_legacy->source_collection;
+  lmd->target_material = lmd_legacy->target_material;
   STRNCPY(lmd->source_vertex_group, lmd_legacy->source_vertex_group);
   STRNCPY(lmd->vgname, lmd_legacy->vgname);
-  LMD_WRAP(overscan);
-  LMD_WRAP(shadow_camera_fov);
-  LMD_WRAP(shadow_camera_size);
-  LMD_WRAP(shadow_camera_near);
-  LMD_WRAP(shadow_camera_far);
-  LMD_WRAP(opacity);
+  lmd->overscan = lmd_legacy->overscan;
+  lmd->shadow_camera_fov = lmd_legacy->shadow_camera_fov;
+  lmd->shadow_camera_size = lmd_legacy->shadow_camera_size;
+  lmd->shadow_camera_near = lmd_legacy->shadow_camera_near;
+  lmd->shadow_camera_far = lmd_legacy->shadow_camera_far;
+  lmd->opacity = lmd_legacy->opacity;
   lmd->thickness = lmd_legacy->thickness / 2;
-  LMD_WRAP(mask_switches);
-  LMD_WRAP(material_mask_bits);
-  LMD_WRAP(intersection_mask);
-  LMD_WRAP(shadow_selection);
-  LMD_WRAP(silhouette_selection);
-  LMD_WRAP(crease_threshold);
-  LMD_WRAP(angle_splitting_threshold);
-  LMD_WRAP(chain_smooth_tolerance);
-  LMD_WRAP(chaining_image_threshold);
-  LMD_WRAP(calculation_flags);
-  LMD_WRAP(flags);
-  LMD_WRAP(stroke_depth_offset);
-  LMD_WRAP(level_start_override);
-  LMD_WRAP(level_end_override);
-  LMD_WRAP(edge_types_override);
-  LMD_WRAP(shadow_selection_override);
-  LMD_WRAP(shadow_use_silhouette_override);
-  LMD_WRAP(cache);
-  LMD_WRAP(la_data_ptr);
-
-#undef LMD_WRAP
+  lmd->mask_switches = lmd_legacy->mask_switches;
+  lmd->material_mask_bits = lmd_legacy->material_mask_bits;
+  lmd->intersection_mask = lmd_legacy->intersection_mask;
+  lmd->shadow_selection = lmd_legacy->shadow_selection;
+  lmd->silhouette_selection = lmd_legacy->silhouette_selection;
+  lmd->crease_threshold = lmd_legacy->crease_threshold;
+  lmd->angle_splitting_threshold = lmd_legacy->angle_splitting_threshold;
+  lmd->chain_smooth_tolerance = lmd_legacy->chain_smooth_tolerance;
+  lmd->chaining_image_threshold = lmd_legacy->chaining_image_threshold;
+  lmd->calculation_flags = lmd_legacy->calculation_flags;
+  lmd->flags = lmd_legacy->flags;
+  lmd->stroke_depth_offset = lmd_legacy->stroke_depth_offset;
+  lmd->level_start_override = lmd_legacy->level_start_override;
+  lmd->level_end_override = lmd_legacy->level_end_override;
+  lmd->edge_types_override = lmd_legacy->edge_types_override;
+  lmd->shadow_selection_override = lmd_legacy->shadow_selection_override;
+  lmd->shadow_use_silhouette_override = lmd_legacy->shadow_use_silhouette_override;
+  lmd->cache = lmd_legacy->cache;
+  lmd->la_data_ptr = lmd_legacy->la_data_ptr;
 }
 
 void lineart_unwrap_v3(LineartGpencilModifierData *lmd_legacy,
                        const GreasePencilLineartModifierData *lmd)
 {
-#define LMD_UNWRAP(var) lmd_legacy->var = lmd->var
-
-  LMD_UNWRAP(edge_types);
-  LMD_UNWRAP(source_type);
-  LMD_UNWRAP(use_multiple_levels);
-  LMD_UNWRAP(level_start);
-  LMD_UNWRAP(level_end);
-  LMD_UNWRAP(source_camera);
-  LMD_UNWRAP(light_contour_object);
-  LMD_UNWRAP(source_object);
-  LMD_UNWRAP(source_collection);
-  LMD_UNWRAP(target_material);
+  lmd_legacy->edge_types = lmd->edge_types;
+  lmd_legacy->source_type = lmd->source_type;
+  lmd_legacy->use_multiple_levels = lmd->use_multiple_levels;
+  lmd_legacy->level_start = lmd->level_start;
+  lmd_legacy->level_end = lmd->level_end;
+  lmd_legacy->source_camera = lmd->source_camera;
+  lmd_legacy->light_contour_object = lmd->light_contour_object;
+  lmd_legacy->source_object = lmd->source_object;
+  lmd_legacy->source_collection = lmd->source_collection;
+  lmd_legacy->target_material = lmd->target_material;
   STRNCPY(lmd_legacy->source_vertex_group, lmd->source_vertex_group);
   STRNCPY(lmd_legacy->vgname, lmd->vgname);
-  LMD_UNWRAP(overscan);
-  LMD_UNWRAP(shadow_camera_fov);
-  LMD_UNWRAP(shadow_camera_size);
-  LMD_UNWRAP(shadow_camera_near);
-  LMD_UNWRAP(shadow_camera_far);
-  LMD_UNWRAP(opacity);
+  lmd_legacy->overscan = lmd->overscan;
+  lmd_legacy->shadow_camera_fov = lmd->shadow_camera_fov;
+  lmd_legacy->shadow_camera_size = lmd->shadow_camera_size;
+  lmd_legacy->shadow_camera_near = lmd->shadow_camera_near;
+  lmd_legacy->shadow_camera_far = lmd->shadow_camera_far;
+  lmd_legacy->opacity = lmd->opacity;
   lmd_legacy->thickness = lmd->thickness * 2;
-  LMD_UNWRAP(mask_switches);
-  LMD_UNWRAP(material_mask_bits);
-  LMD_UNWRAP(intersection_mask);
-  LMD_UNWRAP(shadow_selection);
-  LMD_UNWRAP(silhouette_selection);
-  LMD_UNWRAP(crease_threshold);
-  LMD_UNWRAP(angle_splitting_threshold);
-  LMD_UNWRAP(chain_smooth_tolerance);
-  LMD_UNWRAP(chaining_image_threshold);
-  LMD_UNWRAP(calculation_flags);
-  LMD_UNWRAP(flags);
-  LMD_UNWRAP(stroke_depth_offset);
-  LMD_UNWRAP(level_start_override);
-  LMD_UNWRAP(level_end_override);
-  LMD_UNWRAP(edge_types_override);
-  LMD_UNWRAP(shadow_selection_override);
-  LMD_UNWRAP(shadow_use_silhouette_override);
-  LMD_UNWRAP(cache);
-  LMD_UNWRAP(la_data_ptr);
-
-#undef LMD_UNWRAP
+  lmd_legacy->mask_switches = lmd->mask_switches;
+  lmd_legacy->material_mask_bits = lmd->material_mask_bits;
+  lmd_legacy->intersection_mask = lmd->intersection_mask;
+  lmd_legacy->shadow_selection = lmd->shadow_selection;
+  lmd_legacy->silhouette_selection = lmd->silhouette_selection;
+  lmd_legacy->crease_threshold = lmd->crease_threshold;
+  lmd_legacy->angle_splitting_threshold = lmd->angle_splitting_threshold;
+  lmd_legacy->chain_smooth_tolerance = lmd->chain_smooth_tolerance;
+  lmd_legacy->chaining_image_threshold = lmd->chaining_image_threshold;
+  lmd_legacy->calculation_flags = lmd->calculation_flags;
+  lmd_legacy->flags = lmd->flags;
+  lmd_legacy->stroke_depth_offset = lmd->stroke_depth_offset;
+  lmd_legacy->level_start_override = lmd->level_start_override;
+  lmd_legacy->level_end_override = lmd->level_end_override;
+  lmd_legacy->edge_types_override = lmd->edge_types_override;
+  lmd_legacy->shadow_selection_override = lmd->shadow_selection_override;
+  lmd_legacy->shadow_use_silhouette_override = lmd->shadow_use_silhouette_override;
+  lmd_legacy->cache = lmd->cache;
+  lmd_legacy->la_data_ptr = lmd->la_data_ptr;
 }
 
 }  // namespace blender::bke::greasepencil::convert
