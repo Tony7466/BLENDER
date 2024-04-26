@@ -225,7 +225,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
    * for point light with soft falloff and area light with small spread. */
   /* Uniformly sample neighboring reservoirs within a radius. There is probability to pick the same
    * reservoir twice, but the chance should be low if the radius is big enough and low descrepancy
-   * samples are used.  */
+   * samples are used. */
   for (int i = 0; i < samples; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
     const float3 rand = path_branched_rng_3D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
@@ -262,6 +262,10 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     }
     radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
+    if (sample_copy_direction(kg, neighbor_reservoir)) {
+      /* Jacobian for non-identity shift. */
+      neighbor_reservoir.total_weight *= neighbor_reservoir.ls.jacobian_area_to_solid_angle();
+    }
     reservoir.add_reservoir(neighbor_reservoir, rand_pick);
   }
 

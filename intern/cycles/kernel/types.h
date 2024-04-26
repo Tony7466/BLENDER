@@ -741,12 +741,12 @@ typedef struct RaySelfPrimitives {
   int light;        /* Light ID (the light the shadow ray is traced towards to) */
 } RaySelfPrimitives;
 
-typedef struct Ray {
-  float3 P;   /* origin */
-  float3 D;   /* direction */
-  float tmin; /* start distance */
-  float tmax; /* end distance */
-  float time; /* time (for motion blur) */
+struct Ray {
+  float3 P;             /* origin */
+  float3 D;             /* direction */
+  float tmin = 0.0f;    /* start distance */
+  float tmax = FLT_MAX; /* end distance */
+  float time;           /* time (for motion blur) */
 
 #ifdef __RAY_DIFFERENTIALS__
   float dP;
@@ -754,7 +754,10 @@ typedef struct Ray {
 #endif
 
   RaySelfPrimitives self;
-} Ray;
+
+  Ray() = default;
+  Ray(float3 P_, float3 D_) : P(P_), D(D_) {}
+};
 
 /* Intersection */
 

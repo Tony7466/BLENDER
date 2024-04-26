@@ -240,6 +240,46 @@ ccl_device_forceinline bool area_light_is_ellipse(const ccl_global KernelAreaLig
   return light->invarea < 0.0f;
 }
 
+ccl_device_inline bool area_light_intersect(const ccl_global KernelLight *klight,
+                                            const ccl_private Ray *ccl_restrict ray,
+                                            ccl_private float *t,
+                                            ccl_private float *u,
+                                            ccl_private float *v)
+{
+  /* Area light. */
+  const float invarea = fabsf(klight->area.invarea);
+  const bool is_ellipse = area_light_is_ellipse(&klight->area);
+  if (invarea == 0.0f) {
+    return false;
+  }
+
+  const float3 inv_extent_u = klight->area.axis_u / klight->area.len_u;
+  const float3 inv_extent_v = klight->area.axis_v / klight->area.len_v;
+  const float3 Ng = klight->area.dir;
+
+  /* One sided. */
+  if (dot(ray->D, Ng) >= 0.0f) {
+    return false;
+  }
+
+  const float3 light_P = klight->co;
+
+  float3 P;
+  return ray_quad_intersect(ray->P,
+                            ray->D,
+                            ray->tmin,
+                            ray->tmax,
+                            light_P,
+                            inv_extent_u,
+                            inv_extent_v,
+                            Ng,
+                            &P,
+                            t,
+                            u,
+                            v,
+                            is_ellipse);
+}
+
 /* Common API. */
 /* TODO(weizhen): this function is too complicated, consider splitting. */
 /* Evaluate `eval_fac` and `Ng`. Also sample a new position on the light if `sample_coord`, and
@@ -267,6 +307,12 @@ ccl_device_inline bool area_light_eval(const ccl_global KernelLight *klight,
 
   if (has_uv) {
     kernel_assert(!sample_coord);
+    if (klight->area.tan_half_spread == 0.0f) {
+      Ray ray(ray_P, -klight->area.dir);
+      if (!area_light_intersect(klight, &ray, &ls->t, &ls->u, &ls->v)) {
+        return false;
+      }
+    }
     const float light_v = ls->u - 0.5f;
     const float light_u = -(ls->v + light_v);
     ls->P = *light_P + light_u * len_u * axis_u + light_v * len_v * axis_v;
@@ -396,46 +442,6 @@ ccl_device_forceinline void area_light_mnee_sample_update(const ccl_global Kerne
     /* Convert pdf to be in area measure. */
     ls->pdf /= light_pdf_area_to_solid_angle(ls->Ng, -ls->D, ls->t);
   }
-}
-
-ccl_device_inline bool area_light_intersect(const ccl_global KernelLight *klight,
-                                            const ccl_private Ray *ccl_restrict ray,
-                                            ccl_private float *t,
-                                            ccl_private float *u,
-                                            ccl_private float *v)
-{
-  /* Area light. */
-  const float invarea = fabsf(klight->area.invarea);
-  const bool is_ellipse = area_light_is_ellipse(&klight->area);
-  if (invarea == 0.0f) {
-    return false;
-  }
-
-  const float3 inv_extent_u = klight->area.axis_u / klight->area.len_u;
-  const float3 inv_extent_v = klight->area.axis_v / klight->area.len_v;
-  const float3 Ng = klight->area.dir;
-
-  /* One sided. */
-  if (dot(ray->D, Ng) >= 0.0f) {
-    return false;
-  }
-
-  const float3 light_P = klight->co;
-
-  float3 P;
-  return ray_quad_intersect(ray->P,
-                            ray->D,
-                            ray->tmin,
-                            ray->tmax,
-                            light_P,
-                            inv_extent_u,
-                            inv_extent_v,
-                            Ng,
-                            &P,
-                            t,
-                            u,
-                            v,
-                            is_ellipse);
 }
 
 /* NOTE: `ls->pdf` is skipped. */

@@ -83,6 +83,29 @@ void Reservoir::add_reservoir(const Reservoir &other, const float rand)
   add_sample(other.ls, other.radiance, other.total_weight, rand);
 }
 
+/* TODO(weizhen): maybe it should be determined when the sample is drawn, not afterwards. */
+ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
+                                             ccl_private const Reservoir &reservoir)
+{
+  kernel_assert(!reservoir.is_empty());
+
+  if (reservoir.ls.type == LIGHT_AREA) {
+    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, reservoir.ls.lamp);
+    if (klight->area.tan_half_spread == 0.0f) {
+      return true;
+    }
+  }
+
+  if (reservoir.ls.type == LIGHT_POINT) {
+    const ccl_global KernelLight *klight = &kernel_data_fetch(lights, reservoir.ls.lamp);
+    if (!klight->spot.is_sphere) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 CCL_NAMESPACE_END
 
 #endif  // RESERVOIR_H_

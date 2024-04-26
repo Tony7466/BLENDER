@@ -589,6 +589,8 @@ ccl_device
           ls.object = isect.object;
           ls.prim = isect.prim;
           ls.lamp = LAMP_NONE;
+          ls.type = LIGHT_TRIANGLE;
+          ls.group = object_lightgroup(kg, ls.object);
 
           /* TODO(weizhen): PATH_RAY_MIS_SKIP?  */
           const bool has_mis = (emission_sd.type & PRIMITIVE_TRIANGLE) &&
@@ -664,6 +666,8 @@ ccl_device
   kernel_assert(samples_seen <= max_samples);
 
   BsdfEval radiance = reservoir.radiance;
+  /* TODO(weizhen): split sd and reservoir pass, write to sd at the beginning so we can return here
+   * if reservoir is empty. */
   if (!reservoir.is_empty()) {
     reservoir.total_weight /= reduce_add(fabs(radiance.sum));
   }
@@ -671,8 +675,10 @@ ccl_device
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
-    reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
+    if (!reservoir.is_empty() && !sample_copy_direction(kg, reservoir)) {
+      /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
+      reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
+    }
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
   }
   else {
