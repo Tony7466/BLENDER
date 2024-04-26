@@ -16,6 +16,8 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("The 3D viewport's perspective or orthographic projection matrix");
   b.add_output<decl::Matrix>("View").description(
       "The view direction and location of the 3D viewport");
+  b.add_output<decl::Bool>("Is Orthographic")
+      .description("Whether the viewport is using orthographic projection");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -31,6 +33,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   params.set_output("Projection", float4x4(rv3d->winmat) * self_object.object_to_world());
   params.set_output("View", float4x4(rv3d->viewmat) * self_object.object_to_world());
+  params.set_output("Is Orthographic", !bool(rv3d->is_persp));
 }
 
 static void node_register()
