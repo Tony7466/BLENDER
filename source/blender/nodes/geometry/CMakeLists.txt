@@ -205,6 +205,7 @@ set(SRC
   nodes/node_geo_uv_pack_islands.cc
   nodes/node_geo_uv_unwrap.cc
   nodes/node_geo_viewer.cc
+  nodes/node_geo_viewport_transform.cc
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
 
@@ -295,6 +296,13 @@ add_node_discovery(
 list(APPEND LIB
   bf_nodes_geometry_generated
 )
+
+# If compiling with msvc clang we need to add the D_LIBCPP_VERSION define
+# so we don't run into tbb errors when compiling with lib
+if(WITH_TBB AND MSVC_CLANG)
+  string(APPEND CMAKE_CXX_FLAGS " /D_LIBCPP_VERSION")
+endif()
+
 
 blender_add_lib(bf_nodes_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
