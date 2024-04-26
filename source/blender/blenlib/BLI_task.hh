@@ -147,7 +147,7 @@ template<typename Fn> class TaskSizeHints_RangeLookup : public TaskSizeHints {
  public:
   TaskSizeHints_RangeLookup(Fn fn) : TaskSizeHints(Type::RangeLookup), fn_(std::move(fn)) {}
 
-  int64_t lookup_range_size(const IndexRange range)
+  int64_t lookup_range_size(const IndexRange range) const override
   {
     return fn_(range);
   }
