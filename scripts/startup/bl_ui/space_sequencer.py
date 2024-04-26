@@ -383,7 +383,7 @@ class SEQUENCER_MT_preview_zoom(Menu):
                 "sequencer.view_zoom_ratio",
                 text=iface_("%g%% (%d:%d)") % (percent, a, b),
                 translate=False,
-                icon=('NONE','LAYER_ACTIVE')[isclose(percent, current_zoom, abs_tol = 0.5)],
+                icon=('NONE', 'LAYER_ACTIVE')[isclose(percent, current_zoom, abs_tol = 0.5)],
             ).ratio = a / b
 
         layout.separator()
