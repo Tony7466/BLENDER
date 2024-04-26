@@ -42,6 +42,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
@@ -1298,6 +1299,16 @@ void node_socket_color_get(const bContext &C,
   sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
 }
 
+static StringRef find_menu_item_name(const bke::RuntimeNodeEnumItems &menu, const int identifier)
+{
+  const bke::RuntimeNodeEnumItem *item = std::find_if(
+      menu.items.begin(), menu.items.end(), [&](const bke::RuntimeNodeEnumItem &item) -> bool {
+        return item.identifier == identifier;
+      });
+  BLI_assert(item != menu.items.end());
+  return item->name;
+}
+
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
                                                        const GPointer value,
                                                        std::stringstream &ss)
@@ -1335,12 +1346,30 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   }
 
   const CPPType &socket_type = *socket.typeinfo->base_cpp_type;
+  if (socket.type == SOCK_MENU) {
+    /* Currently there is no implicit conversion from any scalar type to menu item index. */
+    if (value_type != socket_type) {
+      return;
+    }
+    const bke::RuntimeNodeEnumItems *menu_items =
+        socket.default_value_typed<bNodeSocketValueMenu>()->enum_items;
+    if (menu_items == nullptr) {
+      ss << fmt::format(TIP_("\"\" (Menu)"));
+      return;
+    }
+    const int identifier = *value.get<int>();
+    const StringRef item_name = find_menu_item_name(*menu_items, identifier);
+    ss << fmt::format(TIP_("{} (Menu)"), item_name);
+    return;
+  }
+
   const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
   if (value_type != socket_type) {
     if (!convert.is_convertible(value_type, socket_type)) {
       return;
     }
   }
+
   BUFFER_FOR_CPP_TYPE_VALUE(socket_type, socket_value);
   /* This will just copy the value if the types are equal. */
   convert.convert_to_uninitialized(value_type, socket_type, buffer, socket_value);
