@@ -1263,7 +1263,9 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     sce->toolsettings->particle.object = nullptr;
     sce->toolsettings->gp_sculpt.paintcursor = nullptr;
     if (sce->toolsettings->uvsculpt.strength_curve) {
+      BLO_read_struct(reader, CurveMapping, &sce->toolsettings->uvsculpt.strength_curve);
       BKE_curvemapping_blend_read(reader, sce->toolsettings->uvsculpt.strength_curve);
+      BKE_curvemapping_init(sce->toolsettings->uvsculpt.strength_curve);
     }
 
     if (sce->toolsettings->sculpt) {
@@ -1666,6 +1668,7 @@ ToolSettings *BKE_toolsettings_copy(ToolSettings *toolsettings, const int flag)
   }
   if (ts->uvsculpt.strength_curve) {
     ts->uvsculpt.strength_curve = BKE_curvemapping_copy(ts->uvsculpt.strength_curve);
+    BKE_curvemapping_init(ts->uvsculpt.strength_curve);
   }
   if (ts->gp_paint) {
     ts->gp_paint = static_cast<GpPaint *>(MEM_dupallocN(ts->gp_paint));
