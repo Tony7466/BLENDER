@@ -726,7 +726,7 @@ static int node_add_file_modal(bContext *C, wmOperator *op, const wmEvent *event
   /* End stack animation. */
   if (duration > node_stack_anim_duration) {
     WM_event_timer_remove(CTX_wm_manager(C), nullptr, data->anim_timer);
-    /* Enable back node previews. Only enabled by default to compositor nodes. */
+    /* Reenable node previews. Only enabled by default in compositor nodes. */
     SpaceNode &snode = *CTX_wm_space_node(C);
     bNodeTree &node_tree = *snode.edittree;
     if (node_tree.type == NTREE_COMPOSIT) {
