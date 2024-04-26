@@ -94,71 +94,47 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   Vector<std::string> errors;
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
-    errors.append(
-        fmt::format("Could not create {} F-Curve{}. This can happen when only inserting to "
-                    "available F-Curves.",
-                    error_count,
-                    error_count > 1 ? "s" : ""));
+    errors.append(N_("Could not create F-Curves. This can happen when only inserting to "
+                     "available F-Curves.") +
+                  fmt::format(" ({})", error_count));
   }
 
   if (this->get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE);
-    if (error_count == 1) {
-      errors.append("One F-Curve is not keyframeable. It might be locked or sampled.");
-    }
-    else {
-      errors.append(fmt::format(
-          "{} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
-    }
+    errors.append(N_("F-Curves are not keyframeable. They might be locked or sampled.") +
+                  fmt::format(" ({})", error_count));
   }
 
   if (this->get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_KEY_NEEDED);
     errors.append(
-        fmt::format("Due to the setting 'Only Insert Needed', {} keyframe{} not been inserted.",
-                    error_count,
-                    error_count > 1 ? "s have" : " has"));
+        N_("Due to the setting 'Only Insert Needed', keyframes have not been inserted.") +
+        fmt::format(" ({})", error_count));
   }
 
   if (this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK);
-    errors.append(fmt::format("Due to the NLA stack setup, {} keyframe{} not been inserted.",
-                              error_count,
-                              error_count > 1 ? "s have" : " has"));
+    errors.append(N_("Due to the NLA stack setup, keyframes have not been inserted." +
+                     fmt::format(" ({})", error_count)));
   }
 
   if (this->get_count(SingleKeyingResult::ID_NOT_EDITABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_EDITABLE);
-    if (error_count == 1) {
-      errors.append("Inserting keys for one ID has been skipped because it is not editable.");
-    }
-    else {
-      errors.append(
-          fmt::format("{} IDs have been skipped because they are not editable.", error_count));
-    }
+    errors.append(N_("Inserting keys on IDs has been skipped because they are not editable.") +
+                  fmt::format(" ({})", error_count));
   }
 
   if (this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::ID_NOT_ANIMATABLE);
-    if (error_count == 1) {
-      errors.append("Inserting keys for one ID has been skipped because it cannot be animated.");
-    }
-    else {
-      errors.append(
-          fmt::format("{} IDs have been skipped because they cannot be animated.", error_count));
-    }
+    errors.append(N_("Inserting keys on IDs has been skipped because they cannot be animated.") +
+                  fmt::format(" ({})", error_count));
   }
 
   if (this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_RESOLVE_PATH);
-    if (error_count == 1) {
-      errors.append(
-          "Inserting keys for one ID has been skipped because the RNA path wasn't valid for it");
-    }
-    else {
-      errors.append(fmt::format(
-          "{} IDs have been skipped because the RNA path wasn't valid for them.", error_count));
-    }
+    errors.append(
+        N_("Inserting keys on IDs has been skipped because the RNA path wasn't valid for them") +
+        fmt::format(" ({})", error_count));
   }
 
   if (errors.is_empty()) {
@@ -171,7 +147,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     return;
   }
 
-  std::string error_message = "Inserting keyframes failed:";
+  std::string error_message = N_("Inserting keyframes failed:");
   for (const std::string &error : errors) {
     error_message.append(fmt::format("\n- {}", error));
   }
