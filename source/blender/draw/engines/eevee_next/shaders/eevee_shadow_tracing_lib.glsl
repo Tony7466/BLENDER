@@ -509,28 +509,31 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
  * This is a smooth (not discretized to the LOD transitions) conservative (always above actual
  * density) estimate value.
  */
-float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 P)
+float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 lP)
 {
-  float scale_dist = 1.0;
-  /* Footprint of a tilemap at unit distance from the camera. */
-  float diameter_unit = M_SQRT2 / SHADOW_MAP_MAX_RES;
+  float scale = 1.0;
   if (is_directional) {
     if (light.type == LIGHT_SUN) {
-      /* TODO(fclem): Min-Max clamping. */
-      scale_dist = exp2(distance(P, drw_view_position()));
+      /* Simplification of `coverage_get(shadow_directional_level_fractional)`. */
+      const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 1.0001);
+      scale = length(lP) * narrowing;
+      scale *= exp2(light.lod_bias + 1.0);
+      scale = clamp(scale,
+                    float(1 << light_sun_data_get(light).clipmap_lod_min),
+                    float(1 << light_sun_data_get(light).clipmap_lod_max));
     }
     else {
       /* Uniform distribution everywhere. No distance scaling. */
-      diameter_unit /= exp2(light_sun_data_get(light).clipmap_lod_min);
+      scale /= float(1 << light_sun_data_get(light).clipmap_lod_min);
     }
   }
   else {
     /* TODO(fclem): Should depend on distance to the camera too. */
-    scale_dist = distance(P, light._position);
-    /* TODO(fclem): Should depend on cubemap density. */
-    diameter_unit = M_SQRT2 / SHADOW_MAP_MAX_RES;
+    scale = reduce_max(abs(lP));
   }
-  return diameter_unit * scale_dist;
+  /* Footprint of a tilemap at unit distance from the camera. */
+  float texel_footprint = M_SQRT2 / SHADOW_MAP_MAX_RES;
+  return texel_footprint * scale;
 }
 
 /**
@@ -539,9 +542,18 @@ float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 
  */
 float shadow_normal_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec3 L)
 {
+  vec3 lP = light_world_to_local_point(light, P);
   /* Compute the size of a shadow map texel radius at the receiver position. */
+  float texel_diameter = shadow_texel_diameter_at(light, is_directional, lP);
+#ifdef GPU_FRAGMENT_SHADER
+  if (ivec2(gl_FragCoord.xy) == ivec2(512)) {
+    drw_debug_point(P, texel_diameter);
+  }
+#endif
+  /* Attenuate depending on light angle. */
+  /* TODO: Implement. Although, should we take the light shape into consideration? */
 
-  return shadow_texel_diameter_at(light, is_directional, P);
+  return texel_diameter;
 }
 
 /**

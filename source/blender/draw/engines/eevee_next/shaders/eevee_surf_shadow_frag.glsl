@@ -25,6 +25,12 @@ vec4 closure_to_rgba(Closure cl)
 void main()
 {
   float f_depth = gl_FragCoord.z;
+  /* Slope bias.
+   * Note that we always need a minimum slope bias of 1 pixel to avoid slanted surfaces aliasing
+   * onto facing surfaces.
+   * IMPORTANT: `fwidth` needs to be inside uniform control flow. */
+  /* TODO(fclem): Scale slope bias by filter radius. */
+  f_depth += fwidth(f_depth);
 
   /* Clip to light shape. */
   if (length_squared(shadow_clip.vector) < 1.0) {
