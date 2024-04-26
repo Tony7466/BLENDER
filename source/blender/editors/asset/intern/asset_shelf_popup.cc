@@ -24,26 +24,27 @@
 
 namespace blender::ed::asset::shelf {
 
-class PopupAssetShelfStorage {
+class StaticPopupShelves {
  public:
   Vector<AssetShelf *> popup_shelves;
 
-  ~PopupAssetShelfStorage()
+  ~StaticPopupShelves()
   {
     for (AssetShelf *shelf : popup_shelves) {
       MEM_delete(shelf);
     }
   }
-  static Vector<AssetShelf *> &get_popup_asset_shelves()
+
+  static Vector<AssetShelf *> &shelves()
   {
-    static PopupAssetShelfStorage storage;
+    static StaticPopupShelves storage;
     return storage.popup_shelves;
   }
 };
 
 void type_popup_unlink(const AssetShelfType &shelf_type)
 {
-  for (AssetShelf *shelf : PopupAssetShelfStorage::get_popup_asset_shelves()) {
+  for (AssetShelf *shelf : StaticPopupShelves::shelves()) {
     if (shelf->type == &shelf_type) {
       shelf->type = nullptr;
     }
@@ -54,7 +55,7 @@ static AssetShelf *get_shelf_for_popup(const bContext *C, AssetShelfType &shelf_
 {
   const SpaceType *space_type = BKE_spacetype_from_id(shelf_type.space_type);
 
-  Vector<AssetShelf *> &popup_shelves = PopupAssetShelfStorage::get_popup_asset_shelves();
+  Vector<AssetShelf *> &popup_shelves = StaticPopupShelves::shelves();
 
   for (AssetShelf *shelf : popup_shelves) {
     if (STREQ(shelf->idname, shelf_type.idname)) {
