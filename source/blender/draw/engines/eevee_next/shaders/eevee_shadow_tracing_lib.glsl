@@ -513,7 +513,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
  * This is a smooth (not discretized to the LOD transitions) conservative (always above actual
  * density) estimate value.
  */
-float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 P)
+float shadow_texel_radius_at_position(LightData light, const bool is_directional, vec3 P)
 {
   vec3 lP = light_world_to_local_point(light, P);
 
@@ -533,11 +533,12 @@ float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 
     }
   }
   else {
-    float dist_to_cam = distance(P, drw_view_position());
+    /* FIXME: The returned value seems quite broken as it increases drastically near the view
+     * position. */
     scale = shadow_punctual_footprint_ratio(light,
                                             lP,
                                             drw_view_is_perspective(),
-                                            dist_to_cam,
+                                            distance(P, drw_view_position()),
                                             uniform_buf.shadow.tilemap_projection_ratio);
     /* This gives the size of pixels at Z = 1. */
     scale *= exp2(light.lod_bias);
@@ -552,21 +553,18 @@ float shadow_texel_diameter_at(LightData light, const bool is_directional, vec3 
 
 /**
  * Compute the amount of offset to add to the shading point in the normal direction to avoid self
- * shadowing caused by aliasing artifacts.
+ * shadowing caused by aliasing artifacts. This is on top of the slope bias computed in the shadow
+ * render shader to avoid aliasing issues of other polygons. The slope bias only fixes the self
+ * shadowing from the current polygon, which is not enough in cases with adjacent polygons with
+ * very different slopes.
  */
-float shadow_normal_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec3 L)
+float shadow_normal_offset(float texel_radius, vec3 Ng, vec3 L)
 {
-  /* Compute the size of a shadow map texel radius at the receiver position. */
-  float texel_diameter = shadow_texel_diameter_at(light, is_directional, P);
-#ifdef GPU_FRAGMENT_SHADER
-  if (ivec2(gl_FragCoord.xy) == ivec2(512)) {
-    drw_debug_point(P, texel_diameter);
-  }
-#endif
   /* Attenuate depending on light angle. */
-  /* TODO: Implement. Although, should we take the light shape into consideration? */
-
-  return texel_diameter;
+  /* TODO: Should we take the light shape into consideration? */
+  float cos_theta = abs(dot(Ng, L));
+  float sin_theta = sqrt(saturate(1.0 - square(cos_theta)));
+  return texel_radius * sin_theta;
 }
 
 /**
@@ -600,6 +598,14 @@ ShadowEvalResult shadow_eval(LightData light,
   float normal_offset = 0.02;
 #endif
 
+  /* Shadow map texel radius at the receiver position. */
+  float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
+#ifdef GPU_FRAGMENT_SHADER
+  if (ivec2(gl_FragCoord.xy) == ivec2(512)) {
+    drw_debug_point(P, texel_radius);
+  }
+#endif
+
   // P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
 
   /* We want to bias inside the object for transmission to go through the object itself.
@@ -611,7 +617,7 @@ ShadowEvalResult shadow_eval(LightData light,
   /* Avoid self intersection with respect to numerical precision. */
   P = offset_ray(P, N_bias);
   /* The above offset isn't enough in most situation. Still add a bigger bias. */
-  P += N_bias * shadow_normal_offset(light, is_directional, P, Ng, L);
+  P += N_bias * shadow_normal_offset(texel_radius, Ng, L);
 
   vec3 lP = is_directional ? light_world_to_local(light, P) :
                              light_world_to_local(light, P - light_position_get(light));
