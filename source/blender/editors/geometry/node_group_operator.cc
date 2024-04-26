@@ -394,6 +394,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   Object *active_object = CTX_data_active_object(C);
+  /* Note: `region` may be null when called from a script. */
   const ARegion *region = CTX_wm_region(C);
   if (!active_object) {
     return OPERATOR_CANCELLED;
@@ -472,7 +473,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     operator_eval_data.self_object_orig = object;
     operator_eval_data.scene_orig = scene;
     RNA_int_get_array(op->ptr, "mouse_position", operator_eval_data.mouse_position);
-    operator_eval_data.region_size = int2(region->sizex, region->sizey);
+    operator_eval_data.region_size = region ? int2(region->sizex, region->sizey) : int2(0);
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;
