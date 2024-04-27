@@ -31,10 +31,20 @@ void main()
    * IMPORTANT: `fwidth` needs to be inside uniform control flow. */
   f_depth += fwidth(f_depth) * shadow_flat.filter_radius;
 
+#ifdef SHADOW_UPDATE_TBDR
+/* We need to write to gl_FragDepth un-conditionnally. So we cannot early exit or use discard. */
+#  define discard_result f_depth = 1.0;
+#else
+#  define discard_result \
+    discard; \
+    return;
+#endif
+  /* Avoid values greater than 1. */
+  f_depth = saturate(f_depth);
+
   /* Clip to light shape. */
   if (length_squared(shadow_clip.vector) < 1.0) {
-    discard;
-    return;
+    discard_result;
   }
 
 #ifdef MAT_TRANSPARENT
@@ -47,8 +57,7 @@ void main()
 
   float transparency = average(g_transmittance);
   if (transparency > random_threshold) {
-    discard;
-    return;
+    discard_result;
   }
 #endif
 
@@ -83,8 +92,7 @@ void main()
 #endif
 
 #ifdef SHADOW_UPDATE_TBDR
-  /* Store output depth in tile memory using F32 attachment. NOTE: As depth testing is enabled,
-   * only the closest fragment will store the result. */
+  gl_FragDepth = f_depth;
   out_depth = f_depth;
 #endif
 }
