@@ -79,6 +79,7 @@
 #include "ED_object.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
+#include "ED_screen_types.hh"
 #include "ED_undo.hh"
 
 #include "IMB_imbuf.hh"
@@ -6360,19 +6361,58 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   /* Otherwise should cursor keymap status. */
 
   bScreen *screen = CTX_wm_screen(C);
+  wmWindowManager *wm = CTX_wm_manager(C);
   ARegion *region = screen->active_region;
+  uiLayout *row = uiLayoutRow(layout, true);
+  ScrArea *area = nullptr;
+
   if (region == nullptr) {
+    /* No active region so could e over an action zone. */
+    AZone *az = nullptr;
+    LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
+      LISTBASE_FOREACH (AZone *, az_iter, &area_iter->actionzones) {
+        if (BLI_rcti_isect_pt_v(&az_iter->rect, win->eventstate->xy)) {
+          region = az_iter->region;
+          area = area_iter;
+          az = az_iter;
+          break;
+        }
+      }
+    }
+
+    if (az) {
+      if (az && az->type == AZONE_AREA) {
+        uiItemL(row, IFACE_("Split (within area)"), ICON_MOUSE_LMB_DRAG);
+        uiItemL(row, IFACE_("Join (out of area)"), ICON_MOUSE_LMB_DRAG);
+        uiItemL(row, "", ICON_EVENT_SHIFT);
+        uiItemL(row, IFACE_("New window"), ICON_MOUSE_LMB_DRAG);
+        uiItemL(row, "", ICON_EVENT_CTRL);
+        uiItemL(row, IFACE_("Swap areas"), ICON_MOUSE_LMB_DRAG);
+        return;
+      }
+      else if (az && az->type == AZONE_REGION) {
+        uiItemL(row,
+                (region->visible) ? IFACE_("Resize region") : IFACE_("Show hidden region"),
+                ICON_MOUSE_LMB_DRAG);
+        return;
+      }
+    }
+  }
+
+  if (!region) {
+    /* On an edge. */
+    uiItemL(row, "Resize", ICON_MOUSE_LMB_DRAG);
+    uiItemL(row, "Options", ICON_MOUSE_RMB);
     return;
   }
 
-  wmWindowManager *wm = CTX_wm_manager(C);
-  ScrArea *area = nullptr;
-
-  ED_screen_areas_iter (win, screen, area_iter) {
-    LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
-      if (region == region_iter) {
-        area = area_iter;
-        break;
+  if (!area) {
+    ED_screen_areas_iter (win, screen, area_iter) {
+      LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
+        if (region == region_iter) {
+          area = area_iter;
+          break;
+        }
       }
     }
   }
@@ -6381,7 +6421,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
-  /* Fallback to window. */
+  /* Fallback to window for these region types. */
   if (ELEM(region->regiontype, RGN_TYPE_TOOLS, RGN_TYPE_TOOL_PROPS)) {
     region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
   }
@@ -6391,7 +6431,6 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   CTX_wm_window_set(C, win);
   CTX_wm_area_set(C, area);
   CTX_wm_region_set(C, region);
-  uiLayout *row = uiLayoutRow(layout, true);
 
   wmKeyMapItem *kmi;
   blender::Set<std::string> op_names;
