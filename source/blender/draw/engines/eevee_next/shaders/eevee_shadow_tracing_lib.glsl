@@ -454,18 +454,15 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
     }
   }
   else {
-    /* FIXME: The returned value seems quite broken as it increases drastically near the view
-     * position. */
-    scale = shadow_punctual_footprint_ratio(light,
-                                            lP,
-                                            drw_view_is_perspective(),
-                                            distance(P, drw_view_position()),
-                                            uniform_buf.shadow.tilemap_projection_ratio);
+    float lod = shadow_punctual_level_fractional(light,
+                                                 lP,
+                                                 drw_view_is_perspective(),
+                                                 drw_view_z_distance(P),
+                                                 uniform_buf.shadow.film_pixel_radius);
     /* This gives the size of pixels at Z = 1. */
-    scale *= exp2(light.lod_bias);
-    scale = clamp(scale, float(1 << 0), float(1 << SHADOW_TILEMAP_LOD));
+    scale = abs(exp2(-lod)) * shadow_punctual_frustum_padding_get(light);
     /* Now scale by distance to the light. */
-    scale *= length(lP);
+    scale *= reduce_max(abs(lP));
   }
   /* Footprint of a tilemap at unit distance from the camera. */
   const float texel_footprint = 2.0 * M_SQRT2 / SHADOW_MAP_MAX_RES;
@@ -518,6 +515,11 @@ ShadowEvalResult shadow_eval(LightData light,
 
   /* Shadow map texel radius at the receiver position. */
   float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
+#ifdef GPU_FRAGMENT_SHADER
+  if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
+    drw_print(texel_radius);
+  }
+#endif
 
   P += shadow_pcf_offset(light, is_directional, L, Ng, texel_radius, random_pcf_2d);
 
