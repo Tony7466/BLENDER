@@ -15,8 +15,8 @@ void node_subsurface_scattering(vec4 color,
 {
   color = max(color, vec4(0.0));
   ior = max(ior, 1e-5);
-  N = safe_normalize(N);
   /* roughness = saturate(roughness) */
+  N = safe_normalize(N);
 
   ClosureSubsurface sss_data;
   sss_data.weight = weight;
