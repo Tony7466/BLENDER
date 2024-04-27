@@ -698,7 +698,7 @@ void PaintOperation::simplify_stroke(const bContext &C,
                                      bke::greasepencil::Drawing &drawing,
                                      const float epsilon_px)
 {
-  Scene *scene = CTX_data_scene(&C);
+  const Scene *scene = CTX_data_scene(&C);
   const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
   const int active_curve = on_back ? drawing.strokes().curves_range().first() :
                                      drawing.strokes().curves_range().last();
