@@ -6343,6 +6343,26 @@ static wmKeyMapItem *keymapItem(bContext *C,
   return kmi;
 }
 
+static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
+{
+  if (az->type == AZONE_AREA) {
+    uiItemL(layout, IFACE_("Split (within area)"), ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, IFACE_("Join (out of area)"), ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, "", ICON_EVENT_SHIFT);
+    uiItemL(layout, IFACE_("New window"), ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, "", ICON_EVENT_CTRL);
+    uiItemL(layout, IFACE_("Swap areas"), ICON_MOUSE_LMB_DRAG);
+    return true;
+  }
+  if (az->type == AZONE_REGION) {
+    uiItemL(layout,
+            (region->visible) ? IFACE_("Resize region") : IFACE_("Show hidden region"),
+            ICON_MOUSE_LMB_DRAG);
+    return true;
+  }
+  return false;
+}
+
 void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -6360,53 +6380,36 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 
   /* Otherwise should cursor keymap status. */
 
-  bScreen *screen = CTX_wm_screen(C);
-  wmWindowManager *wm = CTX_wm_manager(C);
-  ARegion *region = screen->active_region;
   uiLayout *row = uiLayoutRow(layout, true);
+  bScreen *screen = CTX_wm_screen(C);
+  ARegion *region = screen->active_region;
   ScrArea *area = nullptr;
 
   if (region == nullptr) {
-    /* No active region so could e over an action zone. */
-    AZone *az = nullptr;
+    /* No active region so could be over an action zone. */
     LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
-      LISTBASE_FOREACH (AZone *, az_iter, &area_iter->actionzones) {
-        if (BLI_rcti_isect_pt_v(&az_iter->rect, win->eventstate->xy)) {
-          region = az_iter->region;
+      LISTBASE_FOREACH (AZone *, az, &area_iter->actionzones) {
+        if (BLI_rcti_isect_pt_v(&az->rect, win->eventstate->xy)) {
+          region = az->region;
           area = area_iter;
-          az = az_iter;
+          if (uiTemplateInputStatusAzone(row, az, region)) {
+            return;
+          }
           break;
         }
-      }
-    }
-
-    if (az) {
-      if (az && az->type == AZONE_AREA) {
-        uiItemL(row, IFACE_("Split (within area)"), ICON_MOUSE_LMB_DRAG);
-        uiItemL(row, IFACE_("Join (out of area)"), ICON_MOUSE_LMB_DRAG);
-        uiItemL(row, "", ICON_EVENT_SHIFT);
-        uiItemL(row, IFACE_("New window"), ICON_MOUSE_LMB_DRAG);
-        uiItemL(row, "", ICON_EVENT_CTRL);
-        uiItemL(row, IFACE_("Swap areas"), ICON_MOUSE_LMB_DRAG);
-        return;
-      }
-      else if (az && az->type == AZONE_REGION) {
-        uiItemL(row,
-                (region->visible) ? IFACE_("Resize region") : IFACE_("Show hidden region"),
-                ICON_MOUSE_LMB_DRAG);
-        return;
       }
     }
   }
 
   if (!region) {
-    /* On an edge. */
+    /* Still no active region, so must be on an edge. */
     uiItemL(row, "Resize", ICON_MOUSE_LMB_DRAG);
     uiItemL(row, "Options", ICON_MOUSE_RMB);
     return;
   }
 
   if (!area) {
+    /* Find the area from the region. */
     ED_screen_areas_iter (win, screen, area_iter) {
       LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
         if (region == region_iter) {
@@ -6433,6 +6436,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   CTX_wm_region_set(C, region);
 
   wmKeyMapItem *kmi;
+  wmWindowManager *wm = CTX_wm_manager(C);
   blender::Set<std::string> op_names;
   uint8_t modifiers[] = {
       0, KM_SHIFT, KM_CTRL, KM_ALT, KM_OSKEY, KM_SHIFT | KM_CTRL, KM_SHIFT | KM_ALT};
@@ -6444,7 +6448,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         if (kmi && !(kmi->flag & KMI_INACTIVE)) {
           wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
           const std::string operator_name = WM_operatortype_name(ot, kmi->ptr);
-          const char *name = (ot) ? operator_name.c_str() : kmi->idname;
+          std::string name = (ot) ? operator_name : kmi->idname;
           if (op_names.add(name)) {
             int icon_mod[4];
             int icon = UI_icon_from_keymap_item(kmi, icon_mod);
@@ -6458,7 +6462,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
             if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_RMB) {
               uiItemS_ex(row, -0.7f);
             }
-            uiItemL(row, name, ICON_NONE);
+            uiItemL(row, name.c_str(), ICON_NONE);
             uiItemS_ex(row, 0.7f);
           }
         }
