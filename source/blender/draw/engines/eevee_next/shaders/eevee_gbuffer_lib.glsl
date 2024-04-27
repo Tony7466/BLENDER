@@ -212,14 +212,12 @@ float gbuffer_ior_unpack(float ior_packed)
 
 float gbuffer_thickness_pack(float thickness)
 {
-  /* TODO(fclem): Something better. */
-  return gbuffer_ior_pack(thickness);
+  return 1.0 / (1.0 + thickness);
 }
 
 float gbuffer_thickness_unpack(float thickness_packed)
 {
-  /* TODO(fclem): Something better. */
-  return gbuffer_ior_unpack(thickness_packed);
+  return (1.0 / thickness_packed) - 1.0;
 }
 
 /**
