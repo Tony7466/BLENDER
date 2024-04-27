@@ -411,13 +411,14 @@ struct PaintOperationExecutor {
      * stable) fit. */
     Array<float2> coords_pre_blur(smooth_window.size());
     const int pre_blur_iterations = 3;
-    geometry::gaussian_blur_1D(coords_to_smooth,
-                               pre_blur_iterations,
-                               settings_->active_smooth,
-                               true,
-                               true,
-                               false,
-                               coords_pre_blur.as_mutable_span());
+    geometry::gaussian_blur_1D(
+        coords_to_smooth,
+        pre_blur_iterations,
+        VArray<float>::ForSingle(settings_->active_smooth, smooth_window.size()),
+        true,
+        true,
+        false,
+        coords_pre_blur.as_mutable_span());
 
     /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
     const float max_error_threshold_px = 5.0f;
@@ -836,7 +837,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   drawing.tag_topology_changed();
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_GEOM | ND_DATA, &grease_pencil.id);
+  WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil.id);
 }
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation()
