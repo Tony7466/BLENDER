@@ -17,6 +17,7 @@
 #include "BKE_instances.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -821,7 +822,24 @@ static void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot)
   ot->description = "Remove active simulation zone item";
 
   ot->exec = [](bContext *C, wmOperator *op) -> int {
-    printf("remove item\n");
+    PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
+    bNode *node = static_cast<bNode *>(node_ptr.data);
+    if (node == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
+    if (node->type != SimulationItemsAccessor::node_type) {
+      return OPERATOR_CANCELLED;
+    }
+    socket_items::SocketItemsRef ref = SimulationItemsAccessor::get_items_from_node(*node);
+    dna::array::remove_index(ref.items,
+                             ref.items_num,
+                             ref.active_index,
+                             *ref.active_index,
+                             SimulationItemsAccessor::destruct_item);
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(node_ptr.owner_id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, CTX_data_main(C), ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
     return OPERATOR_FINISHED;
   };
 }
