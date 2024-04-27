@@ -776,8 +776,6 @@ static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRN
     return list;
   }();
 
-  PointerRNA items_ptr = RNA_pointer_create(
-      node_ptr.owner_id, &RNA_NodeGeometrySimulationOutputItems, node_ptr.data);
   if (uiLayout *panel = uiLayoutPanel(
           C, layout, "simulation_state_items", false, TIP_("Simulation State")))
   {
@@ -821,7 +819,7 @@ static void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot)
   ot->idname = __func__;
   ot->description = "Remove active simulation zone item";
 
-  ot->exec = [](bContext *C, wmOperator *op) -> int {
+  ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
     bNode *node = static_cast<bNode *>(node_ptr.data);
     if (node == nullptr) {
@@ -850,8 +848,42 @@ static void NODE_OT_simulation_zone_item_add(wmOperatorType *ot)
   ot->idname = __func__;
   ot->description = "Add simulation zone item";
 
-  ot->exec = [](bContext *C, wmOperator *op) -> int {
-    printf("add item\n");
+  ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
+    PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
+    bNode *node = static_cast<bNode *>(node_ptr.data);
+    if (node == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
+    if (node->type != SimulationItemsAccessor::node_type) {
+      return OPERATOR_CANCELLED;
+    }
+    socket_items::SocketItemsRef ref = SimulationItemsAccessor::get_items_from_node(*node);
+    const int old_active_index = *ref.active_index;
+
+    eNodeSocketDatatype socket_type;
+    std::string name;
+    int dst_index;
+    if (old_active_index >= 0 && old_active_index < *ref.items_num) {
+      dst_index = old_active_index + 1;
+      const NodeSimulationItem &active_item = (*ref.items)[old_active_index];
+      socket_type = eNodeSocketDatatype(active_item.socket_type);
+      name = active_item.name;
+    }
+    else {
+      dst_index = *ref.items_num;
+      socket_type = SOCK_GEOMETRY;
+      /* Empty name so it is based on the type. */
+      name = "";
+    }
+    socket_items::add_item_with_socket_and_name<SimulationItemsAccessor>(
+        *node, socket_type, name.c_str());
+    dna::array::move_index(*ref.items, *ref.items_num, *ref.items_num - 1, dst_index);
+    *ref.active_index = dst_index;
+
+    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(node_ptr.owner_id);
+    BKE_ntree_update_tag_node_property(ntree, node);
+    ED_node_tree_propagate_change(nullptr, CTX_data_main(C), ntree);
+    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
     return OPERATOR_FINISHED;
   };
 }
