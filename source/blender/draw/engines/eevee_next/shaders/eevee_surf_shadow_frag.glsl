@@ -32,7 +32,7 @@ void main()
   f_depth += fwidth(f_depth) * shadow_flat.filter_radius;
 
 #ifdef SHADOW_UPDATE_TBDR
-/* We need to write to gl_FragDepth un-conditionnally. So we cannot early exit or use discard. */
+/* We need to write to `gl_FragDepth` un-conditionally. So we cannot early exit or use discard. */
 #  define discard_result f_depth = 1.0;
 #else
 #  define discard_result \
