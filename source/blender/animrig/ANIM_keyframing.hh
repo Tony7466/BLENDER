@@ -155,6 +155,14 @@ int clear_keyframe(Main *bmain,
                    int array_index,
                    eInsertKeyFlags /*flag*/);
 
+/** Check if a flag is set for keyframing (per scene takes precedence). */
+bool is_keying_flag(const Scene *scene, eKeying_Flag flag);
+
+/**
+ * Get the settings for key-framing from the given scene.
+ */
+eInsertKeyFlags get_keyframing_flags(Scene *scene);
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -172,9 +180,6 @@ bool is_autokey_on(const Scene *scene);
 
 /** Check the mode for auto-keyframing (per scene takes precedence). */
 bool is_autokey_mode(const Scene *scene, eAutokey_Mode mode);
-
-/** Check if a flag is set for keyframing (per scene takes precedence). */
-bool is_keying_flag(const Scene *scene, eKeying_Flag flag);
 
 /**
  * Auto-keyframing feature - checks for whether anything should be done for the current frame.
@@ -231,8 +236,8 @@ bool autokeyframe_property(bContext *C,
  * expected to be the size of the property array.
  * \param frame: is expected to be in the local time of the action, meaning it has to be NLA mapped
  * already.
- * \param keying_mask is expected to have the same size as `rna_path`. A false bit means that index
- * will be skipped.
+ * \param keying_mask: is expected to have the same size as `rna_path`.
+ * A false bit means that index will be skipped.
  * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_action(Main *bmain,
