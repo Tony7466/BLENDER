@@ -6322,7 +6322,6 @@ static wmKeyMapItem *keymapItem(bContext *C,
   test_event.val = val;
   test_event.modifier = modifier;
   test_event.flag = (eWM_EventFlag)0;
-  wmKeyMapItem *kmi = nullptr;
   ListBase *handlers[] = {
       &region->handlers,
       &area->handlers,
@@ -6333,14 +6332,14 @@ static wmKeyMapItem *keymapItem(bContext *C,
     if (!handlers[handler_index]) {
       continue;
     }
-    kmi = WM_event_match_keymap_item_from_handlers(
+    wmKeyMapItem *kmi = WM_event_match_keymap_item_from_handlers(
         C, wm, win, handlers[handler_index], &test_event);
-    if (kmi) {
-      break;
+    if (kmi && !(kmi->flag & KMI_INACTIVE)) {
+      return kmi;
     }
   }
 
-  return kmi;
+  return nullptr;
 }
 
 static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
@@ -6386,7 +6385,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   ScrArea *area = nullptr;
 
   if (region == nullptr) {
-    /* No active region so could be over an action zone. */
+    /* Could be over an action zone. Separate PR? */
     LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
       LISTBASE_FOREACH (AZone *, az, &area_iter->actionzones) {
         if (BLI_rcti_isect_pt_v(&az->rect, win->eventstate->xy)) {
@@ -6402,22 +6401,14 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   }
 
   if (!region) {
-    /* Still no active region, so must be on an edge. */
+    /* Could be a separate PR to deal with edges. */
     uiItemL(row, "Resize", ICON_MOUSE_LMB_DRAG);
     uiItemL(row, "Options", ICON_MOUSE_RMB);
     return;
   }
 
   if (!area) {
-    /* Find the area from the region. */
-    ED_screen_areas_iter (win, screen, area_iter) {
-      LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
-        if (region == region_iter) {
-          area = area_iter;
-          break;
-        }
-      }
-    }
+    area = ED_area_find_under_cursor(C, SPACE_TYPE_ANY, win->eventstate->xy);
   }
 
   if (area == nullptr) {
@@ -6438,14 +6429,13 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
   wmKeyMapItem *kmi;
   wmWindowManager *wm = CTX_wm_manager(C);
   blender::Set<std::string> op_names;
-  uint8_t modifiers[] = {
-      0, KM_SHIFT, KM_CTRL, KM_ALT, KM_OSKEY, KM_SHIFT | KM_CTRL, KM_SHIFT | KM_ALT};
+  uint8_t modifiers[] = {0, KM_SHIFT, KM_CTRL, KM_ALT, KM_OSKEY, KM_SHIFT | KM_CTRL};
 
   for (int mod_index = 0; mod_index < ARRAY_SIZE(modifiers); mod_index++) {
     for (short button = LEFTMOUSE; button <= RIGHTMOUSE; button++) {
       for (short action = KM_PRESS; action <= KM_CLICK_DRAG; action++) {
         kmi = keymapItem(C, wm, win, area, region, button, action, modifiers[mod_index]);
-        if (kmi && !(kmi->flag & KMI_INACTIVE)) {
+        if (kmi) {
           wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
           const std::string operator_name = WM_operatortype_name(ot, kmi->ptr);
           std::string name = (ot) ? operator_name : kmi->idname;
