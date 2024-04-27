@@ -361,27 +361,6 @@ class ZoneOperator:
         return True
 
 
-class NodeOperator:
-    @classmethod
-    def get_node(cls, context):
-        node = context.active_node
-        if node is None:
-            return None
-        if node.bl_idname == cls.node_type:
-            return node
-
-    @classmethod
-    def poll(cls, context):
-        space = context.space_data
-        # Needs active node editor and a tree.
-        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree or space.edit_tree.library:
-            return False
-        node = cls.get_node(context)
-        if node is None:
-            return False
-        return True
-
-
 def _editable_tree_with_active_node_type(context, node_type):
     space = context.space_data
     # Needs active node editor and a tree.
