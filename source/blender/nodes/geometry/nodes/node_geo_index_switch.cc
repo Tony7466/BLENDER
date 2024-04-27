@@ -66,6 +66,21 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  NodeIndexSwitch &storage = node_storage(node);
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "index_switch_items", false, TIP_("Items"))) {
+    uiItemO(panel, "Add Item", ICON_ADD, "node.index_switch_item_add");
+    uiLayout *col = uiLayoutColumn(panel, false);
+    for (const int i : IndexRange(storage.items_num)) {
+      uiLayout *row = uiLayoutRow(col, false);
+      uiItemL(row, node.input_socket(i + 1).name, ICON_NONE);
+      uiItemIntO(row, "", ICON_REMOVE, "node.index_switch_item_remove", "index", i);
+    }
+  }
+}
+
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeIndexSwitch *data = MEM_cnew<NodeIndexSwitch>(__func__);
@@ -356,6 +371,7 @@ static void register_node()
   node_type_storage(&ntype, "NodeIndexSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
