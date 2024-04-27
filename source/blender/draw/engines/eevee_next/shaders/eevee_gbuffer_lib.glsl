@@ -212,12 +212,18 @@ float gbuffer_ior_unpack(float ior_packed)
 
 float gbuffer_thickness_pack(float thickness)
 {
-  return 1.0 / (1.0 + thickness);
+  /* TODO(fclem): If needed, we could increase precision by defining a ceiling value like the view
+   * distance and remap to it. Or tweak the hyperbole eq. */
+  /* Remap [0..+inf) and [0..0.5]. */
+  /* NOTE: Sign encodes the thickness mode. */
+  float thickness_packed = 1.0 / (2.0 + abs(thickness));
+  return (thickness < 0.0) ? (1.0 - thickness_packed) : thickness_packed;
 }
-
 float gbuffer_thickness_unpack(float thickness_packed)
 {
-  return (1.0 / thickness_packed) - 1.0;
+  float thickness = (thickness_packed > 0.5) ? (1.0 - thickness_packed) : thickness_packed;
+  thickness = (1.0 / thickness) - 2.0;
+  return (thickness_packed > 0.5) ? -thickness : thickness;
 }
 
 /**
