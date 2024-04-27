@@ -16,6 +16,8 @@
 
 #include "ED_node.hh"
 
+#include "DNA_space_types.h"
+
 namespace blender::nodes::socket_items::ops {
 
 inline void update_after_node_change(bContext *C, const PointerRNA node_ptr)
@@ -28,6 +30,28 @@ inline void update_after_node_change(bContext *C, const PointerRNA node_ptr)
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+template<typename Accessor> inline bool editable_node_active_poll(bContext *C)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (!snode) {
+    return false;
+  }
+  if (!snode->edittree) {
+    return false;
+  }
+  if (ID_IS_LINKED(snode->edittree)) {
+    return false;
+  }
+  const bNode *active_node = nodeGetActive(snode->edittree);
+  if (!active_node) {
+    return false;
+  }
+  if (active_node->type != Accessor::node_type) {
+    return false;
+  }
+  return true;
+}
+
 template<typename Accessor>
 inline void remove_item(wmOperatorType *ot,
                         const char *name,
@@ -37,8 +61,8 @@ inline void remove_item(wmOperatorType *ot,
   ot->name = name;
   ot->idname = idname;
   ot->description = description;
+  ot->poll = editable_node_active_poll<Accessor>;
 
-  /* TODO: poll function */
   ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
     if (node_ptr.data == nullptr) {
@@ -66,6 +90,7 @@ inline void remove_item_by_index(wmOperatorType *ot,
   ot->name = name;
   ot->idname = idname;
   ot->description = description;
+  ot->poll = editable_node_active_poll<Accessor>;
 
   ot->exec = [](bContext *C, wmOperator *op) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
@@ -100,6 +125,7 @@ inline void add_item_with_name_and_type(wmOperatorType *ot,
   ot->name = name;
   ot->idname = idname;
   ot->description = description;
+  ot->poll = editable_node_active_poll<Accessor>;
 
   ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
@@ -149,6 +175,7 @@ inline void add_item(wmOperatorType *ot,
   ot->name = name;
   ot->idname = idname;
   ot->description = description;
+  ot->poll = editable_node_active_poll<Accessor>;
 
   ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
@@ -180,6 +207,7 @@ inline void move_item(wmOperatorType *ot,
   ot->name = name;
   ot->idname = idname;
   ot->description = description;
+  ot->poll = editable_node_active_poll<Accessor>;
 
   ot->exec = [](bContext *C, wmOperator *op) -> int {
     PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
