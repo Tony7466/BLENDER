@@ -101,6 +101,10 @@ static void calculate_angles(const Span<float3> directions, MutableSpan<float> a
   }
 }
 
+/** Each vertex to be filleted must share displacement to the next edge.
+ * Limit the radii input values such that the total sum of displacements on any given edge are less
+ * than the source edge length.
+ */
 static void limit_radii(const Span<float3> positions,
                         const Span<float> angles,
                         const Span<float> radii,
@@ -108,80 +112,93 @@ static void limit_radii(const Span<float3> positions,
                         MutableSpan<float> radii_clamped,
                         MutableSpan<bool> has_zero_length_edge)
 {
+  IndexRange positions_range = positions.index_range();
+  int point_count = positions_range.size();
   /* Previous, current, and next values will be needed simultaneously.
    * Calculate the variables needed at each stage in advance.
    */
-  Array<float> displacements(positions.size());
-  for (const int i : positions.index_range()) {
+
+  /* A displacement is how far the new point will project along the segment*/
+  Array<float> displacements(point_count);
+  for (const int i : positions_range) {
     displacements[i] = radii[i] * std::tan(angles[i] / 2.0f);
   }
 
-  IndexRange positions_range = positions.index_range();
+  /* Distances are calculated from the index to the index + 1, and are right-handed */
+  IndexRange edges_range_r = cyclic ? positions_range : positions_range.drop_back(1);
+  Array<float> distances_r(edges_range_r.size());
+  for (const int i : edges_range_r) {
+    int i_next = i == positions_range.last() ? 0 : i + 1;
+
+    float3 position = positions[i];
+    float3 position_next = positions[i_next];
+
+    distances_r[i] = math::distance(position, position_next);
+  }
+
+  Array<float> factors_r(positions_range.size());
+  Array<float> factors_l(positions_range.size());
   const int i_last = positions_range.last();
   for (const int i : positions_range) {
-    int i_prev = i - 1;
-    int i_next = i + 1;
-
-    /* Handle the first point. */
-    if (i == 0) {
-      if (cyclic) {
-        /* The previous point on cyclic curves */
-        i_prev = i_last;
-      }
-      else {
-        /* Use a zero radius for the first and last points, because they don't have fillets.
-         * This logic could potentially be unrolled, but it doesn't seem worth it. */
-        radii_clamped.first() = 0.0f;
-        has_zero_length_edge[i] = false;
-        continue;
-      }
-    }
-
-    /* Handle the last point */
-    if (i == i_last) {
-      if (cyclic) {
-        /* The next point on cyclic curves */
-        i_next = 0;
-      }
-      else {
-        radii_clamped.last() = 0.0f;
-        has_zero_length_edge[i] = false;
-        continue;
-      }
-    }
-
-    /**
+    /*
      * Find the portion of the previous and next segments used by the current and next point
      * fillets. If more than the total length of the segment would be used, scale the current
      * point's radius just enough to make the two points meet in the middle.
      */
-    const float radius = radii[i];
-    const float3 position = positions[i];
     const float displacement = displacements[i];
 
-    const float3 position_prev = positions[i_prev];
-    const float displacement_prev = displacements[i_prev];
-    const float segment_length_prev = math::distance(position, position_prev);
-    const float total_displacement_prev = displacement_prev + displacement;
-    const float factor_prev = std::clamp(
-        math::safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
+    bool has_previous_edge = i != 0 || cyclic;
+    int i_prev = i == 0 ? i_last : i - 1;
 
-    const float3 position_next = positions[i_next];
-    const float displacement_next = displacements[i_next];
-    const float segment_length_next = math::distance(position, position_next);
-    const float total_displacement_next = displacement_next + displacement;
-    const float factor_next = std::clamp(
-        math::safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
+    bool has_next_edge = i != i_last || cyclic;
+    int i_next = i == i_last ? 0 : i + 1;
 
-    /*
-     * The lower of the two factors is the location of the duplicate point
-     * If it is the next location, that point should be removed.
-     */
+    if (has_previous_edge) {
+      const float displacement_prev = displacements[i_prev];
+      const float segment_length_prev = distances_r[i_prev];
+      const float total_displacement_prev = displacement_prev + displacement;
+      const float factor_prev = std::clamp(
+          math::safe_divide(segment_length_prev, total_displacement_prev), 0.0f, 1.0f);
+      factors_l[i] = factor_prev;
+    }
+    else {
+      factors_l[i] = 0;
+    }
 
-    const float min_factor = std::min(factor_prev, factor_next);
-    radii_clamped[i] = radius * min_factor;
+    if (has_next_edge) {
+      const float displacement_next = displacements[i_next];
+      const float segment_length_next = distances_r[i];
+      const float total_displacement_next = displacement_next + displacement;
+      const float factor_next = std::clamp(
+          math::safe_divide(segment_length_next, total_displacement_next), 0.0f, 1.0f);
+      factors_r[i] = factor_next;
+    }
+    else {
+      factors_r[i] = 0;
+    }
+  }
 
-    has_zero_length_edge[i] = min_factor < 1 && factor_next <= factor_prev;
+  for (const int i : positions_range) {
+    bool has_next_edge = i != i_last || cyclic;
+    int i_next = i == i_last ? 0 : i + 1;
+
+    const float factor_r = factors_r[i];
+    const float factor_l = factors_l[i];
+    const float min_factor = std::min(factor_r, factor_l);
+    radii_clamped[i] = radii[i] * min_factor;
+
+    if (has_next_edge) {
+      const float factor_next_r = factors_r[i_next];
+      const float factor_next_l = factors_l[i_next];
+      const float min_factor_next = std::min(factor_next_r, factor_next_l);
+
+      bool is_clamped_right = min_factor < 1 && factor_r <= factor_l;
+      bool is_next_clamped_left = min_factor_next < 1 && factor_next_l <= factor_next_r;
+      has_zero_length_edge[i] = is_clamped_right && is_next_clamped_left;
+    }
+    else {
+      has_zero_length_edge[i] = false;
+    }
   }
 }
 
@@ -262,13 +279,23 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
                                                  MutableSpan<int8_t> dst_types_l,
                                                  MutableSpan<int8_t> dst_types_r)
 {
+  const int i_src_first = src_handles_l.index_range().first();
   const int i_src_last = src_handles_l.index_range().last();
+  const int i_dst_first = dst_positions.index_range().first();
   const int i_dst_last = dst_positions.index_range().last();
+
   threading::parallel_for(src_handles_l.index_range(), 512, [&](IndexRange range) {
     for (const int i_src : range) {
       const IndexRange arc = dst_offsets[i_src];
       bool is_zero_edge = zero_edge_buffer[i_src];
       const int i_dst_a = arc.first();
+
+      // If the last point is a zero-length edge, get the calculated position
+      // from the first point of the destination array
+      int i_dst_b = arc.last() + (is_zero_edge ? 1 : 0);
+      if (i_dst_b > i_dst_last) {
+        i_dst_b = i_dst_first;
+      }
 
       if (arc.size() == 1 && !is_zero_edge) {
         dst_handles_l[i_dst_a] = src_handles_l[i_src];
@@ -284,15 +311,14 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
        * The inner handles are aligned with the aligned with the outer vector
        * handles, but have a specific length to best approximate a circle.
        *
-       * When two fillets meet and zero-length edges are removed
+       * An arc n that is removing its zero-length edge will calculate the left-side handle for arc
+       * n+1.
        */
 
-      const int i_dst_b = arc.last() + (is_zero_edge ? 1 : 0);
-
-      /* The first point can only be filleted if the curve is cyclic */
-      bool is_previous_zero_edge = i_src == 0 ? zero_edge_buffer[i_src_last] :
-                                                zero_edge_buffer[i_src - 1];
-      const int i_src_prev = i_src == 0 ? i_src_last : i_src - 1;
+      // No index check is needed because the first point can only be filleted if the curve is
+      // cyclic
+      const int i_src_prev = i_src == i_src_first ? i_src_last : i_src - 1;
+      const bool is_previous_zero_edge = zero_edge_buffer[i_src_prev];
       const float angle = angles[i_src];
       const float radius = radii[i_src];
       const float handle_length = (4.0f / 3.0f) * radius * std::tan(angle / 4.0f);
@@ -303,8 +329,8 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
       const float3 &arc_end = dst_positions[i_dst_b];
 
       if (!is_previous_zero_edge) {
-        const int i_dst_prev = i_dst_a == 0 ? i_dst_last : i_dst_a - 1;
-
+        /* We calculate this handle during the previous curve, do not overwrite */
+        const int i_dst_prev = i_dst_a == i_dst_first ? i_dst_last : i_dst_a - 1;
         dst_handles_l[i_dst_a] = bke::curves::bezier::calculate_vector_handle(
             dst_positions[i_dst_a], dst_positions[i_dst_prev]);
         dst_types_l[i_dst_a] = BEZIER_HANDLE_VECTOR;
@@ -313,11 +339,12 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
       dst_handles_r[i_dst_a] = arc_start - prev_dir * handle_length;
       dst_types_r[i_dst_a] = BEZIER_HANDLE_ALIGN;
 
-      const int i_dst_next = i_dst_b == i_dst_last ? 0 : i_dst_b + 1;
-
-      dst_handles_r[i_dst_b] = bke::curves::bezier::calculate_vector_handle(
-          dst_positions[i_dst_b], dst_positions[i_dst_next]);
-      dst_types_r[i_dst_b] = BEZIER_HANDLE_VECTOR;
+      if (!is_zero_edge) {
+        const int i_dst_next = i_dst_b == i_dst_last ? 0 : i_dst_b + 1;
+        dst_handles_r[i_dst_b] = bke::curves::bezier::calculate_vector_handle(
+            dst_positions[i_dst_b], dst_positions[i_dst_next]);
+        dst_types_r[i_dst_b] = BEZIER_HANDLE_VECTOR;
+      }
 
       dst_handles_l[i_dst_b] = arc_end - next_dir * handle_length;
       dst_types_l[i_dst_b] = BEZIER_HANDLE_ALIGN;
@@ -378,46 +405,6 @@ static void calculate_bezier_handles_poly_mode(const Span<float3> src_handles_l,
   });
 }
 
-/** Print contents of span
- */
-static void print_spanf(const Span<float> span)
-{
-  for (const int i : span.index_range()) {
-    printf("[%d] = %f ", i, span[i]);
-  }
-  printf("\n");
-}
-
-/** Print contents of span
- */
-static void print_span3f(const Span<float3> span)
-{
-  for (const int i : span.index_range()) {
-    printf("[%d] = (%f,%f,%f)\n", i, span[i].x, span[i].y, span[i].z);
-  }
-  printf("\n");
-}
-
-/** Print contents of span
- */
-static void print_spani(const Span<int> span)
-{
-  for (const int i : span.index_range()) {
-    printf("[%d] = %d ", i, span[i]);
-  }
-  printf("\n");
-}
-
-/** Print contents of span
- */
-static void print_spanb(const Span<bool> span)
-{
-  for (const int i : span.index_range()) {
-    printf("[%d] = %d ", i, span[i]);
-  }
-  printf("\n");
-}
-
 static bke::CurvesGeometry fillet_curves(
     const bke::CurvesGeometry &src_curves,
     const IndexMask &curve_selection,
@@ -448,7 +435,6 @@ static bke::CurvesGeometry fillet_curves(
   Array<float> radii;
   Array<bool> ends_with_zero_edge;
   const int src_points_num = src_curves.points_num();
-  bool has_zero_edge_removal = limit_radius && remove_duplicated_points;
   /*
    * Pre-calculate radii for all curves if zero-length edges will be removed.
    * Allocating these arrays on a curve-by-curve basis would conserve memory
@@ -484,12 +470,6 @@ static bke::CurvesGeometry fillet_curves(
                   cyclic[curve_i],
                   radii_buffer,
                   zero_edge_buffer);
-
-      printf("Radii: \n");
-      print_spanf(radii_buffer);
-
-      printf("Zero edge: \n");
-      print_spanb(zero_edge_buffer);
 
       if (!remove_duplicated_points) {
         zero_edge_buffer.fill(false);
@@ -564,7 +544,6 @@ static bke::CurvesGeometry fillet_curves(
                                  offsets,
                                  zero_edge_buffer,
                                  dst_positions.slice(dst_points));
-
 
       if (src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
         MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
