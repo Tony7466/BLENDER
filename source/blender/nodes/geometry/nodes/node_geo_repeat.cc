@@ -26,99 +26,6 @@
 
 namespace blender::nodes::node_geo_repeat_cc {
 
-static void draw_repeat_state_item(uiList * /*ui_list*/,
-                                   const bContext *C,
-                                   uiLayout *layout,
-                                   PointerRNA * /*idataptr*/,
-                                   PointerRNA *itemptr,
-                                   int /*icon*/,
-                                   PointerRNA * /*active_dataptr*/,
-                                   const char * /*active_propname*/,
-                                   int /*index*/,
-                                   int /*flt_flag*/)
-{
-  uiLayout *row = uiLayoutRow(layout, true);
-  float4 color;
-  RNA_float_get_array(itemptr, "color", color);
-  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
-  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
-  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
-{
-  static const uiListType *state_items_list = []() {
-    uiListType *list = MEM_cnew<uiListType>(__func__);
-    STRNCPY(list->idname, "DATA_UL_repeat_zone_state");
-    list->draw_item = draw_repeat_state_item;
-    WM_uilisttype_add(list);
-    return list;
-  }();
-
-  PointerRNA node_ptr = *ptr;
-  bNode &node = *static_cast<bNode *>(node_ptr.data);
-
-  if (uiLayout *panel = uiLayoutPanel(C, layout, "repeat_items", false, TIP_("Repeat Items"))) {
-    uiLayout *row = uiLayoutRow(panel, false);
-    uiTemplateList(row,
-                   C,
-                   state_items_list->idname,
-                   "",
-                   &node_ptr,
-                   "repeat_items",
-                   &node_ptr,
-                   "active_index",
-                   nullptr,
-                   3,
-                   5,
-                   UILST_LAYOUT_DEFAULT,
-                   0,
-                   UI_TEMPLATE_LIST_FLAG_NONE);
-    {
-      uiLayout *ops_col = uiLayoutColumn(row, false);
-      {
-        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
-        uiItemO(add_remove_col, "", ICON_ADD, "node.repeat_zone_item_add");
-        uiItemO(add_remove_col, "", ICON_REMOVE, "node.repeat_zone_item_remove");
-      }
-      {
-        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
-        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_UP, "direction", 0);
-        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
-      }
-    }
-    NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(node.storage);
-    if (storage.active_index >= 0 && storage.active_index < storage.items_num) {
-      NodeRepeatItem &active_item = storage.items[storage.active_index];
-      PointerRNA item_ptr = RNA_pointer_create(
-          node_ptr.owner_id, RepeatItemsAccessor::item_srna, &active_item);
-      uiLayoutSetPropSep(panel, true);
-      uiLayoutSetPropDecorate(panel, false);
-      uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
-    }
-  }
-
-  uiItemR(layout, &node_ptr, "inspection_index", UI_ITEM_NONE, nullptr, ICON_NONE);
-}
-
-static void NODE_OT_repeat_zone_item_remove(wmOperatorType *ot)
-{
-  socket_items::ops::remove_item<RepeatItemsAccessor>(
-      ot, "Remove Repeat Zone Item", __func__, "Remove active repeat zone item");
-}
-
-static void NODE_OT_repeat_zone_item_add(wmOperatorType *ot)
-{
-  socket_items::ops::add_item_with_name_and_type<RepeatItemsAccessor>(
-      ot, "Add Repeat Zone Item", __func__, "Add repeat zone item");
-}
-
-static void NODE_OT_repeat_zone_item_move(wmOperatorType *ot)
-{
-  socket_items::ops::move_item<RepeatItemsAccessor>(
-      ot, "Move Repeat Zone Item", __func__, "Move active repeat zone item");
-}
-
 namespace repeat_input_node {
 
 NODE_STORAGE_FUNCS(NodeGeometryRepeatInput);
@@ -261,6 +168,99 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
   return socket_items::try_add_item_via_any_extend_socket<RepeatItemsAccessor>(
       *ntree, *node, *node, *link);
+}
+
+static void draw_repeat_state_item(uiList * /*ui_list*/,
+                                   const bContext *C,
+                                   uiLayout *layout,
+                                   PointerRNA * /*idataptr*/,
+                                   PointerRNA *itemptr,
+                                   int /*icon*/,
+                                   PointerRNA * /*active_dataptr*/,
+                                   const char * /*active_propname*/,
+                                   int /*index*/,
+                                   int /*flt_flag*/)
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  float4 color;
+  RNA_float_get_array(itemptr, "color", color);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  static const uiListType *state_items_list = []() {
+    uiListType *list = MEM_cnew<uiListType>(__func__);
+    STRNCPY(list->idname, "DATA_UL_repeat_zone_state");
+    list->draw_item = draw_repeat_state_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  PointerRNA node_ptr = *ptr;
+  bNode &node = *static_cast<bNode *>(node_ptr.data);
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "repeat_items", false, TIP_("Repeat Items"))) {
+    uiLayout *row = uiLayoutRow(panel, false);
+    uiTemplateList(row,
+                   C,
+                   state_items_list->idname,
+                   "",
+                   &node_ptr,
+                   "repeat_items",
+                   &node_ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      {
+        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+        uiItemO(add_remove_col, "", ICON_ADD, "node.repeat_zone_item_add");
+        uiItemO(add_remove_col, "", ICON_REMOVE, "node.repeat_zone_item_remove");
+      }
+      {
+        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_UP, "direction", 0);
+        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+    NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(node.storage);
+    if (storage.active_index >= 0 && storage.active_index < storage.items_num) {
+      NodeRepeatItem &active_item = storage.items[storage.active_index];
+      PointerRNA item_ptr = RNA_pointer_create(
+          node_ptr.owner_id, RepeatItemsAccessor::item_srna, &active_item);
+      uiLayoutSetPropSep(panel, true);
+      uiLayoutSetPropDecorate(panel, false);
+      uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+    }
+  }
+
+  uiItemR(layout, &node_ptr, "inspection_index", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+static void NODE_OT_repeat_zone_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item<RepeatItemsAccessor>(
+      ot, "Remove Repeat Zone Item", __func__, "Remove active repeat zone item");
+}
+
+static void NODE_OT_repeat_zone_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item_with_name_and_type<RepeatItemsAccessor>(
+      ot, "Add Repeat Zone Item", __func__, "Add repeat zone item");
+}
+
+static void NODE_OT_repeat_zone_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_item<RepeatItemsAccessor>(
+      ot, "Move Repeat Zone Item", __func__, "Move active repeat zone item");
 }
 
 static void node_register()

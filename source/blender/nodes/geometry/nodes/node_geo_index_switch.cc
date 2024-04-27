@@ -81,6 +81,17 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   }
 }
 
+static void NODE_OT_index_switch_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<IndexSwitchItemsAccessor>(ot, "Add Item", __func__, "Add bake item");
+}
+
+static void NODE_OT_index_switch_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item_by_index<IndexSwitchItemsAccessor>(
+      ot, "Remove Item", __func__, "Remove an item from the index switch");
+}
+
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeIndexSwitch *data = MEM_cnew<NodeIndexSwitch>(__func__);
@@ -116,17 +127,6 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       });
     }
   }
-}
-
-static void NODE_OT_index_switch_item_add(wmOperatorType *ot)
-{
-  socket_items::ops::add_item<IndexSwitchItemsAccessor>(ot, "Add Item", __func__, "Add bake item");
-}
-
-static void NODE_OT_index_switch_item_remove(wmOperatorType *ot)
-{
-  socket_items::ops::remove_item_by_index<IndexSwitchItemsAccessor>(
-      ot, "Remove Item", __func__, "Remove an item from the index switch");
 }
 
 constexpr int value_inputs_start = 1;
