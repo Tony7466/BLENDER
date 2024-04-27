@@ -490,7 +490,8 @@ struct PaintOperationExecutor {
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-    int active_curve = on_back ? curves.curves_range().first() : curves.curves_range().last();
+    const int active_curve = on_back ? curves.curves_range().first() :
+                                       curves.curves_range().last();
     IndexRange curve_points = curves.points_by_curve()[active_curve];
     const int last_active_point = curve_points.last();
 
