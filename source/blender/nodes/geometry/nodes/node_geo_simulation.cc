@@ -19,6 +19,7 @@
 #include "BKE_node_socket_value.hh"
 #include "BKE_object.hh"
 #include "BKE_scene.hh"
+#include "BKE_screen.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -38,6 +39,7 @@
 #include "ED_node.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_nodes.hh"
@@ -744,11 +746,126 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   socket_items::copy_array<SimulationItemsAccessor>(*src_node, *dst_node);
 }
 
+static void draw_simulation_state_item(uiList * /*ui_list*/,
+                                       const bContext *C,
+                                       uiLayout *layout,
+                                       PointerRNA * /*idataptr*/,
+                                       PointerRNA *itemptr,
+                                       int /*icon*/,
+                                       PointerRNA * /*active_dataptr*/,
+                                       const char * /*active_propname*/,
+                                       int /*index*/,
+                                       int /*flt_flag*/)
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  float4 color;
+  RNA_float_get_array(itemptr, "color", color);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRNA node_ptr)
+{
+  static const uiListType *state_items_list = []() {
+    uiListType *list = MEM_cnew<uiListType>(__func__);
+    STRNCPY(list->idname, "DATA_UL_simulation_zone_state");
+    list->draw_item = draw_simulation_state_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  PointerRNA items_ptr = RNA_pointer_create(
+      node_ptr.owner_id, &RNA_NodeGeometrySimulationOutputItems, node_ptr.data);
+  if (uiLayout *panel = uiLayoutPanel(
+          C, layout, "simulation_state_items", false, TIP_("Simulation State")))
+  {
+    uiLayout *row = uiLayoutRow(panel, false);
+    uiTemplateList(row,
+                   C,
+                   state_items_list->idname,
+                   "",
+                   &node_ptr,
+                   "state_items",
+                   &node_ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      {
+        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+        uiItemO(add_remove_col, "", ICON_ADD, "node.simulation_zone_item_add");
+        uiItemO(add_remove_col, "", ICON_REMOVE, "node.simulation_zone_item_remove");
+      }
+      {
+        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+        uiItemEnumO(
+            up_down_col, "node.simulation_zone_item_move", "", ICON_TRIA_UP, "direction", 0);
+        uiItemEnumO(
+            up_down_col, "node.simulation_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+  }
+}
+
+static void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot)
+{
+  ot->name = "Remove simulation zone item";
+  ot->idname = __func__;
+  ot->description = "Remove active simulation zone item";
+
+  ot->exec = [](bContext *C, wmOperator *op) -> int {
+    printf("remove item\n");
+    return OPERATOR_FINISHED;
+  };
+}
+
+static void NODE_OT_simulation_zone_item_add(wmOperatorType *ot)
+{
+  ot->name = "Add simulation zone item";
+  ot->idname = __func__;
+  ot->description = "Add simulation zone item";
+
+  ot->exec = [](bContext *C, wmOperator *op) -> int {
+    printf("add item\n");
+    return OPERATOR_FINISHED;
+  };
+}
+
+static void NODE_OT_simulation_zone_item_move(wmOperatorType *ot)
+{
+  ot->name = "Move simulation zone item";
+  ot->idname = __func__;
+  ot->description = "Move active simulation zone item";
+
+  ot->exec = [](bContext *C, wmOperator *op) -> int {
+    printf("move item\n");
+    return OPERATOR_FINISHED;
+  };
+
+  static const EnumPropertyItem direction_items[] = {
+      {0, "UP", 0, "Up", ""},
+      {1, "DOWN", 0, "Down", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_enum(ot->srna, "direction", direction_items, 0, "Direction", "Move direction");
+}
+
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   const bNode *node = static_cast<bNode *>(ptr->data);
   Scene *scene = CTX_data_scene(C);
   SpaceNode *snode = CTX_wm_space_node(C);
+
+  draw_simulation_state(C, layout, *ptr);
+
   if (snode == nullptr) {
     return;
   }
@@ -905,6 +1022,10 @@ static void node_register()
   ntype.no_muting = true;
   node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
+
+  WM_operatortype_append(NODE_OT_simulation_zone_item_add);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_remove);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_move);
 }
 NOD_REGISTER_NODE(node_register)
 

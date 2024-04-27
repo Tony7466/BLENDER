@@ -429,7 +429,7 @@ class SocketMoveItemOperator:
 
     direction: EnumProperty(
         name="Direction",
-        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        items=[('UP', "Up", "", 'NONE', 0), ('DOWN', "Down", "", 'NONE', 1)],
         default='UP',
     )
 
@@ -446,35 +446,6 @@ class SocketMoveItemOperator:
             setattr(node, self.active_index_name, old_active_index + 1)
 
         return {'FINISHED'}
-
-
-class SimulationZoneOperator(ZoneOperator):
-    input_node_type = 'GeometryNodeSimulationInput'
-    output_node_type = 'GeometryNodeSimulationOutput'
-
-    items_name = "state_items"
-    active_index_name = "active_index"
-
-
-class SimulationZoneItemAddOperator(SimulationZoneOperator, SocketItemAddOperator, Operator):
-    """Add a state item to the simulation zone"""
-    bl_idname = "node.simulation_zone_item_add"
-    bl_label = "Add State Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class SimulationZoneItemRemoveOperator(SimulationZoneOperator, SocketItemRemoveOperator, Operator):
-    """Remove a state item from the simulation zone"""
-    bl_idname = "node.simulation_zone_item_remove"
-    bl_label = "Remove State Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class SimulationZoneItemMoveOperator(SimulationZoneOperator, SocketMoveItemOperator, Operator):
-    """Move a simulation state item up or down in the list"""
-    bl_idname = "node.simulation_zone_item_move"
-    bl_label = "Move State Item"
-    bl_options = {'REGISTER', 'UNDO'}
 
 
 class RepeatZoneOperator(ZoneOperator):
@@ -588,9 +559,6 @@ classes = (
     NewGeometryNodeTreeAssign,
     NewGeometryNodeGroupTool,
     MoveModifierToNodes,
-    SimulationZoneItemAddOperator,
-    SimulationZoneItemRemoveOperator,
-    SimulationZoneItemMoveOperator,
     RepeatZoneItemAddOperator,
     RepeatZoneItemRemoveOperator,
     RepeatZoneItemMoveOperator,

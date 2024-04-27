@@ -12,11 +12,82 @@
 
 #include "BLI_string_utils.hh"
 
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "BKE_screen.hh"
+
+#include "WM_api.hh"
 
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_repeat_cc {
+
+static void draw_repeat_state_item(uiList * /*ui_list*/,
+                                   const bContext *C,
+                                   uiLayout *layout,
+                                   PointerRNA * /*idataptr*/,
+                                   PointerRNA *itemptr,
+                                   int /*icon*/,
+                                   PointerRNA * /*active_dataptr*/,
+                                   const char * /*active_propname*/,
+                                   int /*index*/,
+                                   int /*flt_flag*/)
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  float4 color;
+  RNA_float_get_array(itemptr, "color", color);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  static const uiListType *state_items_list = []() {
+    uiListType *list = MEM_cnew<uiListType>(__func__);
+    STRNCPY(list->idname, "DATA_UL_repeat_zone_state");
+    list->draw_item = draw_repeat_state_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  PointerRNA node_ptr = *ptr;
+
+  PointerRNA items_ptr = RNA_pointer_create(
+      node_ptr.owner_id, &RNA_NodeGeometryRepeatOutputItems, node_ptr.data);
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "repeat_items", false, TIP_("Repeat Items"))) {
+    uiLayout *row = uiLayoutRow(panel, false);
+    uiTemplateList(row,
+                   C,
+                   state_items_list->idname,
+                   "",
+                   &node_ptr,
+                   "repeat_items",
+                   &node_ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      {
+        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+        uiItemO(add_remove_col, "", ICON_ADD, "node.repeat_zone_item_add");
+        uiItemO(add_remove_col, "", ICON_REMOVE, "node.repeat_zone_item_remove");
+      }
+      {
+        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_UP, "direction", 0);
+        uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+  }
+}
 
 namespace repeat_input_node {
 
@@ -171,6 +242,7 @@ static void node_register()
   ntype.labelfunc = repeat_input_node::node_label;
   ntype.insert_link = node_insert_link;
   ntype.no_muting = true;
+  ntype.draw_buttons_ex = node_draw_ex;
   node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
