@@ -7,6 +7,7 @@
 
 #include "NOD_geo_repeat.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_items_ops.hh"
 
 #include "BLO_read_write.hh"
 
@@ -18,6 +19,8 @@
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
+
+#include "UI_interface.hh"
 
 #include "node_geometry_util.hh"
 
@@ -87,6 +90,24 @@ static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
       }
     }
   }
+}
+
+static void NODE_OT_repeat_zone_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item<RepeatItemsAccessor>(
+      ot, "Remove Repeat Zone Item", __func__, "Remove active repeat zone item");
+}
+
+static void NODE_OT_repeat_zone_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item_with_name_and_type<RepeatItemsAccessor>(
+      ot, "Add Repeat Zone Item", __func__, "Add repeat zone item");
+}
+
+static void NODE_OT_repeat_zone_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_item<RepeatItemsAccessor>(
+      ot, "Move Repeat Zone Item", __func__, "Move active repeat zone item");
 }
 
 namespace repeat_input_node {
@@ -245,6 +266,10 @@ static void node_register()
   ntype.draw_buttons_ex = node_draw_ex;
   node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
+
+  WM_operatortype_append(NODE_OT_repeat_zone_item_add);
+  WM_operatortype_append(NODE_OT_repeat_zone_item_remove);
+  WM_operatortype_append(NODE_OT_repeat_zone_item_move);
 }
 NOD_REGISTER_NODE(node_register)
 

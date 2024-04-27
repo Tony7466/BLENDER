@@ -448,35 +448,6 @@ class SocketMoveItemOperator:
         return {'FINISHED'}
 
 
-class RepeatZoneOperator(ZoneOperator):
-    input_node_type = 'GeometryNodeRepeatInput'
-    output_node_type = 'GeometryNodeRepeatOutput'
-
-    items_name = "repeat_items"
-    active_index_name = "active_index"
-
-
-class RepeatZoneItemAddOperator(RepeatZoneOperator, SocketItemAddOperator, Operator):
-    """Add a repeat item to the repeat zone"""
-    bl_idname = "node.repeat_zone_item_add"
-    bl_label = "Add Repeat Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class RepeatZoneItemRemoveOperator(RepeatZoneOperator, SocketItemRemoveOperator, Operator):
-    """Remove a repeat item from the repeat zone"""
-    bl_idname = "node.repeat_zone_item_remove"
-    bl_label = "Remove Repeat Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class RepeatZoneItemMoveOperator(RepeatZoneOperator, SocketMoveItemOperator, Operator):
-    """Move a repeat item up or down in the list"""
-    bl_idname = "node.repeat_zone_item_move"
-    bl_label = "Move Repeat Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
 class BakeNodeOperator(NodeOperator):
     node_type = 'GeometryNodeBake'
 
@@ -559,9 +530,6 @@ classes = (
     NewGeometryNodeTreeAssign,
     NewGeometryNodeGroupTool,
     MoveModifierToNodes,
-    RepeatZoneItemAddOperator,
-    RepeatZoneItemRemoveOperator,
-    RepeatZoneItemMoveOperator,
     BakeNodeItemAddOperator,
     BakeNodeItemRemoveOperator,
     BakeNodeItemMoveOperator,
