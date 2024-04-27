@@ -30,6 +30,7 @@
 #include "NOD_geo_simulation.hh"
 #include "NOD_geometry.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_items_ops.hh"
 
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
@@ -828,31 +829,8 @@ static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRN
 
 static void NODE_OT_simulation_zone_item_remove(wmOperatorType *ot)
 {
-  ot->name = "Remove simulation zone item";
-  ot->idname = __func__;
-  ot->description = "Remove active simulation zone item";
-
-  ot->exec = [](bContext *C, wmOperator * /*op*/) -> int {
-    PointerRNA node_ptr = CTX_data_pointer_get(C, "active_node");
-    bNode *node = static_cast<bNode *>(node_ptr.data);
-    if (node == nullptr) {
-      return OPERATOR_CANCELLED;
-    }
-    if (node->type != SimulationItemsAccessor::node_type) {
-      return OPERATOR_CANCELLED;
-    }
-    socket_items::SocketItemsRef ref = SimulationItemsAccessor::get_items_from_node(*node);
-    dna::array::remove_index(ref.items,
-                             ref.items_num,
-                             ref.active_index,
-                             *ref.active_index,
-                             SimulationItemsAccessor::destruct_item);
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(node_ptr.owner_id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    ED_node_tree_propagate_change(nullptr, CTX_data_main(C), ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-    return OPERATOR_FINISHED;
-  };
+  socket_items::remove_item_operator<SimulationItemsAccessor>(
+      ot, "Remove Simulation Zone Item", __func__, "Remove active simulation zone item");
 }
 
 static void NODE_OT_simulation_zone_item_add(wmOperatorType *ot)
