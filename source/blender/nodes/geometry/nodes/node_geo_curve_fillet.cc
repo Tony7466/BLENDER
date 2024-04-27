@@ -32,7 +32,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .field_on_all();
   b.add_input<decl::Bool>("Limit Radius")
       .description("Limit the maximum value of the radius in order to avoid overlapping fillets");
-  b.add_input<decl::Bool>("Remove Duplicated Points")
+  b.add_input<decl::Bool>("Remove Zero-length Edges")
     .description("When limit radius is enabled, remove the duplicated points at limited radius");
   b.add_output<decl::Geometry>("Curve").propagate_all();
 }
@@ -63,7 +63,7 @@ static bke::CurvesGeometry fillet_curve(const bke::CurvesGeometry &src_curves,
                                         const std::optional<Field<int>> &count_field,
                                         const Field<float> &radius_field,
                                         const bool limit_radius,
-                                        const bool remove_duplicated_points,
+                                        const bool remove_zero_length_edges,
                                         const AnonymousAttributePropagationInfo &propagation_info)
 {
   fn::FieldEvaluator evaluator{field_context, src_curves.points_num()};
@@ -76,7 +76,7 @@ static bke::CurvesGeometry fillet_curve(const bke::CurvesGeometry &src_curves,
                                             src_curves.curves_range(),
                                             evaluator.get_evaluated<float>(0),
                                             limit_radius,
-                                            remove_duplicated_points,
+                                            remove_zero_length_edges,
                                             propagation_info);
     }
     case GEO_NODE_CURVE_FILLET_POLY: {
@@ -87,7 +87,7 @@ static bke::CurvesGeometry fillet_curve(const bke::CurvesGeometry &src_curves,
                                           evaluator.get_evaluated<float>(0),
                                           evaluator.get_evaluated<int>(1),
                                           limit_radius,
-                                          remove_duplicated_points,
+                                          remove_zero_length_edges,
                                           propagation_info);
     }
   }
@@ -99,7 +99,7 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
                                  const std::optional<Field<int>> &count_field,
                                  const Field<float> &radius_field,
                                  const bool limit_radius,
-                                 const bool remove_duplicated_points,
+                                 const bool remove_zero_length_edges,
                                  const AnonymousAttributePropagationInfo &propagation_info)
 {
   using namespace blender::bke::greasepencil;
@@ -120,7 +120,7 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
                                                   count_field,
                                                   radius_field,
                                                   limit_radius,
-                                                  remove_duplicated_points,
+                                                  remove_zero_length_edges,
                                                   propagation_info);
     drawing->strokes_for_write() = std::move(dst_curves);
     drawing->tag_topology_changed();
@@ -136,7 +136,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   Field<float> radius_field = params.extract_input<Field<float>>("Radius");
   const bool limit_radius = params.extract_input<bool>("Limit Radius");
-  const bool remove_duplicated_points = params.extract_input<bool>("Remove Duplicated Points");
+  const bool remove_zero_length_edges = params.extract_input<bool>("Remove Zero-length Edges");
 
   std::optional<Field<int>> count_field;
   if (mode == GEO_NODE_CURVE_FILLET_POLY) {
@@ -157,7 +157,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                     count_field,
                                                     radius_field,
                                                     limit_radius,
-                                                    remove_duplicated_points,
+                                                    remove_zero_length_edges,
                                                     propagation_info);
       Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
       bke::curves_copy_parameters(curves_id, *dst_curves_id);
@@ -170,7 +170,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                            count_field,
                            radius_field,
                            limit_radius,
-                           remove_duplicated_points,
+                           remove_zero_length_edges,
                            propagation_info);
     }
   });

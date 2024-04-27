@@ -411,7 +411,7 @@ static bke::CurvesGeometry fillet_curves(
     const VArray<float> &radius_input,
     const VArray<int> &counts,
     const bool limit_radius,
-    bool remove_duplicated_points,
+    const bool remove_zero_length_edges,
     const bool use_bezier_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
@@ -435,6 +435,7 @@ static bke::CurvesGeometry fillet_curves(
   Array<float> radii;
   Array<bool> ends_with_zero_edge;
   const int src_points_num = src_curves.points_num();
+
   /*
    * Pre-calculate radii for all curves if zero-length edges will be removed.
    * Allocating these arrays on a curve-by-curve basis would conserve memory
@@ -446,7 +447,6 @@ static bke::CurvesGeometry fillet_curves(
   angles = Array<float>(src_points_num);
   radii = Array<float>(src_points_num);
   ends_with_zero_edge = Array<bool>(src_points_num);
-
   curve_selection.foreach_index(GrainSize(512), [&](const int curve_i) {
     const IndexRange src_points = curve_start_indices[curve_i];
     const Span<float3> positions_buffer = positions.slice(src_points);
@@ -471,7 +471,7 @@ static bke::CurvesGeometry fillet_curves(
                   radii_buffer,
                   zero_edge_buffer);
 
-      if (!remove_duplicated_points) {
+      if (!remove_zero_length_edges) {
         zero_edge_buffer.fill(false);
       }
     }
@@ -618,7 +618,7 @@ bke::CurvesGeometry fillet_curves_poly(
     const VArray<float> &radius,
     const VArray<int> &count,
     const bool limit_radius,
-    const bool remove_duplicated_points,
+    const bool remove_zero_length_edges,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   return fillet_curves(src_curves,
@@ -626,7 +626,7 @@ bke::CurvesGeometry fillet_curves_poly(
                        radius,
                        count,
                        limit_radius,
-                       remove_duplicated_points,
+                       remove_zero_length_edges,
                        false,
                        propagation_info);
 }
@@ -636,7 +636,7 @@ bke::CurvesGeometry fillet_curves_bezier(
     const IndexMask &curve_selection,
     const VArray<float> &radius,
     const bool limit_radius,
-    const bool remove_duplicated_points,
+    const bool remove_zero_length_edges,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   return fillet_curves(src_curves,
@@ -644,7 +644,7 @@ bke::CurvesGeometry fillet_curves_bezier(
                        radius,
                        VArray<int>::ForSingle(1, src_curves.points_num()),
                        limit_radius,
-                       remove_duplicated_points,
+                       remove_zero_length_edges,
                        true,
                        propagation_info);
 }
