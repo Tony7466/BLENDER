@@ -492,7 +492,7 @@ struct PaintOperationExecutor {
 
     const int active_curve = on_back ? curves.curves_range().first() :
                                        curves.curves_range().last();
-    IndexRange curve_points = curves.points_by_curve()[active_curve];
+    const IndexRange curve_points = curves.points_by_curve()[active_curve];
     const int last_active_point = curve_points.last();
 
     const float2 prev_coords = self.screen_space_coords_orig_.last();
@@ -523,10 +523,8 @@ struct PaintOperationExecutor {
 
     /* Resize the curves geometry. */
     extend_curve(curves, on_back, new_points_num);
-    curve_points = curves.points_by_curve()[active_curve];
-
     /* Subdivide stroke in new_points. */
-    const IndexRange new_points = curve_points.take_back(new_points_num);
+    const IndexRange new_points = curves.points_by_curve()[active_curve].take_back(new_points_num);
     Array<float2> new_screen_space_coords(new_points_num);
     MutableSpan<float3> positions = curves.positions_for_write();
     MutableSpan<float3> new_positions = positions.slice(new_points);
@@ -558,7 +556,8 @@ struct PaintOperationExecutor {
     }
     else {
       /* Active smoothing is done in a window at the end of the new stroke. */
-      this->active_smoothing(self, smooth_window, positions.slice(curve_points));
+      this->active_smoothing(
+          self, smooth_window, positions.slice(curves.points_by_curve()[active_curve]));
     }
 
     /* Initialize the rest of the attributes with default values. */
