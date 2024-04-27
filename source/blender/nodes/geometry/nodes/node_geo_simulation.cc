@@ -819,6 +819,8 @@ static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRN
       NodeSimulationItem &active_item = storage.items[storage.active_index];
       PointerRNA item_ptr = RNA_pointer_create(
           node_ptr.owner_id, SimulationItemsAccessor::item_srna, &active_item);
+      uiLayoutSetPropSep(panel, true);
+      uiLayoutSetPropDecorate(panel, false);
       uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
       if (socket_type_supports_fields(eNodeSocketDatatype(active_item.socket_type))) {
         uiItemR(panel, &item_ptr, "attribute_domain", UI_ITEM_NONE, nullptr, ICON_NONE);

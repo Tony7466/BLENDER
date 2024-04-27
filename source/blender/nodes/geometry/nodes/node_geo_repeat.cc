@@ -56,9 +56,8 @@ static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   }();
 
   PointerRNA node_ptr = *ptr;
+  bNode &node = *static_cast<bNode *>(node_ptr.data);
 
-  PointerRNA items_ptr = RNA_pointer_create(
-      node_ptr.owner_id, &RNA_NodeGeometryRepeatOutputItems, node_ptr.data);
   if (uiLayout *panel = uiLayoutPanel(C, layout, "repeat_items", false, TIP_("Repeat Items"))) {
     uiLayout *row = uiLayoutRow(panel, false);
     uiTemplateList(row,
@@ -75,7 +74,6 @@ static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
                    UILST_LAYOUT_DEFAULT,
                    0,
                    UI_TEMPLATE_LIST_FLAG_NONE);
-
     {
       uiLayout *ops_col = uiLayoutColumn(row, false);
       {
@@ -89,7 +87,18 @@ static void node_draw_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
         uiItemEnumO(up_down_col, "node.repeat_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
       }
     }
+    NodeGeometryRepeatOutput &storage = *static_cast<NodeGeometryRepeatOutput *>(node.storage);
+    if (storage.active_index >= 0 && storage.active_index < storage.items_num) {
+      NodeRepeatItem &active_item = storage.items[storage.active_index];
+      PointerRNA item_ptr = RNA_pointer_create(
+          node_ptr.owner_id, RepeatItemsAccessor::item_srna, &active_item);
+      uiLayoutSetPropSep(panel, true);
+      uiLayoutSetPropDecorate(panel, false);
+      uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+    }
   }
+
+  uiItemR(layout, &node_ptr, "inspection_index", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void NODE_OT_repeat_zone_item_remove(wmOperatorType *ot)
