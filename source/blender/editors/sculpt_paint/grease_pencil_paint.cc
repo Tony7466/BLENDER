@@ -378,11 +378,10 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       this->skipped_attribute_ids(bke::AttrDomain::Point),
                                       IndexRange(last_active_point, 1));
-    bke::fill_attribute_range_default(
-        attributes,
-        bke::AttrDomain::Curve,
-        this->skipped_attribute_ids(bke::AttrDomain::Curve),
-        IndexRange(active_curve, 1));
+    bke::fill_attribute_range_default(attributes,
+                                      bke::AttrDomain::Curve,
+                                      this->skipped_attribute_ids(bke::AttrDomain::Curve),
+                                      IndexRange(active_curve, 1));
 
     drawing_->tag_topology_changed();
   }
