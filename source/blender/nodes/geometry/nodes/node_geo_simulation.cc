@@ -776,6 +776,8 @@ static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRN
     return list;
   }();
 
+  bNode &node = *static_cast<bNode *>(node_ptr.data);
+
   if (uiLayout *panel = uiLayoutPanel(
           C, layout, "simulation_state_items", false, TIP_("Simulation State")))
   {
@@ -808,6 +810,17 @@ static void draw_simulation_state(const bContext *C, uiLayout *layout, PointerRN
             up_down_col, "node.simulation_zone_item_move", "", ICON_TRIA_UP, "direction", 0);
         uiItemEnumO(
             up_down_col, "node.simulation_zone_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+
+    NodeGeometrySimulationOutput &storage = node_storage(node);
+    if (storage.active_index >= 0 && storage.active_index < storage.items_num) {
+      NodeSimulationItem &active_item = storage.items[storage.active_index];
+      PointerRNA item_ptr = RNA_pointer_create(
+          node_ptr.owner_id, SimulationItemsAccessor::item_srna, &active_item);
+      uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      if (socket_type_supports_fields(eNodeSocketDatatype(active_item.socket_type))) {
+        uiItemR(panel, &item_ptr, "attribute_domain", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
     }
   }
