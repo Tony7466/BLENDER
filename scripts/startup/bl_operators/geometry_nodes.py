@@ -382,100 +382,6 @@ class NodeOperator:
         return True
 
 
-class SocketItemAddOperator:
-    items_name = None
-    active_index_name = None
-    default_socket_type = 'GEOMETRY'
-
-    def execute(self, context):
-        node = self.get_node(context)
-        items = getattr(node, self.items_name)
-        # Remember index to move the item.
-        old_active_index = getattr(node, self.active_index_name)
-        if 0 <= old_active_index < len(items):
-            old_active_item = items[old_active_index]
-            dst_index = old_active_index + 1
-            dst_type = old_active_item.socket_type
-            dst_name = old_active_item.name
-        else:
-            dst_index = len(items)
-            dst_type = self.default_socket_type
-            # Empty name so it is based on the type.
-            dst_name = ""
-        items.new(dst_type, dst_name)
-        items.move(len(items) - 1, dst_index)
-        setattr(node, self.active_index_name, dst_index)
-        return {'FINISHED'}
-
-
-class SocketItemRemoveOperator:
-    items_name = None
-    active_index_name = None
-
-    def execute(self, context):
-        node = self.get_node(context)
-        items = getattr(node, self.items_name)
-        old_active_index = getattr(node, self.active_index_name)
-
-        if 0 <= old_active_index < len(items):
-            items.remove(items[old_active_index])
-
-        return {'FINISHED'}
-
-
-class SocketMoveItemOperator:
-    items_name = None
-    active_index_name = None
-
-    direction: EnumProperty(
-        name="Direction",
-        items=[('UP', "Up", "", 'NONE', 0), ('DOWN', "Down", "", 'NONE', 1)],
-        default='UP',
-    )
-
-    def execute(self, context):
-        node = self.get_node(context)
-        items = getattr(node, self.items_name)
-        old_active_index = getattr(node, self.active_index_name)
-
-        if self.direction == 'UP' and old_active_index > 0:
-            items.move(old_active_index, old_active_index - 1)
-            setattr(node, self.active_index_name, old_active_index - 1)
-        elif self.direction == 'DOWN' and old_active_index < len(items) - 1:
-            items.move(old_active_index, old_active_index + 1)
-            setattr(node, self.active_index_name, old_active_index + 1)
-
-        return {'FINISHED'}
-
-
-class BakeNodeOperator(NodeOperator):
-    node_type = 'GeometryNodeBake'
-
-    items_name = "bake_items"
-    active_index_name = "active_index"
-
-
-class BakeNodeItemAddOperator(BakeNodeOperator, SocketItemAddOperator, Operator):
-    """Add a bake item to the bake node"""
-    bl_idname = "node.bake_node_item_add"
-    bl_label = "Add Bake Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class BakeNodeItemRemoveOperator(BakeNodeOperator, SocketItemRemoveOperator, Operator):
-    """Remove a bake item from the bake node"""
-    bl_idname = "node.bake_node_item_remove"
-    bl_label = "Remove Bake Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
-class BakeNodeItemMoveOperator(BakeNodeOperator, SocketMoveItemOperator, Operator):
-    """Move a bake item up or down in the list"""
-    bl_idname = "node.bake_node_item_move"
-    bl_label = "Move Bake Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-
 def _editable_tree_with_active_node_type(context, node_type):
     space = context.space_data
     # Needs active node editor and a tree.
@@ -530,9 +436,6 @@ classes = (
     NewGeometryNodeTreeAssign,
     NewGeometryNodeGroupTool,
     MoveModifierToNodes,
-    BakeNodeItemAddOperator,
-    BakeNodeItemRemoveOperator,
-    BakeNodeItemMoveOperator,
     IndexSwitchItemAddOperator,
     IndexSwitchItemRemoveOperator,
 )

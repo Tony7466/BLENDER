@@ -7,6 +7,7 @@
 #include "NOD_geo_bake.hh"
 #include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
+#include "NOD_socket_items_ops.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -112,6 +113,24 @@ static const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
+}
+
+static void NODE_OT_bake_node_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item<BakeItemsAccessor>(
+      ot, "Remove Bake Item", __func__, "Remove active bake item");
+}
+
+static void NODE_OT_bake_node_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item_with_name_and_type<BakeItemsAccessor>(
+      ot, "Add Bake Item", __func__, "Add bake item");
+}
+
+static void NODE_OT_bake_node_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_item<BakeItemsAccessor>(
+      ot, "Move Bake Item", __func__, "Move active bake item");
 }
 
 static bake::BakeSocketConfig make_bake_socket_config(const Span<NodeGeometryBakeItem> bake_items)
@@ -630,6 +649,10 @@ static void node_register()
   ntype.get_extra_info = node_extra_info;
   node_type_storage(&ntype, "NodeGeometryBake", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
+
+  WM_operatortype_append(NODE_OT_bake_node_item_add);
+  WM_operatortype_append(NODE_OT_bake_node_item_remove);
+  WM_operatortype_append(NODE_OT_bake_node_item_move);
 }
 NOD_REGISTER_NODE(node_register)
 
