@@ -10,6 +10,7 @@
 #include "NOD_geo_index_switch.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_items_ops.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
@@ -100,6 +101,17 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
       });
     }
   }
+}
+
+static void NODE_OT_index_switch_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<IndexSwitchItemsAccessor>(ot, "Add Item", __func__, "Add bake item");
+}
+
+static void NODE_OT_index_switch_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item_by_index<IndexSwitchItemsAccessor>(
+      ot, "Remove Item", __func__, "Remove an item from the index switch");
 }
 
 constexpr int value_inputs_start = 1;
@@ -347,6 +359,9 @@ static void register_node()
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
+
+  WM_operatortype_append(NODE_OT_index_switch_item_add);
+  WM_operatortype_append(NODE_OT_index_switch_item_remove);
 }
 NOD_REGISTER_NODE(register_node)
 
