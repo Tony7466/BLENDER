@@ -52,15 +52,7 @@ static void node_composit_buts_viewer(uiLayout *layout, bContext * /*C*/, Pointe
 
 static void node_composit_buts_viewer_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiLayout *col;
-
   uiItemR(layout, ptr, "use_alpha", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "tile_order", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-  if (RNA_enum_get(ptr, "tile_order") == 0) {
-    col = uiLayoutColumn(layout, true);
-    uiItemR(col, ptr, "center_x", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "center_y", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-  }
 }
 
 using namespace blender::realtime_compositor;
