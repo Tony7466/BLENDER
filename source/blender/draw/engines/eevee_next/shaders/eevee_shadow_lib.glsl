@@ -21,7 +21,7 @@ struct ShadowSampleParams {
   float z_range;
 };
 
-ShadowTileData shadow_tile_data_get(usampler2D tilemaps_tx, ShadowSampleParams params)
+ShadowSamplingTile shadow_tile_data_get(usampler2D tilemaps_tx, ShadowSampleParams params)
 {
   /* Prevent out of bound access. Assumes the input is already non negative. */
   vec2 tilemap_uv = min(params.uv.xy, vec2(0.99999));
@@ -46,9 +46,9 @@ float shadow_read_depth(SHADOW_ATLAS_TYPE atlas_tx,
   const int page_shift = SHADOW_PAGE_LOD;
 
   ivec2 tile_coord = texel_coord >> page_shift;
-  ShadowTileData tile = shadow_tile_load(tilemaps_tx, tile_coord, params.tilemap_index);
+  ShadowSamplingTile tile = shadow_tile_load(tilemaps_tx, tile_coord, params.tilemap_index);
 
-  if (!tile.is_allocated) {
+  if (!tile.is_valid) {
     return -1.0;
   }
 
@@ -117,8 +117,11 @@ float shadow_linear_occluder_distance(LightData light,
 
   float occluder_z = (is_directional) ? (occluder * (far - near) + near) :
                                         ((near * far) / (occluder * (near - far) + far));
-  float receiver_z = (is_directional) ? -lP.z : max(abs(lP.x), max(abs(lP.y), abs(lP.z)));
-
+  float receiver_z = (is_directional) ? -lP.z : reduce_max(abs(lP));
+  if (!is_directional) {
+    float lP_len = length(lP);
+    return lP_len - lP_len * (occluder_z / receiver_z);
+  }
   return receiver_z - occluder_z;
 }
 
@@ -149,12 +152,12 @@ vec3 shadow_punctual_reconstruct_position(ShadowSampleParams params,
   vec3 lP = project_point(wininv, clip_P);
   int face_id = params.tilemap_index - light.tilemap_index;
   lP = shadow_punctual_face_local_to_local_position(face_id, lP);
-  return mat3(light.object_mat) * lP + light._position;
+  return transform_point(light.object_to_world, lP);
 }
 
 ShadowSampleParams shadow_punctual_sample_params_get(LightData light, vec3 P)
 {
-  vec3 lP = (P - light._position) * mat3(light.object_mat);
+  vec3 lP = transform_point_inversed(light.object_to_world, P);
 
   int face_id = shadow_punctual_face_index_get(lP);
   /* Local Light Space > Face Local (View) Space. */
@@ -202,7 +205,7 @@ ShadowDirectionalSampleInfo shadow_directional_sample_info_get(LightData light, 
   info.clip_near = orderedIntBitsToFloat(light.clip_near);
   info.clip_far = orderedIntBitsToFloat(light.clip_far);
 
-  int level = shadow_directional_level(light, lP - light._position);
+  int level = shadow_directional_level(light, lP - light_position_get(light));
   /* This difference needs to be less than 32 for the later shift to be valid.
    * This is ensured by ShadowDirectional::clipmap_level_range(). */
   info.level_relative = level - light_sun_data_get(light).clipmap_lod_min;
@@ -210,7 +213,10 @@ ShadowDirectionalSampleInfo shadow_directional_sample_info_get(LightData light, 
                                                         level;
 
   info.clipmap_offset = shadow_decompress_grid_offset(
-      light.type, light_sun_data_get(light).clipmap_base_offset, info.level_relative);
+      light.type,
+      light_sun_data_get(light).clipmap_base_offset_neg,
+      light_sun_data_get(light).clipmap_base_offset_pos,
+      info.level_relative);
   info.clipmap_origin = light_sun_data_get(light).clipmap_origin;
 
   return info;
@@ -228,14 +234,14 @@ vec3 shadow_directional_reconstruct_position(ShadowSampleParams params, LightDat
   lP.xy = clipmap_pos + info.clipmap_origin;
   lP.z = (params.uv.z + info.clip_near) * -1.0;
 
-  return mat3(light.object_mat) * lP;
+  return transform_direction_transposed(light.object_to_world, lP);
 }
 
 ShadowSampleParams shadow_directional_sample_params_get(usampler2D tilemaps_tx,
                                                         LightData light,
                                                         vec3 P)
 {
-  vec3 lP = P * mat3(light.object_mat);
+  vec3 lP = transform_direction(light.object_to_world, P);
   ShadowDirectionalSampleInfo info = shadow_directional_sample_info_get(light, lP);
 
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);

@@ -35,6 +35,7 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_time.h"
 #include "BLI_timecode.h"
@@ -50,6 +51,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_curveprofile.h"
+#include "BKE_file_handler.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.hh"
@@ -1257,7 +1259,7 @@ static uiBut *template_id_def_new_but(uiBlock *block,
 
   int w = id ? UI_UNIT_X : id_open ? UI_UNIT_X * 3 : UI_UNIT_X * 6;
   if (!id) {
-    w = std::max(UI_fontstyle_string_width(fstyle, button_text) + int((UI_UNIT_X * 1.5f)), w);
+    w = std::max(UI_fontstyle_string_width(fstyle, button_text) + int(UI_UNIT_X * 1.5f), w);
   }
 
   if (newop) {
@@ -1542,7 +1544,7 @@ static void template_ID(const bContext *C,
 
     int w = id ? UI_UNIT_X : (flag & UI_ID_ADD_NEW) ? UI_UNIT_X * 3 : UI_UNIT_X * 6;
     if (!id) {
-      w = std::max(UI_fontstyle_string_width(fstyle, button_text) + int((UI_UNIT_X * 1.5f)), w);
+      w = std::max(UI_fontstyle_string_width(fstyle, button_text) + int(UI_UNIT_X * 1.5f), w);
     }
 
     if (openop) {
@@ -2721,13 +2723,13 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   }
 
   /* menu */
-  if (op->type->flag & OPTYPE_PRESET) {
+  if ((op->type->flag & OPTYPE_PRESET) && !(layout_flags & UI_TEMPLATE_OP_PROPS_HIDE_PRESETS)) {
     /* XXX, no simple way to get WM_MT_operator_presets.bl_label
      * from python! Label remains the same always! */
     PointerRNA op_ptr;
     uiLayout *row;
 
-    block->ui_operator = op;
+    UI_block_set_active_operator(block, op, false);
 
     row = uiLayoutRow(layout, true);
     uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE);
@@ -2825,7 +2827,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
        * - this is used for allowing operators with popups to rename stuff with fewer clicks
        */
       if (is_popup) {
-        if ((but->rnaprop == op->type->prop) && (ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_NUM))) {
+        if ((but->rnaprop == op->type->prop) && ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_NUM)) {
           UI_but_focus_on_enter_event(CTX_wm_window(C), but);
         }
       }
@@ -2959,6 +2961,95 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
       uiItemO(layout, IFACE_("More..."), ICON_NONE, "SCREEN_OT_redo_last");
     }
 #endif
+  }
+}
+
+static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *properties)
+{
+  /* Copied from #wm_operator_create.
+   * Create a slimmed down operator suitable only for UI drawing. */
+  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  STRNCPY(op->idname, ot->idname);
+  op->type = ot;
+
+  /* Initialize properties but do not assume ownership of them.
+   * This "minimal" operator owns nothing. */
+  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
+  op->properties = static_cast<IDProperty *>(properties->data);
+  *op->ptr = *properties;
+
+  return op;
+}
+
+static void draw_export_controls(
+    bContext *C, uiLayout *layout, const std::string &label, int index, bool valid)
+{
+  uiItemL(layout, label.c_str(), ICON_NONE);
+  if (valid) {
+    uiLayout *row = uiLayoutRow(layout, false);
+    uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+    uiItemPopoverPanel(row, C, "WM_PT_operator_presets", "", ICON_PRESET);
+    uiItemIntO(row, "", ICON_EXPORT, "COLLECTION_OT_exporter_export", "index", index);
+    uiItemIntO(row, "", ICON_X, "COLLECTION_OT_exporter_remove", "index", index);
+  }
+}
+
+static void draw_export_properties(bContext *C,
+                                   uiLayout *layout,
+                                   wmOperator *op,
+                                   const std::string &filename)
+{
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiLayoutSetPropSep(col, true);
+  uiLayoutSetPropDecorate(col, false);
+
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
+  std::string placeholder = "//" + filename;
+  uiItemFullR(
+      col, op->ptr, prop, RNA_NO_INDEX, 0, UI_ITEM_NONE, nullptr, ICON_NONE, placeholder.c_str());
+
+  template_operator_property_buts_draw_single(
+      C, op, layout, UI_BUT_LABEL_ALIGN_NONE, UI_TEMPLATE_OP_PROPS_HIDE_PRESETS);
+}
+
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
+{
+  Collection *collection = CTX_data_collection(C);
+  ListBase *exporters = &collection->exporters;
+
+  /* Draw all the IO handlers. */
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (CollectionExport *, data, exporters, index) {
+    using namespace blender;
+    PointerRNA exporter_ptr = RNA_pointer_create(&collection->id, &RNA_CollectionExport, data);
+    PanelLayout panel = uiLayoutPanelProp(C, layout, &exporter_ptr, "is_open");
+
+    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+    if (!fh) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
+      draw_export_controls(C, panel.header, label, index, false);
+      continue;
+    }
+
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    if (!ot) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
+      draw_export_controls(C, panel.header, label, index, false);
+      continue;
+    }
+
+    /* Assign temporary operator to uiBlock, which takes ownership. */
+    PointerRNA properties = RNA_pointer_create(&collection->id, ot->srna, data->export_properties);
+    wmOperator *op = minimal_operator_create(ot, &properties);
+    UI_block_set_active_operator(uiLayoutGetBlock(panel.header), op, true);
+
+    /* Draw panel header and contents. */
+    std::string label(fh->label);
+    draw_export_controls(C, panel.header, label, index, true);
+    if (panel.body) {
+      draw_export_properties(C, panel.body, op, fh->get_default_filename(collection->id.name + 2));
+    }
   }
 }
 
@@ -3645,6 +3736,8 @@ static void colorband_buttons_layout(uiLayout *layout,
 
   bt = uiDefBut(
       block, UI_BTYPE_COLORBAND, 0, "", xs, ys, BLI_rctf_size_x(butr), UI_UNIT_Y, coba, 0, 0, "");
+  bt->rnapoin = cb.ptr;
+  bt->rnaprop = cb.prop;
   UI_but_func_set(bt, [cb](bContext &C) { rna_update_cb(C, cb); });
 
   row = uiLayoutRow(layout, false);
@@ -4449,19 +4542,52 @@ static void curvemap_buttons_layout(uiLayout *layout,
                      &cumap->cur,
                      0.0,
                      3.0,
-                     "");
+                     TIP_("Combined channels"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
     if (cumap->cm[0].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("R"), 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "R"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     0.0,
+                     TIP_("Red channel"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
     if (cumap->cm[1].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("G"), 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "G"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     1.0,
+                     TIP_("Green channel"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
     if (cumap->cm[2].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("B"), 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "B"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     2.0,
+                     TIP_("Blue channel"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
   }
@@ -4471,15 +4597,48 @@ static void curvemap_buttons_layout(uiLayout *layout,
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
 
     if (cumap->cm[0].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("H"), 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     IFACE_("H"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     0.0,
+                     TIP_("Hue level"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
     if (cumap->cm[1].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("S"), 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     IFACE_("S"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     1.0,
+                     TIP_("Saturation level"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
     if (cumap->cm[2].curve) {
-      bt = uiDefButI(block, UI_BTYPE_ROW, 0, IFACE_("V"), 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     IFACE_("V"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     2.0,
+                     TIP_("Value level"));
       UI_but_func_set(bt, curvemap_buttons_redraw);
     }
   }
@@ -6176,11 +6335,14 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
     if (msg || (msg_drag == nullptr)) {
-      uiItemL(row, msg ? msg : "", (ICON_MOUSE_LMB + i));
+      /* Icon and text separately are closer together with aligned layout. */
+      uiItemL(row, "", (ICON_MOUSE_LMB + i));
+      uiItemL(row, msg ? msg : "", ICON_NONE);
     }
 
     if (msg_drag) {
-      uiItemL(row, msg_drag, (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
+      uiItemL(row, msg_drag, ICON_NONE);
     }
 
     /* Use trick with empty string to keep icons in same position. */
@@ -6398,6 +6560,90 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
 /** \name Event Icon Template
  * \{ */
 
+static const wmKeyMapItem *keymap_item_from_enum_item(const wmKeyMap *keymap,
+                                                      const EnumPropertyItem *item)
+{
+  if (item == nullptr) {
+    return nullptr;
+  }
+
+  for (wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi; kmi = kmi->next)
+  {
+    if (kmi->propvalue == item->value) {
+      return kmi;
+    }
+  }
+
+  return nullptr;
+}
+
+static bool keymap_item_can_collapse(const wmKeyMapItem *kmi_a, const wmKeyMapItem *kmi_b)
+{
+  return (kmi_a->shift == kmi_b->shift && kmi_a->ctrl == kmi_b->ctrl && kmi_a->alt == kmi_b->alt &&
+          kmi_a->oskey == kmi_b->oskey);
+}
+
+int uiTemplateStatusBarModalItem(uiLayout *layout,
+                                 const wmKeyMap *keymap,
+                                 const EnumPropertyItem *item)
+{
+  const wmKeyMapItem *kmi = keymap_item_from_enum_item(keymap, item);
+  if (kmi == nullptr) {
+    return 0;
+  }
+
+  if (kmi->val == KM_RELEASE) {
+    /* Assume release events just disable something which was toggled on. */
+    return 1;
+  }
+
+  /* Try to merge some known XYZ items to save horizontal space. */
+  const EnumPropertyItem *item_y = (item[1].identifier) ? item + 1 : nullptr;
+  const EnumPropertyItem *item_z = (item_y && item[2].identifier) ? item + 2 : nullptr;
+  const wmKeyMapItem *kmi_y = keymap_item_from_enum_item(keymap, item_y);
+  const wmKeyMapItem *kmi_z = keymap_item_from_enum_item(keymap, item_z);
+
+  if (kmi_y && kmi_z && keymap_item_can_collapse(kmi, kmi_y) &&
+      keymap_item_can_collapse(kmi_y, kmi_z))
+  {
+    const char *xyz_label = nullptr;
+
+    if (STREQ(item->identifier, "AXIS_X") && STREQ(item_y->identifier, "AXIS_Y") &&
+        STREQ(item_z->identifier, "AXIS_Z"))
+    {
+      xyz_label = IFACE_("Axis");
+    }
+    else if (STREQ(item->identifier, "PLANE_X") && STREQ(item_y->identifier, "PLANE_Y") &&
+             STREQ(item_z->identifier, "PLANE_Z"))
+    {
+      xyz_label = IFACE_("Plane");
+    }
+
+    if (xyz_label) {
+      int icon_mod[4];
+      int icon = UI_icon_from_keymap_item(kmi, icon_mod);
+      for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
+        uiItemL(layout, "", icon_mod[j]);
+      }
+      uiItemL(layout, "", icon);
+
+      icon = UI_icon_from_keymap_item(kmi_y, icon_mod);
+      uiItemL(layout, "", icon);
+
+      icon = UI_icon_from_keymap_item(kmi_z, icon_mod);
+      uiItemL(layout, "", icon);
+
+      uiItemS_ex(layout, 0.6f);
+      uiItemL(layout, xyz_label, ICON_NONE);
+      uiItemS_ex(layout, 0.7f);
+      return 3;
+    }
+  }
+
+  /* Single item without merging. */
+  return uiTemplateEventFromKeymapItem(layout, item->name, kmi, false) ? 1 : 0;
+}
+
 bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const char *text,
                                    const wmKeyMapItem *kmi,
@@ -6415,13 +6661,23 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
       uiItemL(layout, "", icon_mod[j]);
     }
-    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), icon);
+
+    /* Icon and text separately is closer together with aligned layout. */
+    uiItemL(layout, "", icon);
+    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
+      /* Mouse icons are left-aligned. Everything else needs a bit of space here. */
+      uiItemS_ex(layout, 0.6f);
+    }
+    uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    /* Separate items with some extra space. */
+    uiItemS_ex(layout, 0.7f);
     ok = true;
   }
   else if (text_fallback) {
     const char *event_text = WM_key_event_string(kmi->type, true);
     uiItemL(layout, event_text, ICON_NONE);
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
+    uiItemS_ex(layout, 0.5f);
     ok = true;
   }
   return ok;

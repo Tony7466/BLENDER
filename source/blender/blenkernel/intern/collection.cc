@@ -32,6 +32,7 @@
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_preview_image.hh"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.hh"
 
@@ -108,6 +109,7 @@ static void collection_gobject_hash_ensure(Collection *collection);
 static void collection_gobject_hash_update_object(Collection *collection,
                                                   Object *ob_old,
                                                   CollectionObject *cob);
+static void collection_exporter_copy(Collection *collection, CollectionExport *data);
 
 /** \} */
 
@@ -159,6 +161,7 @@ static void collection_copy_data(Main *bmain,
 
   BLI_listbase_clear(&collection_dst->gobject);
   BLI_listbase_clear(&collection_dst->children);
+  BLI_listbase_clear(&collection_dst->exporters);
   BLI_listbase_clear(&collection_dst->runtime.parents);
   collection_dst->runtime.gobject_hash = nullptr;
 
@@ -168,6 +171,9 @@ static void collection_copy_data(Main *bmain,
   }
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, &cob->light_linking, flag, false);
+  }
+  LISTBASE_FOREACH (CollectionExport *, data, &collection_src->exporters) {
+    collection_exporter_copy(collection_dst, data);
   }
 }
 
@@ -186,6 +192,11 @@ static void collection_free_data(ID *id)
 
   BLI_freelistN(&collection->children);
   BLI_freelistN(&collection->runtime.parents);
+
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
+    BKE_collection_exporter_free_data(data);
+  }
+  BLI_freelistN(&collection->exporters);
 
   /* No need for depsgraph tagging here, since the data is being deleted. */
   collection_object_cache_free(nullptr, collection, LIB_ID_CREATE_NO_DEG_TAG, 0);
@@ -274,6 +285,13 @@ void BKE_collection_blend_write_nolib(BlendWriter *writer, Collection *collectio
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     BLO_write_struct(writer, CollectionChild, child);
   }
+
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
+    BLO_write_struct(writer, CollectionExport, data);
+    if (data->export_properties) {
+      IDP_BlendWrite(writer, data->export_properties);
+    }
+  }
 }
 
 static void collection_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -321,10 +339,16 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
   collection->owner_id = owner_id;
 
-  BLO_read_list(reader, &collection->gobject);
-  BLO_read_list(reader, &collection->children);
+  BLO_read_struct_list(reader, CollectionObject, &collection->gobject);
+  BLO_read_struct_list(reader, CollectionChild, &collection->children);
 
-  BLO_read_data_address(reader, &collection->preview);
+  BLO_read_struct_list(reader, CollectionExport, &collection->exporters);
+  LISTBASE_FOREACH (CollectionExport *, data, &collection->exporters) {
+    BLO_read_struct(reader, IDProperty, &data->export_properties);
+    IDP_BlendDataRead(reader, &data->export_properties);
+  }
+
+  BLO_read_struct(reader, PreviewImage, &collection->preview);
   BKE_previewimg_blend_read(reader, collection->preview);
 }
 
@@ -488,6 +512,13 @@ void BKE_collection_free_data(Collection *collection)
 {
   BKE_libblock_free_data(&collection->id, false);
   collection_free_data(&collection->id);
+}
+
+void BKE_collection_exporter_free_data(CollectionExport *data)
+{
+  if (data->export_properties) {
+    IDP_FreeProperty(data->export_properties);
+  }
 }
 
 bool BKE_collection_delete(Main *bmain, Collection *collection, bool hierarchy)
@@ -1024,6 +1055,20 @@ bool BKE_collection_has_object_recursive_instanced(Collection *collection, Objec
   return BLI_findptr(&objects, ob, offsetof(Base, object));
 }
 
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection_eval,
+                                                           Object *object_eval)
+{
+  BLI_assert(collection_eval->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  const ID *ob_orig = DEG_get_original_id(&object_eval->id);
+  const ListBase objects = BKE_collection_object_cache_instanced_get(collection_eval);
+  LISTBASE_FOREACH (Base *, base, &objects) {
+    if (DEG_get_original_id(&base->object->id) == ob_orig) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Collection *collection_next_find(Main *bmain, Scene *scene, Collection *collection)
 {
   if (scene && collection == scene->master_collection) {
@@ -1353,13 +1398,27 @@ static bool collection_object_remove(
   return true;
 }
 
+static void collection_exporter_copy(Collection *collection, CollectionExport *data)
+{
+  CollectionExport *new_data = MEM_cnew<CollectionExport>("CollectionExport");
+  STRNCPY(new_data->fh_idname, data->fh_idname);
+  new_data->export_properties = IDP_CopyProperty(data->export_properties);
+  new_data->flag = data->flag;
+
+  /* Clear the `filepath` property. */
+  IDProperty *filepath = IDP_GetPropertyFromGroup(new_data->export_properties, "filepath");
+  if (filepath) {
+    IDP_AssignString(filepath, "");
+  }
+
+  BLI_addtail(&collection->exporters, new_data);
+}
+
 bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Object *ob)
 {
   if (ob == nullptr) {
     return false;
   }
-
-  const int id_create_flag = (collection->id.tag & LIB_TAG_NO_MAIN) ? LIB_ID_CREATE_NO_MAIN : 0;
 
   /* Only case where this pointer can be nullptr is when scene itself is linked, this case should
    * never be reached. */
@@ -1368,6 +1427,7 @@ bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Objec
     return false;
   }
 
+  const int id_create_flag = (collection->id.tag & LIB_TAG_NO_MAIN) ? LIB_ID_CREATE_NO_MAIN : 0;
   if (!collection_object_add(bmain, collection, ob, nullptr, id_create_flag, true)) {
     return false;
   }

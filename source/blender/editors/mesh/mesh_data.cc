@@ -175,9 +175,7 @@ static void mesh_uv_reset_mface(const blender::IndexRange face, float2 *mloopuv)
 
 void ED_mesh_uv_loop_reset_ex(Mesh *mesh, const int layernum)
 {
-  BMEditMesh *em = mesh->runtime->edit_mesh;
-
-  if (em) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     /* Collect BMesh UVs */
     const int cd_loop_uv_offset = CustomData_get_n_offset(
         &em->bm->ldata, CD_PROP_FLOAT2, layernum);
@@ -225,7 +223,6 @@ int ED_mesh_uv_add(
 {
   /* NOTE: keep in sync with #ED_mesh_color_add. */
 
-  BMEditMesh *em;
   int layernum_dst;
 
   if (!name) {
@@ -235,9 +232,7 @@ int ED_mesh_uv_add(
   const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
   bool is_init = false;
 
-  if (mesh->runtime->edit_mesh) {
-    em = mesh->runtime->edit_mesh;
-
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     layernum_dst = CustomData_number_of_layers(&em->bm->ldata, CD_PROP_FLOAT2);
     if (layernum_dst >= MAX_MTFACE) {
       BKE_reportf(reports, RPT_WARNING, "Cannot add more than %i UV maps", MAX_MTFACE);
@@ -366,12 +361,9 @@ bool *ED_mesh_uv_map_pin_layer_ensure(Mesh *mesh, const int uv_index)
 
 void ED_mesh_uv_ensure(Mesh *mesh, const char *name)
 {
-  BMEditMesh *em;
   int layernum_dst;
 
-  if (mesh->runtime->edit_mesh) {
-    em = mesh->runtime->edit_mesh;
-
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     layernum_dst = CustomData_number_of_layers(&em->bm->ldata, CD_PROP_FLOAT2);
     if (layernum_dst == 0) {
       ED_mesh_uv_add(mesh, name, true, true, nullptr);
@@ -401,7 +393,7 @@ int ED_mesh_color_add(
     const char *active_name = mesh->active_color_attribute;
     if (const CustomDataLayer *active_layer = BKE_id_attributes_color_find(&mesh->id, active_name))
     {
-      if (const BMEditMesh *em = mesh->runtime->edit_mesh) {
+      if (const BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
         BMesh &bm = *em->bm;
         const int src_i = CustomData_get_named_layer(&bm.ldata, CD_PROP_BYTE_COLOR, active_name);
         const int dst_i = CustomData_get_named_layer(&bm.ldata, CD_PROP_BYTE_COLOR, layer->name);
@@ -754,7 +746,7 @@ static int mesh_customdata_custom_splitnormals_clear_exec(bContext *C, wmOperato
 {
   Mesh *mesh = ED_mesh_context(C);
 
-  if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMesh &bm = *em->bm;
     if (!CustomData_has_layer(&bm.ldata, CD_CUSTOMLOOPNORMAL)) {
       return OPERATOR_CANCELLED;
@@ -1154,15 +1146,15 @@ void ED_mesh_split_faces(Mesh *mesh)
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", bke::AttrDomain::Edge, false);
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
+  const VArraySpan<bool> sharp_faces = *attributes.lookup<bool>("sharp_face",
+                                                                bke::AttrDomain::Face);
 
   Array<bool> sharp_edges(mesh->edges_num);
   mesh_sharp_edges.materialize(sharp_edges);
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
-      if (sharp_faces && sharp_faces[face_i]) {
+      if (!sharp_faces.is_empty() && sharp_faces[face_i]) {
         for (const int edge : corner_edges.slice(polys[face_i])) {
           sharp_edges[edge] = true;
         }

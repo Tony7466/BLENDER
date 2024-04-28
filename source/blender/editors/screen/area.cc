@@ -22,7 +22,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 
@@ -1331,7 +1331,9 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
                RGN_TYPE_UI,
                RGN_TYPE_TOOL_PROPS,
                RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER))
+               RGN_TYPE_TOOL_HEADER,
+               RGN_TYPE_ASSET_SHELF,
+               RGN_TYPE_ASSET_SHELF_HEADER))
       {
         return true;
       }
@@ -3219,7 +3221,7 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
       const int width = panel_draw_width_from_max_width_get(region, panel->type, max_panel_width);
 
-      if (panel && UI_panel_is_dragging(panel)) {
+      if (UI_panel_is_dragging(panel)) {
         /* Prevent View2d.tot rectangle size changes while dragging panels. */
         update_tot_size = false;
       }

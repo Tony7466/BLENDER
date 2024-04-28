@@ -16,6 +16,7 @@
 
 #include "DNA_collection_types.h"
 #include "DNA_defaults.h"
+#include "DNA_gpencil_legacy_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
@@ -407,6 +408,14 @@ static void view3d_main_region_init(wmWindowManager *wm, ARegion *region)
 
   keymap = WM_keymap_ensure(
       wm->defaultconf, "Grease Pencil Paint Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Sculpt Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  WM_event_add_keymap_handler(&region->handlers, keymap);
+
+  keymap = WM_keymap_ensure(
+      wm->defaultconf, "Grease Pencil Weight Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* Edit-font key-map swallows almost all (because of text input). */
@@ -1707,6 +1716,12 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
     case CTX_MODE_PAINT_GREASE_PENCIL:
       ARRAY_SET_ITEMS(contexts, ".grease_pencil_paint");
       break;
+    case CTX_MODE_SCULPT_GREASE_PENCIL:
+      ARRAY_SET_ITEMS(contexts, ".paint_common", ".grease_pencil_sculpt");
+      break;
+    case CTX_MODE_WEIGHT_GREASE_PENCIL:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_weight");
+      break;
     case CTX_MODE_EDIT_POINT_CLOUD:
       ARRAY_SET_ITEMS(contexts, ".point_cloud_edit");
       break;
@@ -1819,6 +1834,7 @@ static void view3d_buttons_region_listener(const wmRegionListenerParams *params)
         case ND_LAYER:
         case ND_LAYER_CONTENT:
         case ND_TOOLSETTINGS:
+        case ND_TRANSFORM:
           ED_region_tag_redraw(region);
           break;
       }
@@ -2064,10 +2080,10 @@ static void view3d_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   memset(&v3d->runtime, 0x0, sizeof(v3d->runtime));
 
   if (v3d->gpd) {
-    BLO_read_data_address(reader, &v3d->gpd);
+    BLO_read_struct(reader, bGPdata, &v3d->gpd);
     BKE_gpencil_blend_read_data(reader, v3d->gpd);
   }
-  BLO_read_data_address(reader, &v3d->localvd);
+  BLO_read_struct(reader, RegionView3D, &v3d->localvd);
 
   /* render can be quite heavy, set to solid on load */
   if (v3d->shading.type == OB_RENDER) {

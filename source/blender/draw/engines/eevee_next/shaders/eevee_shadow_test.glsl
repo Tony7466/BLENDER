@@ -30,6 +30,8 @@ void set_clipmap_data(inout LightData light,
 void set_clipmap_base_offset(inout LightData light, ivec2 clipmap_base_offset)
 {
   /* WATCH: Can get out of sync with light_sun_data_get(). */
+  light.do_not_access_directly.shadow_scale = intBitsToFloat(0);
+  light.do_not_access_directly.shadow_projection_shift = intBitsToFloat(0);
   light.do_not_access_directly._pad0_reserved = intBitsToFloat(clipmap_base_offset.x);
   light.do_not_access_directly._pad1_reserved = intBitsToFloat(clipmap_base_offset.y);
 }
@@ -47,7 +49,7 @@ void main()
     EXPECT_EQ(light_sun_data_get(light).clipmap_lod_min, 1);
     EXPECT_EQ(light_sun_data_get(light).clipmap_lod_max, 2);
     EXPECT_EQ(light_sun_data_get(light).clipmap_origin, vec2(3.0, 4.0));
-    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset, ivec2(5, 6));
+    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset_pos, ivec2(5, 6));
   }
 
   TEST(eevee_shadow, DirectionalClipmapLevel)
@@ -109,7 +111,9 @@ void main()
     set_clipmap_data(light, 0, 2, 0.0, 0.0);
 
     light.tilemap_index = light_sun_data_get(light).clipmap_lod_min;
-    light._position = vec3(0.0);
+    light.object_to_world.x = float4(1.0, 0.0, 0.0, 0.0);
+    light.object_to_world.y = float4(0.0, 1.0, 0.0, 0.0);
+    light.object_to_world.z = float4(0.0, 0.0, 1.0, 0.0);
     light.lod_bias = 0;
 
     float lod_min_tile_size = exp2(float(light_sun_data_get(light).clipmap_lod_min)) /
@@ -119,7 +123,7 @@ void main()
     camera_lP = vec3(0.0, 0.0, 0.0);
     /* Follows ShadowDirectional::end_sync(). */
     set_clipmap_base_offset(light, ivec2(round(camera_lP.xy / lod_min_tile_size)));
-    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset, ivec2(0));
+    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset_pos, ivec2(0));
 
     /* Test UVs and tile mapping. */
 
@@ -152,7 +156,7 @@ void main()
     camera_lP = vec3(2.0, 2.0, 0.0);
     /* Follows ShadowDirectional::end_sync(). */
     set_clipmap_base_offset(light, ivec2(round(camera_lP.xy / lod_min_tile_size)));
-    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset, ivec2(32));
+    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset_pos, ivec2(32));
 
     lP = vec3(2.00001, 2.00001, 0.0);
     coords = shadow_directional_coordinates(light, lP);
@@ -224,7 +228,9 @@ void main()
     // clipmap_lod_max = 2; /* 3 tile-maps. */
     set_clipmap_data(light, 0, 2, 0.0, 0.0);
     light.tilemap_index = 1;
-    light._position = vec3(0.0);
+    light.object_to_world.x = float4(1.0, 0.0, 0.0, 0.0);
+    light.object_to_world.y = float4(0.0, 1.0, 0.0, 0.0);
+    light.object_to_world.z = float4(0.0, 0.0, 1.0, 0.0);
     light.lod_bias = light_sun_data_get(light).clipmap_lod_min - 1;
     float lod_tile_size = exp2(float(light_sun_data_get(light).clipmap_lod_min)) /
                           float(SHADOW_TILEMAP_RES);
@@ -278,7 +284,7 @@ void main()
     // camera_lP = vec3(2.0, 2.0, 0.0);
     /* Follows ShadowDirectional::end_sync(). */
     // set_clipmap_base_offset(light,  ivec2(round(camera_lP.xy / lod_min_tile_size)));
-    // EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset, ivec2(32));
+    // EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset_pos, ivec2(32));
 
     // lP = vec3(2.00001, 2.00001, 0.0);
     // coords = shadow_directional_coordinates(light, lP);

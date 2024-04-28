@@ -167,6 +167,8 @@ struct uiLayout {
   eUIEmbossType emboss;
   /** for fixed width or height to avoid UI size changes */
   float units[2];
+  /** Is copied to uiButs created in this layout. */
+  float search_weight;
 };
 
 struct uiLayoutItemFlow {
@@ -1474,7 +1476,7 @@ BLI_INLINE bool ui_layout_is_radial(const uiLayout *layout)
 
 void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorType *ot,
-                            PointerRNA ptr,
+                            const PointerRNA &ptr,
                             PropertyRNA *prop,
                             IDProperty *properties,
                             wmOperatorCallContext context,
@@ -2275,7 +2277,7 @@ void uiItemFullR(uiLayout *layout,
         char str[2] = {'\0'};
         for (int a = 0; a < len; a++) {
           str[0] = RNA_property_array_item_char(prop, a);
-          const bool use_prefix = (a == 0 && name && name[0]);
+          const bool use_prefix = (a == 0 && name[0]);
           if (use_prefix) {
             char *s = name_with_suffix;
             s += STRNCPY_RLEN(name_with_suffix, name);
@@ -2302,14 +2304,11 @@ void uiItemFullR(uiLayout *layout,
         }
       }
       else {
-        if (name) {
-          but = uiDefBut(
-              block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
-          but->drawflag |= UI_BUT_TEXT_RIGHT;
-          but->drawflag &= ~UI_BUT_TEXT_LEFT;
+        but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
+        but->drawflag |= UI_BUT_TEXT_RIGHT;
+        but->drawflag &= ~UI_BUT_TEXT_LEFT;
 
-          label_added = true;
-        }
+        label_added = true;
       }
 
       if (!label_added && heading_layout) {
@@ -5276,6 +5275,16 @@ void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep)
   SET_FLAG_FROM_TEST(layout->item.flag, is_sep, UI_ITEM_PROP_DECORATE);
 }
 
+void uiLayoutSetSearchWeight(uiLayout *layout, const float weight)
+{
+  layout->search_weight = weight;
+}
+
+float uiLayoutGetSearchWeight(uiLayout *layout)
+{
+  return layout->search_weight;
+}
+
 Panel *uiLayoutGetRootPanel(uiLayout *layout)
 {
   return layout->root->block->panel;
@@ -5478,9 +5487,9 @@ bool UI_block_apply_search_filter(uiBlock *block, const char *search_filter)
 
   Panel *panel = block->panel;
 
-  if (panel != nullptr && panel->type->flag & PANEL_TYPE_NO_SEARCH) {
-    /* Panels for active blocks should always have a type, otherwise they wouldn't be created. */
-    BLI_assert(block->panel->type != nullptr);
+  if (panel != nullptr) {
+    /* Panels for active blocks should always have a valid `panel->type`,
+     * otherwise they wouldn't be created. */
     if (panel->type->flag & PANEL_TYPE_NO_SEARCH) {
       return false;
     }
@@ -5859,6 +5868,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
     BLI_addtail(&layout->items, bitem);
   }
   but->layout = layout;
+  but->search_weight = layout->search_weight;
 
   if (layout->context) {
     but->context = layout->context;

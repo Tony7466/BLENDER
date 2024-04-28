@@ -842,6 +842,11 @@ bool UI_block_is_search_only(const uiBlock *block);
 void UI_block_set_search_only(uiBlock *block, bool search_only);
 
 /**
+ * Used for operator presets.
+ */
+void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool free);
+
+/**
  * Can be called with C==NULL.
  */
 void UI_block_free(const bContext *C, uiBlock *block);
@@ -1681,6 +1686,8 @@ int UI_search_items_find_index(uiSearchItems *items, const char *name);
  */
 void UI_but_hint_drawstr_set(uiBut *but, const char *string);
 void UI_but_icon_indicator_number_set(uiBut *but, const int indicator_number);
+void UI_but_icon_indicator_set(uiBut *but, const char *string);
+void UI_but_icon_indicator_color_set(uiBut *but, const uchar color[4]);
 
 void UI_but_node_link_set(uiBut *but, bNodeSocket *socket, const float draw_color[4]);
 
@@ -2092,6 +2099,7 @@ enum {
   /* Disable property split for the default layout (custom ui callbacks still have full control
    * over the layout and can enable it). */
   UI_TEMPLATE_OP_PROPS_NO_SPLIT_LAYOUT = 1 << 4,
+  UI_TEMPLATE_OP_PROPS_HIDE_PRESETS = 1 << 5,
 };
 
 /* Used for transparent checkers shown under color buttons that have an alpha component. */
@@ -2204,6 +2212,7 @@ void uiLayoutSetEmboss(uiLayout *layout, eUIEmbossType emboss);
 void uiLayoutSetPropSep(uiLayout *layout, bool is_sep);
 void uiLayoutSetPropDecorate(uiLayout *layout, bool is_sep);
 int uiLayoutGetLocalDir(const uiLayout *layout);
+void uiLayoutSetSearchWeight(uiLayout *layout, float weight);
 
 wmOperatorCallContext uiLayoutGetOperatorContext(uiLayout *layout);
 bool uiLayoutGetActive(uiLayout *layout);
@@ -2223,6 +2232,7 @@ eUIEmbossType uiLayoutGetEmboss(uiLayout *layout);
 bool uiLayoutGetPropSep(uiLayout *layout);
 bool uiLayoutGetPropDecorate(uiLayout *layout);
 Panel *uiLayoutGetRootPanel(uiLayout *layout);
+float uiLayoutGetSearchWeight(uiLayout *layout);
 
 /* Layout create functions. */
 
@@ -2540,6 +2550,12 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
                                    const wmKeyMapItem *kmi,
                                    bool text_fallback);
 
+/* Draw keymap item for status bar. Returns number of items consumed,
+ * as X/Y/Z items may get merged to use less space. */
+int uiTemplateStatusBarModalItem(uiLayout *layout,
+                                 const wmKeyMap *keymap,
+                                 const EnumPropertyItem *item);
+
 void uiTemplateComponentMenu(uiLayout *layout,
                              PointerRNA *ptr,
                              const char *propname,
@@ -2703,6 +2719,8 @@ void uiTemplateNodeTreeInterface(uiLayout *layout, PointerRNA *ptr);
  * Draw all node buttons and socket default values with the same panel structure used by the node.
  */
 void uiTemplateNodeInputs(uiLayout *layout, bContext *C, PointerRNA *ptr);
+
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C);
 
 /**
  * \return: True if the list item with unfiltered, unordered index \a item_idx is visible given the
@@ -2897,7 +2915,7 @@ void uiItemsFullEnumO(uiLayout *layout,
  */
 void uiItemsFullEnumO_items(uiLayout *layout,
                             wmOperatorType *ot,
-                            PointerRNA ptr,
+                            const PointerRNA &ptr,
                             PropertyRNA *prop,
                             IDProperty *properties,
                             wmOperatorCallContext context,

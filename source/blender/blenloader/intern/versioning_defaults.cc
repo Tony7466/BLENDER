@@ -35,6 +35,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
@@ -58,7 +59,7 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_readfile.hh"
 
@@ -352,6 +353,11 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
     view_layer->passflag &= ~SCE_PASS_Z;
   }
 
+  /* Display missing media by default. */
+  if (scene->ed) {
+    scene->ed->show_missing_media_flag |= SEQ_EDIT_SHOW_MISSING_MEDIA;
+  }
+
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
   scene->eevee.bloom_clamp = 0.0f;
@@ -581,9 +587,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
         if (layout->screen) {
           bScreen *screen = layout->screen;
           if (!STREQ(screen->id.name + 2, workspace->id.name + 2)) {
-            BKE_main_namemap_remove_name(bmain, &screen->id, screen->id.name + 2);
-            BLI_strncpy(screen->id.name + 2, workspace->id.name + 2, sizeof(screen->id.name) - 2);
-            BKE_libblock_ensure_unique_name(bmain, &screen->id);
+            BKE_libblock_rename(bmain, &screen->id, workspace->id.name + 2);
           }
         }
 

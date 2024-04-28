@@ -130,7 +130,7 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
 
-    BMEditMesh *em = mesh->runtime->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh.get();
 
     BKE_editmesh_looptris_and_normals_calc(em);
 
@@ -288,20 +288,6 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
 #undef INDEX_UNSET
 }
 
-static int vertex_parent_set_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  if (RNA_boolean_get(op->ptr, "confirm")) {
-    return WM_operator_confirm_ex(C,
-                                  op,
-                                  IFACE_("Parent selected objects to the selected vertices?"),
-                                  nullptr,
-                                  IFACE_("Parent"),
-                                  ALERT_ICON_NONE,
-                                  false);
-  }
-  return vertex_parent_set_exec(C, op);
-}
-
 void OBJECT_OT_vertex_parent_set(wmOperatorType *ot)
 {
   /* identifiers */
@@ -310,13 +296,11 @@ void OBJECT_OT_vertex_parent_set(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_vertex_parent_set";
 
   /* api callbacks */
-  ot->invoke = vertex_parent_set_invoke;
   ot->poll = vertex_parent_set_poll;
   ot->exec = vertex_parent_set_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 }
 
 /** \} */
@@ -325,7 +309,7 @@ void OBJECT_OT_vertex_parent_set(wmOperatorType *ot)
 /** \name Clear Parent Operator
  * \{ */
 
-EnumPropertyItem prop_clear_parent_types[] = {
+const EnumPropertyItem prop_clear_parent_types[] = {
     {CLEAR_PARENT_ALL,
      "CLEAR",
      0,
@@ -491,7 +475,7 @@ void parent_set(Object *ob, Object *par, const int type, const char *substr)
   STRNCPY(ob->parsubstr, substr);
 }
 
-EnumPropertyItem prop_make_parent_types[] = {
+const EnumPropertyItem prop_make_parent_types[] = {
     {PAR_OBJECT, "OBJECT", 0, "Object", ""},
     {PAR_ARMATURE, "ARMATURE", 0, "Armature Deform", ""},
     {PAR_ARMATURE_NAME, "ARMATURE_NAME", 0, "   With Empty Groups", ""},
@@ -1120,20 +1104,6 @@ static int parent_noinv_set_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int parent_noinv_set_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  if (RNA_boolean_get(op->ptr, "confirm")) {
-    return WM_operator_confirm_ex(C,
-                                  op,
-                                  IFACE_("Make Parent without inverse correction?"),
-                                  nullptr,
-                                  IFACE_("Parent"),
-                                  ALERT_ICON_NONE,
-                                  false);
-  }
-  return parent_noinv_set_exec(C, op);
-}
-
 void OBJECT_OT_parent_no_inverse_set(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1142,13 +1112,11 @@ void OBJECT_OT_parent_no_inverse_set(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_parent_no_inverse_set";
 
   /* api callbacks */
-  ot->invoke = parent_noinv_set_invoke;
   ot->exec = parent_noinv_set_exec;
   ot->poll = ED_operator_object_active_editable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  WM_operator_properties_confirm_or_exec(ot);
 
   RNA_def_boolean(ot->srna,
                   "keep_transform",
@@ -2644,9 +2612,15 @@ static int make_override_library_invoke(bContext *C, wmOperator *op, const wmEve
 
 static bool make_override_library_poll(bContext *C)
 {
-  Object *obact = CTX_data_active_object(C);
+  Base *base_act = CTX_data_active_base(C);
+  /* If the active object is not selected, do nothing (operators rely on selection too, they will
+   * misbehave if the active object is not also selected, see e.g. #120701. */
+  if ((base_act == nullptr) || ((base_act->flag & BASE_SELECTED) == 0)) {
+    return false;
+  }
 
   /* Object must be directly linked to be overridable. */
+  Object *obact = base_act->object;
   return (
       ED_operator_objectmode(C) && obact != nullptr &&
       (ID_IS_LINKED(obact) || ID_IS_OVERRIDE_LIBRARY(obact) ||
@@ -2695,9 +2669,15 @@ void OBJECT_OT_make_override_library(wmOperatorType *ot)
 
 static bool reset_clear_override_library_poll(bContext *C)
 {
-  Object *obact = CTX_data_active_object(C);
+  Base *base_act = CTX_data_active_base(C);
+  /* If the active object is not selected, do nothing (operators rely on selection too, they will
+   * misbehave if the active object is not also selected, see e.g. #120701. */
+  if ((base_act == nullptr) || ((base_act->flag & BASE_SELECTED) == 0)) {
+    return false;
+  }
 
   /* Object must be local and an override. */
+  Object *obact = base_act->object;
   return (ED_operator_objectmode(C) && obact != nullptr && !ID_IS_LINKED(obact) &&
           ID_IS_OVERRIDE_LIBRARY(obact));
 }
@@ -2706,7 +2686,7 @@ static int reset_override_library_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
 
-  /* Make already existing selected liboverrides editable. */
+  /* Reset all selected liboverrides. */
   FOREACH_SELECTED_OBJECT_BEGIN (CTX_data_view_layer(C), CTX_wm_view3d(C), ob_iter) {
     if (ID_IS_OVERRIDE_LIBRARY_REAL(ob_iter) && !ID_IS_LINKED(ob_iter)) {
       BKE_lib_override_library_id_reset(bmain, &ob_iter->id, false);
@@ -2773,6 +2753,7 @@ static int clear_override_library_exec(bContext *C, wmOperator * /*op*/)
                          ob_iter->id.override_library->reference,
                          ID_REMAP_SKIP_INDIRECT_USAGE);
       if (do_remap_active) {
+        BKE_view_layer_synced_ensure(scene, view_layer);
         Object *ref_object = (Object *)ob_iter->id.override_library->reference;
         Base *basact = BKE_view_layer_base_find(view_layer, ref_object);
         if (basact != nullptr) {
