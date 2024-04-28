@@ -267,6 +267,7 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "fc_quat", "VtArray<GfQuatf>", "faceVarying", 4)
         self.check_primvar_missing(prim, "fc_mat4x4")
 
+
 def main():
     global args
     import argparse
