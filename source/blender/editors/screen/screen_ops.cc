@@ -3594,7 +3594,7 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
     if (event->xy[0] < 0 || event->xy[0] > jd->win1->sizex || event->xy[1] < 1 ||
         event->xy[1] > jd->win1->sizey)
     {
-      return WM_CURSOR_PICK_AREA;
+      return WM_CURSOR_HAND;
     }
     return WM_CURSOR_STOP;
   }
@@ -3605,15 +3605,15 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
       return (jd->split_dir == SCREEN_AXIS_V) ? WM_CURSOR_V_SPLIT : WM_CURSOR_H_SPLIT;
     }
     else {
-      return WM_CURSOR_EDIT;
+      return WM_CURSOR_HAND;
     }
   }
 
   if (jd->join_dir != SCREEN_DIR_NONE || jd->dock_target != DOCKING_NONE) {
-    return WM_CURSOR_PICK_AREA;
+    return WM_CURSOR_HAND;
   }
 
-  return WM_CURSOR_EDIT;
+  return WM_CURSOR_HAND;
 }
 
 static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *event)
