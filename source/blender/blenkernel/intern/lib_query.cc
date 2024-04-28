@@ -411,7 +411,7 @@ void BKE_library_foreach_subdata_id(
   BLI_assert((flag & (IDWALK_RECURSE | IDWALK_DO_INTERNAL_RUNTIME_POINTERS |
                       IDWALK_DO_LIBRARY_POINTER | IDWALK_INCLUDE_UI)) == 0);
 
-  LibraryForeachIDData data;
+  LibraryForeachIDData data{};
   data.bmain = bmain;
   data.owner_id = owner_id;
   data.self_id = self_id;
