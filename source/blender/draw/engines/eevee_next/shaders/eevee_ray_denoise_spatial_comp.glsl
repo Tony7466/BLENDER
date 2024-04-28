@@ -29,7 +29,7 @@ float bxdf_eval(ClosureUndetermined cl, vec3 L, vec3 V, float thickness)
 {
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
-      if (thickness > 0.0) {
+      if (thickness != 0.0) {
         /* Uniform sphere weighting. */
         return 1.0;
       }
@@ -149,7 +149,7 @@ void main()
   vec3 V = drw_world_incident_vector(P);
 
   float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
-  if (thickness > 0.0) {
+  if (thickness != 0.0) {
     transmission_thickness_amend_closure(closure, V, thickness);
   }
 

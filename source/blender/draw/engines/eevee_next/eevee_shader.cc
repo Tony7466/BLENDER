@@ -635,6 +635,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << (!codegen.surface.empty() ? codegen.surface : "return Closure(0);\n");
     frag_gen << "}\n\n";
 
+    ::Material *ma = GPU_material_get_material(gpumat);
+    const char *thickness_mode_sign = (ma && ma->thickness_mode == MA_THICKNESS_SLAB) ? "-1.0" :
+                                                                                        "+1.0";
+    frag_gen << "const float thickness_mode = " << thickness_mode_sign << ";\n";
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
     if (codegen.thickness.empty()) {
@@ -773,9 +777,10 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
   bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
 
   eMaterialDisplacement displacement_type = to_displacement_type(blender_mat->displacement_method);
+  eMaterialThickness thickness_type = to_thickness_type(blender_mat->thickness_mode);
 
   uint64_t shader_uuid = shader_uuid_from_material_type(
-      pipeline_type, geometry_type, displacement_type, blender_mat->blend_flag);
+      pipeline_type, geometry_type, displacement_type, thickness_type, blender_mat->blend_flag);
 
   return DRW_shader_from_material(blender_mat,
                                   nodetree,

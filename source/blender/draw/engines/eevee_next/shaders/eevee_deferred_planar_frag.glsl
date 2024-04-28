@@ -32,7 +32,7 @@ void main()
         break;
       case CLOSURE_BSDF_TRANSLUCENT_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-        albedo_back += (gbuf.thickness > 0.0) ? square(cl.color) : cl.color;
+        albedo_back += (gbuf.thickness != 0.0) ? square(cl.color) : cl.color;
         break;
       case CLOSURE_NONE_ID:
         /* TODO(fclem): Assert. */

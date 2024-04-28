@@ -85,7 +85,7 @@ void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmit
 
       if ((cl.type == CLOSURE_BSDF_TRANSLUCENT_ID ||
            cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) &&
-          (thickness > 0.0))
+          (thickness != 0.0))
       {
         /* We model two transmission event, so the surface color need to be applied twice. */
         cl.color *= cl.color;

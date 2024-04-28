@@ -51,7 +51,7 @@ void main()
   {
     float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
     gbuf.thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
-                         min(shadow_thickness, gbuf.thickness) :
+                         sign(gbuf.thickness) * min(shadow_thickness, abs(gbuf.thickness)) :
                          gbuf.thickness;
 
 #  if 1 /* TODO Limit to SSS. */
@@ -71,7 +71,7 @@ void main()
     if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
       /* Apply transmission profile onto transmitted light and sum with reflected light. */
       vec3 sss_profile = subsurface_transmission(to_closure_subsurface(cl_transmit).sss_radius,
-                                                 gbuf.thickness);
+                                                 abs(gbuf.thickness));
       stack.cl[0].light_shadowed *= sss_profile;
       stack.cl[0].light_unshadowed *= sss_profile;
       stack.cl[0].light_shadowed += sss_reflect_shadowed;

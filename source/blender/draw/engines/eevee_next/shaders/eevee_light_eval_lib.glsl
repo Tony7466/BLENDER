@@ -132,7 +132,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       if (is_transmission) {
         cl_light.N = -cl.N;
-        if (thickness > 0.0) {
+        if (thickness != 0.0) {
           /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
            * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
            * a unique position on the sphere and use the light vector as normal. */
@@ -164,7 +164,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
         cl_refract.roughness = refraction_roughness_remapping(cl_refract.roughness,
                                                               cl_refract.ior);
 
-        if (thickness > 0.0) {
+        if (thickness != 0.0) {
           vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
 
           ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);

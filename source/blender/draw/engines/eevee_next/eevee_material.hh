@@ -77,6 +77,22 @@ static inline eMaterialDisplacement to_displacement_type(int displacement_method
   }
 }
 
+enum eMaterialThickness {
+  /* These maps directly to thickness mode. */
+  MAT_THICKNESS_SPHERE = 0,
+  MAT_THICKNESS_SLAB,
+};
+
+static inline eMaterialThickness to_thickness_type(int thickness_mode)
+{
+  switch (thickness_mode) {
+    case MA_THICKNESS_SLAB:
+      return MAT_THICKNESS_SLAB;
+    default:
+      return MAT_THICKNESS_SPHERE;
+  }
+}
+
 enum eMaterialProbe {
   MAT_PROBE_NONE = 0,
   MAT_PROBE_REFLECTION,
@@ -102,14 +118,16 @@ static inline uint64_t shader_uuid_from_material_type(
     eMaterialPipeline pipeline_type,
     eMaterialGeometry geometry_type,
     eMaterialDisplacement displacement_type = MAT_DISPLACEMENT_BUMP,
+    eMaterialThickness thickness_type = MAT_THICKNESS_SPHERE,
     char blend_flags = 0)
 {
   BLI_assert(displacement_type < (1 << 2));
+  BLI_assert(thickness_type < (1 << 2));
   BLI_assert(geometry_type < (1 << 4));
   BLI_assert(pipeline_type < (1 << 4));
   uint64_t transparent_shadows = blend_flags & MA_BL_TRANSPARENT_SHADOW ? 1 : 0;
-  return geometry_type | (pipeline_type << 4) | (displacement_type << 8) |
-         (transparent_shadows << 10);
+  return geometry_type | (pipeline_type << 4) | (displacement_type << 8) | (thickness_type << 10) |
+         (transparent_shadows << 11);
 }
 
 ENUM_OPERATORS(eClosureBits, CLOSURE_AMBIENT_OCCLUSION)
@@ -183,8 +201,11 @@ struct MaterialKey {
               short visibility_flags)
       : mat(mat_)
   {
-    options = shader_uuid_from_material_type(
-        pipeline, geometry, to_displacement_type(mat_->displacement_method), mat_->blend_flag);
+    options = shader_uuid_from_material_type(pipeline,
+                                             geometry,
+                                             to_displacement_type(mat_->displacement_method),
+                                             to_thickness_type(mat_->thickness_mode),
+                                             mat_->blend_flag);
     options = (options << 1) | (visibility_flags & OB_HIDE_SHADOW ? 0 : 1);
     options = (options << 1) | (visibility_flags & OB_HIDE_PROBE_CUBEMAP ? 0 : 1);
     options = (options << 1) | (visibility_flags & OB_HIDE_PROBE_PLANAR ? 0 : 1);
