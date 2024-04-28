@@ -335,7 +335,7 @@ struct PaintOperationExecutor {
       drawing_->vertex_colors_for_write()[last_active_point] = *vertex_color_;
     }
     if (fill_color_) {
-      drawing_->fill_colors_for_write()[last_active_point] = *fill_color_;
+      drawing_->fill_colors_for_write()[active_curve] = *fill_color_;
     }
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
