@@ -105,6 +105,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_deferred_capture_eval";
     case DEFERRED_PLANAR_EVAL:
       return "eevee_deferred_planar_eval";
+    case DEFERRED_THICKNESS_AMEND:
+      return "eevee_deferred_thickness_amend";
     case DEFERRED_TILE_CLASSIFY:
       return "eevee_deferred_tile_classify";
     case DEFERRED_TILE_COMPACT:
