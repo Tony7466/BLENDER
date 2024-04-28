@@ -21,6 +21,8 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_thickness_amend)
     .define("GBUFFER_LOAD")
     .sampler(0, ImageType::UINT_2D, "gbuf_header_tx")
     .image(0, GPU_RG16, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "gbuf_normal_img")
+    /* Early fragment test is needed to discard fragment that do not need this processing. */
+    .early_fragment_test(true)
     .fragment_source("eevee_deferred_thickness_amend_frag.glsl")
     .additional_info("draw_view",
                      "draw_fullscreen",

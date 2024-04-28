@@ -601,18 +601,17 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       if (closure_bits_ & CLOSURE_TRANSMISSION) {
         PassSimple::Sub &sub = pass.sub("Eval.ThicknessFromShadow");
         sub.shader_set(inst_.shaders.static_shader_get(DEFERRED_THICKNESS_AMEND));
-        /* Use stencil test to reject pixels not written by this layer. */
-        sub.state_set(DRW_STATE_STENCIL_EQUAL);
         sub.bind_resources(inst_.lights);
         sub.bind_resources(inst_.shadows);
         sub.bind_resources(inst_.hiz_buffer.front);
         sub.bind_resources(inst_.uniform_data);
         sub.bind_texture("gbuf_header_tx", &inst_.gbuffer.header_tx);
         sub.bind_image("gbuf_normal_img", &inst_.gbuffer.normal_tx);
+        sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_EQUAL);
         /* Render where there is transmission and the thickness from shadow bit is set. */
         uint8_t stencil_bits = uint8_t(StencilBits::TRANSMISSION) |
                                uint8_t(StencilBits::THICKNESS_FROM_SHADOW);
-        sub.state_stencil(0xFFu, stencil_bits, stencil_bits);
+        sub.state_stencil(0x0u, stencil_bits, stencil_bits);
         sub.draw_procedural(GPU_PRIM_TRIS, 1, 3);
         sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }
@@ -726,6 +725,8 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   bool backface_culling = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) != 0;
   bool use_thickness_from_shadow = (blender_mat->blend_flag & MA_BL_THICKNESS_FROM_SHADOW) != 0;
 
+  std::cout << "use_thickness_from_shadow " << use_thickness_from_shadow << std::endl;
+
   PassMain::Sub *pass = (has_shader_to_rgba) ?
                             ((backface_culling) ? gbuffer_single_sided_hybrid_ps_ :
                                                   gbuffer_double_sided_hybrid_ps_) :
@@ -735,9 +736,11 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   PassMain::Sub *material_pass = &pass->sub(GPU_material_get_name(gpumat));
   /* Set stencil for some deferred specialized shaders. */
   uint8_t material_stencil_bits = 0u;
+  if (use_thickness_from_shadow) {
+    material_stencil_bits |= uint8_t(StencilBits::THICKNESS_FROM_SHADOW);
+  }
   /* We use this opportunity to clear the stencil bits. The undefined areas are discarded using the
    * gbuf header value. */
-  material_stencil_bits |= (use_thickness_from_shadow) ? (1u << 7u) : 0u;
   material_pass->state_stencil(0xFFu, material_stencil_bits, 0xFFu);
 
   return material_pass;
