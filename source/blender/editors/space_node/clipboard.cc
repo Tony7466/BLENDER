@@ -28,14 +28,17 @@
 namespace blender::ed::space_node {
 
 struct NodeClipboardItemIDInfo {
-  /* Name and library filepath form a unique identifer for a given ID. */
+  /** Name of the referenced ID. */
   std::string id_name = "";
-  /* Note: Library reference is stored as an absolute path. Since the Node clippboard is runtime
+  /**
+   * Library filepath of the referenced ID, together with its name it forms a unique identifer.
+   *
+   * Note: Library reference is stored as an absolute path. Since the Node clipboard is runtime
    * data, persistent over new blendfiles opening, this should guarantee that identical IDs from
    * identical libraries can be matched accordingly, even accross several blendfiles.  */
   std::string library_path = "";
 
-  /* The validated ID pointer (may be the same as the original one, or a new one). */
+  /** The validated ID pointer (may be the same as the original one, or a new one). */
   std::optional<ID *> new_id = {};
 };
 
@@ -81,7 +84,7 @@ struct NodeClipboard {
    *
    * DO NOT update the nodes' pointers here though, as this would affect the clipboard content,
    * which is no desired here. It should remain as in original state, such that e.g. one can copy
-   * nodes in file `A.blend`, open file `B.blend`, paste nodes (and lose some of the invlaid ID
+   * nodes in file `A.blend`, open file `B.blend`, paste nodes (and lose some of the invalid ID
    * references in file `B.blend`), and then open again file `A.blend`, paste nodes, and lose no ID
    * references.
    */
