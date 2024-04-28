@@ -214,15 +214,19 @@ float gbuffer_thickness_pack(float thickness)
 {
   /* TODO(fclem): If needed, we could increase precision by defining a ceiling value like the view
    * distance and remap to it. Or tweak the hyperbole eq. */
-  /* Remap [0..+inf) and [0..0.5]. */
   /* NOTE: Sign encodes the thickness mode. */
-  float thickness_packed = 1.0 / (2.0 + abs(thickness));
-  return (thickness < 0.0) ? (1.0 - thickness_packed) : thickness_packed;
+  /* Remap [0..+inf) to [0..1/2]. */
+  float thickness_packed = abs(thickness) / (1.0 + 2.0 * abs(thickness));
+  /* Mirror the negative from [0..1/2] to [1..1/2]. O is mapped to 0 for precision. */
+  return (thickness < 0.0) ? 1.0 - thickness_packed : thickness_packed;
 }
 float gbuffer_thickness_unpack(float thickness_packed)
 {
-  float thickness = (thickness_packed > 0.5) ? (1.0 - thickness_packed) : thickness_packed;
-  thickness = (1.0 / thickness) - 2.0;
+  /* Undo mirroring. */
+  float thickness = (thickness_packed > 0.5) ? 1.0 - thickness_packed : thickness_packed;
+  /* Remap [0..1/2] to [0..+inf). */
+  thickness = thickness / (1.0 - 2.0 * thickness);
+  /* Retreive sign. */
   return (thickness_packed > 0.5) ? -thickness : thickness;
 }
 
