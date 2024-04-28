@@ -121,7 +121,7 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureRefraction cl, vec3 P, vec3 V
 
   if (thickness != 0.0) {
     vec3 L = refraction_dominant_dir(cl.N, V, cl.ior, cl.roughness);
-    ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);
+    ThicknessIsect isect = thickness_shape_intersect(thickness, cl.N, L);
     P += isect.hit_P;
     cl.N = -isect.hit_N;
     cl.ior = 1.0 / cl.ior;

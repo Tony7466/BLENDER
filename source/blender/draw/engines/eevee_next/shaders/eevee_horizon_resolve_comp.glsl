@@ -150,7 +150,7 @@ void main()
         float ior = to_closure_refraction(cl).ior;
         if (gbuf.thickness != 0.0) {
           vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
-          cl.N = -thickness_sphere_intersect(gbuf.thickness, cl.N, L).hit_N;
+          cl.N = -thickness_shape_intersect(gbuf.thickness, cl.N, L).hit_N;
           ior = 1.0 / ior;
           V = -L;
         }

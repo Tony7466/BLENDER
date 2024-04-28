@@ -63,7 +63,7 @@ void transmission_thickness_amend_closure(inout ClosureUndetermined cl,
       float roughness = to_closure_refraction(cl).roughness;
       roughness = refraction_roughness_remapping(roughness, ior);
       vec3 L = refraction_dominant_dir(cl.N, V, ior, roughness);
-      cl.N = -thickness_sphere_intersect(thickness, cl.N, L).hit_N;
+      cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
       cl.data.y = 1.0 / ior;
       V = -L;
     } break;

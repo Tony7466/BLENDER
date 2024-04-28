@@ -85,7 +85,7 @@ BsdfSample ray_generate_direction(vec2 noise, ClosureUndetermined cl, vec3 V, fl
         float apparent_roughness = refraction_roughness_remapping(roughness, ior);
         vec3 L = refraction_dominant_dir(cl.N, V, ior, apparent_roughness);
         /* NOTE(fclem): Tracing origin is modified in the trace shader. */
-        cl.N = -thickness_sphere_intersect(thickness, cl.N, L).hit_N;
+        cl.N = -thickness_shape_intersect(thickness, cl.N, L).hit_N;
         ior = 1.0 / ior;
         V = -L;
         world_to_tangent = from_up_axis(cl.N);

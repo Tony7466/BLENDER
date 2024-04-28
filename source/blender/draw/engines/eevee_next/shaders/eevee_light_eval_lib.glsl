@@ -167,7 +167,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
         if (thickness != 0.0) {
           vec3 L = refraction_dominant_dir(cl.N, V, cl_refract.ior, cl_refract.roughness);
 
-          ThicknessIsect isect = thickness_sphere_intersect(thickness, cl.N, L);
+          ThicknessIsect isect = thickness_shape_intersect(thickness, cl.N, L);
           cl.N = -isect.hit_N;
           cl_light.shading_offset = isect.hit_P;
 
