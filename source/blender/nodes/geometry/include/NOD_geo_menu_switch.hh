@@ -18,6 +18,7 @@ namespace blender::nodes {
 struct MenuSwitchItemsAccessor {
   using ItemT = NodeEnumItem;
   static StructRNA *item_srna;
+  static int node_type;
   static constexpr const char *node_idname = "GeometryNodeMenuSwitch";
   static constexpr bool has_type = false;
   static constexpr bool has_name = true;

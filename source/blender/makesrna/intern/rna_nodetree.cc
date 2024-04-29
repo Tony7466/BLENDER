@@ -3991,23 +3991,6 @@ static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id, bNode *node, Main *bmain
   return new_item;
 }
 
-static PointerRNA rna_NodeEnumDefinition_active_item_get(PointerRNA *ptr)
-{
-  NodeEnumDefinition *enum_def = static_cast<NodeEnumDefinition *>(ptr->data);
-  NodeEnumItem *item = enum_def->active_item();
-  PointerRNA r_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodeEnumItem, item);
-  return r_ptr;
-}
-
-static void rna_NodeEnumDefinition_active_item_set(PointerRNA *ptr,
-                                                   PointerRNA value,
-                                                   ReportList * /*reports*/)
-{
-  NodeEnumDefinition *enum_def = static_cast<NodeEnumDefinition *>(ptr->data);
-  NodeEnumItem *item = static_cast<NodeEnumItem *>(value.data);
-  enum_def->active_item_set(item);
-}
-
 #else
 
 static const EnumPropertyItem prop_image_layer_items[] = {
@@ -9698,8 +9681,8 @@ static void rna_def_node_enum_definition(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "NodeEnumItem");
   RNA_def_property_pointer_funcs(prop,
-                                 "rna_NodeEnumDefinition_active_item_get",
-                                 "rna_NodeEnumDefinition_active_item_set",
+                                 "rna_Node_ItemArray_active_get<MenuSwitchItemsAccessor>",
+                                 "rna_Node_ItemArray_active_set<MenuSwitchItemsAccessor>",
                                  nullptr,
                                  nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE);

@@ -23,6 +23,7 @@
 #include "BLO_read_write.hh"
 
 #include "RNA_enum_types.hh"
+#include "RNA_prototypes.h"
 
 namespace blender::nodes::node_geo_menu_switch_cc {
 
@@ -432,6 +433,9 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(co
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
   return std::make_unique<LazyFunctionForMenuSwitchSocketUsage>(node);
 }
+
+StructRNA *MenuSwitchItemsAccessor::item_srna = &RNA_GeometryNodeMenuSwitch;
+int MenuSwitchItemsAccessor::node_type = GEO_NODE_MENU_SWITCH;
 
 void MenuSwitchItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
 {
