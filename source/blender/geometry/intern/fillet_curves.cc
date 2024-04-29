@@ -31,7 +31,7 @@ static void duplicate_fillet_point_data(const OffsetIndices<int> src_points_by_c
   });
 }
 
-static void calculate_result_offsets(const OffsetIndices<int> curve_start_indices,
+static void calculate_result_offsets(const OffsetIndices<int> src_points_by_curve,
                                      const IndexMask &selection,
                                      const IndexMask &unselected,
                                      const VArray<float> &radii,
@@ -42,9 +42,9 @@ static void calculate_result_offsets(const OffsetIndices<int> curve_start_indice
                                      Span<bool> ends_with_zero_edge)
 {
   /* Fill the offsets array with the curve point counts, then accumulate them to form offsets. */
-  offset_indices::copy_group_sizes(curve_start_indices, unselected, dst_curve_offsets);
+  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_curve_offsets);
   selection.foreach_index(GrainSize(512), [&](const int curve_i) {
-    const IndexRange src_points = curve_start_indices[curve_i];
+    const IndexRange src_points = src_points_by_curve[curve_i];
     const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                 curve_i);
 
@@ -114,37 +114,38 @@ static void limit_radii(const Span<float3> positions,
 {
   IndexRange positions_range = positions.index_range();
   int point_count = positions_range.size();
-  /* Previous, current, and next values will be needed simultaneously.
-   * Calculate the variables needed at each stage in advance.
+
+  /* Pre-calculate displacements because they will be compared across index when computing factors.
+   * A displacement is how far the new point will project along the segment
+   *
+   * Pre-calculate distances between each point because they will be compared across index when
+   * computing factors Distances are indexed by edge. In this case, the edge vertices are [i,i+1]
    */
-
-  /* A displacement is how far the new point will project along the segment*/
   Array<float> displacements(point_count);
-  for (const int i : positions_range) {
-    displacements[i] = radii[i] * std::tan(angles[i] / 2.0f);
-  }
-
-  /* Distances are calculated from the index to the index + 1, and are right-handed */
   IndexRange edges_range_r = cyclic ? positions_range : positions_range.drop_back(1);
   Array<float> distances_r(edges_range_r.size());
-  for (const int i : edges_range_r) {
-    int i_next = i == positions_range.last() ? 0 : i + 1;
+  for (const int i : positions_range) {
+    displacements[i] = radii[i] * std::tan(angles[i] / 2.0f);
 
-    float3 position = positions[i];
-    float3 position_next = positions[i_next];
+    if (i < edges_range_r.size()) {
+      // Cyclical curves have a final edge at [n,0]
+      int i_next = i == positions_range.last() ? 0 : i + 1;
 
-    distances_r[i] = math::distance(position, position_next);
+      float3 position = positions[i];
+      float3 position_next = positions[i_next];
+
+      distances_r[i] = math::distance(position, position_next);
+    }
   }
 
+  /* Pre-calculate factors because they will be compared across index when checking for zero-length
+   * edges A "factor" is the ratio of segment length to required displacement for both vertices on
+   * the edge combined.
+   */
   Array<float> factors_r(positions_range.size());
   Array<float> factors_l(positions_range.size());
   const int i_last = positions_range.last();
   for (const int i : positions_range) {
-    /*
-     * Find the portion of the previous and next segments used by the current and next point
-     * fillets. If more than the total length of the segment would be used, scale the current
-     * point's radius just enough to make the two points meet in the middle.
-     */
     const float displacement = displacements[i];
 
     bool has_previous_edge = i != 0 || cyclic;
@@ -178,6 +179,14 @@ static void limit_radii(const Span<float3> positions,
     }
   }
 
+  /* Limit radii using pre-computed values
+   * New radii are limited such that the total displacement of projected points is less than the
+   * edge-length new points are projected onto
+   *
+   * In addition, check for zero-length edges.
+   * A zero-length edge will be created when the total displacement is exactly equal to the edge
+   * length.
+   */
   for (const int i : positions_range) {
     bool has_next_edge = i != i_last || cyclic;
     int i_next = i == i_last ? 0 : i + 1;
@@ -288,20 +297,23 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
     for (const int i_src : range) {
       const IndexRange arc = dst_offsets[i_src];
       bool is_zero_edge = zero_edge_buffer[i_src];
-      const int i_dst_a = arc.first();
+      const int i_dst_arc_start = arc.first();
 
-      // If the last point is a zero-length edge, get the calculated position
-      // from the first point of the destination array
-      int i_dst_b = arc.last() + (is_zero_edge ? 1 : 0);
-      if (i_dst_b > i_dst_last) {
-        i_dst_b = i_dst_first;
+      /* If this point shares a zero-length edge with the next point, the arc end-point is the
+       * start-point of the next arc. The left-side handle is calculated during this loop.
+       * The right-side handle is calculated during the next loop.
+       */
+      int i_dst_arc_end = arc.last() + (is_zero_edge ? 1 : 0);
+      if (i_dst_arc_end > i_dst_last) {
+        i_dst_arc_end = i_dst_first;
       }
 
-      if (arc.size() == 1 && !is_zero_edge) {
-        dst_handles_l[i_dst_a] = src_handles_l[i_src];
-        dst_handles_r[i_dst_a] = src_handles_r[i_src];
-        dst_types_l[i_dst_a] = src_types_l[i_src];
-        dst_types_r[i_dst_a] = src_types_r[i_src];
+      const bool was_not_filleted = arc.size() == 1 && !is_zero_edge;
+      if (was_not_filleted) {
+        dst_handles_l[i_dst_arc_start] = src_handles_l[i_src];
+        dst_handles_r[i_dst_arc_start] = src_handles_r[i_src];
+        dst_types_l[i_dst_arc_start] = src_types_l[i_src];
+        dst_types_r[i_dst_arc_start] = src_types_r[i_src];
         continue;
       }
 
@@ -310,13 +322,9 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
        *
        * The inner handles are aligned with the aligned with the outer vector
        * handles, but have a specific length to best approximate a circle.
-       *
-       * An arc n that is removing its zero-length edge will calculate the left-side handle for arc
-       * n+1.
        */
 
-      // No index check is needed because the first point can only be filleted if the curve is
-      // cyclic
+      // No index check needed; the first point is not filleted unless the curve is cyclic
       const int i_src_prev = i_src == i_src_first ? i_src_last : i_src - 1;
       const bool is_previous_zero_edge = zero_edge_buffer[i_src_prev];
       const float angle = angles[i_src];
@@ -325,29 +333,30 @@ static void calculate_bezier_handles_bezier_mode(const Span<float3> src_handles_
       const float3 prev_dir = -directions[i_src_prev];
       const float3 &next_dir = directions[i_src];
 
-      const float3 &arc_start = dst_positions[i_dst_a];
-      const float3 &arc_end = dst_positions[i_dst_b];
+      const float3 &arc_start = dst_positions[i_dst_arc_start];
+      const float3 &arc_end = dst_positions[i_dst_arc_end];
 
       if (!is_previous_zero_edge) {
-        /* We calculate this handle during the previous curve, do not overwrite */
-        const int i_dst_prev = i_dst_a == i_dst_first ? i_dst_last : i_dst_a - 1;
-        dst_handles_l[i_dst_a] = bke::curves::bezier::calculate_vector_handle(
-            dst_positions[i_dst_a], dst_positions[i_dst_prev]);
-        dst_types_l[i_dst_a] = BEZIER_HANDLE_VECTOR;
+        /* Shared point: Left-side handle is calculated from the left-side point */
+        const int i_dst_prev = i_dst_arc_start == i_dst_first ? i_dst_last : i_dst_arc_start - 1;
+        dst_handles_l[i_dst_arc_start] = bke::curves::bezier::calculate_vector_handle(
+            dst_positions[i_dst_arc_start], dst_positions[i_dst_prev]);
+        dst_types_l[i_dst_arc_start] = BEZIER_HANDLE_VECTOR;
       }
 
-      dst_handles_r[i_dst_a] = arc_start - prev_dir * handle_length;
-      dst_types_r[i_dst_a] = BEZIER_HANDLE_ALIGN;
+      dst_handles_r[i_dst_arc_start] = arc_start - prev_dir * handle_length;
+      dst_types_r[i_dst_arc_start] = BEZIER_HANDLE_ALIGN;
 
       if (!is_zero_edge) {
-        const int i_dst_next = i_dst_b == i_dst_last ? 0 : i_dst_b + 1;
-        dst_handles_r[i_dst_b] = bke::curves::bezier::calculate_vector_handle(
-            dst_positions[i_dst_b], dst_positions[i_dst_next]);
-        dst_types_r[i_dst_b] = BEZIER_HANDLE_VECTOR;
+        /* Shared point: Right-side handle is calculated from the right-side point */
+        const int i_dst_next = i_dst_arc_end == i_dst_last ? 0 : i_dst_arc_end + 1;
+        dst_handles_r[i_dst_arc_end] = bke::curves::bezier::calculate_vector_handle(
+            dst_positions[i_dst_arc_end], dst_positions[i_dst_next]);
+        dst_types_r[i_dst_arc_end] = BEZIER_HANDLE_VECTOR;
       }
 
-      dst_handles_l[i_dst_b] = arc_end - next_dir * handle_length;
-      dst_types_l[i_dst_b] = BEZIER_HANDLE_ALIGN;
+      dst_handles_l[i_dst_arc_end] = arc_end - next_dir * handle_length;
+      dst_types_l[i_dst_arc_end] = BEZIER_HANDLE_ALIGN;
     }
   });
 }
@@ -415,15 +424,10 @@ static bke::CurvesGeometry fillet_curves(
     const bool use_bezier_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  // This is the start index of every curve
-  const OffsetIndices curve_start_indices = src_curves.points_by_curve();
-  // This is the contiguous array of all positions available
+  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
   const Span<float3> positions = src_curves.positions();
-  // Info about each curve, whether it is cyclic or not
   const VArraySpan<bool> cyclic{src_curves.cyclic()};
-  // ?? What is an attribute in this context?
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
-  // ?? What kind of memory?
   IndexMaskMemory memory;
   const IndexMask unselected = curve_selection.complement(src_curves.curves_range(), memory);
 
@@ -437,18 +441,22 @@ static bke::CurvesGeometry fillet_curves(
   const int src_points_num = src_curves.points_num();
 
   /*
-   * Pre-calculate radii for all curves if zero-length edges will be removed.
-   * Allocating these arrays on a curve-by-curve basis would conserve memory
-   * and is possible if zero-length edges are not removed
+   * Pre-calculate radii and zero-edges for all curves in order to allocated destination curve
+   * memory up-front.
+   *
+   * If zero-length edge removal is disabled, allocating these arrays on a curve-by-curve basis
+   * would conserve memory. However, adding that conditional would complicate the code and the
+   * memory savings would be minimal.
    *
    * Currently, memory is allocated for all curves, even those that are not selected.
+   * This is done simply for consistency when calling indexer functions.
    */
   directions = Array<float3>(src_points_num);
   angles = Array<float>(src_points_num);
   radii = Array<float>(src_points_num);
   ends_with_zero_edge = Array<bool>(src_points_num);
   curve_selection.foreach_index(GrainSize(512), [&](const int curve_i) {
-    const IndexRange src_points = curve_start_indices[curve_i];
+    const IndexRange src_points = src_points_by_curve[curve_i];
     const Span<float3> positions_buffer = positions.slice(src_points);
 
     MutableSpan<float3> directions_buffer = directions.as_mutable_span().slice(src_points);
@@ -485,7 +493,7 @@ static bke::CurvesGeometry fillet_curves(
    * The extra length is used in order to store an extra zero for every curve. */
   Array<int> dst_point_offsets(src_curves.points_num() + src_curves.curves_num());
   MutableSpan<int> dst_curve_offsets = dst_curves.offsets_for_write();
-  calculate_result_offsets(curve_start_indices,
+  calculate_result_offsets(src_points_by_curve,
                            curve_selection,
                            unselected,
                            radius_input,
@@ -525,7 +533,7 @@ static bke::CurvesGeometry fillet_curves(
 
   curve_selection.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
     for (const int curve_i : segment) {
-      const IndexRange src_points = curve_start_indices[curve_i];
+      const IndexRange src_points = src_points_by_curve[curve_i];
       const IndexRange offsets_range = bke::curves::per_curve_point_offsets_range(src_points,
                                                                                   curve_i);
       const OffsetIndices<int> offsets(all_point_offsets.slice(offsets_range));
@@ -546,11 +554,6 @@ static bke::CurvesGeometry fillet_curves(
                                  dst_positions.slice(dst_points));
 
       if (src_curves.has_curve_with_type(CURVE_TYPE_BEZIER)) {
-        MutableSpan<float3> dst_positions_write = dst_positions.slice(dst_points);
-        MutableSpan<float3> dst_handles_l_write = dst_handles_l.slice(dst_points);
-        MutableSpan<float3> dst_handles_r_write = dst_handles_r.slice(dst_points);
-        MutableSpan<int8_t> dst_types_l_write = dst_types_l.slice(dst_points);
-        MutableSpan<int8_t> dst_types_r_write = dst_types_r.slice(dst_points);
         if (use_bezier_mode) {
           calculate_bezier_handles_bezier_mode(src_handles_l.slice(src_points),
                                                src_handles_r.slice(src_points),
@@ -561,11 +564,11 @@ static bke::CurvesGeometry fillet_curves(
                                                directions_buffer,
                                                zero_edge_buffer,
                                                offsets,
-                                               dst_positions_write,
-                                               dst_handles_l_write,
-                                               dst_handles_r_write,
-                                               dst_types_l_write,
-                                               dst_types_r_write);
+                                               dst_positions.slice(dst_points),
+                                               dst_handles_l.slice(dst_points),
+                                               dst_handles_r.slice(dst_points),
+                                               dst_types_l.slice(dst_points),
+                                               dst_types_r.slice(dst_points));
         }
         else {
           calculate_bezier_handles_poly_mode(src_handles_l.slice(src_points),
@@ -573,11 +576,11 @@ static bke::CurvesGeometry fillet_curves(
                                              src_types_l.slice(src_points),
                                              src_types_r.slice(src_points),
                                              offsets,
-                                             dst_positions_write,
-                                             dst_handles_l_write,
-                                             dst_handles_r_write,
-                                             dst_types_l_write,
-                                             dst_types_r_write);
+                                             dst_positions.slice(dst_points),
+                                             dst_handles_l.slice(dst_points),
+                                             dst_handles_r.slice(dst_points),
+                                             dst_types_l.slice(dst_points),
+                                             dst_types_r.slice(dst_points));
         }
       }
     }
@@ -590,7 +593,7 @@ static bke::CurvesGeometry fillet_curves(
            propagation_info,
            {"position", "handle_type_left", "handle_type_right", "handle_right", "handle_left"}))
   {
-    duplicate_fillet_point_data(curve_start_indices,
+    duplicate_fillet_point_data(src_points_by_curve,
                                 dst_points_by_curve,
                                 curve_selection,
                                 all_point_offsets,
@@ -604,7 +607,7 @@ static bke::CurvesGeometry fillet_curves(
                                       bke::AttrDomain::Point,
                                       propagation_info,
                                       {},
-                                      curve_start_indices,
+                                      src_points_by_curve,
                                       dst_points_by_curve,
                                       unselected,
                                       dst_attributes);
