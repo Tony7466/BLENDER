@@ -917,7 +917,6 @@ void ShadowModule::begin_sync()
       sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
       sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
       sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
-      sub.push_constant("pixel_world_radius", &pixel_world_radius_);
       sub.push_constant("fb_resolution", &usage_tag_fb_resolution_);
       sub.push_constant("fb_lod", &usage_tag_fb_lod_);
       sub.bind_resources(inst_.uniform_data);
