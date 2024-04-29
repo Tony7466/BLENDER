@@ -865,7 +865,7 @@ void ED_workspace_status_text(bContext *C, const char *str)
 
 /* ************************************************************ */
 
-static void area_azone_init(wmWindow *win, const bScreen *screen, ScrArea *area)
+static void area_azone_init(wmWindow * /*win*/, const bScreen *screen, ScrArea *area)
 {
   /* reinitialize entirely, regions and full-screen add azones too */
   BLI_freelistN(&area->actionzones);
