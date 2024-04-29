@@ -36,6 +36,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_lazy_threading.hh"
 #include "BLI_span.hh"
+#include "BLI_task_size_hints.hh"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -63,151 +64,6 @@ inline void parallel_for_each(Range &&range, const Function &function)
     function(value);
   }
 #endif
-}
-
-/**
- * Specifies how large the individual tasks are relative to each other. It's common that all tasks
- * have a very similar size in which case one can just ignore this. However, sometimes tasks have
- * very different sizes and it makes sense for the scheduler to group fewer big tasks and many
- * small tasks together.
- */
-class TaskSizeHints {
- public:
-  enum class Type {
-    /** All tasks have the same size. */
-    Static,
-    /** All tasks can have different sizes and one has to look up the sizes one by one. */
-    IndividualLookup,
-    /**
-     * All tasks can have different sizes but one can efficiently determine the size of a
-     * consecutive range of tasks.
-     */
-    AccumulatedLookup,
-  };
-
-  Type type;
-  std::optional<int64_t> size;
-  std::optional<int64_t> full_size;
-
- protected:
-  TaskSizeHints(const Type type) : type(type) {}
-
- public:
-  TaskSizeHints(const int64_t size) : type(Type::Static), size(size) {}
-
-  bool use_single_thread(const IndexRange range, const int64_t threshold) const
-  {
-    switch (this->type) {
-      case Type::Static: {
-        return *this->size * range.size() <= threshold;
-      }
-      case Type::IndividualLookup: {
-        if (full_size.has_value()) {
-          if (*full_size <= threshold) {
-            return true;
-          }
-        }
-        return false;
-      }
-      case Type::AccumulatedLookup: {
-        return this->lookup_accumulated_size(range) <= threshold;
-      }
-    }
-    BLI_assert_unreachable();
-    return true;
-  }
-
-  /**
-   * Get the individual size of all tasks in the range. This must only be used if the type is
-   * #Type::IndividualLookup.
-   */
-  virtual void lookup_individual_sizes(IndexRange /*range*/, MutableSpan<int64_t> r_sizes) const
-  {
-    BLI_assert_unreachable();
-    r_sizes.fill(1);
-  }
-
-  /**
-   * Get the accumulated size of a range of tasks. This must only be used if the type is
-   * #Type::AccumulatedLookup.
-   */
-  virtual int64_t lookup_accumulated_size(IndexRange range) const
-  {
-    BLI_assert_unreachable();
-    return range.size();
-  }
-};
-
-namespace detail {
-
-template<typename Fn> class TaskSizeHints_IndividualLookup : public TaskSizeHints {
- private:
-  Fn fn_;
-
- public:
-  TaskSizeHints_IndividualLookup(Fn fn, const std::optional<int64_t> full_size)
-      : TaskSizeHints(Type::IndividualLookup), fn_(std::move(fn))
-  {
-    this->full_size = full_size;
-  }
-
-  void lookup_individual_sizes(const IndexRange range, MutableSpan<int64_t> r_sizes) const override
-  {
-    fn_(range, r_sizes);
-  }
-};
-
-template<typename Fn> class TaskSizeHints_AccumulatedLookup : public TaskSizeHints {
- private:
-  Fn fn_;
-
- public:
-  TaskSizeHints_AccumulatedLookup(Fn fn)
-      : TaskSizeHints(Type::AccumulatedLookup), fn_(std::move(fn))
-  {
-  }
-
-  int64_t lookup_accumulated_size(const IndexRange range) const override
-  {
-    return fn_(range);
-  }
-};
-
-}  // namespace detail
-
-/**
- * Specify how large the task at each index is with a callback. This is especially useful if the
- * size of each individual task can be very different. Specifying the size allows the scheduler to
- * distribute the work across threads more equally.
- *
- * \param fn: A function that returns the size for a single task: `(int64_t index) -> int64_t`.
- * \param full_size: The (approximate) accumulated size of all tasks. This is optional and should
- *   only be passed in if it is trivially accessible already.
- */
-template<typename Fn>
-inline auto individual_task_sizes(Fn &&fn, const std::optional<int64_t> full_size = std::nullopt)
-{
-  auto array_fn = [fn = std::forward<Fn>(fn)](const IndexRange range,
-                                              MutableSpan<int64_t> r_sizes) {
-    for (const int64_t i : range.index_range()) {
-      r_sizes[i] = fn(range[i]);
-    }
-  };
-  return detail::TaskSizeHints_IndividualLookup<decltype(array_fn)>(std::move(array_fn),
-                                                                    full_size);
-}
-
-/**
- * Very similar to #individual_task_sizes, but should be used if one can very efficiently compute
- * the accumulated task size (in O(1) time). This is often the case when e.g. working with
- * #OffsetIndices.
- *
- * \param fn: A function that returns the accumulated size for a range of tasks:
- * `(IndexRange indices) -> int64_t`.
- */
-template<typename Fn> inline auto accumulated_task_sizes(Fn &&fn)
-{
-  return detail::TaskSizeHints_AccumulatedLookup<decltype(fn)>(std::forward<Fn>(fn));
 }
 
 namespace detail {
@@ -239,13 +95,13 @@ template<typename Function>
 inline void parallel_for(const IndexRange range,
                          const int64_t grain_size,
                          const Function &function,
-                         const TaskSizeHints &size_hints = TaskSizeHints(1))
+                         const TaskSizeHints &size_hints = detail::TaskSizeHints_Static(1))
 {
   if (range.is_empty()) {
     return;
   }
   /* Invoking tbb for small workloads has a large overhead. */
-  if (size_hints.use_single_thread(range, grain_size)) {
+  if (use_single_thread(size_hints, range, grain_size)) {
     function(range);
     return;
   }
