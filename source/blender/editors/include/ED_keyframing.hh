@@ -40,15 +40,6 @@ struct NlaKeyframingContext;
  * \{ */
 
 /**
- * Get the active settings for key-framing settings from context (specifically the given scene)
- * \param use_autokey_mode: include settings from key-framing mode in the result
- * (i.e. replace only).
- */
-eInsertKeyFlags ANIM_get_keyframing_flags(Scene *scene);
-
-/* -------- */
-
-/**
  * \brief Lesser Key-framing API call.
  *
  * Update integer/discrete flags of the FCurve (used when creating/inserting keyframes,
@@ -299,7 +290,7 @@ enum eCreateDriver_MappingTypes {
  * Mapping Types enum for operators.
  * \note Used by #ANIM_OT_driver_button_add and #UI_OT_eyedropper_driver.
  */
-extern EnumPropertyItem prop_driver_create_mapping_types[];
+extern const EnumPropertyItem prop_driver_create_mapping_types[];
 
 /* -------- */
 

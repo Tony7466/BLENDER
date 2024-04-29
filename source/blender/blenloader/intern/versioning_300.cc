@@ -69,7 +69,7 @@
 #include "BKE_deform.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
@@ -80,7 +80,7 @@
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -1561,6 +1561,7 @@ static void do_version_subsurface_methods(bNode *node)
 
 static void version_geometry_nodes_add_attribute_input_settings(NodesModifierData *nmd)
 {
+  using namespace blender;
   if (nmd->settings.properties == nullptr) {
     return;
   }
@@ -1583,14 +1584,13 @@ static void version_geometry_nodes_add_attribute_input_settings(NodesModifierDat
     char use_attribute_prop_name[MAX_IDPROP_NAME];
     SNPRINTF(use_attribute_prop_name, "%s%s", property->name, "_use_attribute");
 
-    IDPropertyTemplate idprop = {0};
-    IDProperty *use_attribute_prop = IDP_New(IDP_INT, &idprop, use_attribute_prop_name);
+    IDProperty *use_attribute_prop = bke::idprop::create(use_attribute_prop_name, 0).release();
     IDP_AddToGroup(nmd->settings.properties, use_attribute_prop);
 
     char attribute_name_prop_name[MAX_IDPROP_NAME];
     SNPRINTF(attribute_name_prop_name, "%s%s", property->name, "_attribute_name");
 
-    IDProperty *attribute_prop = IDP_New(IDP_STRING, &idprop, attribute_name_prop_name);
+    IDProperty *attribute_prop = bke::idprop::create(attribute_name_prop_name, "").release();
     IDP_AddToGroup(nmd->settings.properties, attribute_prop);
   }
 }
@@ -3491,12 +3491,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 302, 6)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      ToolSettings *ts = scene->toolsettings;
-      if (ts->uv_relax_method == 0) {
-        ts->uv_relax_method = UV_SCULPT_TOOL_RELAX_LAPLACIAN;
-      }
-    }
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       ToolSettings *tool_settings = scene->toolsettings;
       tool_settings->snap_flag_seq = tool_settings->snap_flag &

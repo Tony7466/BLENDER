@@ -7,10 +7,10 @@ add_subdirectory(realtime_compositor)
 if(WITH_COMPOSITOR_CPU)
   set(INC
     .
+    algorithms
     intern
     nodes
     operations
-    algorithms
     realtime_compositor
     ../blenkernel
     ../blentranslation
@@ -578,10 +578,6 @@ if(WITH_COMPOSITOR_CPU)
     PRIVATE bf::intern::guardedalloc
     bf_realtime_compositor
     PRIVATE bf::intern::atomic
-  )
-
-  list(APPEND INC
-    ${CMAKE_CURRENT_BINARY_DIR}/operations
   )
 
   if(WITH_OPENIMAGEDENOISE)

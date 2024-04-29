@@ -193,8 +193,8 @@ static void nla_track_region_draw(const bContext *C, ARegion *region)
   const size_t item_count = ANIM_animdata_filter(
       &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
 
-  /* Recalculate the height of the track list. Needs to be done before the call to
-   * `UI_view2d_view_ortho`.*/
+  /* Recalculate the height of the track list.
+   * Needs to be done before the call to #UI_view2d_view_ortho. */
   int height = NLATRACK_TOT_HEIGHT(&ac, item_count);
   if (!BLI_listbase_is_empty(ED_context_get_markers(C))) {
     height += (UI_MARKER_MARGIN_Y - NLATRACK_STEP(snla));
@@ -589,7 +589,7 @@ static void nla_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 static void nla_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(sl);
-  BLO_read_data_address(reader, &snla->ads);
+  BLO_read_struct(reader, bDopeSheet, &snla->ads);
 }
 
 static void nla_space_blend_write(BlendWriter *writer, SpaceLink *sl)

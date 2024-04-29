@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 """
 This script is used to generate parts of `vk_to_string.hh` and `vk_to_string.cc` based on the
 vulkan API commands, features and extensions we use.
@@ -15,7 +19,7 @@ Generate source code that can be copied into `vk_to_string.hh`:
   `python3 vk_to_string.py <path-to-vk-xml> --header`
 
 Every vulkan installation contains a `vk.xml` which contains the specification in a machine
-readable format. `vk.xml` is also part of the vulkan library in blender libs.
+readable format. `vk.xml` is also part of the vulkan library in blender libraries.
 
 The generated source code will be printed to the console.
 """
@@ -32,6 +36,7 @@ FEATURES = [
 # List of extensions blender uses. These can extend enum flags.
 EXTENSIONS = [
     "VK_KHR_swapchain",
+    "VK_KHR_dynamic_rendering",
 ]
 
 # List of vkCmd commands blender uses.
@@ -54,8 +59,8 @@ COMMANDS_TO_GEN = [
     "vkCmdBindVertexBuffers",
     "vkCmdBindPipeline",
 
-    "vkCmdBeginRenderPass",
-    "vkCmdEndRenderPass",
+    "vkCmdBeginRendering",
+    "vkCmdEndRendering",
     "vkCmdDraw",
     "vkCmdDrawIndexed",
     "vkCmdDrawIndirect",
@@ -156,7 +161,7 @@ def generate_enum_to_string_cpp(enum, features, extensions):
     return result
 
 
-### Bitflags ###
+### Bit-flags ###
 def generate_bitflag_to_string_hpp(vk_name):
     vk_name_parameter = to_lower_snake_case(vk_name)
     result = ""
@@ -244,7 +249,7 @@ def generate_struct_to_string_cpp(struct, flags_to_generate, enums_to_generate, 
         elif member_type in enums_to_generate:
             result += f"to_string({vk_name_parameter}.{member_name})"
         elif member_type in structs_to_generate:
-            result += f"\"\\n\";\n"
+            result += "std::endl;\n"
             result += f"  ss << std::string(indentation_level * 2 + 2, ' ') << to_string({vk_name_parameter}.{member_name}, indentation_level + 1);\n"
             result += f"  ss << std::string(indentation_level * 2, ' ')"
             indentation_used = True
@@ -266,7 +271,7 @@ def parse_features(root):
     features = []
     for feature_name in FEATURES:
         feature = root.find(f"feature[@name='{feature_name}']")
-        assert(feature)
+        assert (feature)
         features.append(feature)
     return features
 
@@ -276,7 +281,7 @@ def parse_extensions(root):
     extensions = []
     for extension_name in EXTENSIONS:
         extension = root.find(f"extensions/extension[@name='{extension_name}']")
-        assert(extension)
+        assert (extension)
         extensions.append(extension)
     return extensions
 
@@ -357,7 +362,7 @@ def generate_to_string(vk_xml, header):
                 vk_to_string += generate_bitflag_to_string_hpp(flag_to_generate)
         for struct_to_generate in structs_to_generate:
             struct = root.find(f"types/type[@category='struct'][@name='{struct_to_generate}']")
-            assert(struct)
+            assert (struct)
             vk_to_string += generate_struct_to_string_hpp(struct)
     else:
         for enum_to_generate in enums_to_generate:
@@ -372,7 +377,7 @@ def generate_to_string(vk_xml, header):
 
         for struct_to_generate in structs_to_generate:
             struct = root.find(f"types/type[@category='struct'][@name='{struct_to_generate}']")
-            assert(struct)
+            assert (struct)
             vk_to_string += generate_struct_to_string_cpp(struct,
                                                           flags_to_generate,
                                                           enums_to_generate,

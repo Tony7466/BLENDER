@@ -729,7 +729,7 @@ typedef enum eFCurve_Smoothing {
 } eFCurve_Smoothing;
 
 /* ************************************************ */
-/* 'Action' Datatypes */
+/* 'Action' Data-types */
 
 /* NOTE: Although these are part of the Animation System,
  * they are not stored here, see `DNA_action_types.h` instead. */
@@ -938,7 +938,7 @@ typedef enum eNlaTrack_Flag {
 } eNlaTrack_Flag;
 
 /* ************************************ */
-/* KeyingSet Datatypes */
+/* KeyingSet Data-types */
 
 /**
  * Path for use in KeyingSet definitions (ksp)
@@ -1224,6 +1224,10 @@ typedef enum eAnimData_Flag {
 
   /** F-Curves from this AnimData block are always visible. */
   ADT_CURVES_ALWAYS_VISIBLE = (1 << 17),
+
+  /** Animation pointer to by this AnimData block is expanded in UI. This is stored on the AnimData
+   * so that each user of the Animation can have its own expansion/contraction state. */
+  ADT_UI_EXPANDED = (1 << 18),
 } eAnimData_Flag;
 
 /* Base Struct for Anim ------------------------------------- */
@@ -1271,6 +1275,9 @@ typedef struct Animation {
   struct AnimationBinding **binding_array; /* Array of 'binding_array_num` bindings. */
   int binding_array_num;
   int32_t last_binding_handle;
+
+  uint8_t flag;
+  uint8_t _pad0[7];
 
 #ifdef __cplusplus
   blender::animrig::Animation &wrap();

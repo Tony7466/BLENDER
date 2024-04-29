@@ -64,7 +64,7 @@ void *BKE_libblock_alloc_notest(short type) ATTR_WARN_UNUSED_RESULT;
  * The user count is set to 1, all other content (apart from name and links) being
  * initialized to zero.
  *
- * \note: By default, IDs allocated in a Main database will get the current library of the Main,
+ * \note By default, IDs allocated in a Main database will get the current library of the Main,
  * i.e. usually (besides in readfile case), they will have a `nullptr` `lib` pointer and be local
  * data. IDs allocated outside of a Main database will always get a `nullptr` `lib` pointer.
  */
@@ -73,7 +73,7 @@ void *BKE_libblock_alloc(Main *bmain, short type, const char *name, int flag)
 /**
  * Same as for #BKE_libblock_alloc, but allows creating a data-block for a given owner library.
  *
- * \param owner_library the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
  * not use any library (i.e. become a local ID). Use `std::nullopt` for default behavior (i.e.
  * behavior of the #BKE_libblock_alloc function).
  */
@@ -120,7 +120,7 @@ void BKE_lib_libblock_session_uid_renew(ID *id);
 /**
  * Generic helper to create a new empty data-block of given type in given \a bmain database.
  *
- * \note: By default, IDs created in a Main database will get the current library of the Main,
+ * \note By default, IDs created in a Main database will get the current library of the Main,
  * i.e. usually (besides in readfile case), they will have a `nullptr` `lib` pointer and be local
  * data. IDs created outside of a Main database will always get a `nullptr` `lib` pointer.
  *
@@ -130,7 +130,7 @@ void *BKE_id_new(Main *bmain, short type, const char *name);
 /**
  * Same as for #BKE_id_new, but allows creating a data-block for (within) a given owner library.
  *
- * \param owner_library the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
  * not use any library (i.e. become a local ID). Use `std::nullopt` for default behavior (i.e.
  * behavior of the #BKE_id_new function).
  */
@@ -223,7 +223,7 @@ void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, int orig_flag
  * Same as #BKE_libblock_copy_ex, but allows copying data into a library, and not as local data
  * only.
  *
- * \param owner_library the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
  * not use any library (i.e. become a local ID). Use std::nullopt for default behavior (i.e.
  * behavior of the #BKE_libblock_copy_ex function).
  */
@@ -248,11 +248,6 @@ void *BKE_libblock_copy(Main *bmain, const ID *id) ATTR_WARN_UNUSED_RESULT ATTR_
  * Sets the name of a block to name, suitably adjusted for uniqueness.
  */
 void BKE_libblock_rename(Main *bmain, ID *id, const char *name) ATTR_NONNULL();
-/**
- * Use after setting the ID's name
- * When name exists: call 'new_id'
- */
-void BKE_libblock_ensure_unique_name(Main *bmain, ID *id) ATTR_NONNULL();
 
 ID *BKE_libblock_find_name(Main *bmain, short type, const char *name) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
@@ -506,7 +501,7 @@ ID *BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, int flag);
  *
  * See #BKE_id_copy_ex for details.
  *
- * \param owner_library the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
  * not use any library (i.e. become a local ID). Use std::nullopt for default behavior (i.e.
  * behavior of the #BKE_id_copy_ex function).
  */
@@ -582,16 +577,20 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint);
 void BKE_lib_id_expand_local(Main *bmain, ID *id, int flags);
 
 /**
- * Ensures given ID has a unique name in given listbase.
+ * Optionally set the given ID's name from given parameter, and ensure that the ID has a unique
+ * name in given listbase.
  *
  * Uniqueness is only ensured within the ID's library (nullptr for local ones), libraries act as
  * some kind of namespace for IDs.
  *
- * \param name: The new name of the given ID, if NULL the current given ID name is used instead.
- * \param do_linked_data: if true, also ensure a unique name in case the given \a id is linked
+ * \param name: The new name of the given ID, if `nullptr` the current given ID name is used
+ * instead. If the given ID has no name (or the given name is an empty string), the default
+ * matching data name is used as fallback.
+ * \param do_linked_data: if true, also ensure a unique name in case the given ID is linked
  * (otherwise, just ensure that it is properly sorted).
  *
- * \return true if a new name had to be created.
+ * \return true if the ID's name has been modified (either from given `name` parameter, or because
+ * its current name was colliding with another existing ID).
  */
 bool BKE_id_new_name_validate(Main *bmain,
                               ListBase *lb,
