@@ -6,6 +6,7 @@
  * \ingroup RNA
  */
 
+#include <algorithm>
 #include <cstdlib>
 
 #include "DNA_anim_types.h"
@@ -126,24 +127,20 @@ static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSp
 
 static AnimationBinding *rna_Animation_bindings_new(Animation *anim_id,
                                                     bContext *C,
-                                                    ReportList *reports,
                                                     ID *animated_id)
 {
-  if (animated_id == nullptr) {
-    BKE_report(reports,
-               RPT_ERROR,
-               "A binding without animated ID cannot be created at the moment; if you need it, "
-               "please file a bug report");
-    return nullptr;
+  animrig::Animation &anim = anim_id->wrap();
+  animrig::Binding *binding;
+
+  if (animated_id) {
+    binding = &anim.binding_add_for_id(*animated_id);
+  }
+  else {
+    binding = &anim.binding_add();
   }
 
-  animrig::Animation &anim = anim_id->wrap();
-  animrig::Binding &binding = anim.binding_add();
-  binding.connect_id(*animated_id);
-  anim.binding_name_define(binding, animated_id->name);
-
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
-  return &binding;
+  return binding;
 }
 
 static void rna_iterator_animation_layers_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -216,10 +213,47 @@ static std::optional<std::string> rna_AnimationBinding_path(const PointerRNA *pt
   return fmt::format("bindings[\"{}\"]", name_esc);
 }
 
+/* Name functions that ignore the first two ID characters */
+void rna_AnimationBinding_name_display_get(PointerRNA *ptr, char *value)
+{
+  animrig::Binding &binding = rna_data_binding(ptr);
+  binding.name_without_prefix().unsafe_copy(value);
+}
+
+int rna_AnimationBinding_name_display_length(PointerRNA *ptr)
+{
+  animrig::Binding &binding = rna_data_binding(ptr);
+  return binding.name_without_prefix().size();
+}
+
+static void rna_AnimationBinding_name_display_set(PointerRNA *ptr, const char *name)
+{
+  animrig::Animation &anim = rna_animation(ptr);
+  animrig::Binding &binding = rna_data_binding(ptr);
+
+  /* Construct the new internal name, from the binding's type and the given name. */
+  const std::string internal_name = binding.name_prefix_for_idtype() + StringRef(name);
+  anim.binding_name_define(binding, internal_name);
+}
+
 static void rna_AnimationBinding_name_set(PointerRNA *ptr, const char *name)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
+
+  if (binding.has_idtype()) {
+    /* Check if the new name is going to be compatible with the already-established ID type. */
+    const StringRef name_ref(name);
+    const std::string old_prefix = binding.name_prefix_for_idtype();
+
+    if (!name_ref.startswith(old_prefix)) {
+      const std::string new_prefix = name_ref.substr(0, 2);
+      WM_reportf(RPT_WARNING,
+                 "Animation binding changed prefix from \"%s\" to \"%s\" when renaming.\n",
+                 old_prefix.c_str(),
+                 new_prefix.c_str());
+    }
+  }
 
   anim.binding_name_define(binding, name);
 }
@@ -228,7 +262,6 @@ static void rna_AnimationBinding_name_update(Main *bmain, Scene *, PointerRNA *p
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
-
   anim.binding_name_propagate(*bmain, binding);
 }
 
@@ -397,10 +430,18 @@ static void rna_def_animation_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   /* Animation.bindings.new(...) */
   func = RNA_def_function(srna, "new", "rna_Animation_bindings_new");
   RNA_def_function_ui_description(func, "Add a binding to the animation");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
-      func, "animated_id", "ID", "Data-Block", "Data-block that will be animated by this binding");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+      func,
+      "suitable_for",
+      "ID",
+      "Data-Block",
+      "If given, the new binding will be named after this data-block, and limited to animating "
+      "data-blocks of its type. If ommitted, this will happen as soon as the binding is "
+      "assigned");
+  /* Clear out the PARM_REQUIRED flag, which is set by default for pointer parameters. */
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+
   parm = RNA_def_pointer(
       func, "binding", "AnimationBinding", "", "Newly created animation binding");
   RNA_def_function_return(func, parm);
@@ -502,11 +543,25 @@ static void rna_def_animation_binding(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_AnimationBinding_name_set");
+  RNA_def_property_string_maxlength(prop, sizeof(AnimationBinding::name) - 2);
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimationBinding_name_update");
   RNA_def_struct_ui_text(
       srna,
       "Binding Name",
       "Used when connecting an Animation to a data-block, to find the correct binding handle");
+
+  prop = RNA_def_property(srna, "name_display", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_AnimationBinding_name_display_get",
+                                "rna_AnimationBinding_name_display_length",
+                                "rna_AnimationBinding_name_display_set");
+  RNA_def_property_string_maxlength(prop, sizeof(AnimationBinding::name) - 2);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimationBinding_name_update");
+  RNA_def_struct_ui_text(
+      srna,
+      "Binding Display Name",
+      "Name of the binding for showing in the interface. It is the name, without the first two "
+      "characters that identify what kind of data-block it animates");
 
   prop = RNA_def_property(srna, "handle", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

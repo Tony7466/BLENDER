@@ -84,7 +84,8 @@ class Animation : public ::Animation {
   const Binding *binding_for_handle(binding_handle_t handle) const;
 
   /**
-   * Set the binding name.
+   * Set the binding name, ensure it is unique, and propagate the new name to
+   * all data-blocks that use it.
    *
    * This has to be done on the Animation level to ensure each binding has a
    * unique name within the Animation.
@@ -106,7 +107,7 @@ class Animation : public ::Animation {
 
   /**
    * Update the `AnimData::animation_binding_name` field of any ID that is animated by
-   * this.Binding.
+   * this Binding.
    *
    * Should be called after `binding_name_define(binding)`. This is implemented as a separate
    * function due to the need to access bmain, which is available in the RNA on-property-update
@@ -119,13 +120,29 @@ class Animation : public ::Animation {
   Binding *binding_for_id(const ID &animated_id);
   const Binding *binding_for_id(const ID &animated_id) const;
 
+  /**
+   * Create a new, unused Binding.
+   *
+   * When calling `assign_id(returned_binding, animated_id)`, the binding will be renamed to that
+   * ID's name, and limited to that ID's type.
+   */
   Binding &binding_add();
+
+  /**
+   * Create a new binding, named after the given ID, and limited to the ID's type.
+   *
+   * Note that this assigns neither this Animation nor the new Binding to the ID. This function
+   * merely initialises the Binding itself to suitable values to start animating this ID.
+   */
+  Binding &binding_add_for_id(const ID &animated_id);
 
   /** Assign this animation to the ID.
    *
    * \param binding: The binding this ID should be animated by, may be nullptr if it is to be
    * assigned later. In that case, the ID will not actually receive any animation.
    * \param animated_id: The ID that should be animated by this Animation data-block.
+   *
+   * \return whether the assignment was succesful.
    */
   bool assign_id(Binding *binding, ID &animated_id);
 
@@ -335,25 +352,24 @@ class Binding : public ::AnimationBinding {
   constexpr static binding_handle_t unassigned = 0;
 
   /**
-   * Let the given ID receive animation from this binding.
+   * Return the name prefix for the Binding's type.
    *
-   * This is a low-level function; for most purposes you want
-   * #Animation::assign_id instead.
-   *
-   * \note This does _not_ set animated_id->adt->animation to the owner of this
-   * Binding. It's the caller's responsibility to do that.
-   *
-   * \return Whether this was possible. If the Binding was already bound to a
-   * specific ID type, and `animated_id` is of a different type, it will be
-   * refused. If the ID type cannot be animated at all, false is also returned.
-   *
-   * \see assign_animation
-   * \see Animation::assign_id
+   * This is the ID name prefix, so "OB" for objects, "CA" for cameras, etc.
    */
-  bool connect_id(ID &animated_id);
+  std::string name_prefix_for_idtype() const;
+
+  /**
+   * Return the name without the prefix.
+   *
+   * \see name_prefix_for_idtype
+   */
+  StringRefNull name_without_prefix() const;
 
   /** Return whether this Binding is usable by this ID type. */
   bool is_suitable_for(const ID &animated_id) const;
+
+  /** Return whether this Binding has an idtype set. */
+  bool has_idtype() const;
 };
 static_assert(sizeof(Binding) == sizeof(::AnimationBinding),
               "DNA struct and its C++ wrapper must have the same size");

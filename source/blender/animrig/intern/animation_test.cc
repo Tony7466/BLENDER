@@ -174,25 +174,20 @@ TEST_F(AnimationLayersTest, add_binding)
   EXPECT_EQ(1, anim->last_binding_handle);
   EXPECT_EQ(1, binding.handle);
 
-  EXPECT_STREQ("", binding.name);
+  EXPECT_STREQ("XXBinding", binding.name);
   EXPECT_EQ(0, binding.idtype);
-
-  EXPECT_TRUE(binding.connect_id(cube->id));
-  EXPECT_STREQ("", binding.name)
-      << "This low-level assignment function should not manipulate the Binding name";
-  EXPECT_EQ(GS(cube->id.name), binding.idtype);
 }
 
 TEST_F(AnimationLayersTest, add_binding_multiple)
 {
-  Binding &out_cube = anim->binding_add();
-  Binding &out_suzanne = anim->binding_add();
-  EXPECT_TRUE(out_cube.connect_id(cube->id));
-  EXPECT_TRUE(out_suzanne.connect_id(suzanne->id));
+  Binding &bind_cube = anim->binding_add();
+  Binding &bind_suzanne = anim->binding_add();
+  EXPECT_TRUE(anim->assign_id(&bind_cube, cube->id));
+  EXPECT_TRUE(anim->assign_id(&bind_suzanne, suzanne->id));
 
   EXPECT_EQ(2, anim->last_binding_handle);
-  EXPECT_EQ(1, out_cube.handle);
-  EXPECT_EQ(2, out_suzanne.handle);
+  EXPECT_EQ(1, bind_cube.handle);
+  EXPECT_EQ(2, bind_suzanne.handle);
 }
 
 TEST_F(AnimationLayersTest, anim_assign_id)
@@ -213,18 +208,37 @@ TEST_F(AnimationLayersTest, anim_assign_id)
   EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
-  /* Assign Cube to another binding without unassigning first. */
-  Binding &another_out_cube = anim->binding_add();
-  ASSERT_FALSE(anim->assign_id(&another_out_cube, cube->id))
-      << "Assigning animation (with this function) when already assigned should fail.";
+  { /* Assign Cube to another animation+binding without unassigning first. */
+    Animation *another_anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "ANOtherAnim"));
+    Binding &another_binding = another_anim->binding_add();
+    ASSERT_FALSE(another_anim->assign_id(&another_binding, cube->id))
+        << "Assigning animation (with this function) when already assigned should fail.";
+  }
+
+  { /* Assign Cube to another binding of the same Animation, this should work. */
+    const int user_count_pre = anim->id.us;
+    Binding &binding_cube_2 = anim->binding_add();
+    ASSERT_TRUE(anim->assign_id(&binding_cube_2, cube->id));
+    ASSERT_EQ(anim->id.us, user_count_pre)
+        << "Assigning to a different binding of the same animation should _not_ change the user "
+           "count of that Animation";
+  }
+
+  { /* Unassign the animation. */
+    const int user_count_pre = anim->id.us;
+    anim->unassign_id(cube->id);
+    ASSERT_EQ(anim->id.us, user_count_pre - 1)
+        << "Unassigning an animation should lower its user count";
+  }
 
   /* Assign Cube to another 'virgin' binding. This should not cause a name
    * collision between the Bindings. */
-  anim->unassign_id(cube->id);
-  ASSERT_TRUE(anim->assign_id(&another_out_cube, cube->id));
-  EXPECT_EQ(another_out_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ("OBKüüübus.001", another_out_cube.name) << "The binding should be uniquely named";
-  EXPECT_STREQ("OBKüüübus.001", cube->adt->binding_name)
+  Binding &another_binding_cube = anim->binding_add();
+  ASSERT_TRUE(anim->assign_id(&another_binding_cube, cube->id));
+  EXPECT_EQ(another_binding_cube.handle, cube->adt->binding_handle);
+  EXPECT_STREQ("OBKüüübus.002", another_binding_cube.name)
+      << "The binding should be uniquely named";
+  EXPECT_STREQ("OBKüüübus.002", cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
   /* Create an ID of another type. This should not be assignable to this binding. */
@@ -260,6 +274,15 @@ TEST_F(AnimationLayersTest, rename_binding)
   anim->binding_name_define(out_cube, "Even Newer Name");
   anim->unassign_id(cube->id);
   EXPECT_STREQ("Even Newer Name", cube->adt->binding_name);
+}
+
+TEST_F(AnimationLayersTest, binding_name_prefix)
+{
+  Binding &binding = anim->binding_add();
+  EXPECT_EQ("XX", binding.name_prefix_for_idtype());
+
+  binding.idtype = ID_CA;
+  EXPECT_EQ("CA", binding.name_prefix_for_idtype());
 }
 
 TEST_F(AnimationLayersTest, rename_binding_name_collision)
@@ -362,7 +385,7 @@ TEST_F(AnimationLayersTest, strip)
 TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
 {
   Binding &binding = anim->binding_add();
-  EXPECT_TRUE(binding.connect_id(cube->id));
+  EXPECT_TRUE(anim->assign_id(&binding, cube->id));
   Layer &layer = anim->layer_add("Kübus layer");
 
   Strip &strip = layer.strip_add(Strip::Type::Keyframe);

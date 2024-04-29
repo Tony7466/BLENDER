@@ -24,6 +24,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLT_translation.hh"
+
 #include "atomic_ops.h"
 
 #include "ANIM_animation.hh"
@@ -33,6 +35,19 @@
 #include <cstring>
 
 namespace blender::animrig {
+
+namespace {
+/**
+ * Default name for animation bindings. The first two characters in the name indicate the ID type
+ * of whatever is animated by it.
+ *
+ * Since the ID type may not be determined when the binding is created, the prefix starts out at
+ * XX. Note that no code should use this XX value; use Binding::has_idtype() instead.
+ */
+constexpr const char *binding_default_name = "Binding";
+constexpr const char *binding_unbound_prefix = "XX";
+
+}  // namespace
 
 static animrig::Layer &animationlayer_alloc()
 {
@@ -310,9 +325,27 @@ Binding &Animation::binding_add()
 {
   Binding &binding = this->binding_allocate();
 
+  /* Assign the default name and the 'unbound' name prefix. */
+  STRNCPY_UTF8(binding.name, binding_unbound_prefix);
+  BLI_strncpy_utf8(binding.name + 2, DATA_(binding_default_name), ARRAY_SIZE(binding.name) - 2);
+
   /* Append the Binding to the animation data-block. */
   grow_array_and_append<::AnimationBinding *>(
       &this->binding_array, &this->binding_array_num, &binding);
+
+  anim_binding_name_ensure_unique(*this, binding);
+  return binding;
+}
+
+Binding &Animation::binding_add_for_id(const ID &animated_id)
+{
+  Binding &binding = this->binding_add();
+
+  binding.idtype = GS(animated_id.name);
+  this->binding_name_define(binding, animated_id.name);
+
+  /* No need to call anim.binding_name_propagate() as nothing will be using
+   * this brand new Binding yet. */
 
   return binding;
 }
@@ -381,19 +414,23 @@ bool Animation::assign_id(Binding *binding, ID &animated_id)
     return false;
   }
 
-  if (adt->animation) {
+  if (adt->animation && adt->animation != this) {
     /* Unassign the ID from its existing animation first, or use the top-level
      * function `assign_animation(anim, ID)`. */
     return false;
   }
 
   if (binding) {
-    if (!binding->connect_id(animated_id)) {
+    if (!binding->is_suitable_for(animated_id)) {
       return false;
     }
+    adt->binding_handle = binding->handle;
 
-    /* If the binding is not yet named, use the ID name. */
-    if (binding->name[0] == '\0') {
+    /* If the binding is not yet tied to a type, use the ID name to give its initial name. This
+     * makes it possible to have bindings named "Binding.047" when they are created, and named
+     * after whatever is using them when first assigned. */
+    if (!binding->has_idtype()) {
+      binding->idtype = GS(animated_id.name);
       this->binding_name_define(*binding, animated_id.name);
     }
     /* Always make sure the ID's binding name matches the assigned binding. */
@@ -407,8 +444,13 @@ bool Animation::assign_id(Binding *binding, ID &animated_id)
      * identify which binding this was once attached to.  */
   }
 
-  adt->animation = this;
-  id_us_plus(&this->id);
+  if (!adt->animation) {
+    /* Due to the precondition check above, we know that adt->animation is either 'this' (in which
+     * case the user count is already correct) or `nullptr` (in which case this is a new reference,
+     * and the user count should be increased). */
+    id_us_plus(&this->id);
+    adt->animation = this;
+  }
 
   return true;
 }
@@ -517,30 +559,17 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 }
 
 /* ----- AnimationBinding implementation ----------- */
-bool Binding::connect_id(ID &animated_id)
-{
-  if (!this->is_suitable_for(animated_id)) {
-    return false;
-  }
-
-  AnimData *adt = BKE_animdata_ensure_id(&animated_id);
-  if (!adt) {
-    return false;
-  }
-
-  if (this->idtype == 0) {
-    this->idtype = GS(animated_id.name);
-  }
-
-  adt->binding_handle = this->handle;
-  return true;
-}
 
 bool Binding::is_suitable_for(const ID &animated_id) const
 {
   /* Check that the ID type is compatible with this binding. */
   const int animated_idtype = GS(animated_id.name);
   return this->idtype == 0 || this->idtype == animated_idtype;
+}
+
+bool Binding::has_idtype() const
+{
+  return this->idtype != 0;
 }
 
 bool assign_animation(Animation &anim, ID &animated_id)
@@ -570,6 +599,26 @@ Animation *get_animation(ID &animated_id)
     return nullptr;
   }
   return &adt->animation->wrap();
+}
+
+std::string Binding::name_prefix_for_idtype() const
+{
+  if (this->idtype == 0) {
+    return binding_unbound_prefix;
+  }
+
+  char name[3] = {0};
+  *reinterpret_cast<short *>(name) = this->idtype;
+  return name;
+}
+
+StringRefNull Binding::name_without_prefix() const
+{
+  /* Avoid accessing an uninitialised part of the string accidentally. */
+  if (this->name[0] == '\0' || this->name[1] == '\0') {
+    return "";
+  }
+  return this->name + 2;
 }
 
 /* ----- AnimationStrip implementation ----------- */
