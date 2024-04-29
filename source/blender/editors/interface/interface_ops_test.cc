@@ -236,8 +236,8 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
 
 TEST_F(CopyDriversToSelected, paste_property_drivers)
 {
-  /* Copy all location drivers from Suzanne to Cube. The result on Cube should
-   * be the following:
+  /* Copy all quaternion channel drivers from Suzanne to Cube. The result on
+   * Cube should be the following:
    *
    * - [0]: overwritten by the driver from Suzanne.
    * - [1]: Cube's driver remains, since there was no driver here on Suzanne.
