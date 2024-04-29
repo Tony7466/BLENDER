@@ -3,3 +3,4 @@ Referenced by pull request #114693, Fix #114686: Cannot execute node tool operat
 Referenced by commit 821060f75acbe5c9b518996c1f024ebe91d62d0a, Fix #114686: Cannot execute node tool operators
 Referenced by issue #114440, Node Tools: Selecting object via eyedropper does not work first time
 Referenced by pull request #121148, Node Tools: Basic support for data-block inputs
+Referenced by commit 65803f262fc788de4c59c0d1b27ada1e3ad7bea4, Node Tools: Basic support for data-block inputs
