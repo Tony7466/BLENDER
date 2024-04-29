@@ -777,17 +777,22 @@ static bool is_default_callback(GPUMaterial *mat)
   material_type_from_shader_uuid(
       shader_uuid, pipeline_type, geometry_type, displacement_type, transparent_shadows);
 
-  return ((!GPU_material_has_displacement_output(mat) ||
-           displacement_type == eMaterialDisplacement::MAT_DISPLACEMENT_BUMP) &&
-          !GPU_material_flag_get(mat, GPU_MATFLAG_TRANSPARENT) &&
-          ELEM(pipeline_type,
-               eMaterialPipeline::MAT_PIPE_SHADOW,
-               eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED,
-               eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED_VELOCITY,
-               eMaterialPipeline::MAT_PIPE_PREPASS_OVERLAP,
-               eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD,
-               eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD_VELOCITY,
-               eMaterialPipeline::MAT_PIPE_PREPASS_PLANAR));
+  bool is_shadow_pass = pipeline_type == eMaterialPipeline::MAT_PIPE_SHADOW;
+  bool is_prepass = ELEM(pipeline_type,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_DEFERRED_VELOCITY,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_OVERLAP,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_FORWARD_VELOCITY,
+                         eMaterialPipeline::MAT_PIPE_PREPASS_PLANAR);
+
+  bool has_vertex_displacement = GPU_material_has_displacement_output(mat) &&
+                                 displacement_type != eMaterialDisplacement::MAT_DISPLACEMENT_BUMP;
+  bool has_transparency = GPU_material_flag_get(mat, GPU_MATFLAG_TRANSPARENT);
+  bool has_shadow_transparency = has_transparency && transparent_shadows;
+
+  return (is_shadow_pass && (!has_vertex_displacement && !has_shadow_transparency)) ||
+         (is_prepass && (!has_vertex_displacement && !has_transparency));
 }
 
 GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,

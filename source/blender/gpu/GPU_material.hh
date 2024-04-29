@@ -146,6 +146,7 @@ struct GPUCodegenOutput {
 };
 
 using GPUCodegenCallbackFn = void (*)(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen);
+/* Should return true if the pass is functionally equivalent to the default Material one. */
 using GPUMaterialIsDefaultCallbackFn = bool (*)(GPUMaterial *mat);
 
 GPUNodeLink *GPU_constant(const float *num);
