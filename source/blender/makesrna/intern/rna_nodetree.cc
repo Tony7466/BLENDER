@@ -3918,7 +3918,10 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bCont
   return items;
 }
 
-static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id, bNode *node, Main *bmain, const char *name)
+static NodeEnumItem *rna_NodeMenuSwitchItems_new(ID *id,
+                                                 bNode *node,
+                                                 Main *bmain,
+                                                 const char *name)
 {
   NodeEnumItem *new_item =
       blender::nodes::socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, name);
@@ -3929,6 +3932,13 @@ static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id, bNode *node, Main *bmain
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 
   return new_item;
+}
+
+static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA *ptr)
+{
+  /* Return node itself. The data is now directly available on the node and does not have to be
+   * accessed through "enum_definition". */
+  return *ptr;
 }
 
 #else
@@ -9554,7 +9564,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void rna_def_node_enum_item(BlenderRNA *brna)
+static void rna_def_node_menu_switch_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
 
@@ -9576,18 +9586,18 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
       prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<MenuSwitchItemsAccessor>");
 }
 
-static void rna_def_node_enum_definition_items(BlenderRNA *brna)
+static void rna_def_node_menu_switch_items(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  srna = RNA_def_struct(brna, "NodeEnumDefinitionItems", nullptr);
+  srna = RNA_def_struct(brna, "NodeMenuSwitchItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(
       srna, "Enum Definition Items", "Collection of items that make up an enum");
 
-  func = RNA_def_function(srna, "new", "rna_NodeEnumDefinition_new");
+  func = RNA_def_function(srna, "new", "rna_NodeMenuSwitchItems_new");
   RNA_def_function_ui_description(func, "Add an a new enum item");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
@@ -9610,7 +9620,7 @@ static void def_geo_menu_switch(StructRNA *srna)
       prop, nullptr, "enum_definition.items_array", "enum_definition.items_num");
   RNA_def_property_struct_type(prop, "NodeEnumItem");
   RNA_def_property_ui_text(prop, "Items", "");
-  RNA_def_property_srna(prop, "NodeEnumDefinitionItems");
+  RNA_def_property_srna(prop, "NodeMenuSwitchItems");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_int_sdna(prop, nullptr, "enum_definition.active_index");
@@ -9628,6 +9638,16 @@ static void def_geo_menu_switch(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Item", "Active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  /* This exists only for backward compatibility. */
+  prop = RNA_def_property(srna, "enum_definition", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Node");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeMenuSwitch_enum_definition_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "Enum Definition (deprecated)",
+                           "The enum definition can now be accessed directly on the node. This "
+                           "exists for backward compatibility");
 }
 
 static void rna_def_shader_node(BlenderRNA *brna)
@@ -10737,7 +10757,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_repeat_item(brna);
   rna_def_index_switch_item(brna);
   rna_def_geo_bake_item(brna);
-  rna_def_node_enum_item(brna);
+  rna_def_node_menu_switch_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -10792,7 +10812,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_repeat_output_items(brna);
   rna_def_geo_index_switch_items(brna);
   rna_def_bake_items(brna);
-  rna_def_node_enum_definition_items(brna);
+  rna_def_node_menu_switch_items(brna);
 
   rna_def_node_instance_hash(brna);
 }
