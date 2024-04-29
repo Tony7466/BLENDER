@@ -826,7 +826,7 @@ static void version_refraction_depth_to_thickness_value(bNodeTree *ntree, float 
     bNode *value_node = nodeAddStaticNode(nullptr, ntree, SH_NODE_VALUE);
     value_node->parent = node->parent;
     value_node->locx = node->locx;
-    value_node->locy = node->locy - 80.0f;
+    value_node->locy = node->locy - 160.0f;
     bNodeSocket *socket_value = nodeFindSocket(value_node, SOCK_OUT, "Value");
 
     *version_cycles_node_socket_float_value(socket_value) = thickness;
@@ -3280,7 +3280,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           /* EEVEE Legacy used thickness from shadow map when translucency was on. */
           material->blend_flag |= MA_BL_THICKNESS_FROM_SHADOW;
         }
-        if (material->use_nodes && material->nodetree && material->refract_depth > 0.0f) {
+        if (material->use_nodes && material->nodetree) {
           version_refraction_depth_to_thickness_value(material->nodetree, material->refract_depth);
         }
       }
