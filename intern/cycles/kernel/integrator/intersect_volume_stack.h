@@ -10,6 +10,7 @@
 
 CCL_NAMESPACE_BEGIN
 
+#ifdef __VOLUME__
 ccl_device void integrator_volume_stack_update_for_subsurface(KernelGlobals kg,
                                                               IntegratorState state,
                                                               const float3 from_P,
@@ -222,12 +223,15 @@ ccl_device void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorSt
 {
   integrator_volume_stack_init(kg, state);
 
+#ifdef __SHADOW_CATCHER__
   if (INTEGRATOR_STATE(state, path, flag) & PATH_RAY_SHADOW_CATCHER_PASS) {
     /* Volume stack re-init for shadow catcher, continue with shading of hit. */
     integrator_intersect_next_kernel_after_shadow_catcher_volume<
         DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK>(kg, state);
   }
-  else {
+  else
+#endif  
+  {
     /* Volume stack init for camera rays, continue with intersection of camera ray. */
     integrator_path_next(kg,
                          state,
@@ -235,5 +239,6 @@ ccl_device void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorSt
                          DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
   }
 }
+#endif /* __VOLUME__ */
 
 CCL_NAMESPACE_END

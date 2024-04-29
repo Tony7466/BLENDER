@@ -6,6 +6,8 @@
 
 CCL_NAMESPACE_BEGIN
 
+#ifdef __VOLUME__
+
 /* Volumetric read/write lambda functions - default implementations */
 #ifndef VOLUME_READ_LAMBDA
 #  define VOLUME_READ_LAMBDA(function_call) \
@@ -209,5 +211,7 @@ ccl_device VolumeSampleMethod volume_stack_sample_method(KernelGlobals kg, Integ
 
   return method;
 }
+
+#endif /* __VOLUME__*/
 
 CCL_NAMESPACE_END

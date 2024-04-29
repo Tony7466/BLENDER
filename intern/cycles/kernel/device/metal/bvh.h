@@ -39,6 +39,7 @@ struct MetalRTIntersectionShadowPayload {
   bool result;
 };
 
+#ifdef __HAIR__
 ccl_device_forceinline bool curve_ribbon_accept(
     KernelGlobals kg, float u, float t, ccl_private const Ray *ray, int object, int prim, int type)
 {
@@ -130,6 +131,7 @@ ccl_device_forceinline float curve_ribbon_v(
   float v = dot(P - P_curve, bitangent) / r_curve;
   return clamp(v, -1.0, 1.0f);
 }
+#endif /* __HAIR__ */
 
 /* Scene intersection. */
 
@@ -207,6 +209,7 @@ ccl_device_intersect bool scene_intersect(KernelGlobals kg,
     isect->u = intersection.triangle_barycentric_coord.x;
     isect->v = intersection.triangle_barycentric_coord.y;
   }
+#ifdef __HAIR__
   else if (kernel_data.bvh.have_curves && intersection.type == intersection_type::curve) {
     int prim = intersection.primitive_id + intersection.user_instance_id;
     const KernelCurveSegment segment = kernel_data_fetch(curve_segments, prim);
@@ -227,6 +230,8 @@ ccl_device_intersect bool scene_intersect(KernelGlobals kg,
       isect->v = 0.0f;
     }
   }
+#endif /* __HAIR__ */
+#ifdef __POINTCLOUD__
   else if (kernel_data.bvh.have_points && intersection.type == intersection_type::bounding_box) {
     const int object = intersection.instance_id;
     const uint prim = intersection.primitive_id + intersection.user_instance_id;
@@ -262,6 +267,7 @@ ccl_device_intersect bool scene_intersect(KernelGlobals kg,
       return true;
     }
   }
+#endif /* __POINTCLOUD__ */
 
   return true;
 }
@@ -497,6 +503,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
     isect->object = intersection.instance_id;
     isect->t = intersection.distance;
   }
+#ifdef __HAIR__
   else if (kernel_data.bvh.have_curves && intersection.type == intersection_type::curve) {
     int prim = intersection.primitive_id + intersection.user_instance_id;
     const KernelCurveSegment segment = kernel_data_fetch(curve_segments, prim);
@@ -517,6 +524,8 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
       isect->v = 0.0f;
     }
   }
+#endif
+#ifdef __POINTCLOUD__
   else if (kernel_data.bvh.have_points && intersection.type == intersection_type::bounding_box) {
     const int object = intersection.instance_id;
     const uint prim = intersection.primitive_id + intersection.user_instance_id;
@@ -552,6 +561,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
       return true;
     }
   }
+#endif
 
   return true;
 }

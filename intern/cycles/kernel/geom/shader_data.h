@@ -14,17 +14,17 @@ CCL_NAMESPACE_BEGIN
 
 /* ShaderData setup from incoming ray */
 
-#ifdef __OBJECT_MOTION__
 ccl_device void shader_setup_object_transforms(KernelGlobals kg,
                                                ccl_private ShaderData *ccl_restrict sd,
                                                float time)
 {
+#ifdef __OBJECT_MOTION__
   if (sd->object_flag & SD_OBJECT_MOTION) {
     sd->ob_tfm_motion = object_fetch_transform_motion(kg, sd->object, time);
     sd->ob_itfm_motion = transform_inverse(sd->ob_tfm_motion);
   }
-}
 #endif
+}
 
 /* TODO: break this up if it helps reduce register pressure to load data from
  * global memory as we write it to shader-data. */
@@ -273,6 +273,7 @@ ccl_device void shader_setup_from_displace(KernelGlobals kg,
 
 /* ShaderData setup for point on curve. */
 
+#ifdef __HAIR__
 ccl_device void shader_setup_from_curve(KernelGlobals kg,
                                         ccl_private ShaderData *ccl_restrict sd,
                                         int object,
@@ -345,6 +346,7 @@ ccl_device void shader_setup_from_curve(KernelGlobals kg,
   sd->dv = differential_zero();
 #endif
 }
+#endif /* __HAIR__ */
 
 /* ShaderData setup from ray into background */
 

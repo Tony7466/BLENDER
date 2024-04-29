@@ -534,7 +534,6 @@ __anyhit__cycles_metalrt_visibility_test_box(const float ray_tmax [[max_distance
 
 /* Primitive intersection functions. */
 
-#  ifdef __HAIR__
 [[intersection(
     curve, triangle_data, curve_data, METALRT_TAGS, extended_limits)]] PrimitiveIntersectionResult
 __intersection__curve(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
@@ -605,7 +604,6 @@ __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[b
 
   return result;
 }
-#  endif /* __HAIR__ */
 
 #  ifdef __POINTCLOUD__
 ccl_device_inline void metalrt_intersection_point(
@@ -666,6 +664,8 @@ ccl_device_inline void metalrt_intersection_point_shadow(
   }
 }
 
+#  endif /* __POINTCLOUD__ */
+
 [[intersection(bounding_box,
                triangle_data,
                curve_data,
@@ -692,6 +692,8 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
   result.continue_search = true;
   result.distance = ray_tmax;
 
+#ifdef __POINTCLOUD__
+
   metalrt_intersection_point(launch_params_metal,
                              payload,
                              object,
@@ -707,6 +709,8 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
                              ray_tmin,
                              ray_tmax,
                              result);
+
+#endif /* __POINTCLOUD__ */
 
   return result;
 }
@@ -738,6 +742,8 @@ __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[b
   result.continue_search = true;
   result.distance = ray_tmax;
 
+#ifdef __POINTCLOUD__
+
   metalrt_intersection_point_shadow(launch_params_metal,
                                     payload,
                                     object,
@@ -754,7 +760,9 @@ __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[b
                                     ray_tmax,
                                     result);
 
+#endif /* __POINTCLOUD__ */
+
   return result;
 }
-#  endif /* __POINTCLOUD__ */
+
 #endif   /* __METALRT__ */
