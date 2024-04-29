@@ -357,7 +357,7 @@ int IMB_timecode_to_array_index(IMB_Timecode_Type tc)
     case IMB_TC_RECORD_RUN:
       return 0;
     case IMB_TC_RECORD_RUN_NO_GAPS:
-      return 3;
+      return 1;
     default:
       BLI_assert_msg(0, "Unhandled timecode type enum!");
       return -1;
