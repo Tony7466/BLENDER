@@ -853,15 +853,17 @@ static void insert_fcurve_key(bAnimContext *ac,
    *   (TODO: add the full-blown PointerRNA relative parsing case here...)
    */
   if (ale->id && !ale->owner) {
-    insert_keyframe(ac->bmain,
-                    reports,
-                    ale->id,
-                    ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                    fcu->rna_path,
-                    fcu->array_index,
-                    &anim_eval_context,
-                    eBezTriple_KeyframeType(ts->keyframe_type),
-                    flag);
+    CombinedKeyingResult result = insert_keyframe(ac->bmain,
+                                                  *ale->id,
+                                                  ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
+                                                  fcu->rna_path,
+                                                  fcu->array_index,
+                                                  &anim_eval_context,
+                                                  eBezTriple_KeyframeType(ts->keyframe_type),
+                                                  flag);
+    if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+      result.generate_reports(reports);
+    }
   }
   else {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -907,7 +909,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Init keyframing flag. */
-  flag = ANIM_get_keyframing_flags(scene);
+  flag = blender::animrig::get_keyframing_flags(scene);
 
   /* GPLayers specific flags */
   if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
