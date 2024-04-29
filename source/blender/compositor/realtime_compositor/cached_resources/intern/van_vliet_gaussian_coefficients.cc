@@ -133,12 +133,12 @@ static double find_scale_factor(const std::array<std::complex<double>, 4> &poles
    * Section 4.2 for more information */
   double scale_factor = reference_sigma / 2.0;
 
-  const int maximum_interations = 100;
+  const int maximum_interations = 10;
   for (int i = 0; i < maximum_interations; i++) {
     const double variance = compute_scaled_poles_variance(poles, scale_factor);
 
     /* Close enough, we have found our scale factor. */
-    if (math::abs(reference_variance - variance) < 1.0e-9) {
+    if (math::abs(reference_variance - variance) < 1.0e-8) {
       return scale_factor;
     }
 
