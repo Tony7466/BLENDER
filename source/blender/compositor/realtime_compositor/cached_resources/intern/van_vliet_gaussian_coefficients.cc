@@ -12,9 +12,18 @@
  *   filters." Proceedings. Fourteenth International Conference on Pattern Recognition (Cat. No.
  *   98EX170). Vol. 1. IEEE, 1998.
  *
+ *
  * The filter is computed as the cascade of a causal and a non causal sequences of second order
  * difference equations as can be seen in Equation (11) in Van Vliet's paper. The coefficients are
- * the same for both the causal and non causal sequences. */
+ * the same for both the causal and non causal sequences.
+ *
+ * However, to improve its numerical stability, we decompose the 4th order filter into a parallel
+ * bank of second order filers using the methods of partial fractions as demonstrated in the follow
+ * book:
+ *
+ *   Oppenheim, Alan V. Discrete-time signal processing. Pearson Education India, 1999.
+ *
+ */
 
 #include <array>
 #include <complex>
@@ -238,47 +247,93 @@ static double compute_feedforward_coefficient(const double4 &feedback_coefficien
   return 1.0 + math::reduce_add(feedback_coefficients);
 }
 
-static double compute_gain(const std::array<std::complex<double>, 4> &poles)
-{
-  std::complex<double> gain = std::complex<double>(1.0, 0.0);
-  for (const std::complex<double> &pole : poles) {
-    gain *= 1.0 - pole;
-  }
-
-  return gain.real();
-}
-
+/* Computes the residue of the partial fraction of the transfer function of the given causal poles
+ * and gain for the given target pole. This essentially evaluates Equation (3.41) in Oppenheim's
+ * book, where d_k is the target pole and assuming the transfer function is in the form given in
+ * Equation (3.39), where d_k are the poles. See the following derivation for the gain value.
+ *
+ * For the particular case of the Van Vliet's system, there are no zeros, so the numerator in
+ * Equation (3.39) is one. Further note that Van Vliet's formulation is different from the expected
+ * form, so we need to rearrange Equation (3) in to match the form in Equation (3.39), which is
+ * shown below.
+ *
+ * Start from the causal term of Equation (3):
+ *
+ *   H_+(z) = \prod_{i=1}^N \frac{d_i - 1}{d_i - z^{-1}}
+ *
+ * Divide by d_i:
+ *
+ *   H_+(z) = \prod_{i=1}^N \frac{1 - d_i^{-1}}{1 - d_i^{-1}z^{-1}}
+ *
+ * Move the numerator to its own product:
+ *
+ *   H_+(z) = \prod_{i=1}^N 1 - d_i^{-1} \prod_{i=1}^N \frac{1}{1 - d_i^{-1}z^{-1}}
+ *
+ * And we reach the same form as Equation (3.39). Where the first product term is b0 / a0 and is
+ * also the given gain value, which is also the same as the feedforward coefficient denoted by
+ * the alpha in Equation (12). Further d_i^{-1} in our derivation is the same as d_k in Equation
+ * (3.39), the discrepancy in the inverse operator is the fact that Van Vliet's derivation assume
+ * non causal poles, while Oppenheim's assume causal poles, which are inverse of each other as can
+ * be seen in the compute_causal_poles function. */
 static std::complex<double> compute_partial_fraction_residue(
-    const std::array<std::complex<double>, 4> &poles, const std::complex<double> &target_pole)
+    const std::array<std::complex<double>, 4> &poles,
+    const std::complex<double> &target_pole,
+    double gain)
 {
+  /* Evaluating Equation (3.41) actually corresponds to omitting the terms in Equation (3.39) that
+   * corresponds to the target pole or its conjugate, because they get canceled by the first term
+   * in Equation (3.41). That's we are essentially evaluating the limit as the expression tends to
+   * the target pole. */
   std::complex<double> target_pole_inverse = 1.0 / target_pole;
   std::complex<double> residue = std::complex<double>(1.0, 0.0);
   for (const std::complex<double> &pole : poles) {
     if (pole != target_pole && pole != std::conj(target_pole)) {
       residue *= 1.0 - pole * target_pole_inverse;
     }
-
-    residue *= 1.0 - pole * target_pole;
   }
 
-  const double gain = math::square(compute_gain(poles));
-
-  return (1.0 / residue) * gain;
+  /* Remember that the gain is the b0 / a0 expression in Equation (3.39). */
+  return gain / residue;
 }
 
-static void compute_second_order_section(const std::array<std::complex<double>, 4> &poles,
-                                         const std::complex<double> &pole,
+/* Evaluates the causal transfer function at the reciprocal of the given pole, which will be the
+ * non causal pole if the given pole is a causal one, as discussed in the compute_causal_poles
+ * function. The causal transfer function is given in Equation (3) in Van Vliet's paper, but we
+ * compute it in the form derived in the description of the compute_partial_fraction_residue
+ * function, also see the aforementioned function for the gain value. */
+static std::complex<double> compute_causal_transfer_function_at_non_causal_pole(
+    const std::array<std::complex<double>, 4> &poles,
+    const std::complex<double> &target_pole,
+    double gain)
+{
+  std::complex<double> result = std::complex<double>(1.0, 0.0);
+  for (const std::complex<double> &pole : poles) {
+    result *= 1.0 - pole * target_pole;
+  }
+
+  return gain / result;
+}
+
+/* Combine each pole and its conjugate counterpart into a second order section and assign its
+ * coefficients to the given coefficients value. The residue of the pole and its transfer value in
+ * the partial fraction of its transfer function are given.
+ *
+ * TODO: Properly document this function and prove its equations. */
+static void compute_second_order_section(const std::complex<double> &pole,
+                                         const std::complex<double> &residue,
+                                         const std::complex<double> &transfer_value,
                                          double2 &r_feedback_coefficients,
                                          double2 &r_causal_feedforward_coefficients,
                                          double2 &r_non_causal_feedforward_coefficients)
 {
+  const std::complex<double> parallel_residue = residue * transfer_value;
   const std::complex<double> pole_inverse = 1.0 / pole;
-  const std::complex<double> residue = compute_partial_fraction_residue(poles, pole);
 
   r_feedback_coefficients = double2(-2.0 * pole.real(), std::norm(pole));
 
-  const double causal_feedforward_1 = residue.imag() / pole_inverse.imag();
-  const double causal_feedforward_0 = residue.real() - causal_feedforward_1 * pole_inverse.real();
+  const double causal_feedforward_1 = parallel_residue.imag() / pole_inverse.imag();
+  const double causal_feedforward_0 = parallel_residue.real() -
+                                      causal_feedforward_1 * pole_inverse.real();
   r_causal_feedforward_coefficients = double2(causal_feedforward_0, causal_feedforward_1);
 
   const double non_causal_feedforward_1 = causal_feedforward_1 -
@@ -349,21 +404,47 @@ VanVlietGaussianCoefficients::VanVlietGaussianCoefficients(Context & /*context*/
   const std::array<std::complex<double>, 4> non_causal_poles = scaled_poles;
   const std::array<std::complex<double>, 4> causal_poles = compute_causal_poles(non_causal_poles);
 
+  /* Compute the feedforward and feedback coefficients, noting that those are functions of the non
+   * causal poles. */
   const double4 feedback_coefficients = compute_feedback_coefficients(non_causal_poles);
   const double feedforward_coefficient = compute_feedforward_coefficient(feedback_coefficients);
 
-  compute_second_order_section(causal_poles,
-                               causal_poles[0],
+  /* We only compute the residue for two of the causal poles, since the other two are complex
+   * conjugates of those two, and their residues will also be the complex conjugate of their
+   * respective counterpart. The gain is the feedforward coefficient as discussed in the function
+   * description. */
+  const std::complex<double> first_residue = compute_partial_fraction_residue(
+      causal_poles, causal_poles[0], feedforward_coefficient);
+  const std::complex<double> second_residue = compute_partial_fraction_residue(
+      causal_poles, causal_poles[2], feedforward_coefficient);
+
+  /* We only compute the transfer value of for two of the non causal poles, since the other two are
+   * complex conjugates of those two, and their transfer values will also be the complex conjugate
+   * of their respective counterpart. The gain is the feedforward coefficient as discussed in the
+   * function description. */
+  const std::complex<double> first_transfer_value =
+      compute_causal_transfer_function_at_non_causal_pole(
+          causal_poles, causal_poles[0], feedforward_coefficient);
+  const std::complex<double> second_transfer_value =
+      compute_causal_transfer_function_at_non_causal_pole(
+          causal_poles, causal_poles[2], feedforward_coefficient);
+
+  /* Combine each pole and its conjugate counterpart into a second order section and assign its
+   * coefficients. */
+  compute_second_order_section(causal_poles[0],
+                               first_residue,
+                               first_transfer_value,
                                first_feedback_coefficients_,
                                first_causal_feedforward_coefficients_,
                                first_non_causal_feedforward_coefficients_);
-
-  compute_second_order_section(causal_poles,
-                               causal_poles[2],
+  compute_second_order_section(causal_poles[2],
+                               second_residue,
+                               second_transfer_value,
                                second_feedback_coefficients_,
                                second_causal_feedforward_coefficients_,
                                second_non_causal_feedforward_coefficients_);
 
+  /* Compute the boundary coefficients for all four of second order sections. */
   first_causal_boundary_coefficient_ = compute_boundary_coefficient(
       first_feedback_coefficients_, first_causal_feedforward_coefficients_);
   first_non_causal_boundary_coefficient_ = compute_boundary_coefficient(
