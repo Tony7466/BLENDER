@@ -3257,9 +3257,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         ts->uvsculpt.strength_curve = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
       }
     }
-  }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 24)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->ed != nullptr) {
         SEQ_for_each_callback(&scene->ed->seqbase, seq_proxies_timecode_update, nullptr);
