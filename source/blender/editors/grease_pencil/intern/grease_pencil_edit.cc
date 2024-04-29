@@ -2504,8 +2504,10 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
     }
 
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-    curves::extrude_curve_points(curves, points_to_extrude);
+    bke::CurvesGeometry dst;
+    curves::extrude_curve_points(curves, points_to_extrude, dst);
 
+    info.drawing.geometry.wrap() = std::move(dst);
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
