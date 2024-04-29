@@ -8418,12 +8418,6 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
-            # Copy/paste
-            col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
-            col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
-
-            col.separator()
-
             # Main Strokes Operators
             col.operator("grease_pencil.stroke_subdivide", text="Subdivide")
             col.operator("grease_pencil.stroke_subdivide_smooth", text="Subdivide and Smooth")
@@ -8445,6 +8439,9 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
+            # Copy/paste
+            col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
+            col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
             col.operator("grease_pencil.duplicate_move", text="Duplicate")
 
             col.separator()
@@ -8459,12 +8456,6 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
         if is_stroke_mode:
             col = row.column(align=True)
             col.label(text="Stroke", icon='GP_SELECT_STROKES')
-
-            col.separator()
-
-            # Copy/paste
-            col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
-            col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
 
             col.separator()
 
@@ -8492,6 +8483,9 @@ class VIEW3D_MT_greasepencil_edit_context_menu(Menu):
 
             col.separator()
 
+            # Copy/paste
+            col.operator("grease_pencil.copy", text="Copy", icon='COPYDOWN')
+            col.operator("grease_pencil.paste", text="Paste", icon='PASTEDOWN')
             col.operator("grease_pencil.duplicate_move", text="Duplicate")
 
             col.separator()
