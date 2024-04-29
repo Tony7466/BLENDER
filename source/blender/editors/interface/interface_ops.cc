@@ -1688,9 +1688,14 @@ static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
     }
     const int dst_index = is_array_prop ? i : -1;
 
-    /* If it's already animated by something other than a driver, skip. */
+    /* If it's already animated by something other than a driver, skip. This is
+     * because Blender's UI assumes that properties are either animated *or*
+     * driven, and things can get confusing for users otherwise. Additionally,
+     * no other parts of Blender's UI allow users to (at least easily) add
+     * drivers on already-animated properties, so this keeps things consistent
+     * across driver-related operators. */
+    bool driven;
     {
-      bool driven;
       const FCurve *fcu = BKE_fcurve_find_by_rna(
           dst_ptr, dst_prop, dst_index, nullptr, nullptr, &driven, nullptr);
       if (fcu && !driven) {
@@ -1704,7 +1709,7 @@ static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
      * ID, due to this being inside of a loop and doing a linear scan of the
      * drivers to find one that matches.  We should be able to make this more
      * efficient with a little cleverness .*/
-    {
+    if (driven) {
       FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), dst_index);
       if (old_driver) {
         BLI_remlink(&dst_adt->drivers, old_driver);
@@ -1810,10 +1815,11 @@ static bool copy_driver_to_selected_button(bContext *C, bool copy_entire_array, 
 
     const int paste_count = paste_property_drivers(
         src_drivers.as_span(), is_array_prop, &dst_ptr, dst_prop);
-    if (paste_count > 0) {
-      RNA_property_update(C, &dst_ptr, dst_prop);
+    if (paste_count == 0) {
+      continue;
     }
 
+    RNA_property_update(C, &dst_ptr, dst_prop);
     total_copy_count += paste_count;
   }
 
