@@ -3918,66 +3918,6 @@ static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bCont
   return items;
 }
 
-static bNode *find_node_by_enum_definition(bNodeTree *ntree, const NodeEnumDefinition *enum_def)
-{
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
-    NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
-    if (&storage->enum_definition == enum_def) {
-      return node;
-    }
-  }
-  return nullptr;
-}
-
-[[maybe_unused]] static bNode *find_node_by_enum_item(bNodeTree *ntree, const NodeEnumItem *item)
-{
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
-    NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
-    if (storage->enum_definition.items().contains_ptr(item)) {
-      return node;
-    }
-  }
-  return nullptr;
-}
-
-static NodeEnumDefinition *find_enum_definition_by_item(bNodeTree *ntree, const NodeEnumItem *item)
-{
-  ntree->ensure_topology_cache();
-  for (bNode *node : ntree->nodes_by_type("GeometryNodeMenuSwitch")) {
-    NodeMenuSwitch *storage = static_cast<NodeMenuSwitch *>(node->storage);
-    if (storage->enum_definition.items().contains_ptr(item)) {
-      return &storage->enum_definition;
-    }
-  }
-  return nullptr;
-}
-
-/* Tag the node owning the enum definition to ensure propagation of the enum. */
-static void rna_NodeEnumDefinition_tag_changed(bNodeTree *ntree, NodeEnumDefinition *enum_def)
-{
-  bNode *node = find_node_by_enum_definition(ntree, enum_def);
-  BLI_assert(node != nullptr);
-  BKE_ntree_update_tag_node_property(ntree, node);
-}
-
-static void rna_NodeEnumItem_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  BLI_assert(find_node_by_enum_item(ntree, static_cast<NodeEnumItem *>(ptr->data)) != nullptr);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-}
-
-static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
-{
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
-  NodeEnumItem *item = static_cast<NodeEnumItem *>(ptr->data);
-  NodeEnumDefinition *enum_def = find_enum_definition_by_item(ntree, item);
-  enum_def->set_item_name(*item, value);
-  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
-}
-
 static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id, bNode *node, Main *bmain, const char *name)
 {
   NodeEnumItem *new_item =
@@ -9620,18 +9560,20 @@ static void rna_def_node_enum_item(BlenderRNA *brna)
 
   StructRNA *srna = RNA_def_struct(brna, "NodeEnumItem", nullptr);
   RNA_def_struct_ui_text(srna, "Enum Item", "");
-  RNA_def_struct_sdna(srna, "NodeEnumItem");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_NodeEnumItem_name_set");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_Node_ItemArray_item_name_set<MenuSwitchItemsAccessor>");
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeEnumItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<MenuSwitchItemsAccessor>");
 
   prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "description");
   RNA_def_property_ui_text(prop, "Description", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeEnumItem_update");
+  RNA_def_property_update(
+      prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<MenuSwitchItemsAccessor>");
 }
 
 static void rna_def_node_enum_definition_items(BlenderRNA *brna)
@@ -9657,23 +9599,21 @@ static void rna_def_node_enum_definition_items(BlenderRNA *brna)
   rna_def_node_item_array_common_functions(srna, "NodeEnumItem", "MenuSwitchItemsAccessor");
 }
 
-static void rna_def_node_enum_definition(BlenderRNA *brna)
+static void def_geo_menu_switch(StructRNA *srna)
 {
-  StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "NodeEnumDefinition", nullptr);
-  RNA_def_struct_sdna(srna, "NodeEnumDefinition");
-  RNA_def_struct_ui_text(srna, "Enum Definition", "Definition of an enumeration for nodes");
+  RNA_def_struct_sdna_from(srna, "NodeMenuSwitch", "storage");
 
   prop = RNA_def_property(srna, "enum_items", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
+  RNA_def_property_collection_sdna(
+      prop, nullptr, "enum_definition.items_array", "enum_definition.items_num");
   RNA_def_property_struct_type(prop, "NodeEnumItem");
   RNA_def_property_ui_text(prop, "Items", "");
   RNA_def_property_srna(prop, "NodeEnumDefinitionItems");
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_int_sdna(prop, nullptr, "enum_definition.active_index");
   RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_NODE, nullptr);
@@ -9688,19 +9628,6 @@ static void rna_def_node_enum_definition(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Item", "Active item");
   RNA_def_property_update(prop, NC_NODE, nullptr);
-}
-
-static void def_geo_menu_switch(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeMenuSwitch", "storage");
-
-  prop = RNA_def_property(srna, "enum_definition", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "enum_definition");
-  RNA_def_property_struct_type(prop, "NodeEnumDefinition");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Enum Definition", "Definition of enum items");
 }
 
 static void rna_def_shader_node(BlenderRNA *brna)
@@ -10810,6 +10737,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_repeat_item(brna);
   rna_def_index_switch_item(brna);
   rna_def_geo_bake_item(brna);
+  rna_def_node_enum_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -10864,9 +10792,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_repeat_output_items(brna);
   rna_def_geo_index_switch_items(brna);
   rna_def_bake_items(brna);
-  rna_def_node_enum_item(brna);
   rna_def_node_enum_definition_items(brna);
-  rna_def_node_enum_definition(brna);
 
   rna_def_node_instance_hash(brna);
 }
