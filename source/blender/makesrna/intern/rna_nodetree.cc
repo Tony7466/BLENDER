@@ -3978,21 +3978,17 @@ static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
   rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
 }
 
-static NodeEnumItem *rna_NodeEnumDefinition_new(
-    ID *id, bNode *node, Main *bmain, ReportList *reports, const char *name)
+static NodeEnumItem *rna_NodeEnumDefinition_new(ID *id, bNode *node, Main *bmain, const char *name)
 {
-  auto *storage = static_cast<NodeMenuSwitch *>(node->storage);
-  NodeEnumItem *item = storage->enum_definition.add_item(name);
-  if (item == nullptr) {
-    BKE_report(reports, RPT_ERROR, "Unable to create enum item");
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    BKE_ntree_update_tag_node_property(ntree, node);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-  return item;
+  NodeEnumItem *new_item =
+      blender::nodes::socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, name);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_node_property(ntree, node);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+
+  return new_item;
 }
 
 static PointerRNA rna_NodeEnumDefinition_active_item_get(PointerRNA *ptr)
@@ -9668,7 +9664,7 @@ static void rna_def_node_enum_definition_items(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "new", "rna_NodeEnumDefinition_new");
   RNA_def_function_ui_description(func, "Add an a new enum item");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_string(func, "name", nullptr, MAX_NAME, "Name", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return value */

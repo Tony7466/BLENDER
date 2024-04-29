@@ -172,6 +172,18 @@ inline typename Accessor::ItemT *add_item_with_socket_and_name(
 }
 
 /**
+ * Add a new item at the end with the given name.
+ */
+template<typename Accessor>
+inline typename Accessor::ItemT *add_item_with_name(bNode &node, const char *name)
+{
+  using ItemT = typename Accessor::ItemT;
+  ItemT &new_item = detail::add_item_to_array<Accessor>(node);
+  Accessor::init_with_name(node, new_item, name);
+  return &new_item;
+}
+
+/**
  * Add a new item at the end.
  */
 template<typename Accessor> inline typename Accessor::ItemT *add_item(bNode &node)
