@@ -501,6 +501,7 @@ ccl_device
     ray.P = integrate_surface_ray_offset(kg, sd, sd->P, ray.D);
     ray.tmin = 0.0f;
     ray.tmax = FLT_MAX;
+    ray.time = INTEGRATOR_STATE(state, ray, time);
 
     /* Scene Intersection. */
     Intersection isect ccl_optional_struct_init;
@@ -581,15 +582,8 @@ ccl_device
           /* Evaluate emissive closure. */
           L = surface_shader_emission(&emission_sd);
 
-          ls.shader = emission_sd.shader;
-          ls.D = ray.D;
-          ls.t = isect.t;
-          ls.P = ray.P + ray.D * ls.t;
-          ls.object = isect.object;
-          ls.prim = isect.prim;
-          ls.lamp = LAMP_NONE;
-          ls.type = LIGHT_TRIANGLE;
-          ls.group = object_lightgroup(kg, ls.object);
+          triangle_light_sample_from_intersection(
+              kg, &isect, &emission_sd, ray.P, ray.D, ray.time, &ls);
 
           /* TODO(weizhen): PATH_RAY_MIS_SKIP?  */
           const bool has_mis = (emission_sd.type & PRIMITIVE_TRIANGLE) &&
@@ -655,6 +649,9 @@ ccl_device
       /* /\* TODO(weizhen): how to do background light pdf? *\/ */
     }
 
+    if (is_zero(L)) {
+      continue;
+    }
     bsdf_eval_mul(&bsdf_eval, L);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);

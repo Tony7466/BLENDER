@@ -302,6 +302,37 @@ ccl_device_forceinline bool triangle_light_sample_from_uv(KernelGlobals kg,
   return (ls->t > 0.0f);
 }
 
+ccl_device_inline void triangle_light_sample_from_intersection(
+    KernelGlobals kg,
+    ccl_private const Intersection *ccl_restrict isect,
+    ccl_private const ShaderData *sd,
+    const float3 ray_P,
+    const float3 ray_D,
+    const float time,
+    ccl_private LightSample *ccl_restrict ls)
+{
+  ls->shader = sd->shader;
+  ls->D = ray_D;
+  ls->t = isect->t;
+  ls->P = ray_P + ray_D * ls->t;
+  ls->object = isect->object;
+  ls->prim = isect->prim;
+  ls->lamp = LAMP_NONE;
+  ls->type = LIGHT_TRIANGLE;
+  ls->group = object_lightgroup(kg, ls->object);
+
+  /* Normal. */
+  float3 V[3];
+  triangle_world_space_vertices(kg, ls->object, ls->prim, time, V);
+  const float3 e0 = V[1] - V[0];
+  const float3 e1 = V[2] - V[0];
+  ls->Ng = safe_normalize(cross(e0, e1));
+  if (dot(ls->Ng, sd->wi) < 0.0f) {
+    /* TODO(weizhen): MIS. */
+    ls->Ng = -ls->Ng;
+  }
+}
+
 /* Find the ray segment lit by the triangle light. */
 ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
                                                         const float3 P,
