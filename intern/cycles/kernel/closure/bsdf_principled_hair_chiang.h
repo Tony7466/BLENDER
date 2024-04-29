@@ -187,7 +187,7 @@ ccl_device int bsdf_hair_chiang_setup(ccl_private ShaderData *sd, ccl_private Ch
   kernel_assert(isfinite_safe(bsdf->h));
 
   bsdf->N = Y;
-
+  bsdf->alpha = -bsdf->alpha;
   return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_HAS_TRANSMISSION;
 }
 
@@ -226,12 +226,13 @@ ccl_device_inline void hair_attenuation(
   Ap_energy[3] *= fac;
 }
 
-/* Given the tilt angle, generate the rotated theta_i for the different bounces. */
+/* Updates sin_theta_o and cos_theta_o to account for scale tilt for each bounce. */
 ccl_device_inline void hair_alpha_angles(float sin_theta_o,
                                          float cos_theta_o,
                                          float alpha,
                                          ccl_private float *angles)
 {
+
   float sin_1alpha = sinf(alpha);
   float cos_1alpha = cos_from_sin(sin_1alpha);
   float sin_2alpha = 2.0f * sin_1alpha * cos_1alpha;
@@ -349,8 +350,9 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
   kernel_assert(fabsf(dot(X, Y)) < 1e-3f);
   const float3 Z = safe_normalize(cross(X, Y));
 
+  /* wo in pbrt. */
   const float3 local_O = make_float3(
-      dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z)); /* wo in pbrt */
+      dot(sd->wi, X), dot(sd->wi, Y), dot(sd->wi, Z));
 
   const float sin_theta_o = local_O.x;
   const float cos_theta_o = cos_from_sin(sin_theta_o);
@@ -390,18 +392,18 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
     v *= 4.0f;
   }
 
-  float angles[6]; /* contains sinThetaOp and cosThetaOp for each ray bounce */
+  float angles[6];
   hair_alpha_angles(sin_theta_o, cos_theta_o, bsdf->alpha, angles);
-  float sintheta_temp_o = sin_theta_o;
-  float costheta_temp_o = cos_theta_o;
+  float sin_theta_o_tilted = sin_theta_o;
+  float cos_theta_o_tilted = cos_theta_o;
   if (p < 3) {
-    sintheta_temp_o = angles[2 * p];
-    costheta_temp_o = angles[2 * p + 1];
+    sin_theta_o_tilted = angles[2 * p];
+    cos_theta_o_tilted = angles[2 * p + 1];
   }
   rand.z = max(rand.z, 1e-5f);
   const float fac = 1.0f + v * logf(rand.z + (1.0f - rand.z) * expf(-2.0f / v)); /*cosTheta*/
-  float sin_theta_i = -fac * sintheta_temp_o +
-                      sin_from_cos(fac) * cosf(M_2PI_F * rand.y) * costheta_temp_o;
+  float sin_theta_i = -fac * sin_theta_o_tilted +
+                      sin_from_cos(fac) * cosf(M_2PI_F * rand.y) * cos_theta_o_tilted;
   float cos_theta_i = cos_from_sin(sin_theta_i);
 
   float phi;
@@ -434,7 +436,7 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
   /* Residual component (TRRT+). */
   {
     const float Mp = longitudinal_scattering(
-        sin_theta_i, cos_theta_i, sintheta_temp_o, costheta_temp_o, 4.0f * bsdf->v);
+        sin_theta_i, cos_theta_i, sin_theta_o, cos_theta_o, 4.0f * bsdf->v);
     const float Np = M_1_2PI_F;
     F += Ap[3] * Mp * Np;
     F_energy += Ap_energy[3] * Mp * Np;
