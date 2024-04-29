@@ -230,7 +230,7 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, reservoir->ls.u);
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
-    film_overwrite_pass_float(ptr++, reservoir->total_weight);
+    film_overwrite_pass_float(ptr, reservoir->total_weight);
   }
 
   if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
@@ -239,15 +239,10 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
 
     film_overwrite_pass_float(ptr++, sd->u);
     film_overwrite_pass_float(ptr++, sd->v);
-    film_overwrite_pass_float(ptr++, sd->ray_length);
     film_overwrite_pass_float(ptr++, (float)sd->type);
     film_overwrite_pass_float(ptr++, (float)sd->object);
     film_overwrite_pass_float(ptr++, (float)sd->prim);
-    film_overwrite_pass_float(ptr++, (float)sd->lcg_state);
-    film_overwrite_pass_float(ptr++, sd->time);
-    film_overwrite_pass_float(ptr++, sd->dP);
-    film_overwrite_pass_float(ptr++, sd->dI);
-    film_overwrite_pass_float3(ptr, sd->wi);
+    film_overwrite_pass_float(ptr, (float)sd->lcg_state);
   }
 }
 

@@ -367,7 +367,7 @@ PassInfo Pass::get_info(const PassType type, const bool include_albedo, const bo
       pass_info.num_components = 5;
       break;
     case PASS_SURFACE_DATA:
-      pass_info.num_components = 14;
+      pass_info.num_components = 7;
       break;
   }
 

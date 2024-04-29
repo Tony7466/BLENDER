@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "kernel/integrator/state_util.h"
 #include "kernel/util/differential.h"
 
 CCL_NAMESPACE_BEGIN
@@ -394,6 +395,7 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
 /* TODO(weizhen): mostly copied from `shader_setup_from_ray()`, the original function requires
  * `isect` in many places, but they are also available in `sd`, can probably reuse. */
 ccl_device_inline void shader_setup_from_restir(KernelGlobals kg,
+                                                const ccl_private Ray *ccl_restrict ray,
                                                 ccl_private ShaderData *ccl_restrict sd)
 {
   sd->object_flag = kernel_data_fetch(object_flag, sd->object);
@@ -428,7 +430,7 @@ ccl_device_inline void shader_setup_from_restir(KernelGlobals kg,
   sd->flag = kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
 
   /* backfacing test */
-  bool backfacing = (dot(sd->Ng, sd->wi) < 0.0f);
+  bool backfacing = (dot(sd->Ng, -ray->D) < 0.0f);
 
   if (backfacing) {
     sd->flag |= SD_BACKFACING;
@@ -440,10 +442,15 @@ ccl_device_inline void shader_setup_from_restir(KernelGlobals kg,
 #endif
   }
 
+  /* Setup from ray. */
+  sd->ray_length = len(ray->P - sd->P);
+  sd->wi = -ray->D;
+  sd->time = ray->time;
+
 #ifdef __RAY_DIFFERENTIALS__
   /* differentials */
-  /*   sd->dP = differential_transfer_compact(ray->dP, ray->D, ray->dD, sd->ray_length); */
-  /*   sd->dI = differential_incoming_compact(ray->dD); */
+  sd->dP = differential_transfer_compact(ray->dP, ray->D, ray->dD, sd->ray_length);
+  sd->dI = differential_incoming_compact(ray->dD);
   differential_dudv_compact(&sd->du, &sd->dv, sd->dPdu, sd->dPdv, sd->dP, sd->Ng);
 #endif
 }

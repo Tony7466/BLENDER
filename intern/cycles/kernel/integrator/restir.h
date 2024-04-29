@@ -23,7 +23,7 @@ struct SpatialResampling {
   }
 
   /* Get neighbors in a square. */
-  uint get_next_neighbor(const float2 rand)
+  uint3 get_next_neighbor(const float2 rand)
   {
     const float2 offset = floor(rand * radius + 0.5f);
 
@@ -33,10 +33,10 @@ struct SpatialResampling {
     if (x < tile->min_x || x > tile->max_x || y < tile->min_y || y > tile->max_y) {
       /* TODO(weizhen): this is wasting samples, but can we do better? For example overscan? */
       /* Out of bound. */
-      return -1;
+      return make_uint3(x, y, -1);
     }
 
-    return get_render_pixel_index(x, y);
+    return make_uint3(x, y, get_render_pixel_index(x, y));
   }
 
   static bool is_valid_neighbor(const ccl_private ShaderData *sd,
@@ -55,6 +55,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   int i = 0;
   /* TODO(weizhen): this works for diffuse surfaces. For specular, probably `sd->wi` is needed
    * instead. */
+  /* TODO(weizhen): compress the data. */
   reservoir->ls.object = (int)buffer[i++];
   if (reservoir->ls.object == OBJECT_NONE) {
     /* Analytic light. */
@@ -80,21 +81,15 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
 
   *path_flag = (uint32_t)buffer[i++];
 
-  /* TODO(weizhen): `ShaderData` requires quite some storage for now, but we can use
-   `ray_length`, `lcg_state`, `time`, and `wi` from state. We can also compress the data, and add
-   a separate pass for it. */
+  /* TODO(weizhen): compress the data. */
   sd->u = buffer[i++];
   sd->v = buffer[i++];
-  sd->ray_length = buffer[i++];
   sd->type = (uint)buffer[i++];
   sd->object = (int)buffer[i++];
   sd->prim = (int)buffer[i++];
   /* TODO(weizhen): only Huang Hair BSDF needs LCG now. Can we find a way to remove the usage? */
-  sd->lcg_state = (uint)buffer[i++];
-  sd->time = buffer[i++];
-  sd->dP = buffer[i++];
-  sd->dI = buffer[i++];
-  sd->wi = make_float3(buffer[i], buffer[i + 1], buffer[i + 2]);
+  /* TODO(weizhen): check if we can compute `lcg_state` after we support curve. */
+  sd->lcg_state = (uint)buffer[i];
 
   /* (TODO): do I need to write to this? */
   // sd->closure_transparent_extinction;
@@ -145,16 +140,30 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   integrator_restir_unpack_shader(kg, sd, path_flag, render_pixel_index, render_buffer);
 }
 
+ccl_device_inline void ray_setup(KernelGlobals kg,
+                                 ConstIntegratorState state,
+                                 ccl_private Ray *ccl_restrict ray,
+                                 const uint3 render_pixel_index)
+{
+  /* TODO(weizhen): for adaptive sampling maybe the sample is not the same? */
+  const int x = render_pixel_index.x;
+  const int y = render_pixel_index.y;
+  const int sample = INTEGRATOR_STATE(state, path, sample);
+  const uint rng_pixel = path_rng_pixel_init(kg, sample, x, y);
+  integrate_camera_sample(kg, sample, x, y, rng_pixel, ray);
+}
+
 /* TODO(weizhen): move these radiance function to somewhere else. */
 ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
                                                           ConstIntegratorState state,
                                                           ccl_private ShaderData *sd,
+                                                          const ccl_private Ray *ccl_restrict ray,
                                                           const uint32_t path_flag,
                                                           ccl_global float *ccl_restrict
                                                               render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SURFACE_DATA_SETUP);
-  shader_setup_from_restir(kg, sd);
+  shader_setup_from_restir(kg, ray, sd);
 
   PROFILING_EVENT(PROFILING_RESTIR_SHADER_SETUP);
   /* TODO(weizhen): what features are needed here? Is this the right state? */
@@ -203,7 +212,9 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     return false;
   }
 
-  shader_data_setup_from_restir(kg, state, &sd, path_flag, render_buffer);
+  Ray ray;
+  integrator_state_read_ray(state, &ray);
+  shader_data_setup_from_restir(kg, state, &sd, &ray, path_flag, render_buffer);
 
   /* Load random number state. */
   RNGState rng_state;
@@ -230,7 +241,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     /* Always put the current sample in the reservoir. */
     const uint neighbor_pixel_index = (i == 0) ?
                                           INTEGRATOR_STATE(state, path, render_pixel_index) :
-                                          spatial_resampling.get_next_neighbor(rand_neighbor);
+                                          spatial_resampling.get_next_neighbor(rand_neighbor).z;
 
     if (neighbor_pixel_index == -1) {
       continue;
@@ -276,9 +287,9 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     const float2 rand_neighbor =
         path_branched_rng_2D(kg, &rng_state, i, samples, PRNG_SPATIAL_RESAMPLING) * 2.0f - 1.0f;
 
-    const uint neighbor_pixel_index = spatial_resampling.get_next_neighbor(rand_neighbor);
+    const uint3 neighbor_pixel_index = spatial_resampling.get_next_neighbor(rand_neighbor);
 
-    if (neighbor_pixel_index == -1) {
+    if (neighbor_pixel_index.z == -1) {
       continue;
     }
 
@@ -289,14 +300,17 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                        &neighbor_reservoir,
                                        &neighbor_sd,
                                        &neighbor_path_flag,
-                                       neighbor_pixel_index,
+                                       neighbor_pixel_index.z,
                                        render_buffer);
 
     if (!SpatialResampling::is_valid_neighbor(&sd, &neighbor_sd)) {
       continue;
     }
 
-    shader_data_setup_from_restir(kg, state, &neighbor_sd, neighbor_path_flag, render_buffer);
+    /* Setup neighboring ray from the camera. */
+    ray_setup(kg, state, &ray, neighbor_pixel_index);
+    shader_data_setup_from_restir(
+        kg, state, &neighbor_sd, &ray, neighbor_path_flag, render_buffer);
 
     /* Evaluate picked sample from neighboring shading points. */
     LightSample picked_ls = reservoir.ls;
