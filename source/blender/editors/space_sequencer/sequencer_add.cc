@@ -965,7 +965,7 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 /** Sets `channel` and `frame_start` properties when the operator likely to be called from
- * drag-n-drop. */
+ * drag-and-drop. */
 static void sequencer_file_drop_chanel_frame_set(bContext *C, wmOperator *op, const wmEvent *event)
 {
   if (!((RNA_struct_property_is_set(op->ptr, "files") &&
