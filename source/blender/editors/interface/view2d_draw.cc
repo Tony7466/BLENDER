@@ -377,8 +377,7 @@ static void draw_vertical_scale_indicators(const ARegion *region,
   BLF_batch_draw_begin();
 
   BLF_enable(font_id, BLF_SHADOW);
-  const float shadow_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-  BLF_shadow(font_id, 5, shadow_color);
+  BLF_shadow_auto_color(font_id, 5);
   BLF_shadow_offset(font_id, 1, -1);
 
   const float x_offset = 8.0f;

@@ -66,12 +66,12 @@ void BLF_draw_default_shadowed(float x, float y, float z, const char *str, const
   BLF_size(global_font_default, global_font_size * UI_SCALE_FAC);
 
   BLF_enable(global_font_default, BLF_SHADOW);
-  BLF_shadow(global_font_default, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+  BLF_shadow_auto_color(global_font_default, 5);
   BLF_shadow_offset(global_font_default, 0, 0);
   BLF_position(global_font_default, x, y, z);
   BLF_draw(global_font_default, str, str_len);
 
-  BLF_shadow(global_font_default, 3, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
+  BLF_shadow_auto_color(global_font_default, 3);
   BLF_shadow_offset(global_font_default, 1, -1);
   BLF_draw(global_font_default, str, str_len);
   BLF_disable(global_font_default, BLF_SHADOW);

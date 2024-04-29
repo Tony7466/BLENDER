@@ -857,6 +857,26 @@ void BLF_shadow(int fontid, int level, const float rgba[4])
   }
 }
 
+void BLF_shadow_auto_color(int fontid, int level)
+{
+  FontBLF *font = blf_get(fontid);
+
+  if (font) {
+    font->shadow = level;
+    /* We don't need full color space awareness in luma calculation; just to
+     * know if text color is "dark". So a simple RGB average will do. */
+    int luma = (int(font->color[0]) + font->color[1] + font->color[2]) / 3;
+    constexpr uchar fade_start = 128;
+    constexpr uchar fade_end = 64;
+    int shadow = 255 - (luma - fade_start) * 256 / (fade_end - fade_start);
+    shadow = clamp_i(shadow, 0, 255);
+    font->shadow_color[0] = 0;
+    font->shadow_color[1] = 0;
+    font->shadow_color[2] = 0;
+    font->shadow_color[3] = shadow;
+  }
+}
+
 void BLF_shadow_offset(int fontid, int x, int y)
 {
   FontBLF *font = blf_get(fontid);

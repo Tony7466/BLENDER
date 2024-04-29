@@ -275,6 +275,13 @@ void BLF_disable(int fontid, int option);
 void BLF_shadow(int fontid, int level, const float rgba[4]) ATTR_NONNULL(3);
 
 /**
+ * Similar to #BLF_shadow but uses black shadow color
+ * when text color is bright enough, and fades the shadow
+ * out as text color becomes darker.
+ */
+void BLF_shadow_auto_color(int fontid, int level);
+
+/**
  * Set the offset for shadow text, this is the current cursor
  * position plus this offset, don't need call BLF_position before
  * this function, the current position is calculate only on
