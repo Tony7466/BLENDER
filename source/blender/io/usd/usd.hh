@@ -25,6 +25,24 @@ struct GeometrySet;
 
 namespace blender::io::usd {
 
+typedef enum USD_global_forward_axis {
+  USD_GLOBAL_FORWARD_X = 0,
+  USD_GLOBAL_FORWARD_Y = 1,
+  USD_GLOBAL_FORWARD_Z = 2,
+  USD_GLOBAL_FORWARD_MINUS_X = 3,
+  USD_GLOBAL_FORWARD_MINUS_Y = 4,
+  USD_GLOBAL_FORWARD_MINUS_Z = 5
+} USD_global_forward_axis;
+
+typedef enum USD_global_up_axis {
+  USD_GLOBAL_UP_X = 0,
+  USD_GLOBAL_UP_Y = 1,
+  USD_GLOBAL_UP_Z = 2,
+  USD_GLOBAL_UP_MINUS_X = 3,
+  USD_GLOBAL_UP_MINUS_Y = 4,
+  USD_GLOBAL_UP_MINUS_Z = 5
+} USD_global_up_axis;
+
 /**
  * Behavior when the name of an imported material
  * conflicts with an existing material.
@@ -97,6 +115,9 @@ struct USDExportParams {
   bool relative_paths = true;
   bool export_custom_properties = true;
   bool author_blender_name = true;
+  bool convert_orientation = false;
+  enum USD_global_forward_axis forward_axis = USD_global_forward_axis::USD_GLOBAL_FORWARD_MINUS_Z;
+  enum USD_global_up_axis up_axis = USD_global_up_axis::USD_GLOBAL_UP_Y;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
