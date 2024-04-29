@@ -143,14 +143,14 @@ float shadow_punctual_frustum_padding_get(LightData light)
 }
 
 /**
- * Returns the LOD for a given shadow space position.
+ * Returns the ratio of radius between shadow map pixels and screen pixels.
  * `distance_to_camera` is Z distance to the camera origin.
  */
-float shadow_punctual_level_fractional(LightData light,
-                                       vec3 lP,
-                                       bool is_perspective,
-                                       float distance_to_camera,
-                                       float film_pixel_radius)
+float shadow_punctual_pixel_ratio(LightData light,
+                                  vec3 lP,
+                                  bool is_perspective,
+                                  float distance_to_camera,
+                                  float film_pixel_radius)
 {
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
@@ -167,6 +167,21 @@ float shadow_punctual_level_fractional(LightData light,
   float shadow_footprint = shadow_pixel_footprint * distance_to_light;
   /* TODO(fclem): Ideally, this should be modulated by N.L. */
   float ratio = shadow_footprint / film_footprint;
+  return ratio;
+}
+
+/**
+ * Returns the LOD for a given shadow space position.
+ * `distance_to_camera` is Z distance to the camera origin.
+ */
+float shadow_punctual_level_fractional(LightData light,
+                                       vec3 lP,
+                                       bool is_perspective,
+                                       float distance_to_camera,
+                                       float film_pixel_radius)
+{
+  float ratio = shadow_punctual_pixel_ratio(
+      light, lP, is_perspective, distance_to_camera, film_pixel_radius);
   /* Note: Bias by one to counteract the ceil in the `int` variant. This is done because this
    * function should return an upper bound. */
   float lod = -log2(ratio) - 1.0 + light.lod_bias;

@@ -454,13 +454,16 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
     }
   }
   else {
-    float lod = shadow_punctual_level_fractional(light,
-                                                 lP,
-                                                 drw_view_is_perspective(),
-                                                 drw_view_z_distance(P),
-                                                 uniform_buf.shadow.film_pixel_radius);
+    /* Simplification of `coverage_get(shadow_punctual_level_fractional)`. */
+    scale = shadow_punctual_pixel_ratio(light,
+                                        lP,
+                                        drw_view_is_perspective(),
+                                        drw_view_z_distance(P),
+                                        uniform_buf.shadow.film_pixel_radius);
     /* This gives the size of pixels at Z = 1. */
-    scale = exp2(lod) * shadow_punctual_frustum_padding_get(light);
+    scale = 1.0 / scale;
+    scale *= exp2(-1.0 + light.lod_bias);
+    scale = clamp(scale, float(1 << 0), float(1 << SHADOW_TILEMAP_LOD));
     /* Now scale by distance to the light. */
     scale *= reduce_max(abs(lP));
   }
