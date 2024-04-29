@@ -42,6 +42,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
@@ -1347,7 +1348,31 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   BLI_SCOPED_DEFER([&]() { socket_type.destruct(socket_value); });
 
   if (socket_type.is<int>()) {
-    ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
+    const int socket_value_i = *static_cast<int *>(socket_value);
+    if (socket.type == SOCK_MENU) {
+      auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
+      if (!socket_storage->enum_items) {
+        return;
+      }
+      if (socket_storage->has_conflict()) {
+        return;
+      }
+      const bke::RuntimeNodeEnumItems &enum_items = *socket_storage->enum_items;
+      StringRef name;
+      for (const bke::RuntimeNodeEnumItem &item : enum_items.items) {
+        if (item.identifier == socket_value_i) {
+          name = item.name;
+          break;
+        }
+      }
+      if (name.is_empty()) {
+        return;
+      }
+      ss << fmt::format(TIP_("{} (Menu)"), name);
+    }
+    else {
+      ss << fmt::format(TIP_("{} (Integer)"), socket_value_i);
+    }
   }
   else if (socket_type.is<float>()) {
     const float float_value = *static_cast<float *>(socket_value);
