@@ -128,41 +128,43 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
   /* Cube quaternion: get all drivers. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &cube_ptr, cube_quaternion_prop, true, -1, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
     EXPECT_EQ(drivers.size(), 4);
 
-    EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.0"), 0);
-    EXPECT_TRUE(drivers[1] != nullptr);
-    EXPECT_EQ(strcmp(drivers[1]->driver->expression, "1.0"), 0);
+    EXPECT_NE(drivers[0], nullptr);
+    EXPECT_NE(drivers[1], nullptr);
     EXPECT_EQ(drivers[2], nullptr);
     EXPECT_EQ(drivers[3], nullptr);
+
+    EXPECT_STREQ(drivers[0]->driver->expression, "0.0");
+    EXPECT_STREQ(drivers[1]->driver->expression, "1.0");
   }
 
   /* Cube quaternion: get first element driver. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &cube_ptr, cube_quaternion_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
     EXPECT_EQ(drivers.size(), 4);
 
-    EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.0"), 0);
+    EXPECT_NE(drivers[0], nullptr);
     EXPECT_EQ(drivers[1], nullptr);
     EXPECT_EQ(drivers[2], nullptr);
     EXPECT_EQ(drivers[3], nullptr);
+
+    EXPECT_STREQ(drivers[0]->driver->expression, "0.0");
   }
 
   /* Cube quaternion: try to get fourth element driver. Since there is none, we
    * should get back an empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &cube_ptr, cube_quaternion_prop, false, 3, &is_array_prop);
 
     EXPECT_EQ(drivers.size(), 0);
@@ -172,7 +174,7 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
    * empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &cube_ptr, cube_rotation_mode_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(drivers.size(), 0);
@@ -181,42 +183,44 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
   /* Suzanne quaternion: get all drivers. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &suzanne_ptr, suzanne_quaternion_prop, true, -1, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
     EXPECT_EQ(drivers.size(), 4);
 
-    EXPECT_TRUE(drivers[0] != nullptr);
+    EXPECT_NE(drivers[0], nullptr);
     EXPECT_EQ(drivers[1], nullptr);
-    EXPECT_TRUE(drivers[2] != nullptr);
-    EXPECT_TRUE(drivers[3] != nullptr);
+    EXPECT_NE(drivers[2], nullptr);
+    EXPECT_NE(drivers[3], nullptr);
 
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.5"), 0);
-    EXPECT_EQ(strcmp(drivers[2]->driver->expression, "2.5"), 0);
-    EXPECT_EQ(strcmp(drivers[3]->driver->expression, "3.5"), 0);
+    EXPECT_STREQ(drivers[0]->driver->expression, "0.5");
+    EXPECT_STREQ(drivers[2]->driver->expression, "2.5");
+    EXPECT_STREQ(drivers[3]->driver->expression, "3.5");
   }
 
   /* Suzanne quaternion: get first element driver. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &suzanne_ptr, suzanne_quaternion_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
     EXPECT_EQ(drivers.size(), 4);
 
-    EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.5"), 0);
+    EXPECT_NE(drivers[0], nullptr);
     EXPECT_EQ(drivers[1], nullptr);
     EXPECT_EQ(drivers[2], nullptr);
+    EXPECT_EQ(drivers[3], nullptr);
+
+    EXPECT_STREQ(drivers[0]->driver->expression, "0.5");
   }
 
   /* Suzanne quaternion: get second element driver. Since there is none, we
    * should get back an empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &suzanne_ptr, suzanne_quaternion_prop, false, 1, &is_array_prop);
 
     EXPECT_EQ(drivers.size(), 0);
@@ -225,12 +229,12 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
   /* Suzanne rotation mode: get driver. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
+    Vector<FCurve *> drivers = internal::get_property_drivers(
         &suzanne_ptr, suzanne_rotation_mode_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, false);
     EXPECT_EQ(drivers.size(), 1);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "4"), 0);
+    EXPECT_STREQ(drivers[0]->driver->expression, "4");
   }
 }
 
@@ -247,42 +251,39 @@ TEST_F(CopyDriversToSelected, paste_property_drivers)
    */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> suzanne_location_drivers =
-        blender::interface::internal::get_property_drivers(
-            &suzanne_ptr, suzanne_quaternion_prop, true, -1, &is_array_prop);
+    Vector<FCurve *> suzanne_location_drivers = internal::get_property_drivers(
+        &suzanne_ptr, suzanne_quaternion_prop, true, -1, &is_array_prop);
 
-    blender::interface::internal::paste_property_drivers(
+    internal::paste_property_drivers(
         suzanne_location_drivers.as_span(), is_array_prop, &cube_ptr, cube_quaternion_prop);
 
-    blender::Vector<FCurve *> cube_location_drivers =
-        blender::interface::internal::get_property_drivers(
-            &cube_ptr, cube_quaternion_prop, true, -1, &is_array_prop);
+    Vector<FCurve *> cube_location_drivers = internal::get_property_drivers(
+        &cube_ptr, cube_quaternion_prop, true, -1, &is_array_prop);
 
-    EXPECT_TRUE(cube_location_drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(cube_location_drivers[0]->driver->expression, "0.5"), 0);
-    EXPECT_TRUE(cube_location_drivers[1] != nullptr);
-    EXPECT_EQ(strcmp(cube_location_drivers[1]->driver->expression, "1.0"), 0);
-    EXPECT_TRUE(cube_location_drivers[2] != nullptr);
-    EXPECT_EQ(strcmp(cube_location_drivers[2]->driver->expression, "2.5"), 0);
+    EXPECT_NE(cube_location_drivers[0], nullptr);
+    EXPECT_NE(cube_location_drivers[1], nullptr);
+    EXPECT_NE(cube_location_drivers[2], nullptr);
     EXPECT_EQ(cube_location_drivers[3], nullptr);
+
+    EXPECT_STREQ(cube_location_drivers[0]->driver->expression, "0.5");
+    EXPECT_STREQ(cube_location_drivers[1]->driver->expression, "1.0");
+    EXPECT_STREQ(cube_location_drivers[2]->driver->expression, "2.5");
   }
 
   /* Copy the rotation_mode driver from Suzanne to Cube. */
   {
     bool is_array_prop;
-    blender::Vector<FCurve *> suzanne_rotation_mode_driver =
-        blender::interface::internal::get_property_drivers(
-            &suzanne_ptr, suzanne_rotation_mode_prop, false, 0, &is_array_prop);
+    Vector<FCurve *> suzanne_rotation_mode_driver = internal::get_property_drivers(
+        &suzanne_ptr, suzanne_rotation_mode_prop, false, 0, &is_array_prop);
 
-    blender::interface::internal::paste_property_drivers(
+    internal::paste_property_drivers(
         suzanne_rotation_mode_driver.as_span(), is_array_prop, &cube_ptr, cube_rotation_mode_prop);
 
-    blender::Vector<FCurve *> cube_rotation_mode_drivers =
-        blender::interface::internal::get_property_drivers(
-            &cube_ptr, cube_rotation_mode_prop, false, 0, &is_array_prop);
+    Vector<FCurve *> cube_rotation_mode_drivers = internal::get_property_drivers(
+        &cube_ptr, cube_rotation_mode_prop, false, 0, &is_array_prop);
 
-    EXPECT_TRUE(cube_rotation_mode_drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(cube_rotation_mode_drivers[0]->driver->expression, "4"), 0);
+    EXPECT_NE(cube_rotation_mode_drivers[0], nullptr);
+    EXPECT_STREQ(cube_rotation_mode_drivers[0]->driver->expression, "4");
   }
 }
 
