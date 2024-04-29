@@ -1800,9 +1800,9 @@ static void rna_def_strip_proxy(BlenderRNA *brna)
        "Record Run",
        "Use for normal playback. Seek based on timestamps read from movie stream"},
       {SEQ_PROXY_TC_RECORD_RUN_NO_GAPS,
-       "FREE_RUN_NO_GAPS",
+       "RECORD_RUN_NO_GAPS",
        0,
-       "Free Run No Gaps",
+       "Record Run No Gaps",
        "This timecode causes each frame procuces new image. This may break AV sync, change "
        "apparent movie frame rate and change it's length"},
       {0, nullptr, 0, nullptr, nullptr},

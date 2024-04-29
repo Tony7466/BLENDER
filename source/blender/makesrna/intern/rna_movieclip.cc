@@ -156,7 +156,7 @@ static void rna_def_movieclip_proxy(BlenderRNA *brna)
       {IMB_TC_RECORD_RUN_NO_GAPS,
        "FREE_RUN_NO_GAPS",
        0,
-       "Free Run No Gaps",
+       "Record Run No Gaps",
        "This timecode causes each frame procuces new image. This may break AV sync, change "
        "apparent movie frame rate and change it's length"},
       {0, nullptr, 0, nullptr, nullptr},
