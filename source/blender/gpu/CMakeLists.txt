@@ -214,10 +214,12 @@ set(VULKAN_SRC
   vulkan/vk_memory.cc
   vulkan/vk_memory_layout.cc
   vulkan/vk_pipeline.cc
+  vulkan/vk_pipeline_pool.cc
   vulkan/vk_pipeline_state.cc
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
+  vulkan/render_graph/nodes/vk_pipeline_data.cc
   vulkan/render_graph/vk_command_buffer_wrapper.cc
   vulkan/render_graph/vk_command_builder.cc
   vulkan/render_graph/vk_resource_access_info.cc
@@ -263,6 +265,7 @@ set(VULKAN_SRC
   vulkan/vk_memory.hh
   vulkan/vk_memory_layout.hh
   vulkan/vk_pipeline.hh
+  vulkan/vk_pipeline_pool.hh
   vulkan/vk_pipeline_state.hh
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
@@ -566,6 +569,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_particle_info.glsl
   shaders/material/gpu_shader_material_point_info.glsl
   shaders/material/gpu_shader_material_principled.glsl
+  shaders/material/gpu_shader_material_ray_portal.glsl
   shaders/material/gpu_shader_material_refraction.glsl
   shaders/material/gpu_shader_material_rgb_to_bw.glsl
   shaders/material/gpu_shader_material_separate_color.glsl
