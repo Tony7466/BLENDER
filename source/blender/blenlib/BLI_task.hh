@@ -68,7 +68,7 @@ inline void parallel_for_each(Range &&range, const Function &function)
 /**
  * Specifies how large the individual tasks are relative to each other. It's common that all tasks
  * have a very similar size in which case one can just ignore this. However, sometimes tasks have
- * very different sizes and it makes sense for the scheduler to e.g. group fewer big tasks and many
+ * very different sizes and it makes sense for the scheduler to group fewer big tasks and many
  * small tasks together.
  */
 class TaskSizeHints {
