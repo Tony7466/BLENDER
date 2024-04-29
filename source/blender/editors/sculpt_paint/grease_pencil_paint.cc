@@ -199,33 +199,35 @@ struct PaintOperationExecutor {
       return;
     }
 
-    const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
-    const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
-
     curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
-    curves.offsets_for_write().first() = 0;
-    for (const int src_curve : temporal_copy.curves_range()) {
-      curves.offsets_for_write()[src_curve + 1] = temporal_copy.offsets()[src_curve] + 1;
+    MutableSpan<int> offsets = curves.offsets_for_write();
+    offsets.first() = 0;
+
+    /* Loop through backwards to not overwrite the data. */
+    for (int i = curves.curves_num() - 2; i >= 0; i--) {
+      offsets[i + 1] = offsets[i] + 1;
     }
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-    copy_attributes_group_to_group(src_attributes,
-                                   bke::AttrDomain::Point,
-                                   {},
-                                   {},
-                                   Span<int>{0, curves.points_num() - 1},
-                                   Span<int>{1, curves.points_num()},
-                                   IndexMask(IndexRange(1)),
-                                   attributes);
-    copy_attributes_group_to_group(src_attributes,
-                                   bke::AttrDomain::Curve,
-                                   {},
-                                   {},
-                                   Span<int>{0, curves.curves_num() - 1},
-                                   Span<int>{1, curves.curves_num()},
-                                   IndexMask(IndexRange(1)),
-                                   attributes);
+    attributes.for_all(
+        [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
+          bke::GSpanAttributeWriter dst = attributes.lookup_for_write_span(id);
+
+          GMutableSpan attribute_data = dst.span;
+
+          bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+            using T = decltype(dummy);
+            MutableSpan<T> span_data = attribute_data.typed<T>();
+
+            /* Loop through backwards to not overwrite the data. */
+            for (int i = span_data.size() - 2; i >= 0; i--) {
+              span_data[i + 1] = span_data[i];
+            }
+          });
+          dst.finish();
+          return true;
+        });
   }
 
   static void extend_curve(bke::CurvesGeometry &curves,
@@ -238,29 +240,38 @@ struct PaintOperationExecutor {
       return;
     }
 
-    const int active_curve = curves.curves_range().first();
-    const int last_active_point = curves.points_by_curve()[active_curve].last();
+    const int last_active_point = curves.points_by_curve()[0].last();
 
-    const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
-    const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
+    curves.resize(curves.points_num() + new_points_num, curves.curves_num());
+    MutableSpan<int> offsets = curves.offsets_for_write();
 
-    curves.resize(temporal_copy.points_num() + new_points_num, temporal_copy.curves_num());
-    for (const int src_curve : temporal_copy.curves_range().drop_front(1)) {
-      curves.offsets_for_write()[src_curve] = temporal_copy.offsets()[src_curve] + new_points_num;
+    for (const int src_curve : curves.curves_range().drop_front(1)) {
+      offsets[src_curve] = offsets[src_curve] + new_points_num;
     }
-    curves.offsets_for_write().last() = curves.points_num();
+    offsets.last() = curves.points_num();
 
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-    copy_attributes_group_to_group(
-        src_attributes,
-        bke::AttrDomain::Point,
-        {},
-        {},
-        Span<int>{last_active_point, curves.points_num() - new_points_num},
-        Span<int>{last_active_point + new_points_num, curves.points_num()},
-        IndexMask(IndexRange(1)),
-        attributes);
+    attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+      if (meta_data.domain != bke::AttrDomain::Point) {
+        return true;
+      }
+
+      bke::GSpanAttributeWriter dst = attributes.lookup_for_write_span(id);
+      GMutableSpan attribute_data = dst.span;
+
+      bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        MutableSpan<T> span_data = attribute_data.typed<T>();
+
+        /* Loop through backwards to not overwrite the data. */
+        for (int i = (span_data.size() - 1) - new_points_num; i >= last_active_point; i--) {
+          span_data[i + new_points_num] = span_data[i];
+        }
+      });
+      dst.finish();
+      return true;
+    });
 
     curves.tag_topology_changed();
   }
@@ -743,29 +754,39 @@ static void remove_points_from_end_of_active_curve(bke::CurvesGeometry &curves,
     return;
   }
 
-  const int active_curve = curves.curves_range().first();
-  const int last_active_point = curves.points_by_curve()[active_curve].last();
-
-  const bke::CurvesGeometry temporal_copy = bke::CurvesGeometry(curves);
-  const bke::AttributeAccessor src_attributes = temporal_copy.attributes();
-
-  curves.resize(temporal_copy.points_num() - rem_points_num, temporal_copy.curves_num());
-  for (const int src_curve : temporal_copy.curves_range().drop_front(1)) {
-    curves.offsets_for_write()[src_curve] = temporal_copy.offsets()[src_curve] - rem_points_num;
-  }
-  curves.offsets_for_write().last() = curves.points_num();
-
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  const int last_active_point = curves.points_by_curve()[0].last();
 
-  copy_attributes_group_to_group(
-      src_attributes,
-      bke::AttrDomain::Point,
-      {},
-      {},
-      Span<int>{last_active_point, curves.points_num() + rem_points_num},
-      Span<int>{last_active_point - rem_points_num, curves.points_num()},
-      IndexMask(IndexRange(1)),
-      attributes);
+  /* Shift the data before resizing to not delete the data at the end. */
+  attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+    if (meta_data.domain != bke::AttrDomain::Point) {
+      return true;
+    }
+
+    bke::GSpanAttributeWriter dst = attributes.lookup_for_write_span(id);
+    GMutableSpan attribute_data = dst.span;
+
+    bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      MutableSpan<T> span_data = attribute_data.typed<T>();
+
+      for (int i = last_active_point - rem_points_num + 1;
+           i < curves.points_num() - rem_points_num;
+           i++)
+      {
+        span_data[i] = span_data[i + rem_points_num];
+      }
+    });
+    dst.finish();
+    return true;
+  });
+
+  curves.resize(curves.points_num() - rem_points_num, curves.curves_num());
+  MutableSpan<int> offsets = curves.offsets_for_write();
+  for (const int src_curve : curves.curves_range().drop_front(1)) {
+    offsets[src_curve] = offsets[src_curve] - rem_points_num;
+  }
+  offsets.last() = curves.points_num();
 
   curves.tag_topology_changed();
 }
