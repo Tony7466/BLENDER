@@ -744,7 +744,15 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                        1);
       }
 
-      if (!is_whole_array) {
+      if (is_whole_array) {
+        uiItemBooleanO(layout,
+                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Drivers to Selected"),
+                       ICON_NONE,
+                       "UI_OT_copy_driver_to_selected_button",
+                       "all",
+                       true);
+      }
+      else {
         uiItemO(layout,
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Driver"),
                 ICON_NONE,
@@ -775,14 +783,6 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                 CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Edit Driver"),
                 ICON_DRIVER,
                 "ANIM_OT_driver_button_edit");
-      }
-      else {
-        uiItemBooleanO(layout,
-                       CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Copy Drivers to Selected"),
-                       ICON_NONE,
-                       "UI_OT_copy_driver_to_selected_button",
-                       "all",
-                       true);
       }
 
       uiItemO(layout,
