@@ -562,6 +562,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "NOD_composite.hh"
 #  include "NOD_geo_bake.hh"
 #  include "NOD_geo_index_switch.hh"
+#  include "NOD_geo_menu_switch.hh"
 #  include "NOD_geo_repeat.hh"
 #  include "NOD_geo_simulation.hh"
 #  include "NOD_geometry.hh"
@@ -578,6 +579,7 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 
 using blender::nodes::BakeItemsAccessor;
 using blender::nodes::IndexSwitchItemsAccessor;
+using blender::nodes::MenuSwitchItemsAccessor;
 using blender::nodes::RepeatItemsAccessor;
 using blender::nodes::SimulationItemsAccessor;
 
@@ -3977,52 +3979,20 @@ static void rna_NodeEnumItem_name_set(PointerRNA *ptr, const char *value)
 }
 
 static NodeEnumItem *rna_NodeEnumDefinition_new(
-    ID *id, NodeEnumDefinition *enum_def, Main *bmain, ReportList *reports, const char *name)
+    ID *id, bNode *node, Main *bmain, ReportList *reports, const char *name)
 {
-  NodeEnumItem *item = enum_def->add_item(name);
+  auto *storage = static_cast<NodeMenuSwitch *>(node->storage);
+  NodeEnumItem *item = storage->enum_definition.add_item(name);
   if (item == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create enum item");
   }
   else {
     bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
+    BKE_ntree_update_tag_node_property(ntree, node);
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
     WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
   }
   return item;
-}
-
-static void rna_NodeEnumDefinition_remove(
-    ID *id, NodeEnumDefinition *enum_def, Main *bmain, ReportList *reports, NodeEnumItem *item)
-{
-  if (!enum_def->remove_item(*item)) {
-    BKE_reportf(reports, RPT_ERROR, "Unable to remove item '%s' from enum definition", item->name);
-  }
-  else {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-    rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-  }
-}
-
-static void rna_NodeEnumDefinition_clear(ID *id, NodeEnumDefinition *enum_def, Main *bmain)
-{
-  enum_def->clear();
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
-}
-
-static void rna_NodeEnumDefinition_move(
-    ID *id, NodeEnumDefinition *enum_def, Main *bmain, int from_index, int to_index)
-{
-  enum_def->move_item(from_index, to_index);
-  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  rna_NodeEnumDefinition_tag_changed(ntree, enum_def);
-  ED_node_tree_propagate_change(nullptr, bmain, ntree);
-  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
 static PointerRNA rna_NodeEnumDefinition_active_item_get(PointerRNA *ptr)
@@ -9692,7 +9662,7 @@ static void rna_def_node_enum_definition_items(BlenderRNA *brna)
   FunctionRNA *func;
 
   srna = RNA_def_struct(brna, "NodeEnumDefinitionItems", nullptr);
-  RNA_def_struct_sdna(srna, "NodeEnumDefinition");
+  RNA_def_struct_sdna(srna, "bNode");
   RNA_def_struct_ui_text(
       srna, "Enum Definition Items", "Collection of items that make up an enum");
 
@@ -9705,25 +9675,7 @@ static void rna_def_node_enum_definition_items(BlenderRNA *brna)
   parm = RNA_def_pointer(func, "item", "NodeEnumItem", "Item", "New item");
   RNA_def_function_return(func, parm);
 
-  func = RNA_def_function(srna, "remove", "rna_NodeEnumDefinition_remove");
-  RNA_def_function_ui_description(func, "Remove an item from this enum");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
-  parm = RNA_def_pointer(func, "item", "NodeEnumItem", "Item", "The item to remove");
-  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-
-  func = RNA_def_function(srna, "clear", "rna_NodeEnumDefinition_clear");
-  RNA_def_function_ui_description(func, "Remove all items from this enum");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-
-  func = RNA_def_function(srna, "move", "rna_NodeEnumDefinition_move");
-  RNA_def_function_ui_description(func, "Move an item to another position");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
-  parm = RNA_def_int(
-      func, "from_index", -1, 0, INT_MAX, "From Index", "Index of the item to move", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  rna_def_node_item_array_common_functions(srna, "NodeEnumItem", "MenuSwitchItemsAccessor");
 }
 
 static void rna_def_node_enum_definition(BlenderRNA *brna)
