@@ -543,8 +543,7 @@ void gpu::MTLTexture::update_sub(
 
     /* Ensure calculated total size isn't larger than remaining image data size. */
     if (is_compressed) {
-      /* Calculate size requirement for incoming compressed texture data.
-       * NOTE: All compressed textures are 2D. */
+      /* Calculate size requirement for incoming compressed texture data. */
       totalsize = ((expected_update_w + 3) / 4) * ((extent[1] + 3) / 4) * to_block_size(format_);
     }
     else {
