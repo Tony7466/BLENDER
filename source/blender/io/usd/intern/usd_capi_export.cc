@@ -32,6 +32,8 @@
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_image.h"
+#include "BKE_image_save.h"
 #include "BKE_lib_id.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -50,6 +52,7 @@ struct ExportJobData {
   Main *bmain;
   Depsgraph *depsgraph;
   wmWindowManager *wm;
+  Scene *scene;
 
   /** Unarchived_filepath is used for USDA/USDC/USD export. */
   char unarchived_filepath[FILE_MAX];
@@ -156,6 +159,75 @@ static void report_job_duration(const ExportJobData *data)
   std::cout << '\n';
 }
 
+static void process_usdz_textures(const ExportJobData *data, const char *path)
+{
+  const eUSDZTextureDownscaleSize enum_value = data->params.usdz_downscale_size;
+  if (enum_value == USD_TEXTURE_SIZE_KEEP) {
+    return;
+  }
+
+  int image_size = ((enum_value == USD_TEXTURE_SIZE_CUSTOM ?
+                         data->params.usdz_downscale_custom_size :
+                         enum_value));
+
+  image_size = image_size < 128 ? 128 : image_size;
+
+  char texture_path[4096];
+  BLI_strncpy_rlen(texture_path, path, 4096);
+  BLI_path_append(texture_path, 4096, "textures");
+  BLI_path_slash_ensure(texture_path, sizeof(texture_path));
+
+  struct direntry *entries;
+  unsigned int num_files = BLI_filelist_dir_contents(texture_path, &entries);
+
+  for (int index = 0; index < num_files; index++) {
+    /* We can skip checking extensions as this folder is only created
+     * when we're doing a USDZ export. */
+    if (!BLI_is_dir(entries[index].path)) {
+      Image *im = BKE_image_load(data->bmain, entries[index].path);
+      if (!im) {
+        std::cerr << "-- Unable to open file for downscaling: " << entries[index].path
+                  << std::endl;
+        continue;
+      }
+
+      int width, height;
+      BKE_image_get_size(im, NULL, &width, &height);
+      const int longest = width >= height ? width : height;
+      const float scale = 1.0 / ((float)longest / (float)image_size);
+
+      if (longest > image_size) {
+        const int width_adjusted = (float)width * scale;
+        const int height_adjusted = (float)height * scale;
+        BKE_image_scale(im, width_adjusted, height_adjusted, nullptr);
+
+        ImageSaveOptions opts;
+
+        if (BKE_image_save_options_init(&opts, data->bmain, data->scene, im, NULL, false, false)) {
+          bool result = BKE_image_save(NULL, data->bmain, im, NULL, &opts);
+          if (!result) {
+            std::cerr << "-- Unable to resave " << data->usdz_filepath
+                      << " (new size: " << width_adjusted << "x" << height_adjusted << ")"
+                      << std::endl;
+          }
+          else {
+            std::cout << "Downscaled " << entries[index].path << " to " << width_adjusted << "x"
+                      << height_adjusted << std::endl;
+          }
+        }
+
+        BKE_image_save_options_free(&opts);
+      }
+
+      /* Make sure to free the image so it doesn't stick
+       * around in the library of the open file. */
+      BKE_id_free(data->bmain, (void *)im);
+    }
+  }
+
+  BLI_filelist_free(entries, num_files);
+}
+
 /**
  * For usdz export, we must first create a usd/a/c file and then covert it to usdz. In Blender's
  * case, we first create a usdc file in Blender's temporary working directory, and store the path
@@ -184,6 +256,8 @@ static bool perform_usdz_conversion(const ExportJobData *data)
   BLI_assert(original_working_dir == original_working_dir_buff);
 
   BLI_change_working_dir(usdc_temp_dir);
+
+  process_usdz_textures(data, usdc_temp_dir);
 
   pxr::UsdUtilsCreateNewUsdzPackage(pxr::SdfAssetPath(usdc_file), usdz_file);
   BLI_change_working_dir(original_working_dir);
@@ -475,6 +549,7 @@ bool USD_export(bContext *C,
 
   job->bmain = CTX_data_main(C);
   job->wm = CTX_wm_manager(C);
+  job->scene = scene;
   job->export_ok = false;
   set_job_filepath(job, filepath);
 
