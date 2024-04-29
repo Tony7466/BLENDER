@@ -456,8 +456,8 @@ ccl_device
     }
     case CLOSURE_BSDF_RAY_PORTAL_ID: {
       Spectrum weight = closure_weight * mix_weight;
-      float3 position = stack_load_float3(stack, data_node.z);
-      float3 direction = stack_load_float3(stack, data_node.w);
+      float3 position = stack_load_float3(stack, data_node.y);
+      float3 direction = stack_load_float3(stack, data_node.z);
       if (is_zero(direction)) {
         direction = -sd->wi;
       }
