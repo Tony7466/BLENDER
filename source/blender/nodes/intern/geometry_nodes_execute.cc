@@ -213,6 +213,23 @@ static void id_property_int_update_enum_items(const bNodeSocketValueMenu *value,
   ui_data->enum_items_num = idprop_items_num;
 }
 
+static std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_name_or_value_prop(
+    const StringRefNull identifier,
+    ID *id,
+    const std::optional<ID_Type> id_type,
+    const bool use_name_for_ids)
+{
+  if (use_name_for_ids) {
+    return bke::idprop::create(identifier, id ? id->name + 2 : "");
+  }
+  auto prop = bke::idprop::create(identifier, id);
+  if (id_type) {
+    IDPropertyUIDataID *ui_data = (IDPropertyUIDataID *)IDP_ui_data_ensure(prop.get());
+    ui_data->id_type = *id_type;
+  }
+  return prop;
+}
+
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket, const bool use_name_for_ids)
 {
@@ -321,49 +338,32 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       const bNodeSocketValueObject *value = static_cast<const bNodeSocketValueObject *>(
           socket.socket_data);
       ID *id = reinterpret_cast<ID *>(value->value);
-      if (use_name_for_ids) {
-        return bke::idprop::create(identifier, id ? id->name + 2 : "");
-      }
-      auto property = bke::idprop::create(identifier, id);
-      IDPropertyUIDataID *ui_data = (IDPropertyUIDataID *)IDP_ui_data_ensure(property.get());
-      ui_data->id_type = ID_OB;
+      auto property = id_name_or_value_prop(identifier, id, ID_OB, use_name_for_ids);
       return property;
     }
     case SOCK_COLLECTION: {
       const bNodeSocketValueCollection *value = static_cast<const bNodeSocketValueCollection *>(
           socket.socket_data);
       ID *id = reinterpret_cast<ID *>(value->value);
-      if (use_name_for_ids) {
-        return bke::idprop::create(identifier, id ? id->name + 2 : "");
-      }
-      return bke::idprop::create(identifier, id);
+      return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
     }
     case SOCK_TEXTURE: {
       const bNodeSocketValueTexture *value = static_cast<const bNodeSocketValueTexture *>(
           socket.socket_data);
       ID *id = reinterpret_cast<ID *>(value->value);
-      if (use_name_for_ids) {
-        return bke::idprop::create(identifier, id ? id->name + 2 : "");
-      }
-      return bke::idprop::create(identifier, id);
+      return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
     }
     case SOCK_IMAGE: {
       const bNodeSocketValueImage *value = static_cast<const bNodeSocketValueImage *>(
           socket.socket_data);
       ID *id = reinterpret_cast<ID *>(value->value);
-      if (use_name_for_ids) {
-        return bke::idprop::create(identifier, id ? id->name + 2 : "");
-      }
-      return bke::idprop::create(identifier, id);
+      return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
     }
     case SOCK_MATERIAL: {
       const bNodeSocketValueMaterial *value = static_cast<const bNodeSocketValueMaterial *>(
           socket.socket_data);
       ID *id = reinterpret_cast<ID *>(value->value);
-      if (use_name_for_ids) {
-        return bke::idprop::create(identifier, id ? id->name + 2 : "");
-      }
-      return bke::idprop::create(identifier, id);
+      return id_name_or_value_prop(identifier, id, std::nullopt, use_name_for_ids);
     }
     case SOCK_MATRIX:
     case SOCK_CUSTOM:
