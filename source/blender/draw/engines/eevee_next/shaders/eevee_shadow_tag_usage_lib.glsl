@@ -116,11 +116,6 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float radius, int lod
                                   drw_view_z_distance(P),
                                   uniform_buf.shadow.film_pixel_radius);
   lod = clamp(lod + lod_bias, 0, SHADOW_TILEMAP_LOD);
-#ifdef GPU_COMPUTE_SHADER
-  if (all(equal(ivec2(gl_GlobalInvocationID.xy), ivec2(500)))) {
-    drw_print(lod);
-  }
-#endif
 
   if (radius == 0) {
     int face_id = shadow_punctual_face_index_get(lP);

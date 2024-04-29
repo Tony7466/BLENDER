@@ -167,7 +167,7 @@ float shadow_punctual_level_fractional(LightData light,
    * function should return an upper bound. */
   float lod = -log2(ratio) - 1.0 + light.lod_bias;
   lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
-  return 1.0;
+  return lod;
 }
 
 int shadow_punctual_level(LightData light,

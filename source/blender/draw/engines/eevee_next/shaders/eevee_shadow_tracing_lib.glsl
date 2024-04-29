@@ -515,11 +515,6 @@ ShadowEvalResult shadow_eval(LightData light,
 
   /* Shadow map texel radius at the receiver position. */
   float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
-#ifdef GPU_FRAGMENT_SHADER
-  if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
-    drw_print(texel_radius);
-  }
-#endif
 
   P += shadow_pcf_offset(light, is_directional, L, Ng, texel_radius, random_pcf_2d);
 
