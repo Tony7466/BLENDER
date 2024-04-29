@@ -50,6 +50,7 @@
 #include "ED_sequencer.hh"
 
 #include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #ifdef WITH_AUDASPACE
 #  include <AUD_Sequence.h>
@@ -963,8 +964,33 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
 
   return OPERATOR_FINISHED;
 }
+/** Sets `channel` and `frame_start` properties when the operator likely to be called from
+ * drag-n-drop. */
+static void sequencer_file_drop_chanel_frame_set(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (!((RNA_struct_property_is_set(op->ptr, "files") &&
+         !RNA_collection_is_empty(op->ptr, "files")) ||
+        RNA_struct_property_is_set(op->ptr, "filepath")))
+  {
 
-static int sequencer_add_movie_strip_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+    return;
+  }
+  if (RNA_struct_property_is_set(op->ptr, "channel") ||
+      RNA_struct_property_is_set(op->ptr, "frame_start"))
+  {
+    return;
+  }
+  ARegion *region = CTX_wm_region(C);
+  if (!region || region->regiontype != RGN_TYPE_WINDOW) {
+    return;
+  }
+  float frame_start, channel;
+  UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &frame_start, &channel);
+  RNA_int_set(op->ptr, "channel", int(channel));
+  RNA_int_set(op->ptr, "frame_start", int(frame_start));
+}
+
+static int sequencer_add_movie_strip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   PropertyRNA *prop;
   Scene *scene = CTX_data_scene(C);
@@ -979,6 +1005,7 @@ static int sequencer_add_movie_strip_invoke(bContext *C, wmOperator *op, const w
        !RNA_collection_is_empty(op->ptr, "files")) ||
       RNA_struct_property_is_set(op->ptr, "filepath"))
   {
+    sequencer_file_drop_chanel_frame_set(C, op, event);
     sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_MOVIE);
     return sequencer_add_movie_strip_exec(C, op);
   }
@@ -1132,13 +1159,14 @@ static int sequencer_add_sound_strip_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int sequencer_add_sound_strip_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int sequencer_add_sound_strip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* This is for drag and drop. */
   if ((RNA_struct_property_is_set(op->ptr, "files") &&
        !RNA_collection_is_empty(op->ptr, "files")) ||
       RNA_struct_property_is_set(op->ptr, "filepath"))
   {
+    sequencer_file_drop_chanel_frame_set(C, op, event);
     sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_SOUND_RAM);
     return sequencer_add_sound_strip_exec(C, op);
   }
@@ -1320,7 +1348,7 @@ static int sequencer_add_image_strip_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int sequencer_add_image_strip_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int sequencer_add_image_strip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   PropertyRNA *prop;
   Scene *scene = CTX_data_scene(C);
@@ -1331,6 +1359,7 @@ static int sequencer_add_image_strip_invoke(bContext *C, wmOperator *op, const w
 
   /* Name set already by drag and drop. */
   if (RNA_struct_property_is_set(op->ptr, "files") && !RNA_collection_is_empty(op->ptr, "files")) {
+    sequencer_file_drop_chanel_frame_set(C, op, event);
     sequencer_generic_invoke_xy__internal(
         C, op, SEQPROP_ENDFRAME | SEQPROP_NOPATHS, SEQ_TYPE_IMAGE);
     return sequencer_add_image_strip_exec(C, op);
