@@ -1510,6 +1510,12 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
 
 static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
 {
+  if (ima->filepath[0]) {
+    char root[FILE_MAX];
+    BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
+    UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+  }
+
   std::string image_type;
   switch (ima->source) {
     case IMA_SRC_FILE:
@@ -1533,18 +1539,6 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
   }
   UI_tooltip_text_field_add(data, image_type, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
 
-  if (ima->filepath[0]) {
-    char root[FILE_MAX];
-    BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
-    UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
-  }
-
-  UI_tooltip_text_field_add(data,
-                            fmt::format(TIP_("Colorspace: {}"), ima->colorspace_settings.name),
-                            {},
-                            UI_TIP_STYLE_NORMAL,
-                            UI_TIP_LC_NORMAL);
-
   short w;
   short h;
   ImBuf *ibuf = BKE_image_preview(ima, 200.0f * UI_SCALE_FAC, &w, &h);
@@ -1552,6 +1546,24 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
   if (ibuf) {
     UI_tooltip_text_field_add(
         data, fmt::format("{} \u00D7 {}", w, h), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+  }
+
+  if (BKE_image_has_anim(ima)) {
+    ImBufAnim *anim = ((ImageAnim *)ima->anims.first)->anim;
+    if (anim) {
+      int duration = IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN);
+      UI_tooltip_text_field_add(
+          data, fmt::format("Frames: {}", duration), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+    }
+  }
+
+  UI_tooltip_text_field_add(
+      data, ima->colorspace_settings.name, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+
+  UI_tooltip_text_field_add(
+      data, fmt::format(TIP_("Users: {}"), ima->id.us), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+
+  if (ibuf) {
     uiTooltipImage image_data;
     image_data.width = int(ibuf->x);
     image_data.height = int(ibuf->y);
@@ -1562,6 +1574,66 @@ static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_image_field_add(data, image_data);
+  }
+}
+
+static void ui_tooltip_from_clip(MovieClip *clip, uiTooltipData *data)
+{
+  if (clip->filepath[0]) {
+    char root[FILE_MAX];
+    BLI_path_split_dir_part(clip->filepath, root, FILE_MAX);
+    UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+  }
+
+  std::string image_type;
+  switch (clip->source) {
+    case IMA_SRC_SEQUENCE:
+      image_type = TIP_("Image Sequence");
+      break;
+    case IMA_SRC_MOVIE:
+      image_type = TIP_("Movie");
+      break;
+  }
+  UI_tooltip_text_field_add(data, image_type, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+
+  if (clip->anim) {
+    ImBufAnim *anim = clip->anim;
+
+    UI_tooltip_text_field_add(data,
+                              fmt::format("{} \u00D7 {}",
+                                          IMB_anim_get_image_width(anim),
+                                          IMB_anim_get_image_height(anim)),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+
+    UI_tooltip_text_field_add(
+        data,
+        fmt::format("Frames: {}", IMB_anim_get_duration(anim, IMB_TC_RECORD_RUN)),
+        {},
+        UI_TIP_STYLE_NORMAL,
+        UI_TIP_LC_NORMAL);
+
+    ImBuf *ibuf = IMB_anim_previewframe(anim);
+
+    if (ibuf) {
+      /* Resize. */
+      float scale = float(200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
+      IMB_scaleImBuf(ibuf, scale * ibuf->x, scale * ibuf->y);
+      IMB_rect_from_float(ibuf);
+
+      uiTooltipImage image_data;
+      image_data.width = int(ibuf->x);
+      image_data.height = int(ibuf->y);
+      image_data.ibuf = ibuf;
+      image_data.border = true;
+      image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
+      image_data.premultiplied = true;
+      UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+      UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
+      UI_tooltip_image_field_add(data, image_data);
+      IMB_freeImBuf(ibuf);
+    }
   }
 }
 
@@ -1599,14 +1671,11 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
   UI_tooltip_text_field_add(
       data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
 
-  UI_tooltip_text_field_add(data,
-                            fmt::format(TIP_("Users: {}"), item_tooltip_data->id->us),
-                            {},
-                            UI_TIP_STYLE_NORMAL,
-                            UI_TIP_LC_NORMAL);
-
   if (type_id == ID_IM) {
     ui_tooltip_from_image(reinterpret_cast<Image *>(item_tooltip_data->id), data);
+  }
+  else if (type_id == ID_MC) {
+    ui_tooltip_from_clip(reinterpret_cast<MovieClip *>(item_tooltip_data->id), data);
   }
   else if (type_id == ID_VF) {
     ui_tooltip_from_vfont(reinterpret_cast<VFont *>(item_tooltip_data->id), data);

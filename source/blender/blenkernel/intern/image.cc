@@ -4819,6 +4819,7 @@ ImBuf *BKE_image_preview(struct Image *ima, short max, short *width_r, short *he
 
     /* Resize. */
     IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
+    IMB_rect_from_float(preview);
   }
 
   return preview;
