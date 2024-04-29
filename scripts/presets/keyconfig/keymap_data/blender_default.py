@@ -6480,6 +6480,25 @@ def km_gesture_lasso(_params):
     return keymap
 
 
+def km_gesture_polyline(_params):
+    items = []
+    keymap = (
+        "Gesture Polyline",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'ANY', "any": True}, None),
+        ("SELECT", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
+        ("MOVE", {"type": 'SPACE', "value": 'ANY', "any": True}, None),
+    ])
+
+    return keymap
+
+
 def km_standard_modal_map(_params):
     items = []
     keymap = (
@@ -7144,21 +7163,53 @@ def km_image_editor_tool_uv_rip_region(params):
     )
 
 
-def km_image_editor_tool_uv_sculpt_stroke(params):
+def km_image_editor_tool_uv_grab(params):
     return (
-        "Image Editor Tool: Uv, Sculpt Stroke",
+        "Image Editor Tool: Uv, Grab",
         {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS'}, None),
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'INVERT')]}),
-            ("sculpt.uv_sculpt_stroke", {"type": params.tool_mouse, "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'RELAX')]}),
-            ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
-             {"properties": [("scalar", 0.9)]}),
-            ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
-             {"properties": [("scalar", 1.0 / 0.9)]}),
-            *_template_paint_radial_control("uv_sculpt"),
+            ("sculpt.uv_sculpt_grab", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_grab", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_relax(params):
+    return (
+        "Image Editor Tool: Uv, Relax",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
+        ]},
+    )
+
+
+def km_image_editor_tool_uv_pinch(params):
+    return (
+        "Image Editor Tool: Uv, Pinch",
+        {"space_type": 'IMAGE_EDITOR', "region_type": 'WINDOW'},
+        {"items": [
+            ("sculpt.uv_sculpt_pinch", {"type": params.tool_mouse, "value": 'PRESS'}, None),
+            ("sculpt.uv_sculpt_pinch", {"type": params.tool_mouse, "value": 'PRESS', "ctrl": True},
+             {"properties": [("use_invert", True)]}),
+            ("sculpt.uv_sculpt_relax", {"type": params.tool_mouse, "value": 'PRESS', "shift": True}, None),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.size"), ], }),
+            ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+             {"properties": [("data_path_primary", "tool_settings.uv_sculpt.strength"), ], }),
         ]},
     )
 
@@ -7999,6 +8050,21 @@ def km_3d_view_tool_sculpt_line_hide(params):
              {"properties": [("action", 'SHOW')]}),
         ]},
     )
+
+
+def km_3d_view_tool_sculpt_polyline_hide(params):
+    # autopep8:off
+    return (
+        "3D View Tool: Sculpt, Polyline Hide",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS"},
+             {"properties": [("action", 'HIDE')]}),
+            ("paint.hide_show_polyline_gesture", {"type": params.tool_mouse, "value": "PRESS", "ctrl": True},
+             {"properties": [("action", 'SHOW')]}),
+        ]},
+    )
+    # autopep8: on
 
 
 def km_3d_view_tool_sculpt_box_mask(params):
@@ -8879,6 +8945,7 @@ def generate_keymaps(params=None):
         km_gesture_zoom_border(params),
         km_gesture_straight_line(params),
         km_gesture_lasso(params),
+        km_gesture_polyline(params),
         km_standard_modal_map(params),
         km_knife_tool_modal_map(params),
         km_custom_normals_modal_map(params),
@@ -8920,7 +8987,9 @@ def generate_keymaps(params=None):
         *(km_image_editor_tool_uv_select_circle(params, fallback=fallback) for fallback in (False, True)),
         *(km_image_editor_tool_uv_select_lasso(params, fallback=fallback) for fallback in (False, True)),
         km_image_editor_tool_uv_rip_region(params),
-        km_image_editor_tool_uv_sculpt_stroke(params),
+        km_image_editor_tool_uv_grab(params),
+        km_image_editor_tool_uv_relax(params),
+        km_image_editor_tool_uv_pinch(params),
         km_image_editor_tool_uv_move(params),
         km_image_editor_tool_uv_rotate(params),
         km_image_editor_tool_uv_scale(params),
@@ -8985,6 +9054,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_sculpt_box_hide(params),
         km_3d_view_tool_sculpt_lasso_hide(params),
         km_3d_view_tool_sculpt_line_hide(params),
+        km_3d_view_tool_sculpt_polyline_hide(params),
         km_3d_view_tool_sculpt_box_mask(params),
         km_3d_view_tool_sculpt_lasso_mask(params),
         km_3d_view_tool_sculpt_box_face_set(params),
