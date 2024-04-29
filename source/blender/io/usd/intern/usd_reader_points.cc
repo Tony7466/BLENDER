@@ -5,12 +5,11 @@
 #include "usd_reader_points.hh"
 
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.hh"
-#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
 
 #include "BLI_color.hh"
+#include "BLI_span.hh"
 
 #include "DNA_cachefile_types.h"
 #include "DNA_object_types.h"
@@ -85,40 +84,66 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     return;
   }
 
-  /* Get the existing point cloud. */
   PointCloud *point_cloud = geometry_set.get_pointcloud_for_write();
 
-  /* Read USD point positions. */
+  /* Get the existing point cloud. */
   pxr::VtVec3fArray positions;
   points_prim_.GetPointsAttr().Get(&positions, params.motion_sample_time);
-
-  pxr::UsdGeomPrimvarsAPI primvarsLoaded(points_prim_);
-  std::vector<pxr::UsdGeomPrimvar> customAttrs = primvarsLoaded.GetPrimvars();
 
   if (point_cloud->totpoint != positions.size()) {
     /* Size changed so we must reallocate. */
     point_cloud = BKE_pointcloud_new_nomain(positions.size());
   }
 
-  /* Update point positions and attributes. */
-  bke::SpanAttributeWriter<float3> positions_writer =
-      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>(
-          "position", bke::AttrDomain::Point);
-  MutableSpan<float3> point_positions = positions_writer.span;
+  /* Update point positions and radii */
 
-  for (size_t i = 0; i < positions.size(); i++) {
-    point_positions[i][0] = positions[i][0];
-    point_positions[i][1] = positions[i][1];
-    point_positions[i][2] = positions[i][2];
+  static_assert(sizeof(pxr::GfVec3f) == sizeof(float3));
+  MutableSpan<float3> point_positions = point_cloud->positions_for_write();
+  point_positions.copy_from(Span(positions.data(), positions.size()).cast<float3>());
+
+  pxr::VtFloatArray widths;
+  points_prim_.GetWidthsAttr().Get(&widths, params.motion_sample_time);
+  if (!widths.empty()) {
+    bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
+    bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+        "radius", bke::AttrDomain::Point);
+    for (int i_point = 0; i_point < widths.size(); i_point++) {
+      radii.span[i_point] = widths[i_point] / 2.0f;
+    }
+
+    radii.finish();
   }
 
-  positions_writer.finish();
+  read_velocities(point_cloud, params.motion_sample_time);
+  read_custom_data(point_cloud, params.motion_sample_time);
 
-  /* Here we will use the same approach as above iterating over the prim vars to create
-   * custom spans for the attributes. */
+  geometry_set.replace_pointcloud(point_cloud);
+}
 
-  std::vector<pxr::UsdGeomPrimvar> primvars = primvarsLoaded.GetPrimvarsWithValues();
-  for (auto pv : primvars) {
+void USDPointsReader::read_velocities(PointCloud *point_cloud, const double motionSampleTime) const
+{
+  pxr::VtVec3fArray velocities;
+  points_prim_.GetVelocitiesAttr().Get(&velocities, motionSampleTime);
+
+  if (!velocities.empty()) {
+    bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
+    bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
+        "velocity", bke::AttrDomain::Point, CD_PROP_FLOAT3);
+
+    Span<pxr::GfVec3f> usd_data(velocities.data(), velocities.size());
+    attribute.span.typed<float3>().copy_from(usd_data.cast<float3>());
+
+    attribute.finish();
+  }
+}
+
+void USDPointsReader::read_custom_data(PointCloud *point_cloud,
+                                       const double motionSampleTime) const
+{
+  pxr::UsdGeomPrimvarsAPI pv_api(points_prim_);
+
+  std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
+  for (const auto &pv : primvars) {
     if (!pv.HasValue()) {
       continue;
     }
@@ -134,8 +159,9 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
         CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
         continue;
       }
+
       pxr::VtVec3fArray colors;
-      if (!pv.ComputeFlattened(&colors, params.motion_sample_time)) {
+      if (!pv.ComputeFlattened(&colors, motionSampleTime)) {
         CLOG_WARN(&LOG, "Couldn't compute the flattened colors %s", name.GetText());
         continue;
       }
@@ -143,11 +169,11 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
       for (int i = 0; i < colors.size(); ++i) {
         const pxr::GfVec3f &usd_color = colors[i];
         primvar_writer.span[i] = ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f);
-      };
+      }
       primvar_writer.finish();
     }
-    if (type == pxr::SdfValueTypeNames->FloatArray) {
 
+    if (type == pxr::SdfValueTypeNames->FloatArray) {
       bke::SpanAttributeWriter<float> primvar_writer =
           point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(
               name.GetText(), bke::AttrDomain::Point);
@@ -156,20 +182,15 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
         continue;
       }
       pxr::VtArray<float> values;
-      if (!pv.ComputeFlattened(&values, params.motion_sample_time)) {
+      if (!pv.ComputeFlattened(&values, motionSampleTime)) {
         CLOG_WARN(&LOG, "Couldn't compute the flattened float prop %s", name.GetText());
         continue;
       }
 
-      for (int i = 0; i < values.size(); ++i) {
-        primvar_writer.span[i] = values[i];
-      };
-
+      primvar_writer.span.copy_from(Span(values.data(), values.size()));
       primvar_writer.finish();
     }
   }
-
-  geometry_set.replace_pointcloud(point_cloud);
 }
 
 bool USDPointsReader::is_animated() const

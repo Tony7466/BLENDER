@@ -8,6 +8,9 @@
 
 #include <pxr/usd/usdGeom/points.h>
 
+struct Main;
+struct PointCloud;
+
 namespace blender::io::usd {
 
 /*
@@ -35,6 +38,9 @@ class USDPointsReader : public USDGeomReader {
   void read_geometry(bke::GeometrySet &geometry_set,
                      USDMeshReadParams params,
                      const char **err_str) override;
+
+  void read_velocities(PointCloud *point_cloud, const double motionSampleTime) const;
+  void read_custom_data(PointCloud *point_cloud, const double motionSampleTime) const;
 
   /* Return true if the USD data may be time varying. */
   bool is_animated() const;
