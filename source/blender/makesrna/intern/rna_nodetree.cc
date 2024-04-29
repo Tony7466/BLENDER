@@ -9564,7 +9564,7 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void rna_def_node_menu_switch_item(BlenderRNA *brna)
+static void rna_def_menu_switch_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
 
@@ -9586,7 +9586,7 @@ static void rna_def_node_menu_switch_item(BlenderRNA *brna)
       prop, NC_NODE | NA_EDITED, "rna_Node_ItemArray_item_update<MenuSwitchItemsAccessor>");
 }
 
-static void rna_def_node_menu_switch_items(BlenderRNA *brna)
+static void rna_def_geo_menu_switch_items(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *parm;
@@ -10756,8 +10756,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_simulation_state_item(brna);
   rna_def_repeat_item(brna);
   rna_def_index_switch_item(brna);
+  rna_def_menu_switch_item(brna);
   rna_def_geo_bake_item(brna);
-  rna_def_node_menu_switch_item(brna);
 
 #  define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
     { \
@@ -10811,8 +10811,8 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
   rna_def_geo_index_switch_items(brna);
+  rna_def_geo_menu_switch_items(brna);
   rna_def_bake_items(brna);
-  rna_def_node_menu_switch_items(brna);
 
   rna_def_node_instance_hash(brna);
 }
