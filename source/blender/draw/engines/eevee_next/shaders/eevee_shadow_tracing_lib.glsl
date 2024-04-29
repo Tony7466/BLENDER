@@ -460,7 +460,7 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
                                                  drw_view_z_distance(P),
                                                  uniform_buf.shadow.film_pixel_radius);
     /* This gives the size of pixels at Z = 1. */
-    scale = abs(exp2(-lod)) * shadow_punctual_frustum_padding_get(light);
+    scale = exp2(lod) * shadow_punctual_frustum_padding_get(light);
     /* Now scale by distance to the light. */
     scale *= reduce_max(abs(lP));
   }
