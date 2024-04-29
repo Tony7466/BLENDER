@@ -133,11 +133,18 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
       if (is_transmission) {
         cl_light.N = -cl.N;
         if (thickness != 0.0) {
-          /* Strangely, a translucent sphere lit by a light outside the sphere transmits the light
-           * uniformly over the sphere. To mimic this phenomenon, we shift the shading position to
-           * a unique position on the sphere and use the light vector as normal. */
-          cl_light.shading_offset = -cl.N * thickness * 0.5;
-          cl_light.N = vec3(0.0);
+          if (thickness > 0.0) {
+            /* Strangely, a translucent sphere lit by a light outside the sphere transmits the
+             * light uniformly over the sphere. To mimic this phenomenon, we shift the shading
+             * position to a unique position on the sphere and use the light vector as normal. */
+            cl_light.shading_offset = -cl.N * thickness * 0.5;
+            cl_light.N = vec3(0.0);
+          }
+          else {
+            /* This approximation has little to no impact on the lighting in practice, only
+             * focussing the light a tiny bit. Offset the shadow map position and using the flipped
+             * normal is good enough approximation. */
+          }
         }
       }
       break;
