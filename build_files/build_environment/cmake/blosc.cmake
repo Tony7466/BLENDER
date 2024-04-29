@@ -5,6 +5,8 @@
 set(BLOSC_EXTRA_ARGS
   -DZLIB_INCLUDE_DIR=${LIBDIR}/zlib/include/
   -DZLIB_LIBRARY=${LIBDIR}/zlib/lib/${ZLIB_LIBRARY}
+  -DZSTD_INCLUDE_DIR=${LIBDIR}/zstd/include/
+  -DZSTD_LIBRARY=${LIBDIR}/zstd/lib/libzstd${LIBEXT}
   -DBUILD_TESTS=OFF
   -DBUILD_BENCHMARKS=OFF
   -DCMAKE_DEBUG_POSTFIX=_d
@@ -15,10 +17,11 @@ set(BLOSC_EXTRA_ARGS
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 )
 
-# Prevent blosc from including its own local copy of zlib in the object file
+# Prevent blosc from including its own local copy of zlib and zstd in the object file
 # and cause linker errors with everybody else.
 set(BLOSC_EXTRA_ARGS ${BLOSC_EXTRA_ARGS}
   -DPREFER_EXTERNAL_ZLIB=ON
+  -DPREFER_EXTERNAL_ZSTD=ON
 )
 
 ExternalProject_Add(external_blosc
@@ -38,6 +41,7 @@ ExternalProject_Add(external_blosc
 add_dependencies(
   external_blosc
   external_zlib
+  external_zstd
 )
 if(WIN32)
   add_dependencies(
