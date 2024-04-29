@@ -44,7 +44,7 @@ static float2 compute_sigma_from_radius(float2 radius)
  * Deriche filter is more accurate for medium blur radius, while Van Vliet is more accurate for
  * high blur radius. The criteria suggested by the paper is a sigma value threshold of 3 and 32 for
  * the Deriche and Van Vliet filters respectively, which we apply on the larger of the two
- * dimensions.*/
+ * dimensions. */
 void recursive_gaussian_blur(Context &context, Result &input, Result &output, float2 radius)
 {
   /* The radius is in pixel units, while both recursive implementations expect the sigma value of
