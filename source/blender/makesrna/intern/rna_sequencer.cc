@@ -1794,15 +1794,15 @@ static void rna_def_strip_proxy(BlenderRNA *brna)
        0,
        "None",
        "Ignore generated timecodes, seek in movie stream based on calculated timestamp"},
-      {SEQ_PROXY_TC_NORMAL_PLAYBACK,
-       "USE_MOVIE_TIMESTAMPS",
+      {SEQ_PROXY_TC_RECORD_RUN,
+       "Record Run",
        0,
        "Use Movie Timestamps",
-       "Use generated timecodes, which contain timestamp of each frame in movie stream"},
-      {SEQ_PROXY_TC_UNIQUE_MAPPING,
-       "NO_GAPS_PLAYBACK",
+       "Use for normal playback. Seek based on timestamps read from movie stream"},
+      {SEQ_PROXY_TC_RECORD_RUN_NO_GAPS,
+       "FREE_RUN_NO_GAPS",
        0,
-       "No Gaps Playback",
+       "Free Run No Gaps",
        "This timecode causes each frame procuces new image. This may break AV sync, change "
        "apparent movie frame rate and change it's length"},
       {0, nullptr, 0, nullptr, nullptr},
@@ -1848,7 +1848,7 @@ static void rna_def_strip_proxy(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "100%", "Build 100% proxy resolution");
 
   prop = RNA_def_property(srna, "build_record_run", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "build_tc_flags", SEQ_PROXY_TC_NORMAL_PLAYBACK);
+  RNA_def_property_boolean_sdna(prop, nullptr, "build_tc_flags", SEQ_PROXY_TC_RECORD_RUN);
   RNA_def_property_ui_text(prop, "Rec Run", "Build record run time code index");
 
   prop = RNA_def_property(srna, "quality", PROP_INT, PROP_UNSIGNED);

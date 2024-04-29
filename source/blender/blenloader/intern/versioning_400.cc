@@ -2052,12 +2052,13 @@ static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
 
 static void versioning_update_timecode(short int *tc)
 {
-  if (ELEM(*tc, 2, 4)) { /* IMB_TC_FREE_RUN, IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN: */
-    *tc = IMB_TC_NORMAL_PLAYBACK;
+  /* 2 = IMB_TC_FREE_RUN, 4 = IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN. */
+  if (ELEM(*tc, 2, 4)) {
+    *tc = IMB_TC_RECORD_RUN;
   }
-  /* IMB_TC_RECORD_RUN_NO_GAPS was renamed to IMB_TC_UNIQUE_MAPPING, bit changed from 8 to 2. */
+  /* Bit was changed from 8 to 2. */
   if (*tc == 8) {
-    *tc = IMB_TC_UNIQUE_MAPPING;
+    *tc = IMB_TC_RECORD_RUN_NO_GAPS;
   }
 }
 

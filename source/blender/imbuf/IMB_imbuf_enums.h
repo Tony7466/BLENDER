@@ -49,6 +49,8 @@ enum eImbFileType {
  * Timecode files contain timestamps (PTS, DTS) and packet seek position. These values are obtained
  * by decoding each frame in movie stream. Timecode types define how these map to frame index in
  * Blender. This is used when seeking in movie stream.
+ * Note, that meaning of terms timecode and record run here has little connection to their actual
+ * meaning.
  */
 typedef enum IMB_Timecode_Type {
   /** Don't use time-code files at all. Use FFmpeg API to seek to PTS calculated on the fly. */
@@ -60,14 +62,14 @@ typedef enum IMB_Timecode_Type {
    *
    * Simplified formula is `frame_index = movie_stream_timestamp * FPS`.
    */
-  IMB_TC_NORMAL_PLAYBACK = 1,
+  IMB_TC_RECORD_RUN = 1,
   /**
    * Each TC entry (and therefore frame in movie stream) is mapped to new frame index in Blender.
    *
    * For example: FFmpeg may say, that a frame should be displayed for 0.5 seconds, but this option
    * ignores that and only diplays it in one particular frame index in Blender.
    */
-  IMB_TC_UNIQUE_MAPPING = 2,
+  IMB_TC_RECORD_RUN_NO_GAPS = 2,
   IMB_TC_MAX_SLOT = 2,
 } IMB_Timecode_Type;
 
