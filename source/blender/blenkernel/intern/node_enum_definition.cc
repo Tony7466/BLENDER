@@ -22,7 +22,7 @@ blender::Span<NodeEnumItem> NodeEnumDefinition::items() const
   return {this->items_array, this->items_num};
 }
 
-blender::MutableSpan<NodeEnumItem> NodeEnumDefinition::items_for_write()
+blender::MutableSpan<NodeEnumItem> NodeEnumDefinition::items()
 {
   return {this->items_array, this->items_num};
 }
@@ -103,7 +103,7 @@ const NodeEnumItem *NodeEnumDefinition::active_item() const
 NodeEnumItem *NodeEnumDefinition::active_item()
 {
   if (blender::IndexRange(this->items_num).contains(this->active_index)) {
-    return &this->items_for_write()[this->active_index];
+    return &this->items()[this->active_index];
   }
   return nullptr;
 }

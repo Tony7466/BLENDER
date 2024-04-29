@@ -15,9 +15,12 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_geo_menu_switch.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
+
+#include "BLO_read_write.hh"
 
 #include "RNA_enum_types.hh"
 
@@ -91,7 +94,7 @@ static void node_enum_definition_init(NodeEnumDefinition &enum_def)
 
 static void node_enum_definition_free(NodeEnumDefinition &enum_def)
 {
-  for (NodeEnumItem &item : enum_def.items_for_write()) {
+  for (NodeEnumItem &item : enum_def.items()) {
     MEM_SAFE_FREE(item.name);
     MEM_SAFE_FREE(item.description);
   }
@@ -428,6 +431,32 @@ std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(co
   using namespace node_geo_menu_switch_cc;
   BLI_assert(node.type == GEO_NODE_MENU_SWITCH);
   return std::make_unique<LazyFunctionForMenuSwitchSocketUsage>(node);
+}
+
+void MenuSwitchItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
+{
+  const NodeMenuSwitch &storage = *static_cast<const NodeMenuSwitch *>(node.storage);
+  BLO_write_struct_array(writer,
+                         NodeEnumItem,
+                         storage.enum_definition.items_num,
+                         storage.enum_definition.items_array);
+  for (const NodeEnumItem &item : storage.enum_definition.items()) {
+    BLO_write_string(writer, item.name);
+    BLO_write_string(writer, item.description);
+  }
+}
+
+void MenuSwitchItemsAccessor::blend_read_data(BlendDataReader *reader, bNode &node)
+{
+  NodeMenuSwitch &storage = *static_cast<NodeMenuSwitch *>(node.storage);
+  BLO_read_struct_array(reader,
+                        NodeEnumItem,
+                        storage.enum_definition.items_num,
+                        &storage.enum_definition.items_array);
+  for (NodeEnumItem &item : storage.enum_definition.items()) {
+    BLO_read_string(reader, &item.name);
+    BLO_read_string(reader, &item.description);
+  }
 }
 
 }  // namespace blender::nodes
