@@ -40,24 +40,11 @@ template<> struct is_layout_compatible<float2, pxr::GfVec2f> : std::true_type {}
 template<> struct is_layout_compatible<float3, pxr::GfVec3f> : std::true_type {};
 
 /* Conversion utilities to convert a Blender type to an USD type. */
-template<typename BlenderT, typename USDT> inline USDT convert_value(const BlenderT value);
+template<typename BlenderT, typename USDT> inline USDT convert_value(const BlenderT value)
+{
+  return value;
+}
 
-template<> inline bool convert_value(const bool value)
-{
-  return value;
-}
-template<> inline int convert_value(const int value)
-{
-  return value;
-}
-template<> inline float convert_value(const float value)
-{
-  return value;
-}
-template<> inline int32_t convert_value(const int8_t value)
-{
-  return int32_t(value);
-}
 template<> inline pxr::GfVec2f convert_value(const float2 value)
 {
   return pxr::GfVec2f(value[0], value[1]);
@@ -118,11 +105,6 @@ void copy_blender_buffer_to_primvar(const VArray<BlenderT> &buffer,
   else if (buffer.is_span() && (is_same || is_compatible)) {
     Span<USDT> data = buffer.get_internal_span().cast<USDT>();
     usd_data.assign(data.begin(), data.end());
-
-    // -- OR we could do the following
-    // usd_data.resize(buffer.size());
-    // MutableSpan<USDT> usd_dest(usd_data.data(), usd_data.size());
-    // blender::array_utils::copy(data, usd_dest);
   }
   else {
     usd_data.resize(buffer.size());

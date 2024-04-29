@@ -169,7 +169,7 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
         /* UV Data. */
         if (meta_data.domain == bke::AttrDomain::Corner && meta_data.data_type == CD_PROP_FLOAT2) {
           if (usd_export_context_.export_params.export_uvmaps) {
-            write_uv_data(mesh, usd_mesh, attribute_id, active_set_name);
+            this->write_uv_data(mesh, usd_mesh, attribute_id, active_set_name);
           }
         }
 
@@ -178,12 +178,12 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
                  ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
         {
           if (usd_export_context_.export_params.export_mesh_colors) {
-            write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+            this->write_color_data(mesh, usd_mesh, attribute_id, meta_data);
           }
         }
 
         else {
-          write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
+          this->write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
         }
 
         return true;

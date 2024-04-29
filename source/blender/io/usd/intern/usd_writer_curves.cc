@@ -35,7 +35,7 @@
 #include "RNA_enum_types.hh"
 
 namespace blender::io::usd {
-#pragma optimize("", off)
+
 pxr::UsdGeomBasisCurves USDCurvesWriter::DefineUsdGeomBasisCurves(pxr::VtValue curve_basis,
                                                                   const bool is_cyclic,
                                                                   const bool is_cubic) const
@@ -445,11 +445,11 @@ void USDCurvesWriter::write_custom_data(const bke::CurvesGeometry &curves,
         /* UV Data. */
         if (meta_data.domain == bke::AttrDomain::Curve && meta_data.data_type == CD_PROP_FLOAT2) {
           if (usd_export_context_.export_params.export_uvmaps) {
-            write_uv_data(curves, attribute_id, usd_curves);
+            this->write_uv_data(curves, attribute_id, usd_curves);
           }
         }
         else {
-          write_generic_data(curves, attribute_id, meta_data, usd_curves);
+          this->write_generic_data(curves, attribute_id, meta_data, usd_curves);
         }
 
         return true;
