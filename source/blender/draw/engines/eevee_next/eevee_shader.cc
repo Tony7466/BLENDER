@@ -633,10 +633,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << (!codegen.surface.empty() ? codegen.surface : "return Closure(0);\n");
     frag_gen << "}\n\n";
 
+    /* TODO(fclem): Find a way to pass material parameters inside the material UBO. */
     ::Material *ma = GPU_material_get_material(gpumat);
-    const char *thickness_mode_sign = (ma && ma->thickness_mode == MA_THICKNESS_SLAB) ? "-1.0" :
-                                                                                        "+1.0";
-    frag_gen << "const float thickness_mode = " << thickness_mode_sign << ";\n";
+    info.define("thickness_mode", ma && ma->thickness_mode == MA_THICKNESS_SLAB ? "-1.0" : "1.0");
+
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
     if (codegen.thickness.empty()) {

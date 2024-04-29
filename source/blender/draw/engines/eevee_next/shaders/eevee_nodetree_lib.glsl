@@ -403,7 +403,6 @@ Closure nodetree_volume();
 vec3 nodetree_displacement();
 float nodetree_thickness();
 vec4 closure_to_rgba(Closure cl);
-float thickness_mode;
 #endif
 
 /* Simplified form of F_eta(eta, 1.0). */
@@ -588,6 +587,7 @@ vec2 bsdf_lut(float cos_theta, float roughness, float ior, bool do_multiscatter)
 #  define nodetree_surface(closure_rand) Closure(0)
 #  define nodetree_volume() Closure(0)
 #  define nodetree_thickness() 0.1
+#  define thickness_mode 1.0
 #endif
 
 #ifdef GPU_VERTEX_SHADER
