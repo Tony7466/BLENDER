@@ -21,6 +21,7 @@
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 
 #include "ED_view3d.hh"
@@ -65,7 +66,7 @@ static void init_common(bContext *C, wmOperator *op, GestureData &gesture_data)
   gesture_data.selection_type = SelectionType::Inside;
 
   /* SculptSession */
-  gesture_data.ss = ob->sculpt;
+  gesture_data.ss = ob->runtime->sculpt;
 
   /* Symmetry. */
   gesture_data.symm = ePaintSymmetryFlags(SCULPT_mesh_symmetry_xyz_get(ob));

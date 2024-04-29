@@ -835,7 +835,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
   bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->rv3d) &&
                          !DRW_state_is_image_render();
 
-  if (ob->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
+  if (ob->runtime->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
     BKE_pbvh_is_drawing_set(*BKE_object_sculpt_pbvh_get(ob), use_sculpt_pbvh);
   }
 
@@ -909,7 +909,7 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
           }
         }
 
-        if (G.debug_value == 889 && ob->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
+        if (G.debug_value == 889 && ob->runtime->sculpt && BKE_object_sculpt_pbvh_get(ob)) {
           int debug_node_nr = 0;
           DRW_debug_modelmat(ob->object_to_world().ptr());
           BKE_pbvh_draw_debug_cb(

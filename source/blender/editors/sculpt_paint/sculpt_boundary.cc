@@ -16,6 +16,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -487,7 +488,7 @@ SculptBoundary *data_init(Object *object,
                           const PBVHVertRef initial_vertex,
                           const float radius)
 {
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
 
   if (initial_vertex.i == PBVH_REF_NONE) {
     return nullptr;
@@ -644,7 +645,7 @@ static float sculpt_boundary_displacement_from_grab_delta_get(SculptSession *ss,
 
 static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -694,7 +695,7 @@ static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode
 
 static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -736,7 +737,7 @@ static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNod
 
 static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -778,7 +779,7 @@ static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHN
 
 static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -817,7 +818,7 @@ static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode
 
 static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -867,7 +868,7 @@ static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNod
 
 static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int symmetry_pass = ss->cache->mirror_symmetry_pass;
   const SculptBoundary *boundary = ss->cache->boundaries[symmetry_pass];
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
@@ -918,7 +919,7 @@ static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNo
 
 void do_boundary_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const ePaintSymmetryFlags symm_area = ss->cache->mirror_symmetry_pass;

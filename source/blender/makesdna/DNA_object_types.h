@@ -51,7 +51,6 @@ struct Object;
 struct PartDeflect;
 struct Path;
 struct RigidBodyOb;
-struct SculptSession;
 struct SoftBody;
 struct bGPdata;
 
@@ -203,8 +202,6 @@ typedef struct Object {
    * DRW_drawdatalist_from_id to understand this requirement.
    */
   struct DrawDataList drawdata;
-
-  struct SculptSession *sculpt;
 
   short type; /* #ObjectType */
   short partype;

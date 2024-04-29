@@ -203,7 +203,7 @@ bool brush_use_accumulate(const VPaint *vp)
 void init_stroke(Depsgraph *depsgraph, Object *ob)
 {
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   /* Ensure ss->cache is allocated.  It will mostly be initialized in
    * vwpaint::update_cache_invariants and vwpaint::update_cache_variants.
@@ -219,9 +219,9 @@ void init_session(Depsgraph *depsgraph, Scene *scene, Object *ob, eObjectMode ob
   /* Create persistent sculpt mode data */
   BKE_sculpt_toolsettings_data_ensure(scene);
 
-  BLI_assert(ob->sculpt == nullptr);
-  ob->sculpt = MEM_new<SculptSession>(__func__);
-  ob->sculpt->mode_type = object_mode;
+  BLI_assert(ob->runtime->sculpt == nullptr);
+  ob->runtime->sculpt = MEM_new<SculptSession>(__func__);
+  ob->runtime->sculpt->mode_type = object_mode;
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true);
 
   ensure_valid_pivot(ob, scene);
@@ -232,15 +232,15 @@ void init_session_data(const ToolSettings *ts, Object *ob)
   /* Create maps */
   SculptVertexPaintGeomMap *gmap = nullptr;
   if (ob->mode == OB_MODE_VERTEX_PAINT) {
-    gmap = &ob->sculpt->mode.vpaint.gmap;
-    BLI_assert(ob->sculpt->mode_type == OB_MODE_VERTEX_PAINT);
+    gmap = &ob->runtime->sculpt->mode.vpaint.gmap;
+    BLI_assert(ob->runtime->sculpt->mode_type == OB_MODE_VERTEX_PAINT);
   }
   else if (ob->mode == OB_MODE_WEIGHT_PAINT) {
-    gmap = &ob->sculpt->mode.wpaint.gmap;
-    BLI_assert(ob->sculpt->mode_type == OB_MODE_WEIGHT_PAINT);
+    gmap = &ob->runtime->sculpt->mode.wpaint.gmap;
+    BLI_assert(ob->runtime->sculpt->mode_type == OB_MODE_WEIGHT_PAINT);
   }
   else {
-    ob->sculpt->mode_type = (eObjectMode)0;
+    ob->runtime->sculpt->mode_type = (eObjectMode)0;
     BLI_assert(0);
     return;
   }
@@ -253,14 +253,14 @@ void init_session_data(const ToolSettings *ts, Object *ob)
   /* Create average brush arrays */
   if (ob->mode == OB_MODE_WEIGHT_PAINT) {
     if (!vwpaint::brush_use_accumulate(ts->wpaint)) {
-      if (ob->sculpt->mode.wpaint.alpha_weight == nullptr) {
-        ob->sculpt->mode.wpaint.alpha_weight = (float *)MEM_callocN(
+      if (ob->runtime->sculpt->mode.wpaint.alpha_weight == nullptr) {
+        ob->runtime->sculpt->mode.wpaint.alpha_weight = (float *)MEM_callocN(
             mesh->verts_num * sizeof(float), __func__);
       }
-      if (ob->sculpt->mode.wpaint.dvert_prev == nullptr) {
-        ob->sculpt->mode.wpaint.dvert_prev = (MDeformVert *)MEM_callocN(
+      if (ob->runtime->sculpt->mode.wpaint.dvert_prev == nullptr) {
+        ob->runtime->sculpt->mode.wpaint.dvert_prev = (MDeformVert *)MEM_callocN(
             mesh->verts_num * sizeof(MDeformVert), __func__);
-        MDeformVert *dv = ob->sculpt->mode.wpaint.dvert_prev;
+        MDeformVert *dv = ob->runtime->sculpt->mode.wpaint.dvert_prev;
         for (int i = 0; i < mesh->verts_num; i++, dv++) {
           /* Use to show this isn't initialized, never apply to the mesh data. */
           dv->flag = 1;
@@ -268,11 +268,11 @@ void init_session_data(const ToolSettings *ts, Object *ob)
       }
     }
     else {
-      MEM_SAFE_FREE(ob->sculpt->mode.wpaint.alpha_weight);
-      if (ob->sculpt->mode.wpaint.dvert_prev != nullptr) {
-        BKE_defvert_array_free_elems(ob->sculpt->mode.wpaint.dvert_prev, mesh->verts_num);
-        MEM_freeN(ob->sculpt->mode.wpaint.dvert_prev);
-        ob->sculpt->mode.wpaint.dvert_prev = nullptr;
+      MEM_SAFE_FREE(ob->runtime->sculpt->mode.wpaint.alpha_weight);
+      if (ob->runtime->sculpt->mode.wpaint.dvert_prev != nullptr) {
+        BKE_defvert_array_free_elems(ob->runtime->sculpt->mode.wpaint.dvert_prev, mesh->verts_num);
+        MEM_freeN(ob->runtime->sculpt->mode.wpaint.dvert_prev);
+        ob->runtime->sculpt->mode.wpaint.dvert_prev = nullptr;
       }
     }
   }
@@ -280,7 +280,7 @@ void init_session_data(const ToolSettings *ts, Object *ob)
 
 Vector<PBVHNode *> pbvh_gather_generic(Object *ob, VPaint *wp, Brush *brush)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const bool use_normal = vwpaint::use_normal(wp);
   Vector<PBVHNode *> nodes;
 
@@ -343,10 +343,10 @@ void mode_enter_generic(
   }
 
   /* Create vertex/weight paint mode session data */
-  if (ob->sculpt) {
-    if (ob->sculpt->cache) {
-      SCULPT_cache_free(ob->sculpt->cache);
-      ob->sculpt->cache = nullptr;
+  if (ob->runtime->sculpt) {
+    if (ob->runtime->sculpt->cache) {
+      SCULPT_cache_free(ob->runtime->sculpt->cache);
+      ob->runtime->sculpt->cache = nullptr;
     }
     BKE_sculptsession_free(ob);
   }
@@ -384,9 +384,9 @@ void mode_exit_generic(Object *ob, const eObjectMode mode_flag)
   }
 
   /* If the cache is not released by a cancel or a done, free it now. */
-  if (ob->sculpt && ob->sculpt->cache) {
-    SCULPT_cache_free(ob->sculpt->cache);
-    ob->sculpt->cache = nullptr;
+  if (ob->runtime->sculpt && ob->runtime->sculpt->cache) {
+    SCULPT_cache_free(ob->runtime->sculpt->cache);
+    ob->runtime->sculpt->cache = nullptr;
   }
 
   BKE_sculptsession_free(ob);
@@ -509,7 +509,7 @@ void update_cache_variants(bContext *C, VPaint *vp, Object *ob, PointerRNA *ptr)
 {
   using namespace blender;
   Scene *scene = CTX_data_scene(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   StrokeCache *cache = ss->cache;
   Brush *brush = BKE_paint_brush(&vp->paint);
 
@@ -750,7 +750,7 @@ static void vertex_paint_init_stroke(Scene *scene, Depsgraph *depsgraph, Object 
 {
   vwpaint::init_stroke(depsgraph, ob);
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   ToolSettings *ts = scene->toolsettings;
 
   /* Allocate scratch array for previous colors if needed. */
@@ -967,9 +967,9 @@ static VPaintData *vpaint_init_vpaint(bContext *C,
 
   /* Create projection handle */
   if (vpd->is_texbrush) {
-    ob->sculpt->building_vp_handle = true;
+    ob->runtime->sculpt->building_vp_handle = true;
     vpd->vp_handle = ED_vpaint_proj_handle_create(depsgraph, scene, ob, &vpd->vertexcosnos);
-    ob->sculpt->building_vp_handle = false;
+    ob->runtime->sculpt->building_vp_handle = false;
   }
 
   return vpd;
@@ -983,7 +983,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   VPaint *vp = ts->vpaint;
   Brush *brush = BKE_paint_brush(&vp->paint);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   /* context checks could be a poll() */
@@ -1021,9 +1021,9 @@ static void do_vpaint_brush_blur_loops(bContext *C,
                                        Span<PBVHNode *> nodes,
                                        GMutableSpan attribute)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
 
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
@@ -1171,9 +1171,9 @@ static void do_vpaint_brush_blur_verts(bContext *C,
                                        Span<PBVHNode *> nodes,
                                        GMutableSpan attribute)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
 
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
@@ -1307,7 +1307,7 @@ static void do_vpaint_brush_smear(bContext *C,
                                   Span<PBVHNode *> nodes,
                                   GMutableSpan attribute)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
   const StrokeCache *cache = ss->cache;
@@ -1317,7 +1317,7 @@ static void do_vpaint_brush_smear(bContext *C,
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
 
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
   GMutableSpan g_color_curr = vpd->smear.color_curr;
   GMutableSpan g_color_prev_smear = vpd->smear.color_prev;
@@ -1504,7 +1504,7 @@ static void calculate_average_color(VPaintData *vpd,
                                     const GSpan attribute,
                                     Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
   const SculptVertexPaintGeomMap *gmap = &ss->mode.vpaint.gmap;
@@ -1621,10 +1621,10 @@ static void vpaint_do_draw(bContext *C,
                            Span<PBVHNode *> nodes,
                            GMutableSpan attribute)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
 
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
   const Scene *scene = CTX_data_scene(C);
 
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
@@ -1801,7 +1801,7 @@ static void vpaint_paint_leaves(bContext *C,
     undo::push_node(*ob, node, undo::Type::Color);
   }
 
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
 
   switch ((eBrushVertexPaintTool)brush->vertexpaint_tool) {
     case VPAINT_TOOL_AVERAGE:
@@ -1833,7 +1833,7 @@ static void vpaint_do_paint(bContext *C,
                             const int i,
                             const float angle)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   ss->cache->radial_symmetry_pass = i;
   SCULPT_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
 
@@ -1873,7 +1873,7 @@ static void vpaint_do_symmetrical_brush_actions(bContext *C,
 {
   Brush *brush = BKE_paint_brush(&vp->paint);
   Mesh *mesh = (Mesh *)ob->data;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   StrokeCache *cache = ss->cache;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   int i = 0;
@@ -1927,7 +1927,7 @@ static void vpaint_stroke_update_step(bContext *C,
   VPaint *vp = ts->vpaint;
   ViewContext *vc = &vpd->vc;
   Object *ob = vc->obact;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   vwpaint::update_cache_variants(C, vp, ob, itemptr);
 
@@ -1973,7 +1973,7 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   MEM_delete(vpd);
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (ss->cache && ss->cache->alt_smooth) {
     ToolSettings *ts = CTX_data_tool_settings(C);
@@ -1985,8 +1985,8 @@ static void vpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   undo::push_end(ob);
 
-  SCULPT_cache_free(ob->sculpt->cache);
-  ob->sculpt->cache = nullptr;
+  SCULPT_cache_free(ob->runtime->sculpt->cache);
+  ob->runtime->sculpt->cache = nullptr;
 }
 
 static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2004,8 +2004,8 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   Object *ob = CTX_data_active_object(C);
 
-  if (SCULPT_has_loop_colors(ob) && ob->sculpt->pbvh) {
-    BKE_pbvh_ensure_node_loops(*ob->sculpt->pbvh);
+  if (SCULPT_has_loop_colors(ob) && ob->runtime->sculpt->pbvh) {
+    BKE_pbvh_ensure_node_loops(*ob->runtime->sculpt->pbvh);
   }
 
   undo::push_begin_ex(ob, "Vertex Paint");
@@ -2044,9 +2044,9 @@ static int vpaint_exec(bContext *C, wmOperator *op)
 static void vpaint_cancel(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob->sculpt->cache) {
-    SCULPT_cache_free(ob->sculpt->cache);
-    ob->sculpt->cache = nullptr;
+  if (ob->runtime->sculpt->cache) {
+    SCULPT_cache_free(ob->runtime->sculpt->cache);
+    ob->runtime->sculpt->cache = nullptr;
   }
 
   paint_stroke_cancel(C, op, (PaintStroke *)op->customdata);
@@ -2244,7 +2244,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), obact, true);
 
   undo::push_begin(obact, op);
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact->sculpt->pbvh, {});
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact->runtime->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
     undo::push_node(*obact, node, undo::Type::Color);
   }

@@ -19,6 +19,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -130,7 +131,7 @@ static void pose_solve_scale_chain(SculptPoseIKChain &ik_chain, const float scal
 
 static void do_pose_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SculptPoseIKChain &ik_chain = *ss->cache->pose_ik_chain;
 
   PBVHVertexIter vd;
@@ -196,7 +197,7 @@ static void pose_brush_grow_factor_task(Object *ob,
                                         PBVHNode *node,
                                         PoseGrowFactorData *gftd)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   PBVHVertexIter vd;
   BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -233,7 +234,7 @@ static void sculpt_pose_grow_pose_factor(Object *ob,
                                          float *r_pose_origin,
                                          MutableSpan<float> pose_factor)
 {
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
@@ -944,7 +945,7 @@ std::unique_ptr<SculptPoseIKChain> ik_chain_init(
 
 void pose_brush_init(Object *ob, SculptSession *ss, Brush *br)
 {
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
@@ -1090,7 +1091,7 @@ static void sculpt_pose_align_pivot_local_space(float r_mat[4][4],
 
 void do_pose_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 

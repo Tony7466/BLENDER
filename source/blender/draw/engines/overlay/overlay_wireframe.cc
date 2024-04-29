@@ -19,6 +19,7 @@
 #include "BKE_global.hh"
 #include "BKE_mesh_types.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 
@@ -285,7 +286,8 @@ void OVERLAY_wireframe_cache_populate(OVERLAY_Data *vedata,
 
   /* Don't do that in edit Mesh mode, unless there is a modifier preview. */
   if (use_wire && (!is_mesh || (!is_edit_mode || has_edit_mesh_cage))) {
-    const bool is_sculpt_mode = ((ob->mode & OB_MODE_SCULPT) != 0) && (ob->sculpt != nullptr);
+    const bool is_sculpt_mode = ((ob->mode & OB_MODE_SCULPT) != 0) &&
+                                (ob->runtime->sculpt != nullptr);
     const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob, draw_ctx->rv3d) &&
                                  !DRW_state_is_image_render();
     const bool is_instance = (ob->base_flag & BASE_FROM_DUPLI);

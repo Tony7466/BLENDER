@@ -33,6 +33,7 @@
 #include "BKE_image.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 
 #include "NOD_texture.h"
@@ -1344,7 +1345,7 @@ static bool paint_cursor_context_init(bContext *C,
   pcontext->outline_alpha = pcontext->brush->add_col[3];
 
   Object *active_object = pcontext->vc.obact;
-  pcontext->ss = active_object ? active_object->sculpt : nullptr;
+  pcontext->ss = active_object ? active_object->runtime->sculpt : nullptr;
 
   if (pcontext->ss && pcontext->ss->draw_faded_cursor) {
     pcontext->outline_alpha = 0.3f;

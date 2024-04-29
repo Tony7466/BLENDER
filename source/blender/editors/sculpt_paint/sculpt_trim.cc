@@ -17,6 +17,7 @@
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
+#include "BKE_object_types.hh"
 
 #include "DNA_modifier_types.h"
 
@@ -448,7 +449,7 @@ static void generate_geometry(gesture::GestureData &gesture_data)
 static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
 {
   Object *object = gesture_data.vc.obact;
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
   generate_geometry(gesture_data);
@@ -674,7 +675,7 @@ static bool can_invoke(const bContext &C)
 static bool can_exec(const bContext &C)
 {
   const Object &object = *CTX_data_active_object(&C);
-  const SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.runtime->sculpt;
   if (BKE_pbvh_type(*ss.pbvh) != PBVH_FACES) {
     /* Not supported in Multires and Dyntopo. */
     return false;
@@ -693,7 +694,7 @@ static void initialize_cursor_info(bContext &C,
                                    gesture::GestureData &gesture_data)
 {
   const Object &ob = *CTX_data_active_object(&C);
-  SculptSession &ss = *ob.sculpt;
+  SculptSession &ss = *ob.runtime->sculpt;
 
   SCULPT_vertex_random_access_ensure(&ss);
 

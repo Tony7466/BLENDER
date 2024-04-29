@@ -20,6 +20,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
@@ -45,7 +46,7 @@
 void SCULPT_pbvh_clear(Object *ob)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   /* Clear out any existing DM and PBVH. */
   bke::pbvh::free(ss->pbvh);
 
@@ -73,7 +74,7 @@ void triangulate(BMesh *bm)
 
 void enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh);
 
@@ -121,7 +122,7 @@ void enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob)
 static void SCULPT_dynamic_topology_disable_ex(
     Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob, undo::Node *unode)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   if (ss->attrs.dyntopo_node_id_vertex) {
@@ -200,7 +201,7 @@ void disable(bContext *C, undo::Node *unode)
 
 void disable_with_undo(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (ss->bm != nullptr) {
     /* May be false in background mode. */
     const bool use_undo = G.background ? (ED_undo_stack_get() != nullptr) : true;
@@ -217,7 +218,7 @@ void disable_with_undo(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *
 
 static void sculpt_dynamic_topology_enable_with_undo(Main *bmain, Depsgraph *depsgraph, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (ss->bm == nullptr) {
     /* May be false in background mode. */
     const bool use_undo = G.background ? (ED_undo_stack_get() != nullptr) : true;
@@ -238,7 +239,7 @@ static int sculpt_dynamic_topology_toggle_exec(bContext *C, wmOperator * /*op*/)
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   WM_cursor_wait(true);
 
@@ -307,7 +308,7 @@ static bool dyntopo_supports_customdata_layers(const Span<CustomDataLayer> layer
 enum WarnFlag check_attribute_warning(Scene *scene, Object *ob)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   WarnFlag flag = WarnFlag(0);
 
@@ -354,7 +355,7 @@ static int sculpt_dynamic_topology_toggle_invoke(bContext *C,
                                                  const wmEvent * /*event*/)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (!ss->bm) {
     Scene *scene = CTX_data_scene(C);

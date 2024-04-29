@@ -42,6 +42,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_report.hh"
 
@@ -616,7 +617,7 @@ static void do_weight_paint_vertex_single(
   }
 
   if (!vwpaint::brush_use_accumulate(wp)) {
-    MDeformVert *dvert_prev = ob->sculpt->mode.wpaint.dvert_prev;
+    MDeformVert *dvert_prev = ob->runtime->sculpt->mode.wpaint.dvert_prev;
     MDeformVert *dv_prev = defweight_prev_init(dvert_prev, wpi->dvert.data(), index);
     if (index_mirr != -1) {
       defweight_prev_init(dvert_prev, wpi->dvert.data(), index_mirr);
@@ -772,7 +773,7 @@ static void do_weight_paint_vertex_multi(
   }
 
   if (!vwpaint::brush_use_accumulate(wp)) {
-    MDeformVert *dvert_prev = ob->sculpt->mode.wpaint.dvert_prev;
+    MDeformVert *dvert_prev = ob->runtime->sculpt->mode.wpaint.dvert_prev;
     MDeformVert *dv_prev = defweight_prev_init(dvert_prev, wpi->dvert.data(), index);
     if (index_mirr != -1) {
       defweight_prev_init(dvert_prev, wpi->dvert.data(), index_mirr);
@@ -877,7 +878,7 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
   WPaintVGroupIndex vgroup_index;
   int defbase_tot, defbase_tot_sel;
   bool *defbase_sel;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   VPaint *vp = CTX_data_tool_settings(C)->wpaint;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
@@ -1016,8 +1017,8 @@ static bool wpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
     wpd->precomputed_weight = (float *)MEM_mallocN(sizeof(float) * mesh->verts_num, __func__);
   }
 
-  if (ob->sculpt->mode.wpaint.dvert_prev != nullptr) {
-    MDeformVert *dv = ob->sculpt->mode.wpaint.dvert_prev;
+  if (ob->runtime->sculpt->mode.wpaint.dvert_prev != nullptr) {
+    MDeformVert *dv = ob->runtime->sculpt->mode.wpaint.dvert_prev;
     for (int i = 0; i < mesh->verts_num; i++, dv++) {
       /* Use to show this isn't initialized, never apply to the mesh data. */
       dv->flag = 1;
@@ -1080,7 +1081,7 @@ static void do_wpaint_brush_blur_task(const Scene *scene,
                                       PBVHNode *node)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
   const SculptVertexPaintGeomMap *gmap = &ss->mode.wpaint.gmap;
@@ -1175,7 +1176,7 @@ static void do_wpaint_brush_smear_task(const Scene *scene,
                                        PBVHNode *node)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
   const SculptVertexPaintGeomMap *gmap = &ss->mode.wpaint.gmap;
@@ -1295,7 +1296,7 @@ static void do_wpaint_brush_draw_task(const Scene *scene,
                                       PBVHNode *node)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
 
@@ -1371,7 +1372,7 @@ static WPaintAverageAccum do_wpaint_brush_calc_average_weight(Object *ob,
                                                               PBVHNode *node)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   StrokeCache *cache = ss->cache;
   const PBVHType pbvh_type = BKE_pbvh_type(*ss->pbvh);
   const bool has_grids = (pbvh_type == PBVH_GRIDS);
@@ -1469,7 +1470,7 @@ static void wpaint_paint_leaves(bContext *C,
                                 Span<PBVHNode *> nodes)
 {
   Scene *scene = CTX_data_scene(C);
-  const Brush *brush = ob->sculpt->cache->brush;
+  const Brush *brush = ob->runtime->sculpt->cache->brush;
 
   /* Use this so average can modify its weight without touching the brush. */
   float strength = BKE_brush_weight_get(scene, brush);
@@ -1701,7 +1702,7 @@ static void wpaint_do_paint(bContext *C,
                             const int i,
                             const float angle)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   ss->cache->radial_symmetry_pass = i;
   SCULPT_cache_calc_brushdata_symm(ss->cache, symm, axis, angle);
 
@@ -1733,7 +1734,7 @@ static void wpaint_do_symmetrical_brush_actions(
 {
   Brush *brush = BKE_paint_brush(&wp->paint);
   Mesh *mesh = (Mesh *)ob->data;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   StrokeCache *cache = ss->cache;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   int i = 0;
@@ -1794,7 +1795,7 @@ static void wpaint_stroke_update_step(bContext *C,
   ViewContext *vc;
   Object *ob = CTX_data_active_object(C);
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   vwpaint::update_cache_variants(C, wp, ob, itemptr);
 
@@ -1906,7 +1907,7 @@ static void wpaint_stroke_done(const bContext *C, PaintStroke *stroke)
     MEM_freeN(wpd);
   }
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (ss->cache->alt_smooth) {
     ToolSettings *ts = CTX_data_tool_settings(C);
@@ -1930,8 +1931,8 @@ static void wpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
-  SCULPT_cache_free(ob->sculpt->cache);
-  ob->sculpt->cache = nullptr;
+  SCULPT_cache_free(ob->runtime->sculpt->cache);
+  ob->runtime->sculpt->cache = nullptr;
 }
 
 static int wpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1980,9 +1981,9 @@ static int wpaint_exec(bContext *C, wmOperator *op)
 static void wpaint_cancel(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  if (ob->sculpt->cache) {
-    SCULPT_cache_free(ob->sculpt->cache);
-    ob->sculpt->cache = nullptr;
+  if (ob->runtime->sculpt->cache) {
+    SCULPT_cache_free(ob->runtime->sculpt->cache);
+    ob->runtime->sculpt->cache = nullptr;
   }
 
   paint_stroke_cancel(C, op, (PaintStroke *)op->customdata);

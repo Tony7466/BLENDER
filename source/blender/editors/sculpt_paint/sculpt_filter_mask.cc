@@ -8,6 +8,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -160,8 +161,8 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
-  SculptSession *ss = ob->sculpt;
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  SculptSession *ss = ob->runtime->sculpt;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
 
   SCULPT_vertex_random_access_ensure(ss);
 
@@ -185,7 +186,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     iterations = int(num_verts / 50000.0f) + 1;
   }
 
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->sculpt);
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->runtime->sculpt);
 
   for (int i = 0; i < iterations; i++) {
     if (ELEM(filter_type, FilterType::Grow, FilterType::Shrink)) {

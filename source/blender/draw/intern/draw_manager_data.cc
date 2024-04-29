@@ -19,6 +19,7 @@
 #include "BKE_image.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_volume.hh"
@@ -1328,7 +1329,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 {
   using namespace blender;
   /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
-  PBVH *pbvh = (scd->ob->sculpt) ? scd->ob->sculpt->pbvh.get() : nullptr;
+  PBVH *pbvh = (scd->ob->runtime->sculpt) ? scd->ob->runtime->sculpt->pbvh.get() : nullptr;
   if (!pbvh) {
     return;
   }

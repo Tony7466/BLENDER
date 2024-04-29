@@ -27,6 +27,7 @@
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
@@ -48,7 +49,7 @@
 namespace blender::ed::sculpt_paint::mask {
 Array<float> duplicate_mask(const Object &object)
 {
-  const SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.runtime->sculpt;
   switch (BKE_pbvh_type(*ss.pbvh)) {
     case PBVH_FACES: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -266,7 +267,7 @@ static void fill_mask_grids(Main &bmain,
                             const float value,
                             const Span<PBVHNode *> nodes)
 {
-  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *object.runtime->sculpt->subdiv_ccg;
 
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   if (value == 0.0f && !key.has_mask) {
@@ -326,7 +327,7 @@ static void fill_mask_grids(Main &bmain,
 
 static void fill_mask_bmesh(Object &object, const float value, const Span<PBVHNode *> nodes)
 {
-  BMesh &bm = *object.sculpt->bm;
+  BMesh &bm = *object.runtime->sculpt->bm;
   const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
   if (value == 0.0f && offset == -1) {
     return;
@@ -359,7 +360,7 @@ static void fill_mask_bmesh(Object &object, const float value, const Span<PBVHNo
 static void fill_mask(
     Main &bmain, const Scene &scene, Depsgraph &depsgraph, Object &object, const float value)
 {
-  PBVH &pbvh = *object.sculpt->pbvh;
+  PBVH &pbvh = *object.runtime->sculpt->pbvh;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES:
@@ -409,7 +410,7 @@ static void invert_mask_grids(Main &bmain,
                               Object &object,
                               const Span<PBVHNode *> nodes)
 {
-  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *object.runtime->sculpt->subdiv_ccg;
 
   MultiresModifierData &mmd = *BKE_sculpt_multires_active(&scene, &object);
   BKE_sculpt_mask_layers_ensure(&depsgraph, &bmain, &object, &mmd);
@@ -449,7 +450,7 @@ static void invert_mask_grids(Main &bmain,
 
 static void invert_mask_bmesh(Object &object, const Span<PBVHNode *> nodes)
 {
-  BMesh &bm = *object.sculpt->bm;
+  BMesh &bm = *object.runtime->sculpt->bm;
   const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
   if (offset == -1) {
     BLI_assert_unreachable();
@@ -472,8 +473,8 @@ static void invert_mask_bmesh(Object &object, const Span<PBVHNode *> nodes)
 
 static void invert_mask(Main &bmain, const Scene &scene, Depsgraph &depsgraph, Object &object)
 {
-  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*object.sculpt->pbvh, {});
-  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*object.runtime->sculpt->pbvh, {});
+  switch (BKE_pbvh_type(*object.runtime->sculpt->pbvh)) {
     case PBVH_FACES:
       invert_mask_mesh(object, nodes);
       break;
@@ -593,7 +594,7 @@ static void mask_gesture_apply_task(gesture::GestureData &gesture_data,
       const float new_mask = mask_flood_fill_get_new_value_for_elem(
           prevmask, mask_operation->mode, mask_operation->value);
       if (prevmask != new_mask) {
-        SCULPT_mask_vert_set(BKE_pbvh_type(*ob->sculpt->pbvh), mask_write, new_mask, vd);
+        SCULPT_mask_vert_set(BKE_pbvh_type(*ob->runtime->sculpt->pbvh), mask_write, new_mask, vd);
         redraw = true;
       }
     }

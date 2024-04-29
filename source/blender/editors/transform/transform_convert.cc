@@ -27,6 +27,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_modifier.hh"
 #include "BKE_nla.h"
+#include "BKE_object_types.hh"
 #include "BKE_scene.hh"
 
 #include "ED_particle.hh"
@@ -891,7 +892,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     return &TransConvertType_Cursor3D;
   }
   if (!(t->options & CTX_PAINT_CURVE) && (t->spacetype == SPACE_VIEW3D) && ob &&
-      (ob->mode == OB_MODE_SCULPT) && ob->sculpt)
+      (ob->mode == OB_MODE_SCULPT) && ob->runtime->sculpt)
   {
     return &TransConvertType_Sculpt;
   }

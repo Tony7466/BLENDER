@@ -56,6 +56,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
@@ -193,7 +194,8 @@ static void print_sculpt_node(Object *ob, Node *node)
   printf("    %s:%s {applied=%d}\n", undo_type_to_str(node->type), node->idname, node->applied);
 
   if (node->bm_entry) {
-    BM_log_print_entry(object.sculpt ? object.sculpt->bm : nullptr, node->bm_entry);
+    BM_log_print_entry(object.runtime->sculpt ? object.runtime->sculpt->bm : nullptr,
+                       node->bm_entry);
   }
 }
 
@@ -419,7 +421,7 @@ static bool restore_coords(bContext *C,
                            Node &unode,
                            MutableSpan<bool> modified_verts)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 
   if (unode.mesh_verts_num) {
@@ -523,7 +525,7 @@ static bool restore_coords(bContext *C,
 
 static bool restore_hidden(Object &object, Node &unode, MutableSpan<bool> modified_vertices)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 
   if (unode.mesh_verts_num) {
@@ -591,7 +593,7 @@ static bool restore_hidden_face(Object &object, Node &unode, MutableSpan<bool> m
 
 static bool restore_color(Object &object, Node &unode, MutableSpan<bool> modified_vertices)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
 
   bool modified = false;
 
@@ -620,7 +622,7 @@ static bool restore_color(Object &object, Node &unode, MutableSpan<bool> modifie
 static bool restore_mask(Object &object, Node &unode, MutableSpan<bool> modified_vertices)
 {
   Mesh *mesh = BKE_object_get_original_mesh(&object);
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 
   if (unode.mesh_verts_num) {
@@ -705,7 +707,7 @@ static void bmesh_restore_generic(Node &unode, Object &object, SculptSession *ss
 /* Create empty sculpt BMesh and enable logging. */
 static void bmesh_enable(Object &object, Node &unode)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   Mesh *mesh = static_cast<Mesh *>(object.data);
 
   SCULPT_pbvh_clear(&object);
@@ -888,7 +890,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object &object = *BKE_view_layer_active_object_get(view_layer);
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
 
   bool clear_automask_cache = false;
@@ -1184,7 +1186,7 @@ static Node *find_or_alloc_node_type(const Object &object, const Type type)
 static Node *alloc_node(const Object &object, const PBVHNode *node, const Type type)
 {
   UndoSculpt *usculpt = get_nodes();
-  const SculptSession *ss = object.sculpt;
+  const SculptSession *ss = object.runtime->sculpt;
 
   Node *unode = alloc_node_type(object, type);
   unode->node = node;
@@ -1299,7 +1301,7 @@ static Node *alloc_node(const Object &object, const PBVHNode *node, const Type t
 
 static void store_coords(const Object &object, Node *unode)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
 
   if (!unode->grids.is_empty()) {
     const SubdivCCG &subdiv_ccg = *ss->subdiv_ccg;
@@ -1379,7 +1381,7 @@ static void store_face_hidden(const Object &object, Node &unode)
 
 static void store_mask(const Object &object, Node *unode)
 {
-  const SculptSession *ss = object.sculpt;
+  const SculptSession *ss = object.runtime->sculpt;
 
   if (!unode->grids.is_empty()) {
     const SubdivCCG &subdiv_ccg = *ss->subdiv_ccg;
@@ -1413,7 +1415,7 @@ static void store_mask(const Object &object, Node *unode)
 
 static void store_color(const Object &object, Node *unode)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
 
   BLI_assert(BKE_pbvh_type(*ss->pbvh) == PBVH_FACES);
 
@@ -1461,7 +1463,7 @@ static void store_face_sets(const Mesh &mesh, Node &unode)
 static Node *bmesh_push(const Object &object, const PBVHNode *node, Type type)
 {
   UndoSculpt *usculpt = get_nodes();
-  const SculptSession *ss = object.sculpt;
+  const SculptSession *ss = object.runtime->sculpt;
 
   Node *unode = usculpt->nodes.is_empty() ? nullptr : usculpt->nodes.first().get();
 
@@ -1544,7 +1546,7 @@ static Node *bmesh_push(const Object &object, const PBVHNode *node, Type type)
 
 Node *push_node(const Object &object, const PBVHNode *node, Type type)
 {
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
 
   Node *unode;
 
@@ -1767,8 +1769,8 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
   if (layer) {
     BKE_id_attributes_active_color_set(&mesh->id, layer->name);
 
-    if (ob->sculpt && ob->sculpt->pbvh) {
-      BKE_pbvh_update_active_vcol(*ob->sculpt->pbvh, mesh);
+    if (ob->runtime->sculpt && ob->runtime->sculpt->pbvh) {
+      BKE_pbvh_update_active_vcol(*ob->runtime->sculpt->pbvh, mesh);
     }
   }
 }
@@ -1909,8 +1911,8 @@ static void sculpt_undosys_step_decode(
         ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, true, nullptr);
       }
 
-      if (ob->sculpt) {
-        ob->sculpt->needs_flush_to_id = 1;
+      if (ob->runtime->sculpt) {
+        ob->runtime->sculpt->needs_flush_to_id = 1;
       }
       bmain->is_memfile_undo_flush_needed = true;
     }
@@ -2017,14 +2019,14 @@ static bool use_multires_mesh(bContext *C)
   }
 
   Object *object = CTX_data_active_object(C);
-  SculptSession *sculpt_session = object->sculpt;
+  SculptSession *sculpt_session = object->runtime->sculpt;
 
   return sculpt_session->multires.active;
 }
 
 static void push_all_grids(Object *object)
 {
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
 
   /* It is possible that undo push is done from an object state where there is no PBVH. This
    * happens, for example, when an operation which tagged for geometry update was performed prior

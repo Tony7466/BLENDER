@@ -27,6 +27,7 @@
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
 #include "BKE_kelvinlet.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -94,7 +95,7 @@ static void sculpt_project_v3(const SculptProjectVector *spvc, const float vec[3
 static void calc_sculpt_plane(
     Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float r_area_no[3], float r_area_co[3])
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   if (SCULPT_stroke_is_main_symmetry_pass(ss->cache) &&
@@ -246,7 +247,7 @@ static void sculpt_project_v3_normal_align(SculptSession *ss,
 static void do_draw_brush_task(Object *ob, const Brush *brush, const float *offset, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
@@ -303,7 +304,7 @@ static void do_draw_brush_task(Object *ob, const Brush *brush, const float *offs
 void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float offset[3];
   const float bstrength = ss->cache->bstrength;
@@ -336,7 +337,7 @@ static void do_fill_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -391,7 +392,7 @@ static void do_fill_brush_task(
 void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const float radius = ss->cache->radius;
@@ -425,7 +426,7 @@ static void do_scrape_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -479,7 +480,7 @@ static void do_scrape_brush_task(
 void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const float radius = ss->cache->radius;
@@ -524,7 +525,7 @@ static void do_clay_thumb_brush_task(Object *ob,
                                      PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -599,7 +600,7 @@ float SCULPT_clay_thumb_get_stabilized_pressure(blender::ed::sculpt_paint::Strok
 void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   /* Sampled geometry normal and area center. */
@@ -674,7 +675,7 @@ static void do_flatten_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -724,7 +725,7 @@ static void do_flatten_brush_task(
 void SCULPT_do_flatten_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const float radius = ss->cache->radius;
@@ -770,7 +771,7 @@ static void calc_clay_surface_task_cb(Object *ob,
                                       PBVHNode *node,
                                       ClaySampleData *csd)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   float plane[4];
 
   PBVHVertexIter vd;
@@ -810,7 +811,7 @@ static void do_clay_brush_task(
     Object *ob, const Brush *brush, const float *area_no, const float *area_co, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -858,7 +859,7 @@ static void do_clay_brush_task(
 void SCULPT_do_clay_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const float radius = fabsf(ss->cache->radius);
@@ -917,7 +918,7 @@ static void do_clay_strips_brush_task(Object *ob,
                                       PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptBrushTest test;
@@ -972,7 +973,7 @@ static void do_clay_strips_brush_task(Object *ob,
 void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const bool flip = (ss->cache->bstrength < 0.0f);
@@ -1058,7 +1059,7 @@ static void do_snake_hook_brush_task(Object *ob,
                                      PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -1160,7 +1161,7 @@ static void do_snake_hook_brush_task(Object *ob,
 void SCULPT_do_snake_hook_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   const float bstrength = ss->cache->bstrength;
   float grab_delta[3];
@@ -1192,7 +1193,7 @@ void SCULPT_do_snake_hook_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_thumb_brush_task(Object *ob, const Brush *brush, const float *cono, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -1236,7 +1237,7 @@ static void do_thumb_brush_task(Object *ob, const Brush *brush, const float *con
 void SCULPT_do_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float grab_delta[3];
   float tmp[3], cono[3];
@@ -1256,7 +1257,7 @@ void SCULPT_do_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_rotate_brush_task(Object *ob, const Brush *brush, const float angle, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -1306,7 +1307,7 @@ static void do_rotate_brush_task(Object *ob, const Brush *brush, const float ang
 void SCULPT_do_rotate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   static const int flip[8] = {1, -1, -1, 1, -1, 1, 1, -1};
@@ -1322,7 +1323,7 @@ void SCULPT_do_rotate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_layer_brush_task(Object *ob, Sculpt *sd, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const bool use_persistent_base = !ss->bm && ss->attrs.persistent_co &&
                                    brush->flag & BRUSH_PERSISTENT;
@@ -1411,7 +1412,7 @@ static void do_layer_brush_task(Object *ob, Sculpt *sd, const Brush *brush, PBVH
 void SCULPT_do_layer_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   if (ss->cache->layer_displacement_factor == nullptr) {
@@ -1429,7 +1430,7 @@ void SCULPT_do_layer_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_inflate_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -1489,7 +1490,7 @@ void SCULPT_do_inflate_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_nudge_brush_task(Object *ob, const Brush *brush, const float *cono, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -1528,7 +1529,7 @@ static void do_nudge_brush_task(Object *ob, const Brush *brush, const float *con
 void SCULPT_do_nudge_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float grab_delta[3];
   float tmp[3], cono[3];
@@ -1562,7 +1563,7 @@ static void do_crease_brush_task(Object *ob,
                                  PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -1616,7 +1617,7 @@ static void do_crease_brush_task(Object *ob,
 void SCULPT_do_crease_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Scene *scene = ss->cache->vc->scene;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float offset[3];
@@ -1664,7 +1665,7 @@ static void do_pinch_brush_task(Object *ob,
                                 PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -1726,7 +1727,7 @@ static void do_pinch_brush_task(Object *ob,
 void SCULPT_do_pinch_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   float area_no[3];
@@ -1772,7 +1773,7 @@ static void do_grab_brush_task(Object *ob,
                                PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -1829,7 +1830,7 @@ static void do_grab_brush_task(Object *ob,
 void SCULPT_do_grab_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float grab_delta[3];
 
@@ -1852,7 +1853,7 @@ static void do_elastic_deform_brush_task(Object *ob,
                                          PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float *location = ss->cache->location;
 
   PBVHVertexIter vd;
@@ -1928,7 +1929,7 @@ static void do_elastic_deform_brush_task(Object *ob,
 void SCULPT_do_elastic_deform_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float grab_delta[3];
 
@@ -1957,7 +1958,7 @@ static void do_draw_sharp_brush_task(Object *ob,
                                      PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -2000,7 +2001,7 @@ static void do_draw_sharp_brush_task(Object *ob,
 void SCULPT_do_draw_sharp_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   float offset[3];
   const float bstrength = ss->cache->bstrength;
@@ -2032,7 +2033,7 @@ void SCULPT_do_draw_sharp_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_topology_slide_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
@@ -2191,7 +2192,7 @@ void relax_vertex(SculptSession *ss,
 static void do_topology_relax_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
@@ -2238,7 +2239,7 @@ static void do_topology_relax_task(Object *ob, const Brush *brush, PBVHNode *nod
 void SCULPT_do_slide_relax_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache)) {
@@ -2275,7 +2276,7 @@ void SCULPT_do_slide_relax_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 static void do_displacement_eraser_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = clamp_f(ss->cache->bstrength, 0.0f, 1.0f);
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -2337,7 +2338,7 @@ void SCULPT_do_displacement_eraser_brush(Sculpt *sd, Object *ob, Span<PBVHNode *
 static void do_displacement_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = clamp_f(ss->cache->bstrength, 0.0f, 1.0f);
 
   SculptBrushTest test;
@@ -2436,7 +2437,7 @@ void SCULPT_do_displacement_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *>
 {
   using namespace blender;
   Brush *brush = BKE_paint_brush(&sd->paint);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   BKE_curvemapping_init(brush->curve);
 
@@ -2478,7 +2479,7 @@ static void do_topology_rake_bmesh_task(
     Object *ob, Sculpt *sd, const Brush *brush, const float strength, PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   float direction[3];
   copy_v3_v3(direction, ss->cache->grab_delta_symmetry);
@@ -2571,7 +2572,7 @@ static void do_mask_brush_draw_task(Object *ob,
                                     PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
@@ -2618,7 +2619,7 @@ void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender;
   const Brush *brush = BKE_paint_brush(&sd->paint);
-  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->sculpt);
+  const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ob->runtime->sculpt);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
       do_mask_brush_draw_task(ob, brush, mask_write, nodes[i]);
@@ -2629,7 +2630,7 @@ void SCULPT_do_mask_brush_draw(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 void SCULPT_do_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   switch ((BrushMaskTool)brush->mask_tool) {

@@ -25,6 +25,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -81,7 +82,7 @@ static Array<float> geodesic_mesh_create(Object *ob,
                                          const Set<int> &initial_verts,
                                          const float limit_radius)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
 
   const int totvert = mesh->verts_num;
@@ -228,7 +229,7 @@ static Array<float> geodesic_mesh_create(Object *ob,
  * calculate the distance. */
 static Array<float> geodesic_fallback_create(Object *ob, const Set<int> &initial_verts)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = BKE_object_get_original_mesh(ob);
   const int totvert = mesh->verts_num;
   Array<float> dists(totvert, 0.0f);
@@ -251,7 +252,7 @@ static Array<float> geodesic_fallback_create(Object *ob, const Set<int> &initial
 
 Array<float> distances_create(Object *ob, const Set<int> &initial_verts, const float limit_radius)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   switch (BKE_pbvh_type(*ss->pbvh)) {
     case PBVH_FACES:
       return geodesic_mesh_create(ob, initial_verts, limit_radius);
@@ -267,7 +268,7 @@ Array<float> distances_create_from_vert_and_symm(Object *ob,
                                                  const PBVHVertRef vertex,
                                                  const float limit_radius)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Set<int> initial_verts;
 
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);

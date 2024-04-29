@@ -145,7 +145,7 @@ void EEVEE_shadows_caster_register(EEVEE_ViewLayerData *sldata, Object *ob)
     update = oedata->need_update;
 
     /* Always update shadow buffers in sculpt modes. */
-    update |= ob->sculpt != nullptr;
+    update |= ob->runtime->sculpt != nullptr;
 
     oedata->need_update = false;
   }

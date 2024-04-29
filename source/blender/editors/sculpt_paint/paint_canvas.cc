@@ -9,6 +9,7 @@
 #include "DNA_workspace_types.h"
 
 #include "BKE_material.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 
 #include "WM_toolsystem.hh"
@@ -51,7 +52,7 @@ static bool paint_tool_shading_color_follows_last_used(blender::StringRef idname
 
 void ED_paint_tool_update_sticky_shading_color(bContext *C, Object *ob)
 {
-  if (ob == nullptr || ob->sculpt == nullptr) {
+  if (ob == nullptr || ob->runtime->sculpt == nullptr) {
     return;
   }
 
@@ -64,12 +65,12 @@ void ED_paint_tool_update_sticky_shading_color(bContext *C, Object *ob)
     return;
   }
 
-  ob->sculpt->sticky_shading_color = paint_tool_uses_canvas(tref->idname);
+  ob->runtime->sculpt->sticky_shading_color = paint_tool_uses_canvas(tref->idname);
 }
 
 static bool paint_tool_shading_color_follows_last_used_tool(bContext *C, Object *ob)
 {
-  if (ob == nullptr || ob->sculpt == nullptr) {
+  if (ob == nullptr || ob->runtime->sculpt == nullptr) {
     return false;
   }
 
@@ -107,7 +108,7 @@ eV3DShadingColorType ED_paint_shading_color_override(bContext *C,
    */
   if (!ED_paint_tool_use_canvas(C, nullptr) &&
       !(paint_tool_shading_color_follows_last_used_tool(C, ob) &&
-        ob->sculpt->sticky_shading_color))
+        ob->runtime->sculpt->sticky_shading_color))
   {
     return orig_color_type;
   }

@@ -19,6 +19,7 @@ struct CurveCache;
 struct ID;
 struct Mesh;
 struct PoseBackup;
+struct SculptSession;
 
 namespace blender::bke {
 
@@ -144,6 +145,8 @@ struct ObjectRuntime {
   uint64_t last_update_transform = 0;
   uint64_t last_update_geometry = 0;
   uint64_t last_update_shading = 0;
+
+  SculptSession *sculpt;
 };
 
 }  // namespace blender::bke

@@ -559,6 +559,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_idprop.hh"
 #  include "BKE_layer.hh"
 #  include "BKE_nla.h"
+#  include "BKE_object_types.hh"
 #  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
 #  include "BKE_scene.hh"
@@ -1186,7 +1187,7 @@ static void rna_3DViewShading_type_update(Main *bmain, Scene *scene, PointerRNA 
     /* When switching from workbench to render or material mode the geometry of any
      * active sculpt session needs to be recalculated. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-      if (ob->sculpt) {
+      if (ob->runtime->sculpt) {
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
       }
     }

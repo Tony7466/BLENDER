@@ -13,6 +13,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_mesh_types.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -42,7 +43,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                                                  const Span<pbvh::AttributeRequest> attrs)
 {
   /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
-  PBVH *pbvh = ob->sculpt ? ob->sculpt->pbvh.get() : nullptr;
+  PBVH *pbvh = ob->runtime->sculpt ? ob->runtime->sculpt->pbvh.get() : nullptr;
   if (!pbvh) {
     return {};
   }

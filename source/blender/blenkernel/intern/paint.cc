@@ -1396,7 +1396,7 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
  */
 static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (ss->bm) {
     if (ob->data) {
@@ -1412,7 +1412,7 @@ static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 
 void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
 {
-  if (ob && ob->sculpt) {
+  if (ob && ob->runtime->sculpt) {
     sculptsession_bm_to_me_update_data_only(ob, reorder);
 
     /* Ensure the objects evaluated mesh doesn't hold onto arrays
@@ -1424,7 +1424,7 @@ void BKE_sculptsession_bm_to_me(Object *ob, bool reorder)
 static void sculptsession_free_pbvh(Object *object)
 {
   using namespace blender;
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
   if (!ss) {
     return;
   }
@@ -1448,8 +1448,8 @@ static void sculptsession_free_pbvh(Object *object)
 
 void BKE_sculptsession_bm_to_me_for_render(Object *object)
 {
-  if (object && object->sculpt) {
-    if (object->sculpt->bm) {
+  if (object && object->runtime->sculpt) {
+    if (object->runtime->sculpt->bm) {
       /* Ensure no points to old arrays are stored in DM
        *
        * Apparently, we could not use DEG_id_tag_update
@@ -1470,8 +1470,8 @@ void BKE_sculptsession_bm_to_me_for_render(Object *object)
 
 void BKE_sculptsession_free(Object *ob)
 {
-  if (ob && ob->sculpt) {
-    SculptSession *ss = ob->sculpt;
+  if (ob && ob->runtime->sculpt) {
+    SculptSession *ss = ob->runtime->sculpt;
 
     BKE_sculpt_attribute_destroy_temporary_all(ob);
 
@@ -1484,7 +1484,7 @@ void BKE_sculptsession_free(Object *ob)
 
     MEM_delete(ss);
 
-    ob->sculpt = nullptr;
+    ob->runtime->sculpt = nullptr;
   }
 }
 
@@ -1529,7 +1529,7 @@ static MultiresModifierData *sculpt_multires_modifier_get(const Scene *scene,
   ModifierData *md;
   VirtualModifierData virtual_modifier_data;
 
-  if (ob->sculpt && ob->sculpt->bm) {
+  if (ob->runtime->sculpt && ob->runtime->sculpt->bm) {
     /* Can't combine multires and dynamic topology. */
     return nullptr;
   }
@@ -1586,7 +1586,7 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
   Mesh *mesh = (Mesh *)ob->data;
   VirtualModifierData virtual_modifier_data;
 
-  if (ob->sculpt->bm || BKE_sculpt_multires_active(scene, ob)) {
+  if (ob->runtime->sculpt->bm || BKE_sculpt_multires_active(scene, ob)) {
     return false;
   }
 
@@ -1629,7 +1629,7 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
  */
 static void sculpt_update_persistent_base(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   ss->attrs.persistent_co = BKE_sculpt_attribute_get(
       ob, AttrDomain::Point, CD_PROP_FLOAT3, SCULPT_ATTRIBUTE_NAME(persistent_co));
@@ -1646,7 +1646,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 {
   Scene *scene = DEG_get_input_scene(depsgraph);
   Sculpt *sd = scene->toolsettings->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh_orig = BKE_object_get_original_mesh(ob);
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
   MultiresModifierData *mmd = sculpt_multires_modifier_get(scene, ob, true);
@@ -1858,7 +1858,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 void BKE_sculpt_update_object_before_eval(Object *ob_eval)
 {
   /* Update before mesh evaluation in the dependency graph. */
-  SculptSession *ss = ob_eval->sculpt;
+  SculptSession *ss = ob_eval->runtime->sculpt;
 
   if (ss && ss->building_vp_handle == false) {
     if (!ss->cache && !ss->filter_cache && !ss->expand_cache) {
@@ -1867,10 +1867,10 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
        * topology does not change in the meantime .. weak. */
       sculptsession_free_pbvh(ob_eval);
 
-      BKE_sculptsession_free_deformMats(ob_eval->sculpt);
+      BKE_sculptsession_free_deformMats(ob_eval->runtime->sculpt);
 
       /* In vertex/weight paint, force maps to be rebuilt. */
-      BKE_sculptsession_free_vwpaint_data(ob_eval->sculpt);
+      BKE_sculptsession_free_vwpaint_data(ob_eval->runtime->sculpt);
     }
     else if (ss->pbvh) {
       Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*ss->pbvh, {});
@@ -1913,8 +1913,8 @@ void BKE_sculpt_color_layer_create_if_needed(Object *object)
   DEG_id_tag_update(&orig_me->id, ID_RECALC_GEOMETRY_ALL_MODES);
   BKE_mesh_tessface_clear(orig_me);
 
-  if (object->sculpt && object->sculpt->pbvh) {
-    BKE_pbvh_update_active_vcol(*object->sculpt->pbvh, orig_me);
+  if (object->runtime->sculpt && object->runtime->sculpt->pbvh) {
+    BKE_pbvh_update_active_vcol(*object->runtime->sculpt->pbvh, orig_me);
   }
 }
 
@@ -1930,7 +1930,7 @@ void BKE_sculpt_update_object_for_edit(Depsgraph *depsgraph, Object *ob_orig, bo
 void BKE_sculpt_hide_poly_pointer_update(Object &object)
 {
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-  object.sculpt->hide_poly = static_cast<const bool *>(
+  object.runtime->sculpt->hide_poly = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
 }
 
@@ -2058,16 +2058,17 @@ static bool check_sculpt_object_deformed(Object *object, const bool for_construc
   /* Active modifiers means extra deformation, which can't be handled correct
    * on birth of PBVH and sculpt "layer" levels, so use PBVH only for internal brush
    * stuff and show final evaluated mesh so user would see actual object shape. */
-  deformed |= object->sculpt->deform_modifiers_active;
+  deformed |= object->runtime->sculpt->deform_modifiers_active;
 
   if (for_construction) {
-    deformed |= object->sculpt->shapekey_active != nullptr;
+    deformed |= object->runtime->sculpt->shapekey_active != nullptr;
   }
   else {
     /* As in case with modifiers, we can't synchronize deformation made against
      * PBVH and non-locked keyblock, so also use PBVH only for brushes and
      * final DM to give final result to user. */
-    deformed |= object->sculpt->shapekey_active && (object->shapeflag & OB_SHAPE_LOCK) == 0;
+    deformed |= object->runtime->sculpt->shapekey_active &&
+                (object->shapeflag & OB_SHAPE_LOCK) == 0;
   }
 
   return deformed;
@@ -2109,10 +2110,10 @@ static std::unique_ptr<PBVH> build_pbvh_for_dynamic_topology(Object *ob)
 {
   sculptsession_bmesh_add_layers(ob);
 
-  return pbvh::build_bmesh(ob->sculpt->bm,
-                           ob->sculpt->bm_log,
-                           ob->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
-                           ob->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
+  return pbvh::build_bmesh(ob->runtime->sculpt->bm,
+                           ob->runtime->sculpt->bm_log,
+                           ob->runtime->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
+                           ob->runtime->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
 }
 
 static std::unique_ptr<PBVH> build_pbvh_from_regular_mesh(Object *ob, const Mesh *me_eval_deform)
@@ -2142,24 +2143,26 @@ static std::unique_ptr<PBVH> build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_c
 PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 {
   using namespace blender::bke;
-  if (ob->sculpt == nullptr) {
+  if (ob->runtime->sculpt == nullptr) {
     return nullptr;
   }
 
-  if (ob->sculpt->pbvh) {
+  SculptSession &ss = *ob->runtime->sculpt;
+
+  if (ss.pbvh) {
     /* NOTE: It is possible that pointers to grids or other geometry data changed. Need to update
      * those pointers. */
-    const PBVHType pbvh_type = BKE_pbvh_type(*ob->sculpt->pbvh);
+    const PBVHType pbvh_type = BKE_pbvh_type(*ss.pbvh);
     switch (pbvh_type) {
       case PBVH_FACES: {
-        pbvh::update_mesh_pointers(*ob->sculpt->pbvh, BKE_object_get_original_mesh(ob));
+        pbvh::update_mesh_pointers(*ss.pbvh, BKE_object_get_original_mesh(ob));
         break;
       }
       case PBVH_GRIDS: {
         Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
         Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
         if (SubdivCCG *subdiv_ccg = mesh_eval->runtime->subdiv_ccg.get()) {
-          BKE_sculpt_bvh_update_from_ccg(*ob->sculpt->pbvh, subdiv_ccg);
+          BKE_sculpt_bvh_update_from_ccg(*ss.pbvh, subdiv_ccg);
         }
         break;
       }
@@ -2168,47 +2171,47 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
       }
     }
 
-    BKE_pbvh_update_active_vcol(*ob->sculpt->pbvh, BKE_object_get_original_mesh(ob));
-    BKE_pbvh_pmap_set(*ob->sculpt->pbvh, ob->sculpt->vert_to_face_map);
+    BKE_pbvh_update_active_vcol(*ss.pbvh, BKE_object_get_original_mesh(ob));
+    BKE_pbvh_pmap_set(*ss.pbvh, ss.vert_to_face_map);
 
-    return ob->sculpt->pbvh.get();
+    return ss.pbvh.get();
   }
 
-  ob->sculpt->islands_valid = false;
+  ss.islands_valid = false;
 
-  if (ob->sculpt->bm != nullptr) {
+  if (ss.bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special PBVH. */
-    ob->sculpt->pbvh = build_pbvh_for_dynamic_topology(ob);
+    ss.pbvh = build_pbvh_for_dynamic_topology(ob);
   }
   else {
     Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
     Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
     if (mesh_eval->runtime->subdiv_ccg != nullptr) {
-      ob->sculpt->pbvh = build_pbvh_from_ccg(ob, mesh_eval->runtime->subdiv_ccg.get());
+      ss.pbvh = build_pbvh_from_ccg(ob, mesh_eval->runtime->subdiv_ccg.get());
     }
     else if (ob->type == OB_MESH) {
       const Mesh *me_eval_deform = BKE_object_get_mesh_deform_eval(object_eval);
-      ob->sculpt->pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
+      ss.pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
     }
   }
 
-  BKE_pbvh_pmap_set(*ob->sculpt->pbvh, ob->sculpt->vert_to_face_map);
+  BKE_pbvh_pmap_set(*ss.pbvh, ss.vert_to_face_map);
 
-  sculpt_attribute_update_refs(ob, BKE_pbvh_type(*ob->sculpt->pbvh));
-  return ob->sculpt->pbvh.get();
+  sculpt_attribute_update_refs(ob, BKE_pbvh_type(*ss.pbvh));
+  return ss.pbvh.get();
 }
 
 PBVH *BKE_object_sculpt_pbvh_get(Object *object)
 {
-  if (!object->sculpt) {
+  if (!object->runtime->sculpt) {
     return nullptr;
   }
-  return object->sculpt->pbvh.get();
+  return object->runtime->sculpt->pbvh.get();
 }
 
 bool BKE_object_sculpt_use_dyntopo(const Object *object)
 {
-  return object->sculpt && object->sculpt->bm;
+  return object->runtime->sculpt && object->runtime->sculpt->bm;
 }
 
 void BKE_sculpt_bvh_update_from_ccg(PBVH &pbvh, SubdivCCG *subdiv_ccg)
@@ -2219,7 +2222,7 @@ void BKE_sculpt_bvh_update_from_ccg(PBVH &pbvh, SubdivCCG *subdiv_ccg)
 
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (ss == nullptr || ss->pbvh == nullptr || ss->mode_type != OB_MODE_SCULPT) {
     return false;
   }
@@ -2271,7 +2274,7 @@ int BKE_sculptsession_vertex_count(const SculptSession *ss)
  */
 static CustomData *sculpt_get_cdata(Object *ob, AttrDomain domain)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (ss->bm) {
     switch (domain) {
@@ -2306,7 +2309,7 @@ static CustomData *sculpt_get_cdata(Object *ob, AttrDomain domain)
 
 static int sculpt_attr_elem_count_get(Object *ob, AttrDomain domain)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   switch (domain) {
     case AttrDomain::Point:
@@ -2448,7 +2451,7 @@ static bool sculpt_attribute_create(SculptSession *ss,
 
 static bool sculpt_attr_update(Object *ob, SculptAttribute *attr, PBVHType pbvh_type)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   int elem_num = sculpt_attr_elem_count_get(ob, attr->domain);
 
   bool bad = false;
@@ -2535,7 +2538,7 @@ static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)
 static SculptAttribute *sculpt_attribute_get_ex(
     Object *ob, PBVHType pbvhtype, AttrDomain domain, eCustomDataType proptype, const char *name)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   /* See if attribute is cached in ss->temp_attributes. */
   SculptAttribute *attr = sculpt_get_cached_layer(ss, domain, proptype, name);
 
@@ -2591,7 +2594,7 @@ SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
                                           eCustomDataType proptype,
                                           const char *name)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   BLI_assert(ss->pbvh != nullptr);
 
   return sculpt_attribute_get_ex(ob, BKE_pbvh_type(*ss->pbvh), domain, proptype, name);
@@ -2605,7 +2608,7 @@ static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
                                                    PBVHType pbvhtype,
                                                    bool flat_array_for_bmesh)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SculptAttribute *attr = sculpt_attribute_get_ex(ob, pbvhtype, domain, proptype, name);
 
   if (attr) {
@@ -2638,26 +2641,27 @@ SculptAttribute *BKE_sculpt_attribute_ensure(Object *ob,
   SculptAttributeParams temp_params = *params;
 
   return sculpt_attribute_ensure_ex(
-      ob, domain, proptype, name, &temp_params, BKE_pbvh_type(*ob->sculpt->pbvh), true);
+      ob, domain, proptype, name, &temp_params, BKE_pbvh_type(*ob->runtime->sculpt->pbvh), true);
 }
 
 static void sculptsession_bmesh_attr_update_internal(Object *ob)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   sculptsession_bmesh_add_layers(ob);
 
   if (ss->pbvh) {
-    bke::pbvh::update_bmesh_offsets(*ss->pbvh,
-                                    ob->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
-                                    ob->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
+    bke::pbvh::update_bmesh_offsets(
+        *ss->pbvh,
+        ob->runtime->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
+        ob->runtime->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
   }
 }
 
 static void sculptsession_bmesh_add_layers(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SculptAttributeParams params = {0};
 
   ss->attrs.dyntopo_node_id_vertex = sculpt_attribute_ensure_ex(
@@ -2681,7 +2685,7 @@ static void sculptsession_bmesh_add_layers(Object *ob)
 
 void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
     SculptAttribute *attr = ss->temp_attributes + i;
@@ -2694,7 +2698,7 @@ void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob)
 
 static void sculpt_attribute_update_refs(Object *ob, PBVHType pbvhtype)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets. */
   for (int i = 0; i < 2; i++) {
@@ -2720,7 +2724,7 @@ static void sculpt_attribute_update_refs(Object *ob, PBVHType pbvhtype)
 
 void BKE_sculpt_attribute_destroy_temporary_all(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
     SculptAttribute *attr = ss->temp_attributes + i;
@@ -2733,7 +2737,7 @@ void BKE_sculpt_attribute_destroy_temporary_all(Object *ob)
 
 bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   AttrDomain domain = attr->domain;
 
   BLI_assert(attr->used);

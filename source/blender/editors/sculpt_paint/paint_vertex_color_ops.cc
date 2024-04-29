@@ -23,6 +23,7 @@
 #include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
+#include "BKE_object_types.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -312,7 +313,7 @@ static void transform_active_color(bContext *C,
 
   undo::push_begin(obact, op);
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact->sculpt->pbvh, {});
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*obact->runtime->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
     undo::push_node(*obact, node, undo::Type::Color);
   }

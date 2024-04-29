@@ -105,8 +105,8 @@ void cache_init(bContext *C,
                 float area_normal_radius,
                 float start_strength)
 {
-  SculptSession *ss = ob->sculpt;
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  SculptSession *ss = ob->runtime->sculpt;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
 
   ss->filter_cache = MEM_new<filter::Cache>(__func__);
   ss->filter_cache->start_filter_strength = start_strength;
@@ -331,7 +331,7 @@ static void mesh_filter_task(Object *ob,
                              const float filter_strength,
                              PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
@@ -636,7 +636,7 @@ static void mesh_filter_surface_smooth_displace_task(Object *ob,
                                                      const float filter_strength,
                                                      PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertexIter vd;
 
   auto_mask::NodeData automask_data = auto_mask::node_begin(
@@ -707,7 +707,7 @@ static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
 static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   eSculptMeshFilterType filter_type = eSculptMeshFilterType(RNA_enum_get(op->ptr, "type"));
   float filter_strength = RNA_float_get(op->ptr, "strength");
@@ -762,7 +762,7 @@ static void sculpt_mesh_filter_apply_with_history(bContext *C, wmOperator *op)
   }
 
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   float2 start_mouse;
   bool first = true;
   float initial_strength = ss->filter_cache->start_filter_strength;
@@ -788,7 +788,7 @@ static void sculpt_mesh_filter_apply_with_history(bContext *C, wmOperator *op)
 static void sculpt_mesh_filter_end(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   cache_free(ss);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COORDS);
@@ -811,7 +811,7 @@ static int sculpt_mesh_filter_confirm(SculptSession *ss,
 static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (!ss || !ss->pbvh) {
     return;
@@ -843,7 +843,7 @@ static int sculpt_mesh_filter_modal(bContext *C, wmOperator *op, const wmEvent *
 {
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const eSculptMeshFilterType filter_type = eSculptMeshFilterType(RNA_enum_get(op->ptr, "type"));
 
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EW_SCROLL);
@@ -970,7 +970,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const eMeshFilterDeformAxis deform_axis = eMeshFilterDeformAxis(
       RNA_enum_get(op->ptr, "deform_axis"));
@@ -1042,7 +1042,7 @@ static int sculpt_mesh_filter_exec(bContext *C, wmOperator *op)
 
   if (ret == OPERATOR_PASS_THROUGH) {
     Object *ob = CTX_data_active_object(C);
-    SculptSession *ss = ob->sculpt;
+    SculptSession *ss = ob->runtime->sculpt;
 
     int iterations = RNA_int_get(op->ptr, "iteration_count");
     bool has_history = RNA_collection_length(op->ptr, "event_history") > 0;

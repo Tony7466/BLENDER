@@ -41,6 +41,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_modifier.hh"
@@ -584,8 +585,8 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
 
   cache->is_editmode = mesh->runtime->edit_mesh != nullptr;
 
-  if (object->sculpt && object->sculpt->pbvh) {
-    cache->pbvh_is_drawing = BKE_pbvh_is_drawing(*object->sculpt->pbvh);
+  if (object->runtime->sculpt && object->runtime->sculpt->pbvh) {
+    cache->pbvh_is_drawing = BKE_pbvh_is_drawing(*object->runtime->sculpt->pbvh);
   }
 
   if (cache->is_editmode == false) {
@@ -1503,10 +1504,10 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
    * Normal updates should be part of the brush loop and only run during the stroke when the
    * brush needs to sample the surface. The drawing code should only update the normals
    * per redraw when smooth shading is enabled. */
-  const bool do_update_sculpt_normals = ob->sculpt && ob->sculpt->pbvh;
+  const bool do_update_sculpt_normals = ob->runtime->sculpt && ob->runtime->sculpt->pbvh;
   if (do_update_sculpt_normals) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    bke::pbvh::update_normals(*ob->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
+    bke::pbvh::update_normals(*ob->runtime->sculpt->pbvh, mesh->runtime->subdiv_ccg.get());
   }
 
   cache.batch_ready |= batch_requested;

@@ -18,6 +18,7 @@
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_multires.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -51,7 +52,7 @@ static void mask_init_task(Object *ob,
                            const SculptMaskWriteInfo mask_write,
                            PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertexIter vd;
   undo::push_node(*ob, node, undo::Type::Mask);
   BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
@@ -78,7 +79,7 @@ static void mask_init_task(Object *ob,
 static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   const View3D *v3d = CTX_wm_view3d(C);
@@ -94,7 +95,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   if (nodes.is_empty()) {

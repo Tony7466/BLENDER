@@ -304,7 +304,7 @@ static void do_cloth_brush_build_constraints_task(Object *ob,
                                                   float cloth_sim_radius,
                                                   PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const int node_index = POINTER_AS_INT(BLI_ghash_lookup(cloth_sim->node_state_index, node));
   if (cloth_sim->node_state[node_index] != SCULPT_CLOTH_NODE_UNINITIALIZED) {
@@ -440,7 +440,7 @@ static void do_cloth_brush_apply_forces_task(Object *ob,
                                              float *area_co,
                                              PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SimulationData *cloth_sim = ss->cache->cloth_sim;
 
   const bool use_falloff_plane = brush->cloth_force_falloff_type ==
@@ -729,7 +729,7 @@ static void do_cloth_brush_solve_simulation_task(Object *ob,
                                                  const float time_step,
                                                  PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
 
@@ -914,7 +914,7 @@ static void cloth_brush_satisfy_constraints(SculptSession *ss,
 
 void do_simulation_step(Sculpt *sd, Object *ob, SimulationData *cloth_sim, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   /* Update the constraints. */
@@ -930,7 +930,7 @@ void do_simulation_step(Sculpt *sd, Object *ob, SimulationData *cloth_sim, Span<
 
 static void cloth_brush_apply_brush_foces(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   float3 grab_delta;
@@ -1018,7 +1018,7 @@ SimulationData *brush_simulation_create(Object *ob,
                                         const bool use_collisions,
                                         const bool needs_deform_coords)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totverts = SCULPT_vertex_count_get(ss);
   SimulationData *cloth_sim = MEM_new<SimulationData>(__func__);
 
@@ -1143,7 +1143,7 @@ static void sculpt_cloth_ensure_constraints_in_simulation_area(Sculpt *sd,
                                                                Object *ob,
                                                                Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
   const float radius = ss->cache->initial_radius;
   const float limit = radius + (radius * brush->cloth_sim_limit);
@@ -1154,7 +1154,7 @@ static void sculpt_cloth_ensure_constraints_in_simulation_area(Sculpt *sd,
 
 void do_cloth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   /* Brushes that use anchored strokes and restore the mesh can't rely on symmetry passes and steps
@@ -1382,7 +1382,7 @@ static void cloth_filter_apply_forces_task(Object *ob,
                                            const float filter_strength,
                                            PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   SimulationData *cloth_sim = ss->filter_cache->cloth_sim;
 
@@ -1470,7 +1470,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
 {
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   int filter_type = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
@@ -1529,7 +1529,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);

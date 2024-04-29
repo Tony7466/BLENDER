@@ -42,6 +42,7 @@
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
@@ -69,7 +70,7 @@ namespace blender::ed::sculpt_paint::face_set {
 
 int find_next_available_id(Object &object)
 {
-  SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.runtime->sculpt;
   switch (BKE_pbvh_type(*ss.pbvh)) {
     case PBVH_FACES:
     case PBVH_GRIDS: {
@@ -131,7 +132,7 @@ void initialize_none_to_id(Mesh *mesh, const int new_id)
 
 int active_update_and_get(bContext *C, Object *ob, const float mval[2])
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (!ss) {
     return SCULPT_FACE_SET_NONE;
   }
@@ -154,7 +155,7 @@ bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object)
                         bke::AttributeInitVArray(VArray<int>::ForSingle(1, mesh.faces_num)));
     mesh.face_sets_color_default = 1;
   }
-  object.sculpt->face_sets = static_cast<const int *>(
+  object.runtime->sculpt->face_sets = static_cast<const int *>(
       CustomData_get_layer_named(&mesh.face_data, CD_PROP_INT32, ".sculpt_face_set"));
   return attributes.lookup_or_add_for_write_span<int>(".sculpt_face_set", bke::AttrDomain::Face);
 }
@@ -162,7 +163,7 @@ bke::SpanAttributeWriter<int> ensure_face_sets_mesh(Object &object)
 int ensure_face_sets_bmesh(Object &object)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.runtime->sculpt;
   BMesh &bm = *ss.bm;
   if (!CustomData_has_layer_named(&bm.pdata, CD_PROP_INT32, ".sculpt_face_set")) {
     BM_data_layer_add_named(&bm, &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
@@ -193,7 +194,7 @@ static void do_draw_face_sets_brush_faces(Object *ob,
                                           const Brush *brush,
                                           const Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Span<float3> positions = SCULPT_mesh_deformed_positions_get(ss);
 
   Mesh &mesh = *static_cast<Mesh *>(ob->data);
@@ -263,7 +264,7 @@ static void do_draw_face_sets_brush_grids(Object *ob,
                                           const Brush *brush,
                                           const Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
   SubdivCCG &subdiv_ccg = *ss->subdiv_ccg;
 
@@ -321,7 +322,7 @@ static void do_draw_face_sets_brush_bmesh(Object *ob,
                                           const Brush *brush,
                                           const Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
   const int cd_offset = ensure_face_sets_bmesh(*ob);
 
@@ -408,7 +409,7 @@ static void do_relax_face_sets_brush_task(Object *ob,
                                           const int iteration,
                                           PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
@@ -455,7 +456,7 @@ static void do_relax_face_sets_brush_task(Object *ob,
 
 void do_draw_face_sets_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   BKE_curvemapping_init(brush->curve);
@@ -496,7 +497,7 @@ static void face_sets_update(Object &object,
                              const Span<PBVHNode *> nodes,
                              const FunctionRef<void(Span<int>, MutableSpan<int>)> calc_face_sets)
 {
-  PBVH &pbvh = *object.sculpt->pbvh;
+  PBVH &pbvh = *object.runtime->sculpt->pbvh;
   bke::SpanAttributeWriter<int> face_sets = ensure_face_sets_mesh(object);
 
   struct TLS {
@@ -544,7 +545,7 @@ static void clear_face_sets(Object &object, const Span<PBVHNode *> nodes)
   if (!attributes.contains(".sculpt_face_set")) {
     return;
   }
-  const PBVH &pbvh = *object.sculpt->pbvh;
+  const PBVH &pbvh = *object.runtime->sculpt->pbvh;
   const int default_face_set = mesh.face_sets_color_default;
   const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
   threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
@@ -570,7 +571,7 @@ static void clear_face_sets(Object &object, const Span<PBVHNode *> nodes)
 static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
 {
   Object &object = *CTX_data_active_object(C);
-  SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.runtime->sculpt;
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
 
   const CreateMode mode = CreateMode(RNA_enum_get(op->ptr, "mode"));
@@ -729,7 +730,7 @@ using FaceSetsFloodFillFn = FunctionRef<bool(int from_face, int edge, int to_fac
 
 static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFillFn &test_fn)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   BitVector<> visited_faces(mesh->faces_num, false);
@@ -799,7 +800,7 @@ Array<int> duplicate_face_sets(const Mesh &mesh)
 static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   const InitMode mode = InitMode(RNA_enum_get(op->ptr, "mode"));
@@ -817,7 +818,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   if (nodes.is_empty()) {
@@ -996,7 +997,7 @@ static void face_hide_update(Object &object,
                              const Span<PBVHNode *> nodes,
                              const FunctionRef<void(Span<int>, MutableSpan<bool>)> calc_hide)
 {
-  PBVH &pbvh = *object.sculpt->pbvh;
+  PBVH &pbvh = *object.runtime->sculpt->pbvh;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   bke::SpanAttributeWriter<bool> hide_poly = attributes.lookup_or_add_for_write_span<bool>(
@@ -1040,7 +1041,7 @@ static void face_hide_update(Object &object,
 
 static void show_all(Depsgraph &depsgraph, Object &object, const Span<PBVHNode *> nodes)
 {
-  switch (BKE_pbvh_type(*object.sculpt->pbvh)) {
+  switch (BKE_pbvh_type(*object.runtime->sculpt->pbvh)) {
     case PBVH_FACES:
       hide::mesh_show_all(object, nodes);
       break;
@@ -1056,7 +1057,7 @@ static void show_all(Depsgraph &depsgraph, Object &object, const Span<PBVHNode *
 static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
 {
   Object &object = *CTX_data_active_object(C);
-  SculptSession *ss = object.sculpt;
+  SculptSession *ss = object.runtime->sculpt;
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
 
   Mesh *mesh = BKE_object_get_original_mesh(&object);
@@ -1072,7 +1073,7 @@ static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
 
   undo::push_begin(&object, op);
 
-  PBVH &pbvh = *object.sculpt->pbvh;
+  PBVH &pbvh = *object.runtime->sculpt->pbvh;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   const bke::AttributeAccessor attributes = mesh->attributes();
@@ -1143,7 +1144,7 @@ static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
   bke::pbvh::update_visibility(*ss->pbvh);
   BKE_sculpt_hide_poly_pointer_update(object);
 
-  SCULPT_topology_islands_invalidate(object.sculpt);
+  SCULPT_topology_islands_invalidate(object.runtime->sculpt);
   hide::tag_update_visibility(*C);
 
   return OPERATOR_FINISHED;
@@ -1154,7 +1155,7 @@ static int sculpt_face_set_change_visibility_invoke(bContext *C,
                                                     const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);
@@ -1208,7 +1209,7 @@ void SCULPT_OT_face_set_change_visibility(wmOperatorType *ot)
 static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);
@@ -1221,7 +1222,7 @@ static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op
     return OPERATOR_CANCELLED;
   }
 
-  PBVH &pbvh = *ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->runtime->sculpt->pbvh;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   const bke::AttributeAccessor attributes = mesh->attributes();
 
@@ -1272,7 +1273,7 @@ static void sculpt_face_set_grow_shrink(Object &object,
                                         const bool modify_hidden,
                                         wmOperator *op)
 {
-  SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.runtime->sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -1409,7 +1410,7 @@ static void sculpt_face_set_edit_fair_face_set(Object *ob,
                                                const eMeshFairingDepth fair_order,
                                                const float strength)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
@@ -1444,13 +1445,13 @@ static bool sculpt_face_set_edit_is_operation_valid(const Object &object,
                                                     const EditMode mode,
                                                     const bool modify_hidden)
 {
-  if (BKE_pbvh_type(*object.sculpt->pbvh) == PBVH_BMESH) {
+  if (BKE_pbvh_type(*object.runtime->sculpt->pbvh) == PBVH_BMESH) {
     /* Dyntopo is not supported. */
     return false;
   }
 
   if (mode == EditMode::DeleteGeometry) {
-    if (BKE_pbvh_type(*object.sculpt->pbvh) == PBVH_GRIDS) {
+    if (BKE_pbvh_type(*object.runtime->sculpt->pbvh) == PBVH_GRIDS) {
       /* Modification of base mesh geometry requires special remapping of multi-resolution
        * displacement, which does not happen here.
        * Disable delete operation. It can be supported in the future by doing similar displacement
@@ -1465,7 +1466,7 @@ static bool sculpt_face_set_edit_is_operation_valid(const Object &object,
   }
 
   if (ELEM(mode, EditMode::FairPositions, EditMode::FairTangency)) {
-    if (BKE_pbvh_type(*object.sculpt->pbvh) == PBVH_GRIDS) {
+    if (BKE_pbvh_type(*object.runtime->sculpt->pbvh) == PBVH_GRIDS) {
       /* TODO: Multi-resolution topology representation using grids and duplicates can't be used
        * directly by the fair algorithm. Multi-resolution topology needs to be exposed in a
        * different way or converted to a mesh for this operation. */
@@ -1502,7 +1503,7 @@ static void sculpt_face_set_edit_modify_coordinates(
     bContext *C, Object *ob, const int active_face_set, const EditMode mode, wmOperator *op)
 {
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVH &pbvh = *ss->pbvh;
 
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
@@ -1586,7 +1587,7 @@ static int sculpt_face_set_edit_invoke(bContext *C, wmOperator *op, const wmEven
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);

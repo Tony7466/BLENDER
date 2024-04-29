@@ -17,6 +17,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_ccg.h"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -46,7 +47,7 @@ static void calc_multiplane_scrape_surface_task(Object *ob,
                                                 MultiplaneScrapeSampleData *mssd)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
 
@@ -109,7 +110,7 @@ static void do_multiplane_scrape_brush_task(Object *ob,
                                             PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
@@ -190,7 +191,7 @@ static void do_multiplane_scrape_brush_task(Object *ob,
 void SCULPT_do_multiplane_scrape_brush(Sculpt *sd, Object *ob, blender::Span<PBVHNode *> nodes)
 {
   using namespace blender;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const bool flip = (ss->cache->bstrength < 0.0f);

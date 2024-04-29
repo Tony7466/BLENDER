@@ -26,6 +26,7 @@
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.hh"
@@ -411,7 +412,7 @@ static BitVector<> sculpt_expand_boundary_from_enabled(SculptSession *ss,
 
 static void sculpt_expand_check_topology_islands(Object *ob, eSculptExpandFalloffType falloff_type)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   ss->expand_cache->check_islands = ELEM(falloff_type,
                                          SCULPT_EXPAND_FALLOFF_GEODESIC,
@@ -434,7 +435,7 @@ static void sculpt_expand_check_topology_islands(Object *ob, eSculptExpandFallof
 static PBVHVertRef sculpt_expand_get_vertex_index_for_symmetry_pass(
     Object *ob, const char symm_it, const PBVHVertRef original_vertex)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertRef symm_vertex = {SCULPT_EXPAND_VERTEX_NONE};
 
   if (symm_it == 0) {
@@ -489,7 +490,7 @@ static bool expand_topology_floodfill_cb(SculptSession *ss,
 
 static Array<float> sculpt_expand_topology_falloff_create(Object *ob, const PBVHVertRef v)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
   Array<float> dists(totvert, 0.0f);
 
@@ -541,7 +542,7 @@ static Array<float> sculpt_expand_normal_falloff_create(Object *ob,
                                                         const float edge_sensitivity,
                                                         const int blur_steps)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
   Array<float> dists(totvert, 0.0f);
   Array<float> edge_factor(totvert, 1.0f);
@@ -589,7 +590,7 @@ static Array<float> sculpt_expand_normal_falloff_create(Object *ob,
  */
 static Array<float> sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertRef v)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   Array<float> dists(totvert, FLT_MAX);
@@ -621,7 +622,7 @@ static Array<float> sculpt_expand_spherical_falloff_create(Object *ob, const PBV
  */
 static Array<float> sculpt_expand_boundary_topology_falloff_create(Object *ob, const PBVHVertRef v)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
   Array<float> dists(totvert, 0.0f);
   BitVector<> visited_verts(totvert);
@@ -683,7 +684,7 @@ static Array<float> sculpt_expand_boundary_topology_falloff_create(Object *ob, c
  */
 static Array<float> sculpt_expand_diagonals_falloff_create(Object *ob, const PBVHVertRef v)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
   Array<float> dists(totvert, 0.0f);
 
@@ -862,7 +863,7 @@ static void sculpt_expand_geodesics_from_state_boundary(Object *ob,
                                                         Cache *expand_cache,
                                                         const BitSpan enabled_verts)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   BLI_assert(BKE_pbvh_type(*ss->pbvh) == PBVH_FACES);
 
   Set<int> initial_verts;
@@ -890,7 +891,7 @@ static void sculpt_expand_topology_from_state_boundary(Object *ob,
 {
   MEM_SAFE_FREE(expand_cache->face_falloff);
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   expand_cache->vert_falloff.reinitialize(totvert);
@@ -920,7 +921,7 @@ static void sculpt_expand_resursion_step_add(Object *ob,
                                              Cache *expand_cache,
                                              const eSculptExpandRecursionType recursion_type)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (BKE_pbvh_type(*ss->pbvh) != PBVH_FACES) {
     return;
   }
@@ -960,7 +961,7 @@ static void sculpt_expand_initialize_from_face_set_boundary(Object *ob,
                                                             const int active_face_set,
                                                             const bool internal_falloff)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   BitVector<> enabled_verts(totvert);
@@ -1026,7 +1027,7 @@ static void sculpt_expand_falloff_factors_from_vertex_and_symm_create(
 {
   expand_cache->falloff_type = falloff_type;
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const bool has_topology_info = BKE_pbvh_type(*ss->pbvh) == PBVH_FACES;
 
   switch (falloff_type) {
@@ -1143,7 +1144,7 @@ static void sculpt_expand_restore_face_set_data(Object &object, Cache *expand_ca
   face_sets.span.copy_from(expand_cache->original_face_sets);
   face_sets.finish();
 
-  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*object.sculpt->pbvh, {});
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*object.runtime->sculpt->pbvh, {});
   for (PBVHNode *node : nodes) {
     BKE_pbvh_node_mark_update_face_sets(node);
   }
@@ -1211,7 +1212,7 @@ static void write_mask_data(SculptSession *ss, const Span<float> mask)
  * operation. */
 static void sculpt_expand_restore_original_state(bContext *C, Object *ob, Cache *expand_cache)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   switch (expand_cache->target) {
     case SCULPT_EXPAND_TARGET_MASK:
       write_mask_data(ss, expand_cache->original_mask);
@@ -1239,7 +1240,7 @@ static void sculpt_expand_restore_original_state(bContext *C, Object *ob, Cache 
 static void sculpt_expand_cancel(bContext *C, wmOperator * /*op*/)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   sculpt_expand_restore_original_state(C, ob, ss->expand_cache);
 
@@ -1314,7 +1315,7 @@ static void sculpt_expand_face_sets_update(Object &object, Cache *expand_cache)
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   for (const int f : face_sets.span.index_range()) {
     const bool enabled = sculpt_expand_face_state_get(
-        object.sculpt, hide_poly, face_sets.span, expand_cache, f);
+        object.runtime->sculpt, hide_poly, face_sets.span, expand_cache, f);
     if (!enabled) {
       continue;
     }
@@ -1385,7 +1386,7 @@ static void sculpt_expand_colors_update_task(SculptSession *ss, PBVHNode *node)
 /* Store the original mesh data state in the expand cache. */
 static void sculpt_expand_original_state_store(Object *ob, Cache *expand_cache)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh &mesh = *static_cast<Mesh *>(ob->data);
   const int totvert = SCULPT_vertex_count_get(ss);
 
@@ -1413,7 +1414,7 @@ static void sculpt_expand_original_state_store(Object *ob, Cache *expand_cache)
  */
 static void sculpt_expand_face_sets_restore(Object &object, Cache *expand_cache)
 {
-  SculptSession &ss = *object.sculpt;
+  SculptSession &ss = *object.runtime->sculpt;
   bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
   const int totfaces = ss.totfaces;
   for (int i = 0; i < totfaces; i++) {
@@ -1431,7 +1432,7 @@ static void sculpt_expand_face_sets_restore(Object &object, Cache *expand_cache)
 
 static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHVertRef vertex)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Cache *expand_cache = ss->expand_cache;
 
   int vertex_i = BKE_pbvh_vertex_to_index(*ss->pbvh, vertex);
@@ -1489,7 +1490,7 @@ static PBVHVertRef sculpt_expand_target_vertex_update_and_get(bContext *C,
                                                               Object *ob,
                                                               const float mval[2])
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SculptCursorGeometryInfo sgi;
   if (SCULPT_cursor_geometry_info_update(C, &sgi, mval, false)) {
     return SCULPT_active_vertex_get(ss);
@@ -1503,7 +1504,7 @@ static PBVHVertRef sculpt_expand_target_vertex_update_and_get(bContext *C,
  */
 static void sculpt_expand_reposition_pivot(bContext *C, Object *ob, Cache *expand_cache)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   const int totvert = SCULPT_vertex_count_get(ss);
 
@@ -1560,7 +1561,7 @@ static void sculpt_expand_reposition_pivot(bContext *C, Object *ob, Cache *expan
 static void sculpt_expand_finish(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   undo::push_end(ob);
 
   /* Tag all nodes to redraw to avoid artifacts after the fast partial updates. */
@@ -1592,7 +1593,7 @@ static void sculpt_expand_finish(bContext *C)
 static void sculpt_expand_find_active_connected_components_from_vert(
     Object *ob, Cache *expand_cache, const PBVHVertRef initial_vertex)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   for (int i = 0; i < EXPAND_SYMM_AREAS; i++) {
     expand_cache->active_connected_islands[i] = EXPAND_ACTIVE_COMPONENT_NONE;
   }
@@ -1620,7 +1621,7 @@ static void sculpt_expand_set_initial_components_for_mouse(bContext *C,
                                                            Cache *expand_cache,
                                                            const float mval[2])
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertRef initial_vertex = sculpt_expand_target_vertex_update_and_get(C, ob, mval);
 
@@ -1683,7 +1684,7 @@ static void sculpt_expand_move_propagation_origin(bContext *C,
  */
 static void sculpt_expand_ensure_sculptsession_data(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SCULPT_topology_islands_ensure(ob);
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
@@ -1716,7 +1717,7 @@ static int sculpt_expand_active_face_set_id_get(SculptSession *ss, Cache *expand
 static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   /* Skips INBETWEEN_MOUSEMOVE events and other events that may cause unnecessary updates. */
   if (!ELEM(event->type, MOUSEMOVE, EVT_MODAL_MAP)) {
@@ -2008,7 +2009,7 @@ static void sculpt_expand_cache_initial_config_set(bContext *C,
   /* Texture and color data from the active Brush. */
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   expand_cache->brush = BKE_paint_brush(&sd->paint);
   BKE_curvemapping_init(expand_cache->brush->curve);
   copy_v4_fl(expand_cache->fill_color, 1.0f);
@@ -2025,7 +2026,7 @@ static void sculpt_expand_cache_initial_config_set(bContext *C,
  */
 static void sculpt_expand_undo_push(Object *ob, Cache *expand_cache)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(*ss->pbvh, {});
 
   switch (expand_cache->target) {
@@ -2049,7 +2050,7 @@ static void sculpt_expand_undo_push(Object *ob, Cache *expand_cache)
 
 static bool any_nonzero_mask(const Object &object)
 {
-  const SculptSession &ss = *object.sculpt;
+  const SculptSession &ss = *object.runtime->sculpt;
   switch (BKE_pbvh_type(*ss.pbvh)) {
     case PBVH_FACES: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -2099,7 +2100,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   const View3D *v3d = CTX_wm_view3d(C);

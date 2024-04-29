@@ -17,6 +17,7 @@
 #include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
 #include "BKE_layer.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -42,7 +43,7 @@ namespace blender::ed::sculpt_paint {
 void init_transform(bContext *C, Object *ob, const float mval_fl[2], const char *undo_name)
 {
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   copy_v3_v3(ss->init_pivot_pos, ss->pivot_pos);
@@ -136,7 +137,7 @@ static void transform_matrices_init(SculptSession *ss,
 
 static void transform_node(Object *ob, const float transform_mats[8][4][4], PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
@@ -174,7 +175,7 @@ static void transform_node(Object *ob, const float transform_mats[8][4][4], PBVH
 
 static void sculpt_transform_all_vertices(Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   float transform_mats[8][4][4];
@@ -195,7 +196,7 @@ static void elastic_transform_node(Object *ob,
                                    const float elastic_transform_pivot[3],
                                    PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const MutableSpan<float3> proxy = BKE_pbvh_node_add_proxy(*ss->pbvh, *node).co;
 
@@ -237,7 +238,7 @@ static void elastic_transform_node(Object *ob,
 
 static void transform_radius_elastic(Sculpt *sd, Object *ob, const float transform_radius)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   BLI_assert(ss->filter_cache->transform_displacement_mode ==
              SCULPT_TRANSFORM_DISPLACEMENT_INCREMENTAL);
 
@@ -276,7 +277,7 @@ static void transform_radius_elastic(Sculpt *sd, Object *ob, const float transfo
 void update_modal_transform(bContext *C, Object *ob)
 {
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   SCULPT_vertex_random_access_ensure(ss);
@@ -320,7 +321,7 @@ void update_modal_transform(bContext *C, Object *ob)
 
 void end_transform(bContext *C, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (ss->filter_cache) {
     filter::cache_free(ss);
   }
@@ -367,7 +368,7 @@ static EnumPropertyItem prop_sculpt_pivot_position_types[] = {
 static int set_pivot_position_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   ARegion *region = CTX_wm_region(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);

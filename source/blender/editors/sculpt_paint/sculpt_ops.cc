@@ -34,6 +34,7 @@
 #include "BKE_mesh_mirror.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.hh"
@@ -75,7 +76,7 @@ static int sculpt_set_persistent_base_exec(bContext *C, wmOperator * /*op*/)
   using namespace blender;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);
@@ -164,8 +165,8 @@ static void SCULPT_OT_optimize(wmOperatorType *ot)
 static bool sculpt_no_multires_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  if (SCULPT_mode_poll(C) && ob->sculpt && ob->sculpt->pbvh) {
-    return BKE_pbvh_type(*ob->sculpt->pbvh) != PBVH_GRIDS;
+  if (SCULPT_mode_poll(C) && ob->runtime->sculpt && ob->runtime->sculpt->pbvh) {
+    return BKE_pbvh_type(*ob->runtime->sculpt->pbvh) != PBVH_GRIDS;
   }
   return false;
 }
@@ -176,7 +177,7 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Object *ob = CTX_data_active_object(C);
   const Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVH *pbvh = ss->pbvh.get();
   const float dist = RNA_float_get(op->ptr, "merge_tolerance");
 
@@ -283,11 +284,11 @@ static void sculpt_init_session(Main *bmain, Depsgraph *depsgraph, Scene *scene,
   BKE_sculpt_toolsettings_data_ensure(scene);
 
   /* Create sculpt mode session data. */
-  if (ob->sculpt != nullptr) {
+  if (ob->runtime->sculpt != nullptr) {
     BKE_sculptsession_free(ob);
   }
-  ob->sculpt = MEM_new<SculptSession>(__func__);
-  ob->sculpt->mode_type = OB_MODE_SCULPT;
+  ob->runtime->sculpt = MEM_new<SculptSession>(__func__);
+  ob->runtime->sculpt->mode_type = OB_MODE_SCULPT;
 
   /* Trigger evaluation of modifier stack to ensure
    * multires modifier sets .runtime.ccg in
@@ -320,7 +321,7 @@ static void sculpt_init_session(Main *bmain, Depsgraph *depsgraph, Scene *scene,
 void ensure_valid_pivot(const Object *ob, Scene *scene)
 {
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
-  const SculptSession *ss = ob->sculpt;
+  const SculptSession *ss = ob->runtime->sculpt;
 
   /* Account for the case where no objects are evaluated. */
   if (!ss->pbvh) {
@@ -329,7 +330,7 @@ void ensure_valid_pivot(const Object *ob, Scene *scene)
 
   /* No valid pivot? Use bounding box center. */
   if (ups->average_stroke_counter == 0 || !ups->last_stroke_valid) {
-    const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob->sculpt->pbvh);
+    const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob->runtime->sculpt->pbvh);
     const float3 center = math::midpoint(bounds.min, bounds.max);
     const float3 location = math::transform_point(ob->object_to_world(), center);
 
@@ -460,7 +461,7 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
 
   /* Always for now, so leaving sculpt mode always ensures scene is in
    * a consistent state. */
-  if (true || /* flush_recalc || */ (ob->sculpt && ob->sculpt->bm)) {
+  if (true || /* flush_recalc || */ (ob->runtime->sculpt && ob->runtime->sculpt->bm)) {
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 
@@ -642,7 +643,7 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   Scene *scene = CTX_data_scene(C);
   Object *ob = CTX_data_active_object(C);
   Brush *brush = BKE_paint_brush(&sd->paint);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
   float active_vertex_color[4];
 
@@ -756,7 +757,7 @@ static void do_mask_by_color_contiguous_update_node(Object *ob,
                                                     PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   undo::push_node(*ob, node, undo::Type::Mask);
   bool update_node = false;
@@ -815,7 +816,7 @@ static void sculpt_mask_by_color_contiguous(Object *object,
 {
   using namespace blender;
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   float *new_mask = MEM_cnew_array<float>(totvert, __func__);
@@ -865,7 +866,7 @@ static void do_mask_by_color_task(Object *ob,
                                   PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   undo::push_node(*ob, node, undo::Type::Mask);
   bool update_node = false;
@@ -904,7 +905,7 @@ static void sculpt_mask_by_color_full_mesh(Object *object,
                                            const bool preserve_mask)
 {
   using namespace blender;
-  SculptSession *ss = object->sculpt;
+  SculptSession *ss = object->runtime->sculpt;
 
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(*ss->pbvh, {});
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
@@ -921,7 +922,7 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   using namespace blender::ed::sculpt_paint;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   View3D *v3d = CTX_wm_view3d(C);
 
   {
@@ -1039,7 +1040,7 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
                                          PBVHNode *node)
 {
   using namespace blender::ed::sculpt_paint;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   PBVHVertexIter vd;
 
   undo::push_node(*ob, node, undo::Type::Mask);
@@ -1088,7 +1089,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   using namespace blender::ed::sculpt_paint;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   const Brush *brush = BKE_paint_brush(&sd->paint);
 

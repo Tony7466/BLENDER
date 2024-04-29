@@ -27,6 +27,7 @@
 #include "BKE_material.h"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_packedFile.h"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
@@ -266,8 +267,8 @@ bool ED_editors_flush_edits_for_object_ex(Main *bmain,
     /* Don't allow flushing while in the middle of a stroke (frees data in use).
      * Auto-save prevents this from happening but scripts
      * may cause a flush on saving: #53986. */
-    if (ob->sculpt != nullptr && ob->sculpt->cache == nullptr) {
-      char *needs_flush_ptr = &ob->sculpt->needs_flush_to_id;
+    if (ob->runtime->sculpt != nullptr && ob->runtime->sculpt->cache == nullptr) {
+      char *needs_flush_ptr = &ob->runtime->sculpt->needs_flush_to_id;
       if (check_needs_flush && (*needs_flush_ptr == 0)) {
         return false;
       }

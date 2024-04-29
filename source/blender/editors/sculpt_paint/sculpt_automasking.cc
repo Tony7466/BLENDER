@@ -19,6 +19,7 @@
 #include "DNA_brush_types.h"
 
 #include "BKE_colortools.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -433,7 +434,7 @@ static void calc_blurred_cavity(SculptSession *ss,
 
 int settings_hash(const Object &ob, const Cache &automasking)
 {
-  const SculptSession *ss = ob.sculpt;
+  const SculptSession *ss = ob.runtime->sculpt;
 
   int hash;
   int totvert = SCULPT_vertex_count_get(ss);
@@ -614,7 +615,7 @@ static bool floodfill_cb(SculptSession *ss,
 
 static void topology_automasking_init(const Sculpt *sd, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd->paint);
 
   const int totvert = SCULPT_vertex_count_get(ss);
@@ -645,7 +646,7 @@ static void topology_automasking_init(const Sculpt *sd, Object *ob)
 
 static void init_face_sets_masking(const Sculpt *sd, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd->paint);
 
   if (!is_enabled(sd, ss, brush)) {
@@ -667,7 +668,7 @@ static void init_face_sets_masking(const Sculpt *sd, Object *ob)
 
 static void init_boundary_masking(Object *ob, eBoundaryAutomaskMode mode, int propagation_steps)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const int totvert = SCULPT_vertex_count_get(ss);
   Array<int> edge_distance(totvert, 0);
@@ -764,7 +765,7 @@ static void normal_occlusion_automasking_fill(Cache &automasking,
                                               Object *ob,
                                               eAutomasking_flag mode)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
   /* No need to build original data since this is only called at the beginning of strokes. */
@@ -808,7 +809,7 @@ std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob)
 
 std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (!is_enabled(sd, ss, brush)) {
     return nullptr;

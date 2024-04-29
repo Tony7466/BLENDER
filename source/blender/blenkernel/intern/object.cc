@@ -241,7 +241,6 @@ static void object_copy_data(Main *bmain,
   BKE_constraints_copy_ex(&ob_dst->constraints, &ob_src->constraints, flag_subdata, true);
 
   ob_dst->mode = ob_dst->type != OB_GPENCIL_LEGACY ? OB_MODE_OBJECT : ob_dst->mode;
-  ob_dst->sculpt = nullptr;
 
   if (ob_src->pd) {
     ob_dst->pd = (PartDeflect *)MEM_dupallocN(ob_src->pd);
@@ -889,12 +888,9 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   /* in case this value changes in future, clamp else we get undefined behavior */
   CLAMP(ob->rotmode, ROT_MODE_MIN, ROT_MODE_MAX);
 
-  if (ob->sculpt) {
-    ob->sculpt = nullptr;
+  if (BLO_read_data_is_undo(reader) && (ob->mode & OB_MODE_ALL_SCULPT)) {
     /* Only create data on undo, otherwise rely on editor mode switching. */
-    if (BLO_read_data_is_undo(reader) && (ob->mode & OB_MODE_ALL_SCULPT)) {
-      BKE_object_sculpt_data_create(ob);
-    }
+    BKE_object_sculpt_data_create(ob);
   }
 
   BLO_read_struct(reader, PreviewImage, &ob->preview);
@@ -1871,17 +1867,17 @@ bool BKE_object_has_mode_data(const Object *ob, eObjectMode object_mode)
     }
   }
   else if (object_mode & OB_MODE_VERTEX_PAINT) {
-    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_VERTEX_PAINT)) {
+    if (ob->runtime->sculpt && (ob->runtime->sculpt->mode_type == OB_MODE_VERTEX_PAINT)) {
       return true;
     }
   }
   else if (object_mode & OB_MODE_WEIGHT_PAINT) {
-    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_WEIGHT_PAINT)) {
+    if (ob->runtime->sculpt && (ob->runtime->sculpt->mode_type == OB_MODE_WEIGHT_PAINT)) {
       return true;
     }
   }
   else if (object_mode & OB_MODE_SCULPT) {
-    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
+    if (ob->runtime->sculpt && (ob->runtime->sculpt->mode_type == OB_MODE_SCULPT)) {
       return true;
     }
   }
@@ -4079,9 +4075,9 @@ void BKE_object_handle_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
 
 void BKE_object_sculpt_data_create(Object *ob)
 {
-  BLI_assert((ob->sculpt == nullptr) && (ob->mode & OB_MODE_ALL_SCULPT));
-  ob->sculpt = MEM_new<SculptSession>(__func__);
-  ob->sculpt->mode_type = (eObjectMode)ob->mode;
+  BLI_assert((ob->runtime->sculpt == nullptr) && (ob->mode & OB_MODE_ALL_SCULPT));
+  ob->runtime->sculpt = MEM_new<SculptSession>(__func__);
+  ob->runtime->sculpt->mode_type = (eObjectMode)ob->mode;
 }
 
 bool BKE_object_obdata_texspace_get(Object *ob,
@@ -4884,6 +4880,8 @@ void BKE_object_runtime_reset_on_copy(Object *object, const int /*flag*/)
 
   runtime->crazyspace_deform_imats = {};
   runtime->crazyspace_deform_cos = {};
+
+  runtime->sculpt = nullptr;
 }
 
 void BKE_object_runtime_free_data(Object *object)

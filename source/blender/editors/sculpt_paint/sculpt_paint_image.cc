@@ -23,6 +23,7 @@
 
 #include "BKE_brush.hh"
 #include "BKE_image_wrappers.hh"
+#include "BKE_object_types.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_pbvh_pixels.hh"
 
@@ -331,7 +332,7 @@ static std::vector<bool> init_uv_primitives_brush_test(SculptSession *ss,
 static void do_paint_pixels(TexturePaintingUserData *data, const int n)
 {
   Object *ob = data->ob;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Brush *brush = data->brush;
   PBVH &pbvh = *ss->pbvh;
   PBVHNode *node = data->nodes[n];
@@ -523,7 +524,7 @@ static void fix_non_manifold_seam_bleeding(PBVH &pbvh,
 static void fix_non_manifold_seam_bleeding(Object &ob, TexturePaintingUserData &user_data)
 {
   Vector<image::TileNumber> dirty_tiles = collect_dirty_tiles(user_data.nodes);
-  fix_non_manifold_seam_bleeding(*ob.sculpt->pbvh, user_data, dirty_tiles);
+  fix_non_manifold_seam_bleeding(*ob.runtime->sculpt->pbvh, user_data, dirty_tiles);
 }
 
 /** \} */

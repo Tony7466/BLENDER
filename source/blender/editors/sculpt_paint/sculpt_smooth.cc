@@ -13,6 +13,7 @@
 
 #include "DNA_brush_types.h"
 
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -198,7 +199,7 @@ static void do_enhance_details_brush_task(Object *ob,
                                           const Brush *brush,
                                           PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
 
@@ -240,7 +241,7 @@ static void do_enhance_details_brush_task(Object *ob,
 
 static void enhance_details_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   SCULPT_vertex_random_access_ensure(ss);
@@ -273,7 +274,7 @@ static void smooth_mask_node(Object *ob,
                              float bstrength,
                              PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
 
@@ -316,7 +317,7 @@ static void smooth_mask_node(Object *ob,
 
 void do_smooth_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Brush *brush = BKE_paint_brush(&sd->paint);
 
   const int max_iterations = 4;
@@ -345,7 +346,7 @@ void do_smooth_mask_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float 
 static void smooth_position_node(
     Object *ob, Sculpt *sd, const Brush *brush, float bstrength, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   PBVHVertexIter vd;
 
@@ -388,7 +389,7 @@ static void smooth_position_node(
 
 void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const Brush *brush = BKE_paint_brush(&sd->paint);
 
   const int max_iterations = 4;
@@ -414,7 +415,7 @@ void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstre
 
 void do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   /* NOTE: The enhance brush needs to initialize its state on the first brush step. The stroke
    * strength can become 0 during the stroke, but it can not change sign (the sign is determined
@@ -484,7 +485,7 @@ void surface_smooth_displace_step(SculptSession *ss,
 
 static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
   float alpha = brush->surface_smooth_shape_preservation;
 
@@ -529,7 +530,7 @@ static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brus
 
 static void do_surface_smooth_brush_displace_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
   const float beta = brush->surface_smooth_current_vertex;
 

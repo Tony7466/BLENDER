@@ -19,6 +19,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -79,7 +80,7 @@ static void color_filter_task(Object *ob,
                               const float *filter_fill_color,
                               PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Color);
@@ -270,7 +271,7 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
 
 static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const int mode = RNA_enum_get(op->ptr, "type");
   float filter_strength = RNA_float_get(op->ptr, "strength");
@@ -294,7 +295,7 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
 
 static void sculpt_color_filter_end(bContext *C, Object *ob)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   undo::push_end(ob);
   filter::cache_free(ss);
@@ -304,7 +305,7 @@ static void sculpt_color_filter_end(bContext *C, Object *ob)
 static int sculpt_color_filter_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
     sculpt_color_filter_end(C, ob);
@@ -328,7 +329,7 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   View3D *v3d = CTX_wm_view3d(C);
 
   const Base *base = CTX_data_active_base(C);

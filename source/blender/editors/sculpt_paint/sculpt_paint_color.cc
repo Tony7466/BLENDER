@@ -19,6 +19,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -37,7 +38,7 @@ namespace blender::ed::sculpt_paint::color {
 
 static void do_color_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
@@ -85,7 +86,7 @@ static void do_paint_brush_task(Object *ob,
                                 float *wet_mix_sampled_color,
                                 PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = fabsf(ss->cache->bstrength);
 
   PBVHVertexIter vd;
@@ -247,7 +248,7 @@ void do_paint_brush(PaintModeSettings *paint_mode_settings,
   }
 
   Brush *brush = BKE_paint_brush(&sd->paint);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (!SCULPT_has_colors(ss)) {
     return;
@@ -332,7 +333,7 @@ void do_paint_brush(PaintModeSettings *paint_mode_settings,
 
 static void do_smear_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const float bstrength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
@@ -488,7 +489,7 @@ static void do_smear_store_prev_colors_task(SculptSession *ss,
 void do_smear_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   Brush *brush = BKE_paint_brush(&sd->paint);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   if (!SCULPT_has_colors(ss) || ss->cache->bstrength == 0.0f) {
     return;

@@ -22,6 +22,7 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
@@ -74,7 +75,7 @@ static bool sculpt_and_constant_or_manual_detail_poll(bContext *C)
   Object *ob = CTX_data_active_object(C);
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
 
-  return SCULPT_mode_poll(C) && ob->sculpt->bm &&
+  return SCULPT_mode_poll(C) && ob->runtime->sculpt->bm &&
          (sd->flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL));
 }
 
@@ -82,7 +83,7 @@ static bool sculpt_and_dynamic_topology_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
 
-  return SCULPT_mode_poll(C) && ob->sculpt->bm;
+  return SCULPT_mode_poll(C) && ob->runtime->sculpt->bm;
 }
 
 /** \} */
@@ -95,7 +96,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
 {
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
 
   const View3D *v3d = CTX_wm_view3d(C);
   const Base *base = CTX_data_active_base(C);
@@ -113,7 +114,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
     BKE_pbvh_node_mark_topology_update(node);
   }
   /* Get the bounding box, its center and size. */
-  const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob->sculpt->pbvh);
+  const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob->runtime->sculpt->pbvh);
   const float3 center = math::midpoint(bounds.min, bounds.max);
   const float3 dim = bounds.max - bounds.min;
   const float size = math::reduce_max(dim);
@@ -185,7 +186,7 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   Object *ob = vc->obact;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   SculptCursorGeometryInfo sgi;
   SCULPT_vertex_random_access_ensure(ss);
 
@@ -242,7 +243,7 @@ static void sample_detail_dyntopo(bContext *C, ViewContext *vc, const int mval[2
   isect_ray_tri_watertight_v3_precalc(&srd.isect_precalc, ray_normal);
 
   bke::pbvh::raycast(
-      *ob->sculpt->pbvh,
+      *ob->runtime->sculpt->pbvh,
       [&](PBVHNode &node, float *tmin) { sculpt_raycast_detail_cb(node, srd, tmin); },
       ray_start,
       ray_normal,
@@ -278,7 +279,7 @@ static int sample_detail(bContext *C, const int event_xy[2], int mode)
     return OPERATOR_CANCELLED;
   }
 
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   if (!ss->pbvh) {
     return OPERATOR_CANCELLED;
   }
@@ -552,7 +553,7 @@ static void dyntopo_detail_size_edit_draw(const bContext * /*C*/, ARegion * /*re
 static void dyntopo_detail_size_edit_cancel(bContext *C, wmOperator *op)
 {
   Object *active_object = CTX_data_active_object(C);
-  SculptSession *ss = active_object->sculpt;
+  SculptSession *ss = active_object->runtime->sculpt;
   ARegion *region = CTX_wm_region(C);
   DyntopoDetailSizeEditCustomData *cd = static_cast<DyntopoDetailSizeEditCustomData *>(
       op->customdata);
@@ -585,7 +586,7 @@ static void dyntopo_detail_size_bounds(DyntopoDetailSizeEditCustomData *cd)
 static void dyntopo_detail_size_sample_from_surface(Object *ob,
                                                     DyntopoDetailSizeEditCustomData *cd)
 {
-  SculptSession *ss = ob->sculpt;
+  SculptSession *ss = ob->runtime->sculpt;
   const PBVHVertRef active_vertex = SCULPT_active_vertex_get(ss);
 
   float len_accum = 0;
@@ -682,7 +683,7 @@ static void dyntopo_detail_size_update_header(bContext *C,
 static int dyntopo_detail_size_edit_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Object *active_object = CTX_data_active_object(C);
-  SculptSession *ss = active_object->sculpt;
+  SculptSession *ss = active_object->runtime->sculpt;
   ARegion *region = CTX_wm_region(C);
   DyntopoDetailSizeEditCustomData *cd = static_cast<DyntopoDetailSizeEditCustomData *>(
       op->customdata);
@@ -792,7 +793,7 @@ static int dyntopo_detail_size_edit_invoke(bContext *C, wmOperator *op, const wm
   copy_v4_v4(cd->outline_col, brush->add_col);
   op->customdata = cd;
 
-  SculptSession *ss = active_object->sculpt;
+  SculptSession *ss = active_object->runtime->sculpt;
   dyntopo_detail_size_bounds(cd);
   cd->radius = ss->cursor_radius;
 
