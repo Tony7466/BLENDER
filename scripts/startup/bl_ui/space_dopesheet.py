@@ -839,6 +839,7 @@ class LayersDopeSheetPanel:
 
         return False
 
+
 class GreasePencilLayersDopeSheetPanel:
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'UI'
@@ -942,12 +943,20 @@ class DOPESHEET_PT_grease_pencil_layer_masks(GreasePencilLayersDopeSheetPanel, G
     bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
     bl_options = {'DEFAULT_CLOSED'}
 
-class DOPESHEET_PT_grease_pencil_layer_transform(GreasePencilLayersDopeSheetPanel, GreasePencil_LayerTransformPanel, Panel):
+
+class DOPESHEET_PT_grease_pencil_layer_transform(
+        GreasePencilLayersDopeSheetPanel,
+        GreasePencil_LayerTransformPanel,
+        Panel):
     bl_label = "Transform"
     bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
     bl_options = {'DEFAULT_CLOSED'}
 
-class DOPESHEET_PT_grease_pencil_layer_relations(GreasePencilLayersDopeSheetPanel, GreasPencil_LayerRelationsPanel, Panel):
+
+class DOPESHEET_PT_grease_pencil_layer_relations(
+        GreasePencilLayersDopeSheetPanel,
+        GreasPencil_LayerRelationsPanel,
+        Panel):
     bl_label = "Relations"
     bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
     bl_options = {'DEFAULT_CLOSED'}

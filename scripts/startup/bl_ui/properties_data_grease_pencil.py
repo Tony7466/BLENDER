@@ -39,6 +39,7 @@ class GREASE_PENCIL_UL_masks(UIList):
             layout.alignment = 'CENTER'
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
+
 class GreasePencil_LayerMaskPanel:
     def draw_header(self, context):
         ob = context.object
@@ -75,6 +76,7 @@ class GreasePencil_LayerMaskPanel:
         sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_UP', text="").direction = 'UP'
         sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
+
 class GreasePencil_LayerTransformPanel:
     def draw(self, context):
         layout = self.layout
@@ -93,6 +95,7 @@ class GreasePencil_LayerTransformPanel:
 
         row = layout.row(align=True)
         row.prop(layer, "scale")
+
 
 class GreasPencil_LayerRelationsPanel:
     def draw(self, context):
