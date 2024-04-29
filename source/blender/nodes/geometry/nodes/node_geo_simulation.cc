@@ -847,6 +847,13 @@ static void NODE_OT_simulation_zone_item_move(wmOperatorType *ot)
       ot, "Move Simulation Zone Item", __func__, "Move active simulation zone item");
 }
 
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_simulation_zone_item_add);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_remove);
+  WM_operatortype_append(NODE_OT_simulation_zone_item_move);
+}
+
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   const bNode *node = static_cast<bNode *>(ptr->data);
@@ -1009,12 +1016,9 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.no_muting = true;
+  ntype.register_operators = node_operators;
   node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
-
-  WM_operatortype_append(NODE_OT_simulation_zone_item_add);
-  WM_operatortype_append(NODE_OT_simulation_zone_item_remove);
-  WM_operatortype_append(NODE_OT_simulation_zone_item_move);
 }
 NOD_REGISTER_NODE(node_register)
 

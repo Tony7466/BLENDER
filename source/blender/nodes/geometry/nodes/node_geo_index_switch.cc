@@ -92,6 +92,12 @@ static void NODE_OT_index_switch_item_remove(wmOperatorType *ot)
       ot, "Remove Item", __func__, "Remove an item from the index switch");
 }
 
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_index_switch_item_add);
+  WM_operatortype_append(NODE_OT_index_switch_item_remove);
+}
+
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeIndexSwitch *data = MEM_cnew<NodeIndexSwitch>(__func__);
@@ -372,12 +378,10 @@ static void register_node()
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
   ntype.draw_buttons_ex = node_layout_ex;
+  ntype.register_operators = node_operators;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
-
-  WM_operatortype_append(NODE_OT_index_switch_item_add);
-  WM_operatortype_append(NODE_OT_index_switch_item_remove);
 }
 NOD_REGISTER_NODE(register_node)
 

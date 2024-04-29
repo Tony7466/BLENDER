@@ -263,6 +263,13 @@ static void NODE_OT_repeat_zone_item_move(wmOperatorType *ot)
       ot, "Move Repeat Zone Item", __func__, "Move active repeat zone item");
 }
 
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_repeat_zone_item_add);
+  WM_operatortype_append(NODE_OT_repeat_zone_item_remove);
+  WM_operatortype_append(NODE_OT_repeat_zone_item_move);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -273,12 +280,9 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.no_muting = true;
   ntype.draw_buttons_ex = node_draw_ex;
+  ntype.register_operators = node_operators;
   node_type_storage(&ntype, "NodeGeometryRepeatOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
-
-  WM_operatortype_append(NODE_OT_repeat_zone_item_add);
-  WM_operatortype_append(NODE_OT_repeat_zone_item_remove);
-  WM_operatortype_append(NODE_OT_repeat_zone_item_move);
 }
 NOD_REGISTER_NODE(node_register)
 
