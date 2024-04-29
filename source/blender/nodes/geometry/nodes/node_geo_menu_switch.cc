@@ -18,6 +18,7 @@
 #include "NOD_geo_menu_switch.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_socket.hh"
+#include "NOD_socket_items_ops.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "BLO_read_write.hh"
@@ -380,6 +381,24 @@ class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
   }
 };
 
+static void NODE_OT_enum_definition_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_item<MenuSwitchItemsAccessor>(
+      ot, "Remove Menu Item", __func__, "Remove active menu item");
+}
+
+static void NODE_OT_enum_definition_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_item<MenuSwitchItemsAccessor>(
+      ot, "Move Menu Item", __func__, "Move active menu item");
+}
+
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_enum_definition_item_remove);
+  WM_operatortype_append(NODE_OT_enum_definition_item_move);
+}
+
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(
@@ -409,6 +428,7 @@ static void register_node()
   node_type_storage(&ntype, "NodeMenuSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
+  ntype.register_operators = node_operators;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
