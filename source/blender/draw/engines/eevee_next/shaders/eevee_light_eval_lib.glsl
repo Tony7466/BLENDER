@@ -127,7 +127,7 @@ ClosureLight closure_light_new_ex(ClosureUndetermined cl,
   cl_light.light_shadowed = vec3(0.0);
   cl_light.light_unshadowed = vec3(0.0);
   cl_light.shading_offset = vec3(0.0);
-  cl_light.shadow_offset = is_transmission ? thickness : 0.0;
+  cl_light.shadow_offset = is_transmission ? abs(thickness) : 0.0;
   switch (cl.type) {
     case CLOSURE_BSDF_TRANSLUCENT_ID:
       if (is_transmission) {
