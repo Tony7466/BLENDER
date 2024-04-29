@@ -429,7 +429,7 @@ static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
     }
   }
 
-  return true;
+  return false;
 }
 
 template<typename T>
@@ -480,8 +480,8 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
     GAttributeReader attrs_a = attributes_a.lookup(id);
     GAttributeReader attrs_b = attributes_b.lookup(id);
 
-    if (!attributes_varrays_are_equal(attrs_a, attrs_b)) {
-      return false;
+    if (attributes_varrays_are_equal(attrs_a, attrs_b)) {
+      return true;
     }
 
     bool attributes_are_equal = true;
@@ -515,7 +515,7 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
     }
 
     const Span<FramesMapKey> &keys = layer->sorted_keys();
-    Vector<FramesMapKey> frames_to_delete = {};
+    Vector<FramesMapKey> frames_to_delete;
 
     for (const int i : keys.index_range().drop_back(1)) {
       const FramesMapKey current = keys[i];
