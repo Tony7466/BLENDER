@@ -874,7 +874,7 @@ int gbuffer_closure_count(uint header)
   return reduce_add(ivec3(not(equal(closure_types, uvec3(0u)))));
 }
 
-int gbuffer_has_transmission(uint header)
+bool gbuffer_has_transmission(uint header)
 {
   /* Note: Need to be adjusted for different global GBUFFER_LAYER_MAX. */
   const uint bits_per_layer = uint(GBUFFER_HEADER_BITS_PER_LAYER);

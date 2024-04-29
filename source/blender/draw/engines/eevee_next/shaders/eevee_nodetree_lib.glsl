@@ -403,6 +403,7 @@ Closure nodetree_volume();
 vec3 nodetree_displacement();
 float nodetree_thickness();
 vec4 closure_to_rgba(Closure cl);
+float thickness_mode;
 #endif
 
 /* Simplified form of F_eta(eta, 1.0). */
