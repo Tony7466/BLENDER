@@ -64,7 +64,6 @@ CCL_NAMESPACE_BEGIN
 
 /* Kernel Features */
 
-
 /* Shader nodes. */
 #define KERNEL_FEATURE_NODE_BSDF (1U << 0U)
 #define KERNEL_FEATURE_NODE_EMISSION (1U << 1U)

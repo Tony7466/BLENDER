@@ -39,7 +39,8 @@ ccl_device_noinline int svm_node_tex_voxel(
   }
   else
 #endif /* __VOLUME__ */
-  if (space != NODE_TEX_VOXEL_SPACE_OBJECT) {
+      if (space != NODE_TEX_VOXEL_SPACE_OBJECT)
+  {
     read_node_float(kg, &offset);
     read_node_float(kg, &offset);
     read_node_float(kg, &offset);

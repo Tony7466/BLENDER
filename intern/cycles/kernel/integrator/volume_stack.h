@@ -9,12 +9,12 @@ CCL_NAMESPACE_BEGIN
 #ifdef __VOLUME__
 
 /* Volumetric read/write lambda functions - default implementations */
-#ifndef VOLUME_READ_LAMBDA
-#  define VOLUME_READ_LAMBDA(function_call) \
-    auto volume_read_lambda_pass = [=](const int i) { return function_call; };
-#  define VOLUME_WRITE_LAMBDA(function_call) \
-    auto volume_write_lambda_pass = [=](const int i, VolumeStack entry) { function_call; };
-#endif
+#  ifndef VOLUME_READ_LAMBDA
+#    define VOLUME_READ_LAMBDA(function_call) \
+      auto volume_read_lambda_pass = [=](const int i) { return function_call; };
+#    define VOLUME_WRITE_LAMBDA(function_call) \
+      auto volume_write_lambda_pass = [=](const int i, VolumeStack entry) { function_call; };
+#  endif
 
 /* Volume Stack
  *

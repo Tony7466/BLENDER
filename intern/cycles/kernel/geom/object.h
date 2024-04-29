@@ -94,7 +94,7 @@ ccl_device_inline Transform object_fetch_transform_motion_test(KernelGlobals kg,
     return tfm;
   }
   else
- #endif /* __OBJECT_MOTION__ */
+#endif /* __OBJECT_MOTION__ */
   {
     Transform tfm = object_fetch_transform(kg, object, OBJECT_TRANSFORM);
     if (itfm)

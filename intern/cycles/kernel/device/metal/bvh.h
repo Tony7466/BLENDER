@@ -64,11 +64,11 @@ ccl_device_forceinline bool curve_ribbon_accept(
   float3 ray_D = ray->D;
   if (!(kernel_data_fetch(object_flag, object) & SD_OBJECT_TRANSFORM_APPLIED)) {
     float3 idir;
-#if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
     bvh_instance_motion_push(NULL, object, ray, &ray_P, &ray_D, &idir);
-#else
+#  else
     bvh_instance_push(NULL, object, ray, &ray_P, &ray_D, &idir);
-#endif
+#  endif
   }
 
   /* ignore self intersections */
@@ -79,11 +79,11 @@ ccl_device_forceinline bool curve_ribbon_accept(
 ccl_device_forceinline float curve_ribbon_v(
     KernelGlobals kg, float u, float t, ccl_private const Ray *ray, int object, int prim, int type)
 {
-#if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
   float time = ray->time;
-#else
+#  else
   float time = 0.0f;
-#endif
+#  endif
 
   const bool is_motion = (type & PRIMITIVE_MOTION);
 
@@ -109,11 +109,11 @@ ccl_device_forceinline float curve_ribbon_v(
   float3 ray_D = ray->D;
   if (!(kernel_data_fetch(object_flag, object) & SD_OBJECT_TRANSFORM_APPLIED)) {
     float3 idir;
-#if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
     bvh_instance_motion_push(NULL, object, ray, &ray_P, &ray_D, &idir);
-#else
+#  else
     bvh_instance_push(NULL, object, ray, &ray_P, &ray_D, &idir);
-#endif
+#  endif
   }
 
   const float4 P_curve4 = metal::catmull_rom(u, curve[0], curve[1], curve[2], curve[3]);
@@ -239,11 +239,11 @@ ccl_device_intersect bool scene_intersect(KernelGlobals kg,
 
     if (!(kernel_data_fetch(object_flag, object) & SD_OBJECT_TRANSFORM_APPLIED)) {
       float3 idir;
-#if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
       bvh_instance_motion_push(NULL, object, ray, &r.origin, &r.direction, &idir);
-#else
+#  else
       bvh_instance_push(NULL, object, ray, &r.origin, &r.direction, &idir);
-#endif
+#  endif
     }
 
     if (prim_type & PRIMITIVE_POINT) {
@@ -503,7 +503,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
     isect->object = intersection.instance_id;
     isect->t = intersection.distance;
   }
-#ifdef __HAIR__
+#  ifdef __HAIR__
   else if (kernel_data.bvh.have_curves && intersection.type == intersection_type::curve) {
     int prim = intersection.primitive_id + intersection.user_instance_id;
     const KernelCurveSegment segment = kernel_data_fetch(curve_segments, prim);
@@ -524,8 +524,8 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
       isect->v = 0.0f;
     }
   }
-#endif
-#ifdef __POINTCLOUD__
+#  endif
+#  ifdef __POINTCLOUD__
   else if (kernel_data.bvh.have_points && intersection.type == intersection_type::bounding_box) {
     const int object = intersection.instance_id;
     const uint prim = intersection.primitive_id + intersection.user_instance_id;
@@ -535,11 +535,11 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
 
     if (!(kernel_data_fetch(object_flag, object) & SD_OBJECT_TRANSFORM_APPLIED)) {
       float3 idir;
-#  if defined(__METALRT_MOTION__)
+#    if defined(__METALRT_MOTION__)
       bvh_instance_motion_push(NULL, object, ray, &r.origin, &r.direction, &idir);
-#  else
+#    else
       bvh_instance_push(NULL, object, ray, &r.origin, &r.direction, &idir);
-#  endif
+#    endif
     }
 
     if (prim_type & PRIMITIVE_POINT) {
@@ -561,7 +561,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
       return true;
     }
   }
-#endif
+#  endif
 
   return true;
 }

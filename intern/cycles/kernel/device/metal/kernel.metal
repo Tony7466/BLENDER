@@ -547,10 +547,10 @@ __intersection__curve(constant KernelParamsMetal &launch_params_metal [[buffer(1
                       float u [[curve_parameter]],
                       const float ray_tmin [[min_distance]],
                       const float ray_tmax [[max_distance]]
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
                       ,
                       const float time [[time]]
-#    endif
+#  endif
 )
 {
   uint prim = primitive_id + primitive_id_offset;
@@ -558,9 +558,9 @@ __intersection__curve(constant KernelParamsMetal &launch_params_metal [[buffer(1
   Ray ray;
   ray.P = ray_P;
   ray.D = ray_D;
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
   ray.time = time;
-#    endif
+#  endif
 
   PrimitiveIntersectionResult result =
       metalrt_visibility_test<PrimitiveIntersectionResult, METALRT_HIT_CURVE>(
@@ -581,9 +581,9 @@ __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[b
                              const float3 ray_D [[direction]],
                              float u [[curve_parameter]],
                              float t [[distance]],
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
                              const float time [[time]],
-#    endif
+#  endif
                              const float ray_tmin [[min_distance]],
                              const float ray_tmax [[max_distance]])
 {
@@ -594,9 +594,9 @@ __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[b
   Ray ray;
   ray.P = ray_P;
   ray.D = ray_D;
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
   ray.time = time;
-#    endif
+#  endif
 
   result.continue_search = metalrt_shadow_all_hit<METALRT_HIT_CURVE>(
       launch_params_metal, payload, object, prim, float2(u, 0), ray_tmax, t, &ray);
@@ -678,9 +678,9 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
                       const uint primitive_id_offset [[user_instance_id]],
                       const float3 ray_origin [[origin]],
                       const float3 ray_direction [[direction]],
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
                       const float time [[time]],
-#    endif
+#  endif
                       const float ray_tmin [[min_distance]],
                       const float ray_tmax [[max_distance]])
 {
@@ -692,7 +692,7 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
   result.continue_search = true;
   result.distance = ray_tmax;
 
-#ifdef __POINTCLOUD__
+#  ifdef __POINTCLOUD__
 
   metalrt_intersection_point(launch_params_metal,
                              payload,
@@ -710,7 +710,7 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
                              ray_tmax,
                              result);
 
-#endif /* __POINTCLOUD__ */
+#  endif /* __POINTCLOUD__ */
 
   return result;
 }
@@ -728,9 +728,9 @@ __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[b
                              const uint primitive_id_offset [[user_instance_id]],
                              const float3 ray_origin [[origin]],
                              const float3 ray_direction [[direction]],
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
                              const float time [[time]],
-#    endif
+#  endif
                              const float ray_tmin [[min_distance]],
                              const float ray_tmax [[max_distance]])
 {
@@ -742,7 +742,7 @@ __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[b
   result.continue_search = true;
   result.distance = ray_tmax;
 
-#ifdef __POINTCLOUD__
+#  ifdef __POINTCLOUD__
 
   metalrt_intersection_point_shadow(launch_params_metal,
                                     payload,
@@ -760,9 +760,9 @@ __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[b
                                     ray_tmax,
                                     result);
 
-#endif /* __POINTCLOUD__ */
+#  endif /* __POINTCLOUD__ */
 
   return result;
 }
 
-#endif   /* __METALRT__ */
+#endif /* __METALRT__ */

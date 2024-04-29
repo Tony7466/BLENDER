@@ -202,12 +202,12 @@ ccl_device float curve_thickness(KernelGlobals kg, ccl_private const ShaderData 
 
     float4 P_curve[2];
 
-#ifdef __OBJECT_MOTION__
+#  ifdef __OBJECT_MOTION__
     if (sd->type & PRIMITIVE_MOTION) {
       motion_curve_keys_linear(kg, sd->object, sd->time, k0, k1, P_curve);
     }
     else
-#endif
+#  endif
     {
       P_curve[0] = kernel_data_fetch(curve_keys, k0);
       P_curve[1] = kernel_data_fetch(curve_keys, k1);
