@@ -471,7 +471,7 @@ Sequence *SEQ_add_movie_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
   }
 
   if (anim_arr[0] != nullptr) {
-    seq->len = IMB_anim_get_duration(anim_arr[0], IMB_TC_NORMAL_PLAYBACK);
+    seq->len = IMB_anim_get_duration(anim_arr[0], IMB_TC_RECORD_RUN);
 
     IMB_anim_load_metadata(anim_arr[0]);
 
@@ -617,7 +617,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       seq->len = IMB_anim_get_duration(
           sanim->anim,
           IMB_Timecode_Type(seq->strip->proxy ? IMB_Timecode_Type(seq->strip->proxy->tc) :
-                                                IMB_TC_NORMAL_PLAYBACK));
+                                                IMB_TC_RECORD_RUN));
 
       seq->len -= seq->anim_startofs;
       seq->len -= seq->anim_endofs;
