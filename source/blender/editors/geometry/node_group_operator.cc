@@ -332,7 +332,6 @@ static std::optional<ID_Type> socket_type_to_id_type(const eNodeSocketDatatype s
     case SOCK_MATERIAL:
       return ID_MA;
   }
-  BLI_assert_unreachable();
   return std::nullopt;
 }
 
