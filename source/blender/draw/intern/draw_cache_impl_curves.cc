@@ -407,9 +407,9 @@ static void create_edit_points_selection(const bke::CurvesGeometry &curves,
   }
 
   const VArray<float> attribute_left = *curves.attributes().lookup_or_default<float>(
-      ".selection_handle_left", bke::AttrDomain::Point, 0.0f);
+      ".selection_handle_left", bke::AttrDomain::Point, 1.0f);
   const VArray<float> attribute_right = *curves.attributes().lookup_or_default<float>(
-      ".selection_handle_right", bke::AttrDomain::Point, 0.0f);
+      ".selection_handle_right", bke::AttrDomain::Point, 1.0f);
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
@@ -706,6 +706,7 @@ static bool ensure_attributes(const Curves &curves,
     if (!drw_attributes_overlap(&final_cache.attr_used, &attrs_needed)) {
       /* Some new attributes have been added, free all and start over. */
       for (const int i : IndexRange(GPU_MAX_ATTR)) {
+        GPU_VERTBUF_DISCARD_SAFE(final_cache.attributes_buf[i]);
         GPU_VERTBUF_DISCARD_SAFE(cache.eval_cache.proc_attributes_buf[i]);
       }
       drw_attributes_merge(&final_cache.attr_used, &attrs_needed, cache.render_mutex);

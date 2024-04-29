@@ -123,8 +123,6 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
                                            int corners_num,
                                            CustomData_MeshMasks mask);
 
-void BKE_mesh_eval_delete(Mesh *mesh_eval);
-
 /**
  * Performs copy for use during evaluation,
  * optional referencing original arrays to reduce memory.
@@ -493,9 +491,6 @@ bool BKE_mesh_validate_all_customdata(CustomData *vert_data,
                                       bool *r_change);
 
 void BKE_mesh_strip_loose_faces(Mesh *mesh);
-
-/* In DerivedMesh.cc */
-void BKE_mesh_wrapper_deferred_finalize_mdata(Mesh *mesh_eval);
 
 /* **** Depsgraph evaluation **** */
 

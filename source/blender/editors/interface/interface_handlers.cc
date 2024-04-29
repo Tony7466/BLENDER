@@ -1834,10 +1834,6 @@ static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore
       int i;
       PointerRNA *link;
       for (i = 0, link = lb.data(); i < selctx_data->elems_len; i++, link++) {
-        if (i >= selctx_data->elems_len) {
-          break;
-        }
-
         if (!UI_context_copy_to_selected_check(&ptr,
                                                link,
                                                prop,
@@ -2256,7 +2252,7 @@ static void ui_apply_but(
         if (data->select_others.elems_len == 0)
     {
       wmWindow *win = CTX_wm_window(C);
-      wmEvent *event = win->eventstate;
+      const wmEvent *event = win->eventstate;
       /* May have been enabled before activating, don't do for array pasting. */
       if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(event)) {
         /* See comment for #IS_ALLSELECT_EVENT why this needs to be filtered here. */
@@ -6286,7 +6282,7 @@ static void ui_palette_set_active(uiButColor *color_but)
 {
   if (color_but->is_pallete_color) {
     Palette *palette = (Palette *)color_but->rnapoin.owner_id;
-    PaletteColor *color = static_cast<PaletteColor *>(color_but->rnapoin.data);
+    const PaletteColor *color = static_cast<const PaletteColor *>(color_but->rnapoin.data);
     palette->active_color = BLI_findindex(&palette->colors, color);
   }
 }

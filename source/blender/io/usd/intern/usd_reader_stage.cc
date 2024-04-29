@@ -773,4 +773,4 @@ UsdPathSet USDStageReader::collect_point_instancer_proto_paths() const
   return result;
 }
 
-}  // Namespace blender::io::usd
+}  // namespace blender::io::usd

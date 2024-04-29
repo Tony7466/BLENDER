@@ -726,127 +726,110 @@ struct BeztMap {
   BezTriple *bezt;
   /** Index of `bezt` in `fcu->bezt` array before sorting. */
   uint oldIndex;
-  /** Swap order of handles (-1=clear; 0=not checked, 1=swap). */
-  short swap_handles;
-  /** Interpolation of previous and next segments. */
-  char prev_ipo, current_ipo;
+  /** Swap order of handles. Can happen when rotating keys around their common center. */
+  bool swap_handles;
 };
 
 /**
- * This function converts an FCurve's BezTriple array to a BeztMap array
- * NOTE: this allocates memory that will need to get freed later.
+ * Converts an FCurve's BezTriple array to a BeztMap vector.
  */
-static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert)
+static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int totvert)
 {
-  BezTriple *bezt = bezts;
-  BezTriple *prevbezt = nullptr;
-  BeztMap *bezm, *bezms;
-  int i;
-
-  /* Allocate memory for this array. */
   if (totvert == 0 || bezts == nullptr) {
-    return nullptr;
+    return {};
   }
-  bezm = bezms = static_cast<BeztMap *>(MEM_callocN(sizeof(BeztMap) * totvert, "BeztMaps"));
 
-  /* Assign beztriples to beztmaps. */
-  for (i = 0; i < totvert; i++, bezm++, prevbezt = bezt, bezt++) {
-    bezm->bezt = bezt;
+  blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
 
-    bezm->oldIndex = i;
-
-    bezm->prev_ipo = (prevbezt) ? prevbezt->ipo : bezt->ipo;
-    bezm->current_ipo = bezt->ipo;
+  for (const int i : bezms.index_range()) {
+    BezTriple *bezt = &bezts[i];
+    BeztMap &bezm = bezms[i];
+    bezm.bezt = bezt;
+    bezm.swap_handles = false;
+    bezm.oldIndex = i;
   }
 
   return bezms;
 }
 
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead. */
-static void sort_time_beztmaps(BeztMap *bezms, int totvert)
+static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 {
   BeztMap *bezm;
-  int i, ok = 1;
 
+  /* Check if handles need to be swapped. */
+  for (BeztMap &bezm : bezms) {
+    /* Handles are only swapped if they are both on the wrong side of the key. Otherwise the one
+     * handle out of place is just clamped at the key position later. */
+    bezm.swap_handles = (bezm.bezt->vec[0][0] > bezm.bezt->vec[1][0] &&
+                         bezm.bezt->vec[2][0] < bezm.bezt->vec[1][0]);
+  }
+
+  bool ok = true;
   /* Keep repeating the process until nothing is out of place anymore. */
   while (ok) {
-    ok = 0;
+    ok = false;
 
-    bezm = bezms;
-    i = totvert;
-    while (i--) {
+    for (const int i : bezms.index_range()) {
+      bezm = &bezms[i];
       /* Is current bezm out of order (i.e. occurs later than next)? */
-      if (i > 0) {
+      if (i < bezms.size() - 1) {
         if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
           std::swap(*bezm, *(bezm + 1));
-          ok = 1;
+          ok = true;
         }
       }
-
-      /* Do we need to check if the handles need to be swapped?
-       * Optimization: this only needs to be performed in the first loop. */
-      if (bezm->swap_handles == 0) {
-        if ((bezm->bezt->vec[0][0] > bezm->bezt->vec[1][0]) &&
-            (bezm->bezt->vec[2][0] < bezm->bezt->vec[1][0]))
-        {
-          /* Handles need to be swapped. */
-          bezm->swap_handles = 1;
-        }
-        else {
-          /* Handles need to be cleared. */
-          bezm->swap_handles = -1;
-        }
-      }
-
-      bezm++;
     }
   }
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
-static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totvert)
+static void update_transdata_bezt_pointers(TransInfo *t,
+                                           FCurve *fcu,
+                                           const blender::Span<BeztMap> bezms)
 {
   TransData2D *td2d;
   TransData *td;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  /* Dynamically allocate an array of chars to mark whether an TransData's
-   * pointers have been fixed already, so that we don't override ones that are already done. */
-  char *adjusted = static_cast<char *>(MEM_callocN(tc->data_len, "beztmap_adjusted_map"));
+  /* Used to mark whether an TransData's pointers have been fixed already, so that we don't
+   * override ones that are already done. */
+  blender::Vector<bool> adjusted(tc->data_len, false);
 
   /* For each beztmap item, find if it is used anywhere. */
-  BeztMap *bezm = bezms;
-  for (int i = 0; i < totvert; i++, bezm++) {
+  const BeztMap *bezm;
+  for (const int i : bezms.index_range()) {
+    bezm = &bezms[i];
     /* Loop through transdata, testing if we have a hit
      * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
     td2d = tc->data_2d;
     td = tc->data;
     for (int j = 0; j < tc->data_len; j++, td2d++, td++) {
       /* Skip item if already marked. */
-      if (adjusted[j] != 0) {
+      if (adjusted[j]) {
         continue;
       }
 
       /* Update all transdata pointers, no need to check for selections etc,
        * since only points that are really needed were created as transdata. */
       if (td2d->loc2d == bezm->bezt->vec[0]) {
-        if (bezm->swap_handles == 1) {
+        if (bezm->swap_handles) {
           td2d->loc2d = fcu->bezt[i].vec[2];
         }
         else {
           td2d->loc2d = fcu->bezt[i].vec[0];
         }
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
       else if (td2d->loc2d == bezm->bezt->vec[2]) {
-        if (bezm->swap_handles == 1) {
+        if (bezm->swap_handles) {
           td2d->loc2d = fcu->bezt[i].vec[0];
         }
         else {
           td2d->loc2d = fcu->bezt[i].vec[2];
         }
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
       else if (td2d->loc2d == bezm->bezt->vec[1]) {
         td2d->loc2d = fcu->bezt[i].vec[1];
@@ -859,12 +842,12 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
           td2d->h2 = fcu->bezt[i].vec[2];
         }
 
-        adjusted[j] = 1;
+        adjusted[j] = true;
       }
 
       /* The handle type pointer has to be updated too. */
       if (adjusted[j] && td->flag & TD_BEZTRIPLE && td->hdata) {
-        if (bezm->swap_handles == 1) {
+        if (bezm->swap_handles) {
           td->hdata->h1 = &fcu->bezt[i].h2;
           td->hdata->h2 = &fcu->bezt[i].h1;
         }
@@ -875,9 +858,6 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
       }
     }
   }
-
-  /* Free temp memory used for 'adjusted' array. */
-  MEM_freeN(adjusted);
 }
 
 /* This function is called by recalc_data during the Transform loop to recalculate
@@ -889,28 +869,30 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
-  /* Sort and reassign verts. */
-  for (FCurve *fcu : fcurves) {
-    if (fcu->bezt) {
-      BeztMap *bezm;
+  /* The grain size of 8 was chosen based on measured runtimes of this function. While 1 is the
+   * fastest, larger grain sizes are generally preferred and the difference between 1 and 8 was
+   * only minimal (~330ms to ~336ms). */
+  blender::threading::parallel_for(fcurves.index_range(), 8, [&](const blender::IndexRange range) {
+    for (const int i : range) {
+      FCurve *fcu = fcurves[i];
+
+      if (!fcu->bezt) {
+        continue;
+      }
 
       /* Adjust transform-data pointers. */
       /* NOTE: none of these functions use 'use_handle', it could be removed. */
-      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-      sort_time_beztmaps(bezm, fcu->totvert);
-      beztmap_to_data(t, fcu, bezm, fcu->totvert);
-
-      /* Free mapping stuff. */
-      MEM_freeN(bezm);
+      blender::Vector<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+      sort_time_beztmaps(bezms);
+      update_transdata_bezt_pointers(t, fcu, bezms);
 
       /* Re-sort actual beztriples
        * (perhaps this could be done using the beztmaps to save time?). */
       sort_time_fcurve(fcu);
 
-      /* Make sure handles are all set correctly. */
       testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
     }
-  }
+  });
 }
 
 static void recalcData_graphedit(TransInfo *t)
