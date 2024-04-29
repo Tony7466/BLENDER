@@ -787,7 +787,13 @@ class VIEW3D_HT_header(Header):
             )
 
         # Proportional editing
-        if object_mode in {'EDIT', 'PARTICLE_EDIT', 'SCULPT_GPENCIL', 'EDIT_GPENCIL', 'OBJECT'}:
+        is_armature_editmode = obj and obj.type == 'ARMATURE' and object_mode == 'EDIT'
+        if object_mode in {
+            'EDIT',
+            'PARTICLE_EDIT',
+            'SCULPT_GPENCIL',
+            'EDIT_GPENCIL',
+                'OBJECT'} and not is_armature_editmode:
             row = layout.row(align=True)
             kw = {}
             if object_mode == 'OBJECT':
