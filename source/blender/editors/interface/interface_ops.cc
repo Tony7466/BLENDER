@@ -1571,6 +1571,11 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
 /** \name Copy Driver To Selected Operator
  * \{ */
 
+/* Namespaced for unit testing. Conceptually these functions should be static
+ * and not be used outside this source file.  But they need to be externally
+ * accessible to add unit tests for them. */
+namespace blender::interface::internal {
+
 /**
  * Get the driver(s) of the given property.
  *
@@ -1591,7 +1596,7 @@ static void UI_OT_copy_to_selected_button(wmOperatorType *ot)
  * an array property with 4 elements, 1 for a non-array property).  For array
  * properties, elements without drivers will be nullptrs.
  */
-static blender::Vector<FCurve *> get_property_drivers(
+blender::Vector<FCurve *> get_property_drivers(
     PointerRNA *ptr, PropertyRNA *prop, const bool get_all, const int index, bool *r_is_array_prop)
 {
   BLI_assert(ptr && prop);
@@ -1609,7 +1614,12 @@ static blender::Vector<FCurve *> get_property_drivers(
   blender::Vector<FCurve *> drivers = {};
   const bool is_array_prop = RNA_property_array_check(prop);
   if (!is_array_prop) {
-    drivers.append(BKE_fcurve_find(&adt->drivers, path->c_str(), index));
+    /* Note: by convention Blender assigns 0 as the index for drivers of
+     * non-array properties, which is why we search for it here.  Values > 0 are
+     * not recognized by Blender's driver system in that case.  Values < 0 are
+     * recognized for driver evaluation, but `BKE_fcurve_find()` unconditionally
+     * returns nullptr in that case so it wouldn't matter here anyway. */
+    drivers.append(BKE_fcurve_find(&adt->drivers, path->c_str(), 0));
   }
   else {
     /* For array properties, we always allocate space for all elements of an
@@ -1662,10 +1672,10 @@ static blender::Vector<FCurve *> get_property_drivers(
  *
  * \returns The number of successfully pasted drivers.
  */
-static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
-                                  const bool is_array_prop,
-                                  PointerRNA *dst_ptr,
-                                  PropertyRNA *dst_prop)
+int paste_property_drivers(blender::Span<FCurve *> src_drivers,
+                           const bool is_array_prop,
+                           PointerRNA *dst_ptr,
+                           PropertyRNA *dst_prop)
 {
   BLI_assert(src_drivers.size() > 0);
   BLI_assert(is_array_prop || src_drivers.size() == 1);
@@ -1705,10 +1715,11 @@ static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
 
     /* If there's an existing matching driver, remove it first.
      *
-     * TODO: this has quadratic complexity when the drivers are within the same
-     * ID, due to this being inside of a loop and doing a linear scan of the
-     * drivers to find one that matches.  We should be able to make this more
-     * efficient with a little cleverness .*/
+     * TODO: in the context of `copy_driver_to_selected_button()` this has
+     * quadratic complexity when the drivers are within the same ID, due to this
+     * being inside of a loop and doing a linear scan of the drivers to find one
+     * that matches.  We should be able to make this more efficient with a
+     * little cleverness .*/
     if (driven) {
       FCurve *old_driver = BKE_fcurve_find(&dst_adt->drivers, dst_path->c_str(), dst_index);
       if (old_driver) {
@@ -1728,6 +1739,8 @@ static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
 
   return paste_count;
 }
+
+}  // namespace blender::interface::internal
 
 /**
  * Called from both exec & poll.
@@ -1752,6 +1765,8 @@ static int paste_property_drivers(blender::Span<FCurve *> src_drivers,
  */
 static bool copy_driver_to_selected_button(bContext *C, bool copy_entire_array, const bool poll)
 {
+  using namespace blender::interface::internal;
+
   PropertyRNA *prop;
   PointerRNA ptr;
   int index;
