@@ -226,6 +226,9 @@ template<typename Accessor>
     }
     item = add_item_with_socket_and_name<Accessor>(storage_node, socket_type, src_socket->name);
   }
+  else if constexpr (Accessor::has_name && !Accessor::has_type) {
+    item = add_item_with_name<Accessor>(storage_node, src_socket->name);
+  }
   else {
     item = add_item<Accessor>(storage_node);
   }

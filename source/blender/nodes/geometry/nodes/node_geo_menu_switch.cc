@@ -80,6 +80,8 @@ static void node_declare(blender::nodes::NodeDeclarationBuilder &b)
   else if (data_type == SOCK_GEOMETRY) {
     output.propagate_all();
   }
+
+  b.add_input<decl::Extend>("", "__extend__");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -406,6 +408,12 @@ static void node_operators()
   WM_operatortype_append(NODE_OT_enum_definition_item_move);
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  return socket_items::try_add_item_via_any_extend_socket<MenuSwitchItemsAccessor>(
+      *ntree, *node, *node, *link);
+}
+
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(
@@ -436,6 +444,7 @@ static void register_node()
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
   ntype.register_operators = node_operators;
+  ntype.insert_link = node_insert_link;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
