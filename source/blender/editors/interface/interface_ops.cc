@@ -1730,9 +1730,8 @@ int paste_property_drivers(blender::Span<FCurve *> src_drivers,
 
     /* Create the new driver. */
     FCurve *new_driver = BKE_fcurve_copy(src_drivers[i]);
+    BKE_fcurve_rnapath_set(*new_driver, dst_path.value());
     BLI_addtail(&dst_adt->drivers, new_driver);
-    MEM_SAFE_FREE(new_driver->rna_path);
-    new_driver->rna_path = BLI_strdup(dst_path->c_str());
 
     paste_count++;
   }
