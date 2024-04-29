@@ -381,20 +381,27 @@ class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
   }
 };
 
+static void NODE_OT_enum_definition_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<MenuSwitchItemsAccessor>(
+      ot, "Add Menu Item", __func__, "Add menu item");
+}
+
 static void NODE_OT_enum_definition_item_remove(wmOperatorType *ot)
 {
-  socket_items::ops::remove_item<MenuSwitchItemsAccessor>(
+  socket_items::ops::remove_active_item<MenuSwitchItemsAccessor>(
       ot, "Remove Menu Item", __func__, "Remove active menu item");
 }
 
 static void NODE_OT_enum_definition_item_move(wmOperatorType *ot)
 {
-  socket_items::ops::move_item<MenuSwitchItemsAccessor>(
+  socket_items::ops::move_active_item<MenuSwitchItemsAccessor>(
       ot, "Move Menu Item", __func__, "Move active menu item");
 }
 
 static void node_operators()
 {
+  WM_operatortype_append(NODE_OT_enum_definition_item_add);
   WM_operatortype_append(NODE_OT_enum_definition_item_remove);
   WM_operatortype_append(NODE_OT_enum_definition_item_move);
 }
