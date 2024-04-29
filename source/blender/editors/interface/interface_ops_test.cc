@@ -41,11 +41,11 @@ class CopyDriversToSelected : public testing::Test {
   Object *suzanne;
 
   PointerRNA cube_ptr;
-  PropertyRNA *cube_location_prop;
+  PropertyRNA *cube_quaternion_prop;
   PropertyRNA *cube_rotation_mode_prop;
 
   PointerRNA suzanne_ptr;
-  PropertyRNA *suzanne_location_prop;
+  PropertyRNA *suzanne_quaternion_prop;
   PropertyRNA *suzanne_rotation_mode_prop;
 
   static void SetUpTestSuite()
@@ -70,37 +70,49 @@ class CopyDriversToSelected : public testing::Test {
     suzanne = BKE_object_add_only_object(bmain, OB_EMPTY, "OBSuzanne");
 
     cube_ptr = RNA_pointer_create(&cube->id, &RNA_Object, &cube->id);
-    cube_location_prop = RNA_struct_find_property(&cube_ptr, "location");
+    cube_quaternion_prop = RNA_struct_find_property(&cube_ptr, "rotation_quaternion");
     cube_rotation_mode_prop = RNA_struct_find_property(&cube_ptr, "rotation_mode");
 
     suzanne_ptr = RNA_pointer_create(&suzanne->id, &RNA_Object, &suzanne->id);
-    suzanne_location_prop = RNA_struct_find_property(&suzanne_ptr, "location");
+    suzanne_quaternion_prop = RNA_struct_find_property(&suzanne_ptr, "rotation_quaternion");
     suzanne_rotation_mode_prop = RNA_struct_find_property(&suzanne_ptr, "rotation_mode");
 
     AnimData *adt_cube = BKE_animdata_ensure_id(&cube->id);
     AnimData *adt_suzanne = BKE_animdata_ensure_id(&suzanne->id);
 
-    /* Set up drivers. */
     ReportList tmp_report_list;
-    ANIM_add_driver(&tmp_report_list, &cube->id, "location", 0, 0, DRIVER_TYPE_PYTHON);
-    ANIM_add_driver(&tmp_report_list, &suzanne->id, "location", 0, 0, DRIVER_TYPE_PYTHON);
-    ANIM_add_driver(&tmp_report_list, &suzanne->id, "location", 2, 0, DRIVER_TYPE_PYTHON);
+
+    /* Set up cube drivers. */
+    ANIM_add_driver(&tmp_report_list, &cube->id, "rotation_quaternion", 0, 0, DRIVER_TYPE_PYTHON);
+    ANIM_add_driver(&tmp_report_list, &cube->id, "rotation_quaternion", 1, 0, DRIVER_TYPE_PYTHON);
+    FCurve *cube_quat_0_driver = static_cast<FCurve *>(BLI_findlink(&adt_cube->drivers, 0));
+    FCurve *cube_quat_1_driver = static_cast<FCurve *>(BLI_findlink(&adt_cube->drivers, 1));
+    BLI_strncpy(cube_quat_0_driver->driver->expression, "0.0", 256);
+    BLI_strncpy(cube_quat_1_driver->driver->expression, "1.0", 256);
+
+    /* Set up suzanne drivers. */
+    ANIM_add_driver(
+        &tmp_report_list, &suzanne->id, "rotation_quaternion", 0, 0, DRIVER_TYPE_PYTHON);
+    ANIM_add_driver(
+        &tmp_report_list, &suzanne->id, "rotation_quaternion", 2, 0, DRIVER_TYPE_PYTHON);
+    ANIM_add_driver(
+        &tmp_report_list, &suzanne->id, "rotation_quaternion", 3, 0, DRIVER_TYPE_PYTHON);
     ANIM_add_driver(&tmp_report_list, &suzanne->id, "rotation_mode", 0, 0, DRIVER_TYPE_PYTHON);
-    FCurve *cube_loc_0_driver = static_cast<FCurve *>(BLI_findlink(&adt_cube->drivers, 0));
-    FCurve *suzanne_loc_0_driver = static_cast<FCurve *>(BLI_findlink(&adt_suzanne->drivers, 0));
-    FCurve *suzanne_loc_2_driver = static_cast<FCurve *>(BLI_findlink(&adt_suzanne->drivers, 1));
+    FCurve *suzanne_quat_0_driver = static_cast<FCurve *>(BLI_findlink(&adt_suzanne->drivers, 0));
+    FCurve *suzanne_quat_2_driver = static_cast<FCurve *>(BLI_findlink(&adt_suzanne->drivers, 1));
+    FCurve *suzanne_quat_3_driver = static_cast<FCurve *>(BLI_findlink(&adt_suzanne->drivers, 2));
     FCurve *suzanne_rotation_mode_driver = static_cast<FCurve *>(
-        BLI_findlink(&adt_suzanne->drivers, 2));
-    BLI_strncpy(cube_loc_0_driver->driver->expression, "1.0", 256);
-    BLI_strncpy(suzanne_loc_0_driver->driver->expression, "2.0", 256);
-    BLI_strncpy(suzanne_loc_2_driver->driver->expression, "3.0", 256);
+        BLI_findlink(&adt_suzanne->drivers, 3));
+    BLI_strncpy(suzanne_quat_0_driver->driver->expression, "0.5", 256);
+    BLI_strncpy(suzanne_quat_2_driver->driver->expression, "2.5", 256);
+    BLI_strncpy(suzanne_quat_3_driver->driver->expression, "3.5", 256);
     BLI_strncpy(suzanne_rotation_mode_driver->driver->expression, "4", 256);
 
-    /* Add animation for Cube's Z location. */
+    /* Add animation to cube's fourth quaternion element. */
     PointerRNA cube_ptr = RNA_pointer_create(&cube->id, &RNA_Object, &cube->id);
     bAction *act = animrig::id_action_ensure(bmain, &cube->id);
     FCurve *fcu = animrig::action_fcurve_ensure(
-        bmain, act, "Object Transforms", &cube_ptr, "location", 2);
+        bmain, act, "Object Transforms", &cube_ptr, "rotation_quaternion", 3);
     animrig::KeyframeSettings keyframe_settings = {BEZT_KEYTYPE_KEYFRAME, HD_AUTO, BEZT_IPO_BEZ};
     insert_vert_fcurve(fcu, {1.0, 1.0}, keyframe_settings, INSERTKEY_NOFLAGS);
   }
@@ -113,46 +125,51 @@ class CopyDriversToSelected : public testing::Test {
 
 TEST_F(CopyDriversToSelected, get_property_drivers)
 {
-  /* Cube location: get all drivers. */
+  /* Cube quaternion: get all drivers. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &cube_ptr, cube_location_prop, true, -1, &is_array_prop);
+        &cube_ptr, cube_quaternion_prop, true, -1, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
-    EXPECT_EQ(drivers.size(), 3);
+    EXPECT_EQ(drivers.size(), 4);
 
     EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "1.0"), 0);
-    EXPECT_EQ(drivers[1], nullptr);
+    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.0"), 0);
+    EXPECT_TRUE(drivers[1] != nullptr);
+    EXPECT_EQ(strcmp(drivers[1]->driver->expression, "1.0"), 0);
     EXPECT_EQ(drivers[2], nullptr);
+    EXPECT_EQ(drivers[3], nullptr);
   }
 
-  /* Cube location: get first element driver. */
+  /* Cube quaternion: get first element driver. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &cube_ptr, cube_location_prop, false, 0, &is_array_prop);
+        &cube_ptr, cube_quaternion_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
-    EXPECT_EQ(drivers.size(), 3);
+    EXPECT_EQ(drivers.size(), 4);
 
     EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "1.0"), 0);
+    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.0"), 0);
     EXPECT_EQ(drivers[1], nullptr);
     EXPECT_EQ(drivers[2], nullptr);
+    EXPECT_EQ(drivers[3], nullptr);
   }
 
-  /* Cube location: get second element driver. */
+  /* Cube quaternion: try to get fourth element driver. Since there is none, we
+   * should get back an empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &cube_ptr, cube_location_prop, false, 1, &is_array_prop);
+        &cube_ptr, cube_quaternion_prop, false, 3, &is_array_prop);
 
     EXPECT_EQ(drivers.size(), 0);
   }
 
-  /* Cube rotation mode: get driver. */
+  /* Cube rotation mode: get driver. Since there is none, we should get back an
+   * empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
@@ -161,42 +178,46 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
     EXPECT_EQ(drivers.size(), 0);
   }
 
-  /* Suzanne location: get all drivers. */
+  /* Suzanne quaternion: get all drivers. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &suzanne_ptr, suzanne_location_prop, true, -1, &is_array_prop);
+        &suzanne_ptr, suzanne_quaternion_prop, true, -1, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
-    EXPECT_EQ(drivers.size(), 3);
+    EXPECT_EQ(drivers.size(), 4);
 
     EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "2.0"), 0);
     EXPECT_EQ(drivers[1], nullptr);
     EXPECT_TRUE(drivers[2] != nullptr);
-    EXPECT_EQ(strcmp(drivers[2]->driver->expression, "3.0"), 0);
+    EXPECT_TRUE(drivers[3] != nullptr);
+
+    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.5"), 0);
+    EXPECT_EQ(strcmp(drivers[2]->driver->expression, "2.5"), 0);
+    EXPECT_EQ(strcmp(drivers[3]->driver->expression, "3.5"), 0);
   }
 
-  /* Suzanne location: get first element driver. */
+  /* Suzanne quaternion: get first element driver. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &suzanne_ptr, suzanne_location_prop, false, 0, &is_array_prop);
+        &suzanne_ptr, suzanne_quaternion_prop, false, 0, &is_array_prop);
 
     EXPECT_EQ(is_array_prop, true);
-    EXPECT_EQ(drivers.size(), 3);
+    EXPECT_EQ(drivers.size(), 4);
 
     EXPECT_TRUE(drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "2.0"), 0);
+    EXPECT_EQ(strcmp(drivers[0]->driver->expression, "0.5"), 0);
     EXPECT_EQ(drivers[1], nullptr);
     EXPECT_EQ(drivers[2], nullptr);
   }
 
-  /* Suzanne location: get second element driver. */
+  /* Suzanne quaternion: get second element driver. Since there is none, we
+   * should get back an empty vector, indicating that no drivers were found. */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> drivers = blender::interface::internal::get_property_drivers(
-        &suzanne_ptr, suzanne_location_prop, false, 1, &is_array_prop);
+        &suzanne_ptr, suzanne_quaternion_prop, false, 1, &is_array_prop);
 
     EXPECT_EQ(drivers.size(), 0);
   }
@@ -215,28 +236,35 @@ TEST_F(CopyDriversToSelected, get_property_drivers)
 
 TEST_F(CopyDriversToSelected, paste_property_drivers)
 {
-  /* Copy all location drivers from Suzanne to Cube. Since neither Suzanne nor
-   * Cube have a driver on Y, there should still shouldn't be one on Cube after
-   * this. And since Cube has animation on Z, Z shouldn't end up with a driver.
-   * Only the X driver should get pasted on Cube, replacing the one that's
-   * there. */
+  /* Copy all location drivers from Suzanne to Cube. The result on Cube should
+   * be the following:
+   *
+   * - [0]: overwritten by the driver from Suzanne.
+   * - [1]: Cube's driver remains, since there was no driver here on Suzanne.
+   * - [2]: Suzanne's driver is pasted.  There was no driver on Cube before.
+   * - [3]: remains without a driver.  Cube has animation on this channel,
+   *   preventing driver pasting.
+   */
   {
     bool is_array_prop;
     blender::Vector<FCurve *> suzanne_location_drivers =
         blender::interface::internal::get_property_drivers(
-            &suzanne_ptr, suzanne_location_prop, true, -1, &is_array_prop);
+            &suzanne_ptr, suzanne_quaternion_prop, true, -1, &is_array_prop);
 
     blender::interface::internal::paste_property_drivers(
-        suzanne_location_drivers.as_span(), is_array_prop, &cube_ptr, cube_location_prop);
+        suzanne_location_drivers.as_span(), is_array_prop, &cube_ptr, cube_quaternion_prop);
 
     blender::Vector<FCurve *> cube_location_drivers =
         blender::interface::internal::get_property_drivers(
-            &cube_ptr, cube_location_prop, true, -1, &is_array_prop);
+            &cube_ptr, cube_quaternion_prop, true, -1, &is_array_prop);
 
     EXPECT_TRUE(cube_location_drivers[0] != nullptr);
-    EXPECT_EQ(strcmp(cube_location_drivers[0]->driver->expression, "2.0"), 0);
-    EXPECT_EQ(cube_location_drivers[1], nullptr);
-    EXPECT_EQ(cube_location_drivers[2], nullptr);
+    EXPECT_EQ(strcmp(cube_location_drivers[0]->driver->expression, "0.5"), 0);
+    EXPECT_TRUE(cube_location_drivers[1] != nullptr);
+    EXPECT_EQ(strcmp(cube_location_drivers[1]->driver->expression, "1.0"), 0);
+    EXPECT_TRUE(cube_location_drivers[2] != nullptr);
+    EXPECT_EQ(strcmp(cube_location_drivers[2]->driver->expression, "2.5"), 0);
+    EXPECT_EQ(cube_location_drivers[3], nullptr);
   }
 
   /* Copy the rotation_mode driver from Suzanne to Cube. */
