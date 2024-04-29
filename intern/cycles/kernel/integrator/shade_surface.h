@@ -377,7 +377,6 @@ ccl_device
   PROFILING_INIT(kg, PROFILING_RESTIR_INITIAL_RESAMPLING);
   /* Test if there is a light or BSDF that needs direct light. */
   if (!(kernel_data.integrator.use_direct_light && (sd->flag & SD_BSDF_HAS_EVAL))) {
-    /* TODO(weizhen): we still need to write to the reservoir in this case. */
     return;
   }
 
@@ -665,27 +664,26 @@ ccl_device
 
   kernel_assert(samples_seen <= max_samples);
 
-  BsdfEval radiance = reservoir.radiance;
-  /* TODO(weizhen): split sd and reservoir pass, write to sd at the beginning so we can return here
-   * if reservoir is empty. */
-  if (!reservoir.is_empty()) {
-    reservoir.total_weight /= reduce_add(fabs(radiance.sum));
+  if (reservoir.is_empty()) {
+    if (is_direct_light) {
+      film_clear_data_pass_reservoir(kg, state, render_buffer);
+    }
+    return;
   }
+
+  BsdfEval radiance = reservoir.radiance;
+  reservoir.total_weight /= reduce_add(fabs(radiance.sum));
 
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    if (!reservoir.is_empty() && !sample_copy_direction(kg, reservoir)) {
+    if (!sample_copy_direction(kg, reservoir)) {
       /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
       reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
     }
-    film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, sd, render_buffer);
+    film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, render_buffer);
   }
   else {
-    if (reservoir.is_empty()) {
-      return;
-    }
-
     bsdf_eval_mul(&radiance, reservoir.total_weight);
 
     int mnee_vertex_count = 0;
