@@ -226,13 +226,10 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
 }
 
 void extrude_curve_points(const bke::CurvesGeometry &src,
-                          const IndexMask &mask,
+                          const IndexMask &points_to_extrude,
                           bke::CurvesGeometry &dst)
 {
   const OffsetIndices<int> points_by_curve = src.points_by_curve();
-
-  Array<bool> points_to_extrude(src.points_num());
-  mask.to_bools(points_to_extrude.as_mutable_span());
 
   const int old_curves_num = src.curves_num();
   const int old_points_num = src.points_num();
@@ -246,45 +243,51 @@ void extrude_curve_points(const bke::CurvesGeometry &src,
   Vector<bool> dst_selected(old_points_num, false);
   Vector<int> dst_curve_counts(old_curves_num);
 
-  /* Point offset keeps track of the inner points added. */
+  const VArray<bool> &src_cyclic = src.cyclic();
+
+  /* Point offset keeps track of the points inserted. */
   int point_offset = 0;
-
   for (const int curve_index : src.curves_range()) {
-    const IndexRange points = points_by_curve[curve_index];
-    const Span<bool> curve_points_to_duplicate = points_to_extrude.as_span().slice(points);
+    const IndexRange curve_points = points_by_curve[curve_index];
+    IndexMaskMemory mem;
+    const IndexMask curve_points_to_extrude = IndexMask::from_intersection(
+        curve_points, points_to_extrude, mem);
 
-    dst_curve_counts[curve_index] = points.size();
+    dst_curve_counts[curve_index] = curve_points.size();
+    const bool curve_cyclic = src_cyclic[curve_index];
 
-    for (const int src_point_index : points) {
-      if (!curve_points_to_duplicate[src_point_index - points.first()]) {
-        continue;
-      }
-
-      if (src_point_index == points.first()) {
-        /* Startpoint extruded. */
+    curve_points_to_extrude.foreach_index([&](const int src_point_index) {
+      if (!curve_cyclic && (src_point_index == curve_points.first())) {
+        /* Startpoint extruded, we insert a new point at the beginning of the curve.
+         * Note : all points of a cyclic curve behave like an innerpoint.
+         */
         dst_to_src_points.insert(src_point_index + point_offset, src_point_index);
         dst_selected.insert(src_point_index + point_offset, true);
         ++dst_curve_counts[curve_index];
         ++point_offset;
-        continue;
+        return;
       }
-      if (src_point_index == points.last()) {
-        /* Endpoint extruded. */
+      if (!curve_cyclic && (src_point_index == curve_points.last())) {
+        /* Endpoint extruded, we insert a new point at the end of the curve.
+         * Note : all points of a cyclic curve behave like an innerpoint.
+         */
         dst_to_src_points.insert(src_point_index + point_offset + 1, src_point_index);
         dst_selected.insert(src_point_index + point_offset + 1, true);
         ++dst_curve_counts[curve_index];
         ++point_offset;
-        continue;
+        return;
       }
 
-      /* Innerpoint extruded. */
+      /* Innerpoint extruded : we create a new curve made of two points located at the same
+       * position. Only one of them is selected so that the other one remains stuck to the curve.
+       */
       dst_to_src_points.append(src_point_index);
       dst_selected.append(false);
       dst_to_src_points.append(src_point_index);
       dst_selected.append(true);
       dst_to_src_curves.append(curve_index);
       dst_curve_counts.append(2);
-    }
+    });
   }
 
   const int new_points_num = dst_to_src_points.size();
@@ -302,13 +305,10 @@ void extrude_curve_points(const bke::CurvesGeometry &src,
   bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
   const bke::AnonymousAttributePropagationInfo propagation_info{};
 
-  Set<StringRef> selection_attributes(get_curves_selection_attribute_names(src));
-
-  /* Copy curves attributes. */
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
                          propagation_info,
-                         {"cyclic"},
+                         {},
                          dst_to_src_curves,
                          dst_attributes);
 
@@ -318,12 +318,23 @@ void extrude_curve_points(const bke::CurvesGeometry &src,
                          {},
                          dst_to_src_points,
                          dst_attributes);
-  remove_selection_attributes(dst_attributes);
 
-  for (const StringRef selection_name : selection_attributes) {
-    dst_attributes.add<bool>(selection_name,
-                             bke::AttrDomain::Point,
-                             bke::AttributeInitVArray(VArray<bool>::ForSpan(dst_selected)));
+  /* Selection attributes. */
+  for (const StringRef selection_name : get_curves_selection_attribute_names(dst)) {
+    if (!dst_attributes.contains(selection_name)) {
+      continue;
+    }
+    bke::SpanAttributeWriter<bool> selection = dst_attributes.lookup_for_write_span<bool>(
+        selection_name);
+    array_utils::copy(dst_selected.as_span(), selection.span);
+    selection.finish();
+  }
+
+  /* Cyclic attribute : newly created curves cannot be cyclic.
+   * Note: if the cyclic attribute is single and false, it can be kept this way.
+   */
+  if (src_cyclic.get_if_single().value_or(true)) {
+    dst.cyclic_for_write().drop_front(old_curves_num).fill(false);
   }
 
   dst.update_curve_types();
