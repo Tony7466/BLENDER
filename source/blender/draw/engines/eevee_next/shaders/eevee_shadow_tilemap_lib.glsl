@@ -142,6 +142,10 @@ float shadow_punctual_frustum_padding_get(LightData light)
   return light_local_data_get(light).clip_side / orderedIntBitsToFloat(light.clip_near);
 }
 
+/**
+ * Returns the LOD for a given shadow space position.
+ * `distance_to_camera` is Z distance to the camera origin.
+ */
 float shadow_punctual_level_fractional(LightData light,
                                        vec3 lP,
                                        bool is_perspective,
