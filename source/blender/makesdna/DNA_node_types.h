@@ -1665,17 +1665,6 @@ typedef struct NodeEnumDefinition {
 #ifdef __cplusplus
   blender::Span<NodeEnumItem> items() const;
   blender::MutableSpan<NodeEnumItem> items();
-
-  NodeEnumItem *add_item(blender::StringRef name);
-  bool remove_item(NodeEnumItem &item);
-  void clear();
-  bool move_item(int from_index, int to_index);
-
-  const NodeEnumItem *active_item() const;
-  NodeEnumItem *active_item();
-  void active_item_set(NodeEnumItem *item);
-
-  void set_item_name(NodeEnumItem &item, blender::StringRef name);
 #endif
 } NodeEnumDefinition;
 

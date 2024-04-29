@@ -132,9 +132,9 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   NodeMenuSwitch *data = MEM_cnew<NodeMenuSwitch>(__func__);
   data->data_type = SOCK_GEOMETRY;
   node_enum_definition_init(data->enum_definition);
-  data->enum_definition.add_item("A");
-  data->enum_definition.add_item("B");
   node->storage = data;
+  socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, "A");
+  socket_items::add_item_with_name<MenuSwitchItemsAccessor>(*node, "B");
 }
 
 static void node_free_storage(bNode *node)
