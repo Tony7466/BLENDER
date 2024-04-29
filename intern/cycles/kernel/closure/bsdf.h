@@ -61,10 +61,7 @@ ccl_device_inline float bsdf_get_roughness_pass_squared(ccl_private const Shader
 /* An additional term to smooth illumination on grazing angles when using bump mapping.
  * Based on "Taming the Shadow Terminator" by Matt Jen-Yuan Chiang,
  * Yining Karl Li and Brent Burley. */
-ccl_device_inline float bump_shadowing_term(ccl_private const ShaderData &sd,
-                                            float3 Ng,
-                                            float3 N,
-                                            float3 I)
+ccl_device_inline float bump_shadowing_term(int shader_flag, float3 Ng, float3 N, float3 I)
 {
   const float cosNI = dot(N, I);
   if (cosNI < 0.0f) {
@@ -83,7 +80,7 @@ ccl_device_inline float bump_shadowing_term(ccl_private const ShaderData &sd,
   }
 
   /* When bump map correction is not used do skip the smoothing. */
-  if ((sd.flag & SD_USE_BUMP_MAP_CORRECTION) == 0) {
+  if ((shader_flag & SD_USE_BUMP_MAP_CORRECTION) == 0) {
     return 1.0f;
   }
 
@@ -249,7 +246,7 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
     }
     if (label & LABEL_DIFFUSE) {
       if (!isequal(sc->N, sd->N)) {
-        *eval *= bump_shadowing_term(*sd, sd->N, sc->N, *wo);
+        *eval *= bump_shadowing_term(sd->flag, sd->N, sc->N, *wo);
       }
     }
   }
@@ -552,7 +549,7 @@ ccl_device_inline
 
   if (CLOSURE_IS_BSDF_DIFFUSE(sc->type)) {
     if (!isequal(sc->N, sd->N)) {
-      eval *= bump_shadowing_term(*sd, sd->N, sc->N, wo);
+      eval *= bump_shadowing_term(sd->flag, sd->N, sc->N, wo);
     }
   }
 

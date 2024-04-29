@@ -87,7 +87,7 @@
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_unit.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "SEQ_iterator.hh"
 #include "SEQ_modifier.hh"
@@ -796,9 +796,6 @@ static void do_version_curvemapping_walker(Main *bmain, void (*callback)(CurveMa
     }
     if (ts->sculpt) {
       callback(ts->sculpt->paint.cavity_curve);
-    }
-    if (ts->uvsculpt) {
-      callback(ts->uvsculpt->paint.cavity_curve);
     }
     if (ts->gp_paint) {
       callback(ts->gp_paint->paint.cavity_curve);

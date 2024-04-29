@@ -84,6 +84,8 @@ extern const uchar PAINT_CURSOR_VERTEX_PAINT[3];
 extern const uchar PAINT_CURSOR_WEIGHT_PAINT[3];
 extern const uchar PAINT_CURSOR_TEXTURE_PAINT[3];
 extern const uchar PAINT_CURSOR_SCULPT_CURVES[3];
+extern const uchar PAINT_CURSOR_PAINT_GREASE_PENCIL[3];
+extern const uchar PAINT_CURSOR_SCULPT_GREASE_PENCIL[3];
 
 enum class PaintMode : int8_t {
   Sculpt = 0,
@@ -94,7 +96,6 @@ enum class PaintMode : int8_t {
   Texture3D = 3,
   /** Image space (2D painting). */
   Texture2D = 4,
-  SculptUV = 5,
   GPencil = 6,
   /* Grease Pencil Vertex Paint */
   VertexGPencil = 7,
@@ -102,12 +103,12 @@ enum class PaintMode : int8_t {
   WeightGPencil = 9,
   /** Curves. */
   SculptCurves = 10,
+  /** Grease Pencil. */
+  SculptGreasePencil = 11,
 
   /** Keep last. */
-  Invalid = 11,
+  Invalid = 12,
 };
-
-#define PAINT_MODE_HAS_BRUSH(mode) !ELEM(mode, PaintMode::SculptUV)
 
 /* overlay invalidation */
 enum ePaintOverlayControlFlags {
@@ -287,18 +288,17 @@ struct SculptPoseIKChainSegment {
   float len;
   blender::float3 scale;
   float rot[4];
-  float *weights;
+  blender::Array<float> weights;
 
   /* Store a 4x4 transform matrix for each of the possible combinations of enabled XYZ symmetry
    * axis. */
-  float trans_mat[PAINT_SYMM_AREAS][4][4];
-  float pivot_mat[PAINT_SYMM_AREAS][4][4];
-  float pivot_mat_inv[PAINT_SYMM_AREAS][4][4];
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> trans_mat;
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> pivot_mat;
+  std::array<blender::float4x4, PAINT_SYMM_AREAS> pivot_mat_inv;
 };
 
 struct SculptPoseIKChain {
-  SculptPoseIKChainSegment *segments;
-  int tot_segments;
+  blender::Array<SculptPoseIKChainSegment> segments;
   blender::float3 grab_delta_offset;
 };
 
@@ -572,14 +572,6 @@ struct SculptSession {
   blender::float3 cursor_sampled_normal;
   blender::float3 cursor_view_normal;
 
-  /* For Sculpt trimming gesture tools, initial ray-cast data from the position of the mouse
-   * when
-   * the gesture starts (intersection with the surface and if they ray hit the surface or not).
-   */
-  blender::float3 gesture_initial_location;
-  blender::float3 gesture_initial_normal;
-  bool gesture_initial_hit;
-
   /* TODO(jbakker): Replace rv3d and v3d with ViewContext */
   RegionView3D *rv3d;
   View3D *v3d;
@@ -591,7 +583,7 @@ struct SculptSession {
 
   /* Pose Brush Preview */
   blender::float3 pose_origin;
-  SculptPoseIKChain *pose_ik_chain_preview;
+  std::unique_ptr<SculptPoseIKChain> pose_ik_chain_preview;
 
   /* Boundary Brush Preview */
   SculptBoundary *boundary_preview;

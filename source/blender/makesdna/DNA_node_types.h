@@ -439,6 +439,9 @@ typedef struct bNode {
   /** A span containing all internal links when the node is muted. */
   blender::Span<bNodeLink> internal_links() const;
 
+  /* This node is reroute which is not logically connected to any source of value. */
+  bool is_dangling_reroute() const;
+
   /* True if the socket is visible and has a valid location. The icon may not be visible. */
   bool is_socket_drawn(const bNodeSocket &socket) const;
   /* True if the socket is drawn and the icon is visible. */
@@ -957,8 +960,9 @@ typedef enum GeometryNodeAssetTraitFlag {
   GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
   GEO_NODE_ASSET_MODIFIER = (1 << 6),
   GEO_NODE_ASSET_OBJECT = (1 << 7),
+  GEO_NODE_ASSET_WAIT_FOR_CURSOR = (1 << 8),
 } GeometryNodeAssetTraitFlag;
-ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_OBJECT);
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_WAIT_FOR_CURSOR);
 
 /* Data structs, for `node->storage`. */
 
