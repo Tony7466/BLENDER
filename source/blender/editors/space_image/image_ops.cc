@@ -1338,7 +1338,7 @@ static int image_open_exec(bContext *C, wmOperator *op)
     image_open_init(C, op);
   }
 
-  ListBase ranges = ED_image_filesel_detect_sequences(bmain, op, use_udim);
+  ListBase ranges = ED_image_filesel_detect_sequences(bmain, op, use_udim, imb_ext_image);
   LISTBASE_FOREACH (ImageFrameRange *, range, &ranges) {
     Image *ima_range = image_open_single(bmain, op, range, use_multiview);
 

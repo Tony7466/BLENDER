@@ -280,7 +280,7 @@ class IMAGE_OT_open_images(Operator):
             seq["files"].sort()
             filepath = os.path.join(self.directory, seq["files"][0])
             files = [{"name": file} for file in seq["files"]]
-            bpy.ops.image.open(
+            result = bpy.ops.image.open(
                 filepath=filepath,
                 directory=self.directory,
                 files=files,
@@ -288,8 +288,7 @@ class IMAGE_OT_open_images(Operator):
                 use_udim_detecting=self.use_udim_detection,
                 relative_path=self.relative_path,
             )
-            is_tiled = context.edit_image.source == 'TILED'
-            if len(files) > 1 and self.use_sequence_detection and not is_tiled:
+            if (result == {'FINISHED'}) and (context.edit_image.source == 'SEQUENCE'):
                 context.edit_image.name = "{:s}{:s}{:s}".format(seq["prefix"], ("#" * seq["frame_size"]), seq["ext"])
 
         return {'FINISHED'}

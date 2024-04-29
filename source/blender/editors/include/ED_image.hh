@@ -211,8 +211,13 @@ struct ImageFrameRange {
 
 /**
  * Used for both images and volume file loading.
+ * \param ext_sequence: Extensions that support sequences, other extensions are detected as single
+ * files.
  */
-ListBase ED_image_filesel_detect_sequences(Main *bmain, wmOperator *op, bool detect_udim);
+ListBase ED_image_filesel_detect_sequences(Main *bmain,
+                                           wmOperator *op,
+                                           bool detect_udim,
+                                           const char **ext_sequence);
 
 bool ED_image_tools_paint_poll(bContext *C);
 void ED_paint_cursor_start(Paint *p, bool (*poll)(bContext *C));

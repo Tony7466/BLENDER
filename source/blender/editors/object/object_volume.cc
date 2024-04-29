@@ -77,8 +77,8 @@ static int volume_import_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
   bool imported = false;
-
-  ListBase ranges = ED_image_filesel_detect_sequences(bmain, op, false);
+  const char *ext_volume[] = {".vdb", nullptr};
+  ListBase ranges = ED_image_filesel_detect_sequences(bmain, op, false, ext_volume);
   LISTBASE_FOREACH (ImageFrameRange *, range, &ranges) {
     char filepath[FILE_MAX];
     BLI_path_split_file_part(range->filepath, filepath, sizeof(filepath));
