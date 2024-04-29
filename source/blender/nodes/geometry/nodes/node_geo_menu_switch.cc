@@ -26,6 +26,10 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
+#include "BKE_screen.hh"
+
+#include "WM_api.hh"
+
 namespace blender::nodes::node_geo_menu_switch_cc {
 
 NODE_STORAGE_FUNCS(NodeMenuSwitch)
@@ -383,6 +387,80 @@ class LazyFunctionForMenuSwitchSocketUsage : public lf::LazyFunction {
   }
 };
 
+static void draw_menu_switch_item(uiList * /*ui_list*/,
+                                  const bContext * /*C*/,
+                                  uiLayout *layout,
+                                  PointerRNA * /*idataptr*/,
+                                  PointerRNA *itemptr,
+                                  int /*icon*/,
+                                  PointerRNA * /*active_dataptr*/,
+                                  const char * /*active_propname*/,
+                                  int /*index*/,
+                                  int /*flt_flag*/)
+{
+  uiLayoutSetEmboss(layout, UI_EMBOSS_NONE);
+  uiItemR(layout, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  bNode &node = *static_cast<bNode *>(ptr->data);
+
+  static const uiListType *menu_items_list = []() {
+    uiListType *list = MEM_new<uiListType>(__func__);
+    STRNCPY(list->idname, "NODE_UL_enum_definition_items");
+    list->draw_item = draw_menu_switch_item;
+    WM_uilisttype_add(list);
+    return list;
+  }();
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "menu_switch_items", false, TIP_("Menu Items"))) {
+    uiLayout *row = uiLayoutRow(panel, false);
+    uiTemplateList(row,
+                   C,
+                   menu_items_list->idname,
+                   "",
+                   ptr,
+                   "enum_items",
+                   ptr,
+                   "active_index",
+                   nullptr,
+                   3,
+                   5,
+                   UILST_LAYOUT_DEFAULT,
+                   0,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+    {
+      uiLayout *ops_col = uiLayoutColumn(row, false);
+      {
+        uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+        uiItemO(add_remove_col, "", ICON_ADD, "node.enum_definition_item_add");
+        uiItemO(add_remove_col, "", ICON_REMOVE, "node.enum_definition_item_remove");
+      }
+      {
+        uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+        uiItemEnumO(
+            up_down_col, "node.enum_definition_item_move", "", ICON_TRIA_UP, "direction", 0);
+        uiItemEnumO(
+            up_down_col, "node.enum_definition_item_move", "", ICON_TRIA_DOWN, "direction", 1);
+      }
+    }
+
+    auto &storage = node_storage(node);
+    if (storage.enum_definition.active_index >= 0 &&
+        storage.enum_definition.active_index < storage.enum_definition.items_num)
+    {
+      NodeEnumItem &active_item =
+          storage.enum_definition.items_array[storage.enum_definition.active_index];
+      PointerRNA item_ptr = RNA_pointer_create(
+          ptr->owner_id, MenuSwitchItemsAccessor::item_srna, &active_item);
+      uiLayoutSetPropSep(panel, true);
+      uiLayoutSetPropDecorate(panel, false);
+      uiItemR(panel, &item_ptr, "description", UI_ITEM_NONE, nullptr, ICON_NONE);
+    }
+  }
+}
+
 static void NODE_OT_enum_definition_item_add(wmOperatorType *ot)
 {
   socket_items::ops::add_item<MenuSwitchItemsAccessor>(
@@ -443,6 +521,7 @@ static void register_node()
   node_type_storage(&ntype, "NodeMenuSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
   ntype.insert_link = node_insert_link;
   nodeRegisterType(&ntype);
