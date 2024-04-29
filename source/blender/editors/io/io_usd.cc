@@ -484,15 +484,14 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "export_custom_properties",
                   true,
                   "Custom Properties",
-                  "When checked, custom properties will be exported as USD attributes in the "
-                  "'userProperties' namespace");
+                  "Export custom properties as USD attributes in the 'userProperties' namespace");
 
   RNA_def_boolean(ot->srna,
                   "author_blender_name",
                   true,
                   "Blender Names",
-                  "When checked, USD custom attributes will be authored containing the original "
-                  "Blender object and data names");
+                  "Author USD custom attributes containing the original Blender object and "
+                  "object data names");
 }
 
 /* ====== USD Import ====== */
