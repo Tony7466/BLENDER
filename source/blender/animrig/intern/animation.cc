@@ -249,6 +249,9 @@ void Animation::binding_name_set(Main &bmain, Binding &binding, const StringRefN
 
 void Animation::binding_name_define(Binding &binding, const StringRefNull new_name)
 {
+  BLI_assert_msg(
+      StringRef(new_name).size() >= Binding::name_length_min,
+      "Animation Bindings must be large enough for a 2-letter ID code + the display name");
   STRNCPY_UTF8(binding.name, new_name.c_str());
   anim_binding_name_ensure_unique(*this, binding);
 }
@@ -419,8 +422,8 @@ bool Animation::assign_id(Binding *binding, ID &animated_id)
   }
 
   if (adt->animation && adt->animation != this) {
-    /* Unassign the ID from its existing animation first, or use the top-level
-     * function `assign_animation(anim, ID)`. */
+    /* The caller should unassign the ID from its existing animation first, or
+     * use the top-level function `assign_animation(anim, ID)`. */
     return false;
   }
 
@@ -634,6 +637,8 @@ std::string Binding::name_prefix_for_idtype() const
 
 StringRefNull Binding::name_without_prefix() const
 {
+  BLI_assert(StringRef(this->name).size() >= name_length_min);
+
   /* Avoid accessing an uninitialised part of the string accidentally. */
   if (this->name[0] == '\0' || this->name[1] == '\0') {
     return "";
@@ -643,8 +648,8 @@ StringRefNull Binding::name_without_prefix() const
 
 void Binding::name_ensure_prefix()
 {
-  BLI_assert_msg(StringRef(this->name).size() >= 2,
-                 "Animation Binding names should be at least characters.");
+  BLI_assert(StringRef(this->name).size() >= name_length_min);
+
   if (StringRef(this->name).size() < 2) {
     /* The code below would overwrite the trailing 0-byte. */
     this->name[2] = '\0';

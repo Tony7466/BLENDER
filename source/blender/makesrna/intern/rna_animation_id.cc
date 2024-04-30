@@ -230,9 +230,15 @@ static void rna_AnimationBinding_name_display_set(PointerRNA *ptr, const char *n
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
+  const StringRef name_ref(name);
+
+  if (name_ref.is_empty()) {
+    WM_report(RPT_ERROR, "Animation binding display names cannot be empty");
+    return;
+  }
 
   /* Construct the new internal name, from the binding's type and the given name. */
-  const std::string internal_name = binding.name_prefix_for_idtype() + StringRef(name);
+  const std::string internal_name = binding.name_prefix_for_idtype() + name_ref;
   anim.binding_name_define(binding, internal_name);
 }
 
@@ -240,10 +246,15 @@ static void rna_AnimationBinding_name_set(PointerRNA *ptr, const char *name)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
+  const StringRef name_ref(name);
+
+  if (name_ref.size() < animrig::Binding::name_length_min) {
+    WM_report(RPT_ERROR, "Animation binding names should be at least three characters");
+    return;
+  }
 
   if (binding.has_idtype()) {
     /* Check if the new name is going to be compatible with the already-established ID type. */
-    const StringRef name_ref(name);
     const std::string expect_prefix = binding.name_prefix_for_idtype();
 
     if (!name_ref.startswith(expect_prefix)) {

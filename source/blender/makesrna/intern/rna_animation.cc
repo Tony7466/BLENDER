@@ -258,7 +258,7 @@ static void rna_AnimData_animation_binding_handle_set(
     WM_reportf(RPT_ERROR,
                "Animation '%s' binding '%s' (%d) could not be assigned to %s",
                anim->id.name + 2,
-               binding->name_without_prefix().c_str(),
+               binding->name,
                binding->handle,
                animated_id.name + 2);
     return;

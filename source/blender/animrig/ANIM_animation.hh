@@ -127,8 +127,8 @@ class Animation : public ::Animation {
   /**
    * Create a new, unused Binding.
    *
-   * When calling `assign_id(returned_binding, animated_id)`, the binding will be renamed to that
-   * ID's name, and limited to that ID's type.
+   * The returned binding will be suitable for any ID type. After binding to an
+   * ID, it be limited to that ID's type.
    */
   Binding &binding_add();
 
@@ -199,7 +199,12 @@ class Animation : public ::Animation {
   void binding_name_ensure_prefix(Binding &binding);
 
   /**
-   * Set the binding's name and ID type to those of the animated ID.
+   * Set the binding's ID type to that of the animated ID, ensure the name
+   * prefix is set accordingly, and that the name is unique within the
+   * Animation.
+   *
+   * \note This assumes that the binding has no ID type set yet. If it does, it
+   * is considered a bug to call this function.
    */
   void binding_setup_for_id(Binding &binding, const ID &animated_id);
 };
@@ -369,6 +374,12 @@ class Binding : public ::AnimationBinding {
    * Binding handle value indicating that there is no binding assigned.
    */
   constexpr static binding_handle_t unassigned = 0;
+
+  /**
+   * Binding names consist of a two-character ID code, then the display name.
+   * This means that the minimum length of a valid name is 3 characters.
+   */
+  constexpr static int name_length_min = 3;
 
   /**
    * Return the name prefix for the Binding's type.
