@@ -252,7 +252,7 @@ GPUMaterial *GPU_material_from_nodetree(
     bool is_lookdev,
     GPUCodegenCallbackFn callback,
     void *thunk,
-    GPUMaterialCanUseDefaultCallbackFn can_use_default_callback = nullptr);
+    GPUMaterialCanUseDefaultCallbackFn can_use_default_cb = nullptr);
 
 void GPU_material_compile(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);

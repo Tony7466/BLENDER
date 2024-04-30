@@ -199,8 +199,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
       break;
   }
   /* Returned material should be ready to be drawn. */
-  eGPUMaterialStatus status = GPU_material_status(matpass.gpumat);
-  BLI_assert(status == GPU_MAT_SUCCESS);
+  BLI_assert(GPU_material_status(matpass.gpumat) == GPU_MAT_SUCCESS);
 
   inst_.manager->register_layer_attributes(matpass.gpumat);
 

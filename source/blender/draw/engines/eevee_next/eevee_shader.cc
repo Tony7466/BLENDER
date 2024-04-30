@@ -764,7 +764,7 @@ static void codegen_callback(void *thunk, GPUMaterial *mat, GPUCodegenOutput *co
   reinterpret_cast<ShaderModule *>(thunk)->material_create_info_ammend(mat, codegen);
 }
 
-static bool can_use_default_callback(GPUMaterial *mat)
+static bool can_use_default_cb(GPUMaterial *mat)
 {
   using namespace blender::gpu::shader;
 
@@ -838,7 +838,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                               deferred_compilation,
                                               codegen_callback,
                                               this,
-                                              can_use_default_callback);
+                                              can_use_default_cb);
 
   if (GPU_material_status(mat) == GPU_MAT_USE_DEFAULT) {
     mat = material_default_shader_get(pipeline_type, geometry_type);
