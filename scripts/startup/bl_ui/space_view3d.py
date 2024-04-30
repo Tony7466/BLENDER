@@ -1017,7 +1017,7 @@ class VIEW3D_HT_header(Header):
 
         if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
             # Grease pencil
-            if object_mode == 'PAINT_GPENCIL':
+            if object_mode in {'PAINT_GPENCIL', 'SCULPT_GPENCIL'}:
                 sub = layout.row(align=True)
                 sub.prop_with_popover(
                     tool_settings,
