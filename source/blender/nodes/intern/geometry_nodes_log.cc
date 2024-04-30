@@ -7,7 +7,6 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
-#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 
