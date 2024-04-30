@@ -320,22 +320,22 @@ static int64_t get_final_points_num(const GatherTasks &tasks)
   return points_num;
 }
 
-static void realize_collections(Collection *collection, bke::Instances *instances)
+static void realize_collections(Collection &collection, bke::Instances &instances)
 {
-  LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
+  LISTBASE_FOREACH (CollectionChild *, collection_child, &collection.children) {
     float4x4 transform = float4x4::identity();
     transform.location() += float3(collection_child->collection->instance_offset);
-    transform.location() -= float3(collection->instance_offset);
-    const int handle = instances->add_reference(*collection_child->collection);
-    instances->add_instance(handle, transform);
+    transform.location() -= float3(collection.instance_offset);
+    const int handle = instances.add_reference(*collection_child->collection);
+    instances.add_instance(handle, transform);
   }
 
-  LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
+  LISTBASE_FOREACH (CollectionObject *, collection_object, &collection.gobject) {
     float4x4 transform = float4x4::identity();
-    transform.location() -= float3(collection->instance_offset);
+    transform.location() -= float3(collection.instance_offset);
     transform *= (collection_object->ob)->object_to_world();
-    const int handle = instances->add_reference(*collection_object->ob);
-    instances->add_instance(handle, transform);
+    const int handle = instances.add_reference(*collection_object->ob);
+    instances.add_instance(handle, transform);
   }
 }
 
@@ -509,22 +509,18 @@ static bke::GeometrySet geometry_set_from_reference(const InstanceReference &ref
       return geometry_set;
     }
     case InstanceReference::Type::Collection: {
-      Collection *collection_ptr = &reference.collection();
-      std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
-      realize_collections(collection_ptr, instances.get());
+      std::unique_ptr<bke::Instances> instances_ptr = std::make_unique<bke::Instances>();
+      realize_collections(reference.collection(), *instances_ptr);
       bke::GeometrySet geometry_set;
-      geometry_set.replace_instances(instances.release());
+      geometry_set.replace_instances(instances_ptr.release());
       return geometry_set;
-      break;
     }
     case InstanceReference::Type::GeometrySet: {
       const bke::GeometrySet geometry_set = reference.geometry_set();
       return geometry_set;
-      break;
     }
     case InstanceReference::Type::None: {
       return {};  // Return an empty GeometrySet for None type
-      break;
     }
   }
   return {};
