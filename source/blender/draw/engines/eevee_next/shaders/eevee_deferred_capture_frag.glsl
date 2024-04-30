@@ -66,7 +66,7 @@ void main()
   vec3 radiance_front = stack.cl[0].light_shadowed;
 
   stack.cl[0] = closure_light_new(cl_transmit, V, gbuf.thickness);
-  light_eval_transmission(stack, P, Ng, V, vPz);
+  light_eval_transmission(stack, P, Ng, V, vPz, gbuf.thickness);
 
   vec3 radiance_back = stack.cl[0].light_shadowed;
 

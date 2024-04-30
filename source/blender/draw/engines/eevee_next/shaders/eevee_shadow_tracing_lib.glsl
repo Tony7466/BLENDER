@@ -492,6 +492,7 @@ ShadowEvalResult shadow_eval(LightData light,
                              const bool is_directional,
                              const bool is_transmission,
                              bool is_translucent_with_thickness,
+                             float thickness, /* Only used if is_transmission is true. */
                              vec3 P,
                              vec3 Ng,
                              vec3 L,
@@ -513,20 +514,24 @@ ShadowEvalResult shadow_eval(LightData light,
   vec2 random_pcf_2d = vec2(0.0);
 #endif
 
+  bool is_facing_light = (dot(Ng, L) > 0.0);
+  /* Still bias the transmission surfaces towards the light if they are facing away. */
+  vec3 N_bias = (is_transmission && !is_facing_light) ? reflect(Ng, L) : Ng;
+
   /* Shadow map texel radius at the receiver position. */
   float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
-
-  P += (light.pcf_radius * texel_radius) * shadow_pcf_offset(L, Ng, random_pcf_2d);
-
-  /* We want to bias inside the object for transmission to go through the object itself.
-   * But doing so splits the shadow in two different directions at the horizon. Also this
-   * doesn't fix the the aliasing issue. So we reflect the normal so that it always go towards
-   * the light. */
-  vec3 N_bias = is_transmission ? reflect(Ng, L) : Ng;
-
+  /* Stochastic Percentage Closer Filtering. */
+  if (is_transmission && !is_facing_light) {
+    /* Ideally, we should bias using the chosen ray direction. In practice, this conflict with our
+     * shadow tile usage tagging system as the sampling position becomes heavily shifted from the
+     * tagging position. This is the same thing happening with missing tiles with large radii. */
+    P += abs(thickness) * L;
+  }
   /* Avoid self intersection with respect to numerical precision. */
   P = offset_ray(P, N_bias);
-  /* The above offset isn't enough in most situation. Still add a bigger bias. */
+  /* Stochastic Percentage Closer Filtering. */
+  P += (light.pcf_radius * texel_radius) * shadow_pcf_offset(L, Ng, random_pcf_2d);
+  /* Add normal bias to avoid aliasing artifacts. */
   P += N_bias * (texel_radius * shadow_normal_offset(Ng, L));
 
   vec3 lP = is_directional ? light_world_to_local(light, P) :
