@@ -362,8 +362,9 @@ void extract_lines_subdiv(const DRWSubdivCache &subdiv_cache,
                           gpu::IndexBuf *lines_loose,
                           bool &no_loose_wire);
 
+void extract_points(const MeshRenderData &mr, gpu::IndexBuf &points);
+
 extern const MeshExtract extract_tris;
-extern const MeshExtract extract_points;
 extern const MeshExtract extract_fdots;
 extern const MeshExtract extract_lines_paint_mask;
 extern const MeshExtract extract_lines_adjacency;

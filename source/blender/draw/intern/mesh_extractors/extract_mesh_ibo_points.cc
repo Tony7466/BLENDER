@@ -6,6 +6,8 @@
  * \ingroup draw
  */
 
+#include "BLI_array_utils.hh"
+
 #include "GPU_index_buffer.hh"
 
 #include "draw_subdivision.hh"
@@ -17,120 +19,149 @@ namespace blender::draw {
 /** \name Extract Point Indices
  * \{ */
 
-static void extract_points_init(const MeshRenderData &mr,
-                                MeshBatchCache & /*cache*/,
-                                void * /*buf*/,
-                                void *tls_data)
+static IndexMask calc_mesh_vert_visibility(const MeshRenderData &mr,
+                                           const IndexMask &mask,
+                                           IndexMaskMemory &memory)
 {
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(tls_data);
-  GPU_indexbuf_init(elb, GPU_PRIM_POINTS, mr.verts_num, mr.corners_num + mr.loose_indices_num);
+  IndexMask visible = mask;
+  if (!mr.hide_vert.is_empty()) {
+    visible = IndexMask::from_bools_inverse(visible, mr.hide_vert, memory);
+  }
+  if (mr.v_origindex != nullptr) {
+    const int *orig_index = mr.v_origindex;
+    visible = IndexMask::from_predicate(visible, GrainSize(4096), memory, [&](const int64_t i) {
+      return orig_index[i] != ORIGINDEX_NONE;
+    });
+  }
+  return visible;
 }
 
-BLI_INLINE void vert_set_bm(GPUIndexBufBuilder *elb, const BMVert *eve, int l_index)
+static void fill_loose_points_ibo(const uint corners_num, MutableSpan<uint> data)
 {
-  const int v_index = BM_elem_index_get(eve);
-  if (!BM_elem_flag_test(eve, BM_ELEM_HIDDEN)) {
-    GPU_indexbuf_set_point_vert(elb, v_index, l_index);
+  threading::memory_bandwidth_bound_task(
+      data.size_in_bytes(), [&]() { array_utils::fill_index_range(data, corners_num); });
+}
+
+static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
+{
+  IndexMaskMemory memory;
+  const BoundedBitSpan loose_verts_bits = mr.mesh->verts_no_face().is_loose_bits;
+  const IndexMask all_loose_verts = IndexMask::from_bits(loose_verts_bits, memory);
+  const IndexMask visible_loose_verts = calc_mesh_vert_visibility(mr, all_loose_verts, memory);
+  const int max_index = mr.corners_num + visible_loose_verts.size() * 2;
+
+  const IndexMask non_loose_verts = all_loose_verts.complement(IndexRange(mr.verts_num), memory);
+  const IndexMask visible_non_loose_verts = calc_mesh_vert_visibility(mr, non_loose_verts, memory);
+
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder,
+                    GPU_PRIM_LINES,
+                    visible_non_loose_verts.size() + visible_loose_verts.size(),
+                    max_index);
+  MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
+
+  /* This code fills the index buffer in a non-deterministic way, with non-atomic access to `used`.
+   * This is okay because any of the possible face corner indices are correct, since they all
+   * correspond to the same #Mesh vertex. `used` exists here as a performance optimization to
+   * avoid writing to the VBO. */
+  const OffsetIndices faces = mr.faces;
+  const Span<int> corner_verts = mr.corner_verts;
+  if (visible_non_loose_verts.size() == mr.verts_num) {
+    Array<bool> used(mr.verts_num, false);
+    threading::memory_bandwidth_bound_task(
+        used.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(),
+        [&]() {
+          threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
+            for (const int face_index : range) {
+              const IndexRange face = faces[face_index];
+              for (const int corner : face) {
+                const int vert = corner_verts[corner];
+                if (!used[vert]) {
+                  data[vert] = corner;
+                  used[vert] = true;
+                }
+              }
+            }
+          });
+        });
   }
   else {
-    GPU_indexbuf_set_point_restart(elb, v_index);
+    Array<int> map(mr.corners_num, -1);
+    threading::memory_bandwidth_bound_task(
+        map.as_span().size_in_bytes() + data.size_in_bytes() + corner_verts.size_in_bytes(),
+        [&]() {
+          index_mask::build_reverse_map(visible_non_loose_verts, map.as_mutable_span());
+          threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
+            for (const int face_index : range) {
+              const IndexRange face = faces[face_index];
+              for (const int corner : face) {
+                const int vert = corner_verts[corner];
+                if (!map[vert] == -1) {
+                  data[map[vert]] = corner;
+                  map[vert] = -1;
+                }
+              }
+            }
+          });
+        });
   }
+
+  fill_loose_points_ibo(mr.corners_num, data.take_back(visible_loose_verts.size()));
+
+  GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
 }
 
-BLI_INLINE void vert_set_mesh(GPUIndexBufBuilder *elb,
-                              const MeshRenderData &mr,
-                              const int v_index,
-                              const int l_index)
+static void extract_points_bm(const MeshRenderData &mr, gpu::IndexBuf &points)
 {
-  const bool hidden = mr.use_hide && !mr.hide_vert.is_empty() && mr.hide_vert[v_index];
+  BMesh &bm = *mr.bm;
 
-  if (!(hidden || ((mr.v_origindex) && (mr.v_origindex[v_index] == ORIGINDEX_NONE)))) {
-    GPU_indexbuf_set_point_vert(elb, v_index, l_index);
+  IndexMaskMemory memory;
+  const BoundedBitSpan loose_verts_bits = mr.mesh->verts_no_face().is_loose_bits;
+  const IndexMask all_loose_verts = IndexMask::from_bits(loose_verts_bits, memory);
+  const IndexMask visible_loose_verts = calc_mesh_vert_visibility(mr, all_loose_verts, memory);
+  const int max_index = mr.corners_num + visible_loose_verts.size() * 2;
+
+  const IndexMask non_loose_verts = all_loose_verts.complement(IndexRange(mr.verts_num), memory);
+  const IndexMask visible_non_loose_verts = calc_mesh_vert_visibility(mr, non_loose_verts, memory);
+
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder,
+                    GPU_PRIM_LINES,
+                    visible_non_loose_verts.size() + visible_loose_verts.size(),
+                    max_index);
+  MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
+
+  /* Make use of BMesh's vertex to loop topology knowledge to iterate over edges instead of
+   * iterating over faces and defining edges implicitly as done in the #Mesh extraction. */
+  visible_non_loose_verts.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
+    const BMVert &vert = *BM_vert_at_index(&bm, i);
+    data[pos] = BM_elem_index_get(vert.e->l);
+  });
+
+  const uint loose_vert_index_start = mr.corners_num;
+  MutableSpan<uint> loose_vert_data = data.take_back(visible_loose_verts.size());
+  if (visible_loose_verts.size() == all_loose_verts.size()) {
+    fill_loose_points_ibo(loose_vert_index_start, loose_vert_data);
   }
   else {
-    GPU_indexbuf_set_point_restart(elb, v_index);
+    visible_loose_verts.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
+      const BMVert &vert = *BM_vert_at_index(&bm, i);
+      // TODO: Wrong
+      loose_vert_data[pos] = loose_vert_index_start + BM_elem_index_get(&vert);
+    });
   }
+
+  GPU_indexbuf_build_in_place_ex(&builder, 0, max_index, false, &points);
 }
 
-static void extract_points_iter_face_bm(const MeshRenderData & /*mr*/,
-                                        const BMFace *f,
-                                        const int /*f_index*/,
-                                        void *_userdata)
+void extract_points(const MeshRenderData &mr, gpu::IndexBuf &points)
 {
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  BMLoop *l_iter, *l_first;
-  l_iter = l_first = BM_FACE_FIRST_LOOP(f);
-  do {
-    const int l_index = BM_elem_index_get(l_iter);
-
-    vert_set_bm(elb, l_iter->v, l_index);
-  } while ((l_iter = l_iter->next) != l_first);
-}
-
-static void extract_points_iter_face_mesh(const MeshRenderData &mr,
-                                          const int face_index,
-                                          void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  for (const int corner : mr.faces[face_index]) {
-    vert_set_mesh(elb, mr, mr.corner_verts[corner], corner);
+  if (mr.extract_type == MR_EXTRACT_MESH) {
+    extract_points_mesh(mr, points);
   }
-}
-
-static void extract_points_iter_loose_edge_bm(const MeshRenderData &mr,
-                                              const BMEdge *eed,
-                                              const int loose_edge_i,
-                                              void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  vert_set_bm(elb, eed->v1, mr.corners_num + (loose_edge_i * 2));
-  vert_set_bm(elb, eed->v2, mr.corners_num + (loose_edge_i * 2) + 1);
-}
-
-static void extract_points_iter_loose_edge_mesh(const MeshRenderData &mr,
-                                                const int2 edge,
-                                                const int loose_edge_i,
-                                                void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  vert_set_mesh(elb, mr, edge[0], mr.corners_num + (loose_edge_i * 2));
-  vert_set_mesh(elb, mr, edge[1], mr.corners_num + (loose_edge_i * 2) + 1);
-}
-
-static void extract_points_iter_loose_vert_bm(const MeshRenderData &mr,
-                                              const BMVert *eve,
-                                              const int loose_vert_i,
-                                              void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  const int offset = mr.corners_num + (mr.loose_edges_num * 2);
-  vert_set_bm(elb, eve, offset + loose_vert_i);
-}
-
-static void extract_points_iter_loose_vert_mesh(const MeshRenderData &mr,
-                                                const int loose_vert_i,
-                                                void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  const int offset = mr.corners_num + (mr.loose_edges_num * 2);
-  vert_set_mesh(elb, mr, mr.loose_verts[loose_vert_i], offset + loose_vert_i);
-}
-
-static void extract_points_task_reduce(void *_userdata_to, void *_userdata_from)
-{
-  GPUIndexBufBuilder *elb_to = static_cast<GPUIndexBufBuilder *>(_userdata_to);
-  GPUIndexBufBuilder *elb_from = static_cast<GPUIndexBufBuilder *>(_userdata_from);
-  GPU_indexbuf_join(elb_to, elb_from);
-}
-
-static void extract_points_finish(const MeshRenderData & /*mr*/,
-                                  MeshBatchCache & /*cache*/,
-                                  void *buf,
-                                  void *_userdata)
-{
-  GPUIndexBufBuilder *elb = static_cast<GPUIndexBufBuilder *>(_userdata);
-  gpu::IndexBuf *ibo = static_cast<gpu::IndexBuf *>(buf);
-  GPU_indexbuf_build_in_place(elb, ibo);
+  else {
+    extract_points_bm(mr, points);
+  }
 }
 
 static void extract_points_init_subdiv(const DRWSubdivCache &subdiv_cache,
@@ -146,13 +177,26 @@ static void extract_points_init_subdiv(const DRWSubdivCache &subdiv_cache,
                     subdiv_cache.num_subdiv_loops + subdiv_cache.loose_geom.loop_len);
 }
 
+static void extract_points_subdiv(const MeshRenderData &mr,
+                                  const DRWSubdivCache &subdiv_cache,
+                                  gpu::IndexBuf &points)
+{
+  const Span<int> subdiv_loop_vert_index{
+      static_cast<int *>(GPU_vertbuf_get_data(subdiv_cache.verts_orig_index)),
+      subdiv_cache.num_subdiv_loops};
+
+  threading::parallel_for(
+      IndexRange(subdiv_cache.num_subdiv_quads), 4096, [&](const IndexRange range) {
+
+      });
+}
+
 static void extract_points_iter_subdiv_common(GPUIndexBufBuilder *elb,
                                               const MeshRenderData &mr,
                                               const DRWSubdivCache &subdiv_cache,
                                               uint subdiv_quad_index,
                                               bool for_bmesh)
 {
-  int *subdiv_loop_vert_index = (int *)GPU_vertbuf_get_data(subdiv_cache.verts_orig_index);
   uint start_loop_idx = subdiv_quad_index * 4;
   uint end_loop_idx = (subdiv_quad_index + 1) * 4;
   for (uint i = start_loop_idx; i < end_loop_idx; i++) {
@@ -282,32 +326,6 @@ static void extract_points_finish_subdiv(const DRWSubdivCache & /*subdiv_cache*/
   GPU_indexbuf_build_in_place(elb, ibo);
 }
 
-constexpr MeshExtract create_extractor_points()
-{
-  MeshExtract extractor = {nullptr};
-  extractor.init = extract_points_init;
-  extractor.iter_face_bm = extract_points_iter_face_bm;
-  extractor.iter_face_mesh = extract_points_iter_face_mesh;
-  extractor.iter_loose_edge_bm = extract_points_iter_loose_edge_bm;
-  extractor.iter_loose_edge_mesh = extract_points_iter_loose_edge_mesh;
-  extractor.iter_loose_vert_bm = extract_points_iter_loose_vert_bm;
-  extractor.iter_loose_vert_mesh = extract_points_iter_loose_vert_mesh;
-  extractor.task_reduce = extract_points_task_reduce;
-  extractor.finish = extract_points_finish;
-  extractor.init_subdiv = extract_points_init_subdiv;
-  extractor.iter_subdiv_bm = extract_points_iter_subdiv_bm;
-  extractor.iter_subdiv_mesh = extract_points_iter_subdiv_mesh;
-  extractor.iter_loose_geom_subdiv = extract_points_loose_geom_subdiv;
-  extractor.finish_subdiv = extract_points_finish_subdiv;
-  extractor.use_threading = true;
-  extractor.data_type = MR_DATA_NONE;
-  extractor.data_size = sizeof(GPUIndexBufBuilder);
-  extractor.mesh_buffer_offset = offsetof(MeshBufferList, ibo.points);
-  return extractor;
-}
-
 /** \} */
-
-const MeshExtract extract_points = create_extractor_points();
 
 }  // namespace blender::draw
