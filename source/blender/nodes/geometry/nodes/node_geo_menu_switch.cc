@@ -380,6 +380,8 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     return list;
   }();
 
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
+
   if (uiLayout *panel = uiLayoutPanel(C, layout, "menu_switch_items", false, TIP_("Menu Items"))) {
     uiLayout *row = uiLayoutRow(panel, false);
     uiTemplateList(row,
