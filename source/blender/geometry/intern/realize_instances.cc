@@ -324,9 +324,9 @@ static void realize_collections(Collection *collection, bke::Instances *instance
 {
   LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
     float4x4 transform = float4x4::identity();
-    transform.location() += float3((collection_child->collection)->instance_offset);
+    transform.location() += float3(collection_child->collection->instance_offset);
     transform.location() -= float3(collection->instance_offset);
-    const int handle = instances->add_reference(*(collection_child->collection));
+    const int handle = instances->add_reference(*collection_child->collection);
     instances->add_instance(handle, transform);
   }
 
@@ -334,7 +334,7 @@ static void realize_collections(Collection *collection, bke::Instances *instance
     float4x4 transform = float4x4::identity();
     transform.location() -= float3(collection->instance_offset);
     transform *= (collection_object->ob)->object_to_world();
-    const int handle = instances->add_reference(*(collection_object->ob));
+    const int handle = instances->add_reference(*collection_object->ob);
     instances->add_instance(handle, transform);
   }
 }
