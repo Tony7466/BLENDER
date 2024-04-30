@@ -764,7 +764,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
 {
 
   /* Initialize flag to track if child instances have the specified components.*/
-  bool child_has_component = true;
+  bool child_has_component;
 
   if (geometry_set.has_instances()) {
     child_has_component = false;
