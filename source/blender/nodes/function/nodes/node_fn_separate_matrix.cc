@@ -93,25 +93,41 @@ class SeparateMatrixFunction : public mf::MultiFunction {
   {
     const VArray<float4x4> matrices = params.readonly_single_input<float4x4>(0, "Matrix");
 
-    MutableSpan<float> column_a_row_a = params.uninitialized_single_output_if_required<float>(1, "Column A Row A");
-    MutableSpan<float> column_a_row_b = params.uninitialized_single_output_if_required<float>(2, "Column A Row B");
-    MutableSpan<float> column_a_row_c = params.uninitialized_single_output_if_required<float>(3, "Column A Row C");
-    MutableSpan<float> column_a_row_d = params.uninitialized_single_output_if_required<float>(4, "Column A Row D");
+    MutableSpan<float> column_a_row_a = params.uninitialized_single_output_if_required<float>(
+        1, "Column A Row A");
+    MutableSpan<float> column_a_row_b = params.uninitialized_single_output_if_required<float>(
+        2, "Column A Row B");
+    MutableSpan<float> column_a_row_c = params.uninitialized_single_output_if_required<float>(
+        3, "Column A Row C");
+    MutableSpan<float> column_a_row_d = params.uninitialized_single_output_if_required<float>(
+        4, "Column A Row D");
 
-    MutableSpan<float> column_b_row_a = params.uninitialized_single_output_if_required<float>(5, "Column B Row A");
-    MutableSpan<float> column_b_row_b = params.uninitialized_single_output_if_required<float>(6, "Column B Row B");
-    MutableSpan<float> column_b_row_c = params.uninitialized_single_output_if_required<float>(7, "Column B Row C");
-    MutableSpan<float> column_b_row_d = params.uninitialized_single_output_if_required<float>(8, "Column B Row D");
+    MutableSpan<float> column_b_row_a = params.uninitialized_single_output_if_required<float>(
+        5, "Column B Row A");
+    MutableSpan<float> column_b_row_b = params.uninitialized_single_output_if_required<float>(
+        6, "Column B Row B");
+    MutableSpan<float> column_b_row_c = params.uninitialized_single_output_if_required<float>(
+        7, "Column B Row C");
+    MutableSpan<float> column_b_row_d = params.uninitialized_single_output_if_required<float>(
+        8, "Column B Row D");
 
-    MutableSpan<float> column_c_row_a = params.uninitialized_single_output_if_required<float>(9, "Column C Row A");
-    MutableSpan<float> column_c_row_b = params.uninitialized_single_output_if_required<float>(10, "Column C Row B");
-    MutableSpan<float> column_c_row_c = params.uninitialized_single_output_if_required<float>(11, "Column C Row C");
-    MutableSpan<float> column_c_row_d = params.uninitialized_single_output_if_required<float>(12, "Column C Row D");
+    MutableSpan<float> column_c_row_a = params.uninitialized_single_output_if_required<float>(
+        9, "Column C Row A");
+    MutableSpan<float> column_c_row_b = params.uninitialized_single_output_if_required<float>(
+        10, "Column C Row B");
+    MutableSpan<float> column_c_row_c = params.uninitialized_single_output_if_required<float>(
+        11, "Column C Row C");
+    MutableSpan<float> column_c_row_d = params.uninitialized_single_output_if_required<float>(
+        12, "Column C Row D");
 
-    MutableSpan<float> column_d_row_a = params.uninitialized_single_output_if_required<float>(13, "Column D Row A");
-    MutableSpan<float> column_d_row_b = params.uninitialized_single_output_if_required<float>(14, "Column D Row B");
-    MutableSpan<float> column_d_row_c = params.uninitialized_single_output_if_required<float>(15, "Column D Row C");
-    MutableSpan<float> column_d_row_d = params.uninitialized_single_output_if_required<float>(16, "Column D Row D");
+    MutableSpan<float> column_d_row_a = params.uninitialized_single_output_if_required<float>(
+        13, "Column D Row A");
+    MutableSpan<float> column_d_row_b = params.uninitialized_single_output_if_required<float>(
+        14, "Column D Row B");
+    MutableSpan<float> column_d_row_c = params.uninitialized_single_output_if_required<float>(
+        15, "Column D Row C");
+    MutableSpan<float> column_d_row_d = params.uninitialized_single_output_if_required<float>(
+        16, "Column D Row D");
 
     if (const std::optional<float4x4> single = matrices.get_if_single()) {
       printf("Single!\n");
@@ -120,17 +136,17 @@ class SeparateMatrixFunction : public mf::MultiFunction {
       column_a_row_b.fill(matrix[0][1]);
       column_a_row_c.fill(matrix[0][2]);
       column_a_row_d.fill(matrix[0][3]);
-      
+
       column_b_row_a.fill(matrix[1][0]);
       column_b_row_b.fill(matrix[1][1]);
       column_b_row_c.fill(matrix[1][2]);
       column_b_row_d.fill(matrix[1][3]);
-      
+
       column_c_row_a.fill(matrix[2][0]);
       column_c_row_b.fill(matrix[2][1]);
       column_c_row_c.fill(matrix[2][2]);
       column_c_row_d.fill(matrix[2][3]);
-      
+
       column_d_row_a.fill(matrix[3][0]);
       column_d_row_b.fill(matrix[3][1]);
       column_d_row_c.fill(matrix[3][2]);

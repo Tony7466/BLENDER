@@ -42,7 +42,8 @@ static void node_register()
   ntype.build_multi_function = node_build_multi_function;
   ntype.initfunc = node_init;
   node_type_size_preset(&ntype, bke::eNodeSizePreset::LARGE);
-  node_type_storage(&ntype, "NodeInputMatrix", node_free_standard_storage, node_copy_standard_storage);
+  node_type_storage(
+      &ntype, "NodeInputMatrix", node_free_standard_storage, node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 }
