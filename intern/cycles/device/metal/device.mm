@@ -57,7 +57,7 @@ void device_metal_info(vector<DeviceInfo> &devices)
     info.denoisers = DENOISER_NONE;
     info.id = id;
 #  if defined(WITH_OPENIMAGEDENOISE)
-    if (OIDNDenoiserGPU::is_device_supported(info)) {
+    if (oidnIsMetalDeviceSupported(device)) {
       info.denoisers |= DENOISER_OPENIMAGEDENOISE;
     }
 #  endif

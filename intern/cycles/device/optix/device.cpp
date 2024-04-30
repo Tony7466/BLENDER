@@ -79,7 +79,7 @@ void device_optix_info(const vector<DeviceInfo> &cuda_devices, vector<DeviceInfo
 #  endif
     info.denoisers |= DENOISER_OPTIX;
 #  if defined(WITH_OPENIMAGEDENOISE)
-    if (OIDNDenoiserGPU::is_device_supported(info)) {
+    if (oidnIsCUDADeviceSupported(info.num)) {
       info.denoisers |= DENOISER_OPENIMAGEDENOISE;
     }
 #  endif
