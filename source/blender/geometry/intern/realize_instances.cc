@@ -775,15 +775,15 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
                                   IndexMask(IndexRange(instances.instances_num()));
     for (const int index : indices.index_range()) {
       const int i = indices[index];
-      const int depth_target_tmp = (0 == current_depth) ? instance_depth[i] : depth_target;
+      const int child_depth_target = (0 == current_depth) ? instance_depth[i] : depth_target;
       bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
           instances.references()[instances.reference_handles()[i]]);
       /* Process child instances with a recursive call.*/
-      if (current_depth != depth_target_tmp) {
+      if (current_depth != child_depth_target) {
         child_has_component = child_has_component | attribute_foreach(instance_geometry_set,
                                                                       component_types,
                                                                       current_depth + 1,
-                                                                      depth_target_tmp,
+                                                                      child_depth_target,
                                                                       instance_depth,
                                                                       selection,
                                                                       callback);
