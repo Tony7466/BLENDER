@@ -1357,18 +1357,12 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
       if (socket_storage->has_conflict()) {
         return;
       }
-      const bke::RuntimeNodeEnumItems &enum_items = *socket_storage->enum_items;
-      StringRef name;
-      for (const bke::RuntimeNodeEnumItem &item : enum_items.items) {
-        if (item.identifier == socket_value_i) {
-          name = item.name;
-          break;
-        }
-      }
-      if (name.is_empty()) {
+      const bke::RuntimeNodeEnumItem *enum_item =
+          socket_storage->enum_items->find_item_by_identifier(socket_value_i);
+      if (!enum_item) {
         return;
       }
-      ss << fmt::format(TIP_("{} (Menu)"), name);
+      ss << fmt::format(TIP_("{} (Menu)"), enum_item->name);
     }
     else {
       ss << fmt::format(TIP_("{} (Integer)"), socket_value_i);
