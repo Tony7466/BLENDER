@@ -20,17 +20,16 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   float3 lightN = P - klight->co;
   const float d_sq = len_squared(lightN);
   const float d = sqrtf(d_sq);
-  lightN /= d;
 
   ls->eval_fac = klight->spot.eval_fac;
 
   if (klight->spot.is_sphere) {
     /* Spherical light geometry. */
-    float cos_theta;
     if (d_sq > r_sq) {
       /* Outside sphere. */
+      float cos_theta;
       const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sq / d_sq);
-      ls->D = sample_uniform_cone(-lightN, one_minus_cos, rand, &cos_theta, &ls->pdf);
+      ls->D = sample_uniform_cone(-lightN / d, one_minus_cos, rand, &cos_theta, &ls->pdf);
     }
     else {
       /* Inside sphere. */
@@ -42,19 +41,18 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
       else {
         sample_cos_hemisphere(N, rand, &ls->D, &ls->pdf);
       }
-      cos_theta = -dot(ls->D, lightN);
     }
 
     /* Law of cosines. */
-    ls->t = d * cos_theta -
-            copysignf(safe_sqrtf(r_sq - d_sq + d_sq * sqr(cos_theta)), d_sq - r_sq);
+    const float d_cos_theta = -dot(lightN, ls->D);
+    const float d_sin_theta_sq = len_squared(lightN + d_cos_theta * ls->D);
+    ls->t = d_cos_theta - copysignf(safe_sqrtf(r_sq - d_sin_theta_sq), d_sq - r_sq);
 
-    /* Remap sampled point onto the sphere to prevent precision issues with small radius. */
     ls->P = P + ls->D * ls->t;
-    ls->Ng = normalize(ls->P - klight->co);
-    ls->P = ls->Ng * klight->spot.radius + klight->co;
+    ls->Ng = (ls->P - klight->co) / klight->spot.radius;
   }
   else {
+    lightN /= d;
     /* Point light with ad-hoc radius based on oriented disk. */
     ls->P = klight->co;
     if (r_sq > 0.0f) {
