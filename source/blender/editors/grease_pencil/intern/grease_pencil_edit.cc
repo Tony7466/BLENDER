@@ -2486,9 +2486,8 @@ IndexRange clipboard_paste_strokes(Main &bmain,
 /** \name Extrude Operator
  * \{ */
 
-void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
-                                  const IndexMask &points_to_extrude,
-                                  bke::CurvesGeometry &dst)
+bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
+                                                 const IndexMask &points_to_extrude)
 {
   const OffsetIndices<int> points_by_curve = src.points_by_curve();
 
@@ -2555,7 +2554,7 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   const int new_points_num = dst_to_src_points.size();
   const int new_curves_num = dst_to_src_curves.size();
 
-  dst.resize(new_points_num, new_curves_num);
+  bke::CurvesGeometry dst(new_points_num, new_curves_num);
 
   /* Setup curve offsets, based on the number of points in each curve. */
   MutableSpan<int> new_curve_offsets = dst.offsets_for_write();
@@ -2588,6 +2587,7 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   }
 
   dst.update_curve_types();
+  return dst;
 }
 
 static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
@@ -2608,10 +2608,9 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
     }
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    bke::CurvesGeometry dst;
-    extrude_grease_pencil_curves(curves, points_to_extrude, dst);
+    info.drawing.strokes_for_write() = std::move(
+        extrude_grease_pencil_curves(curves, points_to_extrude));
 
-    info.drawing.geometry.wrap() = std::move(dst);
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
