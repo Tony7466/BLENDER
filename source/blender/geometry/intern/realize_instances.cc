@@ -796,11 +796,11 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
 
   for (const bke::GeometryComponent::Type component_type : component_types) {
     if (geometry_set.has(component_type)) {
-      /* Check if the current instance components is the main one. */
-      const bool is_special_instance = (bke::GeometryComponent::Type::Instance ==
+      /*Check if the current instance component is the selected one. Instances are handled specially as they can manifest in two different scenarios: they can be the selected component or the parent of a possible selected component. */
+      const bool is_main_instance_component = (bke::GeometryComponent::Type::Instance ==
                                         component_type) &&
                                        (component_types.size() > 1);
-      if (!is_special_instance || child_has_component) {
+      if (!is_main_instance_component || child_has_component) {
         /* Process attributes for the current component. */
         const bke::GeometryComponent &component = *geometry_set.get_component(component_type);
         const std::optional<bke::AttributeAccessor> attributes = component.attributes();
