@@ -412,8 +412,8 @@ static void copy_generic_attributes_to_result(
       });
 }
 
-static void create_result_ids(bool keep_original_ids,
-                              Span<int> stored_ids,
+static void create_result_ids(const bool keep_original_ids,
+                              const Span<int> stored_ids,
                               const int task_id,
                               MutableSpan<int> dst_ids)
 {
