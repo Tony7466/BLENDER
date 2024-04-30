@@ -906,8 +906,6 @@ static OrderedAttributes gather_generic_instance_attributes_to_propagate(
                                     varied_depth_option.selection,
                                     options.propagation_info,
                                     attributes_to_propagate);
-  attributes_to_propagate.remove("position");
-  attributes_to_propagate.remove("radius");
   attributes_to_propagate.pop_try("id").has_value();
   OrderedAttributes ordered_attributes;
   for (const auto item : attributes_to_propagate.items()) {
