@@ -4514,6 +4514,17 @@ static void def_fn_input_string(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_fn_input_matrix(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeInputMatrix", "storage");
+
+  PropertyRNA *prop = RNA_def_property(srna, "matrix", PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_float_sdna(prop, nullptr, "matrix");
+  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
+  RNA_def_property_ui_text(prop, "Matrix", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 /* -- Shader Nodes ---------------------------------------------------------- */
 
 static void def_sh_output(StructRNA *srna)
