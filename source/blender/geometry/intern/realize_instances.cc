@@ -765,7 +765,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
     child_has_component = false;
 
     const Instances &instances = *geometry_set.get_instances();
-    const IndexMask indices = (0 == current_depth) ?
+    const IndexMask indices = 0 == current_depth ?
                                   selection :
                                   IndexMask(IndexRange(instances.instances_num()));
     for (const int index : indices.index_range()) {
