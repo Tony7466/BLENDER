@@ -244,14 +244,14 @@ static void rna_AnimationBinding_name_set(PointerRNA *ptr, const char *name)
   if (binding.has_idtype()) {
     /* Check if the new name is going to be compatible with the already-established ID type. */
     const StringRef name_ref(name);
-    const std::string old_prefix = binding.name_prefix_for_idtype();
+    const std::string expect_prefix = binding.name_prefix_for_idtype();
 
-    if (!name_ref.startswith(old_prefix)) {
+    if (!name_ref.startswith(expect_prefix)) {
       const std::string new_prefix = name_ref.substr(0, 2);
       WM_reportf(RPT_WARNING,
-                 "Animation binding changed prefix from \"%s\" to \"%s\" when renaming.\n",
-                 old_prefix.c_str(),
-                 new_prefix.c_str());
+                 "Animation binding renamed to unexpected prefix \"%s\" (expected \"%s\").\n",
+                 new_prefix.c_str(),
+                 expect_prefix.c_str());
     }
   }
 
