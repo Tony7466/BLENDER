@@ -3184,8 +3184,8 @@ static int wm_revert_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent 
   return WM_operator_confirm_ex(C,
                                 op,
                                 IFACE_("Revert to the Saved File"),
-                                IFACE_(unsaved_images ? "WARNING: You have unsaved images." :
-                                                        "Any unsaved changes will be lost."),
+                                unsaved_images ? IFACE_("WARNING: You have unsaved images.") :
+                                                 IFACE_("Any unsaved changes will be lost."),
                                 IFACE_("Revert"),
                                 ALERT_ICON_WARNING,
                                 false);
