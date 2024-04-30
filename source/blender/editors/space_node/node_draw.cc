@@ -1336,6 +1336,28 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   }
 
   const CPPType &socket_type = *socket.typeinfo->base_cpp_type;
+
+  if (socket.type == SOCK_MENU) {
+    if (!value_type.is<int>()) {
+      return;
+    }
+    const int item_identifier = *static_cast<const int *>(buffer);
+    auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
+    if (!socket_storage->enum_items) {
+      return;
+    }
+    if (socket_storage->has_conflict()) {
+      return;
+    }
+    const bke::RuntimeNodeEnumItem *enum_item =
+        socket_storage->enum_items->find_item_by_identifier(item_identifier);
+    if (!enum_item) {
+      return;
+    }
+    ss << fmt::format(TIP_("{} (Menu)"), enum_item->name);
+    return;
+  }
+
   const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
   if (value_type != socket_type) {
     if (!convert.is_convertible(value_type, socket_type)) {
@@ -1348,25 +1370,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   BLI_SCOPED_DEFER([&]() { socket_type.destruct(socket_value); });
 
   if (socket_type.is<int>()) {
-    const int socket_value_i = *static_cast<int *>(socket_value);
-    if (socket.type == SOCK_MENU) {
-      auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
-      if (!socket_storage->enum_items) {
-        return;
-      }
-      if (socket_storage->has_conflict()) {
-        return;
-      }
-      const bke::RuntimeNodeEnumItem *enum_item =
-          socket_storage->enum_items->find_item_by_identifier(socket_value_i);
-      if (!enum_item) {
-        return;
-      }
-      ss << fmt::format(TIP_("{} (Menu)"), enum_item->name);
-    }
-    else {
-      ss << fmt::format(TIP_("{} (Integer)"), socket_value_i);
-    }
+    ss << fmt::format(TIP_("{} (Integer)"), *static_cast<int *>(socket_value));
   }
   else if (socket_type.is<float>()) {
     const float float_value = *static_cast<float *>(socket_value);
