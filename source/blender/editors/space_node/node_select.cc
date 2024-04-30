@@ -1263,6 +1263,10 @@ static int node_select_same_type_step_exec(bContext *C, wmOperator *op)
   const bool prev = RNA_boolean_get(op->ptr, "prev");
   bNode &active_node = *nodeGetActive(snode->edittree);
 
+  if (&active_node == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
   bNodeTree &node_tree = *snode->edittree;
   node_tree.ensure_topology_cache();
   if (node_tree.all_nodes().size() == 1) {
