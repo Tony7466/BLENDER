@@ -444,12 +444,12 @@ static void rna_def_animation_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(
       func,
-      "suitable_for",
+      "for_id",
       "ID",
       "Data-Block",
       "If given, the new binding will be named after this data-block, and limited to animating "
-      "data-blocks of its type. If ommitted, this will happen as soon as the binding is "
-      "assigned");
+      "data-blocks of its type. If ommitted, limiting the ID type will happen as soon as the "
+      "binding is assigned");
   /* Clear out the PARM_REQUIRED flag, which is set by default for pointer parameters. */
   RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
 
