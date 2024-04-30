@@ -1156,7 +1156,7 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
     return;
   }
 
-  if (BKE_pbvh_type(ss->pbvh) != PBVH_FACES) {
+  if (BKE_pbvh_type(*ss->pbvh) != PBVH_FACES) {
     return;
   }
 
@@ -1215,7 +1215,6 @@ static bool paint_use_2d_cursor(PaintMode mode)
       return false;
     case PaintMode::Texture3D:
     case PaintMode::Texture2D:
-    case PaintMode::SculptUV:
     case PaintMode::VertexGPencil:
     case PaintMode::SculptGPencil:
     case PaintMode::WeightGPencil:
@@ -1430,7 +1429,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
     paint_cursor_update_unprojected_radius(ups, brush, vc, pcontext->scene_space_location);
   }
 
-  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS;
+  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(*ss->pbvh) == PBVH_GRIDS;
 
   pcontext->sd = CTX_data_tool_settings(pcontext->C)->sculpt;
 }
