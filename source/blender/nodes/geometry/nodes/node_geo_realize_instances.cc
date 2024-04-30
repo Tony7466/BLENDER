@@ -51,7 +51,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       },
       mf::build::exec_presets::AllSpanOrSingle());
 
-  Field<int> depth_field_overrided(FieldOperation::Create(
+  Field<int> depth_field_overridden(FieldOperation::Create(
       depth_override, {std::move(depth_field), std::move(realize_all_field)}));
 
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
@@ -62,13 +62,13 @@ static void node_geo_exec(GeoNodeExecParams params)
       mf::build::exec_presets::AllSpanOrSingle());
 
   Field<bool> selection_field_overrided(FieldOperation::Create(
-      selection_override, {depth_field_overrided, std::move(selection_field)}));
+      selection_override, {depth_field_overridden, std::move(selection_field)}));
 
   const bke::Instances &instances = *geometry_set.get_instances();
   const bke::InstancesFieldContext field_context(instances);
   fn::FieldEvaluator evaluator(field_context, instances.instances_num());
 
-  const int evaluated_depth_index = evaluator.add(depth_field_overrided);
+  const int evaluated_depth_index = evaluator.add(depth_field_overridden);
   evaluator.set_selection(selection_field_overrided);
   evaluator.evaluate();
 
