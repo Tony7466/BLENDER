@@ -348,10 +348,6 @@ bool remove_selection(bke::CurvesGeometry &curves, bke::AttrDomain selection_dom
 void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask);
 void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask);
 
-void extrude_curve_points(const bke::CurvesGeometry &curves,
-                          const IndexMask &points_mask,
-                          bke::CurvesGeometry &dst);
-
 /** \} */
 
 }  // namespace blender::ed::curves
