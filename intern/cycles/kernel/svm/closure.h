@@ -352,7 +352,7 @@ ccl_device
       }
 
       /* Specular component */
-      if (reflective_caustics && eta != 1.0f) {
+      if (reflective_caustics && (eta != 1.0f || thinfilm_thickness > 0.1f)) {
         ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
             sd, sizeof(MicrofacetBsdf), weight);
         ccl_private FresnelGeneralizedSchlick *fresnel =
