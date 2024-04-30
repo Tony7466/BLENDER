@@ -966,8 +966,8 @@ static void execute_instances_tasks(
     }
     const IndexRange dst_range = offsets[component_index];
     for (const int attribute_index : all_instances_attributes.index_range()) {
-      bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
-      eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
+      const bke::AttributeIDRef id = all_instances_attributes.ids[attribute_index];
+      const eCustomDataType type = all_instances_attributes.kinds[attribute_index].data_type;
       const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
       BLI_assert(cpp_type != nullptr);
       bke::GSpanAttributeWriter write_attribute =
