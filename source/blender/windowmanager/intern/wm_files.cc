@@ -3180,10 +3180,12 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
 
 static int wm_revert_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  bool unsaved_images = ED_image_should_save_modified(CTX_data_main(C));
   return WM_operator_confirm_ex(C,
                                 op,
                                 IFACE_("Revert to the Saved File"),
-                                IFACE_("Any unsaved changes will be lost."),
+                                IFACE_(unsaved_images ? "WARNING: You have unsaved images." :
+                                                        "Any unsaved changes will be lost."),
                                 IFACE_("Revert"),
                                 ALERT_ICON_WARNING,
                                 false);
