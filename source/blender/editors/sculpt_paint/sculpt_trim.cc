@@ -296,9 +296,11 @@ static float calc_expand_factor(const gesture::GestureData &gesture_data)
 }
 
 /* Converts a line gesture's points into usable screen points. */
-static std::array<float2, 4> line_gesture_to_screen_points(gesture::GestureData &gesture_data)
+static Array<float2> gesture_to_screen_points(gesture::GestureData &gesture_data)
 {
-  BLI_assert(gesture_data.shape_type == gesture::ShapeType::Line);
+  if (gesture_data.shape_type != gesture::ShapeType::Line) {
+    return gesture_data.gesture_points;
+  }
 
   const float expand_factor = calc_expand_factor(gesture_data);
 
@@ -330,15 +332,7 @@ static void generate_geometry(gesture::GestureData &gesture_data)
   ViewContext *vc = &gesture_data.vc;
   ARegion *region = vc->region;
 
-  std::array<float2, 4> line_points;
-  Span<float2> screen_points;
-  if (gesture_data.shape_type == gesture::ShapeType::Line) {
-    line_points = line_gesture_to_screen_points(gesture_data);
-    screen_points = line_points;
-  }
-  else {
-    screen_points = gesture_data.gesture_points;
-  }
+  const Array<float2> screen_points = gesture_to_screen_points(gesture_data);
   BLI_assert(screen_points.size() > 1);
 
   const int trim_totverts = screen_points.size() * 2;
