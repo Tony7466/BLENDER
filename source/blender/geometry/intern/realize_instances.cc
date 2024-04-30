@@ -792,7 +792,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
   }
 
   /* Flag to track if any relevant attributes were found.*/
-  bool is_relevant = false;
+  bool any_attribute_found = false;
 
   for (const bke::GeometryComponent::Type component_type : component_types) {
     if (geometry_set.has(component_type)) {
@@ -811,13 +811,13 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
                 return true;
               });
 
-          is_relevant = true;
+          any_attribute_found = true;
         }
       }
     }
   }
 
-  return is_relevant;
+  return any_attribute_found;
 }
 
 /**
