@@ -3241,15 +3241,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 24)) {
-    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      if (brush->gpencil_settings) {
-        brush->unprojected_radius = brush->size * blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-        brush->flag |= BRUSH_LOCK_SIZE;
-      }
-    }
-  }
-
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
