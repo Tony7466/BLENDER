@@ -575,14 +575,15 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   Vector<std::pair<int, GSpan>> instance_attributes_to_override = prepare_attribute_fallbacks(
       gather_info, instances, gather_info.instances_attriubutes);
 
+  const bool is_top_level = current_depth == 0;
   /* If at top level, get instance indices from selection field, else use all instances. */
-  const IndexMask indices = current_depth == 0 ? gather_info.selection :
+  const IndexMask indices = is_top_level ? gather_info.selection :
                                                  IndexMask(IndexRange(instances.instances_num()));
   for (const int mask_index : indices.index_range()) {
     const int i = indices[mask_index];
 
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
-    const int depth_target = current_depth == 0 ? gather_info.depths[i] : target_depth;
+    const int depth_target = is_top_level ? gather_info.depths[i] : target_depth;
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
