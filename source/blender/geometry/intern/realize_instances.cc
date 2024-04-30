@@ -583,7 +583,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
     const int i = indices[mask_index];
 
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
-    const int depth_target = is_top_level ? gather_info.depths[i] : target_depth;
+    const int child_target_depth = is_top_level ? gather_info.depths[i] : target_depth;
     const int handle = handles[i];
     const float4x4 &transform = transforms[i];
     const InstanceReference &reference = references[handle];
@@ -624,7 +624,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
                                     instance_context.id = id;
                                     gather_realize_tasks_recursive(gather_info,
                                                                    current_depth + 1,
-                                                                   depth_target,
+                                                                   child_target_depth,
                                                                    instance_geometry_set,
                                                                    transform,
                                                                    instance_context);
