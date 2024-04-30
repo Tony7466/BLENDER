@@ -237,6 +237,10 @@ static void anim_binding_name_ensure_unique(Animation &animation, Binding &bindi
   BLI_uniquename_cb(check_name_is_used, &check_data, "", '.', binding.name, sizeof(binding.name));
 }
 
+/* TODO: maybe this function should only set the 'name without prefix' aka the 'display name'. That
+ * way only `this->id_type` is responsible for the prefix. I (Sybren) think that's easier to
+ * determine when the code is a bit more mature, and we can see what the majority of the calls to
+ * this function actually do/need. */
 void Animation::binding_name_set(Main &bmain, Binding &binding, const StringRefNull new_name)
 {
   this->binding_name_define(binding, new_name);
@@ -424,15 +428,9 @@ bool Animation::assign_id(Binding *binding, ID &animated_id)
     if (!binding->is_suitable_for(animated_id)) {
       return false;
     }
-    adt->binding_handle = binding->handle;
+    this->binding_setup_for_id(*binding, animated_id);
 
-    /* If the binding is not yet tied to a type, use the ID name to give its initial name. This
-     * makes it possible to have bindings named "Binding.047" when they are created, and named
-     * after whatever is using them when first assigned. */
-    if (!binding->has_idtype()) {
-      binding->idtype = GS(animated_id.name);
-      this->binding_name_define(*binding, animated_id.name);
-    }
+    adt->binding_handle = binding->handle;
     /* Always make sure the ID's binding name matches the assigned binding. */
     STRNCPY_UTF8(adt->binding_name, binding->name);
   }
@@ -453,6 +451,23 @@ bool Animation::assign_id(Binding *binding, ID &animated_id)
   }
 
   return true;
+}
+
+void Animation::binding_name_ensure_prefix(Binding &binding)
+{
+  binding.name_ensure_prefix();
+  anim_binding_name_ensure_unique(*this, binding);
+}
+
+void Animation::binding_setup_for_id(Binding &binding, const ID &animated_id)
+{
+  if (binding.has_idtype()) {
+    BLI_assert(binding.idtype == GS(animated_id.name));
+    return;
+  }
+
+  binding.idtype = GS(animated_id.name);
+  this->binding_name_ensure_prefix(binding);
 }
 
 void Animation::unassign_id(ID &animated_id)
@@ -603,7 +618,7 @@ Animation *get_animation(ID &animated_id)
 
 std::string Binding::name_prefix_for_idtype() const
 {
-  if (this->idtype == 0) {
+  if (!this->has_idtype()) {
     return binding_unbound_prefix;
   }
 
@@ -619,6 +634,24 @@ StringRefNull Binding::name_without_prefix() const
     return "";
   }
   return this->name + 2;
+}
+
+void Binding::name_ensure_prefix()
+{
+  BLI_assert_msg(StringRef(this->name).size() >= 2,
+                 "Animation Binding names should be at least characters.");
+  if (StringRef(this->name).size() < 2) {
+    /* The code below would overwrite the trailing 0-byte. */
+    this->name[2] = '\0';
+  }
+
+  if (this->idtype == 0) {
+    this->name[0] = binding_unbound_prefix[0];
+    this->name[1] = binding_unbound_prefix[1];
+    return;
+  }
+
+  *reinterpret_cast<short *>(this->name) = this->idtype;
 }
 
 /* ----- AnimationStrip implementation ----------- */

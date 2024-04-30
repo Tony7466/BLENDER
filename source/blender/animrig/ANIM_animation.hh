@@ -90,6 +90,9 @@ class Animation : public ::Animation {
    * This has to be done on the Animation level to ensure each binding has a
    * unique name within the Animation.
    *
+   * \note This does NOT ensure the first two characters match the ID type of
+   * this binding. This is the caller's responsibility.
+   *
    * \see Animation::binding_name_define
    * \see Animation::binding_name_propagate
    */
@@ -98,7 +101,8 @@ class Animation : public ::Animation {
   /**
    * Set the binding name, and ensure it is unique.
    *
-   * This function usually isn't necessary, call #binding_name_set instead.
+   * \note This does NOT ensure the first two characters match the ID type of
+   * this binding. This is the caller's responsibility.
    *
    * \see Animation::binding_name_set
    * \see Animation::binding_name_propagate
@@ -183,6 +187,21 @@ class Animation : public ::Animation {
 
  private:
   Binding &binding_allocate();
+
+  /**
+   * Ensure the binding name prefix matches its ID type.
+   *
+   * This ensures that the first two characters match the ID type of
+   * this binding.
+   *
+   * \see Animation::binding_name_propagate
+   */
+  void binding_name_ensure_prefix(Binding &binding);
+
+  /**
+   * Set the binding's name and ID type to those of the animated ID.
+   */
+  void binding_setup_for_id(Binding &binding, const ID &animated_id);
 };
 static_assert(sizeof(Animation) == sizeof(::Animation),
               "DNA struct and its C++ wrapper must have the same size");
@@ -370,6 +389,17 @@ class Binding : public ::AnimationBinding {
 
   /** Return whether this Binding has an idtype set. */
   bool has_idtype() const;
+
+ protected:
+  friend Animation;
+
+  /**
+   * Ensure the first two characters of the name match the ID type.
+   *
+   * \note This does NOT ensure name uniqueness within the Animation. That is
+   * the reponsibility of the caller.
+   */
+  void name_ensure_prefix();
 };
 static_assert(sizeof(Binding) == sizeof(::AnimationBinding),
               "DNA struct and its C++ wrapper must have the same size");

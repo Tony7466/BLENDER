@@ -170,12 +170,23 @@ TEST_F(AnimationLayersTest, remove_strip)
 
 TEST_F(AnimationLayersTest, add_binding)
 {
-  Binding &binding = anim->binding_add();
-  EXPECT_EQ(1, anim->last_binding_handle);
-  EXPECT_EQ(1, binding.handle);
+  { /* Creating an 'unused' Binding should just be called 'Binding'. */
+    Binding &binding = anim->binding_add();
+    EXPECT_EQ(1, anim->last_binding_handle);
+    EXPECT_EQ(1, binding.handle);
 
-  EXPECT_STREQ("XXBinding", binding.name);
-  EXPECT_EQ(0, binding.idtype);
+    EXPECT_STREQ("XXBinding", binding.name);
+    EXPECT_EQ(0, binding.idtype);
+  }
+
+  { /* Creating a Binding for a specific ID should name it after the ID. */
+    Binding &binding = anim->binding_add_for_id(cube->id);
+    EXPECT_EQ(2, anim->last_binding_handle);
+    EXPECT_EQ(2, binding.handle);
+
+    EXPECT_STREQ(cube->id.name, binding.name);
+    EXPECT_EQ(ID_OB, binding.idtype);
+  }
 }
 
 TEST_F(AnimationLayersTest, add_binding_multiple)
@@ -194,17 +205,16 @@ TEST_F(AnimationLayersTest, anim_assign_id)
 {
   /* Assign to the only, 'virgin' Binding, should always work. */
   Binding &out_cube = anim->binding_add();
+  ASSERT_STREQ(out_cube.name, "XXBinding");
   ASSERT_TRUE(anim->assign_id(&out_cube, cube->id));
   EXPECT_EQ(out_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ(out_cube.name, cube->id.name)
-      << "The binding should be named after the assigned ID";
+  EXPECT_STREQ(out_cube.name, "OBBinding");
   EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
   /* Assign another ID to the same Binding. */
   ASSERT_TRUE(anim->assign_id(&out_cube, suzanne->id));
-  EXPECT_STREQ(out_cube.name, cube->id.name)
-      << "The binding should not be renamed on assignment once it has a name";
+  EXPECT_STREQ(out_cube.name, "OBBinding");
   EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
@@ -236,9 +246,9 @@ TEST_F(AnimationLayersTest, anim_assign_id)
   Binding &another_binding_cube = anim->binding_add();
   ASSERT_TRUE(anim->assign_id(&another_binding_cube, cube->id));
   EXPECT_EQ(another_binding_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ("OBKüüübus.002", another_binding_cube.name)
+  EXPECT_STREQ("OBBinding.002", another_binding_cube.name)
       << "The binding should be uniquely named";
-  EXPECT_STREQ("OBKüüübus.002", cube->adt->binding_name)
+  EXPECT_STREQ("OBBinding.002", cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
   /* Create an ID of another type. This should not be assignable to this binding. */
@@ -253,8 +263,7 @@ TEST_F(AnimationLayersTest, rename_binding)
   Binding &out_cube = anim->binding_add();
   ASSERT_TRUE(anim->assign_id(&out_cube, cube->id));
   EXPECT_EQ(out_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ(out_cube.name, cube->id.name)
-      << "The binding should be named after the assigned ID";
+  EXPECT_STREQ("OBBinding", out_cube.name);
   EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
@@ -274,6 +283,42 @@ TEST_F(AnimationLayersTest, rename_binding)
   anim->binding_name_define(out_cube, "Even Newer Name");
   anim->unassign_id(cube->id);
   EXPECT_STREQ("Even Newer Name", cube->adt->binding_name);
+}
+
+TEST_F(AnimationLayersTest, binding_name_ensure_prefix)
+{
+  class AccessibleBinding : public Binding {
+   public:
+    void name_ensure_prefix()
+    {
+      Binding::name_ensure_prefix();
+    }
+  };
+
+  Binding &raw_binding = anim->binding_add();
+  AccessibleBinding &binding = static_cast<AccessibleBinding &>(raw_binding);
+  ASSERT_STREQ("XXBinding", binding.name);
+  ASSERT_EQ(0, binding.idtype);
+
+  /* Check defaults, idtype zeroed. */
+  binding.name_ensure_prefix();
+  EXPECT_STREQ("XXBinding", binding.name);
+
+  /* idtype CA, default name.  */
+  binding.idtype = ID_CA;
+  binding.name_ensure_prefix();
+  EXPECT_STREQ("CABinding", binding.name);
+
+  /* idtype ME, explicit name of other idtype. */
+  anim->binding_name_define(binding, "CANewName");
+  binding.idtype = ID_ME;
+  binding.name_ensure_prefix();
+  EXPECT_STREQ("MENewName", binding.name);
+
+  /* Zeroing out idtype. */
+  binding.idtype = 0;
+  binding.name_ensure_prefix();
+  EXPECT_STREQ("XXNewName", binding.name);
 }
 
 TEST_F(AnimationLayersTest, binding_name_prefix)
