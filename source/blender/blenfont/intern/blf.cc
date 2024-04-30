@@ -853,7 +853,9 @@ void BLF_shadow(int fontid, int level, const float rgba[4])
 
   if (font) {
     font->shadow = level;
-    rgba_float_to_uchar(font->shadow_color, rgba);
+    if (rgba) {
+      rgba_float_to_uchar(font->shadow_color, rgba);
+    }
   }
 }
 

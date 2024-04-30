@@ -272,7 +272,7 @@ void BLF_disable(int fontid, int option);
  * the other argument are the RGBA color.
  * Take care that shadow need to be enable using #BLF_enable!
  */
-void BLF_shadow(int fontid, int level, const float rgba[4]) ATTR_NONNULL(3);
+void BLF_shadow(int fontid, int level, const float rgba[4] = nullptr) ATTR_NONNULL(3);
 
 /**
  * Set the offset for shadow text, this is the current cursor
@@ -338,7 +338,8 @@ void BLF_draw_default(float x, float y, float z, const char *str, size_t str_len
 /**
  * As above but with a very contrasting dark shadow.
  */
-void BLF_draw_default_shadowed(float x, float y, float z, const char *str, size_t str_len)
+void BLF_draw_default_shadowed(
+    float x, float y, float z, const char *str, size_t str_len, float shadow_color[4] = nullptr)
     ATTR_NONNULL();
 /**
  * Set size and DPI, and return default font ID.
