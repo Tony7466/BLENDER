@@ -957,7 +957,7 @@ static void execute_instances_tasks(
         *src_components[component_index]);
     const bke::Instances &src_instances = *src_component.get();
     const blender::float4x4 src_base_transform = src_base_transforms[component_index];
-    const Array<const void *> attribute_fallback_array = attribute_fallback[component_index].array;
+    const Span<const void *> attribute_fallback_array = attribute_fallback[component_index].array;
     const Span<bke::InstanceReference> src_references = src_instances.references();
     Array<int> handle_map(src_references.size());
 
