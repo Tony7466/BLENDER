@@ -2502,7 +2502,10 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   array_utils::fill_index_range(dst_to_src_curves.as_mutable_span());
 
   Vector<bool> dst_selected(old_points_num, false);
+
   Vector<int> dst_curve_counts(old_curves_num);
+  offset_indices::copy_group_sizes(
+      points_by_curve, src.curves_range(), dst_curve_counts.as_mutable_span());
 
   const VArray<bool> &src_cyclic = src.cyclic();
 
@@ -2514,7 +2517,6 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
     const IndexMask curve_points_to_extrude = IndexMask::from_intersection(
         curve_points, points_to_extrude, mem);
 
-    dst_curve_counts[curve_index] = curve_points.size();
     const bool curve_cyclic = src_cyclic[curve_index];
 
     curve_points_to_extrude.foreach_index([&](const int src_point_index) {
@@ -2564,25 +2566,15 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   /* Attributes. */
   const bke::AttributeAccessor src_attributes = src.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
-  const bke::AnonymousAttributePropagationInfo propagation_info{};
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curves, dst_attributes);
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_points, dst_attributes);
+
+  /* Selection attribute. */
   const std::string &selection_attr_name = ".selection";
-
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Curve,
-                         propagation_info,
-                         {},
-                         dst_to_src_curves,
-                         dst_attributes);
-
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Point,
-                         propagation_info,
-                         {selection_attr_name},
-                         dst_to_src_points,
-                         dst_attributes);
-
-  /* Selection attributes. */
-
   bke::SpanAttributeWriter<bool> selection =
       dst_attributes.lookup_or_add_for_write_only_span<bool>(selection_attr_name,
                                                              bke::AttrDomain::Point);
@@ -2597,7 +2589,6 @@ void extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   }
 
   dst.update_curve_types();
-  dst.tag_topology_changed();
 }
 
 static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
@@ -2611,13 +2602,13 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     /* Extrusion always happens in the point domain. */
     IndexMaskMemory memory;
-    const IndexMask points_to_extrude = retrieve_editable_and_selected_elements(
-        *object, info.drawing, bke::AttrDomain::Point, memory);
+    const IndexMask points_to_extrude = retrieve_editable_and_selected_points(
+        *object, info.drawing, memory);
     if (points_to_extrude.is_empty()) {
       return;
     }
 
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    const bke::CurvesGeometry &curves = info.drawing.strokes();
     bke::CurvesGeometry dst;
     extrude_grease_pencil_curves(curves, points_to_extrude, dst);
 
