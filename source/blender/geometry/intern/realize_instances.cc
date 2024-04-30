@@ -1005,8 +1005,8 @@ static void execute_instances_tasks(
   auto &dst_component = r_realized_geometry.get_component_for_write<bke::InstancesComponent>();
 
   Vector<const bke::GeometryComponent *> for_join_attributes;
-  for (bke::GeometryComponentPtr compent : src_components) {
-    for_join_attributes.append(compent.get());
+  for (bke::GeometryComponentPtr component : src_components) {
+    for_join_attributes.append(component.get());
   }
 
   join_attributes(
