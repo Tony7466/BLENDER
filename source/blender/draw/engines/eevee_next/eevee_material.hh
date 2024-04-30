@@ -103,14 +103,17 @@ static inline void material_type_from_shader_uuid(uint64_t shader_uuid,
                                                   eMaterialPipeline &pipeline_type,
                                                   eMaterialGeometry &geometry_type,
                                                   eMaterialDisplacement &displacement_type,
+                                                  eMaterialThickness &thickness_type,
                                                   bool &transparent_shadows)
 {
   const uint64_t geometry_mask = ((1u << 4u) - 1u);
   const uint64_t pipeline_mask = ((1u << 4u) - 1u);
-  const uint64_t displacement_mask = ((1u << 2u) - 1u);
+  const uint64_t thickness_mask = ((1u << 1u) - 1u);
+  const uint64_t displacement_mask = ((1u << 1u) - 1u);
   geometry_type = static_cast<eMaterialGeometry>(shader_uuid & geometry_mask);
   pipeline_type = static_cast<eMaterialPipeline>((shader_uuid >> 4u) & pipeline_mask);
   displacement_type = static_cast<eMaterialDisplacement>((shader_uuid >> 8u) & displacement_mask);
+  thickness_type = static_cast<eMaterialThickness>((shader_uuid >> 9u) & thickness_mask);
   transparent_shadows = (shader_uuid >> 10u) & 1u;
 }
 
@@ -121,13 +124,19 @@ static inline uint64_t shader_uuid_from_material_type(
     eMaterialThickness thickness_type = MAT_THICKNESS_SPHERE,
     char blend_flags = 0)
 {
-  BLI_assert(displacement_type < (1 << 2));
-  BLI_assert(thickness_type < (1 << 2));
+  BLI_assert(displacement_type < (1 << 1));
+  BLI_assert(thickness_type < (1 << 1));
   BLI_assert(geometry_type < (1 << 4));
   BLI_assert(pipeline_type < (1 << 4));
   uint64_t transparent_shadows = blend_flags & MA_BL_TRANSPARENT_SHADOW ? 1 : 0;
-  return geometry_type | (pipeline_type << 4) | (displacement_type << 8) | (thickness_type << 10) |
-         (transparent_shadows << 11);
+
+  uint64_t uuid;
+  uuid = geometry_type;
+  uuid |= pipeline_type << 4;
+  uuid |= displacement_type << 8;
+  uuid |= thickness_type << 9;
+  uuid |= transparent_shadows << 10;
+  return uuid;
 }
 
 ENUM_OPERATORS(eClosureBits, CLOSURE_AMBIENT_OCCLUSION)

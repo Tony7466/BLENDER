@@ -325,9 +325,14 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   eMaterialPipeline pipeline_type;
   eMaterialGeometry geometry_type;
   eMaterialDisplacement displacement_type;
+  eMaterialThickness thickness_type;
   bool transparent_shadows;
-  material_type_from_shader_uuid(
-      shader_uuid, pipeline_type, geometry_type, displacement_type, transparent_shadows);
+  material_type_from_shader_uuid(shader_uuid,
+                                 pipeline_type,
+                                 geometry_type,
+                                 displacement_type,
+                                 thickness_type,
+                                 transparent_shadows);
 
   GPUCodegenOutput &codegen = *codegen_;
   ShaderCreateInfo &info = *reinterpret_cast<ShaderCreateInfo *>(codegen.create_info);
@@ -634,8 +639,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     frag_gen << "}\n\n";
 
     /* TODO(fclem): Find a way to pass material parameters inside the material UBO. */
-    ::Material *ma = GPU_material_get_material(gpumat);
-    info.define("thickness_mode", ma && ma->thickness_mode == MA_THICKNESS_SLAB ? "-1.0" : "1.0");
+    info.define("thickness_mode", thickness_type == MAT_THICKNESS_SLAB ? "-1.0" : "1.0");
 
     frag_gen << "float nodetree_thickness()\n";
     frag_gen << "{\n";
