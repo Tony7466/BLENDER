@@ -11,8 +11,8 @@
 namespace blender::nodes {
 
 /**
- * Makes it possible to various functions (e.g. the ones in `NOD_socket_items.hh`) for menu switch
- * node items.
+ * Makes it possible to use various functions (e.g. the ones in `NOD_socket_items.hh`) for menu
+ * switch node items.
  */
 
 struct MenuSwitchItemsAccessor {
