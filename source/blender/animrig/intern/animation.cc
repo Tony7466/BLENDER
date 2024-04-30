@@ -577,9 +577,14 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 
 bool Binding::is_suitable_for(const ID &animated_id) const
 {
+  if (!this->has_idtype()) {
+    /* Without specific ID type set, this Binding can animate any ID. */
+    return true;
+  }
+
   /* Check that the ID type is compatible with this binding. */
   const int animated_idtype = GS(animated_id.name);
-  return this->idtype == 0 || this->idtype == animated_idtype;
+  return this->idtype == animated_idtype;
 }
 
 bool Binding::has_idtype() const
@@ -645,7 +650,9 @@ void Binding::name_ensure_prefix()
     this->name[2] = '\0';
   }
 
-  if (this->idtype == 0) {
+  if (!this->has_idtype()) {
+    /* A zero idtype is not going to convert to a two-character string, so we
+     * need to explicitly assign the default prefix. */
     this->name[0] = binding_unbound_prefix[0];
     this->name[1] = binding_unbound_prefix[1];
     return;

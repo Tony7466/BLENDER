@@ -127,13 +127,13 @@ static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSp
 
 static AnimationBinding *rna_Animation_bindings_new(Animation *anim_id,
                                                     bContext *C,
-                                                    ID *animated_id)
+                                                    ID *suitable_for_id)
 {
   animrig::Animation &anim = anim_id->wrap();
   animrig::Binding *binding;
 
-  if (animated_id) {
-    binding = &anim.binding_add_for_id(*animated_id);
+  if (suitable_for_id) {
+    binding = &anim.binding_add_for_id(*suitable_for_id);
   }
   else {
     binding = &anim.binding_add();
