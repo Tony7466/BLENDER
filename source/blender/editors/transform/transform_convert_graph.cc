@@ -767,13 +767,15 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 
   bool ok = true;
   /* Keep repeating the process until nothing is out of place anymore. */
+  const blender::IndexRange bezm_range = bezms.index_range();
+  const int bezms_size = bezms.size();
   while (ok) {
     ok = false;
 
-    for (const int i : bezms.index_range()) {
+    for (const int i : bezm_range) {
       bezm = &bezms[i];
       /* Is current bezm out of order (i.e. occurs later than next)? */
-      if (i < bezms.size() - 1) {
+      if (i < bezms_size - 1) {
         if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
           std::swap(*bezm, *(bezm + 1));
           ok = true;
