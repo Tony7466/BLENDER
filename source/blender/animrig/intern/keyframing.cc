@@ -191,29 +191,44 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
 
   if (this->get_count(SingleKeyingResult::NO_VALID_LAYER) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_LAYER);
-    errors.append(
-        fmt::format("Due to there being no layer that can accept them, {} keyframe{} "
-                    "not inserted.", /* TODO: explain possible reasons why. */
-                    error_count,
-                    error_count > 1 ? "s were" : " was"));
+    if (error_count == 1) {
+      errors.append(
+          fmt::format(RPT_("Due to there being no layer that can accept it, one "
+                           "keyframe was not inserted.")));
+    }
+    else {
+      errors.append(fmt::format(RPT_("Due to there being no layer that can accept them, {:d} "
+                                     "keyframes were not inserted."),
+                                error_count));
+    }
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_STRIP) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_STRIP);
-    errors.append(
-        fmt::format("Due to there being no strip that can accept them, {} keyframe{} "
-                    "not inserted.", /* TODO: explain possible reasons why. */
-                    error_count,
-                    error_count > 1 ? "s were" : " was"));
+    if (error_count == 1) {
+      errors.append(
+          fmt::format(RPT_("Due to there being no strip that can accept it, one "
+                           "keyframe was not inserted.")));
+    }
+    else {
+      errors.append(fmt::format(RPT_("Due to there being no strip that can accept them, {:d} "
+                                     "keyframes were not inserted."),
+                                error_count));
+    }
   }
 
   if (this->get_count(SingleKeyingResult::NO_VALID_BINDING) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
-    errors.append(
-        fmt::format("Due to a missing animation binding, {} keyframe{} not "
-                    "inserted.", /* TODO: explain possible reasons why. */
-                    error_count,
-                    error_count > 1 ? "s were" : " was"));
+    if (error_count == 1) {
+      errors.append(
+          fmt::format(RPT_("Due to a missing animation binding, 1 keyframe was not "
+                           "inserted.")));
+    }
+    else {
+      errors.append(fmt::format(RPT_("Due to a missing animation binding, {:d} keyframes "
+                                     "were not inserted."),
+                                error_count));
+    }
   }
 
   if (errors.is_empty()) {
