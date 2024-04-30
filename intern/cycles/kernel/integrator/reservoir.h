@@ -62,7 +62,15 @@ struct Reservoir {
   {
     const float mis_weight = power_heuristic(
         num_light_samples, ls.pdf, num_bsdf_samples, bsdf_pdf);
-    add_sample(ls, radiance, mis_weight / ls.pdf, rand);
+
+    /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
+    const float jacobian = ls.jacobian_solid_angle_to_area();
+    float ls_pdf_in_area = ls.pdf;
+    if (jacobian > 0.0f) {
+      ls_pdf_in_area *= jacobian;
+    }
+
+    add_sample(ls, radiance, mis_weight / ls_pdf_in_area, rand);
   }
 
   void add_bsdf_sample(const ccl_private LightSample &ls,
@@ -72,7 +80,15 @@ struct Reservoir {
   {
     const float mis_weight = power_heuristic(
         num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
-    add_sample(ls, radiance, mis_weight / bsdf_pdf, rand);
+
+    /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
+    const float jacobian = ls.jacobian_solid_angle_to_area();
+    float bsdf_pdf_in_area = bsdf_pdf;
+    if (jacobian > 0.0f) {
+      bsdf_pdf_in_area *= jacobian;
+    }
+
+    add_sample(ls, radiance, mis_weight / bsdf_pdf_in_area, rand);
   }
 
   void add_reservoir(const Reservoir &other, const float rand);

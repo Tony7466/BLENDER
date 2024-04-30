@@ -30,7 +30,7 @@ struct LightSample {
   LightType type;      /* type of light */
   int emitter_id;      /* index in the emitter array */
 
-  float jacobian_area_to_solid_angle()
+  float jacobian_area_to_solid_angle() const
   {
     float cos_pi = dot(Ng, -D);
 
@@ -41,7 +41,7 @@ struct LightSample {
     return sqr(t) / cos_pi;
   }
 
-  float jacobian_solid_angle_to_area()
+  float jacobian_solid_angle_to_area() const
   {
     float cos_pi = dot(Ng, -D);
 

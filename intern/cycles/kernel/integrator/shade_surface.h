@@ -162,8 +162,8 @@ ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
   return !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_ANY_PASS);
 }
 
-/* Evaluate the integrant of the rendering equation (BSDF * L * cos_NO * V) and write to
- * `radiance`.
+/* Evaluate the integrant of the rendering equation in area measure (BSDF * L * cos_NO * V * G) and
+ * write to `radiance`.
  * Return the pdf of sampling the bsdf. */
 ccl_device_forceinline float radiance_eval(KernelGlobals kg,
                                            IntegratorState state,
@@ -180,8 +180,8 @@ ccl_device_forceinline float radiance_eval(KernelGlobals kg,
       kg, state, emission_sd, ls, sd->time, sd, check_visibility);
   PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
   const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
-
-  bsdf_eval_mul(radiance, light_eval);
+  const float geometry_term = ls->jacobian_solid_angle_to_area();
+  bsdf_eval_mul(radiance, light_eval * geometry_term);
 
   return bsdf_pdf;
 }
@@ -661,7 +661,8 @@ ccl_device
     if (is_zero(L)) {
       continue;
     }
-    bsdf_eval_mul(&radiance, L);
+    const float geometry_term = ls.jacobian_solid_angle_to_area();
+    bsdf_eval_mul(&radiance, L * geometry_term);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
   }
@@ -683,8 +684,7 @@ ccl_device
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    if (!sample_copy_direction(kg, reservoir)) {
-      /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
+    if (sample_copy_direction(kg, reservoir)) {
       reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
     }
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, render_buffer);

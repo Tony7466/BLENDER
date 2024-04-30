@@ -251,7 +251,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     if (sample_copy_direction(kg, neighbor_reservoir)) {
       /* Jacobian for non-identity shift. */
-      neighbor_reservoir.total_weight *= neighbor_reservoir.ls.jacobian_area_to_solid_angle();
+      neighbor_reservoir.total_weight *= neighbor_reservoir.ls.jacobian_solid_angle_to_area();
     }
     reservoir.add_reservoir(neighbor_reservoir, rand_pick);
   }
@@ -307,8 +307,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   }
 
   BsdfEval radiance = reservoir.radiance;
-  const float unbiased_contribution_weight = reservoir.total_weight *
-                                             reservoir.ls.jacobian_solid_angle_to_area() /
+  const float unbiased_contribution_weight = reservoir.total_weight /
                                              reduce_add(fabs(radiance.sum)) / valid_neighbors;
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
