@@ -130,7 +130,6 @@ class SeparateMatrixFunction : public mf::MultiFunction {
         16, "Column D Row D");
 
     if (const std::optional<float4x4> single = matrices.get_if_single()) {
-      printf("Single!\n");
       const float4x4 matrix = *single;
       column_a_row_a.fill(matrix[0][0]);
       column_a_row_b.fill(matrix[0][1]);
