@@ -22,6 +22,7 @@ struct BakeItemsAccessor {
   static constexpr const char *node_idname = "GeometryNodeBake";
   static constexpr bool has_type = true;
   static constexpr bool has_name = true;
+  static constexpr bool has_derived_type = false;
 
   static socket_items::SocketItemsRef<NodeGeometryBakeItem> get_items_from_node(bNode &node)
   {

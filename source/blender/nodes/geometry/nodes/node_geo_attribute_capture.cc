@@ -7,6 +7,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_geo_capture_attribute.hh"
+#include "NOD_socket_items_ops.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
@@ -20,18 +22,26 @@ NODE_STORAGE_FUNCS(NodeGeometryAttributeCapture)
 static void node_declare(NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
+  b.use_custom_socket_order();
+  b.allow_any_socket_order();
 
   b.add_input<decl::Geometry>("Geometry");
-  if (node != nullptr) {
-    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
-    b.add_input(data_type, "Value").field_on_all();
-  }
-
   b.add_output<decl::Geometry>("Geometry").propagate_all();
   if (node != nullptr) {
-    const eCustomDataType data_type = eCustomDataType(node_storage(*node).data_type);
-    b.add_output(data_type, "Attribute").field_on_all();
+    const NodeGeometryAttributeCapture &storage = node_storage(*node);
+    for (const NodeGeometryAttributeCaptureItem &item :
+         Span{storage.capture_items, storage.capture_items_num})
+    {
+      const eCustomDataType data_type = eCustomDataType(item.data_type);
+      const std::string identifier = CaptureAttributeItemsAccessor::socket_identifier_for_item(
+          item);
+      b.add_input(data_type, identifier).field_on_all();
+      /* TODO: Compatibility identifier. */
+      b.add_output(data_type, identifier).field_on_all().align_with_previous();
+    }
   }
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__").align_with_previous();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -45,37 +55,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryAttributeCapture *data = MEM_cnew<NodeGeometryAttributeCapture>(__func__);
-  data->data_type = CD_PROP_FLOAT;
   data->domain = int8_t(AttrDomain::Point);
-
   node->storage = data;
-}
 
-static void node_gather_link_searches(GatherLinkSearchOpParams &params)
-{
-  const NodeDeclaration &declaration = *params.node_type().static_declaration;
-  search_link_ops_for_declarations(params, declaration.inputs);
-  search_link_ops_for_declarations(params, declaration.outputs);
-
-  const bNodeType &node_type = params.node_type();
-  const std::optional<eCustomDataType> type = bke::socket_type_to_custom_data_type(
-      eNodeSocketDatatype(params.other_socket().type));
-  if (type && *type != CD_PROP_STRING) {
-    if (params.in_out() == SOCK_OUT) {
-      params.add_item(IFACE_("Attribute"), [node_type, type](LinkSearchOpParams &params) {
-        bNode &node = params.add_node(node_type);
-        node_storage(node).data_type = *type;
-        params.update_and_connect_available_socket(node, "Attribute");
-      });
-    }
-    else {
-      params.add_item(IFACE_("Value"), [node_type, type](LinkSearchOpParams &params) {
-        bNode &node = params.add_node(node_type);
-        node_storage(node).data_type = *type;
-        params.update_and_connect_available_socket(node, "Value");
-      });
-    }
-  }
+  socket_items::add_item_with_socket_type_and_name<CaptureAttributeItemsAccessor>(
+      *node, SOCK_FLOAT, "Value");
 }
 
 static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
@@ -167,15 +151,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
-                    "data_type",
-                    "Data Type",
-                    "Type of data stored in attribute",
-                    rna_enum_attribute_type_items,
-                    NOD_storage_enum_accessors(data_type),
-                    CD_PROP_FLOAT,
-                    enums::attribute_type_type_with_socket_fn);
-
-  RNA_def_node_enum(srna,
                     "domain",
                     "Domain",
                     "Which domain to store the data in",
@@ -200,7 +175,6 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);

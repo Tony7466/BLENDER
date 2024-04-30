@@ -22,6 +22,7 @@ struct RepeatItemsAccessor {
   static constexpr const char *node_idname = "GeometryNodeRepeatOutput";
   static constexpr bool has_type = true;
   static constexpr bool has_name = true;
+  static constexpr bool has_derived_type = false;
 
   static socket_items::SocketItemsRef<NodeRepeatItem> get_items_from_node(bNode &node)
   {
