@@ -575,8 +575,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   /* If at top level, get instance indices from selection field, else use all instances. */
   const IndexMask indices = is_top_level ? gather_info.selection :
                                                  IndexMask(IndexRange(instances.instances_num()));
-  for (const int mask_index : indices.index_range()) {
-    const int i = indices[mask_index];
+  indices.foreach_index([&](const int i){
 
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
     const int child_target_depth = is_top_level ? gather_info.depths[i] : target_depth;
@@ -625,7 +624,7 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
                                                                    transform,
                                                                    instance_context);
                                   });
-  }
+  });
 }
 
 /**
