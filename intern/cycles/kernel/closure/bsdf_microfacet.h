@@ -291,7 +291,8 @@ ccl_device_forceinline void microfacet_fresnel(KernelGlobals kg,
       if (F0_real > 1e-5f && !isequal(F, one_spectrum())) {
         FOREACH_SPECTRUM_CHANNEL (i) {
           const float s = saturatef(inverse_lerp(1.0f, F0_real, GET_SPECTRUM_CHANNEL(F, i)));
-          GET_SPECTRUM_CHANNEL(F, i) *= s * (GET_SPECTRUM_CHANNEL(fresnel->f0, i) / F0_real);
+          const float factor = GET_SPECTRUM_CHANNEL(fresnel->f0, i) / F0_real;
+          GET_SPECTRUM_CHANNEL(F, i) *= mix(1.0f, factor, s);
         }
       }
     }
