@@ -10,6 +10,7 @@
 #pragma once
 
 #include "ANIM_fcurve.hh"
+#include "ANIM_keyframing.hh"
 
 #include "DNA_anim_types.h"
 
@@ -460,11 +461,11 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
    */
   FCurve &fcurve_find_or_create(const Binding &binding, StringRefNull rna_path, int array_index);
 
-  FCurve *keyframe_insert(const Binding &binding,
-                          StringRefNull rna_path,
-                          int array_index,
-                          float2 time_value,
-                          const KeyframeSettings &settings);
+  SingleKeyingResult keyframe_insert(const Binding &binding,
+                                     StringRefNull rna_path,
+                                     int array_index,
+                                     float2 time_value,
+                                     const KeyframeSettings &settings);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");

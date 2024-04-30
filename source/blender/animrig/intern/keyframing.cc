@@ -1102,17 +1102,8 @@ static SingleKeyingResult insert_key_strip(KeyframeStrip &strip,
                                            const KeyInsertData &key_data,
                                            const KeyframeSettings &key_settings)
 {
-  FCurve *fcurve = strip.keyframe_insert(
+  return strip.keyframe_insert(
       binding, rna_path, key_data.array_index, key_data.position, key_settings);
-
-  if (!fcurve) {
-    /* TODO: make `KeyframeStrip::keyframe_insert()` (called above)
-     * return enough info to actually choose the error variant here
-     * correctly. */
-    return SingleKeyingResult::CANNOT_CREATE_FCURVE;
-  }
-
-  return SingleKeyingResult::SUCCESS;
 }
 
 static SingleKeyingResult insert_key_layer(Layer &layer,
