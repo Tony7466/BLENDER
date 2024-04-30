@@ -18,11 +18,6 @@
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 
-/* If using compute, the shader should define its own pixel. */
-#if !defined(PIXEL) && defined(GPU_FRAGMENT_SHADER)
-#  define PIXEL gl_FragCoord.xy
-#endif
-
 void thickness_from_shadow_single(uint l_idx,
                                   const bool is_directional,
                                   vec3 P,
@@ -48,9 +43,10 @@ void thickness_from_shadow_single(uint l_idx,
   vec2 pcf_random = pcg4d(vec4(gl_FragCoord.xyz, sampling_rng_1D_get(SAMPLING_SHADOW_X))).xy;
 
   vec3 P_offset = P;
-  /* Invert all biases to get value inside the surface. Add 0.5 pixel of offset to make the pcf
-   * kernel fully inside the object. */
-  P_offset -= Ng * (texel_radius * (shadow_normal_offset(Ng, lv.L) + 5.0));
+  /* Invert all biases to get value inside the surface.
+   * The additional offset is to make the pcf kernel fully inside the object. */
+  float normal_offset = shadow_normal_offset(Ng, lv.L);
+  P_offset -= Ng * (texel_radius * normal_offset);
   /* Inverting this bias means we will over estimate the distance. Which removes some artifacts. */
   P_offset -= texel_radius * shadow_pcf_offset(lv.L, Ng, pcf_random);
 
@@ -58,21 +54,17 @@ void thickness_from_shadow_single(uint l_idx,
       is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P_offset);
 
   if (result.light_visibilty == 0.0) {
-    vec3 P_hit = P_offset + lv.L * result.occluder_distance;
-    vec3 hit_vec = P_hit - P;
-    float hit_distance = length(hit_vec);
+    float hit_distance = result.occluder_distance;
+    /* Add back the amount of offset we added to the original position.
+     * This avoids self shadowing issue. */
+    hit_distance += (normal_offset + 1.0) * texel_radius;
 
-    float angle_cosine = saturate(dot(hit_vec / hit_distance, -Ng));
-
-    float hit_thickness = (gbuffer_thickness < 0.0) ?
-                              hit_distance * angle_cosine /* Slab thickness. */ :
-                              hit_distance / angle_cosine /* Sphere diameter. */;
-
-    if ((hit_thickness > abs(gbuffer_thickness) * 0.001) &&
-        (hit_thickness < abs(gbuffer_thickness) * 1.0))
+    if ((hit_distance > abs(gbuffer_thickness) * 0.001) &&
+        (hit_distance < abs(gbuffer_thickness) * 1.0))
     {
-      float weight = saturate(dot(lv.L, -Ng));
-      thickness_accum += result.occluder_distance * weight;
+      float weight = 1.0;
+      saturate(dot(lv.L, -Ng));
+      thickness_accum += hit_distance * weight;
       weight_accum += weight;
     }
   }
@@ -94,7 +86,8 @@ float thickness_from_shadow(vec3 P, vec3 Ng, float vPz, float gbuffer_thickness)
   }
   LIGHT_FOREACH_END
 
-  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
+  vec2 pixel = gl_FragCoord.xy;
+  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, pixel, vPz, l_idx) {
     thickness_from_shadow_single(
         l_idx, false, P, Ng, gbuffer_thickness, thickness_accum, weight_accum);
   }
@@ -139,9 +132,8 @@ void main()
     return;
   }
 
-  /* Only amend the thickness if new value is inside the valid range [10%..150%]. */
-  if ((shadow_thickness < abs(gbuffer_thickness) * 1.0)) {
-    data_packed.x = sign(gbuffer_thickness) * shadow_thickness;
+  if ((shadow_thickness < abs(gbuffer_thickness))) {
+    data_packed.x = gbuffer_thickness_pack(sign(gbuffer_thickness) * shadow_thickness);
     imageStore(gbuf_normal_img, ivec3(texel, data_layer), vec4(data_packed, 0.0, 0.0));
   }
 }
