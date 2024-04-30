@@ -15,6 +15,6 @@ typedef struct ImportSettings {
   bool auto_connect;
   bool fix_orientation;
   int min_chain_length;
-  char *filepath;
+  const char *filepath;
   bool keep_bind_info;
 } ImportSettings;

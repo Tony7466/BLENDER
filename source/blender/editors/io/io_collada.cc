@@ -723,7 +723,9 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   int custom_normals;
   ImportSettings import_settings{};
 
-  if (!RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
+  const blender::Vector<std::string> paths = blender::ed::io::paths_from_operator_properties(
+      op->ptr);
+  if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
@@ -750,7 +752,16 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
   import_settings.min_chain_length = min_chain_length;
   import_settings.keep_bind_info = keep_bind_info != 0;
 
-  if (collada_import(C, &import_settings)) {
+  bool tag_update = false;
+  for (const std::string &path : paths) {
+    import_settings.filepath = path.c_str();
+    const bool success = collada_import(C, &import_settings);
+    tag_update = tag_update || success;
+    if (!success) {
+      BKE_report(op->reports, RPT_ERROR, "Parsing errors in Document (see Blender Console)");
+    }
+  }
+  if (tag_update) {
     DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS);
     Scene *scene = CTX_data_scene(C);
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -759,8 +770,6 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
     ED_outliner_select_sync_from_object_tag(C);
     return OPERATOR_FINISHED;
   }
-
-  BKE_report(op->reports, RPT_ERROR, "Parsing errors in Document (see Blender Console)");
   return OPERATOR_CANCELLED;
 }
 
@@ -814,7 +823,8 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  FILE_TYPE_FOLDER | FILE_TYPE_COLLADA,
                                  FILE_BLENDER,
                                  FILE_OPENFILE,
-                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
+                                 WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS |
+                                     WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
