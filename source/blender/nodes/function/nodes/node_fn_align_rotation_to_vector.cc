@@ -34,6 +34,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "pivot_axis", UI_ITEM_NONE, IFACE_("Pivot"), ICON_NONE);
 }
 
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = int16_t(math::Axis::Z);
+}
+
 static void align_rotations_auto_pivot(const IndexMask &mask,
                                        const VArray<math::Quaternion> &input_rotations,
                                        const VArray<float3> &vectors,
@@ -227,6 +232,7 @@ static void node_register()
   fn_node_type_base(
       &ntype, FN_NODE_ALIGN_ROTATION_TO_VECTOR, "Align Rotation to Vector", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
