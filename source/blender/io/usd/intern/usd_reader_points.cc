@@ -15,6 +15,7 @@
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include <pxr/usd/usdGeom/primvar.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
 #include "CLG_log.h"
@@ -86,34 +87,42 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
 
   PointCloud *point_cloud = geometry_set.get_pointcloud_for_write();
 
-  /* Get the existing point cloud. */
-  pxr::VtVec3fArray positions;
-  points_prim_.GetPointsAttr().Get(&positions, params.motion_sample_time);
+  /* Get the existing point cloud data. */
+  pxr::VtVec3fArray usd_positions;
+  points_prim_.GetPointsAttr().Get(&usd_positions, params.motion_sample_time);
 
-  if (point_cloud->totpoint != positions.size()) {
+  if (point_cloud->totpoint != usd_positions.size()) {
     /* Size changed so we must reallocate. */
-    point_cloud = BKE_pointcloud_new_nomain(positions.size());
+    point_cloud = BKE_pointcloud_new_nomain(usd_positions.size());
   }
 
   /* Update point positions and radii */
-
   static_assert(sizeof(pxr::GfVec3f) == sizeof(float3));
-  MutableSpan<float3> point_positions = point_cloud->positions_for_write();
-  point_positions.copy_from(Span(positions.data(), positions.size()).cast<float3>());
+  MutableSpan<float3> positions = point_cloud->positions_for_write();
+  positions.copy_from(Span(usd_positions.data(), usd_positions.size()).cast<float3>());
 
-  pxr::VtFloatArray widths;
-  points_prim_.GetWidthsAttr().Get(&widths, params.motion_sample_time);
-  if (!widths.empty()) {
+  pxr::VtFloatArray usd_widths;
+  points_prim_.GetWidthsAttr().Get(&usd_widths, params.motion_sample_time);
+
+  if (!usd_widths.empty()) {
     bke::MutableAttributeAccessor attributes = point_cloud->attributes_for_write();
     bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
         "radius", bke::AttrDomain::Point);
-    for (int i_point = 0; i_point < widths.size(); i_point++) {
-      radii.span[i_point] = widths[i_point] / 2.0f;
+
+    const pxr::TfToken widths_interp = points_prim_.GetWidthsInterpolation();
+    if (widths_interp == pxr::UsdGeomTokens->constant) {
+      radii.span.fill(usd_widths[0] / 2.0f);
+    }
+    else {
+      for (int i_point = 0; i_point < usd_widths.size(); i_point++) {
+        radii.span[i_point] = usd_widths[i_point] / 2.0f;
+      }
     }
 
     radii.finish();
   }
 
+  /* Read in velocity and generic data. */
   read_velocities(point_cloud, params.motion_sample_time);
   read_custom_data(point_cloud, params.motion_sample_time);
 
@@ -132,7 +141,6 @@ void USDPointsReader::read_velocities(PointCloud *point_cloud, const double moti
 
     Span<pxr::GfVec3f> usd_data(velocities.data(), velocities.size());
     attribute.span.typed<float3>().copy_from(usd_data.cast<float3>());
-
     attribute.finish();
   }
 }
@@ -143,15 +151,16 @@ void USDPointsReader::read_custom_data(PointCloud *point_cloud,
   pxr::UsdGeomPrimvarsAPI pv_api(points_prim_);
 
   std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
-  for (const auto &pv : primvars) {
+  for (const pxr::UsdGeomPrimvar &pv : primvars) {
     if (!pv.HasValue()) {
       continue;
     }
+
     const pxr::SdfValueTypeName type = pv.GetTypeName();
     const pxr::TfToken interp = pv.GetInterpolation();
     const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
 
-    if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
+    if (type == pxr::SdfValueTypeNames->Color3fArray) {
       bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
           point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
               name.GetText(), bke::AttrDomain::Point);
@@ -166,13 +175,22 @@ void USDPointsReader::read_custom_data(PointCloud *point_cloud,
         continue;
       }
 
-      for (int i = 0; i < colors.size(); ++i) {
-        const pxr::GfVec3f &usd_color = colors[i];
-        primvar_writer.span[i] = ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f);
+      /* TODO: Do we need to handle any other interpolation modes? */
+      if (interp == pxr::UsdGeomTokens->constant) {
+        const pxr::GfVec3f &usd_color = colors[0];
+        primvar_writer.span.fill(ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f));
       }
+      else if (interp == pxr::UsdGeomTokens->vertex) {
+        for (int i = 0; i < colors.size(); ++i) {
+          const pxr::GfVec3f &usd_color = colors[i];
+          primvar_writer.span[i] = ColorGeometry4f(usd_color[0], usd_color[1], usd_color[2], 1.0f);
+        }
+      }
+
       primvar_writer.finish();
     }
 
+    /* TODO: Need to handle the other data types. */
     if (type == pxr::SdfValueTypeNames->FloatArray) {
       bke::SpanAttributeWriter<float> primvar_writer =
           point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(
@@ -187,7 +205,13 @@ void USDPointsReader::read_custom_data(PointCloud *point_cloud,
         continue;
       }
 
-      primvar_writer.span.copy_from(Span(values.data(), values.size()));
+      /* TODO: Do we need to handle any other interpolation modes? */
+      if (interp == pxr::UsdGeomTokens->constant) {
+        primvar_writer.span.fill(values[0]);
+      }
+      else if (interp == pxr::UsdGeomTokens->vertex) {
+        primvar_writer.span.copy_from(Span(values.data(), values.size()));
+      }
       primvar_writer.finish();
     }
   }
