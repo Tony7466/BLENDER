@@ -1156,7 +1156,7 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
     return;
   }
 
-  if (BKE_pbvh_type(ss->pbvh) != PBVH_FACES) {
+  if (BKE_pbvh_type(*ss->pbvh) != PBVH_FACES) {
     return;
   }
 
@@ -1215,11 +1215,11 @@ static bool paint_use_2d_cursor(PaintMode mode)
       return false;
     case PaintMode::Texture3D:
     case PaintMode::Texture2D:
-    case PaintMode::SculptUV:
     case PaintMode::VertexGPencil:
     case PaintMode::SculptGPencil:
     case PaintMode::WeightGPencil:
     case PaintMode::SculptCurves:
+    case PaintMode::SculptGreasePencil:
     case PaintMode::GPencil:
       return true;
     case PaintMode::Invalid:
@@ -1429,7 +1429,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
     paint_cursor_update_unprojected_radius(ups, brush, vc, pcontext->scene_space_location);
   }
 
-  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS;
+  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(*ss->pbvh) == PBVH_GRIDS;
 
   pcontext->sd = CTX_data_tool_settings(pcontext->C)->sculpt;
 }
@@ -1516,6 +1516,18 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
   }
 
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
+  Paint *paint = pcontext->paint;
+  Brush *brush = pcontext->brush;
+  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
+    return;
+  }
+
+  if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
+    return;
+  }
+
+  /* default radius and color */
+  pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
 
   float3 color(1.0f);
   const int x = pcontext->x;
@@ -1523,26 +1535,13 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   /* for paint use paint brush size and color */
   if (pcontext->mode == PaintMode::GPencil) {
-    Paint *paint = pcontext->paint;
-    Brush *brush = pcontext->brush;
-    if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-      return;
-    }
-
-    if ((paint->flags & PAINT_SHOW_BRUSH) == 0) {
-      return;
-    }
-
     /* Eraser has a special shape and use a different shader program. */
     if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
       grease_pencil_eraser_draw(pcontext);
       return;
     }
 
-    if (!BKE_brush_use_locked_size(pcontext->scene, brush)) {
-      pcontext->pixel_radius = BKE_brush_size_get(pcontext->scene, brush);
-    }
-    else {
+    if (BKE_brush_use_locked_size(pcontext->scene, brush)) {
       const bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
       const ed::greasepencil::DrawingPlacement placement(
           *pcontext->scene, *pcontext->region, *pcontext->vc.v3d, *object, layer);
@@ -1574,6 +1573,9 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       }
     }
   }
+  else if (pcontext->mode == PaintMode::WeightGPencil) {
+    copy_v3_v3(color, brush->add_col);
+  }
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */
@@ -1582,7 +1584,7 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 
   /* Outer Ring: Dark color for contrast on light backgrounds (e.g. gray on white) */
   const float3 darkcolor = color * 0.40f;
-  immUniformColor4f(darkcolor.x, darkcolor.y, darkcolor.z, 0.8f);
+  immUniformColor4f(darkcolor[0], darkcolor[1], darkcolor[2], 0.8f);
   imm_draw_circle_wire_2d(pcontext->pos, x, y, pcontext->pixel_radius + 1, 32);
 
   /* Draw line for lazy mouse */
@@ -1608,7 +1610,8 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
 {
   switch (pcontext->mode) {
-    case PaintMode::GPencil: {
+    case PaintMode::GPencil:
+    case PaintMode::WeightGPencil: {
       grease_pencil_brush_cursor_draw(pcontext);
       break;
     }
@@ -1689,8 +1692,8 @@ static void paint_cursor_pose_brush_segments_draw(PaintCursorContext *pcontext)
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
   GPU_line_width(2.0f);
 
-  immBegin(GPU_PRIM_LINES, ss->pose_ik_chain_preview->tot_segments * 2);
-  for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
+  immBegin(GPU_PRIM_LINES, ss->pose_ik_chain_preview->segments.size() * 2);
+  for (const int i : ss->pose_ik_chain_preview->segments.index_range()) {
     immVertex3fv(pcontext->pos, ss->pose_ik_chain_preview->segments[i].initial_orig);
     immVertex3fv(pcontext->pos, ss->pose_ik_chain_preview->segments[i].initial_head);
   }
@@ -1703,7 +1706,7 @@ static void paint_cursor_pose_brush_origins_draw(PaintCursorContext *pcontext)
 
   SculptSession *ss = pcontext->ss;
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-  for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
+  for (const int i : ss->pose_ik_chain_preview->segments.index_range()) {
     cursor_draw_point_screen_space(pcontext->pos,
                                    pcontext->region,
                                    ss->pose_ik_chain_preview->segments[i].initial_orig,
@@ -1816,7 +1819,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
 
       /* Free the previous pose brush preview. */
       if (ss->pose_ik_chain_preview) {
-        pose::ik_chain_free(ss->pose_ik_chain_preview);
+        ss->pose_ik_chain_preview.reset();
       }
 
       /* Generate a new pose brush preview from the current cursor location. */

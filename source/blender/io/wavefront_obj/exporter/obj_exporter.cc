@@ -332,14 +332,14 @@ void exporter_main(bContext *C, const OBJExportParams &export_params)
   ed::object::mode_set(C, OB_MODE_OBJECT);
 
   Collection *collection = nullptr;
-  if (strlen(export_params.collection) > 0) {
+  if (export_params.collection[0]) {
     Main *bmain = CTX_data_main(C);
     collection = reinterpret_cast<Collection *>(
         BKE_libblock_find_name(bmain, ID_GR, export_params.collection));
     if (!collection) {
       BKE_reportf(export_params.reports,
                   RPT_ERROR,
-                  "OBJ Export: Unable to find collection %s",
+                  "OBJ Export: Unable to find collection '%s'",
                   export_params.collection);
       return;
     }

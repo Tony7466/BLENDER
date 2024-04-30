@@ -1204,8 +1204,10 @@ static int delete_soft(const char *file, const char **error_message)
   const char *args[5];
   const char *process_failed;
 
-  char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
-  char *xdg_session_desktop = getenv("XDG_SESSION_DESKTOP");
+  /* NOTE(@ideasman42): `XDG_*` environment variables aren't reliably set on GNOME, see: #121241.
+   * Take care using them, as a hint they're OK, but not guaranteed to be correct. */
+  const char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
+  const char *xdg_session_desktop = getenv("XDG_SESSION_DESKTOP");
 
   if ((xdg_current_desktop != nullptr && STREQ(xdg_current_desktop, "KDE")) ||
       (xdg_session_desktop != nullptr && STREQ(xdg_session_desktop, "KDE")))

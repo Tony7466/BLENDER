@@ -65,7 +65,7 @@
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_softbody.h"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -583,9 +583,8 @@ static bool editmode_load_free_ex(Main *bmain,
     }
 
     if (free_data) {
-      EDBM_mesh_free_data(mesh->runtime->edit_mesh);
-      MEM_freeN(mesh->runtime->edit_mesh);
-      mesh->runtime->edit_mesh = nullptr;
+      EDBM_mesh_free_data(mesh->runtime->edit_mesh.get());
+      mesh->runtime->edit_mesh.reset();
     }
     /* will be recalculated as needed. */
     {

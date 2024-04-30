@@ -123,16 +123,16 @@ class Animation : public ::Animation {
 
   /** Assign this animation to the ID.
    *
-   * \param binding The binding this ID should be animated by, may be nullptr if it is to be
+   * \param binding: The binding this ID should be animated by, may be nullptr if it is to be
    * assigned later. In that case, the ID will not actually receive any animation.
-   * \param animated_id The ID that should be animated by this Animation data-block.
+   * \param animated_id: The ID that should be animated by this Animation data-block.
    */
   bool assign_id(Binding *binding, ID &animated_id);
 
   /**
    * Unassign this Animation from the animated ID.
    *
-   * \param animated_id ID that is animated by this Animation. Calling this
+   * \param animated_id: ID that is animated by this Animation. Calling this
    * function when this ID is _not_ animated by this Animation is not allowed,
    * and considered a bug.
    */
@@ -184,8 +184,8 @@ class Strip : public ::AnimationStrip {
    *
    * The reason is that various functions will assume that the `Strip` is actually a down-cast
    * instance of another strip class, and that `Strip::type()` will say which type. To avoid having
-   * to explcitly deal with an 'invalid' type everywhere, creating a `Strip` directly is simply not
-   * allowed.
+   * to explicitly deal with an 'invalid' type everywhere, creating a `Strip` directly is simply
+   * not allowed.
    */
   Strip() = delete;
 
@@ -443,14 +443,14 @@ static_assert(sizeof(ChannelBag) == sizeof(::AnimationChannelBag),
  *
  * - By binding handle.
  * - By fallback string.
- * - By the ID's name (matching agains the binding name).
+ * - By the ID's name (matching against the binding name).
  * - If the above do not find a suitable binding, the animated ID will not
- *   receive any animation and the calller is responsible for creating a binding
+ *   receive any animation and the caller is responsible for creating a binding
  *   and assigning it.
  *
  * \return `false` if the assignment was not possible (for example the ID is of a type that cannot
  * be animated). If the above fall-through case of "no binding found" is reached, this function
- * will still return `true` as the Animation was succesfully assigned.
+ * will still return `true` as the Animation was successfully assigned.
  */
 bool assign_animation(Animation &anim, ID &animated_id);
 
