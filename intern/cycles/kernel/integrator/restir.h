@@ -153,7 +153,6 @@ ccl_device_inline void ray_setup(KernelGlobals kg,
   integrate_camera_sample(kg, sample, x, y, rng_pixel, ray);
 }
 
-/* TODO(weizhen): move these radiance function to somewhere else. */
 ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
                                                           ConstIntegratorState state,
                                                           ccl_private ShaderData *sd,
@@ -170,27 +169,6 @@ ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
   surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
       kg, state, sd, render_buffer, path_flag);
   /* TODO(weizhen): do we call `surface_shader_prepare_closures()` here? */
-}
-
-/* Evaluate BSDF * L * cos_NO, accounting for visibility. */
-ccl_device_forceinline void radiance_eval(KernelGlobals kg,
-                                          IntegratorState state,
-                                          ccl_private ShaderData *sd,
-                                          ccl_private LightSample *ls,
-                                          ccl_private BsdfEval *radiance)
-{
-  ShaderDataCausticsStorage emission_sd_storage;
-  ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-
-  /* TODO(weizhen): where should we check visibility? */
-  const bool check_visibility = kernel_data.integrator.restir_spatial_visibility;
-  PROFILING_INIT(kg, PROFILING_RESTIR_LIGHT_EVAL);
-  const Spectrum light_eval = light_sample_shader_eval(
-      kg, state, emission_sd, ls, sd->time, sd, check_visibility);
-  PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
-  surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
-
-  bsdf_eval_mul(radiance, light_eval);
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,
@@ -219,6 +197,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   /* Load random number state. */
   RNGState rng_state;
   path_state_rng_load(state, &rng_state);
+
+  const bool check_visibility = kernel_data.integrator.restir_spatial_visibility;
 
   /* Plus one to account for the current pixel. */
   const int samples = kernel_data.integrator.restir_spatial_samples + 1;
@@ -266,7 +246,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     if (!light_sample_from_uv(kg, &sd, path_flag, &neighbor_reservoir.ls)) {
       continue;
     }
-    radiance_eval(kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance);
+    radiance_eval(
+        kg, state, &sd, &neighbor_reservoir.ls, &neighbor_reservoir.radiance, check_visibility);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
     if (sample_copy_direction(kg, neighbor_reservoir)) {
       /* Jacobian for non-identity shift. */
@@ -317,7 +298,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     if (!light_sample_from_uv(kg, &neighbor_sd, neighbor_path_flag, &picked_ls)) {
       continue;
     }
-    radiance_eval(kg, state, &neighbor_sd, &picked_ls, &neighbor_reservoir.radiance);
+    radiance_eval(
+        kg, state, &neighbor_sd, &picked_ls, &neighbor_reservoir.radiance, check_visibility);
 
     if (!bsdf_eval_is_zero(&neighbor_reservoir.radiance)) {
       valid_neighbors++;

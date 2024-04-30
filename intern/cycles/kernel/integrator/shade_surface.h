@@ -156,10 +156,34 @@ ccl_device_forceinline void integrate_surface_emission(KernelGlobals kg,
       kg, state, L, mis_weight, render_buffer, object_lightgroup(kg, sd->object));
 }
 
-/* TODO(weizhen): move this function to somewhere more appropriate. */
+/* TODO(weizhen): move these radiance functions to somewhere more appropriate. */
 ccl_device_forceinline bool light_is_direct_illumination(IntegratorState state)
 {
   return !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_ANY_PASS);
+}
+
+/* Evaluate the integrant of the rendering equation (BSDF * L * cos_NO * V) and write to
+ * `radiance`.
+ * Return the pdf of sampling the bsdf. */
+ccl_device_forceinline float radiance_eval(KernelGlobals kg,
+                                           IntegratorState state,
+                                           ccl_private ShaderData *sd,
+                                           ccl_private LightSample *ls,
+                                           ccl_private BsdfEval *radiance,
+                                           const bool check_visibility)
+{
+  ShaderDataCausticsStorage emission_sd_storage;
+  ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
+
+  PROFILING_INIT(kg, PROFILING_RESTIR_LIGHT_EVAL);
+  const Spectrum light_eval = light_sample_shader_eval(
+      kg, state, emission_sd, ls, sd->time, sd, check_visibility);
+  PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
+  const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls->D, radiance, ls->shader);
+
+  bsdf_eval_mul(radiance, light_eval);
+
+  return bsdf_pdf;
 }
 
 ccl_device int integrate_surface_ray_portal(KernelGlobals kg,
@@ -398,7 +422,7 @@ ccl_device
   for (int i = 0; i < reservoir.num_light_samples; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_LIGHT_RESAMPLING);
     LightSample ls ccl_optional_struct_init;
-    BsdfEval bsdf_eval ccl_optional_struct_init;
+    BsdfEval radiance ccl_optional_struct_init;
 
     /* TODO(weizhen): does this result in correlated samples if different sample numbers are used
      * when using RIS? */
@@ -435,28 +459,13 @@ ccl_device
       }
     }
 
-    /* Evaluate light shader.
-     *
-     * TODO: can we reuse sd memory? In theory we can move this after
-     * integrate_surface_bounce, evaluate the BSDF, and only then evaluate
-     * the light shader. This could also move to its own kernel, for
-     * non-constant light sources. */
-    ShaderDataCausticsStorage emission_sd_storage;
-    ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-
+    /* Evaluate light shader. */
     const bool check_visibility = kernel_data.integrator.restir_initial_visibility &&
                                   is_direct_light;
-    PROFILING_EVENT(PROFILING_RESTIR_LIGHT_EVAL);
-    const Spectrum L = light_sample_shader_eval(
-        kg, state, emission_sd, &ls, sd->time, sd, check_visibility);
+    const float bsdf_pdf = radiance_eval(kg, state, sd, &ls, &radiance, check_visibility);
 
-    /* Evaluate BSDF. */
-    PROFILING_EVENT(PROFILING_RESTIR_BSDF_EVAL);
-    const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
-
-    bsdf_eval_mul(&bsdf_eval, L);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
-    reservoir.add_light_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
+    reservoir.add_light_sample(ls, radiance, bsdf_pdf, rand_pick);
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
@@ -465,7 +474,7 @@ ccl_device
     kernel_assert(bounce == 0);
 
     LightSample ls ccl_optional_struct_init;
-    BsdfEval bsdf_eval ccl_optional_struct_init;
+    BsdfEval radiance ccl_optional_struct_init;
     float3 bsdf_wo ccl_optional_struct_init;
     float bsdf_pdf = 0.0f;
 
@@ -485,13 +494,13 @@ ccl_device
                                        sc,
                                        path_flag,
                                        rand_bsdf,
-                                       &bsdf_eval,
+                                       &radiance,
                                        &bsdf_wo,
                                        &bsdf_pdf,
                                        &bsdf_sampled_roughness,
                                        &bsdf_eta);
 
-    if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&bsdf_eval)) {
+    if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&radiance)) {
       continue;
     }
 
@@ -652,9 +661,9 @@ ccl_device
     if (is_zero(L)) {
       continue;
     }
-    bsdf_eval_mul(&bsdf_eval, L);
+    bsdf_eval_mul(&radiance, L);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
-    reservoir.add_bsdf_sample(ls, bsdf_eval, bsdf_pdf, rand_pick);
+    reservoir.add_bsdf_sample(ls, radiance, bsdf_pdf, rand_pick);
   }
 
   PROFILING_EVENT(PROFILING_RESTIR_INITIAL_RESAMPLING);
