@@ -819,33 +819,30 @@ static void update_transdata_bezt_pointers(TransDataContainer *tc,
     TransData2D *td2d;
     TransData *td;
 
-    if (trans_data_map.contains(bezm.bezt->vec[0])) {
-      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[0]);
-      td2d = &tc->data_2d[trans_data_index];
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[0])) {
+      td2d = &tc->data_2d[*trans_data_index];
       if (bezm.swap_handles) {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
       else {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
-      td = &tc->data[trans_data_index];
+      td = &tc->data[*trans_data_index];
       update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
-    if (trans_data_map.contains(bezm.bezt->vec[2])) {
-      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[2]);
-      td2d = &tc->data_2d[trans_data_index];
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[2])) {
+      td2d = &tc->data_2d[*trans_data_index];
       if (bezm.swap_handles) {
         td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
       else {
         td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
-      td = &tc->data[trans_data_index];
+      td = &tc->data[*trans_data_index];
       update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
-    if (trans_data_map.contains(bezm.bezt->vec[1])) {
-      const int trans_data_index = trans_data_map.lookup(bezm.bezt->vec[1]);
-      td2d = &tc->data_2d[trans_data_index];
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[1])) {
+      td2d = &tc->data_2d[*trans_data_index];
       td2d->loc2d = fcu->bezt[new_index].vec[1];
 
       /* If only control point is selected, the handle pointers need to be updated as well. */
@@ -855,7 +852,7 @@ static void update_transdata_bezt_pointers(TransDataContainer *tc,
       if (td2d->h2) {
         td2d->h2 = fcu->bezt[new_index].vec[2];
       }
-      td = &tc->data[trans_data_index];
+      td = &tc->data[*trans_data_index];
       update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
   }
