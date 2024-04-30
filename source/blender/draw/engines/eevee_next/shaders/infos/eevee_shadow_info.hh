@@ -64,7 +64,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_opaque)
     .storage_buf(5, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
     .push_constant(Type::IVEC2, "input_depth_extent")
-    .push_constant(Type::FLOAT, "tilemap_proj_ratio")
     .additional_info(
         "eevee_shared", "draw_view", "draw_view_culling", "eevee_hiz_data", "eevee_light_data")
     .compute_source("eevee_shadow_tag_usage_comp.glsl");
@@ -76,11 +75,11 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_surfels)
     /* ShadowTileDataPacked is uint. But MSL translation need the real type. */
     .storage_buf(7, Qualifier::READ_WRITE, "uint", "tiles_buf[]")
     .push_constant(Type::INT, "directional_level")
-    .push_constant(Type::FLOAT, "tilemap_proj_ratio")
     .additional_info("eevee_shared",
                      "draw_view",
                      "draw_view_culling",
                      "eevee_light_data",
+                     "eevee_global_ubo",
                      "eevee_surfel_common")
     .compute_source("eevee_shadow_tag_usage_surfels_comp.glsl");
 
@@ -97,8 +96,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_transparent)
     .storage_buf(4, Qualifier::READ, "ObjectBounds", "bounds_buf[]")
     .storage_buf(5, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
-    .push_constant(Type::FLOAT, "tilemap_proj_ratio")
-    .push_constant(Type::FLOAT, "pixel_world_radius")
     .push_constant(Type::IVEC2, "fb_resolution")
     .push_constant(Type::INT, "fb_lod")
     .vertex_out(eevee_shadow_tag_transparent_iface)
@@ -118,7 +115,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tag_usage_volume)
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .storage_buf(4, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
     .storage_buf(5, Qualifier::READ_WRITE, SHADOW_TILE_DATA_PACKED, "tiles_buf[]")
-    .push_constant(Type::FLOAT, "tilemap_proj_ratio")
     .additional_info("eevee_volume_properties_data",
                      "eevee_shared",
                      "draw_view",
@@ -189,7 +185,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .storage_buf(7, Qualifier::WRITE, SHADOW_PAGE_PACKED, "dst_coord_buf[SHADOW_RENDER_MAP_SIZE]")
     .storage_buf(8, Qualifier::WRITE, SHADOW_PAGE_PACKED, "src_coord_buf[SHADOW_RENDER_MAP_SIZE]")
     .storage_buf(9, Qualifier::WRITE, SHADOW_PAGE_PACKED, "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
-    .storage_buf(10, Qualifier::WRITE, "uint", "viewport_index_buf[SHADOW_VIEW_MAX]")
+    .storage_buf(10, Qualifier::WRITE, "ShadowRenderView", "render_view_buf[SHADOW_VIEW_MAX]")
     .storage_buf(11, Qualifier::READ, "ShadowTileMapClip", "tilemaps_clip_buf[]")
     /* 12 is the minimum number of storage buf we require. Do not go above this limit. */
     .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D, "tilemaps_img")

@@ -209,7 +209,7 @@ static void calculate_depth(gesture::GestureData &gesture_data,
   float depth_back = -FLT_MAX;
 
   for (int i = 0; i < totvert; i++) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(*ss->pbvh, i);
 
     const float *vco = SCULPT_vertex_co_get(ss, vertex);
     /* Convert the coordinates to world space to calculate the depth. When generating the trimming
@@ -454,7 +454,7 @@ static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
   generate_geometry(gesture_data);
   SCULPT_topology_islands_invalidate(ss);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_node(gesture_data.vc.obact, nullptr, undo::Type::Geometry);
+  undo::push_node(*gesture_data.vc.obact, nullptr, undo::Type::Geometry);
 }
 
 static int bm_face_isect_pair(BMFace *f, void * /*user_data*/)
@@ -591,7 +591,7 @@ static void gesture_end(bContext & /*C*/, gesture::GestureData &gesture_data)
 
   free_geometry(gesture_data);
 
-  undo::push_node(gesture_data.vc.obact, nullptr, undo::Type::Geometry);
+  undo::push_node(*gesture_data.vc.obact, nullptr, undo::Type::Geometry);
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&gesture_data.vc.obact->id, ID_RECALC_GEOMETRY);
 }
@@ -675,7 +675,7 @@ static bool can_exec(const bContext &C)
 {
   const Object &object = *CTX_data_active_object(&C);
   const SculptSession &ss = *object.sculpt;
-  if (BKE_pbvh_type(ss.pbvh) != PBVH_FACES) {
+  if (BKE_pbvh_type(*ss.pbvh) != PBVH_FACES) {
     /* Not supported in Multires and Dyntopo. */
     return false;
   }
