@@ -764,10 +764,14 @@ static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
   }
 
   bool ok = true;
-  /* Keep repeating the process until nothing is out of place anymore. */
-  const blender::IndexRange bezm_range = bezms.index_range().drop_back(1);
   const int bezms_size = bezms.size();
+  if (bezms_size < 2) {
+    /* No sorting is needed with only 0 or 1 entries. */
+    return;
+  }
+  const blender::IndexRange bezm_range = bezms.index_range().drop_back(1);
 
+  /* Keep repeating the process until nothing is out of place anymore. */
   while (ok) {
     ok = false;
     for (const int i : bezm_range) {
