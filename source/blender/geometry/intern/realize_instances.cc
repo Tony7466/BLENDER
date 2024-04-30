@@ -973,8 +973,9 @@ static void execute_instances_tasks(
       bke::GSpanAttributeWriter write_attribute =
           dst_instances->attributes_for_write().lookup_for_write_span(id);
       GMutableSpan dst_span = write_attribute.span;
-
-      if (!write_attribute) {  // do not override existing attributes
+      
+      /* do not override existing attributes. */
+      if (!write_attribute) {
         continue;
       }
 
