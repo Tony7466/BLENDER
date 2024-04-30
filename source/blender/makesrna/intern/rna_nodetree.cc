@@ -8216,6 +8216,8 @@ static void def_cmp_colorcorrection(StructRNA *srna)
 
 static void def_cmp_viewer(StructRNA *srna)
 {
+  PropertyRNA *prop;
+
   prop = RNA_def_property(srna, "use_alpha", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "custom2", CMP_NODE_OUTPUT_IGNORE_ALPHA);
   RNA_def_property_ui_text(
