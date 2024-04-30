@@ -498,7 +498,7 @@ ShadowEvalResult shadow_eval(LightData light,
                              int ray_count,
                              int ray_step_count)
 {
-#ifdef EEVEE_SAMPLING_DATA
+#if defined(EEVEE_SAMPLING_DATA) && defined(EEVEE_UTILITY_TX)
 #  ifdef GPU_FRAGMENT_SHADER
   vec2 pixel = floor(gl_FragCoord.xy);
 #  elif defined(GPU_COMPUTE_SHADER)

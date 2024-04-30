@@ -12,6 +12,7 @@
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tracing_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
@@ -26,6 +27,7 @@ void thickness_from_shadow_single(uint l_idx,
                                   const bool is_directional,
                                   vec3 P,
                                   vec3 Ng,
+                                  float gbuffer_thickness,
                                   inout float thickness_accum,
                                   inout float weight_accum)
 {
@@ -43,21 +45,36 @@ void thickness_from_shadow_single(uint l_idx,
 
   float texel_radius = shadow_texel_radius_at_position(light, is_directional, P);
 
-  /* Invert all biases to get value inside the surface. */
-  P -= Ng * (texel_radius * shadow_normal_offset(Ng, lv.L));
-  P -= lv.L * texel_radius;
+  vec2 pcf_random = pcg4d(vec4(gl_FragCoord.xyz, sampling_rng_1D_get(SAMPLING_SHADOW_X))).xy;
+
+  vec3 P_offset = P;
+  /* Invert all biases to get value inside the surface. Add 0.5 pixel of offset to make the pcf
+   * kernel fully inside the object. */
+  P_offset -= Ng * (texel_radius * (shadow_normal_offset(Ng, lv.L) + 5.0));
   /* Inverting this bias means we will over estimate the distance. Which removes some artifacts. */
-  // P -= (2.0 * texel_radius) * shadow_pcf_offset(lv.L, Ng, pcg(gl_FragCoord.xy));
+  P_offset -= texel_radius * shadow_pcf_offset(lv.L, Ng, pcf_random);
 
   ShadowEvalResult result = shadow_sample(
-      is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P);
+      is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P_offset);
 
   if (result.light_visibilty == 0.0) {
-    /* Weight result by facing ratio to avoid harsh transitions. */
-    float weight = saturate(dot(lv.L, -Ng));
-    /* Flatten the accumulation to avoid weighting the outliers too much. */
-    thickness_accum += safe_sqrt(result.occluder_distance) * weight;
-    weight_accum += weight;
+    vec3 P_hit = P_offset + lv.L * result.occluder_distance;
+    vec3 hit_vec = P_hit - P;
+    float hit_distance = length(hit_vec);
+
+    float angle_cosine = saturate(dot(hit_vec / hit_distance, -Ng));
+
+    float hit_thickness = (gbuffer_thickness < 0.0) ?
+                              hit_distance * angle_cosine /* Slab thickness. */ :
+                              hit_distance / angle_cosine /* Sphere diameter. */;
+
+    if ((hit_thickness > abs(gbuffer_thickness) * 0.001) &&
+        (hit_thickness < abs(gbuffer_thickness) * 1.0))
+    {
+      float weight = saturate(dot(lv.L, -Ng));
+      thickness_accum += result.occluder_distance * weight;
+      weight_accum += weight;
+    }
   }
 }
 
@@ -66,18 +83,20 @@ void thickness_from_shadow_single(uint l_idx,
  * available. If no shadow-map has a record of the other side of the surface, this function
  * returns -1.
  */
-float thickness_from_shadow(vec3 P, vec3 Ng, float vPz)
+float thickness_from_shadow(vec3 P, vec3 Ng, float vPz, float gbuffer_thickness)
 {
   float thickness_accum = 0.0;
   float weight_accum = 0.0;
 
   LIGHT_FOREACH_BEGIN_DIRECTIONAL (light_cull_buf, l_idx) {
-    thickness_from_shadow_single(l_idx, true, P, Ng, thickness_accum, weight_accum);
+    thickness_from_shadow_single(
+        l_idx, true, P, Ng, gbuffer_thickness, thickness_accum, weight_accum);
   }
   LIGHT_FOREACH_END
 
   LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
-    thickness_from_shadow_single(l_idx, false, P, Ng, thickness_accum, weight_accum);
+    thickness_from_shadow_single(
+        l_idx, false, P, Ng, gbuffer_thickness, thickness_accum, weight_accum);
   }
   LIGHT_FOREACH_END
 
@@ -86,9 +105,6 @@ float thickness_from_shadow(vec3 P, vec3 Ng, float vPz)
   }
 
   float thickness = thickness_accum / weight_accum;
-  /* Flatten the accumulation to avoid weighting the outliers too much. */
-  thickness = square(thickness);
-
   /* Add a bias because it is usually too small to prevent self shadowing. */
   return thickness;
 }
@@ -109,21 +125,23 @@ void main()
 
   vec3 Ng = gbuffer_normal_unpack(imageLoad(gbuf_normal_img, ivec3(texel, 0)).rg);
 
-  float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
-  if (shadow_thickness <= 0.0) {
-    return;
-  }
   /* Use manual fetch because gbuffer_read_thickness expect a read only texture input. */
   uint header = texelFetch(gbuf_header_tx, texel, 0).r;
   int data_layer = gbuffer_normal_count(header);
   vec2 data_packed = imageLoad(gbuf_normal_img, ivec3(texel, data_layer)).rg;
-  float data_thickness = gbuffer_thickness_unpack(data_packed.x);
-  float gbuffer_thickness = abs(data_thickness);
+  float gbuffer_thickness = gbuffer_thickness_unpack(data_packed.x);
+  if (gbuffer_thickness == 0.0) {
+    return;
+  }
+
+  float shadow_thickness = thickness_from_shadow(P, Ng, vPz, gbuffer_thickness);
+  if (shadow_thickness <= 0.0) {
+    return;
+  }
+
   /* Only amend the thickness if new value is inside the valid range [10%..150%]. */
-  if ((shadow_thickness > gbuffer_thickness * 0.01) &&
-      (shadow_thickness < gbuffer_thickness * 1.5))
-  {
-    data_packed.x = sign(data_thickness) * shadow_thickness;
+  if ((shadow_thickness < abs(gbuffer_thickness) * 1.0)) {
+    data_packed.x = sign(gbuffer_thickness) * shadow_thickness;
     imageStore(gbuf_normal_img, ivec3(texel, data_layer), vec4(data_packed, 0.0, 0.0));
   }
 }

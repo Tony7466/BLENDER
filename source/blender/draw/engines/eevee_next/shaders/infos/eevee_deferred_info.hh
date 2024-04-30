@@ -26,6 +26,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_thickness_amend)
     .fragment_source("eevee_deferred_thickness_amend_frag.glsl")
     .additional_info("draw_view",
                      "draw_fullscreen",
+                     "eevee_sampling_data",
                      "eevee_shared",
                      "eevee_light_data",
                      "eevee_shadow_data",
