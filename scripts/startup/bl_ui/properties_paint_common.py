@@ -1512,13 +1512,6 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             if settings.use_thickness_curve:
                 # Pressure curve.
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
-    # elif grease_pencil_tool == 'DRAW':
-    #     layout.prop(gp_settings, "active_smooth_factor")
-    #     row = layout.row(align=True)
-    #     if compact:
-    #         row.prop(gp_settings, "caps_type", text="", expand=True)
-    #     else:
-    #         row.prop(gp_settings, "caps_type", text="Caps Type")
     elif grease_pencil_tool == 'ERASE':
         layout.prop(gp_settings, "eraser_mode", expand=True)
         if gp_settings.eraser_mode == "HARD":
