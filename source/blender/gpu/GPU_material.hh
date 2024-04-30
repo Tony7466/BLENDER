@@ -116,6 +116,7 @@ enum eGPUMaterialStatus {
   GPU_MAT_CREATED,
   GPU_MAT_QUEUED,
   GPU_MAT_SUCCESS,
+  GPU_MAT_USE_DEFAULT,
 };
 
 /* GPU_MAT_OPTIMIZATION_SKIP for cases where we do not

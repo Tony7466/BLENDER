@@ -864,14 +864,12 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   ntreeGPUMaterialNodes(localtree, mat);
 
   if (is_default_callback && is_default_callback(mat)) {
-    MEM_freeN(mat);
-    return nullptr;
+    mat->status = GPU_MAT_USE_DEFAULT;
   }
+  else {
+    gpu_material_ramp_texture_build(mat);
+    gpu_material_sky_texture_build(mat);
 
-  gpu_material_ramp_texture_build(mat);
-  gpu_material_sky_texture_build(mat);
-
-  {
     /* Create source code and search pass cache for an already compiled version. */
     mat->pass = GPU_generate_pass(mat, &mat->graph, engine, callback, thunk, false);
 
