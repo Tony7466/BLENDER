@@ -802,10 +802,10 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
           attributes->for_all(
               [&](const AttributeIDRef &attributeId, const AttributeMetaData &metaData) {
                 callback(attributeId, metaData, component);
+                any_attribute_found = true;
                 return true;
               });
 
-          any_attribute_found = true;
         }
       }
     }
