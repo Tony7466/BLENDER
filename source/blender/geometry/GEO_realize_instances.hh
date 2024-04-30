@@ -31,7 +31,7 @@ struct RealizeInstancesOptions {
 /**
  * Allow  the user to choice which instances to realize and to what depth.
  */
-struct VariedDepthOption {
+struct VariedDepthOptions {
   /**
    * Selection of top-level instances to realize.
    */
@@ -67,6 +67,6 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
  */
 bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                    const RealizeInstancesOptions &options,
-                                   const VariedDepthOption &varied_depth_option);
+                                   const VariedDepthOptions &varied_depth_option);
 
 }  // namespace blender::geometry

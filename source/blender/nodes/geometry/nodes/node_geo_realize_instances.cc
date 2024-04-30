@@ -47,7 +47,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   static auto depth_override = mf::build::SI2_SO<int, bool, int>(
       "depth_override",
       [](int depth, bool realize_all_field) {
-        return realize_all_field ? geometry::VariedDepthOption::MAX_DEPTH : std::max(depth, 0);
+        return realize_all_field ? geometry::VariedDepthOptions::MAX_DEPTH : std::max(depth, 0);
       },
       mf::build::exec_presets::AllSpanOrSingle());
 
@@ -72,7 +72,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   evaluator.set_selection(selection_field_overrided);
   evaluator.evaluate();
 
-  geometry::VariedDepthOption varied_depth_option;
+  geometry::VariedDepthOptions varied_depth_option;
   varied_depth_option.depths = evaluator.get_evaluated<int>(evaluated_depth_index);
   varied_depth_option.selection = evaluator.get_evaluated_selection_as_mask();
 
