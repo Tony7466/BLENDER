@@ -98,6 +98,17 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   }
 
   Vector<std::string> errors;
+  if (this->get_count(SingleKeyingResult::GENERIC_FAILURE) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::GENERIC_FAILURE);
+    if (error_count == 1) {
+      errors.append(RPT_("Could not insert one key for unknown reasons."));
+    }
+    else {
+      errors.append(
+          fmt::format(RPT_("Could not insert {:d} keys for unknown reasons."), error_count));
+    }
+  }
+
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
     if (error_count == 1) {
