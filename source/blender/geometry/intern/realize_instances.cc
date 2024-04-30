@@ -928,7 +928,6 @@ static void execute_instances_tasks(
     return;
   }
 
-  VArray<blender::float4x4>::ForSpan(src_base_transforms);
   Array<int> offsets_data(src_components.size() + 1);
   for (const int component_index : src_components.index_range()) {
     const bke::InstancesComponent &src_component = static_cast<const bke::InstancesComponent &>(
