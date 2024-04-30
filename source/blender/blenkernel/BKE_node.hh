@@ -349,6 +349,13 @@ struct bNodeType {
   /** Get extra information that is drawn next to the node. */
   NodeExtraInfoFunction get_extra_info;
 
+  /**
+   * Registers operators that are specific to this node. This allows nodes to be more
+   * self-contained compared to the alternative to registering all operators in a more central
+   * place.
+   */
+  void (*register_operators)();
+
   /** True when the node cannot be muted. */
   bool no_muting;
   /** True when the node still works but it's usage is discouraged. */
@@ -1325,6 +1332,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define FN_NODE_INVERT_MATRIX 1237
 #define FN_NODE_TRANSPOSE_MATRIX 1238
 #define FN_NODE_PROJECT_POINT 1239
+#define FN_NODE_ALIGN_ROTATION_TO_VECTOR 1240
 
 /** \} */
 
