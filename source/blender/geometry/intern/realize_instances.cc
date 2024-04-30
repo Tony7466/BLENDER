@@ -507,7 +507,6 @@ static bke::GeometrySet geometry_set_from_reference(const InstanceReference &ref
       const Object &object = reference.object();
       const bke::GeometrySet geometry_set = bke::object_get_evaluated_geometry_set(object);
       return geometry_set;
-      break;
     }
     case InstanceReference::Type::Collection: {
       Collection *collection_ptr = &reference.collection();
