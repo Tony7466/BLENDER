@@ -1283,12 +1283,8 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
       }
 
       /* Clamp timing of handles to be on either side of beztriple. */
-      if (bezt->vec[0][0] > bezt->vec[1][0]) {
-        bezt->vec[0][0] = bezt->vec[1][0];
-      }
-      if (bezt->vec[2][0] < bezt->vec[1][0]) {
-        bezt->vec[2][0] = bezt->vec[1][0];
-      }
+      CLAMP_MAX(bezt->vec[0][0], bezt->vec[1][0]);
+      CLAMP_MIN(bezt->vec[2][0], bezt->vec[1][0]);
 
       /* Calculate auto-handles. */
       BKE_nurb_handle_calc_ex(bezt, prev, next, handle_sel_flag, true, fcu->auto_smoothing);
