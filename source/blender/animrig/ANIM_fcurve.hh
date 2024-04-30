@@ -91,9 +91,10 @@ int insert_vert_fcurve(FCurve *fcu,
 
 /**
  * \param sample_rate: indicates how many samples per frame should be generated.
+ * \param r_samples: Is expected to be an array large enough to hold `sample_count`.
  */
 void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
+    FCurve *fcu, float start_frame, float sample_rate, float *samples, int sample_count);
 
 enum class BakeCurveRemove {
   REMOVE_NONE = 0,
