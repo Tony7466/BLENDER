@@ -46,15 +46,18 @@ class VIEW3D_PT_animation_layers(Panel):
         # is `None`, and thus its `animation` property does not exist.
         col.template_ID(context.window_manager, 'selected_animation')
 
-        col = layout.column(align=True)
+        col = layout.column(align=False)
         anim = adt and adt.animation
         if anim:
-            col.prop(adt, 'animation_binding_handle', text="Binding")
+            binding_sub = col.column(align=True)
+            binding_sub.prop(adt, 'animation_binding_handle', text="Binding")
             binding = [o for o in anim.bindings if o.handle == adt.animation_binding_handle]
             if binding:
-                col.prop(binding[0], 'name', text="Anim Binding Name")
+                binding_sub.prop(binding[0], 'name', text="Name")
+                binding_sub.prop(binding[0], 'name_display', text="Display Name")
             else:
                 col.label(text="AN Binding Name: -")
+
         if adt:
             col.prop(adt, 'animation_binding_name', text="ADT Binding Name")
         else:
@@ -69,7 +72,7 @@ class VIEW3D_PT_animation_layers(Panel):
         for layer_idx, layer in reversed(list(enumerate(anim.layers))):
             layerbox = layout.box()
             col = layerbox.column(align=True)
-            col.prop(layer, "name", text="Layer %d:" % (layer_idx + 1))
+            col.prop(layer, "name", text="Layer {:d}:".format(layer_idx + 1))
             col.prop(layer, "influence")
             col.prop(layer, "mix_mode")
 
