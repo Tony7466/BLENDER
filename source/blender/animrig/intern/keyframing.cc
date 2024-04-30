@@ -59,7 +59,7 @@ void CombinedKeyingResult::add(const SingleKeyingResult result)
   result_counter[int(result)]++;
 }
 
-void CombinedKeyingResult::add_multiple(const SingleKeyingResult result, int count)
+void CombinedKeyingResult::add(const SingleKeyingResult result, int count)
 {
   result_counter[int(result)] += count;
 }
@@ -1134,7 +1134,7 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
     const bool success = anim.assign_id(binding, *id);
     if (!success) {
       /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-      combined_result.add_multiple(SingleKeyingResult::NO_VALID_BINDING, rna_paths.size());
+      combined_result.add(SingleKeyingResult::NO_VALID_BINDING, rna_paths.size());
       return combined_result;
     }
   }
@@ -1149,7 +1149,7 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
 
   if (layer == nullptr) {
     /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-    combined_result.add_multiple(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
+    combined_result.add(SingleKeyingResult::NO_VALID_LAYER, rna_paths.size());
     return combined_result;
   }
 
@@ -1189,14 +1189,13 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                     const AnimationEvalContext &anim_eval_context)
 {
   ID *id = rna_pointer->owner_id;
-  AnimData *adt;
   CombinedKeyingResult combined_result;
 
-  /* init animdata if none available yet */
-  adt = BKE_animdata_ensure_id(id);
+  /* Init animdata if none available yet. */
+  AnimData *adt = BKE_animdata_ensure_id(id);
   if (adt == nullptr) {
     /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-    combined_result.add_multiple(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
+    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
     return combined_result;
   }
 
@@ -1204,14 +1203,15 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
     /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);
     if (anim == nullptr) {
-      printf(
-          "Could not insert keyframe, as this type does not support animation data (ID = "
-          "%s)",
-          id->name);
-      /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-      combined_result.add_multiple(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
+      /* TODO: count the rna paths properly (e.g. accounting for multi-element
+       * properties). */
+      /* TODO: is ID_NOT_ANIMATABLE the right result?  If that were the case,
+       * presumably we would have returned on the failed attempt to get the
+       * AnimData above.  But what *does* cause this case? */
+      combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
       return combined_result;
     }
+
     KeyframeSettings key_settings;
     key_settings.keyframe_type = key_type;
     key_settings.handle = HD_AUTO_ANIM;
@@ -1221,10 +1221,13 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   }
 
   bAction *action = id_action_ensure(bmain, id);
-
   if (action == nullptr) {
-    /* TODO: count the rna paths properly (e.g. accounting for multi-element properties). */
-    combined_result.add_multiple(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
+    /* TODO: count the rna paths properly (e.g. accounting for multi-element
+     * properties). */
+    /* TODO: is ID_NOT_ANIMATABLE the right result?  If that were the case,
+     * presumably we would have returned on the failed attempt to get the
+     * AnimData above.  But what *does* cause this case? */
+    combined_result.add(SingleKeyingResult::ID_NOT_ANIMATABLE, rna_paths.size());
     return combined_result;
   }
 

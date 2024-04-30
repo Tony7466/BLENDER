@@ -62,7 +62,7 @@ class CombinedKeyingResult {
 
   void add(const SingleKeyingResult result);
 
-  void add_multiple(const SingleKeyingResult result, int count);
+  void add(const SingleKeyingResult result, int count);
 
   /* Add values of the given result to this result. */
   void merge(const CombinedKeyingResult &combined_result);

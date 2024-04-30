@@ -79,13 +79,13 @@ Animation *id_animation_ensure(Main *bmain, ID *id)
 {
   BLI_assert(id != nullptr);
 
-  AnimData *adt = BKE_animdata_from_id(id);
+  AnimData *adt = BKE_animdata_ensure_id(id);
   if (adt == nullptr) {
-    adt = BKE_animdata_ensure_id(id);
-  }
-
-  if (adt == nullptr) {
-    /* If still none (as not allowed to add, or ID doesn't have animdata for some reason) */
+    /* TODO: this printf is copied from the corresponding code in
+     * `id_action_ensure()`.  Is this really the right way to handle reporting
+     * this?  If it's never supposed to happen, an assert would be better.  If
+     * it *is* supposed to happen, then printf doesn't seem like the right way
+     * to report it. */
     printf("ERROR: Couldn't add AnimData (ID = %s)\n", (id) ? (id->name) : "<None>");
     return nullptr;
   }
