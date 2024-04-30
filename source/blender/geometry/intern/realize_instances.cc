@@ -768,8 +768,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
     const IndexMask indices = 0 == current_depth ?
                                   selection :
                                   IndexMask(IndexRange(instances.instances_num()));
-    for (const int index : indices.index_range()) {
-      const int i = indices[index];
+    indices.foreach_index([&](const int i) {
       const int child_depth_target = (0 == current_depth) ? instance_depth[i] : depth_target;
       bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
           instances.references()[instances.reference_handles()[i]]);
@@ -783,7 +782,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
                                                                       selection,
                                                                       callback);
       }
-    }
+    });
   }
 
   /* Flag to track if any relevant attributes were found. */
