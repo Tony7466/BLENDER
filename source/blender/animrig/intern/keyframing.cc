@@ -221,7 +221,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     const int error_count = this->get_count(SingleKeyingResult::NO_VALID_BINDING);
     if (error_count == 1) {
       errors.append(
-          fmt::format(RPT_("Due to a missing animation binding, 1 keyframe was not "
+          fmt::format(RPT_("Due to a missing animation binding, one keyframe was not "
                            "inserted.")));
     }
     else {
