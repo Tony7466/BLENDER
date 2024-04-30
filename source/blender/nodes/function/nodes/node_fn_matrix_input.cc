@@ -24,7 +24,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeInputMatrix *data = MEM_cnew<NodeInputMatrix>(__func__);
-  // float4x4_mutableview(&data->matrix) = float4x4::identity();
   node->storage = data;
 }
 
