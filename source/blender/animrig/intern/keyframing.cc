@@ -193,7 +193,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     return;
   }
 
-  std::string error_message = N_("Inserting keyframes failed:");
+  std::string error_message = RPT_("Inserting keyframes failed:");
   for (const std::string &error : errors) {
     error_message.append(fmt::format("\n- {}", error));
   }
