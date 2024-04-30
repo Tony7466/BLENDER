@@ -40,14 +40,17 @@ static void node_declare(NodeDeclarationBuilder &b)
   column_d.add_output<decl::Float>("D", "Column D Row D");
 }
 
-static void step_copy(const IndexMask &mask,
-                      const Span<float> src,
-                      const int64_t src_step,
-                      const int64_t src_begin,
-                      const int64_t dst_step,
-                      const int64_t dst_begin,
-                      MutableSpan<float> dst)
+static void step_copy_try(const IndexMask &mask,
+                          const Span<float> src,
+                          const int64_t src_step,
+                          const int64_t src_begin,
+                          const int64_t dst_step,
+                          const int64_t dst_begin,
+                          MutableSpan<float> dst)
 {
+  if (dst.is_empty()) {
+    return;
+  }
   BLI_assert(src_begin < src_step);
   BLI_assert(dst_begin < dst_step);
   BLI_assert(src.size() / src_step == dst.size() / dst_step);
@@ -157,25 +160,25 @@ class SeparateMatrixFunction : public mf::MultiFunction {
     const VArraySpan<float4x4> span_matrices(matrices);
     const Span<float> components = span_matrices.cast<float>();
 
-    step_copy(mask, components, 16, 0, 1, 0, column_a_row_a);
-    step_copy(mask, components, 16, 1, 1, 0, column_a_row_b);
-    step_copy(mask, components, 16, 2, 1, 0, column_a_row_c);
-    step_copy(mask, components, 16, 3, 1, 0, column_a_row_d);
+    step_copy_try(mask, components, 16, 0, 1, 0, column_a_row_a);
+    step_copy_try(mask, components, 16, 1, 1, 0, column_a_row_b);
+    step_copy_try(mask, components, 16, 2, 1, 0, column_a_row_c);
+    step_copy_try(mask, components, 16, 3, 1, 0, column_a_row_d);
 
-    step_copy(mask, components, 16, 4, 1, 0, column_b_row_a);
-    step_copy(mask, components, 16, 5, 1, 0, column_b_row_b);
-    step_copy(mask, components, 16, 6, 1, 0, column_b_row_c);
-    step_copy(mask, components, 16, 7, 1, 0, column_b_row_d);
+    step_copy_try(mask, components, 16, 4, 1, 0, column_b_row_a);
+    step_copy_try(mask, components, 16, 5, 1, 0, column_b_row_b);
+    step_copy_try(mask, components, 16, 6, 1, 0, column_b_row_c);
+    step_copy_try(mask, components, 16, 7, 1, 0, column_b_row_d);
 
-    step_copy(mask, components, 16, 8, 1, 0, column_c_row_a);
-    step_copy(mask, components, 16, 9, 1, 0, column_c_row_b);
-    step_copy(mask, components, 16, 10, 1, 0, column_c_row_c);
-    step_copy(mask, components, 16, 11, 1, 0, column_c_row_d);
+    step_copy_try(mask, components, 16, 8, 1, 0, column_c_row_a);
+    step_copy_try(mask, components, 16, 9, 1, 0, column_c_row_b);
+    step_copy_try(mask, components, 16, 10, 1, 0, column_c_row_c);
+    step_copy_try(mask, components, 16, 11, 1, 0, column_c_row_d);
 
-    step_copy(mask, components, 16, 12, 1, 0, column_d_row_a);
-    step_copy(mask, components, 16, 13, 1, 0, column_d_row_b);
-    step_copy(mask, components, 16, 14, 1, 0, column_d_row_c);
-    step_copy(mask, components, 16, 15, 1, 0, column_d_row_d);
+    step_copy_try(mask, components, 16, 12, 1, 0, column_d_row_a);
+    step_copy_try(mask, components, 16, 13, 1, 0, column_d_row_b);
+    step_copy_try(mask, components, 16, 14, 1, 0, column_d_row_c);
+    step_copy_try(mask, components, 16, 15, 1, 0, column_d_row_d);
   }
 };
 
