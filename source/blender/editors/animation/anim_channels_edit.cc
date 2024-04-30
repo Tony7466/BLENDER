@@ -41,7 +41,7 @@
 #include "BKE_nla.h"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -57,6 +57,7 @@
 #include "ED_select_utils.hh"
 
 #include "ANIM_animdata.hh"
+#include "ANIM_fcurve.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -256,6 +257,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
         break;
       }
       case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_FILLANIM: /* Animation Expander */
       case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
       case ANIMTYPE_DSLAM:
       case ANIMTYPE_DSCAM:
@@ -312,6 +314,7 @@ void ANIM_set_active_channel(bAnimContext *ac,
         break;
       }
       case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_FILLANIM: /* Animation Expander */
       case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
       case ANIMTYPE_DSLAM:
       case ANIMTYPE_DSCAM:
@@ -365,6 +368,7 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
 {
   switch (ale->type) {
     case ANIMTYPE_FILLACTD: /* Action Expander */
+    case ANIMTYPE_FILLANIM: /* Animation Expander */
     case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
     case ANIMTYPE_DSLAM:
     case ANIMTYPE_DSCAM:
@@ -501,6 +505,7 @@ static eAnimChannels_SetFlag anim_channels_selection_flag_for_toggle(const ListB
         break;
 
       case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_FILLANIM: /* Animation Expander */
       case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
       case ANIMTYPE_DSLAM:
       case ANIMTYPE_DSCAM:
@@ -615,6 +620,7 @@ static void anim_channels_select_set(bAnimContext *ac,
         break;
       }
       case ANIMTYPE_FILLACTD: /* Action Expander */
+      case ANIMTYPE_FILLANIM: /* Animation Expander */
       case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
       case ANIMTYPE_DSLAM:
       case ANIMTYPE_DSCAM:
@@ -3832,6 +3838,7 @@ static int mouse_anim_channels(bContext *C,
       notifierFlags |= click_select_channel_object(C, ac, ale, selectmode);
       break;
     case ANIMTYPE_FILLACTD: /* Action Expander */
+    case ANIMTYPE_FILLANIM: /* Animation Expander */
     case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
     case ANIMTYPE_DSLAM:
     case ANIMTYPE_DSCAM:
@@ -4327,6 +4334,7 @@ static const EnumPropertyItem channel_bake_key_options[] = {
 
 static int channels_bake_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender::animrig;
   bAnimContext ac;
 
   /* Get editor data. */

@@ -72,7 +72,7 @@ bool grease_pencil_painting_poll(bContext *C)
     return false;
   }
   Object *object = CTX_data_active_object(C);
-  if ((object->mode & OB_MODE_PAINT_GREASE_PENCIL) == 0) {
+  if ((object->mode & OB_MODE_PAINT_GPENCIL_LEGACY) == 0) {
     return false;
   }
   ToolSettings *ts = CTX_data_tool_settings(C);
@@ -98,6 +98,22 @@ bool grease_pencil_sculpting_poll(bContext *C)
   return true;
 }
 
+bool grease_pencil_weight_painting_poll(bContext *C)
+{
+  if (!active_grease_pencil_poll(C)) {
+    return false;
+  }
+  Object *object = CTX_data_active_object(C);
+  if ((object->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) {
+    return false;
+  }
+  ToolSettings *ts = CTX_data_tool_settings(C);
+  if (!ts || !ts->gp_weightpaint) {
+    return false;
+  }
+  return true;
+}
+
 static void keymap_grease_pencil_edit_mode(wmKeyConfig *keyconf)
 {
   wmKeyMap *keymap = WM_keymap_ensure(
@@ -112,6 +128,20 @@ static void keymap_grease_pencil_paint_mode(wmKeyConfig *keyconf)
   keymap->poll = grease_pencil_painting_poll;
 }
 
+static void keymap_grease_pencil_sculpt_mode(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(
+      keyconf, "Grease Pencil Sculpt Mode", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  keymap->poll = grease_pencil_sculpting_poll;
+}
+
+static void keymap_grease_pencil_weight_paint_mode(wmKeyConfig *keyconf)
+{
+  wmKeyMap *keymap = WM_keymap_ensure(
+      keyconf, "Grease Pencil Weight Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
+  keymap->poll = grease_pencil_weight_painting_poll;
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil()
@@ -122,6 +152,8 @@ void ED_operatortypes_grease_pencil()
   ED_operatortypes_grease_pencil_select();
   ED_operatortypes_grease_pencil_edit();
   ED_operatortypes_grease_pencil_material();
+  ED_operatortypes_grease_pencil_primitives();
+  ED_operatortypes_grease_pencil_weight_paint();
 }
 
 void ED_operatormacros_grease_pencil()
@@ -154,4 +186,7 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   using namespace blender::ed::greasepencil;
   keymap_grease_pencil_edit_mode(keyconf);
   keymap_grease_pencil_paint_mode(keyconf);
+  keymap_grease_pencil_sculpt_mode(keyconf);
+  keymap_grease_pencil_weight_paint_mode(keyconf);
+  ED_primitivetool_modal_keymap(keyconf);
 }
