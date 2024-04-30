@@ -541,7 +541,7 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                       bool deferred,
                                       GPUCodegenCallbackFn callback,
                                       void *thunk,
-                                      GPUMaterialIsDefaultCallbackFn is_default_callback)
+                                      GPUMaterialCanUseDefaultCallbackFn can_use_default_callback)
 {
   Scene *scene = (Scene *)DEG_get_original_id(&DST.draw_ctx.scene->id);
   GPUMaterial *mat = GPU_material_from_nodetree(scene,
@@ -555,7 +555,7 @@ GPUMaterial *DRW_shader_from_material(Material *ma,
                                                 false,
                                                 callback,
                                                 thunk,
-                                                is_default_callback);
+                                                can_use_default_callback);
 
   if (GPU_material_status(mat) == GPU_MAT_USE_DEFAULT) {
     return mat;

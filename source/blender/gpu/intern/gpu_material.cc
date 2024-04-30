@@ -821,18 +821,19 @@ uint64_t GPU_material_uuid_get(GPUMaterial *mat)
   return mat->uuid;
 }
 
-GPUMaterial *GPU_material_from_nodetree(Scene *scene,
-                                        Material *ma,
-                                        bNodeTree *ntree,
-                                        ListBase *gpumaterials,
-                                        const char *name,
-                                        eGPUMaterialEngine engine,
-                                        uint64_t shader_uuid,
-                                        bool is_volume_shader,
-                                        bool is_lookdev,
-                                        GPUCodegenCallbackFn callback,
-                                        void *thunk,
-                                        GPUMaterialIsDefaultCallbackFn is_default_callback)
+GPUMaterial *GPU_material_from_nodetree(
+    Scene *scene,
+    Material *ma,
+    bNodeTree *ntree,
+    ListBase *gpumaterials,
+    const char *name,
+    eGPUMaterialEngine engine,
+    uint64_t shader_uuid,
+    bool is_volume_shader,
+    bool is_lookdev,
+    GPUCodegenCallbackFn callback,
+    void *thunk,
+    GPUMaterialCanUseDefaultCallbackFn can_use_default_callback)
 {
   /* Search if this material is not already compiled. */
   LISTBASE_FOREACH (LinkData *, link, gpumaterials) {
@@ -863,7 +864,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
   bNodeTree *localtree = ntreeLocalize(ntree);
   ntreeGPUMaterialNodes(localtree, mat);
 
-  if (is_default_callback && is_default_callback(mat)) {
+  if (can_use_default_callback && can_use_default_callback(mat)) {
     mat->status = GPU_MAT_USE_DEFAULT;
   }
   else {

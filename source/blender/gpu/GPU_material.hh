@@ -148,7 +148,7 @@ struct GPUCodegenOutput {
 
 using GPUCodegenCallbackFn = void (*)(void *thunk, GPUMaterial *mat, GPUCodegenOutput *codegen);
 /* Should return true if the pass is functionally equivalent to the default Material one. */
-using GPUMaterialIsDefaultCallbackFn = bool (*)(GPUMaterial *mat);
+using GPUMaterialCanUseDefaultCallbackFn = bool (*)(GPUMaterial *mat);
 
 GPUNodeLink *GPU_constant(const float *num);
 GPUNodeLink *GPU_uniform(const float *num);
@@ -252,7 +252,7 @@ GPUMaterial *GPU_material_from_nodetree(
     bool is_lookdev,
     GPUCodegenCallbackFn callback,
     void *thunk,
-    GPUMaterialIsDefaultCallbackFn is_default_callback = nullptr);
+    GPUMaterialCanUseDefaultCallbackFn can_use_default_callback = nullptr);
 
 void GPU_material_compile(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);
