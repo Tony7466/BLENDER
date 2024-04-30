@@ -750,10 +750,10 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
  * Based on bke::GeometrySet::attribute_foreach
  */
 static bool attribute_foreach(const bke::GeometrySet &geometry_set,
-                              const Span<bke::GeometryComponent::Type> component_types,
+                              const Span<bke::GeometryComponent::Type> &component_types,
                               const int current_depth,
                               const int depth_target,
-                              const VArray<int> instance_depth,
+                              const VArray<int> &instance_depth,
                               const IndexMask selection,
                               const bke::GeometrySet::AttributeForeachCallback callback)
 {
