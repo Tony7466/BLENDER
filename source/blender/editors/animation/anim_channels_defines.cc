@@ -5585,6 +5585,27 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
                   channel_height);
   }
 
+  /* Mask layer. */
+  offset -= ICON_WIDTH;
+  UI_block_emboss_set(block, UI_EMBOSS_NONE);
+  PropertyRNA *layer_mask_prop = RNA_struct_find_property(&ptr, "use_masks");
+
+  const std::optional<std::string> layer_mask_rna_path = RNA_path_from_ID_to_property(
+      &ptr, layer_mask_prop);
+  if (RNA_path_resolve_property(&id_ptr, layer_mask_rna_path->c_str(), &ptr, &layer_mask_prop)) {
+    const int icon = layer->use_masks() ? ICON_CLIPUV_DEHLT : ICON_CLIPUV_HLT;
+    uiDefAutoButR(block,
+                  &ptr,
+                  layer_mask_prop,
+                  array_index,
+                  "",
+                  icon,
+                  offset,
+                  rect->ymin,
+                  ICON_WIDTH,
+                  channel_height);
+  }
+
   /* Layer opacity. */
   const short width = SLIDER_WIDTH * 0.6;
   offset -= width;
