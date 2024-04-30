@@ -820,7 +820,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
  * current_depth, depth_target, instance_depth and selection.
  */
 static void gather_attributes_for_propagation(
-    bke::GeometrySet re_geometry_set,
+    bke::GeometrySet geometry_set,
     const Span<bke::GeometryComponent::Type> component_types,
     const bke::GeometryComponent::Type dst_component_type,
     const VArray<int> instance_depth,
@@ -832,7 +832,7 @@ static void gather_attributes_for_propagation(
    * TODO: Get rid of the dummy component. */
   const bke::GeometryComponentPtr dummy_component = bke::GeometryComponent::create(
       dst_component_type);
-  attribute_foreach(re_geometry_set,
+  attribute_foreach(geometry_set,
                     component_types,
                     0,
                     VariedDepthOptions::MAX_DEPTH,
