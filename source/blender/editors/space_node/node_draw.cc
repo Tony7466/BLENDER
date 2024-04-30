@@ -1342,7 +1342,7 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
       return;
     }
     const int item_identifier = *static_cast<const int *>(buffer);
-    auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
+    const auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
     if (!socket_storage->enum_items) {
       return;
     }
