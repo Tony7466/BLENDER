@@ -1948,7 +1948,7 @@ static void remove_id_attribute_from_instances(bke::GeometrySet &geometry_set)
  */
 static void propagate_instances_to_keep(
     const bke::GeometrySet &geometry_set,
-    IndexMask selection,
+    const IndexMask &selection,
     bke::GeometrySet &new_geometry_set,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
