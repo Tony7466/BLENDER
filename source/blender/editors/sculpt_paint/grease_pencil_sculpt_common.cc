@@ -248,11 +248,11 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
 
     ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
     if (placement.use_project_to_surface()) {
-        placement.cache_viewport_depths(&depsgraph, &region, &view3d);
+      placement.cache_viewport_depths(&depsgraph, &region, &view3d);
     }
     else if (placement.use_project_to_nearest_stroke()) {
-        placement.cache_viewport_depths(&depsgraph, &region, &view3d);
-        placement.set_origin_to_nearest_stroke(this->start_mouse_position);
+      placement.cache_viewport_depths(&depsgraph, &region, &view3d);
+      placement.set_origin_to_nearest_stroke(this->start_mouse_position);
     }
 
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
