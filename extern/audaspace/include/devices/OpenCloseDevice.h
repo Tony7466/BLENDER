@@ -50,7 +50,14 @@ class AUD_PLUGIN_API OpenCloseDevice : public SoftwareDevice {
    */
   bool m_delayed_close_finished{false};
 
+  /**
+   * Thread condition to terminate immediately. Used when class is destroyed.
+   */
   std::condition_variable stop_condition;
+
+  /**
+   * Mutex for `stop_condition`.
+   */
   std::mutex stop_condition_mutex;
 
   /**
