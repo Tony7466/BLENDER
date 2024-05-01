@@ -16,10 +16,11 @@ namespace blender::realtime_compositor {
 
 /* Compute the Gaussian sigma from the radius, where the radius is in pixels. Blender's filter is
  * truncated at |x| > 3 * sigma as can be seen in the R_FILTER_GAUSS case of the RE_filter_value
- * function, so we divide by three to get the approximate sigma value. */
+ * function, so we divide by three to get the approximate sigma value. Further, ensure the radius
+ * is at least 1 since recursive Gaussian implementations can't handle zero radii. */
 static float2 compute_sigma_from_radius(float2 radius)
 {
-  return radius / 3.0f;
+  return math::max(float2(1.0f), radius) / 3.0f;
 }
 
 /* Apply a recursive Gaussian blur algorithm on the input based on the general method outlined
