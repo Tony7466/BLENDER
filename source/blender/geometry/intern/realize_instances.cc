@@ -412,12 +412,12 @@ static void copy_generic_attributes_to_result(
       });
 }
 
-static void create_result_ids(const bool keep_original_ids,
+static void create_result_ids(const RealizeInstancesOptions &options,
                               const Span<int> stored_ids,
                               const int task_id,
                               MutableSpan<int> dst_ids)
 {
-  if (keep_original_ids) {
+  if (options.keep_original_ids) {
     if (stored_ids.is_empty()) {
       dst_ids.fill(0);
     }
@@ -1108,7 +1108,7 @@ static AllPointCloudsInfo preprocess_pointclouds(const bke::GeometrySet &geometr
 }
 
 static void execute_realize_pointcloud_task(
-    bool keep_original_ids,
+    const RealizeInstancesOptions &options,
     const RealizePointCloudTask &task,
     const OrderedAttributes &ordered_attributes,
     MutableSpan<GSpanAttributeWriter> dst_attribute_writers,
@@ -1126,7 +1126,7 @@ static void execute_realize_pointcloud_task(
   /* Create point ids. */
   if (!all_dst_ids.is_empty()) {
     create_result_ids(
-        keep_original_ids, pointcloud_info.stored_ids, task.id, all_dst_ids.slice(point_slice));
+        options, pointcloud_info.stored_ids, task.id, all_dst_ids.slice(point_slice));
   }
   if (!all_dst_radii.is_empty()) {
     pointcloud_info.radii.materialize(all_dst_radii.slice(point_slice));
@@ -1144,7 +1144,7 @@ static void execute_realize_pointcloud_task(
       dst_attribute_writers);
 }
 
-static void execute_realize_pointcloud_tasks(bool keep_original_ids,
+static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
                                              const AllPointCloudsInfo &all_pointclouds_info,
                                              const Span<RealizePointCloudTask> tasks,
                                              const OrderedAttributes &ordered_attributes,
@@ -1196,7 +1196,7 @@ static void execute_realize_pointcloud_tasks(bool keep_original_ids,
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizePointCloudTask &task = tasks[task_index];
-      execute_realize_pointcloud_task(keep_original_ids,
+      execute_realize_pointcloud_task(options,
                                       task,
                                       ordered_attributes,
                                       dst_attribute_writers,
@@ -1359,7 +1359,7 @@ static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
   return info;
 }
 
-static void execute_realize_mesh_task(bool keep_original_ids,
+static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
                                       const RealizeMeshTask &task,
                                       const OrderedAttributes &ordered_attributes,
                                       MutableSpan<GSpanAttributeWriter> dst_attribute_writers,
@@ -1443,7 +1443,7 @@ static void execute_realize_mesh_task(bool keep_original_ids,
   }
 
   if (!all_dst_vertex_ids.is_empty()) {
-    create_result_ids(keep_original_ids,
+    create_result_ids(options,
                       mesh_info.stored_vertex_ids,
                       task.id,
                       all_dst_vertex_ids.slice(task.start_indices.vertex, mesh.verts_num));
@@ -1471,7 +1471,7 @@ static void execute_realize_mesh_task(bool keep_original_ids,
       dst_attribute_writers);
 }
 
-static void execute_realize_mesh_tasks(bool keep_original_ids,
+static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
                                        const AllMeshesInfo &all_meshes_info,
                                        const Span<RealizeMeshTask> tasks,
                                        const OrderedAttributes &ordered_attributes,
@@ -1554,7 +1554,7 @@ static void execute_realize_mesh_tasks(bool keep_original_ids,
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizeMeshTask &task = tasks[task_index];
-      execute_realize_mesh_task(keep_original_ids,
+      execute_realize_mesh_task(options,
                                 task,
                                 ordered_attributes,
                                 dst_attribute_writers,
@@ -1708,7 +1708,7 @@ static AllCurvesInfo preprocess_curves(const bke::GeometrySet &geometry_set,
   return info;
 }
 
-static void execute_realize_curve_task(bool keep_original_ids,
+static void execute_realize_curve_task(const RealizeInstancesOptions &options,
                                        const AllCurvesInfo &all_curves_info,
                                        const RealizeCurveTask &task,
                                        const OrderedAttributes &ordered_attributes,
@@ -1791,7 +1791,7 @@ static void execute_realize_curve_task(bool keep_original_ids,
 
   if (!all_dst_ids.is_empty()) {
     create_result_ids(
-        keep_original_ids, curves_info.stored_ids, task.id, all_dst_ids.slice(dst_point_range));
+        options, curves_info.stored_ids, task.id, all_dst_ids.slice(dst_point_range));
   }
 
   copy_generic_attributes_to_result(
@@ -1812,7 +1812,7 @@ static void execute_realize_curve_task(bool keep_original_ids,
       dst_attribute_writers);
 }
 
-static void execute_realize_curve_tasks(bool keep_original_ids,
+static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
                                         const AllCurvesInfo &all_curves_info,
                                         const Span<RealizeCurveTask> tasks,
                                         const OrderedAttributes &ordered_attributes,
@@ -1891,7 +1891,7 @@ static void execute_realize_curve_tasks(bool keep_original_ids,
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizeCurveTask &task = tasks[task_index];
-      execute_realize_curve_task(keep_original_ids,
+      execute_realize_curve_task(options,
                                  all_curves_info,
                                  task,
                                  ordered_attributes,
@@ -2051,18 +2051,18 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
    * multi-threading (overhead). */
   const int64_t approximate_used_bytes_num = total_points_num * 32;
   threading::memory_bandwidth_bound_task(approximate_used_bytes_num, [&]() {
-    execute_realize_pointcloud_tasks(options.keep_original_ids,
+    execute_realize_pointcloud_tasks(options,
                                      all_pointclouds_info,
                                      gather_info.r_tasks.pointcloud_tasks,
                                      all_pointclouds_info.attributes,
                                      new_geometry_set);
-    execute_realize_mesh_tasks(options.keep_original_ids,
+    execute_realize_mesh_tasks(options,
                                all_meshes_info,
                                gather_info.r_tasks.mesh_tasks,
                                all_meshes_info.attributes,
                                all_meshes_info.materials,
                                new_geometry_set);
-    execute_realize_curve_tasks(options.keep_original_ids,
+    execute_realize_curve_tasks(options,
                                 all_curves_info,
                                 gather_info.r_tasks.curve_tasks,
                                 all_curves_info.attributes,
