@@ -50,7 +50,6 @@ static void node_geo_exec(GeoNodeExecParams params)
         return realize_all_field ? geometry::VariedDepthOptions::MAX_DEPTH : std::max(depth, 0);
       },
       mf::build::exec_presets::Materialized());
-      
 
   Field<int> depth_field_overridden(FieldOperation::Create(
       depth_override, {std::move(depth_field), std::move(realize_all_field)}));

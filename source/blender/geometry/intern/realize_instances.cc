@@ -574,9 +574,8 @@ static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
   const bool is_top_level = current_depth == 0;
   /* If at top level, get instance indices from selection field, else use all instances. */
   const IndexMask indices = is_top_level ? gather_info.selection :
-                                                 IndexMask(IndexRange(instances.instances_num()));
-  indices.foreach_index([&](const int i){
-
+                                           IndexMask(IndexRange(instances.instances_num()));
+  indices.foreach_index([&](const int i) {
     /* If at top level, retrieve depth from gather_info, else continue with target_depth. */
     const int child_target_depth = is_top_level ? gather_info.depths[i] : target_depth;
     const int handle = handles[i];
@@ -790,10 +789,12 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
 
   for (const bke::GeometryComponent::Type component_type : component_types) {
     if (geometry_set.has(component_type)) {
-      /*Check if the current instance component is the selected one. Instances are handled specially as they can manifest in two different scenarios: they can be the selected component or the parent of a possible selected component. */
+      /*Check if the current instance component is the selected one. Instances are handled
+       * specially as they can manifest in two different scenarios: they can be the selected
+       * component or the parent of a possible selected component. */
       const bool is_main_instance_component = (bke::GeometryComponent::Type::Instance ==
-                                        component_type) &&
-                                       (component_types.size() > 1);
+                                               component_type) &&
+                                              (component_types.size() > 1);
       if (!is_main_instance_component || child_has_component) {
         /* Process attributes for the current component. */
         const bke::GeometryComponent &component = *geometry_set.get_component(component_type);
@@ -805,7 +806,6 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
                 any_attribute_found = true;
                 return true;
               });
-
         }
       }
     }
@@ -967,7 +967,7 @@ static void execute_instances_tasks(
       bke::GSpanAttributeWriter write_attribute =
           dst_instances->attributes_for_write().lookup_for_write_span(id);
       GMutableSpan dst_span = write_attribute.span;
-      
+
       const void *attribute_ptr;
       if (attribute_fallback_array[attribute_index] != nullptr) {
         attribute_ptr = attribute_fallback_array[attribute_index];
@@ -996,10 +996,10 @@ static void execute_instances_tasks(
   for (bke::GeometryComponentPtr component : src_components) {
     for_join_attributes.append(component.get());
   }
-  /* Join attribute values from the 'unselected' instances, as they aren't included otherwise. 
-   * Omit instance_transform and .reference_index to prevent them from overwriting the correct attributes of the realized instances. */
-  join_attributes(
-      for_join_attributes, dst_component, {".reference_index", "instance_transform"});
+  /* Join attribute values from the 'unselected' instances, as they aren't included otherwise.
+   * Omit instance_transform and .reference_index to prevent them from overwriting the correct
+   * attributes of the realized instances. */
+  join_attributes(for_join_attributes, dst_component, {".reference_index", "instance_transform"});
 }
 
 /** \} */
