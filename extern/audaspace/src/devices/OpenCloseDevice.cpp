@@ -27,13 +27,11 @@ void OpenCloseDevice::closeAfterDelay()
                                   std::chrono::steady_clock::now() + m_device_close_delay / 10) !=
         std::cv_status::timeout)
     {
-      std::unique_lock<std::mutex> unlock(stop_condition_mutex);
       return;
     }
     if (m_playing || m_playback_stopped_time.time_since_epoch().count() == 0)
       m_playback_stopped_time = std::chrono::steady_clock::now();
     if (std::chrono::steady_clock::now() < m_playback_stopped_time + m_device_close_delay) {
-      std::unique_lock<std::mutex> unlock(stop_condition_mutex);
       continue;
     }
 
@@ -43,7 +41,6 @@ void OpenCloseDevice::closeAfterDelay()
   close();
   m_delayed_close_finished = true;
   m_device_opened = false;
-  std::unique_lock<std::mutex> unlock(stop_condition_mutex);
 }
 
 void OpenCloseDevice::playing(bool playing)
