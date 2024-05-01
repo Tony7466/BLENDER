@@ -204,11 +204,42 @@ static int sequencer_generic_invoke_xy_guess_channel(bContext *C, int type)
   return 1;
 }
 
-static void sequencer_generic_invoke_xy__internal(bContext *C, wmOperator *op, int flag, int type)
+/* Sets `channel` and `frame_start` properties when the operator is likely to have been invoked
+ * with drag-and-drop data. */
+static void sequencer_file_drop_channel_frame_set(bContext *C,
+                                                  wmOperator *op,
+                                                  const wmEvent *event)
+{
+  BLI_assert((RNA_struct_property_is_set(op->ptr, "files") &&
+              !RNA_collection_is_empty(op->ptr, "files")) ||
+             RNA_struct_property_is_set(op->ptr, "filepath"));
+
+  if (RNA_struct_property_is_set(op->ptr, "channel") ||
+      RNA_struct_property_is_set(op->ptr, "frame_start"))
+  {
+    return;
+  }
+
+  ARegion *region = CTX_wm_region(C);
+  if (!region || region->regiontype != RGN_TYPE_WINDOW) {
+    return;
+  }
+
+  float frame_start, channel;
+  UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &frame_start, &channel);
+  RNA_int_set(op->ptr, "channel", int(channel));
+  RNA_int_set(op->ptr, "frame_start", int(frame_start));
+}
+
+static void sequencer_generic_invoke_xy__internal(
+    bContext *C, wmOperator *op, int flag, int type, const wmEvent *event = nullptr)
 {
   Scene *scene = CTX_data_scene(C);
 
   int timeline_frame = int(scene->r.cfra);
+  if ((flag & SEQPROP_NOPATHS) && event) {
+    sequencer_file_drop_channel_frame_set(C, op, event);
+  }
 
   /* Effect strips don't need a channel initialized from the mouse. */
   if (!(flag & SEQPROP_NOCHAN) && RNA_struct_property_is_set(op->ptr, "channel") == 0) {
@@ -965,32 +996,6 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-/* Sets `channel` and `frame_start` properties when the operator is likely to have been invoked
- * with drag-and-drop data. */
-static void sequencer_file_drop_chanel_frame_set(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  if (!((RNA_struct_property_is_set(op->ptr, "files") &&
-         !RNA_collection_is_empty(op->ptr, "files")) ||
-        RNA_struct_property_is_set(op->ptr, "filepath")))
-  {
-
-    return;
-  }
-  if (RNA_struct_property_is_set(op->ptr, "channel") ||
-      RNA_struct_property_is_set(op->ptr, "frame_start"))
-  {
-    return;
-  }
-  ARegion *region = CTX_wm_region(C);
-  if (!region || region->regiontype != RGN_TYPE_WINDOW) {
-    return;
-  }
-  float frame_start, channel;
-  UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &frame_start, &channel);
-  RNA_int_set(op->ptr, "channel", int(channel));
-  RNA_int_set(op->ptr, "frame_start", int(frame_start));
-}
-
 static int sequencer_add_movie_strip_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   PropertyRNA *prop;
@@ -1006,8 +1011,7 @@ static int sequencer_add_movie_strip_invoke(bContext *C, wmOperator *op, const w
        !RNA_collection_is_empty(op->ptr, "files")) ||
       RNA_struct_property_is_set(op->ptr, "filepath"))
   {
-    sequencer_file_drop_chanel_frame_set(C, op, event);
-    sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_MOVIE);
+    sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_MOVIE, event);
     return sequencer_add_movie_strip_exec(C, op);
   }
 
@@ -1167,8 +1171,7 @@ static int sequencer_add_sound_strip_invoke(bContext *C, wmOperator *op, const w
        !RNA_collection_is_empty(op->ptr, "files")) ||
       RNA_struct_property_is_set(op->ptr, "filepath"))
   {
-    sequencer_file_drop_chanel_frame_set(C, op, event);
-    sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_SOUND_RAM);
+    sequencer_generic_invoke_xy__internal(C, op, SEQPROP_NOPATHS, SEQ_TYPE_SOUND_RAM, event);
     return sequencer_add_sound_strip_exec(C, op);
   }
 
@@ -1360,9 +1363,8 @@ static int sequencer_add_image_strip_invoke(bContext *C, wmOperator *op, const w
 
   /* Name set already by drag and drop. */
   if (RNA_struct_property_is_set(op->ptr, "files") && !RNA_collection_is_empty(op->ptr, "files")) {
-    sequencer_file_drop_chanel_frame_set(C, op, event);
     sequencer_generic_invoke_xy__internal(
-        C, op, SEQPROP_ENDFRAME | SEQPROP_NOPATHS, SEQ_TYPE_IMAGE);
+        C, op, SEQPROP_ENDFRAME | SEQPROP_NOPATHS, SEQ_TYPE_IMAGE, event);
     return sequencer_add_image_strip_exec(C, op);
   }
 
