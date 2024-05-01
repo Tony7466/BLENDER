@@ -487,7 +487,8 @@ bool BKE_id_copy_is_allowed(const ID *id);
  * documentation), with one special case: when the special flag #LIB_ID_CREATE_NO_ALLOCATE is
  * specified, the copied ID will have the same library as the source ID.
  *
- * \param bmain: Main database, may be NULL only if LIB_ID_CREATE_NO_MAIN is specified.
+ * \param bmain: Destination main database for the new ID. May be NULL only if
+ * LIB_ID_CREATE_NO_MAIN is specified.
  * \param id: Source data-block.
  * \param r_newid: Pointer to new (copied) ID pointer, may be NULL.
  * Used to allow copying into already allocated memory.

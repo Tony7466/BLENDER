@@ -297,6 +297,11 @@ struct MainMergeReport {
 void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &reports);
 
 /**
+ * Create a copy of the main database, with IDs tagged with LIB_TAG_DOIT.
+ */
+Main *BKE_main_copy_tagged(Main *bmain_src);
+
+/**
  * Check whether given `bmain` is empty or contains some IDs.
  */
 bool BKE_main_is_empty(Main *bmain);
