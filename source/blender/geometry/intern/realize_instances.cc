@@ -981,8 +981,7 @@ static void execute_instances_tasks(
         attribute_ptr = cpp_type->default_value();
       }
 
-      GVArray src_span = GVArray::ForSingle(*cpp_type, dst_range.size(), attribute_ptr);
-      array_utils::copy(src_span, dst_span.slice(dst_range));
+      cpp_type->fill_assign_n(attribute_ptr, dst_span.slice(dst_range).data(), dst_range.size());
       write_attribute.finish();
     }
 
