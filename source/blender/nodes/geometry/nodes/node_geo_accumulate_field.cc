@@ -39,6 +39,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       case CD_PROP_INT32:
         value_declaration = &b.add_input<decl::Int>("Value").default_value(1);
         break;
+      case CD_PROP_FLOAT4X4:
+        value_declaration = &b.add_input<decl::Matrix>("Value");
+        break;
       default:
         BLI_assert_unreachable();
         break;
@@ -92,6 +95,8 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
     case SOCK_VECTOR:
     case SOCK_RGBA:
       return CD_PROP_FLOAT3;
+    case SOCK_MATRIX:
+      return CD_PROP_FLOAT4X4;
     default:
       return {};
   }
@@ -144,6 +149,27 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+template<typename T> struct AccumulationInfo {
+  static inline const T initial_value = []() {
+    if constexpr (std::is_same_v<T, float4x4>) {
+      return float4x4::identity();
+    }
+    else {
+      return T();
+    }
+  }();
+
+  static T accumulate(const T &a, const T &b)
+  {
+    if constexpr (std::is_same_v<T, float4x4>) {
+      return a * b;
+    }
+    else {
+      return a + b;
+    }
+  }
+};
+
 class AccumulateFieldInput final : public bke::GeometryFieldInput {
  private:
   GField input_;
@@ -185,22 +211,22 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
 
     bke::attribute_math::convert_to_static_type(g_values.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      if constexpr (is_same_any_v<T, int, float, float3>) {
+      if constexpr (is_same_any_v<T, int, float, float3, float4x4>) {
         Array<T> outputs(domain_size);
         const VArray<T> values = g_values.typed<T>();
 
         if (group_indices.is_single()) {
-          T accumulation = T();
+          T accumulation = AccumulationInfo<T>::initial_value;
           if (accumulation_mode_ == AccumulationMode::Leading) {
             for (const int i : values.index_range()) {
-              accumulation = values[i] + accumulation;
+              accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
               outputs[i] = accumulation;
             }
           }
           else {
             for (const int i : values.index_range()) {
               outputs[i] = accumulation;
-              accumulation = values[i] + accumulation;
+              accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
             }
           }
         }
@@ -208,16 +234,18 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
           Map<int, T> accumulations;
           if (accumulation_mode_ == AccumulationMode::Leading) {
             for (const int i : values.index_range()) {
-              T &accumulation_value = accumulations.lookup_or_add_default(group_indices[i]);
-              accumulation_value += values[i];
+              T &accumulation_value = accumulations.lookup_or_add(
+                  group_indices[i], AccumulationInfo<T>::initial_value);
+              accumulation_value = AccumulationInfo<T>::accumulate(accumulation_value, values[i]);
               outputs[i] = accumulation_value;
             }
           }
           else {
             for (const int i : values.index_range()) {
-              T &accumulation_value = accumulations.lookup_or_add_default(group_indices[i]);
+              T &accumulation_value = accumulations.lookup_or_add(
+                  group_indices[i], AccumulationInfo<T>::initial_value);
               outputs[i] = accumulation_value;
-              accumulation_value += values[i];
+              accumulation_value = AccumulationInfo<T>::accumulate(accumulation_value, values[i]);
             }
           }
         }
@@ -290,20 +318,21 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
 
     bke::attribute_math::convert_to_static_type(g_values.type(), [&](auto dummy) {
       using T = decltype(dummy);
-      if constexpr (is_same_any_v<T, int, float, float3>) {
+      if constexpr (is_same_any_v<T, int, float, float3, float4x4>) {
         const VArray<T> values = g_values.typed<T>();
         if (group_indices.is_single()) {
-          T accumulation = {};
+          T accumulation = AccumulationInfo<T>::initial_value;
           for (const int i : values.index_range()) {
-            accumulation = values[i] + accumulation;
+            accumulation = AccumulationInfo<T>::accumulate(accumulation, values[i]);
           }
           g_outputs = VArray<T>::ForSingle(accumulation, domain_size);
         }
         else {
           Map<int, T> accumulations;
           for (const int i : values.index_range()) {
-            T &value = accumulations.lookup_or_add_default(group_indices[i]);
-            value = value + values[i];
+            T &value = accumulations.lookup_or_add(group_indices[i],
+                                                   AccumulationInfo<T>::initial_value);
+            value = AccumulationInfo<T>::accumulate(value, values[i]);
           }
           Array<T> outputs(domain_size);
           for (const int i : values.index_range()) {
@@ -377,7 +406,7 @@ static void node_rna(StructRNA *srna)
       [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
         *r_free = true;
         return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
-          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
+          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32, CD_PROP_FLOAT4X4);
         });
       });
 
