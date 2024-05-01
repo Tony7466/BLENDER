@@ -194,6 +194,13 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_materials = RNA_boolean_get(op->ptr, "export_materials");
   const eSubdivExportMode export_subdiv = eSubdivExportMode(
       RNA_enum_get(op->ptr, "export_subdivision"));
+
+  const bool export_meshes = RNA_boolean_get(op->ptr, "export_meshes");
+  const bool export_lights = RNA_boolean_get(op->ptr, "export_lights");
+  const bool export_cameras = RNA_boolean_get(op->ptr, "export_cameras");
+  const bool export_curves = RNA_boolean_get(op->ptr, "export_curves");
+  const bool export_volumes = RNA_boolean_get(op->ptr, "export_volumes");
+
   const bool use_instancing = RNA_boolean_get(op->ptr, "use_instancing");
   const bool evaluation_mode = RNA_enum_get(op->ptr, "evaluation_mode");
 
@@ -234,6 +241,11 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       relative_paths,
       export_custom_properties,
       author_blender_name,
+      export_meshes,
+      export_lights,
+      export_cameras,
+      export_curves,
+      export_volumes,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -262,7 +274,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "export_animation", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_hair", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_uvmaps", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -308,6 +319,16 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Experimental"));
   uiItemR(col, ptr, "use_instancing", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  box = uiLayoutBox(layout);
+  col = uiLayoutColumnWithHeading(box, true, IFACE_("Object Types"));
+  uiItemR(col, ptr, "export_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "export_hair", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void free_operator_customdata(wmOperator *op)
@@ -492,6 +513,21 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Blender Names",
                   "Author USD custom attributes containing the original Blender object and "
                   "object data names");
+
+  RNA_def_boolean(
+      ot->srna, "export_meshes", true, "Meshes", "When checked, all meshes will be exported");
+
+  RNA_def_boolean(
+      ot->srna, "export_lights", true, "Lights", "When checked, all lights will be exported");
+
+  RNA_def_boolean(
+      ot->srna, "export_cameras", true, "Cameras", "When checked, all cameras will be exported");
+
+  RNA_def_boolean(
+      ot->srna, "export_curves", true, "Curves", "When checked, all curves will be exported");
+
+  RNA_def_boolean(
+      ot->srna, "export_volumes", true, "Volumes", "When checked, all volumes will be exported");
 }
 
 /* ====== USD Import ====== */

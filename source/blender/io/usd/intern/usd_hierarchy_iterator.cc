@@ -108,23 +108,48 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
 
   switch (context->object->type) {
     case OB_MESH:
-      data_writer = new USDMeshWriter(usd_export_context);
+      if (usd_export_context.export_params.export_meshes) {
+        data_writer = new USDMeshWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
     case OB_CAMERA:
-      data_writer = new USDCameraWriter(usd_export_context);
+      if (usd_export_context.export_params.export_cameras) {
+        data_writer = new USDCameraWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
     case OB_LAMP:
-      data_writer = new USDLightWriter(usd_export_context);
+      if (usd_export_context.export_params.export_lights) {
+        data_writer = new USDLightWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
     case OB_MBALL:
       data_writer = new USDMetaballWriter(usd_export_context);
       break;
     case OB_CURVES_LEGACY:
     case OB_CURVES:
-      data_writer = new USDCurvesWriter(usd_export_context);
+      if (usd_export_context.export_params.export_curves) {
+        data_writer = new USDCurvesWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
     case OB_VOLUME:
-      data_writer = new USDVolumeWriter(usd_export_context);
+      if (usd_export_context.export_params.export_volumes) {
+        data_writer = new USDVolumeWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
     case OB_ARMATURE:
       if (usd_export_context.export_params.export_armatures) {

@@ -97,6 +97,12 @@ struct USDExportParams {
   bool relative_paths = true;
   bool export_custom_properties = true;
   bool author_blender_name = true;
+  bool export_meshes = true;
+  bool export_lights = true;
+  bool export_cameras = true;
+  bool export_curves = true;
+  bool export_volumes = true;
+
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
