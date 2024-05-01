@@ -1001,9 +1001,10 @@ static void execute_instances_tasks(
   for (bke::GeometryComponentPtr component : src_components) {
     for_join_attributes.append(component.get());
   }
-
+  /* Join attribute values from the 'unselected' instances, as they aren't included otherwise. 
+   * Omit instance_transform and .reference_index to prevent them from overwriting the correct attributes of the realized instances. */
   join_attributes(
-      for_join_attributes, dst_component, {"position", ".reference_index", "instance_transform"});
+      for_join_attributes, dst_component, {".reference_index", "instance_transform"});
 }
 
 /** \} */
