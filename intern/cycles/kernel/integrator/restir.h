@@ -205,7 +205,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
 
   const int radius = kernel_data.integrator.restir_spatial_radius;
   SpatialResampling spatial_resampling(tile, radius);
-  Reservoir reservoir;
+  Reservoir reservoir(kg);
 
   /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good
    * for point light with soft falloff and area light with small spread. */
@@ -257,7 +257,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   }
 
   PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
-  if (reservoir.is_empty()) {
+  if (!reservoir.finalize()) {
     return false;
   }
 
@@ -307,8 +307,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   }
 
   BsdfEval radiance = reservoir.radiance;
-  const float unbiased_contribution_weight = reservoir.total_weight /
-                                             reduce_add(fabs(radiance.sum)) / valid_neighbors;
+  const float unbiased_contribution_weight = reservoir.total_weight / valid_neighbors;
   bsdf_eval_mul(&radiance, unbiased_contribution_weight);
 
   integrate_direct_light_create_shadow_path<true>(

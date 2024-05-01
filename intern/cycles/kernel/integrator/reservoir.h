@@ -8,24 +8,27 @@ CCL_NAMESPACE_BEGIN
 struct Reservoir {
   LightSample ls;
   BsdfEval radiance;
-  float total_weight;
+  float total_weight = 0.0f;
 
   int num_light_samples;
   int num_bsdf_samples;
   int max_samples;
+  float3 rgb_to_y;
 
-  Reservoir()
+  Reservoir() = default;
+
+  Reservoir(KernelGlobals kg)
   {
-    total_weight = 0.0f;
+    rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
   }
 
   Reservoir(KernelGlobals kg, const bool use_ris)
   {
-    total_weight = 0.0f;
     /* TODO(weizhen): maybe find optimal values automatically. */
     num_light_samples = use_ris ? kernel_data.integrator.restir_light_samples : 1;
     num_bsdf_samples = use_ris ? kernel_data.integrator.restir_bsdf_samples : 1;
     max_samples = num_light_samples + num_bsdf_samples;
+    rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
   }
 
   bool is_empty() const
@@ -33,13 +36,27 @@ struct Reservoir {
     return total_weight == 0.0f;
   }
 
+  float luminance(const ccl_private BsdfEval &radiance) const
+  {
+    return dot(spectrum_to_rgb(radiance.sum), rgb_to_y);
+  }
+
+  bool finalize()
+  {
+    if (is_empty()) {
+      return false;
+    }
+    /* Apply unbiased contribution weight. */
+    total_weight /= luminance(radiance);
+    return true;
+  }
+
   void add_sample(const ccl_private LightSample &ls,
                   const ccl_private BsdfEval &radiance,
                   const float mis_weight,
                   const float rand)
   {
-    /* TODO(weizhen): replace `reduce_add()` with luminance. */
-    const float weight = reduce_add(fabs(radiance.sum)) * mis_weight;
+    const float weight = luminance(radiance) * mis_weight;
 
     if (!(weight > 0.0f)) {
       /* Should be theoretically captured by the following condition, but we can not trust floating

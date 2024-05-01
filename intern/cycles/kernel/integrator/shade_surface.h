@@ -671,15 +671,12 @@ ccl_device
 
   kernel_assert(samples_seen <= max_samples);
 
-  if (reservoir.is_empty()) {
+  if (!reservoir.finalize()) {
     if (is_direct_light) {
       film_clear_data_pass_reservoir(kg, state, render_buffer);
     }
     return;
   }
-
-  BsdfEval radiance = reservoir.radiance;
-  reservoir.total_weight /= reduce_add(fabs(radiance.sum));
 
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
@@ -690,11 +687,11 @@ ccl_device
     film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, render_buffer);
   }
   else {
-    bsdf_eval_mul(&radiance, reservoir.total_weight);
+    bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight);
 
     int mnee_vertex_count = 0;
     integrate_direct_light_create_shadow_path<false>(
-        kg, state, rng_state, sd, &reservoir.ls, &radiance, mnee_vertex_count);
+        kg, state, rng_state, sd, &reservoir.ls, &reservoir.radiance, mnee_vertex_count);
   }
 }
 
