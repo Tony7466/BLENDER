@@ -95,13 +95,13 @@ class CombineMatrixFunction : public mf::MultiFunction {
   {
     const VArray<float> &column_1_row_1 = params.readonly_single_input<float>(0, "Column 1 Row 1");
     const VArray<float> &column_1_row_2 = params.readonly_single_input<float>(1, "Column 1 Row 2");
-    const VArray<float> &column_1_row_c = params.readonly_single_input<float>(2, "Column 1 Row 3");
-    const VArray<float> &column_1_row_d = params.readonly_single_input<float>(3, "Column 1 Row 4");
+    const VArray<float> &column_1_row_3 = params.readonly_single_input<float>(2, "Column 1 Row 3");
+    const VArray<float> &column_1_row_4 = params.readonly_single_input<float>(3, "Column 1 Row 4");
 
     const VArray<float> &column_2_row_1 = params.readonly_single_input<float>(4, "Column 2 Row 1");
     const VArray<float> &column_2_row_2 = params.readonly_single_input<float>(5, "Column 2 Row 2");
-    const VArray<float> &column_2_row_c = params.readonly_single_input<float>(6, "Column 2 Row 3");
-    const VArray<float> &column_2_row_d = params.readonly_single_input<float>(7, "Column 2 Row 4");
+    const VArray<float> &column_2_row_3 = params.readonly_single_input<float>(6, "Column 2 Row 3");
+    const VArray<float> &column_2_row_4 = params.readonly_single_input<float>(7, "Column 2 Row 4");
 
     const VArray<float> &column_3_row_1 = params.readonly_single_input<float>(8, "Column 3 Row 1");
     const VArray<float> &column_3_row_2 = params.readonly_single_input<float>(9, "Column 3 Row 2");
@@ -124,13 +124,13 @@ class CombineMatrixFunction : public mf::MultiFunction {
 
     step_copy(mask, column_1_row_1, 1, 0, 16, 0, components);
     step_copy(mask, column_1_row_2, 1, 0, 16, 1, components);
-    step_copy(mask, column_1_row_c, 1, 0, 16, 2, components);
-    step_copy(mask, column_1_row_d, 1, 0, 16, 3, components);
+    step_copy(mask, column_1_row_3, 1, 0, 16, 2, components);
+    step_copy(mask, column_1_row_4, 1, 0, 16, 3, components);
 
     step_copy(mask, column_2_row_1, 1, 0, 16, 4, components);
     step_copy(mask, column_2_row_2, 1, 0, 16, 5, components);
-    step_copy(mask, column_2_row_c, 1, 0, 16, 6, components);
-    step_copy(mask, column_2_row_d, 1, 0, 16, 7, components);
+    step_copy(mask, column_2_row_3, 1, 0, 16, 6, components);
+    step_copy(mask, column_2_row_4, 1, 0, 16, 7, components);
 
     step_copy(mask, column_3_row_1, 1, 0, 16, 8, components);
     step_copy(mask, column_3_row_2, 1, 0, 16, 9, components);
