@@ -363,7 +363,7 @@ void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
 
   far = max_lit_distance;
   if (shadow_radius > 1e-5f) {
-    side = ((side_shift / (origin_shift - near_shift)) * (origin_shift + near));
+    side = near;
   }
   else {
     side = near;
