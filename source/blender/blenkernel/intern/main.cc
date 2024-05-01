@@ -433,6 +433,10 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
   *r_bmain_src = nullptr;
 }
 
+struct MainCopyTagged {
+  blender::Map<const ID *, ID *> remap_ids;
+};
+
 static int main_copy_remap_callback(LibraryIDLinkCallbackData *cb_data)
 {
   /* Pointer already remapped by BKE_id_copy_ex. */
@@ -447,10 +451,9 @@ static int main_copy_remap_callback(LibraryIDLinkCallbackData *cb_data)
     return IDWALK_RET_NOP;
   }
 
-  blender::Map<const ID *, ID *> &remap_ids = *(blender::Map<const ID *, ID *> *)
-                                                   cb_data->user_data;
+  const MainCopyTagged &user_data = *static_cast<const MainCopyTagged *>(cb_data->user_data);
   ID *id_orig = *id_p;
-  *id_p = remap_ids.lookup_default(id_orig, nullptr);
+  *id_p = user_data.remap_ids.lookup_default(id_orig, nullptr);
   return IDWALK_RET_NOP;
 }
 
@@ -460,7 +463,7 @@ Main *BKE_main_copy_tagged(Main *bmain_src)
   STRNCPY(bmain_dst->filepath, bmain_src->filepath);
 
   /* Create copy of all tagged datablocks. */
-  blender::Map<const ID *, ID *> remap_ids;
+  MainCopyTagged user_data;
 
   ID *id_src;
   FOREACH_MAIN_ID_BEGIN (bmain_src, id_src) {
@@ -470,14 +473,14 @@ Main *BKE_main_copy_tagged(Main *bmain_src)
 
     ID *id_dst = BKE_id_copy_ex(bmain_dst, id_src, nullptr, 0);
     BLI_assert(id_dst != nullptr);
-    remap_ids.add(id_src, id_dst);
+    user_data.remap_ids.add(id_src, id_dst);
   }
   FOREACH_MAIN_ID_END;
 
   /* Remap datablock pointers. */
   ID *id_dst;
   FOREACH_MAIN_ID_BEGIN (bmain_dst, id_dst) {
-    BKE_library_foreach_ID_link(bmain_dst, id_dst, main_copy_remap_callback, &remap_ids, 0);
+    BKE_library_foreach_ID_link(bmain_dst, id_dst, main_copy_remap_callback, &user_data, 0);
   }
   FOREACH_MAIN_ID_END;
 
