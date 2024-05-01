@@ -100,7 +100,6 @@ struct ShadowTileMap : public ShadowTileMapData {
   void sync_orthographic(const float4x4 &object_mat_,
                          int2 origin_offset,
                          int clipmap_level,
-                         float lod_bias_,
                          float filter_radius,
                          eShadowProjectionType projection_type_);
 
@@ -111,8 +110,7 @@ struct ShadowTileMap : public ShadowTileMapData {
                      float side,
                      float shift,
                      eCubeFace face,
-                     float filter_radius,
-                     float lod_bias_);
+                     float filter_radius);
 
   void debug_draw() const;
 
@@ -447,7 +445,7 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, float lod_bias);
+  void end_sync(Light &light);
 
  private:
   /**
@@ -502,12 +500,12 @@ class ShadowDirectional : public NonCopyable, NonMovable {
   /**
    * Release the tile-maps that will not be used in the current frame.
    */
-  void release_excess_tilemaps(const Camera &camera, float lod_bias);
+  void release_excess_tilemaps(const Camera &camera);
 
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, const Camera &camera, float lod_bias);
+  void end_sync(Light &light, const Camera &camera);
 
   /* Return coverage of the whole tile-map in world unit. */
   static float coverage_get(int lvl)
@@ -525,10 +523,10 @@ class ShadowDirectional : public NonCopyable, NonMovable {
 
  private:
   IndexRange clipmap_level_range(const Camera &camera);
-  IndexRange cascade_level_range(const Camera &camera, float lod_bias);
+  IndexRange cascade_level_range(const Camera &camera);
 
   void cascade_tilemaps_distribution(Light &light, const Camera &camera);
-  void clipmap_tilemaps_distribution(Light &light, const Camera &camera, float lod_bias);
+  void clipmap_tilemaps_distribution(Light &light, const Camera &camera);
 
   void cascade_tilemaps_distribution_near_far_points(const Camera &camera,
                                                      float3 &near_point,

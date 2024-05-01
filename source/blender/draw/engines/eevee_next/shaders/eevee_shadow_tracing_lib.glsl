@@ -437,9 +437,9 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
     if (light.type == LIGHT_SUN) {
       /* Simplification of `coverage_get(shadow_directional_level_fractional)`. */
       const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 1.0001);
-      scale = length(lP) * narrowing;
-      scale *= exp2(light.lod_bias);
-      scale = clamp(scale, float(1 << sun.clipmap_lod_min), float(1 << sun.clipmap_lod_max));
+      scale = length(lP);
+      scale = max(scale * narrowing, float(1 << sun.clipmap_lod_min));
+      scale = min(scale * exp2(light.lod_bias), float(1 << sun.clipmap_lod_max));
     }
     else {
       /* Uniform distribution everywhere. No distance scaling. */
@@ -455,8 +455,8 @@ float shadow_texel_radius_at_position(LightData light, const bool is_directional
                                         uniform_buf.shadow.film_pixel_radius);
     /* This gives the size of pixels at Z = 1. */
     scale = 1.0 / scale;
-    scale *= exp2(-1.0 + light.lod_bias);
-    scale = clamp(scale, float(1 << 0), float(1 << SHADOW_TILEMAP_LOD));
+    scale = max(scale * exp2(-1.0), float(1 << 0));
+    scale = min(scale * exp2(light.lod_bias), float(1 << SHADOW_TILEMAP_LOD));
     scale *= shadow_punctual_frustum_padding_get(light);
     /* Now scale by distance to the light. */
     scale *= reduce_max(abs(lP));

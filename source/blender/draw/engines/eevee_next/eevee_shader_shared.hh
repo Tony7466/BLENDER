@@ -1212,6 +1212,8 @@ struct ShadowTileMapData {
   float4x4 winmat;
   /** Punctual : Corners of the frustum. (vec3 padded to vec4) */
   float4 corners[4];
+  /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
+  float2 center_offset;
   /** Integer offset of the center of the 16x16 tiles from the origin of the tile space. */
   int2 grid_offset;
   /** Shift between previous and current grid_offset. Allows update tagging. */
@@ -1222,8 +1224,6 @@ struct ShadowTileMapData {
   int tiles_index;
   /** Index of persistent data in the persistent data buffer. */
   int clip_data_index;
-  /** Bias LOD to tag for usage to lower the amount of tile used. */
-  float lod_bias;
   /** Light type this tilemap is from. */
   eLightType light_type;
   /** True if the tilemap is part of area light shadow and is one of the side projections. */
@@ -1235,13 +1235,8 @@ struct ShadowTileMapData {
   float clip_far;
   /** Half of the tilemap size in world units. Used to compute window matrix. */
   float half_size;
-  /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
-  float2 center_offset;
   /** Filter radius of the light in pixels. */
   float filter_radius;
-  float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 

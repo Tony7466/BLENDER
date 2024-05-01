@@ -85,12 +85,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power * volume_visibility;
 
   this->pcf_radius = la->shadow_filter_radius;
-
-  /* TODO(fclem): Cleanup: Move that block to `ShadowPunctual::end_sync()` and
-   * `ShadowDirectional::end_sync()`. */
-  float resolution_scale = clamp(la->shadow_resolution_scale, 0.0f, 2.0f);
-  this->lod_bias = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
-  this->lod_bias += shadows.get_global_lod_bias();
+  this->lod_bias = (1.0f - la->shadow_resolution_scale) * SHADOW_TILEMAP_LOD;
 
   if (la->mode & LA_SHADOW) {
     shadow_ensure(shadows);
