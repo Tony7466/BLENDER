@@ -27,10 +27,7 @@ static IndexMask calc_mesh_edge_visibility(const MeshRenderData &mr,
     visible = IndexMask::from_bits(visible, visible_bits, memory);
   }
   if (!mr.hide_edge.is_empty()) {
-    /* Like #IndexMask::from_bools but reversed. */
-    const Span<bool> hide_edge = mr.hide_edge;
-    visible = IndexMask::from_predicate(
-        visible, GrainSize(4096), memory, [&](const int64_t i) { return !hide_edge[i]; });
+    visible = IndexMask::from_bools_inverse(visible, mr.hide_edge, memory);
   }
   if (mr.hide_unmapped_edges && mr.e_origindex != nullptr) {
     const int *orig_index = mr.e_origindex;
@@ -91,6 +88,10 @@ static void extract_lines_mesh(const MeshRenderData &mr,
                     max_index);
   MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
 
+  /* This code fills the index buffer in a non-deterministic way, with non-atomic access to `used`.
+   * This is okay because any of the possible face corner indices are correct, since they all
+   * correspond to the same #Mesh vertex. `used` exists here as a performance optimization to
+   * avoid writing to the VBO. */
   const OffsetIndices faces = mr.faces;
   const Span<int> corner_edges = mr.corner_edges;
   if (visible_non_loose_edges.size() == mr.edges_num) {
@@ -107,15 +108,10 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               const IndexRange face = faces[face_index];
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
-                /* Access to `used` don't need to be atomic because any of the possible face corner
-                 * indices from `edge_from_corners` are correct, since they all correspond to the
-                 * same #Mesh vertex. `used` only exists here as a performance optimization to
-                 * avoid writing to the VBO unnecessarily. */
-                if (used[edge]) {
-                  continue;
+                if (!used[edge]) {
+                  data[edge] = edge_from_corners(face, corner);
+                  used[edge] = true;
                 }
-                data[edge] = edge_from_corners(face, corner);
-                used[edge] = true;
               }
             }
           });
@@ -132,11 +128,10 @@ static void extract_lines_mesh(const MeshRenderData &mr,
               const IndexRange face = faces[face_index];
               for (const int corner : face) {
                 const int edge = corner_edges[corner];
-                if (map[edge] == -1) {
-                  continue;
+                if (map[edge] != -1) {
+                  data[map[edge]] = edge_from_corners(face, corner);
+                  map[edge] = -1;
                 }
-                data[map[edge]] = edge_from_corners(face, corner);
-                map[edge] = -1;
               }
             }
           });
@@ -152,10 +147,12 @@ static void extract_lines_mesh(const MeshRenderData &mr,
   }
 }
 
-static IndexMask calc_bm_edge_visibility(BMesh &bm, const IndexMask &mask, IndexMaskMemory &memory)
+static IndexMask calc_bm_edge_visibility(const BMesh &bm,
+                                         const IndexMask &mask,
+                                         IndexMaskMemory &memory)
 {
   return IndexMask::from_predicate(mask, GrainSize(2048), memory, [&](const int i) {
-    return !BM_elem_flag_test_bool(BM_edge_at_index(&bm, i), BM_ELEM_HIDDEN);
+    return !BM_elem_flag_test_bool(BM_edge_at_index(&const_cast<BMesh &>(bm), i), BM_ELEM_HIDDEN);
   });
 }
 
@@ -164,7 +161,7 @@ static void extract_lines_bm(const MeshRenderData &mr,
                              gpu::IndexBuf *lines_loose,
                              bool &no_loose_wire)
 {
-  BMesh &bm = *mr.bm;
+  const BMesh &bm = *mr.bm;
 
   IndexMaskMemory memory;
   const IndexMask all_loose_edges = IndexMask::from_indices(mr.loose_edges, memory);
@@ -186,7 +183,7 @@ static void extract_lines_bm(const MeshRenderData &mr,
   /* Make use of BMesh's edge to loop topology knowledge to iterate over edges instead of
    * iterating over faces and defining edges implicitly as done in the #Mesh extraction. */
   visible_non_loose_edges.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
-    const BMEdge &edge = *BM_edge_at_index(&bm, i);
+    const BMEdge &edge = *BM_edge_at_index(&const_cast<BMesh &>(bm), i);
     data[pos] = uint2(BM_elem_index_get(edge.l), BM_elem_index_get(edge.l->next));
   });
 
