@@ -741,8 +741,7 @@ static void sculpt_face_sets_init_flood_fill(Object *ob, const FaceSetsFloodFill
   const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
       ".hide_poly", bke::AttrDomain::Face, false);
 
-  const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
-  Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, prev_face_sets);
+  Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
   int next_face_set = 1;
 
@@ -804,12 +803,12 @@ Array<int> duplicate_face_sets(const Mesh &mesh)
   return face_sets;
 }
 
-Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> prev_face_sets)
+Set<int> gather_hidden_face_sets(const VArray<bool> &hide_poly, const Span<int> face_sets)
 {
   Set<int> hidden_face_sets;
   for (const int i : hide_poly.index_range()) {
     if (hide_poly[i]) {
-      hidden_face_sets.add(prev_face_sets[i]);
+      hidden_face_sets.add(face_sets[i]);
     }
   }
 
@@ -870,8 +869,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
           "material_index", bke::AttrDomain::Face, 0);
       const VArray<bool> hide_poly = *attributes.lookup_or_default<bool>(
           ".hide_poly", bke::AttrDomain::Face, false);
-      const Array<int> prev_face_sets = duplicate_face_sets(*mesh);
-      Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, prev_face_sets);
+      Set<int> hidden_face_sets = gather_hidden_face_sets(hide_poly, face_sets.span);
 
       int prev_material = material_indices[0];
       int material_face_set = 1;
