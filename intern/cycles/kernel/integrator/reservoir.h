@@ -144,6 +144,31 @@ ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
   return false;
 }
 
+struct SpatialReservoir {
+  Reservoir reservoir;
+  /* TODO(weizhen): maybe the neighbors should share the same flag. */
+  uint32_t path_flag;
+  ShaderData sd;
+  uint3 pixel_index;
+
+  SpatialReservoir() = default;
+
+  SpatialReservoir(KernelGlobals kg) : reservoir(kg)
+  {
+    pixel_index = make_uint3(-1, -1, -1);
+  }
+
+  bool is_empty() const
+  {
+    return reservoir.is_empty();
+  }
+
+  void add_reservoir(const SpatialReservoir &other, const float rand)
+  {
+    reservoir.add_reservoir(other.reservoir, rand);
+  }
+};
+
 CCL_NAMESPACE_END
 
 #endif  // RESERVOIR_H_
