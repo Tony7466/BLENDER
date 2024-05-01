@@ -968,11 +968,6 @@ static void execute_instances_tasks(
           dst_instances->attributes_for_write().lookup_for_write_span(id);
       GMutableSpan dst_span = write_attribute.span;
       
-      /* do not override existing attributes. */
-      if (!write_attribute) {
-        continue;
-      }
-
       const void *attribute_ptr;
       if (attribute_fallback_array[attribute_index] != nullptr) {
         attribute_ptr = attribute_fallback_array[attribute_index];
