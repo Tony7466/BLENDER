@@ -1194,6 +1194,8 @@ static CombinedKeyingResult insert_key_anim(Animation &anim,
     }
   }
 
+  DEG_id_tag_update(&anim.id, ID_RECALC_ANIMATION_NO_FLUSH);
+
   return combined_result;
 }
 
