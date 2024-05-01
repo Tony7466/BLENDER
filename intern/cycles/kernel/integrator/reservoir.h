@@ -39,8 +39,13 @@ struct Reservoir {
                   const float rand)
   {
     /* TODO(weizhen): replace `reduce_add()` with luminance. */
-    /* TODO(weizhen): could there be NaN weights? */
     const float weight = reduce_add(fabs(radiance.sum)) * mis_weight;
+
+    if (!(weight > 0.0f)) {
+      /* Should be theoretically captured by the following condition, but we can not trust floating
+       * point precision. */
+      return;
+    }
 
     total_weight += weight;
 
