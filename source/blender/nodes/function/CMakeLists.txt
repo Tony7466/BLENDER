@@ -36,7 +36,6 @@ set(SRC
   nodes/node_fn_input_vector.cc
   nodes/node_fn_invert_matrix.cc
   nodes/node_fn_invert_rotation.cc
-  nodes/node_fn_matrix_input.cc
   nodes/node_fn_matrix_multiply.cc
   nodes/node_fn_project_point.cc
   nodes/node_fn_quaternion_to_rotation.cc

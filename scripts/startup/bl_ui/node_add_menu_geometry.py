@@ -262,7 +262,6 @@ class NODE_MT_geometry_node_GEO_INPUT_CONSTANT(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeInputImage")
         node_add_menu.add_node_type(layout, "FunctionNodeInputInt")
         node_add_menu.add_node_type(layout, "GeometryNodeInputMaterial")
-        node_add_menu.add_node_type(layout, "FunctionNodeInputMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeInputString")
         node_add_menu.add_node_type(layout, "ShaderNodeValue")
         node_add_menu.add_node_type(layout, "FunctionNodeInputVector")

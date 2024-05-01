@@ -1570,10 +1570,6 @@ typedef struct NodeInputString {
   char *string;
 } NodeInputString;
 
-typedef struct NodeInputMatrix {
-  float matrix[16];
-} NodeInputMatrix;
-
 typedef struct NodeGeometryExtrudeMesh {
   /** #GeometryNodeExtrudeMeshMode */
   uint8_t mode;
