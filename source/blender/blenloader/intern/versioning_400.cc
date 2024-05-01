@@ -3303,7 +3303,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           continue;
         }
 
-        /* The side of the Fast Gaussian mode of blur decrease by the following factor to match
+        /* The size of the Fast Gaussian mode of blur decreased by the following factor to match
          * other blur sizes. So increase it back. */
         const float size_factor = 3.0f / 2.0f;
         blur_data.sizex *= size_factor;
