@@ -12,8 +12,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.use_custom_socket_order();
-
-  b.add_input<decl::Matrix>("Matrix");
+  b.allow_any_socket_order();
 
   PanelDeclarationBuilder &column_a = b.add_panel("Column 1").default_closed(true);
   column_a.add_output<decl::Float>("Column 1 Row 1");
@@ -38,15 +37,17 @@ static void node_declare(NodeDeclarationBuilder &b)
   column_d.add_output<decl::Float>("Column 4 Row 2");
   column_d.add_output<decl::Float>("Column 4 Row 3");
   column_d.add_output<decl::Float>("Column 4 Row 4");
+
+  b.add_input<decl::Matrix>("Matrix");
 }
 
-static void step_copy_try(const IndexMask &mask,
-                          const Span<float> src,
-                          const int64_t src_step,
-                          const int64_t src_begin,
-                          const int64_t dst_step,
-                          const int64_t dst_begin,
-                          MutableSpan<float> dst)
+static void copy_with_stride(const IndexMask &mask,
+                             const Span<float> src,
+                             const int64_t src_step,
+                             const int64_t src_begin,
+                             const int64_t dst_step,
+                             const int64_t dst_begin,
+                             MutableSpan<float> dst)
 {
   if (dst.is_empty()) {
     return;
@@ -159,25 +160,25 @@ class SeparateMatrixFunction : public mf::MultiFunction {
     const VArraySpan<float4x4> span_matrices(matrices);
     const Span<float> components = span_matrices.cast<float>();
 
-    step_copy_try(mask, components, 16, 0, 1, 0, column_1_row_1);
-    step_copy_try(mask, components, 16, 1, 1, 0, column_1_row_2);
-    step_copy_try(mask, components, 16, 2, 1, 0, column_1_row_3);
-    step_copy_try(mask, components, 16, 3, 1, 0, column_1_row_4);
+    copy_with_stride(mask, components, 16, 0, 1, 0, column_1_row_1);
+    copy_with_stride(mask, components, 16, 1, 1, 0, column_1_row_2);
+    copy_with_stride(mask, components, 16, 2, 1, 0, column_1_row_3);
+    copy_with_stride(mask, components, 16, 3, 1, 0, column_1_row_4);
 
-    step_copy_try(mask, components, 16, 4, 1, 0, column_2_row_1);
-    step_copy_try(mask, components, 16, 5, 1, 0, column_2_row_2);
-    step_copy_try(mask, components, 16, 6, 1, 0, column_2_row_3);
-    step_copy_try(mask, components, 16, 7, 1, 0, column_2_row_4);
+    copy_with_stride(mask, components, 16, 4, 1, 0, column_2_row_1);
+    copy_with_stride(mask, components, 16, 5, 1, 0, column_2_row_2);
+    copy_with_stride(mask, components, 16, 6, 1, 0, column_2_row_3);
+    copy_with_stride(mask, components, 16, 7, 1, 0, column_2_row_4);
 
-    step_copy_try(mask, components, 16, 8, 1, 0, column_3_row_1);
-    step_copy_try(mask, components, 16, 9, 1, 0, column_3_row_2);
-    step_copy_try(mask, components, 16, 10, 1, 0, column_3_row_3);
-    step_copy_try(mask, components, 16, 11, 1, 0, column_3_row_4);
+    copy_with_stride(mask, components, 16, 8, 1, 0, column_3_row_1);
+    copy_with_stride(mask, components, 16, 9, 1, 0, column_3_row_2);
+    copy_with_stride(mask, components, 16, 10, 1, 0, column_3_row_3);
+    copy_with_stride(mask, components, 16, 11, 1, 0, column_3_row_4);
 
-    step_copy_try(mask, components, 16, 12, 1, 0, column_4_row_1);
-    step_copy_try(mask, components, 16, 13, 1, 0, column_4_row_2);
-    step_copy_try(mask, components, 16, 14, 1, 0, column_4_row_3);
-    step_copy_try(mask, components, 16, 15, 1, 0, column_4_row_4);
+    copy_with_stride(mask, components, 16, 12, 1, 0, column_4_row_1);
+    copy_with_stride(mask, components, 16, 13, 1, 0, column_4_row_2);
+    copy_with_stride(mask, components, 16, 14, 1, 0, column_4_row_3);
+    copy_with_stride(mask, components, 16, 15, 1, 0, column_4_row_4);
   }
 };
 
