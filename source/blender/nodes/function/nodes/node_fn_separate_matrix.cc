@@ -16,28 +16,28 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Matrix>("Matrix");
 
   PanelDeclarationBuilder &column_a = b.add_panel("Column A").default_closed(true);
-  column_a.add_output<decl::Float>("A", "Column A Row A");
-  column_a.add_output<decl::Float>("B", "Column A Row B");
-  column_a.add_output<decl::Float>("C", "Column A Row C");
-  column_a.add_output<decl::Float>("D", "Column A Row D");
+  column_a.add_output<decl::Float>("Column A Row A");
+  column_a.add_output<decl::Float>("Column A Row B");
+  column_a.add_output<decl::Float>("Column A Row C");
+  column_a.add_output<decl::Float>("Column A Row D");
 
   PanelDeclarationBuilder &column_b = b.add_panel("Column B").default_closed(true);
-  column_b.add_output<decl::Float>("A", "Column B Row A");
-  column_b.add_output<decl::Float>("B", "Column B Row B");
-  column_b.add_output<decl::Float>("C", "Column B Row C");
-  column_b.add_output<decl::Float>("D", "Column B Row D");
+  column_b.add_output<decl::Float>("Column B Row A");
+  column_b.add_output<decl::Float>("Column B Row B");
+  column_b.add_output<decl::Float>("Column B Row C");
+  column_b.add_output<decl::Float>("Column B Row D");
 
   PanelDeclarationBuilder &column_c = b.add_panel("Column C").default_closed(true);
-  column_c.add_output<decl::Float>("A", "Column C Row A");
-  column_c.add_output<decl::Float>("B", "Column C Row B");
-  column_c.add_output<decl::Float>("C", "Column C Row C");
-  column_c.add_output<decl::Float>("D", "Column C Row D");
+  column_c.add_output<decl::Float>("Column C Row A");
+  column_c.add_output<decl::Float>("Column C Row B");
+  column_c.add_output<decl::Float>("Column C Row C");
+  column_c.add_output<decl::Float>("Column C Row D");
 
   PanelDeclarationBuilder &column_d = b.add_panel("Column D").default_closed(true);
-  column_d.add_output<decl::Float>("A", "Column D Row A");
-  column_d.add_output<decl::Float>("B", "Column D Row B");
-  column_d.add_output<decl::Float>("C", "Column D Row C");
-  column_d.add_output<decl::Float>("D", "Column D Row D");
+  column_d.add_output<decl::Float>("Column D Row A");
+  column_d.add_output<decl::Float>("Column D Row B");
+  column_d.add_output<decl::Float>("Column D Row C");
+  column_d.add_output<decl::Float>("Column D Row D");
 }
 
 static void step_copy_try(const IndexMask &mask,
