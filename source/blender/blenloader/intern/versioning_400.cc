@@ -3287,6 +3287,44 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 25)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != CMP_NODE_BLUR) {
+          continue;
+        }
+
+        NodeBlurData &blur_data = *static_cast<NodeBlurData *>(node->storage);
+
+        if (blur_data.filtertype != R_FILTER_FAST_GAUSS) {
+          continue;
+        }
+
+        /* The size of the Fast Gaussian mode of blur decreased by the following factor to match
+         * other blur sizes. So increase it back. */
+        const float size_factor = 3.0f / 2.0f;
+        blur_data.sizex *= size_factor;
+        blur_data.sizey *= size_factor;
+        blur_data.percentx *= size_factor;
+        blur_data.percenty *= size_factor;
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 26)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SceneEEVEE", "float", "shadow_resolution_scale"))
+    {
+      SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.shadow_resolution_scale = default_scene_eevee.shadow_resolution_scale;
+      }
+    }
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
