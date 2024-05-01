@@ -322,7 +322,7 @@ void Sampling::cdf_invert(Vector<float> &cdf, Vector<float> &inverted_cdf)
       if (i == cdf.size() - 1) {
         inverted_cdf[u] = 1.0f;
       }
-      else if (cdf[i] >= x) {
+      else if (cdf[i] >= x && cdf[i + 1] != cdf[i]) {
         float t = (x - cdf[i]) / (cdf[i + 1] - cdf[i]);
         inverted_cdf[u] = (float(i) + t) / float(cdf.size() - 1);
         break;
