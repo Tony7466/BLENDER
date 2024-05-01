@@ -294,8 +294,12 @@ struct ShadowRayPunctual {
   /* Up direction for the whole ray. Allows to compute depth gradient relative to a stable up
    * direction that doesn't change between each cubeface. */
   vec3 up_axis;
+  vec3 forward_axis;
   /* Tile-map to sample. */
   int light_tilemap_index;
+
+  mat3x3 view_mat;
+  mat4x4 proj_mat;
 };
 
 /* Return ray in UV clip space [0..1]. */
@@ -350,11 +354,11 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
 
     direction = point_on_light_shape - lP;
-    // direction = shadow_ray_above_horizon_ensure(direction, lNg);
+    direction = shadow_ray_above_horizon_ensure(direction, lNg);
 
     /* Clip the ray to not cross the light shape. */
     float clip_distance = light_spot_data_get(light).radius;
-    // direction *= saturate((dist - clip_distance) / dist);
+    direction *= saturate((dist - clip_distance) / dist);
   }
 
   /* Compute the ray again. */
@@ -363,9 +367,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   ray.direction = direction;
   ray.light_tilemap_index = light.tilemap_index;
   ray.up_axis = normalize(ray.origin);
+  ray.forward_axis = normalize(ray.origin);
 
 #ifdef GPU_FRAGMENT_SHADER
-  if (ivec2(gl_FragCoord.xy) == ivec2(500)) {
+  if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
     // drw_debug_line(ray.origin, ray.origin + ray.direction, vec4(0, 1, 0, 1));
   }
 #endif
@@ -385,11 +390,13 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   vec3 occluder_pos = receiver_pos * (radial_occluder_depth / length(receiver_pos));
 
   ShadowTracingSample samp;
-  samp.receiver_depth = dot(receiver_pos, ray.up_axis);
-  samp.occluder_depth = dot(occluder_pos, ray.up_axis);
+  // samp.receiver_depth = dot(receiver_pos, ray.up_axis);
+  // samp.occluder_depth = dot(occluder_pos, ray.up_axis);
+  samp.receiver_depth = project_point(ray.proj_mat, ray.view_mat * receiver_pos).z;
+  samp.occluder_depth = project_point(ray.proj_mat, ray.view_mat * occluder_pos).z;
   samp.skip_sample = (radial_occluder_depth == -1.0);
 #ifdef GPU_FRAGMENT_SHADER
-  if (ivec2(gl_FragCoord.xy) == ivec2(500)) {
+  if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
     drw_debug_point(receiver_pos, 0.01, vec4(0, 1, 0, 1));
     drw_debug_point(occluder_pos, 0.01, vec4(1, 0, 0, 1));
     drw_debug_line(
@@ -510,7 +517,7 @@ ShadowEvalResult shadow_eval(LightData light,
   vec2 pixel = vec2(gl_GlobalInvocationID.xy);
 #  endif
   vec3 blue_noise_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
-  vec3 random_shadow_3d = sampling_rng_3D_get(SAMPLING_SHADOW_U);
+  vec3 random_shadow_3d = fract(blue_noise_3d + sampling_rng_3D_get(SAMPLING_SHADOW_U));
   vec2 random_pcf_2d = fract(blue_noise_3d.xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
 #else
   /* Case of surfel light eval. */
