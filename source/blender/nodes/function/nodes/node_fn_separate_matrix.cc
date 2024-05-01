@@ -15,29 +15,29 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Matrix>("Matrix");
 
-  PanelDeclarationBuilder &column_a = b.add_panel("Column A").default_closed(true);
-  column_a.add_output<decl::Float>("Column A Row A");
-  column_a.add_output<decl::Float>("Column A Row B");
-  column_a.add_output<decl::Float>("Column A Row C");
-  column_a.add_output<decl::Float>("Column A Row D");
+  PanelDeclarationBuilder &column_a = b.add_panel("Column 1").default_closed(true);
+  column_a.add_output<decl::Float>("Column 1 Row 1");
+  column_a.add_output<decl::Float>("Column 1 Row 2");
+  column_a.add_output<decl::Float>("Column 1 Row 3");
+  column_a.add_output<decl::Float>("Column 1 Row 4");
 
-  PanelDeclarationBuilder &column_b = b.add_panel("Column B").default_closed(true);
-  column_b.add_output<decl::Float>("Column B Row A");
-  column_b.add_output<decl::Float>("Column B Row B");
-  column_b.add_output<decl::Float>("Column B Row C");
-  column_b.add_output<decl::Float>("Column B Row D");
+  PanelDeclarationBuilder &column_b = b.add_panel("Column 2").default_closed(true);
+  column_b.add_output<decl::Float>("Column 2 Row 1");
+  column_b.add_output<decl::Float>("Column 2 Row 2");
+  column_b.add_output<decl::Float>("Column 2 Row 3");
+  column_b.add_output<decl::Float>("Column 2 Row 4");
 
-  PanelDeclarationBuilder &column_c = b.add_panel("Column C").default_closed(true);
-  column_c.add_output<decl::Float>("Column C Row A");
-  column_c.add_output<decl::Float>("Column C Row B");
-  column_c.add_output<decl::Float>("Column C Row C");
-  column_c.add_output<decl::Float>("Column C Row D");
+  PanelDeclarationBuilder &column_c = b.add_panel("Column 3").default_closed(true);
+  column_c.add_output<decl::Float>("Column 3 Row 1");
+  column_c.add_output<decl::Float>("Column 3 Row 2");
+  column_c.add_output<decl::Float>("Column 3 Row 3");
+  column_c.add_output<decl::Float>("Column 3 Row 4");
 
-  PanelDeclarationBuilder &column_d = b.add_panel("Column D").default_closed(true);
-  column_d.add_output<decl::Float>("Column D Row A");
-  column_d.add_output<decl::Float>("Column D Row B");
-  column_d.add_output<decl::Float>("Column D Row C");
-  column_d.add_output<decl::Float>("Column D Row D");
+  PanelDeclarationBuilder &column_d = b.add_panel("Column 4").default_closed(true);
+  column_d.add_output<decl::Float>("Column 4 Row 1");
+  column_d.add_output<decl::Float>("Column 4 Row 2");
+  column_d.add_output<decl::Float>("Column 4 Row 3");
+  column_d.add_output<decl::Float>("Column 4 Row 4");
 }
 
 static void step_copy_try(const IndexMask &mask,
@@ -68,25 +68,25 @@ class SeparateMatrixFunction : public mf::MultiFunction {
       mf::SignatureBuilder builder{"Separate Matrix", signature};
       builder.single_input<float4x4>("Matrix");
 
-      builder.single_output<float>("Column A Row A", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column A Row B", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column A Row C", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column A Row D", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 1 Row 1", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 1 Row 2", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 1 Row 3", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 1 Row 4", mf::ParamFlag::SupportsUnusedOutput);
 
-      builder.single_output<float>("Column B Row A", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column B Row B", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column B Row C", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column B Row D", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 2 Row 1", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 2 Row 2", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 2 Row 3", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 2 Row 4", mf::ParamFlag::SupportsUnusedOutput);
 
-      builder.single_output<float>("Column C Row A", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column C Row B", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column C Row C", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column C Row D", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 3 Row 1", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 3 Row 2", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 3 Row 3", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 3 Row 4", mf::ParamFlag::SupportsUnusedOutput);
 
-      builder.single_output<float>("Column D Row A", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column D Row B", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column D Row C", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Column D Row D", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 4 Row 1", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 4 Row 2", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 4 Row 3", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<float>("Column 4 Row 4", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
     this->set_signature(&signature);
@@ -96,88 +96,88 @@ class SeparateMatrixFunction : public mf::MultiFunction {
   {
     const VArray<float4x4> matrices = params.readonly_single_input<float4x4>(0, "Matrix");
 
-    MutableSpan<float> column_a_row_a = params.uninitialized_single_output_if_required<float>(
-        1, "Column A Row A");
-    MutableSpan<float> column_a_row_b = params.uninitialized_single_output_if_required<float>(
-        2, "Column A Row B");
-    MutableSpan<float> column_a_row_c = params.uninitialized_single_output_if_required<float>(
-        3, "Column A Row C");
-    MutableSpan<float> column_a_row_d = params.uninitialized_single_output_if_required<float>(
-        4, "Column A Row D");
+    MutableSpan<float> column_1_row_1 = params.uninitialized_single_output_if_required<float>(
+        1, "Column 1 Row 1");
+    MutableSpan<float> column_1_row_2 = params.uninitialized_single_output_if_required<float>(
+        2, "Column 1 Row 2");
+    MutableSpan<float> column_1_row_3 = params.uninitialized_single_output_if_required<float>(
+        3, "Column 1 Row 3");
+    MutableSpan<float> column_1_row_4 = params.uninitialized_single_output_if_required<float>(
+        4, "Column 1 Row 4");
 
-    MutableSpan<float> column_b_row_a = params.uninitialized_single_output_if_required<float>(
-        5, "Column B Row A");
-    MutableSpan<float> column_b_row_b = params.uninitialized_single_output_if_required<float>(
-        6, "Column B Row B");
-    MutableSpan<float> column_b_row_c = params.uninitialized_single_output_if_required<float>(
-        7, "Column B Row C");
-    MutableSpan<float> column_b_row_d = params.uninitialized_single_output_if_required<float>(
-        8, "Column B Row D");
+    MutableSpan<float> column_2_row_1 = params.uninitialized_single_output_if_required<float>(
+        5, "Column 2 Row 1");
+    MutableSpan<float> column_2_row_2 = params.uninitialized_single_output_if_required<float>(
+        6, "Column 2 Row 2");
+    MutableSpan<float> column_2_row_3 = params.uninitialized_single_output_if_required<float>(
+        7, "Column 2 Row 3");
+    MutableSpan<float> column_2_row_4 = params.uninitialized_single_output_if_required<float>(
+        8, "Column 2 Row 4");
 
-    MutableSpan<float> column_c_row_a = params.uninitialized_single_output_if_required<float>(
-        9, "Column C Row A");
-    MutableSpan<float> column_c_row_b = params.uninitialized_single_output_if_required<float>(
-        10, "Column C Row B");
-    MutableSpan<float> column_c_row_c = params.uninitialized_single_output_if_required<float>(
-        11, "Column C Row C");
-    MutableSpan<float> column_c_row_d = params.uninitialized_single_output_if_required<float>(
-        12, "Column C Row D");
+    MutableSpan<float> column_3_row_1 = params.uninitialized_single_output_if_required<float>(
+        9, "Column 3 Row 1");
+    MutableSpan<float> column_3_row_2 = params.uninitialized_single_output_if_required<float>(
+        10, "Column 3 Row 2");
+    MutableSpan<float> column_3_row_3 = params.uninitialized_single_output_if_required<float>(
+        11, "Column 3 Row 3");
+    MutableSpan<float> column_3_row_4 = params.uninitialized_single_output_if_required<float>(
+        12, "Column 3 Row 4");
 
-    MutableSpan<float> column_d_row_a = params.uninitialized_single_output_if_required<float>(
-        13, "Column D Row A");
-    MutableSpan<float> column_d_row_b = params.uninitialized_single_output_if_required<float>(
-        14, "Column D Row B");
-    MutableSpan<float> column_d_row_c = params.uninitialized_single_output_if_required<float>(
-        15, "Column D Row C");
-    MutableSpan<float> column_d_row_d = params.uninitialized_single_output_if_required<float>(
-        16, "Column D Row D");
+    MutableSpan<float> column_4_row_1 = params.uninitialized_single_output_if_required<float>(
+        13, "Column 4 Row 1");
+    MutableSpan<float> column_4_row_2 = params.uninitialized_single_output_if_required<float>(
+        14, "Column 4 Row 2");
+    MutableSpan<float> column_4_row_3 = params.uninitialized_single_output_if_required<float>(
+        15, "Column 4 Row 3");
+    MutableSpan<float> column_4_row_4 = params.uninitialized_single_output_if_required<float>(
+        16, "Column 4 Row 4");
 
     if (const std::optional<float4x4> single = matrices.get_if_single()) {
       const float4x4 matrix = *single;
-      column_a_row_a.fill(matrix[0][0]);
-      column_a_row_b.fill(matrix[0][1]);
-      column_a_row_c.fill(matrix[0][2]);
-      column_a_row_d.fill(matrix[0][3]);
+      column_1_row_1.fill(matrix[0][0]);
+      column_1_row_2.fill(matrix[0][1]);
+      column_1_row_3.fill(matrix[0][2]);
+      column_1_row_4.fill(matrix[0][3]);
 
-      column_b_row_a.fill(matrix[1][0]);
-      column_b_row_b.fill(matrix[1][1]);
-      column_b_row_c.fill(matrix[1][2]);
-      column_b_row_d.fill(matrix[1][3]);
+      column_2_row_1.fill(matrix[1][0]);
+      column_2_row_2.fill(matrix[1][1]);
+      column_2_row_3.fill(matrix[1][2]);
+      column_2_row_4.fill(matrix[1][3]);
 
-      column_c_row_a.fill(matrix[2][0]);
-      column_c_row_b.fill(matrix[2][1]);
-      column_c_row_c.fill(matrix[2][2]);
-      column_c_row_d.fill(matrix[2][3]);
+      column_3_row_1.fill(matrix[2][0]);
+      column_3_row_2.fill(matrix[2][1]);
+      column_3_row_3.fill(matrix[2][2]);
+      column_3_row_4.fill(matrix[2][3]);
 
-      column_d_row_a.fill(matrix[3][0]);
-      column_d_row_b.fill(matrix[3][1]);
-      column_d_row_c.fill(matrix[3][2]);
-      column_d_row_d.fill(matrix[3][3]);
+      column_4_row_1.fill(matrix[3][0]);
+      column_4_row_2.fill(matrix[3][1]);
+      column_4_row_3.fill(matrix[3][2]);
+      column_4_row_4.fill(matrix[3][3]);
       return;
     }
 
     const VArraySpan<float4x4> span_matrices(matrices);
     const Span<float> components = span_matrices.cast<float>();
 
-    step_copy_try(mask, components, 16, 0, 1, 0, column_a_row_a);
-    step_copy_try(mask, components, 16, 1, 1, 0, column_a_row_b);
-    step_copy_try(mask, components, 16, 2, 1, 0, column_a_row_c);
-    step_copy_try(mask, components, 16, 3, 1, 0, column_a_row_d);
+    step_copy_try(mask, components, 16, 0, 1, 0, column_1_row_1);
+    step_copy_try(mask, components, 16, 1, 1, 0, column_1_row_2);
+    step_copy_try(mask, components, 16, 2, 1, 0, column_1_row_3);
+    step_copy_try(mask, components, 16, 3, 1, 0, column_1_row_4);
 
-    step_copy_try(mask, components, 16, 4, 1, 0, column_b_row_a);
-    step_copy_try(mask, components, 16, 5, 1, 0, column_b_row_b);
-    step_copy_try(mask, components, 16, 6, 1, 0, column_b_row_c);
-    step_copy_try(mask, components, 16, 7, 1, 0, column_b_row_d);
+    step_copy_try(mask, components, 16, 4, 1, 0, column_2_row_1);
+    step_copy_try(mask, components, 16, 5, 1, 0, column_2_row_2);
+    step_copy_try(mask, components, 16, 6, 1, 0, column_2_row_3);
+    step_copy_try(mask, components, 16, 7, 1, 0, column_2_row_4);
 
-    step_copy_try(mask, components, 16, 8, 1, 0, column_c_row_a);
-    step_copy_try(mask, components, 16, 9, 1, 0, column_c_row_b);
-    step_copy_try(mask, components, 16, 10, 1, 0, column_c_row_c);
-    step_copy_try(mask, components, 16, 11, 1, 0, column_c_row_d);
+    step_copy_try(mask, components, 16, 8, 1, 0, column_3_row_1);
+    step_copy_try(mask, components, 16, 9, 1, 0, column_3_row_2);
+    step_copy_try(mask, components, 16, 10, 1, 0, column_3_row_3);
+    step_copy_try(mask, components, 16, 11, 1, 0, column_3_row_4);
 
-    step_copy_try(mask, components, 16, 12, 1, 0, column_d_row_a);
-    step_copy_try(mask, components, 16, 13, 1, 0, column_d_row_b);
-    step_copy_try(mask, components, 16, 14, 1, 0, column_d_row_c);
-    step_copy_try(mask, components, 16, 15, 1, 0, column_d_row_d);
+    step_copy_try(mask, components, 16, 12, 1, 0, column_4_row_1);
+    step_copy_try(mask, components, 16, 13, 1, 0, column_4_row_2);
+    step_copy_try(mask, components, 16, 14, 1, 0, column_4_row_3);
+    step_copy_try(mask, components, 16, 15, 1, 0, column_4_row_4);
   }
 };
 

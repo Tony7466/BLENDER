@@ -15,29 +15,29 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_output<decl::Matrix>("Matrix");
 
-  PanelDeclarationBuilder &column_a = b.add_panel("Column A").default_closed(true);
-  column_a.add_input<decl::Float>("Column A Row A").default_value(1.0f);
-  column_a.add_input<decl::Float>("Column A Row B");
-  column_a.add_input<decl::Float>("Column A Row C");
-  column_a.add_input<decl::Float>("Column A Row D");
+  PanelDeclarationBuilder &column_a = b.add_panel("Column 1").default_closed(true);
+  column_a.add_input<decl::Float>("Column 1 Row 1").default_value(1.0f);
+  column_a.add_input<decl::Float>("Column 1 Row 2");
+  column_a.add_input<decl::Float>("Column 1 Row 3");
+  column_a.add_input<decl::Float>("Column 1 Row 4");
 
-  PanelDeclarationBuilder &column_b = b.add_panel("Column B").default_closed(true);
-  column_b.add_input<decl::Float>("Column B Row A");
-  column_b.add_input<decl::Float>("Column B Row B").default_value(1.0f);
-  column_b.add_input<decl::Float>("Column B Row C");
-  column_b.add_input<decl::Float>("Column B Row D");
+  PanelDeclarationBuilder &column_b = b.add_panel("Column 2").default_closed(true);
+  column_b.add_input<decl::Float>("Column 2 Row 1");
+  column_b.add_input<decl::Float>("Column 2 Row 2").default_value(1.0f);
+  column_b.add_input<decl::Float>("Column 2 Row 3");
+  column_b.add_input<decl::Float>("Column 2 Row 4");
 
-  PanelDeclarationBuilder &column_c = b.add_panel("Column C").default_closed(true);
-  column_c.add_input<decl::Float>("Column C Row A");
-  column_c.add_input<decl::Float>("Column C Row B");
-  column_c.add_input<decl::Float>("Column C Row C").default_value(1.0f);
-  column_c.add_input<decl::Float>("Column C Row D");
+  PanelDeclarationBuilder &column_c = b.add_panel("Column 3").default_closed(true);
+  column_c.add_input<decl::Float>("Column 3 Row 1");
+  column_c.add_input<decl::Float>("Column 3 Row 2");
+  column_c.add_input<decl::Float>("Column 3 Row 3").default_value(1.0f);
+  column_c.add_input<decl::Float>("Column 3 Row 4");
 
-  PanelDeclarationBuilder &column_d = b.add_panel("Column D").default_closed(true);
-  column_d.add_input<decl::Float>("Column D Row A");
-  column_d.add_input<decl::Float>("Column D Row B");
-  column_d.add_input<decl::Float>("Column D Row C");
-  column_d.add_input<decl::Float>("Column D Row D").default_value(1.0f);
+  PanelDeclarationBuilder &column_d = b.add_panel("Column 4").default_closed(true);
+  column_d.add_input<decl::Float>("Column 4 Row 1");
+  column_d.add_input<decl::Float>("Column 4 Row 2");
+  column_d.add_input<decl::Float>("Column 4 Row 3");
+  column_d.add_input<decl::Float>("Column 4 Row 4").default_value(1.0f);
 }
 
 static void step_copy(const IndexMask &mask,
@@ -65,25 +65,25 @@ class CombineMatrixFunction : public mf::MultiFunction {
     static const mf::Signature signature = []() {
       mf::Signature signature;
       mf::SignatureBuilder builder{"Combine Matrix", signature};
-      builder.single_input<float>("Column A Row A");
-      builder.single_input<float>("Column A Row B");
-      builder.single_input<float>("Column A Row C");
-      builder.single_input<float>("Column A Row D");
+      builder.single_input<float>("Column 1 Row 1");
+      builder.single_input<float>("Column 1 Row 2");
+      builder.single_input<float>("Column 1 Row 3");
+      builder.single_input<float>("Column 1 Row 4");
 
-      builder.single_input<float>("Column B Row A");
-      builder.single_input<float>("Column B Row B");
-      builder.single_input<float>("Column B Row C");
-      builder.single_input<float>("Column B Row D");
+      builder.single_input<float>("Column 2 Row 1");
+      builder.single_input<float>("Column 2 Row 2");
+      builder.single_input<float>("Column 2 Row 3");
+      builder.single_input<float>("Column 2 Row 4");
 
-      builder.single_input<float>("Column C Row A");
-      builder.single_input<float>("Column C Row B");
-      builder.single_input<float>("Column C Row C");
-      builder.single_input<float>("Column C Row D");
+      builder.single_input<float>("Column 3 Row 1");
+      builder.single_input<float>("Column 3 Row 2");
+      builder.single_input<float>("Column 3 Row 3");
+      builder.single_input<float>("Column 3 Row 4");
 
-      builder.single_input<float>("Column D Row A");
-      builder.single_input<float>("Column D Row B");
-      builder.single_input<float>("Column D Row C");
-      builder.single_input<float>("Column D Row D");
+      builder.single_input<float>("Column 4 Row 1");
+      builder.single_input<float>("Column 4 Row 2");
+      builder.single_input<float>("Column 4 Row 3");
+      builder.single_input<float>("Column 4 Row 4");
 
       builder.single_output<float4x4>("Matrix");
       return signature;
@@ -93,54 +93,54 @@ class CombineMatrixFunction : public mf::MultiFunction {
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
-    const VArray<float> &column_a_row_a = params.readonly_single_input<float>(0, "Column A Row A");
-    const VArray<float> &column_a_row_b = params.readonly_single_input<float>(1, "Column A Row B");
-    const VArray<float> &column_a_row_c = params.readonly_single_input<float>(2, "Column A Row C");
-    const VArray<float> &column_a_row_d = params.readonly_single_input<float>(3, "Column A Row D");
+    const VArray<float> &column_1_row_1 = params.readonly_single_input<float>(0, "Column 1 Row 1");
+    const VArray<float> &column_1_row_2 = params.readonly_single_input<float>(1, "Column 1 Row 2");
+    const VArray<float> &column_1_row_c = params.readonly_single_input<float>(2, "Column 1 Row 3");
+    const VArray<float> &column_1_row_d = params.readonly_single_input<float>(3, "Column 1 Row 4");
 
-    const VArray<float> &column_b_row_a = params.readonly_single_input<float>(4, "Column B Row A");
-    const VArray<float> &column_b_row_b = params.readonly_single_input<float>(5, "Column B Row B");
-    const VArray<float> &column_b_row_c = params.readonly_single_input<float>(6, "Column B Row C");
-    const VArray<float> &column_b_row_d = params.readonly_single_input<float>(7, "Column B Row D");
+    const VArray<float> &column_2_row_1 = params.readonly_single_input<float>(4, "Column 2 Row 1");
+    const VArray<float> &column_2_row_2 = params.readonly_single_input<float>(5, "Column 2 Row 2");
+    const VArray<float> &column_2_row_c = params.readonly_single_input<float>(6, "Column 2 Row 3");
+    const VArray<float> &column_2_row_d = params.readonly_single_input<float>(7, "Column 2 Row 4");
 
-    const VArray<float> &column_c_row_a = params.readonly_single_input<float>(8, "Column C Row A");
-    const VArray<float> &column_c_row_b = params.readonly_single_input<float>(9, "Column C Row B");
-    const VArray<float> &column_c_row_c = params.readonly_single_input<float>(10,
-                                                                              "Column C Row C");
-    const VArray<float> &column_c_row_d = params.readonly_single_input<float>(11,
-                                                                              "Column C Row D");
+    const VArray<float> &column_3_row_1 = params.readonly_single_input<float>(8, "Column 3 Row 1");
+    const VArray<float> &column_3_row_2 = params.readonly_single_input<float>(9, "Column 3 Row 2");
+    const VArray<float> &column_3_row_3 = params.readonly_single_input<float>(10,
+                                                                              "Column 3 Row 3");
+    const VArray<float> &column_3_row_4 = params.readonly_single_input<float>(11,
+                                                                              "Column 3 Row 4");
 
-    const VArray<float> &column_d_row_a = params.readonly_single_input<float>(12,
-                                                                              "Column D Row A");
-    const VArray<float> &column_d_row_b = params.readonly_single_input<float>(13,
-                                                                              "Column D Row B");
-    const VArray<float> &column_d_row_c = params.readonly_single_input<float>(14,
-                                                                              "Column D Row C");
-    const VArray<float> &column_d_row_d = params.readonly_single_input<float>(15,
-                                                                              "Column D Row D");
+    const VArray<float> &column_4_row_1 = params.readonly_single_input<float>(12,
+                                                                              "Column 4 Row 1");
+    const VArray<float> &column_4_row_2 = params.readonly_single_input<float>(13,
+                                                                              "Column 4 Row 2");
+    const VArray<float> &column_4_row_3 = params.readonly_single_input<float>(14,
+                                                                              "Column 4 Row 3");
+    const VArray<float> &column_4_row_4 = params.readonly_single_input<float>(15,
+                                                                              "Column 4 Row 4");
 
     MutableSpan<float4x4> matrices = params.uninitialized_single_output<float4x4>(16, "Matrix");
     MutableSpan<float> components = matrices.cast<float>();
 
-    step_copy(mask, column_a_row_a, 1, 0, 16, 0, components);
-    step_copy(mask, column_a_row_b, 1, 0, 16, 1, components);
-    step_copy(mask, column_a_row_c, 1, 0, 16, 2, components);
-    step_copy(mask, column_a_row_d, 1, 0, 16, 3, components);
+    step_copy(mask, column_1_row_1, 1, 0, 16, 0, components);
+    step_copy(mask, column_1_row_2, 1, 0, 16, 1, components);
+    step_copy(mask, column_1_row_c, 1, 0, 16, 2, components);
+    step_copy(mask, column_1_row_d, 1, 0, 16, 3, components);
 
-    step_copy(mask, column_b_row_a, 1, 0, 16, 4, components);
-    step_copy(mask, column_b_row_b, 1, 0, 16, 5, components);
-    step_copy(mask, column_b_row_c, 1, 0, 16, 6, components);
-    step_copy(mask, column_b_row_d, 1, 0, 16, 7, components);
+    step_copy(mask, column_2_row_1, 1, 0, 16, 4, components);
+    step_copy(mask, column_2_row_2, 1, 0, 16, 5, components);
+    step_copy(mask, column_2_row_c, 1, 0, 16, 6, components);
+    step_copy(mask, column_2_row_d, 1, 0, 16, 7, components);
 
-    step_copy(mask, column_c_row_a, 1, 0, 16, 8, components);
-    step_copy(mask, column_c_row_b, 1, 0, 16, 9, components);
-    step_copy(mask, column_c_row_c, 1, 0, 16, 10, components);
-    step_copy(mask, column_c_row_d, 1, 0, 16, 11, components);
+    step_copy(mask, column_3_row_1, 1, 0, 16, 8, components);
+    step_copy(mask, column_3_row_2, 1, 0, 16, 9, components);
+    step_copy(mask, column_3_row_3, 1, 0, 16, 10, components);
+    step_copy(mask, column_3_row_4, 1, 0, 16, 11, components);
 
-    step_copy(mask, column_d_row_a, 1, 0, 16, 12, components);
-    step_copy(mask, column_d_row_b, 1, 0, 16, 13, components);
-    step_copy(mask, column_d_row_c, 1, 0, 16, 14, components);
-    step_copy(mask, column_d_row_d, 1, 0, 16, 15, components);
+    step_copy(mask, column_4_row_1, 1, 0, 16, 12, components);
+    step_copy(mask, column_4_row_2, 1, 0, 16, 13, components);
+    step_copy(mask, column_4_row_3, 1, 0, 16, 14, components);
+    step_copy(mask, column_4_row_4, 1, 0, 16, 15, components);
   }
 };
 
