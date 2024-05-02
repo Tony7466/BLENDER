@@ -753,6 +753,7 @@ static void write_node_socket(BlendWriter *writer, const bNodeSocket *sock)
 void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
 {
   BKE_id_blend_write(writer, &ntree->id);
+  BLO_write_string(writer, ntree->description);
 
   for (bNode *node : ntree->all_nodes()) {
     if (ntree->type == NTREE_SHADER && node->type == SH_NODE_BSDF_HAIR_PRINCIPLED) {
@@ -1041,6 +1042,8 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
 
   ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
   BKE_ntree_update_tag_missing_runtime_data(ntree);
+
+  BLO_read_string(reader, &ntree->description);
 
   BLO_read_struct_list(reader, bNode, &ntree->nodes);
   int i;

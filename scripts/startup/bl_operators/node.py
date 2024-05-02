@@ -151,6 +151,12 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
     @classmethod
     def description(cls, _context, properties):
         nodetype = properties["type"]
+        if nodetype.endswith("NodeGroup"):
+            for setting in properties.settings:
+                if setting.name == "node_tree":
+                    node_group = eval(setting.value)
+                    if node_group.description:
+                        return node_group.description
         bl_rna = bpy.types.Node.bl_rna_get_subclass(nodetype)
         if bl_rna is not None:
             return tip_(bl_rna.description)
