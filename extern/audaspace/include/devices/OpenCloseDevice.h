@@ -52,7 +52,7 @@ private:
 	bool m_delayed_close_finished{false};
 
 	/**
-	 * Thread condition to terminate immediately. Used when class is destroyed.
+	 * Used when class is destroyed to notify thread that it needs to stop as soon as possible.
 	 */
 	std::condition_variable stop_condition;
 
