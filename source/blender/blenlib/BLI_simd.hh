@@ -16,7 +16,6 @@
 #  error Including BLI_simd.hh requires C++
 #endif
 
-// TODO: Re-enable this once blenlib is converted to C++
 #if (defined(__ARM_NEON) || (defined(_M_ARM64) && defined(_MSC_VER))) && \
     defined(WITH_SSE2NEON) && !defined(DISABLE_SSE2NEON)
 /* SSE/SSE2 emulation on ARM Neon. Match SSE precision. */
