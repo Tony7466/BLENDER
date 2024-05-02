@@ -43,6 +43,9 @@ template<class T, class U> struct is_layout_compatible : std::false_type {};
 template<> struct is_layout_compatible<float2, pxr::GfVec2f> : std::true_type {};
 template<> struct is_layout_compatible<float3, pxr::GfVec3f> : std::true_type {};
 
+template<> struct is_layout_compatible<pxr::GfVec2f, float2> : std::true_type {};
+template<> struct is_layout_compatible<pxr::GfVec3f, float3> : std::true_type {};
+
 /* Conversion utilities to convert a Blender type to an USD type. */
 template<typename From, typename To> inline To convert_value(const From value)
 {
@@ -225,43 +228,19 @@ inline std::optional<eCustomDataType> convert_usd_type_to_blender(
 }
 
 template<typename T>
-pxr::VtArray<T> get_prim_attribute_array(const pxr::UsdGeomPrimvar &primvar,
-                                         const double motionSampleTime)
-{
-  pxr::VtArray<T> array;
-
-  pxr::VtValue primvar_val;
-
-  if (!primvar.ComputeFlattened(&primvar_val, motionSampleTime)) {
-    return array;
-  }
-
-  if (!primvar_val.CanCast<pxr::VtArray<T>>()) {
-    return array;
-  }
-
-  array = primvar_val.Cast<pxr::VtArray<T>>().template UncheckedGet<pxr::VtArray<T>>();
-  return array;
-}
-
-template<typename T>
 pxr::VtArray<T> get_primvar_array(const pxr::UsdGeomPrimvar &primvar,
                                   const pxr::UsdTimeCode timecode)
 {
-  pxr::VtArray<T> array;
-
   pxr::VtValue primvar_val;
-
   if (!primvar.ComputeFlattened(&primvar_val, timecode)) {
-    return array;
+    return {};
   }
 
   if (!primvar_val.CanCast<pxr::VtArray<T>>()) {
-    return array;
+    return {};
   }
 
-  array = primvar_val.Cast<pxr::VtArray<T>>().template UncheckedGet<pxr::VtArray<T>>();
-  return array;
+  return primvar_val.Cast<pxr::VtArray<T>>().template UncheckedGet<pxr::VtArray<T>>();
 }
 
 template<typename USDT, typename BlenderT>
@@ -271,14 +250,17 @@ void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
                                     MutableSpan<BlenderT> attribute)
 {
   const pxr::TfToken interp = primvar.GetInterpolation();
-  pxr::VtArray<USDT> primvar_array = get_primvar_array<USDT>(primvar, timecode);
-  if (primvar_array.empty()) {
+  pxr::VtArray<USDT> usd_data = get_primvar_array<USDT>(primvar, timecode);
+  if (usd_data.empty()) {
     return;
   }
 
+  constexpr bool is_same = std::is_same_v<USDT, BlenderT>;
+  constexpr bool is_compatible = detail::is_layout_compatible<USDT, BlenderT>::value;
+
   if (interp == pxr::UsdGeomTokens->constant) {
     /* For situations where there's only a single item, flood fill the object. */
-    attribute.fill(detail::convert_value<USDT, BlenderT>(primvar_array[0]));
+    attribute.fill(detail::convert_value<USDT, BlenderT>(usd_data[0]));
   }
   else if (interp == pxr::UsdGeomTokens->faceVarying) {
     if (!face_indices.is_empty()) {
@@ -288,28 +270,32 @@ void copy_primvar_to_blender_buffer(const pxr::UsdGeomPrimvar &primvar,
         const IndexRange face = faces[i];
         for (int j : face.index_range()) {
           const int rev_index = face.last(j);
-          attribute[face.start() + j] = detail::convert_value<USDT, BlenderT>(
-              primvar_array[rev_index]);
+          attribute[face.start() + j] = detail::convert_value<USDT, BlenderT>(usd_data[rev_index]);
         }
       }
     }
     else {
-      for (const int64_t i : attribute.index_range()) {
-        attribute[i] = detail::convert_value<USDT, BlenderT>(primvar_array[i]);
-      }
-    }
-  }
-
-  else {
-    /* Assume direct one-to-one mapping. */
-    if (primvar_array.size() == attribute.size()) {
-      if constexpr (std::is_same_v<USDT, BlenderT>) {
-        const Span<USDT> src(primvar_array.data(), primvar_array.size());
-        attribute.copy_from(src);
+      if constexpr (is_same || is_compatible) {
+        const Span<USDT> src(usd_data.data(), usd_data.size());
+        attribute.copy_from(src.cast<BlenderT>());
       }
       else {
         for (const int64_t i : attribute.index_range()) {
-          attribute[i] = detail::convert_value<USDT, BlenderT>(primvar_array[i]);
+          attribute[i] = detail::convert_value<USDT, BlenderT>(usd_data[i]);
+        }
+      }
+    }
+  }
+  else {
+    /* Assume direct one-to-one mapping. */
+    if (usd_data.size() == attribute.size()) {
+      if constexpr (is_same || is_compatible) {
+        const Span<USDT> src(usd_data.data(), usd_data.size());
+        attribute.copy_from(src.cast<BlenderT>());
+      }
+      else {
+        for (const int64_t i : attribute.index_range()) {
+          attribute[i] = detail::convert_value<USDT, BlenderT>(usd_data[i]);
         }
       }
     }

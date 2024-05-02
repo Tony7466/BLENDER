@@ -311,8 +311,7 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
 {
   const StringRef primvar_name(primvar.StripPrimvarsName(primvar.GetName()).GetString());
 
-  pxr::VtArray<pxr::GfVec2f> usd_uvs = get_prim_attribute_array<pxr::GfVec2f>(primvar,
-                                                                              motionSampleTime);
+  pxr::VtArray<pxr::GfVec2f> usd_uvs = get_primvar_array<pxr::GfVec2f>(primvar, motionSampleTime);
 
   if (usd_uvs.empty()) {
     return;

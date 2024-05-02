@@ -26,8 +26,8 @@ void read_color_data_primvar(Mesh *mesh,
     return;
   }
 
-  pxr::VtArray<pxr::GfVec3f> usd_colors = get_prim_attribute_array<pxr::GfVec3f>(
-      primvar, motion_sample_time);
+  pxr::VtArray<pxr::GfVec3f> usd_colors = get_primvar_array<pxr::GfVec3f>(primvar,
+                                                                          motion_sample_time);
 
   if (usd_colors.empty()) {
     return;
