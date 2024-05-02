@@ -327,6 +327,24 @@ GPUShader *GPU_shader_create_from_python(const char *vertcode,
   return sh;
 }
 
+BatchHandle GPU_shader_create_batch_from_infos(Span<GPUShaderCreateInfo *> infos)
+{
+  using namespace blender::gpu::shader;
+  Span<ShaderCreateInfo *> &infos_ = reinterpret_cast<Span<ShaderCreateInfo *> &>(infos);
+  return Context::get()->compiler->compile_batch(infos_);
+}
+
+bool GPU_shader_batch_is_ready(BatchHandle handle)
+{
+  return Context::get()->compiler->batch_is_ready(handle);
+}
+
+Vector<GPUShader *> GPU_shader_batch_get(BatchHandle handle)
+{
+  Vector<Shader *> result = Context::get()->compiler->batch_get(handle);
+  return reinterpret_cast<Vector<GPUShader *> &>(result);
+}
+
 void GPU_shader_compile_static()
 {
   printf("Compiling all static GPU shaders. This process takes a while.\n");
@@ -889,7 +907,7 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
   return shader;
 }
 
-ShaderCompiler::BatchHandle ShaderCompiler::compile_batch(Span<shader::ShaderCreateInfo *> infos)
+BatchHandle ShaderCompiler::compile_batch(Span<shader::ShaderCreateInfo *> &infos)
 {
   BatchHandle handle = next_batch_handle++;
   Vector<Shader *> vector = {};

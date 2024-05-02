@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "BLI_span.hh"
+#include "BLI_vector.hh"
 #include "GPU_shader_builtin.hh"
 
 namespace blender::gpu {
@@ -58,6 +60,11 @@ const GPUShaderCreateInfo *GPU_shader_create_info_get(const char *info_name);
  * \return true is create info is valid.
  */
 bool GPU_shader_create_info_check_error(const GPUShaderCreateInfo *_info, char r_error[128]);
+
+using BatchHandle = int;
+BatchHandle GPU_shader_create_batch_from_infos(blender::Span<GPUShaderCreateInfo *> infos);
+bool GPU_shader_batch_is_ready(BatchHandle handle);
+blender::Vector<GPUShader *> GPU_shader_batch_get(BatchHandle handle);
 
 /** \} */
 

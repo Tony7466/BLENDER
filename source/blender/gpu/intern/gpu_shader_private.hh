@@ -161,9 +161,6 @@ static inline const Shader *unwrap(const GPUShader *vert)
 }
 
 class ShaderCompiler {
- public:
-  using BatchHandle = int;
-
  protected:
   struct Batch {
     Vector<Shader *> shaders;
@@ -174,7 +171,7 @@ class ShaderCompiler {
 
  public:
   virtual Shader *compile(const shader::ShaderCreateInfo &info);
-  virtual BatchHandle compile_batch(Span<shader::ShaderCreateInfo *> infos);
+  virtual BatchHandle compile_batch(Span<shader::ShaderCreateInfo *> &infos);
   virtual bool batch_is_ready(BatchHandle handle);
   virtual Vector<Shader *> batch_get(BatchHandle handle);
 };
