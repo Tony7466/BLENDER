@@ -2512,9 +2512,7 @@ bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   int point_offset = 0;
   for (const int curve_index : src.curves_range()) {
     const IndexRange curve_points = points_by_curve[curve_index];
-    IndexMaskMemory mem;
     const IndexMask curve_points_to_extrude = points_to_extrude.slice_content(curve_points);
-
     const bool curve_cyclic = src_cyclic[curve_index];
 
     curve_points_to_extrude.foreach_index([&](const int src_point_index) {
