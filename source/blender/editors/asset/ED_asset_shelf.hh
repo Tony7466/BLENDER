@@ -10,6 +10,7 @@
 
 struct ARegion;
 struct ARegionType;
+struct AssetShelf;
 struct AssetShelfSettings;
 struct AssetShelfType;
 struct bContext;
@@ -17,6 +18,7 @@ struct bContextDataResult;
 struct BlendDataReader;
 struct BlendWriter;
 struct Main;
+struct SpaceType;
 struct RegionPollParams;
 struct wmWindowManager;
 
@@ -45,6 +47,7 @@ void region_on_user_resize(const ARegion *region);
 void region_listen(const wmRegionListenerParams *params);
 void region_layout(const bContext *C, ARegion *region);
 void region_draw(const bContext *C, ARegion *region);
+void region_on_poll_success(const bContext *C, ARegion *region);
 void region_blend_read_data(BlendDataReader *reader, ARegion *region);
 void region_blend_write(BlendWriter *writer, ARegion *region);
 int region_prefsizey();
@@ -58,11 +61,21 @@ void header_regiontype_register(ARegionType *region_type, const int space_type);
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Asset Shelf Type
+ * \{ */
+
+bool type_poll(const bContext &C, const SpaceType &space_type, const AssetShelfType *shelf_type);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 
 void type_unlink(const Main &bmain, const AssetShelfType &shelf_type);
 
 int tile_width(const AssetShelfSettings &settings);
 int tile_height(const AssetShelfSettings &settings);
+
+AssetShelf *active_shelf_from_area(const ScrArea *area);
 
 int context(const bContext *C, const char *member, bContextDataResult *result);
 
