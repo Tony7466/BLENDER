@@ -14,13 +14,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Int>("Point Index")
       .default_value(-1)
-      .description("Index of the active point in the mesh, or -1 if no point is active");
+      .description("Index of the active point in the mesh, or -1 if none is active");
   b.add_output<decl::Int>("Edge Index")
       .default_value(-1)
-      .description("Index of the active edge in the mesh, or -1 if no edge is active");
+      .description("Index of the active edge in the mesh, or -1 if none is active");
   b.add_output<decl::Int>("Face Index")
       .default_value(-1)
-      .description("Index of the active face in the mesh, or -1 if no face is active");
+      .description("Index of the active face in the mesh, or -1 if none is active");
 }
 
 static void node_exec(GeoNodeExecParams params)
@@ -30,13 +30,6 @@ static void node_exec(GeoNodeExecParams params)
   }
 
   if (params.user_data()->call_data->operator_data->mode != OB_MODE_EDIT) {
-    params.set_default_remaining_outputs();
-    return;
-  }
-
-  const Object *self = params.user_data()->call_data->self_object();
-
-  if (self->type != OB_MESH) {
     params.set_default_remaining_outputs();
     return;
   }
