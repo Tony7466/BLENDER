@@ -1059,18 +1059,6 @@ struct KeyInsertData {
   int array_index;
 };
 
-/* `key_data` is expected to be in Strip space. */
-static SingleKeyingResult insert_key_strip(KeyframeStrip &strip,
-                                           Binding &binding,
-                                           const std::string &rna_path,
-                                           const KeyInsertData &key_data,
-                                           const eInsertKeyFlags insert_key_flags,
-                                           const KeyframeSettings &key_settings)
-{
-  return strip.keyframe_insert(
-      binding, rna_path, key_data.array_index, key_data.position, insert_key_flags, key_settings);
-}
-
 static SingleKeyingResult insert_key_layer(Layer &layer,
                                            Binding &binding,
                                            const std::string &rna_path,
@@ -1087,8 +1075,8 @@ static SingleKeyingResult insert_key_layer(Layer &layer,
   }
 
   /* TODO: morph key data based on Layer position in stack and Strip offset. */
-  return insert_key_strip(
-      strip->as<KeyframeStrip>(), binding, rna_path, key_data, insert_key_flags, key_settings);
+  return strip->as<KeyframeStrip>().keyframe_insert(
+      binding, rna_path, key_data.array_index, key_data.position, insert_key_flags, key_settings);
 }
 
 static CombinedKeyingResult insert_key_anim(Animation &anim,
