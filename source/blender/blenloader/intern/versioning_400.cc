@@ -3338,11 +3338,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
-          if (sl->spacetype != SPACE_SEQ) {
-            continue;
+          if (sl->spacetype == SPACE_SEQ) {
+            SpaceSeq *sseq = (SpaceSeq *)sl;
+            sseq->cache_overlay.flag |= SEQ_CACHE_SHOW_FINAL_OUT;
           }
-          SpaceSeq *seq = static_cast<SpaceSeq *>(area->spacedata.first);
-          seq->cache_overlay.flag |= SEQ_CACHE_SHOW_FINAL_OUT;
         }
       }
     }
