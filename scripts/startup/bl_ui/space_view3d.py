@@ -9087,6 +9087,7 @@ class VIEW3D_AST_sculpt_brushes(bpy.types.AssetShelf):
     # "Asset Shelf" and the "Extended Asset Browser" experimental features are
     # enabled.
 
+    bl_options = {'STORE_ENABLED_CATALOGS_IN_PREFERENCES'}
     bl_space_type = 'VIEW_3D'
     bl_default_preview_size = 48
 
