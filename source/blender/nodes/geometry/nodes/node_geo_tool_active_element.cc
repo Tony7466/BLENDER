@@ -43,7 +43,6 @@ static void node_exec(GeoNodeExecParams params)
 
   const GeoNodesOperatorData *operator_data = params.user_data()->call_data->operator_data;
 
-  const Mesh *mesh = static_cast<const Mesh *>(self->data);
   params.set_output("Point Index", operator_data->active_point_index);
   params.set_output("Edge Index", operator_data->active_edge_index);
   params.set_output("Face Index", operator_data->active_face_index);
