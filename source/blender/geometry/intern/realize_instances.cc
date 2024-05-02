@@ -520,7 +520,8 @@ static bke::GeometrySet geometry_set_from_reference(const InstanceReference &ref
       return geometry_set;
     }
     case InstanceReference::Type::None: {
-      return {};  // Return an empty GeometrySet for None type
+      /* Return an empty GeometrySet for None type. */
+      return {};
     }
   }
   return {};
@@ -789,7 +790,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
 
   for (const bke::GeometryComponent::Type component_type : component_types) {
     if (geometry_set.has(component_type)) {
-      /*Check if the current instance component is the selected one. Instances are handled
+      /* Check if the current instance component is the selected one. Instances are handled
        * specially as they can manifest in two different scenarios: they can be the selected
        * component or the parent of a possible selected component. */
       const bool is_main_instance_component = (bke::GeometryComponent::Type::Instance ==
