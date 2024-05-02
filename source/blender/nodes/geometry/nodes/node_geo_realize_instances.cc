@@ -45,11 +45,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<int> depth_field = params.extract_input<Field<int>>("Depth");
 
   static auto depth_override = mf::build::SI2_SO<int, bool, int>(
-      "depth_override",
-      [](int depth, bool realize_all_field) {
+      "depth_override", [](int depth, bool realize_all_field) {
         return realize_all_field ? geometry::VariedDepthOptions::MAX_DEPTH : std::max(depth, 0);
-      },
-      mf::build::exec_presets::Materialized());
+      });
 
   Field<int> depth_field_overridden(FieldOperation::Create(
       depth_override, {std::move(depth_field), std::move(realize_all_field)}));
@@ -58,8 +56,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   static auto selection_override = mf::build::SI2_SO<int, bool, bool>(
       "selection_override",
-      [](int depth_override, bool selection) { return depth_override == 0 ? false : selection; },
-      mf::build::exec_presets::Materialized());
+      [](int depth_override, bool selection) { return depth_override == 0 ? false : selection; });
 
   Field<bool> selection_field_overrided(FieldOperation::Create(
       selection_override, {depth_field_overridden, std::move(selection_field)}));
