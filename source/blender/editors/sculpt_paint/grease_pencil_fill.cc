@@ -517,7 +517,7 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
   Set<std::string> skip_curve_attributes = {"curve_type", "material_index", "cyclic", "hardness"};
   Set<std::string> skip_point_attributes = {"position", "radius", "opacity"};
 
-  curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
+  curves.curve_types_for_write().fill(CURVE_TYPE_POLY);
   curves.update_curve_types();
 
   bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
@@ -537,9 +537,9 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
       bke::AttrDomain::Point,
       bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.points_num())));
 
-  cyclic.span.last() = true;
-  materials.span.last() = material_index;
-  hardnesses.span.last() = hardness;
+  cyclic.span.fill(true);
+  materials.span.fill(material_index);
+  hardnesses.span.fill(hardness);
 
   cyclic.finish();
   materials.finish();
@@ -570,7 +570,7 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
       bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
           attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                    bke::AttrDomain::Curve);
-      fill_colors.span.last() = vertex_color;
+      fill_colors.span.fill(vertex_color);
       fill_colors.finish();
     }
     if (ELEM(brush.gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH)) {
@@ -578,9 +578,7 @@ static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
       bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
           attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color",
                                                                    bke::AttrDomain::Point);
-      for (const int point_i : curves.points_range()) {
-        vertex_colors.span[point_i] = vertex_color;
-      }
+      vertex_colors.span.fill(vertex_color);
       vertex_colors.finish();
     }
   }
