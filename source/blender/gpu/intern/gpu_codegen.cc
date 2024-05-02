@@ -881,17 +881,21 @@ static bool gpu_pass_shader_validate(GPUPass *pass, GPUShader *shader)
   return (active_samplers_len * 3 <= GPU_max_textures());
 }
 
-bool GPU_pass_compile(GPUPass *pass, const char *shname)
+GPUShaderCreateInfo *GPU_pass_get_info(GPUPass *pass, const char *shname)
+{
+  if (!pass->compiled) {
+    pass->create_info->name_ = shname;
+    GPUShaderCreateInfo *info = reinterpret_cast<GPUShaderCreateInfo *>(
+        static_cast<ShaderCreateInfo *>(pass->create_info));
+    return info;
+  }
+  return nullptr;
+}
+
+bool GPU_pass_set_shader(GPUPass *pass, GPUShader *shader)
 {
   bool success = true;
   if (!pass->compiled) {
-    GPUShaderCreateInfo *info = reinterpret_cast<GPUShaderCreateInfo *>(
-        static_cast<ShaderCreateInfo *>(pass->create_info));
-
-    pass->create_info->name_ = shname;
-
-    GPUShader *shader = GPU_shader_create_from_info(info);
-
     /* NOTE: Some drivers / gpu allows more active samplers than the opengl limit.
      * We need to make sure to count active samplers to avoid undefined behavior. */
     if (!gpu_pass_shader_validate(pass, shader)) {
@@ -904,6 +908,16 @@ bool GPU_pass_compile(GPUPass *pass, const char *shname)
     }
     pass->shader = shader;
     pass->compiled = true;
+  }
+  return success;
+}
+
+bool GPU_pass_compile(GPUPass *pass, const char *shname)
+{
+  bool success = true;
+  if (GPUShaderCreateInfo *info = GPU_pass_get_info(pass, shname)) {
+    GPUShader *shader = GPU_shader_create_from_info(info);
+    success = GPU_pass_set_shader(pass, shader);
   }
   return success;
 }
