@@ -1168,7 +1168,6 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   }
 
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && (adt->animation || !adt->action)) {
-    /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);
     if (anim == nullptr) {
       /* TODO: count the rna paths properly (e.g. accounting for multi-element
@@ -1180,6 +1179,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
       return combined_result;
     }
 
+    /* TODO: Don't hardcode key settings. */
     KeyframeSettings key_settings;
     key_settings.keyframe_type = key_type;
     key_settings.handle = HD_AUTO_ANIM;
