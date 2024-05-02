@@ -261,21 +261,28 @@ ccl_device_forceinline bool _surface_shader_exclude(ClosureType type, uint light
   return false;
 }
 
+/* This is the Veach one-sample model with balance heuristic, which evaluates
+ *
+ *           sw/∑sw * pdf       eval
+ * <I> = ∑ -------------- * ------------
+ *         ∑(sw/∑sw * pdf)  sw/∑sw * pdf ,
+ *
+ * where sw represents `sc->sample_weight`, and eval represents `eval * sc->weight`.
+ * The numerator of the first term and the denominator of the second terms cancel out. */
 ccl_device_inline float _surface_shader_bsdf_eval_mis(KernelGlobals kg,
                                                       ccl_private ShaderData *sd,
                                                       const float3 wo,
-                                                      ccl_private const ShaderClosure *skip_sc,
+                                                      ccl_private const ShaderClosure *sampled_sc,
                                                       ccl_private BsdfEval *result_eval,
                                                       float sum_pdf,
                                                       float sum_sample_weight,
                                                       const uint light_shader_flags)
 {
-  /* This is the veach one-sample model with balance heuristic,
-   * some PDF factors drop out when using balance heuristic weighting. */
   for (int i = 0; i < sd->num_closure; i++) {
     ccl_private const ShaderClosure *sc = &sd->closure[i];
 
-    if (sc == skip_sc) {
+    if (sc == sampled_sc) {
+      /* The sampled closure has already been evaluated. */
       continue;
     }
 
