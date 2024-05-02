@@ -515,7 +515,11 @@ MALWAYS_INLINE __m128 _bli_math_fastpow512(const __m128 arg)
 
 MALWAYS_INLINE __m128 _bli_math_blend_sse(const __m128 mask, const __m128 a, const __m128 b)
 {
+#  if BLI_HAVE_SSE4
+  return _mm_blendv_ps(b, a, mask);
+#  else
   return _mm_or_ps(_mm_and_ps(mask, a), _mm_andnot_ps(mask, b));
+#  endif
 }
 
 MALWAYS_INLINE __m128 srgb_to_linearrgb_v4_simd(const __m128 c)
