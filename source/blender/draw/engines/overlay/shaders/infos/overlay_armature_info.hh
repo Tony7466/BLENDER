@@ -160,7 +160,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .vertex_source("overlay_armature_shape_wire_vert.glsl")
     .geometry_out(overlay_armature_shape_wire_geom_iface)
     .geometry_out(overlay_armature_shape_wire_geom_noperspective_iface)
-    .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
+    .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 10)
     .geometry_source("overlay_armature_shape_wire_geom.glsl")
     .fragment_source("overlay_armature_shape_wire_frag.glsl")
     .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
