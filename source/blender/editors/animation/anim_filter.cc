@@ -602,12 +602,6 @@ static void key_data_from_adt(bAnimListElem &ale, AnimData *adt)
     return;
   }
 
-  if (adt->animation) {
-    ale.key_data = adt->animation;
-    ale.datatype = ALE_ANIM;
-    return;
-  }
-
   if (adt->action) {
     ale.key_data = adt->action;
     ale.datatype = ALE_ACT;
@@ -1423,67 +1417,54 @@ static size_t animfilter_act_group(bAnimContext *ac,
 static size_t animfilter_action(bAnimContext *ac,
                                 ListBase *anim_data,
                                 bDopeSheet *ads,
-                                bAction *act,
-                                int filter_mode,
+                                AnimData *adt,
+                                const int filter_mode,
                                 ID *owner_id)
 {
   FCurve *lastchan = nullptr;
   size_t items = 0;
 
+  BLI_assert(adt->action); /* Otherwise this function wouldn't be called. */
+  animrig::Action &action = adt->action->wrap();
+  if (action.is_empty()) {
+    return 0;
+  }
+
   /* don't include anything from this action if it is linked in from another file,
    * and we're getting stuff for editing...
    */
-  if ((filter_mode & ANIMFILTER_FOREDIT) && (ID_IS_LINKED(act) || ID_IS_OVERRIDE_LIBRARY(act))) {
-    return 0;
-  }
-
-  /* do groups */
-  /* TODO: do nested groups? */
-  LISTBASE_FOREACH (bActionGroup *, agrp, &act->groups) {
-    /* store reference to last channel of group */
-    if (agrp->channels.last) {
-      lastchan = static_cast<FCurve *>(agrp->channels.last);
-    }
-
-    /* action group's channels */
-    items += animfilter_act_group(ac, anim_data, ads, act, agrp, filter_mode, owner_id);
-  }
-
-  /* un-grouped F-Curves (only if we're not only considering those channels in the active group) */
-  if (!(filter_mode & ANIMFILTER_ACTGROUPED)) {
-    FCurve *firstfcu = (lastchan) ? (lastchan->next) : static_cast<FCurve *>(act->curves.first);
-    items += animfilter_fcurves(
-        anim_data, ads, firstfcu, ANIMTYPE_FCURVE, filter_mode, nullptr, owner_id, &act->id);
-  }
-
-  /* return the number of items added to the list */
-  return items;
-}
-
-/**
- * Add animation list elements for FCurves in an Animation data-block.
- */
-static size_t animfilter_animation_fcurves(
-    ListBase *anim_data, bDopeSheet *ads, AnimData *adt, const int filter_mode, ID *owner_id)
-{
-  /* If this ID is not bound, there is nothing to show. */
-  if (adt->binding_handle == 0) {
-    return 0;
-  }
-
-  BLI_assert(adt->animation); /* Otherwise this function wouldn't be called. */
-  animrig::Action &anim = adt->animation->wrap();
-
-  /* Don't include anything from this animation if it is linked in from another
-   * file, and we're getting stuff for editing... */
-  if ((filter_mode & ANIMFILTER_FOREDIT) && (ID_IS_LINKED(&anim) || ID_IS_OVERRIDE_LIBRARY(&anim)))
+  if ((filter_mode & ANIMFILTER_FOREDIT) &&
+      (ID_IS_LINKED(&action) || ID_IS_OVERRIDE_LIBRARY(&action)))
   {
     return 0;
   }
 
+  if (action.is_action_legacy()) {
+    LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
+      /* Store reference to last channel of group. */
+      if (agrp->channels.last) {
+        lastchan = static_cast<FCurve *>(agrp->channels.last);
+      }
+
+      items += animfilter_act_group(ac, anim_data, ads, &action, agrp, filter_mode, owner_id);
+    }
+
+    /* Un-grouped F-Curves (only if we're not only considering those channels in
+     * the active group) */
+    if (!(filter_mode & ANIMFILTER_ACTGROUPED)) {
+      FCurve *firstfcu = (lastchan) ? (lastchan->next) :
+                                      static_cast<FCurve *>(action.curves.first);
+      items += animfilter_fcurves(
+          anim_data, ads, firstfcu, ANIMTYPE_FCURVE, filter_mode, nullptr, owner_id, &action.id);
+    }
+
+    return items;
+  }
+
   /* For now we don't show layers anywhere, just the contained F-Curves. */
-  Span<FCurve *> fcurves = animrig::fcurves_for_animation(anim, adt->binding_handle);
-  return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &anim.id);
+  Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, adt->binding_handle);
+  return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &action.id);
+  return items;
 }
 
 /* Include NLA-Data for NLA-Editor:
@@ -1737,8 +1718,7 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
         }
       }
       else if (key->adt->action) {
-        items = animfilter_action(
-            ac, anim_data, nullptr, key->adt->action, filter_mode, (ID *)key);
+        items = animfilter_action(ac, anim_data, nullptr, key->adt, filter_mode, (ID *)key);
       }
     }
   }
@@ -2962,7 +2942,7 @@ static size_t animdata_filter_ds_obanim(
         expanded = EXPANDED_ACTC(adt->action);
       },
       { /* Keyframes from Animation. */
-        type = ANIMTYPE_FILLANIM;
+        type = ANIMTYPE_FILLACT_LAYERED;
         cdata = adt->animation;
         expanded = EXPANDED_ADT(adt);
       });
@@ -3146,7 +3126,7 @@ static size_t animdata_filter_ds_scene(
         expanded = EXPANDED_ACTC(adt->action);
       },
       { /* Keyframes from Animation. */
-        type = ANIMTYPE_FILLANIM;
+        type = ANIMTYPE_FILLACT_LAYERED;
         cdata = adt->animation;
         expanded = EXPANDED_ADT(adt);
       });
