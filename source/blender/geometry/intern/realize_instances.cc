@@ -820,7 +820,7 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
  * current_depth, depth_target, instance_depth and selection.
  */
 static void gather_attributes_for_propagation(
-    bke::GeometrySet geometry_set,
+    const bke::GeometrySet &geometry_set,
     const Span<bke::GeometryComponent::Type> component_types,
     const bke::GeometryComponent::Type dst_component_type,
     const VArray<int> instance_depth,
