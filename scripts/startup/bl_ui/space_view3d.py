@@ -3368,26 +3368,20 @@ class VIEW3D_MT_object_modifiers(Menu):
 
     def draw(self, _context):
         active_object = bpy.context.active_object
-        supported_types = ('MESH', 'CURVE', 'CURVES', 'SURFACE', 'FONT', 'VOLUME', 'GREASEPENCIL')
+        supported_types = {'MESH', 'CURVE', 'CURVES', 'SURFACE', 'FONT', 'VOLUME', 'GREASEPENCIL'}
 
         layout = self.layout
-        col = layout.column()
 
         if active_object.type in supported_types:
-            col.menu("OBJECT_MT_modifier_add", text="Add Modifier")
+            layout.menu("OBJECT_MT_modifier_add", text="Add Modifier")
         elif active_object.type == 'GPENCIL':
-            col.operator("object.gpencil_modifier_add", text="Add Modifier")
+            layout.operator("object.gpencil_modifier_add", text="Add Modifier")
 
-        col.operator("object.modifiers_copy_to_selected", text="Copy Modifiers to Selected Objects")
+        layout.operator("object.modifiers_copy_to_selected", text="Copy Modifiers to Selected Objects")
 
-        col.separator()
+        layout.separator()
 
-        col.operator("object.modifiers_clear")
-
-        if active_object != None and active_object.type in supported_types or active_object.type == 'GPENCIL':
-            col.enabled = True
-        else:
-            col.enabled = False
+        layout.operator("object.modifiers_clear")
 
 
 class VIEW3D_MT_object_quick_effects(Menu):
