@@ -220,9 +220,7 @@ ccl_device_inline bool spatial_sample_streaming(KernelGlobals kg,
     }
 
     /* Evaluate neighbor sample from the current shading point. */
-    if (!light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls)) {
-      continue;
-    }
+    light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls);
     radiance_eval(
         kg, state, &current->sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);
@@ -254,9 +252,7 @@ ccl_device_inline bool spatial_sample_streaming(KernelGlobals kg,
     shader_data_setup_from_restir(kg, state, &neighbor, render_buffer);
 
     /* Evaluate picked sample from neighboring shading points. */
-    if (!light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &picked_ls)) {
-      continue;
-    }
+    light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &picked_ls);
     radiance_eval(kg, state, &neighbor.sd, &picked_ls, &neighbor.reservoir.radiance, visibility);
     valid_neighbors += !bsdf_eval_is_zero(&neighbor.reservoir.radiance);
   }

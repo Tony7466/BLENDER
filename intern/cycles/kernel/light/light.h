@@ -496,18 +496,20 @@ ccl_device bool light_sample_from_intersection(KernelGlobals kg,
 }
 
 /* uv, object and lamp should already be set at this point. */
-ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
+ccl_device_inline void light_sample_from_uv(KernelGlobals kg,
                                             const ccl_private ShaderData *sd,
                                             const uint32_t path_flag,
                                             ccl_private LightSample *ls)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_LIGHT_SETUP);
+  ls->pdf = 1.0f;
   if (ls->object == OBJECT_NONE) {
     /* Analytic light. */
     const ccl_global KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     if (path_flag & PATH_RAY_SHADOW_CATCHER_PASS) {
       if (klight->shader_id & SHADER_EXCLUDE_SHADOW_CATCHER) {
-        return false;
+        ls->pdf = 0.0f;
+        return;
       }
     }
 
@@ -541,17 +543,18 @@ ccl_device_inline bool light_sample_from_uv(KernelGlobals kg,
     // }
     //
     if (type == LIGHT_POINT) {
-      return point_light_sample_from_uv(klight, sd->P, ls);
+      point_light_sample_from_uv(klight, sd->P, ls);
     }
+    else {
+      kernel_assert(type == LIGHT_AREA);
 
-    kernel_assert(type == LIGHT_AREA);
-
-    /* area light */
-    return area_light_sample_from_uv(klight, sd->P, ls);
+      /* area light */
+      area_light_sample_from_uv(klight, sd->P, ls);
+    }
   }
   else {
     /* Mesh light. */
-    return triangle_light_sample_from_uv(kg, sd->time, ls, sd->P);
+    triangle_light_sample_from_uv(kg, sd->time, ls, sd->P);
   }
 }
 

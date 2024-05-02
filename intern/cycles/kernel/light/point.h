@@ -146,9 +146,9 @@ ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *kligh
   }
 }
 
-/* TODO(weizhen): `pdf` is skipped. Check if it is actually needed, especially when the radius is
- * zero. */
-ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *klight,
+/* TODO(weizhen): `pdf` is solely used as an indicator if the sample is successful. Check if the
+ * exact value is actually needed. */
+ccl_device_inline void point_light_sample_from_uv(const ccl_global KernelLight *klight,
                                                   const float3 ray_P,
                                                   ccl_private LightSample *ccl_restrict ls)
 {
@@ -158,7 +158,7 @@ ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *
     ls->P = klight->co;
     ls->D = normalize_len(ls->P - ray_P, &ls->t);
     ls->Ng = -ls->D;
-    return true;
+    return;
   }
 
   const Transform tfm = klight->tfm;
@@ -175,11 +175,9 @@ ccl_device_inline bool point_light_sample_from_uv(const ccl_global KernelLight *
     if (!ray_aligned_disk_intersect(
             ray_P, ls->D, 0.0f, FLT_MAX, klight->co, radius, &ls->P, &ls->t))
     {
-      return false;
+      ls->pdf = 0.0f;
     }
   }
-
-  return true;
 }
 
 ccl_device_inline bool point_light_sample_from_intersection(const ccl_global KernelLight *klight,

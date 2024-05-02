@@ -270,7 +270,7 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
 }
 
 /* uv, object and lamp should already be set at this point. */
-ccl_device_forceinline bool triangle_light_sample_from_uv(KernelGlobals kg,
+ccl_device_forceinline void triangle_light_sample_from_uv(KernelGlobals kg,
                                                           float time,
                                                           ccl_private LightSample *ls,
                                                           const float3 P)
@@ -299,7 +299,7 @@ ccl_device_forceinline bool triangle_light_sample_from_uv(KernelGlobals kg,
   ls->P = t * V[0] + ls->u * V[1] + ls->v * V[2];
   ls->D = safe_normalize_len(ls->P - P, &ls->t);
 
-  return (ls->t > 0.0f);
+  ls->pdf *= (ls->t > 0.0f);
 }
 
 ccl_device_inline void triangle_light_sample_from_intersection(

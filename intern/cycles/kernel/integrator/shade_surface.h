@@ -172,6 +172,11 @@ ccl_device_forceinline float radiance_eval(KernelGlobals kg,
                                            ccl_private BsdfEval *radiance,
                                            const bool check_visibility)
 {
+  if (!(ls->pdf > 0.0f)) {
+    bsdf_eval_init(radiance, zero_spectrum());
+    return 0.0f;
+  }
+
   ShaderDataCausticsStorage emission_sd_storage;
   ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
 

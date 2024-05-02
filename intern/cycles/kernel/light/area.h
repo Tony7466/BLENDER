@@ -445,13 +445,15 @@ ccl_device_forceinline void area_light_mnee_sample_update(const ccl_global Kerne
 }
 
 /* NOTE: `ls->pdf` is skipped. */
-ccl_device_inline bool area_light_sample_from_uv(const ccl_global KernelLight *klight,
+ccl_device_inline void area_light_sample_from_uv(const ccl_global KernelLight *klight,
                                                  const float3 ray_P,
                                                  ccl_private LightSample *ccl_restrict ls)
 {
   ls->Ng = klight->area.dir;
   float3 light_P = klight->co;
-  return area_light_eval<false, true>(klight, ray_P, &light_P, ls, zero_float2(), false);
+  if (!area_light_eval<false, true>(klight, ray_P, &light_P, ls, zero_float2(), false)) {
+    ls->pdf = 0.0f;
+  }
 }
 
 ccl_device_inline bool area_light_sample_from_intersection(
