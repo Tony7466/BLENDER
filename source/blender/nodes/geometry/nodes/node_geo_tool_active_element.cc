@@ -6,10 +6,9 @@
 
 #include "node_geometry_util.hh"
 
-#include "bmesh.hh"
+#include "DNA_meshdata_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_editmesh.hh"
 
 namespace blender::nodes::node_geo_tool_active_element_cc {
 
@@ -35,21 +34,10 @@ static void node_exec(GeoNodeExecParams params)
       return;
     }
 
-    BMEditMesh* em = BKE_editmesh_from_object(self);
-    BMesh* bm = em->bm;
-    const BMVert* vert = BM_mesh_active_vert_get(bm);
-    const BMEdge *edge = BM_mesh_active_edge_get(bm);
-    const BMFace* face = BM_mesh_active_face_get(bm, false, false);
-
-    if (vert != nullptr) {
-      params.set_output<int>("Vertex Index", BM_elem_index_get(vert));
-    }
-    if (edge != nullptr) {
-      params.set_output<int>("Edge Index", BM_elem_index_get(edge));
-    }
-    if (face != nullptr) {
-      params.set_output<int>("Face Index", BM_elem_index_get(face));
-    }
+    Mesh* mesh = BKE_mesh_from_object(self);
+    params.set_output<int>("Vertex Index", BKE_mesh_mselect_active_get(mesh, ME_VSEL));
+    params.set_output<int>("Edge Index", BKE_mesh_mselect_active_get(mesh, ME_ESEL));
+    params.set_output<int>("Face Index", BKE_mesh_mselect_active_get(mesh, ME_FSEL));
   }
 
   params.set_default_remaining_outputs();
