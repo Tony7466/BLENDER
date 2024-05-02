@@ -898,7 +898,7 @@ ShaderCompiler::BatchHandle ShaderCompiler::compile_batch(Span<shader::ShaderCre
     info->do_batch_compilation = true;
     vector.append(compile(*info));
   }
-  batches.add(handle, vector);
+  batches.add(handle, {vector, infos});
   return handle;
 }
 
@@ -909,7 +909,7 @@ bool ShaderCompiler::batch_is_ready(BatchHandle handle)
 
 Vector<Shader *> ShaderCompiler::batch_get(BatchHandle handle)
 {
-  return batches.pop(handle);
+  return batches.pop(handle).shaders;
 }
 
 /** \} */

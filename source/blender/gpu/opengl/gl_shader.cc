@@ -1577,7 +1577,7 @@ GLuint GLShader::program_get()
 
 bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 {
-  for (Shader *shader : batches.lookup(handle)) {
+  for (Shader *shader : batches.lookup(handle).shaders) {
     if (!static_cast<GLShader *>(shader)->is_ready()) {
       return false;
     }
@@ -1588,14 +1588,16 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 
 Vector<Shader *> GLShaderCompiler::batch_get(BatchHandle handle)
 {
-  for (Shader *&shader : batches.lookup(handle)) {
-    if (!static_cast<GLShader *>(shader)->post_finalize()) {
+  Batch &batch = batches.lookup(handle);
+  for (int i : batch.shaders.index_range()) {
+    Shader *&shader = batch.shaders[i];
+    if (!static_cast<GLShader *>(shader)->post_finalize(batch.infos[i])) {
       delete shader;
       shader = nullptr;
     }
   }
 
-  return batches.pop(handle);
+  return batches.pop(handle).shaders;
 }
 
 /** \} */

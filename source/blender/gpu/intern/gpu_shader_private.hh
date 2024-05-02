@@ -165,8 +165,12 @@ class ShaderCompiler {
   using BatchHandle = int;
 
  protected:
+  struct Batch {
+    Vector<Shader *> shaders;
+    Vector<shader::ShaderCreateInfo *> infos;
+  };
   BatchHandle next_batch_handle = 0;
-  Map<BatchHandle, Vector<Shader *>> batches;
+  Map<BatchHandle, Batch> batches;
 
  public:
   virtual Shader *compile(const shader::ShaderCreateInfo &info);
