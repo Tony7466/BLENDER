@@ -1156,7 +1156,7 @@ static void sculpt_geometry_preview_lines_draw(const uint gpuattr,
     return;
   }
 
-  if (BKE_pbvh_type(ss->pbvh) != PBVH_FACES) {
+  if (BKE_pbvh_type(*ss->pbvh) != PBVH_FACES) {
     return;
   }
 
@@ -1215,7 +1215,6 @@ static bool paint_use_2d_cursor(PaintMode mode)
       return false;
     case PaintMode::Texture3D:
     case PaintMode::Texture2D:
-    case PaintMode::SculptUV:
     case PaintMode::VertexGPencil:
     case PaintMode::SculptGPencil:
     case PaintMode::WeightGPencil:
@@ -1430,7 +1429,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
     paint_cursor_update_unprojected_radius(ups, brush, vc, pcontext->scene_space_location);
   }
 
-  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(ss->pbvh) == PBVH_GRIDS;
+  pcontext->is_multires = ss->pbvh != nullptr && BKE_pbvh_type(*ss->pbvh) == PBVH_GRIDS;
 
   pcontext->sd = CTX_data_tool_settings(pcontext->C)->sculpt;
 }
@@ -1686,8 +1685,8 @@ static void paint_cursor_pose_brush_segments_draw(PaintCursorContext *pcontext)
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
   GPU_line_width(2.0f);
 
-  immBegin(GPU_PRIM_LINES, ss->pose_ik_chain_preview->tot_segments * 2);
-  for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
+  immBegin(GPU_PRIM_LINES, ss->pose_ik_chain_preview->segments.size() * 2);
+  for (const int i : ss->pose_ik_chain_preview->segments.index_range()) {
     immVertex3fv(pcontext->pos, ss->pose_ik_chain_preview->segments[i].initial_orig);
     immVertex3fv(pcontext->pos, ss->pose_ik_chain_preview->segments[i].initial_head);
   }
@@ -1700,7 +1699,7 @@ static void paint_cursor_pose_brush_origins_draw(PaintCursorContext *pcontext)
 
   SculptSession *ss = pcontext->ss;
   immUniformColor4f(1.0f, 1.0f, 1.0f, 0.8f);
-  for (int i = 0; i < ss->pose_ik_chain_preview->tot_segments; i++) {
+  for (const int i : ss->pose_ik_chain_preview->segments.index_range()) {
     cursor_draw_point_screen_space(pcontext->pos,
                                    pcontext->region,
                                    ss->pose_ik_chain_preview->segments[i].initial_orig,
@@ -1813,7 +1812,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
 
       /* Free the previous pose brush preview. */
       if (ss->pose_ik_chain_preview) {
-        pose::ik_chain_free(ss->pose_ik_chain_preview);
+        ss->pose_ik_chain_preview.reset();
       }
 
       /* Generate a new pose brush preview from the current cursor location. */

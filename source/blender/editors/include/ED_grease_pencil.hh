@@ -35,7 +35,8 @@ struct ViewContext;
 namespace blender {
 namespace bke {
 enum class AttrDomain : int8_t;
-}
+class CurvesGeometry;
+}  // namespace bke
 }  // namespace blender
 
 enum {
@@ -63,6 +64,7 @@ void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
 void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
+
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
@@ -208,7 +210,9 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
  * create one when auto-key is on (taking additive drawing setting into account).
  * \return false when no keyframe could be found or created.
  */
-bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil);
+bool ensure_active_keyframe(const Scene &scene,
+                            GreasePencil &grease_pencil,
+                            bool &r_inserted_keyframe);
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
@@ -256,6 +260,8 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
 Array<Vector<MutableDrawingInfo>> retrieve_editable_drawings_grouped_per_frame(
     const Scene &scene, GreasePencil &grease_pencil);
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
+    const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
+Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                               const GreasePencil &grease_pencil,
@@ -381,6 +387,18 @@ void normalize_vertex_weights(MDeformVert &dvert,
                               int active_vertex_group,
                               Span<bool> vertex_group_is_locked,
                               Span<bool> vertex_group_is_bone_deformed);
+
+void clipboard_free();
+const bke::CurvesGeometry &clipboard_curves();
+/**
+ * Paste curves from the clipboard into the drawing.
+ * \param paste_back Render behind existing curves by inserting curves at the front.
+ * \return Index range of the new curves in the drawing after pasting.
+ */
+IndexRange clipboard_paste_strokes(Main &bmain,
+                                   Object &object,
+                                   bke::greasepencil::Drawing &drawing,
+                                   bool paste_back);
 
 enum FillToolFitMethod {
   /* Use the current view projection unchanged. */

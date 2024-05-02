@@ -358,11 +358,12 @@ void PackIsland::finalize_geometry_(const UVPackIsland_Params &params, MemArena 
     if (convex_len >= 3) {
       /* Write back. */
       triangle_vertices_.clear();
-      Array<float2> convexVertices(convex_len);
+      float2 *convex_verts = static_cast<float2 *>(
+          BLI_memarena_alloc(arena, sizeof(*convex_verts) * convex_len));
       for (int i = 0; i < convex_len; i++) {
-        convexVertices[i] = source[index_map[i]];
+        convex_verts[i] = source[index_map[i]];
       }
-      add_polygon(convexVertices, arena, heap);
+      add_polygon(Span(convex_verts, convex_len), arena, heap);
     }
   }
 
@@ -1352,7 +1353,7 @@ float Occupancy::trace_island(const PackIsland *island,
 
 static UVPhi find_best_fit_for_island(const PackIsland *island,
                                       const int scan_line,
-                                      Occupancy &occupancy,
+                                      const Occupancy &occupancy,
                                       const float scale,
                                       const int angle_90_multiple,
                                       /* TODO: const bool reflect, */

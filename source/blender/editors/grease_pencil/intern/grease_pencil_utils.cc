@@ -68,26 +68,35 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     }
   }
   /* Initialize DrawingPlacementDepth from toolsettings. */
-  switch (scene.toolsettings->gpencil_v3d_align) {
-    case GP_PROJECT_VIEWSPACE:
-      depth_ = DrawingPlacementDepth::ObjectOrigin;
-      placement_loc_ = layer_space_to_world_space_.location();
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_CURSOR):
+  const char align_flag = scene.toolsettings->gpencil_v3d_align;
+  if (align_flag & GP_PROJECT_VIEWSPACE) {
+    if (align_flag & GP_PROJECT_CURSOR) {
       depth_ = DrawingPlacementDepth::Cursor;
+      surface_offset_ = 0.0f;
       placement_loc_ = float3(scene.cursor.location);
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_VIEW):
+    }
+    else if (align_flag & GP_PROJECT_DEPTH_VIEW) {
       depth_ = DrawingPlacementDepth::Surface;
       surface_offset_ = scene.toolsettings->gpencil_surface_offset;
       /* Default to view placement with the object origin if we don't hit a surface. */
       placement_loc_ = layer_space_to_world_space_.location();
-      break;
-    case (GP_PROJECT_VIEWSPACE | GP_PROJECT_DEPTH_STROKE):
+    }
+    else if (align_flag & GP_PROJECT_DEPTH_STROKE) {
       depth_ = DrawingPlacementDepth::NearestStroke;
+      surface_offset_ = 0.0f;
       /* Default to view placement with the object origin if we don't hit a stroke. */
       placement_loc_ = layer_space_to_world_space_.location();
-      break;
+    }
+    else {
+      depth_ = DrawingPlacementDepth::ObjectOrigin;
+      surface_offset_ = 0.0f;
+      placement_loc_ = layer_space_to_world_space_.location();
+    }
+  }
+  else {
+    depth_ = DrawingPlacementDepth::ObjectOrigin;
+    surface_offset_ = 0.0f;
+    placement_loc_ = float3(0.0f);
   }
 
   if (ELEM(plane_,
@@ -121,7 +130,7 @@ bool DrawingPlacement::use_project_to_nearest_stroke() const
 void DrawingPlacement::cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d)
 {
   const eV3DDepthOverrideMode mode = (depth_ == DrawingPlacementDepth::Surface) ?
-                                         V3D_DEPTH_NO_GPENCIL :
+                                         V3D_DEPTH_NO_OVERLAYS :
                                          V3D_DEPTH_GPENCIL_ONLY;
   ED_view3d_depth_override(depsgraph, region, view3d, nullptr, mode, &this->depth_cache_);
 }
@@ -557,6 +566,47 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
   for (const int frame_number : frame_numbers) {
     if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
       editable_drawings.append({*drawing, layer_index, frame_number, 1.0f});
+    }
+  }
+
+  return editable_drawings;
+}
+
+Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer_with_falloff(
+    const Scene &scene,
+    GreasePencil &grease_pencil,
+    const blender::bke::greasepencil::Layer &layer)
+{
+  using namespace blender::bke::greasepencil;
+  const int current_frame = scene.r.cfra;
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  const bool use_multi_frame_falloff = use_multi_frame_editing &&
+                                       (toolsettings->gp_sculpt.flag &
+                                        GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
+  const int layer_index = *grease_pencil.get_layer_index(layer);
+  int center_frame;
+  std::pair<int, int> minmax_frame;
+  if (use_multi_frame_falloff) {
+    BKE_curvemapping_init(toolsettings->gp_sculpt.cur_falloff);
+    minmax_frame = get_minmax_selected_frame_numbers(grease_pencil, current_frame);
+    center_frame = math::clamp(current_frame, minmax_frame.first, minmax_frame.second);
+  }
+
+  Vector<MutableDrawingInfo> editable_drawings;
+  const Array<int> frame_numbers = get_editable_frames_for_layer(
+      layer, current_frame, use_multi_frame_editing);
+  for (const int frame_number : frame_numbers) {
+    if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+      const float falloff = use_multi_frame_falloff ?
+                                get_multi_frame_falloff(frame_number,
+                                                        center_frame,
+                                                        minmax_frame.first,
+                                                        minmax_frame.second,
+                                                        toolsettings->gp_sculpt.cur_falloff) :
+                                1.0f;
+      editable_drawings.append({*drawing, layer_index, frame_number, falloff});
     }
   }
 
@@ -1131,11 +1181,14 @@ int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
   }
 
   /* Ensure a drawing at the current keyframe. */
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
+  bool inserted_keyframe = false;
+  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil, inserted_keyframe)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
-
+  if (inserted_keyframe) {
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  }
   return OPERATOR_RUNNING_MODAL;
 }
 

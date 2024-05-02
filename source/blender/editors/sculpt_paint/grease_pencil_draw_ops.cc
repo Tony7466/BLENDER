@@ -45,6 +45,7 @@
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
 
+#include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
@@ -227,30 +228,31 @@ static bool grease_pencil_sculpt_paint_poll(bContext *C)
   return true;
 }
 
-static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(bContext &C)
+static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(
+    bContext &C, const BrushStrokeMode stroke_mode)
 {
   const Scene &scene = *CTX_data_scene(&C);
   const GpSculptPaint &gp_sculptpaint = *scene.toolsettings->gp_sculptpaint;
   const Brush &brush = *BKE_paint_brush_for_read(&gp_sculptpaint.paint);
   switch (eBrushGPSculptTool(brush.gpencil_sculpt_tool)) {
     case GPSCULPT_TOOL_SMOOTH:
-      return nullptr;
+      return greasepencil::new_smooth_operation(stroke_mode).release();
     case GPSCULPT_TOOL_THICKNESS:
-      return nullptr;
+      return greasepencil::new_thickness_operation(stroke_mode).release();
     case GPSCULPT_TOOL_STRENGTH:
-      return nullptr;
+      return greasepencil::new_strength_operation(stroke_mode).release();
     case GPSCULPT_TOOL_GRAB:
-      return nullptr;
+      return greasepencil::new_grab_operation(stroke_mode).release();
     case GPSCULPT_TOOL_PUSH:
-      return nullptr;
+      return greasepencil::new_push_operation(stroke_mode).release();
     case GPSCULPT_TOOL_TWIST:
-      return nullptr;
+      return greasepencil::new_twist_operation(stroke_mode).release();
     case GPSCULPT_TOOL_PINCH:
-      return nullptr;
+      return greasepencil::new_pinch_operation(stroke_mode).release();
     case GPSCULPT_TOOL_RANDOMIZE:
-      return nullptr;
+      return greasepencil::new_randomize_operation(stroke_mode).release();
     case GPSCULPT_TOOL_CLONE:
-      return nullptr;
+      return greasepencil::new_clone_operation(stroke_mode).release();
   }
   return nullptr;
 }
@@ -259,7 +261,8 @@ static bool grease_pencil_sculpt_paint_test_start(bContext *C,
                                                   wmOperator *op,
                                                   const float mouse[2])
 {
-  GreasePencilStrokeOperation *operation = grease_pencil_sculpt_paint_operation(*C);
+  const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
+  GreasePencilStrokeOperation *operation = grease_pencil_sculpt_paint_operation(*C, stroke_mode);
   if (operation) {
     stroke_start(*C, *op, float2(mouse), *operation);
     return true;
@@ -295,9 +298,13 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
   }
 
   /* Ensure a drawing at the current keyframe. */
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
+  bool inserted_keyframe = false;
+  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil, inserted_keyframe)) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
+  }
+  if (inserted_keyframe) {
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
   }
 
   op->customdata = paint_stroke_new(C,

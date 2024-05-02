@@ -145,7 +145,7 @@ static void insert_graph_keys(bAnimContext *ac, eGraphKeys_InsertKey_Types mode)
   }
 
   /* Init key-framing flag. */
-  eInsertKeyFlags flag = ANIM_get_keyframing_flags(scene);
+  eInsertKeyFlags flag = blender::animrig::get_keyframing_flags(scene);
   KeyframeSettings settings = get_keyframe_settings(true);
   settings.keyframe_type = eBezTriple_KeyframeType(ts->keyframe_type);
 
@@ -1337,7 +1337,7 @@ static void bake_graph_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bake_fcurve_segments((FCurve *)ale->key_data);
+    blender::animrig::bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
