@@ -1231,7 +1231,31 @@ bool GLShader::finalize(const shader::ShaderCreateInfo *info)
     geometry_shader_from_glsl(sources);
   }
 
-  if (!program_link()) {
+  program_link();
+
+  if (info == nullptr || !info->do_batch_compilation) {
+    return post_finalize(info);
+  }
+
+  return true;
+}
+
+bool GLShader::is_ready()
+{
+  GLint is_ready = true;
+  GLuint program_id = program_active_->program_id;
+  if (GLContext::khr_parallel_shader_compile_support) {
+    glGetProgramiv(program_id, GL_COMPLETION_STATUS_KHR, &is_ready);
+  }
+  else if (GLContext::arb_parallel_shader_compile_support) {
+    glGetProgramiv(program_id, GL_COMPLETION_STATUS_ARB, &is_ready);
+  }
+  return is_ready;
+}
+
+bool GLShader::post_finalize(const shader::ShaderCreateInfo *info)
+{
+  if (!check_link_status()) {
     return false;
   }
 
@@ -1450,7 +1474,7 @@ GLShader::GLProgram::~GLProgram()
   glDeleteProgram(program_id);
 }
 
-bool GLShader::program_link()
+void GLShader::program_link()
 {
   BLI_assert(program_active_ != nullptr);
   if (program_active_->program_id == 0) {
@@ -1472,7 +1496,11 @@ bool GLShader::program_link()
     glAttachShader(program_id, program_active_->compute_shader);
   }
   glLinkProgram(program_id);
+}
 
+bool GLShader::check_link_status()
+{
+  GLuint program_id = program_active_->program_id;
   GLint status;
   glGetProgramiv(program_id, GL_LINK_STATUS, &status);
   if (!status) {
@@ -1539,6 +1567,35 @@ GLuint GLShader::program_get()
 
   constants.is_dirty = false;
   return program_active_->program_id;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name ShaderCompiler
+ * \{ */
+
+bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
+{
+  for (Shader *shader : batches.lookup(handle)) {
+    if (!static_cast<GLShader *>(shader)->is_ready()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+Vector<Shader *> GLShaderCompiler::batch_get(BatchHandle handle)
+{
+  for (Shader *&shader : batches.lookup(handle)) {
+    if (!static_cast<GLShader *>(shader)->post_finalize()) {
+      delete shader;
+      shader = nullptr;
+    }
+  }
+
+  return batches.pop(handle);
 }
 
 /** \} */

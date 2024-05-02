@@ -112,7 +112,8 @@ class GLShader : public Shader {
   /**
    * Link the active program.
    */
-  bool program_link();
+  void program_link();
+  bool check_link_status();
 
   /**
    * Return a GLProgram program id that reflects the current state of shader.constants.values.
@@ -139,6 +140,8 @@ class GLShader : public Shader {
   void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
   void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
+  bool is_ready();
+  bool post_finalize(const shader::ShaderCreateInfo *info = nullptr);
   void warm_cache(int /*limit*/) override{};
 
   std::string resources_declare(const shader::ShaderCreateInfo &info) const override;
@@ -202,6 +205,12 @@ class GLShader : public Shader {
   bool do_geometry_shader_injection(const shader::ShaderCreateInfo *info);
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GLShader");
+};
+
+class GLShaderCompiler : public ShaderCompiler {
+ public:
+  virtual bool batch_is_ready(BatchHandle handle) override;
+  virtual Vector<Shader *> batch_get(BatchHandle handle) override;
 };
 
 class GLLogParser : public GPULogParser {
