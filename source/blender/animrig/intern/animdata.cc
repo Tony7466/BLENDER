@@ -85,7 +85,7 @@ Animation *id_animation_ensure(Main *bmain, ID *id)
      * `id_action_ensure()`.  Is this really the right way to handle reporting
      * this?  If it's never supposed to happen, an assert would be better.  If
      * it *is* supposed to happen, then printf doesn't seem like the right way
-     * to report it. */
+     * to report it, if it should be reported at all. */
     printf("ERROR: Couldn't add AnimData (ID = %s)\n", (id) ? (id->name) : "<None>");
     return nullptr;
   }
@@ -94,6 +94,7 @@ Animation *id_animation_ensure(Main *bmain, ID *id)
     return &adt->animation->wrap();
   }
 
+  /* TODO: translate the default name. */
   ::Animation *anim = BKE_animation_add(bmain, "Animation");
 
   DEG_relations_tag_update(bmain);

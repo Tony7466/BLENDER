@@ -456,9 +456,10 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
       binding, "location", 0, {5.0f, 47.1f}, INSERTKEY_NOFLAGS, settings);
   ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);
   ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "
-                                              "path/array index) to go into the same FCurve";
-  ASSERT_EQ(2, channels->fcurves()[0]->totvert) << "Expect insertion with the same (binding/rna "
-                                                   "path/array index) to go into the same FCurve";
+                                              "path/array index) tuple to go into the same FCurve";
+  ASSERT_EQ(2, channels->fcurves()[0]->totvert)
+      << "Expect insertion with the same (binding/rna "
+         "path/array index) tuple to go into the same FCurve";
 
   EXPECT_EQ(47.0f, evaluate_fcurve(channels->fcurves()[0], 1.0f));
   EXPECT_EQ(47.1f, evaluate_fcurve(channels->fcurves()[0], 5.0f));

@@ -309,6 +309,11 @@ eInsertKeyFlags get_keyframing_flags(Scene *scene)
   return flag;
 }
 
+bool can_create_fcurve(const eInsertKeyFlags insert_key_flags)
+{
+  return (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) == 0;
+}
+
 /** Used to make curves newly added to a cyclic Action cycle with the correct period. */
 static void make_new_fcurve_cyclic(FCurve *fcu, const blender::float2 &action_range)
 {
@@ -612,8 +617,8 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
    * - if we're replacing keyframes only, DO NOT create new F-Curves if they do not exist yet
    *   but still try to get the F-Curve if it exists...
    */
-  const bool can_create_curve = (flag & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) == 0;
-  FCurve *fcu = can_create_curve ?
+
+  FCurve *fcu = can_create_fcurve(flag) ?
                     action_fcurve_ensure(bmain, act, group, ptr, rna_path, array_index) :
                     action_fcurve_find(act, rna_path, array_index);
 

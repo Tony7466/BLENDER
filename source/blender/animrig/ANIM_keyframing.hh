@@ -63,8 +63,14 @@ class CombinedKeyingResult {
  public:
   CombinedKeyingResult();
 
+  /**
+   * Increments the given keying result by one.
+   */
   void add(const SingleKeyingResult result);
 
+  /**
+   * Adds `count` to the given keying result.
+   */
   void add(const SingleKeyingResult result, int count);
 
   /* Add values of the given result to this result. */
@@ -76,6 +82,14 @@ class CombinedKeyingResult {
 
   void generate_reports(ReportList *reports);
 };
+
+/* -------------------------------------------------------------------- */
+
+/**
+ * Return whether a new fcurve can be created according to the given keyframing
+ * flags.
+ */
+bool can_create_fcurve(eInsertKeyFlags insert_key_flags);
 
 /* -------------------------------------------------------------------- */
 /** \name Key-Framing Management

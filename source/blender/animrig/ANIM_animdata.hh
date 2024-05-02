@@ -34,7 +34,8 @@ bAction *id_action_ensure(Main *bmain, ID *id);
  * Get the animation datablock for the given ID, creating one if it doesn't
  * already exist.
  *
- * Note: this does NOT create a binding if one doesn't already exist.
+ * Note: this does NOT touch bindings (e.g. it doesn't ensure a binding for the
+ * given ID).
  */
 Animation *id_animation_ensure(Main *bmain, ID *id);
 

@@ -137,6 +137,8 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     return;
   }
 
+  /* Optimization: if there's no animation at all and "Only Insert Available" is
+   * enabled, we know nothing will get keyed anyway, so return early. */
   if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) &&
       (!ob->adt || (!ob->adt->action && !ob->adt->animation)))
   {
@@ -153,7 +155,7 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
 
   CombinedKeyingResult combined_result;
   for (PointerRNA ptr : sources) {
-    CombinedKeyingResult result = insert_key_rna(
+    const CombinedKeyingResult result = insert_key_rna(
         &ptr,
         rna_paths,
         scene_frame,
@@ -257,7 +259,9 @@ void autokeyframe_pose_channel(bContext *C,
     return;
   }
 
-  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) && (!adt || (!act && !animation))) {
+  /* Optimization: if there's no animation at all and "Only Insert Available" is
+   * enabled, we know nothing will get keyed anyway, so return early. */
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) && !act && !animation) {
     /* TODO: account for multi-element properties in the report. E.g. right now
      * location will be reported as a single channel in the report. */
     CombinedKeyingResult result;
@@ -268,7 +272,7 @@ void autokeyframe_pose_channel(bContext *C,
 
   CombinedKeyingResult combined_result;
   for (PointerRNA &ptr : sources) {
-    CombinedKeyingResult result = insert_key_rna(
+    const CombinedKeyingResult result = insert_key_rna(
         &ptr,
         rna_paths,
         scene_frame,

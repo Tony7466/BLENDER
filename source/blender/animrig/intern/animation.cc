@@ -645,7 +645,7 @@ StringRefNull Binding::name_without_prefix() const
 {
   BLI_assert(StringRef(this->name).size() >= name_length_min);
 
-  /* Avoid accessing an uninitialized part of the string accidentally. */
+  /* Avoid accessing an uninitialised part of the string accidentally. */
   if (this->name[0] == '\0' || this->name[1] == '\0') {
     return "";
   }
@@ -869,14 +869,11 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
                                                   const eInsertKeyFlags insert_key_flags,
                                                   const KeyframeSettings &settings)
 {
-  /* Make sure the F-Curve exists.
-   * - if we're replacing keyframes only, DO NOT create new F-Curves if they do not exist yet
-   *   but still try to get the F-Curve if it exists...
-   */
-  const bool can_create_curve = (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) ==
-                                0;
-  FCurve *fcu = can_create_curve ? &this->fcurve_find_or_create(binding, rna_path, array_index) :
-                                   this->fcurve_find(binding, rna_path, array_index);
+  /* Get the fcurve, or if one doesn't exist and the keying flags allow then
+   * create one. */
+  FCurve *fcu = can_create_fcurve(insert_key_flags) ?
+                    &this->fcurve_find_or_create(binding, rna_path, array_index) :
+                    this->fcurve_find(binding, rna_path, array_index);
   if (!fcu) {
     return SingleKeyingResult::CANNOT_CREATE_FCURVE;
   }

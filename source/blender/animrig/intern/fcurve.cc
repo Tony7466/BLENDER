@@ -274,8 +274,19 @@ void initialize_bezt(BezTriple *beztr,
 }
 
 /**
- * This helper function determines whether a new keyframe is needed.
- * A keyframe doesn't get added when the FCurve already has the proposed value.
+ * Return whether the given fcurve already evaluates to the same value as the
+ * proposed keyframe at the keyframe's time.
+ *
+ * This is a helper function for determining whether to insert a keyframe or not
+ * when "only insert needed" is enabled.
+ *
+ * Note: this does *not* determine whether inserting the keyframe would change
+ * the fcurve at points other than the keyframe itself. For example, even if
+ * inserting the key wouldn't change the fcurve's value at the time of the
+ * keyframe, the resulting changes to bezier interpolation could change the
+ * fcurve on either side of it. This function intentionally does not account for
+ * that, since that's not how the "only insert needed" feature is supposed to
+ * work.
  */
 static bool new_key_needed(FCurve *fcu, const float frame, const float value)
 {
