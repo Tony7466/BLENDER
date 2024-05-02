@@ -344,6 +344,21 @@ int IMB_proxy_size_to_array_index(IMB_Proxy_Size pr_size)
   }
 }
 
+int IMB_timecode_to_array_index(IMB_Timecode_Type tc)
+{
+  switch (tc) {
+    case IMB_TC_NONE:
+      return -1;
+    case IMB_TC_RECORD_RUN:
+      return 0;
+    case IMB_TC_RECORD_RUN_NO_GAPS:
+      return 1;
+    default:
+      BLI_assert_msg(0, "Unhandled timecode type enum!");
+      return -1;
+  }
+}
+
 /* ----------------------------------------------------------------------
  * - rebuild helper functions
  * ---------------------------------------------------------------------- */
@@ -401,6 +416,15 @@ static bool get_proxy_filepath(ImBufAnim *anim,
 static void get_tc_filepath(ImBufAnim *anim, IMB_Timecode_Type tc, char *filepath)
 {
   char index_dir[FILE_MAXDIR];
+  int i = IMB_timecode_to_array_index(tc);
+
+  BLI_assert(i >= 0);
+
+  const char *index_names[] = {
+      "record_run%s%s.blen_tc",
+      "record_run_no_gaps%s%s.blen_tc",
+  };
+
   char stream_suffix[20];
   char index_name[256];
 
@@ -410,15 +434,7 @@ static void get_tc_filepath(ImBufAnim *anim, IMB_Timecode_Type tc, char *filepat
     SNPRINTF(stream_suffix, "_st%d", anim->streamindex);
   }
 
-  const char *index_fmt;
-  if (tc == IMB_TC_RECORD_RUN) {
-    index_fmt = "record_run%s%s.blen_tc";
-  }
-  else if (tc == IMB_TC_RECORD_RUN_NO_GAPS) {
-    index_fmt = "record_run_no_gaps%s%s.blen_tc";
-  }
-
-  SNPRINTF(index_name, index_fmt, stream_suffix, anim->suffix);
+  SNPRINTF(index_name, index_names[i], stream_suffix, anim->suffix);
 
   get_index_dir(anim, index_dir, sizeof(index_dir));
 
@@ -769,7 +785,7 @@ struct FFmpegIndexBuilderContext : public IndexBuildContext {
   int num_proxy_sizes;
 
   proxy_output_ctx *proxy_ctx[IMB_PROXY_MAX_SLOT];
-  anim_index_builder *indexer[2];
+  anim_index_builder *indexer[IMB_TC_NUM_TYPES];
 
   int tcs_in_use;
   int proxy_sizes_in_use;

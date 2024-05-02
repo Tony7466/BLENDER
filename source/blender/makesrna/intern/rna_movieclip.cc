@@ -152,7 +152,8 @@ static void rna_def_movieclip_proxy(BlenderRNA *brna)
        "RECORD_RUN",
        0,
        "Record Run",
-       "Seek based on timestamps read from movie stream, use for normal playback"},
+       "Seek based on timestamps read from movie stream, giving the best match between scene and "
+       "movie times"},
       {IMB_TC_RECORD_RUN_NO_GAPS,
        "FREE_RUN_NO_GAPS",
        0,
