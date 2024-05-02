@@ -1604,8 +1604,8 @@ class CLIP_MT_select(Menu):
 
         layout.separator()
 
-        layout.operator("clip.stabilize_2d_select")
-        layout.operator("clip.stabilize_2d_rotation_select")
+        layout.operator("clip.stabilize_2d_select", text="Stabilization Tracks")
+        layout.operator("clip.stabilize_2d_rotation_select", text="Stabilization Rotation Tracks")
 
 
 class CLIP_MT_select_graph(Menu):

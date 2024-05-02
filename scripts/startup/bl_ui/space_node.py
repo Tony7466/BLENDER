@@ -325,7 +325,7 @@ class NODE_MT_select(Menu):
 
         layout.separator()
 
-        layout.operator("node.find_node")
+        layout.operator("node.find_node", text="Find Node...")
 
 
 class NODE_MT_node(Menu):
