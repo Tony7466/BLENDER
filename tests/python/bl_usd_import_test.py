@@ -719,8 +719,8 @@ class USDImportTest(AbstractUSDTest):
         self.check_attribute(mesh, "f_int8", 'FACE', 'INT', 1)
         self.check_attribute(mesh, "f_int32", 'FACE', 'INT', 1)
         self.check_attribute(mesh, "f_float", 'FACE', 'FLOAT', 1)
-        self.check_attribute_missing(mesh, "f_byte_color") # Not supported?
-        self.check_attribute_missing(mesh, "f_color") # Not supported?
+        self.check_attribute_missing(mesh, "f_byte_color")  # Not supported?
+        self.check_attribute_missing(mesh, "f_color")  # Not supported?
         self.check_attribute(mesh, "f_vec2", 'FACE', 'FLOAT2', 1)
         self.check_attribute(mesh, "f_vec3", 'FACE', 'FLOAT_VECTOR', 1)
         self.check_attribute_missing(mesh, "f_quat")
