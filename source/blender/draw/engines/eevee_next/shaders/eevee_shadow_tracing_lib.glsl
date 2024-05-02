@@ -48,14 +48,10 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 #define SHADOW_TRACING_INVALID_HISTORY -999.0
 
 struct ShadowMapTracingState {
-  /* Receiver Z value at previous valid depth sample. */
-  float receiver_depth_history;
-  /* Occluder Z value at previous valid depth sample. */
-  float occluder_depth_history;
-  /* Ray time at previous valid depth sample. */
-  float ray_time_history;
-  /* Z slope (delta/time) between previous valid sample (N-1) and the one before that (N-2). */
-  float occluder_depth_slope;
+  /* Occluder ray coordinate at previous valid depth sample. */
+  vec2 occluder_history;
+  /* Time slope between previous valid sample (N-1) and the one before that (N-2). */
+  float occluder_slope;
   /* Multiplier and bias to the ray step quickly compute ray time. */
   float ray_step_mul;
   float ray_step_bias;
@@ -67,10 +63,8 @@ struct ShadowMapTracingState {
 ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)
 {
   ShadowMapTracingState state;
-  state.receiver_depth_history = -1.0;
-  state.occluder_depth_history = SHADOW_TRACING_INVALID_HISTORY;
-  state.ray_time_history = -1.0;
-  state.occluder_depth_slope = 0.0;
+  state.occluder_history = vec2(SHADOW_TRACING_INVALID_HISTORY);
+  state.occluder_slope = 0.0;
   /* We trace the ray in reverse. From 1.0 (light) to 0.0 (shading point). */
   state.ray_step_mul = -1.0 / float(sample_count);
   state.ray_step_bias = 1.0 + step_offset * state.ray_step_mul;
@@ -79,8 +73,12 @@ ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)
 }
 
 struct ShadowTracingSample {
-  float receiver_depth;
-  float occluder_depth;
+  /**
+   * Occluder position in ray space.
+   * `x` component is just the normalized distance from the ray start to the ray end.
+   * `y` component is signed distance to the ray, positive if on the light side of the ray.
+   */
+  vec2 occluder;
   bool skip_sample;
 };
 
@@ -91,7 +89,7 @@ struct ShadowTracingSample {
  * Most of the code is wrapped into functions to avoid to debug issues inside macro code.
  */
 #define SHADOW_MAP_TRACE_FN(ShadowRayType) \
-  ShadowMapTraceResult shadow_map_trace(ShadowRayType ray, int sample_count, float step_offset) \
+  bool shadow_map_trace(ShadowRayType ray, int sample_count, float step_offset) \
   { \
     ShadowMapTracingState state = shadow_map_trace_init(sample_count, step_offset); \
     for (int i = 0; (i <= sample_count) && (i <= SHADOW_MAX_STEP) && (state.hit == false); i++) { \
@@ -102,7 +100,7 @@ struct ShadowTracingSample {
 \
       shadow_map_trace_hit_check(state, samp); \
     } \
-    return shadow_map_trace_finish(state); \
+    return state.hit; \
   }
 
 /**
@@ -119,68 +117,33 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
     return;
   }
   /* For the first sample, regular depth compare since we do not have history values. */
-  if (state.occluder_depth_history == SHADOW_TRACING_INVALID_HISTORY) {
-    if (samp.occluder_depth < samp.receiver_depth) {
+  if (state.occluder_history.x == SHADOW_TRACING_INVALID_HISTORY) {
+    if (samp.occluder.x > state.ray_time) {
       state.hit = true;
       return;
     }
-    state.occluder_depth_history = samp.occluder_depth;
-    state.receiver_depth_history = samp.receiver_depth;
-    state.ray_time_history = state.ray_time;
+    state.occluder_history = samp.occluder;
     return;
   }
-  /* Delta between previous valid sample. */
-  float ray_depth_delta = samp.receiver_depth - state.receiver_depth_history;
-  /* Delta between previous valid sample not occluding the ray. */
-  float time_delta = state.ray_time - state.ray_time_history;
-  /* Arbitrary increase the threshold to avoid missing occluders because of precision issues.
-   * Increasing the threshold inflates the occluders. */
-  float compare_threshold = abs(ray_depth_delta) * 1.05;
   /* Find out if the ray step is behind an occluder.
    * To be consider behind (and ignore the occluder), the occluder must not be cross the ray.
    * Use the full delta ray depth as threshold to make sure to not miss any occluder. */
-  bool is_behind = samp.occluder_depth < (samp.receiver_depth - compare_threshold);
-
+  bool is_behind = samp.occluder.y > 1e-4;
   if (is_behind) {
-    /* Use last known valid occluder Z value and extrapolate to the sample position. */
-    samp.occluder_depth = state.occluder_depth_history + state.occluder_depth_slope * time_delta;
+    /* Extrapolate last known valid occluder and check if it crosses the ray. */
+    samp.occluder.y = state.occluder_history.y +
+                      state.occluder_slope * (state.ray_time - state.occluder_history.x);
     /* Intersection test will be against the extrapolated last known occluder. */
   }
   else {
     /* Compute current occluder slope and record history for when the ray goes behind a surface. */
-    state.occluder_depth_slope = (samp.occluder_depth - state.occluder_depth_history) / time_delta;
-    state.occluder_depth_slope = clamp(state.occluder_depth_slope, -100.0, 100.0);
-    state.occluder_depth_history = samp.occluder_depth;
-    state.ray_time_history = state.ray_time;
+    state.occluder_slope = (samp.occluder.y - state.occluder_history.y) /
+                           (samp.occluder.x - state.occluder_history.x);
+    state.occluder_history = samp.occluder;
     /* Intersection test will be against the current sample's occluder. */
   }
-
-  if (samp.occluder_depth < samp.receiver_depth) {
-    state.occluder_depth_history = samp.occluder_depth;
-    state.hit = true;
-    return;
-  }
-  /* No intersection. */
-  state.receiver_depth_history = samp.receiver_depth;
-}
-
-struct ShadowMapTraceResult {
-  bool has_hit;
-  float occluder_depth;
-};
-
-ShadowMapTraceResult shadow_map_trace_finish(ShadowMapTracingState state)
-{
-  ShadowMapTraceResult result;
-  if (state.hit) {
-    result.occluder_depth = state.occluder_depth_history;
-    result.has_hit = true;
-  }
-  else {
-    result.occluder_depth = 0.0;
-    result.has_hit = false;
-  }
-  return result;
+  /* Intersection test. Intersect if above the ray and time is greater. */
+  state.hit = (samp.occluder.y > 0.0 && samp.occluder.x > state.ray_time);
 }
 
 /** \} */
@@ -247,6 +210,7 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   /* Ray position is ray local position with origin at light origin. */
   vec4 ray_pos = ray.origin + ray.direction * state.ray_time;
 
+#if 0
   int level = shadow_directional_level(ray.light, ray_pos.xyz - light_position_get(ray.light));
   /* This difference needs to be less than 32 for the later shift to be valid.
    * This is ensured by ShadowDirectional::clipmap_level_range(). */
@@ -270,12 +234,15 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   tilemap_uv -= vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
   /* Clamp to avoid out of tilemap access. */
   tilemap_uv = saturate(tilemap_uv);
-
   ShadowTracingSample samp;
   samp.receiver_depth = ray_pos.w;
   samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
                                                         tilemap_uv);
   samp.skip_sample = (samp.occluder_depth == -1.0);
+#endif
+  ShadowTracingSample samp;
+  /* TODO */
+  samp.skip_sample = true;
   return samp;
 }
 
@@ -288,18 +255,13 @@ SHADOW_MAP_TRACE_FN(ShadowRayDirectional)
  * \{ */
 
 struct ShadowRayPunctual {
-  /* Ray in tile-map normalized coordinates [0..1]. */
+  /* Light space shadow ray origin and direction. */
   vec3 origin;
   vec3 direction;
-  /* Up direction for the whole ray. Allows to compute depth gradient relative to a stable up
-   * direction that doesn't change between each cubeface. */
-  vec3 up_axis;
-  vec3 forward_axis;
+  /* Convert form local light position to ray oriented position where X axis is the ray. */
+  vec3 local_ray_up;
   /* Tile-map to sample. */
   int light_tilemap_index;
-
-  mat3x3 view_mat;
-  mat4x4 proj_mat;
 };
 
 /* Return ray in UV clip space [0..1]. */
@@ -366,12 +328,12 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   ray.origin = lP;
   ray.direction = direction;
   ray.light_tilemap_index = light.tilemap_index;
-  ray.up_axis = normalize(ray.origin);
-  ray.forward_axis = normalize(ray.origin);
+  ray.local_ray_up = safe_normalize(cross(cross(ray.origin, ray.direction), ray.direction));
 
 #ifdef GPU_FRAGMENT_SHADER
   if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
-    // drw_debug_line(ray.origin, ray.origin + ray.direction, vec4(0, 1, 0, 1));
+    drw_debug_line(lP, lP + direction, vec4(1, 0, 0, 1));
+    drw_debug_line(lP, lP + ray.local_ray_up, vec4(0, 1, 0, 1));
   }
 #endif
   return ray;
@@ -389,18 +351,19 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   float radial_occluder_depth = shadow_read_depth_at_tilemap_uv(tilemap_index, face_uv);
   vec3 occluder_pos = receiver_pos * (radial_occluder_depth / length(receiver_pos));
 
+  /* Transform to ray local space. */
+  vec3 ray_local_occluder = occluder_pos - ray.origin;
+
   ShadowTracingSample samp;
-  // samp.receiver_depth = dot(receiver_pos, ray.up_axis);
-  // samp.occluder_depth = dot(occluder_pos, ray.up_axis);
-  samp.receiver_depth = project_point(ray.proj_mat, ray.view_mat * receiver_pos).z;
-  samp.occluder_depth = project_point(ray.proj_mat, ray.view_mat * occluder_pos).z;
+  /* TODO optimize this. */
+  samp.occluder.x = dot(ray_local_occluder, normalize(ray.direction)) / length(ray.direction);
+  samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
   samp.skip_sample = (radial_occluder_depth == -1.0);
+
 #ifdef GPU_FRAGMENT_SHADER
   if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
     drw_debug_point(receiver_pos, 0.01, vec4(0, 1, 0, 1));
     drw_debug_point(occluder_pos, 0.01, vec4(1, 0, 0, 1));
-    drw_debug_line(
-        receiver_pos, receiver_pos + ray.up_axis * samp.occluder_depth, vec4(0, 1, 0, 1));
   }
 #endif
   return samp;
@@ -557,18 +520,18 @@ ShadowEvalResult shadow_eval(LightData light,
   for (int ray_index = 0; ray_index < ray_count && ray_index < SHADOW_MAX_RAY; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
 
-    ShadowMapTraceResult trace;
+    bool has_hit;
     if (is_directional) {
       ShadowRayDirectional clip_ray = shadow_ray_generate_directional(
           light, random_ray_2d, lP, lNg);
-      trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
     else {
       ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(light, random_ray_2d, lP, lNg);
-      trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
+      has_hit = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
 
-    surface_hit += float(trace.has_hit);
+    surface_hit += float(has_hit);
   }
   /* Average samples. */
   ShadowEvalResult result;
