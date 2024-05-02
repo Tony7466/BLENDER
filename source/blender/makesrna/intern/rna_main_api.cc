@@ -823,9 +823,6 @@ RNA_MAIN_ID_TAG_FUNCS_DEF(speakers, speakers, ID_SPK)
 RNA_MAIN_ID_TAG_FUNCS_DEF(sounds, sounds, ID_SO)
 RNA_MAIN_ID_TAG_FUNCS_DEF(armatures, armatures, ID_AR)
 RNA_MAIN_ID_TAG_FUNCS_DEF(actions, actions, ID_AC)
-#  ifdef WITH_ANIM_BAKLAVA
-RNA_MAIN_ID_TAG_FUNCS_DEF(animations, animations, ID_AN)
-#  endif
 RNA_MAIN_ID_TAG_FUNCS_DEF(particles, particles, ID_PA)
 RNA_MAIN_ID_TAG_FUNCS_DEF(palettes, palettes, ID_PAL)
 RNA_MAIN_ID_TAG_FUNCS_DEF(gpencils, gpencils, ID_GD_LEGACY)

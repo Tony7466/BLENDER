@@ -1179,7 +1179,7 @@ void animation_to_keylist(AnimData *adt,
 {
   BLI_assert(adt);
   BLI_assert(anim);
-  BLI_assert(GS(anim->id.name) == ID_AN);
+  BLI_assert(GS(anim->id.name) == ID_AC);
 
   for (FCurve *fcurve : fcurves_for_animation(anim->wrap(), adt->binding_handle)) {
     fcurve_to_keylist(adt, fcurve, keylist, saction_flag, range);

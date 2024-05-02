@@ -90,9 +90,6 @@ static void rna_Main_filepath_set(PointerRNA *ptr, const char *value)
     }
 
 RNA_MAIN_LISTBASE_FUNCS_DEF(actions)
-#  ifdef WITH_ANIM_BAKLAVA
-RNA_MAIN_LISTBASE_FUNCS_DEF(animations)
-#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(armatures)
 RNA_MAIN_LISTBASE_FUNCS_DEF(brushes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(cachefiles)
