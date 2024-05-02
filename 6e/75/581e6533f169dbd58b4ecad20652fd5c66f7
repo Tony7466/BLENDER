@@ -1,1 +1,2 @@
 Referenced by issue #107297, Regression: Crash on undoing "Use Nodes" step
+Referenced by issue #121310, Undoing "Mark Asset" option leaves behind "Fake User" status
