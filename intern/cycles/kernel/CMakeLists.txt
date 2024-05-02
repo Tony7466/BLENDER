@@ -817,7 +817,6 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_sdk_bc}
     DEPENDS ${HIPRT_INCLUDE_DIR}/hiprt/impl/hiprt_kernels_bitcode.h)
 
-
   add_custom_command(
     OUTPUT  ${bvh_file}
     COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_bvh}

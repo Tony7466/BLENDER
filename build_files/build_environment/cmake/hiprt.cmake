@@ -8,7 +8,7 @@
 set(HIPRT_CMAKE_FLAGS ${DEFAULT_CMAKE_FLAGS})
 
 set(HIPRT_EXTRA_ARGS
-  --DHIPRT_EXPORTS=ON
+  -DHIPRT_EXPORTS=ON
   -D__USE_HIP__=ON
   -DHIPRT_BITCODE_LINKING=ON
   -DHIPRT_LOAD_FROM_STRING=OFF
@@ -43,18 +43,18 @@ if(WIN32)
     ExternalProject_Add_Step(external_hiprt after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${LIBDIR}/hiprt/hiprt
-        ${HARVEST_TARGET}/hiprt/include
+        ${HARVEST_TARGET}/hiprt/hiprt
       COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/hiprt/dist/bin/Release/hiprt64.dll
-        ${HARVEST_TARGET}/hiprt/bin/hiprt64.dll
+        ${LIBDIR}/hiprt/dist/bin/Release/hiprt*64.dll
+        ${HARVEST_TARGET}/hiprt/bin/hiprt*64.dll
 
       DEPENDEES install
     )
   else()
     ExternalProject_Add_Step(external_hiprt after_install
       COMMAND ${CMAKE_COMMAND} -E copy
-        ${LIBDIR}/hiprt/dist/bin/Release/hiprt64.dll
-        ${HARVEST_TARGET}/hiprt/bin/hiprt64.dll
+        ${LIBDIR}/hiprt/dist/bin/Debug/hiprt*64D.dll
+        ${HARVEST_TARGET}/hiprt/bin/hiprt*64D.dll
 
       DEPENDEES install
     )

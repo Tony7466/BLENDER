@@ -706,7 +706,7 @@ if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   mark_as_advanced(WITH_CYCLES_DEVICE_HIP)
   mark_as_advanced(CYCLES_HIP_BINARIES_ARCH)
 
-   option(WITH_CYCLES_DEVICE_HIPRT "Enable Cycles AMD HIPRT support" ON)
+   option(WITH_CYCLES_DEVICE_HIPRT "Enable Cycles AMD HIPRT support" OFF)
    mark_as_advanced(WITH_CYCLES_DEVICE_HIPRT)
 
 endif()
@@ -2772,8 +2772,8 @@ if(FIRST_RUN)
       info_cfg_option(WITH_CYCLES_ONEAPI_BINARIES)
       info_cfg_option(WITH_CYCLES_DEVICE_HIP)
       info_cfg_option(WITH_CYCLES_HIP_BINARIES)
+      info_cfg_option(WITH_CYCLES_DEVICE_HIPRT)
     endif()
-    info_cfg_option(WITH_CYCLES_DEVICE_HIPRT)
   endif()
 
   info_cfg_text("")

@@ -49,7 +49,7 @@ endif()
 
 find_path(HIPRT_LIB_DIR
   NAMES
-    hiprt${_hiprt_version}64.dll
+    ${HIPRT_DYNAMIC_LIB}
   HINTS
     ${_hiprt_SEARCH_DIRS}
   PATH_SUFFIXES
