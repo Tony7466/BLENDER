@@ -62,6 +62,7 @@ Context::Context()
   thread_ = pthread_self();
   is_active_ = false;
   matrix_state = GPU_matrix_state_create();
+  compiler = new ShaderCompiler();
 
   context_id = Context::context_counter;
   Context::context_counter++;
@@ -76,6 +77,7 @@ Context::~Context()
   delete front_right;
   delete back_right;
   delete imm;
+  delete compiler;
 }
 
 bool Context::is_active_on_thread()

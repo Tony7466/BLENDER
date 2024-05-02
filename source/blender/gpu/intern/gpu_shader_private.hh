@@ -160,6 +160,21 @@ static inline const Shader *unwrap(const GPUShader *vert)
   return reinterpret_cast<const Shader *>(vert);
 }
 
+class ShaderCompiler {
+ public:
+  using BatchHandle = int;
+
+ protected:
+  BatchHandle next_batch_handle = 0;
+  Map<BatchHandle, Vector<Shader *>> batches;
+
+ public:
+  virtual Shader *compile(const shader::ShaderCreateInfo &info);
+  virtual BatchHandle compile_batch(Span<shader::ShaderCreateInfo *> infos);
+  virtual bool batch_is_ready(BatchHandle handle);
+  virtual Vector<Shader *> batch_get(BatchHandle handle);
+};
+
 enum class Severity {
   Unknown,
   Warning,
