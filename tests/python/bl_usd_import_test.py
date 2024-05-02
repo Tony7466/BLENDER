@@ -675,6 +675,59 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual(blender_light.shape, 'DISK')
         self.assertAlmostEqual(blender_light.size, 2, 3)
 
+    def check_attribute(self, blender_data, attribute_name, domain, data_type, elements_len):
+        attr = blender_data.attributes[attribute_name]
+        self.assertEqual(attr.domain, domain)
+        self.assertEqual(attr.data_type, data_type)
+        self.assertEqual(len(attr.data), elements_len)
+
+    def test_import_attributes(self):
+        testfile = str(self.tempdir / "usd_attribute_test.usda")
+
+        # Use the existing attributes file to create the USD test file
+        # for import. It is validated as part of the bl_usd_export test.
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_attribute_test.blend"))
+        res = bpy.ops.wm.usd_export(filepath=testfile, evaluation_mode="RENDER")
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {testfile}")
+
+        # Reload the empty file and import back in
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        res = bpy.ops.wm.usd_import(filepath=testfile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {testfile}")
+
+        # Verify all attributes on the Mesh
+        # Note: USD does not support signed 8-bit types so there is
+        #       currently no equivalent to Blender's INT8 type
+        # TODO: Blender is missing support for reading the USD quatf data type
+        mesh = bpy.data.objects["Mesh"].data
+
+        self.check_attribute(mesh, "p_bool", 'POINT', 'BOOLEAN', 4)
+        self.check_attribute(mesh, "p_int8", 'POINT', 'INT', 4)
+        self.check_attribute(mesh, "p_int32", 'POINT', 'INT', 4)
+        self.check_attribute(mesh, "p_float", 'POINT', 'FLOAT', 4)
+        self.check_attribute(mesh, "p_byte_color", 'POINT', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "p_color", 'POINT', 'FLOAT_COLOR', 4)
+        #self.check_attribute(mesh, "p_vec2", 'POINT', 'FLOAT2', 4)  # TODO: Bug
+        self.check_attribute(mesh, "p_vec3", 'POINT', 'FLOAT_VECTOR', 4)
+
+        self.check_attribute(mesh, "f_bool", 'FACE', 'BOOLEAN', 1)
+        self.check_attribute(mesh, "f_int8", 'FACE', 'INT', 1)
+        self.check_attribute(mesh, "f_int32", 'FACE', 'INT', 1)
+        self.check_attribute(mesh, "f_float", 'FACE', 'FLOAT', 1)
+        #self.check_attribute(mesh, "f_byte_color", 'POINT', 'FLOAT_COLOR', 1) # Not supported?
+        #self.check_attribute(mesh, "f_color", 'POINT', 'FLOAT_COLOR', 1) # Not supported?
+        self.check_attribute(mesh, "f_vec2", 'FACE', 'FLOAT2', 1)
+        self.check_attribute(mesh, "f_vec3", 'FACE', 'FLOAT_VECTOR', 1)
+
+        self.check_attribute(mesh, "fc_bool", 'CORNER', 'BOOLEAN', 4)
+        self.check_attribute(mesh, "fc_int8", 'CORNER', 'INT', 4)
+        self.check_attribute(mesh, "fc_int32", 'CORNER', 'INT', 4)
+        self.check_attribute(mesh, "fc_float", 'CORNER', 'FLOAT', 4)
+        self.check_attribute(mesh, "fc_byte_color", 'CORNER', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "fc_color", 'CORNER', 'FLOAT_COLOR', 4)
+        self.check_attribute(mesh, "fc_vec2", 'CORNER', 'FLOAT2', 4)
+        self.check_attribute(mesh, "fc_vec3", 'CORNER', 'FLOAT_VECTOR', 4)
+        self.check_attribute(mesh, "p_vec2", 'CORNER', 'FLOAT2', 4)  # TODO: Bug - wrong domain
 
 def main():
     global args
