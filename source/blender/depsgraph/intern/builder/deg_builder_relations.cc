@@ -526,9 +526,6 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_AC:
       build_action((bAction *)id);
       break;
-    case ID_AN:
-      build_animation((Animation *)id);
-      break;
     case ID_AR:
       build_armature((bArmature *)id);
       break;
@@ -1568,12 +1565,7 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
-  if (adt->animation != nullptr) {
-    build_animation(adt->animation);
-  }
-  if (adt->action == nullptr && adt->animation == nullptr &&
-      BLI_listbase_is_empty(&adt->nla_tracks))
-  {
+  if (adt->action == nullptr && BLI_listbase_is_empty(&adt->nla_tracks)) {
     return;
   }
   /* Ensure evaluation order from entry to exit. */
@@ -1589,11 +1581,6 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
     ComponentKey action_key(&adt->action->id, NodeType::ANIMATION);
     add_relation(action_key, adt_key, "Action -> Animation");
   }
-  /* Relation from Animation datablock itself. */
-  if (adt->animation != nullptr) {
-    ComponentKey animation_key(&adt->animation->id, NodeType::ANIMATION);
-    add_relation(animation_key, adt_key, "Animation ID -> Animation");
-  }
   /* Get source operations. */
   Node *node_from = get_node(adt_key);
   BLI_assert(node_from != nullptr);
@@ -1604,11 +1591,7 @@ void DepsgraphRelationBuilder::build_animdata_curves(ID *id)
   BLI_assert(operation_from != nullptr);
   /* Build relations from animation operation to properties it changes. */
   if (adt->action != nullptr) {
-    build_animdata_curves_targets(id, adt_key, operation_from, &adt->action->curves);
-  }
-  if (adt->animation != nullptr) {
-    build_animdata_animation_targets(
-        id, adt->binding_handle, adt_key, operation_from, adt->animation);
+    build_animdata_action_targets(id, adt->binding_handle, adt_key, operation_from, adt->action);
   }
   LISTBASE_FOREACH (NlaTrack *, nlt, &adt->nla_tracks) {
     build_animdata_nlastrip_targets(id, adt_key, operation_from, &nlt->strips);
@@ -1664,26 +1647,34 @@ void DepsgraphRelationBuilder::build_animdata_curves_targets(ID *id,
   }
 }
 
-void DepsgraphRelationBuilder::build_animdata_animation_targets(ID *id,
-                                                                const int32_t binding_handle,
-                                                                ComponentKey &adt_key,
-                                                                OperationNode *operation_from,
-                                                                Animation *dna_animation)
+void DepsgraphRelationBuilder::build_animdata_action_targets(ID *id,
+                                                             const int32_t binding_handle,
+                                                             ComponentKey &adt_key,
+                                                             OperationNode *operation_from,
+                                                             bAction *dna_action)
 {
   BLI_assert(id != nullptr);
   BLI_assert(operation_from != nullptr);
-  BLI_assert(dna_animation != nullptr);
+  BLI_assert(dna_action != nullptr);
+  animrig::Action &action = dna_action->wrap();
 
-  PointerRNA id_ptr = RNA_id_pointer_create(id);
-  animrig::Action &animation = dna_animation->wrap();
-
-  const animrig::Binding *binding = animation.binding_for_handle(binding_handle);
-  if (binding == nullptr) {
-    /* If there's no matching binding, there's no animation dependency. */
+  if (action.is_empty()) {
+    return;
+  }
+  if (action.is_action_legacy()) {
+    build_animdata_curves_targets(id, adt_key, operation_from, &action.curves);
     return;
   }
 
-  for (animrig::Layer *layer : animation.layers()) {
+  const animrig::Binding *binding = action.binding_for_handle(binding_handle);
+  if (binding == nullptr) {
+    /* If there's no matching binding, there's no Action dependency. */
+    return;
+  }
+
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
+
+  for (animrig::Layer *layer : action.layers()) {
     for (animrig::Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case animrig::Strip::Type::Keyframe: {
@@ -1715,7 +1706,7 @@ void DepsgraphRelationBuilder::build_animdata_nlastrip_targets(ID *id,
       ComponentKey action_key(&strip->act->id, NodeType::ANIMATION);
       add_relation(action_key, adt_key, "Action -> Animation");
 
-      build_animdata_curves_targets(id, adt_key, operation_from, &strip->act->curves);
+      build_animdata_action_targets(id, adt_key, operation_from, strip->act);
     }
     else if (strip->strips.first != nullptr) {
       build_animdata_nlastrip_targets(id, adt_key, operation_from, &strip->strips);
@@ -1800,35 +1791,22 @@ void DepsgraphRelationBuilder::build_animdata_force(ID *id)
   add_relation(animation_key, rigidbody_key, "Animation -> Rigid Body");
 }
 
-void DepsgraphRelationBuilder::build_action(bAction *action)
+void DepsgraphRelationBuilder::build_action(bAction *dna_action)
 {
-  if (built_map_.checkIsBuiltAndTag(action)) {
+  if (built_map_.checkIsBuiltAndTag(dna_action)) {
     return;
   }
 
-  const BuilderStack::ScopedEntry stack_entry = stack_.trace(action->id);
+  const BuilderStack::ScopedEntry stack_entry = stack_.trace(dna_action->id);
 
-  build_idproperties(action->id.properties);
-  if (!BLI_listbase_is_empty(&action->curves)) {
+  build_idproperties(dna_action->id.properties);
+
+  blender::animrig::Action &action = dna_action->wrap();
+  if (!action.is_empty()) {
     TimeSourceKey time_src_key;
-    ComponentKey animation_key(&action->id, NodeType::ANIMATION);
+    ComponentKey animation_key(&dna_action->id, NodeType::ANIMATION);
     add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
   }
-}
-
-void DepsgraphRelationBuilder::build_animation(Animation *animation)
-{
-  if (built_map_.checkIsBuiltAndTag(animation)) {
-    return;
-  }
-
-  const BuilderStack::ScopedEntry stack_entry = stack_.trace(animation->id);
-
-  build_idproperties(animation->id.properties);
-
-  TimeSourceKey time_src_key;
-  ComponentKey animation_key(&animation->id, NodeType::ANIMATION);
-  add_relation(time_src_key, animation_key, "TimeSrc -> Animation");
 }
 
 void DepsgraphRelationBuilder::build_driver(ID *id, FCurve *fcu)

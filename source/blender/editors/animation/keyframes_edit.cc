@@ -420,7 +420,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       /* This assumes that the ALE_ACTION_LAYERED channel is shown in the dopesheet context,
        * underneath the data-block that owns `ale->adt`. So that means that the loop is limited to
        * the keys that belong to that binding. */
-      animrig::Action &anim = static_cast<Animation *>(ale->key_data)->wrap();
+      animrig::Action &anim = static_cast<bAction *>(ale->key_data)->wrap();
       animrig::Binding *binding = anim.binding_for_handle(ale->adt->binding_handle);
       return anim_keyframes_loop(ked, anim, binding, key_ok, key_cb, fcu_cb);
 #else

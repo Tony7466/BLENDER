@@ -48,7 +48,7 @@ class ActionLayersTest : public testing::Test {
   void SetUp() override
   {
     bmain = BKE_main_new();
-    anim = static_cast<Action *>(BKE_id_new(bmain, ID_AN, "ANÄnimåtië"));
+    anim = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "ACÄnimåtië"));
     cube = BKE_object_add_only_object(bmain, OB_EMPTY, "Küüübus");
     suzanne = BKE_object_add_only_object(bmain, OB_EMPTY, "OBSuzanne");
   }
@@ -84,7 +84,7 @@ TEST_F(ActionLayersTest, remove_layer)
   layer2.strip_add(Strip::Type::Keyframe);
 
   { /* Test removing a layer that is not owned. */
-    Action *other_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AN, "ANOtherAnim"));
+    Action *other_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "ACOtherAnim"));
     Layer &other_layer = other_anim->layer_add("Another Layer");
     EXPECT_FALSE(anim->layer_remove(other_layer))
         << "Removing a layer not owned by the animation should be gracefully rejected";
@@ -219,7 +219,7 @@ TEST_F(ActionLayersTest, anim_assign_id)
       << "The binding name should be copied to the adt";
 
   { /* Assign Cube to another animation+binding without unassigning first. */
-    Action *another_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AN, "ANOtherAnim"));
+    Action *another_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "ACOtherAnim"));
     Binding &another_binding = another_anim->binding_add();
     ASSERT_FALSE(another_anim->assign_id(&another_binding, cube->id))
         << "Assigning animation (with this function) when already assigned should fail.";
@@ -367,7 +367,7 @@ TEST_F(ActionLayersTest, find_suitable_binding)
   other_binding.handle = 47;
 
   AnimData *adt = BKE_animdata_ensure_id(&cube->id);
-  adt->animation = nullptr;
+  adt->action = nullptr;
   /* Configure adt to use the handle of one binding, and the name of the other. */
   adt->binding_handle = other_binding.handle;
   STRNCPY_UTF8(adt->binding_name, binding.name);
@@ -377,7 +377,7 @@ TEST_F(ActionLayersTest, find_suitable_binding)
    * Same situation as above (AnimData has name of one binding, but the handle of another),
    * except that the animation data-block has already been assigned. In this case the handle
    * should take precedence. */
-  adt->animation = anim;
+  adt->action = anim;
   id_us_plus(&anim->id);
   EXPECT_EQ(&other_binding, anim->find_suitable_binding_for(cube->id));
 

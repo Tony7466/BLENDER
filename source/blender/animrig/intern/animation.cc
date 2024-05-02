@@ -2,7 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_anim_defaults.h"
+#include "DNA_action_defaults.h"
+#include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_array_utils.hh"
 #include "DNA_defaults.h"
@@ -112,7 +113,7 @@ template<typename T> static void shrink_array(T **array, int *num, const int shr
 bool Action::is_empty() const
 {
   return this->layer_array_num == 0 && this->binding_array_num == 0 &&
-         BLI_listbase_is_empty(this->curves);
+         BLI_listbase_is_empty(&this->curves);
 }
 bool Action::is_action_legacy() const
 {
@@ -124,7 +125,7 @@ bool Action::is_action_layered() const
   /* This is a valid layered Action if there is ANY layered info (because that
    * takes precedence) or when there is no legacy info. */
   return this->layer_array_num > 0 || this->binding_array_num > 0 ||
-         BLI_listbase_is_empty(this->curves);
+         BLI_listbase_is_empty(&this->curves);
 }
 
 blender::Span<const Layer *> Action::layers() const
@@ -287,7 +288,7 @@ void Action::binding_name_propagate(Main &bmain, const Binding &binding)
       }
 
       AnimData *adt = BKE_animdata_from_id(id);
-      if (!adt || adt->animation != this) {
+      if (!adt || adt->action != this) {
         /* Not animated by this Animation. */
         continue;
       }
@@ -324,7 +325,7 @@ const Binding *Action::binding_for_id(const ID &animated_id) const
 {
   const AnimData *adt = BKE_animdata_from_id(&animated_id);
 
-  /* Note that there is no check that `adt->animation` is actually `this`. */
+  /* Note that there is no check that `adt->action` is actually `this`. */
 
   const Binding *binding = this->binding_for_handle(adt->binding_handle);
   if (!binding) {
@@ -378,9 +379,9 @@ Binding *Action::find_suitable_binding_for(const ID &animated_id)
 {
   AnimData *adt = BKE_animdata_from_id(&animated_id);
 
-  /* The binding handle is only valid when this animation has already been
+  /* The binding handle is only valid when this action has already been
    * assigned. Otherwise it's meaningless. */
-  if (adt && adt->animation == this) {
+  if (adt && adt->action == this) {
     Binding *binding = this->binding_for_handle(adt->binding_handle);
     if (binding && binding->is_suitable_for(animated_id)) {
       return binding;
@@ -438,7 +439,7 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
     return false;
   }
 
-  if (adt->animation && adt->animation != this) {
+  if (adt->action && adt->action != this) {
     /* The caller should unassign the ID from its existing animation first, or
      * use the top-level function `assign_animation(anim, ID)`. */
     return false;
@@ -458,12 +459,12 @@ bool Action::assign_id(Binding *binding, ID &animated_id)
     unassign_binding(*adt);
   }
 
-  if (!adt->animation) {
-    /* Due to the precondition check above, we know that adt->animation is either 'this' (in which
+  if (!adt->action) {
+    /* Due to the precondition check above, we know that adt->action is either 'this' (in which
      * case the user count is already correct) or `nullptr` (in which case this is a new reference,
      * and the user count should be increased). */
     id_us_plus(&this->id);
-    adt->animation = this;
+    adt->action = this;
   }
 
   return true;
@@ -490,12 +491,12 @@ void Action::unassign_id(ID &animated_id)
 {
   AnimData *adt = BKE_animdata_from_id(&animated_id);
   BLI_assert_msg(adt, "ID is not animated at all");
-  BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
+  BLI_assert_msg(adt->action == this, "ID is not assigned to this Animation");
 
   unassign_binding(*adt);
 
   id_us_min(&this->id);
-  adt->animation = nullptr;
+  adt->action = nullptr;
 }
 
 /* ----- ActionLayer implementation ----------- */
@@ -624,8 +625,8 @@ void unassign_binding(AnimData &adt)
    *
    * TODO: Replace this with a BLI_assert() that the name is as expected, and "simply" ensure this
    * name is always correct. */
-  if (adt.animation) {
-    const Action &anim = adt.animation->wrap();
+  if (adt.action) {
+    const Action &anim = adt.action->wrap();
     const Binding *binding = anim.binding_for_handle(adt.binding_handle);
     if (binding) {
       STRNCPY_UTF8(adt.binding_name, binding->name);
@@ -635,16 +636,17 @@ void unassign_binding(AnimData &adt)
   adt.binding_handle = Binding::unassigned;
 }
 
+/* TODO: rename to get_action(). */
 Action *get_animation(ID &animated_id)
 {
   AnimData *adt = BKE_animdata_from_id(&animated_id);
   if (!adt) {
     return nullptr;
   }
-  if (!adt->animation) {
+  if (!adt->action) {
     return nullptr;
   }
-  return &adt->animation->wrap();
+  return &adt->action->wrap();
 }
 
 std::string Binding::name_prefix_for_idtype() const

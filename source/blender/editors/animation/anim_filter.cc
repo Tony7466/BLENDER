@@ -88,7 +88,7 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_utils.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 #include "ANIM_bone_collections.hh"
 
 using namespace blender;
@@ -450,13 +450,18 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
 /* ............................... */
 
 /* Test whether AnimData has a usable Action. */
-#define ANIMDATA_HAS_ACTION(id) ((id)->adt && !(id)->adt->animation && (id)->adt->action)
+#define ANIMDATA_HAS_ACTION_LEGACY(id) \
+  ((id)->adt && (id)->adt->action && (id)->adt->action->wrap().is_action_legacy())
+#define ANIMDATA_HAS_ACTION_LAYERED(id) \
+  ((id)->adt && (id)->adt->action && (id)->adt->action->wrap().is_action_layered())
 
 /* quick macro to test if AnimData is usable for drivers */
 #define ANIMDATA_HAS_DRIVERS(id) ((id)->adt && (id)->adt->drivers.first)
 
 /* quick macro to test if AnimData is usable for NLA */
-#define ANIMDATA_HAS_NLA(id) ((id)->adt && !(id)->adt->animation && (id)->adt->nla_tracks.first)
+#define ANIMDATA_HAS_NLA(id) \
+  ((id)->adt && (id)->adt->nla_tracks.first && \
+   (!(id)->adt->action || (id)->adt->action->wrap().is_action_legacy()))
 
 /**
  * Quick macro to test for all three above usability tests, performing the appropriate provided
@@ -495,7 +500,8 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
  * 4B) normal keyframes: only when there is an active action
  * 4C) normal keyframes: only when there is an Animation assigned
  */
-#define ANIMDATA_FILTER_CASES(id, adtOk, nlaOk, driversOk, nlaKeysOk, keysOk, animOk) \
+#define ANIMDATA_FILTER_CASES( \
+    id, adtOk, nlaOk, driversOk, nlaKeysOk, legacyActionOk, layeredActionOk) \
   { \
     if ((id)->adt) { \
       if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || \
@@ -507,7 +513,7 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaOk \
           } \
-          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_ACTION(id)) { \
+          else if (!(ads->filterflag & ADS_FILTER_NLA_NOACT) || ANIMDATA_HAS_ACTION_LEGACY(id)) { \
             nlaOk \
           } \
         } \
@@ -516,15 +522,15 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
             driversOk \
           } \
         } \
-        else if ((id)->adt->animation) { \
-          animOk \
+        else if (ANIMDATA_HAS_ACTION_LAYERED(id)) { \
+          layeredActionOk \
         } \
         else { \
           if (ANIMDATA_HAS_NLA(id)) { \
             nlaKeysOk \
           } \
-          if (ANIMDATA_HAS_ACTION(id)) { \
-            keysOk \
+          if (ANIMDATA_HAS_ACTION_LEGACY(id)) { \
+            legacyActionOk \
           } \
         } \
       } \
@@ -666,13 +672,13 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->adt = BKE_animdata_from_id(&ob->id);
         break;
       }
-      case ANIMTYPE_FILLANIM: {
-        Animation *anim = (Animation *)data;
+      case ANIMTYPE_FILLACT_LAYERED: {
+        bAction *action = (bAction *)data;
 
-        ale->flag = anim->flag;
+        ale->flag = action->flag;
 
-        ale->key_data = anim;
-        ale->datatype = ALE_ANIM;
+        ale->key_data = action;
+        ale->datatype = ALE_ACTION_LAYERED;
         break;
       }
       case ANIMTYPE_FILLACTD: {
@@ -1417,15 +1423,14 @@ static size_t animfilter_act_group(bAnimContext *ac,
 static size_t animfilter_action(bAnimContext *ac,
                                 ListBase *anim_data,
                                 bDopeSheet *ads,
-                                AnimData *adt,
+                                animrig::Action &action,
+                                const animrig::binding_handle_t binding_handle,
                                 const int filter_mode,
                                 ID *owner_id)
 {
   FCurve *lastchan = nullptr;
   size_t items = 0;
 
-  BLI_assert(adt->action); /* Otherwise this function wouldn't be called. */
-  animrig::Action &action = adt->action->wrap();
   if (action.is_empty()) {
     return 0;
   }
@@ -1462,9 +1467,8 @@ static size_t animfilter_action(bAnimContext *ac,
   }
 
   /* For now we don't show layers anywhere, just the contained F-Curves. */
-  Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, adt->binding_handle);
+  Span<FCurve *> fcurves = animrig::fcurves_for_animation(action, binding_handle);
   return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &action.id);
-  return items;
 }
 
 /* Include NLA-Data for NLA-Editor:
@@ -1658,11 +1662,13 @@ static size_t animfilter_block_data(
         { /* NLA Control Keyframes */
           items += animfilter_nla_controls(anim_data, ads, adt, filter_mode, id);
         },
-        { /* Keyframes from Action. */
-          items += animfilter_action(ac, anim_data, ads, adt->action, filter_mode, id);
+        { /* Keyframes from legacy Action. */
+          items += animfilter_action(
+              ac, anim_data, ads, adt->action->wrap(), adt->binding_handle, filter_mode, id);
         },
-        { /* Keyframes from Animation. */
-          items += animfilter_animation_fcurves(anim_data, ads, adt, filter_mode, id);
+        { /* Keyframes from layered Action. */
+          items += animfilter_action(
+              ac, anim_data, ads, adt->action->wrap(), adt->binding_handle, filter_mode, id);
         });
   }
 
@@ -1718,7 +1724,13 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
         }
       }
       else if (key->adt->action) {
-        items = animfilter_action(ac, anim_data, nullptr, key->adt, filter_mode, (ID *)key);
+        items = animfilter_action(ac,
+                                  anim_data,
+                                  nullptr,
+                                  key->adt->action->wrap(),
+                                  key->adt->binding_handle,
+                                  filter_mode,
+                                  (ID *)key);
       }
     }
   }
@@ -2936,14 +2948,14 @@ static size_t animdata_filter_ds_obanim(
         expanded = EXPANDED_DRVD(adt);
       },
       {/* NLA Strip Controls - no dedicated channel for now (XXX) */},
-      { /* Keyframes from Action. */
+      { /* Keyframes from legacy Action. */
         type = ANIMTYPE_FILLACTD;
         cdata = adt->action;
         expanded = EXPANDED_ACTC(adt->action);
       },
-      { /* Keyframes from Animation. */
+      { /* Keyframes from layered action. */
         type = ANIMTYPE_FILLACT_LAYERED;
-        cdata = adt->animation;
+        cdata = adt->action;
         expanded = EXPANDED_ADT(adt);
       });
 
@@ -3120,14 +3132,14 @@ static size_t animdata_filter_ds_scene(
         expanded = EXPANDED_DRVD(adt);
       },
       {/* NLA Strip Controls - no dedicated channel for now (XXX) */},
-      { /* Keyframes from Action. */
+      { /* Keyframes from legacy Action. */
         type = ANIMTYPE_FILLACTD;
         cdata = adt->action;
         expanded = EXPANDED_ACTC(adt->action);
       },
-      { /* Keyframes from Animation. */
+      { /* Keyframes from layered Action. */
         type = ANIMTYPE_FILLACT_LAYERED;
-        cdata = adt->animation;
+        cdata = adt->action;
         expanded = EXPANDED_ADT(adt);
       });
 
@@ -3676,8 +3688,14 @@ size_t ANIM_animdata_filter(bAnimContext *ac,
         /* The check for the DopeSheet summary is included here
          * since the summary works here too. */
         if (animdata_filter_dopesheet_summary(ac, anim_data, filter_mode, &items)) {
+          BLI_assert_msg(
+              obact->adt && data == obact->adt->action,
+              "This code assumes the Action editor shows the Action of the active object");
+
+          animrig::Action &action = static_cast<bAction *>(data)->wrap();
+          const animrig::binding_handle_t binding_handle = obact->adt->binding_handle;
           items += animfilter_action(
-              ac, anim_data, ads, static_cast<bAction *>(data), filter_mode, (ID *)obact);
+              ac, anim_data, ads, action, binding_handle, filter_mode, (ID *)obact);
         }
       }
 

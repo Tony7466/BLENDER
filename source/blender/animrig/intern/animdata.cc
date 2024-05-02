@@ -94,38 +94,40 @@ void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
     BLI_remlink(&adt->drivers, fcu);
   }
   else if (adt->action) {
-    bAction *act = adt->action;
+    Action &action = adt->action->wrap();
 
-    /* Remove from group or action, whichever one "owns" the F-Curve. */
-    if (fcu->grp) {
-      bActionGroup *agrp = fcu->grp;
+    if (action.is_action_legacy()) {
+      /* Remove from group or action, whichever one "owns" the F-Curve. */
+      if (fcu->grp) {
+        bActionGroup *agrp = fcu->grp;
 
-      /* Remove F-Curve from group+action. */
-      action_groups_remove_channel(act, fcu);
+        /* Remove F-Curve from group+action. */
+        action_groups_remove_channel(&action, fcu);
 
-      /* If group has no more channels, remove it too,
-       * otherwise can have many dangling groups #33541.
-       */
-      if (BLI_listbase_is_empty(&agrp->channels)) {
-        BLI_freelinkN(&act->groups, agrp);
+        /* If group has no more channels, remove it too,
+         * otherwise can have many dangling groups #33541.
+         */
+        if (BLI_listbase_is_empty(&agrp->channels)) {
+          BLI_freelinkN(&action.groups, agrp);
+        }
       }
+      else {
+        BLI_remlink(&action.curves, fcu);
+      }
+
+      /* If action has no more F-Curves as a result of this, unlink it from
+       * AnimData if it did not come from a NLA Strip being tweaked.
+       *
+       * This is done so that we don't have dangling Object+Action entries in
+       * channel list that are empty, and linger around long after the data they
+       * are for has disappeared (and probably won't come back).
+       */
+      animdata_remove_empty_action(adt);
     }
     else {
-      BLI_remlink(&act->curves, fcu);
+      /* TODO: support deleting FCurves from Animation data-blocks. */
+      return;
     }
-
-    /* If action has no more F-Curves as a result of this, unlink it from
-     * AnimData if it did not come from a NLA Strip being tweaked.
-     *
-     * This is done so that we don't have dangling Object+Action entries in
-     * channel list that are empty, and linger around long after the data they
-     * are for has disappeared (and probably won't come back).
-     */
-    animdata_remove_empty_action(adt);
-  }
-  else if (adt->animation) {
-    /* TODO: support deleting FCurves from Animation data-blocks. */
-    return;
   }
   else {
     BLI_assert_unreachable();

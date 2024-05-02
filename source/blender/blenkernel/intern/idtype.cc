@@ -225,7 +225,6 @@ int BKE_idtype_idcode_to_index(const short idcode)
 
   switch ((ID_Type)idcode) {
     CASE_IDINDEX(AC);
-    CASE_IDINDEX(AN);
     CASE_IDINDEX(AR);
     CASE_IDINDEX(BR);
     CASE_IDINDEX(CA);

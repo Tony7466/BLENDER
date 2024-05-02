@@ -219,7 +219,6 @@ class DepsgraphNodeBuilder : public DepsgraphBuilder {
    */
   virtual void build_animation_images(ID *id);
   virtual void build_action(bAction *action);
-  virtual void build_animation(Animation *animation);
 
   /**
    * Build graph node(s) for Driver

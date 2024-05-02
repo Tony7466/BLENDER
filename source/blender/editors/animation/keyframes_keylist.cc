@@ -1172,7 +1172,7 @@ void action_group_to_keylist(AnimData *adt,
  * have things like reference strips, where the strip can reference another binding handle.
  */
 void animation_to_keylist(AnimData *adt,
-                          Animation *anim,
+                          bAction *anim,
                           AnimKeylist *keylist,
                           const int saction_flag,
                           blender::float2 range)
