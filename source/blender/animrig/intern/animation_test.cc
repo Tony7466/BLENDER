@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_animation.hh"

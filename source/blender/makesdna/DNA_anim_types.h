@@ -1124,7 +1124,7 @@ typedef struct AnimData {
    * Identifier for which ActionBinding of the above Animation is actually animating this
    * data-block.
    *
-   * Do not set this directly, use one of the assignment functions in ANIM_animation.hh instead.
+   * Do not set this directly, use one of the assignment functions in ANIM_action.hh instead.
    */
   int32_t binding_handle;
   /**
@@ -1134,7 +1134,7 @@ typedef struct AnimData {
    * \see #ActionBinding::name
    */
   char binding_name[66];
-  uint8_t _pad0[6];
+  uint8_t _pad0[2];
 
   /**
    * Temp-storage for the 'real' active action (i.e. the one used before the tweaking-action
@@ -1178,7 +1178,15 @@ typedef struct AnimData {
   short act_extendmode;
   /** Influence for active action. */
   float act_influence;
+
+  uint8_t _pad1[4];
 } AnimData;
+
+#ifdef __cplusplus
+/* Some static assertions that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(ActionBinding::handle), decltype(AnimData::binding_handle)>);
+static_assert(std::is_same_v<decltype(ActionBinding::name), decltype(AnimData::binding_name)>);
+#endif
 
 /* Animation Data settings (mostly for NLA) */
 typedef enum eAnimData_Flag {

@@ -112,7 +112,7 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
         ob_to_keylist(ads, ob, keylist, 0, range);
         break;
       }
-      case ALE_ANIM: {
+      case ALE_ACTION_LAYERED: {
         Animation *anim = (Animation *)ale->key_data;
         animation_to_keylist(adt, anim, keylist, 0, range);
         break;

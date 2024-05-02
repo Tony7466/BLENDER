@@ -36,7 +36,7 @@
 #include "ED_anim_api.hh"
 #include "ED_keyframes_keylist.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 /* *************************** Keyframe Processing *************************** */
 

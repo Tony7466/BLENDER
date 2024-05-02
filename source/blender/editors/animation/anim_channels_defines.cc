@@ -9,7 +9,6 @@
 #include <cstdio>
 
 #include "ANIM_action.hh"
-#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_keyframing.hh"
 
@@ -4423,8 +4422,8 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_NLAACTION; /* NLA Action */
 
 #ifdef WITH_ANIM_BAKLAVA
-    BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_FILLANIM] == &ACF_FILLANIM,
-                   "ANIMTYPE_FILLANIM does not match ACF_FILLANIM");
+    BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_FILLACT_LAYERED] == &ACF_FILLANIM,
+                   "ANIMTYPE_FILLACT_LAYERED does not match ACF_FILLANIM");
 #endif
   }
 }

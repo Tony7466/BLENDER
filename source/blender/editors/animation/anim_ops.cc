@@ -41,7 +41,7 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 #include "anim_intern.hh"
 

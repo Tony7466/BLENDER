@@ -18,7 +18,7 @@
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_defaults.h"

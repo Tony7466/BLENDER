@@ -32,7 +32,7 @@
 
 #include "ED_keyframing.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 /* exported for use in API */
 const EnumPropertyItem rna_enum_keyingset_path_grouping_items[] = {
@@ -158,10 +158,23 @@ static int rna_AnimData_action_editable(const PointerRNA *ptr, const char ** /*r
 
 static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
-  ID *ownerId = ptr->owner_id;
+#  ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(ptr->owner_id);
+  ID &animated_id = *ptr->owner_id;
 
-  /* set action */
+  /* TODO: protect against altering action in NLA tweak mode, see BKE_animdata_action_editable() */
+
+  bAction *action = static_cast<bAction *>(value.data);
+  if (!action) {
+    blender::animrig::unassign_animation(animated_id);
+    return;
+  }
+
+  blender::animrig::assign_animation(action->wrap(), animated_id);
+#  else
+  ID *ownerId = ptr->owner_id;
   BKE_animdata_set_action(nullptr, ownerId, static_cast<bAction *>(value.data));
+#  endif
 }
 
 static void rna_AnimData_tmpact_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
@@ -216,20 +229,6 @@ bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
 }
 
 #  ifdef WITH_ANIM_BAKLAVA
-static void rna_AnimData_animation_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
-{
-  BLI_assert(ptr->owner_id);
-  ID &animated_id = *ptr->owner_id;
-
-  Animation *anim = static_cast<Animation *>(value.data);
-  if (!anim) {
-    blender::animrig::unassign_animation(animated_id);
-    return;
-  }
-
-  blender::animrig::assign_animation(anim->wrap(), animated_id);
-}
-
 static void rna_AnimData_animation_binding_handle_set(
     PointerRNA *ptr, const blender::animrig::binding_handle_t new_binding_handle)
 {
@@ -309,18 +308,21 @@ static void rna_AnimData_animation_binding_set(PointerRNA *ptr, int value)
     return;
   }
 
-  if (!adt.animation) {
-    /* No animation to verify the binding handle is valid. As the binding handle
+  if (!adt.action) {
+    /* No Action to verify the binding handle is valid. As the binding handle
      * will be completely ignored when re-assigning an Animation, better to
      * refuse setting it altogether. This will make bugs in Python code more obvious. */
     WM_reportf(RPT_ERROR,
-               "Data-block '%s' does not have an animation, cannot set binding handle",
+               "Data-block '%s' does not have an Action, cannot set binding handle",
                animated_id.name + 2);
     return;
   }
 
-  Animation &anim = adt.animation->wrap();
+  Action &anim = adt.action->wrap();
   Binding *binding = nullptr;
+
+  /* TODO: handle legacy Action. */
+  BLI_assert(anim->is_action_layered());
 
   if (new_binding_handle == binding_items_value_create_new) {
     /* Special case for this enum item. */
@@ -359,13 +361,14 @@ static const EnumPropertyItem *rna_AnimData_animation_binding_itemf(bContext * /
   using blender::animrig::Binding;
 
   AnimData &adt = rna_animdata(ptr);
-  if (!adt.animation) {
+  if (!adt.action) {
     // TODO: handle properly.
     *r_free = false;
     return rna_enum_animation_binding_items;
   }
 
-  const Animation &anim = adt.animation->wrap();
+  const Action &anim = adt.action->wrap();
+  BLI_assert_msg(anim.is_action_layered(), "not yet implemented for legacy Actions");
 
   EnumPropertyItem item = {0};
   EnumPropertyItem *items = nullptr;
@@ -1667,12 +1670,12 @@ static void rna_def_animdata(BlenderRNA *brna)
 
 #  ifdef WITH_ANIM_BAKLAVA
   /* Animation data-block */
-  prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "Animation");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
-  RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
+  // prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
+  // RNA_def_property_struct_type(prop, "Animation");
+  // RNA_def_property_flag(prop, PROP_EDITABLE);
+  // RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
+  // RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");
+  // RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
 
   prop = RNA_def_property(srna, "animation_binding_handle", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "binding_handle");

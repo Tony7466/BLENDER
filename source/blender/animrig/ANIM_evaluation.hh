@@ -11,7 +11,7 @@
 
 #include "DNA_anim_types.h"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 struct AnimationEvalContext;
 struct PointerRNA;

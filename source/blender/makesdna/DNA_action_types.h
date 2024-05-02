@@ -20,7 +20,9 @@
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
 
+struct AnimData;
 struct Collection;
+struct FCurve;
 struct GHash;
 struct Object;
 struct SpaceLink;
@@ -37,11 +39,22 @@ typedef struct GPUVertBufHandle GPUVertBufHandle;
 #endif
 
 /* Forward declarations so the actual declarations can happen top-down. */
-struct Animation;
 struct ActionLayer;
 struct ActionBinding;
 struct ActionStrip;
 struct ActionChannelBag;
+
+/* Declarations of the C++ wrappers. */
+#ifdef __cplusplus
+namespace blender::animrig {
+class Action;
+class Binding;
+class ChannelBag;
+class KeyframeStrip;
+class Layer;
+class Strip;
+}  // namespace blender::animrig
+#endif
 
 /* ************************************************ */
 /* Visualization */
@@ -1042,7 +1055,7 @@ typedef struct bActionChannel {
 /* ************************************************ */
 /* Layered Animation data-types. */
 
-/* Declarations of C++ wrappers. See ANIM_animation.hh for the actual classes. */
+/* Declarations of C++ wrappers. See ANIM_action.hh for the actual classes. */
 #ifdef __cplusplus
 namespace blender::animrig {
 class Action;
@@ -1178,7 +1191,7 @@ typedef struct ActionChannelBag {
   int32_t binding_handle;
 
   int fcurve_array_num;
-  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
+  struct FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
 
   /* TODO: Design & implement a way to integrate other channel types as well,
    * and still have them map to a certain binding */
@@ -1190,10 +1203,8 @@ typedef struct ActionChannelBag {
 
 #ifdef __cplusplus
 /* Some static assertions that things that should have the same type actually do. */
-static_assert(std::is_same_v<decltype(ActionBinding::handle), decltype(AnimData::binding_handle)>);
 static_assert(
-    std::is_same_v<decltype(ActionBinding::handle), decltype(Animation::last_binding_handle)>);
+    std::is_same_v<decltype(ActionBinding::handle), decltype(bAction::last_binding_handle)>);
 static_assert(
     std::is_same_v<decltype(ActionBinding::handle), decltype(ActionChannelBag::binding_handle)>);
-static_assert(std::is_same_v<decltype(ActionBinding::name), decltype(AnimData::binding_name)>);
 #endif

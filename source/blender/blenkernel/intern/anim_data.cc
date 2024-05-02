@@ -10,7 +10,7 @@
 #include <cstring>
 #include <optional>
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"

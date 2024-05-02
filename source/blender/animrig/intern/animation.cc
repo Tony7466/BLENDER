@@ -28,7 +28,7 @@
 
 #include "atomic_ops.h"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 #include "ANIM_fcurve.hh"
 
 #include <cstdio>
@@ -108,6 +108,24 @@ template<typename T> static void shrink_array(T **array, int *num, const int shr
 }
 
 /* ----- Animation implementation ----------- */
+
+bool Action::is_empty() const
+{
+  return this->layer_array_num == 0 && this->binding_array_num == 0 &&
+         BLI_listbase_is_empty(this->curves);
+}
+bool Action::is_action_legacy() const
+{
+  /* This is a valid legacy Action only if there is no layered info. */
+  return this->layer_array_num == 0 && this->binding_array_num == 0;
+}
+bool Action::is_action_layered() const
+{
+  /* This is a valid layered Action if there is ANY layered info (because that
+   * takes precedence) or when there is no legacy info. */
+  return this->layer_array_num > 0 || this->binding_array_num > 0 ||
+         BLI_listbase_is_empty(this->curves);
+}
 
 blender::Span<const Layer *> Action::layers() const
 {

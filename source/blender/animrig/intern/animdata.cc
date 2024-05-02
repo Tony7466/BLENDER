@@ -6,7 +6,7 @@
  * \ingroup animrig
  */
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 
 #include "BKE_action.h"

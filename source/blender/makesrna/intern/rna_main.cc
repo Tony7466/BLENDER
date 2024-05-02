@@ -322,14 +322,6 @@ void RNA_def_main(BlenderRNA *brna)
        "Actions",
        "Action data-blocks",
        RNA_def_main_actions},
-#  ifdef WITH_ANIM_BAKLAVA
-      {"animations",
-       "Animation",
-       "rna_Main_animations_begin",
-       "animations",
-       "Animation data-blocks",
-       RNA_def_main_animations},
-#  endif
       {"particles",
        "ParticleSettings",
        "rna_Main_particles_begin",
