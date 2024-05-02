@@ -1,1 +1,2 @@
 Referenced by issue #120778, depth option in navigation not considering camera and light type objects.
+Referenced by pull request #121328, Fix #120778: Depth navigation only works for mesh options
