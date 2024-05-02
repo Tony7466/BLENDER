@@ -151,6 +151,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_geom_noperspective_iface,
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire)
     .do_static_compilation(true)
     .push_constant(Type::BOOL, "do_smooth_wire")
+    .push_constant(Type::FLOAT, "width_compression")
     .sampler(0, ImageType::DEPTH_2D, "depthTex")
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_in(1, Type::VEC3, "nor")
