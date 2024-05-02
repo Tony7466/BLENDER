@@ -433,56 +433,37 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
   *r_bmain_src = nullptr;
 }
 
-struct MainCopyTagged {
-  blender::Map<const ID *, ID *> remap_ids;
-};
-
-static int main_copy_remap_callback(LibraryIDLinkCallbackData *cb_data)
-{
-  /* Pointer already remapped by BKE_id_copy_ex. */
-  if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING | IDWALK_CB_LOOPBACK))
-  {
-    return IDWALK_RET_NOP;
-  }
-
-  /* Remap pointer to copy in destination main database. */
-  ID **id_p = cb_data->id_pointer;
-  if (*id_p == nullptr) {
-    return IDWALK_RET_NOP;
-  }
-
-  const MainCopyTagged &user_data = *static_cast<const MainCopyTagged *>(cb_data->user_data);
-  ID *id_orig = *id_p;
-  *id_p = user_data.remap_ids.lookup_default(id_orig, nullptr);
-  return IDWALK_RET_NOP;
-}
-
 Main *BKE_main_copy_tagged(Main *bmain_src)
 {
   Main *bmain_dst = BKE_main_new();
   STRNCPY(bmain_dst->filepath, bmain_src->filepath);
 
   /* Create copy of all tagged datablocks. */
-  MainCopyTagged user_data;
+  blender::bke::id::IDRemapper id_remapper;
 
   ID *id_src;
   FOREACH_MAIN_ID_BEGIN (bmain_src, id_src) {
-    if (!(id_src->tag & LIB_TAG_DOIT)) {
-      continue;
+    if (id_src->tag & LIB_TAG_DOIT) {
+      ID *id_dst = BKE_id_copy_ex(
+          bmain_dst, id_src, nullptr, LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_DEG_TAG);
+      id_remapper.add(id_src, id_dst);
     }
-
-    ID *id_dst = BKE_id_copy_ex(bmain_dst, id_src, nullptr, 0);
-    BLI_assert(id_dst != nullptr);
-    user_data.remap_ids.add(id_src, id_dst);
+    else {
+      id_remapper.add(id_src, nullptr);
+    }
   }
   FOREACH_MAIN_ID_END;
 
   /* Remap datablock pointers. */
+  BKE_libblock_remap_multiple_raw(bmain_dst, id_remapper, ID_REMAP_SKIP_USER_CLEAR);
+
+  /* Compute reference counts. */
   ID *id_dst;
   FOREACH_MAIN_ID_BEGIN (bmain_dst, id_dst) {
-    BKE_library_foreach_ID_link(bmain_dst, id_dst, main_copy_remap_callback, &user_data, 0);
+    id_dst->tag &= ~LIB_TAG_NO_USER_REFCOUNT;
   }
   FOREACH_MAIN_ID_END;
+  BKE_main_id_refcount_recompute(bmain_dst, false);
 
   return bmain_dst;
 }

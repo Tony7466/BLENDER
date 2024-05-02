@@ -1501,6 +1501,13 @@ bool BKE_blendfile_write_partial(Main *bmain_src,
    * later. Otherwise `main->filepath` will not be set at read time. */
   Main *bmain_dst = BKE_main_copy_tagged(bmain_src);
 
+  /* Ensure all datablocks are real so they get written. */
+  ID *id_dst;
+  FOREACH_MAIN_ID_BEGIN (bmain_dst, id_dst) {
+    id_us_ensure_real(id_dst);
+  }
+  FOREACH_MAIN_ID_END;
+
   /* save the buffer */
   BlendFileWriteParams blend_file_write_params{};
   blend_file_write_params.remap_mode = eBLO_WritePathRemap(remap_mode);
