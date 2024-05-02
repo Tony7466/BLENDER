@@ -30,7 +30,7 @@ using namespace blender::animrig::internal;
 
 class AnimationEvaluationTest : public testing::Test {
  protected:
-  Animation anim = {};
+  Action anim = {};
   Object *cube;
   Binding *binding;
   Layer *layer;

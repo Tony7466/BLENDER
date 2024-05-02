@@ -252,7 +252,7 @@ static void rna_AnimData_animation_binding_handle_set(
     return;
   }
 
-  blender::animrig::Animation *anim = blender::animrig::get_animation(animated_id);
+  blender::animrig::Action *anim = blender::animrig::get_animation(animated_id);
   if (!anim) {
     /* No animation to verify the binding handle is valid. As the binding handle
      * will be completely ignored when re-assigning an Animation, better to
@@ -295,7 +295,7 @@ static int rna_AnimData_animation_binding_get(PointerRNA *ptr)
 
 static void rna_AnimData_animation_binding_set(PointerRNA *ptr, int value)
 {
-  using blender::animrig::Animation;
+  using blender::animrig::Action;
   using blender::animrig::Binding;
   using blender::animrig::binding_handle_t;
 
@@ -355,7 +355,7 @@ static const EnumPropertyItem *rna_AnimData_animation_binding_itemf(bContext * /
                                                                     PropertyRNA * /*prop*/,
                                                                     bool *r_free)
 {
-  using blender::animrig::Animation;
+  using blender::animrig::Action;
   using blender::animrig::Binding;
 
   AnimData &adt = rna_animdata(ptr);

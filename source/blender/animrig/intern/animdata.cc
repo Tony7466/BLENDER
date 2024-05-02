@@ -182,7 +182,7 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
   }
 }
 
-const FCurve *fcurve_find_by_rna_path(const Animation &anim,
+const FCurve *fcurve_find_by_rna_path(const Action &anim,
                                       const ID &animated_id,
                                       const StringRefNull rna_path,
                                       const int array_index)

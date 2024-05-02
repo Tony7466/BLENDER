@@ -31,7 +31,7 @@ class Strip;
 class Binding;
 
 /* Use an alias for the Binding handle type to help disambiguate function parameters. */
-using binding_handle_t = decltype(::AnimationBinding::handle);
+using binding_handle_t = decltype(::ActionBinding::handle);
 
 /**
  * Container of animation data for one or more animated IDs.
@@ -47,14 +47,14 @@ using binding_handle_t = decltype(::AnimationBinding::handle);
  * \see AnimData::animation
  * \see AnimData::binding_handle
  */
-class Animation : public ::Animation {
+class Action : public ::bAction {
  public:
-  Animation() = default;
+  Action() = default;
   /**
    * Copy constructor is deleted, as code should use regular ID library
    * management functions to duplicate this data-block.
    */
-  Animation(const Animation &other) = delete;
+  Action(const Action &other) = delete;
 
   /* Animation Layers access. */
   blender::Span<const Layer *> layers() const;
@@ -208,7 +208,7 @@ class Animation : public ::Animation {
    */
   void binding_setup_for_id(Binding &binding, const ID &animated_id);
 };
-static_assert(sizeof(Animation) == sizeof(::Animation),
+static_assert(sizeof(Action) == sizeof(::Animation),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
@@ -217,7 +217,7 @@ static_assert(sizeof(Animation) == sizeof(::Animation),
  * Although the data model allows for different strip types, currently only a
  * single type is implemented: keyframe strips.
  */
-class Strip : public ::AnimationStrip {
+class Strip : public ::ActionStrip {
  public:
   /**
    * Strip instances should not be created via this constructor. Create a sub-class like
@@ -237,13 +237,13 @@ class Strip : public ::AnimationStrip {
    * The reason why the copy constructor won't work is due to the double nature
    * of the inheritance at play here:
    *
-   * C-style inheritance: `KeyframeAnimationStrip` "inherits" `AnimationStrip"
-   *   by embedding the latter. This means that any `KeyframeAnimationStrip *`
-   *   can be reinterpreted as `AnimationStrip *`.
+   * C-style inheritance: `KeyframeActionStrip` "inherits" `ActionStrip"
+   *   by embedding the latter. This means that any `KeyframeActionStrip *`
+   *   can be reinterpreted as `ActionStrip *`.
    *
    * C++-style inheritance: the C++ wrappers inherit the DNA structs, so
-   *   `animrig::Strip` inherits `::AnimationStrip`, and
-   *   `animrig::KeyframeStrip` inherits `::KeyframeAnimationStrip`.
+   *   `animrig::Strip` inherits `::ActionStrip`, and
+   *   `animrig::KeyframeStrip` inherits `::KeyframeActionStrip`.
    */
   Strip(const Strip &other) = delete;
   ~Strip();
@@ -277,7 +277,7 @@ class Strip : public ::AnimationStrip {
    */
   void resize(float frame_start, float frame_end);
 };
-static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
+static_assert(sizeof(Strip) == sizeof(::ActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
@@ -291,7 +291,7 @@ static_assert(sizeof(Strip) == sizeof(::AnimationStrip),
  * Temporary limitation: at most one strip may exist on a layer, and it extends
  * from negative to positive infinity.
  */
-class Layer : public ::AnimationLayer {
+class Layer : public ::ActionLayer {
  public:
   Layer() = default;
   Layer(const Layer &other);
@@ -347,7 +347,7 @@ class Layer : public ::AnimationLayer {
   /** Return the strip's index, or -1 if not found in this layer. */
   int64_t find_strip_index(const Strip &strip) const;
 };
-static_assert(sizeof(Layer) == sizeof(::AnimationLayer),
+static_assert(sizeof(Layer) == sizeof(::ActionLayer),
               "DNA struct and its C++ wrapper must have the same size");
 
 ENUM_OPERATORS(Layer::Flags, Layer::Flags::Enabled);
@@ -355,7 +355,7 @@ ENUM_OPERATORS(Layer::Flags, Layer::Flags::Enabled);
 /**
  * Identifier for a sub-set of the animation data inside an Animation data-block.
  *
- * An animatable ID specifies both an `Animation*` and an `AnimationBinding::handle`
+ * An animatable ID specifies both an `Animation*` and an `ActionBinding::handle`
  * to identify which F-Curves (and in the future other animation data) it will
  * be animated by.
  *
@@ -364,7 +364,7 @@ ENUM_OPERATORS(Layer::Flags, Layer::Flags::Enabled);
  *
  * \see AnimData::binding_handle
  */
-class Binding : public ::AnimationBinding {
+class Binding : public ::ActionBinding {
  public:
   Binding() = default;
   Binding(const Binding &other) = default;
@@ -402,7 +402,7 @@ class Binding : public ::AnimationBinding {
   bool has_idtype() const;
 
  protected:
-  friend Animation;
+  friend Action;
 
   /**
    * Ensure the first two characters of the name match the ID type.
@@ -412,13 +412,13 @@ class Binding : public ::AnimationBinding {
    */
   void name_ensure_prefix();
 };
-static_assert(sizeof(Binding) == sizeof(::AnimationBinding),
+static_assert(sizeof(Binding) == sizeof(::ActionBinding),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
  * KeyframeStrips effectively contain a bag of F-Curves for each Binding.
  */
-class KeyframeStrip : public ::KeyframeAnimationStrip {
+class KeyframeStrip : public ::KeyframeActionStrip {
  public:
   KeyframeStrip() = default;
   KeyframeStrip(const KeyframeStrip &other);
@@ -466,7 +466,7 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
                           float2 time_value,
                           const KeyframeSettings &settings);
 };
-static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
+static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
 
 template<> KeyframeStrip &Strip::as<KeyframeStrip>();
@@ -475,7 +475,7 @@ template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const;
 /**
  * Collection of F-Curves, intended for a specific Binding handle.
  */
-class ChannelBag : public ::AnimationChannelBag {
+class ChannelBag : public ::ActionChannelBag {
  public:
   ChannelBag() = default;
   ChannelBag(const ChannelBag &other);
@@ -489,7 +489,7 @@ class ChannelBag : public ::AnimationChannelBag {
 
   const FCurve *fcurve_find(StringRefNull rna_path, int array_index) const;
 };
-static_assert(sizeof(ChannelBag) == sizeof(::AnimationChannelBag),
+static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
@@ -509,7 +509,7 @@ static_assert(sizeof(ChannelBag) == sizeof(::AnimationChannelBag),
  * be animated). If the above fall-through case of "no binding found" is reached, this function
  * will still return `true` as the Animation was successfully assigned.
  */
-bool assign_animation(Animation &anim, ID &animated_id);
+bool assign_animation(Action &anim, ID &animated_id);
 
 /**
  * Ensure that this ID is no longer animated.
@@ -532,7 +532,7 @@ void unassign_binding(AnimData &adt);
 /**
  * Return the Animation of this ID, or nullptr if it has none.
  */
-Animation *get_animation(ID &animated_id);
+Action *get_animation(ID &animated_id);
 
 /**
  * Return the F-Curves for this specific binding handle.
@@ -544,63 +544,63 @@ Animation *get_animation(ID &animated_id);
  * The use of this function is also an indicator for code that will have to be altered when
  * multi-layered animation is getting implemented.
  */
-Span<FCurve *> fcurves_for_animation(Animation &anim, binding_handle_t binding_handle);
-Span<const FCurve *> fcurves_for_animation(const Animation &anim, binding_handle_t binding_handle);
+Span<FCurve *> fcurves_for_animation(Action &anim, binding_handle_t binding_handle);
+Span<const FCurve *> fcurves_for_animation(const Action &anim, binding_handle_t binding_handle);
 
 }  // namespace blender::animrig
 
 /* Wrap functions for the DNA structs. */
 
-inline blender::animrig::Animation &Animation::wrap()
+inline blender::animrig::Action &Animation::wrap()
 {
-  return *reinterpret_cast<blender::animrig::Animation *>(this);
+  return *reinterpret_cast<blender::animrig::Action *>(this);
 }
-inline const blender::animrig::Animation &Animation::wrap() const
+inline const blender::animrig::Action &Animation::wrap() const
 {
-  return *reinterpret_cast<const blender::animrig::Animation *>(this);
+  return *reinterpret_cast<const blender::animrig::Action *>(this);
 }
 
-inline blender::animrig::Layer &AnimationLayer::wrap()
+inline blender::animrig::Layer &ActionLayer::wrap()
 {
   return *reinterpret_cast<blender::animrig::Layer *>(this);
 }
-inline const blender::animrig::Layer &AnimationLayer::wrap() const
+inline const blender::animrig::Layer &ActionLayer::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::Layer *>(this);
 }
 
-inline blender::animrig::Binding &AnimationBinding::wrap()
+inline blender::animrig::Binding &ActionBinding::wrap()
 {
   return *reinterpret_cast<blender::animrig::Binding *>(this);
 }
-inline const blender::animrig::Binding &AnimationBinding::wrap() const
+inline const blender::animrig::Binding &ActionBinding::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::Binding *>(this);
 }
 
-inline blender::animrig::Strip &AnimationStrip::wrap()
+inline blender::animrig::Strip &ActionStrip::wrap()
 {
   return *reinterpret_cast<blender::animrig::Strip *>(this);
 }
-inline const blender::animrig::Strip &AnimationStrip::wrap() const
+inline const blender::animrig::Strip &ActionStrip::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::Strip *>(this);
 }
 
-inline blender::animrig::KeyframeStrip &KeyframeAnimationStrip::wrap()
+inline blender::animrig::KeyframeStrip &KeyframeActionStrip::wrap()
 {
   return *reinterpret_cast<blender::animrig::KeyframeStrip *>(this);
 }
-inline const blender::animrig::KeyframeStrip &KeyframeAnimationStrip::wrap() const
+inline const blender::animrig::KeyframeStrip &KeyframeActionStrip::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::KeyframeStrip *>(this);
 }
 
-inline blender::animrig::ChannelBag &AnimationChannelBag::wrap()
+inline blender::animrig::ChannelBag &ActionChannelBag::wrap()
 {
   return *reinterpret_cast<blender::animrig::ChannelBag *>(this);
 }
-inline const blender::animrig::ChannelBag &AnimationChannelBag::wrap() const
+inline const blender::animrig::ChannelBag &ActionChannelBag::wrap() const
 {
   return *reinterpret_cast<const blender::animrig::ChannelBag *>(this);
 }

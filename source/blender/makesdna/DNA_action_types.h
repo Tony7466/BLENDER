@@ -36,6 +36,13 @@ typedef struct GPUBatchHandle GPUBatchHandle;
 typedef struct GPUVertBufHandle GPUVertBufHandle;
 #endif
 
+/* Forward declarations so the actual declarations can happen top-down. */
+struct Animation;
+struct ActionLayer;
+struct ActionBinding;
+struct ActionStrip;
+struct ActionChannelBag;
+
 /* ************************************************ */
 /* Visualization */
 
@@ -707,7 +714,15 @@ typedef struct bAction {
   /** ID-serialization for relinking. */
   ID id;
 
-  /** Function-curves (FCurve). */
+  struct ActionLayer **layer_array; /* Array of 'layer_array_num' layers. */
+  int layer_array_num;
+  int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
+
+  struct ActionBinding **binding_array; /* Array of 'binding_array_num` bindings. */
+  int binding_array_num;
+  int32_t last_binding_handle;
+
+  /** Legacy storage of F-Curves. */
   ListBase curves;
   /** Legacy data - Action Channels (bActionChannel) in pre-2.5 animation system. */
   ListBase chanbase DNA_DEPRECATED;
@@ -716,7 +731,7 @@ typedef struct bAction {
   /** Markers local to the Action (used to provide Pose-Libraries). */
   ListBase markers;
 
-  /** Settings for this action. */
+  /** Settings for this action. \see eAction_Flags */
   int flag;
   /** Index of the active marker. */
   int active_marker;
@@ -735,6 +750,11 @@ typedef struct bAction {
   float frame_start, frame_end;
 
   PreviewImage *preview;
+
+#ifdef __cplusplus
+  blender::animrig::Action &wrap();
+  const blender::animrig::Action &wrap() const;
+#endif
 } bAction;
 
 /** Flags for the action. */
@@ -1018,3 +1038,162 @@ typedef struct bActionChannel {
   /** Temporary setting - may be used to indicate group that channel belongs to during syncing. */
   int temp;
 } bActionChannel;
+
+/* ************************************************ */
+/* Layered Animation data-types. */
+
+/* Declarations of C++ wrappers. See ANIM_animation.hh for the actual classes. */
+#ifdef __cplusplus
+namespace blender::animrig {
+class Action;
+class ChannelBag;
+class KeyframeStrip;
+class Layer;
+class Binding;
+class Strip;
+}  // namespace blender::animrig
+#endif
+
+/**
+ * \see #blender::animrig::Layer
+ */
+typedef struct ActionLayer {
+  /** User-Visible identifier, unique within the Animation. */
+  char name[64]; /* MAX_NAME. */
+
+  float influence; /* [0-1] */
+
+  /** \see #blender::animrig::Layer::flags() */
+  uint8_t layer_flags;
+
+  /** \see #blender::animrig::Layer::mixmode() */
+  int8_t layer_mix_mode;
+
+  uint8_t _pad0[2];
+
+  /**
+   * There is always at least one strip.
+   * If there is only one, it can be infinite. This is the default for new layers.
+   */
+  struct ActionStrip **strip_array; /* Array of 'strip_array_num' strips. */
+  int strip_array_num;
+
+  uint8_t _pad1[4];
+
+#ifdef __cplusplus
+  blender::animrig::Layer &wrap();
+  const blender::animrig::Layer &wrap() const;
+#endif
+} ActionLayer;
+
+/**
+ * \see #blender::animrig::Binding
+ */
+typedef struct ActionBinding {
+  /**
+   * Typically the ID name this binding was created for, including the two
+   * letters indicating the ID type.
+   *
+   * \see #AnimData::binding_name
+   */
+  char name[66]; /* MAX_ID_NAME */
+  uint8_t _pad0[2];
+
+  /**
+   * Type of ID-blocks that this binding can be assigned to.
+   * If 0, will be set to whatever ID is first assigned.
+   */
+  int idtype;
+
+  /**
+   * Identifier of this Binding within the Animation data-block.
+   *
+   * This number allows reorganization of the #Animation::bindings_array without
+   * invalidating references. Also these remain valid when copy-on-evaluate
+   * copies are made.
+   *
+   * Only valid within the Animation data-block that owns this Binding.
+   *
+   * \see #blender::animrig::Action::binding_for_handle()
+   */
+  int32_t handle;
+
+#ifdef __cplusplus
+  blender::animrig::Binding &wrap();
+  const blender::animrig::Binding &wrap() const;
+#endif
+} ActionBinding;
+
+/**
+ * \see #blender::animrig::Strip
+ */
+typedef struct ActionStrip {
+  /**
+   * \see #blender::animrig::Strip::type()
+   */
+  int8_t strip_type;
+  uint8_t _pad0[3];
+
+  float frame_start; /** Start frame of the strip, in Animation time. */
+  float frame_end;   /** End frame of the strip, in Animation time. */
+
+  /**
+   * Offset applied to the contents of the strip, in frames.
+   *
+   * This offset determines the difference between "Animation time" (which would
+   * typically be the same as the scene time, until the animation system
+   * supports strips referencing other Animation data-blocks).
+   */
+  float frame_offset;
+
+#ifdef __cplusplus
+  blender::animrig::Strip &wrap();
+  const blender::animrig::Strip &wrap() const;
+#endif
+} ActionStrip;
+
+/**
+ * #ActionStrip::type = #Strip::Type::Keyframe.
+ *
+ * \see #blender::animrig::KeyframeStrip
+ */
+typedef struct KeyframeActionStrip {
+  ActionStrip strip;
+
+  struct ActionChannelBag **channelbags_array;
+  int channelbags_array_num;
+
+  uint8_t _pad[4];
+
+#ifdef __cplusplus
+  blender::animrig::KeyframeStrip &wrap();
+  const blender::animrig::KeyframeStrip &wrap() const;
+#endif
+} KeyframeActionStrip;
+
+/**
+ * \see #blender::animrig::ChannelBag
+ */
+typedef struct ActionChannelBag {
+  int32_t binding_handle;
+
+  int fcurve_array_num;
+  FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
+
+  /* TODO: Design & implement a way to integrate other channel types as well,
+   * and still have them map to a certain binding */
+#ifdef __cplusplus
+  blender::animrig::ChannelBag &wrap();
+  const blender::animrig::ChannelBag &wrap() const;
+#endif
+} ChannelBag;
+
+#ifdef __cplusplus
+/* Some static assertions that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(ActionBinding::handle), decltype(AnimData::binding_handle)>);
+static_assert(
+    std::is_same_v<decltype(ActionBinding::handle), decltype(Animation::last_binding_handle)>);
+static_assert(
+    std::is_same_v<decltype(ActionBinding::handle), decltype(ActionChannelBag::binding_handle)>);
+static_assert(std::is_same_v<decltype(ActionBinding::name), decltype(AnimData::binding_name)>);
+#endif

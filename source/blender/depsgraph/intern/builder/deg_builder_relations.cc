@@ -1675,7 +1675,7 @@ void DepsgraphRelationBuilder::build_animdata_animation_targets(ID *id,
   BLI_assert(dna_animation != nullptr);
 
   PointerRNA id_ptr = RNA_id_pointer_create(id);
-  animrig::Animation &animation = dna_animation->wrap();
+  animrig::Action &animation = dna_animation->wrap();
 
   const animrig::Binding *binding = animation.binding_for_handle(binding_handle);
   if (binding == nullptr) {

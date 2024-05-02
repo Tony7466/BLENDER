@@ -1472,7 +1472,7 @@ static size_t animfilter_animation_fcurves(
   }
 
   BLI_assert(adt->animation); /* Otherwise this function wouldn't be called. */
-  animrig::Animation &anim = adt->animation->wrap();
+  animrig::Action &anim = adt->animation->wrap();
 
   /* Don't include anything from this animation if it is linked in from another
    * file, and we're getting stuff for editing... */

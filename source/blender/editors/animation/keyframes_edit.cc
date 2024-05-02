@@ -170,7 +170,7 @@ static short agrp_keyframes_loop(KeyframeEditData *ked,
 
 /* Loop over all keyframes in the Animation. */
 static short anim_keyframes_loop(KeyframeEditData *ked,
-                                 animrig::Animation &anim,
+                                 animrig::Action &anim,
                                  animrig::Binding *binding,
                                  KeyframeEditFunc key_ok,
                                  KeyframeEditFunc key_cb,
@@ -420,7 +420,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       /* This assumes that the ALE_ANIM channel is shown in the dopesheet context, underneath the
        * data-block that owns `ale->adt`. So that means that the loop is limited to the keys that
        * belong to that binding. */
-      animrig::Animation &anim = static_cast<Animation *>(ale->key_data)->wrap();
+      animrig::Action &anim = static_cast<Animation *>(ale->key_data)->wrap();
       animrig::Binding *binding = anim.binding_for_handle(ale->adt->binding_handle);
       return anim_keyframes_loop(ked, anim, binding, key_ok, key_cb, fcu_cb);
 #else

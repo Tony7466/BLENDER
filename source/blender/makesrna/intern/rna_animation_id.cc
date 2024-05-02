@@ -83,17 +83,17 @@ static animrig::Animation &rna_animation(const PointerRNA *ptr)
 
 static animrig::Binding &rna_data_binding(const PointerRNA *ptr)
 {
-  return reinterpret_cast<AnimationBinding *>(ptr->data)->wrap();
+  return reinterpret_cast<ActionBinding *>(ptr->data)->wrap();
 }
 
 static animrig::Layer &rna_data_layer(const PointerRNA *ptr)
 {
-  return reinterpret_cast<AnimationLayer *>(ptr->data)->wrap();
+  return reinterpret_cast<ActionLayer *>(ptr->data)->wrap();
 }
 
 static animrig::Strip &rna_data_strip(const PointerRNA *ptr)
 {
-  return reinterpret_cast<AnimationStrip *>(ptr->data)->wrap();
+  return reinterpret_cast<ActionStrip *>(ptr->data)->wrap();
 }
 
 static void rna_Animation_tag_animupdate(Main *, Scene *, PointerRNA *ptr)
@@ -104,13 +104,13 @@ static void rna_Animation_tag_animupdate(Main *, Scene *, PointerRNA *ptr)
 
 static animrig::KeyframeStrip &rna_data_keyframe_strip(const PointerRNA *ptr)
 {
-  animrig::Strip &strip = reinterpret_cast<AnimationStrip *>(ptr->data)->wrap();
+  animrig::Strip &strip = reinterpret_cast<ActionStrip *>(ptr->data)->wrap();
   return strip.as<animrig::KeyframeStrip>();
 }
 
 static animrig::ChannelBag &rna_data_channelbag(const PointerRNA *ptr)
 {
-  return reinterpret_cast<AnimationChannelBag *>(ptr->data)->wrap();
+  return reinterpret_cast<ActionChannelBag *>(ptr->data)->wrap();
 }
 
 template<typename T>
@@ -125,9 +125,9 @@ static void rna_iterator_array_begin(CollectionPropertyIterator *iter, MutableSp
   rna_iterator_array_begin(iter, (void *)items.data(), sizeof(T *), items.size(), 0, nullptr);
 }
 
-static AnimationBinding *rna_Animation_bindings_new(Animation *anim_id,
-                                                    bContext *C,
-                                                    ID *id_for_binding)
+static ActionBinding *rna_Animation_bindings_new(Animation *anim_id,
+                                                 bContext *C,
+                                                 ID *id_for_binding)
 {
   animrig::Animation &anim = anim_id->wrap();
   animrig::Binding *binding;
@@ -155,10 +155,10 @@ static int rna_iterator_animation_layers_length(PointerRNA *ptr)
   return anim.layers().size();
 }
 
-static AnimationLayer *rna_Animation_layers_new(Animation *dna_animation,
-                                                bContext *C,
-                                                ReportList *reports,
-                                                const char *name)
+static ActionLayer *rna_Animation_layers_new(Animation *dna_animation,
+                                             bContext *C,
+                                             ReportList *reports,
+                                             const char *name)
 {
   animrig::Animation &anim = dna_animation->wrap();
 
@@ -178,7 +178,7 @@ static AnimationLayer *rna_Animation_layers_new(Animation *dna_animation,
 void rna_Animation_layers_remove(Animation *dna_animation,
                                  bContext *C,
                                  ReportList *reports,
-                                 AnimationLayer *dna_layer)
+                                 ActionLayer *dna_layer)
 {
   animrig::Animation &anim = dna_animation->wrap();
   animrig::Layer &layer = dna_layer->wrap();
@@ -204,7 +204,7 @@ static int rna_iterator_animation_bindings_length(PointerRNA *ptr)
   return anim.bindings().size();
 }
 
-static std::optional<std::string> rna_AnimationBinding_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ActionBinding_path(const PointerRNA *ptr)
 {
   animrig::Binding &binding = rna_data_binding(ptr);
 
@@ -214,19 +214,19 @@ static std::optional<std::string> rna_AnimationBinding_path(const PointerRNA *pt
 }
 
 /* Name functions that ignore the first two ID characters */
-void rna_AnimationBinding_name_display_get(PointerRNA *ptr, char *value)
+void rna_ActionBinding_name_display_get(PointerRNA *ptr, char *value)
 {
   animrig::Binding &binding = rna_data_binding(ptr);
   binding.name_without_prefix().unsafe_copy(value);
 }
 
-int rna_AnimationBinding_name_display_length(PointerRNA *ptr)
+int rna_ActionBinding_name_display_length(PointerRNA *ptr)
 {
   animrig::Binding &binding = rna_data_binding(ptr);
   return binding.name_without_prefix().size();
 }
 
-static void rna_AnimationBinding_name_display_set(PointerRNA *ptr, const char *name)
+static void rna_ActionBinding_name_display_set(PointerRNA *ptr, const char *name)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
@@ -242,7 +242,7 @@ static void rna_AnimationBinding_name_display_set(PointerRNA *ptr, const char *n
   anim.binding_name_define(binding, internal_name);
 }
 
-static void rna_AnimationBinding_name_set(PointerRNA *ptr, const char *name)
+static void rna_ActionBinding_name_set(PointerRNA *ptr, const char *name)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
@@ -269,14 +269,14 @@ static void rna_AnimationBinding_name_set(PointerRNA *ptr, const char *name)
   anim.binding_name_define(binding, name);
 }
 
-static void rna_AnimationBinding_name_update(Main *bmain, Scene *, PointerRNA *ptr)
+static void rna_ActionBinding_name_update(Main *bmain, Scene *, PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Binding &binding = rna_data_binding(ptr);
   anim.binding_name_propagate(*bmain, binding);
 }
 
-static std::optional<std::string> rna_AnimationLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ActionLayer_path(const PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
 
@@ -285,23 +285,23 @@ static std::optional<std::string> rna_AnimationLayer_path(const PointerRNA *ptr)
   return fmt::format("layers[\"{}\"]", name_esc);
 }
 
-static void rna_iterator_animationlayer_strips_begin(CollectionPropertyIterator *iter,
-                                                     PointerRNA *ptr)
+static void rna_iterator_ActionLayer_strips_begin(CollectionPropertyIterator *iter,
+                                                  PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
   rna_iterator_array_begin(iter, layer.strips());
 }
 
-static int rna_iterator_animationlayer_strips_length(PointerRNA *ptr)
+static int rna_iterator_ActionLayer_strips_length(PointerRNA *ptr)
 {
   animrig::Layer &layer = rna_data_layer(ptr);
   return layer.strips().size();
 }
 
-AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer,
-                                        bContext *C,
-                                        ReportList *reports,
-                                        const int type)
+ActionStrip *rna_ActionStrips_new(ActionLayer *dna_layer,
+                                  bContext *C,
+                                  ReportList *reports,
+                                  const int type)
 {
   const animrig::Strip::Type strip_type = animrig::Strip::Type(type);
 
@@ -320,11 +320,11 @@ AnimationStrip *rna_AnimationStrips_new(AnimationLayer *dna_layer,
   return &strip;
 }
 
-void rna_AnimationStrips_remove(ID *animation_id,
-                                AnimationLayer *dna_layer,
-                                bContext *C,
-                                ReportList *reports,
-                                AnimationStrip *dna_strip)
+void rna_ActionStrips_remove(ID *animation_id,
+                             ActionLayer *dna_layer,
+                             bContext *C,
+                             ReportList *reports,
+                             ActionStrip *dna_strip)
 {
   animrig::Layer &layer = dna_layer->wrap();
   animrig::Strip &strip = dna_strip->wrap();
@@ -337,17 +337,17 @@ void rna_AnimationStrips_remove(ID *animation_id,
   DEG_id_tag_update(animation_id, ID_RECALC_ANIMATION);
 }
 
-static StructRNA *rna_AnimationStrip_refine(PointerRNA *ptr)
+static StructRNA *rna_ActionStrip_refine(PointerRNA *ptr)
 {
   animrig::Strip &strip = rna_data_strip(ptr);
   switch (strip.type()) {
     case animrig::Strip::Type::Keyframe:
-      return &RNA_KeyframeAnimationStrip;
+      return &RNA_KeyframeActionStrip;
   }
   return &RNA_UnknownType;
 }
 
-static std::optional<std::string> rna_AnimationStrip_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ActionStrip_path(const PointerRNA *ptr)
 {
   animrig::Animation &anim = rna_animation(ptr);
   animrig::Strip &strip_to_find = rna_data_strip(ptr);
@@ -359,8 +359,8 @@ static std::optional<std::string> rna_AnimationStrip_path(const PointerRNA *ptr)
       continue;
     }
 
-    PointerRNA layer_ptr = RNA_pointer_create(&anim.id, &RNA_AnimationLayer, layer);
-    const std::optional<std::string> layer_path = rna_AnimationLayer_path(&layer_ptr);
+    PointerRNA layer_ptr = RNA_pointer_create(&anim.id, &RNA_ActionLayer, layer);
+    const std::optional<std::string> layer_path = rna_ActionLayer_path(&layer_ptr);
     BLI_assert_msg(layer_path, "Every animation layer should have a valid RNA path.");
     const std::string strip_path = fmt::format("{}.strips[{}]", *layer_path, index);
     return strip_path;
@@ -382,15 +382,15 @@ static int rna_iterator_keyframestrip_channelbags_length(PointerRNA *ptr)
   return key_strip.channelbags().size();
 }
 
-static FCurve *rna_KeyframeAnimationStrip_key_insert(ID *id,
-                                                     KeyframeAnimationStrip *dna_strip,
-                                                     Main *bmain,
-                                                     ReportList *reports,
-                                                     AnimationBinding *dna_binding,
-                                                     const char *rna_path,
-                                                     const int array_index,
-                                                     const float value,
-                                                     const float time)
+static FCurve *rna_KeyframeActionStrip_key_insert(ID *id,
+                                                  KeyframeActionStrip *dna_strip,
+                                                  Main *bmain,
+                                                  ReportList *reports,
+                                                  ActionBinding *dna_binding,
+                                                  const char *rna_path,
+                                                  const int array_index,
+                                                  const float value,
+                                                  const float time)
 {
   if (dna_binding == nullptr) {
     BKE_report(reports, RPT_ERROR, "Binding cannot be None");
@@ -424,8 +424,8 @@ static int rna_iterator_ChannelBag_fcurves_length(PointerRNA *ptr)
   return bag.fcurves().size();
 }
 
-static AnimationChannelBag *rna_KeyframeAnimationStrip_channels(
-    KeyframeAnimationStrip *self, const animrig::binding_handle_t binding_handle)
+static ActionChannelBag *rna_KeyframeActionStrip_channels(
+    KeyframeActionStrip *self, const animrig::binding_handle_t binding_handle)
 {
   animrig::KeyframeStrip &key_strip = self->wrap();
   return key_strip.channelbag_for_binding(binding_handle);
@@ -440,8 +440,8 @@ static void rna_def_animation_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  RNA_def_property_srna(cprop, "AnimationBindings");
-  srna = RNA_def_struct(brna, "AnimationBindings", nullptr);
+  RNA_def_property_srna(cprop, "ActionBindings");
+  srna = RNA_def_struct(brna, "ActionBindings", nullptr);
   RNA_def_struct_sdna(srna, "Animation");
   RNA_def_struct_ui_text(srna, "Animation Bindings", "Collection of animation bindings");
 
@@ -460,8 +460,7 @@ static void rna_def_animation_bindings(BlenderRNA *brna, PropertyRNA *cprop)
   /* Clear out the PARM_REQUIRED flag, which is set by default for pointer parameters. */
   RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
 
-  parm = RNA_def_pointer(
-      func, "binding", "AnimationBinding", "", "Newly created animation binding");
+  parm = RNA_def_pointer(func, "binding", "ActionBinding", "", "Newly created animation binding");
   RNA_def_function_return(func, parm);
 }
 
@@ -472,8 +471,8 @@ static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  RNA_def_property_srna(cprop, "AnimationLayers");
-  srna = RNA_def_struct(brna, "AnimationLayers", nullptr);
+  RNA_def_property_srna(cprop, "ActionLayers");
+  srna = RNA_def_struct(brna, "ActionLayers", nullptr);
   RNA_def_struct_sdna(srna, "Animation");
   RNA_def_struct_ui_text(srna, "Animation Layers", "Collection of animation layers");
 
@@ -486,11 +485,11 @@ static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
   parm = RNA_def_string(func,
                         "name",
                         nullptr,
-                        sizeof(AnimationLayer::name) - 1,
+                        sizeof(ActionLayer::name) - 1,
                         "Name",
                         "Name of the layer, will be made unique within the Animation data-block");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_pointer(func, "layer", "AnimationLayer", "", "Newly created animation layer");
+  parm = RNA_def_pointer(func, "layer", "ActionLayer", "", "Newly created animation layer");
   RNA_def_function_return(func, parm);
 
   /* Animation.layers.remove(layer) */
@@ -498,7 +497,7 @@ static void rna_def_animation_layers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Remove the layer from the animation");
   parm = RNA_def_pointer(
-      func, "anim_layer", "AnimationLayer", "Animation Layer", "The layer to remove");
+      func, "anim_layer", "ActionLayer", "Animation Layer", "The layer to remove");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
@@ -517,7 +516,7 @@ static void rna_def_animation(BlenderRNA *brna)
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "bindings", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "AnimationBinding");
+  RNA_def_property_struct_type(prop, "ActionBinding");
   RNA_def_property_collection_funcs(prop,
                                     "rna_iterator_animation_bindings_begin",
                                     "rna_iterator_array_next",
@@ -531,7 +530,7 @@ static void rna_def_animation(BlenderRNA *brna)
   rna_def_animation_bindings(brna, prop);
 
   prop = RNA_def_property(srna, "layers", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "AnimationLayer");
+  RNA_def_property_struct_type(prop, "ActionLayer");
   RNA_def_property_collection_funcs(prop,
                                     "rna_iterator_animation_layers_begin",
                                     "rna_iterator_array_next",
@@ -550,8 +549,8 @@ static void rna_def_animation_binding(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AnimationBinding", nullptr);
-  RNA_def_struct_path_func(srna, "rna_AnimationBinding_path");
+  srna = RNA_def_struct(brna, "ActionBinding", nullptr);
+  RNA_def_struct_path_func(srna, "rna_ActionBinding_path");
   RNA_def_struct_ui_text(
       srna,
       "Animation Binding",
@@ -560,9 +559,9 @@ static void rna_def_animation_binding(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_AnimationBinding_name_set");
-  RNA_def_property_string_maxlength(prop, sizeof(AnimationBinding::name) - 2);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimationBinding_name_update");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_ActionBinding_name_set");
+  RNA_def_property_string_maxlength(prop, sizeof(ActionBinding::name) - 2);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_ActionBinding_name_update");
   RNA_def_struct_ui_text(
       srna,
       "Binding Name",
@@ -570,11 +569,11 @@ static void rna_def_animation_binding(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "name_display", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(prop,
-                                "rna_AnimationBinding_name_display_get",
-                                "rna_AnimationBinding_name_display_length",
-                                "rna_AnimationBinding_name_display_set");
-  RNA_def_property_string_maxlength(prop, sizeof(AnimationBinding::name) - 2);
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimationBinding_name_update");
+                                "rna_ActionBinding_name_display_get",
+                                "rna_ActionBinding_name_display_length",
+                                "rna_ActionBinding_name_display_set");
+  RNA_def_property_string_maxlength(prop, sizeof(ActionBinding::name) - 2);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_ActionBinding_name_update");
   RNA_def_struct_ui_text(
       srna,
       "Binding Display Name",
@@ -586,24 +585,24 @@ static void rna_def_animation_binding(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna,
                          "Binding Handle",
                          "Number specific to this Binding, unique within the Animation data-block"
-                         "This is used, for example, on a KeyframeAnimationStrip to look up the "
-                         "AnimationChannelBag for this Binding");
+                         "This is used, for example, on a KeyframeActionStrip to look up the "
+                         "ActionChannelBag for this Binding");
 }
 
-static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
+static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  RNA_def_property_srna(cprop, "AnimationStrips");
-  srna = RNA_def_struct(brna, "AnimationStrips", nullptr);
-  RNA_def_struct_sdna(srna, "AnimationLayer");
+  RNA_def_property_srna(cprop, "ActionStrips");
+  srna = RNA_def_struct(brna, "ActionStrips", nullptr);
+  RNA_def_struct_sdna(srna, "ActionLayer");
   RNA_def_struct_ui_text(srna, "Animation Strips", "Collection of animation strips");
 
   /* Layer.strips.new(type='...') */
-  func = RNA_def_function(srna, "new", "rna_AnimationStrips_new");
+  func = RNA_def_function(srna, "new", "rna_ActionStrips_new");
   RNA_def_function_ui_description(func,
                                   "Add a new strip to the layer. Currently a layer can only have "
                                   "one strip, with infinite boundaries");
@@ -615,15 +614,15 @@ static void rna_def_animationlayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
                       "Type",
                       "The type of strip to create");
   /* Return value. */
-  parm = RNA_def_pointer(func, "strip", "AnimationStrip", "", "Newly created animation strip");
+  parm = RNA_def_pointer(func, "strip", "ActionStrip", "", "Newly created animation strip");
   RNA_def_function_return(func, parm);
 
   /* Layer.strips.remove(strip) */
-  func = RNA_def_function(srna, "remove", "rna_AnimationStrips_remove");
+  func = RNA_def_function(srna, "remove", "rna_ActionStrips_remove");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Remove the strip from the animation layer");
   parm = RNA_def_pointer(
-      func, "anim_strip", "AnimationStrip", "Animation Strip", "The strip to remove");
+      func, "anim_strip", "ActionStrip", "Animation Strip", "The strip to remove");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
@@ -632,9 +631,9 @@ static void rna_def_animation_layer(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AnimationLayer", nullptr);
+  srna = RNA_def_struct(brna, "ActionLayer", nullptr);
   RNA_def_struct_ui_text(srna, "Animation Layer", "");
-  RNA_def_struct_path_func(srna, "rna_AnimationLayer_path");
+  RNA_def_struct_path_func(srna, "rna_ActionLayer_path");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_struct_name_property(srna, prop);
@@ -657,28 +656,28 @@ static void rna_def_animation_layer(BlenderRNA *brna)
 
   /* Collection properties .*/
   prop = RNA_def_property(srna, "strips", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "AnimationStrip");
+  RNA_def_property_struct_type(prop, "ActionStrip");
   RNA_def_property_collection_funcs(prop,
-                                    "rna_iterator_animationlayer_strips_begin",
+                                    "rna_iterator_ActionLayer_strips_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
-                                    "rna_iterator_animationlayer_strips_length",
+                                    "rna_iterator_ActionLayer_strips_length",
                                     nullptr,
                                     nullptr,
                                     nullptr);
   RNA_def_property_ui_text(prop, "Strips", "The list of strips that are on this animation layer");
 
-  rna_def_animationlayer_strips(brna, prop);
+  rna_def_ActionLayer_strips(brna, prop);
 }
 
 static void rna_def_keyframestrip_channelbags(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
 
-  RNA_def_property_srna(cprop, "AnimationChannelBags");
-  srna = RNA_def_struct(brna, "AnimationChannelBags", nullptr);
-  RNA_def_struct_sdna(srna, "KeyframeAnimationStrip");
+  RNA_def_property_srna(cprop, "ActionChannelBags");
+  srna = RNA_def_struct(brna, "ActionChannelBags", nullptr);
+  RNA_def_struct_sdna(srna, "KeyframeActionStrip");
   RNA_def_struct_ui_text(
       srna,
       "Animation Channels for Bindings",
@@ -690,12 +689,12 @@ static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "KeyframeAnimationStrip", "AnimationStrip");
+  srna = RNA_def_struct(brna, "KeyframeActionStrip", "ActionStrip");
   RNA_def_struct_ui_text(
       srna, "Keyframe Animation Strip", "Strip with a set of F-Curves for each animation binding");
 
   prop = RNA_def_property(srna, "channelbags", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_struct_type(prop, "AnimationChannelBag");
+  RNA_def_property_struct_type(prop, "ActionChannelBag");
   RNA_def_property_collection_funcs(prop,
                                     "rna_iterator_keyframestrip_channelbags_begin",
                                     "rna_iterator_array_next",
@@ -712,8 +711,8 @@ static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
     PropertyRNA *parm;
 
     /* KeyframeStrip.channels(...). */
-    func = RNA_def_function(srna, "channels", "rna_KeyframeAnimationStrip_channels");
-    RNA_def_function_ui_description(func, "Find the AnimationChannelBag for a specific Binding");
+    func = RNA_def_function(srna, "channels", "rna_KeyframeActionStrip_channels");
+    RNA_def_function_ui_description(func, "Find the ActionChannelBag for a specific Binding");
     parm = RNA_def_int(func,
                        "binding_handle",
                        0,
@@ -724,16 +723,16 @@ static void rna_def_animation_keyframe_strip(BlenderRNA *brna)
                        0,
                        INT_MAX);
     RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-    parm = RNA_def_pointer(func, "channels", "AnimationChannelBag", "Channels", "");
+    parm = RNA_def_pointer(func, "channels", "ActionChannelBag", "Channels", "");
     RNA_def_function_return(func, parm);
 
     /* KeyframeStrip.key_insert(...). */
 
-    func = RNA_def_function(srna, "key_insert", "rna_KeyframeAnimationStrip_key_insert");
+    func = RNA_def_function(srna, "key_insert", "rna_KeyframeActionStrip_key_insert");
     RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
     parm = RNA_def_pointer(func,
                            "binding",
-                           "AnimationBinding",
+                           "ActionBinding",
                            "Binding",
                            "The binding that identifies which 'thing' should be keyed");
     RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
@@ -785,10 +784,10 @@ static void rna_def_animation_strip(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AnimationStrip", nullptr);
+  srna = RNA_def_struct(brna, "ActionStrip", nullptr);
   RNA_def_struct_ui_text(srna, "Animation Strip", "");
-  RNA_def_struct_path_func(srna, "rna_AnimationStrip_path");
-  RNA_def_struct_refine_func(srna, "rna_AnimationStrip_refine");
+  RNA_def_struct_path_func(srna, "rna_ActionStrip_path");
+  RNA_def_struct_refine_func(srna, "rna_ActionStrip_refine");
 
   static const EnumPropertyItem prop_type_items[] = {
       {int(animrig::Strip::Type::Keyframe),
@@ -812,9 +811,9 @@ static void rna_def_channelbag_for_binding_fcurves(BlenderRNA *brna, PropertyRNA
 {
   StructRNA *srna;
 
-  RNA_def_property_srna(cprop, "AnimationChannelBagFCurves");
-  srna = RNA_def_struct(brna, "AnimationChannelBagFCurves", nullptr);
-  RNA_def_struct_sdna(srna, "bAnimationChannelBag");
+  RNA_def_property_srna(cprop, "ActionChannelBagFCurves");
+  srna = RNA_def_struct(brna, "ActionChannelBagFCurves", nullptr);
+  RNA_def_struct_sdna(srna, "bActionChannelBag");
   RNA_def_struct_ui_text(
       srna, "F-Curves", "Collection of F-Curves for a specific animation binding");
 }
@@ -824,7 +823,7 @@ static void rna_def_animation_channelbag(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "AnimationChannelBag", nullptr);
+  srna = RNA_def_struct(brna, "ActionChannelBag", nullptr);
   RNA_def_struct_ui_text(
       srna,
       "Animation Channel Bag",

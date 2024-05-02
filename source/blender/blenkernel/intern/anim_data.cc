@@ -283,7 +283,7 @@ bool BKE_animdata_id_is_animated(const ID *id)
   /* If an Animation is assigned, it takes precedence over the Action, even when
    * this Animation has no F-Curves and the Action does. */
   if (adt->animation) {
-    const blender::animrig::Animation &anim = adt->animation->wrap();
+    const blender::animrig::Action &anim = adt->animation->wrap();
     if (anim.is_binding_animated(adt->binding_handle)) {
       return true;
     }
