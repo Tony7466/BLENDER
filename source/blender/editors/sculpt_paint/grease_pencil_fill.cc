@@ -496,7 +496,9 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
 /* Create curves geometry from boundary positions. */
 static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
                                               const ImageBufferAccessor &buffer,
-                                              const ed::greasepencil::DrawingPlacement &placement)
+                                              const ed::greasepencil::DrawingPlacement &placement,
+                                              const int material_index,
+                                              const float hardness)
 {
   /* Curve cannot have 0 points. */
   if (boundary.offset_indices.is_empty() || boundary.pixels.is_empty()) {
@@ -507,8 +509,39 @@ static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
 
   curves.offsets_for_write().copy_from(boundary.offset_indices);
   const OffsetIndices points_by_curve = curves.points_by_curve();
-
   MutableSpan<float3> positions = curves.positions_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+  curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
+  curves.update_curve_types();
+
+  bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
+      "hardness",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+
+  cyclic.span.last() = true;
+  materials.span.last() = material_index;
+  hardnesses.span.last() = hardness;
+
+  cyclic.finish();
+  materials.finish();
+  hardnesses.finish();
+
+  /* Initialize the rest of the attributes with default values. */
+  bke::fill_attribute_range_default(attributes,
+                                    bke::AttrDomain::Point,
+                                    this->skipped_attribute_ids(bke::AttrDomain::Point),
+                                    curves.points_range().take_back(1));
+  bke::fill_attribute_range_default(attributes,
+                                    bke::AttrDomain::Curve,
+                                    this->skipped_attribute_ids(bke::AttrDomain::Curve),
+                                    curves.curves_range().take_back(1));
+
   for (const int curve_i : curves.curves_range()) {
     const IndexRange points = points_by_curve[curve_i];
     for (const int point_i : points) {

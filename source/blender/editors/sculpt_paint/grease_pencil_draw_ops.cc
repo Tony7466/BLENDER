@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_brush.hh"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.hh"
@@ -713,17 +715,38 @@ static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
 {
   using blender::bke::greasepencil::Layer;
 
+  Main &bmain = *CTX_data_main(&C);
+  Scene &scene = *CTX_data_scene(&C);
   Object &ob = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
+  Paint &paint = scene.toolsettings->gp_paint->paint;
+  Brush &brush = *BKE_paint_brush(&paint);
+
   Layer *layer = grease_pencil.get_active_layer();
   /* Cannot paint in locked layer. */
   if (layer && layer->is_locked()) {
     return false;
   }
-
   if (layer == nullptr) {
     layer = &grease_pencil.add_layer("GP_Layer");
   }
+
+  if (brush.gpencil_settings == nullptr) {
+    BKE_brush_init_gpencil_settings(&brush);
+  }
+  BKE_curvemapping_init(brush.gpencil_settings->curve_sensitivity);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_jitter);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_value);
+
+  Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
+      &bmain, &ob, &brush);
+  const int material_index = BKE_object_material_index_get(&ob, material);
 
   op.customdata = MEM_new<GreasePencilFillOpData>(__func__,
                                                   GreasePencilFillOpData::from_context(C, *layer));
