@@ -2049,10 +2049,6 @@ static void versioning_update_timecode(short int *tc)
   if (ELEM(*tc, 2, 4)) {
     *tc = IMB_TC_RECORD_RUN;
   }
-  /* Bit was changed from 8 to 2. */
-  if (*tc == 8) {
-    *tc = IMB_TC_RECORD_RUN_NO_GAPS;
-  }
 }
 
 static bool seq_proxies_timecode_update(Sequence *seq, void * /*user_data*/)

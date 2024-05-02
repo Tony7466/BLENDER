@@ -69,8 +69,7 @@ typedef enum IMB_Timecode_Type {
    * For example: FFmpeg may say, that a frame should be displayed for 0.5 seconds, but this option
    * ignores that and only diplays it in one particular frame index in Blender.
    */
-  IMB_TC_RECORD_RUN_NO_GAPS = 2,
-  IMB_TC_MAX_SLOT = 2,
+  IMB_TC_RECORD_RUN_NO_GAPS = 8,
 } IMB_Timecode_Type;
 
 typedef enum IMB_Proxy_Size {

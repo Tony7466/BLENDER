@@ -676,7 +676,6 @@ enum {
   SEQ_PROXY_TC_NONE = 0,
   SEQ_PROXY_TC_RECORD_RUN = 1 << 0,
   SEQ_PROXY_TC_RECORD_RUN_NO_GAPS = 1 << 1,
-  SEQ_PROXY_TC_ALL = (1 << 2) - 1,
 };
 
 /** SeqProxy.build_flags */

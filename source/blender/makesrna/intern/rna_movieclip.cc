@@ -152,13 +152,13 @@ static void rna_def_movieclip_proxy(BlenderRNA *brna)
        "RECORD_RUN",
        0,
        "Record Run",
-       "Use for normal playback. Seek based on timestamps read from movie stream"},
+       "Seek based on timestamps read from movie stream, use for normal playback"},
       {IMB_TC_RECORD_RUN_NO_GAPS,
        "FREE_RUN_NO_GAPS",
        0,
        "Record Run No Gaps",
-       "This timecode causes each frame procuces new image. This may break AV sync, change "
-       "apparent movie frame rate and change it's length"},
+       "Effectively convert movie to an image sequence, ignoring incomplete or dropped frames, "
+       "and changes in frame rate"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
