@@ -42,6 +42,11 @@ static eInsertKeyFlags get_autokey_flags(Scene *scene)
     flag |= INSERTKEY_NEEDED;
   }
 
+  /* Only insert available. */
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
+    flag |= INSERTKEY_AVAILABLE;
+  }
+
   /* Keyframing mode - only replace existing keyframes. */
   if (is_autokey_mode(scene, AUTOKEY_MODE_EDITKEYS)) {
     flag |= INSERTKEY_REPLACE;
@@ -131,43 +136,35 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
     return;
   }
 
-  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
-    /* Only key on available channels. */
-    AnimData *adt = ob->adt;
-    ToolSettings *ts = scene->toolsettings;
-    Main *bmain = CTX_data_main(C);
-
-    if (adt && adt->action) {
-      CombinedKeyingResult combined_result;
-      LISTBASE_FOREACH (FCurve *, fcu, &adt->action->curves) {
-        CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      *id,
-                                                      (fcu->grp ? fcu->grp->name : nullptr),
-                                                      fcu->rna_path,
-                                                      fcu->array_index,
-                                                      &anim_eval_context,
-                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                      flag);
-        combined_result.merge(result);
-      }
-      if (combined_result.get_count(SingleKeyingResult::SUCCESS) == 0) {
-        combined_result.generate_reports(reports);
-      }
-    }
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) &&
+      (!ob->adt || (!ob->adt->action && !ob->adt->animation)))
+  {
+    /* TODO: account for multi-element properties in the report. E.g. right now
+     * location will be reported as a single channel in the report. */
+    CombinedKeyingResult result;
+    result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
+    result.generate_reports(reports);
     return;
   }
 
   const float scene_frame = BKE_scene_frame_get(scene);
   Main *bmain = CTX_data_main(C);
 
+  CombinedKeyingResult combined_result;
   for (PointerRNA ptr : sources) {
-    insert_key_rna(&ptr,
-                   rna_paths,
-                   scene_frame,
-                   flag,
-                   eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
-                   bmain,
-                   anim_eval_context);
+    CombinedKeyingResult result = insert_key_rna(
+        &ptr,
+        rna_paths,
+        scene_frame,
+        flag,
+        eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
+        bmain,
+        anim_eval_context);
+    combined_result.merge(result);
+  }
+
+  if (combined_result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+    combined_result.generate_reports(reports);
   }
 }
 
@@ -223,13 +220,13 @@ void autokeyframe_pose_channel(bContext *C,
   ID *id = &ob->id;
   AnimData *adt = ob->adt;
   bAction *act = (adt) ? adt->action : nullptr;
+  ::Animation *animation = (adt) ? adt->animation : nullptr;
 
   if (!blender::animrig::autokeyframe_cfra_can_key(scene, id)) {
     return;
   }
 
   ReportList *reports = CTX_wm_reports(C);
-  ToolSettings *ts = scene->toolsettings;
   KeyingSet *active_ks = ANIM_scene_get_active_keyingset(scene);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   const float scene_frame = BKE_scene_frame_get(scene);
@@ -259,46 +256,30 @@ void autokeyframe_pose_channel(bContext *C,
     return;
   }
 
-  /* only insert into available channels? */
-  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE)) {
-    if (!act) {
-      return;
-    }
-    LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-      /* only insert keyframes for this F-Curve if it affects the current bone */
-      char pchan_name[sizeof(pose_channel->name)];
-      if (!BLI_str_quoted_substr(fcu->rna_path, "bones[", pchan_name, sizeof(pchan_name))) {
-        continue;
-      }
-
-      /* only if bone name matches too...
-       * NOTE: this will do constraints too, but those are ok to do here too?
-       */
-      if (STREQ(pchan_name, pose_channel->name)) {
-        CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      *id,
-                                                      ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
-                                                      fcu->rna_path,
-                                                      fcu->array_index,
-                                                      &anim_eval_context,
-                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                      flag);
-        if (result.get_count(SingleKeyingResult::SUCCESS) == 0) {
-          result.generate_reports(reports);
-        }
-      }
-    }
+  if (is_keying_flag(scene, AUTOKEY_FLAG_INSERTAVAILABLE) && (!adt || (!act && !animation))) {
+    /* TODO: account for multi-element properties in the report. E.g. right now
+     * location will be reported as a single channel in the report. */
+    CombinedKeyingResult result;
+    result.add(SingleKeyingResult::CANNOT_CREATE_FCURVE, rna_paths.size());
+    result.generate_reports(reports);
     return;
   }
 
+  CombinedKeyingResult combined_result;
   for (PointerRNA &ptr : sources) {
-    insert_key_rna(&ptr,
-                   rna_paths,
-                   scene_frame,
-                   flag,
-                   eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
-                   bmain,
-                   anim_eval_context);
+    CombinedKeyingResult result = insert_key_rna(
+        &ptr,
+        rna_paths,
+        scene_frame,
+        flag,
+        eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
+        bmain,
+        anim_eval_context);
+    combined_result.merge(result);
+  }
+
+  if (combined_result.get_count(SingleKeyingResult::SUCCESS) == 0) {
+    combined_result.generate_reports(reports);
   }
 }
 

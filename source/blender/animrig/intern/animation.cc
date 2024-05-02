@@ -866,23 +866,26 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
                                                   const StringRefNull rna_path,
                                                   const int array_index,
                                                   const float2 time_value,
+                                                  const eInsertKeyFlags insert_key_flags,
                                                   const KeyframeSettings &settings)
 {
-  FCurve &fcurve = this->fcurve_find_or_create(binding, rna_path, array_index);
+  /* Make sure the F-Curve exists.
+   * - if we're replacing keyframes only, DO NOT create new F-Curves if they do not exist yet
+   *   but still try to get the F-Curve if it exists...
+   */
+  const bool can_create_curve = (insert_key_flags & (INSERTKEY_REPLACE | INSERTKEY_AVAILABLE)) ==
+                                0;
+  FCurve *fcu = can_create_curve ? &this->fcurve_find_or_create(binding, rna_path, array_index) :
+                                   this->fcurve_find(binding, rna_path, array_index);
+  if (!fcu) {
+    return SingleKeyingResult::CANNOT_CREATE_FCURVE;
+  }
 
-  if (!BKE_fcurve_is_keyframable(&fcurve)) {
+  if (!BKE_fcurve_is_keyframable(fcu)) {
     return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;
   }
 
-  /* TODO: Handle the eInsertKeyFlags. */
-  const int index = insert_vert_fcurve(&fcurve, time_value, settings, eInsertKeyFlags(0));
-  if (index < 0) {
-    /* TODO: change `insert_vert_fcurve()` (called above) to return enough
-     * information to return a proper result here. */
-    return SingleKeyingResult::GENERIC_FAILURE;
-  }
-
-  return SingleKeyingResult::SUCCESS;
+  return insert_vert_fcurve(fcu, time_value, settings, insert_key_flags);
 }
 
 /* AnimationChannelBag implementation. */
