@@ -681,6 +681,9 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual(attr.data_type, data_type)
         self.assertEqual(len(attr.data), elements_len)
 
+    def check_attribute_missing(self, blender_data, attribute_name):
+        self.assertFalse(attribute_name in blender_data.attributes)
+
     def test_import_attributes(self):
         testfile = str(self.tempdir / "usd_attribute_test.usda")
 
@@ -697,8 +700,8 @@ class USDImportTest(AbstractUSDTest):
 
         # Verify all attributes on the Mesh
         # Note: USD does not support signed 8-bit types so there is
-        #       currently no equivalent to Blender's INT8 type
-        # TODO: Blender is missing support for reading the USD quatf data type
+        #       currently no equivalent to Blender's INT8 data type
+        # TODO: Blender is missing support for reading USD quat/matrix data types
         mesh = bpy.data.objects["Mesh"].data
 
         self.check_attribute(mesh, "p_bool", 'POINT', 'BOOLEAN', 4)
@@ -707,17 +710,21 @@ class USDImportTest(AbstractUSDTest):
         self.check_attribute(mesh, "p_float", 'POINT', 'FLOAT', 4)
         self.check_attribute(mesh, "p_byte_color", 'POINT', 'FLOAT_COLOR', 4)
         self.check_attribute(mesh, "p_color", 'POINT', 'FLOAT_COLOR', 4)
-        #self.check_attribute(mesh, "p_vec2", 'POINT', 'FLOAT2', 4)  # TODO: Bug
+        self.check_attribute(mesh, "p_vec2", 'CORNER', 'FLOAT2', 4)  # TODO: Bug - wrong domain
         self.check_attribute(mesh, "p_vec3", 'POINT', 'FLOAT_VECTOR', 4)
+        self.check_attribute_missing(mesh, "p_quat")
+        self.check_attribute_missing(mesh, "p_mat4x4")
 
         self.check_attribute(mesh, "f_bool", 'FACE', 'BOOLEAN', 1)
         self.check_attribute(mesh, "f_int8", 'FACE', 'INT', 1)
         self.check_attribute(mesh, "f_int32", 'FACE', 'INT', 1)
         self.check_attribute(mesh, "f_float", 'FACE', 'FLOAT', 1)
-        #self.check_attribute(mesh, "f_byte_color", 'POINT', 'FLOAT_COLOR', 1) # Not supported?
-        #self.check_attribute(mesh, "f_color", 'POINT', 'FLOAT_COLOR', 1) # Not supported?
+        self.check_attribute_missing(mesh, "f_byte_color") # Not supported?
+        self.check_attribute_missing(mesh, "f_color") # Not supported?
         self.check_attribute(mesh, "f_vec2", 'FACE', 'FLOAT2', 1)
         self.check_attribute(mesh, "f_vec3", 'FACE', 'FLOAT_VECTOR', 1)
+        self.check_attribute_missing(mesh, "f_quat")
+        self.check_attribute_missing(mesh, "f_mat4x4")
 
         self.check_attribute(mesh, "fc_bool", 'CORNER', 'BOOLEAN', 4)
         self.check_attribute(mesh, "fc_int8", 'CORNER', 'INT', 4)
@@ -727,7 +734,9 @@ class USDImportTest(AbstractUSDTest):
         self.check_attribute(mesh, "fc_color", 'CORNER', 'FLOAT_COLOR', 4)
         self.check_attribute(mesh, "fc_vec2", 'CORNER', 'FLOAT2', 4)
         self.check_attribute(mesh, "fc_vec3", 'CORNER', 'FLOAT_VECTOR', 4)
-        self.check_attribute(mesh, "p_vec2", 'CORNER', 'FLOAT2', 4)  # TODO: Bug - wrong domain
+        self.check_attribute_missing(mesh, "fc_quat")
+        self.check_attribute_missing(mesh, "fc_mat4x4")
+
 
 def main():
     global args
