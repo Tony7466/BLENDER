@@ -15,7 +15,7 @@ void main()
 
   /* Due to packing, the wire width is passed in compressed. If the RNA range is increased, this
    * needs to change as well. */
-  const float wire_width = bone_color.a * 16.0;
+  const float wire_width = bone_color.a * width_compression;
   geometry_out.wire_width = wire_width;
 
   geometry_out.finalColor.rgb = mix(state_color.rgb, bone_color.rgb, 0.5);
