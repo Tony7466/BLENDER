@@ -1757,12 +1757,12 @@ static bool orthogonalize_m3_zero_axes_impl(float *mat[3], const float unit_leng
 
 bool orthogonalize_m3_zero_axes(float m[3][3], const float unit_length)
 {
-  float *unpacked[3] = {m[0], m[1], m[3]};
+  float *unpacked[3] = {m[0], m[1], m[2]};
   return orthogonalize_m3_zero_axes_impl(unpacked, unit_length);
 }
 bool orthogonalize_m4_zero_axes(float m[4][4], const float unit_length)
 {
-  float *unpacked[3] = {m[0], m[1], m[3]};
+  float *unpacked[3] = {m[0], m[1], m[2]};
   return orthogonalize_m3_zero_axes_impl(unpacked, unit_length);
 }
 
