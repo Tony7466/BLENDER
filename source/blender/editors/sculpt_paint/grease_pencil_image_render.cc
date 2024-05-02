@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_grease_pencil.hh"
 #include "BLI_color.hh"
 #include "BLI_math_matrix.hh"
 
@@ -279,7 +280,7 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
   immBeginAtMost(GPU_PRIM_LINE_STRIP_ADJ, indices.size() + cyclic_add + 2);
 
   auto set_point = [&](const int point_i) {
-    const float thickness = radii[point_i] * bke::greasepencil::legacy_radius_to_pixel_factor;
+    const float thickness = radii[point_i] * bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
     constexpr const float min_thickness = 0.05f;
 
     immAttr4fv(attr_color, colors[point_i]);

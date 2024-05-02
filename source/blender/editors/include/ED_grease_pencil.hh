@@ -418,13 +418,15 @@ enum FillToolFitMethod {
  * \param boundary_layers Layers that are purely for boundaries, regular strokes are not rendered.
  * \param src_drawings Drawings to include as boundary strokes.
  * \param fill_point Point from which to start the bucket fill.
- * \param reports Reports list for errors.
- * \param keep_image Keep the image data block after generating curves.
+ * \param stroke_material_index Material index to use for the new strokes.
+ * \param keep_images Keep the image data block after generating curves.
  */
 bke::CurvesGeometry fill_strokes(ARegion &region,
                                  View3D &view3d,
                                  RegionView3D &rv3d,
+                                 const ViewContext &view_context,
                                  Main &bmain,
+                                 const Brush &brush,
                                  const Scene &scene,
                                  Depsgraph &depsgraph,
                                  Object &object,
@@ -434,7 +436,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  bool invert,
                                  const float2 &fill_point,
                                  FillToolFitMethod fit_method,
-                                 bool keep_image,
+                                 int stroke_material_index,
+                                 bool keep_images,
                                  const bool use_onion_skinning,
                                  const bool allow_fill_material);
 

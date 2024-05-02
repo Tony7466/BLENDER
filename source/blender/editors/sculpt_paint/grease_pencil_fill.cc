@@ -188,8 +188,8 @@ static void convert_flags_to_colors(ImageBufferAccessor &buffer)
   constexpr const ColorGeometry4b output_seed_color = {127, 127, 0, 255};
   constexpr const ColorGeometry4b output_border_color = {0, 0, 255, 255};
   constexpr const ColorGeometry4b output_fill_color = {127, 255, 0, 255};
-  constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
-  constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
+  // constexpr const ColorGeometry4b output_extend_color = {25, 255, 0, 255};
+  // constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
   constexpr const ColorGeometry4b output_debug_color = {255, 127, 0, 255};
 
   for (ColorGeometry4b &color : buffer.pixels()) {
@@ -494,7 +494,10 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
 }
 
 /* Create curves geometry from boundary positions. */
-static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
+static bke::CurvesGeometry boundary_to_curves(const Scene &scene,
+                                              const ViewContext &view_context,
+                                              const Brush &brush,
+                                              const FillBoundary &boundary,
                                               const ImageBufferAccessor &buffer,
                                               const ed::greasepencil::DrawingPlacement &placement,
                                               const int material_index,
@@ -508,9 +511,11 @@ static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
   bke::CurvesGeometry curves(boundary.pixels.size(), boundary.offset_indices.size() - 1);
 
   curves.offsets_for_write().copy_from(boundary.offset_indices);
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   MutableSpan<float3> positions = curves.positions_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  /* Attributes that are defined explicitly and should not be set to default values. */
+  Set<std::string> skip_curve_attributes = {"curve_type", "material_index", "cyclic", "hardness"};
+  Set<std::string> skip_point_attributes = {"position", "radius", "opacity"};
 
   curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
   curves.update_curve_types();
@@ -523,6 +528,14 @@ static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
       "hardness",
       bke::AttrDomain::Curve,
       bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+  bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
+      "radius",
+      bke::AttrDomain::Point,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(0.01f, curves.points_num())));
+  bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity",
+      bke::AttrDomain::Point,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.points_num())));
 
   cyclic.span.last() = true;
   materials.span.last() = material_index;
@@ -532,30 +545,65 @@ static bke::CurvesGeometry boundary_to_curves(const FillBoundary &boundary,
   materials.finish();
   hardnesses.finish();
 
-  /* Initialize the rest of the attributes with default values. */
-  bke::fill_attribute_range_default(attributes,
-                                    bke::AttrDomain::Point,
-                                    this->skipped_attribute_ids(bke::AttrDomain::Point),
-                                    curves.points_range().take_back(1));
-  bke::fill_attribute_range_default(attributes,
-                                    bke::AttrDomain::Curve,
-                                    this->skipped_attribute_ids(bke::AttrDomain::Curve),
-                                    curves.curves_range().take_back(1));
+  for (const int point_i : curves.points_range()) {
+    const int pixel_index = boundary.pixels[point_i];
+    const int2 pixel_coord = buffer.coord_from_index(pixel_index);
+    const float3 position = placement.project(float2(pixel_coord));
+    positions[point_i] = position;
 
-  for (const int curve_i : curves.curves_range()) {
-    const IndexRange points = points_by_curve[curve_i];
-    for (const int point_i : points) {
-      const int pixel_index = boundary.pixels[point_i];
-      const int2 pixel_coord = buffer.coord_from_index(pixel_index);
-      positions[point_i] = placement.project(float2(pixel_coord));
+    /* Calculate radius and opacity for the outline as if it was a user stroke with full pressure.
+     */
+    constexpr const float pressure = 1.0f;
+    radii.span[point_i] = ed::greasepencil::radius_from_input_sample(
+        pressure, position, view_context, &brush, &scene, brush.gpencil_settings);
+    opacities.span[point_i] = ed::greasepencil::opacity_from_input_sample(
+        pressure, &brush, &scene, brush.gpencil_settings);
+  }
+
+  if (scene.toolsettings->gp_paint->mode == GPPAINT_FLAG_USE_VERTEXCOLOR) {
+    ColorGeometry4f vertex_color;
+    srgb_to_linearrgb_v3_v3(vertex_color, brush.rgb);
+    vertex_color.a = brush.gpencil_settings->vertex_factor;
+
+    if (ELEM(brush.gpencil_settings->vertex_mode, GPPAINT_MODE_FILL, GPPAINT_MODE_BOTH)) {
+      skip_curve_attributes.add("fill_color");
+      bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
+          attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
+                                                                   bke::AttrDomain::Curve);
+      fill_colors.span.last() = vertex_color;
+      fill_colors.finish();
+    }
+    if (ELEM(brush.gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH)) {
+      skip_point_attributes.add("vertex_color");
+      bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+          attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color",
+                                                                   bke::AttrDomain::Point);
+      for (const int point_i : curves.points_range()) {
+        vertex_colors.span[point_i] = vertex_color;
+      }
+      vertex_colors.finish();
     }
   }
+
+  radii.finish();
+  opacities.finish();
+
+  /* Initialize the rest of the attributes with default values. */
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Curve, skip_curve_attributes, curves.curves_range());
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Point, skip_point_attributes, curves.points_range());
 
   return curves;
 }
 
 static bke::CurvesGeometry process_image(Image &ima,
+                                         const Scene &scene,
+                                         const ViewContext &view_context,
+                                         const Brush &brush,
                                          const ed::greasepencil::DrawingPlacement &placement,
+                                         const int stroke_material_index,
+                                         const float stroke_hardness,
                                          const bool invert,
                                          const bool output_as_colors)
 {
@@ -595,7 +643,14 @@ static bke::CurvesGeometry process_image(Image &ima,
     convert_flags_to_colors(buffer);
   }
 
-  return boundary_to_curves(boundary, buffer, placement);
+  return boundary_to_curves(scene,
+                            view_context,
+                            brush,
+                            boundary,
+                            buffer,
+                            placement,
+                            stroke_material_index,
+                            stroke_hardness);
 }
 
 /** \} */
@@ -826,7 +881,9 @@ static auto fit_strokes_to_view(const ARegion &region,
 bke::CurvesGeometry fill_strokes(ARegion &region,
                                  View3D &view3d,
                                  RegionView3D &rv3d,
+                                 const ViewContext &view_context,
                                  Main &bmain,
+                                 const Brush &brush,
                                  const Scene &scene,
                                  Depsgraph &depsgraph,
                                  Object &object,
@@ -836,7 +893,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const bool invert,
                                  const float2 &fill_point,
                                  const FillToolFitMethod fit_method,
-                                 const bool keep_image,
+                                 const int stroke_material_index,
+                                 const bool keep_images,
                                  const bool use_onion_skinning,
                                  const bool allow_fill_material)
 {
@@ -933,14 +991,25 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     return {};
   }
 
-  bke::CurvesGeometry fill_curves = process_image(*ima, placement, invert, keep_image);
+  /* TODO should use the same hardness as the paint tool. */
+  const float stroke_hardness = 1.0f;
+
+  bke::CurvesGeometry fill_curves = process_image(*ima,
+                                                  scene,
+                                                  view_context,
+                                                  brush,
+                                                  placement,
+                                                  stroke_material_index,
+                                                  stroke_hardness,
+                                                  invert,
+                                                  keep_images);
 
   /* Note: Region view reset has to happen after final curve construction, otherwise the curve
    * placement, used to re-project from the 2D pixel coordinates, will have the wrong view
    * transform. */
   image_render::region_reset(region, region_view_data);
 
-  if (keep_image) {
+  if (keep_images) {
     ima->id.tag |= LIB_TAG_DOIT;
   }
   else {

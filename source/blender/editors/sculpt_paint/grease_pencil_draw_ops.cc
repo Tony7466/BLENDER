@@ -494,6 +494,8 @@ struct GreasePencilFillOpData {
   eGP_FillExtendModes fill_extend_mode;
   float fill_extend_fac;
 
+  int material_index;
+
   /* Fill is disabled initially, only perform fill after first mouse press. */
   bool is_fill_initialized = false;
   /* Mouse position where fill was initialized */
@@ -526,7 +528,9 @@ struct GreasePencilFillOpData {
     // }
   }
 
-  static GreasePencilFillOpData from_context(bContext &C, blender::bke::greasepencil::Layer &layer)
+  static GreasePencilFillOpData from_context(bContext &C,
+                                             blender::bke::greasepencil::Layer &layer,
+                                             const int material_index)
   {
     using blender::bke::greasepencil::Layer;
 
@@ -547,7 +551,8 @@ struct GreasePencilFillOpData {
     return {layer,
             brush.gpencil_settings->flag,
             eGP_FillExtendModes(brush.gpencil_settings->fill_extend_mode),
-            brush.gpencil_settings->fill_extend_fac};
+            brush.gpencil_settings->fill_extend_fac,
+            material_index};
   }
 };
 
@@ -658,6 +663,7 @@ static bool grease_pencil_apply_fill(bContext &C,
   RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   Main &bmain = *CTX_data_main(&C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  ViewContext view_context = ED_view3d_viewcontext_init(&C, &depsgraph);
   const Scene &scene = *CTX_data_scene(&C);
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -685,7 +691,9 @@ static bool grease_pencil_apply_fill(bContext &C,
     bke::CurvesGeometry fill_curves = fill_strokes(*region,
                                                    view3d,
                                                    rv3d,
+                                                   view_context,
                                                    bmain,
+                                                   brush,
                                                    scene,
                                                    depsgraph,
                                                    object,
@@ -695,6 +703,7 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    is_inverted,
                                                    mouse_position,
                                                    fit_method,
+                                                   op_data.material_index,
                                                    keep_images,
                                                    use_onion_skinning,
                                                    allow_fill_material);
@@ -755,8 +764,8 @@ static bool grease_pencil_fill_init(bContext &C, wmOperator &op)
       &bmain, &ob, &brush);
   const int material_index = BKE_object_material_index_get(&ob, material);
 
-  op.customdata = MEM_new<GreasePencilFillOpData>(__func__,
-                                                  GreasePencilFillOpData::from_context(C, *layer));
+  op.customdata = MEM_new<GreasePencilFillOpData>(
+      __func__, GreasePencilFillOpData::from_context(C, *layer, material_index));
   return true;
 }
 
@@ -847,7 +856,8 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       break;
     case LEFTMOUSE:
       /* Ensure a drawing at the current keyframe. */
-      if (!ed::greasepencil::ensure_active_keyframe(scene, grease_pencil)) {
+      bool frame_inserted;
+      if (!ed::greasepencil::ensure_active_keyframe(scene, grease_pencil, frame_inserted)) {
         BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
         return OPERATOR_CANCELLED;
       }
