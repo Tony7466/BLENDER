@@ -10,7 +10,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_solvers.h"
 #include "BLI_math_vector.h"
-#include "BLI_simd.h"
+#include "BLI_simd.hh"
 
 #ifndef MATH_STANDALONE
 #  include "eigen_capi.h"
