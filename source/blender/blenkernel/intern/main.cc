@@ -30,6 +30,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
+#include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_main_idmap.hh"
 #include "BKE_main_namemap.hh"
@@ -444,8 +445,15 @@ Main *BKE_main_copy_tagged(Main *bmain_src)
   ID *id_src;
   FOREACH_MAIN_ID_BEGIN (bmain_src, id_src) {
     if (id_src->tag & LIB_TAG_DOIT) {
-      ID *id_dst = BKE_id_copy_ex(
-          bmain_dst, id_src, nullptr, LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_DEG_TAG);
+      ID *id_dst = BKE_id_copy_ex(bmain_dst,
+                                  id_src,
+                                  nullptr,
+                                  LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_DEG_TAG |
+                                      LIB_ID_COPY_LIBRARIES);
+      if (id_dst) {
+        /* TODO: this doesn't work to preserve library linking. */
+        id_dst->lib = id_src->lib;
+      }
       id_remapper.add(id_src, id_dst);
     }
     else {
@@ -455,7 +463,8 @@ Main *BKE_main_copy_tagged(Main *bmain_src)
   FOREACH_MAIN_ID_END;
 
   /* Remap datablock pointers. */
-  BKE_libblock_remap_multiple_raw(bmain_dst, id_remapper, ID_REMAP_SKIP_USER_CLEAR);
+  BKE_libblock_remap_multiple_raw(
+      bmain_dst, id_remapper, ID_REMAP_SKIP_USER_CLEAR | ID_REMAP_DO_LIBRARY_POINTERS);
 
   /* Compute reference counts. */
   ID *id_dst;
@@ -464,6 +473,7 @@ Main *BKE_main_copy_tagged(Main *bmain_src)
   }
   FOREACH_MAIN_ID_END;
   BKE_main_id_refcount_recompute(bmain_dst, false);
+  BKE_library_main_rebuild_hierarchy(bmain_dst);
 
   return bmain_dst;
 }

@@ -77,6 +77,18 @@ static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
   memset(&lib->runtime, 0, sizeof(lib->runtime));
 }
 
+static void library_copy_data(Main * /*bmain*/,
+                              std::optional<Library *> /*owner_library*/,
+                              ID *id_dst,
+                              const ID * /*id_src*/,
+                              const int /*flag*/)
+{
+  Library *lib_dst = (Library *)(id_dst);
+  lib_dst->runtime.name_map = nullptr;
+  lib_dst->runtime.filedata = nullptr;
+  lib_dst->runtime.temp_index = 0;
+}
+
 IDTypeInfo IDType_ID_LI = {
     /*id_code*/ ID_LI,
     /*id_filter*/ FILTER_ID_LI,
@@ -86,11 +98,11 @@ IDTypeInfo IDType_ID_LI = {
     /*name*/ "Library",
     /*name_plural*/ N_("libraries"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIBRARY,
-    /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA,
+    /*flags*/ IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ nullptr,
-    /*copy_data*/ nullptr,
+    /*copy_data*/ library_copy_data,
     /*free_data*/ library_free_data,
     /*make_local*/ nullptr,
     /*foreach_id*/ library_foreach_id,

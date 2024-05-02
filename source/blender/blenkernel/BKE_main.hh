@@ -298,6 +298,8 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
 
 /**
  * Create a copy of the main database, with IDs tagged with LIB_TAG_DOIT.
+ *
+ * ID types with IDTYPE_FLAGS_NO_COPY will not be copied.
  */
 Main *BKE_main_copy_tagged(Main *bmain_src);
 

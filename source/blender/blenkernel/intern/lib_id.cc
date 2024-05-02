@@ -661,6 +661,9 @@ ID *BKE_id_copy_in_lib(Main *bmain,
     if ((idtype_info->flags & IDTYPE_FLAGS_NO_COPY) != 0) {
       return nullptr;
     }
+    else if (idtype_info->id_code == ID_LI && !(flag & LIB_ID_COPY_LIBRARIES)) {
+      return nullptr;
+    }
 
     BKE_libblock_copy_in_lib(bmain, owner_library, id, &newid, flag);
 
