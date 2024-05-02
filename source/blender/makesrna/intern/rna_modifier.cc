@@ -3600,6 +3600,29 @@ static void rna_def_modifier_array(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 
+  /* Rotation offset */
+  prop = RNA_def_property(srna, "use_rotation_offset", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "offset_type", MOD_ARR_OFF_ROT);
+  RNA_def_property_ui_text(prop, "Rotation Offset", "Add a rotation offset");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "rotation_offset_angle", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_float_sdna(prop, nullptr, "angle");
+  RNA_def_property_ui_text(
+      prop, "Rotation Offset Angle", "Value for the angle that every arrayed item is rotated by");
+  RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 10, -1);
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "origin_object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "origin_ob");
+  RNA_def_property_ui_text(
+      prop,
+      "Origin Object",
+      "Use the origin of another object relatively to this one as the "
+      "origin of the rotation between items");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
   /* Caps */
   prop = RNA_def_property(srna, "start_cap", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Start Cap", "Mesh object to use as a start cap");

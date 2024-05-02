@@ -4703,7 +4703,8 @@ static bool constructive_modifier_is_deform_modified(Object *ob, ModifierData *m
     return (amd->start_cap != nullptr && object_moves_in_time(amd->start_cap)) ||
            (amd->end_cap != nullptr && object_moves_in_time(amd->end_cap)) ||
            (amd->curve_ob != nullptr && object_moves_in_time(amd->curve_ob)) ||
-           (amd->offset_ob != nullptr && object_moves_in_time(amd->offset_ob));
+           (amd->offset_ob != nullptr && object_moves_in_time(amd->offset_ob)) ||
+           (amd->origin_ob != nullptr && object_moves_in_time(amd->origin_ob));
   }
   if (md->type == eModifierType_Mirror) {
     MirrorModifierData *mmd = (MirrorModifierData *)md;

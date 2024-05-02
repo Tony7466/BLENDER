@@ -357,6 +357,8 @@ typedef struct ArrayModifierData {
   struct Object *curve_ob;
   /** The object to use for object offset. */
   struct Object *offset_ob;
+  /** The object to use for rotation offset. */
+  struct Object *origin_ob;
   /**
    * A constant duplicate offset;
    * 1 means the duplicates are 1 unit apart.
@@ -367,6 +369,8 @@ typedef struct ArrayModifierData {
    * 1 means the duplicates are 1 object-width apart.
    */
   float scale[3];
+  /** An angle to be applied to the duplicates. */
+  float angle[3];
   /** The length over which to distribute the duplicates. */
   float length;
   /** The limit below which to merge vertices in adjacent duplicates. */
@@ -394,6 +398,7 @@ typedef struct ArrayModifierData {
   /** The number of duplicates to generate for #MOD_ARR_FIXEDCOUNT. */
   int count;
   float uv_offset[2];
+  char _pad[4];
 } ArrayModifierData;
 
 /** #ArrayModifierData.fit_type */
@@ -408,6 +413,7 @@ enum {
   MOD_ARR_OFF_CONST = (1 << 0),
   MOD_ARR_OFF_RELATIVE = (1 << 1),
   MOD_ARR_OFF_OBJ = (1 << 2),
+  MOD_ARR_OFF_ROT = (1 << 3),
 };
 
 /** #ArrayModifierData.flags */

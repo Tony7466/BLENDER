@@ -13,6 +13,7 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
@@ -70,6 +71,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   walk(user_data, ob, (ID **)&amd->end_cap, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&amd->curve_ob, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&amd->offset_ob, IDWALK_CB_NOP);
+  walk(user_data, ob, (ID **)&amd->origin_ob, IDWALK_CB_NOP);
 }
 
 static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
@@ -92,6 +94,11 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   if (amd->offset_ob != nullptr) {
     DEG_add_object_relation(
         ctx->node, amd->offset_ob, DEG_OB_COMP_TRANSFORM, "Array Modifier Offset");
+    need_transform_dependency = true;
+  }
+  if (amd->origin_ob != nullptr) {
+    DEG_add_object_relation(
+        ctx->node, amd->origin_ob, DEG_OB_COMP_TRANSFORM, "Array Modifier Rotation Origin");
     need_transform_dependency = true;
   }
 
@@ -405,6 +412,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   const bool use_merge = (amd->flags & MOD_ARR_MERGE) != 0;
   const bool use_recalc_normals = BKE_mesh_vert_normals_are_dirty(mesh) || use_merge;
   const bool use_offset_ob = ((amd->offset_type & MOD_ARR_OFF_OBJ) && amd->offset_ob != nullptr);
+  const bool use_origin_ob = ((amd->offset_type & MOD_ARR_OFF_ROT) && amd->origin_ob != nullptr);
 
   int start_cap_nverts = 0, start_cap_nedges = 0, start_cap_nfaces = 0, start_cap_nloops = 0;
   int end_cap_nverts = 0, end_cap_nedges = 0, end_cap_nfaces = 0, end_cap_nloops = 0;
@@ -601,6 +609,17 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
         .copy_from(src_vert_normals);
   }
 
+  /* calculate rotation origin relative to arrayed items */
+  float3 rot_rel_origin = float3(0,0,0);
+  if (use_origin_ob) {
+    if (ctx->object) {
+      rot_rel_origin = float3(amd->origin_ob->loc) - float3(ctx->object->loc);
+    }
+    else {
+      rot_rel_origin = float3(amd->origin_ob->loc);
+    }
+  }
+
   for (c = 1; c < count; c++) {
     /* copy customdata to new geometry */
     CustomData_copy_data(&mesh->vert_data, &result->vert_data, 0, c * chunk_nverts, chunk_nverts);
@@ -614,9 +633,31 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     /* recalculate cumulative offset here */
     mul_m4_m4m4(current_offset, current_offset, offset);
 
+    /* rotation matrix */
+    float rot[3][3];
+    if (amd->offset_type & MOD_ARR_OFF_ROT) {
+      float angle[3];
+      for (i = 0; i < 3; i++) {
+        angle[i] = amd->angle[i] * float(c);
+      }
+      eul_to_mat3(rot, angle);
+    }
+
     /* apply offset to all new verts */
     for (i = 0; i < chunk_nverts; i++) {
       const int i_dst = vert_offset + i;
+
+      /* apply rotation */
+      if (amd->offset_type & MOD_ARR_OFF_ROT) {
+        for (j = 0; j<3; j++) {
+          result_positions[i_dst][j] -= rot_rel_origin[j];
+        }
+        mul_m3_v3(rot, result_positions[i_dst]);
+        for (j = 0; j<3; j++) {
+          result_positions[i_dst][j] += rot_rel_origin[j];
+        }
+      }
+
       mul_m4_v3(current_offset, result_positions[i_dst]);
 
       /* We have to correct normals too, if we do not tag them as dirty! */
@@ -985,6 +1026,31 @@ static void object_offset_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(col, ptr, "offset_object", UI_ITEM_NONE, IFACE_("Object"), ICON_NONE);
 }
 
+static void rotation_offset_header_draw(const bContext *, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiItemR(layout, ptr, "use_rotation_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
+static void rotation_offset_draw(const bContext *, Panel *panel)
+{
+  uiLayout *layout = panel->layout;
+
+  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+
+  uiLayoutSetPropSep(layout, true);
+
+  uiLayout *col = uiLayoutColumn(layout, false);
+
+  uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_rotation_offset"));
+  uiItemR(col, ptr, "rotation_offset_angle", UI_ITEM_NONE, IFACE_("Angle"), ICON_NONE);
+  
+  uiItemR(col, ptr, "origin_object", UI_ITEM_NONE, IFACE_("Origin Object"), ICON_NONE);
+}
+
 static void symmetry_panel_header_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
@@ -1055,6 +1121,12 @@ static void panel_register(ARegionType *region_type)
                              "",
                              constant_offset_header_draw,
                              constant_offset_draw,
+                             panel_type);
+  modifier_subpanel_register(region_type,
+                             "rotation_offset",
+                             "",
+                             rotation_offset_header_draw,
+                             rotation_offset_draw,
                              panel_type);
   modifier_subpanel_register(
       region_type, "object_offset", "", object_offset_header_draw, object_offset_draw, panel_type);
