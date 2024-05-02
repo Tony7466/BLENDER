@@ -10,6 +10,8 @@
 #include "BLI_simd.hh"
 #include "BLI_utildefines.h"
 
+#include <string.h>
+
 #include "BLI_strict_flags.h" /* Keep last. */
 
 void hsv_to_rgb(float h, float s, float v, float *r_r, float *r_g, float *r_b)
@@ -420,6 +422,7 @@ float linearrgb_to_srgb(float c)
   return 1.055f * powf(c, 1.0f / 2.4f) - 0.055f;
 }
 
+/* SIMD code path, with pow 2.4 and 1/2.4 approximations. */
 #if BLI_HAVE_SSE2
 
 /**
@@ -554,21 +557,103 @@ void linearrgb_to_srgb_v3_v3(float srgb[3], const float linear[3])
   srgb[2] = r[2];
 }
 
-#else  /* BLI_HAVE_SSE2 */
+#else /* BLI_HAVE_SSE2 */
+
+/* Non-SIMD code path, with the same pow approximations as SIMD one. */
+
+MALWAYS_INLINE float int_as_float(int32_t v)
+{
+  float r;
+  memcpy(&r, &v, sizeof(v));
+  return r;
+}
+
+MALWAYS_INLINE int32_t float_as_int(float v)
+{
+  int32_t r;
+  memcpy(&r, &v, sizeof(v));
+  return r;
+}
+
+MALWAYS_INLINE float _bli_math_fastpow(const int exp, const int e2coeff, const float arg)
+{
+  float ret = arg * int_as_float(e2coeff);
+  ret = float(float_as_int(ret));
+  ret = ret * int_as_float(exp);
+  ret = int_as_float(int(ret));
+  return ret;
+}
+
+MALWAYS_INLINE float _bli_math_improve_5throot_solution(const float old_result, const float x)
+{
+  float approx2 = old_result * old_result;
+  float approx4 = approx2 * approx2;
+  float t = x / approx4;
+  float summ = 4.0f * old_result + t;
+  return summ * (1.0f / 5.0f);
+}
+
+MALWAYS_INLINE float _bli_math_fastpow24(const float arg)
+{
+  float x = _bli_math_fastpow(0x3F4CCCCD, 0x4F55A7FB, arg);
+  float arg2 = arg * arg;
+  float arg4 = arg2 * arg2;
+  x = _bli_math_improve_5throot_solution(x, arg4);
+  x = _bli_math_improve_5throot_solution(x, arg4);
+  x = _bli_math_improve_5throot_solution(x, arg4);
+  return x * x * x;
+}
+
+MALWAYS_INLINE float _bli_math_rsqrt(float in)
+{
+  return 1.0f / sqrtf(in);
+}
+
+MALWAYS_INLINE float _bli_math_fastpow512(const float arg)
+{
+  float xf = _bli_math_fastpow(0x3f2aaaab, 0x5eb504f3, arg);
+  float xover = arg * xf;
+  float xfm1 = _bli_math_rsqrt(xf);
+  float x2 = arg * arg;
+  float xunder = x2 * xfm1;
+  float xavg = (1.0f / (3.0f * 0.629960524947437f) * 0.999852f) * (xover + xunder);
+  xavg = xavg * _bli_math_rsqrt(xavg);
+  xavg = xavg * _bli_math_rsqrt(xavg);
+  return xavg;
+}
+
+MALWAYS_INLINE float srgb_to_linearrgb_approx(float c)
+{
+  if (c < 0.04045f) {
+    return (c < 0.0f) ? 0.0f : c * (1.0f / 12.92f);
+  }
+
+  return _bli_math_fastpow24((c + 0.055f) * (1.0f / 1.055f));
+}
+
+MALWAYS_INLINE float linearrgb_to_srgb_approx(float c)
+{
+  if (c < 0.0031308f) {
+    return (c < 0.0f) ? 0.0f : c * 12.92f;
+  }
+
+  return 1.055f * _bli_math_fastpow512(c) - 0.055f;
+}
 
 void srgb_to_linearrgb_v3_v3(float linear[3], const float srgb[3])
 {
-  linear[0] = srgb_to_linearrgb(srgb[0]);
-  linear[1] = srgb_to_linearrgb(srgb[1]);
-  linear[2] = srgb_to_linearrgb(srgb[2]);
+  linear[0] = srgb_to_linearrgb_approx(srgb[0]);
+  linear[1] = srgb_to_linearrgb_approx(srgb[1]);
+  linear[2] = srgb_to_linearrgb_approx(srgb[2]);
 }
 
 void linearrgb_to_srgb_v3_v3(float srgb[3], const float linear[3])
 {
-  srgb[0] = linearrgb_to_srgb(linear[0]);
-  srgb[1] = linearrgb_to_srgb(linear[1]);
-  srgb[2] = linearrgb_to_srgb(linear[2]);
+  srgb[0] = linearrgb_to_srgb_approx(linear[0]);
+  srgb[1] = linearrgb_to_srgb_approx(linear[1]);
+  srgb[2] = linearrgb_to_srgb_approx(linear[2]);
 }
+
 #endif /* BLI_HAVE_SSE2 */
 
 void minmax_rgb(short c[3])
