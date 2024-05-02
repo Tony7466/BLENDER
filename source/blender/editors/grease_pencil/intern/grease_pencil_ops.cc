@@ -187,7 +187,6 @@ void ED_operatormacros_grease_pencil()
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
   WM_operatortype_macro_define(ot, "GREASE_PENCIL_OT_extrude");
   otmacro = WM_operatortype_macro_define(ot, "TRANSFORM_OT_translate");
-  // RNA_boolean_set(otmacro->ptr, "gpencil_strokes", true);
   RNA_boolean_set(otmacro->ptr, "use_proportional_edit", false);
   RNA_boolean_set(otmacro->ptr, "mirror", false);
 }
