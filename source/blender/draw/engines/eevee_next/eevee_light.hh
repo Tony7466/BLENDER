@@ -76,7 +76,11 @@ struct Light : public LightData, NonCopyable {
   }
 #endif
 
-  void sync(ShadowModule &shadows, const Object *ob, float threshold);
+  void sync(ShadowModule &shadows,
+            float4x4 object_to_world,
+            char visibility_flag,
+            const ::Light *la,
+            float threshold);
 
   void shadow_ensure(ShadowModule &shadows);
   void shadow_discard_safe(ShadowModule &shadows);
@@ -112,6 +116,7 @@ class LightModule {
 
   /** Map of light objects data. Converted to flat array each frame. */
   Map<ObjectKey, Light> light_map_;
+  ObjectKey world_sunlight_key;
   /** Flat array sent to GPU, populated from light_map_. Source buffer for light culling. */
   LightDataBuf light_buf_ = {"Lights_no_cull"};
   /** Luminous intensity to consider the light boundary at. Used for culling. */

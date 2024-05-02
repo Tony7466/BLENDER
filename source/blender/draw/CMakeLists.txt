@@ -564,6 +564,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_reflection_probe_mapping_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_remap_comp.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_select_comp.glsl
+  engines/eevee_next/shaders/eevee_reflection_probe_sunlight_comp.glsl
   engines/eevee_next/shaders/eevee_renderpass_lib.glsl
   engines/eevee_next/shaders/eevee_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_debug_frag.glsl

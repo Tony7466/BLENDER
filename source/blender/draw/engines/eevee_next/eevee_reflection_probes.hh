@@ -46,6 +46,8 @@ class SphereProbeModule {
   PassSimple remap_ps_ = {"Probe.CubemapToOctahedral"};
   /** Sum irradiance information optionally extracted during `remap_ps_`. */
   PassSimple sum_sh_ps_ = {"Probe.SumSphericalHarmonics"};
+  /** Sum sunlight information optionally extracted during `remap_ps_`. */
+  PassSimple sum_sun_ps_ = {"Probe.SumSunlight"};
   /** Copy volume probe irradiance for the center of sphere probes. */
   PassSimple select_ps_ = {"Probe.Select"};
   /** Convolve the octahedral map to fill the Mip-map levels. */
@@ -85,6 +87,12 @@ class SphereProbeModule {
       tmp_spherical_harmonics_ = {"tmp_spherical_harmonics_"};
   /** Final buffer containing the spherical harmonics for the world. */
   StorageBuffer<SphereProbeHarmonic, true> spherical_harmonics_ = {"spherical_harmonics_"};
+
+  /** Intermediate buffer to store sun light. */
+  StorageArrayBuffer<SphereProbeSunLight, SPHERE_PROBE_MAX_HARMONIC, true> tmp_sunlight_ = {
+      "tmp_sunlight_"};
+  /** Final buffer containing the sun light for the world. */
+  StorageBuffer<SphereProbeSunLight> sunlight_ = {"sunlight_"};
 
   /**
    * True if the next redraw will trigger a light-probe sphere update.
@@ -135,6 +143,11 @@ class SphereProbeModule {
   StorageBuffer<SphereProbeHarmonic, true> &spherical_harmonics_buf()
   {
     return spherical_harmonics_;
+  }
+
+  SphereProbeSunLight sunlight() const
+  {
+    return sunlight_;
   }
 
  private:

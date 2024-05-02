@@ -39,11 +39,13 @@ void SphereProbeModule::begin_sync()
     PassSimple &pass = remap_ps_;
     pass.init();
     pass.specialize_constant(shader, "extract_sh", &extract_sh_);
+    pass.specialize_constant(shader, "extract_sun", &extract_sh_);
     pass.shader_set(shader);
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_texture("atlas_tx", &probes_tx_);
     pass.bind_image("atlas_img", &probes_tx_);
     pass.bind_ssbo("out_sh", &tmp_spherical_harmonics_);
+    pass.bind_ssbo("out_sun", &tmp_sunlight_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
@@ -71,6 +73,16 @@ void SphereProbeModule::begin_sync()
     pass.push_constant("probe_remap_dispatch_size", &dispatch_probe_pack_);
     pass.bind_ssbo("in_sh", &tmp_spherical_harmonics_);
     pass.bind_ssbo("out_sh", &spherical_harmonics_);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+    pass.dispatch(1);
+  }
+  {
+    PassSimple &pass = sum_sun_ps_;
+    pass.init();
+    pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_SUNLIGHT));
+    pass.push_constant("probe_remap_dispatch_size", &dispatch_probe_pack_);
+    pass.bind_ssbo("in_sun", &tmp_sunlight_);
+    pass.bind_ssbo("out_sun", &sunlight_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
     pass.dispatch(1);
   }
@@ -227,6 +239,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
 
   if (extract_spherical_harmonics) {
     instance_.manager->submit(sum_sh_ps_);
+    instance_.manager->submit(sum_sun_ps_);
+    sunlight_.read();
     /* All volume probe that needs to composite the world probe need to be updated. */
     instance_.volume_probes.update_world_irradiance();
   }

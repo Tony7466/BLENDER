@@ -15,6 +15,8 @@
 #include "eevee_light.hh"
 
 #include "BLI_math_rotation.h"
+#include "DNA_defaults.h"
+
 
 namespace blender::eevee {
 
@@ -45,11 +47,13 @@ static eLightType to_light_type(short blender_light_type,
 /** \name Light Object
  * \{ */
 
-void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
+void Light::sync(ShadowModule &shadows,
+                 float4x4 object_to_world,
+                 char visibility_flag,
+                 const ::Light *la,
+                 float threshold)
 {
   using namespace blender::math;
-
-  const ::Light *la = (const ::Light *)ob->data;
 
   eLightType new_type = to_light_type(la->type, la->area_shape, la->mode & LA_USE_SOFT_FALLOFF);
   if (assign_if_different(this->type, new_type)) {
@@ -59,7 +63,6 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->color = float3(&la->r) * la->energy;
 
   float3 scale;
-  float4x4 object_to_world = ob->object_to_world();
   object_to_world.view<3, 3>() = normalize_and_get_size(object_to_world.view<3, 3>(), scale);
 
   /* Make sure we have consistent handedness (in case of negatively scaled Z axis). */
@@ -72,10 +75,10 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   shape_parameters_set(la, scale, threshold);
 
-  const bool diffuse_visibility = (ob->visibility_flag & OB_HIDE_DIFFUSE) == 0;
-  const bool glossy_visibility = (ob->visibility_flag & OB_HIDE_GLOSSY) == 0;
-  const bool transmission_visibility = (ob->visibility_flag & OB_HIDE_TRANSMISSION) == 0;
-  const bool volume_visibility = (ob->visibility_flag & OB_HIDE_VOLUME_SCATTER) == 0;
+  const bool diffuse_visibility = (visibility_flag & OB_HIDE_DIFFUSE) == 0;
+  const bool glossy_visibility = (visibility_flag & OB_HIDE_GLOSSY) == 0;
+  const bool transmission_visibility = (visibility_flag & OB_HIDE_TRANSMISSION) == 0;
+  const bool volume_visibility = (visibility_flag & OB_HIDE_VOLUME_SCATTER) == 0;
 
   float shape_power = shape_radiance_get();
   float point_power = point_radiance_get();
@@ -334,16 +337,37 @@ void LightModule::begin_sync()
 
   sun_lights_len_ = 0;
   local_lights_len_ = 0;
+
+  if (use_sun_lights_) {
+    SphereProbeSunLight sunlight = inst_.sphere_probes.sunlight();
+
+    if (math::is_unit_scale(sunlight.direction)) {
+      ::Light la = blender::dna::shallow_copy(
+          *(const ::Light *)DNA_default_table[SDNA_TYPE_FROM_STRUCT(Light)]);
+      la.type = LA_SUN;
+      la.r = sunlight.radiance.x / (4.0f * M_PI);
+      la.g = sunlight.radiance.y / (4.0f * M_PI);
+      la.b = sunlight.radiance.z / (4.0f * M_PI);
+      float4x4 world_to_object = math::from_up_axis<float4x4>(sunlight.direction);
+
+      Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
+      light.used = true;
+      light.sync(inst_.shadows, world_to_object, 0, &la, light_threshold_);
+
+      sun_lights_len_ += 1;
+    }
+  }
 }
 
 void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
 {
+  const ::Light *la = static_cast<const ::Light *>(ob->data);
   if (use_scene_lights_ == false) {
     return;
   }
 
   if (use_sun_lights_ == false) {
-    if (static_cast<const ::Light *>(ob->data)->type == LA_SUN) {
+    if (la->type == LA_SUN) {
       return;
     }
   }
@@ -352,7 +376,7 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   light.used = true;
   if (handle.recalc != 0 || !light.initialized) {
     light.initialized = true;
-    light.sync(inst_.shadows, ob, light_threshold_);
+    light.sync(inst_.shadows, ob->world_to_object(), ob->visibility_flag, la, light_threshold_);
   }
   sun_lights_len_ += int(is_sun_light(light.type));
   local_lights_len_ += int(!is_sun_light(light.type));

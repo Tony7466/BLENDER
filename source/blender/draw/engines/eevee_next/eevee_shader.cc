@@ -225,6 +225,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_reflection_probe_irradiance";
     case SPHERE_PROBE_SELECT:
       return "eevee_reflection_probe_select";
+    case SPHERE_PROBE_SUNLIGHT:
+      return "eevee_reflection_probe_sunlight";
     case SHADOW_CLIPMAP_CLEAR:
       return "eevee_shadow_clipmap_clear";
     case SHADOW_DEBUG:
