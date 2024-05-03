@@ -32,7 +32,6 @@
 #include "intern/node/deg_node_id.hh"
 #include "intern/node/deg_node_operation.hh"
 
-struct Animation;
 struct CacheFile;
 struct Camera;
 struct Collection;

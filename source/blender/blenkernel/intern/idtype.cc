@@ -284,7 +284,6 @@ int BKE_idtype_idfilter_to_index(const uint64_t id_filter)
 
   switch (id_filter) {
     CASE_IDINDEX(AC);
-    CASE_IDINDEX(AN);
     CASE_IDINDEX(AR);
     CASE_IDINDEX(BR);
     CASE_IDINDEX(CA);

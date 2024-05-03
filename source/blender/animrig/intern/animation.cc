@@ -15,11 +15,12 @@
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
-#include "BKE_animation.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
+#include "BKE_preview_image.hh"
 
 #include "ED_keyframing.hh"
 
@@ -430,6 +431,16 @@ void Action::free_data()
   }
   MEM_SAFE_FREE(this->binding_array);
   this->binding_array_num = 0;
+
+  /* Free legacy F-Curves & groups. */
+  BKE_fcurves_free(&this->curves);
+  BLI_freelistN(&this->groups);
+
+  /* Free markers & preview. */
+  BLI_freelistN(&this->markers);
+  BKE_previewimg_free(&this->preview);
+
+  BLI_assert(this->is_empty());
 }
 
 bool Action::assign_id(Binding *binding, ID &animated_id)

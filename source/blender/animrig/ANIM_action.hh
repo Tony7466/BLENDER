@@ -143,7 +143,7 @@ class Action : public ::bAction {
   void binding_name_define(Binding &binding, StringRefNull new_name);
 
   /**
-   * Update the `AnimData::animation_binding_name` field of any ID that is animated by
+   * Update the `AnimData::action_binding_name` field of any ID that is animated by
    * this Binding.
    *
    * Should be called after `binding_name_define(binding)`. This is implemented as a separate

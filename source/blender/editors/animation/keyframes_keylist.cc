@@ -1167,37 +1167,32 @@ void action_group_to_keylist(AnimData *adt,
   }
 }
 
-/**
- * Assumption: the animation is bound to adt->binding_handle. This assumption will break when we
- * have things like reference strips, where the strip can reference another binding handle.
- */
-void animation_to_keylist(AnimData *adt,
-                          bAction *anim,
-                          AnimKeylist *keylist,
-                          const int saction_flag,
-                          blender::float2 range)
-{
-  BLI_assert(adt);
-  BLI_assert(anim);
-  BLI_assert(GS(anim->id.name) == ID_AC);
-
-  for (FCurve *fcurve : fcurves_for_animation(anim->wrap(), adt->binding_handle)) {
-    fcurve_to_keylist(adt, fcurve, keylist, saction_flag, range);
-  }
-}
-
 void action_to_keylist(AnimData *adt,
-                       bAction *act,
+                       bAction *dna_action,
                        AnimKeylist *keylist,
                        const int saction_flag,
                        blender::float2 range)
 {
-  if (!act) {
+  if (!dna_action) {
     return;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-    fcurve_to_keylist(adt, fcu, keylist, saction_flag, range);
+  blender::animrig::Action &action = dna_action->wrap();
+
+  /* TODO: move this into fcurves_for_animation(). */
+  if (action.is_action_legacy()) {
+    LISTBASE_FOREACH (FCurve *, fcu, &action.curves) {
+      fcurve_to_keylist(adt, fcu, keylist, saction_flag, range);
+    }
+    return;
+  }
+
+  /**
+   * Assumption: the animation is bound to adt->binding_handle. This assumption will break when we
+   * have things like reference strips, where the strip can reference another binding handle.
+   */
+  for (FCurve *fcurve : fcurves_for_animation(action, adt->binding_handle)) {
+    fcurve_to_keylist(adt, fcurve, keylist, saction_flag, range);
   }
 }
 

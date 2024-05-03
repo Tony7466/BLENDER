@@ -1706,7 +1706,13 @@ void DepsgraphRelationBuilder::build_animdata_nlastrip_targets(ID *id,
       ComponentKey action_key(&strip->act->id, NodeType::ANIMATION);
       add_relation(action_key, adt_key, "Action -> Animation");
 
-      build_animdata_action_targets(id, adt_key, operation_from, strip->act);
+      if (!strip->act->wrap().is_action_legacy()) {
+        /* TODO: add NLA support for layered actions. */
+        continue;
+      }
+      /* TODO: get binding handle from the owning ID. */
+      const animrig::binding_handle_t binding_handle = animrig::Binding::unassigned;
+      build_animdata_action_targets(id, binding_handle, adt_key, operation_from, strip->act);
     }
     else if (strip->strips.first != nullptr) {
       build_animdata_nlastrip_targets(id, adt_key, operation_from, &strip->strips);

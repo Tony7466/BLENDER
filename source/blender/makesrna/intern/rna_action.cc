@@ -643,6 +643,12 @@ static void rna_Action_active_pose_marker_index_range(
   *max = max_ii(0, BLI_listbase_count(&act->markers) - 1);
 }
 
+static bool rna_Action_is_empty_get(PointerRNA *ptr)
+{
+  animrig::Action &action = rna_action(ptr);
+  return action.is_empty();
+}
+
 static void rna_Action_frame_range_get(PointerRNA *ptr, float *r_values)
 {
   BKE_action_frame_range_get((bAction *)ptr->owner_id, &r_values[0], &r_values[1]);
@@ -1711,11 +1717,19 @@ static void rna_def_action(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_ACTION);
 
 #  ifdef WITH_ANIM_BAKLAVA
+  /* Properties. */
   prop = RNA_def_property(srna, "last_binding_handle", PROP_INT, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "is_empty", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Is Empty", "False when there is any Layer, Binding, or legacy F-Curve.");
+  RNA_def_property_boolean_funcs(prop, "rna_Action_is_empty_get", nullptr);
+
 #  endif
 
-  /* Collection properties .*/
+  /* Collection properties. */
 
 #  ifdef WITH_ANIM_BAKLAVA
   prop = RNA_def_property(srna, "bindings", PROP_COLLECTION, PROP_NONE);

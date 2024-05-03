@@ -694,7 +694,7 @@ static void ANIM_OT_binding_unassign_object(wmOperatorType *ot)
   ot->name = "Unassign Binding";
   ot->idname = "ANIM_OT_binding_unassign_object";
   ot->description =
-      "Clear the assigned animation binding, effectively making this data-block non-animated";
+      "Clear the assigned action binding, effectively making this data-block non-animated";
 
   /* api callbacks */
   ot->exec = binding_unassign_object_exec;

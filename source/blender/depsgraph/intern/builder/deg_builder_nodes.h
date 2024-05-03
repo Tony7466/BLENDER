@@ -19,7 +19,6 @@
 
 #include "DEG_depsgraph.hh"
 
-struct Animation;
 struct CacheFile;
 struct Camera;
 struct Collection;

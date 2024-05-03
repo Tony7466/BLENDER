@@ -369,12 +369,12 @@ static void draw_keyframes(bAnimContext *ac,
                               action_flag);
         break;
       case ALE_ACTION_LAYERED:
-        ED_add_animation_channel(draw_list,
-                                 adt,
-                                 static_cast<Animation *>(ale->key_data),
-                                 ycenter,
-                                 scale_factor,
-                                 action_flag);
+        ED_add_action_layered_channel(draw_list,
+                                      adt,
+                                      static_cast<bAction *>(ale->key_data),
+                                      ycenter,
+                                      scale_factor,
+                                      action_flag);
         break;
       case ALE_ACT:
         ED_add_action_channel(draw_list,
