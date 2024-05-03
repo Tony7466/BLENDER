@@ -95,7 +95,9 @@ class ConstraintButtonsPanel:
 
         if con.target and subtargets:
             if con.target.type == 'ARMATURE':
-                col.prop_search(con, "subtarget", con.target.data, "bones", text="Bone")
+                row = layout.row()
+                row.prop_search(con, "subtarget", con.target.data, "bones", text="Bone")
+                row.operator("ui.eyedropper_bone", text="", icon="EYEDROPPER")
 
                 if con.subtarget and hasattr(con, "head_tail"):
                     row = col.row(align=True)
