@@ -3674,7 +3674,7 @@ static void rna_CompositorNodeScale_update(Main *bmain, Scene *scene, PointerRNA
   rna_Node_update(bmain, scene, ptr);
 }
 
-static void rna_ShaderNode_is_active_output_set(PointerRNA *ptr, bool value)
+static void rna_Node_is_active_output_set(PointerRNA *ptr, bool value)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = static_cast<bNode *>(ptr->data);
@@ -3939,6 +3939,18 @@ static PointerRNA rna_NodeMenuSwitch_enum_definition_get(PointerRNA *ptr)
   /* Return node itself. The data is now directly available on the node and does not have to be
    * accessed through "enum_definition". */
   return *ptr;
+}
+
+static bNode *ntreeCompositorOutputNode(bNodeTree *ntree)
+{
+  /* Make sure we only have single node tagged as output. */
+  ntreeSetOutput(ntree);
+  for (bNode *node : ntree->all_nodes()) {
+    if (ELEM(node->type, CMP_NODE_COMPOSITE, NODE_GROUP_OUTPUT) && node->flag & NODE_DO_OUTPUT) {
+      return node;
+    }
+  }
+  return nullptr;
 }
 
 #else
@@ -4524,7 +4536,7 @@ static void def_sh_output(StructRNA *srna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_DO_OUTPUT);
   RNA_def_property_ui_text(
       prop, "Active Output", "True if this node is used as the active output");
-  RNA_def_property_boolean_funcs(prop, nullptr, "rna_ShaderNode_is_active_output_set");
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_Node_is_active_output_set");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "target", PROP_ENUM, PROP_NONE);
@@ -8137,6 +8149,13 @@ static void def_cmp_composite(StructRNA *srna)
       "Use Alpha",
       "Colors are treated alpha premultiplied, or colors output straight (alpha gets set to 1)");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "is_active_output", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_DO_OUTPUT);
+  RNA_def_property_ui_text(
+      prop, "Active Output", "True if this node is used as the active output");
+  RNA_def_property_boolean_funcs(prop, nullptr, "rna_Node_is_active_output_set");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_cmp_keyingscreen(StructRNA *srna)
@@ -10483,6 +10502,8 @@ static void rna_def_composite_nodetree(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
 
   srna = RNA_def_struct(brna, "CompositorNodeTree", "NodeTree");
   RNA_def_struct_ui_text(
@@ -10524,6 +10545,11 @@ static void rna_def_composite_nodetree(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Viewer Region", "Use boundaries for viewer nodes and composite backdrop");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_NodeTree_update");
+
+  func = RNA_def_function(srna, "get_output_node", "ntreeCompositorOutputNode");
+  RNA_def_function_ui_description(func, "Return active output node");
+  parm = RNA_def_pointer(func, "node", "CompositorNode", "Node", "");
+  RNA_def_function_return(func, parm);
 }
 
 static void rna_def_shader_nodetree(BlenderRNA *brna)
