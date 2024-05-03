@@ -1589,7 +1589,7 @@ class CLIP_MT_select(Menu):
         layout = self.layout
 
         layout.operator("clip.select_all", text="All").action = 'SELECT'
-        layout.operator("clip.select_all", text="None").action = 'DESELECT'
+        layout.operator("clip.select_all", text="Deselect").action = 'DESELECT'
         layout.operator("clip.select_all", text="Inverse").action = 'INVERT'
 
         layout.separator()
@@ -1615,7 +1615,7 @@ class CLIP_MT_select_graph(Menu):
         layout = self.layout
 
         layout.operator("clip.graph_select_all_markers", text="All").action="SELECT"
-        layout.operator("clip.graph_select_all_markers", text="None").action="DESELECT"
+        layout.operator("clip.graph_select_all_markers", text="Deselect").action="DESELECT"
         layout.operator("clip.graph_select_all_markers", text="Invert").action="INVERT"
 
 
