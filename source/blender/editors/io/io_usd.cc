@@ -242,8 +242,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_custom_properties,
       author_blender_name,
       convert_orientation,
-      USD_global_forward_axis(global_forward),
-      USD_global_up_axis(global_up),
+      eIOAxis(global_forward),
+      eIOAxis(global_up),
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);

@@ -160,7 +160,7 @@ static void ensure_root_prim(pxr::UsdStageRefPtr stage, const USDExportParams &p
   if (params.convert_orientation) {
     float mrot[3][3];
     mat3_from_axis_conversion(
-        USD_GLOBAL_FORWARD_Y, USD_GLOBAL_UP_Z, params.forward_axis, params.up_axis, mrot);
+        IO_AXIS_Y, IO_AXIS_Z, params.forward_axis, params.up_axis, mrot);
     transpose_m3(mrot);
 
     float eul[3];
@@ -293,9 +293,9 @@ pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
 
   pxr::VtValue upAxis = pxr::VtValue(pxr::UsdGeomTokens->z);
   if (params.convert_orientation) {
-    if (params.up_axis == USD_GLOBAL_UP_X)
+    if (params.up_axis == IO_AXIS_X)
       upAxis = pxr::VtValue(pxr::UsdGeomTokens->x);
-    else if (params.up_axis == USD_GLOBAL_UP_Y)
+    else if (params.up_axis == IO_AXIS_Y)
       upAxis = pxr::VtValue(pxr::UsdGeomTokens->y);
   }
 

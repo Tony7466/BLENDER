@@ -81,8 +81,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
     if (usd_export_context_.export_params.convert_orientation) {
       float mrot[3][3];
       float mat[4][4];
-      mat3_from_axis_conversion(USD_GLOBAL_FORWARD_Y,
-                                USD_GLOBAL_UP_Z,
+      mat3_from_axis_conversion(IO_AXIS_Y,
+                                IO_AXIS_Z,
                                 usd_export_context_.export_params.forward_axis,
                                 usd_export_context_.export_params.up_axis,
                                 mrot);

@@ -6,6 +6,8 @@
 
 #include <memory>
 
+#include "../common/IO_orientation.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "RNA_types.hh"
@@ -24,24 +26,6 @@ struct GeometrySet;
 }
 
 namespace blender::io::usd {
-
-typedef enum USD_global_forward_axis {
-  USD_GLOBAL_FORWARD_X = 0,
-  USD_GLOBAL_FORWARD_Y = 1,
-  USD_GLOBAL_FORWARD_Z = 2,
-  USD_GLOBAL_FORWARD_MINUS_X = 3,
-  USD_GLOBAL_FORWARD_MINUS_Y = 4,
-  USD_GLOBAL_FORWARD_MINUS_Z = 5
-} USD_global_forward_axis;
-
-typedef enum USD_global_up_axis {
-  USD_GLOBAL_UP_X = 0,
-  USD_GLOBAL_UP_Y = 1,
-  USD_GLOBAL_UP_Z = 2,
-  USD_GLOBAL_UP_MINUS_X = 3,
-  USD_GLOBAL_UP_MINUS_Y = 4,
-  USD_GLOBAL_UP_MINUS_Z = 5
-} USD_global_up_axis;
 
 /**
  * Behavior when the name of an imported material
@@ -116,8 +100,8 @@ struct USDExportParams {
   bool export_custom_properties = true;
   bool author_blender_name = true;
   bool convert_orientation = false;
-  enum USD_global_forward_axis forward_axis = USD_global_forward_axis::USD_GLOBAL_FORWARD_MINUS_Z;
-  enum USD_global_up_axis up_axis = USD_global_up_axis::USD_GLOBAL_UP_Y;
+  enum eIOAxis forward_axis = eIOAxis::IO_AXIS_NEGATIVE_Z;
+  enum eIOAxis up_axis = eIOAxis::IO_AXIS_Y;
   char root_prim_path[1024] = ""; /* FILE_MAX */
   char collection[MAX_IDPROP_NAME] = "";
 
