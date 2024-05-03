@@ -1735,7 +1735,7 @@ static void rna_def_action(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_empty", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
-      prop, "Is Empty", "False when there is any Layer, Binding, or legacy F-Curve.");
+      prop, "Is Empty", "False when there is any Layer, Binding, or legacy F-Curve");
   RNA_def_property_boolean_funcs(prop, "rna_Action_is_empty_get", nullptr);
 #  endif  // WITH_ANIM_BAKLAVA
 
