@@ -51,9 +51,7 @@ void send_redraw_notifier(const bContext &C)
 /** \name Shelf Type
  * \{ */
 
-using ShelfTypeVec = Vector<std::unique_ptr<AssetShelfType>>;
-
-static ShelfTypeVec &static_shelf_types()
+static Vector<std::unique_ptr<AssetShelfType>> &static_shelf_types()
 {
   static Vector<std::unique_ptr<AssetShelfType>> shelf_types;
   return shelf_types;
@@ -61,13 +59,13 @@ static ShelfTypeVec &static_shelf_types()
 
 void type_register(std::unique_ptr<AssetShelfType> type)
 {
-  ShelfTypeVec &shelf_types = static_shelf_types();
+  Vector<std::unique_ptr<AssetShelfType>> &shelf_types = static_shelf_types();
   shelf_types.append(std::move(type));
 }
 
 void type_unregister(const AssetShelfType &shelf_type)
 {
-  ShelfTypeVec &shelf_types = static_shelf_types();
+  Vector<std::unique_ptr<AssetShelfType>> &shelf_types = static_shelf_types();
   auto *const it = std::find_if(shelf_types.begin(),
                                 shelf_types.end(),
                                 [&](const std::unique_ptr<AssetShelfType> &iter_type) {
@@ -88,7 +86,7 @@ bool type_poll(const bContext &C, const AssetShelfType *shelf_type, const int sp
   }
 
 #ifndef NDEBUG
-  const ShelfTypeVec &shelf_types = static_shelf_types();
+  const Vector<std::unique_ptr<AssetShelfType>> &shelf_types = static_shelf_types();
   BLI_assert_msg(std::find_if(shelf_types.begin(),
                               shelf_types.end(),
                               [&](const std::unique_ptr<AssetShelfType> &type) {
@@ -100,7 +98,7 @@ bool type_poll(const bContext &C, const AssetShelfType *shelf_type, const int sp
   return !shelf_type->poll || shelf_type->poll(&C, shelf_type);
 }
 
-AssetShelfType *type_find_from_idname(const StringRefNull idname)
+AssetShelfType *type_find_from_idname(const StringRef idname)
 {
   for (const std::unique_ptr<AssetShelfType> &shelf_type : static_shelf_types()) {
     if (idname == shelf_type->idname) {

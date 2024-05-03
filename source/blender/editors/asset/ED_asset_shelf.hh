@@ -25,7 +25,7 @@ struct RegionPollParams;
 struct wmWindowManager;
 
 namespace blender {
-class StringRefNull;
+class StringRef;
 }  // namespace blender
 
 namespace blender::ed::asset::shelf {
@@ -78,7 +78,7 @@ void type_unregister(const AssetShelfType &shelf_type);
  */
 bool type_poll(const bContext &C, const AssetShelfType *shelf_type, const int space_type);
 
-AssetShelfType *type_find_from_idname(const StringRefNull idname);
+AssetShelfType *type_find_from_idname(const StringRef idname);
 
 /** \} */
 
