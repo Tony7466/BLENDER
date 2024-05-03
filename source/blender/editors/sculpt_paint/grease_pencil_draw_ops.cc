@@ -508,6 +508,14 @@ struct GreasePencilFillOpData {
   /* Mouse position where the extension mode was enabled. */
   float2 extension_mouse_pos;
 
+  ~GreasePencilFillOpData()
+  {
+    // TODO Remove drawing handler.
+    // if (this->draw_handle_3d) {
+    //   ED_region_draw_cb_exit(this->region_type, this->draw_handle_3d);
+    // }
+  }
+
   static GreasePencilFillOpData from_context(bContext &C,
                                              blender::bke::greasepencil::Layer &layer,
                                              const int material_index)
@@ -516,7 +524,6 @@ struct GreasePencilFillOpData {
 
     const ToolSettings &ts = *CTX_data_tool_settings(&C);
     const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-    // const ARegion &region = *CTX_wm_region(&C);
 
     /* Enable custom drawing handlers to show help lines */
     const bool do_extend = (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES);
@@ -696,7 +703,7 @@ static bool grease_pencil_apply_fill(bContext &C,
   if (!region || region->regiontype != RGN_TYPE_WINDOW) {
     return false;
   }
-  /* Perform bounds check */
+  /* Perform bounds check. */
   const bool in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event.xy);
   if (!in_bounds) {
     return false;
@@ -714,7 +721,6 @@ static bool grease_pencil_apply_fill(bContext &C,
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op.customdata);
   const ToolSettings &ts = *CTX_data_tool_settings(&C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
   const float2 mouse_position = float2(event.mval);
 
   if (!grease_pencil.has_active_layer()) {
@@ -823,7 +829,7 @@ static void grease_pencil_fill_exit(bContext &C, wmOperator &op)
     op.customdata = nullptr;
   }
 
-  /* clear status message area */
+  /* Clear status message area. */
   ED_workspace_status_text(&C, nullptr);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
@@ -839,7 +845,7 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
   Object &ob = *CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
 
-  /* Fill tool needs a material (cannot use default material) */
+  /* Fill tool needs a material (cannot use default material). */
   if (brush.gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
     if (brush.gpencil_settings->material == nullptr) {
       BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
@@ -922,7 +928,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
         else {
           op_data.fill_extend_mode = GP_FILL_EMODE_EXTEND;
         }
-        // gpencil_delete_temp_stroke_extension(tgpf, true);
         grease_pencil_update_extend(*C, op_data);
       }
       break;
@@ -1010,7 +1015,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       break;
   }
 
-  /* return status code */
   return estate;
 }
 

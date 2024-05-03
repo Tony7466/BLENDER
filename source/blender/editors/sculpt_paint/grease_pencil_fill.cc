@@ -787,14 +787,14 @@ static rctf get_boundary_bounds(const ARegion &region,
       if (points.size() < 2) {
         return;
       }
-      /* check if the color is visible */
+      /* Check if the color is visible. */
       const int material_index = materials[curve_i];
       Material *mat = BKE_object_material_get(const_cast<Object *>(&object), material_index + 1);
       if (mat == 0 || (mat->gp_style->flag & GP_MATERIAL_HIDE)) {
         return;
       }
 
-      /* If the layer must be skipped, but the stroke is not boundary, skip stroke. */
+      /* In boundary layers only boundary strokes should be rendered. */
       if (only_boundary_strokes && !is_boundary_stroke[curve_i]) {
         return;
       }

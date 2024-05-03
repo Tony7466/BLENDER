@@ -80,7 +80,6 @@ GPUOffScreen *image_render_begin(const int2 &win_size)
 Image *image_render_end(Main &bmain, GPUOffScreen *buffer)
 {
   const int2 win_size = {GPU_offscreen_width(buffer), GPU_offscreen_height(buffer)};
-  /* create a image to see result of template */
   const uint imb_flag = IB_rect;
   ImBuf *ibuf = IMB_allocImBuf(win_size.x, win_size.y, 32, imb_flag);
   if (ibuf->float_buffer.data) {
@@ -98,7 +97,7 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer)
 
   BKE_image_release_ibuf(ima, ibuf, nullptr);
 
-  /* Switch back to window-system-provided frame-buffer. */
+  /* Switch back to regular frame-buffer. */
   GPU_offscreen_unbind(buffer, true);
   GPU_offscreen_free(buffer);
 
@@ -171,7 +170,6 @@ void draw_dot(const float3 &position, const float point_size, const ColorGeometr
   uint attr_size = GPU_vertformat_attr_add(format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   uint attr_color = GPU_vertformat_attr_add(format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
-  /* Draw mouse click position in Blue. */
   GPU_program_point_size(true);
   immBindBuiltinProgram(GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
   immBegin(GPU_PRIM_POINTS, 1);
@@ -196,9 +194,8 @@ void draw_curve(const IndexRange indices,
       format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_FLAT_COLOR);
 
-  /* draw stroke curve */
   GPU_line_width(line_width);
-  /* If cyclic needs one more vertex. */
+  /* If cyclic the curve needs one more vertex. */
   const int cyclic_add = (cyclic && indices.size() > 2) ? 1 : 0;
   immBeginAtMost(GPU_PRIM_LINE_STRIP, indices.size() + cyclic_add);
 
@@ -268,7 +265,7 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
   GPUUniformBuf *ubo = create_shader_ubo(rv3d, win_size, object, cap_start, cap_end, fill_stroke);
   immBindUniformBuf("gpencil_stroke_data", ubo);
 
-  /* If cyclic needs one more vertex. */
+  /* If cyclic the curve needs one more vertex. */
   const int cyclic_add = (cyclic && indices.size() > 2) ? 1 : 0;
 
   immBeginAtMost(GPU_PRIM_LINE_STRIP_ADJ, indices.size() + cyclic_add + 2);
@@ -284,7 +281,7 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
     immVertex3fv(attr_pos, math::transform_point(layer_to_world, positions[point_i]));
   };
 
-  /* first point for adjacency (not drawn) */
+  /* First point for adjacency (not drawn). */
   if (cyclic && indices.size() > 2) {
     set_point(indices.last() - 1);
   }
@@ -297,11 +294,10 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
   }
 
   if (cyclic && indices.size() > 2) {
-    /* draw line to first point to complete the cycle */
     set_point(indices.first());
     set_point(indices.first() + 1);
   }
-  /* last adjacency point (not drawn) */
+  /* Last adjacency point (not drawn). */
   else {
     set_point(indices.last() - 1);
   }
@@ -361,8 +357,8 @@ void draw_grease_pencil_strokes(const RegionView3D &rv3d,
     if (!use_xray) {
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
 
-      /* first arg is normally rv3d->dist, but this isn't
-       * available here and seems to work quite well without */
+      /* First arg is normally rv3d->dist, but this isn't
+       * available here and seems to work quite well without. */
       GPU_polygon_offset(1.0f, 1.0f);
     }
 

@@ -4776,7 +4776,7 @@ def km_grease_pencil_weight_paint(params):
     return keymap
 
 
-# Grease Pencil v3 Fill Tool
+# Grease Pencil v3 Fill Tool.
 def km_grease_pencil_fill_tool(_params):
     items = []
     keymap = (
@@ -4786,7 +4786,7 @@ def km_grease_pencil_fill_tool(_params):
     )
 
     items.extend([
-        # Fill operator
+        # Fill operator.
         ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS'},
          {"properties": [("on_back", False)]}),
         ("grease_pencil.fill", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
