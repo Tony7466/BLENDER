@@ -65,6 +65,16 @@ class DrawingRuntime {
    * and remove a drawing if it has zero users.
    */
   mutable std::atomic<int> user_count = 1;
+
+  /**
+   * For RNA structs `StrokeSlice` and `StrokePoint` being able to find the drawing they belong to,
+   * a mapping of drawing pointers is created when accessing strokes and points in python.
+   * This is a little workaround, to be able to define the sublevels `drawing.strokes` and
+   * `drawing.strokes[].points` in RNA. A `PointerRNA *ptr` holds only pointers to `ptr->owner_id`
+   * and `ptr->data`, not to a parent like `drawing`.
+   */
+  mutable Array<Drawing *> map_rna_stroke_to_drawing;
+  mutable Array<Drawing *> map_rna_point_to_drawing;
 };
 
 class Drawing : public ::GreasePencilDrawing {
