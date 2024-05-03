@@ -103,6 +103,7 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+#ifdef WITH_ANIM_BAKLAVA
 constexpr int binding_items_value_create_new = -1;
 const EnumPropertyItem rna_enum_action_binding_items[] = {
     {binding_items_value_create_new,
@@ -113,6 +114,7 @@ const EnumPropertyItem rna_enum_action_binding_items[] = {
     {int(blender::animrig::Binding::unassigned), "UNASSIGNED", 0, "(none/legacy)", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
+#endif  // WITH_ANIM_BAKLAVA
 
 #ifdef RNA_RUNTIME
 

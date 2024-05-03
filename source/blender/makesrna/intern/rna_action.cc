@@ -32,6 +32,7 @@
 
 using namespace blender;
 
+#ifdef WITH_ANIM_BAKLAVA
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
     {int(animrig::Layer::MixMode::Replace),
      "REPLACE",
@@ -69,6 +70,7 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
      "Strip containing keyframes on F-Curves"},
     {0, nullptr, 0, nullptr, nullptr},
 };
+#endif  // WITH_ANIM_BAKLAVA
 
 #ifdef RNA_RUNTIME
 
@@ -89,6 +91,8 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 #  include "DEG_depsgraph.hh"
 
 #  include <fmt/format.h>
+
+#  ifdef WITH_ANIM_BAKLAVA
 
 static animrig::Action &rna_action(const PointerRNA *ptr)
 {
@@ -443,6 +447,8 @@ static ActionChannelBag *rna_KeyframeActionStrip_channels(
   return key_strip.channelbag_for_binding(binding_handle);
 }
 
+#  endif  // WITH_ANIM_BAKLAVA
+
 static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
 {
   ListBaseIterator *internal = &iter->internal.listbase;
@@ -643,11 +649,13 @@ static void rna_Action_active_pose_marker_index_range(
   *max = max_ii(0, BLI_listbase_count(&act->markers) - 1);
 }
 
+#  ifdef WITH_ANIM_BAKLAVA
 static bool rna_Action_is_empty_get(PointerRNA *ptr)
 {
   animrig::Action &action = rna_action(ptr);
   return action.is_empty();
 }
+#  endif  // WITH_ANIM_BAKLAVA
 
 static void rna_Action_frame_range_get(PointerRNA *ptr, float *r_values)
 {
@@ -1097,6 +1105,8 @@ static void rna_def_dopesheet(BlenderRNA *brna)
 
 /* =========================== Layered Action interface =========================== */
 
+#  ifdef WITH_ANIM_BAKLAVA
+
 static void rna_def_action_bindings(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
@@ -1467,6 +1477,7 @@ static void rna_def_action_channelbag(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "F-Curves", "The individual F-Curves that animate the binding");
   rna_def_channelbag_for_binding_fcurves(brna, prop);
 }
+#  endif  // WITH_ANIM_BAKLAVA
 
 /* =========================== Legacy Action interface =========================== */
 
@@ -1726,8 +1737,7 @@ static void rna_def_action(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Is Empty", "False when there is any Layer, Binding, or legacy F-Curve.");
   RNA_def_property_boolean_funcs(prop, "rna_Action_is_empty_get", nullptr);
-
-#  endif
+#  endif  // WITH_ANIM_BAKLAVA
 
   /* Collection properties. */
 
@@ -1759,7 +1769,7 @@ static void rna_def_action(BlenderRNA *brna)
                                     nullptr);
   RNA_def_property_ui_text(prop, "Layers", "The list of layers that make up this Animation");
   rna_def_action_layers(brna, prop);
-#  endif
+#  endif  // WITH_ANIM_BAKLAVA
 
   prop = RNA_def_property(srna, "pose_markers", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "markers", nullptr);
