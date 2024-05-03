@@ -2,11 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "ANIM_keyframing.hh"
+
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.hh"
+#include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_object_deform.h"
@@ -632,6 +635,81 @@ static VArray<bool> get_fill_boundary_layers(const GreasePencil &grease_pencil,
   return {};
 }
 
+/* Array of visible drawings to use as borders for generating a stroke in the editable drawing on
+ * the active layer. This is provided for every frame in the multi-frame edit range. */
+struct FillToolTargetInfo {
+  ed::greasepencil::MutableDrawingInfo target;
+  Vector<ed::greasepencil::DrawingInfo> sources;
+};
+
+static Vector<FillToolTargetInfo> ensure_editable_drawings(const Scene &scene,
+                                                           GreasePencil &grease_pencil,
+                                                           bke::greasepencil::Layer &target_layer)
+{
+  using namespace bke::greasepencil;
+  using ed::greasepencil::DrawingInfo;
+  using ed::greasepencil::MutableDrawingInfo;
+
+  const ToolSettings *toolsettings = scene.toolsettings;
+  const bool use_multi_frame_editing = (toolsettings->gpencil_flags &
+                                        GP_USE_MULTI_FRAME_EDITING) != 0;
+  const bool use_autokey = blender::animrig::is_autokey_on(&scene);
+  const bool use_duplicate_frame = (scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST);
+  const int target_layer_index = *grease_pencil.get_layer_index(target_layer);
+
+  VectorSet<int> target_frames;
+  /* Add drawing on the current frame. */
+  target_frames.add(scene.r.cfra);
+  /* Multi-frame edit: Add drawing on frames that are selected in any layer. */
+  if (use_multi_frame_editing) {
+    for (const Layer *layer : grease_pencil.layers()) {
+      for (const auto [frame_number, frame] : layer->frames().items()) {
+        if (frame.is_selected()) {
+          target_frames.add(frame_number);
+        }
+      }
+    }
+  }
+
+  /* Create new drawings when autokey is enabled. */
+  if (use_autokey) {
+    for (const int frame_number : target_frames) {
+      if (!target_layer.frames().contains(frame_number)) {
+        if (use_duplicate_frame) {
+          grease_pencil.insert_duplicate_frame(
+              target_layer, *target_layer.frame_key_at(frame_number), frame_number, false);
+        }
+        else {
+          grease_pencil.insert_blank_frame(target_layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+        }
+      }
+    }
+  }
+
+  Vector<FillToolTargetInfo> drawings;
+  for (const int frame_number : target_frames) {
+    if (Drawing *target_drawing = grease_pencil.get_editable_drawing_at(target_layer,
+                                                                        frame_number))
+    {
+      MutableDrawingInfo target = {*target_drawing, target_layer_index, frame_number, 1.0f};
+
+      Vector<DrawingInfo> sources;
+      for (const Layer *source_layer : grease_pencil.layers()) {
+        if (const Drawing *source_drawing = grease_pencil.get_drawing_at(*source_layer,
+                                                                         frame_number))
+        {
+          const int source_layer_index = *grease_pencil.get_layer_index(*source_layer);
+          sources.append({*source_drawing, source_layer_index, frame_number, 0});
+        }
+      }
+
+      drawings.append({std::move(target), std::move(sources)});
+    }
+  }
+
+  return drawings;
+}
+
 static bool grease_pencil_apply_fill(bContext &C,
                                      wmOperator &op,
                                      const wmEvent &event,
@@ -671,22 +749,20 @@ static bool grease_pencil_apply_fill(bContext &C,
   const ToolSettings &ts = *CTX_data_tool_settings(&C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
   // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+  const float2 mouse_position = float2(event.mval);
+
+  if (!grease_pencil.has_active_layer()) {
+    return false;
+  }
+  /* Add drawings in the active layer if autokey is enabled. */
+  Vector<FillToolTargetInfo> target_drawings = ensure_editable_drawings(
+      scene, grease_pencil, *grease_pencil.get_active_layer());
 
   const VArray<bool> boundary_layers = get_fill_boundary_layers(
       grease_pencil, eGP_FillLayerModes(brush.gpencil_settings->fill_layer_mode));
 
-  const float2 mouse_position = float2(event.mval);
-
-  /* Drawings that form boundaries for the generated strokes. */
-  const Vector<DrawingInfo> src_drawings = ed::greasepencil::retrieve_visible_drawings(
-      scene, grease_pencil, false);
-  /* Drawings from the active layer where strokes are generated. */
-  const Vector<MutableDrawingInfo> dst_drawings =
-      ed::greasepencil::retrieve_editable_drawings_from_layer(
-          scene, grease_pencil, *grease_pencil.get_active_layer());
-
-  for (const MutableDrawingInfo &dst_info : dst_drawings) {
-    const Layer &layer = *grease_pencil.layers()[dst_info.layer_index];
+  for (const FillToolTargetInfo &info : target_drawings) {
+    const Layer &layer = *grease_pencil.layers()[info.target.layer_index];
 
     bke::CurvesGeometry fill_curves = fill_strokes(*region,
                                                    view3d,
@@ -699,7 +775,7 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    object,
                                                    layer,
                                                    boundary_layers,
-                                                   src_drawings,
+                                                   info.sources,
                                                    is_inverted,
                                                    mouse_position,
                                                    fit_method,
@@ -708,15 +784,17 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    use_onion_skinning,
                                                    allow_fill_material);
 
-    Curves *dst_curves_id = curves_new_nomain(std::move(dst_info.drawing.strokes_for_write()));
+    Curves *dst_curves_id = curves_new_nomain(std::move(info.target.drawing.strokes_for_write()));
     Curves *fill_curves_id = curves_new_nomain(fill_curves);
     Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_curves(dst_curves_id),
                                              bke::GeometrySet::from_curves(fill_curves_id)};
-    bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
-    dst_info.drawing.strokes_for_write() = std::move(
-        joined_curves.get_curves_for_write()->geometry.wrap());
-
-    dst_info.drawing.tag_topology_changed();
+    bke::GeometrySet joined_geometry_set = geometry::join_geometries(geometry_sets, {});
+    bke::CurvesGeometry joined_curves =
+        (joined_geometry_set.has_curves() ?
+             std::move(joined_geometry_set.get_curves_for_write()->geometry.wrap()) :
+             bke::CurvesGeometry());
+    info.target.drawing.strokes_for_write() = std::move(joined_curves);
+    info.target.drawing.tag_topology_changed();
   }
 
   WM_cursor_modal_restore(&win);
@@ -836,9 +914,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
   const RegionView3D &rv3d = *CTX_wm_region_view3d(C);
   const ToolSettings &ts = *CTX_data_tool_settings(C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  const Scene &scene = *CTX_data_scene(C);
-  Object &ob = *CTX_data_active_object(C);
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
   const bool is_brush_inv = brush.gpencil_settings->fill_direction == BRUSH_DIR_IN;
 
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
@@ -855,13 +930,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       estate = OPERATOR_CANCELLED;
       break;
     case LEFTMOUSE:
-      /* Ensure a drawing at the current keyframe. */
-      bool frame_inserted;
-      if (!ed::greasepencil::ensure_active_keyframe(scene, grease_pencil, frame_inserted)) {
-        BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-        return OPERATOR_CANCELLED;
-      }
-
       /* If doing a extend transform with the pen, avoid false contacts of
        * the pen with the tablet. */
       if (op_data.is_extension_mode) {
@@ -926,8 +994,8 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       if (event->val == KM_PRESS) {
         /* Consider initial offset as zero position. */
         op_data.is_extension_mode = true;
-        /* TODO This is the GPv2 logic and it's weird. Should be reconsidered, for now use the same
-         * method. */
+        /* TODO This is the GPv2 logic and it's weird. Should be reconsidered, for now use the
+         * same method. */
         const float2 base_pos = float2(event->mval);
         constexpr const float gap = 300.0f;
         op_data.extension_mouse_pos = (math::distance(base_pos, op_data.fill_mouse_pos) >= gap ?
