@@ -452,8 +452,13 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
 /* Test whether AnimData has a usable Action. */
 #define ANIMDATA_HAS_ACTION_LEGACY(id) \
   ((id)->adt && (id)->adt->action && (id)->adt->action->wrap().is_action_legacy())
-#define ANIMDATA_HAS_ACTION_LAYERED(id) \
-  ((id)->adt && (id)->adt->action && (id)->adt->action->wrap().is_action_layered())
+
+#ifdef WITH_ANIM_BAKLAVA
+#  define ANIMDATA_HAS_ACTION_LAYERED(id) \
+    ((id)->adt && (id)->adt->action && (id)->adt->action->wrap().is_action_layered())
+#else
+#  define ANIMDATA_HAS_ACTION_LAYERED(id) false
+#endif
 
 /* quick macro to test if AnimData is usable for drivers */
 #define ANIMDATA_HAS_DRIVERS(id) ((id)->adt && (id)->adt->drivers.first)
@@ -2954,11 +2959,9 @@ static size_t animdata_filter_ds_obanim(
         expanded = EXPANDED_ACTC(adt->action);
       },
       { /* Keyframes from layered action. */
-#ifdef WITH_ANIM_BAKLAVA
         type = ANIMTYPE_FILLACT_LAYERED;
         cdata = adt->action;
         expanded = EXPANDED_ADT(adt);
-#endif
       });
 
   /* add object-level animation channels */
