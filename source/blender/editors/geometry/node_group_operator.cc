@@ -188,7 +188,7 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object,
       if (std::shared_ptr<BMEditMesh> &em = mesh->runtime->edit_mesh) {
         operator_data.active_point_index = BM_mesh_active_vert_index_get(em->bm);
         operator_data.active_edge_index = BM_mesh_active_edge_index_get(em->bm);
-        operator_data.active_face_index = BM_mesh_active_face_index_get(em->bm, false, false);
+        operator_data.active_face_index = BM_mesh_active_face_index_get(em->bm, false, true);
         Mesh *mesh_copy = BKE_mesh_wrapper_from_editmesh(em, nullptr, mesh);
         BKE_mesh_wrapper_ensure_mdata(mesh_copy);
         Mesh *final_copy = BKE_mesh_copy_for_eval(mesh_copy);
