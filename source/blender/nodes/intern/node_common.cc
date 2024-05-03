@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstring>
 
+#include "DNA_asset_types.h"
 #include "DNA_node_types.h"
 
 #include "BLI_listbase.h"
@@ -99,6 +100,11 @@ std::string node_group_ui_description(const bNode &node)
     return "";
   }
   const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id);
+  if (group->id.asset_data) {
+    if (group->id.asset_data->description) {
+      return group->id.asset_data->description;
+    }
+  }
   if (!group->description) {
     return "";
   }
