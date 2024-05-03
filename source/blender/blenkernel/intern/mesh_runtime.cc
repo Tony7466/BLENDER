@@ -443,6 +443,9 @@ bool BKE_mesh_runtime_is_valid(Mesh *mesh_eval)
       do_fixes,
       &changed);
 
+  MDeformVert *dverts = CustomData_has_layer(&mesh_eval->vert_data, CD_MDEFORMVERT) ?
+                            mesh_eval->deform_verts_for_write().data() :
+                            nullptr;
   is_valid &= BKE_mesh_validate_arrays(
       mesh_eval,
       reinterpret_cast<float(*)[3]>(positions.data()),
@@ -457,7 +460,7 @@ bool BKE_mesh_runtime_is_valid(Mesh *mesh_eval)
       corner_verts.size(),
       face_offsets.data(),
       mesh_eval->faces_num,
-      mesh_eval->deform_verts_for_write().data(),
+      dverts,
       do_verbose,
       do_fixes,
       &changed);
