@@ -607,13 +607,7 @@ static void key_data_from_adt(bAnimListElem &ale, AnimData *adt)
 {
   ale.adt = adt;
 
-  if (!adt) {
-    ale.key_data = nullptr;
-    ale.datatype = ALE_NONE;
-    return;
-  }
-
-  if (!adt->action) {
+  if (!adt || !adt->action) {
     ale.key_data = nullptr;
     ale.datatype = ALE_NONE;
     return;
