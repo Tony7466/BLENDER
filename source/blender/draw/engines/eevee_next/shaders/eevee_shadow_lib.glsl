@@ -115,13 +115,8 @@ float shadow_linear_occluder_distance(LightData light,
   float near = orderedIntBitsToFloat(light.clip_near);
   float far = orderedIntBitsToFloat(light.clip_far);
 
-  float occluder_z = (is_directional) ? (occluder * (far - near) + near) :
-                                        ((near * far) / (occluder * (near - far) + far));
-  float receiver_z = (is_directional) ? -lP.z : reduce_max(abs(lP));
-  if (!is_directional) {
-    float lP_len = length(lP);
-    return lP_len - lP_len * (occluder_z / receiver_z);
-  }
+  float occluder_z = (is_directional) ? (occluder + near) : occluder;
+  float receiver_z = (is_directional) ? -lP.z : length(lP);
   return receiver_z - occluder_z;
 }
 
@@ -185,7 +180,7 @@ ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   float depth = shadow_read_depth(atlas_tx, tilemaps_tx, params);
 
   ShadowEvalResult result;
-  result.light_visibilty = float(params.uv.z < depth);
+  result.light_visibilty = float(length(params.lP) < depth);
   result.occluder_distance = shadow_linear_occluder_distance(light, false, params.lP, depth);
   return result;
 }
@@ -276,7 +271,7 @@ ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   float depth = shadow_read_depth(atlas_tx, tilemaps_tx, params);
 
   ShadowEvalResult result;
-  result.light_visibilty = float(params.uv.z < depth * params.z_range);
+  result.light_visibilty = float(params.uv.z < depth);
   result.occluder_distance = shadow_linear_occluder_distance(light, true, params.lP, depth);
   return result;
 }
