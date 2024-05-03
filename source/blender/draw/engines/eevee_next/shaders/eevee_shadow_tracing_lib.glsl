@@ -45,7 +45,7 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 /** \name Shadow Map Tracing loop
  * \{ */
 
-#define SHADOW_TRACING_INVALID_HISTORY -999.0
+#define SHADOW_TRACING_INVALID_HISTORY FLT_MAX
 
 struct ShadowMapTracingState {
   /* Occluder ray coordinate at previous valid depth sample. */
@@ -64,7 +64,7 @@ ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)
 {
   ShadowMapTracingState state;
   state.occluder_history = vec2(SHADOW_TRACING_INVALID_HISTORY);
-  state.occluder_slope = 0.0;
+  state.occluder_slope = SHADOW_TRACING_INVALID_HISTORY;
   /* We trace the ray in reverse. From 1.0 (light) to 0.0 (shading point). */
   state.ray_step_mul = -1.0 / float(sample_count);
   state.ray_step_bias = 1.0 + step_offset * state.ray_step_mul;
@@ -123,27 +123,40 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
       return;
     }
     state.occluder_history = samp.occluder;
+    // state.occluder_slope = samp.occluder.y / (samp.occluder.x - state.ray_time);
     return;
   }
   /* Find out if the ray step is behind an occluder.
-   * To be consider behind (and ignore the occluder), the occluder must not be cross the ray.
-   * Use the full delta ray depth as threshold to make sure to not miss any occluder. */
-  bool is_behind = samp.occluder.y > 1e-4;
+   * To be consider behind (and ignore the occluder), the occluder must not cross the ray. */
+  bool is_behind = samp.occluder.y > 0.0;
   if (is_behind) {
+    if (state.occluder_slope == SHADOW_TRACING_INVALID_HISTORY) {
+      if (samp.occluder.x > state.ray_time) {
+        state.hit = true;
+        return;
+      }
+      vec2 delta = samp.occluder - state.occluder_history;
+      state.occluder_slope = delta.y / delta.x;
+      state.occluder_history = samp.occluder;
+      return;
+    }
     /* Extrapolate last known valid occluder and check if it crosses the ray. */
-    samp.occluder.y = state.occluder_history.y +
-                      state.occluder_slope * (state.ray_time - state.occluder_history.x);
+    float extrapolated_occluder_y = abs(state.occluder_history.y) +
+                                    abs(state.occluder_slope) *
+                                        (state.ray_time - state.occluder_history.x);
     /* Intersection test will be against the extrapolated last known occluder. */
+    state.hit = extrapolated_occluder_y < 0.0;
   }
   else {
     /* Compute current occluder slope and record history for when the ray goes behind a surface. */
-    state.occluder_slope = (samp.occluder.y - state.occluder_history.y) /
-                           (samp.occluder.x - state.occluder_history.x);
+    vec2 delta = samp.occluder - state.occluder_history;
+    state.occluder_slope = delta.y / delta.x;
     state.occluder_history = samp.occluder;
     /* Intersection test will be against the current sample's occluder. */
+
+    /* Intersection test. Intersect if above the ray time. */
+    state.hit = samp.occluder.x > state.ray_time;
   }
-  /* Intersection test. Intersect if above the ray and time is greater. */
-  state.hit = (samp.occluder.y > 0.0 && samp.occluder.x > state.ray_time);
 }
 
 /** \} */
@@ -262,6 +275,8 @@ struct ShadowRayPunctual {
   vec3 local_ray_up;
   /* Tile-map to sample. */
   int light_tilemap_index;
+
+  vec2 last_occluder;
 };
 
 /* Return ray in UV clip space [0..1]. */
@@ -336,6 +351,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
     drw_debug_line(lP, lP + ray.local_ray_up, vec4(0, 1, 0, 1));
   }
 #endif
+  ray.last_occluder = vec2(1.0, 0.0);
   return ray;
 }
 
@@ -360,10 +376,22 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
   samp.skip_sample = (radial_occluder_depth == -1.0);
 
+  vec2 occluder_slope = (samp.occluder - ray.last_occluder) /
+                        (samp.occluder.x - ray.last_occluder.x);
+
+  vec2 occluder_extrapolated_2d = ray.last_occluder +
+                                  occluder_slope * (state.ray_time - ray.last_occluder.x);
+
+  vec3 occluder_extrapolated = ray.direction * occluder_extrapolated_2d.x +
+                               ray.local_ray_up * occluder_extrapolated_2d.y;
+
+  ray.last_occluder = samp.occluder;
+
 #ifdef GPU_FRAGMENT_SHADER
   if (all(equal(ivec2(gl_FragCoord.xy), ivec2(500)))) {
     drw_debug_point(receiver_pos, 0.01, vec4(0, 1, 0, 1));
     drw_debug_point(occluder_pos, 0.01, vec4(1, 0, 0, 1));
+    drw_debug_point(ray.origin + occluder_extrapolated, 0.01, vec4(1, 1, 0, 1));
   }
 #endif
   return samp;
