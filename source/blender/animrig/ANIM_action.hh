@@ -211,9 +211,6 @@ class Action : public ::bAction {
    */
   bool is_binding_animated(binding_handle_t binding_handle) const;
 
-  /** Free all data in the `Animation`. Doesn't delete the `Animation` itself. */
-  void free_data();
-
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;

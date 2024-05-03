@@ -416,33 +416,6 @@ bool Action::is_binding_animated(const binding_handle_t binding_handle) const
   return !fcurves.is_empty();
 }
 
-void Action::free_data()
-{
-  /* Free layers. */
-  for (Layer *layer : this->layers()) {
-    MEM_delete(layer);
-  }
-  MEM_SAFE_FREE(this->layer_array);
-  this->layer_array_num = 0;
-
-  /* Free bindings. */
-  for (Binding *binding : this->bindings()) {
-    MEM_delete(binding);
-  }
-  MEM_SAFE_FREE(this->binding_array);
-  this->binding_array_num = 0;
-
-  /* Free legacy F-Curves & groups. */
-  BKE_fcurves_free(&this->curves);
-  BLI_freelistN(&this->groups);
-
-  /* Free markers & preview. */
-  BLI_freelistN(&this->markers);
-  BKE_previewimg_free(&this->preview);
-
-  BLI_assert(this->is_empty());
-}
-
 bool Action::assign_id(Binding *binding, ID &animated_id)
 {
   AnimData *adt = BKE_animdata_ensure_id(&animated_id);

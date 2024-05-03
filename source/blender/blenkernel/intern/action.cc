@@ -184,7 +184,30 @@ static void action_copy_data(Main * /*bmain*/,
 static void action_free_data(ID *id)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
-  action.free_data();
+
+  /* Free layers. */
+  for (animrig::Layer *layer : action.layers()) {
+    MEM_delete(layer);
+  }
+  MEM_SAFE_FREE(action.layer_array);
+  action.layer_array_num = 0;
+
+  /* Free bindings. */
+  for (animrig::Binding *binding : action.bindings()) {
+    MEM_delete(binding);
+  }
+  MEM_SAFE_FREE(action.binding_array);
+  action.binding_array_num = 0;
+
+  /* Free legacy F-Curves & groups. */
+  BKE_fcurves_free(&action.curves);
+  BLI_freelistN(&action.groups);
+
+  /* Free markers & preview. */
+  BLI_freelistN(&action.markers);
+  BKE_previewimg_free(&action.preview);
+
+  BLI_assert(action.is_empty());
 }
 
 static void action_foreach_id(ID *id, LibraryForeachIDData *data)
