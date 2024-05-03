@@ -303,7 +303,7 @@ Drawing::Drawing()
 
 Drawing::Drawing(const Drawing &other)
 {
-  this->base.type = GP_DRAWING;
+  this->base.type = other.base.type;
   this->base.flag = other.base.flag;
 
   new (&this->geometry) bke::CurvesGeometry(other.strokes());
@@ -313,6 +313,39 @@ Drawing::Drawing(const Drawing &other)
   this->runtime->triangles_cache = other.runtime->triangles_cache;
   this->runtime->curve_plane_normals_cache = other.runtime->curve_plane_normals_cache;
   this->runtime->curve_texture_matrices = other.runtime->curve_texture_matrices;
+}
+
+Drawing &Drawing::operator=(const Drawing &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) Drawing(other);
+  return *this;
+}
+
+Drawing::Drawing(Drawing &&other)
+{
+  this->base.type = other.base.type;
+  other.base.type = 0;
+  this->base.flag = other.base.flag;
+  other.base.flag = 0;
+
+  new (&this->geometry) bke::CurvesGeometry(std::move(other.geometry.wrap()));
+
+  this->runtime = other.runtime;
+  other.runtime = nullptr;
+}
+
+Drawing &Drawing::operator=(Drawing &&other)
+{
+  if (this == &other) {
+    return *this;
+  }
+  std::destroy_at(this);
+  new (this) Drawing(std::move(other));
+  return *this;
 }
 
 Drawing::~Drawing()
