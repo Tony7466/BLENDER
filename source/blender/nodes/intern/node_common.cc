@@ -93,6 +93,18 @@ bool node_group_poll_instance(const bNode *node,
   return nodeGroupPoll(nodetree, grouptree, disabled_hint);
 }
 
+std::string node_group_ui_description(const bNode &node)
+{
+  if (!node.id) {
+    return "";
+  }
+  const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id);
+  if (!group->description) {
+    return "";
+  }
+  return group->description;
+}
+
 bool nodeGroupPoll(const bNodeTree *nodetree,
                    const bNodeTree *grouptree,
                    const char **r_disabled_hint)
