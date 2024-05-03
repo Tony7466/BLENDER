@@ -17,6 +17,13 @@ struct Reservoir {
 
   Reservoir() = default;
 
+  Reservoir(Reservoir &other)
+  {
+    ls = other.ls;
+    radiance = other.radiance;
+    total_weight = other.total_weight;
+  }
+
   Reservoir(KernelGlobals kg)
   {
     rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
@@ -113,13 +120,8 @@ struct Reservoir {
     add_sample(ls, radiance, mis_weight / bsdf_pdf_in_area, rand);
   }
 
-  void add_reservoir(const Reservoir &other, const float rand);
+  void add_reservoir(KernelGlobals kg, Reservoir &other, const float rand);
 };
-
-void Reservoir::add_reservoir(const Reservoir &other, const float rand)
-{
-  add_sample(other.ls, other.radiance, other.total_weight, rand);
-}
 
 /* TODO(weizhen): maybe it should be determined when the sample is drawn, not afterwards. */
 ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
@@ -144,6 +146,19 @@ ccl_device_inline bool sample_copy_direction(KernelGlobals kg,
   return false;
 }
 
+void Reservoir::add_reservoir(KernelGlobals kg, Reservoir &other, const float rand)
+{
+  if (other.is_empty()) {
+    return;
+  }
+
+  if (sample_copy_direction(kg, other)) {
+    other.total_weight *= other.ls.jacobian_solid_angle_to_area();
+  }
+
+  add_sample(other.ls, other.radiance, other.total_weight, rand);
+}
+
 struct SpatialReservoir {
   Reservoir reservoir;
   /* TODO(weizhen): maybe the neighbors should share the same flag. */
@@ -158,14 +173,22 @@ struct SpatialReservoir {
     pixel_index = make_uint3(-1, -1, -1);
   }
 
+  SpatialReservoir(SpatialReservoir &other)
+  {
+    reservoir = other.reservoir;
+    path_flag = other.path_flag;
+    sd = other.sd;
+    pixel_index = other.pixel_index;
+  }
+
   bool is_empty() const
   {
     return reservoir.is_empty();
   }
 
-  void add_reservoir(const SpatialReservoir &other, const float rand)
+  void add_reservoir(KernelGlobals kg, SpatialReservoir &other, const float rand)
   {
-    reservoir.add_reservoir(other.reservoir, rand);
+    reservoir.add_reservoir(kg, other.reservoir, rand);
   }
 };
 

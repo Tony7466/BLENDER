@@ -232,11 +232,11 @@ KERNEL_STRUCT_MEMBER(integrator, int, use_spatial_resampling)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_radius)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_neighbors)
 KERNEL_STRUCT_MEMBER(integrator, int, restir_spatial_visibility)
+KERNEL_STRUCT_MEMBER(integrator, int, restir_pairwise_mis)
 
 /* Padding. */
 KERNEL_STRUCT_MEMBER(integrator, int, pad1)
 KERNEL_STRUCT_MEMBER(integrator, int, pad2)
-KERNEL_STRUCT_MEMBER(integrator, int, pad3)
 KERNEL_STRUCT_END(KernelIntegrator)
 
 /* SVM. For shader specialization. */

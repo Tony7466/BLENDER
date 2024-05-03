@@ -341,6 +341,7 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   kintegrator->restir_spatial_radius = restir_spatial_radius;
   kintegrator->restir_spatial_neighbors = restir_spatial_neighbors;
   kintegrator->restir_spatial_visibility = restir_spatial_visibility;
+  kintegrator->restir_pairwise_mis = (use_restir >> 2) & 1;
 
   dscene->sample_pattern_lut.clear_modified();
   clear_modified();
