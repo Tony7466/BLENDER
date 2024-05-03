@@ -552,6 +552,8 @@ struct AssetShelfType {
                             const blender::asset_system::AssetRepresentation *asset,
                             uiLayout *layout);
 
+  const AssetWeakReference *(*get_active_asset)(const AssetShelfType *shelf_type);
+
   /* RNA integration */
   ExtensionRNA rna_ext;
 };
