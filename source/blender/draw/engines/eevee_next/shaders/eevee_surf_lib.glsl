@@ -162,9 +162,11 @@ void shadow_viewport_layer_set(int view_id, int lod)
   gpu_ViewportIndex = lod;
 }
 
-vec3 shadow_position_vector_get(vec3 view_position)
+vec3 shadow_position_vector_get(vec3 view_position, ShadowRenderView view)
 {
-  /* TODO(fclem): Orthographic. */
+  if (view.is_directionnal) {
+    return -view_position.z - view.clip_near;
+  }
   return view_position;
 }
 

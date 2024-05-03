@@ -167,12 +167,15 @@ vec3 shadow_ray_above_horizon_ensure(vec3 L, vec3 N)
  * \{ */
 
 struct ShadowRayDirectional {
-  /* Ray in local translated coordinate, with depth in [0..1] range in W component. */
-  vec4 origin;
-  vec4 direction;
+  /* Ray in light rotated space. But not translated. */
+  vec3 origin;
+  vec3 direction;
+  /* Convert form local light position to ray oriented position where X axis is the ray. */
+  vec3 local_ray_up;
   LightData light;
 };
 
+/* `lP` is supposed to be in light rotated space. But not translated. */
 ShadowRayDirectional shadow_ray_generate_directional(LightData light,
                                                      vec2 random_2d,
                                                      vec3 lP,
@@ -184,25 +187,22 @@ ShadowRayDirectional shadow_ray_generate_directional(LightData light,
   float z_range = clip_far - clip_near;
   float dist_to_near_plane = -lP.z - clip_near;
 
-  /* `lP` is supposed to be in light rotated space. But not translated. */
-  vec4 origin = vec4(lP, dist_to_near_plane / z_range);
-
-  vec3 disk_direction = sample_uniform_cone(sample_cylinder(random_2d),
-                                            light_sun_data_get(light).shadow_angle);
-
-  disk_direction = shadow_ray_above_horizon_ensure(disk_direction, lNg);
-
   /* Light shape is 1 unit away from the shading point. */
-  vec4 direction = vec4(disk_direction, -1.0 / z_range);
+  vec3 direction = sample_uniform_cone(sample_cylinder(random_2d),
+                                       light_sun_data_get(light).shadow_angle);
+
+  direction = shadow_ray_above_horizon_ensure(direction, lNg);
 
   /* It only make sense to trace where there can be occluder. Clamp by distance to near plane. */
   direction *= min(light_sun_data_get(light).shadow_trace_distance,
-                   dist_to_near_plane / disk_direction.z);
+                   dist_to_near_plane / direction.z);
 
   ShadowRayDirectional ray;
-  ray.origin = origin;
+  ray.origin = lP;
   ray.direction = direction;
   ray.light = light;
+  /* TODO(fclem): We can simplify this using the ray direction construction. */
+  ray.local_ray_up = safe_normalize(cross(cross(ray.origin, ray.direction), ray.direction));
   return ray;
 }
 
@@ -210,10 +210,13 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
                                             inout ShadowRayDirectional ray)
 {
   /* Ray position is ray local position with origin at light origin. */
-  vec4 ray_pos = ray.origin + ray.direction * state.ray_time;
+  vec3 ray_pos = ray.origin + ray.direction * state.ray_time;
 
-#if 0
-  int level = shadow_directional_level(ray.light, ray_pos.xyz - light_position_get(ray.light));
+  /* TODO(fclem): We could avoid all this trickery to fetch the correct tilemap inside the loop if
+   * we could ensure a ray is traced inside a single tilemap. However this requires adding
+   * redundant tiles in different levels. */
+
+  int level = shadow_directional_level(ray.light, ray_pos - light_position_get(ray.light));
   /* This difference needs to be less than 32 for the later shift to be valid.
    * This is ensured by ShadowDirectional::clipmap_level_range(). */
   int level_relative = level - light_sun_data_get(ray.light).clipmap_lod_min;
@@ -236,15 +239,19 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   tilemap_uv -= vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
   /* Clamp to avoid out of tilemap access. */
   tilemap_uv = saturate(tilemap_uv);
+  /* Distance from near plane. */
+  float occluder_z_distance = shadow_read_depth_at_tilemap_uv(
+      ray.light.tilemap_index + level_relative, tilemap_uv);
+
+  vec3 occluder_pos = vec3(ray_pos.xy, occluder_z_distance);
+
+  /* Transform to ray local space. */
+  vec3 ray_local_occluder = occluder_pos - ray.origin;
+
   ShadowTracingSample samp;
-  samp.receiver_depth = ray_pos.w;
-  samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
-                                                        tilemap_uv);
-  samp.skip_sample = (samp.occluder_depth == -1.0);
-#endif
-  ShadowTracingSample samp;
-  /* TODO */
-  samp.skip_sample = true;
+  samp.occluder.x = dot(ray_local_occluder, normalize(ray.direction)) / length(ray.direction);
+  samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
+  samp.skip_sample = (occluder_z_distance == -1.0);
   return samp;
 }
 
