@@ -83,7 +83,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   WM_system_gpu_context_activate(system_gpu_context);
   GPU_context_active_set(blender_gpu_context);
 
-  BatchHandle batch_handle = -1;
+  BatchHandle batch_handle = 0;
   blender::Vector<GPUMaterial *> compilation_batch;
   const int max_batch_size = 16;
 
@@ -111,15 +111,14 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       compilation_batch.append(mat);
     }
     else if (!compilation_batch.is_empty()) {
-      if (batch_handle == -1) {
-        batch_handle = GPU_material_compile_batch(compilation_batch);
+      if (!batch_handle) {
+        batch_handle = GPU_material_batch_compile(compilation_batch);
       }
       else if (GPU_material_batch_is_ready(batch_handle)) {
-        GPU_material_finalize_batch(batch_handle, compilation_batch);
+        GPU_material_batch_finalize(batch_handle, compilation_batch);
         for (GPUMaterial *mat : compilation_batch) {
           GPU_material_release(mat);
         }
-        batch_handle = -1;
         compilation_batch.clear();
       }
     }
@@ -155,8 +154,10 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
   }
 
   if (!compilation_batch.is_empty()) {
-    BLI_assert(batch_handle != -1);
-    GPU_material_finalize_batch(batch_handle, compilation_batch);
+    if (!batch_handle) {
+      batch_handle = GPU_material_batch_compile(compilation_batch);
+    }
+    GPU_material_batch_finalize(batch_handle, compilation_batch);
     for (GPUMaterial *mat : compilation_batch) {
       GPU_material_release(mat);
     }

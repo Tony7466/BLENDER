@@ -166,14 +166,14 @@ class ShaderCompiler {
     Vector<Shader *> shaders;
     Vector<shader::ShaderCreateInfo *> infos;
   };
-  BatchHandle next_batch_handle = 0;
+  BatchHandle next_batch_handle = 1;
   Map<BatchHandle, Batch> batches;
 
  public:
   virtual Shader *compile(const shader::ShaderCreateInfo &info);
-  virtual BatchHandle compile_batch(Span<shader::ShaderCreateInfo *> &infos);
+  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos);
   virtual bool batch_is_ready(BatchHandle handle);
-  virtual Vector<Shader *> batch_get(BatchHandle handle);
+  virtual Vector<Shader *> batch_finalize(BatchHandle &handle);
 };
 
 enum class Severity {

@@ -1586,7 +1586,7 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
   return true;
 }
 
-Vector<Shader *> GLShaderCompiler::batch_get(BatchHandle handle)
+Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 {
   Batch &batch = batches.lookup(handle);
   for (int i : batch.shaders.index_range()) {
@@ -1597,7 +1597,7 @@ Vector<Shader *> GLShaderCompiler::batch_get(BatchHandle handle)
     }
   }
 
-  return batches.pop(handle).shaders;
+  return ShaderCompiler::batch_finalize(handle);
 }
 
 /** \} */

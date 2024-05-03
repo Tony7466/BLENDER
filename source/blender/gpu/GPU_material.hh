@@ -258,9 +258,9 @@ void GPU_material_compile(GPUMaterial *mat);
 void GPU_material_free_single(GPUMaterial *material);
 void GPU_material_free(ListBase *gpumaterial);
 
-BatchHandle GPU_material_compile_batch(blender::Span<GPUMaterial *> mats);
+BatchHandle GPU_material_batch_compile(blender::Span<GPUMaterial *> mats);
 bool GPU_material_batch_is_ready(BatchHandle handle);
-void GPU_material_finalize_batch(BatchHandle handle, blender::Span<GPUMaterial *> mats);
+void GPU_material_batch_finalize(BatchHandle &handle, blender::Span<GPUMaterial *> mats);
 
 void GPU_material_acquire(GPUMaterial *mat);
 void GPU_material_release(GPUMaterial *mat);

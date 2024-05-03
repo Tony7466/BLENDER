@@ -328,11 +328,11 @@ GPUShader *GPU_shader_create_from_python(const char *vertcode,
   return sh;
 }
 
-BatchHandle GPU_shader_create_batch_from_infos(Span<GPUShaderCreateInfo *> infos)
+BatchHandle GPU_shader_batch_create_from_infos(Span<GPUShaderCreateInfo *> infos)
 {
   using namespace blender::gpu::shader;
   Span<ShaderCreateInfo *> &infos_ = reinterpret_cast<Span<ShaderCreateInfo *> &>(infos);
-  return Context::get()->compiler->compile_batch(infos_);
+  return Context::get()->compiler->batch_compile(infos_);
 }
 
 bool GPU_shader_batch_is_ready(BatchHandle handle)
@@ -340,9 +340,9 @@ bool GPU_shader_batch_is_ready(BatchHandle handle)
   return Context::get()->compiler->batch_is_ready(handle);
 }
 
-Vector<GPUShader *> GPU_shader_batch_get(BatchHandle handle)
+Vector<GPUShader *> GPU_shader_batch_finalize(BatchHandle &handle)
 {
-  Vector<Shader *> result = Context::get()->compiler->batch_get(handle);
+  Vector<Shader *> result = Context::get()->compiler->batch_finalize(handle);
   return reinterpret_cast<Vector<GPUShader *> &>(result);
 }
 
@@ -908,7 +908,7 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
   return shader;
 }
 
-BatchHandle ShaderCompiler::compile_batch(Span<shader::ShaderCreateInfo *> &infos)
+BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
 {
   BatchHandle handle = next_batch_handle++;
   Vector<Shader *> vector = {};
@@ -926,9 +926,11 @@ bool ShaderCompiler::batch_is_ready(BatchHandle handle)
   return true;
 }
 
-Vector<Shader *> ShaderCompiler::batch_get(BatchHandle handle)
+Vector<Shader *> ShaderCompiler::batch_finalize(BatchHandle &handle)
 {
-  return batches.pop(handle).shaders;
+  BatchHandle handle_copy = handle;
+  handle = 0;
+  return batches.pop(handle_copy).shaders;
 }
 
 /** \} */

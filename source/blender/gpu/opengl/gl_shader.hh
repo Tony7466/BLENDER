@@ -210,7 +210,7 @@ class GLShader : public Shader {
 class GLShaderCompiler : public ShaderCompiler {
  public:
   virtual bool batch_is_ready(BatchHandle handle) override;
-  virtual Vector<Shader *> batch_get(BatchHandle handle) override;
+  virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
 
 class GLLogParser : public GPULogParser {
