@@ -290,6 +290,7 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info)
 {
   using namespace blender::gpu::shader;
   const ShaderCreateInfo &info = *reinterpret_cast<const ShaderCreateInfo *>(_info);
+  const_cast<ShaderCreateInfo &>(info).do_batch_compilation = false;
   return wrap(Context::get()->compiler->compile(info));
 }
 
