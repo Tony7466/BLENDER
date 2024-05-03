@@ -93,7 +93,7 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
 };
 
 const EnumPropertyItem rna_enum_node_group_class_items[] = {
-    {int(NodeGroupClass::Generic), "GENERIC", 0, "Generic", "Default class for new node groups"},
+    {int(NodeGroupClass::None), "NONE", 0, "None", "Default class for new node groups"},
     {int(NodeGroupClass::Input), "INPUT", 0, "Input", ""},
     {int(NodeGroupClass::Geometry), "GEOMETRY", 0, "Geometry", ""},
     {int(NodeGroupClass::Shader), "SHADER", 0, "Shader", ""},

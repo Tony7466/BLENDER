@@ -385,7 +385,7 @@ struct bNodeType {
 #define NODE_CLASS_LAYOUT 100
 
 enum class NodeGroupClass {
-  Generic = 0,
+  None = 0,
   Input = 1,
   Geometry = 2,
   Shader = 3,

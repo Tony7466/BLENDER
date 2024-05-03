@@ -86,7 +86,7 @@ int node_group_ui_class(const bNode *node)
     return NODE_CLASS_GROUP;
   }
   switch (NodeGroupClass(group->group_class)) {
-    case NodeGroupClass::Generic:
+    case NodeGroupClass::None:
       return NODE_CLASS_GROUP;
     case NodeGroupClass::Input:
       return NODE_CLASS_INPUT;
