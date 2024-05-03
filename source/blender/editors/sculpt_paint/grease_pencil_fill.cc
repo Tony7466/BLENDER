@@ -660,8 +660,6 @@ constexpr const char *attr_is_boundary = "is_boundary";
 static IndexMask get_curve_mask(const Object &object,
                                 const DrawingInfo &info,
                                 const bool is_boundary_layer,
-                                const bool use_onion_skinning,
-                                const bool allow_fill_material,
                                 IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &strokes = info.drawing.strokes();
@@ -680,18 +678,8 @@ static IndexMask get_curve_mask(const Object &object,
     const Material *material = BKE_object_material_get(const_cast<Object *>(&object),
                                                        materials[curve_i] + 1);
     const MaterialGPencilStyle *gp_style = material ? material->gp_style : nullptr;
-    const bool is_hidden_material = (gp_style->flag & GP_MATERIAL_HIDE) ||
-                                    (use_onion_skinning &&
-                                     (gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN));
+    const bool is_hidden_material = (gp_style->flag & GP_MATERIAL_HIDE);
     if (gp_style == nullptr || is_hidden_material) {
-      return false;
-    }
-
-    /* TODO was based on GP_STROKE_NOFILL flag, which does not seem used any more. */
-    const bool is_fill_stroke = false;
-    const bool show_fill_material = (gp_style->flag & GP_MATERIAL_FILL_SHOW) &&
-                                    (gp_style->fill_rgba[3] > 0.0f);
-    if (!allow_fill_material && show_fill_material && is_fill_stroke) {
       return false;
     }
 
@@ -762,9 +750,7 @@ static rctf get_boundary_bounds(const ARegion &region,
                                 const Object &object,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
-                                const Span<DrawingInfo> src_drawings,
-                                const bool use_onion_skinning,
-                                const bool allow_fill_material)
+                                const Span<DrawingInfo> src_drawings)
 {
   using bke::greasepencil::Drawing;
   using bke::greasepencil::Layer;
@@ -792,12 +778,8 @@ static rctf get_boundary_bounds(const ARegion &region,
         "is_boundary", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory curve_mask_memory;
-    const IndexMask curve_mask = get_curve_mask(object,
-                                                info,
-                                                only_boundary_strokes,
-                                                use_onion_skinning,
-                                                allow_fill_material,
-                                                curve_mask_memory);
+    const IndexMask curve_mask = get_curve_mask(
+        object, info, only_boundary_strokes, curve_mask_memory);
 
     curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
       const IndexRange points = strokes.points_by_curve()[curve_i];
@@ -838,22 +820,15 @@ static auto fit_strokes_to_view(const ARegion &region,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
                                 const Span<DrawingInfo> src_drawings,
-                                const FillToolFitMethod fit_method,
-                                const bool use_onion_skinning,
-                                const bool allow_fill_material)
+                                const FillToolFitMethod fit_method)
 {
   switch (fit_method) {
     case FillToolFitMethod::None:
       return std::make_pair(float2(1.0f), float2(0.0f));
     case FillToolFitMethod::FitToView:
       /* Zoom and offset based on bounds, to fit all strokes within the render. */
-      const rctf bounds = get_boundary_bounds(region,
-                                              object,
-                                              object_eval,
-                                              boundary_layers,
-                                              src_drawings,
-                                              use_onion_skinning,
-                                              allow_fill_material);
+      const rctf bounds = get_boundary_bounds(
+          region, object, object_eval, boundary_layers, src_drawings);
       const rctf region_bounds = get_region_bounds(region);
       UNUSED_VARS(bounds, region_bounds);
 #if 0  // TODO doesn't quite work yet, use identity for now.
@@ -893,9 +868,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const float2 &fill_point,
                                  const FillToolFitMethod fit_method,
                                  const int stroke_material_index,
-                                 const bool keep_images,
-                                 const bool use_onion_skinning,
-                                 const bool allow_fill_material)
+                                 const bool keep_images)
 {
   using bke::greasepencil::Layer;
 
@@ -921,14 +894,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                                         placement.project(fill_point));
 
   /* Zoom and offset based on bounds, to fit all strokes within the render. */
-  const auto [zoom, offset] = fit_strokes_to_view(region,
-                                                  object,
-                                                  object_eval,
-                                                  boundary_layers,
-                                                  src_drawings,
-                                                  fit_method,
-                                                  use_onion_skinning,
-                                                  allow_fill_material);
+  const auto [zoom, offset] = fit_strokes_to_view(
+      region, object, object_eval, boundary_layers, src_drawings, fit_method);
 
   image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
 
@@ -955,12 +922,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                                           bke::AttrDomain::Curve);
 
     IndexMaskMemory curve_mask_memory;
-    const IndexMask curve_mask = get_curve_mask(object,
-                                                info,
-                                                is_boundary_layer,
-                                                use_onion_skinning,
-                                                allow_fill_material,
-                                                curve_mask_memory);
+    const IndexMask curve_mask = get_curve_mask(
+        object, info, is_boundary_layer, curve_mask_memory);
 
     const VArray<ColorGeometry4f> colors = stroke_colors(object,
                                                          info.drawing.strokes(),

@@ -400,6 +400,9 @@ IndexRange clipboard_paste_strokes(Main &bmain,
                                    bke::greasepencil::Drawing &drawing,
                                    bool paste_back);
 
+/**
+ * Method used by the Fill tool to fit the render buffer to strokes.
+ */
 enum FillToolFitMethod {
   /* Use the current view projection unchanged. */
   None,
@@ -412,12 +415,14 @@ enum FillToolFitMethod {
  *
  * This uses an approximate render of strokes and boundaries,
  * then fills the image starting from the mouse position.
- * The outline of the filled pixel area is returned as a curve.
+ * The outlines of the filled pixel areas are returned as curves.
  *
  * \param layer The layer containing the new stroke, used for reprojecting from images.
  * \param boundary_layers Layers that are purely for boundaries, regular strokes are not rendered.
  * \param src_drawings Drawings to include as boundary strokes.
+ * \param invert Construct boundary around empty areas instead.
  * \param fill_point Point from which to start the bucket fill.
+ * \param fit_method View fitting method to include all strokes.
  * \param stroke_material_index Material index to use for the new strokes.
  * \param keep_images Keep the image data block after generating curves.
  */
@@ -437,23 +442,37 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const float2 &fill_point,
                                  FillToolFitMethod fit_method,
                                  int stroke_material_index,
-                                 bool keep_images,
-                                 const bool use_onion_skinning,
-                                 const bool allow_fill_material);
+                                 bool keep_images);
 
 namespace image_render {
 
+/** Region size to restore after rendering. */
 struct RegionViewData {
   int2 region_winsize;
   rcti region_winrct;
 };
 
+/**
+ * Set up region to match the render buffer size.
+ */
 RegionViewData region_init(ARegion &region, const int2 &win_size);
+/**
+ * Restore original region size after rendering.
+ */
 void region_reset(ARegion &region, const RegionViewData &data);
 
+/**
+ * Create and offscreen buffer for rendering.
+ */
 GPUOffScreen *image_render_begin(const int2 &win_size);
+/**
+ * Finish rendering and convert the offscreen buffer into an image.
+ */
 Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 
+/**
+ * Set up the view matrix for world space rendering.
+ */
 void set_viewmat(ARegion &region,
                  View3D &view3d,
                  RegionView3D &rv3d,
@@ -462,17 +481,27 @@ void set_viewmat(ARegion &region,
                  const int2 &win_size,
                  const float2 &zoom,
                  const float2 &offset);
+/**
+ * Reset the view matrix for screen space rendering.
+ */
 void clear_viewmat();
 
+/**
+ * Draw a dot with a given size and color.
+ */
 void draw_dot(const float3 &position, const float point_size, const ColorGeometry4f &color);
-/* Draw a line from points. */
+/**
+ * Draw a line from points.
+ */
 void draw_curve(IndexRange indices,
                 Span<float3> positions,
                 const VArray<ColorGeometry4f> &colors,
                 const float4x4 &layer_to_world,
                 bool cyclic,
                 float line_width);
-/* Draw a full grease pencil stroke. */
+/**
+ * Draw a curve using the Grease Pencil stroke shader.
+ */
 void draw_grease_pencil_stroke(const RegionView3D &rv3d,
                                const int2 &win_size,
                                const Object &object,
@@ -485,7 +514,9 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
                                eGPDstroke_Caps cap_start,
                                eGPDstroke_Caps cap_end,
                                bool fill_stroke);
-/* Draw points as quads or circles. */
+/**
+ * Draw points as quads or circles.
+ */
 void draw_dots(IndexRange indices,
                Span<float3> positions,
                const VArray<float> &radii,
