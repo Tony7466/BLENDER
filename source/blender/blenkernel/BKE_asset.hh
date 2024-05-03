@@ -24,7 +24,7 @@ struct PreviewImage;
 
 using PreSaveFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
 using OnMarkAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
-using OnLocalizeAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
+using OnUnmarkAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
 
 struct AssetTypeInfo {
   /**
@@ -33,8 +33,8 @@ struct AssetTypeInfo {
    */
   PreSaveFn pre_save_fn;
   OnMarkAssetFn on_mark_asset_fn;
-  /** Called when the asset is made local, e.g. when appending it. */
-  OnLocalizeAssetFn on_localize_asset_fn;
+  /** Called when the asset data is removed. */
+  OnUnmarkAssetFn on_unmark_asset_fn;
 };
 
 AssetMetaData *BKE_asset_metadata_create();

@@ -1289,7 +1289,7 @@ void node_update_asset_metadata(bNodeTree &node_tree)
   }
 }
 
-static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
+static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_data*/)
 {
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
   node_update_asset_metadata(ntree);
@@ -1307,7 +1307,7 @@ static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_
   }
 }
 
-static void node_tree_asset_on_localize_asset(void *asset_ptr, AssetMetaData *asset_data)
+static void node_tree_asset_on_unmark_asset(void *asset_ptr, AssetMetaData *asset_data)
 {
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
 
@@ -1324,7 +1324,7 @@ static void node_tree_asset_on_localize_asset(void *asset_ptr, AssetMetaData *as
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
     /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
-    /*on_localize_asset_fn*/ blender::bke::node_tree_asset_on_localize_asset,
+    /*on_unmark_asset_fn*/ blender::bke::node_tree_asset_on_unmark_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {
