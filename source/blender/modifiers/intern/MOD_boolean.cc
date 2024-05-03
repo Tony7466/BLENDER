@@ -378,10 +378,11 @@ static Array<short> get_material_remap_index_based(Object *dest_ob, Object *src_
 {
   int n = src_ob->totcol;
   if (n <= 0) {
-    n = 1;
+    Array<short> remap(1);
+    remap[0] = 0;
+    return remap;
   }
   Array<short> remap(n);
-  remap.fill(0);
   BKE_object_material_remap_calc(dest_ob, src_ob, remap.data());
   return remap;
 }
@@ -394,7 +395,6 @@ static Array<short> get_material_remap_transfer(Object &object,
 {
   const int material_num = mesh.totcol;
   Array<short> map(material_num);
-  map.fill(0);
   for (const int i : IndexRange(material_num)) {
     Material *material = BKE_object_material_get_eval(&object, i + 1);
     map[i] = material ? materials.index_of_or_add(material) : -1;
