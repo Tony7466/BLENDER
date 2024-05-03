@@ -573,6 +573,14 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const int flags)
 
   BLI_assert((idtype_info->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0);
 
+  if (ID_IS_ASSET(id)) {
+    if (idtype_info->asset_type_info) {
+      if (idtype_info->asset_type_info->on_localize_asset_fn) {
+        idtype_info->asset_type_info->on_localize_asset_fn(id, id->asset_data);
+      }
+    }
+  }
+
   if (idtype_info->make_local != nullptr) {
     idtype_info->make_local(bmain, id, flags);
   }

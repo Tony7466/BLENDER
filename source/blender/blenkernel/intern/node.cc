@@ -1293,12 +1293,6 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
 {
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
   node_update_asset_metadata(ntree);
-
-  /* Copy asset description to node tree description. */
-  if (asset_data->description) {
-    MEM_SAFE_FREE(ntree.description);
-    ntree.description = BLI_strdup_null(asset_data->description);
-  }
 }
 
 static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_data)
@@ -1306,9 +1300,22 @@ static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
   node_update_asset_metadata(ntree);
 
-  /* Copy node tree description to asset description. */
+  /* Copy node tree description to asset description so that the user does not have to write it
+   * again. */
   if (!asset_data->description) {
     asset_data->description = BLI_strdup_null(ntree.description);
+  }
+}
+
+static void node_tree_asset_on_localize_asset(void *asset_ptr, AssetMetaData *asset_data)
+{
+  bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
+
+  /* Copy asset description to node tree description so that it is not lost when the asset data is
+   * removed. */
+  if (asset_data->description) {
+    MEM_SAFE_FREE(ntree.description);
+    ntree.description = BLI_strdup_null(asset_data->description);
   }
 }
 
@@ -1317,6 +1324,7 @@ static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
     /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
+    /*on_localize_asset_fn*/ blender::bke::node_tree_asset_on_localize_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {

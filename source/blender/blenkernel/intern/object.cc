@@ -1064,6 +1064,7 @@ static void object_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_d
 static AssetTypeInfo AssetType_OB = {
     /*pre_save_fn*/ object_asset_metadata_ensure,
     /*on_mark_asset_fn*/ object_asset_metadata_ensure,
+    /*on_localize_asset_fn*/ nullptr,
 };
 
 IDTypeInfo IDType_ID_OB = {
