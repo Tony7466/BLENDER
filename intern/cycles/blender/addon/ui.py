@@ -554,7 +554,7 @@ class CYCLES_RENDER_PT_sampling_lights_restir_spatial(CyclesButtonsPanel, Panel)
         col = layout.column(align=True)
         col.active = cscene.use_spatial_resampling
         col.prop(cscene, "restir_spatial_radius")
-        col.prop(cscene, "restir_spatial_samples")
+        col.prop(cscene, "restir_spatial_neighbors")
         col.prop(cscene, "restir_spatial_iterations")
         col.prop(cscene, "restir_spatial_visibility")
 

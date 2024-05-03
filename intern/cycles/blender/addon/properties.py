@@ -244,8 +244,8 @@ enum_guiding_directional_sampling_types = (
 )
 
 enum_restir_heuristics = (
-    ('BALANCED_HEURISTICS', "Balanced Heuristics", ""),
-    ('POWER_HEURISTICS', "Power Heuristics", ""),
+    ('BALANCE_HEURISTIC', "Balance Heuristic", ""),
+    ('POWER_HEURISTIC', "Power Heuristic", ""),
 )
 
 def enum_openimagedenoise_denoiser(self, context):
@@ -637,10 +637,10 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=15,
     )
 
-    restir_spatial_samples: IntProperty(
+    restir_spatial_neighbors: IntProperty(
         name="Samples",
         description="Number of neighboring samples to draw per pixel per iteration",
-        min=1, max=16,
+        min=0, max=16,
         default=5,
     )
 
@@ -667,7 +667,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     restir_heuristics: EnumProperty(
         name=" ",
         items=enum_restir_heuristics,
-        default='POWER_HEURISTICS',
+        default='POWER_HEURISTIC',
     )
 
     min_light_bounces: IntProperty(

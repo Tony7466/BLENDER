@@ -95,43 +95,36 @@ ccl_device_inline void integrator_restir_unpack_shader(ccl_private ShaderData *s
   // sd->closure_transparent_extinction;
 }
 
+ccl_device_forceinline ccl_global float *pixel_render_buffer(
+    KernelGlobals kg, uint32_t render_pixel_index, ccl_global float *ccl_restrict render_buffer)
+{
+  const uint64_t render_buffer_offset = (uint64_t)render_pixel_index *
+                                        kernel_data.film.pass_stride;
+  return render_buffer + render_buffer_offset;
+}
+
 ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
                                                        ccl_private SpatialReservoir *reservoir,
-                                                       const uint32_t render_pixel_index,
-                                                       const ccl_global float *ccl_restrict
+                                                       uint32_t render_pixel_index,
+                                                       ccl_global float *ccl_restrict
                                                            render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-  const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
-  ccl_global const float *buffer = render_buffer + render_buffer_offset +
+  ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
                                    kernel_data.film.pass_surface_data;
   integrator_restir_unpack_shader(&reservoir->sd, &reservoir->path_flag, buffer);
 }
 
-ccl_device_inline void integrator_restir_unpack_shader(KernelGlobals kg,
-                                                       IntegratorState state,
-                                                       ccl_private SpatialReservoir *reservoir,
-                                                       ccl_global float *ccl_restrict
-                                                           render_buffer)
-{
-  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  integrator_restir_unpack_shader(kg, reservoir, render_pixel_index, render_buffer);
-}
-
 ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
-                                                          ccl_private SpatialReservoir *reservoir,
-                                                          const uint32_t render_pixel_index,
-                                                          const ccl_global float *ccl_restrict
+                                                          ccl_private Reservoir *reservoir,
+                                                          uint32_t render_pixel_index,
+                                                          ccl_global float *ccl_restrict
                                                               render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-  if (kernel_data.film.pass_restir_reservoir != PASS_UNUSED) {
-    const uint64_t render_buffer_offset = render_pixel_index * kernel_data.film.pass_stride;
-    ccl_global const float *buffer = render_buffer + render_buffer_offset +
-                                     kernel_data.film.pass_restir_reservoir;
-    integrator_restir_unpack_reservoir(kg, &reservoir->reservoir, buffer);
-  }
-  integrator_restir_unpack_shader(kg, reservoir, render_pixel_index, render_buffer);
+  ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
+                                   kernel_data.film.pass_restir_reservoir;
+  integrator_restir_unpack_reservoir(kg, reservoir, buffer);
 }
 
 ccl_device_inline void ray_setup(KernelGlobals kg,
@@ -173,13 +166,13 @@ ccl_device_forceinline void shader_data_setup_from_restir(KernelGlobals kg,
   /* TODO(weizhen): do we call `surface_shader_prepare_closures()` here? */
 }
 
-ccl_device_inline bool restir_get_neighbor(KernelGlobals kg,
-                                           const ccl_private SpatialResampling *resampling,
-                                           ccl_private SpatialReservoir *current,
-                                           ccl_private SpatialReservoir *neighbor,
-                                           const int id,
-                                           const float3 rand,
-                                           ccl_global float *ccl_restrict render_buffer)
+ccl_device_inline bool restir_unpack_neighbor(KernelGlobals kg,
+                                              const ccl_private SpatialResampling *resampling,
+                                              ccl_private SpatialReservoir *current,
+                                              ccl_private SpatialReservoir *neighbor,
+                                              const int id,
+                                              const float3 rand,
+                                              ccl_global float *ccl_restrict render_buffer)
 {
   /* Always put the current sample in the reservoir. */
   const float2 rand_index = (id == 0) ? zero_float2() : float3_to_float2(rand) * 2.0f - 1.0f;
@@ -190,7 +183,8 @@ ccl_device_inline bool restir_get_neighbor(KernelGlobals kg,
   }
 
   neighbor->pixel_index = pixel_index;
-  integrator_restir_unpack_reservoir(kg, neighbor, pixel_index.z, render_buffer);
+  integrator_restir_unpack_shader(kg, neighbor, pixel_index.z, render_buffer);
+  integrator_restir_unpack_reservoir(kg, &neighbor->reservoir, pixel_index.z, render_buffer);
 
   return resampling->is_valid_neighbor(&current->sd, &neighbor->sd);
 }
@@ -211,7 +205,7 @@ ccl_device_inline bool spatial_sample_streaming(KernelGlobals kg,
     const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
 
     SpatialReservoir neighbor;
-    if (!restir_get_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
+    if (!restir_unpack_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
       continue;
     }
 
@@ -245,7 +239,7 @@ ccl_device_inline bool spatial_sample_streaming(KernelGlobals kg,
     const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
 
     SpatialReservoir neighbor;
-    if (!restir_get_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
+    if (!restir_unpack_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
       continue;
     }
 
@@ -272,7 +266,8 @@ ccl_device bool integrator_restir(KernelGlobals kg,
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
   SpatialReservoir current(kg);
-  integrator_restir_unpack_shader(kg, state, &current, render_buffer);
+  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
+  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
 
   if (!(current.sd.type)) {
     /* No interesction at the current shading point. */
@@ -287,7 +282,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   path_state_rng_load(state, &rng_state);
 
   /* Plus one to account for the current pixel. */
-  const int samples = kernel_data.integrator.restir_spatial_samples + 1;
+  const int samples = kernel_data.integrator.restir_spatial_neighbors + 1;
 
   const int radius = kernel_data.integrator.restir_spatial_radius;
   SpatialResampling spatial_resampling(tile, radius);

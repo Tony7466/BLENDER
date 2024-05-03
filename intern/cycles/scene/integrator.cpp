@@ -124,7 +124,7 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(restir_light_samples, "Light", 8);
   SOCKET_INT(restir_bsdf_samples, "BSDF", 3);
   SOCKET_INT(restir_spatial_radius, "Radius", 15);
-  SOCKET_INT(restir_spatial_samples, "Samples", 5);
+  SOCKET_INT(restir_spatial_neighbors, "Samples", 5);
   SOCKET_BOOLEAN(restir_spatial_visibility, "Check Visibility", true);
 
   static NodeEnum sampling_pattern_enum;
@@ -339,7 +339,7 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   kintegrator->restir_light_samples = restir_light_samples;
   kintegrator->restir_bsdf_samples = restir_bsdf_samples;
   kintegrator->restir_spatial_radius = restir_spatial_radius;
-  kintegrator->restir_spatial_samples = restir_spatial_samples;
+  kintegrator->restir_spatial_neighbors = restir_spatial_neighbors;
   kintegrator->restir_spatial_visibility = restir_spatial_visibility;
 
   dscene->sample_pattern_lut.clear_modified();
