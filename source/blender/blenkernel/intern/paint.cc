@@ -326,7 +326,7 @@ void BKE_paint_reset_overlay_invalid(ePaintOverlayControlFlags flag)
   overlay_flags &= ~(flag);
 }
 
-bool BKE_paint_ensure_from_paintmode(Scene *sce, PaintMode mode)
+bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode)
 {
   ToolSettings *ts = sce->toolsettings;
   Paint **paint_ptr = nullptr;
@@ -371,7 +371,7 @@ bool BKE_paint_ensure_from_paintmode(Scene *sce, PaintMode mode)
       break;
   }
   if (paint_ptr) {
-    BKE_paint_ensure(ts, paint_ptr);
+    BKE_paint_ensure(bmain, ts, paint_ptr);
     return true;
   }
   return false;
@@ -1091,7 +1091,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(const PaintMode mode)
   }
 }
 
-bool BKE_paint_ensure(ToolSettings *ts, Paint **r_paint)
+bool BKE_paint_ensure(Main * /*bmain*/, ToolSettings *ts, Paint **r_paint)
 {
   Paint *paint = nullptr;
   if (*r_paint) {
@@ -1176,7 +1176,7 @@ void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3])
   UnifiedPaintSettings *ups = &sce->toolsettings->unified_paint_settings;
   Paint *paint = BKE_paint_get_active_from_paintmode(sce, mode);
 
-  BKE_paint_ensure_from_paintmode(sce, mode);
+  BKE_paint_ensure_from_paintmode(bmain, sce, mode);
 
   /* If there's no brush, create one */
   Brush *brush = BKE_paint_brush(paint);
@@ -1746,10 +1746,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss->vert_to_face_map = mesh_orig->vert_to_face_map();
   }
 
-  if (ss->pbvh) {
-    BKE_pbvh_pmap_set(*ss->pbvh, ss->vert_to_face_map);
-  }
-
   if (ss->deform_modifiers_active) {
     /* Painting doesn't need crazyspace, use already evaluated mesh coordinates if possible. */
     bool used_me_eval = false;
@@ -2005,9 +2001,9 @@ void BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
   }
 }
 
-void BKE_sculpt_toolsettings_data_ensure(Scene *scene)
+void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene)
 {
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->sculpt);
+  BKE_paint_ensure(bmain, scene->toolsettings, (Paint **)&scene->toolsettings->sculpt);
 
   Sculpt *sd = scene->toolsettings->sculpt;
 
@@ -2169,7 +2165,6 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
     }
 
     BKE_pbvh_update_active_vcol(*ob->sculpt->pbvh, BKE_object_get_original_mesh(ob));
-    BKE_pbvh_pmap_set(*ob->sculpt->pbvh, ob->sculpt->vert_to_face_map);
 
     return ob->sculpt->pbvh.get();
   }
@@ -2191,8 +2186,6 @@ PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
       ob->sculpt->pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
     }
   }
-
-  BKE_pbvh_pmap_set(*ob->sculpt->pbvh, ob->sculpt->vert_to_face_map);
 
   sculpt_attribute_update_refs(ob, BKE_pbvh_type(*ob->sculpt->pbvh));
   return ob->sculpt->pbvh.get();

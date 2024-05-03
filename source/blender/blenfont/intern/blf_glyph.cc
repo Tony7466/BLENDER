@@ -1458,22 +1458,8 @@ void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, const int x, 
 
   rcti rect;
   blf_glyph_calc_rect(&rect, g, x, y);
-
-#if BLF_BLUR_ENABLE
-  switch (font->blur) {
-    case 3:
-      blf_texture3_draw(g, font->color, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
-      break;
-    case 5:
-      blf_texture5_draw(g, font->color, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
-      break;
-    default:
-      blf_texture_draw(g, font->color, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
-  }
-#else
   blf_texture_draw(
       g, font->color, FontShadowType::Simple, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
-#endif
 }
 
 /* -------------------------------------------------------------------- */
