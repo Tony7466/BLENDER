@@ -6,9 +6,12 @@ void main()
 {
   color_flat = col;
   glyph_offset = offset;
-  glyph_dim = abs(glyph_size);
-  glyph_comp_len = comp_len;
-  interp_size = int(glyph_size.x < 0) + int(glyph_size.y < 0);
+  glyph_dim = glyph_size;
+  glyph_flags = flags;
+
+  /* Depending on shadow outline / blur level, we might need to expand the quad. */
+  uint shadow_type = flags & 0xF;
+  int interp_size = shadow_type > 4 ? 2 : (shadow_type > 0 ? 1 : 0);
 
   /* Quad expansion using instanced rendering. */
   float x = float(gl_VertexID % 2);

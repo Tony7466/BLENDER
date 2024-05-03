@@ -67,13 +67,9 @@ void BLF_draw_default_shadowed(
   BLF_size(global_font_default, global_font_size * UI_SCALE_FAC);
 
   BLF_enable(global_font_default, BLF_SHADOW);
-  BLF_shadow(global_font_default, 5, shadow_color);
+  BLF_shadow(global_font_default, FontShadowType::Outline, shadow_color);
   BLF_shadow_offset(global_font_default, 0, 0);
   BLF_position(global_font_default, x, y, z);
-  BLF_draw(global_font_default, str, str_len);
-
-  BLF_shadow(global_font_default, 3, shadow_color);
-  BLF_shadow_offset(global_font_default, 1, -1);
   BLF_draw(global_font_default, str, str_len);
   BLF_disable(global_font_default, BLF_SHADOW);
 }

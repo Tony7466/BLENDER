@@ -369,7 +369,7 @@ PyDoc_STRVAR(
     "   :arg fontid: The id of the typeface as returned by :func:`blf.load`, for default "
     "font use 0.\n"
     "   :type fontid: int\n"
-    "   :arg level: The blur level, can be 3, 5 or 0.\n"
+    "   :arg level: The blur level, can be 0, 1 (outline), 3 or 5.\n"
     "   :type level: int\n"
     "   :arg r: Shadow color (red channel 0.0 - 1.0).\n"
     "   :type r: float\n"
@@ -390,12 +390,12 @@ static PyObject *py_blf_shadow(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  if (!ELEM(level, 0, 3, 5)) {
-    PyErr_SetString(PyExc_TypeError, "blf.shadow expected arg to be in (0, 3, 5)");
+  if (!ELEM(level, 0, 1, 3, 5)) {
+    PyErr_SetString(PyExc_TypeError, "blf.shadow expected arg to be in (0, 1, 3, 5)");
     return nullptr;
   }
 
-  BLF_shadow(fontid, level, rgba);
+  BLF_shadow(fontid, FontShadowType(level), rgba);
 
   Py_RETURN_NONE;
 }
