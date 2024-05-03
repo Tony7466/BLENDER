@@ -216,12 +216,8 @@ static uchar blf_glyph_gamma(uchar c)
 /**
  * Add a rendered glyph to a cache.
  */
-static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
-                                           GlyphCacheBLF *gc,
-                                           FT_GlyphSlot glyph,
-                                           uint charcode,
-                                           FT_UInt glyph_index,
-                                           uint8_t subpixel)
+static GlyphBLF *blf_glyph_cache_add_glyph(
+    GlyphCacheBLF *gc, FT_GlyphSlot glyph, uint charcode, FT_UInt glyph_index, uint8_t subpixel)
 {
   std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
   g->c = charcode;
@@ -239,16 +235,6 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
   /* Used to improve advance when hinting is enabled. */
   g->lsb_delta = (ft_pix)glyph->lsb_delta;
   g->rsb_delta = (ft_pix)glyph->rsb_delta;
-
-  if (font->flags & BLF_MONOCHROME) {
-    g->render_mode = FT_RENDER_MODE_MONO;
-  }
-  else if (font->flags & BLF_HINTING_SLIGHT) {
-    g->render_mode = FT_RENDER_MODE_LIGHT;
-  }
-  else {
-    g->render_mode = FT_RENDER_MODE_NORMAL;
-  }
 
   if (glyph->format == FT_GLYPH_FORMAT_BITMAP) {
     /* This has been rendered and we have a bitmap. */
@@ -1288,7 +1274,7 @@ GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode
 
   if (glyph) {
     /* Save this glyph in the initial font's cache. */
-    g = blf_glyph_cache_add_glyph(font, gc, glyph, charcode, glyph_index, subpixel);
+    g = blf_glyph_cache_add_glyph(gc, glyph, charcode, glyph_index, subpixel);
   }
 
   return g;
@@ -1369,8 +1355,7 @@ static void blf_texture_draw(const GlyphBLF *g,
                              const int x2,
                              const int y2)
 {
-  /* Only one vertex per glyph, geometry shader expand it into a quad. */
-  /* TODO: Get rid of Geom Shader because it's not optimal AT ALL for the GPU. */
+  /* One vertex per glyph, instancing expands it into a quad. */
   copy_v4_fl4(static_cast<float *>(GPU_vertbuf_raw_step(&g_batch.pos_step)),
               float(x1 + g_batch.ofs[0]),
               float(y1 + g_batch.ofs[1]),
@@ -1380,7 +1365,6 @@ static void blf_texture_draw(const GlyphBLF *g,
   copy_v2_v2_int(static_cast<int *>(GPU_vertbuf_raw_step(&g_batch.glyph_size_step)), glyph_size);
   *((int *)GPU_vertbuf_raw_step(&g_batch.offset_step)) = g->offset;
   *((int *)GPU_vertbuf_raw_step(&g_batch.glyph_comp_len_step)) = g->depth;
-  *((int *)GPU_vertbuf_raw_step(&g_batch.glyph_mode_step)) = g->render_mode;
 
   g_batch.glyph_len++;
   /* Flush cache if it's full. */

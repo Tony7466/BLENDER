@@ -97,9 +97,8 @@ struct BatchBLF {
   FontBLF *font;
   blender::gpu::Batch *batch;
   blender::gpu::VertBuf *verts;
-  GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
-      glyph_mode_step;
-  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
+  GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step;
+  unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc;
   unsigned int glyph_len;
   /** Copy of `font->pos`. */
   int ofs[2];
@@ -193,9 +192,6 @@ struct GlyphBLF {
   int dims[2];
   int pitch;
   int depth;
-
-  /** Render mode (FT_Render_Mode). */
-  int render_mode;
 
   /**
    * X and Y bearing of the glyph.
