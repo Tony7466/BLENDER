@@ -1289,17 +1289,26 @@ void node_update_asset_metadata(bNodeTree &node_tree)
   }
 }
 
-static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_data*/)
-{
-  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
-}
-
-static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
+static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
 {
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
   node_update_asset_metadata(ntree);
-  if (!ntree.id.asset_data->description) {
-    ntree.id.asset_data->description = BLI_strdup_null(ntree.description);
+
+  /* Copy asset description to node tree description. */
+  if (asset_data->description) {
+    MEM_SAFE_FREE(ntree.description);
+    ntree.description = BLI_strdup_null(asset_data->description);
+  }
+}
+
+static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_data)
+{
+  bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
+  node_update_asset_metadata(ntree);
+
+  /* Copy node tree description to asset description. */
+  if (!asset_data->description) {
+    asset_data->description = BLI_strdup_null(ntree.description);
   }
 }
 
