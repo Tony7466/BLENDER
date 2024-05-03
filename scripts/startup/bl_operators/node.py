@@ -27,6 +27,8 @@ from bpy.app.translations import (
     pgettext_data as data_,
 )
 
+from nodeitems_builtins import node_tree_group_type
+
 
 class NodeSetting(PropertyGroup):
     value: StringProperty(
@@ -151,7 +153,7 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
     @classmethod
     def description(cls, _context, properties):
         nodetype = properties["type"]
-        if nodetype.endswith("NodeGroup"):
+        if nodetype in node_tree_group_type.values():
             for setting in properties.settings:
                 if setting.name == "node_tree":
                     node_group = eval(setting.value)
