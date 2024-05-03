@@ -213,8 +213,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
 
   const bool convert_orientation = RNA_boolean_get(op->ptr, "convert_orientation");
 
-  int global_forward = RNA_enum_get(op->ptr, "export_global_forward_selection");
-  int global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
+  const int global_forward = RNA_enum_get(op->ptr, "export_global_forward_selection");
+  const int global_up = RNA_enum_get(op->ptr, "export_global_up_selection");
 
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
@@ -268,11 +268,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
     col = uiLayoutColumn(box, true);
     uiItemR(col, ptr, "selected_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "visible_objects_only", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, ptr, "convert_orientation", UI_ITEM_NONE, nullptr, ICON_NONE);
-    if (RNA_boolean_get(ptr, "convert_orientation")) {
-      uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
-    }
   }
 
   col = uiLayoutColumn(box, true);
@@ -299,6 +294,12 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "export_subdivision", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "root_prim_path", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  uiItemR(col, ptr, "convert_orientation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (RNA_boolean_get(ptr, "convert_orientation")) {
+    uiItemR(col, ptr, "export_global_forward_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "export_global_up_selection", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
 
   col = uiLayoutColumn(box, true);
   uiItemR(col, ptr, "evaluation_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -491,23 +492,19 @@ void WM_OT_usd_export(wmOperatorType *ot)
   RNA_def_boolean(ot->srna,
                   "convert_orientation",
                   false,
-                  "Convert Orientation to Y Up",
-                  "When checked, the USD exporter will convert orientation axis to Y up, matching "
-                  "other applications");
+                  "Convert Orientation",
+                  "When checked, the USD exporter will convert scene orientation axis");
 
   prop = RNA_def_enum(ot->srna,
                       "export_global_forward_selection",
                       io_transform_axis,
                       IO_AXIS_NEGATIVE_Z,
                       "Forward Axis",
-                      "Global Forward axis for export");
+                      "");
   RNA_def_property_update_runtime(prop, forward_axis_update);
-  prop = RNA_def_enum(ot->srna,
-                      "export_global_up_selection",
-                      io_transform_axis,
-                      IO_AXIS_Y,
-                      "Up Axis",
-                      "Global Up axis for export");
+
+  prop = RNA_def_enum(
+      ot->srna, "export_global_up_selection", io_transform_axis, IO_AXIS_Y, "Up Axis", "");
   RNA_def_property_update_runtime(prop, up_axis_update);
 
   RNA_def_boolean(ot->srna,

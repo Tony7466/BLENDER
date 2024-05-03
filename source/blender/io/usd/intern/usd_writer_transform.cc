@@ -16,13 +16,6 @@
 
 namespace blender::io::usd {
 
-static const float UNIT_M4[4][4] = {
-    {1, 0, 0, 0},
-    {0, 1, 0, 0},
-    {0, 0, 1, 0},
-    {0, 0, 0, 1},
-};
-
 USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx) {}
 
 pxr::UsdGeomXformable USDTransformWriter::create_xformable() const
@@ -62,6 +55,13 @@ bool USDTransformWriter::should_apply_root_xform(const HierarchyContext &context
 
 void USDTransformWriter::do_write(HierarchyContext &context)
 {
+  constexpr float UNIT_M4[4][4] = {
+      {1, 0, 0, 0},
+      {0, 1, 0, 0},
+      {0, 0, 1, 0},
+      {0, 0, 0, 1},
+  };
+
   pxr::UsdGeomXformable xform = create_xformable();
 
   if (!xform) {
@@ -71,9 +71,6 @@ void USDTransformWriter::do_write(HierarchyContext &context)
 
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
 
-  // TODO(makowalski): This is inefficient checking for every transform and should be moved
-  // elsewhere.
-  // TODO(makowalski): Use get_export_conversion_matrix() here, to avoid duplicating code.
   if (should_apply_root_xform(context)) {
     float matrix_world[4][4];
     copy_m4_m4(matrix_world, context.matrix_world);
