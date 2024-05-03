@@ -508,29 +508,6 @@ struct GreasePencilFillOpData {
   /* Mouse position where the extension mode was enabled. */
   float2 extension_mouse_pos;
 
-  ~GreasePencilFillOpData()
-  {
-    /* clear status message area */
-    // MEM_SAFE_FREE(tgpf->sbuffer);
-    // MEM_SAFE_FREE(tgpf->depth_arr);
-
-    /* Clean temp strokes. */
-    // stroke_array_free(tgpf);
-
-    /* Remove any temp stroke. */
-    // gpencil_delete_temp_stroke_extension(tgpf, true);
-
-    /* remove drawing handler */
-    // if (this->draw_handle_3d) {
-    //   ED_region_draw_cb_exit(this->region_type, this->draw_handle_3d);
-    // }
-
-    /* Remove depth buffer in cache. */
-    // if (tgpf->depths) {
-    //   ED_view3d_depths_free(tgpf->depths);
-    // }
-  }
-
   static GreasePencilFillOpData from_context(bContext &C,
                                              blender::bke::greasepencil::Layer &layer,
                                              const int material_index)
@@ -546,6 +523,7 @@ struct GreasePencilFillOpData {
     const bool help_lines = do_extend ||
                             (brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_HELPLINES);
     if (help_lines) {
+      // TODO register 3D view overlay to render help lines.
       // this->region_type = region.type;
       // this->draw_handle_3d = ED_region_draw_cb_activate(
       //     region.type, grease_pencil_fill_draw_3d, tgpf, REGION_DRAW_POST_VIEW);
@@ -582,17 +560,7 @@ static void grease_pencil_fill_status_indicators(bContext &C,
 static void grease_pencil_update_extend(bContext &C, const GreasePencilFillOpData &op_data)
 {
   if (op_data.fill_extend_fac > 0.0f) {
-    // if (tgpf->stroke_array == nullptr) {
-    //   gpencil_load_array_strokes(tgpf);
-    // }
-
-    // if (tgpf->fill_extend_mode == GP_FILL_EMODE_EXTEND) {
-    //   gpencil_update_extensions_line(tgpf);
-    // }
-    // else {
-    //   gpencil_delete_temp_stroke_extension(tgpf, false);
-    //   gpencil_create_extensions_radius(tgpf);
-    // }
+    // TODO update extension lines.
   }
   grease_pencil_fill_status_indicators(C, op_data);
   WM_event_add_notifier(&C, NC_GPENCIL | NA_EDITED, nullptr);
@@ -947,9 +915,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       break;
     case EVT_SKEY:
       if (show_extend && event->val == KM_PRESS) {
-        /* Clean temp strokes. */
-        // stroke_array_free(tgpf);
-
         /* Toggle mode. */
         if (op_data.fill_extend_mode == GP_FILL_EMODE_EXTEND) {
           op_data.fill_extend_mode = GP_FILL_EMODE_RADIUS;
@@ -964,9 +929,6 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
     case EVT_DKEY:
       if (show_extend && event->val == KM_PRESS) {
         op_data.flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
-        /* Clean temp strokes. */
-        // stroke_array_free(tgpf);
-        // gpencil_delete_temp_stroke_extension(tgpf, true);
         grease_pencil_update_extend(*C, op_data);
       }
       break;

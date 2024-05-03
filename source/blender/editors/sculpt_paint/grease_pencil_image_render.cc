@@ -114,12 +114,6 @@ void set_viewmat(ARegion &region,
                  const float2 &zoom,
                  const float2 &offset)
 {
-  // CameraParams camera_params;
-  // BKE_camera_params_init(&camera_params);
-  // BKE_camera_params_from_view3d(&camera_params, &depsgraph, &view3d, &rv3d);
-  // BKE_camera_params_compute_viewplane(&camera_params, win_size.x, win_size.y, 1.0f, 1.0f);
-  // BKE_camera_params_compute_matrix(&camera_params);
-
   rctf viewplane;
   float clip_start, clip_end;
   const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
