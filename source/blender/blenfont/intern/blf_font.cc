@@ -233,7 +233,7 @@ void blf_batch_draw_begin(FontBLF *font)
   }
 
   const bool font_changed = (g_batch.font != font);
-  const bool simple_shader = ((font->flags & (BLF_ROTATION | BLF_MATRIX | BLF_ASPECT)) == 0);
+  const bool simple_shader = ((font->flags & (BLF_ROTATION | BLF_ASPECT)) == 0);
   const bool shader_changed = (simple_shader != g_batch.simple_shader);
 
   g_batch.active = g_batch.enabled && simple_shader;
@@ -1025,6 +1025,9 @@ size_t blf_str_offset_from_cursor_position(FontBLF *font,
                                            size_t str_len,
                                            int location_x)
 {
+  /* Do not early exit if location_x <= 0, as this can result in an incorrect
+   * offset for RTL text. Instead of offset of character responsible for first
+   * glyph you'd get offset of first character, which could be the last glyph. */
   if (!str || !str[0] || !str_len) {
     return 0;
   }
@@ -1032,10 +1035,6 @@ size_t blf_str_offset_from_cursor_position(FontBLF *font,
   CursorPositionForeachGlyph_Data data{};
   data.location_x = location_x;
   data.r_offset = size_t(-1);
-
-  /* For negative position, don't early exit with 0 but instead test as
-   * if it were zero. First glyph might not be from first character. */
-  location_x = std::max(location_x, 0);
 
   blf_font_boundbox_foreach_glyph(font, str, str_len, blf_cursor_position_foreach_glyph, &data);
 
@@ -1446,10 +1445,6 @@ static void blf_font_fill(FontBLF *font)
   font->pos[1] = 0;
   font->angle = 0.0f;
 
-  for (int i = 0; i < 16; i++) {
-    font->m[i] = 0;
-  }
-
   /* Use an easily identifiable bright color (yellow)
    * so its clear when #BLF_color calls are missing. */
   font->color[0] = 255;
@@ -1469,9 +1464,6 @@ static void blf_font_fill(FontBLF *font)
   font->char_spacing = 0.0f;
 
   font->kerning_cache = nullptr;
-#if BLF_BLUR_ENABLE
-  font->blur = 0;
-#endif
   font->tex_size_max = -1;
 
   font->buf_info.fbuf = nullptr;

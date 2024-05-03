@@ -31,13 +31,16 @@ void build_asset_view(uiLayout &layout,
                       const AssetLibraryReference &library_ref,
                       const AssetShelf &shelf,
                       const bContext &C,
-                      ARegion &region);
+                      const ARegion &region);
 
 void catalog_selector_panel_register(ARegionType *region_type);
 
 AssetShelf *active_shelf_from_context(const bContext *C);
 
 void send_redraw_notifier(const bContext &C);
+
+AssetShelfType *type_ensure(const SpaceType &space_type, AssetShelf &shelf);
+AssetShelf *create_shelf_from_type(AssetShelfType &type);
 
 /**
  * Deep-copies \a shelf_regiondata into newly allocated memory. Must be freed using

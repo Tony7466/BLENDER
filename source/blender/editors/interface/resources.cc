@@ -1129,7 +1129,7 @@ void UI_Theme_Store(bThemeState *theme_state)
 {
   *theme_state = g_theme_state;
 }
-void UI_Theme_Restore(bThemeState *theme_state)
+void UI_Theme_Restore(const bThemeState *theme_state)
 {
   g_theme_state = *theme_state;
 }
@@ -1514,7 +1514,7 @@ void UI_ThemeClearColor(int colorid)
 
 int UI_ThemeMenuShadowWidth()
 {
-  bTheme *btheme = UI_GetTheme();
+  const bTheme *btheme = UI_GetTheme();
   return int(btheme->tui.menu_shadow_width * UI_SCALE_FAC);
 }
 

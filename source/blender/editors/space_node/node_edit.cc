@@ -246,7 +246,7 @@ static void compo_initjob(void *cjv)
   bNodeTree *ntree_eval = (bNodeTree *)DEG_get_evaluated_id(cj->compositor_depsgraph,
                                                             &cj->ntree->id);
 
-  cj->localtree = ntreeLocalize(ntree_eval);
+  cj->localtree = ntreeLocalize(ntree_eval, nullptr);
 
   if (cj->recalc_flags) {
     compo_tag_output_nodes(cj->localtree, cj->recalc_flags);
@@ -296,23 +296,15 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    ntreeCompositExecTree(
-        cj->re, cj->scene, ntree, &cj->scene->r, false, true, "", nullptr, cj->profiler_data);
+    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, "", nullptr, cj->profiler_data);
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv) == false) {
         continue;
       }
-      ntreeCompositExecTree(cj->re,
-                            cj->scene,
-                            ntree,
-                            &cj->scene->r,
-                            false,
-                            true,
-                            srv->name,
-                            nullptr,
-                            cj->profiler_data);
+      ntreeCompositExecTree(
+          cj->re, cj->scene, ntree, &cj->scene->r, srv->name, nullptr, cj->profiler_data);
     }
   }
 
