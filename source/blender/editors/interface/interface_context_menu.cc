@@ -1072,7 +1072,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
     uiButViewItem *view_item_but = (uiButViewItem *)ui_view_item_find_mouse_over(region,
                                                                                  event->xy);
-    if (view_item_but) {
+    if (view_item_but && but->type == UI_BTYPE_VIEW_ITEM) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
       const bContextStore *prev_ctx = CTX_store_get(C);
