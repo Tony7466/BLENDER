@@ -29,6 +29,12 @@
 using namespace blender;
 using namespace blender::gpu;
 
+static GLShaderCompiler *global_compiler()
+{
+  static GLShaderCompiler compiler = GLShaderCompiler();
+  return &compiler;
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Constructor / Destructor
  * \{ */
@@ -94,9 +100,7 @@ GLContext::GLContext(void *ghost_window, GLSharedOrphanLists &shared_orphan_list
     glMaxShaderCompilerThreadsARB(0xFFFFFFFF);
   }
 
-  /* Delete the default compiler from the base class. */
-  delete compiler;
-  compiler = new GLShaderCompiler();
+  compiler = global_compiler();
 }
 
 GLContext::~GLContext()
@@ -166,7 +170,7 @@ void GLContext::deactivate()
 
 void GLContext::begin_frame()
 {
-  /* No-op. */
+  compiler->process();
 }
 
 void GLContext::end_frame()

@@ -17,6 +17,8 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_private.hh"
 
+#include <functional>
+
 namespace blender::gpu {
 
 /**
@@ -208,8 +210,12 @@ class GLShader : public Shader {
 };
 
 class GLShaderCompiler : public ShaderCompiler {
+ private:
+  void process_batch(Batch &batch, bool block, std::function<bool()> timeout);
+
  public:
-  virtual bool batch_is_ready(BatchHandle handle) override;
+  virtual void process(bool block = false) override;
+  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
 

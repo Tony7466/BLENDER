@@ -1572,32 +1572,87 @@ GLuint GLShader::program_get()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name ShaderCompiler
+/** \name GLShaderCompiler
  * \{ */
 
-bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
+BatchHandle GLShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
 {
-  for (Shader *shader : batches.lookup(handle).shaders) {
-    if (!static_cast<GLShader *>(shader)->is_ready()) {
-      return false;
+  mutex.lock();
+  BatchHandle handle = next_batch_handle++;
+  batches.add(handle, {{}, {}, false});
+  Batch &batch = batches.lookup(handle);
+  batch.shaders.reserve(infos.size());
+  batch.infos.reserve(infos.size());
+  for (shader::ShaderCreateInfo *info : infos) {
+    batch.infos.append(*info);
+    batch.infos.last().do_batch_compilation = true;
+  }
+  mutex.unlock();
+  return handle;
+}
+
+void GLShaderCompiler::process_batch(Batch &batch, bool block, std::function<bool()> timeout)
+{
+  if (batch.is_ready) {
+    return;
+  }
+
+  for (int i = batch.shaders.size(); i < batch.infos.size(); i++) {
+    BLI_assert(batch.infos[i].do_batch_compilation);
+    batch.shaders.append(compile(batch.infos[i]));
+    if (!block && timeout()) {
+      return;
     }
   }
 
-  return true;
+  bool is_ready = batch.infos.size() == batch.shaders.size();
+
+  for (int i : batch.shaders.index_range()) {
+    Shader *&shader_ptr = batch.shaders[i];
+    GLShader *shader = static_cast<GLShader *>(shader_ptr);
+    if (shader && !shader->interface) {
+      if (shader->is_ready() || block) {
+        if (!shader->post_finalize(&batch.infos[i])) {
+          delete shader;
+          shader_ptr = nullptr;
+        }
+      }
+      else {
+        is_ready = false;
+      }
+    }
+
+    if (!block && !is_ready && timeout()) {
+      return;
+    }
+  }
+
+  batch.is_ready = is_ready;
+}
+
+#include "BLI_time.h"
+void GLShaderCompiler::process(bool block)
+{
+  mutex.lock();
+  double start = BLI_time_now_seconds();
+  auto timeout = [&]() { return !block && ((BLI_time_now_seconds() - start) > (1.0 / 60.0)); };
+  for (Batch &batch : batches.values()) {
+    process_batch(batch, false, timeout);
+    if (timeout()) {
+      break;
+    }
+  }
+  mutex.unlock();
 }
 
 Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 {
-  Batch &batch = batches.lookup(handle);
-  for (int i : batch.shaders.index_range()) {
-    Shader *&shader = batch.shaders[i];
-    if (!static_cast<GLShader *>(shader)->post_finalize(batch.infos[i])) {
-      delete shader;
-      shader = nullptr;
-    }
-  }
-
-  return ShaderCompiler::batch_finalize(handle);
+  mutex.lock();
+  Batch batch = batches.pop(handle);
+  process_batch(batch, true, []() { return false; });
+  mutex.unlock();
+  handle = 0;
+  return batch.shaders;
 }
 
 /** \} */

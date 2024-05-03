@@ -85,7 +85,7 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
 
   BatchHandle batch_handle = 0;
   blender::Vector<GPUMaterial *> compilation_batch;
-  const int max_batch_size = 16;
+  const int max_batch_size = 32;
 
   while (true) {
     if (worker_status->stop != 0) {
@@ -114,12 +114,15 @@ static void drw_deferred_shader_compilation_exec(void *custom_data,
       if (!batch_handle) {
         batch_handle = GPU_material_batch_compile(compilation_batch);
       }
-      else if (GPU_material_batch_is_ready(batch_handle)) {
+      if (GPU_material_batch_is_ready(batch_handle)) {
         GPU_material_batch_finalize(batch_handle, compilation_batch);
         for (GPUMaterial *mat : compilation_batch) {
           GPU_material_release(mat);
         }
         compilation_batch.clear();
+      }
+      else {
+        BLI_time_sleep_ms(1);
       }
     }
     else {

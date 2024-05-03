@@ -910,27 +910,36 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
 
 BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
 {
+  mutex.lock();
   BatchHandle handle = next_batch_handle++;
-  Vector<Shader *> vector = {};
-  vector.reserve(infos.size());
+  batches.add(handle, {{}, {}, true});
+  Batch &batch = batches.lookup(handle);
+  batch.shaders.reserve(infos.size());
+  batch.infos.reserve(infos.size());
   for (shader::ShaderCreateInfo *info : infos) {
-    info->do_batch_compilation = true;
-    vector.append(compile(*info));
+    batch.infos.append(*info);
+    batch.infos.last().do_batch_compilation = true;
+    batch.shaders.append(compile(batch.infos.last()));
   }
-  batches.add(handle, {vector, infos});
+  mutex.unlock();
   return handle;
 }
 
 bool ShaderCompiler::batch_is_ready(BatchHandle handle)
 {
-  return true;
+  mutex.lock();
+  bool is_ready = batches.lookup(handle).is_ready;
+  mutex.unlock();
+  return is_ready;
 }
 
 Vector<Shader *> ShaderCompiler::batch_finalize(BatchHandle &handle)
 {
-  BatchHandle handle_copy = handle;
+  mutex.lock();
+  Vector<Shader *> shaders = batches.pop(handle).shaders;
+  mutex.unlock();
   handle = 0;
-  return batches.pop(handle_copy).shaders;
+  return shaders;
 }
 
 /** \} */
