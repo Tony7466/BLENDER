@@ -613,14 +613,15 @@ static void key_data_from_adt(bAnimListElem &ale, AnimData *adt)
     return;
   }
 
-  if (adt->action) {
-    ale.key_data = adt->action;
-    ale.datatype = ALE_ACT;
+  if (!adt->action) {
+    ale.key_data = nullptr;
+    ale.datatype = ALE_NONE;
     return;
   }
 
-  ale.key_data = nullptr;
-  ale.datatype = ALE_NONE;
+  blender::animrig::Action &action = adt->action->wrap();
+  ale.key_data = &action;
+  ale.datatype = action.is_action_layered() ? ALE_ACTION_LAYERED : ALE_ACT;
 }
 
 /* this function allocates memory for a new bAnimListElem struct for the
