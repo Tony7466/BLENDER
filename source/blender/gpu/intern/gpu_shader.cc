@@ -912,14 +912,12 @@ BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &info
 {
   mutex.lock();
   BatchHandle handle = next_batch_handle++;
-  batches.add(handle, {{}, {}, true});
+  batches.add(handle, {{}, infos, true});
   Batch &batch = batches.lookup(handle);
   batch.shaders.reserve(infos.size());
-  batch.infos.reserve(infos.size());
   for (shader::ShaderCreateInfo *info : infos) {
-    batch.infos.append(*info);
-    batch.infos.last().do_batch_compilation = true;
-    batch.shaders.append(compile(batch.infos.last()));
+    info->do_batch_compilation = true;
+    batch.shaders.append(compile(*info));
   }
   mutex.unlock();
   return handle;

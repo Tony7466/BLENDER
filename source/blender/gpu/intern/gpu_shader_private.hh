@@ -166,7 +166,7 @@ class ShaderCompiler {
   std::mutex mutex;
   struct Batch {
     Vector<Shader *> shaders;
-    Vector<shader::ShaderCreateInfo> infos;
+    Vector<shader::ShaderCreateInfo *> infos;
     bool is_ready = false;
   };
   BatchHandle next_batch_handle = 1;

@@ -1579,13 +1579,11 @@ BatchHandle GLShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &in
 {
   mutex.lock();
   BatchHandle handle = next_batch_handle++;
-  batches.add(handle, {{}, {}, false});
+  batches.add(handle, {{}, infos, false});
   Batch &batch = batches.lookup(handle);
   batch.shaders.reserve(infos.size());
-  batch.infos.reserve(infos.size());
   for (shader::ShaderCreateInfo *info : infos) {
-    batch.infos.append(*info);
-    batch.infos.last().do_batch_compilation = true;
+    info->do_batch_compilation = true;
   }
   mutex.unlock();
   return handle;
@@ -1598,8 +1596,8 @@ void GLShaderCompiler::process_batch(Batch &batch, bool block, std::function<boo
   }
 
   for (int i = batch.shaders.size(); i < batch.infos.size(); i++) {
-    BLI_assert(batch.infos[i].do_batch_compilation);
-    batch.shaders.append(compile(batch.infos[i]));
+    BLI_assert(batch.infos[i]->do_batch_compilation);
+    batch.shaders.append(compile(*batch.infos[i]));
     if (!block && timeout()) {
       return;
     }
@@ -1612,7 +1610,7 @@ void GLShaderCompiler::process_batch(Batch &batch, bool block, std::function<boo
     GLShader *shader = static_cast<GLShader *>(shader_ptr);
     if (shader && !shader->interface) {
       if (shader->is_ready() || block) {
-        if (!shader->post_finalize(&batch.infos[i])) {
+        if (!shader->post_finalize(batch.infos[i])) {
           delete shader;
           shader_ptr = nullptr;
         }
