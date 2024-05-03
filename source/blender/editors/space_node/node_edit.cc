@@ -348,9 +348,7 @@ static bool is_compositing_possible(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   /* CPU compositor can always run. */
-  if (!U.experimental.use_full_frame_compositor ||
-      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU)
-  {
+  if (scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU) {
     return true;
   }
 

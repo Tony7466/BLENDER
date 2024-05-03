@@ -1692,9 +1692,7 @@ static int check_compositor_output(Scene *scene)
 static bool is_compositing_possible_on_gpu(Scene *scene, ReportList *reports)
 {
   /* CPU compositor can always run. */
-  if (!U.experimental.use_full_frame_compositor ||
-      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU)
-  {
+  if (scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU) {
     return true;
   }
 

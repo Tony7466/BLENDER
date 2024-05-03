@@ -4420,9 +4420,7 @@ static bool realtime_compositor_is_in_use(const bContext &context)
     return false;
   }
 
-  if (U.experimental.use_full_frame_compositor &&
-      scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU)
-  {
+  if (scene->nodetree->execution_mode == NTREE_EXECUTION_MODE_GPU) {
     return true;
   }
 

@@ -821,13 +821,10 @@ class NODE_PT_quality(bpy.types.Panel):
 
         snode = context.space_data
         tree = snode.node_tree
-        prefs = bpy.context.preferences
 
-        use_realtime = False
+        use_realtime = tree.execution_mode == 'REALTIME'
         col = layout.column()
-        if prefs.experimental.use_experimental_compositors:
-            col.prop(tree, "execution_mode")
-            use_realtime = tree.execution_mode == 'REALTIME'
+        col.prop(tree, "execution_mode")
         col.prop(tree, "precision")
 
         col = layout.column()
