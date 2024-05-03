@@ -6432,12 +6432,17 @@ std::string UI_but_string_get_label(uiBut &but)
     return but.str.substr(0, str_len);
   }
 
+  return UI_but_string_get_rna_label(but);
+}
+
+std::string UI_but_context_menu_title_from_button(uiBut &but)
+{
   if (but.type == UI_BTYPE_VIEW_ITEM) {
     uiButViewItem *view_item_but = static_cast<uiButViewItem *>(&but);
     blender::ui::AbstractView &tree_view = view_item_but->view_item->get_view();
-    return tree_view.label;
+    return IFACE_(tree_view.get_context_menu_title().c_str());
   }
-  return UI_but_string_get_rna_label(but);
+  return UI_but_string_get_label(but);
 }
 
 std::string UI_but_string_get_tooltip_label(const uiBut &but)
