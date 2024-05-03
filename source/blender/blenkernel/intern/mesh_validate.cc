@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2011-2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,9 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <climits>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 
 #include "CLG_log.h"
@@ -100,97 +100,46 @@ static void edge_store_from_mface_tri(EdgeUUID es[4], MFace *mf)
   es[3].verts[0] = es[3].verts[1] = UINT_MAX;
 }
 
-static int int64_cmp(const void *v1, const void *v2)
+static bool search_legacy_face_cmp(const SortFaceLegacy &sfa, const SortFaceLegacy &sfb)
 {
-  const int64_t x1 = *(const int64_t *)v1;
-  const int64_t x2 = *(const int64_t *)v2;
-
-  if (x1 > x2) {
-    return 1;
+  if (sfa.es[0].edval != sfb.es[0].edval) {
+    return sfa.es[0].edval < sfb.es[0].edval;
   }
-  if (x1 < x2) {
-    return -1;
+  if (sfa.es[1].edval != sfb.es[1].edval) {
+    return sfa.es[1].edval < sfb.es[1].edval;
   }
-
-  return 0;
+  if (sfa.es[2].edval != sfb.es[2].edval) {
+    return sfa.es[2].edval < sfb.es[2].edval;
+  }
+  return sfa.es[3].edval < sfb.es[3].edval;
 }
 
-static int search_legacy_face_cmp(const void *v1, const void *v2)
+static bool search_face_cmp(const SortFace &sp1, const SortFace &sp2)
 {
-  const SortFaceLegacy *sfa = static_cast<const SortFaceLegacy *>(v1);
-  const SortFaceLegacy *sfb = static_cast<const SortFaceLegacy *>(v2);
-
-  if (sfa->es[0].edval > sfb->es[0].edval) {
-    return 1;
-  }
-  if (sfa->es[0].edval < sfb->es[0].edval) {
-    return -1;
-  }
-
-  if (sfa->es[1].edval > sfb->es[1].edval) {
-    return 1;
-  }
-  if (sfa->es[1].edval < sfb->es[1].edval) {
-    return -1;
-  }
-
-  if (sfa->es[2].edval > sfb->es[2].edval) {
-    return 1;
-  }
-  if (sfa->es[2].edval < sfb->es[2].edval) {
-    return -1;
-  }
-
-  if (sfa->es[3].edval > sfb->es[3].edval) {
-    return 1;
-  }
-  if (sfa->es[3].edval < sfb->es[3].edval) {
-    return -1;
-  }
-
-  return 0;
-}
-
-/* TODO: check there is not some standard define of this somewhere! */
-static int int_cmp(const void *v1, const void *v2)
-{
-  return *(int *)v1 > *(int *)v2 ? 1 : *(int *)v1 < *(int *)v2 ? -1 : 0;
-}
-
-static int search_face_cmp(const void *v1, const void *v2)
-{
-  const SortFace *sp1 = static_cast<const SortFace *>(v1);
-  const SortFace *sp2 = static_cast<const SortFace *>(v2);
-
   /* Reject all invalid faces at end of list! */
-  if (sp1->invalid || sp2->invalid) {
-    return sp1->invalid ? (sp2->invalid ? 0 : 1) : -1;
+  if (sp1.invalid || sp2.invalid) {
+    return sp1.invalid < sp2.invalid;
   }
   /* Else, sort on first non-equal verts (remember verts of valid faces are sorted). */
-  const int max_idx = sp1->numverts > sp2->numverts ? sp2->numverts : sp1->numverts;
+  const int max_idx = std::min(sp1.numverts, sp2.numverts);
   for (int idx = 0; idx < max_idx; idx++) {
-    const int v1_i = sp1->verts[idx];
-    const int v2_i = sp2->verts[idx];
+    const int v1_i = sp1.verts[idx];
+    const int v2_i = sp2.verts[idx];
     if (v1_i != v2_i) {
-      return (v1_i > v2_i) ? 1 : -1;
+      return v1_i < v2_i;
     }
   }
-  return sp1->numverts > sp2->numverts ? 1 : sp1->numverts < sp2->numverts ? -1 : 0;
+  return sp1.numverts < sp2.numverts;
 }
 
-static int search_face_corner_cmp(const void *v1, const void *v2)
+static bool search_face_corner_cmp(const SortFace &sp1, const SortFace &sp2)
 {
-  const SortFace *sp1 = static_cast<const SortFace *>(v1);
-  const SortFace *sp2 = static_cast<const SortFace *>(v2);
-
   /* Reject all invalid faces at end of list! */
-  if (sp1->invalid || sp2->invalid) {
-    return sp1->invalid && sp2->invalid ? 0 : sp1->invalid ? 1 : -1;
+  if (sp1.invalid || sp2.invalid) {
+    return sp1.invalid < sp2.invalid;
   }
-  /* Else, sort on corner_start. */
-  return sp1->corner_start > sp2->corner_start ? 1 :
-         sp1->corner_start < sp2->corner_start ? -1 :
-                                                 0;
+  /* Else, sort on corner start. */
+  return sp1.corner_start < sp2.corner_start;
 }
 
 /** \} */
@@ -384,15 +333,14 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     MFace *mf;
     MFace *mf_prev;
 
-    SortFaceLegacy *sort_faces = (SortFaceLegacy *)MEM_callocN(
-        sizeof(SortFaceLegacy) * legacy_faces_num, "search faces");
+    Array<SortFaceLegacy> sort_faces(legacy_faces_num);
     SortFaceLegacy *sf;
     SortFaceLegacy *sf_prev;
     uint totsortface = 0;
 
     PRINT_ERR("No faces, only tessellated Faces");
 
-    for (i = 0, mf = legacy_faces, sf = sort_faces; i < legacy_faces_num; i++, mf++) {
+    for (i = 0, mf = legacy_faces, sf = sort_faces.data(); i < legacy_faces_num; i++, mf++) {
       bool remove = false;
       int fidx;
       uint fv[4];
@@ -443,12 +391,15 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
 
           if (mf->v4) {
             edge_store_from_mface_quad(sf->es, mf);
-
-            qsort(sf->es, 4, sizeof(int64_t), int64_cmp);
+            std::sort(sf->es, sf->es + 4, [](const EdgeUUID &a, const EdgeUUID &b) {
+              return a.edval < b.edval;
+            });
           }
           else {
             edge_store_from_mface_tri(sf->es, mf);
-            qsort(sf->es, 3, sizeof(int64_t), int64_cmp);
+            std::sort(sf->es, sf->es + 3, [](const EdgeUUID &a, const EdgeUUID &b) {
+              return a.edval < b.edval;
+            });
           }
 
           totsortface++;
@@ -461,9 +412,9 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
       }
     }
 
-    qsort(sort_faces, totsortface, sizeof(SortFaceLegacy), search_legacy_face_cmp);
+    std::sort(sort_faces.begin(), sort_faces.end(), search_legacy_face_cmp);
 
-    sf = sort_faces;
+    sf = sort_faces.data();
     sf_prev = sf;
     sf++;
 
@@ -513,8 +464,6 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
         REMOVE_FACE_TAG(mf);
       }
     }
-
-    MEM_freeN(sort_faces);
 
 #undef REMOVE_FACE_TAG
 #undef CHECK_FACE_VERT_INDEX
@@ -682,7 +631,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
 
         if (!sp->invalid) {
           /* Needed for checking faces using same verts below. */
-          qsort(sp->verts, sp->numverts, sizeof(int), int_cmp);
+          std::sort(sp->verts, sp->verts + sp->numverts);
         }
       }
       sp++;
@@ -691,7 +640,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     MEM_freeN(vert_tag);
 
     /* Second check pass, testing faces using the same verts. */
-    qsort(sort_faces, faces_num, sizeof(SortFace), search_face_cmp);
+    std::sort(sort_faces, sort_faces + faces_num, search_face_cmp);
     sp = prev_sp = sort_faces;
     sp++;
 
@@ -700,8 +649,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
       const int *p1_v = sp->verts, *p2_v = prev_sp->verts;
 
       if (sp->invalid) {
-        /* Break, because all known invalid faces have been put at the end
-         * by qsort with search_face_cmp. */
+        /* Break, because all known invalid faces have been put at the end by the sort above. */
         break;
       }
 
@@ -726,7 +674,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     }
 
     /* Third check pass, testing corners used by none or more than one face. */
-    qsort(sort_faces, faces_num, sizeof(SortFace), search_face_corner_cmp);
+    std::sort(sort_faces, sort_faces + faces_num, search_face_corner_cmp);
     sp = sort_faces;
     prev_sp = nullptr;
     prev_end = 0;
