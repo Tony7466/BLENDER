@@ -1296,7 +1296,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData * /*asset_da
 
 static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData * /*asset_data*/)
 {
-  node_update_asset_metadata(*static_cast<bNodeTree *>(asset_ptr));
+  bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
+  node_update_asset_metadata(ntree);
+  if (!ntree.id.asset_data->description) {
+    ntree.id.asset_data->description = BLI_strdup_null(ntree.description);
+  }
 }
 
 }  // namespace blender::bke
