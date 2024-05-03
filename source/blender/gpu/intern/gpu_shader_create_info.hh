@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include "BLI_hash.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "GPU_material.hh"
@@ -535,7 +536,7 @@ struct ShaderCreateInfo {
     Type type;
     DualBlend blend;
     StringRefNull name;
-    /* Note: Currently only supported by Metal. */
+    /* NOTE: Currently only supported by Metal. */
     int raster_order_group;
 
     bool operator==(const FragOut &b) const
@@ -1223,3 +1224,18 @@ struct ShaderCreateInfo {
 };
 
 }  // namespace blender::gpu::shader
+
+namespace blender {
+template<>
+struct DefaultHash<Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value>> {
+  uint64_t operator()(
+      const Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value> &key) const
+  {
+    uint64_t hash = 0;
+    for (const gpu::shader::ShaderCreateInfo::SpecializationConstant::Value &value : key) {
+      hash = hash * 33 ^ uint64_t(value.u);
+    }
+    return hash;
+  }
+};
+}  // namespace blender

@@ -234,6 +234,12 @@ struct ARegionType {
   bContextDataCallback context;
 
   /**
+   * Called on every frame in which the region's poll succeeds, regardless of visibility, before
+   * drawing, visibility evaluation and initialization. Allows the region to override visibility.
+   */
+  void (*on_poll_success)(const bContext *C, ARegion *region);
+
+  /**
    * Called whenever the user changes the region's size. Not called when the size is changed
    * through other means, like to adjust for a scaled down window.
    */
@@ -516,6 +522,8 @@ enum AssetShelfTypeFlag {
   /** Do not trigger asset dragging on drag events. Drag events can be overridden with custom
    * keymap items then. */
   ASSET_SHELF_TYPE_FLAG_NO_ASSET_DRAG = (1 << 0),
+  ASSET_SHELF_TYPE_FLAG_DEFAULT_VISIBLE = (1 << 1),
+  ASSET_SHELF_TYPE_FLAG_STORE_CATALOGS_IN_PREFS = (1 << 2),
 
   ASSET_SHELF_TYPE_FLAG_MAX
 };
@@ -527,6 +535,8 @@ struct AssetShelfType {
   int space_type;
 
   AssetShelfTypeFlag flag;
+
+  short default_preview_size;
 
   /** Determine if asset shelves of this type should be available in current context or not. */
   bool (*poll)(const bContext *C, const AssetShelfType *shelf_type);

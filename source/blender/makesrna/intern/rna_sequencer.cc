@@ -283,9 +283,9 @@ static void rna_SequenceEditor_sequences_all_end(CollectionPropertyIterator *ite
   MEM_freeN(bli_iter);
 }
 
-static int rna_SequenceEditor_sequences_all_lookup_string(PointerRNA *ptr,
-                                                          const char *key,
-                                                          PointerRNA *r_ptr)
+static bool rna_SequenceEditor_sequences_all_lookup_string(PointerRNA *ptr,
+                                                           const char *key,
+                                                           PointerRNA *r_ptr)
 {
   ID *id = ptr->owner_id;
   Scene *scene = (Scene *)id;
@@ -2306,11 +2306,10 @@ static void rna_def_sequence(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_default_fade", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_USE_EFFECT_DEFAULT_FADE);
-  RNA_def_property_ui_text(
-      prop,
-      "Use Default Fade",
-      "Fade effect using the built-in default (usually make transition as long as "
-      "effect strip)");
+  RNA_def_property_ui_text(prop,
+                           "Use Default Fade",
+                           "Fade effect using the built-in default (usually makes the transition "
+                           "as long as the effect strip)");
   RNA_def_property_update(
       prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_preprocessed_update");
 
@@ -2473,6 +2472,13 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_SequenceEditor_overlay_lock_set");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 
+  prop = RNA_def_property(srna, "show_missing_media", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "show_missing_media_flag", SEQ_EDIT_SHOW_MISSING_MEDIA);
+  RNA_def_property_ui_text(
+      prop, "Show Missing Media", "Render missing images/movies with a solid magenta color");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
+
   /* access to fixed and relative frame */
   prop = RNA_def_property(srna, "overlay_frame", PROP_INT, PROP_NONE);
   RNA_def_property_ui_text(prop, "Overlay Offset", "Number of frames to offset");
@@ -2494,31 +2500,6 @@ static void rna_def_editor(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, "rna_SequenceEditor_update_cache");
 
   /* cache flags */
-
-  prop = RNA_def_property(srna, "show_cache", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_VIEW_ENABLE);
-  RNA_def_property_ui_text(prop, "Show Cache", "Visualize cached images on the timeline");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
-
-  prop = RNA_def_property(srna, "show_cache_final_out", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_VIEW_FINAL_OUT);
-  RNA_def_property_ui_text(prop, "Final Images", "Visualize cached complete frames");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
-
-  prop = RNA_def_property(srna, "show_cache_raw", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_VIEW_RAW);
-  RNA_def_property_ui_text(prop, "Raw Images", "Visualize cached raw images");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
-
-  prop = RNA_def_property(srna, "show_cache_preprocessed", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_VIEW_PREPROCESSED);
-  RNA_def_property_ui_text(prop, "Preprocessed Images", "Visualize cached pre-processed images");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
-
-  prop = RNA_def_property(srna, "show_cache_composite", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_VIEW_COMPOSITE);
-  RNA_def_property_ui_text(prop, "Composite Images", "Visualize cached composite images");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
 
   prop = RNA_def_property(srna, "use_cache_raw", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "cache_flag", SEQ_CACHE_STORE_RAW);

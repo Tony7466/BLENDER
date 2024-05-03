@@ -409,6 +409,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Use Masks. */
   prop = RNA_def_property(srna, "use_masks", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, -1);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_MASKS);
   RNA_def_property_ui_text(
@@ -613,6 +614,11 @@ static void rna_def_grease_pencil_onion_skinning(StructRNA *srna)
        ICON_KEYTYPE_JITTER_VEC,
        "Jitter",
        "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+      {BEZT_KEYTYPE_GENERATED,
+       "GENERATED",
+       ICON_KEYTYPE_GENERATED_VEC,
+       "Generated",
+       "A key generated automatically by a tool, not manually created"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

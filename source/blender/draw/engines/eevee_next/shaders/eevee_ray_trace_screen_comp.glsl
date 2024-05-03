@@ -13,6 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 void main()
 {
@@ -61,7 +62,7 @@ void main()
   if (closure_index == 0) {
     uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
     float thickness = gbuffer_read_thickness(gbuf_header, gbuf_normal_tx, texel_fullres);
-    if (thickness > 0.0) {
+    if (thickness != 0.0) {
       vec3 surface_N = gbuffer_read_normal(gbuf_normal_tx, texel_fullres);
       ClosureUndetermined cl = gbuffer_read_bin(
           gbuf_header, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
@@ -131,12 +132,16 @@ void main()
     vec3 Ng = ray.direction;
     /* Fallback to nearest light-probe. */
     LightProbeSample samp = lightprobe_load(ray.origin, Ng, V);
+    /* Clamp SH to have parity with forward evaluation. */
+    float clamp_indirect = uniform_buf.clamp.surface_indirect;
+    samp.volume_irradiance = spherical_harmonics_clamp(samp.volume_irradiance, clamp_indirect);
+
     radiance = lightprobe_eval_direction(samp, ray.origin, ray.direction, safe_rcp(ray_pdf_inv));
     /* Set point really far for correct reprojection of background. */
     hit.time = 10000.0;
   }
 
-  radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.raytrace.brightness_clamp);
+  radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.clamp.surface_indirect);
 
   imageStore(ray_time_img, texel, vec4(hit.time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));
