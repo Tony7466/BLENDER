@@ -479,6 +479,8 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
   {
     BitVector<> vert_tag(mesh->verts_num);
     Array<SortFace> sort_faces(faces_num);
+    Array<int> sort_face_verts(faces_num == 0 ? 0 : face_offsets[faces_num]);
+    int64_t sort_face_verts_offset = 0;
 
     for (const int64_t i : blender::IndexRange(faces_num)) {
       SortFace *sp = &sort_faces[i];
@@ -519,7 +521,8 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
         /* Face itself is valid, for now. */
         int v1, v2; /* v1 is prev corner vert idx, v2 is current corner one. */
         sp->invalid = false;
-        sp->verts = v = (int *)MEM_mallocN(sizeof(int) * face_size, "Vert idx of SortFace");
+        sp->verts = v = sort_face_verts.data() + sort_face_verts_offset;
+        sort_face_verts_offset += face_size;
         sp->numverts = face_size;
         sp->corner_start = face_start;
 
@@ -625,6 +628,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
       }
       sp++;
     }
+    BLI_assert(sort_face_verts_offset <= sort_face_verts.size());
 
     vert_tag.clear_and_shrink();
 
@@ -669,10 +673,8 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     prev_sp = nullptr;
     int prev_end = 0;
     for (i = 0; i < faces_num; i++, sp++) {
-      /* Free this now, we don't need it anymore, and avoid us another corner! */
-      if (sp->verts) {
-        MEM_freeN(sp->verts);
-      }
+      /* We don't need the verts anymore, and avoid us another corner! */
+      sp->verts = nullptr;
 
       /* Note above prev_sp: in following code, we make sure it is always valid face (or nullptr).
        */
