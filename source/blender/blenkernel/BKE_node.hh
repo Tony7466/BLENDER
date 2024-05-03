@@ -236,7 +236,7 @@ struct bNodeType {
 
   /** Optional override for node class, used for drawing node header. */
   int (*ui_class)(const bNode *node);
-  /** Optional dynamic description of what the node does. */
+  /** Optional dynamic description of what the node group does. */
   std::string (*ui_description_fn)(const bNode &node);
 
   /** Called when the node is updated in the editor. */
