@@ -8,6 +8,9 @@ set(SNDFILE_EXTRA_ARGS
   -DVorbis_ROOT=${LIBDIR}/vorbis
   -DOpus_ROOT=${LIBDIR}/opus
   -DFLAC_ROOT=${LIBDIR}/flac
+  # Use two roots because of apparent mistake in sndfile.
+  -DLAME_ROOT=${LIBDIR}/lame/include
+  -DMP3LAME_ROOT=${LIBDIR}/lame/lib
   -DCMAKE_DISABLE_FIND_PACKAGE_ALSA=ON
   -DCMAKE_DISABLE_FIND_PACKAGE_mpg123=ON
   -DCMAKE_DISABLE_FIND_PACKAGE_Speex=ON
@@ -25,21 +28,12 @@ if(WIN32)
     ${SNDFILE_EXTRA_ARGS}
     -DBUILD_SHARED_LIBS=ON
     -DCMAKE_C_FLAGS=${SNDFILE_C_FLAGS}
-    -DLame_ROOT=${LIBDIR}/lame
-    -DLAME_INCLUDE_DIR=${LIBDIR}/lame/include/
-  )
-  set(SNDFILE_PATCH ${CMAKE_COMMAND} -E copy
-    ${PATCH_DIR}/cmake/modules/FindLame.cmake
-    ${BUILD_DIR}/sndfile/src/external_sndfile/cmake/FindLame.cmake
   )
 else()
   set(SNDFILE_PATCH)
   set(SNDFILE_EXTRA_ARGS
     ${SNDFILE_EXTRA_ARGS}
     -DBUILD_SHARED_LIBS=OFF
-    -DLAME_ROOT=${LIBDIR}/lame
-    -DMP3LAME_INCLUDE_DIR=${LIBDIR}/lame/include
-    -DMP3LAME_LIBRARY=${LIBDIR}/lame/lib/libmp3lame.a
   )
 endif()
 
