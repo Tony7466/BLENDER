@@ -21,6 +21,7 @@
 #include "BLI_math_base.h"
 #include "BLI_math_vector.h"
 #include "BLI_ordered_edge.hh"
+#include "BLI_sort.hh"
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
@@ -404,7 +405,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
       }
     }
 
-    std::sort(sort_faces.begin(), sort_faces.end(), search_legacy_face_cmp);
+    blender::parallel_sort(sort_faces.begin(), sort_faces.end(), search_legacy_face_cmp);
 
     sf = sort_faces.data();
     sf_prev = sf;
@@ -633,7 +634,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     vert_tag.clear_and_shrink();
 
     /* Second check pass, testing faces using the same verts. */
-    std::sort(sort_faces.begin(), sort_faces.end(), search_face_cmp);
+    blender::parallel_sort(sort_faces.begin(), sort_faces.end(), search_face_cmp);
     SortFace *sp, *prev_sp;
     sp = prev_sp = sort_faces.data();
     sp++;
@@ -668,7 +669,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
     }
 
     /* Third check pass, testing corners used by none or more than one face. */
-    std::sort(sort_faces.begin(), sort_faces.end(), search_face_corner_cmp);
+    blender::parallel_sort(sort_faces.begin(), sort_faces.end(), search_face_corner_cmp);
     sp = sort_faces.data();
     prev_sp = nullptr;
     int prev_end = 0;
