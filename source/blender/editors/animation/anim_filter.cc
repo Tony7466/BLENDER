@@ -3138,11 +3138,9 @@ static size_t animdata_filter_ds_scene(
         expanded = EXPANDED_ACTC(adt->action);
       },
       { /* Keyframes from layered Action. */
-#ifdef WITH_ANIM_BAKLAVA
         type = ANIMTYPE_FILLACT_LAYERED;
         cdata = adt->action;
         expanded = EXPANDED_ADT(adt);
-#endif
       });
 
   /* add scene-level animation channels */
