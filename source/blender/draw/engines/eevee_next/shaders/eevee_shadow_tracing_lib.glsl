@@ -133,15 +133,18 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
      * time value, we don't actually care about the correct value. So we replace the complex
      * problem of trying to get the extrapolation in shadow map space into the extrapolation at
      * ray_time in ray space. This is equivalent as both functions have the same roots. */
+    float delta_time = state.ray_time - state.occluder_history.x;
     float extrapolated_occluder_y = abs(state.occluder_history.y) +
-                                    abs(state.occluder_slope) *
-                                        (state.ray_time - state.occluder_history.x);
+                                    state.occluder_slope * delta_time;
     state.hit = extrapolated_occluder_y < 0.0;
   }
   else {
     /* Compute current occluder slope and record history for when the ray goes behind a surface. */
     vec2 delta = samp.occluder - state.occluder_history;
-    state.occluder_slope = delta.y / delta.x;
+    /* Clamping the slope to a mininim avoid light leaking. */
+    /* TODO(fclem): Expose as parameter? */
+    const float min_slope = tan(M_PI * 0.25);
+    state.occluder_slope = max(min_slope, abs(delta.y / delta.x));
     state.occluder_history = samp.occluder;
     /* Intersection test. Intersect if above the ray time. */
     state.hit = samp.occluder.x > state.ray_time;
