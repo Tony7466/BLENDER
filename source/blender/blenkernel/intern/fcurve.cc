@@ -1263,8 +1263,7 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
   BezTriple *last = &fcu->bezt[fcu->totvert - 1];
   const bool cycle = BKE_fcurve_is_cyclic(fcu) && BEZT_IS_AUTOH(first) && BEZT_IS_AUTOH(last);
 
-  IndexRange bezt_range(0, fcu->totvert);
-  threading::parallel_for(bezt_range, 256, [&](const IndexRange range) {
+  threading::parallel_for(IndexRange(fcu->totvert), 256, [&](const IndexRange range) {
     BezTriple tmp;
     for (const int i : range) {
       BezTriple *bezt = &fcu->bezt[i];
