@@ -290,7 +290,7 @@ static float calc_expand_factor(const gesture::GestureData &gesture_data)
   const float2 min_corner(rect.xmin, rect.ymin);
   const float2 max_corner(rect.xmax, rect.ymax);
 
-  /* Mutiply the screen space bounds by an arbitrary factor to ensure the created points are
+  /* Multiply the screen space bounds by an arbitrary factor to ensure the created points are
    * sufficiently far and enclose the mesh to be operated on. */
   return math::distance(min_corner, max_corner) * 2.0f;
 }
@@ -370,7 +370,7 @@ static void generate_geometry(gesture::GestureData &gesture_data)
   float depth_point[3];
 
   /* Get origin point for OrientationType::View.
-   * Note: for projection extrusion we add depth_front here
+   * NOTE: for projection extrusion we add depth_front here
    * instead of in the loop.
    */
   if (trim_operation->extrude_mode == ExtrudeMode::Fixed) {

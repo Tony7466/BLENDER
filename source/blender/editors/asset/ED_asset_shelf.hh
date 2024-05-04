@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <memory>
+
 struct ARegion;
 struct ARegionType;
 struct AssetShelf;
@@ -21,6 +23,10 @@ struct Main;
 struct SpaceType;
 struct RegionPollParams;
 struct wmWindowManager;
+
+namespace blender {
+class StringRef;
+}  // namespace blender
 
 namespace blender::ed::asset::shelf {
 
@@ -47,6 +53,7 @@ void region_on_user_resize(const ARegion *region);
 void region_listen(const wmRegionListenerParams *params);
 void region_layout(const bContext *C, ARegion *region);
 void region_draw(const bContext *C, ARegion *region);
+void region_on_poll_success(const bContext *C, ARegion *region);
 void region_blend_read_data(BlendDataReader *reader, ARegion *region);
 void region_blend_write(BlendWriter *writer, ARegion *region);
 int region_prefsizey();
@@ -63,7 +70,15 @@ void header_regiontype_register(ARegionType *region_type, const int space_type);
 /** \name Asset Shelf Type
  * \{ */
 
-bool type_poll(const bContext &C, const SpaceType &space_type, const AssetShelfType *shelf_type);
+void type_register(std::unique_ptr<AssetShelfType> type);
+void type_unregister(const AssetShelfType &shelf_type);
+/**
+ * Poll an asset shelf type for display as a permanent region in a space of a given type (the
+ * type's #bl_space_type).
+ */
+bool type_poll(const bContext &C, const AssetShelfType *shelf_type, const int space_type);
+
+AssetShelfType *type_find_from_idname(const StringRef idname);
 
 /** \} */
 
