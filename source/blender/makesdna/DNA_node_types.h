@@ -1991,6 +1991,11 @@ typedef struct NodeGeometryBake {
   char _pad[4];
 } NodeGeometryBake;
 
+typedef struct NodeGeometryToolActiveElement {
+  /** #AttrDomain. */
+  int8_t domain;
+} NodeGeometryToolActiveElement;
+
 /* script node mode */
 enum {
   NODE_SCRIPT_INTERNAL = 0,
