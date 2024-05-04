@@ -376,11 +376,9 @@ static void BMD_mesh_intersection(BMesh *bm,
  * or to zero if there aren't enough slots in the destination. */
 static Array<short> get_material_remap_index_based(Object *dest_ob, Object *src_ob)
 {
-  int n = src_ob->totcol;
+  const int n = src_ob->totcol;
   if (n <= 0) {
-    Array<short> remap(1);
-    remap[0] = 0;
-    return remap;
+    return Array<short>(1, 0);
   }
   Array<short> remap(n);
   BKE_object_material_remap_calc(dest_ob, src_ob, remap.data());
