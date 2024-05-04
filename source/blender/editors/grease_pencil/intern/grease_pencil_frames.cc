@@ -411,15 +411,17 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
+
+static bool attributes_varrays_not_equal(const bke::GAttributeReader &attrs_a,
                                          const bke::GAttributeReader &attrs_b)
 {
-  if (attrs_a.varray.size() != attrs_b.varray.size() ||
-      attrs_a.varray.type() != attrs_b.varray.type())
-  {
-    return false;
-  }
+  return (attrs_a.varray.size() != attrs_b.varray.size() ||
+          attrs_a.varray.type() != attrs_b.varray.type());
+}
 
+static bool attributes_varrays_span_data_equal(const bke::GAttributeReader &attrs_a,
+                                         const bke::GAttributeReader &attrs_b)
+{
   if (attrs_a.varray.is_span() && attrs_b.varray.is_span()) {
     const GSpan attrs_span_a = attrs_a.varray.get_internal_span();
     const GSpan attrs_span_b = attrs_b.varray.get_internal_span();
@@ -480,8 +482,12 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
     GAttributeReader attrs_a = attributes_a.lookup(id);
     GAttributeReader attrs_b = attributes_b.lookup(id);
 
-    if (attributes_varrays_are_equal(attrs_a, attrs_b)) {
+    if (attributes_varrays_span_data_equal(attrs_a, attrs_b)) {
       return true;
+    }
+
+    if (attributes_varrays_not_equal(attrs_a, attrs_b)) {
+      return false;
     }
 
     bool attributes_are_equal = true;
