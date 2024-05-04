@@ -263,11 +263,11 @@ static void SCULPT_OT_symmetrize(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_float(ot->srna,
                                     "merge_tolerance",
                                     0.0005f,
-                                    0.0f,
+                                    1e-6f,
                                     FLT_MAX,
                                     "Merge Distance",
                                     "Distance within which symmetrical vertices are merged",
-                                    0.0f,
+                                    1e-6f,
                                     1.0f);
 
   RNA_def_property_ui_range(prop, 0.0, FLT_MAX, 0.001, 5);
