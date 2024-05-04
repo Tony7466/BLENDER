@@ -836,12 +836,12 @@ struct DeDuplicateParams {
 static void deduplicate_recursive(const struct DeDuplicateParams *p, uint i)
 {
   const KDTreeNode *node = &p->nodes[i];
-  if (p->search_co[node->d] + p->range <= node->co[node->d]) {
+  if (p->search_co[node->d] + p->range < node->co[node->d]) {
     if (node->left != KD_NODE_UNSET) {
       deduplicate_recursive(p, node->left);
     }
   }
-  else if (p->search_co[node->d] - p->range >= node->co[node->d]) {
+  else if (p->search_co[node->d] - p->range > node->co[node->d]) {
     if (node->right != KD_NODE_UNSET) {
       deduplicate_recursive(p, node->right);
     }

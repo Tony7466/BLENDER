@@ -3609,11 +3609,11 @@ void MESH_OT_remove_doubles(wmOperatorType *ot)
   RNA_def_float_distance(ot->srna,
                          "threshold",
                          1e-4f,
-                         1e-6f,
+                         0.0f,
                          50.0f,
                          "Merge Distance",
                          "Maximum distance between elements to merge",
-                         1e-5f,
+                         0.0f,
                          10.0f);
   RNA_def_boolean(ot->srna,
                   "use_unselected",
