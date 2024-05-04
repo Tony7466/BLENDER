@@ -435,12 +435,9 @@ static bool attributes_varrays_span_data_equal(const bke::GAttributeReader &attr
 }
 
 template<typename T>
-static bool attributes_elements_are_equal(const bke::GAttributeReader &attrs_a,
-                                          const bke::GAttributeReader &attrs_b)
+static bool attributes_elements_are_equal(const VArray<T> &attributes_a,
+                                          const VArray<T> &attributes_b)
 {
-  const VArray attributes_a = attrs_a.varray.typed<T>();
-  const VArray attributes_b = attrs_b.varray.typed<T>();
-
   const std::optional<T> value_a = attributes_a.get_if_single();
   const std::optional<T> value_b = attributes_b.get_if_single();
   if (value_a.has_value() && value_b.has_value()) {
@@ -495,7 +492,10 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
     attribute_math::convert_to_static_type(attrs_a.varray.type(), [&](auto dummy) {
       using T = decltype(dummy);
 
-      attributes_are_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
+      const VArray attributes_a = attrs_a.varray.typed<T>();
+      const VArray attributes_b = attrs_b.varray.typed<T>();
+
+      attributes_are_equal = attributes_elements_are_equal(attributes_a, attributes_b);
     });
 
     if (!attributes_are_equal) {
