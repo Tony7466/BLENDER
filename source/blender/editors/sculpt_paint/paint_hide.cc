@@ -801,20 +801,32 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
                                         const Span<PBVHNode *> nodes,
                                         const EditMode mode)
 {
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
-  BitGroupVector<> &orig_hide = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+  BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
+
+  BitGroupVector<> orig_grid_hidden(grid_hidden.size(), grid_hidden.group_size());
+  for (const int i : grid_hidden.index_range()) {
+    orig_grid_hidden[i].copy_from(grid_hidden[i].as_span());
+  }
 
   const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
   const bool desired_state = !(mode == EditMode::Grow);
 
-  grid_hide_update(
-      depsgraph, object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
-        const BoundedBitSpan grid_hidden = orig_hide[grid_index];
+  bool any_changed = false;
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (PBVHNode *node : nodes.slice(range)) {
+      undo::push_node(&object, node, undo::Type::HideVert);
+      const Span<int> grids = BKE_pbvh_node_get_grid_indices(*node);
+
+      for (const int i : grids.index_range()) {
+        const int grid_index = grids[i];
+
         for (const int y : IndexRange(key.grid_size)) {
           for (const int x : IndexRange(key.grid_size)) {
-            const int cur_idx = y * key.grid_size + x;
-            if (grid_hidden[cur_idx] != desired_state) {
+            const int grid_elem_idx = y * key.grid_size + x;
+            if (orig_grid_hidden[grid_index][grid_elem_idx] != desired_state) {
               continue;
             }
 
@@ -825,33 +837,28 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
 
             SubdivCCGNeighbors neighbors;
             BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, true, neighbors);
-            bool should_scan_dup = true;
-            for (const int i : neighbors.coords.index_range().drop_back(neighbors.num_duplicates))
-            {
-              int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
-              if (grid_hidden[neighbor_idx] == desired_state) {
-                hide[cur_idx].set(desired_state);
-                should_scan_dup = false;
-                break;
-              }
-            }
 
-            if (!should_scan_dup) {
-              break;
-            }
+            for (const int j : neighbors.coords.index_range()) {
+              const SubdivCCGCoord neighbor = neighbors.coords[j];
+              const int neighbor_grid_elem_idx = neighbor.y * key.grid_size + neighbor.x;
 
-            for (const int i : neighbors.coords.index_range().take_back(neighbors.num_duplicates))
-            {
-              const BoundedBitSpan neighbor_span = orig_hide[neighbors.coords[i].grid_index];
-              int neighbor_idx = neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
-              if (neighbor_span[neighbor_idx] == desired_state) {
-                hide[cur_idx].set(desired_state);
-                break;
-              }
+              grid_hidden[neighbor.grid_index][neighbor_grid_elem_idx].set(desired_state);
             }
           }
         }
-      });
+      }
+
+      any_changed = true;
+
+      BKE_pbvh_node_mark_update_visibility(node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+    }
+  });
+
+  if (any_changed) {
+    multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
+    BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
+  }
 }
 
 static Array<bool> duplicate_visibility(const Object &object)
