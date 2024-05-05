@@ -29,9 +29,9 @@ struct rcti;
 
 enum class FontShadowType {
   Simple = 0,
-  Outline = 1,
   Blur3x3 = 3,
   Blur5x5 = 5,
+  Outline = 6,
 };
 
 int BLF_init();

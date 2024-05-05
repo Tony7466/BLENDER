@@ -101,7 +101,7 @@ void main()
     ivec2 texel = ivec2(floor(uv_base)) - 1;
     int frag_offset = glyph_offset + texel.y * glyph_dim.x + texel.x;
 
-    if (shadow_type == 1) {
+    if (shadow_type == 6) {
       /* 3x3 outline by dilation */
 
       float maxval = 0.0;
@@ -128,7 +128,7 @@ void main()
       }
       fragColor.a = maxval;
     }
-    else if (shadow_type == 3) {
+    else if (shadow_type <= 4) {
       /* 3x3 blur */
 
       /* clang-format off */
@@ -164,7 +164,7 @@ void main()
       }
       fragColor.a = sum * (1.0 / 16.0);
     }
-    else if (shadow_type == 5) {
+    else {
       /* 5x5 blur */
 
       /* clang-format off */
