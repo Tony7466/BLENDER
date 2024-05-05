@@ -91,8 +91,6 @@ class SphereProbeModule {
   /** Intermediate buffer to store sun light. */
   StorageArrayBuffer<SphereProbeSunLight, SPHERE_PROBE_MAX_HARMONIC, true> tmp_sunlight_ = {
       "tmp_sunlight_"};
-  /** Final buffer containing the sun light for the world. */
-  StorageBuffer<SphereProbeSunLight> sunlight_ = {"sunlight_"};
 
   /**
    * True if the next redraw will trigger a light-probe sphere update.
@@ -143,11 +141,6 @@ class SphereProbeModule {
   StorageBuffer<SphereProbeHarmonic, true> &spherical_harmonics_buf()
   {
     return spherical_harmonics_;
-  }
-
-  SphereProbeSunLight sunlight() const
-  {
-    return sunlight_;
   }
 
  private:

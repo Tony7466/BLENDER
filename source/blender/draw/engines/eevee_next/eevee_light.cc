@@ -339,33 +339,22 @@ void LightModule::begin_sync()
   local_lights_len_ = 0;
 
   if (use_sun_lights_) {
-    SphereProbeSunLight sunlight = inst_.sphere_probes.sunlight();
-    sunlight.radiance /= 4.0f * M_PI;
-    sunlight.radiance *= 2.0f * M_PI;
+    /* Create a placeholder light to be fed by the GPU after sunlight extraction. */
+    ::Light la = blender::dna::shallow_copy(
+        *(const ::Light *)DNA_default_table[SDNA_TYPE_FROM_STRUCT(Light)]);
+    la.type = LA_SUN;
+    /* Set on the GPU. */
+    la.r = la.g = la.b = 1.0f;
+    la.energy = 1.0f;
+    la.sun_angle = 0.0f;
+    /* Disable shadows. */
+    la.mode = 0;
 
-    float length;
-    float3 direction = math::normalize_and_get_length(sunlight.direction.xyz(), length);
+    Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
+    light.used = true;
+    light.sync(inst_.shadows, float4x4::identity(), 0, &la, light_threshold_);
 
-    if (length > 0.0001f) {
-      ::Light la = blender::dna::shallow_copy(
-          *(const ::Light *)DNA_default_table[SDNA_TYPE_FROM_STRUCT(Light)]);
-      la.type = LA_SUN;
-      la.r = sunlight.radiance.x;
-      la.g = sunlight.radiance.y;
-      la.b = sunlight.radiance.z;
-      la.energy = 1.0f;
-      la.sun_angle = asinf(1.0f - 2.0f * length) * 2.0f + float(M_PI);
-      /* Our sun implementation do not allow more than 174° because of float imprecisions. */
-      la.sun_angle = math::min(3.0414f, la.sun_angle);
-
-      float4x4 world_to_object = math::from_up_axis<float4x4>(direction);
-
-      Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
-      light.used = true;
-      light.sync(inst_.shadows, world_to_object, 0, &la, light_threshold_);
-
-      sun_lights_len_ += 1;
-    }
+    sun_lights_len_ += 1;
   }
 }
 
@@ -487,6 +476,7 @@ void LightModule::culling_pass_sync()
   {
     auto &sub = culling_ps_.sub("Select");
     sub.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_SELECT));
+    sub.bind_ubo("sunlight_buf", &inst_.world.sunlight);
     sub.bind_ssbo("light_cull_buf", &culling_data_buf_);
     sub.bind_ssbo("in_light_buf", light_buf_);
     sub.bind_ssbo("out_light_buf", culling_light_buf_);

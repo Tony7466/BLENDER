@@ -82,9 +82,10 @@ void SphereProbeModule::begin_sync()
     pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_SUNLIGHT));
     pass.push_constant("probe_remap_dispatch_size", &dispatch_probe_pack_);
     pass.bind_ssbo("in_sun", &tmp_sunlight_);
-    pass.bind_ssbo("out_sun", &sunlight_);
+    pass.bind_ssbo("sunlight_buf", &instance_.world.sunlight);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
     pass.dispatch(1);
+    pass.barrier(GPU_BARRIER_UNIFORM);
   }
   {
     PassSimple &pass = select_ps_;
@@ -240,7 +241,6 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
   if (extract_spherical_harmonics) {
     instance_.manager->submit(sum_sh_ps_);
     instance_.manager->submit(sum_sun_ps_);
-    sunlight_.read();
     /* All volume probe that needs to composite the world probe need to be updated. */
     instance_.volume_probes.update_world_irradiance();
   }

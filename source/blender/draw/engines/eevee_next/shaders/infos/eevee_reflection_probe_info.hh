@@ -46,7 +46,7 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_sunlight)
     .local_group_size(SPHERE_PROBE_SH_GROUP_SIZE)
     .push_constant(Type::IVEC3, "probe_remap_dispatch_size")
     .storage_buf(0, Qualifier::READ, "SphereProbeSunLight", "in_sun[SPHERE_PROBE_MAX_HARMONIC]")
-    .storage_buf(1, Qualifier::WRITE, "SphereProbeSunLight", "out_sun")
+    .storage_buf(1, Qualifier::WRITE, "LightData", "sunlight_buf")
     .additional_info("eevee_shared")
     .do_static_compilation(true)
     .compute_source("eevee_reflection_probe_sunlight_comp.glsl");

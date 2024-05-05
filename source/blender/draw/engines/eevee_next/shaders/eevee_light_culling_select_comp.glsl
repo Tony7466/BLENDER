@@ -21,6 +21,18 @@ void main()
 
   /* Sun lights are packed at the end of the array. Perform early copy. */
   if (is_sun_light(light.type)) {
+    /* First sun-light is reserved for world light. Perform copy from dedicated buffer. */
+    if (l_idx == 0) {
+      light.color = sunlight_buf.color;
+      light.power = sunlight_buf.power;
+      light.object_to_world = sunlight_buf.object_to_world;
+#if USE_LIGHT_UNION
+      light.sun.radius = sunlight_buf.sun.radius;
+#else
+      light.do_not_access_directly.radius_squared =
+          sunlight_buf.do_not_access_directly.radius_squared;
+#endif
+    }
     /* NOTE: We know the index because sun lights are packed at the start of the input buffer. */
     out_light_buf[light_cull_buf.local_lights_len + l_idx] = light;
     return;

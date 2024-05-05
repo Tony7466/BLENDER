@@ -2,9 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/* Sum all spherical harmonic coefficients extracting during remapping to octahedral map.
+/* Sum all Suns extracting during remapping to octahedral map.
  * Dispatch only one thread-group that sums. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
@@ -48,7 +49,39 @@ void main()
 
   barrier();
   if (gl_LocalInvocationIndex == 0u) {
-    out_sun.radiance = local_radiance[0];
-    out_sun.direction = local_direction[0] / local_direction[0].w;
+    /* Divide by 2 to account for conversion between sphere and hemisphere. */
+    sunlight_buf.color = local_radiance[0] * 0.5;
+
+    /* Normalize the sum to get the mean direction. The length of the vector gives us the size of
+     * the sun light. */
+    float len;
+    vec3 direction = normalize_and_get_length(local_direction[0].xyz / local_direction[0].w, len);
+    float sun_angle_cos = 2.0 * len - 1.0;
+
+    mat3x3 tx = from_up_axis(direction);
+    /* Convert to transform. */
+    sunlight_buf.object_to_world.x = vec4(tx[0][0], tx[1][0], tx[2][0], 0.0);
+    sunlight_buf.object_to_world.y = vec4(tx[0][1], tx[1][1], tx[2][1], 0.0);
+    sunlight_buf.object_to_world.z = vec4(tx[0][2], tx[1][2], tx[2][2], 0.0);
+
+    /* Compute tangent from cosine.  */
+    float sun_angle_tan = sqrt(-1.0 + 1.0 / square(sun_angle_cos));
+    /* Clamp value to avoid float imprecision artifacts. */
+    float sun_radius = clamp(sun_angle_tan, 0.001, 1000.0);
+
+    /* Convert irradiance to radiance. */
+    float shape_power = M_1_PI * (1.0 + 1.0 / square(sun_radius));
+    float point_power = 1.0;
+
+    sunlight_buf.power[LIGHT_DIFFUSE] = shape_power;
+    sunlight_buf.power[LIGHT_SPECULAR] = shape_power;
+    sunlight_buf.power[LIGHT_TRANSMISSION] = shape_power;
+    sunlight_buf.power[LIGHT_VOLUME] = point_power;
+
+#if USE_LIGHT_UNION
+    sunlight_buf.sun.radius = sun_radius;
+#else
+    sunlight_buf.do_not_access_directly.radius_squared = sun_radius;
+#endif
   }
 }

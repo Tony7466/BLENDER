@@ -47,6 +47,12 @@ class DefaultWorldNodeTree {
  * \{ */
 
 class World {
+ public:
+  /**
+   * Buffer containing the sun light for the world.
+   * Filled by #LightProbeModule and read by #LightModule.  */
+  UniformBuffer<LightData> sunlight = {"sunlight"};
+
  private:
   Instance &inst_;
 

@@ -30,6 +30,7 @@ GPU_SHADER_CREATE_INFO(eevee_light_culling_select)
     .storage_buf(2, Qualifier::WRITE, "LightData", "out_light_buf[]")
     .storage_buf(3, Qualifier::WRITE, "float", "out_zdist_buf[]")
     .storage_buf(4, Qualifier::WRITE, "uint", "out_key_buf[]")
+    .uniform_buf(0, "LightData", "sunlight_buf")
     .compute_source("eevee_light_culling_select_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_light_culling_sort)
