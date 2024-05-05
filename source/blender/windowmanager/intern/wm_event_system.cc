@@ -37,14 +37,14 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BKE_sound.h"
 
@@ -59,7 +59,7 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "RNA_access.hh"
 
@@ -1376,8 +1376,7 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
     op->properties = IDP_CopyProperty(static_cast<const IDProperty *>(properties->data));
   }
   else {
-    IDPropertyTemplate val = {0};
-    op->properties = IDP_New(IDP_GROUP, &val, "wmOperatorProperties");
+    op->properties = blender::bke::idprop::create_group("wmOperatorProperties").release();
   }
   *op->ptr = RNA_pointer_create(&wm->id, ot->srna, op->properties);
 
@@ -1969,16 +1968,17 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
                                                       const wmEvent *event,
                                                       const char *drawstr)
 {
-  int flag = ot->flag;
+  bool depends_on_cursor = WM_operator_depends_on_cursor(*C, *ot, properties);
 
   LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-    wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
-    if (otm != nullptr) {
-      flag |= otm->flag;
+    if (wmOperatorType *otm = WM_operatortype_find(macro->idname, false)) {
+      if (WM_operator_depends_on_cursor(*C, *otm, properties)) {
+        depends_on_cursor = true;
+      }
     }
   }
 
-  if (!WM_operator_depends_on_cursor(*C, *ot, properties)) {
+  if (!depends_on_cursor) {
     WM_operator_name_call_ptr(C, ot, opcontext, properties, event);
     return;
   }
@@ -5632,6 +5632,23 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
         event.flag |= WM_EVENT_SCROLL_INVERT;
       }
 
+#if !defined(WIN32) && !defined(__APPLE__)
+      /* Ensure "auto" is used when supported. */
+      char trackpad_scroll_direction = U.trackpad_scroll_direction;
+      if ((WM_capabilities_flag() & WM_CAPABILITY_TRACKPAD_PHYSICAL_DIRECTION) == 0) {
+        switch (eUserpref_TrackpadScrollDir(trackpad_scroll_direction)) {
+          case USER_TRACKPAD_SCROLL_DIR_TRADITIONAL: {
+            event.flag &= ~WM_EVENT_SCROLL_INVERT;
+            break;
+          }
+          case USER_TRACKPAD_SCROLL_DIR_NATURAL: {
+            event.flag |= WM_EVENT_SCROLL_INVERT;
+            break;
+          }
+        }
+      }
+#endif
+
       wm_event_add_trackpad(win, &event, delta[0], delta[1]);
       break;
     }
@@ -5872,15 +5889,28 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
       const GHOST_TEventWheelData *wheelData = static_cast<const GHOST_TEventWheelData *>(
           customdata);
 
+      int click_step;
       if (wheelData->z > 0) {
         event.type = WHEELUPMOUSE;
+        click_step = wheelData->z;
       }
       else {
         event.type = WHEELDOWNMOUSE;
+        click_step = -wheelData->z;
       }
+      BLI_assert(click_step != 0);
 
+      /* Avoid generating a large number of events.
+       * In practice this values is typically 1, sometimes 2-3, even 32 is very high
+       * although this could happen if the system freezes. */
+      click_step = std::min(click_step, 32);
+
+      /* TODO: support a wheel event that includes the number of steps
+       * instead of generating multiple events. */
       event.val = KM_PRESS;
-      wm_event_add(win, &event);
+      for (int i = 0; i < click_step; i++) {
+        wm_event_add(win, &event);
+      }
 
       break;
     }
@@ -6375,32 +6405,16 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       continue;
     }
 
-    bool show_text = true;
-
-    {
-      /* WARNING: O(n^2). */
-      wmKeyMapItem *kmi = nullptr;
-      for (kmi = static_cast<wmKeyMapItem *>(keymap->items.first); kmi; kmi = kmi->next) {
-        if (kmi->propvalue == items[i].value) {
-          break;
-        }
-      }
-      if (kmi != nullptr) {
-        if (kmi->val == KM_RELEASE) {
-          /* Assume release events just disable something which was toggled on. */
-          continue;
-        }
-        if (uiTemplateEventFromKeymapItem(row, items[i].name, kmi, false)) {
-          show_text = false;
-        }
-      }
+    const int num_items_used = uiTemplateStatusBarModalItem(row, keymap, items + i);
+    if (num_items_used > 0) {
+      /* Skip items in case consecutive items were merged. */
+      i += num_items_used - 1;
     }
-    if (show_text) {
-      if (std::optional<std::string> str = WM_modalkeymap_operator_items_to_string(
-              op->type, items[i].value, true))
-      {
-        uiItemL(row, fmt::format("{}: {}", *str, items[i].name).c_str(), ICON_NONE);
-      }
+    else if (std::optional<std::string> str = WM_modalkeymap_operator_items_to_string(
+                 op->type, items[i].value, true))
+    {
+      /*  Show text instead */
+      uiItemL(row, fmt::format("{}: {}", *str, items[i].name).c_str(), ICON_NONE);
     }
   }
   return true;

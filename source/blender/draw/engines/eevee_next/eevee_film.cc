@@ -15,8 +15,8 @@
 #include "BLI_hash.h"
 #include "BLI_rect.h"
 
-#include "GPU_framebuffer.h"
-#include "GPU_texture.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_texture.hh"
 
 #include "DRW_render.hh"
 #include "RE_pipeline.h"
@@ -151,7 +151,7 @@ void Film::sync_mist()
 inline bool operator==(const FilmData &a, const FilmData &b)
 {
   return (a.extent == b.extent) && (a.offset == b.offset) &&
-         (a.render_extent == b.render_extent) && (a.render_offset == b.render_offset) &&
+         (a.render_extent == b.render_extent) && (a.overscan == b.overscan) &&
          (a.filter_radius == b.filter_radius) && (a.scaling_factor == b.scaling_factor) &&
          (a.background_opacity == b.background_opacity);
 }
@@ -265,12 +265,11 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.offset = int2(output_rect->xmin, output_rect->ymin);
     data_.extent_inv = 1.0f / float2(data_.extent);
     data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
-    data_.render_offset = data_.offset;
+    data_.overscan = 0;
 
     if (inst_.camera.overscan() != 0.0f) {
-      int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data_.render_extent)));
-      data_.render_extent += overscan * 2;
-      data_.render_offset += overscan;
+      data_.overscan = inst_.camera.overscan() * math::max(UNPACK2(data_.render_extent));
+      data_.render_extent += data_.overscan * 2;
     }
 
     /* Disable filtering if sample count is 1. */
@@ -459,6 +458,9 @@ void Film::sync()
   accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
   accumulate_ps_.specialize_constant(sh, "use_reprojection", &use_reprojection_);
   accumulate_ps_.specialize_constant(sh, "scaling_factor", data_.scaling_factor);
+  accumulate_ps_.specialize_constant(sh, "combined_id", &data_.combined_id);
+  accumulate_ps_.specialize_constant(sh, "display_id", &data_.display_id);
+  accumulate_ps_.specialize_constant(sh, "normal_id", &data_.normal_id);
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);

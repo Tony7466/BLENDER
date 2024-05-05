@@ -23,13 +23,13 @@ struct GPUUniformBuf;
 GPUUniformBuf *GPU_uniformbuf_create_ex(size_t size, const void *data, const char *name);
 /**
  * Create UBO from inputs list.
- * Return NULL if failed to create or if \param inputs: is empty.
+ * Return nullptr if failed to create or if \param inputs: is empty.
  *
  * \param inputs: ListBase of #BLI_genericNodeN(#GPUInput).
  */
 GPUUniformBuf *GPU_uniformbuf_create_from_list(ListBase *inputs, const char *name);
 
-#define GPU_uniformbuf_create(size) GPU_uniformbuf_create_ex(size, NULL, __func__);
+#define GPU_uniformbuf_create(size) GPU_uniformbuf_create_ex(size, nullptr, __func__);
 
 void GPU_uniformbuf_free(GPUUniformBuf *ubo);
 
@@ -38,7 +38,11 @@ void GPU_uniformbuf_update(GPUUniformBuf *ubo, const void *data);
 void GPU_uniformbuf_bind(GPUUniformBuf *ubo, int slot);
 void GPU_uniformbuf_bind_as_ssbo(GPUUniformBuf *ubo, int slot);
 void GPU_uniformbuf_unbind(GPUUniformBuf *ubo);
-void GPU_uniformbuf_unbind_all();
+/**
+ * Resets the internal slot usage tracking. But there is no guarantee that
+ * this actually undo the bindings for the next draw call. Only has effect when G_DEBUG_GPU is set.
+ */
+void GPU_uniformbuf_debug_unbind_all();
 
 void GPU_uniformbuf_clear_to_zero(GPUUniformBuf *ubo);
 
