@@ -389,8 +389,6 @@ enum class NodeGroupCategory {
   Input = 1,
   Geometry = 2,
   Shader = 3,
-  Texture = 4,
-  Utility = 5,
 };
 
 struct bNodeTreeExec;

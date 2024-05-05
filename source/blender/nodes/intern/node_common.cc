@@ -94,10 +94,6 @@ int node_group_ui_class(const bNode *node)
       return NODE_CLASS_GEOMETRY;
     case NodeGroupCategory::Shader:
       return NODE_CLASS_SHADER;
-    case NodeGroupCategory::Texture:
-      return NODE_CLASS_TEXTURE;
-    case NodeGroupCategory::Utility:
-      return NODE_CLASS_CONVERTER;
   }
   return NODE_CLASS_GROUP;
 }

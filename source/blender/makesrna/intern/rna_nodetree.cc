@@ -97,8 +97,6 @@ const EnumPropertyItem rna_enum_node_group_category_items[] = {
     {int(NodeGroupCategory::Input), "INPUT", 0, "Input", ""},
     {int(NodeGroupCategory::Geometry), "GEOMETRY", 0, "Geometry", ""},
     {int(NodeGroupCategory::Shader), "SHADER", 0, "Shader", ""},
-    {int(NodeGroupCategory::Texture), "TEXTURE", 0, "Texture", ""},
-    {int(NodeGroupCategory::Utility), "UTILITY", 0, "Utility", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
