@@ -11,7 +11,7 @@
 #include "BKE_compute_contexts.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_zones.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
