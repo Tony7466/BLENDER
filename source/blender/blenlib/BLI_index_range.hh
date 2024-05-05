@@ -60,10 +60,35 @@ class IndexRange {
     BLI_assert(size >= 0);
   }
 
-  constexpr IndexRange(int64_t start, int64_t size) : start_(start), size_(size)
+  constexpr IndexRange(const int64_t start, const int64_t size) : start_(start), size_(size)
   {
     BLI_assert(start >= 0);
     BLI_assert(size >= 0);
+  }
+
+  constexpr static IndexRange from_begin_size(const int64_t begin, const int64_t size)
+  {
+    return IndexRange(begin, size);
+  }
+
+  constexpr static IndexRange from_begin_end(const int64_t begin, const int64_t end)
+  {
+    return IndexRange(begin, end - begin);
+  }
+
+  constexpr static IndexRange from_begin_end_inclusive(const int64_t begin, const int64_t last)
+  {
+    return IndexRange(begin, last - begin + 1);
+  }
+
+  constexpr static IndexRange from_end_size(const int64_t end, const int64_t size)
+  {
+    return IndexRange(end - size, size);
+  }
+
+  constexpr static IndexRange from_single(const int64_t index)
+  {
+    return IndexRange(index, 1);
   }
 
   class Iterator : public iterator::RandomAccessIteratorMixin<Iterator> {
@@ -140,6 +165,14 @@ class IndexRange {
   constexpr bool is_empty() const
   {
     return size_ == 0;
+  }
+
+  /**
+   * Creates a new index range with the same beginning but a different end.
+   */
+  constexpr IndexRange with_new_end(const int64_t new_end) const
+  {
+    return IndexRange::from_begin_end(start_, new_end);
   }
 
   /**

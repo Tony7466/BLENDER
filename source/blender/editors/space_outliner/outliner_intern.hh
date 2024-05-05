@@ -10,6 +10,8 @@
 
 #include <memory>
 
+#include "BLI_function_ref.hh"
+
 #include "RNA_types.hh"
 
 /* Needed for `tree_element_cast()`. */
@@ -137,6 +139,7 @@ struct TreeElementIcon {
         ID_GR, \
         ID_AR, \
         ID_AC, \
+        ID_AN, \
         ID_BR, \
         ID_PA, \
         ID_GD_LEGACY, \
@@ -200,8 +203,7 @@ enum eOLSetState {
 /* size constants */
 #define OL_Y_OFFSET 2
 
-#define OL_TOG_USER_BUTS_USERS (UI_UNIT_X * 2.0f + V2D_SCROLL_WIDTH)
-#define OL_TOG_USER_BUTS_STATUS (UI_UNIT_X + V2D_SCROLL_WIDTH)
+#define OL_TOG_USER_BUTS_USERS (UI_UNIT_X * 1.2f + V2D_SCROLL_WIDTH)
 
 #define OL_RNA_COLX (UI_UNIT_X * 15)
 #define OL_RNA_COL_SIZEX (UI_UNIT_X * 7.5f)
@@ -382,13 +384,12 @@ bool outliner_is_co_within_mode_column(SpaceOutliner *space_outliner, const floa
 void outliner_item_mode_toggle(bContext *C, TreeViewContext *tvc, TreeElement *te, bool do_extend);
 
 /* `outliner_edit.cc` */
-using outliner_operation_fn = void (*)(bContext *C,
-                                       ReportList *,
-                                       Scene *scene,
-                                       TreeElement *,
-                                       TreeStoreElem *,
-                                       TreeStoreElem *,
-                                       void *);
+using outliner_operation_fn = blender::FunctionRef<void(bContext *C,
+                                                        ReportList *reports,
+                                                        Scene *scene,
+                                                        TreeElement *te,
+                                                        TreeStoreElem *tsep,
+                                                        TreeStoreElem *tselem)>;
 
 /**
  * \param recurse_selected: Set to false for operations which are already
@@ -400,7 +401,6 @@ void outliner_do_object_operation_ex(bContext *C,
                                      SpaceOutliner *space_outliner,
                                      ListBase *lb,
                                      outliner_operation_fn operation_fn,
-                                     void *user_data,
                                      bool recurse_selected);
 void outliner_do_object_operation(bContext *C,
                                   ReportList *reports,
@@ -424,37 +424,32 @@ void item_rename_fn(bContext *C,
                     Scene *scene,
                     TreeElement *te,
                     TreeStoreElem *tsep,
-                    TreeStoreElem *tselem,
-                    void *user_data);
+                    TreeStoreElem *tselem);
 void lib_relocate_fn(bContext *C,
                      ReportList *reports,
                      Scene *scene,
                      TreeElement *te,
                      TreeStoreElem *tsep,
-                     TreeStoreElem *tselem,
-                     void *user_data);
+                     TreeStoreElem *tselem);
 void lib_reload_fn(bContext *C,
                    ReportList *reports,
                    Scene *scene,
                    TreeElement *te,
                    TreeStoreElem *tsep,
-                   TreeStoreElem *tselem,
-                   void *user_data);
+                   TreeStoreElem *tselem);
 
 void id_delete_tag_fn(bContext *C,
                       ReportList *reports,
                       Scene *scene,
                       TreeElement *te,
                       TreeStoreElem *tsep,
-                      TreeStoreElem *tselem,
-                      void *user_data);
+                      TreeStoreElem *tselem);
 void id_remap_fn(bContext *C,
                  ReportList *reports,
                  Scene *scene,
                  TreeElement *te,
                  TreeStoreElem *tsep,
-                 TreeStoreElem *tselem,
-                 void *user_data);
+                 TreeStoreElem *tselem);
 
 /**
  * To retrieve coordinates with redrawing the entire tree.
@@ -512,6 +507,7 @@ void OUTLINER_OT_drivers_add_selected(wmOperatorType *ot);
 void OUTLINER_OT_drivers_delete_selected(wmOperatorType *ot);
 
 void OUTLINER_OT_orphans_purge(wmOperatorType *ot);
+void OUTLINER_OT_orphans_manage(wmOperatorType *ot);
 
 /* `outliner_query.cc` */
 

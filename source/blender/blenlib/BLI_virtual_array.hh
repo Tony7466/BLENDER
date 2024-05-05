@@ -486,6 +486,8 @@ template<typename T> struct VArrayAnyExtraInfo {
 
 }  // namespace detail
 
+inline int counter = 0;
+
 /**
  * Utility class to reduce code duplication for methods available on #VArray and #VMutableArray.
  * Deriving #VMutableArray from #VArray would have some issues:
@@ -523,6 +525,8 @@ template<typename T> class VArrayCommon {
   /** Copy constructor. */
   VArrayCommon(const VArrayCommon &other) : storage_(other.storage_)
   {
+    printf("%d;\n", counter);
+    BLI_assert(counter++ < 10);
     impl_ = this->impl_from_storage();
   }
 
@@ -1035,7 +1039,9 @@ template<typename T> class VArraySpan final : public Span<T> {
  public:
   VArraySpan() = default;
 
-  VArraySpan(VArray<T> varray) : Span<T>(), varray_(std::move(varray))
+  VArraySpan(const VArray<T> &varray) : VArraySpan(VArray<T>(varray)) {}
+
+  VArraySpan(VArray<T> &&varray) : Span<T>(), varray_(std::move(varray))
   {
     if (!varray_) {
       return;
