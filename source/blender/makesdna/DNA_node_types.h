@@ -2343,6 +2343,15 @@ typedef enum NodeVectorMathOperation {
   NODE_VECTOR_MATH_MULTIPLY_ADD = 26,
 } NodeVectorMathOperation;
 
+typedef enum NodeMatrixMathOperation {
+  NODE_MATRIX_MATH_MULTIPLY = 0,
+  NODE_MATRIX_MATH_INVERT = 1,
+  NODE_MATRIX_MATH_TRANSPOSE = 2,
+  NODE_MATRIX_MATH_NORMALIZE = 3,
+  NODE_MATRIX_MATH_DETERMINANT = 4,
+  NODE_MATRIX_MATH_ADJUGATE = 5,
+} NodeMatrixMathOperation;
+
 typedef enum NodeBooleanMathOperation {
   NODE_BOOLEAN_MATH_AND = 0,
   NODE_BOOLEAN_MATH_OR = 1,

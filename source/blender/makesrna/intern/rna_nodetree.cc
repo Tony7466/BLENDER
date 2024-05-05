@@ -312,6 +312,28 @@ const EnumPropertyItem rna_enum_node_boolean_math_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_node_matrix_math_items[] = {
+    {NODE_MATRIX_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A * B"},
+    {NODE_MATRIX_MATH_INVERT, "INVERT", 0, "Invert", "Inverts the matrix A"},
+    {NODE_MATRIX_MATH_TRANSPOSE,
+     "TRANSPOSE",
+     0,
+     "Transpose",
+     "Flips the matrix over its diagonal"},
+    {NODE_MATRIX_MATH_NORMALIZE,
+     "NORMALIZE",
+     0,
+     "Normalize",
+     "Normalizes the entries of matrix A"},
+    {NODE_MATRIX_MATH_DETERMINANT,
+     "DETERMINANT",
+     0,
+     "Determinant",
+     "Finds the determinant of matrix A"},
+    {NODE_MATRIX_MATH_ADJUGATE, "ADJUGATE", 0, "Adjugate", "Finds the adjugate of matrix A"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_node_float_compare_items[] = {
     {NODE_COMPARE_LESS_THAN,
      "LESS_THAN",
