@@ -17,7 +17,7 @@
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 #include "BLI_math_matrix_types.hh"
 
@@ -26,6 +26,12 @@
 extern "C" char datatoc_glsl_shader_defines_glsl[];
 
 namespace blender::gpu {
+
+void VKDevice::reinit()
+{
+  samplers_.free();
+  samplers_.init();
+}
 
 void VKDevice::deinit()
 {
@@ -42,7 +48,9 @@ void VKDevice::deinit()
   }
   samplers_.free();
   destroy_discarded_resources();
+  pipelines.free_data();
   vkDestroyPipelineCache(vk_device_, vk_pipeline_cache_, vk_allocation_callbacks);
+  descriptor_set_layouts_.deinit();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
 
@@ -215,6 +223,7 @@ constexpr int32_t PCI_ID_NVIDIA = 0x10de;
 constexpr int32_t PCI_ID_INTEL = 0x8086;
 constexpr int32_t PCI_ID_AMD = 0x1002;
 constexpr int32_t PCI_ID_ATI = 0x1022;
+constexpr int32_t PCI_ID_APPLE = 0x106b;
 
 eGPUDeviceType VKDevice::device_type() const
 {
@@ -232,6 +241,8 @@ eGPUDeviceType VKDevice::device_type() const
     case PCI_ID_AMD:
     case PCI_ID_ATI:
       return GPU_DEVICE_ATI;
+    case PCI_ID_APPLE:
+      return GPU_DEVICE_APPLE;
     default:
       break;
   }
@@ -251,12 +262,14 @@ std::string VKDevice::vendor_name() const
   /* Below 0x10000 are the PCI vendor IDs (https://pcisig.com/membership/member-companies) */
   if (vk_physical_device_properties_.vendorID < 0x10000) {
     switch (vk_physical_device_properties_.vendorID) {
-      case 0x1022:
+      case PCI_ID_AMD:
         return "Advanced Micro Devices";
-      case 0x10DE:
+      case PCI_ID_NVIDIA:
         return "NVIDIA Corporation";
-      case 0x8086:
+      case PCI_ID_INTEL:
         return "Intel Corporation";
+      case PCI_ID_APPLE:
+        return "Apple";
       default:
         return std::to_string(vk_physical_device_properties_.vendorID);
     }
@@ -288,7 +301,7 @@ std::string VKDevice::driver_version() const
       /* When using Mesa driver we should use VK_VERSION_*. */
       if (major > 30) {
         return std::to_string((driver_version >> 14) & 0x3FFFF) + "." +
-               std::to_string((driver_version & 0x3FFF));
+               std::to_string(driver_version & 0x3FFF);
       }
       break;
     }
@@ -316,7 +329,7 @@ void VKDevice::context_unregister(VKContext &context)
 {
   contexts_.remove(contexts_.first_index_of(std::reference_wrapper(context)));
 }
-const Vector<std::reference_wrapper<VKContext>> &VKDevice::contexts_get() const
+Span<std::reference_wrapper<VKContext>> VKDevice::contexts_get() const
 {
   return contexts_;
 };
@@ -356,11 +369,17 @@ void VKDevice::destroy_discarded_resources()
 
   while (!discarded_images_.is_empty()) {
     std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
+    if (use_render_graph) {
+      resources.remove_image(image_allocation.first);
+    }
     vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
   }
 
   while (!discarded_buffers_.is_empty()) {
     std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
+    if (use_render_graph) {
+      resources.remove_buffer(buffer_allocation.first);
+    }
     vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
   }
 

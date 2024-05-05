@@ -2976,7 +2976,6 @@ static void curve_surf_to_softbody(Object *ob)
   SoftBody *sb;
   BodyPoint *bp;
   BodySpring *bs;
-  Nurb *nu;
   BezTriple *bezt;
   BPoint *bpnt;
   int a, curindex = 0;
@@ -3005,7 +3004,7 @@ static void curve_surf_to_softbody(Object *ob)
     setgoal = 1;
   }
 
-  for (nu = static_cast<Nurb *>(cu->nurb.first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, &cu->nurb) {
     if (nu->bezt) {
       /* Bezier case; this is nicely said naive; who ever wrote this part,
        * it was not me (JOW) :).
@@ -3173,12 +3172,12 @@ void sbFree(Object *ob)
     return;
   }
 
-  const bool is_orig = (ob->id.tag & LIB_TAG_COPIED_ON_WRITE) == 0;
+  const bool is_orig = (ob->id.tag & LIB_TAG_COPIED_ON_EVAL) == 0;
 
   free_softbody_intern(sb);
 
   if (is_orig) {
-    /* Only free shared data on non-CoW copies */
+    /* Only free shared data on non-evaluated copies */
     BKE_ptcache_free_list(&sb->shared->ptcaches);
     sb->shared->pointcache = nullptr;
     MEM_freeN(sb->shared);
@@ -3357,7 +3356,7 @@ static void softbody_step(
   float forcetime;
   double sct, sst;
 
-  sst = BLI_check_seconds_timer();
+  sst = BLI_time_now_seconds();
   /* Integration back in time is possible in theory, but pretty useless here.
    * So we refuse to do so. Since we do not know anything about 'outside' changes
    * especially colliders we refuse to go more than 10 frames.
@@ -3453,7 +3452,7 @@ static void softbody_step(
       }
       loops++;
       if (sb->solverflags & SBSO_MONITOR) {
-        sct = BLI_check_seconds_timer();
+        sct = BLI_time_now_seconds();
         if (sct - sst > 0.5) {
           printf("%3.0f%% \r", 100.0f * timedone / dtime);
         }
@@ -3494,7 +3493,7 @@ static void softbody_step(
   }
 
   if (sb->solverflags & SBSO_MONITOR) {
-    sct = BLI_check_seconds_timer();
+    sct = BLI_time_now_seconds();
     if ((sct - sst > 0.5) || (G.debug & G_DEBUG)) {
       printf(" solver time %f sec %s\n", sct - sst, ob->id.name);
     }

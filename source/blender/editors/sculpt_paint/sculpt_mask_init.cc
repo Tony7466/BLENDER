@@ -16,6 +16,7 @@
 
 #include "BKE_ccg.h"
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_multires.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -52,8 +53,8 @@ static void mask_init_task(Object *ob,
 {
   SculptSession *ss = ob->sculpt;
   PBVHVertexIter vd;
-  undo::push_node(ob, node, undo::Type::Mask);
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
+  undo::push_node(*ob, node, undo::Type::Mask);
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     float mask;
     switch (mode) {
       case SCULPT_MASK_INIT_RANDOM_PER_VERTEX:
@@ -68,7 +69,7 @@ static void mask_init_task(Object *ob,
         mask = BLI_hash_int_01(SCULPT_vertex_island_get(ss, vd.vertex) + seed);
         break;
     }
-    SCULPT_mask_vert_set(BKE_pbvh_type(ss->pbvh), mask_write, mask, vd);
+    SCULPT_mask_vert_set(BKE_pbvh_type(*ss->pbvh), mask_write, mask, vd);
   }
   BKE_pbvh_vertex_iter_end;
   BKE_pbvh_node_mark_update_mask(node);
@@ -80,6 +81,12 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   SculptSession *ss = ob->sculpt;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   const int mode = RNA_enum_get(op->ptr, "mode");
 
   MultiresModifierData *mmd = BKE_sculpt_multires_active(CTX_data_scene(C), ob);
@@ -87,7 +94,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
-  PBVH *pbvh = ob->sculpt->pbvh;
+  PBVH &pbvh = *ob->sculpt->pbvh;
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh, {});
 
   if (nodes.is_empty()) {
@@ -100,7 +107,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     SCULPT_topology_islands_ensure(ob);
   }
 
-  const int mask_init_seed = BLI_check_seconds_timer();
+  const int mask_init_seed = BLI_time_now_seconds();
 
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {

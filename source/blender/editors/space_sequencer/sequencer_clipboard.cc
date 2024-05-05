@@ -30,7 +30,7 @@
 #include "BKE_blender_copybuffer.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -145,12 +145,11 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   Scene *scene_dst = BKE_scene_add(bmain_src, "copybuffer_vse_scene");
 
   /* Create a temporary scene that we will copy from.
-   * This is needed as it is the scene that contains all the VSE strip data.
-   */
+   * This is needed as it is the scene that contains all the sequence-strip data. */
   scene_dst->ed = MEM_cnew<Editing>(__func__);
   scene_dst->ed->seqbasep = &scene_dst->ed->seqbase;
   SEQ_sequence_base_dupli_recursive(
-      scene_src, scene_dst, &scene_dst->ed->seqbase, &scene_src->ed->seqbase, 0, 0);
+      scene_src, scene_dst, &scene_dst->ed->seqbase, scene_src->ed->seqbasep, 0, 0);
 
   BLI_duplicatelist(&scene_dst->ed->channels, &scene_src->ed->channels);
   scene_dst->ed->displayed_channels = &scene_dst->ed->channels;
@@ -188,7 +187,11 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   BKE_library_foreach_ID_link(
       bmain_src, &scene_dst->id, gather_strip_data_ids_to_null, &id_remapper, IDWALK_RECURSE);
 
-  BKE_libblock_remap_multiple(bmain_src, id_remapper, 0);
+  BKE_libblock_relink_multiple(bmain_src,
+                               {&scene_dst->id},
+                               ID_REMAP_TYPE_REMAP,
+                               id_remapper,
+                               (ID_REMAP_SKIP_USER_CLEAR | ID_REMAP_SKIP_USER_REFCOUNT));
 
   /* Ensure that there are no old copy tags around */
   BKE_blendfile_write_partial_begin(bmain_src);

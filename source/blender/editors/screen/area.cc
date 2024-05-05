@@ -22,7 +22,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 
@@ -38,11 +38,11 @@
 #include "ED_space_api.hh"
 #include "ED_time_scrub_ui.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "BLF_api.hh"
 
@@ -53,7 +53,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "screen_intern.h"
+#include "screen_intern.hh"
 
 enum RegionEmbossSide {
   REGION_EMBOSS_LEFT = (1 << 0),
@@ -1331,7 +1331,9 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
                RGN_TYPE_UI,
                RGN_TYPE_TOOL_PROPS,
                RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER))
+               RGN_TYPE_TOOL_HEADER,
+               RGN_TYPE_ASSET_SHELF,
+               RGN_TYPE_ASSET_SHELF_HEADER))
       {
         return true;
       }
@@ -2019,6 +2021,9 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_azone_init(win, screen, area);
 
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    if (region->flag & RGN_FLAG_POLL_FAILED) {
+      continue;
+    }
     region_evaulate_visibility(region);
 
     /* region size may have changed, init does necessary adjustments */
@@ -2260,9 +2265,10 @@ void ED_region_cursor_set(wmWindow *win, ScrArea *area, ARegion *region)
   WM_cursor_set(win, WM_CURSOR_DEFAULT);
 }
 
-void ED_region_visibility_change_update(bContext *C, ScrArea *area, ARegion *region)
+void ED_region_visibility_change_update_ex(
+    bContext *C, ScrArea *area, ARegion *region, bool is_hidden, bool do_init)
 {
-  if (region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_POLL_FAILED)) {
+  if (is_hidden) {
     WM_event_remove_handlers(C, &region->handlers);
     /* Needed to close any open pop-overs which would otherwise remain open,
      * crashing on attempting to refresh. See: #93410.
@@ -2272,8 +2278,17 @@ void ED_region_visibility_change_update(bContext *C, ScrArea *area, ARegion *reg
     UI_region_free_active_but_all(C, region);
   }
 
-  ED_area_init(CTX_wm_manager(C), CTX_wm_window(C), area);
-  ED_area_tag_redraw(area);
+  if (do_init) {
+    ED_area_init(CTX_wm_manager(C), CTX_wm_window(C), area);
+    ED_area_tag_redraw(area);
+  }
+}
+
+void ED_region_visibility_change_update(bContext *C, ScrArea *area, ARegion *region)
+{
+  const bool is_hidden = region->flag & (RGN_FLAG_HIDDEN | RGN_FLAG_POLL_FAILED);
+  const bool do_init = true;
+  ED_region_visibility_change_update_ex(C, area, region, is_hidden, do_init);
 }
 
 void region_toggle_hidden(bContext *C, ARegion *region, const bool do_fade)
@@ -2869,7 +2884,8 @@ static void ed_panel_draw(const bContext *C,
                           int w,
                           int em,
                           char *unique_panel_str,
-                          const char *search_filter)
+                          const char *search_filter,
+                          wmOperatorCallContext op_context)
 {
   const uiStyle *style = UI_style_get_dpi();
 
@@ -2907,6 +2923,8 @@ static void ed_panel_draw(const bContext *C,
                                     0,
                                     style);
 
+    uiLayoutSetOperatorContext(panel->layout, op_context);
+
     pt->draw_header_preset(C, panel);
 
     UI_block_apply_search_filter(block, search_filter);
@@ -2937,6 +2955,8 @@ static void ed_panel_draw(const bContext *C,
       panel->layout = UI_block_layout(
           block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
     }
+
+    uiLayoutSetOperatorContext(panel->layout, op_context);
 
     pt->draw_header(C, panel);
 
@@ -2975,6 +2995,8 @@ static void ed_panel_draw(const bContext *C,
         0,
         style);
 
+    uiLayoutSetOperatorContext(panel->layout, op_context);
+
     pt->draw(C, panel);
 
     const bool ends_with_layout_panel_header = uiLayoutEndsWithPanelHeader(*panel->layout);
@@ -3010,7 +3032,8 @@ static void ed_panel_draw(const bContext *C,
                       w,
                       em,
                       unique_panel_str,
-                      search_filter);
+                      search_filter,
+                      op_context);
       }
     }
   }
@@ -3182,11 +3205,8 @@ void ED_region_panels_layout_ex(const bContext *C,
       update_tot_size = false;
     }
 
-    if (panel && panel->layout) {
-      uiLayoutSetOperatorContext(panel->layout, op_context);
-    }
-
-    ed_panel_draw(C, region, &region->panels, pt, panel, width, em, nullptr, search_filter);
+    ed_panel_draw(
+        C, region, &region->panels, pt, panel, width, em, nullptr, search_filter, op_context);
   }
 
   /* Draw "poly-instantiated" panels that don't have a 1 to 1 correspondence with their types. */
@@ -3204,7 +3224,7 @@ void ED_region_panels_layout_ex(const bContext *C,
       }
       const int width = panel_draw_width_from_max_width_get(region, panel->type, max_panel_width);
 
-      if (panel && UI_panel_is_dragging(panel)) {
+      if (UI_panel_is_dragging(panel)) {
         /* Prevent View2d.tot rectangle size changes while dragging panels. */
         update_tot_size = false;
       }
@@ -3221,7 +3241,8 @@ void ED_region_panels_layout_ex(const bContext *C,
                     width,
                     em,
                     unique_panel_str,
-                    search_filter);
+                    search_filter,
+                    op_context);
     }
   }
 

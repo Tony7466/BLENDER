@@ -21,7 +21,7 @@
 #include "BKE_camera.h"
 #include "BKE_context.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "RE_engine.h"
 
@@ -139,7 +139,7 @@ DrawTexture::DrawTexture()
   GPUVertFormat format = {0};
   GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   GPU_vertformat_attr_add(&format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
   GPU_vertbuf_data_alloc(vbo, 4);
   GPU_vertbuf_attr_fill(vbo, 0, coords);
   GPU_vertbuf_attr_fill(vbo, 1, coords);
@@ -247,13 +247,13 @@ void ViewportEngine::render()
   GPU_shader_unbind();
 
   if (renderer_percent_done() == 0.0f) {
-    time_begin_ = BLI_check_seconds_timer();
+    time_begin_ = BLI_time_now_seconds();
   }
 
   char elapsed_time[32];
 
   BLI_timecode_string_from_time_simple(
-      elapsed_time, sizeof(elapsed_time), BLI_check_seconds_timer() - time_begin_);
+      elapsed_time, sizeof(elapsed_time), BLI_time_now_seconds() - time_begin_);
 
   float percent_done = renderer_percent_done();
   if (!render_task_delegate_->is_converged()) {
