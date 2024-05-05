@@ -34,7 +34,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>("Location");
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale");
-  b.add_output<decl::Matrix>("Transform");
+  b.add_output<decl::Matrix>("Transform")
+      .description(
+          "Transformation matrix containing the location, rotation and scale of the object");
   b.add_output<decl::Geometry>("Geometry");
 }
 
