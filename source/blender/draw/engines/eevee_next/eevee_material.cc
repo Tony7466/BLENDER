@@ -190,9 +190,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
-      blender_mat = (is_volume) ? BKE_material_default_volume() : BKE_material_default_surface();
-      matpass.gpumat = inst_.shaders.material_shader_get(
-          blender_mat, blender_mat->nodetree, pipeline_type, geometry_type, false);
+      matpass.gpumat = inst_.shaders.material_default_shader_get(pipeline_type, geometry_type);
       break;
     case GPU_MAT_FAILED:
     default:
@@ -415,7 +413,7 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
   for (auto i : IndexRange(materials_len)) {
     ::Material *blender_mat = material_from_slot(ob, i);
     Material &mat = material_sync(ob, blender_mat, to_material_geometry(ob), has_motion);
-    /* \note: Perform a whole copy since next material_sync() can move the Material memory location
+    /* \note Perform a whole copy since next material_sync() can move the Material memory location
      * (i.e: because of its container growing) */
     material_array_.materials.append(mat);
     material_array_.gpu_materials.append(mat.shading.gpumat);

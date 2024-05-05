@@ -178,8 +178,10 @@ void ED_view3d_lastview_store(RegionView3D *rv3d);
 
 /* Depth buffer */
 enum eV3DDepthOverrideMode {
+  /** Redraw viewport without overlays. */
+  V3D_DEPTH_NO_OVERLAYS = 0,
   /** Redraw viewport without Grease Pencil and Annotations. */
-  V3D_DEPTH_NO_GPENCIL = 0,
+  V3D_DEPTH_NO_GPENCIL,
   /** Redraw viewport with Grease Pencil and Annotations only. */
   V3D_DEPTH_GPENCIL_ONLY,
   /** Redraw viewport with active object only. */
@@ -346,7 +348,8 @@ V3DSnapCursorState *ED_view3d_cursor_snap_state_create();
 void ED_view3d_cursor_snap_state_free(V3DSnapCursorState *state);
 void ED_view3d_cursor_snap_state_prevpoint_set(V3DSnapCursorState *state,
                                                const float prev_point[3]);
-void ED_view3d_cursor_snap_data_update(V3DSnapCursorState *state, const bContext *C, int x, int y);
+void ED_view3d_cursor_snap_data_update(
+    V3DSnapCursorState *state, const bContext *C, const ARegion *region, int x, int y);
 V3DSnapCursorData *ED_view3d_cursor_snap_data_get();
 SnapObjectContext *ED_view3d_cursor_snap_context_ensure(Scene *scene);
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
