@@ -80,17 +80,22 @@ void ED_view3d_text_colors_get(const Scene *scene,
                                float r_text_color[4],
                                float r_shadow_color[4])
 {
+  /* Text fully opaque, shadow slightly transparent. */
   r_text_color[3] = 1.0f;
-  r_shadow_color[3] = 1.0f;
-  ED_view3d_background_color_get(scene, v3d, r_shadow_color);
+  r_shadow_color[3] = 0.8f;
 
-  float lightness = rgb_to_grayscale(r_shadow_color);
-  if (lightness < 0.7f) {
-    copy_v3_fl(r_shadow_color, 0.0f);
+  /* White text, black shadow. Unless view background
+   * is very dark; in that case black text, white shadow. */
+  float bg_color[4];
+  ED_view3d_background_color_get(scene, v3d, bg_color);
+  float lightness = rgb_to_grayscale(bg_color);
+  if (lightness > 0.04f) {
     copy_v3_fl(r_text_color, 1.0f);
+    copy_v3_fl(r_shadow_color, 0.0f);
   }
   else {
-    copy_v3_fl(r_text_color, 0.4f);
+    copy_v3_fl(r_text_color, 0.2f);
+    copy_v3_fl(r_shadow_color, 1.0f);
   }
 }
 

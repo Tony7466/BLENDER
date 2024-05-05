@@ -142,7 +142,7 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
   BLF_default_size(UI_style_get()->widgetlabel.points);
   const int font_id = BLF_set_default();
 
-  float shadow_color[4] = {0, 0, 0, 1};
+  float shadow_color[4] = {0, 0, 0, 0.8f};
   UI_GetThemeColor3fv(TH_BACK, shadow_color);
 
   BLI_memiter_iter_init(dt->cache_strings, &it);
