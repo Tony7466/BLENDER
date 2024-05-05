@@ -1500,23 +1500,10 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
     BLF_default_size(fstyle->points);
     BLF_set_default();
 
-    float bg_color[4] = {0.0f, 0.0f, 1.0f, 1.0f};
-    ED_view3d_background_color_get(scene, v3d, bg_color);
-    float lightness = rgb_to_grayscale(bg_color);
-    float text_color[4];
-    FontShadowType shadow_type = FontShadowType::Blur3x3;
-    if (lightness < 0.7f) {
-      copy_v3_fl(bg_color, 0.0f);
-      copy_v4_fl(text_color, 1.0f);
-    }
-    else {
-      bg_color[3] = 1.0f;
-      copy_v3_fl(text_color, 0.4f);
-      text_color[3] = 1.0f;
-      shadow_type = FontShadowType::Outline;
-    }
+    float text_color[4], shadow_color[4];
+    ED_view3d_text_colors_get(scene, v3d, text_color, shadow_color);
     BLF_color4fv(BLF_default(), text_color);
-    BLF_shadow(BLF_default(), shadow_type, bg_color);
+    BLF_shadow(BLF_default(), FontShadowType::Outline, shadow_color);
 
     if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
       if ((U.uiflag & USER_SHOW_FPS) && ED_screen_animation_no_scrub(wm)) {

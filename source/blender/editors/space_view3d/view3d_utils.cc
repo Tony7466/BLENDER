@@ -75,6 +75,25 @@ void ED_view3d_background_color_get(const Scene *scene, const View3D *v3d, float
   UI_GetThemeColor3fv(TH_BACK, r_color);
 }
 
+void ED_view3d_text_colors_get(const Scene *scene,
+                               const View3D *v3d,
+                               float r_text_color[4],
+                               float r_shadow_color[4])
+{
+  r_text_color[3] = 1.0f;
+  r_shadow_color[3] = 1.0f;
+  ED_view3d_background_color_get(scene, v3d, r_shadow_color);
+
+  float lightness = rgb_to_grayscale(r_shadow_color);
+  if (lightness < 0.7f) {
+    copy_v3_fl(r_shadow_color, 0.0f);
+    copy_v3_fl(r_text_color, 1.0f);
+  }
+  else {
+    copy_v3_fl(r_text_color, 0.4f);
+  }
+}
+
 bool ED_view3d_has_workbench_in_texture_color(const Scene *scene,
                                               const Object *ob,
                                               const View3D *v3d)
