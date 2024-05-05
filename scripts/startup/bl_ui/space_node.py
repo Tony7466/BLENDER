@@ -990,7 +990,7 @@ class NODE_PT_node_tree_properties(Panel):
         col.prop(group, "is_modifier")
         col.prop(group, "is_tool")
 
-        layout.prop(group, "group_class")
+        layout.prop(group, "category")
 
 
 # Grease Pencil properties

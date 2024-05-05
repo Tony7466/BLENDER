@@ -384,7 +384,7 @@ struct bNodeType {
 #define NODE_CLASS_ATTRIBUTE 42
 #define NODE_CLASS_LAYOUT 100
 
-enum class NodeGroupClass {
+enum class NodeGroupCategory {
   None = 0,
   Input = 1,
   Geometry = 2,

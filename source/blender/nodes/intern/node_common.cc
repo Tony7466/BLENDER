@@ -85,18 +85,18 @@ int node_group_ui_class(const bNode *node)
   if (!group) {
     return NODE_CLASS_GROUP;
   }
-  switch (NodeGroupClass(group->group_class)) {
-    case NodeGroupClass::None:
+  switch (NodeGroupCategory(group->category)) {
+    case NodeGroupCategory::None:
       return NODE_CLASS_GROUP;
-    case NodeGroupClass::Input:
+    case NodeGroupCategory::Input:
       return NODE_CLASS_INPUT;
-    case NodeGroupClass::Geometry:
+    case NodeGroupCategory::Geometry:
       return NODE_CLASS_GEOMETRY;
-    case NodeGroupClass::Shader:
+    case NodeGroupCategory::Shader:
       return NODE_CLASS_SHADER;
-    case NodeGroupClass::Texture:
+    case NodeGroupCategory::Texture:
       return NODE_CLASS_TEXTURE;
-    case NodeGroupClass::Utility:
+    case NodeGroupCategory::Utility:
       return NODE_CLASS_CONVERTER;
   }
   return NODE_CLASS_GROUP;
