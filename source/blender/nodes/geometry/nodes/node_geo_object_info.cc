@@ -34,6 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Vector>("Location");
   b.add_output<decl::Rotation>("Rotation");
   b.add_output<decl::Vector>("Scale");
+  b.add_output<decl::Matrix>("Transform");
   b.add_output<decl::Geometry>("Geometry");
 }
 
@@ -63,9 +64,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   math::Quaternion rotation;
   if (transform_space_relative) {
     math::to_loc_rot_scale<true>(transform, location, rotation, scale);
+    params.set_output("Transform", transform);
   }
   else {
     math::to_loc_rot_scale<true>(object_matrix, location, rotation, scale);
+    params.set_output("Transform", object_matrix);
   }
   params.set_output("Location", location);
   params.set_output("Rotation", rotation);
