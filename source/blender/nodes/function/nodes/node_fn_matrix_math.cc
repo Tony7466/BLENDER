@@ -23,9 +23,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.is_function_node();
   b.add_input<decl::Matrix>("Matrix");
   b.add_input<decl::Matrix>("Matrix", "Matrix_001");
+  b.add_input<decl::Float>("Scale").default_value(1.0f).min(-10000.0f).max(10000.0f);
   b.add_output<decl::Matrix>("Matrix");
-  b.add_output<decl::Float>("Float");
-  b.add_output<decl::Bool>("Boolean");
+  b.add_output<decl::Float>("Determinant");
+  b.add_output<decl::Bool>("Invertable");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -36,10 +37,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   bNodeSocket *sockB = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
+  bNodeSocket *sockC = (bNodeSocket *)BLI_findlink(&node->inputs, 2);
 
-  bNodeSocket *sockMatrix = nodeFindSocket(node, SOCK_OUT, "Matrix");
-  bNodeSocket *sockFloat = nodeFindSocket(node, SOCK_OUT, "Float");
-  bNodeSocket *sockBool = nodeFindSocket(node, SOCK_OUT, "Boolean");
+  bNodeSocket *sockMatrix = (bNodeSocket *)BLI_findlink(&node->outputs, 0);
+  bNodeSocket *sockFloat = (bNodeSocket *)BLI_findlink(&node->outputs, 1);
+  bNodeSocket *sockBool = (bNodeSocket *)BLI_findlink(&node->outputs, 2);
 
   bke::nodeSetSocketAvailability(ntree,
                                  sockB,
@@ -47,24 +49,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
                                       NODE_MATRIX_MATH_MULTIPLY,
                                       NODE_MATRIX_MATH_ADD,
                                       NODE_MATRIX_MATH_SUBTRACT));
+  bke::nodeSetSocketAvailability(ntree, sockC, ELEM(node->custom1, NODE_MATRIX_MATH_SCALE));
 
   bke::nodeSetSocketAvailability(
       ntree, sockMatrix, !ELEM(node->custom1, NODE_MATRIX_MATH_DETERMINANT));
   bke::nodeSetSocketAvailability(
       ntree, sockFloat, ELEM(node->custom1, NODE_MATRIX_MATH_DETERMINANT));
   bke::nodeSetSocketAvailability(ntree, sockBool, ELEM(node->custom1, NODE_MATRIX_MATH_INVERT));
-
-  /* Labels */
-  node_sock_label_clear(sockFloat);
-  node_sock_label_clear(sockBool);
-  switch (node->custom1) {
-    case NODE_MATRIX_MATH_DETERMINANT:
-      node_sock_label(sockFloat, "Determinant");
-      break;
-    case NODE_MATRIX_MATH_INVERT:
-      node_sock_label(sockBool, "Invertable");
-      break;
-  }
 }
 
 static void node_label(const bNodeTree * /*tree*/,
@@ -86,7 +77,7 @@ class InvertMatrixFunction : public mf::MultiFunction {
   {
     static mf::Signature signature = []() {
       mf::Signature signature;
-      mf::SignatureBuilder builder{"Invert Matrix", signature};
+      mf::SignatureBuilder builder{"Invert", signature};
       builder.single_input<float4x4>("Matrix");
       builder.single_output<float4x4>("Matrix", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<bool>("Invertable", mf::ParamFlag::SupportsUnusedOutput);
@@ -119,20 +110,22 @@ class InvertMatrixFunction : public mf::MultiFunction {
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
   static auto multiply_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
-      "Multiply Matrices", [](float4x4 a, float4x4 b) { return a * b; });
+      "Multiply", [](float4x4 a, float4x4 b) { return a * b; });
   static auto add_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
-      "Add Matrices", [](float4x4 a, float4x4 b) { return a + b; });
+      "Add", [](float4x4 a, float4x4 b) { return a + b; });
   static auto subtract_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
-      "Subtract Matrices", [](float4x4 a, float4x4 b) { return a - b; });
+      "Subtract", [](float4x4 a, float4x4 b) { return a - b; });
+  static auto scale_fn = mf::build::SI2_SO<float4x4, float, float4x4>(
+      "Scale", [](float4x4 a, float b) { return a * b; });
   static InvertMatrixFunction invert_fn;
   static auto transpose_fn = mf::build::SI1_SO<float4x4, float4x4>(
-      "Transpose Matrix", [](float4x4 matrix) { return math::transpose(matrix); });
+      "Transpose", [](float4x4 matrix) { return math::transpose(matrix); });
   static auto normalize_fn = mf::build::SI1_SO<float4x4, float4x4>(
-      "Normalize Matrix", [](float4x4 matrix) { return math::normalize(matrix); });
+      "Normalize", [](float4x4 matrix) { return math::normalize(matrix); });
   static auto determinant_fn = mf::build::SI1_SO<float4x4, float>(
-      "Matrix Determinant", [](float4x4 matrix) { return math::determinant(matrix); });
+      "Determinant", [](float4x4 matrix) { return math::determinant(matrix); });
   static auto adjoint_fn = mf::build::SI1_SO<float4x4, float4x4>(
-      "Adjugate Matrix", [](float4x4 matrix) { return math::adjoint(matrix); });
+      "Adjoint", [](float4x4 matrix) { return math::adjoint(matrix); });
 
   switch (bnode.custom1) {
     case NODE_MATRIX_MATH_MULTIPLY:
@@ -141,6 +134,8 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &add_fn;
     case NODE_MATRIX_MATH_SUBTRACT:
       return &subtract_fn;
+    case NODE_MATRIX_MATH_SCALE:
+      return &scale_fn;
     case NODE_MATRIX_MATH_INVERT:
       return &invert_fn;
     case NODE_MATRIX_MATH_TRANSPOSE:
@@ -149,7 +144,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &normalize_fn;
     case NODE_MATRIX_MATH_DETERMINANT:
       return &determinant_fn;
-    case NODE_MATRIX_MATH_ADJUGATE:
+    case NODE_MATRIX_MATH_ADJOINT:
       return &adjoint_fn;
   }
 
