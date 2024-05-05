@@ -11,15 +11,13 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 shared vec3 local_radiance[gl_WorkGroupSize.x];
-shared vec3 local_direction[gl_WorkGroupSize.x];
-shared float local_solid_angle[gl_WorkGroupSize.x];
+shared vec4 local_direction[gl_WorkGroupSize.x];
 
 void main()
 {
   SphereProbeSunLight sun;
   sun.radiance = vec3(0.0);
-  sun.direction = vec3(0.0);
-  sun.solid_angle = 0.0;
+  sun.direction = vec4(0.0);
 
   /* First sum onto the local memory. */
   uint valid_data_len = probe_remap_dispatch_size.x * probe_remap_dispatch_size.y;
@@ -31,14 +29,12 @@ void main()
     }
     sun.radiance += in_sun[index].radiance;
     sun.direction += in_sun[index].direction;
-    sun.solid_angle += in_sun[index].solid_angle;
   }
 
   /* Then sum across invocations. */
   const uint local_index = gl_LocalInvocationIndex;
   local_radiance[local_index] = sun.radiance;
   local_direction[local_index] = sun.direction;
-  local_solid_angle[local_index] = sun.solid_angle;
 
   /* Parallel sum. */
   const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
@@ -47,14 +43,12 @@ void main()
     if (local_index < stride) {
       local_radiance[local_index] += local_radiance[local_index + stride];
       local_direction[local_index] += local_direction[local_index + stride];
-      local_solid_angle[local_index] += local_solid_angle[local_index + stride];
     }
   }
 
   barrier();
   if (gl_LocalInvocationIndex == 0u) {
     out_sun.radiance = local_radiance[0];
-    out_sun.direction = normalize(local_direction[0]);
-    out_sun.solid_angle = local_solid_angle[0];
+    out_sun.direction = local_direction[0] / local_direction[0].w;
   }
 }

@@ -340,15 +340,25 @@ void LightModule::begin_sync()
 
   if (use_sun_lights_) {
     SphereProbeSunLight sunlight = inst_.sphere_probes.sunlight();
+    sunlight.radiance /= 4.0f * M_PI;
+    sunlight.radiance *= 2.0f * M_PI;
 
-    if (math::is_unit_scale(sunlight.direction)) {
+    float length;
+    float3 direction = math::normalize_and_get_length(sunlight.direction.xyz(), length);
+
+    if (length > 0.0001f) {
       ::Light la = blender::dna::shallow_copy(
           *(const ::Light *)DNA_default_table[SDNA_TYPE_FROM_STRUCT(Light)]);
       la.type = LA_SUN;
-      la.r = sunlight.radiance.x / (4.0f * M_PI);
-      la.g = sunlight.radiance.y / (4.0f * M_PI);
-      la.b = sunlight.radiance.z / (4.0f * M_PI);
-      float4x4 world_to_object = math::from_up_axis<float4x4>(sunlight.direction);
+      la.r = sunlight.radiance.x;
+      la.g = sunlight.radiance.y;
+      la.b = sunlight.radiance.z;
+      la.energy = 1.0f;
+      la.sun_angle = asinf(1.0f - 2.0f * length) * 2.0f + float(M_PI);
+      /* Our sun implementation do not allow more than 174° because of float imprecisions. */
+      la.sun_angle = math::min(3.0414f, la.sun_angle);
+
+      float4x4 world_to_object = math::from_up_axis<float4x4>(direction);
 
       Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
       light.used = true;

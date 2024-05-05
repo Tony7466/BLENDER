@@ -127,9 +127,6 @@ void main()
   float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
 
   if (extract_sun) {
-    // if (length(radiance_sun.xyz) > 0.01) {
-    //   drw_debug_line(vec3(0.0), direction.xyz, vec4(radiance_sun.xyz, 1.0));
-    // }
     /* Parallel sum. Result is stored inside local_radiance[0]. */
     local_radiance[local_index] = radiance_sun.xyzz * sample_weight;
     for (uint stride = group_size / 2; stride > 0; stride /= 2) {
@@ -146,8 +143,8 @@ void main()
     barrier();
 
     /* Reusing local_radiance for directions. */
-    local_radiance[local_index] = normalize(direction).xyzz * length(radiance_sun.xyz) *
-                                  sample_weight;
+    local_radiance[local_index] = vec4(normalize(direction), 1.0) * sample_weight *
+                                  length(radiance_sun.xyz);
     for (uint stride = group_size / 2; stride > 0; stride /= 2) {
       barrier();
       if (local_index < stride) {
@@ -157,7 +154,7 @@ void main()
     barrier();
 
     if (gl_LocalInvocationIndex == 0u) {
-      out_sun[work_group_index].direction = local_radiance[0].xyz;
+      out_sun[work_group_index].direction = local_radiance[0];
     }
     barrier();
   }
