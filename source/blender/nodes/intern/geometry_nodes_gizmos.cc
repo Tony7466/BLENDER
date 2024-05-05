@@ -387,7 +387,7 @@ static void foreach_gizmo_for_input(
     /* Gizmos in zones are not supported yet. */
     return;
   }
-  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
+  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM)) {
     /* Found an actual built-in gizmo node. */
     fn(*compute_context_builder.current(), node);
   }
@@ -502,7 +502,11 @@ void foreach_active_gizmo(
             }
           }
           for (const bNode *node : gizmo_inferencing.nodes_with_gizmos_inside) {
-            if (ELEM(node->type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
+            if (ELEM(node->type,
+                     GEO_NODE_GIZMO_LINEAR,
+                     GEO_NODE_GIZMO_DIAL,
+                     GEO_NODE_GIZMO_TRANSFORM))
+            {
               fn(*compute_context_builder.current(), *node);
             }
             else if (node->is_group()) {

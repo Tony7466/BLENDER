@@ -3138,7 +3138,8 @@ struct GeometryNodesLazyFunctionBuilder {
         break;
       }
       case GEO_NODE_GIZMO_LINEAR:
-      case GEO_NODE_GIZMO_DIAL: {
+      case GEO_NODE_GIZMO_DIAL:
+      case GEO_NODE_GIZMO_TRANSFORM: {
         this->build_gizmo_node(bnode, graph_params);
         break;
       }

@@ -3051,7 +3051,7 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(const bContext &C,
     }
   }
 
-  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL)) {
+  if (ELEM(node.type, GEO_NODE_GIZMO_LINEAR, GEO_NODE_GIZMO_DIAL, GEO_NODE_GIZMO_TRANSFORM)) {
     if (node.runtime->has_duplicate_gizmo_target) {
       NodeExtraInfoRow row;
       row.text = TIP_("Duplicate value");

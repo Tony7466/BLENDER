@@ -1981,6 +1981,10 @@ typedef struct NodeGeometryDialGizmo {
   int color_id;
 } NodeGeometryDialGizmo;
 
+typedef struct NodeGeometryTransformGizmo {
+  char _pad;
+} NodeGeometryTransformGizmo;
+
 typedef struct NodeGeometryBakeItem {
   char *name;
   int16_t socket_type;
