@@ -41,7 +41,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sockFloat = nodeFindSocket(node, SOCK_OUT, "Float");
   bNodeSocket *sockBool = nodeFindSocket(node, SOCK_OUT, "Boolean");
 
-  bke::nodeSetSocketAvailability(ntree, sockB, ELEM(node->custom1, NODE_MATRIX_MATH_MULTIPLY));
+  bke::nodeSetSocketAvailability(ntree,
+                                 sockB,
+                                 ELEM(node->custom1,
+                                      NODE_MATRIX_MATH_MULTIPLY,
+                                      NODE_MATRIX_MATH_ADD,
+                                      NODE_MATRIX_MATH_SUBTRACT));
 
   bke::nodeSetSocketAvailability(
       ntree, sockMatrix, !ELEM(node->custom1, NODE_MATRIX_MATH_DETERMINANT));
@@ -115,6 +120,10 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
   static auto multiply_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
       "Multiply Matrices", [](float4x4 a, float4x4 b) { return a * b; });
+  static auto add_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
+      "Add Matrices", [](float4x4 a, float4x4 b) { return a + b; });
+  static auto subtract_fn = mf::build::SI2_SO<float4x4, float4x4, float4x4>(
+      "Subtract Matrices", [](float4x4 a, float4x4 b) { return a - b; });
   static InvertMatrixFunction invert_fn;
   static auto transpose_fn = mf::build::SI1_SO<float4x4, float4x4>(
       "Transpose Matrix", [](float4x4 matrix) { return math::transpose(matrix); });
@@ -128,6 +137,10 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   switch (bnode.custom1) {
     case NODE_MATRIX_MATH_MULTIPLY:
       return &multiply_fn;
+    case NODE_MATRIX_MATH_ADD:
+      return &add_fn;
+    case NODE_MATRIX_MATH_SUBTRACT:
+      return &subtract_fn;
     case NODE_MATRIX_MATH_INVERT:
       return &invert_fn;
     case NODE_MATRIX_MATH_TRANSPOSE:

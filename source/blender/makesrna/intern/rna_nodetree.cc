@@ -314,6 +314,9 @@ const EnumPropertyItem rna_enum_node_boolean_math_items[] = {
 
 const EnumPropertyItem rna_enum_node_matrix_math_items[] = {
     {NODE_MATRIX_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A * B"},
+    {NODE_MATRIX_MATH_ADD, "ADD", 0, "Add", "A + B"},
+    {NODE_MATRIX_MATH_SUBTRACT, "SUBTRACT", 0, "Subtract", "A - B"},
+    RNA_ENUM_ITEM_SEPR,
     {NODE_MATRIX_MATH_INVERT, "INVERT", 0, "Invert", "Inverts the matrix A"},
     {NODE_MATRIX_MATH_TRANSPOSE,
      "TRANSPOSE",
@@ -325,6 +328,7 @@ const EnumPropertyItem rna_enum_node_matrix_math_items[] = {
      0,
      "Normalize",
      "Normalizes the entries of matrix A"},
+    RNA_ENUM_ITEM_SEPR,
     {NODE_MATRIX_MATH_DETERMINANT,
      "DETERMINANT",
      0,
