@@ -42,6 +42,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
@@ -1335,6 +1336,28 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   }
 
   const CPPType &socket_type = *socket.typeinfo->base_cpp_type;
+
+  if (socket.type == SOCK_MENU) {
+    if (!value_type.is<int>()) {
+      return;
+    }
+    const int item_identifier = *static_cast<const int *>(buffer);
+    const auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
+    if (!socket_storage->enum_items) {
+      return;
+    }
+    if (socket_storage->has_conflict()) {
+      return;
+    }
+    const bke::RuntimeNodeEnumItem *enum_item =
+        socket_storage->enum_items->find_item_by_identifier(item_identifier);
+    if (!enum_item) {
+      return;
+    }
+    ss << fmt::format(TIP_("{} (Menu)"), enum_item->name);
+    return;
+  }
+
   const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
   if (value_type != socket_type) {
     if (!convert.is_convertible(value_type, socket_type)) {
@@ -2067,7 +2090,7 @@ static void node_draw_preview(const Scene *scene, ImBuf *preview, rctf *prv)
   node_draw_preview_background(&draw_rect);
 
   GPU_blend(GPU_BLEND_ALPHA);
-  /* Premul graphics. */
+  /* Pre-multiply graphics. */
   GPU_blend(GPU_BLEND_ALPHA);
 
   ED_draw_imbuf(preview,
@@ -3424,7 +3447,8 @@ static void node_draw_basis(const bContext &C,
                         nullptr,
                         0,
                         0,
-                        "");
+                        TIP_(node.typeinfo->ui_description));
+
   if (node.flag & NODE_MUTED) {
     UI_but_flag_enable(but, UI_BUT_INACTIVE);
   }
@@ -3661,7 +3685,7 @@ static void node_draw_hidden(const bContext &C,
                         nullptr,
                         0,
                         0,
-                        "");
+                        TIP_(node.typeinfo->ui_description));
 
   /* Outline. */
   {

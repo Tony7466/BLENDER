@@ -909,7 +909,7 @@ static void insert_action_keys(bAnimContext *ac, short mode)
   ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Init keyframing flag. */
-  flag = ANIM_get_keyframing_flags(scene);
+  flag = blender::animrig::get_keyframing_flags(scene);
 
   /* GPLayers specific flags */
   if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
@@ -1300,7 +1300,7 @@ static void bake_action_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    bake_fcurve_segments((FCurve *)ale->key_data);
+    blender::animrig::bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
