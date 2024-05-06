@@ -2,11 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
 void main()
 {
-  uint vertices_per_thread = divide_ceil(uint(vertex_count), uint(VERTEX_COPY_GROUP_SIZE)) /
+  uint vertices_per_thread = divide_ceil(uint(vertex_count), uint(gl_WorkGroupSize.x)) /
                              gl_NumWorkGroups.x;
   uint vertex_start = min(gl_GlobalInvocationID.x * vertices_per_thread, uint(vertex_count));
   uint vertex_end = min(vertex_start + vertices_per_thread, uint(vertex_count));
