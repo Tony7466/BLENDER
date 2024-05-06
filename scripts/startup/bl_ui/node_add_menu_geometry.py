@@ -307,7 +307,7 @@ class NODE_MT_geometry_node_GEO_INSTANCE(Menu):
     bl_idname = "NODE_MT_geometry_node_GEO_INSTANCE"
     bl_label = "Instances"
 
-    def draw(self, context):
+    def draw(self, _context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeInstanceOnPoints", search_weight=2.0)
         node_add_menu.add_node_type(layout, "GeometryNodeInstancesToPoints")
