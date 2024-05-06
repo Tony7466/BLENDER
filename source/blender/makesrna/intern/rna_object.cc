@@ -552,6 +552,14 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, ReportList *r
     return;
   }
 
+  Main *ob_main = BKE_main_from_id(G_MAIN, &ob->id);
+  if (id) {
+    if (ob_main != BKE_main_from_id(G_MAIN, id)) {
+      BKE_report(reports, RPT_ERROR, "Can't assign object data from different main database");
+      return;
+    }
+  }
+
   if (ob->type == OB_EMPTY) {
     if (ob->data) {
       id_us_min(static_cast<ID *>(ob->data));
@@ -564,7 +572,7 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, ReportList *r
     }
   }
   else if (ob->type == OB_MESH) {
-    BKE_mesh_assign_object(G_MAIN, ob, reinterpret_cast<Mesh *>(id));
+    BKE_mesh_assign_object(ob_main, ob, reinterpret_cast<Mesh *>(id));
   }
   else {
     if (ob->data) {
@@ -576,13 +584,13 @@ static void rna_Object_data_set(PointerRNA *ptr, PointerRNA value, ReportList *r
     id_us_plus(id);
 
     ob->data = id;
-    BKE_object_materials_test(G_MAIN, ob, id);
+    BKE_object_materials_test(ob_main, ob, id);
 
     if (GS(id->name) == ID_CU_LEGACY) {
       BKE_curve_type_test(ob);
     }
     else if (ob->type == OB_ARMATURE) {
-      BKE_pose_rebuild(G_MAIN, ob, static_cast<bArmature *>(ob->data), true);
+      BKE_pose_rebuild(ob_main, ob, static_cast<bArmature *>(ob->data), true);
     }
   }
 }
@@ -1146,17 +1154,23 @@ static PointerRNA rna_Object_active_material_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_Material, ma);
 }
 
-static void rna_Object_active_material_set(PointerRNA *ptr,
-                                           PointerRNA value,
-                                           ReportList * /*reports*/)
+static void rna_Object_active_material_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  Material *mat = reinterpret_cast<Material *>(value.data);
 
-  DEG_id_tag_update(static_cast<ID *>(value.data), 0);
-  BLI_assert(BKE_id_is_in_global_main(&ob->id));
-  BLI_assert(BKE_id_is_in_global_main(static_cast<ID *>(value.data)));
-  BKE_object_material_assign(
-      G_MAIN, ob, static_cast<Material *>(value.data), ob->actcol, BKE_MAT_ASSIGN_EXISTING);
+  Main *ob_main = BKE_main_from_id(G_MAIN, &ob->id);
+  if (mat) {
+    Main *mat_main = BKE_main_from_id(G_MAIN, &mat->id);
+    if (ob_main != mat_main) {
+      BKE_report(reports, RPT_ERROR, "Can't assign material from other main database");
+      return;
+    }
+  }
+
+  DEG_id_tag_update(&mat->id, 0);
+
+  BKE_object_material_assign(ob_main, ob, mat, ob->actcol, BKE_MAT_ASSIGN_EXISTING);
 
   if (ob->type == OB_GPENCIL_LEGACY) {
     /* Notifying material property in top-bar. */
@@ -1380,17 +1394,21 @@ static PointerRNA rna_MaterialSlot_material_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_Material, ma);
 }
 
-static void rna_MaterialSlot_material_set(PointerRNA *ptr,
-                                          PointerRNA value,
-                                          ReportList * /*reports*/)
+static void rna_MaterialSlot_material_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
-  int index = rna_MaterialSlot_index(ptr);
+  Material *mat = reinterpret_cast<Material *>(value.data);
 
-  BLI_assert(BKE_id_is_in_global_main(&ob->id));
-  BLI_assert(BKE_id_is_in_global_main(static_cast<ID *>(value.data)));
-  BKE_object_material_assign(
-      G_MAIN, ob, static_cast<Material *>(value.data), index + 1, BKE_MAT_ASSIGN_EXISTING);
+  Main *ob_main = BKE_main_from_id(G_MAIN, &ob->id);
+  if (mat) {
+    if (ob_main != BKE_main_from_id(G_MAIN, &mat->id)) {
+      BKE_report(reports, RPT_ERROR, "Can't assign material from other main database");
+      return;
+    }
+  }
+
+  int index = rna_MaterialSlot_index(ptr);
+  BKE_object_material_assign(ob_main, ob, mat, index + 1, BKE_MAT_ASSIGN_EXISTING);
 }
 
 static bool rna_MaterialSlot_material_poll(PointerRNA *ptr, PointerRNA value)
@@ -1738,8 +1756,9 @@ bool rna_Object_constraints_override_apply(Main *bmain,
 static ModifierData *rna_Object_modifier_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
   ModifierData *md = blender::ed::object::modifier_add(
-      reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
+      reports, bmain, CTX_data_scene(C), object, name, type);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_ADDED, object);
 
@@ -1751,9 +1770,9 @@ static void rna_Object_modifier_remove(Object *object,
                                        ReportList *reports,
                                        PointerRNA *md_ptr)
 {
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
   ModifierData *md = static_cast<ModifierData *>(md_ptr->data);
-  if (blender::ed::object::modifier_remove(
-          reports, CTX_data_main(C), CTX_data_scene(C), object, md) == false)
+  if (blender::ed::object::modifier_remove(reports, bmain, CTX_data_scene(C), object, md) == false)
   {
     /* error is already set */
     return;
@@ -1766,7 +1785,8 @@ static void rna_Object_modifier_remove(Object *object,
 
 static void rna_Object_modifier_clear(Object *object, bContext *C)
 {
-  blender::ed::object::modifiers_clear(CTX_data_main(C), CTX_data_scene(C), object);
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
+  blender::ed::object::modifiers_clear(bmain, CTX_data_scene(C), object);
 
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
@@ -1897,8 +1917,9 @@ bool rna_Object_modifiers_override_apply(Main *bmain,
 static GpencilModifierData *rna_Object_greasepencil_modifier_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
   return blender::ed::object::gpencil_modifier_add(
-      reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
+      reports, bmain, CTX_data_scene(C), object, name, type);
 }
 
 static void rna_Object_greasepencil_modifier_remove(Object *object,
@@ -1906,10 +1927,9 @@ static void rna_Object_greasepencil_modifier_remove(Object *object,
                                                     ReportList *reports,
                                                     PointerRNA *gmd_ptr)
 {
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
   GpencilModifierData *gmd = static_cast<GpencilModifierData *>(gmd_ptr->data);
-  if (blender::ed::object::gpencil_modifier_remove(reports, CTX_data_main(C), object, gmd) ==
-      false)
-  {
+  if (blender::ed::object::gpencil_modifier_remove(reports, bmain, object, gmd) == false) {
     /* error is already set */
     return;
   }
@@ -1921,7 +1941,8 @@ static void rna_Object_greasepencil_modifier_remove(Object *object,
 
 static void rna_Object_greasepencil_modifier_clear(Object *object, bContext *C)
 {
-  blender::ed::object::gpencil_modifier_clear(CTX_data_main(C), object);
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
+  blender::ed::object::gpencil_modifier_clear(bmain, object);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
@@ -1982,8 +2003,8 @@ bool rna_Object_greasepencil_modifiers_override_apply(
 static ShaderFxData *rna_Object_shaderfx_new(
     Object *object, bContext *C, ReportList *reports, const char *name, int type)
 {
-  return blender::ed::object::shaderfx_add(
-      reports, CTX_data_main(C), CTX_data_scene(C), object, name, type);
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
+  return blender::ed::object::shaderfx_add(reports, bmain, CTX_data_scene(C), object, name, type);
 }
 
 static void rna_Object_shaderfx_remove(Object *object,
@@ -1991,8 +2012,9 @@ static void rna_Object_shaderfx_remove(Object *object,
                                        ReportList *reports,
                                        PointerRNA *gmd_ptr)
 {
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
   ShaderFxData *gmd = static_cast<ShaderFxData *>(gmd_ptr->data);
-  if (blender::ed::object::shaderfx_remove(reports, CTX_data_main(C), object, gmd) == false) {
+  if (blender::ed::object::shaderfx_remove(reports, bmain, object, gmd) == false) {
     /* error is already set */
     return;
   }
@@ -2004,7 +2026,8 @@ static void rna_Object_shaderfx_remove(Object *object,
 
 static void rna_Object_shaderfx_clear(Object *object, bContext *C)
 {
-  blender::ed::object::shaderfx_clear(CTX_data_main(C), object);
+  Main *bmain = CTX_data_main_from_id(C, &object->id);
+  blender::ed::object::shaderfx_clear(bmain, object);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER | NA_REMOVED, object);
 }
 
