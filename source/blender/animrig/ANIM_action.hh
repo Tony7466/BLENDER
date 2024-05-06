@@ -134,8 +134,8 @@ class Action : public ::bAction {
    * \note This does NOT ensure the first two characters match the ID type of
    * this binding. This is the caller's responsibility.
    *
-   * \see Animation::binding_name_define
-   * \see Animation::binding_name_propagate
+   * \see Action::binding_name_define
+   * \see Action::binding_name_propagate
    */
   void binding_name_set(Main &bmain, Binding &binding, StringRefNull new_name);
 
@@ -145,8 +145,8 @@ class Action : public ::bAction {
    * \note This does NOT ensure the first two characters match the ID type of
    * this binding. This is the caller's responsibility.
    *
-   * \see Animation::binding_name_set
-   * \see Animation::binding_name_propagate
+   * \see Action::binding_name_set
+   * \see Action::binding_name_propagate
    */
   void binding_name_define(Binding &binding, StringRefNull new_name);
 
@@ -232,7 +232,7 @@ class Action : public ::bAction {
    * This ensures that the first two characters match the ID type of
    * this binding.
    *
-   * \see Animation::binding_name_propagate
+   * \see Action::binding_name_propagate
    */
   void binding_name_ensure_prefix(Binding &binding);
 
