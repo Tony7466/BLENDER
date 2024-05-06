@@ -126,6 +126,10 @@ void USDLightWriter::do_write(HierarchyContext &context)
   usd_light_api.CreateSpecularAttr().Set(light->spec_fac, timecode);
   usd_light_api.CreateNormalizeAttr().Set(true, timecode);
 
+  if (!hierarchy_iterator_->get_object_data_computed_name(context.object).empty()) {
+    usd_light_api.GetPrim().SetDisplayName(static_cast<ID *>(context.object->data)->name + 2);
+  }
+
   auto prim = usd_light_api.GetPrim();
   write_id_properties(prim, light->id, timecode);
 

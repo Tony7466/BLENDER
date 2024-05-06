@@ -98,6 +98,10 @@ void USDCameraWriter::do_write(HierarchyContext &context)
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
 
+  if (!hierarchy_iterator_->get_object_data_computed_name(context.object).empty()) {
+    usd_camera.GetPrim().SetDisplayName(static_cast<ID *>(context.object->data)->name + 2);
+  }
+
   auto prim = usd_camera.GetPrim();
   write_id_properties(prim, camera->id, timecode);
 }

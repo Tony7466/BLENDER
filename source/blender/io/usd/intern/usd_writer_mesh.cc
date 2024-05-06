@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_mesh.hh"
+#include "usd_hierarchy_iterator.hh"
 
 #include "usd_armature_utils.hh"
 #include "usd_blend_shape_utils.hh"
@@ -446,6 +447,11 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context,
   const pxr::SdfPath &usd_path = usd_export_context_.usd_path;
 
   pxr::UsdGeomMesh usd_mesh = pxr::UsdGeomMesh::Define(stage, usd_path);
+
+  if (!hierarchy_iterator_->get_object_data_computed_name(context.object).empty()) {
+    usd_mesh.GetPrim().SetDisplayName(mesh->id.name + 2);
+  }
+
   write_visibility(context, timecode, usd_mesh);
 
   USDMeshData usd_mesh_data;

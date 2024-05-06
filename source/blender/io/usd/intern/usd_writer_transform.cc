@@ -31,6 +31,10 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   pxr::GfMatrix4d mat_val(parent_relative_matrix);
   usd_value_writer_.SetAttribute(xformOp_.GetAttr(), mat_val, get_export_time_code());
 
+  if (!hierarchy_iterator_->get_object_computed_name(context.object).empty()) {
+    xform.GetPrim().SetDisplayName(context.object->id.name + 2);
+  }
+
   if (context.object) {
     auto prim = xform.GetPrim();
     write_id_properties(prim, context.object->id, get_export_time_code());

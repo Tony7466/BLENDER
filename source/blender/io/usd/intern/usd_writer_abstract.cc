@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_abstract.hh"
+#include "usd_hierarchy_iterator.hh"
 #include "usd_writer_material.hh"
 
 #include <pxr/base/tf/stringUtils.h>
@@ -147,7 +148,10 @@ static void create_vector_attrib(const pxr::UsdPrim &prim,
 }
 
 USDAbstractWriter::USDAbstractWriter(const USDExporterContext &usd_export_context)
-    : usd_export_context_(usd_export_context), frame_has_been_written_(false), is_animated_(false)
+    : usd_export_context_(usd_export_context),
+      frame_has_been_written_(false),
+      is_animated_(false),
+      hierarchy_iterator_(nullptr)
 {
 }
 
@@ -194,6 +198,11 @@ const pxr::SdfPath &USDAbstractWriter::usd_path() const
   return usd_export_context_.usd_path;
 }
 
+void USDAbstractWriter::set_iterator(const USDHierarchyIterator *iter)
+{
+  hierarchy_iterator_ = iter;
+}
+
 pxr::SdfPath USDAbstractWriter::get_material_library_path() const
 {
   static std::string material_library_path("/_materials");
@@ -213,7 +222,10 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(material->id.name + 2));
+  std::string computed_name = hierarchy_iterator_->find_name(&material->id);
+  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(
+      !computed_name.empty() ? computed_name : std::string(material->id.name + 2)));
+
   pxr::SdfPath usd_path = pxr::UsdGeomScope::Define(stage, get_material_library_path())
                               .GetPath()
                               .AppendChild(material_name);
