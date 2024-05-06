@@ -394,7 +394,7 @@ static void set_default_input_field(const bNodeTreeInterfaceSocket &input, Socke
     }
   }
   else if (decl.socket_type == SOCK_MATRIX) {
-    if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_TRANSFORM) {
+    if (input.default_input == GEO_NODE_DEFAULT_FIELD_INPUT_INSTANCE_TRANSFORM) {
       decl.implicit_input_fn = std::make_unique<ImplicitInputValueFn>(
           implicit_field_inputs::instance_transform);
       decl.hide_value = true;

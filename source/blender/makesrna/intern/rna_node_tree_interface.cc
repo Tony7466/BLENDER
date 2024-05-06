@@ -441,10 +441,10 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
       RNA_enum_item_add(&items, &items_count, &position);
     }
     else if (type->type == SOCK_MATRIX) {
-      const EnumPropertyItem normal{GEO_NODE_DEFAULT_FIELD_INPUT_TRANSFORM,
+      const EnumPropertyItem normal{GEO_NODE_DEFAULT_FIELD_INPUT_INSTANCE_TRANSFORM,
                                     "TRANSFORM",
                                     0,
-                                    N_("Transform"),
+                                    N_("Instance Transform"),
                                     N_("Transformation of instances")};
       RNA_enum_item_add(&items, &items_count, &normal);
     }
