@@ -205,7 +205,8 @@ ShadowRayDirectional shadow_ray_generate_directional(LightData light,
   ray.direction = direction;
   ray.light = light;
   /* TODO(fclem): We can simplify this using the ray direction construction. */
-  ray.local_ray_up = safe_normalize(cross(cross(ray.origin, ray.direction), ray.direction));
+  ray.local_ray_up = safe_normalize(
+      cross(cross(vec3(0.0, 0.0, -1.0), ray.direction), ray.direction));
   return ray;
 }
 
@@ -243,11 +244,10 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   /* Clamp to avoid out of tilemap access. */
   tilemap_uv = saturate(tilemap_uv);
   /* Distance from near plane. */
+  float clip_near = orderedIntBitsToFloat(ray.light.clip_near);
   float occluder_z_distance = shadow_read_depth_at_tilemap_uv(
       ray.light.tilemap_index + level_relative, tilemap_uv);
-
-  vec3 occluder_pos = vec3(ray_pos.xy, occluder_z_distance);
-
+  vec3 occluder_pos = vec3(ray_pos.xy, -occluder_z_distance - clip_near);
   /* Transform to ray local space. */
   vec3 ray_local_occluder = occluder_pos - ray.origin;
 
