@@ -1643,6 +1643,14 @@ void GLShaderCompiler::process(bool block)
   mutex.unlock();
 }
 
+bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
+{
+  mutex.lock();
+  bool is_ready = batches.lookup(handle).is_ready;
+  mutex.unlock();
+  return is_ready;
+}
+
 Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 {
   mutex.lock();

@@ -211,11 +211,14 @@ class GLShader : public Shader {
 
 class GLShaderCompiler : public ShaderCompiler {
  private:
+  std::mutex mutex;
   void process_batch(Batch &batch, bool block, std::function<bool()> timeout);
 
  public:
-  virtual void process(bool block = false) override;
+  void process(bool block = false);
+
   virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
+  virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
 

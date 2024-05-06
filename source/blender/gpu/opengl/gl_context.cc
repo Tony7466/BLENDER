@@ -170,7 +170,7 @@ void GLContext::deactivate()
 
 void GLContext::begin_frame()
 {
-  compiler->process();
+  static_cast<GLShaderCompiler *>(compiler)->process();
 }
 
 void GLContext::end_frame()

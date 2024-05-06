@@ -910,7 +910,6 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
 
 BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
 {
-  mutex.lock();
   BatchHandle handle = next_batch_handle++;
   batches.add(handle, {{}, infos, true});
   Batch &batch = batches.lookup(handle);
@@ -919,23 +918,18 @@ BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &info
     info->do_batch_compilation = true;
     batch.shaders.append(compile(*info));
   }
-  mutex.unlock();
   return handle;
 }
 
 bool ShaderCompiler::batch_is_ready(BatchHandle handle)
 {
-  mutex.lock();
   bool is_ready = batches.lookup(handle).is_ready;
-  mutex.unlock();
   return is_ready;
 }
 
 Vector<Shader *> ShaderCompiler::batch_finalize(BatchHandle &handle)
 {
-  mutex.lock();
   Vector<Shader *> shaders = batches.pop(handle).shaders;
-  mutex.unlock();
   handle = 0;
   return shaders;
 }
