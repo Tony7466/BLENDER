@@ -1011,44 +1011,29 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
     }
     else {
       /* standard properties */
-      if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
-        const char *identifier = RNA_property_identifier(prop);
-        const char *group = nullptr;
-
-        /* Special exception for keyframing transforms:
-         * Set "group" for this manually, instead of having them appearing at the bottom
-         * (ungrouped) part of the channels list.
-         * Leaving these ungrouped is not a nice user behavior in this case.
-         *
-         * TODO: Perhaps we can extend this behavior in future for other properties...
-         */
-        if (ptr.type == &RNA_PoseBone) {
-          bPoseChannel *pchan = static_cast<bPoseChannel *>(ptr.data);
-          group = pchan->name;
-        }
-        else if ((ptr.type == &RNA_Object) &&
-                 (strstr(identifier, "location") || strstr(identifier, "rotation") ||
-                  strstr(identifier, "scale")))
-        {
-          /* NOTE: Keep this label in sync with the "ID" case in
-           * keyingsets_utils.py :: get_transform_generators_base_info()
-           */
-          group = "Object Transforms";
+      if (std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
+        /* If we aren't inserting keys for all elements of an array property,
+         * then add the specific index of the element we're keying to end of the
+         * path. */
+        std::string real_path = std::move(path.value());
+        if (!all) {
+          real_path.push_back('[');
+          real_path.append(std::to_string(index));
+          real_path.push_back(']');
         }
 
-        if (all) {
-          /* -1 indicates operating on the entire array (or the property itself otherwise) */
-          index = -1;
-        }
+        PointerRNA id_ptr = RNA_id_pointer_create(ptr.owner_id);
+        const float scene_frame = BKE_scene_frame_get(scene);
+        const blender::Vector paths = {real_path};
+        const CombinedKeyingResult result = insert_key_rna(
+            &id_ptr,
+            paths.as_span(),
+            scene_frame,
+            flag,
+            eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
+            bmain,
+            anim_eval_context);
 
-        CombinedKeyingResult result = insert_keyframe(bmain,
-                                                      *ptr.owner_id,
-                                                      group,
-                                                      path->c_str(),
-                                                      index,
-                                                      &anim_eval_context,
-                                                      eBezTriple_KeyframeType(ts->keyframe_type),
-                                                      flag);
         changed = result.get_count(SingleKeyingResult::SUCCESS) != 0;
       }
       else {

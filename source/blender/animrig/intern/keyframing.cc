@@ -1076,8 +1076,9 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
   for (const std::string &rna_path : rna_paths) {
     PointerRNA ptr;
     PropertyRNA *prop = nullptr;
-    const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), &ptr, &prop);
+    int index;
+    const bool path_resolved = RNA_path_resolve_property_full(
+        rna_pointer, rna_path.c_str(), &ptr, &prop, &index);
     if (!path_resolved) {
       continue;
     }
@@ -1090,7 +1091,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                           rna_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
-                                          -1,
+                                          index,
                                           &anim_eval_context,
                                           nullptr,
                                           successful_remaps);
