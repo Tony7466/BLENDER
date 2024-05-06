@@ -16,27 +16,24 @@
 
 float shadow_read_depth(SHADOW_ATLAS_TYPE atlas_tx,
                         usampler2D tilemaps_tx,
-                        int tilemap_index,
-                        vec2 tilemap_uv)
+                        ShadowCoordinates coord)
 {
-  uvec2 texel_coord = uvec2(tilemap_uv);
+  ShadowSamplingTile tile = shadow_tile_load(tilemaps_tx, coord.tilemap_tile, coord.tilemap_index);
+  if (!tile.is_valid) {
+    return -1.0;
+  }
   /* Using bitwise ops is way faster than integer ops. */
   const uint page_shift = uint(SHADOW_PAGE_LOD);
   const uint page_mask = ~(0xFFFFFFFFu << uint(SHADOW_PAGE_LOD));
 
-  uvec2 tile_coord = texel_coord >> page_shift;
-  ShadowSamplingTile tile = shadow_tile_load(tilemaps_tx, tile_coord, tilemap_index);
-
-  if (!tile.is_valid) {
-    return -1.0;
-  }
+  uvec2 texel = coord.tilemap_texel;
   /* Shift LOD0 pixels so that they get wrapped at the right position for the given LOD. */
-  texel_coord += uvec2(tile.lod_offset << SHADOW_PAGE_LOD);
+  texel += uvec2(tile.lod_offset << SHADOW_PAGE_LOD);
   /* Scale to LOD pixels (merge LOD0 pixels together) then mask to get pixel in page. */
-  uvec2 texel_page = (texel_coord >> tile.lod) & page_mask;
-  ivec3 texel = ivec3((uvec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
+  uvec2 texel_page = (texel >> tile.lod) & page_mask;
+  texel = (uvec2(tile.page.xy) << page_shift) | texel_page;
 
-  return uintBitsToFloat(texelFetch(atlas_tx, texel, 0).r);
+  return uintBitsToFloat(texelFetch(atlas_tx, ivec3(texel, tile.page.z), 0).r);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -53,7 +50,7 @@ float shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   lP = shadow_punctual_local_position_to_face_local(face_id, lP);
   ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
 
-  float radial_dist = shadow_read_depth(atlas_tx, tilemaps_tx, coord.tilemap_index, coord.uv);
+  float radial_dist = shadow_read_depth(atlas_tx, tilemaps_tx, coord);
   if (radial_dist == -1.0) {
     return 1e10;
   }
@@ -70,8 +67,7 @@ float shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   vec3 lP = transform_direction(light.object_to_world, P);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
 
-  float depth = shadow_read_depth(
-      atlas_tx, tilemaps_tx, coord.tilemap_index, coord.uv / float(SHADOW_MAP_MAX_RES));
+  float depth = shadow_read_depth(atlas_tx, tilemaps_tx, coord);
   if (depth == -1.0) {
     return 1e10;
   }

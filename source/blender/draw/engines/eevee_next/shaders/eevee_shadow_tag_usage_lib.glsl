@@ -40,7 +40,7 @@ void shadow_tag_usage_tilemap_directional_at_level(uint l_idx, vec3 P, int level
       level, light_sun_data_get(light).clipmap_lod_min, light_sun_data_get(light).clipmap_lod_max);
 
   ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
-  shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
+  shadow_tag_usage_tile(light, coord.tilemap_tile, 0, coord.tilemap_index);
 }
 
 void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radius, int lod_bias)
@@ -57,7 +57,7 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
   if (radius == 0.0) {
     int level = shadow_directional_level(light, lP - light_position_get(light));
     ShadowCoordinates coord = shadow_directional_coordinates_at_level(light, lP, level);
-    shadow_tag_usage_tile(light, coord.tile_coord, 0, coord.tilemap_index);
+    shadow_tag_usage_tile(light, coord.tilemap_tile, 0, coord.tilemap_index);
   }
   else {
     vec3 start_lP = light_world_to_local(light, P - V * radius);
@@ -71,8 +71,8 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
       ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
           light, lP + vec3(radius, radius, 0.0), level);
 
-      for (uint x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
-        for (uint y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+      for (uint x = coord_min.tilemap_tile.x; x <= coord_max.tilemap_tile.x; x++) {
+        for (uint y = coord_min.tilemap_tile.y; y <= coord_max.tilemap_tile.y; y++) {
           shadow_tag_usage_tile(light, uvec2(x, y), 0, coord_min.tilemap_index);
         }
       }
@@ -121,7 +121,7 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float radius, int lod
     int face_id = shadow_punctual_face_index_get(lP);
     lP = shadow_punctual_local_position_to_face_local(face_id, lP);
     ShadowCoordinates coord = shadow_punctual_coordinates(light, lP, face_id);
-    shadow_tag_usage_tile(light, coord.tile_coord, lod, coord.tilemap_index);
+    shadow_tag_usage_tile(light, coord.tilemap_tile, lod, coord.tilemap_index);
   }
   else {
     uint faces = 0u;
@@ -146,8 +146,8 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float radius, int lod
       ShadowCoordinates coord_min = shadow_punctual_coordinates(light, _lP - offset, face_id);
       ShadowCoordinates coord_max = shadow_punctual_coordinates(light, _lP + offset, face_id);
 
-      for (uint x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
-        for (uint y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+      for (uint x = coord_min.tilemap_tile.x; x <= coord_max.tilemap_tile.x; x++) {
+        for (uint y = coord_min.tilemap_tile.y; y <= coord_max.tilemap_tile.y; y++) {
           shadow_tag_usage_tile(light, uvec2(x, y), lod, tilemap_index);
         }
       }

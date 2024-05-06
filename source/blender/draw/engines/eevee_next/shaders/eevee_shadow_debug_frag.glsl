@@ -20,7 +20,7 @@ const float pixel_scale = 4.0;
 
 ShadowSamplingTile shadow_tile_data_get(usampler2D tilemaps_tx, ShadowCoordinates coord)
 {
-  return shadow_tile_load(tilemaps_tx, coord.tile_coord, coord.tilemap_index);
+  return shadow_tile_load(tilemaps_tx, coord.tilemap_tile, coord.tilemap_index);
 }
 
 vec3 debug_random_color(ivec2 v)
@@ -165,9 +165,8 @@ void debug_tile_state(vec3 P, LightData light)
 
 void debug_atlas_values(vec3 P, LightData light)
 {
-  ShadowCoordinates samp = debug_coord_get(P, light);
-  float depth = shadow_read_depth(
-      shadow_atlas_tx, shadow_tilemaps_tx, samp.tilemap_index, samp.uv);
+  ShadowCoordinates coord = debug_coord_get(P, light);
+  float depth = shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, coord);
   out_color_add = vec4((depth == -1) ? vec3(1.0, 0.0, 0.0) : float3(1.0 / depth), 0.0);
   out_color_mul = vec4(0.5);
 }

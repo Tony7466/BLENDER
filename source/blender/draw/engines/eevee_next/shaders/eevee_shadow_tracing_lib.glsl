@@ -15,14 +15,6 @@
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
 #pragma BLENDER_REQUIRE(draw_math_geom_lib.glsl)
 
-float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
-{
-  /* Prevent out of bound access. Assumes the input is already non negative. */
-  tilemap_uv = min(tilemap_uv, vec2(0.99999)) * float(SHADOW_MAP_MAX_RES);
-
-  return shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, tilemap_index, tilemap_uv);
-}
-
 /* ---------------------------------------------------------------------- */
 /** \name Shadow Map Tracing loop
  * \{ */
@@ -125,7 +117,7 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
     vec2 delta = samp.occluder - state.occluder_history;
     /* Clamping the slope to a mininim avoid light leaking. */
     /* TODO(fclem): Expose as parameter? */
-    const float min_slope = tan(M_PI * 0.1);
+    const float min_slope = tan(M_PI * 0.25);
     state.occluder_slope = max(min_slope, abs(delta.y / delta.x));
     state.occluder_history = samp.occluder;
     /* Intersection test. Intersect if above the ray time. */
@@ -197,37 +189,11 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   /* Ray position is ray local position with origin at light origin. */
   vec3 ray_pos = ray.origin + ray.direction * state.ray_time;
 
-  /* TODO(fclem): We could avoid all this trickery to fetch the correct tilemap inside the loop if
-   * we could ensure a ray is traced inside a single tilemap. However this requires adding
-   * redundant tiles in different levels. */
+  ShadowCoordinates coord = shadow_directional_coordinates(ray.light, ray_pos);
 
-  int level = shadow_directional_level(ray.light, ray_pos - light_position_get(ray.light));
-  /* This difference needs to be less than 32 for the later shift to be valid.
-   * This is ensured by ShadowDirectional::clipmap_level_range(). */
-  int level_relative = level - light_sun_data_get(ray.light).clipmap_lod_min;
-
-  int lod_relative = (ray.light.type == LIGHT_SUN_ORTHO) ?
-                         light_sun_data_get(ray.light).clipmap_lod_min :
-                         level;
-
-  vec2 clipmap_origin = light_sun_data_get(ray.light).clipmap_origin;
-  vec2 clipmap_pos = ray_pos.xy - clipmap_origin;
-  vec2 tilemap_uv = clipmap_pos * exp2(-float(lod_relative)) + 0.5;
-
-  /* Compute offset in tile. */
-  ivec2 clipmap_offset = shadow_decompress_grid_offset(
-      ray.light.type,
-      light_sun_data_get(ray.light).clipmap_base_offset_neg,
-      light_sun_data_get(ray.light).clipmap_base_offset_pos,
-      level_relative);
-  /* Translate tilemap UVs to its origin. */
-  tilemap_uv -= vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
-  /* Clamp to avoid out of tilemap access. */
-  tilemap_uv = saturate(tilemap_uv);
+  float depth = shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, coord);
   /* Distance from near plane. */
   float clip_near = orderedIntBitsToFloat(ray.light.clip_near);
-  float depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
-                                                tilemap_uv);
   vec3 occluder_pos = vec3(ray_pos.xy, -depth - clip_near);
   /* Transform to ray local space. */
   vec3 ray_local_occluder = occluder_pos - ray.origin;
@@ -255,6 +221,7 @@ struct ShadowRayPunctual {
   vec3 local_ray_up;
   /* Tile-map to sample. */
   int light_tilemap_index;
+  LightData light;
 };
 
 /* Return ray in UV clip space [0..1]. */
@@ -322,6 +289,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light, vec2 random_2d, 
   ray.direction = direction;
   ray.light_tilemap_index = light.tilemap_index;
   ray.local_ray_up = safe_normalize(cross(cross(ray.origin, ray.direction), ray.direction));
+  ray.light = light;
   return ray;
 }
 
@@ -330,11 +298,10 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
 {
   vec3 receiver_pos = ray.origin + ray.direction * state.ray_time;
   int face_id = shadow_punctual_face_index_get(receiver_pos);
-  int tilemap_index = ray.light_tilemap_index + face_id;
   vec3 face_pos = shadow_punctual_local_position_to_face_local(face_id, receiver_pos);
-  vec2 face_uv = saturate((face_pos.xy / abs(face_pos.z)) * 0.5 + 0.5);
+  ShadowCoordinates coord = shadow_punctual_coordinates(ray.light, face_pos, face_id);
 
-  float radial_occluder_depth = shadow_read_depth_at_tilemap_uv(tilemap_index, face_uv);
+  float radial_occluder_depth = shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, coord);
   vec3 occluder_pos = receiver_pos * (radial_occluder_depth / length(receiver_pos));
 
   /* Transform to ray local space. */

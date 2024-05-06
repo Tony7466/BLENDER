@@ -203,13 +203,21 @@ int shadow_punctual_level(LightData light,
 struct ShadowCoordinates {
   /* Index of the tile-map to containing the tile. */
   int tilemap_index;
-  /* LOD of the tile to load relative to the min level. Always positive. */
-  int lod_relative;
-  /* Tile coordinate inside the tile-map. */
-  uvec2 tile_coord;
-  /* UV coordinates in [0..SHADOW_TILEMAP_RES) range. */
-  vec2 uv;
+  /* Texel coordinates in [0..SHADOW_MAP_MAX_RES) range. */
+  uvec2 tilemap_texel;
+  /* Tile coordinate in [0..SHADOW_TILEMAP_RES) range. */
+  uvec2 tilemap_tile;
 };
+
+/* Assumes tilemap_uv is already saturated. */
+ShadowCoordinates shadow_coordinate_from_uvs(int tilemap_index, vec2 tilemap_uv)
+{
+  ShadowCoordinates ret;
+  ret.tilemap_index = tilemap_index;
+  ret.tilemap_texel = uvec2(tilemap_uv * (float(SHADOW_MAP_MAX_RES) - 1e-2));
+  ret.tilemap_tile = ret.tilemap_texel >> uint(SHADOW_PAGE_LOD);
+  return ret;
+}
 
 /* Retain sign bit and avoid costly int division. */
 ivec2 shadow_decompress_grid_offset(eLightType light_type,
@@ -230,30 +238,24 @@ ivec2 shadow_decompress_grid_offset(eLightType light_type,
  */
 ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 lP, int level)
 {
-  ShadowCoordinates ret;
   /* This difference needs to be less than 32 for the later shift to be valid.
    * This is ensured by `ShadowDirectional::clipmap_level_range()`. */
   int level_relative = level - light_sun_data_get(light).clipmap_lod_min;
-
-  ret.tilemap_index = light.tilemap_index + level_relative;
-
-  ret.lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light_sun_data_get(light).clipmap_lod_min :
+  int lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light_sun_data_get(light).clipmap_lod_min :
                                                        level;
-
   /* Compute offset in tile. */
   ivec2 clipmap_offset = shadow_decompress_grid_offset(
       light.type,
       light_sun_data_get(light).clipmap_base_offset_neg,
       light_sun_data_get(light).clipmap_base_offset_pos,
       level_relative);
+  /* UV in [0..1] range over the tilemap. */
+  vec2 tilemap_uv = lP.xy - light_sun_data_get(light).clipmap_origin;
+  tilemap_uv *= exp2(float(-lod_relative));
+  tilemap_uv -= vec2(clipmap_offset) * (1.0 / float(SHADOW_TILEMAP_RES));
+  tilemap_uv = saturate(tilemap_uv + 0.5);
 
-  ret.uv = lP.xy - light_sun_data_get(light).clipmap_origin;
-  ret.uv /= exp2(float(ret.lod_relative));
-  ret.uv = ret.uv * float(SHADOW_TILEMAP_RES) + float(SHADOW_TILEMAP_RES / 2);
-  ret.uv -= vec2(clipmap_offset);
-  /* Clamp to avoid out of tile-map access. */
-  ret.tile_coord = clamp(uvec2(ret.uv), uvec2(0.0), uvec2(SHADOW_TILEMAP_RES - 1));
-  return ret;
+  return shadow_coordinate_from_uvs(light.tilemap_index + level_relative, tilemap_uv);
 }
 
 /**
@@ -326,16 +328,12 @@ ShadowCoordinates shadow_punctual_coordinates(LightData light, vec3 lP, int face
 {
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light_local_data_get(light).clip_side;
-
-  ShadowCoordinates ret;
-  ret.tilemap_index = light.tilemap_index + face_id;
   /* UVs in [-1..+1] range. */
-  ret.uv = (lP.xy * clip_near) / abs(lP.z * clip_side);
-  /* UVs in [0..SHADOW_TILEMAP_RES] range. */
-  ret.uv = ret.uv * float(SHADOW_TILEMAP_RES / 2) + float(SHADOW_TILEMAP_RES / 2);
-  /* Clamp to avoid out of tile-map access. */
-  ret.tile_coord = clamp(ivec2(ret.uv), ivec2(0), ivec2(SHADOW_TILEMAP_RES - 1));
-  return ret;
+  vec2 tilemap_uv = (lP.xy * clip_near) / abs(lP.z * clip_side);
+  /* UVs in [0..1] range. */
+  tilemap_uv = saturate(tilemap_uv * 0.5 + 0.5);
+
+  return shadow_coordinate_from_uvs(light.tilemap_index + face_id, tilemap_uv);
 }
 
 /** \} */
