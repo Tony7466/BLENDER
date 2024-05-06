@@ -73,6 +73,8 @@
 #include "BLO_read_write.hh"
 #include "BLO_readfile.hh"
 
+#include "NOD_shader.h"
+
 #include "readfile.hh"
 
 #include "versioning_common.hh"
@@ -3341,6 +3343,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           if (sl->spacetype == SPACE_SEQ) {
             SpaceSeq *sseq = (SpaceSeq *)sl;
             sseq->cache_overlay.flag |= SEQ_CACHE_SHOW_FINAL_OUT;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 28)) {
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      if (world->nodetree) {
+        world->nodetree->ensure_topology_cache();
+        bNode *output = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_EEVEE);
+        if (output) {
+          if (output->input_socket(1).is_directly_linked()) {
+            world->flag |= WO_USE_EEVEE_FINITE_VOLUME;
           }
         }
       }
