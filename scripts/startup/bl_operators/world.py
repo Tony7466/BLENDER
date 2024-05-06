@@ -26,22 +26,30 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         cls = self.__class__
         world = cls._world_get(context)
         camera = context.scene.camera
-        collection = context.collection
         view_layer = context.view_layer
 
         world_tree = world.node_tree
         world_output = world_tree.get_output_node('EEVEE')
+        name = f"{world.name}_volume"
+
+        collection = bpy.data.collections.new(name)
+        view_layer.layer_collection.collection.children.link(collection)
 
         # Add World Volume Mesh object to scene
-        name = f"{world.name}Volume"
         mesh = bpy.data.meshes.new(name)
         volume = bpy.data.objects.new(name, mesh)
-        volume.parent = camera
+        volume.display.show_shadows = False
 
         bm = bmesh.new()
-        bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=camera.data.clip_end)
+        bmesh.ops.create_icosphere(bm, subdivisions=0, radius=1e5)
         bm.to_mesh(mesh)
         bm.free()
+
+        # Remove all non-essential attributes
+        for attribute in mesh.attributes:
+            if attribute.is_internal or attribute.is_required:
+                continue
+            mesh.attributes.remove(attribute)
 
         material = bpy.data.materials.new(name)
         mesh.materials.append(material)
@@ -53,7 +61,6 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         volume_output = volume_tree.get_output_node('EEVEE')
 
         links_to_add = []
-        volume_output_name = volume_output.name
         self.__sync_rna_properties(volume_output, world_output)
         self.__sync_node_input(
             volume_tree,
@@ -72,6 +79,8 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         collection.objects.link(volume)
         volume.select_set(True)
         view_layer.objects.active = volume
+
+        world.use_eevee_finite_volume = False
 
         return {"FINISHED"}
 
