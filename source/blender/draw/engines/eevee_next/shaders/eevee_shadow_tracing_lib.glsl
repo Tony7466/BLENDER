@@ -252,7 +252,7 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   vec3 ray_local_occluder = occluder_pos - ray.origin;
 
   ShadowTracingSample samp;
-  samp.occluder.x = dot(ray_local_occluder, normalize(ray.direction)) / length(ray.direction);
+  samp.occluder.x = dot(ray_local_occluder, ray.direction) / length_squared(ray.direction);
   samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
   samp.skip_sample = (occluder_z_distance == -1.0);
   return samp;
@@ -360,8 +360,7 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   vec3 ray_local_occluder = occluder_pos - ray.origin;
 
   ShadowTracingSample samp;
-  /* TODO optimize this. */
-  samp.occluder.x = dot(ray_local_occluder, normalize(ray.direction)) / length(ray.direction);
+  samp.occluder.x = dot(ray_local_occluder, ray.direction) / length_squared(ray.direction);
   samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
   samp.skip_sample = (radial_occluder_depth == -1.0);
   return samp;
