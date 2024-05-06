@@ -1256,7 +1256,7 @@ struct ShadowRenderView {
   uint viewport_index;
   /* True if comming from a sun light shadow. */
   bool32_t is_directionnal;
-  /* If directionnal, distance of the near clip Z in view space. */
+  /* If directionnal, distance along the negative Z axis of the near clip in view space. */
   float clip_near;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowRenderView, 16)

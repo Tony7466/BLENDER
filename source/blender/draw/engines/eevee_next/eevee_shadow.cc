@@ -266,43 +266,15 @@ void ShadowPunctual::release_excess_tilemaps()
 }
 
 void ShadowPunctual::compute_projection_boundaries(eLightType light_type,
-                                                   float light_radius,
-                                                   float shadow_radius,
                                                    float max_lit_distance,
                                                    float &near,
                                                    float &far,
                                                    float &side,
                                                    float &back_shift)
 {
-  float cos_alpha = shadow_radius / max_lit_distance;
-  float sin_alpha = sqrt(1.0f - math::square(cos_alpha));
-  float near_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha - cos_alpha);
-  float side_shift = M_SQRT2 * shadow_radius * 0.5f * (sin_alpha + cos_alpha);
-  float origin_shift = M_SQRT2 * shadow_radius / (sin_alpha - cos_alpha);
-
-  float min_near = (max_lit_distance / 4000.0f) / M_SQRT3;
-
-  if (is_area_light(light_type)) {
-    /* Make near plane be inside the inscribed cube of the shadow sphere. */
-    near = max_ff(shadow_radius / M_SQRT3, min_near);
-    /* Subtract min_near to make the shadow center match the light center if there is no shadow
-     * tracing required. This avoid light leaking issues near the light plane caused by the
-     * shadow discard clipping. */
-    back_shift = (near - min_near);
-  }
-  else {
-    /* Make near plane be inside the inscribed cube of the light sphere. */
-    near = max_ff(light_radius / M_SQRT3, min_near);
-    back_shift = 0.0f;
-  }
-
   far = max_lit_distance;
-  if (shadow_radius > 1e-5f) {
-    side = near;
-  }
-  else {
-    side = near;
-  }
+  near = side = (max_lit_distance / 4000.0f) / M_SQRT3;
+  back_shift = 0.0f;
 }
 
 void ShadowPunctual::end_sync(Light &light, float lod_bias)
@@ -310,8 +282,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
 
   float side, near, far, shift;
-  compute_projection_boundaries(
-      light.type, light_radius_, shadow_radius_, max_distance_, near, far, side, shift);
+  compute_projection_boundaries(light.type, max_distance_, near, far, side, shift);
 
   float4x4 obmat_tmp = light.object_to_world;
 

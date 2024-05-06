@@ -454,8 +454,6 @@ class ShadowPunctual : public NonCopyable, NonMovable {
    * quadrant.
    */
   void compute_projection_boundaries(eLightType light_type,
-                                     float light_radius,
-                                     float shadow_radius,
                                      float max_lit_distance,
                                      float &near,
                                      float &far,
