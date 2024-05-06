@@ -452,12 +452,11 @@ void ED_workspace_status_text(bContext *C, const char *str);
 
 class WorkspaceStatus {
  private:
-  bContext *C_;
   WorkSpace *workspace_;
+  wmWindowManager *wm_;
 
  public:
   WorkspaceStatus(bContext *C);
-  ~WorkspaceStatus();
   void item(const std::string text, int icon1, int icon2 = 0);
   void item_bool(const std::string text, bool inverted, int icon1, int icon2 = 0);
   void range(const std::string text, int icon1, int icon2);

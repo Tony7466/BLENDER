@@ -862,17 +862,13 @@ static void ed_workspace_status_space(WorkSpace *workspace, float space_factor)
 
 WorkspaceStatus::WorkspaceStatus(bContext *C)
 {
-  C_ = C;
   workspace_ = CTX_wm_workspace(C);
+  wm_ = CTX_wm_manager(C);
   if (workspace_) {
     BKE_workspace_status_clear(workspace_);
   }
-};
-
-WorkspaceStatus::~WorkspaceStatus()
-{
-  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C_), CTX_wm_screen(C_)));
-};
+  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C)));
+}
 
 /* Private helper functions to help ensure consistant spacing. */
 
@@ -937,7 +933,7 @@ void WorkspaceStatus::item_bool(std::string text, bool interted, int icon1, int 
 
 void WorkspaceStatus::opmodal(std::string text, wmOperatorType *ot, int propvalue, bool inverted)
 {
-  wmKeyMap *keymap = WM_keymap_active(CTX_wm_manager(C_), ot->modalkeymap);
+  wmKeyMap *keymap = WM_keymap_active(wm_, ot->modalkeymap);
   if (keymap) {
     const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
     if (kmi) {
