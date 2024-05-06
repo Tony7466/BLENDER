@@ -122,65 +122,18 @@ void main()
     float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
 
     const uint local_index = gl_LocalInvocationIndex;
+    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
     /* Parallel sum. Result is stored inside local_radiance[0]. */
-    /* Code has been unrolled to work around UHD600 driver bug and need to be modified when
-     * `SPHERE_PROBE_REMAP_GROUP_SIZE` changes. */
-
-#if 0
-    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
-    local_radiance[local_index] = radiance.xyzz * sample_weight;
-    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+    uint stride = group_size / 2;
+    for (int i = 0; i < 10; i++) {
       barrier();
       if (local_index < stride) {
         local_radiance[local_index] += local_radiance[local_index + stride];
       }
+      stride /= 2;
     }
     barrier();
-#else
-    local_radiance[local_index] = radiance.xyzz * sample_weight;
-    barrier();
-    if (local_index < 512) {
-      local_radiance[local_index] += local_radiance[local_index + 512];
-    }
-    barrier();
-    if (local_index < 256) {
-      local_radiance[local_index] += local_radiance[local_index + 256];
-    }
-    barrier();
-    if (local_index < 128) {
-      local_radiance[local_index] += local_radiance[local_index + 128];
-    }
-    barrier();
-    if (local_index < 64) {
-      local_radiance[local_index] += local_radiance[local_index + 64];
-    }
-    barrier();
-    if (local_index < 32) {
-      local_radiance[local_index] += local_radiance[local_index + 32];
-    }
-    barrier();
-    if (local_index < 16) {
-      local_radiance[local_index] += local_radiance[local_index + 16];
-    }
-    barrier();
-    if (local_index < 8) {
-      local_radiance[local_index] += local_radiance[local_index + 8];
-    }
-    barrier();
-    if (local_index < 4) {
-      local_radiance[local_index] += local_radiance[local_index + 4];
-    }
-    barrier();
-    if (local_index < 2) {
-      local_radiance[local_index] += local_radiance[local_index + 2];
-    }
-    barrier();
-    if (local_index < 1) {
-      local_radiance[local_index] += local_radiance[local_index + 1];
-    }
-    barrier();
-#endif
 
     if (gl_LocalInvocationIndex == 0u) {
       /* Find the middle point of the whole thread-group. Use it as light vector.
