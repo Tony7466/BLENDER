@@ -1067,6 +1067,38 @@ class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
         layout.prop(rd, "use_high_quality_normals")
 
 
+class CompositorPerformanceButtonsPanel:
+    bl_label = "Compositor"
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        tree = scene.node_tree
+        if not tree:
+            return
+
+        use_realtime = tree.execution_mode == 'REALTIME'
+        col = layout.column()
+        row = col.row()
+        row.prop(tree, "execution_mode", expand=True)
+        col.prop(tree, "precision")
+
+        col = layout.column()
+        col.active = not use_realtime
+        col.prop(tree, "render_quality", text="Render")
+        col.prop(tree, "edit_quality", text="Edit")
+
+
+class RENDER_PT_eevee_performance_compositor(RenderButtonsPanel, CompositorPerformanceButtonsPanel, Panel):
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_parent_id = "RENDER_PT_eevee_performance"
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
+
+
 class RENDER_PT_eevee_performance_memory(RenderButtonsPanel, Panel):
     bl_label = "Memory"
     bl_parent_id = "RENDER_PT_eevee_performance"
@@ -1367,6 +1399,7 @@ classes = (
     RENDER_PT_eevee_performance,
     RENDER_PT_eevee_performance_memory,
     RENDER_PT_eevee_performance_viewport,
+    RENDER_PT_eevee_performance_compositor,
 
 
     RENDER_PT_gpencil,
