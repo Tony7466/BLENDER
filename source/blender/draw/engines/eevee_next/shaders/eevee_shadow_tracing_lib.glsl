@@ -17,28 +17,7 @@
 
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
-  /* Prevent out of bound access. Assumes the input is already non negative. */
-  tilemap_uv = min(tilemap_uv, vec2(0.99999));
-
-  ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
-  /* Using bitwise ops is way faster than integer ops. */
-  const int page_shift = SHADOW_PAGE_LOD;
-  const int page_mask = ~(0xFFFFFFFF << SHADOW_PAGE_LOD);
-
-  ivec2 tile_coord = texel_coord >> page_shift;
-  ShadowSamplingTile tile = shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
-
-  if (!tile.is_valid) {
-    return -1.0;
-  }
-  /* Shift LOD0 pixels so that they get wrapped at the right position for the given LOD. */
-  /* TODO convert everything to uint to avoid signed int operations. */
-  texel_coord += ivec2(tile.lod_offset << SHADOW_PAGE_LOD);
-  /* Scale to LOD pixels (merge LOD0 pixels together) then mask to get pixel in page. */
-  ivec2 texel_page = (texel_coord >> int(tile.lod)) & page_mask;
-  ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
-
-  return uintBitsToFloat(texelFetch(shadow_atlas_tx, texel, 0).r);
+  return shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, tilemap_index, tilemap_uv);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -143,7 +122,7 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
     vec2 delta = samp.occluder - state.occluder_history;
     /* Clamping the slope to a mininim avoid light leaking. */
     /* TODO(fclem): Expose as parameter? */
-    const float min_slope = tan(M_PI * 0.25);
+    const float min_slope = tan(M_PI * 0.1);
     state.occluder_slope = max(min_slope, abs(delta.y / delta.x));
     state.occluder_history = samp.occluder;
     /* Intersection test. Intersect if above the ray time. */
@@ -187,7 +166,6 @@ ShadowRayDirectional shadow_ray_generate_directional(LightData light,
   float clip_near = orderedIntBitsToFloat(light.clip_near);
   float clip_far = orderedIntBitsToFloat(light.clip_far);
   /* Assumed to be non-null. */
-  float z_range = clip_far - clip_near;
   float dist_to_near_plane = -lP.z - clip_near;
 
   /* Light shape is 1 unit away from the shading point. */
@@ -245,16 +223,16 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   tilemap_uv = saturate(tilemap_uv);
   /* Distance from near plane. */
   float clip_near = orderedIntBitsToFloat(ray.light.clip_near);
-  float occluder_z_distance = shadow_read_depth_at_tilemap_uv(
-      ray.light.tilemap_index + level_relative, tilemap_uv);
-  vec3 occluder_pos = vec3(ray_pos.xy, -occluder_z_distance - clip_near);
+  float depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
+                                                tilemap_uv);
+  vec3 occluder_pos = vec3(ray_pos.xy, -depth - clip_near);
   /* Transform to ray local space. */
   vec3 ray_local_occluder = occluder_pos - ray.origin;
 
   ShadowTracingSample samp;
   samp.occluder.x = dot(ray_local_occluder, ray.direction) / length_squared(ray.direction);
   samp.occluder.y = dot(ray_local_occluder, ray.local_ray_up);
-  samp.skip_sample = (occluder_z_distance == -1.0);
+  samp.skip_sample = (depth == -1.0);
   return samp;
 }
 
@@ -458,17 +436,18 @@ float shadow_normal_offset(vec3 Ng, vec3 L)
 
 /**
  * Evaluate shadowing by casting rays toward the light direction.
+ * Returns light visibility.
  */
-ShadowEvalResult shadow_eval(LightData light,
-                             const bool is_directional,
-                             const bool is_transmission,
-                             bool is_translucent_with_thickness,
-                             float thickness, /* Only used if is_transmission is true. */
-                             vec3 P,
-                             vec3 Ng,
-                             vec3 L,
-                             int ray_count,
-                             int ray_step_count)
+float shadow_eval(LightData light,
+                  const bool is_directional,
+                  const bool is_transmission,
+                  bool is_translucent_with_thickness,
+                  float thickness, /* Only used if is_transmission is true. */
+                  vec3 P,
+                  vec3 Ng,
+                  vec3 L,
+                  int ray_count,
+                  int ray_step_count)
 {
 #if defined(EEVEE_SAMPLING_DATA) && defined(EEVEE_UTILITY_TX)
 #  ifdef GPU_FRAGMENT_SHADER
@@ -531,10 +510,7 @@ ShadowEvalResult shadow_eval(LightData light,
     surface_hit += float(has_hit);
   }
   /* Average samples. */
-  ShadowEvalResult result;
-  result.light_visibilty = saturate(1.0 - surface_hit / float(ray_count));
-  result.occluder_distance = 0.0; /* Unused. Could reintroduced if needed. */
-  return result;
+  return saturate(1.0 - surface_hit / float(ray_count));
 }
 
 /** \} */

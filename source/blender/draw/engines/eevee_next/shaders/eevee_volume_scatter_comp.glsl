@@ -39,8 +39,7 @@ vec3 volume_light_eval(const bool is_directional, vec3 P, vec3 V, uint l_idx, fl
 
   float visibility = attenuation;
   if (light.tilemap_index != LIGHT_NO_SHADOW) {
-    visibility *= shadow_sample(is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P)
-                      .light_visibilty;
+    visibility *= shadow_sample(is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P);
   }
   visibility *= volume_phase_function(-V, lv.L, s_anisotropy);
   if (visibility < LIGHT_ATTENUATION_THRESHOLD) {
