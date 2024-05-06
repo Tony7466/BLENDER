@@ -975,7 +975,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
     ima->id.tag |= LIB_TAG_DOIT;
   }
   else {
-    BKE_id_free(&bmain, &ima);
+    BKE_id_free(&bmain, ima);
   }
 
   return fill_curves;
