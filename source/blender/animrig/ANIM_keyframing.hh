@@ -32,10 +32,10 @@ namespace blender::animrig {
 
 enum class SingleKeyingResult {
   SUCCESS = 0,
-  /* TODO: remove `GENERIC_FAILURE` and replace all usages with more specific
+  /* TODO: remove `UNKNOWN_FAILURE` and replace all usages with proper, specific
    * cases. This is needed right now as a stop-gap while progressively moving
    * the keyframing code over to propagate errors properly.*/
-  GENERIC_FAILURE,
+  UNKNOWN_FAILURE,
   CANNOT_CREATE_FCURVE,
   FCURVE_NOT_KEYFRAMEABLE,
   NO_KEY_NEEDED,

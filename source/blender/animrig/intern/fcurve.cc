@@ -339,7 +339,7 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
   if (a < 0) {
     /* TODO: we need more info from `insert_bezt_fcurve()` called above to
      * return a more specific failure. */
-    return SingleKeyingResult::GENERIC_FAILURE;
+    return SingleKeyingResult::UNKNOWN_FAILURE;
   }
 
   /* Set handle-type and interpolation. */
