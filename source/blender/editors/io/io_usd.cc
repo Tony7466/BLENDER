@@ -493,7 +493,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "convert_orientation",
                   false,
                   "Convert Orientation",
-                  "When checked, the USD exporter will convert scene orientation axis");
+                  "The USD exporter will convert scene orientation axis");
 
   prop = RNA_def_enum(ot->srna,
                       "export_global_forward_selection",
