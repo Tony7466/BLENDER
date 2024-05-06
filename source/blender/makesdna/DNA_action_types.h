@@ -735,12 +735,25 @@ typedef struct bAction {
   int binding_array_num;
   int32_t last_binding_handle;
 
-  /** Legacy storage of F-Curves. */
+  /* Note about legacy animation data:
+   *
+   * Blender 2.5 introduced a new animation system 'Animato'. This replaced the
+   * IPO ('interpolation') curves with F-Curves. Both are considered 'legacy' at
+   * different levels:
+   *
+   * - Actions with F-Curves in `curves`, as introduced in Blender 2.5, are
+   *   considered 'legacy' but still functional in current Blender.
+   * - Pre-2.5 data are deprecated and old files are automatically converted to
+   *   the post-2.5 data model.
+   */
+
+  /** Legacy F-Curves (FCurve), introduced in Blender 2.5. */
   ListBase curves;
-  /** Legacy data - Action Channels (bActionChannel) in pre-2.5 animation system. */
+  /** Legacy Action Channels (bActionChannel) from pre-2.5 animation system. */
   ListBase chanbase DNA_DEPRECATED;
-  /** Groups of function-curves (bActionGroup). */
+  /** Legacy Groups of function-curves (bActionGroup), introduced in Blender 2.5. */
   ListBase groups;
+
   /** Markers local to the Action (used to provide Pose-Libraries). */
   ListBase markers;
 

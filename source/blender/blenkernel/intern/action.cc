@@ -393,20 +393,16 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   read_layers(reader, action);
   read_bindings(reader, action);
 
-  /* Read legacy F-Curves & Groups. */
+  /* Read legacy data. */
   BLO_read_struct_list(reader, FCurve, &action.curves);
-  BLO_read_struct_list(
-      reader, bActionChannel, &action.chanbase); /* XXX deprecated - old animation system */
+  BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
   BLO_read_struct_list(reader, bActionGroup, &action.groups);
   BLO_read_struct_list(reader, TimeMarker, &action.markers);
 
-  /* XXX deprecated - old animation system <<< */
   LISTBASE_FOREACH (bActionChannel *, achan, &action.chanbase) {
     BLO_read_struct(reader, bActionGroup, &achan->grp);
-
     BLO_read_struct_list(reader, bConstraintChannel, &achan->constraintChannels);
   }
-  /* >>> XXX deprecated - old animation system */
 
   BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
 
@@ -414,6 +410,7 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
     BLO_read_struct(reader, FCurve, &agrp->channels.first);
     BLO_read_struct(reader, FCurve, &agrp->channels.last);
   }
+  /* End of reading legacy data. */
 
   BLO_read_struct(reader, PreviewImage, &action.preview);
   BKE_previewimg_blend_read(reader, action.preview);
