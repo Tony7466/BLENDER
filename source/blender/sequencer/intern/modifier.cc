@@ -31,6 +31,8 @@
 #include "SEQ_modifier.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sound.hh"
+#include "SEQ_time.hh"
+#include "SEQ_utils.hh"
 
 #include "BLO_read_write.hh"
 
@@ -1498,6 +1500,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
                                 ImBuf *ibuf,
                                 int timeline_frame)
 {
+  using namespace blender::seq;
   ImBuf *processed_ibuf = ibuf;
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
@@ -1534,7 +1537,15 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
         processed_ibuf = IMB_dupImBuf(ibuf);
       }
 
-      smti->apply(smd, processed_ibuf, mask);
+      const bool strip_has_ended_skip = smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
+                                        !SEQ_time_strip_intersects_frame(
+                                            context->scene, smd->mask_sequence, timeline_frame);
+      const bool missing_data_skip = !SEQ_sequence_has_valid_data(smd->mask_sequence) ||
+                                     media_presence_is_missing(context->scene, smd->mask_sequence);
+
+      if (!strip_has_ended_skip && !missing_data_skip) {
+        smti->apply(smd, processed_ibuf, mask);
+      }
 
       if (mask) {
         IMB_freeImBuf(mask);
