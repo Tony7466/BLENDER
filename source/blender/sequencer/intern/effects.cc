@@ -323,16 +323,16 @@ template<typename T>
 static void do_alphaunder_effect(
     float fac, int width, int height, const T *src1, const T *src2, T *dst)
 {
-  if (fac >= 1.0f) {
-    memcpy(dst, src1, sizeof(T) * 4 * width * height);
+  if (fac <= 0.0f) {
+    memcpy(dst, src2, sizeof(T) * 4 * width * height);
     return;
   }
 
   for (int pixel_idx = 0; pixel_idx < width * height; pixel_idx++) {
-    if (src2[3] <= 0.0f) {
+    if (src2[3] <= 0.0f && fac >= 1.0f) {
       memcpy(dst, src1, sizeof(T) * 4);
     }
-    else if (alpha_opaque(src2[3]) || fac <= 0.0f) {
+    else if (alpha_opaque(src2[3])) {
       memcpy(dst, src2, sizeof(T) * 4);
     }
     else {
@@ -888,7 +888,7 @@ static void apply_blend_function(
 }
 
 static void do_blend_effect_float(
-    float fac, int x, int y, float *rect1, float *rect2, int btype, float *out)
+    float fac, int x, int y, const float *rect1, float *rect2, int btype, float *out)
 {
   switch (btype) {
     case SEQ_TYPE_ADD:
@@ -1573,10 +1573,10 @@ static void transform_image(int x,
       switch (interpolation) {
         case 0:
           if (dst_fl) {
-            dst_fl[offset] = imbuf::interpolate_nearest_fl(ibuf, xt, yt);
+            dst_fl[offset] = imbuf::interpolate_nearest_border_fl(ibuf, xt, yt);
           }
           else {
-            dst_ch[offset] = imbuf::interpolate_nearest_byte(ibuf, xt, yt);
+            dst_ch[offset] = imbuf::interpolate_nearest_border_byte(ibuf, xt, yt);
           }
           break;
         case 1:
@@ -2644,7 +2644,8 @@ void SEQ_effect_text_font_load(TextVars *data, const bool do_id_user)
     char filepath[FILE_MAX];
     STRNCPY(filepath, vfont->filepath);
     if (BLI_thread_is_main()) {
-      /* FIXME: This is a band-aid fix. A proper solution has to be worked on by the VSE team.
+      /* FIXME: This is a band-aid fix.
+       * A proper solution has to be worked on by the sequencer team.
        *
        * This code can be called from non-main thread, e.g. when copying sequences as part of
        * depsgraph evaluated copy of the evaluated scene. Just skip font loading in that case, BLF
@@ -2710,7 +2711,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                              ImBuf *ibuf2,
                              ImBuf *ibuf3)
 {
-  /* Note: text rasterization only fills in part of output image,
+  /* NOTE: text rasterization only fills in part of output image,
    * need to clear it. */
   ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3, false);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
@@ -2769,7 +2770,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
     rcti rect;
   } wrap;
 
-  BLF_boundbox_ex(font, data->text, sizeof(data->text), &wrap.rect, &wrap.info);
+  BLF_boundbox(font, data->text, sizeof(data->text), &wrap.rect, &wrap.info);
 
   if ((data->align == SEQ_TEXT_ALIGN_X_LEFT) && (data->align_y == SEQ_TEXT_ALIGN_Y_TOP)) {
     y -= line_height;

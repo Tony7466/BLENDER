@@ -56,9 +56,14 @@ class OBJECT_MT_modifier_add(ModifierAddMenu, Menu):
 
     def draw(self, context):
         layout = self.layout
-        ob_type = context.object.type
-        geometry_nodes_supported = ob_type in {'MESH', 'CURVE', 'CURVES',
-                                               'FONT', 'VOLUME', 'POINTCLOUD', 'GREASEPENCIL'}
+        ob = context.object
+        if not ob:
+            return
+        ob_type = ob.type
+        geometry_nodes_supported = ob_type in {
+            'MESH', 'CURVE', 'CURVES',
+            'FONT', 'VOLUME', 'POINTCLOUD', 'GREASEPENCIL',
+        }
 
         if layout.operator_context == 'EXEC_REGION_WIN':
             layout.operator_context = 'INVOKE_REGION_WIN'
@@ -66,7 +71,7 @@ class OBJECT_MT_modifier_add(ModifierAddMenu, Menu):
                             icon='VIEWZOOM').menu_idname = "OBJECT_MT_modifier_add"
             layout.separator()
 
-        layout.operator_context = 'EXEC_REGION_WIN'
+        layout.operator_context = 'INVOKE_REGION_WIN'
 
         if geometry_nodes_supported:
             self.operator_modifier_add(layout, 'NODES')
@@ -108,6 +113,7 @@ class OBJECT_MT_modifier_add_edit(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_MIX')
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_PROXIMITY')
         if ob_type == 'GREASEPENCIL':
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_TEXTURE')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_TIME')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_VERTEX_WEIGHT_PROXIMITY')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_VERTEX_WEIGHT_ANGLE')
@@ -162,6 +168,7 @@ class OBJECT_MT_modifier_add_generate(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'GREASE_PENCIL_MIRROR')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_MULTIPLY')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_OUTLINE')
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_SIMPLIFY')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_SUBDIV')
             self.operator_modifier_add(layout, 'LINEART')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)

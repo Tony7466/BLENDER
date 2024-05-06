@@ -10,6 +10,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.hh"
 
+#include "BLT_translation.hh"
+
 #include "DEG_depsgraph.hh"
 
 #include "ED_grease_pencil.hh"
@@ -48,23 +50,26 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
   char *new_layer_name = RNA_string_get_alloc(
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
   BLI_SCOPED_DEFER([&] { MEM_SAFE_FREE(new_layer_name); });
+  Layer &new_layer = grease_pencil.add_layer(new_layer_name);
+  /* Hide masks by default. */
+  new_layer.base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
   if (grease_pencil.has_active_layer()) {
-    Layer &new_layer = grease_pencil.add_layer(new_layer_name);
     grease_pencil.move_node_after(new_layer.as_node(),
                                   grease_pencil.get_active_layer()->as_node());
-    grease_pencil.set_active_layer(&new_layer);
-    grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
-  else {
-    Layer &new_layer = grease_pencil.add_layer(new_layer_name);
-    grease_pencil.set_active_layer(&new_layer);
-    grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
-  }
+  grease_pencil.set_active_layer(&new_layer);
+  grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
   return OPERATOR_FINISHED;
+}
+
+static int grease_pencil_layer_add_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  return WM_operator_props_popup_confirm_ex(
+      C, op, event, IFACE_("Add New Grease Pencil Layer"), IFACE_("Add"));
 }
 
 static void GREASE_PENCIL_OT_layer_add(wmOperatorType *ot)
@@ -75,7 +80,7 @@ static void GREASE_PENCIL_OT_layer_add(wmOperatorType *ot)
   ot->description = "Add a new Grease Pencil layer in the active object";
 
   /* callbacks */
-  ot->invoke = WM_operator_props_popup_confirm;
+  ot->invoke = grease_pencil_layer_add_invoke;
   ot->exec = grease_pencil_layer_add_exec;
   ot->poll = active_grease_pencil_poll;
 
@@ -244,14 +249,19 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
   char *new_layer_group_name = RNA_string_get_alloc(
       op->ptr, "new_layer_group_name", nullptr, 0, &new_layer_group_name_length);
 
+  LayerGroup &parent_group = [&]() -> LayerGroup & {
+    if (grease_pencil.has_active_layer()) {
+      return grease_pencil.get_active_layer()->parent_group();
+    }
+    return grease_pencil.root_group();
+  }();
+
+  LayerGroup &new_group = grease_pencil.add_layer_group(parent_group, new_layer_group_name);
+  /* Hide masks by default. */
+  new_group.base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &new_group = grease_pencil.add_layer_group(
-        grease_pencil.get_active_layer()->parent_group(), new_layer_group_name);
     grease_pencil.move_node_after(new_group.as_node(),
                                   grease_pencil.get_active_layer()->as_node());
-  }
-  else {
-    grease_pencil.add_layer_group(grease_pencil.root_group(), new_layer_group_name);
   }
 
   MEM_SAFE_FREE(new_layer_group_name);
@@ -483,9 +493,12 @@ static int grease_pencil_layer_duplicate_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  /* Duplicate layer. */
   Layer &active_layer = *grease_pencil.get_active_layer();
-  Layer &new_layer = grease_pencil.add_layer(active_layer.name());
+  Layer &new_layer = grease_pencil.add_layer(active_layer);
 
+  /* Clear source keyframes and recreate them with duplicated drawings. */
+  new_layer.frames_for_write().clear();
   for (auto [key, frame] : active_layer.frames().items()) {
     const int duration = frame.is_implicit_hold() ? 0 : active_layer.get_frame_duration_at(key);
     const int drawing_index = grease_pencil.drawings().size();

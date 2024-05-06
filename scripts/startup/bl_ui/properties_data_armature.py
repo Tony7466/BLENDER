@@ -158,7 +158,7 @@ class ARMATURE_MT_collection_tree_context_menu(Menu):
         # editable or not. That means this menu has to do the disabling for it.
         sub = layout.column()
         sub.enabled = not active_bcoll_is_locked
-        sub.operator("armature.collection_add", text="Add Child Collection")
+        sub.operator("armature.collection_add", text="Add Bone Collection")
         sub.operator("armature.collection_remove")
         sub.operator("armature.collection_remove_unused", text="Remove Unused Collections")
 
@@ -181,6 +181,9 @@ class ARMATURE_MT_collection_tree_context_menu(Menu):
 
         layout.operator("armature.collection_select", text="Select Bones")
         layout.operator("armature.collection_deselect", text="Deselect Bones")
+
+        layout.separator()
+        layout.operator("UI_OT_view_item_rename", text="Rename")
 
 
 class DATA_PT_iksolver_itasc(ArmatureButtonsPanel, Panel):

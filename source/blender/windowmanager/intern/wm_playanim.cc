@@ -48,13 +48,13 @@
 
 #include "BIF_glutil.hh"
 
-#include "GPU_context.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_init_exit.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_context.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_init_exit.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "BLF_api.hh"
 #include "DNA_scene_types.h"
@@ -604,13 +604,11 @@ static void draw_display_buffer(const PlayDisplayContext *display_ctx,
 
   rctf preview;
   BLI_rctf_init(&preview, 0.0f, 1.0f, 0.0f, 1.0f);
-  if (draw_flip) {
-    if (draw_flip[0]) {
-      std::swap(preview.xmin, preview.xmax);
-    }
-    if (draw_flip[1]) {
-      std::swap(preview.ymin, preview.ymax);
-    }
+  if (draw_flip[0]) {
+    std::swap(preview.xmin, preview.xmax);
+  }
+  if (draw_flip[1]) {
+    std::swap(preview.ymin, preview.ymax);
   }
 
   immAttr2f(texCoord, preview.xmin, preview.ymin);
@@ -788,7 +786,7 @@ static void playanim_toscreen_on_load(GhostData *ghost_data,
   const int frame_step = -1;
   const float zoom = 1.0f;
   const float frame_indicator_factor = -1.0f;
-  const bool *draw_flip = nullptr;
+  const bool draw_flip[2] = {false, false};
 
   playanim_toscreen_ex(ghost_data,
                        display_ctx,

@@ -99,6 +99,7 @@ static void geom_add_vertex(const char *p, const char *end, GlobalVertices &r_gl
       blocks.last().colors.append(linear);
     }
   }
+  UNUSED_VARS(p);
 }
 
 static void geom_add_mrgb_colors(const char *p, const char *end, GlobalVertices &r_global_vertices)
@@ -848,8 +849,8 @@ void OBJParser::add_mtl_library(StringRef path)
 
 void OBJParser::add_default_mtl_library()
 {
-  /* Add any existing .mtl file that's with the same base name as the .obj file
-   * into candidate .mtl files to search through. This is not technically following the
+  /* Add any existing `.mtl` file that's with the same base name as the `.obj` file
+   * into candidate `.mtl` files to search through. This is not technically following the
    * spec, but the old python importer was doing it, and there are user files out there
    * that contain "mtllib bar.mtl" for a foo.obj, and depend on finding materials
    * from foo.mtl (see #97757). */

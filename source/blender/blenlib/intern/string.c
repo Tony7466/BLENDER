@@ -260,6 +260,7 @@ char *BLI_sprintfN_with_buffer(
   retval = vsnprintf(result, size, format, args);
   va_end(args);
   BLI_assert((size_t)(retval + 1) == size);
+  UNUSED_VARS_NDEBUG(retval);
   return result;
 }
 
@@ -292,6 +293,7 @@ char *BLI_vsprintfN_with_buffer(char *fixed_buf,
   char *result = MEM_mallocN(sizeof(char) * size, __func__);
   retval = vsnprintf(result, size, format, args);
   BLI_assert((size_t)(retval + 1) == size);
+  UNUSED_VARS_NDEBUG(retval);
   return result;
 }
 
@@ -1113,6 +1115,24 @@ int BLI_string_find_split_words(
   }
 
   return n;
+}
+
+bool BLI_string_elem_split_by_delim(const char *haystack, const char delim, const char *needle)
+{
+  /* May be zero, returns true when an empty span exists. */
+  const size_t needle_len = strlen(needle);
+  const char *p = haystack;
+  while (true) {
+    const char *p_next = BLI_strchr_or_end(p, delim);
+    if (((size_t)(p_next - p) == needle_len) && (memcmp(p, needle, needle_len) == 0)) {
+      return true;
+    }
+    if (*p_next == '\0') {
+      break;
+    }
+    p = p_next + 1;
+  }
+  return false;
 }
 
 /** \} */

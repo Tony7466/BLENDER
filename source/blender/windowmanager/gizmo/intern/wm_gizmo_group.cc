@@ -24,7 +24,7 @@
 #include "BKE_context.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -100,11 +100,6 @@ void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
     BPY_DECREF_RNA_INVALIDATE(gzgroup->py_instance);
   }
 #endif
-
-  if (gzgroup->reports && (gzgroup->reports->flag & RPT_FREE)) {
-    BKE_reports_free(gzgroup->reports);
-    MEM_freeN(gzgroup->reports);
-  }
 
   if (gzgroup->customdata_free) {
     gzgroup->customdata_free(gzgroup->customdata);
@@ -632,7 +627,7 @@ wmKeyMap *wm_gizmogroup_tweak_modal_keymap(wmKeyConfig *keyconf)
   wmKeyMap *keymap;
   char name[KMAP_MAX_NAME];
 
-  static EnumPropertyItem modal_items[] = {
+  static const EnumPropertyItem modal_items[] = {
       {TWEAK_MODAL_CANCEL, "CANCEL", 0, "Cancel", ""},
       {TWEAK_MODAL_CONFIRM, "CONFIRM", 0, "Confirm", ""},
       {TWEAK_MODAL_PRECISION_ON, "PRECISION_ON", 0, "Enable Precision", ""},

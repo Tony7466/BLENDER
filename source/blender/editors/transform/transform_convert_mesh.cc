@@ -1507,7 +1507,7 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
 
     /* Avoid editing locked shapes. */
     if (t->mode != TFM_DUMMY &&
-        ED_object_edit_report_if_shape_key_is_locked(tc->obedit, t->reports))
+        blender::ed::object::shape_key_report_if_locked(tc->obedit, t->reports))
     {
       continue;
     }
@@ -1719,7 +1719,8 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
      * However, this is not always the case, especially when called from scripts.
      * If this happens, to prevent update issues, make sure the size of #BMEditMesh::looptris
      * arrays aligns with the number looptris to update. */
-    const bool looptri_is_dirty = em->tottri != poly_to_tri_count(bm->totface, bm->totloop);
+    const bool looptri_is_dirty = em->looptris.size() !=
+                                  poly_to_tri_count(bm->totface, bm->totloop);
     if (looptri_is_dirty) {
       BKE_editmesh_looptris_calc(em);
     }
@@ -2425,7 +2426,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_edge_slide_data_create(const TransD
        * Find the best direction to slide among the ones already computed.
        *
        * \param curr_side_other: previous state of the #SlideTempDataMesh where the faces are
-                                 linked to the previous edge.
+       * linked to the previous edge.
        * \param l_src: the source corner in the edge to slide.
        * \param l_dst: the current destination corner.
        */
