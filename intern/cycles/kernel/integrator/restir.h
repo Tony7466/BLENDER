@@ -192,7 +192,7 @@ ccl_device_inline bool restir_unpack_neighbor(KernelGlobals kg,
 /* TODO(weizhen): move these functions to a more appropriate place. */
 float mis_weight_pairwise(float pdf_a, float pdf_b, float num)
 {
-  return (pdf_b == 0.0f) ? 0.0f : (pdf_a * num) / (pdf_a * num + pdf_b);
+  return (pdf_b == 0.0f) ? 0.0f : (pdf_a * pdf_a * num) / (pdf_a * pdf_a * num + pdf_b * pdf_b);
 }
 
 float luminance(KernelGlobals kg, const ccl_private BsdfEval &radiance)
