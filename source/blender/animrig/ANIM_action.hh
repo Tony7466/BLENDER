@@ -40,15 +40,23 @@ using binding_handle_t = decltype(::ActionBinding::handle);
 /**
  * Container of animation data for one or more animated IDs.
  *
- * Broadly an Animation consists of Layers, each Layer has Strips, and it's the
+ * Broadly an Action consists of Layers, each Layer has Strips, and it's the
  * Strips that eventually contain the animation data.
  *
- * Temporary limitation: each Animation can only contain one Layer.
+ * Temporary limitation: each Action can only contain one Layer.
  *
  * Which sub-set of that data drives the animation of which ID is determined by
  * which Binding is associated with that ID.
  *
- * \see AnimData::animation
+ * \note This wrapper class for the `bAction` DNA struct only has functionality
+ * for the layered animation data. The legacy F-Curves (in `bAction::curves`)
+ * and their groups (in `bAction::groups`) are not managed here. To see whether
+ * an Action uses this legacy data, or has been converted to the current layered
+ * structure, use `Action::is_action_legacy()` and
+ * `Action::is_action_layered()`. Note that an empty Action is considered valid
+ * for both.
+ *
+ * \see AnimData::action
  * \see AnimData::binding_handle
  */
 class Action : public ::bAction {
