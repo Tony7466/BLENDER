@@ -19,9 +19,6 @@ float shadow_read_depth(SHADOW_ATLAS_TYPE atlas_tx,
                         int tilemap_index,
                         vec2 tilemap_uv)
 {
-  /* Prevent out of bound access. Assumes the input is already non negative. */
-  tilemap_uv = min(tilemap_uv, vec2(0.99999));
-
   ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
   /* Using bitwise ops is way faster than integer ops. */
   const int page_shift = SHADOW_PAGE_LOD;

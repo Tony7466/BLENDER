@@ -17,6 +17,9 @@
 
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
+  /* Prevent out of bound access. Assumes the input is already non negative. */
+  tilemap_uv = min(tilemap_uv, vec2(0.99999)) * float(SHADOW_MAP_MAX_RES);
+
   return shadow_read_depth(shadow_atlas_tx, shadow_tilemaps_tx, tilemap_index, tilemap_uv);
 }
 
