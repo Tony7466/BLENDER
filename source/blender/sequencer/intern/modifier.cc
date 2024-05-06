@@ -1537,7 +1537,8 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
         processed_ibuf = IMB_dupImBuf(ibuf);
       }
 
-      const bool strip_has_ended_skip = smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
+      const bool strip_has_ended_skip = smd->mask_input_type == SEQUENCE_MASK_INPUT_STRIP &&
+                                        smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
                                         !SEQ_time_strip_intersects_frame(
                                             context->scene, smd->mask_sequence, timeline_frame);
       const bool missing_data_skip = !SEQ_sequence_has_valid_data(smd->mask_sequence) ||
