@@ -1495,12 +1495,24 @@ SequenceModifierData *SEQ_modifier_find_by_name(Sequence *seq, const char *name)
       BLI_findstring(&(seq->modifiers), name, offsetof(SequenceModifierData, name)));
 }
 
+static bool skip_modifier(Scene *scene, const SequenceModifierData *smd, int timeline_frame)
+{
+  using namespace blender::seq;
+  const bool strip_has_ended_skip = smd->mask_input_type == SEQUENCE_MASK_INPUT_STRIP &&
+                                    smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
+                                    !SEQ_time_strip_intersects_frame(
+                                        scene, smd->mask_sequence, timeline_frame);
+  const bool missing_data_skip = !SEQ_sequence_has_valid_data(smd->mask_sequence) ||
+                                 media_presence_is_missing(scene, smd->mask_sequence);
+
+  return strip_has_ended_skip || missing_data_skip;
+}
+
 ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
                                 Sequence *seq,
                                 ImBuf *ibuf,
                                 int timeline_frame)
 {
-  using namespace blender::seq;
   ImBuf *processed_ibuf = ibuf;
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
@@ -1521,7 +1533,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
       continue;
     }
 
-    if (smti->apply) {
+    if (smti->apply && !skip_modifier(context->scene, smd, timeline_frame)) {
       int frame_offset;
       if (smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE) {
         frame_offset = seq->start;
@@ -1537,16 +1549,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
         processed_ibuf = IMB_dupImBuf(ibuf);
       }
 
-      const bool strip_has_ended_skip = smd->mask_input_type == SEQUENCE_MASK_INPUT_STRIP &&
-                                        smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
-                                        !SEQ_time_strip_intersects_frame(
-                                            context->scene, smd->mask_sequence, timeline_frame);
-      const bool missing_data_skip = !SEQ_sequence_has_valid_data(smd->mask_sequence) ||
-                                     media_presence_is_missing(context->scene, smd->mask_sequence);
-
-      if (!strip_has_ended_skip && !missing_data_skip) {
-        smti->apply(smd, processed_ibuf, mask);
-      }
+      smti->apply(smd, processed_ibuf, mask);
 
       if (mask) {
         IMB_freeImBuf(mask);
