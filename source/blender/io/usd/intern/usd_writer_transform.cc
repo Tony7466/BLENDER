@@ -14,6 +14,9 @@
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
 
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
+
 namespace blender::io::usd {
 
 USDTransformWriter::USDTransformWriter(const USDExporterContext &ctx) : USDAbstractWriter(ctx) {}
@@ -65,8 +68,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   pxr::UsdGeomXformable xform = create_xformable();
 
   if (!xform) {
-    printf("INTERNAL ERROR: USDTransformWriter: couldn't create xformable.\n");
-    return;
+	  CLOG_ERROR(&LOG, "USDTransformWriter: couldn't create xformable");
+	  return;
   }
 
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
