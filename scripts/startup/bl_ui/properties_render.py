@@ -702,7 +702,14 @@ class RENDER_PT_eevee_next_clamping(RenderButtonsPanel, Panel):
         return (context.engine in cls.COMPAT_ENGINES)
 
     def draw(self, context):
-        pass
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column()
+        col.prop(props, "clamp_world", text="World")
 
 
 class RENDER_PT_eevee_next_clamping_surface(RenderButtonsPanel, Panel):
@@ -721,11 +728,9 @@ class RENDER_PT_eevee_next_clamping_surface(RenderButtonsPanel, Panel):
         scene = context.scene
         props = scene.eevee
 
-        # TODO(fclem): Add clamp properties
-        options = props.ray_tracing_options
-        layout.prop(options, "sample_clamp", text="Indirect Light")
-        # layout.prop(props, "clamp_surface_direct", text="Direct Light")
-        # layout.prop(props, "clamp_surface_indirect", text="Indirect Light")
+        col = layout.column(align=True)
+        col.prop(props, "clamp_surface_direct", text="Direct Light")
+        col.prop(props, "clamp_surface_indirect", text="Indirect Light")
 
 
 class RENDER_PT_eevee_next_clamping_volume(RenderButtonsPanel, Panel):
@@ -743,9 +748,10 @@ class RENDER_PT_eevee_next_clamping_volume(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False
         scene = context.scene
         props = scene.eevee
-        layout.prop(props, "volumetric_light_clamp", text="Direct Light")
-        # layout.prop(props, "clamp_volumetric_direct", text="Direct Light")
-        # layout.prop(props, "clamp_volumetric_indirect", text="Indirect Light")
+
+        col = layout.column(align=True)
+        col.prop(props, "clamp_volume_direct", text="Direct Light")
+        col.prop(props, "clamp_volume_indirect", text="Indirect Light")
 
 
 class RENDER_PT_eevee_next_sampling_shadows(RenderButtonsPanel, Panel):
@@ -777,7 +783,7 @@ class RENDER_PT_eevee_next_sampling_shadows(RenderButtonsPanel, Panel):
         col.prop(props, "shadow_step_count", text="Steps")
 
         col = layout.column()
-        col.prop(props, "shadow_normal_bias", text="Normal Bias")
+        col.prop(props, "shadow_resolution_scale", text="Resolution")
 
         col = layout.column(align=False, heading="Volume Shadows")
         row = col.row(align=True)

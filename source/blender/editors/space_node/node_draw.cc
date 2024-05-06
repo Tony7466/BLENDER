@@ -42,6 +42,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
+#include "BKE_node_enum.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_node_tree_zones.hh"
@@ -1335,6 +1336,28 @@ static void create_inspection_string_for_generic_value(const bNodeSocket &socket
   }
 
   const CPPType &socket_type = *socket.typeinfo->base_cpp_type;
+
+  if (socket.type == SOCK_MENU) {
+    if (!value_type.is<int>()) {
+      return;
+    }
+    const int item_identifier = *static_cast<const int *>(buffer);
+    const auto *socket_storage = socket.default_value_typed<bNodeSocketValueMenu>();
+    if (!socket_storage->enum_items) {
+      return;
+    }
+    if (socket_storage->has_conflict()) {
+      return;
+    }
+    const bke::RuntimeNodeEnumItem *enum_item =
+        socket_storage->enum_items->find_item_by_identifier(item_identifier);
+    if (!enum_item) {
+      return;
+    }
+    ss << fmt::format(TIP_("{} (Menu)"), enum_item->name);
+    return;
+  }
+
   const bke::DataTypeConversions &convert = bke::get_implicit_type_conversions();
   if (value_type != socket_type) {
     if (!convert.is_convertible(value_type, socket_type)) {
@@ -1583,6 +1606,35 @@ static void create_inspection_string_for_geometry_socket(std::stringstream &ss,
   }
 }
 
+static void create_inspection_string_for_default_socket_value(const bNodeSocket &socket,
+                                                              std::stringstream &ss)
+{
+  if (!socket.is_input()) {
+    return;
+  }
+  if (socket.is_multi_input()) {
+    return;
+  }
+  const Span<const bNodeSocket *> connected_sockets = socket.directly_linked_sockets();
+  if (!connected_sockets.is_empty() && !connected_sockets[0]->owner_node().is_dangling_reroute()) {
+    return;
+  }
+  if (const nodes::SocketDeclaration *socket_decl = socket.runtime->declaration) {
+    if (socket_decl->input_field_type == nodes::InputSocketFieldType::Implicit) {
+      return;
+    }
+  }
+  if (socket.typeinfo->base_cpp_type == nullptr) {
+    return;
+  }
+
+  const CPPType &value_type = *socket.typeinfo->base_cpp_type;
+  BUFFER_FOR_CPP_TYPE_VALUE(value_type, socket_value);
+  socket.typeinfo->get_base_cpp_value(socket.default_value, socket_value);
+  create_inspection_string_for_generic_value(socket, GPointer(value_type, socket_value), ss);
+  value_type.destruct(socket_value);
+}
+
 static std::optional<std::string> create_description_inspection_string(const bNodeSocket &socket)
 {
   if (socket.runtime->declaration == nullptr) {
@@ -1732,6 +1784,77 @@ static std::optional<std::string> create_multi_input_log_inspection_string(
   return str;
 }
 
+static std::optional<std::string> create_default_value_inspection_string(const bNodeSocket &socket)
+{
+  std::stringstream ss;
+  create_inspection_string_for_default_socket_value(socket, ss);
+
+  std::string str = ss.str();
+  if (str.empty()) {
+    return std::nullopt;
+  }
+  return str;
+}
+
+static const bNodeSocket *target_for_reroute(const bNodeSocket &reroute_output)
+{
+  const bNodeSocket *output = &reroute_output;
+  Set<const bNode *> visited_nodes;
+  visited_nodes.add(&reroute_output.owner_node());
+  while (true) {
+    const Span<const bNodeSocket *> linked_sockets = output->directly_linked_sockets();
+    if (linked_sockets.size() != 1) {
+      return nullptr;
+    }
+    const bNode &target_node = linked_sockets[0]->owner_node();
+    if (!visited_nodes.add(&target_node)) {
+      return nullptr;
+    }
+    if (!target_node.is_dangling_reroute()) {
+      return linked_sockets[0];
+    }
+    output = target_node.output_sockets()[0];
+  }
+}
+
+static std::optional<std::string> create_dangling_reroute_inspection_string(
+    const bNodeTree &ntree, const bNodeSocket &socket)
+{
+  if (ntree.type != NTREE_GEOMETRY) {
+    return std::nullopt;
+  }
+
+  const bNode &node = socket.owner_node();
+  if (!node.is_dangling_reroute()) {
+    return std::nullopt;
+  }
+
+  const bNodeSocket &output_socket = *node.output_sockets()[0];
+  const bNodeSocket *target_socket = target_for_reroute(output_socket);
+
+  if (target_socket == nullptr) {
+    if (!output_socket.directly_linked_sockets().is_empty()) {
+      return TIP_("Dangling reroute is ignored by all targets");
+    }
+    return std::nullopt;
+  }
+
+  if (target_socket->is_multi_input()) {
+    return TIP_("Dangling reroute branch is ignored by multi input socket");
+  }
+
+  std::stringstream ss;
+  create_inspection_string_for_default_socket_value(*target_socket, ss);
+  if (ss.str().empty()) {
+    return TIP_("Dangling reroute is ignored");
+  }
+  ss << ".\n\n";
+  ss << TIP_("Dangling reroute is ignored, default value of target socket is used");
+  return ss.str();
+
+  return std::nullopt;
+}
+
 static std::string node_socket_get_tooltip(const SpaceNode *snode,
                                            const bNodeTree &ntree,
                                            const bNodeSocket &socket)
@@ -1752,6 +1875,14 @@ static std::string node_socket_get_tooltip(const SpaceNode *snode,
     inspection_strings.append(std::move(*info));
   }
   if (std::optional<std::string> info = create_log_inspection_string(geo_tree_log, socket)) {
+    inspection_strings.append(std::move(*info));
+  }
+  else if (std::optional<std::string> info = create_dangling_reroute_inspection_string(ntree,
+                                                                                       socket))
+  {
+    inspection_strings.append(std::move(*info));
+  }
+  else if (std::optional<std::string> info = create_default_value_inspection_string(socket)) {
     inspection_strings.append(std::move(*info));
   }
   else if (std::optional<std::string> info = create_multi_input_log_inspection_string(
@@ -1959,7 +2090,7 @@ static void node_draw_preview(const Scene *scene, ImBuf *preview, rctf *prv)
   node_draw_preview_background(&draw_rect);
 
   GPU_blend(GPU_BLEND_ALPHA);
-  /* Premul graphics. */
+  /* Pre-multiply graphics. */
   GPU_blend(GPU_BLEND_ALPHA);
 
   ED_draw_imbuf(preview,
@@ -3316,7 +3447,8 @@ static void node_draw_basis(const bContext &C,
                         nullptr,
                         0,
                         0,
-                        "");
+                        TIP_(node.typeinfo->ui_description));
+
   if (node.flag & NODE_MUTED) {
     UI_but_flag_enable(but, UI_BUT_INACTIVE);
   }
@@ -3553,7 +3685,7 @@ static void node_draw_hidden(const bContext &C,
                         nullptr,
                         0,
                         0,
-                        "");
+                        TIP_(node.typeinfo->ui_description));
 
   /* Outline. */
   {

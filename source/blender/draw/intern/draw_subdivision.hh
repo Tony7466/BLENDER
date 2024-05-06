@@ -203,7 +203,7 @@ void DRW_create_subdivision(Object *ob,
                             MeshBufferCache *mbc,
                             bool is_editmode,
                             bool is_paint_mode,
-                            bool is_mode_active,
+                            bool edit_mode_active,
                             const float4x4 &object_to_world,
                             bool do_final,
                             bool do_uvedit,
@@ -277,6 +277,7 @@ void draw_subdiv_build_lines_buffer(const DRWSubdivCache &cache, gpu::IndexBuf *
 void draw_subdiv_build_lines_loose_buffer(const DRWSubdivCache &cache,
                                           gpu::IndexBuf *lines_indices,
                                           gpu::VertBuf *lines_flags,
+                                          uint edge_loose_offset,
                                           uint num_loose_edges);
 
 void draw_subdiv_build_fdots_buffers(const DRWSubdivCache &cache,
