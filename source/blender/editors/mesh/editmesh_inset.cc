@@ -111,6 +111,7 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
              WM_bool_as_string(RNA_boolean_get(op->ptr, "use_outset")),
              WM_bool_as_string(RNA_boolean_get(op->ptr, "use_boundary")),
              WM_bool_as_string(RNA_boolean_get(op->ptr, "use_individual")));
+
     ED_area_status_text(area, msg);
   }
 }
