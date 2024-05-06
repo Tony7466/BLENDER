@@ -10,6 +10,7 @@
 #include "BKE_screen.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "UI_interface_c.hh"
 #include "UI_resources.hh"
@@ -58,4 +59,42 @@ void uiTemplateAssetShelfPopover(uiLayout *layout,
   if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
     UI_but_flag_enable(but, UI_BUT_DISABLED);
   }
+}
+
+static int asset_shelf_popup_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  char *asset_shelf_id = RNA_string_get_alloc(op->ptr, "asset_shelf", nullptr, 0, nullptr);
+
+  const ScrArea *area = CTX_wm_area(C);
+  AssetShelfType *shelf_type = ed::asset::shelf::type_find_from_idname(*area->type,
+                                                                       asset_shelf_id);
+  if (ed::asset::shelf::type_poll(*C, *area->type, shelf_type) == false) {
+    return OPERATOR_CANCELLED;
+  }
+
+  UI_popup_block_invoke(C, asset_shelf_block_fn, shelf_type, nullptr);
+
+  MEM_freeN(asset_shelf_id);
+
+  return OPERATOR_INTERFACE;
+}
+
+void UI_OT_asset_shelf_popup(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Asset Shelf Popup";
+  ot->idname = "UI_OT_asset_shelf_popup";
+
+  /* api callbacks */
+  ot->invoke = asset_shelf_popup_invoke;
+
+  /* flags */
+  ot->flag = OPTYPE_INTERNAL;
+
+  RNA_def_string(ot->srna,
+                 "asset_shelf",
+                 nullptr,
+                 0,
+                 "Asset Shelf Name",
+                 "Identifier of the asset shelf to display");
 }
