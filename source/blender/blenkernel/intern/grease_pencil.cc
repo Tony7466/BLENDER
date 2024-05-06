@@ -328,7 +328,7 @@ Drawing &Drawing::operator=(const Drawing &other)
 Drawing::Drawing(Drawing &&other)
 {
   this->base.type = other.base.type;
-  other.base.type = 0;
+  other.base.type = GP_DRAWING;
   this->base.flag = other.base.flag;
   other.base.flag = 0;
 
