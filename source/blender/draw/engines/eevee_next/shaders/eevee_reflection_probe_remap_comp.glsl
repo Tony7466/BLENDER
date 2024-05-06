@@ -133,8 +133,8 @@ void main()
       }
       stride /= 2;
     }
-    barrier();
 
+    barrier();
     if (gl_LocalInvocationIndex == 0u) {
       /* Find the middle point of the whole thread-group. Use it as light vector.
        * Note that this is an approximation since the footprint of a thread-group is not
