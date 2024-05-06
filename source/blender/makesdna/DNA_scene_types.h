@@ -791,8 +791,6 @@ typedef struct RenderData {
   float simplify_particles;
   float simplify_particles_render;
   float simplify_volumes;
-  float simplify_shadows;
-  float simplify_shadows_render;
 
   /** Freestyle line thickness options. */
   int line_thickness_mode;
@@ -858,13 +856,6 @@ enum {
 enum {
   UV_SCULPT_LOCK_BORDERS = 1,
   UV_SCULPT_ALL_ISLANDS = 2,
-};
-
-/** #ToolSettings::uv_relax_method */
-enum {
-  UV_SCULPT_TOOL_RELAX_LAPLACIAN = 1,
-  UV_SCULPT_TOOL_RELAX_HC = 2,
-  UV_SCULPT_TOOL_RELAX_COTAN = 3,
 };
 
 /* Stereo Flags. */
@@ -1100,7 +1091,11 @@ typedef struct CurvesSculpt {
 } CurvesSculpt;
 
 typedef struct UvSculpt {
-  Paint paint;
+  struct CurveMapping *strength_curve;
+  int size;
+  float strength;
+  int8_t curve_preset; /* #eBrushCurvePreset. */
+  char _pad[7];
 } UvSculpt;
 
 /** Grease pencil drawing brushes. */
@@ -1513,7 +1508,7 @@ typedef struct ToolSettings {
   VPaint *wpaint;
   Sculpt *sculpt;
   /** UV smooth. */
-  UvSculpt *uvsculpt;
+  UvSculpt uvsculpt;
   /** Gpencil paint. */
   GpPaint *gp_paint;
   /** Gpencil vertex paint. */
@@ -1665,9 +1660,10 @@ typedef struct ToolSettings {
 
   /* UV painting. */
   char uv_sculpt_settings;
-  char uv_relax_method;
 
   char workspace_tool_type;
+
+  char _pad5[1];
 
   /**
    * XXX: these `sculpt_paint_*` fields are deprecated, use the
@@ -1875,12 +1871,14 @@ typedef struct SceneEEVEE {
   int shadow_pool_size;
   int shadow_ray_count;
   int shadow_step_count;
-  float shadow_normal_bias;
+  float shadow_resolution_scale;
 
+  float clamp_world;
   float clamp_surface_direct;
   float clamp_surface_indirect;
   float clamp_volume_direct;
   float clamp_volume_indirect;
+  char _pad[4];
 
   int ray_tracing_method;
 
@@ -2860,7 +2858,7 @@ typedef enum RaytraceEEVEE_DenoiseStages {
 } RaytraceEEVEE_DenoiseStages;
 
 typedef enum RaytraceEEVEE_Method {
-  /* NOTE: Each method contains the previos one. */
+  /* NOTE: Each method contains the previous one. */
   RAYTRACE_EEVEE_METHOD_PROBE = 0,
   RAYTRACE_EEVEE_METHOD_SCREEN = 1,
   /* TODO(fclem): Hardware ray-tracing. */
