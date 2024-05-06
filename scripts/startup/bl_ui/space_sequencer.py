@@ -1631,6 +1631,12 @@ class SEQUENCER_PT_effect_text_style(SequencerButtonsPanel, Panel):
         subsub.prop(strip, "shadow_color", text="")
         row.prop_decorator(strip, "shadow_color")
 
+        col = layout.column()
+        col.prop(strip, "shadow_angle")
+        col.prop(strip, "shadow_offset")
+        col.prop(strip, "shadow_blur")
+        col.active = strip.use_shadow and (not strip.mute)
+
         row = layout.row(align=True, heading="Box", heading_ctxt=i18n_contexts.id_sequence)
         row.use_property_decorate = False
         sub = row.row(align=True)

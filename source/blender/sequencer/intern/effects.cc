@@ -2583,6 +2583,9 @@ static void init_text_effect(Sequence *seq)
 
   copy_v4_fl(data->color, 1.0f);
   data->shadow_color[3] = 0.7f;
+  data->shadow_angle = DEG2RADF(45.0f);
+  data->shadow_offset = 0.05f;
+  data->shadow_blur = 0.0f;
   data->box_color[0] = 0.2f;
   data->box_color[1] = 0.2f;
   data->box_color[2] = 0.2f;
@@ -2720,7 +2723,6 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   ColorManagedDisplay *display;
   const char *display_device;
   int font = blf_mono_font_render;
-  int line_height;
   int y_ofs, x, y;
   double proxy_size_comp;
 
@@ -2757,7 +2759,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   BLF_buffer(
       font, out->float_buffer.data, out->byte_buffer.data, width, height, out->channels, display);
 
-  line_height = BLF_height_max(font);
+  const int line_height = BLF_height_max(font);
 
   y_ofs = -BLF_descender(font);
 
@@ -2794,6 +2796,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
     }
   }
 
+  /* Draw box under text. */
   if (data->flag & SEQ_TEXT_BOX) {
     if (out->byte_buffer.data) {
       const int margin = data->box_margin * width;
@@ -2804,16 +2807,17 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
       IMB_rectfill_area_replace(out, data->box_color, minx, miny, maxx, maxy);
     }
   }
-  /* BLF_SHADOW won't work with buffers, instead use cheap shadow trick */
+
+  /* Draw text shadow. */
   if (data->flag & SEQ_TEXT_SHADOW) {
-    int fontx, fonty;
-    fontx = BLF_width_max(font);
-    fonty = line_height;
-    BLF_position(font, x + max_ii(fontx / 55, 1), y - max_ii(fonty / 30, 1), 0.0f);
+    float offsetx = cosf(data->shadow_angle) * line_height * data->shadow_offset;
+    float offsety = sinf(data->shadow_angle) * line_height * data->shadow_offset;
+    BLF_position(font, x + offsetx, y - offsety, 0.0f);
     BLF_buffer_col(font, data->shadow_color);
     BLF_draw_buffer(font, data->text, sizeof(data->text));
   }
 
+  /* Draw text itself. */
   BLF_position(font, x, y, 0.0f);
   BLF_buffer_col(font, data->color);
   BLF_draw_buffer(font, data->text, sizeof(data->text));

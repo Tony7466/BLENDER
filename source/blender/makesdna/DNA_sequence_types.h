@@ -428,6 +428,9 @@ typedef struct TextVars {
   float loc[2];
   float wrap_width;
   float box_margin;
+  float shadow_angle;
+  float shadow_offset;
+  float shadow_blur;
   char flag;
   char align, align_y;
   char _pad[5];
