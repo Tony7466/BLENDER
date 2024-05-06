@@ -70,7 +70,13 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
             world_output.inputs['Volume'],
             links_to_add)
         self.__sync_links(volume_tree, links_to_add)
-        volume_output.name = volume_output.name
+
+        # Add transparent volume for other render engines
+        if volume_output.target == 'EEVEE':
+            all_output = volume_tree.nodes.new(type="ShaderNodeOutputMaterial")
+            transparent = volume_tree.nodes.new(type="ShaderNodeBsdfTransparent")
+            volume_tree.links.new(transparent.outputs[0], all_output.inputs[0])
+
 
         # Remove all volume links from the world node tree.
         for link in world_output.inputs['Volume'].links:
@@ -129,6 +135,9 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
                 continue
 
             attr_name = rna_prop.identifier
+            if attr_name == 'bl_idname':
+                continue;
+            print(attr_name)
             setattr(dst, attr_name, getattr(src, attr_name))
 
     def __sync_node_inputs(
