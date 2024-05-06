@@ -231,14 +231,22 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
 GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
     .flat(Type::INT, "shadow_view_id");
 
+GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_clipping_iface, "shadow_clip")
+    .smooth(Type::VEC3, "vector");
+
+GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_flat_iface, "shadow_flat")
+    .flat(Type::FLOAT, "filter_radius");
+
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
     .builtins(BuiltinBits::VIEWPORT_INDEX)
-    .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+    .vertex_out(eevee_surf_shadow_clipping_iface)
+    .vertex_out(eevee_surf_shadow_flat_iface)
+    .storage_buf(SHADOW_RENDER_VIEW_BUF_SLOT,
                  Qualifier::READ,
-                 "uint",
-                 "viewport_index_buf[SHADOW_VIEW_MAX]")
+                 "ShadowRenderView",
+                 "render_view_buf[SHADOW_VIEW_MAX]")
     .fragment_source("eevee_surf_shadow_frag.glsl")
     .additional_info("eevee_global_ubo", "eevee_utility_texture", "eevee_sampling_data");
 
@@ -246,9 +254,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_ATOMIC_RASTER")
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
-    /* Early fragment test for speeding up platforms that requires a depth buffer. */
-    /* NOTE: This removes the possibility of using gl_FragDepth. */
-    .early_fragment_test(true)
     .vertex_out(eevee_surf_shadow_atomic_iface)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
@@ -264,6 +269,9 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_TBDR")
     .builtins(BuiltinBits::LAYER)
+    /* Use greater depth write to avoid loosing the early Z depth test but ensure correct fragment
+       ordering after slope bias. */
+    .depth_write(DepthWrite::GREATER)
     /* F32 color attachment for on-tile depth accumulation without atomics. */
     .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, SHADOW_ROG_ID);
 

@@ -426,9 +426,11 @@ static void export_endjob(void *customdata)
   report_job_duration(data);
 }
 
-/* To create a usdz file, we must first create a .usd/a/c file and then covert it to .usdz. The
- * temporary files will be created in Blender's temporary session storage. The .usdz file will then
- * be moved to job->usdz_filepath. */
+/**
+ * To create a USDZ file, we must first create a `.usd/a/c` file and then covert it to `.usdz`.
+ * The temporary files will be created in Blender's temporary session storage.
+ * The `.usdz` file will then be moved to `job->usdz_filepath`.
+ */
 static void create_temp_path_for_usdz_export(const char *filepath,
                                              blender::io::usd::ExportJobData *job)
 {
@@ -485,7 +487,7 @@ bool USD_export(bContext *C,
    *
    * Has to be done from main thread currently, as it may affect Main original data (e.g. when
    * doing deferred update of the view-layers, see #112534 for details). */
-  if (strlen(job->params.collection) > 0) {
+  if (job->params.collection[0]) {
     Collection *collection = reinterpret_cast<Collection *>(
         BKE_libblock_find_name(job->bmain, ID_GR, job->params.collection));
     if (!collection) {

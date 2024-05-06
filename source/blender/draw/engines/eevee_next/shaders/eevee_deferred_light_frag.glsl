@@ -14,7 +14,6 @@
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_subsurface_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_thickness_amend_lib.glsl)
 
 void main()
 {
@@ -22,6 +21,11 @@ void main()
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
+
+  /* Bias the shading point position because of depth buffer precision.
+   * Constant is taken from https://www.terathon.com/gdc07_lengyel.pdf. */
+  const float bias = 2.4e-7;
+  depth -= bias;
 
   vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
   vec3 Ng = gbuf.surface_N;
@@ -44,10 +48,6 @@ void main()
       (cl_transmit.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) ||
       (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID))
   {
-    float shadow_thickness = thickness_from_shadow(P, Ng, vPz);
-    gbuf.thickness = (shadow_thickness != THICKNESS_NO_VALUE) ?
-                         min(shadow_thickness, gbuf.thickness) :
-                         gbuf.thickness;
 
 #  if 1 /* TODO Limit to SSS. */
     vec3 sss_reflect_shadowed, sss_reflect_unshadowed;
@@ -59,14 +59,14 @@ void main()
 
     stack.cl[0] = closure_light_new(cl_transmit, V, gbuf.thickness);
 
-    /* Note: Only evaluates `stack.cl[0]`. */
-    light_eval_transmission(stack, P, Ng, V, vPz);
+    /* NOTE: Only evaluates `stack.cl[0]`. */
+    light_eval_transmission(stack, P, Ng, V, vPz, gbuf.thickness);
 
 #  if 1 /* TODO Limit to SSS. */
     if (cl_transmit.type == CLOSURE_BSSRDF_BURLEY_ID) {
       /* Apply transmission profile onto transmitted light and sum with reflected light. */
       vec3 sss_profile = subsurface_transmission(to_closure_subsurface(cl_transmit).sss_radius,
-                                                 gbuf.thickness);
+                                                 abs(gbuf.thickness));
       stack.cl[0].light_shadowed *= sss_profile;
       stack.cl[0].light_unshadowed *= sss_profile;
       stack.cl[0].light_shadowed += sss_reflect_shadowed;
