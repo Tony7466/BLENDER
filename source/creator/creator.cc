@@ -349,8 +349,8 @@ int main(int argc,
 
 #ifdef BUILD_DATE
   {
-    time_t temp_time = build_commit_timestamp;
-    tm *tm = gmtime(&temp_time);
+    const time_t temp_time = build_commit_timestamp;
+    const tm *tm = gmtime(&temp_time);
     if (LIKELY(tm)) {
       strftime(build_commit_date, sizeof(build_commit_date), "%Y-%m-%d", tm);
       strftime(build_commit_time, sizeof(build_commit_time), "%H:%M", tm);
@@ -567,8 +567,8 @@ int main(int argc,
   if (G.background) {
     int exit_code;
     if (app_state.main_arg_deferred != nullptr) {
-      exit_code = main_arg_handle_deferred();
-      MEM_freeN(app_state.main_arg_deferred);
+      exit_code = main_arg_deferred_handle();
+      main_arg_deferred_free();
     }
     else {
       exit_code = G.is_break ? EXIT_FAILURE : EXIT_SUCCESS;
