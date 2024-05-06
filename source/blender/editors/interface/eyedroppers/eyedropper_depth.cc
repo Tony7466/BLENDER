@@ -125,6 +125,7 @@ static int depthdropper_init(bContext *C, wmOperator *op)
   if (prop_data_path) {
     PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
     if (!depthdropper_get_path(&ctx_ptr, op, prop_data_path, &ddr->ptr, &ddr->prop)) {
+      MEM_freeN(ddr);
       return false;
     }
   }
