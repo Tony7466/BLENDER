@@ -2706,22 +2706,109 @@ static StripEarlyOut early_out_text(const Sequence *seq, float /*fac*/)
   return StripEarlyOut::NoInput;
 }
 
+static void draw_text_shadow(const SeqRenderData *context,
+                             const TextVars *data,
+                             int font,
+                             ColorManagedDisplay *display,
+                             int x,
+                             int y,
+                             int line_height,
+                             ImBuf *out)
+{
+  const int width = context->rectx;
+  const int height = context->recty;
+  bool do_blur = data->shadow_blur >= 1.0f;
+  ImBuf *tmp_out1 = nullptr, *tmp_out2 = nullptr;
+  if (do_blur) {
+    /* When shadow blur is on, it needs to first be rendered into a temporary
+     * buffer and then blurred, so that whatever is under the shadow does
+     * not get blur. */
+    tmp_out1 = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
+    tmp_out2 = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
+    BLF_buffer(font,
+               tmp_out1->float_buffer.data,
+               tmp_out1->byte_buffer.data,
+               width,
+               height,
+               tmp_out1->channels,
+               display);
+  }
+
+  float offsetx = cosf(data->shadow_angle) * line_height * data->shadow_offset;
+  float offsety = sinf(data->shadow_angle) * line_height * data->shadow_offset;
+  BLF_position(font, x + offsetx, y - offsety, 0.0f);
+  BLF_buffer_col(font, data->shadow_color);
+  BLF_draw_buffer(font, data->text, sizeof(data->text));
+
+  if (do_blur) {
+    /* Create blur kernel weights. */
+    const int half_size = int(data->shadow_blur + 0.5f);
+    Array<float> gausstab = make_gaussian_blur_kernel(data->shadow_blur, half_size);
+
+    /* Horizontal blur: blur tmp_out1 into tmp_out2. */
+    threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+      const int y_first = y_range.first();
+      const int y_size = y_range.size();
+      gaussian_blur_x(gausstab,
+                      half_size,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      tmp_out1->byte_buffer.data,
+                      tmp_out2->byte_buffer.data);
+    });
+
+    /* Vertical blur: blur tmp_out2 into tmp_out1, and composite into regular output. */
+    threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+      const int y_first = y_range.first();
+      const int y_size = y_range.size();
+      gaussian_blur_y(gausstab,
+                      half_size,
+                      y_first,
+                      width,
+                      y_size,
+                      height,
+                      tmp_out2->byte_buffer.data,
+                      tmp_out1->byte_buffer.data);
+      /* Composite over regular output (which might have box drawn into it). */
+      const uchar *src = tmp_out1->byte_buffer.data + size_t(y_first) * width * 4;
+      const uchar *src_end = tmp_out1->byte_buffer.data + size_t(y_first + y_size) * width * 4;
+      uchar *dst = out->byte_buffer.data + size_t(y_first) * width * 4;
+      for (; src < src_end; src += 4, dst += 4) {
+        float4 col1 = load_premul_pixel(src);
+        float mfac = 1.0f - col1.w;
+        float4 col2 = load_premul_pixel(dst);
+        float4 col = col1 + mfac * col2;
+        store_premul_pixel(col, dst);
+      }
+    });
+    IMB_freeImBuf(tmp_out1);
+    IMB_freeImBuf(tmp_out2);
+    BLF_buffer(font,
+               out->float_buffer.data,
+               out->byte_buffer.data,
+               width,
+               height,
+               out->channels,
+               display);
+  }
+}
+
 static ImBuf *do_text_effect(const SeqRenderData *context,
                              Sequence *seq,
                              float /*timeline_frame*/,
                              float /*fac*/,
-                             ImBuf *ibuf1,
-                             ImBuf *ibuf2,
-                             ImBuf *ibuf3)
+                             ImBuf * /* ibuf1*/,
+                             ImBuf * /* ibuf2*/,
+                             ImBuf * /* ibuf3*/)
 {
   /* NOTE: text rasterization only fills in part of output image,
    * need to clear it. */
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3, false);
+  ImBuf *out = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  int width = out->x;
-  int height = out->y;
-  ColorManagedDisplay *display;
-  const char *display_device;
+  const int width = out->x;
+  const int height = out->y;
   int font = blf_mono_font_render;
   int y_ofs, x, y;
   double proxy_size_comp;
@@ -2736,8 +2823,8 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
     font = data->text_blf_id;
   }
 
-  display_device = context->scene->display_settings.display_device;
-  display = IMB_colormanagement_display_get_named(display_device);
+  const char *display_device = context->scene->display_settings.display_device;
+  ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
 
   /* Compensate text size for preview render size. */
   proxy_size_comp = context->scene->r.size / 100.0;
@@ -2810,11 +2897,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
 
   /* Draw text shadow. */
   if (data->flag & SEQ_TEXT_SHADOW) {
-    float offsetx = cosf(data->shadow_angle) * line_height * data->shadow_offset;
-    float offsety = sinf(data->shadow_angle) * line_height * data->shadow_offset;
-    BLF_position(font, x + offsetx, y - offsety, 0.0f);
-    BLF_buffer_col(font, data->shadow_color);
-    BLF_draw_buffer(font, data->text, sizeof(data->text));
+    draw_text_shadow(context, data, font, display, x, y, line_height, out);
   }
 
   /* Draw text itself. */
