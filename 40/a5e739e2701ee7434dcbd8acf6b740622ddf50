@@ -13,3 +13,4 @@ Referenced by issue #120556, Crash on start
 Referenced by issue #112742, Color Space override in file output node does not override scene colors
 Referenced by issue #120736, Snap Closest from Bezier Curve object has one unit offset in Blender 4.1
 Referenced by issue #120990, EXCEPTION_ACCESS_VIOLATION
+Referenced by issue #121459, Invalid mesh from `BKE_object_get_pre_modified_mesh` and `BKE_object_get_evaluated_mesh` during export.
