@@ -369,12 +369,11 @@ static const EnumPropertyItem *rna_AnimData_action_binding_itemf(bContext * /*C*
     return rna_enum_action_binding_items;
   }
 
-  const Action &anim = adt.action->wrap();
-  BLI_assert_msg(anim.is_action_layered(), "not yet implemented for legacy Actions");
-
   EnumPropertyItem item = {0};
   EnumPropertyItem *items = nullptr;
   int num_items = 0;
+
+  const Action &anim = adt.action->wrap();
 
   bool found_assigned_binding = false;
   for (const Binding *binding : anim.bindings()) {
@@ -392,9 +391,11 @@ static const EnumPropertyItem *rna_AnimData_action_binding_itemf(bContext * /*C*
     RNA_enum_item_add_separator(&items, &num_items);
   }
 
-  /* Only add the 'New' option. Unassigning should be done with the 'X' button. */
-  BLI_assert(rna_enum_action_binding_items[0].value == binding_items_value_create_new);
-  RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_items[0]);
+  /* Only add the 'New' option when this is a Layered Action. */
+  if (anim.is_action_layered()) {
+    BLI_assert(rna_enum_action_binding_items[0].value == binding_items_value_create_new);
+    RNA_enum_item_add(&items, &num_items, &rna_enum_action_binding_items[0]);
+  }
 
   if (!found_assigned_binding) {
     /* The assigned binding was not found, so show an option that reflects that. */
