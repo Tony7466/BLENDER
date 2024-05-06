@@ -902,7 +902,7 @@ static void grow_shrink_visibility_bmesh(Object &object,
   });
 }
 
-static int visibility_edit_exec(bContext *C, wmOperator *op)
+static int visibility_filter_exec(bContext *C, wmOperator *op)
 {
   Object &object = *CTX_data_active_object(C);
   Depsgraph &depsgraph = *CTX_data_ensure_evaluated_depsgraph(C);
@@ -917,8 +917,13 @@ static int visibility_edit_exec(bContext *C, wmOperator *op)
   const SculptSession &ss = *object.sculpt;
   int num_verts = SCULPT_vertex_count_get(&ss);
 
-  /* Automatically adjust the number of iterations based on the number of vertices in the mesh. */
-  int iterations = int(num_verts / VERTEX_ITERATION_THRESHOLD) + 1;
+  int iterations = RNA_int_get(op->ptr, "iterations");
+
+  if (RNA_boolean_get(op->ptr, "auto_iteration_count")) {
+    /* Automatically adjust the number of iterations based on the number
+     * of vertices in the mesh. */
+    iterations = int(num_verts / VERTEX_ITERATION_THRESHOLD) + 1;
+  }
 
   undo::push_begin(&object, op);
   for (int i = 0; i < iterations; i++) {
@@ -942,7 +947,7 @@ static int visibility_edit_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void PAINT_OT_visibility_edit(wmOperatorType *ot)
+void PAINT_OT_visibility_filter(wmOperatorType *ot)
 {
   static EnumPropertyItem modes[] = {
       {int(EditMode::Grow),
@@ -958,16 +963,32 @@ void PAINT_OT_visibility_edit(wmOperatorType *ot)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  ot->name = "Visibility Edit";
-  ot->idname = "PAINT_OT_visibility_edit";
+  ot->name = "Visibility Filter";
+  ot->idname = "PAINT_OT_visibility_filter";
   ot->description = "Edits the visibility of the current mesh";
 
-  ot->exec = visibility_edit_exec;
+  ot->exec = visibility_filter_exec;
   ot->poll = SCULPT_mode_poll_view3d;
 
-  ot->flag = OPTYPE_REGISTER;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_enum(ot->srna, "mode", modes, int(EditMode::Grow), "Mode", "");
+
+  RNA_def_int(ot->srna,
+              "iterations",
+              1,
+              1,
+              100,
+              "Iterations",
+              "Number of times that the filter is going to be applied",
+              1,
+              100);
+  RNA_def_boolean(
+      ot->srna,
+      "auto_iteration_count",
+      true,
+      "Auto Iteration Count",
+      "Use an automatic number of iterations based on the number of vertices of the sculpt");
 }
 
 /** \} */
