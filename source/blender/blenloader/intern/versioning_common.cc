@@ -372,6 +372,12 @@ IDProperty *version_cycles_properties_from_view_layer(ViewLayer *view_layer)
   return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
+IDProperty *version_cycles_properties_from_render_layer(SceneRenderLayer *render_layer)
+{
+  IDProperty *idprop = render_layer->prop;
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
+}
+
 float version_cycles_property_float(IDProperty *idprop, const char *name, float default_value)
 {
   IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_FLOAT);
@@ -464,7 +470,7 @@ static bool blendfile_or_libraries_versions_atleast(Main *bmain,
   }
 
   LISTBASE_FOREACH (Library *, library, &bmain->libraries) {
-    if (!MAIN_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
+    if (!LIBRARY_VERSION_FILE_ATLEAST(library, versionfile, subversionfile)) {
       return false;
     }
   }

@@ -8,8 +8,6 @@
 
 #include "BLI_math_matrix.hh"
 
-#include "NOD_socket_search_link.hh"
-
 #include "FN_field.hh"
 
 #include "node_geometry_util.hh"
@@ -20,16 +18,10 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Instances");
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Matrix>("Transform").implicit_field_on_all(implicit_field_inputs::transform);
+  b.add_input<decl::Matrix>("Transform")
+      .implicit_field_on_all(implicit_field_inputs::instance_transform);
   b.add_input<decl::Matrix>("To Apply").field_on_all();
   b.add_output<decl::Geometry>("Instances").propagate_all();
-}
-
-static void search_link_ops(GatherLinkSearchOpParams &params)
-{
-  if (U.experimental.use_new_matrix_socket) {
-    nodes::search_link_ops_for_basic_node(params);
-  }
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -65,7 +57,6 @@ static void register_node()
   geo_node_type_base(
       &ntype, GEO_NODE_TRANSFORM_INSTANCES, "Transform Instances", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
-  ntype.gather_link_search_ops = search_link_ops;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
