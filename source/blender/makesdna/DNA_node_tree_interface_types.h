@@ -211,7 +211,7 @@ typedef struct bNodeTreeInterfacePanel {
 
   /**
    * Apply a function to every item in the panel, including child panels.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_self: Include the panel itself in the iteration.
@@ -401,7 +401,7 @@ typedef struct bNodeTreeInterface {
 
   /**
    * Apply a function to every item in the interface.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_root: Include the root panel in the iteration.
@@ -413,7 +413,7 @@ typedef struct bNodeTreeInterface {
   }
   /**
    * Apply a function to every item in the interface.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_root: Include the root panel in the iteration.

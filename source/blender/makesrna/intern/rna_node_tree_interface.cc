@@ -712,6 +712,7 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocketFloat_subtype_itemf(
                                    PROP_TIME,
                                    PROP_TIME_ABSOLUTE,
                                    PROP_DISTANCE,
+                                   PROP_WAVELENGTH,
                                    PROP_NONE},
                                   r_free);
 }
@@ -831,11 +832,11 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
   return ntree->interface_items().size();
 }
 
-static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+static bool rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   if (!ntree->runtime) {
-    return 0;
+    return false;
   }
 
   ntree->ensure_interface_cache();
@@ -848,13 +849,13 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
   return true;
 }
 
-static int rna_NodeTreeInterface_items_lookup_string(PointerRNA *ptr,
-                                                     const char *key,
-                                                     PointerRNA *r_ptr)
+static bool rna_NodeTreeInterface_items_lookup_string(PointerRNA *ptr,
+                                                      const char *key,
+                                                      PointerRNA *r_ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   if (!ntree->runtime) {
-    return 0;
+    return false;
   }
 
   ntree->ensure_interface_cache();
@@ -1156,7 +1157,7 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
                       0,
                       "Socket Type",
                       "Type of socket generated on nodes");
-  /* Note: itemf callback works for the function parameter, it does not require a data pointer. */
+  /* NOTE: itemf callback works for the function parameter, it does not require a data pointer. */
   RNA_def_property_enum_funcs(
       parm, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_socket_type_itemf");
   RNA_def_pointer(
