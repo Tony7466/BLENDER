@@ -165,7 +165,7 @@ void shadow_viewport_layer_set(int view_id, int lod)
 vec3 shadow_position_vector_get(vec3 view_position, ShadowRenderView view)
 {
   if (view.is_directionnal) {
-    return -view_position.z - view.clip_near;
+    return vec3(0.0, 0.0, -view_position.z - view.clip_near);
   }
   return view_position;
 }
