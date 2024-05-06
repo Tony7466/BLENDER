@@ -1,1 +1,1 @@
-Referenced by issue #121459, Invalid mesh from `BKE_object_get_pre_modified_mesh` and `BKE_object_get_evaluated_mesh` during export.
+Referenced by issue #121459, STL export crash in edit mode
