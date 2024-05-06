@@ -2591,6 +2591,8 @@ static void init_text_effect(Sequence *seq)
   data->box_color[2] = 0.2f;
   data->box_color[3] = 0.7f;
   data->box_margin = 0.01f;
+  data->outline_color[3] = 0.7f;
+  data->outline_width = 2.0f;
 
   STRNCPY(data->text, "Text");
 
@@ -2699,7 +2701,9 @@ static StripEarlyOut early_out_text(const Sequence *seq, float /*fac*/)
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   if (data->text[0] == 0 || data->text_size < 1.0f ||
       ((data->color[3] == 0.0f) &&
-       (data->shadow_color[3] == 0.0f || (data->flag & SEQ_TEXT_SHADOW) == 0)))
+       (data->shadow_color[3] == 0.0f || (data->flag & SEQ_TEXT_SHADOW) == 0) &&
+       (data->outline_color[3] == 0.0f || data->outline_width < 1.0f ||
+        (data->flag & SEQ_TEXT_OUTLINE) == 0)))
   {
     return StripEarlyOut::UseInput1;
   }
@@ -2717,7 +2721,9 @@ static void draw_text_shadow(const SeqRenderData *context,
 {
   const int width = context->rectx;
   const int height = context->recty;
-  bool do_blur = data->shadow_blur >= 1.0f;
+  /* Blur value of 1.0 applies blur kernel that is half of text line height. */
+  const float blur_amount = line_height * 0.5f * data->shadow_blur;
+  bool do_blur = blur_amount >= 1.0f;
   ImBuf *tmp_out1 = nullptr, *tmp_out2 = nullptr;
   if (do_blur) {
     /* When shadow blur is on, it needs to first be rendered into a temporary
@@ -2742,8 +2748,8 @@ static void draw_text_shadow(const SeqRenderData *context,
 
   if (do_blur) {
     /* Create blur kernel weights. */
-    const int half_size = int(data->shadow_blur + 0.5f);
-    Array<float> gausstab = make_gaussian_blur_kernel(data->shadow_blur, half_size);
+    const int half_size = int(blur_amount + 0.5f);
+    Array<float> gausstab = make_gaussian_blur_kernel(blur_amount, half_size);
 
     /* Horizontal blur: blur tmp_out1 into tmp_out2. */
     threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
@@ -2793,6 +2799,92 @@ static void draw_text_shadow(const SeqRenderData *context,
                out->channels,
                display);
   }
+}
+
+static void draw_text_outline(const SeqRenderData *context,
+                              const TextVars *data,
+                              int font,
+                              ColorManagedDisplay *display,
+                              int x,
+                              int y,
+                              ImBuf *out)
+{
+  const int num_passes = int(data->outline_width);
+  if (num_passes < 1 || data->outline_color[3] <= 0.0f) {
+    return;
+  }
+
+  /* For outline we need to render text into temporary buffer, dilate it,
+   * and then composite into output. */
+  const int width = context->rectx;
+  const int height = context->recty;
+  ImBuf *tmp_out[2] = {nullptr, nullptr};
+  tmp_out[0] = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
+  tmp_out[1] = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
+  BLF_buffer(font,
+             tmp_out[0]->float_buffer.data,
+             tmp_out[0]->byte_buffer.data,
+             width,
+             height,
+             tmp_out[0]->channels,
+             display);
+
+  BLF_position(font, x, y, 0.0f);
+  BLF_buffer_col(font, data->outline_color);
+  BLF_draw_buffer(font, data->text, sizeof(data->text));
+
+  /* Dilate the text in a number of iterations. */
+  for (int pass = 0; pass < num_passes; pass++) {
+    const int src_tmp_index = pass & 1;
+    const int dst_tmp_index = 1 - src_tmp_index;
+    threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+      for (int y : y_range) {
+        const uchar4 *src = (const uchar4 *)tmp_out[src_tmp_index]->byte_buffer.data +
+                            size_t(y) * width;
+        uchar4 *dst = (uchar4 *)tmp_out[dst_tmp_index]->byte_buffer.data + size_t(y) * width;
+        for (int x = 0; x < width; x++, src++, dst++) {
+          /* Sample 3x3 region around pixel and pick value with maximum opacity. */
+          uchar4 val = {0, 0, 0, 0};
+          for (int dy = -1; dy <= 1; dy++) {
+            int yy = y + dy;
+            for (int dx = -1; dx <= 1; dx++) {
+              int xx = x + dx;
+              if (yy >= 0 && yy < height && xx >= 0 && xx < width) {
+                uchar4 pix = src[dy * width + dx];
+                if (pix.w > val.w) {
+                  val = pix;
+                }
+              }
+            }
+          }
+          *dst = val;
+        }
+      }
+    });
+  }
+
+  /* Composite over output. */
+  threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
+    const int y_first = y_range.first();
+    const int y_size = y_range.size();
+    const int src_tmp_index = num_passes & 1;
+    const uchar *src = tmp_out[src_tmp_index]->byte_buffer.data + size_t(y_first) * width * 4;
+    const uchar *src_end = tmp_out[src_tmp_index]->byte_buffer.data +
+                           size_t(y_first + y_size) * width * 4;
+    uchar *dst = out->byte_buffer.data + size_t(y_first) * width * 4;
+    for (; src < src_end; src += 4, dst += 4) {
+      float4 col1 = load_premul_pixel(src);
+      float mfac = 1.0f - col1.w;
+      float4 col2 = load_premul_pixel(dst);
+      float4 col = col1 + mfac * col2;
+      store_premul_pixel(col, dst);
+    }
+  });
+
+  IMB_freeImBuf(tmp_out[0]);
+  IMB_freeImBuf(tmp_out[1]);
+  BLF_buffer(
+      font, out->float_buffer.data, out->byte_buffer.data, width, height, out->channels, display);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -2898,6 +2990,11 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   /* Draw text shadow. */
   if (data->flag & SEQ_TEXT_SHADOW) {
     draw_text_shadow(context, data, font, display, x, y, line_height, out);
+  }
+
+  /* Draw text outline. */
+  if (data->flag & SEQ_TEXT_OUTLINE) {
+    draw_text_outline(context, data, font, display, x, y, out);
   }
 
   /* Draw text itself. */
