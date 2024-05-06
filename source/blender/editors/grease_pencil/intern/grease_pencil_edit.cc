@@ -2486,8 +2486,8 @@ IndexRange clipboard_paste_strokes(Main &bmain,
 /** \name Extrude Operator
  * \{ */
 
-bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
-                                                 const IndexMask &points_to_extrude)
+static bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
+                                                        const IndexMask &points_to_extrude)
 {
   const OffsetIndices<int> points_by_curve = src.points_by_curve();
 
@@ -2517,9 +2517,8 @@ bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
 
     curve_points_to_extrude.foreach_index([&](const int src_point_index) {
       if (!curve_cyclic && (src_point_index == curve_points.first())) {
-        /* Startpoint extruded, we insert a new point at the beginning of the curve.
-         * Note : all points of a cyclic curve behave like an innerpoint.
-         */
+        /* Start-point extruded, we insert a new point at the beginning of the curve.
+         * NOTE: all points of a cyclic curve behave like an inner-point. */
         dst_to_src_points.insert(src_point_index + point_offset, src_point_index);
         dst_selected.insert(src_point_index + point_offset, true);
         ++dst_curve_counts[curve_index];
@@ -2527,9 +2526,8 @@ bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
         return;
       }
       if (!curve_cyclic && (src_point_index == curve_points.last())) {
-        /* Endpoint extruded, we insert a new point at the end of the curve.
-         * Note : all points of a cyclic curve behave like an innerpoint.
-         */
+        /* End-point extruded, we insert a new point at the end of the curve.
+         * NOTE: all points of a cyclic curve behave like an inner-point. */
         dst_to_src_points.insert(src_point_index + point_offset + 1, src_point_index);
         dst_selected.insert(src_point_index + point_offset + 1, true);
         ++dst_curve_counts[curve_index];
@@ -2537,7 +2535,7 @@ bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
         return;
       }
 
-      /* Innerpoint extruded : we create a new curve made of two points located at the same
+      /* Inner-point extruded: we create a new curve made of two points located at the same
        * position. Only one of them is selected so that the other one remains stuck to the curve.
        */
       dst_to_src_points.append(src_point_index);
@@ -2578,7 +2576,7 @@ bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometry &src,
   selection.finish();
 
   /* Cyclic attribute : newly created curves cannot be cyclic.
-   * Note: if the cyclic attribute is single and false, it can be kept this way.
+   * NOTE: if the cyclic attribute is single and false, it can be kept this way.
    */
   if (src_cyclic.get_if_single().value_or(true)) {
     dst.cyclic_for_write().drop_front(old_curves_num).fill(false);
@@ -2597,7 +2595,6 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
   std::atomic<bool> changed = false;
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
-    /* Extrusion always happens in the point domain. */
     IndexMaskMemory memory;
     const IndexMask points_to_extrude = retrieve_editable_and_selected_points(
         *object, info.drawing, memory);
@@ -2606,8 +2603,7 @@ static int grease_pencil_extrude_exec(bContext *C, wmOperator * /*op*/)
     }
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
-    info.drawing.strokes_for_write() = std::move(
-        extrude_grease_pencil_curves(curves, points_to_extrude));
+    info.drawing.strokes_for_write() = extrude_grease_pencil_curves(curves, points_to_extrude);
 
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
