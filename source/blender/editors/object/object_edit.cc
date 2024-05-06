@@ -1776,6 +1776,11 @@ static int shade_auto_smooth_exec(bContext *C, wmOperator *op)
 
     for (const PointerRNA &ob_ptr : ctx_objects) {
       Object *object = static_cast<Object *>(ob_ptr.data);
+      if (object->type == OB_MESH) {
+        Mesh *mesh = static_cast<Mesh *>(object->data);
+        bke::mesh_smooth_set(*mesh, true, true);
+        DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+      }
       NodesModifierData *smooth_by_angle_nmd = nullptr;
       LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
         if (is_smooth_by_angle_modifier(*md)) {
