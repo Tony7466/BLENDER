@@ -1296,7 +1296,6 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_SDF_GRID_BOOLEAN 2131
 #define GEO_NODE_TOOL_VIEWPORT_TRANSFORM 2132
 #define GEO_NODE_TOOL_MOUSE_POSITION 2133
-#define GEO_NODE_INPUT_ROTATION 2131
 
 /** \} */
 
@@ -1343,6 +1342,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define FN_NODE_ALIGN_ROTATION_TO_VECTOR 1240
 #define FN_NODE_COMBINE_MATRIX 1241
 #define FN_NODE_SEPARATE_MATRIX 1242
+#define FN_NODE_INPUT_ROTATION 1243
 
 /** \} */
 

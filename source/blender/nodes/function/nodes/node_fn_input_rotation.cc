@@ -43,7 +43,7 @@ static void node_register()
 {
   static bNodeType ntype;
 
-  fn_node_type_base(&ntype, GEO_NODE_INPUT_ROTATION, "Rotation", 0);
+  fn_node_type_base(&ntype, FN_NODE_INPUT_ROTATION, "Rotation", 0);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   node_type_storage(
