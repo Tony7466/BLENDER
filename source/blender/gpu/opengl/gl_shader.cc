@@ -1633,7 +1633,7 @@ void GLShaderCompiler::process(bool block)
 {
   mutex.lock();
   double start = BLI_time_now_seconds();
-  auto timeout = [&]() { return !block && ((BLI_time_now_seconds() - start) > (1.0 / 60.0)); };
+  auto timeout = [&]() { return !block && ((BLI_time_now_seconds() - start) > (1.0 / 10.0)); };
   for (Batch &batch : batches.values()) {
     process_batch(batch, false, timeout);
     if (timeout()) {
