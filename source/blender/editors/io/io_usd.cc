@@ -323,7 +323,6 @@ static void wm_usd_export_draw(bContext *C, wmOperator *op)
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Object Types"));
   uiItemR(col, ptr, "export_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "export_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "export_volumes", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -514,20 +513,15 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "Author USD custom attributes containing the original Blender object and "
                   "object data names");
 
-  RNA_def_boolean(
-      ot->srna, "export_meshes", true, "Meshes", "When checked, all meshes will be exported");
+  RNA_def_boolean(ot->srna, "export_meshes", true, "Meshes", "Export all meshes");
 
-  RNA_def_boolean(
-      ot->srna, "export_lights", true, "Lights", "When checked, all lights will be exported");
+  RNA_def_boolean(ot->srna, "export_lights", true, "Lights", "Export all lights");
 
-  RNA_def_boolean(
-      ot->srna, "export_cameras", true, "Cameras", "When checked, all cameras will be exported");
+  RNA_def_boolean(ot->srna, "export_cameras", true, "Cameras", "Export all cameras");
 
-  RNA_def_boolean(
-      ot->srna, "export_curves", true, "Curves", "When checked, all curves will be exported");
+  RNA_def_boolean(ot->srna, "export_curves", true, "Curves", "Export all curves");
 
-  RNA_def_boolean(
-      ot->srna, "export_volumes", true, "Volumes", "When checked, all volumes will be exported");
+  RNA_def_boolean(ot->srna, "export_volumes", true, "Volumes", "Export all volumes");
 }
 
 /* ====== USD Import ====== */
