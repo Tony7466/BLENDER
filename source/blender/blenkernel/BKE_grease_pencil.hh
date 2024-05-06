@@ -35,6 +35,16 @@ namespace blender::bke {
 
 namespace greasepencil {
 
+/* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
+ * was the brush size which would be stored in the stroke thickness and then scaled by the
+ * point pressure factor. Finally, the render engine would divide this thickness value by
+ * 2000 (we're going from a thickness to a radius, hence the factor of two) to convert back
+ * into blender units. With Grease Pencil 3, the radius is no longer stored in `px` space,
+ * but in blender units (world space) directly. Also note that there is no longer a stroke
+ * "thickness" attribute, the radii are directly stored on the points.
+ * For compatibility, legacy thickness values have to be multiplied by this factor. */
+constexpr float LEGACY_RADIUS_CONVERSION_FACTOR = 1.0f / 2000.0f;
+
 class DrawingRuntime {
  public:
   /**
@@ -155,7 +165,7 @@ class LayerGroup;
 class Layer;
 
 /* Defines the common functions used by #TreeNode, #Layer, and #LayerGroup.
- * Note: Because we cannot mix C-style and C++ inheritance (all of these three classes wrap a
+ * NOTE: Because we cannot mix C-style and C++ inheritance (all of these three classes wrap a
  * C-struct that already uses "inheritance"), we define and implement these methods on all these
  * classes individually. This just means that we can call `layer->name()` directly instead of
  * having to write `layer->as_node().name()`. For #Layer and #LayerGroup the calls are just
@@ -298,16 +308,21 @@ struct LayerTransformData {
    * frame indices, and the values of the map are the destination frame indices. */
   Map<int, int> frames_destination;
 
-  /* Copy of the layer frames map. This allows to display the transformation while running, without
-   * removing any drawing. */
-  Map<int, GreasePencilFrame> frames_copy;
+  /* Copy of the layer frames, stored in two separate maps :
+   * - frames_static contains the frames not affected by the transformation,
+   * - frames_transformed contains the frames affected by the transformation.
+   * This allows to display the transformation while running, without removing any drawing.
+   */
+  Map<int, GreasePencilFrame> frames_static;
+  Map<int, GreasePencilFrame> frames_transformed;
+
   /* Map containing the duration (in frames) for each frame in the layer that has a fixed duration,
    * i.e. each frame that is not an implicit hold. */
   Map<int, int> frames_duration;
 
   /* Temporary copy of duplicated frames before we decide on a place to insert them.
    * Used in the move+duplicate operator. */
-  Map<int, GreasePencilFrame> temp_frames_buffer;
+  Map<int, GreasePencilFrame> duplicated_frames_buffer;
 
   FrameTransformationStatus status{TRANS_CLEAR};
 };
@@ -508,6 +523,8 @@ class Layer : public ::GreasePencilLayer {
    */
   SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin,
                                                          SortedKeysIterator end);
+
+  float4x4 parent_inverse() const;
 
   /**
    * The local transform of the layer (in layer space, not object space).
@@ -815,7 +832,7 @@ class GreasePencilEditHints {
 
   /**
    * Array of #GreasePencilDrawingEditHints. There is one edit hint for each evaluated drawing.
-   * Note: The index for each element is the layer index.
+   * \note The index for each element is the layer index.
    */
   std::optional<Array<GreasePencilDrawingEditHints>> drawing_hints;
 };
