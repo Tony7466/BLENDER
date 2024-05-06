@@ -1134,7 +1134,7 @@ typedef struct ActionBinding {
   /**
    * Identifier of this Binding within the Animation data-block.
    *
-   * This number allows reorganization of the #Animation::bindings_array without
+   * This number allows reorganization of the #bAction::binding_array without
    * invalidating references. Also these remain valid when copy-on-evaluate
    * copies are made.
    *
