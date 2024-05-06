@@ -17,8 +17,11 @@
 #    include "bvh/embree.h"
 #  endif
 
-#  ifdef WITH_OPENIMAGEDENOISE
-#    include "util/openimagedenoise.h"
+#  if defined(WITH_OPENIMAGEDENOISE)
+#    include <OpenImageDenoise/config.h>
+#    if OIDN_VERSION >= 20300
+#      include "util/openimagedenoise.h"
+#    endif
 #  endif
 
 #  include "kernel/device/oneapi/globals.h"
@@ -1112,7 +1115,7 @@ void OneapiDevice::iterate_devices(OneAPIDeviceIteratorCallback cb, void *user_p
 #  else
     bool hwrt_support = false;
 #  endif
-#  ifdef WITH_OPENIMAGEDENOISE
+#  if defined(WITH_OPENIMAGEDENOISE) && OIDN_VERSION >= 20300
     bool oidn_support = oidnIsSYCLDeviceSupported(&device);
 #  else
     bool oidn_support = false;

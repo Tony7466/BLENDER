@@ -112,9 +112,16 @@ static void device_iterator_cb(const char *id,
   info.id = id;
 
   info.has_nanovdb = true;
+#  if defined(WITH_OPENIMAGEDENOISE)
+#    if OIDN_VERSION >= 20300
   if (oidn_support) {
+#    else
+  if (OIDNDenoiserGPU::is_device_supported(info)) {
+#    endif
     info.denoisers |= DENOISER_OPENIMAGEDENOISE;
   }
+#  endif
+  (void)oidn_support;
 
   info.has_gpu_queue = true;
 
