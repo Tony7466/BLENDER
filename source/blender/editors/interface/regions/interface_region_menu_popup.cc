@@ -403,8 +403,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->but = but;
 
     if (but->type == UI_BTYPE_PULLDOWN) {
-      WorkspaceStatus status(C);
-      status.item(IFACE_("Search"), ICON_EVENT_SPACEKEY);
+      ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
     }
   }
 
@@ -611,12 +610,11 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 
-  WorkspaceStatus status(C);
   if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
-    status.range(IFACE_("Search"), ICON_EVENT_A, ICON_EVENT_Z);
+    ED_workspace_status_text(C, IFACE_("Type to search..."));
   }
   else if (mt->idname[0]) {
-    status.item(IFACE_("Search"), ICON_EVENT_SPACEKEY);
+    ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
   }
 }
 

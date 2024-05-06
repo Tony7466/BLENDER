@@ -21,7 +21,6 @@
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
 #include "BKE_mask.h"
-#include "BKE_workspace.hh"
 
 #include "GPU_state.hh"
 
@@ -541,10 +540,6 @@ static void viewRedrawForce(const bContext *C, TransInfo *t)
 static void viewRedrawPost(bContext *C, TransInfo *t)
 {
   ED_area_status_text(t->area, nullptr);
-  WorkSpace *workspace = CTX_wm_workspace(C);
-  if (workspace) {
-    BKE_workspace_status_clear(workspace);
-  }
 
   if (t->spacetype == SPACE_VIEW3D) {
     /* If auto-keying is enabled, send notifiers that keyframes were added. */
@@ -1434,11 +1429,6 @@ int transformEvent(TransInfo *t, const wmEvent *event)
 
   if (t->redraw && !ISMOUSE_MOTION(event->type)) {
     WM_window_status_area_tag_redraw(CTX_wm_window(t->context));
-  }
-
-  WorkSpace *workspace = CTX_wm_workspace(t->context);
-  if (workspace) {
-    BKE_workspace_status_clear(workspace);
   }
 
   if (!is_navigating && (handled || t->redraw)) {
