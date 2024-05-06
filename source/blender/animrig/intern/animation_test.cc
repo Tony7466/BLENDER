@@ -444,7 +444,7 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   SingleKeyingResult result_loc_a = key_strip.keyframe_insert(
       binding, "location", 0, {1.0f, 47.0f}, INSERTKEY_NOFLAGS, settings);
   ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
-      << "Expect all the necessary data structures to be created on insertion of a key";
+      << "Expected keyframe insertion to be successful";
 
   /* Check the strip was created correctly, with the channels for the binding. */
   ASSERT_EQ(1, key_strip.channelbags().size());
