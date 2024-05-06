@@ -15,19 +15,19 @@ int shadow_tile_index(ivec2 tile)
   return tile.x + tile.y * SHADOW_TILEMAP_RES;
 }
 
-ivec2 shadow_tile_coord(int tile_index)
+uvec2 shadow_tile_coord(int tile_index)
 {
-  return ivec2(tile_index % SHADOW_TILEMAP_RES, tile_index / SHADOW_TILEMAP_RES);
+  return uvec2(tile_index % SHADOW_TILEMAP_RES, tile_index / SHADOW_TILEMAP_RES);
 }
 
 /* Return bottom left pixel position of the tile-map inside the tile-map atlas. */
-ivec2 shadow_tilemap_start(int tilemap_index)
+uvec2 shadow_tilemap_start(int tilemap_index)
 {
   return SHADOW_TILEMAP_RES *
-         ivec2(tilemap_index % SHADOW_TILEMAP_PER_ROW, tilemap_index / SHADOW_TILEMAP_PER_ROW);
+         uvec2(tilemap_index % SHADOW_TILEMAP_PER_ROW, tilemap_index / SHADOW_TILEMAP_PER_ROW);
 }
 
-ivec2 shadow_tile_coord_in_atlas(ivec2 tile, int tilemap_index)
+uvec2 shadow_tile_coord_in_atlas(uvec2 tile, int tilemap_index)
 {
   return shadow_tilemap_start(tilemap_index) + tile;
 }
@@ -36,7 +36,7 @@ ivec2 shadow_tile_coord_in_atlas(ivec2 tile, int tilemap_index)
  * Return tile index inside `tiles_buf` for a given tile coordinate inside a specific LOD.
  * `tiles_index` should be `ShadowTileMapData.tiles_index`.
  */
-int shadow_tile_offset(ivec2 tile, int tiles_index, int lod)
+int shadow_tile_offset(uvec2 tile, int tiles_index, int lod)
 {
 #if SHADOW_TILEMAP_LOD > 5
 #  error This needs to be adjusted
@@ -54,34 +54,35 @@ int shadow_tile_offset(ivec2 tile, int tiles_index, int lod)
   const int lod4_size = lod4_width * lod4_width;
   const int lod5_size = lod5_width * lod5_width;
 
+  /* TODO(fclem): Convert everything to uint. */
   int offset = tiles_index;
   switch (lod) {
     case 5:
       offset += lod0_size + lod1_size + lod2_size + lod3_size + lod4_size;
-      offset += tile.y * lod5_width;
+      offset += int(tile.y) * lod5_width;
       break;
     case 4:
       offset += lod0_size + lod1_size + lod2_size + lod3_size;
-      offset += tile.y * lod4_width;
+      offset += int(tile.y) * lod4_width;
       break;
     case 3:
       offset += lod0_size + lod1_size + lod2_size;
-      offset += tile.y * lod3_width;
+      offset += int(tile.y) * lod3_width;
       break;
     case 2:
       offset += lod0_size + lod1_size;
-      offset += tile.y * lod2_width;
+      offset += int(tile.y) * lod2_width;
       break;
     case 1:
       offset += lod0_size;
-      offset += tile.y * lod1_width;
+      offset += int(tile.y) * lod1_width;
       break;
     case 0:
     default:
-      offset += tile.y * lod0_width;
+      offset += int(tile.y) * lod0_width;
       break;
   }
-  offset += tile.x;
+  offset += int(tile.x);
   return offset;
 }
 
@@ -92,13 +93,13 @@ int shadow_tile_offset(ivec2 tile, int tiles_index, int lod)
  * \{ */
 
 /** \note Will clamp if out of bounds. */
-ShadowSamplingTile shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilemap_index)
+ShadowSamplingTile shadow_tile_load(usampler2D tilemaps_tx, uvec2 tile_co, int tilemap_index)
 {
   /* NOTE(@fclem): This clamp can hide some small imprecision at clip-map transition.
    * Can be disabled to check if the clip-map is well centered. */
-  tile_co = clamp(tile_co, ivec2(0), ivec2(SHADOW_TILEMAP_RES - 1));
-  ivec2 texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
-  uint tile_data = texelFetch(tilemaps_tx, texel, 0).x;
+  tile_co = clamp(tile_co, uvec2(0), uvec2(SHADOW_TILEMAP_RES - 1));
+  uvec2 texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
+  uint tile_data = texelFetch(tilemaps_tx, ivec2(texel), 0).x;
   return shadow_sampling_tile_unpack(tile_data);
 }
 
@@ -205,7 +206,7 @@ struct ShadowCoordinates {
   /* LOD of the tile to load relative to the min level. Always positive. */
   int lod_relative;
   /* Tile coordinate inside the tile-map. */
-  ivec2 tile_coord;
+  uvec2 tile_coord;
   /* UV coordinates in [0..SHADOW_TILEMAP_RES) range. */
   vec2 uv;
 };
@@ -251,7 +252,7 @@ ShadowCoordinates shadow_directional_coordinates_at_level(LightData light, vec3 
   ret.uv = ret.uv * float(SHADOW_TILEMAP_RES) + float(SHADOW_TILEMAP_RES / 2);
   ret.uv -= vec2(clipmap_offset);
   /* Clamp to avoid out of tile-map access. */
-  ret.tile_coord = clamp(ivec2(ret.uv), ivec2(0.0), ivec2(SHADOW_TILEMAP_RES - 1));
+  ret.tile_coord = clamp(uvec2(ret.uv), uvec2(0.0), uvec2(SHADOW_TILEMAP_RES - 1));
   return ret;
 }
 

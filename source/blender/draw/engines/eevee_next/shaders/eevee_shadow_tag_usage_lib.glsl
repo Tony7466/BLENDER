@@ -15,13 +15,13 @@
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 
-void shadow_tag_usage_tile(LightData light, ivec2 tile_co, int lod, int tilemap_index)
+void shadow_tag_usage_tile(LightData light, uvec2 tile_co, int lod, int tilemap_index)
 {
   if (tilemap_index > light_tilemap_max_get(light)) {
     return;
   }
 
-  tile_co >>= lod;
+  tile_co >>= uint(lod);
   int tile_index = shadow_tile_offset(tile_co, tilemaps_buf[tilemap_index].tiles_index, lod);
   atomicOr(tiles_buf[tile_index], uint(SHADOW_IS_USED));
 }
@@ -71,9 +71,9 @@ void shadow_tag_usage_tilemap_directional(uint l_idx, vec3 P, vec3 V, float radi
       ShadowCoordinates coord_max = shadow_directional_coordinates_at_level(
           light, lP + vec3(radius, radius, 0.0), level);
 
-      for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
-        for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile(light, ivec2(x, y), 0, coord_min.tilemap_index);
+      for (uint x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
+        for (uint y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+          shadow_tag_usage_tile(light, uvec2(x, y), 0, coord_min.tilemap_index);
         }
       }
     }
@@ -146,9 +146,9 @@ void shadow_tag_usage_tilemap_punctual(uint l_idx, vec3 P, float radius, int lod
       ShadowCoordinates coord_min = shadow_punctual_coordinates(light, _lP - offset, face_id);
       ShadowCoordinates coord_max = shadow_punctual_coordinates(light, _lP + offset, face_id);
 
-      for (int x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
-        for (int y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
-          shadow_tag_usage_tile(light, ivec2(x, y), lod, tilemap_index);
+      for (uint x = coord_min.tile_coord.x; x <= coord_max.tile_coord.x; x++) {
+        for (uint y = coord_min.tile_coord.y; y <= coord_max.tile_coord.y; y++) {
+          shadow_tag_usage_tile(light, uvec2(x, y), lod, tilemap_index);
         }
       }
     }

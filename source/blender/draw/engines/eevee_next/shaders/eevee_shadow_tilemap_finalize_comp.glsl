@@ -51,7 +51,7 @@ void main()
   int tilemap_index = int(gl_GlobalInvocationID.z);
   ivec2 tile_co = ivec2(gl_GlobalInvocationID.xy);
 
-  ivec2 atlas_texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
+  uvec2 atlas_texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
 
   ShadowTileMapData tilemap_data = tilemaps_buf[tilemap_index];
   bool is_cubemap = (tilemap_data.projection_type == SHADOW_PROJECTION_CUBEFACE);
@@ -202,7 +202,7 @@ void main()
   ShadowTileData tile_data = shadow_tile_unpack(tile_packed);
   ShadowSamplingTile tile_sampling = shadow_sampling_tile_create(tile_data, valid_lod);
   ShadowSamplingTilePacked tile_sampling_packed = shadow_sampling_tile_pack(tile_sampling);
-  imageStore(tilemaps_img, atlas_texel, uvec4(tile_sampling_packed));
+  imageStore(tilemaps_img, ivec2(atlas_texel), uvec4(tile_sampling_packed));
 
   if (all(equal(gl_GlobalInvocationID, uvec3(0)))) {
     /* Clamp it as it can underflow if there is too much tile present on screen. */
