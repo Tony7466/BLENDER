@@ -1556,7 +1556,7 @@ void OBJECT_OT_paths_clear(wmOperatorType *ot)
 static int shade_smooth_exec(bContext *C, wmOperator *op)
 {
   const bool use_smooth = STREQ(op->idname, "OBJECT_OT_shade_smooth");
-  const bool use_smooth_by_angle = STREQ(op->idname, "OBJECT_OT_shade_auto_smooth");
+  const bool use_smooth_by_angle = STREQ(op->idname, "OBJECT_OT_shade_smooth_by_angle");
   Main *bmain = CTX_data_main(C);
 
   Vector<PointerRNA> ctx_objects;
@@ -1683,13 +1683,12 @@ void OBJECT_OT_shade_smooth(wmOperatorType *ot)
                   "Don't remove sharp edges. Tagged edges will remain sharp");
 }
 
-void OBJECT_OT_shade_auto_smooth(wmOperatorType *ot)
+void OBJECT_OT_shade_smooth_by_angle(wmOperatorType *ot)
 {
-  ot->name = "Shade Auto Smooth";
+  ot->name = "Shade Smooth by Angle";
   ot->description =
-      "Add modifier to set the sharpness of mesh edges based on the angle between the neighboring "
-      "faces";
-  ot->idname = "OBJECT_OT_shade_auto_smooth";
+      "Set the sharpness of mesh edges based on the angle between the neighboring faces";
+  ot->idname = "OBJECT_OT_shade_smooth_by_angle";
 
   ot->poll = shade_poll;
   ot->exec = shade_smooth_exec;
