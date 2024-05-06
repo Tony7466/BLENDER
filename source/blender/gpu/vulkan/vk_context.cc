@@ -36,6 +36,8 @@ VKContext::VKContext(void *ghost_window,
   VKFrameBuffer *framebuffer = new VKFrameBuffer("back_left");
   back_left = framebuffer;
   active_fb = framebuffer;
+
+  compiler = new ShaderCompiler();
 }
 
 VKContext::~VKContext()
@@ -48,6 +50,8 @@ VKContext::~VKContext()
 
   delete imm;
   imm = nullptr;
+
+  delete compiler;
 }
 
 void VKContext::sync_backbuffer()
