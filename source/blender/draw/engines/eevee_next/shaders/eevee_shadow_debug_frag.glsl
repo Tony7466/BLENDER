@@ -168,7 +168,7 @@ void debug_atlas_values(vec3 P, LightData light)
   ShadowCoordinates samp = debug_coord_get(P, light);
   float depth = shadow_read_depth(
       shadow_atlas_tx, shadow_tilemaps_tx, samp.tilemap_index, samp.uv);
-  out_color_add = vec4(float3(depth), 0.0);
+  out_color_add = vec4((depth == -1) ? vec3(1.0, 0.0, 0.0) : float3(1.0 / depth), 0.0);
   out_color_mul = vec4(0.5);
 }
 
