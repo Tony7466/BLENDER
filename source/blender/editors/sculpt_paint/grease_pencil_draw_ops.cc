@@ -697,7 +697,7 @@ static bool grease_pencil_apply_fill(bContext &C,
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = false;
+  constexpr const bool keep_images = true;
 
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
   if (!region || region->regiontype != RGN_TYPE_WINDOW) {

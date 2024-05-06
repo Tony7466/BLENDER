@@ -610,7 +610,13 @@ static bke::CurvesGeometry process_image(Image &ima,
 
   ImageBufferAccessor buffer;
   buffer.acquire(ima);
-  BLI_SCOPED_DEFER([&]() { buffer.release(); });
+  BLI_SCOPED_DEFER([&]() {
+    if (output_as_colors) {
+      /* For visual output convert bit flags back to colors. */
+      convert_flags_to_colors(buffer);
+    }
+    buffer.release();
+  });
 
   convert_colors_to_flags(buffer);
 
@@ -636,11 +642,6 @@ static bke::CurvesGeometry process_image(Image &ima,
   }
 
   const FillBoundary boundary = build_fill_boundary(buffer);
-
-  if (output_as_colors) {
-    /* For visual output convert bit flags back to colors. */
-    convert_flags_to_colors(buffer);
-  }
 
   return boundary_to_curves(scene,
                             view_context,
@@ -831,23 +832,20 @@ static auto fit_strokes_to_view(const ARegion &region,
           region, object, object_eval, boundary_layers, src_drawings);
       const rctf region_bounds = get_region_bounds(region);
       UNUSED_VARS(bounds, region_bounds);
-#if 0  // TODO doesn't quite work yet, use identity for now.
-    const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
-    const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
-    // const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
-    const float2 bounds_extent = bounds_max - bounds_min;
-    const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
-    const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
-    // const float2 region_center = 0.5f * (region_min + region_max);
-    const float2 region_extent = region_max - region_min;
-    const float2 zoom = math::safe_divide(bounds_extent, region_extent);
-    const float2 offset = math::safe_divide(-bounds_min, region_extent);
-    std::cout << "region " << region_min << ".." << region_max << ", bounds " << bounds_min << ".."
-              << bounds_max << " zoom=" << zoom << " offset=" << offset << std::endl;
-      return std::make_pair(float2(1.0f), float2(0.0f));
-#else
-      return std::make_pair(float2(1.0f), float2(0.0f));
-#endif
+      const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
+      const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
+      const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
+      const float2 bounds_extent = bounds_max - bounds_min;
+      const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
+      const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
+      const float2 region_center = 0.5f * (region_min + region_max);
+      const float2 region_extent = region_max - region_min;
+      const float2 zoom = math::safe_divide(bounds_extent, region_extent);
+      // const float2 offset = math::safe_divide(bounds_min, region_extent);
+      // const float2 offset = bounds_center - region_center * zoom;
+      // const float2 offset = float2(0.01f);
+      const float2 offset = bounds_min - math::safe_divide(region_min, region_extent);
+      return std::make_pair(zoom, offset);
   }
   return std::make_pair(float2(1.0f), float2(0.0f));
 }
@@ -971,10 +969,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
    * transform. */
   image_render::region_reset(region, region_view_data);
 
-  if (keep_images) {
-    ima->id.tag |= LIB_TAG_DOIT;
-  }
-  else {
+  if (!keep_images) {
     BKE_id_free(&bmain, ima);
   }
 

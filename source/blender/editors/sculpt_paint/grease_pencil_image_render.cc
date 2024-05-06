@@ -23,6 +23,7 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
+#include "GPU_debug.hh"
 #include "GPU_framebuffer.hh"
 #include "GPU_immediate.hh"
 #include "GPU_matrix.hh"
@@ -32,6 +33,9 @@
 #include "GPU_vertex_format.hh"
 
 namespace blender::ed::greasepencil::image_render {
+
+/* Enable GPU debug capture (needs WITH_RENDERDOC option). */
+constexpr const bool enable_debug_gpu_capture = true;
 
 RegionViewData region_init(ARegion &region, const int2 &win_size)
 {
@@ -57,6 +61,10 @@ void region_reset(ARegion &region, const RegionViewData &data)
 
 GPUOffScreen *image_render_begin(const int2 &win_size)
 {
+  if (enable_debug_gpu_capture) {
+    GPU_debug_capture_begin("Grease Pencil Image Render");
+  }
+
   char err_out[256] = "unknown";
   GPUOffScreen *offscreen = GPU_offscreen_create(
       win_size.x, win_size.y, true, GPU_RGBA8, GPU_TEXTURE_USAGE_HOST_READ, err_out);
@@ -100,6 +108,10 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer)
   /* Switch back to regular frame-buffer. */
   GPU_offscreen_unbind(buffer, true);
   GPU_offscreen_free(buffer);
+
+  if (enable_debug_gpu_capture) {
+    GPU_debug_capture_end();
+  }
 
   return ima;
 }
