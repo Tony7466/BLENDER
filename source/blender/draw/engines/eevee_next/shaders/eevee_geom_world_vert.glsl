@@ -21,7 +21,6 @@ void main()
   float y = float((v & 2) << 1) - 1.0;
   gl_Position = vec4(x, y, 1.0, 1.0);
 
-
   /* Pass view position to keep accuracy. */
   interp.P = drw_point_ndc_to_view(gl_Position.xyz);
   interp.N = vec3(1);
