@@ -1306,10 +1306,9 @@ typedef struct NodeTexEnvironment {
 
 typedef struct NodeTexGabor {
   NodeTexBase base;
-  /* NodeGaborMode */
-  char mode;
-  char dimensions;
-  char _pad[6];
+  /* Stores NodeGaborType. */
+  char type;
+  char _pad[7];
 } NodeTexGabor;
 
 typedef struct NodeTexGradient {
@@ -2202,16 +2201,13 @@ enum {
   SHD_PROJ_MIRROR_BALL = 1,
 };
 
-typedef enum NodeGaborMode {
-  SHD_GABOR_MODE_GABOR,
-  SHD_GABOR_MODE_RING,
-  SHD_GABOR_MODE_CROSS,
-  SHD_GABOR_MODE_SQUARE,
-  SHD_GABOR_MODE_PHASOR,
-  SHD_GABOR_MODE_PHASOR_RING,
-  SHD_GABOR_MODE_PHASOR_CROSS,
-  SHD_GABOR_MODE_PHASOR_SQUARE,
-} NodeGaborMode;
+typedef enum NodeGaborType {
+  SHD_GABOR_TYPE_1D = 0,
+  SHD_GABOR_TYPE_2D = 1,
+  SHD_GABOR_TYPE_3D = 2,
+  SHD_GABOR_TYPE_4D = 3,
+  SHD_GABOR_TYPE_SURFACE = 4,
+} NodeGaborType;
 
 enum {
   SHD_IMAGE_EXTENSION_REPEAT = 0,
