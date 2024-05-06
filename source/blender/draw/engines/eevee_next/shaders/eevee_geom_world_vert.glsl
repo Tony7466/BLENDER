@@ -12,11 +12,15 @@
 
 void main()
 {
+  /* (W)Intel drivers require all varying iface to be written to inside the Vertex shader. */
+  drw_ResourceID_iface.resource_index = 0;
+
   /* Full-screen triangle. */
   int v = gl_VertexID % 3;
   float x = float((v & 1) << 2) - 1.0;
   float y = float((v & 2) << 1) - 1.0;
   gl_Position = vec4(x, y, 1.0, 1.0);
+
 
   /* Pass view position to keep accuracy. */
   interp.P = drw_point_ndc_to_view(gl_Position.xyz);
