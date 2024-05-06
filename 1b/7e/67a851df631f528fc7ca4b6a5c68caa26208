@@ -1,4 +1,4 @@
 Referenced by commit 6c2593cc133c74a9e526e5a1a6e44ded5b5f4ebd, Fix: EEVEE render crash after recent mesh index buffer commit
-Referenced by issue #121347, I can't see the head and the torso bones
+Referenced by issue #121347, I can't see the head and the torso bones (bone widgets with GPU Subdivision)
 Referenced by issue #121400, Invisible & Crashing bone widgets with GPU Subdivision
 Referenced by issue #121444, Hiding part of a mesh in Edit Mode causes edges to draw between the wrong vertices.
