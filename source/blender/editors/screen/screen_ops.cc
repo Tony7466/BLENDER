@@ -3373,7 +3373,6 @@ typedef struct sAreaJoinData {
   bool close_win;              /* Close the source window when done. */
   wmWindow *draw_dock_win;     /* Window getting docking highlight. */
   eAreaDockTarget dock_target; /* Position within target we are pointing to. */
-  float factor;                /* dock target size can vary. */
   void *draw_join_callback;    /* call #screen_draw_join_highlight, overlay on win1. */
   void *draw_dock_callback;    /* call #screen_draw_dock_highlight, overlay on draw_dock_win. */
 } sAreaJoinData;
@@ -3400,7 +3399,7 @@ static void area_join_dock_cb(const struct wmWindow *win, void *userdata)
   if (!jd || !jd->sa2 || jd->join_dir != SCREEN_DIR_NONE || jd->sa1 == jd->sa2) {
     return;
   }
-  screen_draw_dock_preview(win, jd->sa2, jd->dock_target, jd->factor);
+  screen_draw_dock_preview(win, jd->sa2, jd->dock_target);
 }
 
 static void area_join_dock_cb_window(sAreaJoinData *jd, wmOperator *op)
@@ -3558,13 +3557,10 @@ void static area_docking_apply(bContext *C, wmOperator *op)
   if (!(jd->dock_target == DOCKING_CENTER)) {
     eScreenAxis dir = (ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_RIGHT)) ? SCREEN_AXIS_V :
                                                                              SCREEN_AXIS_H;
-    float fac = jd->factor;
-    if (ELEM(jd->dock_target, DOCKING_RIGHT, DOCKING_TOP)) {
-      fac = 1.0f - fac;
-    }
+    float fac = 0.5f;
     ScrArea *newa = area_split(
         jd->win2, WM_window_get_active_screen(jd->win2), jd->sa2, dir, fac, true);
-    if (jd->factor <= 0.5f) {
+    if (ELEM(jd->dock_target, DOCKING_LEFT, DOCKING_BOTTOM)) {
       jd->sa2 = newa;
     }
   }
@@ -3610,7 +3606,7 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
       return (jd->split_dir == SCREEN_AXIS_V) ? WM_CURSOR_V_SPLIT : WM_CURSOR_H_SPLIT;
     }
     else {
-      return WM_CURSOR_HAND;
+      return WM_CURSOR_EDIT;
     }
   }
 
@@ -3674,24 +3670,18 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
 
   /* If we've made it here, then there can be no joining possible. */
   jd->join_dir = SCREEN_DIR_NONE;
-  jd->factor = 0.5f;
-  float accel = (jd->sa1 == jd->sa2) ? 1.7f : 2.0f;
 
   /* if the area is narrow then there are only two docking targets. */
   if (jd->sa2->winx < min_x) {
     if (y < jd->sa2->winy / 2) {
-      jd->factor = float(y) / float(jd->sa2->winy) * accel;
       return DOCKING_BOTTOM;
     }
-    jd->factor = (1.0f - float(y) / float(jd->sa2->winy)) * accel;
     return DOCKING_TOP;
   }
   if (jd->sa2->winy < min_y) {
     if (x < jd->sa2->winx / 2) {
-      jd->factor = float(x) / float(jd->sa2->winx) * accel;
       return DOCKING_LEFT;
     }
-    jd->factor = (1.0f - float(x) / float(jd->sa2->winx)) * accel;
     return DOCKING_RIGHT;
   }
 
@@ -3705,19 +3695,15 @@ static eAreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *eve
   bool TL = float(x) / float(y + 1) < area_ratio;
   bool BL = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
   if (TL && !BL) {
-    jd->factor = (1.0f - float(y) / float(jd->sa2->winy)) * accel;
     return DOCKING_TOP;
   }
   else if (!TL && BL) {
-    jd->factor = float(y) / float(jd->sa2->winy) * accel;
     return DOCKING_BOTTOM;
   }
   else if (TL && BL) {
-    jd->factor = float(x) / float(jd->sa2->winx) * accel;
     return DOCKING_LEFT;
   }
   else {
-    jd->factor = (1.0f - float(x) / float(jd->sa2->winx)) * accel;
     return DOCKING_RIGHT;
   }
 }
