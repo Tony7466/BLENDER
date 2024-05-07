@@ -826,7 +826,8 @@ static auto fit_strokes_to_view(const ARegion &region,
                                 const FillToolFitMethod fit_method,
                                 const float2 fill_point,
                                 const bool uniform_zoom,
-                                const float max_zoom_factor)
+                                const float max_zoom_factor,
+                                const float2 margin)
 {
   BLI_assert(max_zoom_factor >= 1.0f);
   const float min_zoom_factor = math::safe_rcp(max_zoom_factor);
@@ -834,7 +835,8 @@ static auto fit_strokes_to_view(const ARegion &region,
   switch (fit_method) {
     case FillToolFitMethod::None:
       return std::make_pair(float2(1.0f), float2(0.0f));
-    case FillToolFitMethod::FitToView:
+
+    case FillToolFitMethod::FitToView: {
       /* Zoom and offset based on bounds, to fit all strokes within the render. */
       const rctf bounds = get_boundary_bounds(
           region, object, object_eval, boundary_layers, src_drawings);
@@ -843,8 +845,8 @@ static auto fit_strokes_to_view(const ARegion &region,
       const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
       const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
       /* Include fill point for computing zoom. */
-      const float2 fill_bounds_min = math::min(bounds_min, fill_point);
-      const float2 fill_bounds_max = math::max(bounds_max, fill_point);
+      const float2 fill_bounds_min = math::min(bounds_min, fill_point) - margin;
+      const float2 fill_bounds_max = math::max(bounds_max, fill_point) + margin;
       const float2 fill_bounds_center = 0.5f * (fill_bounds_min + fill_bounds_max);
       const float2 fill_bounds_extent = fill_bounds_max - fill_bounds_min;
 
@@ -873,6 +875,7 @@ static auto fit_strokes_to_view(const ARegion &region,
       const float2 offset = math::safe_divide(region_offset, region_extent);
 
       return std::make_pair(zoom, offset);
+    }
   }
 
   return std::make_pair(float2(1.0f), float2(0.0f));
@@ -910,8 +913,9 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const float2 win_center = 0.5f * float2(win_size);
 
   /* Zoom and offset based on bounds, to fit all strokes within the render. */
-  constexpr const bool uniform_zoom = true;
-  constexpr const float max_zoom_factor = 5.0f;
+  const bool uniform_zoom = true;
+  const float max_zoom_factor = 5.0f;
+  const float2 margin = float2(20);
   const auto [zoom, offset] = fit_strokes_to_view(region,
                                                   object,
                                                   object_eval,
@@ -920,7 +924,8 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                                   fit_method,
                                                   fill_point,
                                                   uniform_zoom,
-                                                  max_zoom_factor);
+                                                  max_zoom_factor,
+                                                  margin);
   /* Fill point needs to be inverse transformed to stay relative to the view. */
   const float2 fill_point_view = math::safe_divide(
                                      fill_point - win_center - offset * float2(win_size), zoom) +
