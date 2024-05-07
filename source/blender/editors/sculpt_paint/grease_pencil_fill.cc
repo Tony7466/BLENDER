@@ -4,7 +4,9 @@
 
 #include "BLI_color.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_rect.h"
 #include "BLI_stack.hh"
@@ -841,10 +843,7 @@ static auto fit_strokes_to_view(const ARegion &region,
       const float2 region_center = 0.5f * (region_min + region_max);
       const float2 region_extent = region_max - region_min;
       const float2 zoom = math::safe_divide(bounds_extent, region_extent);
-      // const float2 offset = math::safe_divide(bounds_min, region_extent);
-      // const float2 offset = bounds_center - region_center * zoom;
-      // const float2 offset = float2(0.01f);
-      const float2 offset = bounds_min - math::safe_divide(region_min, region_extent);
+      const float2 offset = math::safe_divide(bounds_center - region_center, region_extent);
       return std::make_pair(zoom, offset);
   }
   return std::make_pair(float2(1.0f), float2(0.0f));

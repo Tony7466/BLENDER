@@ -472,6 +472,10 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 
 /**
  * Set up the view matrix for world space rendering.
+ *
+ * \param win_size Size of the render window.
+ * \param zoom Zoom factor to render a smaller or larger part of the view.
+ * \param offset Offset of the view relative to the overall size.
  */
 void set_viewmat(ARegion &region,
                  View3D &view3d,
