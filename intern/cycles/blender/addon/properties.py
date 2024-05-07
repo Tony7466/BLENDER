@@ -613,35 +613,35 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         name="Light",
         description="Number of light samples",
         min=1, max=32,
-        default=8,
+        default=4,
     )
 
     restir_bsdf_samples: IntProperty(
         name="BSDF",
         description="Number of BSDF samples",
         min=1, max=8,
-        default=3,
+        default=1,
     )
 
     restir_spatial_iterations: IntProperty(
         name="Iterations",
-        description="Number of spatial resampling iterations",
+        description="Perform multiple iterations of spatial resampling, at the cost of increased correlation",
         min=1, max=5,
-        default=3,
+        default=2,
     )
 
     restir_spatial_radius: IntProperty(
         name="Radius",
         description="Pixel radius to gather samples from",
         min=1, max=50,
-        default=15,
+        default=10,
     )
 
     restir_spatial_neighbors: IntProperty(
         name="Samples",
         description="Number of neighboring samples to draw per pixel per iteration",
         min=0, max=16,
-        default=5,
+        default=6,
     )
 
     restir_unbiased: BoolProperty(

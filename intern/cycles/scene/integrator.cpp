@@ -119,13 +119,13 @@ NODE_DEFINE(Integrator)
   SOCKET_FLOAT(light_sampling_threshold, "Light Sampling Threshold", 0.0f);
 
   /* ReSTIR. */
-  SOCKET_INT(use_restir, "Initial and Spatial Resampling", 0b11);
+  SOCKET_INT(use_restir, "Initial and Spatial Resampling", 0b111);
   SOCKET_BOOLEAN(restir_unbiased, "Unbiased", true);
-  SOCKET_INT(restir_light_samples, "Light", 8);
-  SOCKET_INT(restir_bsdf_samples, "BSDF", 3);
-  SOCKET_INT(restir_spatial_radius, "Radius", 15);
-  SOCKET_INT(restir_spatial_neighbors, "Samples", 5);
-  SOCKET_INT(restir_spatial_iterations, "Iterations", 3);
+  SOCKET_INT(restir_light_samples, "Light", 4);
+  SOCKET_INT(restir_bsdf_samples, "BSDF", 1);
+  SOCKET_INT(restir_spatial_radius, "Radius", 10);
+  SOCKET_INT(restir_spatial_neighbors, "Samples", 6);
+  SOCKET_INT(restir_spatial_iterations, "Iterations", 2);
 
   static NodeEnum sampling_pattern_enum;
   sampling_pattern_enum.insert("sobol_burley", SAMPLING_PATTERN_SOBOL_BURLEY);
