@@ -37,7 +37,7 @@ static void node_register()
       &ntype, GEO_NODE_SET_INSTANCE_TRANSFORM, "Set Instance Transform", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  bke::node_type_size(&ntype, 140, 100, 700);
+  bke::node_type_size(&ntype, 160, 100, 700);
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
