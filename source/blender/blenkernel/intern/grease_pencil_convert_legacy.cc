@@ -2961,20 +2961,6 @@ void legacy_gpencil_object(Main &bmain, Object &object)
   legacy_gpencil_object_ex(conversion_data, object);
 }
 
-static void legacy_gpencil_brushes(Main &bmain)
-{
-  LISTBASE_FOREACH (Brush *, brush, &bmain.brushes) {
-    /* Only for grease pencil brushes. */
-    if (brush->gpencil_settings) {
-      /* Use the `Scene` radius unit by default.
-       * Convert the radius to be the same visual size as in GPv2. */
-      brush->flag |= BRUSH_LOCK_SIZE;
-      brush->unprojected_radius = brush->size *
-                                  blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
-    }
-  }
-}
-
 void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
 {
   ConversionData conversion_data(bmain);
@@ -3015,8 +3001,6 @@ void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
   }
 
   BKE_libblock_remap_multiple(&bmain, gpd_remapper, ID_REMAP_ALLOW_IDTYPE_MISMATCH);
-
-  legacy_gpencil_brushes(bmain);
 }
 
 void lineart_wrap_v3(const LineartGpencilModifierData *lmd_legacy,
