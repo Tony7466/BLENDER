@@ -1,1 +1,1 @@
-Referenced by issue #121459, STL export crash in edit mode
+Referenced by issue #121459, STL / Alembic export empty meshes in editmode (also assert)
