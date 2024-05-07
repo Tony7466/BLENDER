@@ -165,7 +165,7 @@ class ShaderCompiler {
  protected:
   struct Batch {
     Vector<Shader *> shaders;
-    Vector<shader::ShaderCreateInfo *> infos;
+    Vector<const shader::ShaderCreateInfo *> infos;
     bool is_ready = false;
   };
   BatchHandle next_batch_handle = 1;
@@ -175,7 +175,7 @@ class ShaderCompiler {
   ~ShaderCompiler();
 
   virtual Shader *compile(const shader::ShaderCreateInfo &info);
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos);
+  virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos);
   virtual bool batch_is_ready(BatchHandle handle);
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle);
 };

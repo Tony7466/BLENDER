@@ -217,7 +217,7 @@ class GLShaderCompiler : public ShaderCompiler {
  public:
   void process(bool block = false);
 
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
+  virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };

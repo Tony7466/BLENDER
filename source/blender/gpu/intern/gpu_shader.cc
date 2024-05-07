@@ -328,10 +328,11 @@ GPUShader *GPU_shader_create_from_python(const char *vertcode,
   return sh;
 }
 
-BatchHandle GPU_shader_batch_create_from_infos(Span<GPUShaderCreateInfo *> infos)
+BatchHandle GPU_shader_batch_create_from_infos(Span<const GPUShaderCreateInfo *> infos)
 {
   using namespace blender::gpu::shader;
-  Span<ShaderCreateInfo *> &infos_ = reinterpret_cast<Span<ShaderCreateInfo *> &>(infos);
+  Span<const ShaderCreateInfo *> &infos_ = reinterpret_cast<Span<const ShaderCreateInfo *> &>(
+      infos);
   return Context::get()->compiler->batch_compile(infos_);
 }
 
@@ -914,14 +915,14 @@ Shader *ShaderCompiler::compile(const shader::ShaderCreateInfo &info)
   return shader;
 }
 
-BatchHandle ShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
+BatchHandle ShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
   BatchHandle handle = next_batch_handle++;
   batches.add(handle, {{}, infos, true});
   Batch &batch = batches.lookup(handle);
   batch.shaders.reserve(infos.size());
-  for (shader::ShaderCreateInfo *info : infos) {
-    info->do_batch_compilation = true;
+  for (const shader::ShaderCreateInfo *info : infos) {
+    const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = true;
     batch.shaders.append(compile(*info));
   }
   return handle;

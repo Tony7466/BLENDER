@@ -69,7 +69,7 @@ using BatchHandle = int;
  * WARNING: The GPUShaderCreateInfo pointers should be valid until `GPU_shader_batch_finalize` has
  * returned.
  */
-BatchHandle GPU_shader_batch_create_from_infos(blender::Span<GPUShaderCreateInfo *> infos);
+BatchHandle GPU_shader_batch_create_from_infos(blender::Span<const GPUShaderCreateInfo *> infos);
 /**
  * Returns true if all the shaders from the batch have finished their compilation.
  */

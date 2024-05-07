@@ -1572,15 +1572,15 @@ GLuint GLShader::program_get()
 /** \name GLShaderCompiler
  * \{ */
 
-BatchHandle GLShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
+BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
   mutex.lock();
   BatchHandle handle = next_batch_handle++;
   batches.add(handle, {{}, infos, false});
   Batch &batch = batches.lookup(handle);
   batch.shaders.reserve(infos.size());
-  for (shader::ShaderCreateInfo *info : infos) {
-    info->do_batch_compilation = true;
+  for (const shader::ShaderCreateInfo *info : infos) {
+    const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = true;
   }
   mutex.unlock();
   return handle;
