@@ -194,7 +194,7 @@ void ShadowTileMapPool::end_sync(ShadowModule &module)
     tilemaps_clip.resize(needed_tilemap_capacity);
     /* We reallocated the tile-map buffer, discarding all the data it contained.
      * We need to re-initialize the page heaps. */
-    module.do_full_update = true;
+    module.do_full_update_ = true;
   }
 
   tilemaps_unused.clear();
@@ -231,9 +231,7 @@ void ShadowPunctual::sync(eLightType light_type,
                           const float4x4 &object_mat,
                           float cone_aperture,
                           float light_shape_radius,
-                          float max_distance,
-                          float softness_factor,
-                          float shadow_radius)
+                          float max_distance)
 {
   if (is_spot_light(light_type)) {
     tilemaps_needed_ = (cone_aperture > DEG2RADF(90.0f)) ? 5 : 1;
@@ -251,8 +249,6 @@ void ShadowPunctual::sync(eLightType light_type,
   light_type_ = light_type;
 
   position_ = float3(object_mat[3]);
-  softness_factor_ = softness_factor;
-  shadow_radius_ = shadow_radius;
 }
 
 void ShadowPunctual::release_excess_tilemaps()
@@ -317,7 +313,6 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
   light.clip_far = as_int.i;
   light.local.clip_side = side;
   light.local.shadow_projection_shift = shift;
-  light.local.shadow_scale = softness_factor_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {
     /* Add shadow tile-maps grouped by lights to the GPU buffer. */
@@ -698,7 +693,7 @@ void ShadowModule::init()
   }
   if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */
-    do_full_update = true;
+    do_full_update_ = true;
   }
 
   /* Make allocation safe. Avoids crash later on. */
@@ -915,8 +910,8 @@ void ShadowModule::end_sync()
 
   curr_casters_.push_update();
 
-  if (do_full_update) {
-    do_full_update = false;
+  if (do_full_update_) {
+    do_full_update_ = false;
     /* Put all pages in the free heap. */
     for (uint i : IndexRange(shadow_page_len_)) {
       uint3 page = {i % SHADOW_PAGE_PER_ROW,
