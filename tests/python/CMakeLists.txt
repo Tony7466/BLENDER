@@ -777,14 +777,18 @@ if(WITH_COMPOSITOR_CPU)
     message(WARNING "Disabling Compositor CPU tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
-      color
-      converter
-      filter
-      input
-      output
-      vector
+        input
+        output
+        color
+        filter
+        keying
+        mask
+        tracking
+        transform
+        utilities
+        vector
 
-      multiple_node_setups
+        multiple_node_setups
     )
 
     if(WITH_LIBMV)
@@ -809,11 +813,15 @@ if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
     message(WARNING "Disabling realtime compositor tests because OIIO oiiotool does not exist")
   else()
     set(compositor_tests
-        color
-        converter
-        filter
         input
         output
+        color
+        filter
+        keying
+        mask
+        tracking
+        transform
+        utilities
         vector
 
         multiple_node_setups
