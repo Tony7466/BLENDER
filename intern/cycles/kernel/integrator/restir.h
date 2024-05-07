@@ -368,6 +368,7 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   const bool read_prev = state->read_previous_reservoir;
   integrator_restir_unpack_reservoir(kg, &reservoir, render_pixel_index, render_buffer, read_prev);
   if (reservoir.is_empty()) {
+    film_clear_pass_surface_data(kg, state, render_buffer);
     return;
   }
 
@@ -387,6 +388,10 @@ ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
   path_state_rng_load(state, &rng_state);
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
+
+  /* TODO(weizhen): clear data properly. */
+  film_clear_data_pass_reservoir(kg, state, render_buffer, !read_prev);
+  film_clear_pass_surface_data(kg, state, render_buffer);
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,

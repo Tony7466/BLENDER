@@ -266,4 +266,16 @@ ccl_device_inline void film_clear_data_pass_reservoir(KernelGlobals kg,
   }
 }
 
+ccl_device_inline void film_clear_pass_surface_data(KernelGlobals kg,
+                                                    IntegratorState state,
+                                                    ccl_global float *ccl_restrict render_buffer)
+{
+  if (kernel_data.film.pass_flag & PASSMASK(SURFACE_DATA)) {
+    ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
+    /* Set sd.type to zero. */
+    float *ptr = buffer + 3 + kernel_data.film.pass_surface_data;
+    film_overwrite_pass_float(ptr, 0.0f);
+  }
+}
+
 CCL_NAMESPACE_END
