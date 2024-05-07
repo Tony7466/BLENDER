@@ -365,16 +365,19 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
   bool use_initial_resampling = get_boolean(cscene, "use_initial_resampling");
   bool use_spatial_resampling = get_boolean(cscene, "use_spatial_resampling");
   const bool restir_unbiased = get_boolean(cscene, "restir_unbiased");
-  const int light_samples = get_int(cscene, "restir_light_samples");
-  const int bsdf_samples = get_int(cscene, "restir_bsdf_samples");
+  int light_samples = get_int(cscene, "restir_light_samples");
+  int bsdf_samples = get_int(cscene, "restir_bsdf_samples");
 
   if (light_samples == 1 && bsdf_samples == 1 && !(use_spatial_resampling && restir_unbiased)) {
     use_initial_resampling = false;
   }
 
   if (!use_restir) {
-    use_initial_resampling = false;
-    use_spatial_resampling = false;
+    use_initial_resampling = use_spatial_resampling = false;
+  }
+
+  if (!use_initial_resampling) {
+    light_samples = bsdf_samples = 1;
   }
 
   const bool pairwise_mis = get_boolean(cscene, "restir_pairwise");

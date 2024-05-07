@@ -416,8 +416,8 @@ ccl_device
    * Importance resampling for global illumination. Brigham Young University, 2005. */
   /* TODO(weizhen): add MNEE back? */
   const bool is_direct_light = light_is_direct_illumination(state);
-  const bool use_ris = is_direct_light && kernel_data.integrator.use_initial_resampling;
-  const bool use_bsdf_samples = is_direct_light && kernel_data.integrator.use_spatial_resampling;
+  const bool use_ris = is_direct_light && (kernel_data.integrator.use_initial_resampling ||
+                                           kernel_data.integrator.use_spatial_resampling);
 
   /* Sample position on a light. */
   Reservoir reservoir(kg, use_ris);
@@ -473,7 +473,7 @@ ccl_device
   }
 
   /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
-  for (int i = 0; i < reservoir.num_bsdf_samples * use_bsdf_samples; i++) {
+  for (int i = 0; i < reservoir.num_bsdf_samples * use_ris; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_BSDF_RESAMPLING);
     kernel_assert(bounce == 0);
 
@@ -682,7 +682,7 @@ ccl_device
     return;
   }
 
-  if (use_bsdf_samples) {
+  if (is_direct_light && kernel_data.integrator.use_spatial_resampling) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
     film_write_data_pass_reservoir(kg, state, &reservoir, render_buffer);
