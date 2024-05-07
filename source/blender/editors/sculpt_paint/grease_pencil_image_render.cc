@@ -292,7 +292,7 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
 
   immBeginAtMost(GPU_PRIM_LINE_STRIP_ADJ, indices.size() + cyclic_add + 2);
 
-  auto set_point = [&](const int point_i) {
+  auto draw_point = [&](const int point_i) {
     constexpr const float radius_to_pixel_factor =
         1.0f / bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
     const float thickness = radii[point_i] * radius_to_pixel_factor;
@@ -305,23 +305,23 @@ void draw_grease_pencil_stroke(const RegionView3D &rv3d,
 
   /* First point for adjacency (not drawn). */
   if (cyclic && indices.size() > 2) {
-    set_point(indices.last() - 1);
+    draw_point(indices.last() - 1);
   }
   else {
-    set_point(indices.first() + 1);
+    draw_point(indices.first() + 1);
   }
 
   for (const int point_i : indices) {
-    set_point(point_i);
+    draw_point(point_i);
   }
 
   if (cyclic && indices.size() > 2) {
-    set_point(indices.first());
-    set_point(indices.first() + 1);
+    draw_point(indices.first());
+    draw_point(indices.first() + 1);
   }
   /* Last adjacency point (not drawn). */
   else {
-    set_point(indices.last() - 1);
+    draw_point(indices.last() - 1);
   }
 
   immEnd();
