@@ -33,7 +33,7 @@ float shadow_read_depth(SHADOW_ATLAS_TYPE atlas_tx,
   uvec2 texel_page = (texel >> tile.lod) & page_mask;
   texel = (uvec2(tile.page.xy) << page_shift) | texel_page;
 
-  return uintBitsToFloat(texelFetch(atlas_tx, ivec3(texel, tile.page.z), 0).r);
+  return uintBitsToFloat(texelFetch(atlas_tx, ivec3(ivec2(texel), tile.page.z), 0).r);
 }
 
 /* ---------------------------------------------------------------------- */

@@ -51,7 +51,7 @@ void main()
   int tilemap_index = int(gl_GlobalInvocationID.z);
   ivec2 tile_co = ivec2(gl_GlobalInvocationID.xy);
 
-  uvec2 atlas_texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
+  uvec2 atlas_texel = shadow_tile_coord_in_atlas(uvec2(tile_co), tilemap_index);
 
   ShadowTileMapData tilemap_data = tilemaps_buf[tilemap_index];
   bool is_cubemap = (tilemap_data.projection_type == SHADOW_PROJECTION_CUBEFACE);
@@ -64,7 +64,7 @@ void main()
    * Add one render view per LOD that has tiles to be rendered. */
   for (int lod = lod_max; lod >= 0; lod--) {
     ivec2 tile_co_lod = tile_co >> lod;
-    int tile_index = shadow_tile_offset(tile_co_lod, tilemap_data.tiles_index, lod);
+    int tile_index = shadow_tile_offset(uvec2(tile_co_lod), tilemap_data.tiles_index, lod);
 
     ShadowTileData tile = shadow_tile_unpack(tiles_buf[tile_index]);
 

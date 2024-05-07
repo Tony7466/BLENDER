@@ -124,7 +124,7 @@ bool debug_tilemaps(vec3 P, LightData light)
   if ((px.y < SHADOW_TILEMAP_RES) && (tilemap_index <= light_tilemap_max_get(light))) {
 #if 1
     /* Debug values in the tilemap_tx. */
-    uvec2 tilemap_texel = shadow_tile_coord_in_atlas(px, tilemap_index);
+    uvec2 tilemap_texel = shadow_tile_coord_in_atlas(uvec2(px), tilemap_index);
     ShadowSamplingTile tile = shadow_sampling_tile_unpack(
         texelFetch(shadow_tilemaps_tx, ivec2(tilemap_texel), 0).x);
     /* Leave 1 px border between tile-maps. */

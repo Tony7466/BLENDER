@@ -44,7 +44,7 @@ void main()
     /* Iterate in reverse. */
     for (int lod = lod_max; lod >= 0; lod--) {
       int tilemap_index = light.tilemap_index + lod;
-      uvec2 atlas_texel = shadow_tile_coord_in_atlas(tile_co, tilemap_index);
+      uvec2 atlas_texel = shadow_tile_coord_in_atlas(uvec2(tile_co), tilemap_index);
 
       ShadowSamplingTilePacked tile_packed = imageLoad(tilemaps_img, ivec2(atlas_texel)).x;
       ShadowSamplingTile tile = shadow_sampling_tile_unpack(tile_packed);
