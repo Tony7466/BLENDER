@@ -1560,11 +1560,32 @@ void OBJECT_OT_paths_clear(wmOperatorType *ot)
 /** \name Object Shade Smooth/Flat Operator
  * \{ */
 
+static bool is_smooth_by_angle_modifier(const ModifierData &md)
+{
+  if (md.type != eModifierType_Nodes) {
+    return false;
+  }
+  const NodesModifierData &nmd = reinterpret_cast<const NodesModifierData &>(md);
+  if (!nmd.node_group) {
+    return false;
+  }
+  const LibraryWeakReference *library_ref = nmd.node_group->id.library_weak_reference;
+  if (!library_ref) {
+    return false;
+  }
+  if (!STREQ(library_ref->library_id_name + 2, "Smooth by Angle")) {
+    return false;
+  }
+  return true;
+}
+
 static int shade_smooth_exec(bContext *C, wmOperator *op)
 {
+  const bool use_flat = STREQ(op->idname, "OBJECT_OT_shade_flat");
   const bool use_smooth = STREQ(op->idname, "OBJECT_OT_shade_smooth");
   const bool use_smooth_by_angle = STREQ(op->idname, "OBJECT_OT_shade_smooth_by_angle");
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
 
   Vector<PointerRNA> ctx_objects;
 
@@ -1588,6 +1609,18 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
     Object *ob = static_cast<Object *>(ptr.data);
     if (ID *data = static_cast<ID *>(ob->data)) {
       object_data.add(data);
+
+      if (ob->type == OB_MESH) {
+        if (use_flat || use_smooth) {
+          LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+            if (is_smooth_by_angle_modifier(*md)) {
+              modifier_remove(op->reports, bmain, scene, ob, md);
+              DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1720,25 +1753,6 @@ void OBJECT_OT_shade_smooth_by_angle(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Object Shade Auto Smooth Operator
  * \{ */
-
-static bool is_smooth_by_angle_modifier(const ModifierData &md)
-{
-  if (md.type != eModifierType_Nodes) {
-    return false;
-  }
-  const NodesModifierData &nmd = reinterpret_cast<const NodesModifierData &>(md);
-  if (!nmd.node_group) {
-    return false;
-  }
-  const LibraryWeakReference *library_ref = nmd.node_group->id.library_weak_reference;
-  if (!library_ref) {
-    return false;
-  }
-  if (!STREQ(library_ref->library_id_name + 2, "Smooth by Angle")) {
-    return false;
-  }
-  return true;
-}
 
 static int shade_auto_smooth_exec(bContext *C, wmOperator *op)
 {
