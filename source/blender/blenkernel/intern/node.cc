@@ -1307,7 +1307,7 @@ static void node_tree_asset_on_mark_asset(void *asset_ptr, AssetMetaData *asset_
   }
 }
 
-static void node_tree_asset_on_unmark_asset(void *asset_ptr, AssetMetaData *asset_data)
+static void node_tree_asset_on_clear_asset(void *asset_ptr, AssetMetaData *asset_data)
 {
   bNodeTree &ntree = *static_cast<bNodeTree *>(asset_ptr);
 
@@ -1324,7 +1324,7 @@ static void node_tree_asset_on_unmark_asset(void *asset_ptr, AssetMetaData *asse
 static AssetTypeInfo AssetType_NT = {
     /*pre_save_fn*/ blender::bke::node_tree_asset_pre_save,
     /*on_mark_asset_fn*/ blender::bke::node_tree_asset_on_mark_asset,
-    /*on_unmark_asset_fn*/ blender::bke::node_tree_asset_on_unmark_asset,
+    /*on_clear_asset_fn*/ blender::bke::node_tree_asset_on_clear_asset,
 };
 
 IDTypeInfo IDType_ID_NT = {

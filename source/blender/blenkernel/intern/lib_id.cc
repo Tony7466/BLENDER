@@ -576,8 +576,8 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const int flags)
   if (ID_IS_ASSET(id)) {
     if (idtype_info->asset_type_info) {
       if (flags & LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR) {
-        if (idtype_info->asset_type_info->on_unmark_asset_fn) {
-          idtype_info->asset_type_info->on_unmark_asset_fn(id, id->asset_data);
+        if (idtype_info->asset_type_info->on_clear_asset_fn) {
+          idtype_info->asset_type_info->on_clear_asset_fn(id, id->asset_data);
         }
       }
     }

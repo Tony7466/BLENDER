@@ -24,7 +24,7 @@ struct PreviewImage;
 
 using PreSaveFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
 using OnMarkAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
-using OnUnmarkAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
+using OnClearAssetDataFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
 
 struct AssetTypeInfo {
   /**
@@ -33,8 +33,11 @@ struct AssetTypeInfo {
    */
   PreSaveFn pre_save_fn;
   OnMarkAssetFn on_mark_asset_fn;
-  /** Called when the asset data is removed. */
-  OnUnmarkAssetFn on_unmark_asset_fn;
+  /**
+   * Should be called whenever a local asset gets cleared of its asset data but stays available
+   * otherwise, i.e. when an asset data-block is turned back into a normal data-block.
+   */
+  OnClearAssetDataFn on_clear_asset_fn;
 };
 
 AssetMetaData *BKE_asset_metadata_create();
