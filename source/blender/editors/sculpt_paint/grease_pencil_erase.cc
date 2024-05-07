@@ -315,7 +315,8 @@ struct EraseOperationExecutor {
             /* NOTE: We don't account for boundaries here, since we are not going to split any
              * curve. */
             if ((r_point_ring[src_point].first == -1) &&
-                (squared_distance <= eraser_point.squared_radius)) {
+                (squared_distance <= eraser_point.squared_radius))
+            {
               r_point_ring[src_point] = {ring_index, PointCircleSide::Inside};
             }
             ++ring_index;
@@ -437,12 +438,6 @@ struct EraseOperationExecutor {
     return total_intersections;
   }
 
-
-    /* Additional attributes changes that can be stored to be used after a call to
-     * compute_topology_change.
-     * Note that they won't be automatically updated in the destination's attributes.
-     */
-    float opacity;
   /* The hard eraser cuts out the curves at their intersection with the eraser, and removes
    * everything that lies in-between two consecutive intersections. Note that intersections are
    * computed using integers (pixel-space) to avoid floating-point approximation errors. */
@@ -590,13 +585,13 @@ struct EraseOperationExecutor {
     /* Finally, simplify the array to have a minimal set of samples. */
     nb_samples = eraser_rings.size();
 
-    const auto opacity_distance = [&](const IndexRange &sub_range, const int index) {
+    const auto opacity_distance = [&](int64_t first_index, int64_t last_index, int64_t index) {
       /* Distance function for the simplification algorithm.
        * It is computed as the difference in opacity that may result from removing the
        * samples inside the range. */
-      const EraserRing &sample_first = eraser_rings[sub_range.first()];
-      const EraserRing &sample_last = eraser_rings[sub_range.last()];
-      const EraserRing &sample = eraser_rings[sub_range[index]];
+      const EraserRing &sample_first = eraser_rings[first_index];
+      const EraserRing &sample_last = eraser_rings[last_index];
+      const EraserRing &sample = eraser_rings[index];
 
       /* If we were to remove the samples between sample_first and sample_last, then the opacity
        * at sample.radius would be a linear interpolation between the opacities in the endpoints
@@ -655,7 +650,7 @@ struct EraseOperationExecutor {
 
     /* Function to get the resulting opacity at a specific point in the source. */
     const VArray<float> &src_opacity = *(
-        src.attributes().lookup_or_default<float>(opacity_attr, ATTR_DOMAIN_POINT, 1.0f));
+        src.attributes().lookup_or_default<float>(opacity_attr, bke::AttrDomain::Point, 1.0f));
     const auto compute_opacity = [&](const int src_point) {
       const float distance = math::distance(screen_space_positions[src_point],
                                             this->mouse_position);
@@ -670,13 +665,13 @@ struct EraseOperationExecutor {
      * can either be directly a point of the source, or a point inside a segment of the source. A
      * destination point can also carry the role of a "cut", meaning it is going to be the first
      * point of a new splitted curve in the destination. */
-    Array<Vector<PointTransferData>> src_to_dst_points(src_points_num);
+    Array<Vector<ed::greasepencil::PointTransferData>> src_to_dst_points(src_points_num);
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     for (const int src_curve : src.curves_range()) {
       const IndexRange src_points = src_points_by_curve[src_curve];
 
       for (const int src_point : src_points) {
-        Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
+        Vector<ed::greasepencil::PointTransferData> &dst_points = src_to_dst_points[src_point];
         const int src_next_point = (src_point == src_points.last()) ? src_points.first() :
                                                                       (src_point + 1);
 
@@ -730,7 +725,7 @@ struct EraseOperationExecutor {
       }
     }
 
-    const Array<PointTransferData> dst_points = compute_topology_change(
+    const Array<ed::greasepencil::PointTransferData> dst_points = compute_topology_change(
         src, dst, src_to_dst_points, keep_caps);
 
     /* Set opacity. */
@@ -738,17 +733,17 @@ struct EraseOperationExecutor {
     const bke::AnonymousAttributePropagationInfo propagation_info{};
 
     bke::SpanAttributeWriter<float> dst_opacity =
-        dst_attributes.lookup_or_add_for_write_span<float>(opacity_attr, ATTR_DOMAIN_POINT);
+        dst_attributes.lookup_or_add_for_write_span<float>(opacity_attr, bke::AttrDomain::Point);
     threading::parallel_for(dst.points_range(), 4096, [&](const IndexRange dst_points_range) {
       for (const int dst_point_index : dst_points_range) {
-        const PointTransferData &dst_point = dst_points[dst_point_index];
+        const ed::greasepencil::PointTransferData &dst_point = dst_points[dst_point_index];
         dst_opacity.span[dst_point_index] = dst_point.opacity;
       }
     });
     dst_opacity.finish();
 
     SpanAttributeWriter<bool> dst_inserted = dst_attributes.lookup_or_add_for_write_span<bool>(
-        "_eraser_inserted", ATTR_DOMAIN_POINT);
+        "_eraser_inserted", bke::AttrDomain::Point);
     const OffsetIndices<int> &dst_points_by_curve = dst.points_by_curve();
     threading::parallel_for(dst.curves_range(), 4096, [&](const IndexRange dst_curves_range) {
       for (const int dst_curve : dst_curves_range) {
@@ -762,7 +757,7 @@ struct EraseOperationExecutor {
         }
 
         for (const int dst_point_index : dst_points_range.drop_back(1).drop_front(1)) {
-          const PointTransferData &dst_point = dst_points[dst_point_index];
+          const ed::greasepencil::PointTransferData &dst_point = dst_points[dst_point_index];
           dst_inserted.span[dst_point_index] |= !dst_point.is_src_point;
         }
       }
@@ -973,8 +968,8 @@ void EraseOperation::on_stroke_done(const bContext & /*C*/)
     blender::bke::CurvesGeometry &curves = drawing_->geometry.wrap();
 
     /* Simplify in between the ranges of inserted points. */
-    const VArray<bool> &point_was_inserted = *curves.attributes().lookup<bool>("_eraser_inserted",
-                                                                               ATTR_DOMAIN_POINT);
+    const VArray<bool> &point_was_inserted = *curves.attributes().lookup<bool>(
+        "_eraser_inserted", bke::AttrDomain::Point);
     if (point_was_inserted.is_empty()) {
       continue;
     }
@@ -986,19 +981,17 @@ void EraseOperation::on_stroke_done(const bContext & /*C*/)
      * samples inside the range. */
     VArray<float> opacities = drawing_->wrap().opacities();
     Span<float3> positions = curves.positions();
-    const auto opacity_distance = [&](const IndexRange &sub_range, const int index) {
-      Span<float3> s_positions = positions.slice(sub_range);
-      const float3 &s0 = s_positions.first();
-      const float3 &s1 = s_positions.last();
+    const auto opacity_distance = [&](int64_t first_index, int64_t last_index, int64_t index) {
+      const float3 &s0 = positions[first_index];
+      const float3 &s1 = positions[last_index];
       const float segment_length = math::distance(s0, s1);
       if (segment_length < 1e-6) {
         return 0.0f;
       }
-      const float t = math::distance(s0, s_positions[index]) / segment_length;
+      const float t = math::distance(s0, positions[index]) / segment_length;
       const float linear_opacity = math::interpolate(
-          opacities[sub_range.first()], opacities[sub_range.last()], t);
-      const int abs_index = index + sub_range.first();
-      return math::abs(opacities[abs_index] - linear_opacity);
+          opacities[first_index], opacities[last_index], t);
+      return math::abs(opacities[index] - linear_opacity);
     };
 
     Array<bool> remove_points(curves.points_num(), false);
@@ -1012,7 +1005,7 @@ void EraseOperation::on_stroke_done(const bContext & /*C*/)
     IndexMaskMemory mem_remove;
     IndexMask points_to_remove = IndexMask::from_bools(remove_points, mem_remove);
 
-    curves.remove_points(points_to_remove);
+    curves.remove_points(points_to_remove, {});
     drawing_->wrap().tag_topology_changed();
 
     curves.attributes_for_write().remove("_eraser_inserted");
