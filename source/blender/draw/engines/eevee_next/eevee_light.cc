@@ -17,7 +17,6 @@
 #include "BLI_math_rotation.h"
 #include "DNA_defaults.h"
 
-
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -357,7 +356,7 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   light.used = true;
   if (handle.recalc != 0 || !light.initialized) {
     light.initialized = true;
-    light.sync(inst_.shadows, ob->world_to_object(), ob->visibility_flag, la, light_threshold_);
+    light.sync(inst_.shadows, ob->object_to_world(), ob->visibility_flag, la, light_threshold_);
   }
   sun_lights_len_ += int(is_sun_light(light.type));
   local_lights_len_ += int(!is_sun_light(light.type));
