@@ -660,10 +660,10 @@ static bke::CurvesGeometry process_image(Image &ima,
 constexpr const char *attr_material_index = "material_index";
 constexpr const char *attr_is_boundary = "is_boundary";
 
-static IndexMask get_curve_mask(const Object &object,
-                                const DrawingInfo &info,
-                                const bool is_boundary_layer,
-                                IndexMaskMemory &memory)
+static IndexMask get_visible_boundary_strokes(const Object &object,
+                                              const DrawingInfo &info,
+                                              const bool is_boundary_layer,
+                                              IndexMaskMemory &memory)
 {
   const bke::CurvesGeometry &strokes = info.drawing.strokes();
   const bke::AttributeAccessor attributes = strokes.attributes();
@@ -781,7 +781,7 @@ static rctf get_boundary_bounds(const ARegion &region,
         "is_boundary", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory curve_mask_memory;
-    const IndexMask curve_mask = get_curve_mask(
+    const IndexMask curve_mask = get_visible_boundary_strokes(
         object, info, only_boundary_strokes, curve_mask_memory);
 
     curve_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
@@ -965,7 +965,7 @@ bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                                           bke::AttrDomain::Curve);
 
     IndexMaskMemory curve_mask_memory;
-    const IndexMask curve_mask = get_curve_mask(
+    const IndexMask curve_mask = get_visible_boundary_strokes(
         object, info, is_boundary_layer, curve_mask_memory);
 
     const VArray<ColorGeometry4f> colors = stroke_colors(object,
