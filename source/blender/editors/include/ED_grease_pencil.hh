@@ -417,14 +417,14 @@ enum FillToolFitMethod {
  * then fills the image starting from the mouse position.
  * The outlines of the filled pixel areas are returned as curves.
  *
- * \param layer The layer containing the new stroke, used for reprojecting from images.
- * \param boundary_layers Layers that are purely for boundaries, regular strokes are not rendered.
- * \param src_drawings Drawings to include as boundary strokes.
- * \param invert Construct boundary around empty areas instead.
- * \param fill_point Point from which to start the bucket fill.
- * \param fit_method View fitting method to include all strokes.
- * \param stroke_material_index Material index to use for the new strokes.
- * \param keep_images Keep the image data block after generating curves.
+ * \param layer: The layer containing the new stroke, used for reprojecting from images.
+ * \param boundary_layers: Layers that are purely for boundaries, regular strokes are not rendered.
+ * \param src_drawings: Drawings to include as boundary strokes.
+ * \param invert: Construct boundary around empty areas instead.
+ * \param fill_point: Point from which to start the bucket fill.
+ * \param fit_method: View fitting method to include all strokes.
+ * \param stroke_material_index: Material index to use for the new strokes.
+ * \param keep_images: Keep the image data block after generating curves.
  */
 bke::CurvesGeometry fill_strokes(ARegion &region,
                                  View3D &view3d,
@@ -473,9 +473,9 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
 /**
  * Set up the view matrix for world space rendering.
  *
- * \param win_size Size of the render window.
- * \param zoom Zoom factor to render a smaller or larger part of the view.
- * \param offset Offset of the view relative to the overall size.
+ * \param win_size: Size of the render window.
+ * \param zoom: Zoom factor to render a smaller or larger part of the view.
+ * \param offset: Offset of the view relative to the overall size.
  */
 void set_viewmat(ARegion &region,
                  View3D &view3d,
@@ -529,7 +529,7 @@ void draw_dots(IndexRange indices,
 
 /**
  * Draw curves geometry.
- * \param mode Mode of \a eMaterialGPencilStyle_Mode.
+ * \param mode: Mode of \a eMaterialGPencilStyle_Mode.
  */
 void draw_grease_pencil_strokes(const RegionView3D &rv3d,
                                 const int2 &win_size,
