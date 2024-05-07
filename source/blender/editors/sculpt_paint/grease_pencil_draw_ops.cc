@@ -49,6 +49,7 @@
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
 
+#include "WM_types.hh"
 #include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
@@ -507,6 +508,10 @@ struct GreasePencilFillOpData {
   bool is_extension_mode = false;
   /* Mouse position where the extension mode was enabled. */
   float2 extension_mouse_pos;
+  /* Toggle inverse filling. */
+  bool invert = false;
+  /* Toggle precision mode. */
+  bool precision = false;
 
   ~GreasePencilFillOpData()
   {
@@ -685,10 +690,7 @@ static Vector<FillToolTargetInfo> ensure_editable_drawings(const Scene &scene,
   return drawings;
 }
 
-static bool grease_pencil_apply_fill(bContext &C,
-                                     wmOperator &op,
-                                     const wmEvent &event,
-                                     const bool is_inverted)
+static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent &event)
 {
   using bke::greasepencil::Layer;
   using ed::greasepencil::DrawingInfo;
@@ -735,7 +737,7 @@ static bool grease_pencil_apply_fill(bContext &C,
                                                    layer,
                                                    boundary_layers,
                                                    info.sources,
-                                                   is_inverted,
+                                                   op_data.invert,
                                                    mouse_position,
                                                    fit_method,
                                                    op_data.material_index,
@@ -869,22 +871,18 @@ enum class FillToolModalKey : int8_t {
   ExtensionsShorten,
   ExtensionsDrag,
   ExtensionsCollide,
+  Invert,
+  Precision,
 };
 
 static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  const bool is_ctrl_pressed = (event->modifier & KM_CTRL);
-  const bool is_shift_pressed = (event->modifier & KM_SHIFT);
-  const ToolSettings &ts = *CTX_data_tool_settings(C);
-  const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
-  const bool is_brush_inv = brush.gpencil_settings->fill_direction == BRUSH_DIR_IN;
-
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
-  const bool is_inverted = (is_brush_inv != is_ctrl_pressed);
-  const bool show_extend = ((op_data.flag & GP_BRUSH_FILL_SHOW_EXTENDLINES) && !is_inverted);
+  const bool show_extend = (op_data.flag & GP_BRUSH_FILL_SHOW_EXTENDLINES);
   // const bool help_lines = (((op_data.flag & GP_BRUSH_FILL_SHOW_HELPLINES) || show_extend) &&
   //                          !is_inverted);
   // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+  const float extension_delta = (op_data.precision ? 0.01f : 0.1f);
 
   switch (event->val) {
     case int(FillToolModalKey::Cancel):
@@ -897,8 +895,7 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
       }
 
       op_data.fill_mouse_pos = float2(event->mval);
-      return (grease_pencil_apply_fill(*C, *op, *event, is_inverted) ? OPERATOR_FINISHED :
-                                                                       OPERATOR_CANCELLED);
+      return (grease_pencil_apply_fill(*C, *op, *event) ? OPERATOR_FINISHED : OPERATOR_CANCELLED);
     }
 
     case int(FillToolModalKey::GapClosureMode):
@@ -915,14 +912,12 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
       break;
 
     case int(FillToolModalKey::ExtensionsLengthen):
-      op_data.fill_extend_fac = std::max(
-          op_data.fill_extend_fac - (is_shift_pressed ? 0.01f : 0.1f), 0.0f);
+      op_data.fill_extend_fac = std::max(op_data.fill_extend_fac - extension_delta, 0.0f);
       grease_pencil_update_extend(*C, op_data);
       break;
 
     case int(FillToolModalKey::ExtensionsShorten):
-      op_data.fill_extend_fac = std::min(
-          op_data.fill_extend_fac + (is_shift_pressed ? 0.01f : 0.1f), 10.0f);
+      op_data.fill_extend_fac = std::min(op_data.fill_extend_fac + extension_delta, 10.0f);
       grease_pencil_update_extend(*C, op_data);
       break;
 
@@ -954,6 +949,14 @@ static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const
         op_data.flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
         grease_pencil_update_extend(*C, op_data);
       }
+      break;
+
+    case int(FillToolModalKey::Invert):
+      op_data.invert = !op_data.invert;
+      break;
+
+    case int(FillToolModalKey::Precision):
+      op_data.precision = !op_data.precision;
       break;
 
     default:
@@ -1083,6 +1086,8 @@ void ED_filltool_modal_keymap(wmKeyConfig *keyconf)
        0,
        "Collide Extensions",
        ""},
+      {int(FillToolModalKey::Invert), "INVERT", 0, "Invert", ""},
+      {int(FillToolModalKey::Precision), "PRECISION", 0, "Precision", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

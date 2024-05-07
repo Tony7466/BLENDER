@@ -4810,7 +4810,7 @@ def km_grease_pencil_fill_tool_modal_map(params):
     items.extend([
         ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
         ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
-        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS', "any": True}, None),
         ("GAP_CLOSURE_MODE", {"type": 'S', "value": 'PRESS'}, None),
         ("EXTENSIONS_LENGTHEN", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True}, None),
         ("EXTENSIONS_LENGTHEN", {"type": 'WHEELUPMOUSE', "value": 'PRESS'}, None),
@@ -4818,6 +4818,10 @@ def km_grease_pencil_fill_tool_modal_map(params):
         ("EXTENSIONS_SHORTEN", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
         ("EXTENSIONS_DRAG", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         ("EXTENSIONS_COLLIDE", {"type": 'D', "value": 'PRESS'}, None),
+        ("INVERT", {"type": 'LEFT_CTRL', "value": 'PRESS', "any": True}, None),
+        ("INVERT", {"type": 'RIGHT_CTRL', "value": 'PRESS', "any": True}, None),
+        ("PRECISION", {"type": 'LEFT_SHIFT', "value": 'PRESS', "any": True}, None),
+        ("PRECISION", {"type": 'RIGHT_SHIFT', "value": 'PRESS', "any": True}, None),
     ])
 
     return keymap
