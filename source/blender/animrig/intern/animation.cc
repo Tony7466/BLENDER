@@ -865,11 +865,11 @@ FCurve &KeyframeStrip::fcurve_find_or_create(const Binding &binding,
   return *new_fcurve;
 }
 
-FCurve *KeyframeStrip::keyframe_insert(const Binding &binding,
-                                       const StringRefNull rna_path,
-                                       const int array_index,
-                                       const float2 time_value,
-                                       const KeyframeSettings &settings)
+SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
+                                                  const StringRefNull rna_path,
+                                                  const int array_index,
+                                                  const float2 time_value,
+                                                  const KeyframeSettings &settings)
 {
   FCurve &fcurve = this->fcurve_find_or_create(binding, rna_path, array_index);
 
@@ -880,21 +880,11 @@ FCurve *KeyframeStrip::keyframe_insert(const Binding &binding,
                  rna_path.c_str(),
                  array_index,
                  binding.name);
-    return nullptr;
+    return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;
   }
 
   /* TODO: Handle the eInsertKeyFlags. */
-  const int index = insert_vert_fcurve(&fcurve, time_value, settings, eInsertKeyFlags(0));
-  if (index < 0) {
-    std::fprintf(stderr,
-                 "Could not insert key into FCurve %s[%d] for binding %s.\n",
-                 rna_path.c_str(),
-                 array_index,
-                 binding.name);
-    return nullptr;
-  }
-
-  return &fcurve;
+  return insert_vert_fcurve(&fcurve, time_value, settings, eInsertKeyFlags(0));
 }
 
 /* ActionChannelBag implementation. */

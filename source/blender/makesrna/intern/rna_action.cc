@@ -90,6 +90,8 @@ const EnumPropertyItem rna_enum_strip_type_items[] = {
 
 #  include "DEG_depsgraph.hh"
 
+#  include "ANIM_keyframing.hh"
+
 #  include <fmt/format.h>
 
 #  ifdef WITH_ANIM_BAKLAVA
@@ -398,33 +400,34 @@ static int rna_iterator_keyframestrip_channelbags_length(PointerRNA *ptr)
   return key_strip.channelbags().size();
 }
 
-static FCurve *rna_KeyframeActionStrip_key_insert(ID *id,
-                                                  KeyframeActionStrip *dna_strip,
-                                                  Main *bmain,
-                                                  ReportList *reports,
-                                                  ActionBinding *dna_binding,
-                                                  const char *rna_path,
-                                                  const int array_index,
-                                                  const float value,
-                                                  const float time)
+static bool rna_KeyframeActionStrip_key_insert(ID *id,
+                                               KeyframeActionStrip *dna_strip,
+                                               Main *bmain,
+                                               ReportList *reports,
+                                               ActionBinding *dna_binding,
+                                               const char *rna_path,
+                                               const int array_index,
+                                               const float value,
+                                               const float time)
 {
   if (dna_binding == nullptr) {
     BKE_report(reports, RPT_ERROR, "Binding cannot be None");
-    return nullptr;
+    return false;
   }
 
   animrig::KeyframeStrip &key_strip = dna_strip->wrap();
   const animrig::Binding &binding = dna_binding->wrap();
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
-  FCurve *fcurve = key_strip.keyframe_insert(
+  const animrig::SingleKeyingResult result = key_strip.keyframe_insert(
       binding, rna_path, array_index, {time, value}, settings);
 
-  if (fcurve) {
+  const bool ok = result == animrig::SingleKeyingResult::SUCCESS;
+  if (ok) {
     DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION);
   }
 
-  return fcurve;
+  return ok;
 }
 
 static void rna_iterator_ChannelBag_fcurves_begin(CollectionPropertyIterator *iter,
@@ -1405,7 +1408,9 @@ static void rna_def_action_keyframe_strip(BlenderRNA *brna)
                          FLT_MAX);
     RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-    parm = RNA_def_pointer(func, "fcurve", "FCurve", "", "The FCurve this key was inserted on");
+    parm = RNA_def_boolean(
+        func, "success", true, "Success", "Whether the key was successfully inserted");
+
     RNA_def_function_return(func, parm);
   }
 }

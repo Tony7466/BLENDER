@@ -17,7 +17,6 @@
 #include "BLI_bit_span.hh"
 #include "BLI_vector.hh"
 #include "DNA_anim_types.h"
-#include "ED_transform.hh"
 #include "RNA_types.hh"
 
 struct ID;
