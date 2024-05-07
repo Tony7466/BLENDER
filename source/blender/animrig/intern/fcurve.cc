@@ -288,26 +288,23 @@ void initialize_bezt(BezTriple *beztr,
  * that, since that's not how the "only insert needed" feature is supposed to
  * work.
  */
-static bool new_key_needed(FCurve *fcu, const float frame, const float value)
+static bool new_key_needed(FCurve &fcu, const float frame, const float value)
 {
-  if (fcu == nullptr) {
-    return true;
-  }
-  if (fcu->totvert == 0) {
+  if (fcu.totvert == 0) {
     return true;
   }
 
   bool replace;
   const int bezt_index = BKE_fcurve_bezt_binarysearch_index(
-      fcu->bezt, frame, fcu->totvert, &replace);
+      fcu.bezt, frame, fcu.totvert, &replace);
 
   if (replace) {
     /* If there is already a key, we only need to modify it if the proposed value is different. */
-    return fcu->bezt[bezt_index].vec[1][1] != value;
+    return fcu.bezt[bezt_index].vec[1][1] != value;
   }
 
   const int diff_ulp = 32;
-  const float fcu_eval = evaluate_fcurve(fcu, frame);
+  const float fcu_eval = evaluate_fcurve(&fcu, frame);
   /* No need to insert a key if the same value is already the value of the FCurve at that point. */
   if (compare_ff_relative(fcu_eval, value, FLT_EPSILON, diff_ulp)) {
     return false;
@@ -321,7 +318,9 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
                                       const KeyframeSettings &settings,
                                       eInsertKeyFlags flag)
 {
-  if (flag & INSERTKEY_NEEDED && !new_key_needed(fcu, position[0], position[1])) {
+  BLI_assert(fcu != nullptr);
+
+  if (flag & INSERTKEY_NEEDED && !new_key_needed(*fcu, position[0], position[1])) {
     return SingleKeyingResult::NO_KEY_NEEDED;
   }
 
