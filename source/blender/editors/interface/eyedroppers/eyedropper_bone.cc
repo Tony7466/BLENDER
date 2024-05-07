@@ -318,18 +318,23 @@ static bool bonedropper_poll(bContext *C)
   PointerRNA ptr;
   PropertyRNA *prop;
   int index_dummy;
-  uiBut *but;
 
-  if ((CTX_wm_window(C) != nullptr) &&
-      (but = UI_context_active_but_prop_get(C, &ptr, &prop, &index_dummy)) &&
-      (but->type == UI_BTYPE_SEARCH_MENU) && (but->flag & UI_BUT_VALUE_CLEAR))
-  {
-    if (prop && RNA_property_type(prop) == PROP_POINTER) {
-      StructRNA *type = RNA_property_pointer_type(&ptr, prop);
-      const short idcode = RNA_type_to_ID_code(type);
-      if ((idcode == ID_OB) || OB_DATA_SUPPORT_ID(idcode)) {
-        return true;
-      }
+  if (CTX_wm_window(C) == nullptr) {
+    return false;
+  }
+
+  uiBut *but = UI_context_active_but_prop_get(C, &ptr, &prop, &index_dummy);
+  if (!but) {
+    return false;
+  }
+
+  if ((but->type == UI_BTYPE_SEARCH_MENU) && (but->flag & UI_BUT_VALUE_CLEAR)) {
+  }
+  if (prop && RNA_property_type(prop) == PROP_POINTER) {
+    StructRNA *type = RNA_property_pointer_type(&ptr, prop);
+    const short idcode = RNA_type_to_ID_code(type);
+    if ((idcode == ID_OB) || OB_DATA_SUPPORT_ID(idcode)) {
+      return true;
     }
   }
 
