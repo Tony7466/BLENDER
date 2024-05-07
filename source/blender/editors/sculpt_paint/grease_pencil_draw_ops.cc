@@ -836,19 +836,16 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob.data);
 
   /* Fill tool needs a material (cannot use default material). */
-  if (brush.gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) {
-    if (brush.gpencil_settings->material == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
-      return OPERATOR_CANCELLED;
-    }
+  if ((brush.gpencil_settings->flag & GP_BRUSH_MATERIAL_PINNED) &&
+      brush.gpencil_settings->material == nullptr)
+  {
+    BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
+    return OPERATOR_CANCELLED;
   }
-  else {
-    if (BKE_object_material_get(&ob, ob.actcol) == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
-      return OPERATOR_CANCELLED;
-    }
+  if (BKE_object_material_get(&ob, ob.actcol) == nullptr) {
+    BKE_report(op->reports, RPT_ERROR, "Fill tool needs active material");
+    return OPERATOR_CANCELLED;
   }
-
   if (!grease_pencil_fill_init(*C, *op)) {
     grease_pencil_fill_exit(*C, *op);
     return OPERATOR_CANCELLED;
