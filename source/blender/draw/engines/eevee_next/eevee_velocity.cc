@@ -280,7 +280,7 @@ void VelocityModule::geometry_steps_fill()
       copy_ps.push_constant("vertex_stride", int(format->stride / 4));
       copy_ps.push_constant("vertex_count", geom.len);
       uint group_len_x = divide_ceil_u(geom.len, VERTEX_COPY_GROUP_SIZE);
-      uint verts_per_thread = divide_ceil_u(group_len_x, GPU_max_work_group_count(0));
+      uint verts_per_thread = max_ii(divide_ceil_u(group_len_x, GPU_max_work_group_count(0)), 1);
       copy_ps.dispatch(int3(group_len_x / verts_per_thread, 1, 1));
     }
   }
