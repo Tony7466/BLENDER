@@ -11,12 +11,14 @@
 #include "NOD_geo_simulation.hh"
 #include "NOD_socket_items.hh"
 
-#include "DNA_modifier_types.h"
-#include "DNA_space_types.h"
-
 #include "RNA_access.hh"
 
 #include "BLI_index_range.hh"
+
+struct NodesModifierData;
+struct NodesModifierBake;
+struct SpaceNode;
+struct Object;
 
 namespace blender::nodes {
 
