@@ -10,6 +10,7 @@
 
 #include "BLI_rect.h"
 #include "BLI_string_ref.hh"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
@@ -330,18 +331,208 @@ void NODE_OT_backimage_move(wmOperatorType *ot)
 /** \name Background Image Zoom
  * \{ */
 
+static void snode_zoom_set(SpaceNode *snode,
+                           ARegion *region,
+                           float zoom,
+                           const int width,
+                           const int height,
+                           const bool zoom_to_pos)
+{
+  float oldzoom = snode->zoom;
+  snode->zoom = zoom;
+
+  if (snode->zoom < 0.1f || snode->zoom > 4.0f) {
+    /* check zoom limits */
+
+    int width_fac = width * snode->zoom;
+    int height_fac = height * snode->zoom;
+
+    if ((width_fac < 4) && (height_fac < 4) && snode->zoom < oldzoom) {
+      snode->zoom = oldzoom;
+    }
+    else if (BLI_rcti_size_x(&region->winrct) <= snode->zoom) {
+      snode->zoom = oldzoom;
+    }
+    else if (BLI_rcti_size_y(&region->winrct) <= snode->zoom) {
+      snode->zoom = oldzoom;
+    }
+  }
+}
+
+static void snode_zoom_set_factor(SpaceNode *snode,
+                                  ARegion *region,
+                                  float zoomfac,
+                                  const int width,
+                                  const int height,
+                                  const bool zoom_to_pos)
+{
+  snode_zoom_set(snode, region, snode->zoom * zoomfac, width, height, zoom_to_pos);
+}
+
 static int backimage_zoom_exec(bContext *C, wmOperator *op)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   ARegion *region = CTX_wm_region(C);
-  float fac = RNA_float_get(op->ptr, "factor");
+  Main *bmain = CTX_data_main(C);
+  int width, height;
+  ED_space_node_get_size(bmain, &width, &height);
 
-  snode->zoom *= fac;
+  snode_zoom_set_factor(snode, region, RNA_float_get(op->ptr, "factor"), width, height, false);
+
   ED_region_tag_redraw(region);
   WM_main_add_notifier(NC_NODE | ND_DISPLAY, nullptr);
   WM_main_add_notifier(NC_SPACE | ND_SPACE_NODE_VIEW, nullptr);
 
   return OPERATOR_FINISHED;
+}
+
+struct ViewZoomData {
+  float origx, origy;
+  float zoom;
+  int launch_event;
+  float location[2];
+
+  /* needed for continuous zoom */
+  wmTimer *timer;
+  double timer_lastdraw;
+  bool own_cursor;
+
+  /* */
+  SpaceNode *snode;
+  ARegion *region;
+};
+
+static void snode_bg_viewzoom_init(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  wmWindow *win = CTX_wm_window(C);
+  SpaceNode *snode = CTX_wm_space_node(C);
+  ARegion *region = CTX_wm_region(C);
+  ViewZoomData *vpd;
+
+  op->customdata = vpd = static_cast<ViewZoomData *>(
+      MEM_callocN(sizeof(ViewZoomData), "ImageViewZoomData"));
+
+  /* Grab will be set when running from gizmo. */
+  vpd->own_cursor = (win->grabcursor == 0);
+  if (vpd->own_cursor) {
+    WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
+  }
+
+  vpd->origx = event->xy[0];
+  vpd->origy = event->xy[1];
+  vpd->zoom = snode->zoom;
+
+  vpd->launch_event = WM_userdef_event_type_from_keymap_type(event->type);
+
+  if (U.viewzoom == USER_ZOOM_CONTINUE) {
+    /* needs a timer to continue redrawing */
+    vpd->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
+    vpd->timer_lastdraw = BLI_time_now_seconds();
+  }
+
+  vpd->snode = snode;
+  vpd->region = region;
+
+  WM_event_add_modal_handler(C, op);
+}
+
+static int snode_bg_viewzoom_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  snode_bg_viewzoom_init(C, op, event);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static void image_zoom_apply(ViewZoomData *vpd,
+                             wmOperator *op,
+                             const int x,
+                             const int y,
+                             // todo: check unused params
+                             const short zoom_invert)
+{
+  float delta, factor;
+
+  delta = x - vpd->origx + y - vpd->origy;
+  delta /= U.pixelsize;
+
+  // todo: is invert needed at all? Probably not...
+  if (zoom_invert) {
+    delta = -delta;
+  }
+
+  factor = 1.0f + delta / 300.0f;
+
+  RNA_float_set(op->ptr, "factor", factor);
+  // todo: pass width / height;
+  snode_zoom_set(vpd->snode, vpd->region, vpd->zoom * factor, 500, 200, false);
+  ED_region_tag_redraw(vpd->region);
+  WM_main_add_notifier(NC_NODE | ND_DISPLAY, nullptr);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_NODE_VIEW, nullptr);
+}
+
+enum {
+  VIEW_PASS = 0,
+  VIEW_APPLY,
+  VIEW_CONFIRM,
+};
+
+static void snode_bg_viewzoom_exit(bContext *C, wmOperator *op, bool cancel)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  ViewZoomData *vpd = static_cast<ViewZoomData *>(op->customdata);
+
+  if (cancel) {
+    snode->zoom = vpd->zoom;
+    ED_region_tag_redraw(CTX_wm_region(C));
+  }
+
+  if (vpd->timer) {
+    WM_event_timer_remove(CTX_wm_manager(C), vpd->timer->win, vpd->timer);
+  }
+
+  if (vpd->own_cursor) {
+    WM_cursor_modal_restore(CTX_wm_window(C));
+  }
+  MEM_freeN(op->customdata);
+}
+
+static int snode_bg_viewzoom_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  ViewZoomData *vpd = static_cast<ViewZoomData *>(op->customdata);
+  short event_code = VIEW_PASS;
+  int ret = OPERATOR_RUNNING_MODAL;
+
+  /* Execute the events. */
+  if (event->type == MOUSEMOVE) {
+    event_code = VIEW_APPLY;
+  }
+  else if (event->type == TIMER) {
+    /* Continuous zoom. */
+    if (event->customdata == vpd->timer) {
+      event_code = VIEW_APPLY;
+    }
+  }
+  else if (event->type == vpd->launch_event) {
+    if (event->val == KM_RELEASE) {
+      event_code = VIEW_CONFIRM;
+    }
+  }
+
+  switch (event_code) {
+    case VIEW_APPLY: {
+      image_zoom_apply(vpd, op, event->xy[0], event->xy[1], false);
+      break;
+    }
+    case VIEW_CONFIRM: {
+      ret = OPERATOR_FINISHED;
+      break;
+    }
+  }
+
+  if ((ret & OPERATOR_RUNNING_MODAL) == 0) {
+    snode_bg_viewzoom_exit(C, op, false);
+  }
+
+  return ret;
 }
 
 void NODE_OT_backimage_zoom(wmOperatorType *ot)
@@ -353,11 +544,14 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
   ot->description = "Zoom in/out the background image";
 
   /* api callbacks */
-  ot->exec = backimage_zoom_exec;
+  //  ot->exec = backimage_zoom_exec;
   ot->poll = space_node_composite_active_view_poll;
+  ot->invoke = snode_bg_viewzoom_invoke;
+  ot->modal = snode_bg_viewzoom_modal;
+  //  ot->cancel = snode_bg_viewzoom_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING;
+  ot->flag = OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_XY | OPTYPE_LOCK_BYPASS;
 
   /* internal */
   RNA_def_float(ot->srna, "factor", 1.2f, 0.0f, 10.0f, "Factor", "", 0.0f, 10.0f);
@@ -546,6 +740,26 @@ bool ED_space_node_color_sample(
   BKE_image_release_ibuf(ima, ibuf, lock);
 
   return ret;
+}
+
+void ED_space_node_get_size(Main *bmain, int *r_width, int *r_height)
+{
+  Image *ima;
+  ImBuf *ibuf;
+
+  void *lock;
+
+  ima = BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
+  ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+
+  if (ibuf == nullptr) {
+    BKE_image_release_ibuf(ima, ibuf, lock);
+    return;
+  }
+
+  BKE_image_release_ibuf(ima, ibuf, lock);
+  *r_width = ibuf->x;
+  *r_height = ibuf->y;
 }
 
 namespace blender::ed::space_node {

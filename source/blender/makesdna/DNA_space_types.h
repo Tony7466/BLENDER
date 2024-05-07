@@ -1627,6 +1627,9 @@ typedef struct SpaceNode {
   /** Grease-pencil data. */
   struct bGPdata *gpd;
 
+  char gizmo_flag;
+  char _pad2[7];
+
   SpaceNodeOverlay overlay;
 
   SpaceNode_Runtime *runtime;
@@ -1648,6 +1651,13 @@ typedef enum eSpaceNode_Flag {
   SNODE_PIN = (1 << 12),
   SNODE_FLAG_UNUSED_12 = (1 << 13),
 } eSpaceNode_Flag;
+
+/** #SpaceNode.gizmo_flag */
+enum {
+  /** All gizmos. */
+  SNODE_GIZMO_HIDE = (1 << 0),
+  SNODE_GIZMO_HIDE_NAVIGATE = (1 << 1),
+};
 
 /** #SpaceNode.texfrom */
 typedef enum eSpaceNode_TexFrom {

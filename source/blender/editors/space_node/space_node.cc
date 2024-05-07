@@ -1127,6 +1127,11 @@ static int /*eContextResult*/ node_context(const bContext *C,
   return CTX_RESULT_MEMBER_NOT_FOUND;
 }
 
+static void NODE_GGT_navigate(wmGizmoGroupType *gzgt)
+{
+  VIEW2D_GGT_navigate_impl(gzgt, "NODE_GGT_navigate");
+}
+
 static void node_widgets()
 {
   /* Create the widget-map for the area here. */
@@ -1136,6 +1141,8 @@ static void node_widgets()
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_crop);
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_sun_beams);
   WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_backdrop_corner_pin);
+
+  WM_gizmogrouptype_append_and_link(gzmap_type, NODE_GGT_navigate);
 }
 
 static void node_id_remap(ID *old_id, ID *new_id, SpaceNode *snode)

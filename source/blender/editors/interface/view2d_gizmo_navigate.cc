@@ -91,6 +91,20 @@ static NavigateGizmoInfo g_navigate_params_for_view2d[GZ_INDEX_TOTAL] = {
     },
 };
 
+static NavigateGizmoInfo g_navigate_params_for_space_node[GZ_INDEX_TOTAL + 1] = {
+    {
+        "NODE_OT_backimage_move",
+        "GIZMO_GT_button_2d",
+        ICON_VIEW_PAN,
+    },
+    {
+        "NODE_OT_backimage_zoom",
+        "GIZMO_GT_button_2d",
+        ICON_VIEW_ZOOM,
+    },
+
+};
+
 static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
 {
   switch (space_type) {
@@ -98,6 +112,8 @@ static NavigateGizmoInfo *navigate_params_from_space_type(short space_type)
       return g_navigate_params_for_space_image;
     case SPACE_CLIP:
       return g_navigate_params_for_space_clip;
+    case SPACE_NODE:
+      return g_navigate_params_for_space_node;
     default:
       /* Used for sequencer. */
       return g_navigate_params_for_view2d;
@@ -143,6 +159,12 @@ static bool WIDGETGROUP_navigate_poll(const bContext *C, wmGizmoGroupType * /*gz
       }
       break;
     }
+    case SPACE_NODE: {
+      const SpaceNode *snode = static_cast<const SpaceNode *>(area->spacedata.first);
+      if (snode->gizmo_flag & (SNODE_GIZMO_HIDE | SNODE_GIZMO_HIDE_NAVIGATE) ||
+          (snode->flag & SNODE_BACKDRAW) == 0)
+        return false;
+    } break;
   }
   return true;
 }
