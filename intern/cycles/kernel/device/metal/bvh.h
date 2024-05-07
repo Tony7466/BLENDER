@@ -21,7 +21,7 @@ struct MetalRTIntersectionPayload {
   int self_object;
 };
 
-struct MetalRTIntersectionLocalPayload_random_walk {
+struct MetalRTIntersectionLocalPayload_single_hit {
   int self_prim;
 };
 
@@ -295,7 +295,7 @@ ccl_device_intersect bool scene_intersect_shadow(KernelGlobals kg,
 }
 
 #ifdef __BVH_LOCAL__
-template <bool random_walk = false>
+template <bool single_hit = false>
 ccl_device_intersect bool scene_intersect_local(KernelGlobals kg,
                                                 ccl_private const Ray *ray,
                                                 ccl_private LocalIntersection *local_isect,
@@ -324,20 +324,20 @@ ccl_device_intersect bool scene_intersect_local(KernelGlobals kg,
 
   metalrt_intersect.assume_geometry_type(metal::raytracing::geometry_type::triangle);
 
-  if (random_walk) {
-    MetalRTIntersectionLocalPayload_random_walk payload;
+  if (single_hit) {
+    MetalRTIntersectionLocalPayload_single_hit payload;
     payload.self_prim = ray->self.prim - primitive_id_offset;
 
     /* We know we are going to get max one hit, so we can optimize and accept the first hit. */
     metalrt_intersect.accept_any_intersection(true);
 
-    /* We only need custom intersection filtering (i.e. non_opaque) for the first step which does a self-intersection check. */
+    /* We only need custom intersection filtering (i.e. non_opaque) if we are performing a self-primitive intersection check. */
     metalrt_intersect.force_opacity((ray->self.prim == PRIM_NONE) ? metal::raytracing::forced_opacity::opaque : metal::raytracing::forced_opacity::non_opaque);
 
 #  if defined(__METALRT_MOTION__)
-    intersection = metalrt_intersect.intersect(r, metal_ancillaries->accel_struct, ~0, ray->time, metal_ancillaries->ift_random_walk_mblur, payload);
+    intersection = metalrt_intersect.intersect(r, metal_ancillaries->accel_struct, ~0, ray->time, metal_ancillaries->ift_local_single_hit_mblur, payload);
 #  else
-    intersection = metalrt_intersect.intersect(r, metal_ancillaries->blas_accel_structs[local_object].blas, metal_ancillaries->ift_random_walk, payload);
+    intersection = metalrt_intersect.intersect(r, metal_ancillaries->blas_accel_structs[local_object].blas, metal_ancillaries->ift_local_single_hit, payload);
 #  endif
     
     if (intersection.type == intersection_type::none) {

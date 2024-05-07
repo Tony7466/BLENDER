@@ -37,7 +37,7 @@ enum { METALRT_HIT_TRIANGLE, METALRT_HIT_CURVE, METALRT_HIT_BOUNDING_BOX };
 /* Hit functions. */
 
 [[intersection(triangle, triangle_data, curve_data)]] PrimitiveIntersectionResult
-__intersection__random_walk_tri(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_random_walk &payload [[payload]],
+__intersection__local_tri_single_hit(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
     uint primitive_id [[primitive_id]])
 {
   PrimitiveIntersectionResult result;
@@ -51,7 +51,7 @@ __intersection__random_walk_tri(ray_data MetalKernelContext::MetalRTIntersection
                curve_data,
                METALRT_TAGS,
                extended_limits)]] PrimitiveIntersectionResult
-__intersection__random_walk_tri_mblur(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_random_walk &payload [[payload]],
+__intersection__local_tri_single_hit_mblur(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
     uint primitive_id [[primitive_id]])
 {
   PrimitiveIntersectionResult result;

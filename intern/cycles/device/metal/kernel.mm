@@ -539,8 +539,8 @@ void MetalKernelPipeline::compile()
     add_intersection_functions(METALRT_TABLE_VOLUME, "__intersection__volume_tri");
     add_intersection_functions(METALRT_TABLE_LOCAL, "__intersection__local_tri");
     add_intersection_functions(METALRT_TABLE_LOCAL_MBLUR, "__intersection__local_tri_mblur");
-    add_intersection_functions(METALRT_TABLE_RANDOM_WALK, "__intersection__random_walk_tri");
-    add_intersection_functions(METALRT_TABLE_RANDOM_WALK_MBLUR, "__intersection__random_walk_tri_mblur");
+    add_intersection_functions(METALRT_TABLE_LOCAL_SINGLE_HIT, "__intersection__local_tri_single_hit");
+    add_intersection_functions(METALRT_TABLE_LOCAL_SINGLE_HIT_MBLUR, "__intersection__local_tri_single_hit_mblur");
 
     linked_functions = [[NSArray arrayWithArray:[unique_functions allObjects]]
         sortedArrayUsingComparator:^NSComparisonResult(id<MTLFunction> f1, id<MTLFunction> f2) {

@@ -232,9 +232,9 @@ MetalDevice::MetalDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
           arg_desc_ift.index = index++;
           [ancillary_desc addObject:[arg_desc_ift copy]]; /* ift_local_mblur */
           arg_desc_ift.index = index++;
-          [ancillary_desc addObject:[arg_desc_ift copy]]; /* ift_random_walk */
+          [ancillary_desc addObject:[arg_desc_ift copy]]; /* ift_local_single_hit */
           arg_desc_ift.index = index++;
-          [ancillary_desc addObject:[arg_desc_ift copy]]; /* ift_random_walk_mblur */
+          [ancillary_desc addObject:[arg_desc_ift copy]]; /* ift_local_single_hit_mblur */
 
           arg_desc_ptrs.index = index++;
           [ancillary_desc addObject:[arg_desc_ptrs copy]]; /* blas_accel_structs */

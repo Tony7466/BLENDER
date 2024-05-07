@@ -530,7 +530,7 @@ ccl_device_intersect bool scene_intersect_shadow(KernelGlobals kg,
 }
 
 #ifdef __BVH_LOCAL__
-template <bool random_walk = false>
+template <bool single_hit = false>
 ccl_device_intersect bool scene_intersect_local(KernelGlobals kg,
                                                 ccl_private const Ray *ray,
                                                 ccl_private LocalIntersection *local_isect,
