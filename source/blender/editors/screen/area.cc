@@ -979,7 +979,7 @@ void ED_workspace_status_text(bContext *C, const char *str)
 
 /* ************************************************************ */
 
-static void area_azone_init(wmWindow * /*win*/, const bScreen *screen, ScrArea *area)
+static void area_azone_init(wmWindow *win, const bScreen *screen, ScrArea *area)
 {
   /* reinitialize entirely, regions and full-screen add azones too */
   BLI_freelistN(&area->actionzones);
@@ -1000,16 +1000,50 @@ static void area_azone_init(wmWindow * /*win*/, const bScreen *screen, ScrArea *
     return;
   }
 
-  ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
-  if (region) {
-    /* Add single area action zone at left side of header. */
+  const float coords[4][4] = {
+      /* Bottom-left. */
+      {area->totrct.xmin - U.pixelsize,
+       area->totrct.ymin - U.pixelsize,
+       area->totrct.xmin + AZONESPOTW,
+       area->totrct.ymin + AZONESPOTH},
+      /* Bottom-right. */
+      {area->totrct.xmax - AZONESPOTW,
+       area->totrct.ymin - U.pixelsize,
+       area->totrct.xmax + U.pixelsize,
+       area->totrct.ymin + AZONESPOTH},
+      /* Top-left. */
+      {area->totrct.xmin - U.pixelsize,
+       area->totrct.ymax - AZONESPOTH,
+       area->totrct.xmin + AZONESPOTW,
+       area->totrct.ymax + U.pixelsize},
+      /* Top-right. */
+      {area->totrct.xmax - AZONESPOTW,
+       area->totrct.ymax - AZONESPOTH,
+       area->totrct.xmax + U.pixelsize,
+       area->totrct.ymax + U.pixelsize},
+  };
+
+  for (int i = 0; i < 4; i++) {
+    /* can't click on bottom corners on OS X, already used for resizing */
+#ifdef __APPLE__
+    if (!WM_window_is_fullscreen(win) &&
+        ((coords[i][0] == 0 && coords[i][1] == 0) ||
+         (coords[i][0] == WM_window_pixels_x(win) && coords[i][1] == 0)))
+    {
+      continue;
+    }
+#else
+    (void)win;
+#endif
+
+    /* set area action zones */
     AZone *az = (AZone *)MEM_callocN(sizeof(AZone), "actionzone");
     BLI_addtail(&(area->actionzones), az);
     az->type = AZONE_AREA;
-    az->x1 = region->winrct.xmin;
-    az->y1 = region->winrct.ymin;
-    az->x2 = region->winrct.xmin + UI_UNIT_X;
-    az->y2 = region->winrct.ymax;
+    az->x1 = coords[i][0];
+    az->y1 = coords[i][1];
+    az->x2 = coords[i][2];
+    az->y2 = coords[i][3];
     BLI_rcti_init(&az->rect, az->x1, az->x2, az->y1, az->y2);
   }
 }
@@ -3633,19 +3667,18 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
 {
   const uiStyle *style = UI_style_get_dpi();
   bool region_layout_based = region->flag & RGN_FLAG_DYNAMIC_SIZE;
-  ScrArea *area = CTX_wm_area(C);
-  const bool show_grip = region->type->regionid == RGN_TYPE_HEADER && !ED_area_is_global(area);
 
   /* Height of buttons and scaling needed to achieve it. */
   const int buttony = min_ii(UI_UNIT_Y, region->winy - 2 * UI_SCALE_FAC);
   const float buttony_scale = buttony / float(UI_UNIT_Y);
 
   /* Vertically center buttons. */
-  int xco = show_grip ? 0 : UI_HEADER_OFFSET;
+  int xco = UI_HEADER_OFFSET;
   int yco = buttony + (region->winy - buttony) / 2;
   int maxco = xco;
 
-  layout_coordinates_correct_for_drawable_rect(CTX_wm_window(C), area, region, &xco, &yco);
+  layout_coordinates_correct_for_drawable_rect(
+      CTX_wm_window(C), CTX_wm_area(C), region, &xco, &yco);
 
   /* set view2d view matrix for scrolling (without scrollers) */
   UI_view2d_view_ortho(&region->v2d);
@@ -3662,12 +3695,6 @@ void ED_region_header_layout(const bContext *C, ARegion *region)
 
     if (buttony_scale != 1.0f) {
       uiLayoutSetScaleY(layout, buttony_scale);
-    }
-
-    if (show_grip) {
-      uiLayout *row = uiLayoutRow(layout, true);
-      uiLayoutSetScaleX(row, 0.86f);
-      uiItemL(row, "", ICON_GRIP);
     }
 
     Header header = {nullptr};
