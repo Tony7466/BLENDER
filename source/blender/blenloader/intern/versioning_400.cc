@@ -62,6 +62,8 @@
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
+#include "IMB_imbuf_enums.h"
+
 #include "SEQ_iterator.hh"
 #include "SEQ_sequencer.hh"
 
@@ -2077,6 +2079,24 @@ static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+static void versioning_update_timecode(short int *tc)
+{
+  /* 2 = IMB_TC_FREE_RUN, 4 = IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN. */
+  if (ELEM(*tc, 2, 4)) {
+    *tc = IMB_TC_RECORD_RUN;
+  }
+}
+
+static bool seq_proxies_timecode_update(Sequence *seq, void * /*user_data*/)
+{
+  if (seq->strip == nullptr || seq->strip->proxy == nullptr) {
+    return true;
+  }
+  StripProxy *proxy = seq->strip->proxy;
+  versioning_update_timecode(&proxy->tc);
+  return true;
+}
+
 static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
 {
   if (ntree->type == NTREE_COMPOSIT) {
@@ -2585,10 +2605,9 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "shadow_softness_factor")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "Light", "float", "shadow_trace_distance")) {
       Light default_light = blender::dna::shallow_copy(*DNA_struct_default_get(Light));
       LISTBASE_FOREACH (Light *, light, &bmain->lights) {
-        light->shadow_softness_factor = default_light.shadow_softness_factor;
         light->shadow_trace_distance = default_light.shadow_trace_distance;
       }
     }
@@ -2744,24 +2763,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Unify Material::blend_shadow and Cycles.use_transparent_shadows into the
      * Material::blend_flag. */
     Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
-    if (is_cycles) {
-      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-        bool transparent_shadows = true;
-        if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
-          transparent_shadows = version_cycles_property_boolean(
-              cmat, "use_transparent_shadow", true);
-        }
-        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+    bool is_eevee = scene && (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE) ||
+                              STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT));
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      bool transparent_shadows = true;
+      if (is_eevee) {
+        transparent_shadows = material->blend_shadow != MA_BS_SOLID;
       }
-    }
-    else {
-      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-        bool transparent_shadow = material->blend_shadow != MA_BS_SOLID;
-        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadow, MA_BL_TRANSPARENT_SHADOW);
+      else if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
+        transparent_shadows = version_cycles_property_boolean(
+            cmat, "use_transparent_shadow", true);
       }
+      SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
     }
+  }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
+    /** NOTE: This versioning code didn't update the subversion number. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       if (ntree->type == NTREE_COMPOSIT) {
         versioning_replace_splitviewer(ntree);
@@ -3344,6 +3362,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
           }
         }
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 28)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_proxies_timecode_update, nullptr);
+      }
+    }
+
+    LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
+      MovieClipProxy proxy = clip->proxy;
+      versioning_update_timecode(&proxy.tc);
     }
   }
 
