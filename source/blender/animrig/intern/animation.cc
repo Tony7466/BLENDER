@@ -866,8 +866,8 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(const Binding &binding,
                                                   const StringRefNull rna_path,
                                                   const int array_index,
                                                   const float2 time_value,
-                                                  const eInsertKeyFlags insert_key_flags,
-                                                  const KeyframeSettings &settings)
+                                                  const KeyframeSettings &settings,
+                                                  const eInsertKeyFlags insert_key_flags)
 {
   FCurve &fcurve = this->fcurve_find_or_create(binding, rna_path, array_index);
 
