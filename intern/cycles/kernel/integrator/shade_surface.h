@@ -170,7 +170,7 @@ ccl_device_forceinline float radiance_eval(KernelGlobals kg,
                                            ccl_private ShaderData *sd,
                                            ccl_private LightSample *ls,
                                            ccl_private BsdfEval *radiance,
-                                           const bool check_visibility)
+                                           const bool check_visibility = false)
 {
   if (!(ls->pdf > 0.0f)) {
     bsdf_eval_init(radiance, zero_spectrum());
@@ -685,10 +685,7 @@ ccl_device
   if (use_bsdf_samples) {
     /* Write to reservoir and trace shadow ray later. */
     PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
-    if (sample_copy_direction(kg, reservoir)) {
-      reservoir.total_weight *= reservoir.ls.jacobian_area_to_solid_angle();
-    }
-    film_write_data_pass_reservoir(kg, state, &reservoir, path_flag, render_buffer);
+    film_write_data_pass_reservoir(kg, state, &reservoir, render_buffer);
   }
   else {
     bsdf_eval_mul(&reservoir.radiance, reservoir.total_weight);

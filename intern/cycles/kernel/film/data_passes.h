@@ -224,11 +224,14 @@ ccl_device_inline void film_write_data_passes_background(
 
 ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
                                                       IntegratorState state,
-                                                      const ccl_private Reservoir *reservoir,
-                                                      const uint32_t path_flag,
+                                                      ccl_private Reservoir *reservoir,
                                                       ccl_global float *ccl_restrict render_buffer)
 {
   if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
+    if (sample_copy_direction(kg, *reservoir)) {
+      reservoir->total_weight *= reservoir->ls.jacobian_area_to_solid_angle();
+    }
+
     ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
     float *ptr = buffer + kernel_data.film.pass_restir_reservoir;
