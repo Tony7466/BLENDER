@@ -484,16 +484,16 @@ void clear_viewmat();
 /**
  * Draw a dot with a given size and color.
  */
-void draw_dot(const float3 &position, const float point_size, const ColorGeometry4f &color);
+void draw_dot(const float3 &position, float point_size, const ColorGeometry4f &color);
 /**
- * Draw a line from points.
+ * Draw a poly line from points.
  */
-void draw_curve(IndexRange indices,
-                Span<float3> positions,
-                const VArray<ColorGeometry4f> &colors,
-                const float4x4 &layer_to_world,
-                bool cyclic,
-                float line_width);
+void draw_polyline(IndexRange indices,
+                   Span<float3> positions,
+                   const VArray<ColorGeometry4f> &colors,
+                   const float4x4 &layer_to_world,
+                   bool cyclic,
+                   float line_width);
 /**
  * Draw a curve using the Grease Pencil stroke shader.
  */

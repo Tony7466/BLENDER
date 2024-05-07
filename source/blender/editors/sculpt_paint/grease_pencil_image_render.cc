@@ -203,12 +203,12 @@ void draw_dot(const float3 &position, const float point_size, const ColorGeometr
   GPU_program_point_size(false);
 }
 
-void draw_curve(const IndexRange indices,
-                Span<float3> positions,
-                const VArray<ColorGeometry4f> &colors,
-                const float4x4 &layer_to_world,
-                const bool cyclic,
-                const float line_width)
+void draw_polyline(const IndexRange indices,
+                   Span<float3> positions,
+                   const VArray<ColorGeometry4f> &colors,
+                   const float4x4 &layer_to_world,
+                   const bool cyclic,
+                   const float line_width)
 {
   GPUVertFormat *format = immVertexFormat();
   const uint attr_pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
