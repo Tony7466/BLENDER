@@ -64,23 +64,17 @@ float shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
                                     LightData light,
                                     vec3 P)
 {
-  vec3 lP = transform_direction(light.object_to_world, P);
+  vec3 lP = transform_direction_transposed(light.object_to_world, P);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
 
   float depth = shadow_read_depth(atlas_tx, tilemaps_tx, coord);
   if (depth == -1.0) {
     return 1e10;
   }
-  float receiver_dist = lP.z;
-  float occluder_dist = -depth - orderedIntBitsToFloat(light.clip_near);
-#ifdef GPU_FRAGMENT_SHADER
-  if (ivec2(gl_FragCoord.xy) == ivec2(500)) {
-    drw_print(occluder_dist);
-    drw_print(receiver_dist);
-    drw_print(occluder_dist - receiver_dist);
-  }
-#endif
-  return occluder_dist - receiver_dist;
+  /* Use increasing distance from the light. */
+  float receiver_dist = -lP.z - orderedIntBitsToFloat(light.clip_near);
+  float occluder_dist = depth;
+  return receiver_dist - occluder_dist;
 }
 
 float shadow_sample(const bool is_directional,

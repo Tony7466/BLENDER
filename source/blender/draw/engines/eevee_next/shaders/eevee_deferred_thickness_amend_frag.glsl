@@ -52,14 +52,6 @@ void thickness_from_shadow_single(uint l_idx,
 
   float occluder_delta = shadow_sample(
       is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, P_offset);
-
-#ifdef GPU_FRAGMENT_SHADER
-  if (ivec2(gl_FragCoord.xy) == ivec2(500)) {
-    drw_debug_point(P, 0.01);
-    drw_debug_point(P + lv.L * occluder_delta, 0.01, vec4(0, 1, 0, 1));
-  }
-#endif
-
   if (occluder_delta > 0.0) {
     float hit_distance = abs(occluder_delta);
     /* Add back the amount of offset we added to the original position.
