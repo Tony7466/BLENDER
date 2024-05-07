@@ -1561,6 +1561,10 @@ typedef struct NodeInputInt {
   int integer;
 } NodeInputInt;
 
+typedef struct NodeInputRotation {
+  float rotation_euler[3];
+} NodeInputRotation;
+
 typedef struct NodeInputVector {
   float vector[3];
 } NodeInputVector;
