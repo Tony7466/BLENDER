@@ -818,9 +818,7 @@ static rctf get_boundary_bounds(const ARegion &region,
   return bounds;
 }
 
-static auto fit_strokes_to_view(const ARegion &region,
-                                const Object &object,
-                                const Object &object_eval,
+static auto fit_strokes_to_view(const ViewContext &view_context,
                                 const VArray<bool> &boundary_layers,
                                 const Span<DrawingInfo> src_drawings,
                                 const FillToolFitMethod fit_method,
@@ -837,10 +835,12 @@ static auto fit_strokes_to_view(const ARegion &region,
       return std::make_pair(float2(1.0f), float2(0.0f));
 
     case FillToolFitMethod::FitToView: {
+      const Object &object_eval = *DEG_get_evaluated_object(view_context.depsgraph,
+                                                            view_context.obact);
       /* Zoom and offset based on bounds, to fit all strokes within the render. */
       const rctf bounds = get_boundary_bounds(
-          region, object, object_eval, boundary_layers, src_drawings);
-      const rctf region_bounds = get_region_bounds(region);
+          *view_context.region, *view_context.obact, object_eval, boundary_layers, src_drawings);
+      const rctf region_bounds = get_region_bounds(*view_context.region);
       UNUSED_VARS(bounds, region_bounds);
       const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
       const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
@@ -881,15 +881,9 @@ static auto fit_strokes_to_view(const ARegion &region,
   return std::make_pair(float2(1.0f), float2(0.0f));
 }
 
-bke::CurvesGeometry fill_strokes(ARegion &region,
-                                 View3D &view3d,
-                                 RegionView3D &rv3d,
-                                 const ViewContext &view_context,
-                                 Main &bmain,
+bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const Brush &brush,
                                  const Scene &scene,
-                                 Depsgraph &depsgraph,
-                                 Object &object,
                                  const bke::greasepencil::Layer &layer,
                                  const VArray<bool> &boundary_layers,
                                  const Span<DrawingInfo> src_drawings,
@@ -900,6 +894,12 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
                                  const bool keep_images)
 {
   using bke::greasepencil::Layer;
+
+  ARegion &region = *view_context.region;
+  View3D &view3d = *view_context.v3d;
+  RegionView3D &rv3d = *view_context.rv3d;
+  Depsgraph &depsgraph = *view_context.depsgraph;
+  Object &object = *view_context.obact;
 
   BLI_assert(object.type == OB_GREASE_PENCIL);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -916,9 +916,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const bool uniform_zoom = true;
   const float max_zoom_factor = 5.0f;
   const float2 margin = float2(20);
-  const auto [zoom, offset] = fit_strokes_to_view(region,
-                                                  object,
-                                                  object_eval,
+  const auto [zoom, offset] = fit_strokes_to_view(view_context,
                                                   boundary_layers,
                                                   src_drawings,
                                                   fit_method,
@@ -936,7 +934,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   GPUOffScreen *offscreen_buffer = image_render::image_render_begin(win_size);
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_depth_mask(true);
-  image_render::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+  image_render::set_viewmat(view_context, scene, win_size, zoom, offset);
 
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
@@ -993,7 +991,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   image_render::clear_viewmat();
   GPU_depth_mask(false);
   GPU_blend(GPU_BLEND_NONE);
-  Image *ima = image_render::image_render_end(bmain, offscreen_buffer);
+  Image *ima = image_render::image_render_end(*view_context.bmain, offscreen_buffer);
   if (!ima) {
     return {};
   }
@@ -1017,7 +1015,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   image_render::region_reset(region, region_view_data);
 
   if (!keep_images) {
-    BKE_id_free(&bmain, ima);
+    BKE_id_free(view_context.bmain, ima);
   }
 
   return fill_curves;

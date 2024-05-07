@@ -116,10 +116,7 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer)
   return ima;
 }
 
-void set_viewmat(ARegion &region,
-                 View3D &view3d,
-                 RegionView3D &rv3d,
-                 Depsgraph &depsgraph,
+void set_viewmat(const ViewContext &view_context,
                  const Scene &scene,
                  const int2 &win_size,
                  const float2 &zoom,
@@ -127,9 +124,9 @@ void set_viewmat(ARegion &region,
 {
   rctf viewplane;
   float clip_start, clip_end;
-  const bool is_ortho = ED_view3d_viewplane_get(&depsgraph,
-                                                &view3d,
-                                                &rv3d,
+  const bool is_ortho = ED_view3d_viewplane_get(view_context.depsgraph,
+                                                view_context.v3d,
+                                                view_context.rv3d,
                                                 win_size.x,
                                                 win_size.y,
                                                 &viewplane,
@@ -170,10 +167,16 @@ void set_viewmat(ARegion &region,
                    clip_end);
   }
 
-  ED_view3d_update_viewmat(
-      &depsgraph, &scene, &view3d, &region, nullptr, winmat.ptr(), nullptr, true);
-  GPU_matrix_set(rv3d.viewmat);
-  GPU_matrix_projection_set(rv3d.winmat);
+  ED_view3d_update_viewmat(view_context.depsgraph,
+                           &scene,
+                           view_context.v3d,
+                           view_context.region,
+                           nullptr,
+                           winmat.ptr(),
+                           nullptr,
+                           true);
+  GPU_matrix_set(view_context.rv3d->viewmat);
+  GPU_matrix_projection_set(view_context.rv3d->winmat);
 }
 
 void clear_viewmat()

@@ -426,15 +426,9 @@ enum FillToolFitMethod {
  * \param stroke_material_index: Material index to use for the new strokes.
  * \param keep_images: Keep the image data block after generating curves.
  */
-bke::CurvesGeometry fill_strokes(ARegion &region,
-                                 View3D &view3d,
-                                 RegionView3D &rv3d,
-                                 const ViewContext &view_context,
-                                 Main &bmain,
+bke::CurvesGeometry fill_strokes(const ViewContext &view_context,
                                  const Brush &brush,
                                  const Scene &scene,
-                                 Depsgraph &depsgraph,
-                                 Object &object,
                                  const bke::greasepencil::Layer &layer,
                                  const VArray<bool> &boundary_layers,
                                  Span<DrawingInfo> src_drawings,
@@ -477,10 +471,7 @@ Image *image_render_end(Main &bmain, GPUOffScreen *buffer);
  * \param zoom: Zoom factor to render a smaller or larger part of the view.
  * \param offset: Offset of the view relative to the overall size.
  */
-void set_viewmat(ARegion &region,
-                 View3D &view3d,
-                 RegionView3D &rv3d,
-                 Depsgraph &depsgraph,
+void set_viewmat(const ViewContext &view_context,
                  const Scene &scene,
                  const int2 &win_size,
                  const float2 &zoom,

@@ -710,11 +710,7 @@ static bool grease_pencil_apply_fill(bContext &C,
   }
 
   wmWindow &win = *CTX_wm_window(&C);
-  View3D &view3d = *CTX_wm_view3d(&C);
-  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
-  Main &bmain = *CTX_data_main(&C);
-  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
-  ViewContext view_context = ED_view3d_viewcontext_init(&C, &depsgraph);
+  const ViewContext view_context = ED_view3d_viewcontext_init(&C, CTX_data_depsgraph_pointer(&C));
   const Scene &scene = *CTX_data_scene(&C);
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -736,15 +732,9 @@ static bool grease_pencil_apply_fill(bContext &C,
   for (const FillToolTargetInfo &info : target_drawings) {
     const Layer &layer = *grease_pencil.layers()[info.target.layer_index];
 
-    bke::CurvesGeometry fill_curves = fill_strokes(*region,
-                                                   view3d,
-                                                   rv3d,
-                                                   view_context,
-                                                   bmain,
+    bke::CurvesGeometry fill_curves = fill_strokes(view_context,
                                                    brush,
                                                    scene,
-                                                   depsgraph,
-                                                   object,
                                                    layer,
                                                    boundary_layers,
                                                    info.sources,
