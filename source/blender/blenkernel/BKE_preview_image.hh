@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
-#include <string>
 
 #include "BLI_sys_types.h"
 
@@ -21,11 +21,13 @@ enum ThumbSource : int8_t;
 
 namespace blender::bke {
 
+struct PreviewDeferredData;
+
 struct PreviewImageRuntime {
-  /* Used for deferred loading. */
-  std::string filepath;
-  /* Used for deferred loading. */
-  ThumbSource source;
+  std::unique_ptr<PreviewDeferredData> deferred_loading_data;
+  PreviewImageRuntime();
+  PreviewImageRuntime(const PreviewImageRuntime &other);
+  ~PreviewImageRuntime();
 };
 
 }  // namespace blender::bke

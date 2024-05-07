@@ -623,8 +623,6 @@ enum ePreviewImage_Flag {
 
 /* PreviewImage.tag */
 enum {
-  /** Actual loading of preview is deferred. */
-  PRV_TAG_DEFFERED = (1 << 0),
   /** Deferred preview is being loaded. */
   PRV_TAG_DEFFERED_RENDERING = (1 << 1),
   /** Deferred preview should be deleted asap. */
@@ -636,6 +634,7 @@ enum {
  * Don't call this for shallow copies (or the original instance will have dangling pointers).
  */
 typedef struct PreviewImage {
+  DNA_DEFINE_CXX_METHODS(PreviewImage)
   /* All values of 2 are really NUM_ICON_SIZES */
   unsigned int w[2];
   unsigned int h[2];
@@ -653,11 +652,6 @@ typedef struct PreviewImage {
   char _pad[2];
 
   PreviewImageRuntimeHandle *runtime;
-#ifdef __cplusplus
-  PreviewImage();
-  /* Don't free all contained data to allow shallow copies. */
-  ~PreviewImage();
-#endif
 } PreviewImage;
 
 #define ID_FAKE_USERS(id) ((((const ID *)id)->flag & LIB_FAKEUSER) ? 1 : 0)
