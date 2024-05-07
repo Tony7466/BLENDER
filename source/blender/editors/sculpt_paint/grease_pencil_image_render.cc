@@ -138,13 +138,17 @@ void set_viewmat(ARegion &region,
                                                 nullptr);
 
   /* Rescale `viewplane` to fit all strokes. */
-  const float2 view_size = float2(viewplane.xmax - viewplane.xmin,
-                                  viewplane.ymax - viewplane.ymin);
-  const float2 offset_abs = offset * view_size;
-  viewplane.xmin = viewplane.xmin * zoom.x + offset_abs.x;
-  viewplane.xmax = viewplane.xmax * zoom.x + offset_abs.x;
-  viewplane.ymin = viewplane.ymin * zoom.y + offset_abs.y;
-  viewplane.ymax = viewplane.ymax * zoom.y + offset_abs.y;
+  const float2 view_min = float2(viewplane.xmin, viewplane.ymin);
+  const float2 view_max = float2(viewplane.xmax, viewplane.ymax);
+  const float2 view_extent = view_max - view_min;
+  const float2 view_center = 0.5f * (view_max + view_min);
+  const float2 offset_abs = offset * view_extent;
+  const float2 view_min_new = (view_min - view_center) * zoom + view_center + offset_abs;
+  const float2 view_max_new = (view_max - view_center) * zoom + view_center + offset_abs;
+  viewplane.xmin = view_min_new.x;
+  viewplane.ymin = view_min_new.y;
+  viewplane.xmax = view_max_new.x;
+  viewplane.ymax = view_max_new.y;
 
   float4x4 winmat;
   if (is_ortho) {

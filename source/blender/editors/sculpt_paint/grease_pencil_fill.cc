@@ -823,8 +823,14 @@ static auto fit_strokes_to_view(const ARegion &region,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
                                 const Span<DrawingInfo> src_drawings,
-                                const FillToolFitMethod fit_method)
+                                const FillToolFitMethod fit_method,
+                                const float2 fill_point,
+                                const bool uniform_zoom,
+                                const float max_zoom_factor)
 {
+  BLI_assert(max_zoom_factor >= 1.0f);
+  const float min_zoom_factor = math::safe_rcp(max_zoom_factor);
+
   switch (fit_method) {
     case FillToolFitMethod::None:
       return std::make_pair(float2(1.0f), float2(0.0f));
@@ -836,16 +842,39 @@ static auto fit_strokes_to_view(const ARegion &region,
       UNUSED_VARS(bounds, region_bounds);
       const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
       const float2 bounds_min = float2(bounds.xmin, bounds.ymin);
-      const float2 bounds_center = 0.5f * (bounds_min + bounds_max);
-      const float2 bounds_extent = bounds_max - bounds_min;
+      /* Include fill point for computing zoom. */
+      const float2 fill_bounds_min = math::min(bounds_min, fill_point);
+      const float2 fill_bounds_max = math::max(bounds_max, fill_point);
+      const float2 fill_bounds_center = 0.5f * (fill_bounds_min + fill_bounds_max);
+      const float2 fill_bounds_extent = fill_bounds_max - fill_bounds_min;
+
       const float2 region_max = float2(region_bounds.xmax, region_bounds.ymax);
       const float2 region_min = float2(region_bounds.xmin, region_bounds.ymin);
       const float2 region_center = 0.5f * (region_min + region_max);
       const float2 region_extent = region_max - region_min;
-      const float2 zoom = math::safe_divide(bounds_extent, region_extent);
-      const float2 offset = math::safe_divide(bounds_center - region_center, region_extent);
+
+      const float2 zoom_factors = math::clamp(math::safe_divide(fill_bounds_extent, region_extent),
+                                              float2(min_zoom_factor),
+                                              float2(max_zoom_factor));
+      /* Use the most zoomed out factor for uniform scale. */
+      const float2 zoom = uniform_zoom ? float2(math::reduce_max(zoom_factors)) : zoom_factors;
+
+      /* Clamp offset to always include the center point. */
+      const float2 offset_center = fill_bounds_center - region_center;
+      const float2 offset_min = fill_point + 0.5f * fill_bounds_extent - region_center;
+      const float2 offset_max = fill_point - 0.5f * fill_bounds_extent - region_center;
+      const float2 region_offset = float2(
+          fill_point.x < bounds_min.x ?
+              offset_min.x :
+              (fill_point.x > bounds_max.x ? offset_max.x : offset_center.x),
+          fill_point.y < bounds_min.y ?
+              offset_min.y :
+              (fill_point.y > bounds_max.y ? offset_max.y : offset_center.y));
+      const float2 offset = math::safe_divide(region_offset, region_extent);
+
       return std::make_pair(zoom, offset);
   }
+
   return std::make_pair(float2(1.0f), float2(0.0f));
 }
 
@@ -878,6 +907,31 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const float pixel_scale = 1.0f;
   const int2 win_size = math::max(int2(region.winx, region.winy) * pixel_scale,
                                   int2(min_window_size));
+  const float2 win_center = 0.5f * float2(win_size);
+
+  /* Zoom and offset based on bounds, to fit all strokes within the render. */
+  constexpr const bool uniform_zoom = true;
+  constexpr const float max_zoom_factor = 5.0f;
+  const auto [zoom, offset] = fit_strokes_to_view(region,
+                                                  object,
+                                                  object_eval,
+                                                  boundary_layers,
+                                                  src_drawings,
+                                                  fit_method,
+                                                  fill_point,
+                                                  uniform_zoom,
+                                                  max_zoom_factor);
+  /* Fill point needs to be inverse transformed to stay relative to the view. */
+  const float2 fill_point_view = math::safe_divide(
+                                     fill_point - win_center - offset * float2(win_size), zoom) +
+                                 win_center;
+
+  image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
+
+  GPUOffScreen *offscreen_buffer = image_render::image_render_begin(win_size);
+  GPU_blend(GPU_BLEND_ALPHA);
+  GPU_depth_mask(true);
+  image_render::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
 
   const eGP_FillDrawModes fill_draw_mode = GP_FILL_DMODE_BOTH;
   const float alpha_threshold = 0.2f;
@@ -888,18 +942,7 @@ bke::CurvesGeometry fill_strokes(ARegion &region,
   const float4x4 layer_to_world = layer.to_world_space(object);
   ed::greasepencil::DrawingPlacement placement(scene, region, view3d, object_eval, layer);
   const float3 fill_point_world = math::transform_point(layer_to_world,
-                                                        placement.project(fill_point));
-
-  /* Zoom and offset based on bounds, to fit all strokes within the render. */
-  const auto [zoom, offset] = fit_strokes_to_view(
-      region, object, object_eval, boundary_layers, src_drawings, fit_method);
-
-  image_render::RegionViewData region_view_data = image_render::region_init(region, win_size);
-
-  GPUOffScreen *offscreen_buffer = image_render::image_render_begin(win_size);
-  GPU_blend(GPU_BLEND_ALPHA);
-  GPU_depth_mask(true);
-  image_render::set_viewmat(region, view3d, rv3d, depsgraph, scene, win_size, zoom, offset);
+                                                        placement.project(fill_point_view));
 
   /* Draw blue point where click with mouse. */
   const float mouse_dot_size = 4.0f;
