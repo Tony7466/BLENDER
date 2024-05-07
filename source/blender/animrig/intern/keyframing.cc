@@ -91,6 +91,17 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   }
 
   Vector<std::string> errors;
+  if (this->get_count(SingleKeyingResult::UNKNOWN_FAILURE) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::UNKNOWN_FAILURE);
+    if (error_count == 1) {
+      errors.append(RPT_("Could not insert one key for unknown reasons."));
+    }
+    else {
+      errors.append(
+          fmt::format(RPT_("Could not insert {:d} keys for unknown reasons."), error_count));
+    }
+  }
+
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
     if (error_count == 1) {
@@ -452,11 +463,7 @@ static SingleKeyingResult insert_keyframe_value(
   KeyframeSettings settings = get_keyframe_settings((flag & INSERTKEY_NO_USERPREF) == 0);
   settings.keyframe_type = keytype;
 
-  if (insert_vert_fcurve(fcu, {cfra, curval}, settings, flag) < 0) {
-    return SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE;
-  }
-
-  return SingleKeyingResult::SUCCESS;
+  return insert_vert_fcurve(fcu, {cfra, curval}, settings, flag);
 }
 
 bool insert_keyframe_direct(ReportList *reports,

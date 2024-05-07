@@ -101,7 +101,6 @@ struct ShadowTileMap : public ShadowTileMapData {
                          int2 origin_offset,
                          int clipmap_level,
                          float lod_bias_,
-                         float filter_radius,
                          eShadowProjectionType projection_type_);
 
   void sync_cubeface(eLightType light_type_,
@@ -111,7 +110,6 @@ struct ShadowTileMap : public ShadowTileMapData {
                      float side,
                      float shift,
                      eCubeFace face,
-                     float filter_radius,
                      float lod_bias_);
 
   void debug_draw() const;
@@ -455,14 +453,8 @@ class ShadowPunctual : public NonCopyable, NonMovable {
    * Make sure that the projection encompass all possible rays that can start in the projection
    * quadrant.
    */
-  void compute_projection_boundaries(eLightType light_type,
-                                     float light_radius,
-                                     float shadow_radius,
-                                     float max_lit_distance,
-                                     float &near,
-                                     float &far,
-                                     float &side,
-                                     float &back_shift);
+  void compute_projection_boundaries(
+      float max_lit_distance, float &near, float &far, float &side, float &back_shift);
 };
 
 class ShadowDirectional : public NonCopyable, NonMovable {
