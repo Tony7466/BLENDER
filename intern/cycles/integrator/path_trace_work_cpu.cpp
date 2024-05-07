@@ -108,7 +108,8 @@ void PathTraceWorkCPU::initial_resampling(const int64_t image_width,
 void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
                                           const int64_t image_height,
                                           const int start_sample,
-                                          const int sample_offset)
+                                          const int sample_offset,
+                                          const int iterations)
 {
   const int64_t total_pixels_num = image_width * image_height;
 
@@ -122,7 +123,7 @@ void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
 
     CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 
-    render_samples_direct_illumination(kernel_globals, work_tile);
+    render_samples_direct_illumination(kernel_globals, work_tile, iterations);
     ++work_tile.start_sample;
   });
 }
@@ -151,8 +152,10 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
    * fail. */
   /* Spatial Resampling. */
   if (device_scene_->data.integrator.use_spatial_resampling) {
-    local_arena.execute(
-        [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset); });
+    for (int i = 0; i < 1; i++) {
+      local_arena.execute(
+          [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset, i); });
+    }
   }
 
   if (device_->profiler.active()) {
@@ -216,11 +219,15 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
 }
 
 void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
-                                                          const KernelWorkTile &work_tile)
+                                                          const KernelWorkTile &work_tile,
+                                                          const int iteration)
 {
   IntegratorStateCPU integrator_states[2];
 
   IntegratorStateCPU *state = &integrator_states[0];
+
+  /* Ping-pong between two reservoirs. */
+  state->read_previous_reservoir = iteration % 2;
 
   KernelWorkTile sample_work_tile = work_tile;
   float *render_buffer = buffers_->buffer.data();

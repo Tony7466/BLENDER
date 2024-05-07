@@ -110,6 +110,7 @@ KERNEL_STRUCT_MEMBER(film, float, pass_alpha_threshold)
 KERNEL_STRUCT_MEMBER(film, int, pass_shadow_catcher)
 KERNEL_STRUCT_MEMBER(film, int, pass_shadow_catcher_sample_count)
 KERNEL_STRUCT_MEMBER(film, int, pass_shadow_catcher_matte)
+KERNEL_STRUCT_MEMBER(film, int, pass_restir_previous_reservoir)
 KERNEL_STRUCT_MEMBER(film, int, pass_restir_reservoir)
 /* TODO(weizhen): can we use pass_normal/position/uv? */
 KERNEL_STRUCT_MEMBER(film, int, pass_surface_data)

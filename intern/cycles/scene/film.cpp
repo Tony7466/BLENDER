@@ -196,6 +196,7 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
   kfilm->pass_shadow_catcher = PASS_UNUSED;
   kfilm->pass_shadow_catcher_sample_count = PASS_UNUSED;
   kfilm->pass_shadow_catcher_matte = PASS_UNUSED;
+  kfilm->pass_restir_previous_reservoir = PASS_UNUSED;
   kfilm->pass_restir_reservoir = PASS_UNUSED;
   kfilm->pass_surface_data = PASS_UNUSED;
 
@@ -394,6 +395,9 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
       case PASS_GUIDING_AVG_ROUGHNESS:
         kfilm->pass_guiding_avg_roughness = kfilm->pass_stride;
         break;
+      case PASS_RESTIR_PREVIOUS_RESERVOIR:
+        kfilm->pass_restir_previous_reservoir = kfilm->pass_stride;
+        break;
       case PASS_RESTIR_RESERVOIR:
         kfilm->pass_restir_reservoir = kfilm->pass_stride;
         break;
@@ -543,6 +547,7 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
   /* TODO(weizhen): this crashed once but I can't reproduce. */
   /* Add reservoir pass if spatial resapmling is used. */
   if (integrator->get_use_restir() & (1 << 1)) {
+    add_auto_pass(scene, PASS_RESTIR_PREVIOUS_RESERVOIR);
     add_auto_pass(scene, PASS_RESTIR_RESERVOIR);
     add_auto_pass(scene, PASS_SURFACE_DATA);
   }

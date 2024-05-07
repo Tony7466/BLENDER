@@ -45,7 +45,8 @@ class PathTraceWorkCPU : public PathTraceWork {
   void spatial_resampling(const int64_t image_width,
                           const int64_t image_height,
                           const int start_sample,
-                          const int sample_offset);
+                          const int sample_offset,
+                          const int iteration);
 
   void setup_work_tile(KernelWorkTile &work_tile,
                        const int64_t work_index,
@@ -92,8 +93,9 @@ class PathTraceWorkCPU : public PathTraceWork {
   void render_samples_full_pipeline(KernelGlobalsCPU *kernel_globals,
                                     const KernelWorkTile &work_tile);
 
-  void render_samples_direct_illumination(KernelGlobalsCPU *kernel_globals,
-                                          const KernelWorkTile &work_tile);
+  void render_samples_direct_illumination(KernelGlobalsCPU *kg,
+                                          const KernelWorkTile &work_tile,
+                                          const int iteration);
 
   /* CPU kernels. */
   const CPUKernels &kernels_;

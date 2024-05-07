@@ -69,7 +69,7 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
   reservoir->ls.u = buffer[i++];
   reservoir->ls.v = buffer[i++];
 
-  reservoir->total_weight = buffer[i++];
+  reservoir->total_weight = buffer[i];
 }
 
 /* TODO(weizhen): better to pack in another pass. */
@@ -119,11 +119,13 @@ ccl_device_inline void integrator_restir_unpack_reservoir(KernelGlobals kg,
                                                           ccl_private Reservoir *reservoir,
                                                           uint32_t render_pixel_index,
                                                           ccl_global float *ccl_restrict
-                                                              render_buffer)
+                                                              render_buffer,
+                                                          const bool read_prev)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_RESERVOIR_PASSES);
   ccl_global const float *buffer = pixel_render_buffer(kg, render_pixel_index, render_buffer) +
-                                   kernel_data.film.pass_restir_reservoir;
+                                   (read_prev ? kernel_data.film.pass_restir_previous_reservoir :
+                                                kernel_data.film.pass_restir_reservoir);
   integrator_restir_unpack_reservoir(kg, reservoir, buffer);
 }
 
@@ -172,7 +174,8 @@ ccl_device_inline bool restir_unpack_neighbor(KernelGlobals kg,
                                               ccl_private SpatialReservoir *neighbor,
                                               const int id,
                                               const float3 rand,
-                                              ccl_global float *ccl_restrict render_buffer)
+                                              ccl_global float *ccl_restrict render_buffer,
+                                              const bool read_prev)
 {
   /* Always put the current sample in the reservoir. */
   const float2 rand_index = (id == 0) ? zero_float2() : float3_to_float2(rand) * 2.0f - 1.0f;
@@ -184,7 +187,8 @@ ccl_device_inline bool restir_unpack_neighbor(KernelGlobals kg,
 
   neighbor->pixel_index = pixel_index;
   integrator_restir_unpack_shader(kg, neighbor, pixel_index.z, render_buffer);
-  integrator_restir_unpack_reservoir(kg, &neighbor->reservoir, pixel_index.z, render_buffer);
+  integrator_restir_unpack_reservoir(
+      kg, &neighbor->reservoir, pixel_index.z, render_buffer, read_prev);
 
   return resampling->is_valid_neighbor(&current->sd, &neighbor->sd);
 }
@@ -210,13 +214,16 @@ ccl_device_inline bool streaming_samples(KernelGlobals kg,
                                          ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
+  const bool read_prev = state->read_previous_reservoir;
 
   for (int i = 0; i < samples; i++) {
     PROFILING_EVENT(PROFILING_RESTIR_SPATIAL_RESAMPLING);
     const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
 
     SpatialReservoir neighbor;
-    if (!restir_unpack_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
+    if (!restir_unpack_neighbor(
+            kg, resampling, current, &neighbor, i, rand, render_buffer, read_prev))
+    {
       continue;
     }
 
@@ -246,7 +253,9 @@ ccl_device_inline bool streaming_samples(KernelGlobals kg,
     const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
 
     SpatialReservoir neighbor;
-    if (!restir_unpack_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
+    if (!restir_unpack_neighbor(
+            kg, resampling, current, &neighbor, i, rand, render_buffer, read_prev))
+    {
       continue;
     }
 
@@ -273,10 +282,11 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
                                                   ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
+  const bool read_prev = state->read_previous_reservoir;
 
   Reservoir canonical = current->reservoir;
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
-  integrator_restir_unpack_reservoir(kg, &canonical, render_pixel_index, render_buffer);
+  integrator_restir_unpack_reservoir(kg, &canonical, render_pixel_index, render_buffer, read_prev);
   light_sample_from_uv(kg, &current->sd, current->path_flag, &canonical.ls);
   radiance_eval(kg, state, &current->sd, &canonical.ls, &canonical.radiance, visibility);
   const float canonical_target_function = luminance(kg, canonical.radiance);
@@ -291,7 +301,9 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
     const float3 rand = path_branched_rng_3D(kg, rng_state, i, samples, PRNG_SPATIAL_RESAMPLING);
 
     SpatialReservoir neighbor;
-    if (!restir_unpack_neighbor(kg, resampling, current, &neighbor, i, rand, render_buffer)) {
+    if (!restir_unpack_neighbor(
+            kg, resampling, current, &neighbor, i, rand, render_buffer, read_prev))
+    {
       continue;
     }
 
@@ -345,6 +357,40 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
   return current->reservoir.finalize();
 }
 
+ccl_device bool integrator_evaluate_final_samples(KernelGlobals kg,
+                                                  IntegratorState state,
+                                                  ccl_global float *ccl_restrict render_buffer)
+{
+  SpatialReservoir current(kg);
+  Reservoir reservoir;
+  const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
+
+  const bool read_prev = !(state->read_previous_reservoir);
+  integrator_restir_unpack_reservoir(kg, &reservoir, render_pixel_index, render_buffer, read_prev);
+  if (reservoir.is_empty()) {
+    return false;
+  }
+
+  integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
+  shader_data_setup_from_restir(kg, state, &current, render_buffer);
+
+  light_sample_from_uv(kg, &current.sd, current.path_flag, &reservoir.ls);
+  radiance_eval(kg, state, &current.sd, &reservoir.ls, &reservoir.radiance);
+
+  current.reservoir.add_reservoir(kg, reservoir, 0.0f);
+  current.reservoir.finalize();
+
+  bsdf_eval_mul(&current.reservoir.radiance, current.reservoir.total_weight);
+
+  /* Load random number state. */
+  RNGState rng_state;
+  path_state_rng_load(state, &rng_state);
+  integrate_direct_light_create_shadow_path<true>(
+      kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
+
+  return true;
+}
+
 ccl_device bool integrator_restir(KernelGlobals kg,
                                   IntegratorState state,
                                   ccl_global const KernelWorkTile *ccl_restrict tile,
@@ -354,13 +400,17 @@ ccl_device bool integrator_restir(KernelGlobals kg,
                                   const int scheduled_sample)
 {
   PROFILING_INIT(kg, PROFILING_RESTIR_SPATIAL_RESAMPLING);
+  const bool write_prev = !(state->read_previous_reservoir);
+
   SpatialReservoir current(kg);
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
   integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
 
-  if (!(current.sd.type)) {
+  if (!current.sd.type) {
     /* No interesction at the current shading point. */
     /* TODO(weizhen): revisit this condition when we support background and distant lights. */
+    film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
+    integrator_evaluate_final_samples(kg, state, render_buffer);
     return false;
   }
 
@@ -397,14 +447,13 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   }
 
   if (!success) {
+    film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
+    integrator_evaluate_final_samples(kg, state, render_buffer);
     return false;
   }
 
-  BsdfEval radiance = current.reservoir.radiance;
-  bsdf_eval_mul(&radiance, current.reservoir.total_weight);
-
-  integrate_direct_light_create_shadow_path<true>(
-      kg, state, &rng_state, &current.sd, &current.reservoir.ls, &radiance, 0);
+  film_write_data_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
+  integrator_evaluate_final_samples(kg, state, render_buffer);
 
   return true;
 }

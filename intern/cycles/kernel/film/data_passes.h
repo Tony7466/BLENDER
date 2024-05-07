@@ -225,16 +225,14 @@ ccl_device_inline void film_write_data_passes_background(
 ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
                                                       IntegratorState state,
                                                       ccl_private Reservoir *reservoir,
-                                                      ccl_global float *ccl_restrict render_buffer)
+                                                      ccl_global float *ccl_restrict render_buffer,
+                                                      const bool write_prev = false)
 {
   if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
-    if (sample_copy_direction(kg, *reservoir)) {
-      reservoir->total_weight *= reservoir->ls.jacobian_area_to_solid_angle();
-    }
-
     ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
 
-    float *ptr = buffer + kernel_data.film.pass_restir_reservoir;
+    float *ptr = buffer + (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
+                                        kernel_data.film.pass_restir_reservoir);
 
     /* TODO(weizhen): it is possible to compress the LightSample. */
 
@@ -245,18 +243,26 @@ ccl_device_inline void film_write_data_pass_reservoir(KernelGlobals kg,
     film_overwrite_pass_float(ptr++, reservoir->ls.u);
     film_overwrite_pass_float(ptr++, reservoir->ls.v);
 
-    film_overwrite_pass_float(ptr, reservoir->total_weight);
+    const float total_weight = reservoir->total_weight *
+                               (sample_copy_direction(kg, *reservoir) ?
+                                    reservoir->ls.jacobian_area_to_solid_angle() :
+                                    1.0f);
+    film_overwrite_pass_float(ptr, total_weight);
   }
 }
 
 ccl_device_inline void film_clear_data_pass_reservoir(KernelGlobals kg,
                                                       IntegratorState state,
-                                                      ccl_global float *ccl_restrict render_buffer)
+                                                      ccl_global float *ccl_restrict render_buffer,
+                                                      const bool write_prev = false)
 {
   if (kernel_data.film.pass_flag & PASSMASK(RESTIR_RESERVOIR)) {
     ccl_global float *buffer = film_pass_pixel_render_buffer(kg, state, render_buffer);
     /* Set weight to zero. */
-    film_overwrite_pass_float(buffer + kernel_data.film.pass_restir_reservoir + 4, 0.0f);
+    float *ptr = buffer + 4 +
+                 (write_prev ? kernel_data.film.pass_restir_previous_reservoir :
+                               kernel_data.film.pass_restir_reservoir);
+    film_overwrite_pass_float(ptr, 0.0f);
   }
 }
 
