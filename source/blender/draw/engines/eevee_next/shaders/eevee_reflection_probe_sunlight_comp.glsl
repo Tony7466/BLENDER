@@ -58,11 +58,11 @@ void main()
     vec3 direction = normalize_and_get_length(local_direction[0].xyz / local_direction[0].w, len);
     float sun_angle_cos = 2.0 * len - 1.0;
 
-    mat3x3 tx = from_up_axis(direction);
+    mat3x3 tx = transpose(from_up_axis(direction));
     /* Convert to transform. */
-    sunlight_buf.object_to_world.x = vec4(tx[0][0], tx[1][0], tx[2][0], 0.0);
-    sunlight_buf.object_to_world.y = vec4(tx[0][1], tx[1][1], tx[2][1], 0.0);
-    sunlight_buf.object_to_world.z = vec4(tx[0][2], tx[1][2], tx[2][2], 0.0);
+    sunlight_buf.object_to_world.x = vec4(tx[0], 0.0);
+    sunlight_buf.object_to_world.y = vec4(tx[1], 0.0);
+    sunlight_buf.object_to_world.z = vec4(tx[2], 0.0);
 
     /* Compute tangent from cosine.  */
     float sun_angle_tan = sqrt(-1.0 + 1.0 / square(sun_angle_cos));
