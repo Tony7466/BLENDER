@@ -8,6 +8,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
 
 #include "node_function_util.hh"
@@ -33,10 +34,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   const bNode &node = *static_cast<const bNode *>(ptr->data);
   uiItemR(layout, ptr, "primary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "secondary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-
-  if (node.custom1 == node.custom2) {
-    uiItemL(layout, N_("Axes must not be equal"), ICON_ERROR);
-  }
 }
 
 static float3 get_orthogonal_of_non_zero_vector(const float3 &v)
@@ -142,6 +139,17 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
       math::Axis::from_int(node.custom1), math::Axis::from_int(node.custom2));
 }
 
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  if (params.node.custom1 == params.node.custom2) {
+    NodeExtraInfoRow row;
+    row.text = RPT_("Equal Axes");
+    row.tooltip = TIP_("The primary and secondary axis have to be different");
+    row.icon = ICON_ERROR;
+    params.rows.append(std::move(row));
+  }
+}
+
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem axis_items[] = {
@@ -174,6 +182,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
+  ntype.get_extra_info = node_extra_info;
   node_rna(ntype.rna_ext.srna);
   nodeRegisterType(&ntype);
 }
