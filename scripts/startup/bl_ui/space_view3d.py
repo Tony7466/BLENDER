@@ -2026,7 +2026,7 @@ class VIEW3D_MT_select_edit_mesh(Menu):
 
         # more/less
         layout.separator()
-        layout.menu("VIEW3D_MT_edit_mesh_select_more_less")
+        layout.menu("VIEW3D_MT_edit_mesh_select_more_less", text="More/Less")
 
         # grouped
         layout.separator()
@@ -2037,7 +2037,7 @@ class VIEW3D_MT_select_edit_mesh(Menu):
 
         # geometric
         layout.separator()
-        layout.operator("mesh.edges_select_sharp", text="Select Sharp Edges")
+        layout.operator("mesh.edges_select_sharp", text="Sharp Edges")
         layout.operator("mesh.select_axis", text="Side of Active")
 
         # attribute
@@ -2254,7 +2254,7 @@ class VIEW3D_MT_select_edit_armature(Menu):
 
         layout.separator()
 
-        layout.operator("armature.select_linked")
+        layout.operator("armature.select_linked", text="Select Linked")
         layout.operator_menu_enum("armature.select_similar", "type")
         layout.operator("object.select_pattern", text="Select Pattern...")
 
@@ -2372,8 +2372,8 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
 
         layout.separator()
 
-        layout.operator("gpencil.select_linked")
         layout.operator_menu_enum("gpencil.select_grouped", "type")
+        layout.operator("gpencil.select_linked")
 
         layout.separator()
 
