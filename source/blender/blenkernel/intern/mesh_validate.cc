@@ -1049,9 +1049,8 @@ bool BKE_mesh_validate(Mesh *mesh, const bool do_verbose, const bool cddata_chec
   Span<int> corner_verts = mesh->corner_verts();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
 
-  MDeformVert *dverts = CustomData_has_layer(&mesh->vert_data, CD_MDEFORMVERT) ?
-                            mesh->deform_verts_for_write().data() :
-                            nullptr;
+  MDeformVert *dverts = static_cast<MDeformVert *>(
+      CustomData_get_layer_for_write(&mesh->vert_data, CD_MDEFORMVERT, mesh->verts_num));
   BKE_mesh_validate_arrays(
       mesh,
       reinterpret_cast<float(*)[3]>(positions.data()),
@@ -1107,9 +1106,8 @@ bool BKE_mesh_is_valid(Mesh *mesh)
   Span<int> corner_verts = mesh->corner_verts();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
 
-  MDeformVert *dverts = CustomData_has_layer(&mesh->vert_data, CD_MDEFORMVERT) ?
-                            mesh->deform_verts_for_write().data() :
-                            nullptr;
+  MDeformVert *dverts = static_cast<MDeformVert *>(
+      CustomData_get_layer_for_write(&mesh->vert_data, CD_MDEFORMVERT, mesh->verts_num));
   is_valid &= BKE_mesh_validate_arrays(
       mesh,
       reinterpret_cast<float(*)[3]>(positions.data()),
