@@ -37,7 +37,8 @@ enum { METALRT_HIT_TRIANGLE, METALRT_HIT_CURVE, METALRT_HIT_BOUNDING_BOX };
 /* Hit functions. */
 
 [[intersection(triangle, triangle_data, curve_data)]] PrimitiveIntersectionResult
-__intersection__local_tri_single_hit(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
+__intersection__local_tri_single_hit(
+    ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
     uint primitive_id [[primitive_id]])
 {
   PrimitiveIntersectionResult result;
@@ -51,7 +52,8 @@ __intersection__local_tri_single_hit(ray_data MetalKernelContext::MetalRTInterse
                curve_data,
                METALRT_TAGS,
                extended_limits)]] PrimitiveIntersectionResult
-__intersection__local_tri_single_hit_mblur(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
+__intersection__local_tri_single_hit_mblur(
+    ray_data MetalKernelContext::MetalRTIntersectionLocalPayload_single_hit &payload [[payload]],
     uint primitive_id [[primitive_id]])
 {
   PrimitiveIntersectionResult result;
@@ -68,7 +70,7 @@ TReturn metalrt_local_hit(ray_data MetalKernelContext::MetalRTIntersectionLocalP
 {
   TReturn result;
 
-#ifdef __BVH_LOCAL__
+#  ifdef __BVH_LOCAL__
   if (payload.self_prim == prim) {
     /* Only intersect with matching object and skip self-intersection. */
     result.accept = false;
@@ -127,15 +129,16 @@ TReturn metalrt_local_hit(ray_data MetalKernelContext::MetalRTIntersectionLocalP
   /* Continue tracing (without this the trace call would return after the first hit) */
   result.accept = false;
   result.continue_search = true;
-#endif
+#  endif
   return result;
 }
 
 [[intersection(triangle, triangle_data, curve_data)]] PrimitiveIntersectionResult
-__intersection__local_tri(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload &payload [[payload]],
-    uint primitive_id [[primitive_id]],
-    float2 barycentrics [[barycentric_coord]],
-    float ray_tmax [[distance]])
+__intersection__local_tri(ray_data MetalKernelContext::MetalRTIntersectionLocalPayload &payload
+                          [[payload]],
+                          uint primitive_id [[primitive_id]],
+                          float2 barycentrics [[barycentric_coord]],
+                          float ray_tmax [[distance]])
 {
   /* instance_id, aka the user_id has been removed. If we take this function we optimized the
    * SSS for starting traversal from a primitive acceleration structure instead of the root of the
@@ -157,21 +160,19 @@ __intersection__local_tri_mblur(
     float ray_tmax [[distance]])
 {
   return metalrt_local_hit<PrimitiveIntersectionResult, METALRT_HIT_TRIANGLE>(
-      payload,
-      primitive_id,
-      barycentrics,
-      ray_tmax);
+      payload, primitive_id, barycentrics, ray_tmax);
 }
 
 template<uint intersection_type>
-bool metalrt_shadow_all_hit(constant KernelParamsMetal &launch_params_metal,
-                            ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload,
-                            uint object,
-                            uint prim,
-                            const float2 barycentrics,
-                            const float ray_tmax,
-                            const float t = 0.0f,
-                            ccl_private const Ray *ray = NULL)
+bool metalrt_shadow_all_hit(
+    constant KernelParamsMetal &launch_params_metal,
+    ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload,
+    uint object,
+    uint prim,
+    const float2 barycentrics,
+    const float ray_tmax,
+    const float t = 0.0f,
+    ccl_private const Ray *ray = NULL)
 {
 #  ifdef __SHADOW_RECORD_ALL__
   float u = barycentrics.x;
@@ -336,12 +337,12 @@ __intersection__tri_shadow_all(
                curve_data,
                METALRT_TAGS,
                extended_limits)]] PrimitiveIntersectionResult
-__intersection__volume_tri(
-    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-    ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload [[payload]],
-    const unsigned int object [[instance_id]],
-    const unsigned int primitive_id [[primitive_id]],
-    const uint primitive_id_offset [[user_instance_id]])
+__intersection__volume_tri(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+                           ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload
+                           [[payload]],
+                           const unsigned int object [[instance_id]],
+                           const unsigned int primitive_id [[primitive_id]],
+                           const uint primitive_id_offset [[user_instance_id]])
 {
   PrimitiveIntersectionResult result;
   result.continue_search = true;
@@ -407,7 +408,6 @@ inline TReturnType metalrt_visibility_test(
   result.continue_search = true;
   return result;
 }
-
 
 template<typename TReturnType, uint intersection_type>
 inline TReturnType metalrt_visibility_test_shadow(
@@ -477,16 +477,16 @@ inline TReturnType metalrt_visibility_test_shadow(
                curve_data,
                METALRT_TAGS,
                extended_limits)]] PrimitiveIntersectionResult
-__intersection__tri(
-    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-    ray_data MetalKernelContext::MetalRTIntersectionPayload &payload [[payload]],
-    const unsigned int object [[instance_id]],
-    const uint primitive_id_offset [[user_instance_id]],
-    const unsigned int primitive_id [[primitive_id]])
+__intersection__tri(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+                    ray_data MetalKernelContext::MetalRTIntersectionPayload &payload [[payload]],
+                    const unsigned int object [[instance_id]],
+                    const uint primitive_id_offset [[user_instance_id]],
+                    const unsigned int primitive_id [[primitive_id]])
 {
   PrimitiveIntersectionResult result;
   result.continue_search = true;
-  result.accept = (payload.self_object != object || payload.self_prim != (primitive_id + primitive_id_offset));
+  result.accept = (payload.self_object != object ||
+                   payload.self_prim != (primitive_id + primitive_id_offset));
   return result;
 }
 
@@ -495,12 +495,12 @@ __intersection__tri(
                curve_data,
                METALRT_TAGS,
                extended_limits)]] PrimitiveIntersectionResult
-__intersection__tri_shadow(
-    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-    ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload [[payload]],
-    const unsigned int object [[instance_id]],
-    const uint primitive_id_offset [[user_instance_id]],
-    const unsigned int primitive_id [[primitive_id]])
+__intersection__tri_shadow(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+                           ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload
+                           [[payload]],
+                           const unsigned int object [[instance_id]],
+                           const uint primitive_id_offset [[user_instance_id]],
+                           const unsigned int primitive_id [[primitive_id]])
 {
   uint prim = primitive_id + primitive_id_offset;
   PrimitiveIntersectionResult result =
@@ -549,20 +549,21 @@ __intersection__curve(constant KernelParamsMetal &launch_params_metal [[buffer(1
 [[intersection(
     curve, triangle_data, curve_data, METALRT_TAGS, extended_limits)]] PrimitiveIntersectionResult
 __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-                      ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload [[payload]],
-                      const uint object [[instance_id]],
-                      const uint primitive_id [[primitive_id]],
-                      const uint primitive_id_offset [[user_instance_id]],
-                      float distance [[distance]],
-                      const float3 ray_P [[origin]],
-                      const float3 ray_D [[direction]],
-                      float u [[curve_parameter]],
-                      const float ray_tmin [[min_distance]],
-                      const float ray_tmax [[max_distance]]
-#    if defined(__METALRT_MOTION__)
-                      ,
-                      const float time [[time]]
-#    endif
+                             ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload
+                             [[payload]],
+                             const uint object [[instance_id]],
+                             const uint primitive_id [[primitive_id]],
+                             const uint primitive_id_offset [[user_instance_id]],
+                             float distance [[distance]],
+                             const float3 ray_P [[origin]],
+                             const float3 ray_D [[direction]],
+                             float u [[curve_parameter]],
+                             const float ray_tmin [[min_distance]],
+                             const float ray_tmax [[max_distance]]
+#  if defined(__METALRT_MOTION__)
+                             ,
+                             const float time [[time]]
+#  endif
 )
 {
   uint prim = primitive_id + primitive_id_offset;
@@ -570,9 +571,9 @@ __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[b
   Ray ray;
   ray.P = ray_P;
   ray.D = ray_D;
-#    if defined(__METALRT_MOTION__)
+#  if defined(__METALRT_MOTION__)
   ray.time = time;
-#    endif
+#  endif
 
   PrimitiveIntersectionResult result =
       metalrt_visibility_test_shadow<PrimitiveIntersectionResult, METALRT_HIT_CURVE>(
@@ -581,24 +582,23 @@ __intersection__curve_shadow(constant KernelParamsMetal &launch_params_metal [[b
   return result;
 }
 
-
 [[intersection(
     curve, triangle_data, curve_data, METALRT_TAGS, extended_limits)]] PrimitiveIntersectionResult
-__intersection__curve_shadow_all(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-                             ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload
-                             [[payload]],
-                             const uint object [[instance_id]],
-                             const uint primitive_id [[primitive_id]],
-                             const uint primitive_id_offset [[user_instance_id]],
-                             const float3 ray_P [[origin]],
-                             const float3 ray_D [[direction]],
-                             float u [[curve_parameter]],
-                             float t [[distance]],
+__intersection__curve_shadow_all(
+    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+    ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload [[payload]],
+    const uint object [[instance_id]],
+    const uint primitive_id [[primitive_id]],
+    const uint primitive_id_offset [[user_instance_id]],
+    const float3 ray_P [[origin]],
+    const float3 ray_D [[direction]],
+    float u [[curve_parameter]],
+    float t [[distance]],
 #  if defined(__METALRT_MOTION__)
-                             const float time [[time]],
+    const float time [[time]],
 #  endif
-                             const float ray_tmin [[min_distance]],
-                             const float ray_tmax [[max_distance]])
+    const float ray_tmin [[min_distance]],
+    const float ray_tmax [[max_distance]])
 {
   uint prim = primitive_id + primitive_id_offset;
 
@@ -678,9 +678,9 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
   Intersection isect;
   isect.t = ray_tmax;
 
-#ifndef __METALRT_MOTION__
+#    ifndef __METALRT_MOTION__
   const float time = 0.0f;
-#endif
+#    endif
 
   MetalKernelContext context(launch_params_metal);
   if (context.point_intersect(
@@ -703,58 +703,7 @@ __intersection__point(constant KernelParamsMetal &launch_params_metal [[buffer(1
                METALRT_TAGS,
                extended_limits)]] BoundingBoxIntersectionResult
 __intersection__point_shadow(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-                      ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload [[payload]],
-                      const uint object [[instance_id]],
-                      const uint primitive_id [[primitive_id]],
-                      const uint primitive_id_offset [[user_instance_id]],
-                      const float3 ray_origin [[origin]],
-                      const float3 ray_direction [[direction]],
-#  if defined(__METALRT_MOTION__)
-                      const float time [[time]],
-#  endif
-                      const float ray_tmin [[min_distance]],
-                      const float ray_tmax [[max_distance]])
-{
-  const uint prim = primitive_id + primitive_id_offset;
-  const int type = kernel_data_fetch(objects, object).primitive_type;
-
-  BoundingBoxIntersectionResult result;
-  result.accept = false;
-  result.continue_search = true;
-  result.distance = ray_tmax;
-
-#  ifdef __POINTCLOUD__
-
-  Intersection isect;
-  isect.t = ray_tmax;
-
-#ifndef __METALRT_MOTION__
-  const float time = 0.0f;
-#endif
-
-  MetalKernelContext context(launch_params_metal);
-  if (context.point_intersect(
-          NULL, &isect, ray_origin, ray_direction, ray_tmin, isect.t, object, prim, time, type))
-  {
-    result = metalrt_visibility_test_shadow<BoundingBoxIntersectionResult, METALRT_HIT_BOUNDING_BOX>(
-        launch_params_metal, payload, object, prim, isect.u);
-    if (result.accept) {
-      result.distance = isect.t;
-    }
-  }
-
-#  endif /* __POINTCLOUD__ */
-
-  return result;
-}
-
-[[intersection(bounding_box,
-               triangle_data,
-               curve_data,
-               METALRT_TAGS,
-               extended_limits)]] BoundingBoxIntersectionResult
-__intersection__point_shadow_all(constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
-                             ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload
+                             ray_data MetalKernelContext::MetalRTIntersectionShadowPayload &payload
                              [[payload]],
                              const uint object [[instance_id]],
                              const uint primitive_id [[primitive_id]],
@@ -777,21 +726,74 @@ __intersection__point_shadow_all(constant KernelParamsMetal &launch_params_metal
 
 #  ifdef __POINTCLOUD__
 
-  metalrt_intersection_point_shadow_all(launch_params_metal,
-                                    payload,
-                                    object,
-                                    prim,
-                                    type,
-                                    ray_origin,
-                                    ray_direction,
-#    if defined(__METALRT_MOTION__)
-                                    time,
-#    else
-                                    0.0f,
+  Intersection isect;
+  isect.t = ray_tmax;
+
+#    ifndef __METALRT_MOTION__
+  const float time = 0.0f;
 #    endif
-                                    ray_tmin,
-                                    ray_tmax,
-                                    result);
+
+  MetalKernelContext context(launch_params_metal);
+  if (context.point_intersect(
+          NULL, &isect, ray_origin, ray_direction, ray_tmin, isect.t, object, prim, time, type))
+  {
+    result =
+        metalrt_visibility_test_shadow<BoundingBoxIntersectionResult, METALRT_HIT_BOUNDING_BOX>(
+            launch_params_metal, payload, object, prim, isect.u);
+    if (result.accept) {
+      result.distance = isect.t;
+    }
+  }
+
+#  endif /* __POINTCLOUD__ */
+
+  return result;
+}
+
+[[intersection(bounding_box,
+               triangle_data,
+               curve_data,
+               METALRT_TAGS,
+               extended_limits)]] BoundingBoxIntersectionResult
+__intersection__point_shadow_all(
+    constant KernelParamsMetal &launch_params_metal [[buffer(1)]],
+    ray_data MetalKernelContext::MetalRTIntersectionShadowAllPayload &payload [[payload]],
+    const uint object [[instance_id]],
+    const uint primitive_id [[primitive_id]],
+    const uint primitive_id_offset [[user_instance_id]],
+    const float3 ray_origin [[origin]],
+    const float3 ray_direction [[direction]],
+#  if defined(__METALRT_MOTION__)
+    const float time [[time]],
+#  endif
+    const float ray_tmin [[min_distance]],
+    const float ray_tmax [[max_distance]])
+{
+  const uint prim = primitive_id + primitive_id_offset;
+  const int type = kernel_data_fetch(objects, object).primitive_type;
+
+  BoundingBoxIntersectionResult result;
+  result.accept = false;
+  result.continue_search = true;
+  result.distance = ray_tmax;
+
+#  ifdef __POINTCLOUD__
+
+  metalrt_intersection_point_shadow_all(launch_params_metal,
+                                        payload,
+                                        object,
+                                        prim,
+                                        type,
+                                        ray_origin,
+                                        ray_direction,
+#    if defined(__METALRT_MOTION__)
+                                        time,
+#    else
+                                        0.0f,
+#    endif
+                                        ray_tmin,
+                                        ray_tmax,
+                                        result);
 
 #  endif /* __POINTCLOUD__ */
 

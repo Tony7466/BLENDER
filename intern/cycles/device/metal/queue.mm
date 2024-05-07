@@ -501,7 +501,7 @@ bool MetalDeviceQueue::enqueue(DeviceKernel kernel,
           [metal_device_->mtlAncillaryArgEncoder setAccelerationStructure:accel_struct atIndex:3];
           [metal_device_->mtlAncillaryArgEncoder setBuffer:metal_device_->blas_buffer
                                                     offset:0
-                                                   atIndex:(METALRT_TABLE_NUM+4)];
+                                                   atIndex:(METALRT_TABLE_NUM + 4)];
         }
 
         for (int table = 0; table < METALRT_TABLE_NUM; table++) {

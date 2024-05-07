@@ -156,7 +156,7 @@ ccl_device_intersect bool scene_intersect_shadow(KernelGlobals kg,
 #      include "kernel/bvh/local.h"
 #    endif
 
-template <bool single_hit = false>
+template<bool single_hit = false>
 ccl_device_intersect bool scene_intersect_local(KernelGlobals kg,
                                                 ccl_private const Ray *ray,
                                                 ccl_private LocalIntersection *local_isect,

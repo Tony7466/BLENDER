@@ -79,7 +79,7 @@ struct MetalKernelPipeline {
   int num_threads_per_block = 0;
 
   bool should_use_binary_archive() const;
-  id<MTLFunction> make_intersection_function(const char* function_name);
+  id<MTLFunction> make_intersection_function(const char *function_name);
 
   string error_str;
 
