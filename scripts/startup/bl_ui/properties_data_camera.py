@@ -258,7 +258,10 @@ class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
         sub.active = (dof.focus_object is None)
         row = sub.row(align=True)
         row.prop(dof, "focus_distance", text="Focus Distance")
-        row.operator("ui.eyedropper_depth", icon='EYEDROPPER', text="").prop_data_path = "scene.camera.data.dof.focus_distance"
+        row.operator(
+            "ui.eyedropper_depth",
+            icon='EYEDROPPER',
+            text="").prop_data_path = "scene.camera.data.dof.focus_distance"
 
 
 class DATA_PT_camera_dof_aperture(CameraButtonsPanel, Panel):
