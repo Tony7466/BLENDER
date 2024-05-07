@@ -699,12 +699,9 @@ static bool grease_pencil_apply_fill(bContext &C,
   /* Debug setting: keep image data blocks for inspection. */
   constexpr const bool keep_images = false;
 
-  ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
-  if (!region || region->regiontype != RGN_TYPE_WINDOW) {
-    return false;
-  }
+  ARegion &region = *CTX_wm_region(&C);
   /* Perform bounds check. */
-  const bool in_bounds = BLI_rcti_isect_pt_v(&region->winrct, event.xy);
+  const bool in_bounds = BLI_rcti_isect_pt_v(&region.winrct, event.xy);
   if (!in_bounds) {
     return false;
   }
