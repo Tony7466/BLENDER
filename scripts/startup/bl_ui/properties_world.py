@@ -148,9 +148,8 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
             layout.label(text="No output node")
 
 
-class EEVEE_WORLD_PT_probe(WorldButtonsPanel, Panel):
-    bl_label = "Light Probe"
-    bl_translation_context = i18n_contexts.id_id
+class EEVEE_WORLD_PT_settings(WorldButtonsPanel, Panel):
+    bl_label = "Settings"
     bl_options = {'DEFAULT_CLOSED'}
     COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
 
@@ -166,6 +165,7 @@ class EEVEE_WORLD_PT_probe(WorldButtonsPanel, Panel):
         world = context.world
 
         layout.use_property_split = True
+        layout.prop(world, "sun_threshold")
         layout.prop(world, "probe_resolution")
 
 
@@ -190,7 +190,7 @@ classes = (
     EEVEE_WORLD_PT_surface,
     EEVEE_WORLD_PT_volume,
     EEVEE_WORLD_PT_mist,
-    EEVEE_WORLD_PT_probe,
+    EEVEE_WORLD_PT_settings,
     WORLD_PT_viewport_display,
     WORLD_PT_custom_props,
 )

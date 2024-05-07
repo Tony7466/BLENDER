@@ -70,6 +70,8 @@ class World {
   bool has_volume_absorption_ = false;
   /* Is true if the volume shader has scattering. */
   bool has_volume_scatter_ = false;
+  /* Sunlight radiance split threshold. */
+  float sun_threshold_ = 10.0f;
 
   LookdevWorld lookdev_world_;
 
@@ -92,6 +94,11 @@ class World {
   bool has_volume_scatter() const
   {
     return has_volume_scatter_;
+  }
+
+  float sun_threshold() const
+  {
+    return sun_threshold_;
   }
 
  private:

@@ -67,6 +67,9 @@ typedef struct World {
    * Resolution of the world probe when baked to a texture. Contains `eLightProbeResolution`.
    */
   int probe_resolution;
+  /** Threshold for sun extraction. */
+  float sun_threshold;
+  char _pad4[4];
 
   /** Old animation system, deprecated for 2.5. */
   struct Ipo *ipo DNA_DEPRECATED;

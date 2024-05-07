@@ -124,6 +124,8 @@ void World::sync()
     has_update = true;
   }
 
+  sun_threshold_ = bl_world->sun_threshold;
+
   inst_.light_probes.sync_world(bl_world, has_update);
 
   GPUMaterial *gpumat = inst_.shaders.world_shader_get(bl_world, ntree, MAT_PIPE_DEFERRED);

@@ -3342,7 +3342,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
       LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
         scene->eevee.shadow_resolution_scale = default_scene_eevee.shadow_resolution_scale;
-        scene->eevee.clamp_world = 10.0f;
       }
     }
   }
@@ -3376,6 +3375,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
       MovieClipProxy proxy = clip->proxy;
       versioning_update_timecode(&proxy.tc);
+    }
+
+    LISTBASE_FOREACH (World *, world, &bmain->worlds) {
+      world->sun_threshold = 10.0f;
     }
   }
 

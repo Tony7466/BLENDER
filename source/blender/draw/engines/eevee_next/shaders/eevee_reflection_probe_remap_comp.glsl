@@ -111,8 +111,8 @@ void main()
     radiance.rgb = mix(world_radiance.rgb, radiance.rgb, opacity);
   }
 
-  float clamp_world = uniform_buf.clamp.world;
-  vec3 radiance_clamped = colorspace_brightness_clamp_max(radiance, clamp_world);
+  float sun_threshold = uniform_buf.clamp.sun_threshold;
+  vec3 radiance_clamped = colorspace_brightness_clamp_max(radiance, sun_threshold);
   vec3 radiance_sun = radiance - radiance_clamped;
   radiance = radiance_clamped;
 
