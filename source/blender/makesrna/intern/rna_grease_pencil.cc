@@ -252,8 +252,11 @@ static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
                                               ReportList * /*reports*/)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  grease_pencil->active_node = static_cast<GreasePencilLayerTreeNode *>(value.data);
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+  GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(value.data);
+  if (node->wrap().is_group()) {
+    grease_pencil->active_node = node;
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+  }
 }
 
 static std::optional<std::string> rna_GreasePencilLayerGroup_path(const PointerRNA *ptr)
