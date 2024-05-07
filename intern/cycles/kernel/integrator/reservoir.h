@@ -15,6 +15,8 @@ struct Reservoir {
   int max_samples;
   float3 rgb_to_y;
 
+  int direct_sampling_method;
+
   Reservoir() = default;
 
   Reservoir(Reservoir &other)
@@ -36,6 +38,7 @@ struct Reservoir {
     num_bsdf_samples = use_ris ? kernel_data.integrator.restir_bsdf_samples : 1;
     max_samples = num_light_samples + num_bsdf_samples;
     rgb_to_y = float4_to_float3(kernel_data.film.rgb_to_y);
+    direct_sampling_method = kernel_data.integrator.direct_light_sampling_type;
   }
 
   bool is_empty() const
@@ -84,13 +87,38 @@ struct Reservoir {
     return (pdf_a * pdf_a) / (pdf_a * pdf_a * (float)num_a + pdf_b * pdf_b * (float)num_b);
   }
 
+  float mis_weight_nee(float ls_pdf, float bsdf_pdf)
+  {
+#ifdef WITH_CYCLES_DEBUG
+    if (direct_sampling_method == DIRECT_LIGHT_SAMPLING_FORWARD) {
+      ls_pdf *= (bsdf_pdf == 0.0f);
+    }
+    else if (direct_sampling_method == DIRECT_LIGHT_SAMPLING_NEE) {
+      bsdf_pdf = 0.0f;
+    }
+#endif
+    return power_heuristic(num_light_samples, ls_pdf, num_bsdf_samples, bsdf_pdf);
+  }
+
+  float mis_weight_forward(float bsdf_pdf, float ls_pdf)
+  {
+#ifdef WITH_CYCLES_DEBUG
+    if (direct_sampling_method == DIRECT_LIGHT_SAMPLING_FORWARD) {
+      ls_pdf = 0.0f;
+    }
+    else if (direct_sampling_method == DIRECT_LIGHT_SAMPLING_NEE) {
+      bsdf_pdf *= (ls_pdf == 0.0f);
+    }
+#endif
+    return power_heuristic(num_bsdf_samples, bsdf_pdf, num_light_samples, ls_pdf);
+  }
+
   void add_light_sample(const ccl_private LightSample &ls,
                         const ccl_private BsdfEval &radiance,
                         const float bsdf_pdf,
                         const float rand)
   {
-    const float mis_weight = power_heuristic(
-        num_light_samples, ls.pdf, num_bsdf_samples, bsdf_pdf);
+    const float mis_weight = mis_weight_nee(ls.pdf, bsdf_pdf);
 
     /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
     const float jacobian = ls.jacobian_solid_angle_to_area();
@@ -107,8 +135,7 @@ struct Reservoir {
                        const float bsdf_pdf,
                        const float rand)
   {
-    const float mis_weight = power_heuristic(
-        num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
+    const float mis_weight = mis_weight_forward(bsdf_pdf, ls.pdf);
 
     /* TODO(weizhen): Convert pdf to area measure when returning the pdf instead of here. */
     const float jacobian = ls.jacobian_solid_angle_to_area();
