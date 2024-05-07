@@ -1207,6 +1207,61 @@ static void thickness_factor_to_modifier(ConversionData &conversion_data,
   animdata_thickness_transfer.fcurves_convert_finalize();
 }
 
+static void fcurve_convert_thickness_cb(FCurve &fcurve)
+{
+  if (fcurve.bezt) {
+    for (uint i = 0; i < fcurve.totvert; i++) {
+      BezTriple &bezier_triple = fcurve.bezt[i];
+      bezier_triple.vec[0][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+      bezier_triple.vec[1][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+      bezier_triple.vec[2][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+    }
+  }
+  if (fcurve.fpt) {
+    for (uint i = 0; i < fcurve.totvert; i++) {
+      FPoint &fpoint = fcurve.fpt[i];
+      fpoint.vec[1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
+    }
+  }
+  fcurve.flag &= ~FCURVE_INT_VALUES;
+  BKE_fcurve_handles_recalc(&fcurve);
+}
+
+static void legacy_object_thickness_modifier_thickness_anim(ConversionData &conversion_data,
+                                                            Object &object)
+{
+  if (BKE_animdata_from_id(&object.id) == nullptr) {
+    return;
+  }
+
+  /* NOTE: At this point, the animation was already transferred to the destination object. Now we
+   * just need to convert the fcurve data to be in the right space. */
+  AnimDataConvertor animdata_convert_thickness(
+      conversion_data,
+      object.id,
+      object.id,
+      {{".thickness", ".thickness", fcurve_convert_thickness_cb}});
+
+  LISTBASE_FOREACH (ModifierData *, tmd, &object.modifiers) {
+    if (ModifierType(tmd->type) != eModifierType_GreasePencilThickness) {
+      continue;
+    }
+
+    char modifier_name[MAX_NAME * 2];
+    BLI_str_escape(modifier_name, tmd->name, sizeof(modifier_name));
+    animdata_convert_thickness.root_path_src = fmt::format("modifiers[\"{}\"]", modifier_name);
+    animdata_convert_thickness.root_path_dst = fmt::format("modifiers[\"{}\"]", modifier_name);
+
+    if (!animdata_convert_thickness.source_has_animation_to_convert()) {
+      continue;
+    }
+    animdata_convert_thickness.fcurves_convert();
+  }
+
+  animdata_convert_thickness.fcurves_convert_finalize();
+  DEG_relations_tag_update(&conversion_data.bmain);
+}
+
 static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
                                            bGPdata &src_object_data,
                                            Object &dst_object)
@@ -1219,24 +1274,6 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       src_object_data.id,
       {{".tint_color", ".color"}, {".tint_factor", ".factor"}});
 
-  auto fcurve_convert_thickness_cb = [&](FCurve &fcurve) {
-    if (fcurve.bezt) {
-      for (uint i = 0; i < fcurve.totvert; i++) {
-        BezTriple &bezier_triple = fcurve.bezt[i];
-        bezier_triple.vec[0][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
-        bezier_triple.vec[1][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
-        bezier_triple.vec[2][1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
-    }
-    if (fcurve.fpt) {
-      for (uint i = 0; i < fcurve.totvert; i++) {
-        FPoint &fpoint = fcurve.fpt[i];
-        fpoint.vec[1] *= LEGACY_RADIUS_CONVERSION_FACTOR;
-      }
-    }
-    fcurve.flag &= ~FCURVE_INT_VALUES;
-    BKE_fcurve_handles_recalc(&fcurve);
-  };
   AnimDataConvertor animdata_thickness_transfer(
       conversion_data,
       dst_object.id,
@@ -1292,7 +1329,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
     if (has_thickness_adjustment) {
       /* Convert the "pixel" offset value into a radius value.
        * GPv2 used a conversion of 1 "px" = 0.001. */
-      /* Note: this offset may be negative. */
+      /* NOTE: this offset may be negative. */
       const float radius_offset = float(thickness_px) * LEGACY_RADIUS_CONVERSION_FACTOR;
 
       const auto offset_radius_ntree_ensure = [&](Library *owner_library) {
@@ -1867,7 +1904,7 @@ static void legacy_object_modifier_multiply(ConversionData &conversion_data,
   md_multiply.fading_thickness = legacy_md_multiply.fading_thickness;
   md_multiply.fading_opacity = legacy_md_multiply.fading_opacity;
 
-  /* Note: This looks wrong, but GPv2 version uses Mirror modifier flags in its `flag` property
+  /* NOTE: This looks wrong, but GPv2 version uses Mirror modifier flags in its `flag` property
    * and own flags in its `flags` property. */
   legacy_object_modifier_influence(md_multiply.influence,
                                    legacy_md_multiply.layername,
@@ -2244,7 +2281,7 @@ static void legacy_object_modifier_thickness(ConversionData &conversion_data,
     md_thickness.flag |= MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR;
   }
   md_thickness.thickness_fac = legacy_md_thickness.thickness_fac;
-  md_thickness.thickness = legacy_md_thickness.thickness;
+  md_thickness.thickness = legacy_md_thickness.thickness * LEGACY_RADIUS_CONVERSION_FACTOR;
 
   legacy_object_modifier_influence(md_thickness.influence,
                                    legacy_md_thickness.layername,
@@ -2323,7 +2360,7 @@ static void legacy_object_modifier_time(ConversionData &conversion_data,
     dst_segment.segment_repeat = src_segment.seg_repeat;
   }
 
-  /* Note: GPv2 time modifier has a material pointer but it is unused. */
+  /* NOTE: GPv2 time modifier has a material pointer but it is unused. */
   legacy_object_modifier_influence(md_time.influence,
                                    legacy_md_time.layername,
                                    legacy_md_time.layer_pass,
@@ -2788,7 +2825,7 @@ static void legacy_gpencil_sanitize_annotations(Main &bmain)
      * annotations, if not yet done. */
     if (!new_annotation_gpd) {
       new_annotation_gpd = reinterpret_cast<bGPdata *>(BKE_id_copy_in_lib(
-          &bmain, legacy_gpd->id.lib, &legacy_gpd->id, nullptr, LIB_ID_COPY_DEFAULT));
+          &bmain, legacy_gpd->id.lib, &legacy_gpd->id, nullptr, nullptr, LIB_ID_COPY_DEFAULT));
       new_annotation_gpd->flag |= GP_DATA_ANNOTATIONS;
       id_us_min(&new_annotation_gpd->id);
       annotations_gpv2.add_overwrite(legacy_gpd, new_annotation_gpd);
@@ -2906,6 +2943,8 @@ static void legacy_gpencil_object_ex(ConversionData &conversion_data, Object &ob
   }
 
   legacy_object_modifiers(conversion_data, object);
+  /* Convert the animation of the "uniform thickness" setting of the thickness modifier. */
+  legacy_object_thickness_modifier_thickness_anim(conversion_data, object);
 
   /* Layer adjustments should be added after all other modifiers. */
   layer_adjustments_to_modifiers(conversion_data, *gpd, object);
