@@ -2583,8 +2583,8 @@ static void init_text_effect(Sequence *seq)
 
   copy_v4_fl(data->color, 1.0f);
   data->shadow_color[3] = 0.7f;
-  data->shadow_angle = DEG2RADF(45.0f);
-  data->shadow_offset = 0.05f;
+  data->shadow_angle = DEG2RADF(65.0f);
+  data->shadow_offset = 0.04f;
   data->shadow_blur = 0.0f;
   data->box_color[0] = 0.2f;
   data->box_color[1] = 0.2f;

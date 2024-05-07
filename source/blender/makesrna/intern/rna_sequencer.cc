@@ -3366,13 +3366,13 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_float_sdna(prop, nullptr, "shadow_angle");
   RNA_def_property_range(prop, 0, M_PI * 2);
   RNA_def_property_ui_text(prop, "Shadow Angle", "");
-  RNA_def_property_float_default(prop, DEG2RADF(45.0f));
+  RNA_def_property_float_default(prop, DEG2RADF(65.0f));
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "shadow_offset", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, nullptr, "shadow_offset");
   RNA_def_property_ui_text(prop, "Shadow Offset", "");
-  RNA_def_property_float_default(prop, 0.05f);
+  RNA_def_property_float_default(prop, 0.04f);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 1.0f, 2);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
