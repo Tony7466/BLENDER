@@ -1498,6 +1498,10 @@ SequenceModifierData *SEQ_modifier_find_by_name(Sequence *seq, const char *name)
 static bool skip_modifier(Scene *scene, const SequenceModifierData *smd, int timeline_frame)
 {
   using namespace blender::seq;
+
+  if (smd->mask_sequence == nullptr) {
+    return false;
+  }
   const bool strip_has_ended_skip = smd->mask_input_type == SEQUENCE_MASK_INPUT_STRIP &&
                                     smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
                                     !SEQ_time_strip_intersects_frame(
