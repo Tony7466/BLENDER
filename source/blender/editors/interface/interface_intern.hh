@@ -658,7 +658,7 @@ void ui_but_to_pixelrect(rcti *rect,
                          const uiBut *but);
 rcti ui_to_pixelrect(const ARegion *region, const uiBlock *block, const rctf *src_rect);
 
-void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *r_x, float *r_y);
+void ui_block_to_region_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
 void ui_block_to_window_fl(const ARegion *region, const uiBlock *block, float *x, float *y);
 void ui_block_to_window(const ARegion *region, const uiBlock *block, int *x, int *y);
 void ui_block_to_region_rctf(const ARegion *region,
@@ -1298,8 +1298,14 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-void icon_draw_rect_input(
-    float x, float y, int w, int h, float alpha, short event_type, short event_value);
+void icon_draw_rect_input(float x,
+                          float y,
+                          int w,
+                          int h,
+                          float alpha,
+                          short event_type,
+                          short event_value,
+                          bool inverted = false);
 
 /* resources.cc */
 
@@ -1570,8 +1576,51 @@ ID *ui_template_id_liboverride_hierarchy_make(
  * should not be used outside of the files where they are defined. */
 namespace blender::interface::internal {
 
+/**
+ * Get the driver(s) of the given property.
+ *
+ * \note intended to be used in conjunction with `paste_property_drivers()` below.
+ *
+ * \param ptr: The RNA pointer of the property.
+ * \param prop: The property RNA of the property.
+ * \param get_all: Whether to get all drivers of an array property, or just the
+ * one specified by `index`.  Ignored if the property is not an array property.
+ * \param index: Which element of an array property to get.  Ignored if `get_all`
+ * is true or if the property is not an array properly.
+ * \param r_is_array_prop: Output parameter, that stores whether the passed
+ * property is an array property or not.
+ *
+ * \returns A vector of pointers to the drivers of the property.  It will be
+ * zero-sized if no drivers were fetched (e.g. if the property had no drivers).
+ * Otherwise the vector will be the size of the underlying property (e.g. 4 for
+ * an array property with 4 elements, 1 for a non-array property).  For array
+ * properties, elements without drivers will be null.
+ */
 blender::Vector<FCurve *> get_property_drivers(
     PointerRNA *ptr, PropertyRNA *prop, bool get_all, int index, bool *r_is_array_prop);
+
+/**
+ * Paste the drivers from `src_drivers` to the destination property.
+ *
+ * This function can be used for pasting drivers for all elements of an array
+ * property, just some elements of an array property, or a single driver for a
+ * non-array property.
+ *
+ * \note intended to be used in conjunction with `get_property_drivers()` above.
+ * The destination property should have the same type and (if an array property)
+ * length as the source property passed to `get_property_drivers()`.
+ *
+ * \param src_drivers: The span of drivers to paste.  If `is_array_prop` is
+ * false, this must be a single element.  If `is_array_prop` is true then this
+ * should have the same length as the the destination array property.  Nullptr
+ * elements are skipped when pasting.
+ * \param is_array_prop: Whether `src_drivers` are drivers for the elements
+ * of an array property.
+ * \param dst_ptr: The RNA pointer for the destination property.
+ * \param dist_prop: The destination property RNA.
+ *
+ * \returns The number of successfully pasted drivers.
+ */
 int paste_property_drivers(blender::Span<FCurve *> src_drivers,
                            bool is_array_prop,
                            PointerRNA *dst_ptr,

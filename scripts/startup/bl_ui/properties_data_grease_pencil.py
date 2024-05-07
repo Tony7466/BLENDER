@@ -46,7 +46,7 @@ class GreasePencil_LayerMaskPanel:
         grease_pencil = ob.data
         layer = grease_pencil.layers.active
 
-        self.layout.prop(layer, "use_masks", text="")
+        self.layout.prop(layer, "use_masks", text="", toggle=0)
 
     def draw(self, context):
         layout = self.layout
@@ -63,8 +63,10 @@ class GreasePencil_LayerMaskPanel:
         rows = 4
         row = layout.row()
         col = row.column()
-        col.template_list("GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
-                          "active_mask_index", rows=rows, sort_lock=True)
+        col.template_list(
+            "GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
+            "active_mask_index", rows=rows, sort_lock=True,
+        )
 
         col = row.column(align=True)
         col.menu("GREASE_PENCIL_MT_layer_mask_add", icon='ADD', text="")
@@ -328,10 +330,11 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
         col.prop(grease_pencil, "stroke_depth_order", text="Stroke Depth Order")
 
 
-class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
-    _context_path = "object.data"
-    _property_type = bpy.types.GreasePencilv3
-
+_has_gpv3 = hasattr(bpy.types, 'GreasePencilv3')
+if _has_gpv3:
+    class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
+        _context_path = "object.data"
+        _property_type = bpy.types.GreasePencilv3
 
 classes = (
     GREASE_PENCIL_UL_masks,
@@ -345,9 +348,12 @@ classes = (
     DATA_PT_grease_pencil_onion_skinning_custom_colors,
     DATA_PT_grease_pencil_onion_skinning_display,
     DATA_PT_grease_pencil_settings,
-    DATA_PT_grease_pencil_custom_props,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
 )
+
+if _has_gpv3:
+    classes += (DATA_PT_grease_pencil_custom_props,)
+
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class

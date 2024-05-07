@@ -845,8 +845,7 @@ static inline bool is_local_light(eLightType type)
   float clip_side; \
   /** Number of allocated tilemap for this local light. */ \
   int tilemaps_count; \
-  /** Scaling factor to the light shape for shadow ray casting. */ \
-  float shadow_scale; \
+  float _pad7; \
   /** Shift to apply to the light origin to get the shadow projection origin. */ \
   float shadow_projection_shift;
 
@@ -1085,7 +1084,6 @@ static inline LightSpotData light_local_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
-  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
   SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   return data;
@@ -1099,7 +1097,6 @@ static inline LightSpotData light_spot_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
-  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
   SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT(radius, _pad1)
@@ -1118,7 +1115,6 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
   SAFE_ASSIGN_FLOAT(clip_side, clip_side)
-  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
   SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
@@ -1129,7 +1125,7 @@ static inline LightSunData light_sun_data_get(LightData light)
 {
   SAFE_BEGIN(LightSunData, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, radius_squared)
-  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, shadow_scale, shadow_projection_shift)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_neg, _pad7, shadow_projection_shift)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset_pos, _pad0_reserved, _pad1_reserved)
   SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
   SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
@@ -1237,11 +1233,6 @@ struct ShadowTileMapData {
   float half_size;
   /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
   float2 center_offset;
-  /** Filter radius of the light in pixels. */
-  float filter_radius;
-  float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 
@@ -1259,9 +1250,10 @@ struct ShadowRenderView {
   float clip_distance_inv;
   /* Viewport to submit the geometry of this tilemap view to. */
   uint viewport_index;
-  /* Filter radius for this view. */
-  float filter_radius;
-  uint _pad1;
+  /* True if comming from a sun light shadow. */
+  bool32_t is_directionnal;
+  /* If directionnal, distance along the negative Z axis of the near clip in view space. */
+  float clip_near;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowRenderView, 16)
 
@@ -1734,10 +1726,14 @@ BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
  * \{ */
 
 struct ClampData {
+  float world;
   float surface_direct;
   float surface_indirect;
   float volume_direct;
   float volume_indirect;
+  float _pad0;
+  float _pad1;
+  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ClampData, 16)
 
@@ -1761,28 +1757,34 @@ enum eClosureBits : uint32_t {
   CLOSURE_AMBIENT_OCCLUSION = (1u << 12u),
   CLOSURE_SHADER_TO_RGBA = (1u << 13u),
   CLOSURE_CLEARCOAT = (1u << 14u),
+
+  CLOSURE_TRANSMISSION = CLOSURE_SSS | CLOSURE_REFRACTION | CLOSURE_TRANSLUCENT,
 };
 
 enum GBufferMode : uint32_t {
   /** None mode for pixels not rendered. */
   GBUF_NONE = 0u,
 
+  /* Reflection.  */
   GBUF_DIFFUSE = 1u,
-  GBUF_TRANSLUCENT = 2u,
-  GBUF_REFLECTION = 3u,
-  GBUF_REFRACTION = 4u,
-  GBUF_SUBSURFACE = 5u,
-
+  GBUF_REFLECTION = 2u,
+  GBUF_REFLECTION_COLORLESS = 3u,
   /** Used for surfaces that have no lit closure and just encode a normal layer. */
-  GBUF_UNLIT = 11u,
+  GBUF_UNLIT = 4u,
 
-  /** Parameter Optimized. Packs one closure into less layer. */
-  GBUF_REFLECTION_COLORLESS = 12u,
-  GBUF_REFRACTION_COLORLESS = 13u,
+  /**
+   * Special bit that marks all closures with refraction.
+   * Allows to detect the presence of transmission more easily.
+   * Note that this left only 2^3 values (minus 0) for encoding the BSDF.
+   * Could be removed if that's too cumbersome to add more BSDF.
+   */
+  GBUF_TRANSMISSION_BIT = 1u << 3u,
 
-  /** Special configurations. Packs multiple closures into less layer. */
-  /* TODO(@fclem): This is isn't currently working due to monolithic nature of the evaluation. */
-  GBUF_METAL_CLEARCOAT = 15u,
+  /* Transmission. */
+  GBUF_REFRACTION = 0u | GBUF_TRANSMISSION_BIT,
+  GBUF_REFRACTION_COLORLESS = 1u | GBUF_TRANSMISSION_BIT,
+  GBUF_TRANSLUCENT = 2u | GBUF_TRANSMISSION_BIT,
+  GBUF_SUBSURFACE = 3u | GBUF_TRANSMISSION_BIT,
 
   /** IMPORTANT: Needs to be less than 16 for correct packing in g-buffer header. */
 };
