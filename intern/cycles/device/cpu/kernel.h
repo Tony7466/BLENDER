@@ -43,6 +43,7 @@ class CPUKernels {
   IntegratorShadeFunction integrator_shade_volume;
   IntegratorShadeFunction integrator_shade_dedicated_light;
   IntegratorShadeFunction integrator_megakernel;
+  IntegratorShadeFunction integrator_evaluate_final_samples;
 
   /* Shader evaluation. */
 

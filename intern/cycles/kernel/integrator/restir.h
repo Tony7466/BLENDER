@@ -357,7 +357,7 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
   return current->reservoir.finalize();
 }
 
-ccl_device bool integrator_evaluate_final_samples(KernelGlobals kg,
+ccl_device void integrator_evaluate_final_samples(KernelGlobals kg,
                                                   IntegratorState state,
                                                   ccl_global float *ccl_restrict render_buffer)
 {
@@ -365,10 +365,10 @@ ccl_device bool integrator_evaluate_final_samples(KernelGlobals kg,
   Reservoir reservoir;
   const uint32_t render_pixel_index = INTEGRATOR_STATE(state, path, render_pixel_index);
 
-  const bool read_prev = !(state->read_previous_reservoir);
+  const bool read_prev = state->read_previous_reservoir;
   integrator_restir_unpack_reservoir(kg, &reservoir, render_pixel_index, render_buffer, read_prev);
   if (reservoir.is_empty()) {
-    return false;
+    return;
   }
 
   integrator_restir_unpack_shader(kg, &current, render_pixel_index, render_buffer);
@@ -387,8 +387,6 @@ ccl_device bool integrator_evaluate_final_samples(KernelGlobals kg,
   path_state_rng_load(state, &rng_state);
   integrate_direct_light_create_shadow_path<true>(
       kg, state, &rng_state, &current.sd, &current.reservoir.ls, &current.reservoir.radiance, 0);
-
-  return true;
 }
 
 ccl_device bool integrator_restir(KernelGlobals kg,
@@ -410,7 +408,6 @@ ccl_device bool integrator_restir(KernelGlobals kg,
     /* No interesction at the current shading point. */
     /* TODO(weizhen): revisit this condition when we support background and distant lights. */
     film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
-    integrator_evaluate_final_samples(kg, state, render_buffer);
     return false;
   }
 
@@ -448,13 +445,10 @@ ccl_device bool integrator_restir(KernelGlobals kg,
 
   if (!success) {
     film_clear_data_pass_reservoir(kg, state, render_buffer, write_prev);
-    integrator_evaluate_final_samples(kg, state, render_buffer);
     return false;
   }
 
   film_write_data_pass_reservoir(kg, state, &current.reservoir, render_buffer, write_prev);
-  integrator_evaluate_final_samples(kg, state, render_buffer);
-
   return true;
 }
 

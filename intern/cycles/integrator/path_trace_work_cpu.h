@@ -48,6 +48,12 @@ class PathTraceWorkCPU : public PathTraceWork {
                           const int sample_offset,
                           const int iteration);
 
+  void evaluate_final_samples(const int64_t image_width,
+                              const int64_t image_height,
+                              const int start_sample,
+                              const int sample_offset,
+                              const int iteration);
+
   void setup_work_tile(KernelWorkTile &work_tile,
                        const int64_t work_index,
                        const int64_t image_width,
@@ -96,6 +102,10 @@ class PathTraceWorkCPU : public PathTraceWork {
   void render_samples_direct_illumination(KernelGlobalsCPU *kg,
                                           const KernelWorkTile &work_tile,
                                           const int iteration);
+
+  void render_samples_evaluate_final(KernelGlobalsCPU *kg,
+                                     const KernelWorkTile &work_tile,
+                                     const int iteration);
 
   /* CPU kernels. */
   const CPUKernels &kernels_;

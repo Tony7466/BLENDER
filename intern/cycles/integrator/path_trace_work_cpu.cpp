@@ -109,7 +109,7 @@ void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
                                           const int64_t image_height,
                                           const int start_sample,
                                           const int sample_offset,
-                                          const int iterations)
+                                          const int iteration)
 {
   const int64_t total_pixels_num = image_width * image_height;
 
@@ -123,7 +123,29 @@ void PathTraceWorkCPU::spatial_resampling(const int64_t image_width,
 
     CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
 
-    render_samples_direct_illumination(kernel_globals, work_tile, iterations);
+    render_samples_direct_illumination(kernel_globals, work_tile, iteration);
+  });
+}
+
+void PathTraceWorkCPU::evaluate_final_samples(const int64_t image_width,
+                                              const int64_t image_height,
+                                              const int start_sample,
+                                              const int sample_offset,
+                                              const int iteration)
+{
+  const int64_t total_pixels_num = image_width * image_height;
+
+  parallel_for(int64_t(0), total_pixels_num, [&](int64_t work_index) {
+    if (is_cancel_requested()) {
+      return;
+    }
+
+    KernelWorkTile work_tile;
+    setup_work_tile(work_tile, work_index, image_width, image_height, start_sample, sample_offset);
+
+    CPUKernelThreadGlobals *kernel_globals = kernel_thread_globals_get(kernel_thread_globals_);
+
+    render_samples_evaluate_final(kernel_globals, work_tile, iteration);
     ++work_tile.start_sample;
   });
 }
@@ -148,14 +170,18 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
   local_arena.execute(
       [&] { initial_resampling(image_width, image_height, start_sample, sample_offset); });
 
-  /* FIXME(weizhen): spatial resampling makes denoiser and adaptive sampling (noise threshold) to
-   * fail. */
+  /* FIXME(weizhen): spatial resampling makes adaptive sampling (noise threshold) fail. */
   /* Spatial Resampling. */
   if (device_scene_->data.integrator.use_spatial_resampling) {
-    for (int i = 0; i < 1; i++) {
+    int i = 0;
+    for (; i < 1; i++) {
       local_arena.execute(
           [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset, i); });
     }
+
+    local_arena.execute([&] {
+      evaluate_final_samples(image_width, image_height, start_sample, sample_offset, i);
+    });
   }
 
   if (device_->profiler.active()) {
@@ -251,6 +277,40 @@ void PathTraceWorkCPU::render_samples_direct_illumination(KernelGlobalsCPU *kg,
   if (!kernels_.integrator_restir(kg, state, &sample_work_tile, render_buffer)) {
     return;
   }
+  kernels_.integrator_megakernel(kg, state, render_buffer);
+}
+
+void PathTraceWorkCPU::render_samples_evaluate_final(KernelGlobalsCPU *kg,
+                                                     const KernelWorkTile &work_tile,
+                                                     const int iteration)
+{
+  IntegratorStateCPU integrator_states[2];
+
+  IntegratorStateCPU *state = &integrator_states[0];
+
+  /* Ping-pong between two reservoirs. */
+  state->read_previous_reservoir = iteration % 2;
+
+  KernelWorkTile sample_work_tile = work_tile;
+  float *render_buffer = buffers_->buffer.data();
+
+  if (is_cancel_requested()) {
+    return;
+  }
+
+  if (!kernels_.integrator_init_from_camera(kg, state, &sample_work_tile, render_buffer)) {
+    return;
+  }
+
+  /* TODO(weizhen): handle the state flow properly during initialization. */
+  if (kernel_data.cam.is_inside_volume) {
+    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK);
+  }
+  else {
+    integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_INTERSECT_CLOSEST);
+  }
+
+  kernels_.integrator_evaluate_final_samples(kg, state, render_buffer);
   kernels_.integrator_megakernel(kg, state, render_buffer);
 }
 
