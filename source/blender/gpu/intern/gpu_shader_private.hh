@@ -173,7 +173,7 @@ class ShaderCompilerBase {
  public:
   virtual Shader *compile(const shader::ShaderCreateInfo &info);
 
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) = 0;
+  virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) = 0;
   virtual bool batch_is_ready(BatchHandle handle) = 0;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
 };
@@ -182,7 +182,7 @@ class ShaderCompiler : public ShaderCompilerBase {
  private:
   struct Batch {
     Vector<Shader *> shaders;
-    Vector<shader::ShaderCreateInfo *> infos;
+    Vector<const shader::ShaderCreateInfo *> infos;
     bool is_ready = false;
   };
   BatchHandle next_batch_handle = 1;
@@ -191,7 +191,7 @@ class ShaderCompiler : public ShaderCompilerBase {
  public:
   ~ShaderCompiler();
 
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
+  virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };

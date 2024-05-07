@@ -1721,7 +1721,7 @@ void GLShaderCompiler::print_workers()
   }
 }
 
-BatchHandle GLShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &infos)
+BatchHandle GLShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo *> &infos)
 {
   std::scoped_lock lock(mutex_);
   BatchHandle handle = next_batch_handle++;
@@ -1730,18 +1730,27 @@ BatchHandle GLShaderCompiler::batch_compile(Span<shader::ShaderCreateInfo *> &in
   batch.items.reserve(infos.size());
   batch.is_ready = false;
 
-  for (shader::ShaderCreateInfo *info : infos) {
-    info->do_batch_compilation = true;
+  for (const shader::ShaderCreateInfo *info : infos) {
+    const_cast<ShaderCreateInfo *>(info)->finalize();
+    const bool do_batch_compilation = info->specialization_constants_.is_empty() &&
+                                      !info->vertex_source_.is_empty() &&
+                                      !info->fragment_source_.is_empty() &&
+                                      info->compute_source_.is_empty() &&
+                                      info->geometry_source_.is_empty();
+    const_cast<shader::ShaderCreateInfo *>(info)->do_batch_compilation = do_batch_compilation;
+
     CompilationWork item = {};
     item.info = info;
-    item.shader = static_cast<GLShader *>(compile(*info));
-    for (const char *src : item.shader->vertex_sources_.sources_get()) {
-      item.vertex_src.append(src);
+    if (info->do_batch_compilation) {
+      item.shader = static_cast<GLShader *>(compile(*info));
+      for (const char *src : item.shader->vertex_sources_.sources_get()) {
+        item.vertex_src.append(src);
+      }
+      for (const char *src : item.shader->fragment_sources_.sources_get()) {
+        item.fragment_src.append(src);
+      }
+      item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     }
-    for (const char *src : item.shader->fragment_sources_.sources_get()) {
-      item.fragment_src.append(src);
-    }
-    item.worker = get_compiler_worker(item.vertex_src.c_str(), item.fragment_src.c_str());
     batch.items.append(item);
   }
   return handle;
@@ -1762,6 +1771,12 @@ bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
   for (CompilationWork &item : batch.items) {
     if (item.is_ready) {
       ready++;
+      continue;
+    }
+
+    if (!item.info->do_batch_compilation) {
+      item.shader = static_cast<GLShader *>(compile(*item.info));
+      item.is_ready = true;
       continue;
     }
 

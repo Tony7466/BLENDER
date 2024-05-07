@@ -243,7 +243,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
   struct CompilationWork {
     GLCompilerWorker *worker;
     GLShader *shader;
-    shader::ShaderCreateInfo *info;
+    const shader::ShaderCreateInfo *info;
 
     std::string vertex_src;
     std::string fragment_src;
@@ -265,7 +265,7 @@ class GLShaderCompiler : public ShaderCompilerBase {
  public:
   ~GLShaderCompiler();
 
-  virtual BatchHandle batch_compile(Span<shader::ShaderCreateInfo *> &infos) override;
+  virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) override;
 };
