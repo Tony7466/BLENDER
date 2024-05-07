@@ -503,6 +503,7 @@ bool GLContext::texture_barrier_support = false;
 bool GLContext::texture_filter_anisotropic_support = false;
 bool GLContext::arb_parallel_shader_compile_support = false;
 bool GLContext::khr_parallel_shader_compile_support = false;
+bool GLContext::parallel_shader_compile_support = false;
 
 /** Workarounds. */
 
@@ -595,6 +596,8 @@ void GLBackend::capabilities_init()
       "GL_ARB_parallel_shader_compile");
   GLContext::khr_parallel_shader_compile_support = epoxy_has_gl_extension(
       "GL_KHR_parallel_shader_compile");
+  GLContext::parallel_shader_compile_support = GLContext::khr_parallel_shader_compile_support ||
+                                               GLContext::arb_parallel_shader_compile_support;
 
   /* Disabled until it is proven to work. */
   GLContext::framebuffer_fetch_support = false;

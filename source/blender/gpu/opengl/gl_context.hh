@@ -63,6 +63,7 @@ class GLContext : public Context {
   static bool texture_filter_anisotropic_support;
   static bool arb_parallel_shader_compile_support;
   static bool khr_parallel_shader_compile_support;
+  static bool parallel_shader_compile_support;
 
   /** Workarounds. */
 

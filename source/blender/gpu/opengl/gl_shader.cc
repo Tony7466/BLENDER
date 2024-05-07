@@ -1244,11 +1244,8 @@ bool GLShader::is_ready()
 {
   GLint is_ready = true;
   GLuint program_id = program_active_->program_id;
-  if (GLContext::khr_parallel_shader_compile_support) {
+  if (GLContext::parallel_shader_compile_support) {
     glGetProgramiv(program_id, GL_COMPLETION_STATUS_KHR, &is_ready);
-  }
-  else if (GLContext::arb_parallel_shader_compile_support) {
-    glGetProgramiv(program_id, GL_COMPLETION_STATUS_ARB, &is_ready);
   }
   return is_ready;
 }
