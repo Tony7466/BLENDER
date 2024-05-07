@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2021-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Based on:
  * "Stochastic Screen Space Reflections"
  * by Tomasz Stachowiak.
@@ -25,7 +29,7 @@ void main()
   rand.xy = fract(rand.xy * 3.2471795724474602596);
 
   /* Randomly choose the pixel to start the ray from when tracing at lower resolution.
-   * This method also make sure we always start from the center of a fullres texel. */
+   * This method also make sure we always start from the center of a full-resolution texel. */
   vec2 uvs = (gl_FragCoord.xy + random_px * randomScale) / (targetSize * ssrUvScale);
 
   float depth = textureLod(maxzBuffer, uvs * hizUvScale.xy, 0.0).r;

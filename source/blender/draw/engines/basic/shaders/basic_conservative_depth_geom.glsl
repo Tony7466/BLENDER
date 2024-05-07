@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2020-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Adaptation of Conservative Rasterization
  * from GPU Gems 2
  * Using method 2.
@@ -45,7 +49,7 @@ void main()
     }
 
     view_clipping_distances_set(gl_in[i]);
-    EmitVertex();
+    gpu_EmitVertex();
   }
   EndPrimitive();
 }

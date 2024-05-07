@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -21,7 +22,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -29,39 +30,30 @@
 #include "DNA_brush_types.h"
 #include "DNA_color_types.h"
 #include "DNA_defaults.h"
-#include "DNA_key_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 
-#include "IMB_imbuf.h"
-
-#include "BKE_main.h"
-
-#include "BKE_anim_data.h"
-#include "BKE_colorband.h"
-#include "BKE_colortools.h"
+#include "BKE_colorband.hh"
+#include "BKE_colortools.hh"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_material.h"
-#include "BKE_node.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_scene.h"
+#include "BKE_preview_image.hh"
 #include "BKE_texture.h"
 
 #include "NOD_texture.h"
 
 #include "RE_texture.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void texture_init_data(ID *id)
 {
@@ -74,7 +66,11 @@ static void texture_init_data(ID *id)
   BKE_imageuser_default(&texture->iuser);
 }
 
-static void texture_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void texture_copy_data(Main *bmain,
+                              std::optional<Library *> owner_library,
+                              ID *id_dst,
+                              const ID *id_src,
+                              const int flag)
 {
   Tex *texture_dst = (Tex *)id_dst;
   const Tex *texture_src = (const Tex *)id_src;
@@ -96,13 +92,16 @@ static void texture_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const i
     }
 
     if (is_localized) {
-      texture_dst->nodetree = ntreeLocalize(texture_src->nodetree);
+      texture_dst->nodetree = ntreeLocalize(texture_src->nodetree, &texture_dst->id);
     }
     else {
-      BKE_id_copy_ex(
-          bmain, (ID *)texture_src->nodetree, (ID **)&texture_dst->nodetree, flag_private_id_data);
+      BKE_id_copy_in_lib(bmain,
+                         owner_library,
+                         &texture_src->nodetree->id,
+                         &texture_dst->id,
+                         reinterpret_cast<ID **>(&texture_dst->nodetree),
+                         flag_private_id_data);
     }
-    texture_dst->nodetree->owner_id = &texture_dst->id;
   }
 
   BLI_listbase_clear((ListBase *)&texture_dst->drawdata);
@@ -186,35 +185,22 @@ static void texture_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Tex *tex = (Tex *)id;
 
-  BLO_read_data_address(reader, &tex->coba);
+  BLO_read_struct(reader, ColorBand, &tex->coba);
 
-  BLO_read_data_address(reader, &tex->preview);
+  BLO_read_struct(reader, PreviewImage, &tex->preview);
   BKE_previewimg_blend_read(reader, tex->preview);
 
   tex->iuser.scene = nullptr;
 }
 
-static void texture_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Tex *tex = (Tex *)id;
-  BLO_read_id_address(reader, id, &tex->ima);
-  BLO_read_id_address(reader, id, &tex->ipo); /* XXX deprecated - old animation system */
-}
-
-static void texture_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Tex *tex = (Tex *)id;
-  BLO_expand(expander, tex->ima);
-  BLO_expand(expander, tex->ipo); /* XXX deprecated - old animation system */
-}
-
 IDTypeInfo IDType_ID_TE = {
     /*id_code*/ ID_TE,
     /*id_filter*/ FILTER_ID_TE,
+    /*dependencies_id_types*/ FILTER_ID_IM | FILTER_ID_OB,
     /*main_listbase_index*/ INDEX_ID_TE,
     /*struct_size*/ sizeof(Tex),
     /*name*/ "Texture",
-    /*name_plural*/ "textures",
+    /*name_plural*/ N_("textures"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_TEXTURE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -230,8 +216,7 @@ IDTypeInfo IDType_ID_TE = {
 
     /*blend_write*/ texture_blend_write,
     /*blend_read_data*/ texture_blend_read_data,
-    /*blend_read_lib*/ texture_blend_read_lib,
-    /*blend_read_expand*/ texture_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

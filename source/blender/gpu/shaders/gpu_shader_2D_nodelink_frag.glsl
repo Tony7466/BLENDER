@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #define ANTIALIAS 1.5
 #define MINIMUM_ALPHA 0.5
@@ -11,7 +14,7 @@ void main()
     float normalized_distance = fract(distance_along_line / dashLength);
 
     /* Checking if `normalized_distance <= dashFactor` is already enough for a basic
-     * dash, however we want to handle a nice antialias. */
+     * dash, however we want to handle a nice anti-alias. */
 
     float dash_center = dashLength * dashFactor * 0.5;
     float normalized_distance_triangle =

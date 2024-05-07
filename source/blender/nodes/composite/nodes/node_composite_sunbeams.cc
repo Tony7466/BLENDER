@@ -9,7 +9,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -56,7 +56,7 @@ class SunBeamsOperation : public NodeOperation {
 
   void execute() override
   {
-    GPUShader *shader = shader_manager().get("compositor_sun_beams");
+    GPUShader *shader = context().get_shader("compositor_sun_beams");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_2fv(shader, "source", node_storage(bnode()).source);

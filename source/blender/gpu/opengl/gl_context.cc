@@ -9,9 +9,9 @@
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
-#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.hh"
 
 #include "GHOST_C-api.h"
 
@@ -140,6 +140,7 @@ void GLContext::activate()
   /* Not really following the state but we should consider
    * no ubo bound when activating a context. */
   bound_ubo_slots = 0;
+  bound_ssbo_slots = 0;
 
   immActivate();
 }
@@ -304,7 +305,6 @@ void GLContext::vao_cache_unregister(GLVaoCache *cache)
 
 void GLContext::memory_statistics_get(int *r_total_mem, int *r_free_mem)
 {
-  /* TODO(merwin): use Apple's platform API to get this info. */
   if (epoxy_has_gl_extension("GL_NVX_gpu_memory_info")) {
     /* Returned value in Kb. */
     glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, r_total_mem);

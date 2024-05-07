@@ -18,9 +18,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.hh"
 
-#include "BPY_extern.h"
 #include "bpy_rna.h"
 #include "bpy_utils_previews.h"
 
@@ -28,19 +26,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_thumbs.hh"
 
-#include "BKE_icons.h"
-
-#include "DNA_ID.h"
-
-#include "../generic/python_utildefines.h"
+#include "BKE_preview_image.hh"
 
 #define STR_SOURCE_TYPES "'IMAGE', 'MOVIE', 'BLEND', 'FONT'"
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_utils_previews_new_doc,
     ".. method:: new(name)\n"
     "\n"
@@ -57,19 +50,19 @@ static PyObject *bpy_utils_previews_new(PyObject * /*self*/, PyObject *args)
 {
   char *name;
   PreviewImage *prv;
-  PointerRNA ptr;
 
   if (!PyArg_ParseTuple(args, "s:new", &name)) {
     return nullptr;
   }
 
   prv = BKE_previewimg_cached_ensure(name);
-  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImagePreview, prv);
 
   return pyrna_struct_CreatePyObject(&ptr);
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_utils_previews_load_doc,
     ".. method:: load(name, filepath, filetype, force_reload=False)\n"
     "\n"
@@ -131,19 +124,20 @@ static PyObject *bpy_utils_previews_load(PyObject * /*self*/, PyObject *args)
 
   Py_XDECREF(filepath_data.value_coerce);
 
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_ImagePreview, prv, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImagePreview, prv);
   return pyrna_struct_CreatePyObject(&ptr);
 }
 
-PyDoc_STRVAR(bpy_utils_previews_release_doc,
-             ".. method:: release(name)\n"
-             "\n"
-             "   Release (free) a previously created preview.\n"
-             "\n"
-             "\n"
-             "   :arg name: The name (unique id) identifying the preview.\n"
-             "   :type name: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_utils_previews_release_doc,
+    ".. method:: release(name)\n"
+    "\n"
+    "   Release (free) a previously created preview.\n"
+    "\n"
+    "\n"
+    "   :arg name: The name (unique id) identifying the preview.\n"
+    "   :type name: string\n");
 static PyObject *bpy_utils_previews_release(PyObject * /*self*/, PyObject *args)
 {
   char *name;
@@ -169,6 +163,7 @@ static PyMethodDef bpy_utils_previews_methods[] = {
 };
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_utils_previews_doc,
     "This object contains basic static methods to handle cached (non-ID) previews in Blender\n"
     "(low-level API, not exposed to final users).");

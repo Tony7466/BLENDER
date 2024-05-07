@@ -9,8 +9,6 @@
  */
 
 struct BlendDataReader;
-struct BlendExpander;
-struct BlendLibReader;
 struct BlendWriter;
 struct Depsgraph;
 struct ID;
@@ -75,7 +73,7 @@ typedef void (*ConstraintIDFunc)(struct bConstraint *con,
  * structs.
  */
 typedef struct bConstraintTypeInfo {
-  /* admin/ident */
+  /* Admin/identity. */
   /** CONSTRAINT_TYPE_### */
   short type;
   /** size in bytes of the struct */
@@ -180,8 +178,8 @@ void BKE_constraints_copy_ex(struct ListBase *dst,
 /**
  * Run the given callback on all ID-blocks in list of constraints.
  *
- * \param flag the `IDWALK_` flags controlling the behavior of the foreach_id code, see
- * `BKE_lib_query.h`
+ * \param flag: the `IDWALK_` flags controlling the behavior of the foreach_id code, see
+ * `BKE_lib_query.hh`
  */
 void BKE_constraints_id_loop(struct ListBase *list,
                              ConstraintIDFunc func,
@@ -237,10 +235,7 @@ struct bConstraint *BKE_constraint_add_for_pose(struct Object *ob,
                                                 const char *name,
                                                 short type);
 
-bool BKE_constraint_remove_ex(ListBase *list,
-                              struct Object *ob,
-                              struct bConstraint *con,
-                              bool clear_dep);
+bool BKE_constraint_remove_ex(ListBase *list, struct Object *ob, struct bConstraint *con);
 /**
  * Remove the specified constraint from the given constraint stack.
  */
@@ -372,10 +367,6 @@ void BKE_constraint_blend_write(struct BlendWriter *writer, struct ListBase *con
 void BKE_constraint_blend_read_data(struct BlendDataReader *reader,
                                     struct ID *id_owner,
                                     struct ListBase *lb);
-void BKE_constraint_blend_read_lib(struct BlendLibReader *reader,
-                                   struct ID *id,
-                                   struct ListBase *conlist);
-void BKE_constraint_blend_read_expand(struct BlendExpander *expander, struct ListBase *lb);
 
 #ifdef __cplusplus
 }

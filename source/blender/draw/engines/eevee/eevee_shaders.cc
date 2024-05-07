@@ -6,27 +6,27 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_node.hh"
 
 #include "BLI_dynstr.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
 #include "DNA_world_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_material.h"
-#include "GPU_shader.h"
+#include "GPU_capabilities.hh"
+#include "GPU_context.hh"
+#include "GPU_material.hh"
+#include "GPU_shader.hh"
 
 #include "NOD_shader.h"
 
 #include "eevee_engine.h"
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 static struct {
   /* Lookdev */
@@ -177,7 +177,6 @@ extern "C" char datatoc_closure_type_lib_glsl[];
 extern "C" char datatoc_closure_eval_volume_lib_glsl[];
 extern "C" char datatoc_common_uniforms_lib_glsl[];
 extern "C" char datatoc_common_utiltex_lib_glsl[];
-extern "C" char datatoc_cubemap_lib_glsl[];
 extern "C" char datatoc_effect_dof_lib_glsl[];
 extern "C" char datatoc_effect_reflection_lib_glsl[];
 extern "C" char datatoc_irradiance_lib_glsl[];
@@ -225,7 +224,6 @@ static void eevee_shader_library_ensure()
     DRW_SHADER_LIB_ADD(e_data.lib, bsdf_common_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, common_utiltex_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, bsdf_sampling_lib);
-    DRW_SHADER_LIB_ADD(e_data.lib, cubemap_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, raytrace_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, ambient_occlusion_lib);
     DRW_SHADER_LIB_ADD(e_data.lib, octahedron_lib);
@@ -1138,7 +1136,7 @@ bNodeTree *EEVEE_shader_default_surface_nodetree(Material *ma)
     e_data.surface.roughness_socket = static_cast<bNodeSocketValueFloat *>(
         nodeFindSocket(bsdf, SOCK_IN, "Roughness")->default_value);
     e_data.surface.specular_socket = static_cast<bNodeSocketValueFloat *>(
-        nodeFindSocket(bsdf, SOCK_IN, "Specular")->default_value);
+        nodeFindSocket(bsdf, SOCK_IN, "Specular IOR Level")->default_value);
     e_data.surface.ntree = ntree;
   }
   /* Update */
@@ -1384,11 +1382,13 @@ static GPUMaterial *eevee_material_get_ex(
 
   if (ma) {
     bNodeTree *ntree = !is_default ? ma->nodetree : EEVEE_shader_default_surface_nodetree(ma);
-    mat = DRW_shader_from_material(ma, ntree, options, is_volume, deferred, cbfn, nullptr);
+    mat = DRW_shader_from_material(
+        ma, ntree, GPU_MAT_EEVEE_LEGACY, options, is_volume, deferred, cbfn, nullptr);
   }
   else {
     bNodeTree *ntree = !is_default ? wo->nodetree : EEVEE_shader_default_world_nodetree(wo);
-    mat = DRW_shader_from_world(wo, ntree, options, is_volume, deferred, cbfn, nullptr);
+    mat = DRW_shader_from_world(
+        wo, ntree, GPU_MAT_EEVEE_LEGACY, options, is_volume, deferred, cbfn, nullptr);
   }
   return mat;
 }
@@ -1427,7 +1427,8 @@ GPUMaterial *EEVEE_material_get(
       if (optimization_status == GPU_MAT_OPTIMIZATION_QUEUED) {
         vedata->stl->g_data->queued_optimise_shaders_count++;
       }
-    } break;
+      break;
+    }
     case GPU_MAT_QUEUED: {
       vedata->stl->g_data->queued_shaders_count++;
       GPUMaterial *default_mat = EEVEE_material_default_get(scene, ma, options);
@@ -1435,7 +1436,8 @@ GPUMaterial *EEVEE_material_get(
       GPU_material_set_default(mat, default_mat);
       /* Return default material. */
       mat = default_mat;
-    } break;
+      break;
+    }
     case GPU_MAT_FAILED:
     default:
       ma = EEVEE_material_default_error_get();

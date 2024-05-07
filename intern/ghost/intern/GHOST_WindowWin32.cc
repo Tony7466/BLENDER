@@ -12,14 +12,18 @@
 #include "GHOST_DropTargetWin32.hh"
 #include "GHOST_SystemWin32.hh"
 #include "GHOST_WindowManager.hh"
-#include "utf_winfunc.h"
-#include "utfconv.h"
+#include "utf_winfunc.hh"
+#include "utfconv.hh"
 
 #ifdef WITH_OPENGL_BACKEND
 #  include "GHOST_ContextWGL.hh"
 #endif
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
+#endif
+
+#ifdef WIN32
+#  include "BLI_path_util.h"
 #endif
 
 #include <Dwmapi.h>
@@ -40,7 +44,7 @@
 const wchar_t *GHOST_WindowWin32::s_windowClassName = L"GHOST_WindowClass";
 const int GHOST_WindowWin32::s_maxTitleLength = 128;
 
-/* force NVidia Optimus to used dedicated graphics */
+/* force NVidia OPTIMUS to used dedicated graphics */
 extern "C" {
 __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -127,15 +131,27 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
 
   if (!setDrawingContextType(type)) {
     const char *title = "Blender - Unsupported Graphics Card Configuration";
-    const char *text =
-        "A graphics card and driver with support for OpenGL 3.3 or higher is "
-        "required.\n\nInstalling the latest driver for your graphics card might resolve the "
-        "issue.";
-    if (GetSystemMetrics(SM_CMONITORS) > 1) {
+    const char *text = "";
+#if defined(WIN32)
+    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0) {
       text =
-          "A graphics card and driver with support for OpenGL 3.3 or higher is "
-          "required.\n\nPlugging all monitors into your primary graphics card might resolve "
-          "this issue. Installing the latest driver for your graphics card could also help.";
+          "A driver with support for OpenGL 4.3 or higher is required.\n\n"
+          "If you are on a Qualcomm 8cx Gen3 device or newer, you need to download the"
+          "\"OpenCL™, OpenGL®, and Vulkan® Compatibility Pack\" from the MS Store.";
+    }
+    else
+#endif
+    {
+      text =
+          "A graphics card and driver with support for OpenGL 4.3 or higher is "
+          "required.\n\nInstalling the latest driver for your graphics card might resolve the "
+          "issue.";
+      if (GetSystemMetrics(SM_CMONITORS) > 1) {
+        text =
+            "A graphics card and driver with support for OpenGL 4.3 or higher is "
+            "required.\n\nPlugging all monitors into your primary graphics card might resolve "
+            "this issue. Installing the latest driver for your graphics card could also help.";
+      }
     }
     MessageBox(m_hWnd, text, title, MB_OK | MB_ICONERROR);
     ::ReleaseDC(m_hWnd, m_hDC);
@@ -204,9 +220,6 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
     DeleteObject(bb.hRgnBlur);
   }
 #endif
-
-  /* Force an initial paint of the window. */
-  ::UpdateWindow(m_hWnd);
 
   /* Initialize WINTAB. */
   if (system->getTabletAPI() != GHOST_kTabletWinPointer) {
@@ -359,6 +372,11 @@ bool GHOST_WindowWin32::getValid() const
 HWND GHOST_WindowWin32::getHWND() const
 {
   return m_hWnd;
+}
+
+void *GHOST_WindowWin32::getOSWindow() const
+{
+  return (void *)m_hWnd;
 }
 
 void GHOST_WindowWin32::setTitle(const char *title)
@@ -536,7 +554,8 @@ GHOST_TSuccess GHOST_WindowWin32::setState(GHOST_TWindowState state)
     case GHOST_kWindowStateNormal:
     default:
       if (curstate == GHOST_kWindowStateFullScreen &&
-          m_normal_state == GHOST_kWindowStateMaximized) {
+          m_normal_state == GHOST_kWindowStateMaximized)
+      {
         wp.showCmd = SW_SHOWMAXIMIZED;
         m_normal_state = GHOST_kWindowStateNormal;
       }
@@ -666,8 +685,9 @@ void GHOST_WindowWin32::updateMouseCapture(GHOST_MouseCaptureEventWin32 event)
       m_nPressedButtons++;
       break;
     case MouseReleased:
-      if (m_nPressedButtons)
+      if (m_nPressedButtons) {
         m_nPressedButtons--;
+      }
       break;
     case OperatorGrab:
       m_hasGrabMouse = true;
@@ -816,12 +836,14 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
 void GHOST_WindowWin32::loadCursor(bool visible, GHOST_TStandardCursor shape) const
 {
   if (!visible) {
-    while (::ShowCursor(FALSE) >= 0)
-      ;
+    while (::ShowCursor(FALSE) >= 0) {
+      /* Pass. */
+    }
   }
   else {
-    while (::ShowCursor(TRUE) < 0)
-      ;
+    while (::ShowCursor(TRUE) < 0) {
+      /* Pass. */
+    }
   }
 
   HCURSOR cursor = getStandardCursor(shape);

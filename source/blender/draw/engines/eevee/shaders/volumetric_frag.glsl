@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
 
@@ -58,6 +62,11 @@ vec3 coordinate_incoming(vec3 P)
 {
   return cameraVec(P);
 }
+
+float film_scaling_factor_get()
+{
+  return 1.0;
+}
 #endif
 
 void main()
@@ -116,10 +125,7 @@ vec3 grid_coordinates()
 {
   vec3 co = volumeOrco;
 #ifdef MESH_SHADER
-  /* Optional per-grid transform. */
-  if (drw_volume.grids_xform[attr_id][3][3] != 0.0) {
-    co = (drw_volume.grids_xform[attr_id] * vec4(objectPosition, 1.0)).xyz;
-  }
+  co = (drw_volume.grids_xform[attr_id] * vec4(objectPosition, 1.0)).xyz;
 #endif
   attr_id += 1;
   return co;

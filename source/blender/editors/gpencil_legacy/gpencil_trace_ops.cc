@@ -11,24 +11,23 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -36,12 +35,12 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 #include "gpencil_trace.h"
 
 struct TraceJob {
@@ -177,7 +176,7 @@ static void trace_initialize_job_data(TraceJob *trace_job)
   /* Create a new grease pencil object. */
   if (trace_job->ob_gpencil == nullptr) {
     ushort local_view_bits = (trace_job->v3d && trace_job->v3d->localvd) ?
-                                 trace_job->v3d->local_view_uuid :
+                                 trace_job->v3d->local_view_uid :
                                  0;
     trace_job->ob_gpencil = ED_gpencil_add_object(
         trace_job->C, trace_job->ob_active->loc, local_view_bits);
@@ -200,13 +199,13 @@ static void trace_initialize_job_data(TraceJob *trace_job)
   }
 }
 
-static void trace_start_job(void *customdata, bool *stop, bool *do_update, float *progress)
+static void trace_start_job(void *customdata, wmJobWorkerStatus *worker_status)
 {
   TraceJob *trace_job = static_cast<TraceJob *>(customdata);
 
-  trace_job->stop = stop;
-  trace_job->do_update = do_update;
-  trace_job->progress = progress;
+  trace_job->stop = &worker_status->stop;
+  trace_job->do_update = &worker_status->do_update;
+  trace_job->progress = &worker_status->progress;
   trace_job->was_canceled = false;
   const int init_frame = max_ii((trace_job->use_current_frame) ? trace_job->frame_target : 0, 0);
 
@@ -234,16 +233,16 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
   /* Image sequence. */
   else if (trace_job->image->type == IMA_TYPE_IMAGE) {
     ImageUser *iuser = trace_job->ob_active->iuser;
-    for (int i = init_frame; i < iuser->frames; i++) {
+    for (int i = init_frame; i <= iuser->frames; i++) {
       if (G.is_break) {
         trace_job->was_canceled = true;
         break;
       }
 
       *(trace_job->progress) = float(i) / float(iuser->frames);
-      *do_update = true;
+      worker_status->do_update = true;
 
-      iuser->framenr = i + 1;
+      iuser->framenr = i;
 
       void *lock;
       ImBuf *ibuf = BKE_image_acquire_ibuf(trace_job->image, iuser, &lock);
@@ -258,8 +257,8 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
   }
 
   trace_job->success = !trace_job->was_canceled;
-  *do_update = true;
-  *stop = false;
+  worker_status->do_update = true;
+  worker_status->stop = false;
 }
 
 static void trace_end_job(void *customdata)
@@ -277,7 +276,7 @@ static void trace_end_job(void *customdata)
     DEG_relations_tag_update(trace_job->bmain);
 
     DEG_id_tag_update(&trace_job->scene->id, ID_RECALC_SELECT);
-    DEG_id_tag_update(&trace_job->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&trace_job->gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_OBJECT | NA_ADDED, nullptr);
     WM_main_add_notifier(NC_SCENE | ND_OB_ACTIVE, trace_job->scene);
@@ -338,12 +337,11 @@ static int gpencil_trace_image_exec(bContext *C, wmOperator *op)
   trace_initialize_job_data(job);
 
   /* Back to active base. */
-  ED_object_base_activate(job->C, job->base_active);
+  blender::ed::object::base_activate(job->C, job->base_active);
 
   if ((job->image->source == IMA_SRC_FILE) || (job->frame_num > 0)) {
-    bool stop = false, do_update = true;
-    float progress;
-    trace_start_job(job, &stop, &do_update, &progress);
+    wmJobWorkerStatus worker_status = {};
+    trace_start_job(job, &worker_status);
     trace_end_job(job);
     trace_free_job(job);
   }

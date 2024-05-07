@@ -19,7 +19,7 @@ struct wmOperator;
 struct wmEvent;
 
 struct TransModeInfo {
-  int flags; /* eTFlag */
+  int flags; /* #eTFlag. */
 
   void (*init_fn)(TransInfo *, wmOperator *);
 
@@ -49,7 +49,7 @@ struct TransModeInfo {
   void (*draw_fn)(TransInfo *);
 };
 
-/* header of TransDataEdgeSlideVert, TransDataEdgeSlideEdge */
+/* Header of #TransDataEdgeSlideVert, #TransDataEdgeSlideEdge. */
 struct TransDataGenericSlideVert {
   BMVert *v;
   LinkNode **cd_loop_groups;
@@ -66,7 +66,7 @@ bool transdata_check_local_center(const TransInfo *t, short around);
 bool transform_mode_is_changeable(int mode);
 void protectedTransBits(short protectflag, float vec[3]);
 void protectedSizeBits(short protectflag, float size[3]);
-void constraintTransLim(const TransInfo *t, TransData *td);
+void constraintTransLim(const TransInfo *t, const TransDataContainer *tc, TransData *td);
 void constraintSizeLim(const TransInfo *t, TransData *td);
 /**
  * Used by Transform Rotation and Transform Normal Rotation.

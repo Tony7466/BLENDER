@@ -7,10 +7,10 @@ set(INC
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
+  ../../bmesh
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -25,7 +25,7 @@ set(SRC
   buttons_texture.cc
   space_buttons.cc
 
-  buttons_intern.h
+  buttons_intern.hh
 )
 
 set(LIB
@@ -42,6 +42,7 @@ endif()
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_POINT_CLOUD)
+  add_definitions(-DWITH_GREASE_PENCIL_V3)
 endif()
 
 blender_add_lib(bf_editor_space_buttons "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

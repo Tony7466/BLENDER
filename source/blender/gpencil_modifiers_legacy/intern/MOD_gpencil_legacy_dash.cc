@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
@@ -19,16 +20,14 @@
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
+#include "BKE_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -38,14 +37,13 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 
@@ -143,7 +141,7 @@ static bool stroke_dash(const bGPDstroke *gps,
       continue;
     }
 
-    const int size = MIN2(gps->totpoints - new_stroke_offset, seg);
+    const int size = std::min(gps->totpoints - new_stroke_offset, seg);
     if (size == 0) {
       continue;
     }
@@ -332,11 +330,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   DashGpencilModifierData *dmd = static_cast<DashGpencilModifierData *>(ptr->data);
 
   if (dmd->segment_active_index >= 0 && dmd->segment_active_index < dmd->segments_len) {
-    PointerRNA ds_ptr;
-    RNA_pointer_create(ptr->owner_id,
-                       &RNA_DashGpencilModifierSegment,
-                       &dmd->segments[dmd->segment_active_index],
-                       &ds_ptr);
+    PointerRNA ds_ptr = RNA_pointer_create(
+        ptr->owner_id, &RNA_DashGpencilModifierSegment, &dmd->segments[dmd->segment_active_index]);
 
     sub = uiLayoutColumn(layout, true);
     uiItemR(sub, &ds_ptr, "dash", UI_ITEM_NONE, nullptr, ICON_NONE);

@@ -92,11 +92,13 @@ enum ThemeColorID {
   TH_OUTLINE_WIDTH,
   TH_OBCENTER_DIA,
   TH_EDGE,
-  TH_EDGE_SELECT,
+  TH_EDGE_SELECT, /* Stands for edge selection, not edge select mode. */
+  TH_EDGE_MODE_SELECT,
   TH_EDGE_SEAM,
   TH_EDGE_FACESEL,
   TH_FACE,
-  TH_FACE_SELECT,
+  TH_FACE_SELECT, /* Stands for face selection, not face select mode. */
+  TH_FACE_MODE_SELECT,
   TH_FACE_RETOPOLOGY,
   TH_FACE_BACK,
   TH_FACE_FRONT,
@@ -159,6 +161,8 @@ enum ThemeColorID {
   TH_KEYTYPE_JITTER_SELECT,
   TH_KEYTYPE_MOVEHOLD,
   TH_KEYTYPE_MOVEHOLD_SELECT,
+  TH_KEYTYPE_GENERATED,
+  TH_KEYTYPE_GENERATED_SELECT,
 
   TH_KEYBORDER,
   TH_KEYBORDER_SELECT,
@@ -491,7 +495,7 @@ bTheme *UI_GetTheme();
  * For the rare case we need to temp swap in a different theme (off-screen render).
  */
 void UI_Theme_Store(bThemeState *theme_state);
-void UI_Theme_Restore(bThemeState *theme_state);
+void UI_Theme_Restore(const bThemeState *theme_state);
 
 /**
  * Return shadow width outside menus and popups.

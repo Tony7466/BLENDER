@@ -9,9 +9,9 @@
 #include "BLI_rect.h"
 #include "BLI_sys_types.h" /* bool */
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
-#include "eevee_private.h"
+#include "eevee_private.hh"
 
 #include "BLI_rand.h" /* needs to be after for some reason. */
 

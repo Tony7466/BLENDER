@@ -5,7 +5,7 @@
 #ifndef GPU_SHADER
 #  pragma once
 
-#  include "GPU_shader_shared_utils.h"
+#  include "GPU_shader_shared_utils.hh"
 
 #  include "DNA_action_types.h"
 #  include "DNA_view3d_types.h"
@@ -62,6 +62,11 @@ struct OVERLAY_GridData {
 BLI_STATIC_ASSERT_ALIGN(OVERLAY_GridData, 16)
 
 #ifdef GPU_SHADER
+/* Keep the same values as in `draw_cache_impl_curves.cc` */
+#  define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
+#  define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
+#  define EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT (6u)
+#  define EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT (4u)
 /* Keep the same values as in `draw_cache_imp_curve.c` */
 #  define ACTIVE_NURB (1u << 2)
 #  define BEZIER_HANDLE (1u << 3)
@@ -108,7 +113,10 @@ struct ThemeColorData {
   float4 color_vertex_unreferenced;
   float4 color_vertex_missing_data;
   float4 color_edit_mesh_active;
+  /** For edge selection, not edge select mode. */
   float4 color_edge_select;
+  /** For edge mode selection. */
+  float4 color_edge_mode_select;
   float4 color_edge_seam;
   float4 color_edge_sharp;
   float4 color_edge_crease;
@@ -116,7 +124,10 @@ struct ThemeColorData {
   float4 color_edge_face_select;
   float4 color_edge_freestyle;
   float4 color_face;
+  /** For face selection, not face select mode. */
   float4 color_face_select;
+  /** For face mode selection. */
+  float4 color_face_mode_select;
   float4 color_face_freestyle;
   float4 color_gpencil_vertex;
   float4 color_gpencil_vertex_select;
@@ -159,7 +170,7 @@ struct ThemeColorData {
   float4 color_bone_pose_constraint;
   float4 color_bone_pose_ik;
   float4 color_bone_pose_spline_ik;
-  float4 color_bone_pose_target;
+  float4 color_bone_pose_no_target;
   float4 color_bone_solid;
   float4 color_bone_locked;
   float4 color_bone_active;

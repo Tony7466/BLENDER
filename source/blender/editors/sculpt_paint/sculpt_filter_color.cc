@@ -10,20 +10,19 @@
 
 #include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_vector.hh"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DNA_meshdata_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "IMB_colormanagement.h"
-
-#include "DEG_depsgraph.h"
+#include "IMB_colormanagement.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -39,6 +38,8 @@
 
 #include <cmath>
 #include <cstdlib>
+
+namespace blender::ed::sculpt_paint::color {
 
 enum eSculptColorFilterTypes {
   COLOR_FILTER_FILL,
@@ -72,35 +73,35 @@ static EnumPropertyItem prop_color_filter_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void color_filter_task_cb(void *__restrict userdata,
-                                 const int n,
-                                 const TaskParallelTLS *__restrict /*tls*/)
+static void color_filter_task(Object *ob,
+                              const int mode,
+                              const float filter_strength,
+                              const float *filter_fill_color,
+                              PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-
-  const int mode = data->filter_type;
+  SculptSession *ss = ob->sculpt;
 
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COLOR);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Color);
 
-  AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->filter_cache->automasking, &automask_data, data->nodes[n]);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->filter_cache->automasking.get(), *node);
 
   PBVHVertexIter vd;
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (*ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+    auto_mask::node_update(automask_data, vd);
 
-    float orig_color[3], final_color[4], hsv_color[3];
+    float3 orig_color;
+    float4 final_color;
+    float3 hsv_color;
     int hue;
     float brightness, contrast, gain, delta, offset;
-    float fade = vd.mask ? *vd.mask : 0.0f;
+    float fade = vd.mask;
     fade = 1.0f - fade;
-    fade *= data->filter_strength;
-    fade *= SCULPT_automasking_factor_get(
-        ss->filter_cache->automasking, ss, vd.vertex, &automask_data);
+    fade *= filter_strength;
+    fade *= auto_mask::factor_get(
+        ss->filter_cache->automasking.get(), ss, vd.vertex, &automask_data);
     if (fade == 0.0f) {
       continue;
     }
@@ -111,7 +112,7 @@ static void color_filter_task_cb(void *__restrict userdata,
     switch (mode) {
       case COLOR_FILTER_FILL: {
         float fill_color_rgba[4];
-        copy_v3_v3(fill_color_rgba, data->filter_fill_color);
+        copy_v3_v3(fill_color_rgba, filter_fill_color);
         fill_color_rgba[3] = 1.0f;
         fade = clamp_f(fade, 0.0f, 1.0f);
         mul_v4_fl(fill_color_rgba, fade);
@@ -185,7 +186,7 @@ static void color_filter_task_cb(void *__restrict userdata,
       case COLOR_FILTER_SMOOTH: {
         fade = clamp_f(fade, -1.0f, 1.0f);
         float smooth_color[4];
-        SCULPT_neighbor_color_average(ss, smooth_color, vd.vertex);
+        smooth::neighbor_color_average(ss, smooth_color, vd.vertex);
 
         float col[4];
         SCULPT_vertex_color_get(ss, vd.vertex, col);
@@ -210,7 +211,7 @@ static void color_filter_task_cb(void *__restrict userdata,
           blend_color_interpolate_float(final_color, col, smooth_color, fade);
         }
 
-        CLAMP4(final_color, 0.0f, 1.0f);
+        final_color = math::clamp(final_color, 0.0f, 1.0f);
 
         /* Prevent accumulated numeric error from corrupting alpha. */
         if (copy_alpha) {
@@ -223,7 +224,7 @@ static void color_filter_task_cb(void *__restrict userdata,
     SCULPT_vertex_color_set(ss, vd.vertex, final_color);
   }
   BKE_pbvh_vertex_iter_end;
-  BKE_pbvh_node_mark_update_color(data->nodes[n]);
+  BKE_pbvh_node_mark_update_color(node);
 }
 
 static void sculpt_color_presmooth_init(SculptSession *ss)
@@ -237,7 +238,7 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
 
   for (int i = 0; i < totvert; i++) {
     SCULPT_vertex_color_get(
-        ss, BKE_pbvh_index_to_vertex(ss->pbvh, i), ss->filter_cache->pre_smoothed_color[i]);
+        ss, BKE_pbvh_index_to_vertex(*ss->pbvh, i), ss->filter_cache->pre_smoothed_color[i]);
   }
 
   for (int iteration = 0; iteration < 2; iteration++) {
@@ -246,7 +247,7 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
       int total = 0;
 
       SculptVertexNeighborIter ni;
-      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, BKE_pbvh_index_to_vertex(ss->pbvh, i), ni) {
+      SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, BKE_pbvh_index_to_vertex(*ss->pbvh, i), ni) {
         float col[4] = {0};
 
         copy_v4_v4(col, ss->filter_cache->pre_smoothed_color[ni.index]);
@@ -269,7 +270,6 @@ static void sculpt_color_presmooth_init(SculptSession *ss)
 
 static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
 {
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
 
   const int mode = RNA_enum_get(op->ptr, "type");
@@ -283,20 +283,11 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object *ob)
     sculpt_color_presmooth_init(ss);
   }
 
-  SculptThreadedTaskData data{};
-  data.sd = sd;
-  data.ob = ob;
-  data.nodes = ss->filter_cache->nodes;
-  data.filter_type = mode;
-  data.filter_strength = filter_strength;
-  data.filter_fill_color = fill_color;
-
-  TaskParallelSettings settings;
-  BLI_parallel_range_settings_defaults(&settings);
-
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
-  BLI_task_parallel_range(
-      0, ss->filter_cache->nodes.size(), &data, color_filter_task_cb, &settings);
+  threading::parallel_for(ss->filter_cache->nodes.index_range(), 1, [&](const IndexRange range) {
+    for (const int i : range) {
+      color_filter_task(ob, mode, filter_strength, fill_color, ss->filter_cache->nodes[i]);
+    }
+  });
 
   SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
 }
@@ -305,8 +296,8 @@ static void sculpt_color_filter_end(bContext *C, Object *ob)
 {
   SculptSession *ss = ob->sculpt;
 
-  SCULPT_undo_push_end(ob);
-  SCULPT_filter_cache_free(ss);
+  undo::push_end(ob);
+  filter::cache_free(ss);
   SCULPT_flush_update_done(C, ob, SCULPT_UPDATE_COLOR);
 }
 
@@ -340,11 +331,16 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
   SculptSession *ss = ob->sculpt;
   View3D *v3d = CTX_wm_view3d(C);
 
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   int mval[2];
   RNA_int_get_array(op->ptr, "start_mouse", mval);
   float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
-  const bool use_automasking = SCULPT_is_automasking_enabled(sd, ss, nullptr);
+  const bool use_automasking = auto_mask::is_enabled(sd, ss, nullptr);
   if (use_automasking) {
     /* Increment stroke id for auto-masking system. */
     SCULPT_stroke_id_next(ob);
@@ -362,24 +358,24 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SCULPT_undo_push_begin(ob, op);
+  undo::push_begin(ob, op);
   BKE_sculpt_color_layer_create_if_needed(ob);
 
   /* CTX_data_ensure_evaluated_depsgraph should be used at the end to include the updates of
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
+  BKE_sculpt_update_object_for_edit(depsgraph, ob, true);
 
-  SCULPT_filter_cache_init(C,
-                           ob,
-                           sd,
-                           SCULPT_UNDO_COLOR,
-                           mval_fl,
-                           RNA_float_get(op->ptr, "area_normal_radius"),
-                           RNA_float_get(op->ptr, "strength"));
-  FilterCache *filter_cache = ss->filter_cache;
+  filter::cache_init(C,
+                     ob,
+                     sd,
+                     undo::Type::Color,
+                     mval_fl,
+                     RNA_float_get(op->ptr, "area_normal_radius"),
+                     RNA_float_get(op->ptr, "strength"));
+  filter::Cache *filter_cache = ss->filter_cache;
   filter_cache->active_face_set = SCULPT_FACE_SET_NONE;
-  filter_cache->automasking = SCULPT_automasking_cache_init(sd, nullptr, ob);
+  filter_cache->automasking = auto_mask::cache_init(sd, ob);
 
   return OPERATOR_PASS_THROUGH;
 }
@@ -457,7 +453,7 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* rna */
-  SCULPT_mesh_filter_properties(ot);
+  filter::register_operator_props(ot);
 
   RNA_def_enum(ot->srna, "type", prop_color_filter_types, COLOR_FILTER_FILL, "Filter Type", "");
 
@@ -474,3 +470,5 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
 }
+
+}  // namespace blender::ed::sculpt_paint::color

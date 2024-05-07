@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2017-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /**
  * Infinite grid:
  * Draw anti-aliased grid and axes of different sizes with smooth blending between levels of
@@ -16,7 +20,7 @@
  * For an alternate approach, see:
  * https://developer.nvidia.com/gpugems/gpugems2/part-iii-high-quality-rendering/chapter-22-fast-prefiltered-lines
  */
-#define M_1_SQRTPI 0.5641895835477563 /* 1/sqrt(pi) */
+#define M_1_SQRTPI 0.5641895835477563 /* `1/sqrt(pi)`. */
 #define DISC_RADIUS (M_1_SQRTPI * 1.05)
 #define GRID_LINE_SMOOTH_START (0.5 + DISC_RADIUS)
 #define GRID_LINE_SMOOTH_END (0.5 - DISC_RADIUS)

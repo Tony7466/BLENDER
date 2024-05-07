@@ -13,27 +13,28 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_mask_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "SEQ_modifier.h"
-#include "SEQ_render.h"
+#include "SEQ_modifier.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sound.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "render.h"
+#include "render.hh"
 
 static SequenceModifierTypeInfo *modifiersTypes[NUM_SEQUENCE_MODIFIER_TYPES];
 static bool modifierTypesInit = false;
@@ -85,7 +86,6 @@ static ImBuf *modifier_render_mask_input(const SeqRenderData *context,
   if (mask_input_type == SEQUENCE_MASK_INPUT_STRIP) {
     if (mask_sequence) {
       SeqRenderState state;
-      seq_render_state_init(&state);
 
       mask_input = seq_render_strip(context, &state, mask_sequence, timeline_frame);
 
@@ -346,12 +346,12 @@ static void make_cb_table_float_sop(
 }
 
 static void color_balance_byte_byte(
-    StripColorBalance *cb_, uchar *rect, uchar *mask_rect, int width, int height, float mul)
+    StripColorBalance *cb_, uchar *rect, const uchar *mask_rect, int width, int height, float mul)
 {
   // uchar cb_tab[3][256];
   uchar *cp = rect;
   uchar *e = cp + width * 4 * height;
-  uchar *m = mask_rect;
+  const uchar *m = mask_rect;
 
   StripColorBalance cb = calc_cb(cb_);
 
@@ -392,7 +392,7 @@ static void color_balance_byte_byte(
 static void color_balance_byte_float(StripColorBalance *cb_,
                                      uchar *rect,
                                      float *rect_float,
-                                     uchar *mask_rect,
+                                     const uchar *mask_rect,
                                      int width,
                                      int height,
                                      float mul)
@@ -401,7 +401,7 @@ static void color_balance_byte_float(StripColorBalance *cb_,
   int c, i;
   uchar *p = rect;
   uchar *e = p + width * 4 * height;
-  uchar *m = mask_rect;
+  const uchar *m = mask_rect;
   float *o;
   StripColorBalance cb;
 
@@ -552,9 +552,9 @@ static void *color_balance_do_thread(void *thread_data_v)
   StripColorBalance *cb = thread_data->cb;
   int width = thread_data->width, height = thread_data->height;
   uchar *rect = thread_data->rect;
-  uchar *mask_rect = thread_data->mask_rect;
+  const uchar *mask_rect = thread_data->mask_rect;
   float *rect_float = thread_data->rect_float;
-  float *mask_rect_float = thread_data->mask_rect_float;
+  const float *mask_rect_float = thread_data->mask_rect_float;
   float mul = thread_data->mul;
 
   if (rect_float) {
@@ -741,7 +741,7 @@ static void curves_init_data(SequenceModifierData *smd)
 {
   CurvesModifierData *cmd = (CurvesModifierData *)smd;
 
-  BKE_curvemapping_set_defaults(&cmd->curve_mapping, 4, 0.0f, 0.0f, 1.0f, 1.0f);
+  BKE_curvemapping_set_defaults(&cmd->curve_mapping, 4, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
 }
 
 static void curves_free_data(SequenceModifierData *smd)
@@ -860,16 +860,16 @@ static void hue_correct_init_data(SequenceModifierData *smd)
   HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
   int c;
 
-  BKE_curvemapping_set_defaults(&hcmd->curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f);
-  hcmd->curve_mapping.preset = CURVE_PRESET_MID9;
+  BKE_curvemapping_set_defaults(&hcmd->curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
+  hcmd->curve_mapping.preset = CURVE_PRESET_MID8;
 
   for (c = 0; c < 3; c++) {
     CurveMap *cuma = &hcmd->curve_mapping.cm[c];
-
     BKE_curvemap_reset(
         cuma, &hcmd->curve_mapping.clipr, hcmd->curve_mapping.preset, CURVEMAP_SLOPE_POSITIVE);
   }
-
+  /* use wrapping for all hue correct modifiers */
+  hcmd->curve_mapping.flag |= CUMA_USE_WRAPPING;
   /* default to showing Saturation */
   hcmd->curve_mapping.cur = 1;
 }
@@ -1371,6 +1371,15 @@ static SequenceModifierTypeInfo seqModifier_Tonemap = {
     /*apply*/ tonemapmodifier_apply,
 };
 
+static SequenceModifierTypeInfo seqModifier_SoundEqualizer = {
+    CTX_N_(BLT_I18NCONTEXT_ID_SEQUENCE, "Equalizer"), /* name */
+    "SoundEqualizerModifierData",                     /* struct_name */
+    sizeof(SoundEqualizerModifierData),               /* struct_size */
+    SEQ_sound_equalizermodifier_init_data,            /* init_data */
+    SEQ_sound_equalizermodifier_free,                 /* free_data */
+    SEQ_sound_equalizermodifier_copy_data,            /* copy_data */
+    nullptr,                                          /* apply */
+};
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1388,6 +1397,7 @@ static void sequence_modifier_type_info_init()
   INIT_TYPE(Mask);
   INIT_TYPE(WhiteBalance);
   INIT_TYPE(Tonemap);
+  INIT_TYPE(SoundEqualizer);
 
 #undef INIT_TYPE
 }
@@ -1551,8 +1561,13 @@ void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
       smti->copy_data(smdn, smd);
     }
 
-    smdn->next = smdn->prev = nullptr;
     BLI_addtail(&seqn->modifiers, smdn);
+    BLI_uniquename(&seqn->modifiers,
+                   smdn,
+                   "Strip Modifier",
+                   '.',
+                   offsetof(SequenceModifierData, name),
+                   sizeof(SequenceModifierData::name));
   }
 }
 
@@ -1585,6 +1600,13 @@ void SEQ_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
 
         BKE_curvemapping_blend_write(writer, &hcmd->curve_mapping);
       }
+      else if (smd->type == seqModifierType_SoundEqualizer) {
+        SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
+        LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
+          BLO_write_struct_by_name(writer, "EQCurveMappingData", eqcmd);
+          BKE_curvemapping_blend_write(writer, &eqcmd->curve_mapping);
+        }
+      }
     }
     else {
       BLO_write_struct(writer, SequenceModifierData, smd);
@@ -1594,11 +1616,11 @@ void SEQ_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
 
 void SEQ_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, SequenceModifierData, lb);
 
   LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
     if (smd->mask_sequence) {
-      BLO_read_data_address(reader, &smd->mask_sequence);
+      BLO_read_struct(reader, Sequence, &smd->mask_sequence);
     }
 
     if (smd->type == seqModifierType_Curves) {
@@ -1611,14 +1633,12 @@ void SEQ_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
 
       BKE_curvemapping_blend_read(reader, &hcmd->curve_mapping);
     }
-  }
-}
-
-void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase *lb)
-{
-  LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
-    if (smd->mask_id) {
-      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
+    else if (smd->type == seqModifierType_SoundEqualizer) {
+      SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
+      BLO_read_struct_list(reader, EQCurveMappingData, &semd->graphics);
+      LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
+        BKE_curvemapping_blend_read(reader, &eqcmd->curve_mapping);
+      }
     }
   }
 }

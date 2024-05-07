@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
 struct ARegion;
 struct ARegionType;
@@ -36,16 +36,29 @@ void ED_operatortypes_uvedit();
 void ED_operatormacros_uvedit();
 void ED_keymap_uvedit(wmKeyConfig *keyconf);
 
-bool ED_uvedit_minmax(const Scene *scene, Object *obedit, float min[2], float max[2]);
 /**
  * Be careful when using this, it bypasses all synchronization options.
  */
 void ED_uvedit_select_all(BMesh *bm);
 
-bool ED_uvedit_minmax_multi(
-    const Scene *scene, Object **objects_edit, uint objects_len, float r_min[2], float r_max[2]);
-bool ED_uvedit_center_multi(
-    const Scene *scene, Object **objects_edit, uint objects_len, float r_cent[2], char mode);
+void ED_uvedit_foreach_uv(const Scene *scene,
+                          BMesh *bm,
+                          const bool skip_invisible,
+                          const bool selected,
+                          blender::FunctionRef<void(float[2])> user_fn);
+void ED_uvedit_foreach_uv_multi(const Scene *scene,
+                                blender::Span<Object *> objects_edit,
+                                const bool skip_invisible,
+                                const bool skip_nonselected,
+                                blender::FunctionRef<void(float[2])> user_fn);
+bool ED_uvedit_minmax_multi(const Scene *scene,
+                            blender::Span<Object *> objects_edit,
+                            float r_min[2],
+                            float r_max[2]);
+bool ED_uvedit_center_multi(const Scene *scene,
+                            blender::Span<Object *> objects_edit,
+                            float r_cent[2],
+                            char mode);
 
 bool ED_uvedit_center_from_pivot_ex(SpaceImage *sima,
                                     Scene *scene,
@@ -53,8 +66,6 @@ bool ED_uvedit_center_from_pivot_ex(SpaceImage *sima,
                                     float r_center[2],
                                     char mode,
                                     bool *r_has_select);
-bool ED_uvedit_center_from_pivot(
-    SpaceImage *sima, Scene *scene, ViewLayer *view_layer, float r_center[2], char mode);
 
 bool ED_object_get_active_image(Object *ob,
                                 int mat_nr,
@@ -211,8 +222,7 @@ void uvedit_select_flush(const Scene *scene, BMEditMesh *em);
 
 bool ED_uvedit_nearest_uv_multi(const View2D *v2d,
                                 const Scene *scene,
-                                Object **objects,
-                                uint objects_len,
+                                blender::Span<Object *> objects,
                                 const float mval_fl[2],
                                 const bool ignore_selected,
                                 float *dist_sq,
@@ -254,7 +264,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit);
 void ED_uvedit_live_unwrap_re_solve();
 void ED_uvedit_live_unwrap_end(short cancel);
 
-void ED_uvedit_live_unwrap(const Scene *scene, Object **objects, int objects_len);
+void ED_uvedit_live_unwrap(const Scene *scene, blender::Span<Object *> objects);
 void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob);
 
 /* `uvedit_draw.cc` */

@@ -10,8 +10,6 @@
 
 #include <type_traits>
 
-#include "BLI_compiler_attrs.h"
-#include "BLI_fileops.h"
 #include "BLI_string_ref.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
@@ -49,6 +47,8 @@ class FileBuffer : private NonMovable {
   virtual void write_vertex(float x, float y, float z) = 0;
 
   virtual void write_UV(float u, float v) = 0;
+
+  virtual void write_data(float v) = 0;
 
   virtual void write_vertex_normal(float nx, float ny, float nz) = 0;
 

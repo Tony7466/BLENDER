@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 
 #include "BLI_path_util.h"
 
@@ -20,7 +20,8 @@ namespace blender::asset_system {
 
 AssetIdentifier::AssetIdentifier(std::shared_ptr<std::string> library_root_path,
                                  std::string relative_asset_path)
-    : library_root_path_(library_root_path), relative_asset_path_(relative_asset_path)
+    : library_root_path_(std::move(library_root_path)),
+      relative_asset_path_(std::move(relative_asset_path))
 {
 }
 

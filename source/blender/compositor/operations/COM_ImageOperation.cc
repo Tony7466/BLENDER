@@ -4,11 +4,10 @@
 
 #include "COM_ImageOperation.h"
 
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_interp.hh"
 
 namespace blender::compositor {
 
@@ -16,8 +15,6 @@ BaseImageOperation::BaseImageOperation()
 {
   image_ = nullptr;
   buffer_ = nullptr;
-  image_float_buffer_ = nullptr;
-  image_byte_buffer_ = nullptr;
   image_user_ = nullptr;
   imagewidth_ = 0;
   imageheight_ = 0;
@@ -63,8 +60,6 @@ void BaseImageOperation::init_execution()
   ImBuf *stackbuf = get_im_buf();
   buffer_ = stackbuf;
   if (stackbuf) {
-    image_float_buffer_ = stackbuf->float_buffer.data;
-    image_byte_buffer_ = stackbuf->byte_buffer.data;
     imagewidth_ = stackbuf->x;
     imageheight_ = stackbuf->y;
     number_of_channels_ = stackbuf->channels;
@@ -73,8 +68,6 @@ void BaseImageOperation::init_execution()
 
 void BaseImageOperation::deinit_execution()
 {
-  image_float_buffer_ = nullptr;
-  image_byte_buffer_ = nullptr;
   BKE_image_release_ibuf(image_, buffer_, nullptr);
 }
 
@@ -91,79 +84,13 @@ void BaseImageOperation::determine_canvas(const rcti & /*preferred_area*/, rcti 
   BKE_image_release_ibuf(image_, stackbuf, nullptr);
 }
 
-static void sample_image_at_location(
-    ImBuf *ibuf, float x, float y, PixelSampler sampler, bool make_linear_rgb, float color[4])
-{
-  if (ibuf->float_buffer.data) {
-    switch (sampler) {
-      case PixelSampler::Nearest:
-        nearest_interpolation_color(ibuf, nullptr, color, x, y);
-        break;
-      case PixelSampler::Bilinear:
-        bilinear_interpolation_color(ibuf, nullptr, color, x, y);
-        break;
-      case PixelSampler::Bicubic:
-        bicubic_interpolation_color(ibuf, nullptr, color, x, y);
-        break;
-    }
-  }
-  else {
-    uchar byte_color[4];
-    switch (sampler) {
-      case PixelSampler::Nearest:
-        nearest_interpolation_color(ibuf, byte_color, nullptr, x, y);
-        break;
-      case PixelSampler::Bilinear:
-        bilinear_interpolation_color(ibuf, byte_color, nullptr, x, y);
-        break;
-      case PixelSampler::Bicubic:
-        bicubic_interpolation_color(ibuf, byte_color, nullptr, x, y);
-        break;
-    }
-    rgba_uchar_to_float(color, byte_color);
-    if (make_linear_rgb) {
-      IMB_colormanagement_colorspace_to_scene_linear_v4(
-          color, false, ibuf->byte_buffer.colorspace);
-    }
-  }
-}
-
-void ImageOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
-{
-  int ix = x, iy = y;
-  if (image_float_buffer_ == nullptr && image_byte_buffer_ == nullptr) {
-    zero_v4(output);
-  }
-  else if (ix < 0 || iy < 0 || ix >= buffer_->x || iy >= buffer_->y) {
-    zero_v4(output);
-  }
-  else {
-    sample_image_at_location(buffer_, x, y, sampler, true, output);
-  }
-}
-
 void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                   const rcti &area,
                                                   Span<MemoryBuffer *> /*inputs*/)
 {
-  output->copy_from(buffer_, area, true);
-}
-
-void ImageAlphaOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler sampler)
-{
-  float tempcolor[4];
-
-  if (image_float_buffer_ == nullptr && image_byte_buffer_ == nullptr) {
-    output[0] = 0.0f;
-  }
-  else {
-    tempcolor[3] = 1.0f;
-    sample_image_at_location(buffer_, x, y, sampler, false, tempcolor);
-    output[0] = tempcolor[3];
-  }
+  const bool ensure_premultiplied = !ELEM(
+      image_->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE);
+  output->copy_from(buffer_, area, ensure_premultiplied, true);
 }
 
 void ImageAlphaOperation::update_memory_buffer_partial(MemoryBuffer *output,

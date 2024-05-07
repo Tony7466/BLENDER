@@ -9,8 +9,8 @@
 #include "BLI_math_rotation.h"
 #include "BLI_task.hh"
 
-#include "BKE_context.h"
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_scene.hh"
 #include "BKE_texture.h"
 
 #include "RNA_access.hh"
@@ -44,7 +44,7 @@ static void node_shader_buts_tex_sky(uiLayout *layout, bContext *C, PointerRNA *
   if (RNA_enum_get(ptr, "sky_type") == SHD_SKY_NISHITA) {
     Scene *scene = CTX_data_scene(C);
     if (BKE_scene_uses_blender_eevee(scene)) {
-      uiItemL(layout, TIP_("Sun disc not available in Eevee"), ICON_ERROR);
+      uiItemL(layout, RPT_("Sun disc not available in EEVEE"), ICON_ERROR);
     }
     uiItemR(layout, ptr, "sun_disc", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 
@@ -286,7 +286,7 @@ static void node_shader_update_sky(bNodeTree *ntree, bNode *node)
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
   if (params.in_out() == SOCK_OUT) {
     search_link_ops_for_declarations(params, declaration.outputs);
     return;
@@ -315,7 +315,7 @@ void register_node_type_sh_tex_sky()
   sh_node_type_base(&ntype, SH_NODE_TEX_SKY, "Sky Texture", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::node_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_tex_sky;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = file_ns::node_shader_init_tex_sky;
   node_type_storage(&ntype, "NodeTexSky", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_sky;

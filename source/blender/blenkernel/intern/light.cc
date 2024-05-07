@@ -7,38 +7,34 @@
  */
 
 #include <cstdlib>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
-#include "DNA_anim_types.h"
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
-#include "DNA_material_types.h"
 #include "DNA_node_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_colortools.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_light.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
+#include "BKE_preview_image.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void light_init_data(ID *id)
 {
@@ -56,9 +52,13 @@ static void light_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
-static void light_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void light_copy_data(Main *bmain,
+                            std::optional<Library *> owner_library,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   Light *la_dst = (Light *)id_dst;
   const Light *la_src = (const Light *)id_src;
@@ -69,13 +69,16 @@ static void light_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   if (la_src->nodetree) {
     if (is_localized) {
-      la_dst->nodetree = ntreeLocalize(la_src->nodetree);
+      la_dst->nodetree = ntreeLocalize(la_src->nodetree, &la_dst->id);
     }
     else {
-      BKE_id_copy_ex(
-          bmain, (ID *)la_src->nodetree, (ID **)&la_dst->nodetree, flag_private_id_data);
+      BKE_id_copy_in_lib(bmain,
+                         owner_library,
+                         &la_src->nodetree->id,
+                         &la_dst->id,
+                         reinterpret_cast<ID **>(&la_dst->nodetree),
+                         flag_private_id_data);
     }
-    la_dst->nodetree->owner_id = &la_dst->id;
   }
 
   if ((flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
@@ -150,29 +153,18 @@ static void light_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Light *la = (Light *)id;
 
-  BLO_read_data_address(reader, &la->preview);
+  BLO_read_struct(reader, PreviewImage, &la->preview);
   BKE_previewimg_blend_read(reader, la->preview);
-}
-
-static void light_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Light *la = (Light *)id;
-  BLO_read_id_address(reader, id, &la->ipo);  // XXX deprecated - old animation system
-}
-
-static void light_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Light *la = (Light *)id;
-  BLO_expand(expander, la->ipo);  // XXX deprecated - old animation system
 }
 
 IDTypeInfo IDType_ID_LA = {
     /*id_code*/ ID_LA,
     /*id_filter*/ FILTER_ID_LA,
+    /*dependencies_id_types*/ FILTER_ID_TE,
     /*main_listbase_index*/ INDEX_ID_LA,
     /*struct_size*/ sizeof(Light),
     /*name*/ "Light",
-    /*name_plural*/ "lights",
+    /*name_plural*/ N_("lights"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHT,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -188,8 +180,7 @@ IDTypeInfo IDType_ID_LA = {
 
     /*blend_write*/ light_blend_write,
     /*blend_read_data*/ light_blend_read_data,
-    /*blend_read_lib*/ light_blend_read_lib,
-    /*blend_read_expand*/ light_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

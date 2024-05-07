@@ -1,11 +1,14 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Debug print implementation for shaders.
  *
- * `print()`:
+ * `drw_print()`:
  *   Log variable or strings inside the viewport.
  *   Using a unique non string argument will print the variable name with it.
- *   Concatenate by using multiple arguments. i.e: `print("Looped ", n, "times.")`.
+ *   Concatenate by using multiple arguments. i.e: `drw_print("Looped ", n, "times.")`.
  * `drw_print_no_endl()`:
  *   Same as `print()` but does not finish the line.
  * `drw_print_value()`:
@@ -26,8 +29,8 @@
  * behavior. Uncomment DISABLE_DEBUG_SHADER_drw_print_BARRIER to remove the barriers if that
  * happens. But then you are limited to a single invocation output.
  *
- * IMPORTANT: All of these are copied to the CPU debug libs (draw_debug.cc). They need to be kept
- * in sync to write the same data.
+ * IMPORTANT: All of these are copied to the CPU debug libraries (draw_debug.cc).
+ * They need to be kept in sync to write the same data.
  */
 
 #ifdef DRW_DEBUG_PRINT
@@ -97,22 +100,22 @@ void drw_print_char4(uint data)
  * was observed on both MESA & AMDGPU-PRO.
  */
 /* Using ascii char code. Expect char1 to be less or equal to 0xFF. Appends chars to the right. */
-void drw_print_append_char(uint char1, inout uint char4)
+void drw_print_append_char(uint char_1, inout uint char_4)
 {
-  char4 = (char4 << 8u) | char1;
+  char_4 = (char_4 << 8u) | char_1;
 }
 
-void drw_print_append_digit(uint digit, inout uint char4)
+void drw_print_append_digit(uint digit, inout uint char_4)
 {
   const uint char_A = 0x41u;
   const uint char_0 = 0x30u;
   bool is_hexadecimal = digit > 9u;
-  char4 = (char4 << 8u) | (is_hexadecimal ? (char_A + digit - 10u) : (char_0 + digit));
+  char_4 = (char_4 << 8u) | (is_hexadecimal ? (char_A + digit - 10u) : (char_0 + digit));
 }
 
-void drw_print_append_space(inout uint char4)
+void drw_print_append_space(inout uint char_4)
 {
-  char4 = (char4 << 8u) | 0x20u;
+  char_4 = (char_4 << 8u) | 0x20u;
 }
 
 void drw_print_value_binary(uint value)
@@ -218,7 +221,7 @@ void drw_print_value(bool value)
 
 #  endif
 
-/* NOTE(@fclem): This is homebrew and might not be 100% accurate (accuracy has
+/* NOTE(@fclem): This is home-brew and might not be 100% accurate (accuracy has
  * not been tested and might dependent on compiler implementation). If unsure,
  * use drw_print_value_hex and transcribe the value manually with another tool. */
 void drw_print_value(float val)

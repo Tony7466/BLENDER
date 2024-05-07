@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
-
-#  include <sycl/sycl.hpp>
-
 #  include "device/device.h"
 #  include "device/oneapi/device.h"
 #  include "device/oneapi/queue.h"
@@ -17,8 +14,12 @@ CCL_NAMESPACE_BEGIN
 
 class DeviceQueue;
 
-typedef void (*OneAPIDeviceIteratorCallback)(
-    const char *id, const char *name, int num, bool hwrt_support, void *user_ptr);
+typedef void (*OneAPIDeviceIteratorCallback)(const char *id,
+                                             const char *name,
+                                             int num,
+                                             bool hwrt_support,
+                                             bool oidn_support,
+                                             void *user_ptr);
 
 class OneapiDevice : public Device {
  private:
@@ -104,9 +105,7 @@ class OneapiDevice : public Device {
   void *usm_aligned_alloc_host(size_t memory_size, size_t alignment);
   void usm_free(void *usm_ptr);
 
-  static std::vector<sycl::device> available_devices();
   static char *device_capabilities();
-  static int parse_driver_build_version(const sycl::device &device);
   static void iterate_devices(OneAPIDeviceIteratorCallback cb, void *user_ptr);
 
   size_t get_memcapacity();
