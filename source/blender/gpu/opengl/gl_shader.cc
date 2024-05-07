@@ -1631,7 +1631,7 @@ void GLShaderCompiler::process_batch(Batch &batch, bool block, std::function<boo
 #include "BLI_time.h"
 void GLShaderCompiler::process(bool block)
 {
-  mutex.lock();
+  std::scoped_lock lock(mutex);
   double start = BLI_time_now_seconds();
   auto timeout = [&]() { return !block && ((BLI_time_now_seconds() - start) > (1.0 / 10.0)); };
   for (Batch &batch : batches.values()) {
@@ -1640,23 +1640,20 @@ void GLShaderCompiler::process(bool block)
       break;
     }
   }
-  mutex.unlock();
 }
 
 bool GLShaderCompiler::batch_is_ready(BatchHandle handle)
 {
-  mutex.lock();
+  std::scoped_lock lock(mutex);
   bool is_ready = batches.lookup(handle).is_ready;
-  mutex.unlock();
   return is_ready;
 }
 
 Vector<Shader *> GLShaderCompiler::batch_finalize(BatchHandle &handle)
 {
-  mutex.lock();
+  std::scoped_lock lock(mutex);
   Batch batch = batches.pop(handle);
   process_batch(batch, true, []() { return false; });
-  mutex.unlock();
   handle = 0;
   return batch.shaders;
 }
