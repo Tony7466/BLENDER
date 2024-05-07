@@ -77,7 +77,7 @@ class VKContext : public Context, NonCopyable {
    *
    * Between `vkCmdBeginRendering` and `vkCmdEndRendering` the framebuffer is rendering. Dispatch
    * and transfer commands cannot be called between these commands. They can call this method to
-   * ensure that the framebuffer is outside these calls. 
+   * ensure that the framebuffer is outside these calls.
    */
   void rendering_end();
 

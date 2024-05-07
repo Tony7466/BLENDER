@@ -113,7 +113,7 @@ void VKFrameBuffer::build_clear_attachments_depth_stencil(
   });
 
   VkClearAttachment &clear_attachment =
-      clear_attachments.node_data.attachments[clear_attachments.node_data.attachment_count++];
+      clear_attachments.attachments[clear_attachments.attachment_count++];
   clear_attachment.aspectMask = aspect_mask;
   clear_attachment.clearValue.depthStencil.depth = clear_depth;
   clear_attachment.clearValue.depthStencil.stencil = clear_stencil;
@@ -139,7 +139,7 @@ void VKFrameBuffer::build_clear_attachments_color(
         VK_IMAGE_ASPECT_COLOR_BIT,
     });
     VkClearAttachment &clear_attachment =
-        clear_attachments.node_data.attachments[clear_attachments.node_data.attachment_count++];
+        clear_attachments.attachments[clear_attachments.attachment_count++];
     clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     clear_attachment.colorAttachment = color_slot;
     eGPUDataFormat data_format = to_data_format(GPU_texture_format(attachment.tex));
@@ -163,9 +163,9 @@ void VKFrameBuffer::clear(render_graph::VKClearAttachmentsNode::CreateInfo &clea
   }
   else {
     VKCommandBuffers &command_buffers = context.command_buffers_get();
-    command_buffers.clear(Span<VkClearAttachment>(clear_attachments.node_data.attachments,
-                                                  clear_attachments.node_data.attachment_count),
-                          Span<VkClearRect>(&clear_attachments.node_data.vk_clear_rect, 1));
+    command_buffers.clear(
+        Span<VkClearAttachment>(clear_attachments.attachments, clear_attachments.attachment_count),
+        Span<VkClearRect>(&clear_attachments.vk_clear_rect, 1));
   }
 }
 
@@ -175,10 +175,10 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
                           uint clear_stencil)
 {
   render_graph::VKResourceAccessInfo access_info;
-  render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments(access_info);
-  clear_attachments.node_data.vk_clear_rect.rect = vk_render_areas_get()[0];
-  clear_attachments.node_data.vk_clear_rect.baseArrayLayer = 0;
-  clear_attachments.node_data.vk_clear_rect.layerCount = 1;
+  render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
+  clear_attachments.vk_clear_rect.rect = vk_render_areas_get()[0];
+  clear_attachments.vk_clear_rect.baseArrayLayer = 0;
+  clear_attachments.vk_clear_rect.layerCount = 1;
 
   if (buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT)) {
     VKContext &context = *VKContext::get();
@@ -215,7 +215,7 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
     build_clear_attachments_color(&clear_color_single, false, access_info, clear_attachments);
   }
 
-  if (clear_attachments.node_data.attachment_count) {
+  if (clear_attachments.attachment_count) {
     clear(clear_attachments);
   }
 }
@@ -223,13 +223,13 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
 void VKFrameBuffer::clear_multi(const float (*clear_color)[4])
 {
   render_graph::VKResourceAccessInfo access_info;
-  render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments(access_info);
-  clear_attachments.node_data.vk_clear_rect.rect = vk_render_areas_get()[0];
-  clear_attachments.node_data.vk_clear_rect.baseArrayLayer = 0;
-  clear_attachments.node_data.vk_clear_rect.layerCount = 1;
+  render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
+  clear_attachments.vk_clear_rect.rect = vk_render_areas_get()[0];
+  clear_attachments.vk_clear_rect.baseArrayLayer = 0;
+  clear_attachments.vk_clear_rect.layerCount = 1;
 
   build_clear_attachments_color(clear_color, true, access_info, clear_attachments);
-  if (clear_attachments.node_data.attachment_count) {
+  if (clear_attachments.attachment_count) {
     clear(clear_attachments);
   }
 }
@@ -708,6 +708,8 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
   render_graph::VKResourceAccessInfo access_info;
   render_graph::VKBeginRenderingNode::CreateInfo begin_rendering(access_info);
   begin_rendering.node_data.vk_rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  begin_rendering.node_data.vk_rendering_info.layerCount = 1;
+  begin_rendering.node_data.vk_rendering_info.renderArea = vk_render_areas_get()[0];
 
   for (int color_slot : IndexRange(GPU_FB_MAX_COLOR_ATTACHMENT)) {
     VKTexture *color_texture = unwrap(unwrap(color_tex(color_slot)));

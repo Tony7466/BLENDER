@@ -22,14 +22,8 @@ struct VKClearAttachmentsData {
   VkClearRect vk_clear_rect;
 };
 
-struct VKClearAttachmentsCreateInfo {
-  VKClearAttachmentsData node_data = {};
-  const VKResourceAccessInfo &resources;
-  VKClearAttachmentsCreateInfo(const VKResourceAccessInfo &resources) : resources(resources) {}
-};
-
 class VKClearAttachmentsNode : public VKNodeInfo<VKNodeType::CLEAR_ATTACHMENTS,
-                                                 VKClearAttachmentsCreateInfo,
+                                                 VKClearAttachmentsData,
                                                  VKClearAttachmentsData,
                                                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
                                                      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
@@ -45,7 +39,7 @@ class VKClearAttachmentsNode : public VKNodeInfo<VKNodeType::CLEAR_ATTACHMENTS,
    */
   template<typename Node> static void set_node_data(Node &node, const CreateInfo &create_info)
   {
-    node.clear_attachments = create_info.node_data;
+    node.clear_attachments = create_info;
   }
 
   /**
@@ -55,7 +49,7 @@ class VKClearAttachmentsNode : public VKNodeInfo<VKNodeType::CLEAR_ATTACHMENTS,
                    VKRenderGraphNodeLinks &node_links,
                    const CreateInfo &create_info) override
   {
-    create_info.resources.build_links(resources, node_links);
+    UNUSED_VARS(resources, node_links, create_info);
   }
 
   /**

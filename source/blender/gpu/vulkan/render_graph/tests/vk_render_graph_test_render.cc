@@ -43,21 +43,18 @@ TEST(vk_render_graph, begin_clear_attachments_end_read_back)
   }
 
   {
-    VKResourceAccessInfo access_info = {};
-    access_info.images.append(
-        {image, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_ASPECT_COLOR_BIT});
-    VKClearAttachmentsNode::CreateInfo clear_attachments(access_info);
-    clear_attachments.node_data.attachment_count = 1;
-    clear_attachments.node_data.attachments[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    clear_attachments.node_data.attachments[0].clearValue.color.float32[0] = 0.2;
-    clear_attachments.node_data.attachments[0].clearValue.color.float32[1] = 0.4;
-    clear_attachments.node_data.attachments[0].clearValue.color.float32[2] = 0.6;
-    clear_attachments.node_data.attachments[0].clearValue.color.float32[3] = 1.0;
-    clear_attachments.node_data.attachments[0].colorAttachment = 0;
-    clear_attachments.node_data.vk_clear_rect.baseArrayLayer = 0;
-    clear_attachments.node_data.vk_clear_rect.layerCount = 1;
-    clear_attachments.node_data.vk_clear_rect.rect.extent.width = 1920;
-    clear_attachments.node_data.vk_clear_rect.rect.extent.height = 1080;
+    VKClearAttachmentsNode::CreateInfo clear_attachments = {};
+    clear_attachments.attachment_count = 1;
+    clear_attachments.attachments[0].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    clear_attachments.attachments[0].clearValue.color.float32[0] = 0.2;
+    clear_attachments.attachments[0].clearValue.color.float32[1] = 0.4;
+    clear_attachments.attachments[0].clearValue.color.float32[2] = 0.6;
+    clear_attachments.attachments[0].clearValue.color.float32[3] = 1.0;
+    clear_attachments.attachments[0].colorAttachment = 0;
+    clear_attachments.vk_clear_rect.baseArrayLayer = 0;
+    clear_attachments.vk_clear_rect.layerCount = 1;
+    clear_attachments.vk_clear_rect.rect.extent.width = 1920;
+    clear_attachments.vk_clear_rect.rect.extent.height = 1080;
     render_graph.add_node(clear_attachments);
   }
 
@@ -75,7 +72,7 @@ TEST(vk_render_graph, begin_clear_attachments_end_read_back)
   }
 
   render_graph.submit_buffer_for_read(buffer);
-  EXPECT_EQ(7, log.size());
+  EXPECT_EQ(6, log.size());
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, "
       "dst_stage_mask=VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT" +
@@ -102,30 +99,15 @@ TEST(vk_render_graph, begin_clear_attachments_end_read_back)
                 endl() + ")",
             log[1]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, "
-      "dst_stage_mask=VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, "
-      "VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT" +
-          endl() +
-          " - image_barrier(src_access_mask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, "
-          "dst_access_mask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, "
-          "old_layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, "
-          "new_layout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, image=0x1, subresource_range=" +
-          endl() +
-          "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
-          "base_array_layer=0, layer_count=4294967295  )" +
-          endl() + ")",
-      log[2]);
-  EXPECT_EQ(
       "clear_attachments( - attachment(aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, "
       "color_attachment=0)" +
           endl() + " - rect(rect=" + endl() + "    offset=" + endl() +
           "      x=0, y=0    , extent=" + endl() +
           "      width=1920, height=1080      , base_array_layer=0, layer_count=1)" + endl() + ")",
-      log[3]);
-  EXPECT_EQ("end_rendering()", log[4]);
+      log[2]);
+  EXPECT_EQ("end_rendering()", log[3]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, "
-      "VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, "
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, "
       "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT" +
           endl() +
           " - image_barrier(src_access_mask=VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, "
@@ -136,7 +118,7 @@ TEST(vk_render_graph, begin_clear_attachments_end_read_back)
           "    aspect_mask=VK_IMAGE_ASPECT_COLOR_BIT, base_mip_level=0, level_count=4294967295, "
           "base_array_layer=0, layer_count=4294967295  )" +
           endl() + ")",
-      log[5]);
+      log[4]);
   EXPECT_EQ(
       "copy_image_to_buffer(src_image=0x1, src_image_layout=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, "
       "dst_buffer=0x3" +
@@ -148,7 +130,7 @@ TEST(vk_render_graph, begin_clear_attachments_end_read_back)
           "layer_count=0  , image_offset=" +
           endl() + "    x=0, y=0, z=0  , image_extent=" + endl() +
           "    width=0, height=0, depth=0  )" + endl() + ")",
-      log[6]);
+      log[5]);
 }
 
 }  // namespace blender::gpu::render_graph

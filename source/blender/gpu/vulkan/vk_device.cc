@@ -101,9 +101,9 @@ void VKDevice::init(void *ghost_context)
 void VKDevice::init_extension_functions()
 {
   extension_functions.vkCmdBeginRendering = (PFN_vkCmdBeginRendering)vkGetInstanceProcAddr(
-      vk_instance_, "vkCmdBeginRendering");
+      vk_instance_, "vkCmdBeginRenderingKHR");
   extension_functions.vkCmdEndRendering = (PFN_vkCmdEndRendering)vkGetInstanceProcAddr(
-      vk_instance_, "vkCmdEndRendering");
+      vk_instance_, "vkCmdEndRenderingKHR");
 }
 
 void VKDevice::init_debug_callbacks()
