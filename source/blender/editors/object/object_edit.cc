@@ -1875,11 +1875,12 @@ void OBJECT_OT_shade_auto_smooth(wmOperatorType *ot)
 
   PropertyRNA *prop;
 
-  RNA_def_boolean(ot->srna,
-                  "use_auto_smooth",
-                  true,
-                  "Auto Smooth",
-                  "Add modifier to set edge sharpness automatically");
+  prop = RNA_def_boolean(ot->srna,
+                         "use_auto_smooth",
+                         true,
+                         "Auto Smooth",
+                         "Add modifier to set edge sharpness automatically");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_property(ot->srna, "angle", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_range(prop, 0.0f, DEG2RADF(180.0f));
