@@ -4,3 +4,4 @@ Referenced by issue #101930, NLA Actions Stash remove doesn't work on overriden 
 Referenced by issue #91393, Duplicating an action with python crashes Blender
 Referenced by issue #72629, Library Override: Support editing of animation data in overriden data-blocks.
 Referenced by pull request #121395, Fix #121121: NLA push down places local tracks before library overrides
+Referenced by commit b57916463c4be38cf47ddb196fe96f1b81db4c11, Fix #121121: NLA push down places local tracks before library overrides
