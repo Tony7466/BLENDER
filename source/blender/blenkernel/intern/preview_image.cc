@@ -43,24 +43,6 @@
 /* Not mutex-protected! */
 static GHash *gCachedPreviews = nullptr;
 
-class PreviewImageDeferred : public PreviewImage {
- public:
-  const std::string filepath;
-  const ThumbSource source;
-
-  /* Behavior is undefined if \a prv is not a deferred preview (#PRV_TAG_DEFFERED not set). */
-  static PreviewImageDeferred &from_base(PreviewImage &prv);
-  static const PreviewImageDeferred &from_base(const PreviewImage &prv);
-
-  PreviewImageDeferred(blender::StringRef filepath, ThumbSource source);
-  PreviewImageDeferred(const PreviewImageDeferred &) = delete;
-  /* Delete through #BKE_previewimg_free()! */
-  ~PreviewImageDeferred() = delete;
-  /* Keep this type non-copyable since ownership of #PreviewImage can be ambiguous (#PreviewImage
-   * allows shallow copies). */
-  PreviewImageDeferred &operator=(const PreviewImageDeferred &) = delete;
-};
-
 PreviewImage::PreviewImage()
 {
   /* Zero initialize */
@@ -70,26 +52,22 @@ PreviewImage::PreviewImage()
     flag[i] |= PRV_CHANGED;
     changed_timestamp[i] = 0;
   }
+
+  this->runtime = MEM_new<blender::bke::PreviewImageRuntime>(__func__);
 }
 
-PreviewImageDeferred &PreviewImageDeferred::from_base(PreviewImage &prv)
+PreviewImage::~PreviewImage()
 {
-  return static_cast<PreviewImageDeferred &>(prv);
-}
-const PreviewImageDeferred &PreviewImageDeferred::from_base(const PreviewImage &prv)
-{
-  return static_cast<const PreviewImageDeferred &>(prv);
+  MEM_delete(this->runtime);
 }
 
-PreviewImageDeferred::PreviewImageDeferred(blender::StringRef filepath, ThumbSource source)
-    : PreviewImage(), filepath(filepath), source(source)
+static PreviewImage *previewimg_deferred_create(const char *filepath, ThumbSource source)
 {
-  tag |= PRV_TAG_DEFFERED;
-}
-
-static PreviewImageDeferred *previewimg_deferred_create(const char *filepath, ThumbSource source)
-{
-  return MEM_new<PreviewImageDeferred>(__func__, filepath, source);
+  PreviewImage *prv = BKE_previewimg_create();
+  prv->tag |= PRV_TAG_DEFFERED;
+  prv->runtime->filepath = filepath;
+  prv->runtime->source = source;
+  return prv;
 }
 
 PreviewImage *BKE_previewimg_create()
@@ -109,10 +87,6 @@ void BKE_previewimg_free(PreviewImage **prv)
       }
     }
 
-    if ((*prv)->tag & PRV_TAG_DEFFERED) {
-      PreviewImageDeferred &this_deferred = PreviewImageDeferred::from_base(**prv);
-      std::destroy_at(&this_deferred.filepath);
-    }
     MEM_delete(*prv);
     *prv = nullptr;
   }
@@ -140,14 +114,6 @@ void BKE_previewimg_freefunc(void *link)
     return;
   }
   BKE_previewimg_free(&prv);
-}
-
-/** Handy override for the deferred type (derives from #PreviewImage). */
-static void BKE_previewimg_free(PreviewImageDeferred **prv)
-{
-  PreviewImage *prv_base = *prv;
-  BKE_previewimg_free(&prv_base);
-  *prv = nullptr;
 }
 
 void BKE_previewimg_runtime_data_clear(PreviewImage *prv)
@@ -341,19 +307,19 @@ PreviewImage *BKE_previewimg_cached_thumbnail_read(const char *name,
 {
   BLI_assert(BLI_thread_is_main());
 
-  PreviewImageDeferred *prv = nullptr;
+  PreviewImage *prv = nullptr;
   void **prv_p;
 
   prv_p = BLI_ghash_lookup_p(gCachedPreviews, name);
 
   if (prv_p) {
-    prv = static_cast<PreviewImageDeferred *>(*prv_p);
+    prv = static_cast<PreviewImage *>(*prv_p);
     BLI_assert(prv);
     BLI_assert(prv->tag & PRV_TAG_DEFFERED);
   }
 
   if (prv && force_update) {
-    if ((prv->source == source) && (prv->filepath == filepath)) {
+    if ((prv->runtime->source == source) && (prv->runtime->filepath == filepath)) {
       /* If same filepath, no need to re-allocate preview, just clear it up. */
       BKE_previewimg_clear(prv);
     }
@@ -402,10 +368,9 @@ void BKE_previewimg_ensure(PreviewImage *prv, const int size)
     return;
   }
 
-  PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
   int icon_w, icon_h;
 
-  ImBuf *thumb = IMB_thumb_manage(prv_deferred.filepath.c_str(), THB_LARGE, prv_deferred.source);
+  ImBuf *thumb = IMB_thumb_manage(prv->runtime->filepath.c_str(), THB_LARGE, prv->runtime->source);
   if (!thumb) {
     return;
   }
@@ -447,8 +412,7 @@ const char *BKE_previewimg_deferred_filepath_get(const PreviewImage *prv)
     return nullptr;
   }
 
-  const PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
-  return prv_deferred.filepath.c_str();
+  return prv->runtime->filepath.c_str();
 }
 
 std::optional<int> BKE_previewimg_deferred_thumb_source_get(const PreviewImage *prv)
@@ -457,8 +421,7 @@ std::optional<int> BKE_previewimg_deferred_thumb_source_get(const PreviewImage *
     return std::nullopt;
   }
 
-  const PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
-  return prv_deferred.source;
+  return prv->runtime->source;
 }
 
 ImBuf *BKE_previewimg_to_imbuf(PreviewImage *prv, const int size)
@@ -500,6 +463,7 @@ void BKE_previewimg_blend_write(BlendWriter *writer, const PreviewImage *prv)
   }
 
   PreviewImage prv_copy = *prv;
+  prv_copy.runtime = nullptr;
   BLO_write_struct_at_address(writer, PreviewImage, prv, &prv_copy);
   if (prv_copy.rect[0]) {
     BLO_write_uint32_array(writer, prv_copy.w[0] * prv_copy.h[0], prv_copy.rect[0]);
@@ -514,6 +478,8 @@ void BKE_previewimg_blend_read(BlendDataReader *reader, PreviewImage *prv)
   if (prv == nullptr) {
     return;
   }
+
+  prv->runtime = MEM_new<blender::bke::PreviewImageRuntime>(__func__);
 
   for (int i = 0; i < NUM_ICON_SIZES; i++) {
     if (prv->rect[i]) {

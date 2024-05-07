@@ -14,6 +14,15 @@
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
+namespace blender::bke {
+struct PreviewImageRuntime;
+}
+using PreviewImageRuntimeHandle = blender::bke::PreviewImageRuntime;
+#else
+typedef struct PreviewImageRuntimeHandle PreviewImageRuntimeHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -643,14 +652,11 @@ typedef struct PreviewImage {
   short tag;
   char _pad[2];
 
+  PreviewImageRuntimeHandle *runtime;
 #ifdef __cplusplus
   PreviewImage();
-  /* Shallow copy! Contained data is not copied. */
-  PreviewImage(const PreviewImage &) = default;
-  /* Don't free contained data to allow shallow copies. */
-  ~PreviewImage() = default;
-  /* Shallow copy! Contained data is not copied. */
-  PreviewImage &operator=(const PreviewImage &) = default;
+  /* Don't free all contained data to allow shallow copies. */
+  ~PreviewImage();
 #endif
 } PreviewImage;
 
