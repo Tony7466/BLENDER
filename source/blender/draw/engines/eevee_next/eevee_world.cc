@@ -125,6 +125,9 @@ void World::sync()
   }
 
   sun_threshold_ = bl_world->sun_threshold;
+  if (inst_.use_studio_light()) {
+    sun_threshold_ *= lookdev_world_.intensity_get();
+  }
 
   inst_.light_probes.sync_world(bl_world, has_update);
 
