@@ -6620,6 +6620,7 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
     }
 
     if (xyz_label) {
+#ifndef WITH_HEADLESS
       int icon_mod[4];
       int icon = UI_icon_from_keymap_item(kmi, icon_mod);
       for (int j = 0; j < ARRAY_SIZE(icon_mod) && icon_mod[j]; j++) {
@@ -6636,6 +6637,7 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
       uiItemS_ex(layout, 0.6f);
       uiItemL(layout, xyz_label, ICON_NONE);
       uiItemS_ex(layout, 0.7f);
+#endif
       return 3;
     }
   }
