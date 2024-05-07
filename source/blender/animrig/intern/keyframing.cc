@@ -463,13 +463,6 @@ static SingleKeyingResult insert_keyframe_value(
   KeyframeSettings settings = get_keyframe_settings((flag & INSERTKEY_NO_USERPREF) == 0);
   settings.keyframe_type = keytype;
 
-  /* Ignore "Insert Only Needed".
-   * NOTE: this blindly preserves old behavior that would have otherwise changed
-   * during a refactor. `insert_vert_fcurve()` previously ignored this flag, but
-   * now uses it after the refactor. It's not clear that ignoring the flag was
-   * intentional/desireable before, so we may want to remove this in the future. */
-  flag &= ~INSERTKEY_NEEDED;
-
   return insert_vert_fcurve(fcu, {cfra, curval}, settings, flag);
 }
 
