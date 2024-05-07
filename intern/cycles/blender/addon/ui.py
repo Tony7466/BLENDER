@@ -498,7 +498,7 @@ class CYCLES_RENDER_PT_sampling_lights_restir(CyclesButtonsPanel, Panel):
 
         col = layout.column(heading="MIS weight", align=True)
         row = col.row(align=True)
-        row.prop(cscene, "restir_biased", toggle=True)
+        row.prop(cscene, "restir_unbiased", toggle=True)
         row.prop(cscene, "restir_pairwise", toggle=True)
         col.prop(cscene, "restir_heuristics")
 
@@ -527,7 +527,6 @@ class CYCLES_RENDER_PT_sampling_lights_restir_initial(CyclesButtonsPanel, Panel)
         col.active = cscene.use_initial_resampling
         col.prop(cscene, "restir_light_samples")
         col.prop(cscene, "restir_bsdf_samples")
-        col.prop(cscene, "restir_initial_visibility")
 
 
 class CYCLES_RENDER_PT_sampling_lights_restir_spatial(CyclesButtonsPanel, Panel):
@@ -555,7 +554,6 @@ class CYCLES_RENDER_PT_sampling_lights_restir_spatial(CyclesButtonsPanel, Panel)
         col.prop(cscene, "restir_spatial_radius")
         col.prop(cscene, "restir_spatial_neighbors")
         col.prop(cscene, "restir_spatial_iterations")
-        col.prop(cscene, "restir_spatial_visibility")
 
 
 class CYCLES_RENDER_PT_subdivision(CyclesButtonsPanel, Panel):

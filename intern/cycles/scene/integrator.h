@@ -89,12 +89,11 @@ class Integrator : public Node {
   /* NOTE: Use the last bit for initial resampling and the second for spatial resampling, because
    * we are hitting the socket number limit. */
   NODE_SOCKET_API(int, use_restir)
-  NODE_SOCKET_API(bool, restir_initial_visibility)
+  NODE_SOCKET_API(bool, restir_unbiased)
   NODE_SOCKET_API(int, restir_light_samples)
   NODE_SOCKET_API(int, restir_bsdf_samples)
   NODE_SOCKET_API(int, restir_spatial_radius)
   NODE_SOCKET_API(int, restir_spatial_neighbors)
-  NODE_SOCKET_API(bool, restir_spatial_visibility)
 
   NODE_SOCKET_API(bool, use_adaptive_sampling)
   NODE_SOCKET_API(int, adaptive_min_samples)

@@ -120,12 +120,11 @@ NODE_DEFINE(Integrator)
 
   /* ReSTIR. */
   SOCKET_INT(use_restir, "Initial and Spatial Resampling", 0b11);
-  SOCKET_BOOLEAN(restir_initial_visibility, "Check Visibility", true);
+  SOCKET_BOOLEAN(restir_unbiased, "Unbiased", true);
   SOCKET_INT(restir_light_samples, "Light", 8);
   SOCKET_INT(restir_bsdf_samples, "BSDF", 3);
   SOCKET_INT(restir_spatial_radius, "Radius", 15);
   SOCKET_INT(restir_spatial_neighbors, "Samples", 5);
-  SOCKET_BOOLEAN(restir_spatial_visibility, "Check Visibility", true);
 
   static NodeEnum sampling_pattern_enum;
   sampling_pattern_enum.insert("sobol_burley", SAMPLING_PATTERN_SOBOL_BURLEY);
@@ -335,12 +334,11 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   /* ReSTIR. */
   kintegrator->use_initial_resampling = use_restir & 1;
   kintegrator->use_spatial_resampling = (use_restir >> 1) & 1;
-  kintegrator->restir_initial_visibility = restir_initial_visibility;
+  kintegrator->restir_unbiased = restir_unbiased;
   kintegrator->restir_light_samples = restir_light_samples;
   kintegrator->restir_bsdf_samples = restir_bsdf_samples;
   kintegrator->restir_spatial_radius = restir_spatial_radius;
   kintegrator->restir_spatial_neighbors = restir_spatial_neighbors;
-  kintegrator->restir_spatial_visibility = restir_spatial_visibility;
   kintegrator->restir_pairwise_mis = (use_restir >> 2) & 1;
 
   dscene->sample_pattern_lut.clear_modified();

@@ -465,8 +465,7 @@ ccl_device
     }
 
     /* Evaluate light shader. */
-    const bool check_visibility = kernel_data.integrator.restir_initial_visibility &&
-                                  is_direct_light;
+    const bool check_visibility = use_ris && kernel_data.integrator.restir_unbiased;
     const float bsdf_pdf = radiance_eval(kg, state, sd, &ls, &radiance, check_visibility);
 
     PROFILING_EVENT(PROFILING_RESTIR_RESERVOIR);

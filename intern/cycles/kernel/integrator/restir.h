@@ -376,7 +376,7 @@ ccl_device bool integrator_restir(KernelGlobals kg,
   const int radius = kernel_data.integrator.restir_spatial_radius;
   SpatialResampling spatial_resampling(tile, radius);
 
-  const bool visibility = kernel_data.integrator.restir_spatial_visibility;
+  const bool visibility = kernel_data.integrator.restir_unbiased;
   const bool pairwise_mis = kernel_data.integrator.restir_pairwise_mis;
 
   /* TODO(weizhen): add options for pairwiseMIS and biasedMIS. The current MIS weight is not good

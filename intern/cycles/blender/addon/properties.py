@@ -644,19 +644,7 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         default=5,
     )
 
-    restir_initial_visibility: BoolProperty(
-        name="Check Visibility",
-        description="Check visibility of intial samples",
-        default=True,
-    )
-
-    restir_spatial_visibility: BoolProperty(
-        name="Check Visibility",
-        description="Check visibility of spatial samples",
-        default=True,
-    )
-
-    restir_biased: BoolProperty(
+    restir_unbiased: BoolProperty(
         name="Unbiased",
         description="Querying extra visibility rays, render is unbiased but slower",
         default=True)
