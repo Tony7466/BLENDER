@@ -38,6 +38,11 @@ set(SRC
   nodes/node_fn_invert_matrix.cc
   nodes/node_fn_invert_rotation.cc
   nodes/node_fn_matrix_multiply.cc
+  nodes/node_fn_matrix_add.cc
+  nodes/node_fn_matrix_subtract.cc
+  nodes/node_fn_matrix_normalize.cc
+  nodes/node_fn_matrix_determinant.c
+  nodes/node_fn_matrix_adjoint.cc
   nodes/node_fn_project_point.cc
   nodes/node_fn_quaternion_to_rotation.cc
   nodes/node_fn_random_value.cc
