@@ -16,6 +16,7 @@
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
+#include "BLI_assert.h"
 #include "BLI_math_vector.hh"
 #include "BLI_string.h"
 
@@ -51,6 +52,7 @@
 #include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
+#include "wm_event_types.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -499,8 +501,6 @@ struct GreasePencilFillOpData {
 
   int material_index;
 
-  /* Fill is disabled initially, only perform fill after first mouse press. */
-  bool is_fill_initialized = false;
   /* Mouse position where fill was initialized */
   float2 fill_mouse_pos;
   /* Extension lines mode is enabled (middle mouse button). */
@@ -697,7 +697,7 @@ static bool grease_pencil_apply_fill(bContext &C,
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = true;
+  constexpr const bool keep_images = false;
 
   ARegion *region = BKE_area_find_region_xy(CTX_wm_area(&C), RGN_TYPE_ANY, event.xy);
   if (!region || region->regiontype != RGN_TYPE_WINDOW) {
@@ -864,11 +864,20 @@ static int grease_pencil_fill_invoke(bContext *C, wmOperator *op, const wmEvent 
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
+enum class FillToolModalKey : int8_t {
+  Cancel = 1,
+  Confirm,
+  GapClosureMode,
+  ExtensionsLengthen,
+  ExtensionsShorten,
+  ExtensionsDrag,
+  ExtensionsCollide,
+};
+
+static int grease_pencil_fill_event_modal_map(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const bool is_ctrl_pressed = (event->modifier & KM_CTRL);
   const bool is_shift_pressed = (event->modifier & KM_SHIFT);
-  const RegionView3D &rv3d = *CTX_wm_region_view3d(C);
   const ToolSettings &ts = *CTX_data_tool_settings(C);
   const Brush &brush = *BKE_paint_brush(&ts.gp_paint->paint);
   const bool is_brush_inv = brush.gpencil_settings->fill_direction == BRUSH_DIR_IN;
@@ -876,37 +885,26 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
   auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
   const bool is_inverted = (is_brush_inv != is_ctrl_pressed);
   const bool show_extend = ((op_data.flag & GP_BRUSH_FILL_SHOW_EXTENDLINES) && !is_inverted);
-  const bool help_lines = (((op_data.flag & GP_BRUSH_FILL_SHOW_HELPLINES) || show_extend) &&
-                           !is_inverted);
-  const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
+  // const bool help_lines = (((op_data.flag & GP_BRUSH_FILL_SHOW_HELPLINES) || show_extend) &&
+  //                          !is_inverted);
+  // const bool extend_lines = (op_data.fill_extend_fac > 0.0f);
 
-  int estate = OPERATOR_RUNNING_MODAL;
-  switch (event->type) {
-    case EVT_ESCKEY:
-    case RIGHTMOUSE:
-      estate = OPERATOR_CANCELLED;
-      break;
-    case LEFTMOUSE:
-      /* If doing a extend transform with the pen, avoid false contacts of
-       * the pen with the tablet. */
+  switch (event->val) {
+    case int(FillToolModalKey::Cancel):
+      return OPERATOR_CANCELLED;
+
+    case int(FillToolModalKey::Confirm): {
+      /* Ignore in extension mode. */
       if (op_data.is_extension_mode) {
         break;
       }
 
       op_data.fill_mouse_pos = float2(event->mval);
+      return (grease_pencil_apply_fill(*C, *op, *event, is_inverted) ? OPERATOR_FINISHED :
+                                                                       OPERATOR_CANCELLED);
+    }
 
-      /* First time the event is not enabled to show help lines. */
-      if (op_data.is_fill_initialized || !help_lines) {
-        estate = (grease_pencil_apply_fill(*C, *op, *event, is_inverted) ? OPERATOR_FINISHED :
-                                                                           OPERATOR_CANCELLED);
-      }
-      else if (extend_lines) {
-        grease_pencil_update_extend(*C, op_data);
-      }
-      /* Enable fill on the next confirm event. */
-      op_data.is_fill_initialized = true;
-      break;
-    case EVT_SKEY:
+    case int(FillToolModalKey::GapClosureMode):
       if (show_extend && event->val == KM_PRESS) {
         /* Toggle mode. */
         if (op_data.fill_extend_mode == GP_FILL_EMODE_EXTEND) {
@@ -918,29 +916,20 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
         grease_pencil_update_extend(*C, op_data);
       }
       break;
-    case EVT_DKEY:
-      if (show_extend && event->val == KM_PRESS) {
-        op_data.flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
-        grease_pencil_update_extend(*C, op_data);
-      }
+
+    case int(FillToolModalKey::ExtensionsLengthen):
+      op_data.fill_extend_fac = std::max(
+          op_data.fill_extend_fac - (is_shift_pressed ? 0.01f : 0.1f), 0.0f);
+      grease_pencil_update_extend(*C, op_data);
       break;
-    case EVT_PAGEUPKEY:
-    case WHEELUPMOUSE:
-      if (op_data.is_fill_initialized) {
-        op_data.fill_extend_fac = std::max(
-            op_data.fill_extend_fac - (is_shift_pressed ? 0.01f : 0.1f), 0.0f);
-        grease_pencil_update_extend(*C, op_data);
-      }
+
+    case int(FillToolModalKey::ExtensionsShorten):
+      op_data.fill_extend_fac = std::min(
+          op_data.fill_extend_fac + (is_shift_pressed ? 0.01f : 0.1f), 10.0f);
+      grease_pencil_update_extend(*C, op_data);
       break;
-    case EVT_PAGEDOWNKEY:
-    case WHEELDOWNMOUSE:
-      if (op_data.is_fill_initialized) {
-        op_data.fill_extend_fac = std::min(
-            op_data.fill_extend_fac + (is_shift_pressed ? 0.01f : 0.1f), 10.0f);
-        grease_pencil_update_extend(*C, op_data);
-      }
-      break;
-    case MIDDLEMOUSE: {
+
+    case int(FillToolModalKey::ExtensionsDrag): {
       if (event->val == KM_PRESS) {
         /* Consider initial offset as zero position. */
         op_data.is_extension_mode = true;
@@ -962,6 +951,32 @@ static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *
       WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
       break;
     }
+
+    case int(FillToolModalKey::ExtensionsCollide):
+      if (show_extend && event->val == KM_PRESS) {
+        op_data.flag ^= GP_BRUSH_FILL_STROKE_COLLIDE;
+        grease_pencil_update_extend(*C, op_data);
+      }
+      break;
+
+    default:
+      BLI_assert_unreachable();
+      break;
+  }
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(C);
+
+  auto &op_data = *static_cast<GreasePencilFillOpData *>(op->customdata);
+
+  int estate = OPERATOR_RUNNING_MODAL;
+  switch (event->type) {
+    case EVT_MODAL_MAP:
+      estate = grease_pencil_fill_event_modal_map(C, op, event);
+      break;
     case MOUSEMOVE: {
       if (!op_data.is_extension_mode) {
         break;
@@ -1044,6 +1059,46 @@ void ED_operatortypes_grease_pencil_draw()
   WM_operatortype_append(GREASE_PENCIL_OT_sculpt_paint);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_fill);
+}
+
+void ED_filltool_modal_keymap(wmKeyConfig *keyconf)
+{
+  using namespace blender::ed::greasepencil;
+  using blender::ed::sculpt_paint::FillToolModalKey;
+
+  static const EnumPropertyItem modal_items[] = {
+      {int(FillToolModalKey::Cancel), "CANCEL", 0, "Cancel", ""},
+      {int(FillToolModalKey::Confirm), "CONFIRM", 0, "Confirm", ""},
+      {int(FillToolModalKey::GapClosureMode), "GAP_CLOSURE_MODE", 0, "Gap Closure Mode", ""},
+      {int(FillToolModalKey::ExtensionsLengthen),
+       "EXTENSIONS_LENGTHEN",
+       0,
+       "Length Extensions",
+       ""},
+      {int(FillToolModalKey::ExtensionsShorten),
+       "EXTENSIONS_SHORTEN",
+       0,
+       "Shorten Extensions",
+       ""},
+      {int(FillToolModalKey::ExtensionsDrag), "EXTENSIONS_DRAG", 0, "Drag Extensions", ""},
+      {int(FillToolModalKey::ExtensionsCollide),
+       "EXTENSIONS_COLLIDE",
+       0,
+       "Collide Extensions",
+       ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  wmKeyMap *keymap = WM_modalkeymap_find(keyconf, "Fill Tool Modal Map");
+
+  /* This function is called for each space-type, only needs to add map once. */
+  if (keymap && keymap->modal_items) {
+    return;
+  }
+
+  keymap = WM_modalkeymap_ensure(keyconf, "Fill Tool Modal Map", modal_items);
+
+  WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_fill");
 }
 
 /** \} */

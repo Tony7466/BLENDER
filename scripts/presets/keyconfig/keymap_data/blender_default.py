@@ -4799,6 +4799,30 @@ def km_grease_pencil_fill_tool(_params):
     return keymap
 
 
+def km_grease_pencil_fill_tool_modal_map(params):
+    items = []
+    keymap = (
+        "Fill Tool Modal Map",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW', "modal": True},
+        {"items": items},
+    )
+
+    items.extend([
+        ("CANCEL", {"type": 'ESC', "value": 'PRESS', "any": True}, None),
+        ("CANCEL", {"type": 'RIGHTMOUSE', "value": 'PRESS'}, None),
+        ("CONFIRM", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("GAP_CLOSURE_MODE", {"type": 'S', "value": 'PRESS'}, None),
+        ("EXTENSIONS_LENGTHEN", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True}, None),
+        ("EXTENSIONS_LENGTHEN", {"type": 'WHEELUPMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSIONS_SHORTEN", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True}, None),
+        ("EXTENSIONS_SHORTEN", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSIONS_DRAG", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
+        ("EXTENSIONS_COLLIDE", {"type": 'D', "value": 'PRESS'}, None),
+    ])
+
+    return keymap
+
+
 # ------------------------------------------------------------------------------
 # Object/Pose Modes
 
@@ -9014,6 +9038,7 @@ def generate_keymaps(params=None):
         km_curve_pen_modal_map(params),
         km_node_link_modal_map(params),
         km_grease_pencil_primitive_tool_modal_map(params),
+        km_grease_pencil_fill_tool_modal_map(params),
 
         # Gizmos.
         km_generic_gizmo(params),

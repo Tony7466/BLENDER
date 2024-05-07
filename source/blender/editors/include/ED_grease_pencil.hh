@@ -60,6 +60,7 @@ void ED_operatortypes_grease_pencil_weight_paint();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
+void ED_filltool_modal_keymap(wmKeyConfig *keyconf);
 
 void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
 

@@ -246,4 +246,5 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   keymap_grease_pencil_brush_stroke(keyconf);
   keymap_grease_pencil_fill_tool(keyconf);
   ED_primitivetool_modal_keymap(keyconf);
+  ED_filltool_modal_keymap(keyconf);
 }
