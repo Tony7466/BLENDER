@@ -150,6 +150,9 @@ enum eTFlag {
 
   /** Special flag for when the transform code is called after keys have been duplicated. */
   T_DUPLICATED_KEYFRAMES = 1 << 26,
+
+  /** Handle tweaking with #USER_SEQ_ED_SIMPLE_TWEAKING. */
+  T_HANDLE_TWEAK = 1 << 27
 };
 ENUM_OPERATORS(eTFlag, T_DUPLICATED_KEYFRAMES);
 

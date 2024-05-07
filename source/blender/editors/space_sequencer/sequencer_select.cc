@@ -328,7 +328,7 @@ Sequence *find_nearest_seq(const Scene *scene, const View2D *v2d, const int mval
         if (SEQ_transform_sequence_can_be_translated(seq)) {
 
           /* Clamp handles to defined size in pixel space. */
-          handsize = 2.0f * sequence_handle_size_get_clamped(scene, seq, pixelx);
+          handsize = 4.0f * sequence_handle_size_get_clamped(scene, seq, pixelx);
           displen = float(abs(SEQ_time_left_handle_frame_get(scene, seq) -
                               SEQ_time_right_handle_frame_get(scene, seq)));
 
@@ -823,13 +823,26 @@ static Sequence *seq_select_seq_from_preview(
   return seq_select;
 }
 
-static bool element_already_selected(const Sequence *seq, const int handle_clicked)
+static bool element_already_selected(const Sequence *seq1,
+                                     const Sequence *seq2,
+                                     int handle_clicked)
 {
-  const bool handle_already_selected = ((handle_clicked == SEQ_SIDE_LEFT) &&
-                                        (seq->flag & SEQ_LEFTSEL)) ||
-                                       ((handle_clicked == SEQ_SIDE_RIGHT) &&
-                                        (seq->flag & SEQ_RIGHTSEL));
-  return ((seq->flag & SELECT) && handle_clicked == SEQ_SIDE_NONE) || handle_already_selected;
+  if (seq1 == nullptr) {
+    return false;
+  }
+  const bool seq1_already_selected = ((seq1->flag & SELECT) != 0);
+  if (seq2 == nullptr) {
+    const bool handle_already_selected = (seq1->flag & handle_clicked) != 0 ||
+                                         handle_clicked == SEQ_SIDE_NONE;
+    return seq1_already_selected && handle_already_selected;
+  }
+  const bool seq2_already_selected = ((seq2->flag & SELECT) != 0);
+  const int seq1_handle = seq1->flag & (SEQ_RIGHTSEL | SEQ_LEFTSEL);
+  const int seq2_handle = seq2->flag & (SEQ_RIGHTSEL | SEQ_LEFTSEL);
+  /* Handles must be selected in XOR fashion, with `seq1` matching `handle_clicked`. */
+  const bool both_handles_selected = seq1_handle == handle_clicked && seq2_handle != 0 &&
+                                     seq1_handle != seq2_handle;
+  return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
 static void sequencer_select_strip_impl(const Editing *ed,
@@ -886,11 +899,184 @@ static void sequencer_select_strip_impl(const Editing *ed,
   }
 }
 
-bool ED_sequencer_can_select_handle(const Sequence *seq)
+/* Similar to `sequence_handle_size_get_clamped()` but allows for larger clickable area. */
+static float clickable_handle_size_get(const Scene *scene, const Sequence *seq, const View2D *v2d)
 {
-  if ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) > 0) {
+  const float pixelx = 1 / UI_view2d_scale_get_x(v2d);
+  const float strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
+                          SEQ_time_left_handle_frame_get(scene, seq);
+  return min_ff(15.0f * pixelx * U.pixelsize, strip_len / 4);
+}
+
+bool ED_sequencer_can_select_handle(const Scene *scene, const Sequence *seq, const View2D *v2d)
+{
+  if (SEQ_effect_get_num_inputs(seq->type) > 0) {
     return false;
   }
+
+  int min_len = 25 * U.pixelsize;
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    min_len = 15 * U.pixelsize;
+  }
+
+  const float pixelx = 1 / UI_view2d_scale_get_x(v2d);
+  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
+                        SEQ_time_left_handle_frame_get(scene, seq);
+  if (strip_len / pixelx < min_len) {
+    return false;
+  }
+  return true;
+}
+
+static void strip_clickable_areas_get(const Scene *scene,
+                                      const Sequence *seq,
+                                      const View2D *v2d,
+                                      rctf *r_body,
+                                      rctf *r_left_handle,
+                                      rctf *r_right_handle)
+{
+  seq_rectf(scene, seq, r_body);
+  memcpy(r_left_handle, r_body, sizeof(*r_left_handle));
+  memcpy(r_right_handle, r_body, sizeof(*r_right_handle));
+
+  const float handsize = clickable_handle_size_get(scene, seq, v2d);
+  BLI_rctf_pad(r_left_handle, handsize / 3, 0.0f);
+  BLI_rctf_pad(r_right_handle, handsize / 3, 0.0f);
+  r_left_handle->xmax = r_body->xmin + handsize;
+  r_right_handle->xmin = r_body->xmax - handsize;
+  BLI_rctf_pad(r_body, -handsize, 0.0f);
+}
+
+static rctf strip_clickable_area_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
+{
+  rctf body, left, right;
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  BLI_rctf_union(&body, &left);
+  BLI_rctf_union(&body, &right);
+  return body;
+}
+
+static float strip_to_frame_distance(const Scene *scene,
+                                     const View2D *v2d,
+                                     const Sequence *seq,
+                                     float timeline_frame)
+{
+  rctf body, left, right;
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  return BLI_rctf_length_x(&body, timeline_frame);
+}
+
+/* Get strips that can be selected by click. */
+static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scene,
+                                                               const View2D *v2d,
+                                                               float mouse_co[2])
+{
+  blender::Vector<Sequence *> strips = sequencer_visible_strips_get(scene, v2d);
+  const Editing *ed = SEQ_editing_get(scene);
+
+  strips.remove_if([&](Sequence *seq) {
+    rctf body = strip_clickable_area_get(scene, v2d, seq);
+    if (!BLI_rctf_isect_pt_v(&body, mouse_co)) {
+      return true;
+    }
+    return false;
+  });
+
+  /* It may be better to sort strips, as there can be very small strip in set, that may not be
+   * removed by previous conditions. `std::sort` has issues with this container though. */
+  if (strips.size() > 1 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
+                               strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
+  {
+    SWAP(Sequence *, strips[0], strips[1]);
+  }
+
+  BLI_assert(strips.size() <= 2);
+  return strips;
+}
+
+static bool strips_are_adjacent(const Scene *scene, const Sequence *seq1, const Sequence *seq2)
+{
+  const int s1_left = SEQ_time_left_handle_frame_get(scene, seq1);
+  const int s1_right = SEQ_time_right_handle_frame_get(scene, seq1);
+  const int s2_left = SEQ_time_left_handle_frame_get(scene, seq2);
+  const int s2_right = SEQ_time_right_handle_frame_get(scene, seq2);
+
+  return s1_right == s2_left || s1_left == s2_right;
+}
+
+static int handle_selection_refine(const Scene *scene,
+                                   const Sequence *seq,
+                                   const View2D *v2d,
+                                   float mouse_co[2])
+{
+  rctf body, left, right;
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+
+  if (!ED_sequencer_can_select_handle(scene, seq, v2d)) {
+    return SEQ_SIDE_NONE;
+  }
+
+  if (BLI_rctf_isect_pt_v(&left, mouse_co)) {
+    return SEQ_SIDE_LEFT;
+  }
+  if (BLI_rctf_isect_pt_v(&right, mouse_co)) {
+    return SEQ_SIDE_RIGHT;
+  }
+
+  return SEQ_SIDE_NONE;
+}
+
+static bool both_handles_are_selected(const Scene *scene,
+                                      const Sequence *seq1,
+                                      const Sequence *seq2,
+                                      int seq1_side,
+                                      const View2D *v2d,
+                                      float mouse_co[2])
+{
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    return false;
+  }
+  if (seq1_side == SEQ_SIDE_NONE) {
+    return false;
+  }
+  if (!strips_are_adjacent(scene, seq1, seq2)) {
+    return false;
+  }
+  const int seq2_side = handle_selection_refine(scene, seq2, v2d, mouse_co);
+  if (seq1_side == SEQ_SIDE_RIGHT && seq2_side != SEQ_SIDE_LEFT) {
+    return false;
+  }
+  else if (seq1_side == SEQ_SIDE_LEFT && seq2_side != SEQ_SIDE_RIGHT) {
+    return false;
+  }
+
+  return true;
+}
+
+bool ED_sequencer_handle_selection_refine(const Scene *scene,
+                                          const View2D *v2d,
+                                          float mouse_co[2],
+                                          Sequence **r_seq1,
+                                          Sequence **r_seq2,
+                                          int *r_side)
+{
+  blender::Vector<Sequence *> strips = mouseover_strips_sorted_get(scene, v2d, mouse_co);
+  *r_seq1 = *r_seq2 = nullptr;
+  *r_side = 0;
+
+  if (strips.size() == 0) {
+    return false;
+  }
+
+  *r_seq1 = strips[0];
+  *r_side = handle_selection_refine(scene, *r_seq1, v2d, mouse_co);
+
+  if (strips.size() == 2 &&
+      both_handles_are_selected(scene, *r_seq1, strips[1], *r_side, v2d, mouse_co))
+  {
+    *r_seq2 = strips[1];
+  }
+
   return true;
 }
 
@@ -902,7 +1088,7 @@ static bool use_retiming_mode(const bContext *C, const Sequence *seq_key_test)
 
 int sequencer_select_exec(bContext *C, wmOperator *op)
 {
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
   ARegion *region = CTX_wm_region(C);
@@ -934,21 +1120,30 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   int mval[2];
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
+  float mouse_co[2];
+  UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
 
   int handle_clicked = SEQ_SIDE_NONE;
   Sequence *seq = nullptr;
+  Sequence *seq2 = nullptr;
   if (region->regiontype == RGN_TYPE_PREVIEW) {
     seq = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    seq = find_nearest_seq(scene, v2d, mval, &handle_clicked);
+    ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
   }
 
+  if (RNA_boolean_get(op->ptr, "handles_only") && handle_clicked == SEQ_SIDE_NONE) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
+   * keymap, therefore both properties can be true at the same time. */
   Sequence *seq_key_test = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
 
-  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one keymap,
-   * therefore both properties can be true at the same time. */
+  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
+   * keymap, therefore both properties can be true at the same time. */
   if (seq && RNA_boolean_get(op->ptr, "linked_time")) {
     if (use_retiming_mode(C, seq_key_test)) {
       return sequencer_retiming_select_linked_time(C, op);
@@ -987,10 +1182,13 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   }
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
+  const bool already_selected = element_already_selected(seq, seq2, handle_clicked);
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (seq && element_already_selected(seq, handle_clicked) && wait_to_deselect_others && !toggle) {
+  if (already_selected && wait_to_deselect_others && !toggle &&
+      !RNA_boolean_get(op->ptr, "handles_only"))
+  {
     return OPERATOR_RUNNING_MODAL;
   }
 
@@ -1015,7 +1213,9 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   bool changed = false;
 
   /* Deselect everything */
-  if (deselect_all || (seq && (extend == false && deselect == false && toggle == false))) {
+  if (deselect_all ||
+      (seq && (extend == false && deselect == false && toggle == false) && !already_selected))
+  {
     changed |= ED_sequencer_deselect_all(scene);
   }
 
@@ -1029,6 +1229,11 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Do actual selection. */
   sequencer_select_strip_impl(ed, seq, handle_clicked, extend, deselect, toggle);
+  if (seq2 != nullptr) {
+    /* Invert handle selection for second strip */
+    int seq2_handle_clicked = (handle_clicked == SEQ_LEFTSEL) ? SEQ_SIDE_RIGHT : SEQ_SIDE_LEFT;
+    sequencer_select_strip_impl(ed, seq2, seq2_handle_clicked, extend, deselect, toggle);
+  }
 
   sequencer_select_do_updates(C, scene);
   sequencer_select_set_active(scene, seq);
@@ -1095,6 +1300,11 @@ void SEQUENCER_OT_select(wmOperatorType *ot)
       "Side of Frame",
       "Select all strips on same side of the current frame as the mouse cursor");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  /* Used for handle tweaking. */
+  prop = RNA_def_boolean(ot->srna, "handles_only", false, "Handles Only", "Select handles only");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 /** \} */
@@ -1709,7 +1919,7 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
       if (handles) {
         /* Get the handles draw size. */
         float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-        float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx);
+        float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 4;
 
         /* Right handle. */
         if (rectf.xmax > (SEQ_time_right_handle_frame_get(scene, seq) - handsize)) {
@@ -1764,20 +1974,24 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
 static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Scene *scene = CTX_data_scene(C);
-  View2D *v2d = &CTX_wm_region(C)->v2d;
+  const View2D *v2d = UI_view2d_fromcontext(C);
   ARegion *region = CTX_wm_region(C);
 
   if (region->regiontype == RGN_TYPE_PREVIEW && !sequencer_view_preview_only_poll(C)) {
     return OPERATOR_CANCELLED;
   }
 
-  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
-
-  if (tweak) {
-    int hand_dummy;
+  if (RNA_boolean_get(op->ptr, "tweak")) {
     int mval[2];
+    float mouse_co[2];
     WM_event_drag_start_mval(event, region, mval);
-    Sequence *seq = find_nearest_seq(scene, v2d, mval, &hand_dummy);
+    UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
+
+    int handle_clicked = SEQ_SIDE_NONE;
+    Sequence *seq = nullptr;
+    Sequence *seq2 = nullptr;
+    ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
+
     if (seq != nullptr) {
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
     }

@@ -100,7 +100,7 @@ static rctf strip_box_get(const Scene *scene, const View2D *v2d, const Sequence 
 /** Size in pixels. */
 #define RETIME_KEY_MOUSEOVER_THRESHOLD (16.0f * UI_SCALE_FAC)
 
-static rctf retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
+rctf retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
 {
   rctf rect = strip_box_get(scene, v2d, seq);
   rect.ymax = KEY_CENTER + KEY_SIZE / 2;
@@ -239,8 +239,8 @@ static void retime_key_draw(const bContext *C,
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
-
   const float key_x = key_x_get(scene, seq, key);
+
   const rctf strip_box = strip_box_get(scene, v2d, seq);
   if (!BLI_rctf_isect_x(&strip_box, UI_view2d_view_to_region_x(v2d, key_x))) {
     return; /* Key out of the strip bounds. */
