@@ -10,15 +10,14 @@
 #include "usd_hook.hh"
 #include "usd_private.hh"
 
-#include <pxr/base/plug/registry.h>
 #include <pxr/base/tf/token.h>
 #include <pxr/pxr.h>
-#include <pxr/usd/usd/prim.h>
+#include <pxr/usd/sdf/assetPath.h>
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/tokens.h>
 #include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdUtils/dependencies.h>
+#include <pxr/usd/usdUtils/usdzPackage.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -26,12 +25,14 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -425,9 +426,11 @@ static void export_endjob(void *customdata)
   report_job_duration(data);
 }
 
-/* To create a usdz file, we must first create a .usd/a/c file and then covert it to .usdz. The
- * temporary files will be created in Blender's temporary session storage. The .usdz file will then
- * be moved to job->usdz_filepath. */
+/**
+ * To create a USDZ file, we must first create a `.usd/a/c` file and then covert it to `.usdz`.
+ * The temporary files will be created in Blender's temporary session storage.
+ * The `.usdz` file will then be moved to `job->usdz_filepath`.
+ */
 static void create_temp_path_for_usdz_export(const char *filepath,
                                              blender::io::usd::ExportJobData *job)
 {
@@ -484,7 +487,20 @@ bool USD_export(bContext *C,
    *
    * Has to be done from main thread currently, as it may affect Main original data (e.g. when
    * doing deferred update of the view-layers, see #112534 for details). */
-  if (job->params.visible_objects_only) {
+  if (job->params.collection[0]) {
+    Collection *collection = reinterpret_cast<Collection *>(
+        BKE_libblock_find_name(job->bmain, ID_GR, job->params.collection));
+    if (!collection) {
+      BKE_reportf(job->params.worker_status->reports,
+                  RPT_ERROR,
+                  "USD Export: Unable to find collection '%s'",
+                  job->params.collection);
+      return false;
+    }
+
+    DEG_graph_build_from_collection(job->depsgraph, collection);
+  }
+  else if (job->params.visible_objects_only) {
     DEG_graph_build_from_view_layer(job->depsgraph);
   }
   else {

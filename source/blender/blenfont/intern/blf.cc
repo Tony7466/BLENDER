@@ -32,8 +32,8 @@
 
 #include "IMB_colormanagement.hh"
 
-#include "GPU_matrix.h"
-#include "GPU_shader.h"
+#include "GPU_matrix.hh"
+#include "GPU_shader.hh"
 
 #include "blf_internal.hh"
 #include "blf_internal_types.hh"
@@ -214,7 +214,7 @@ int BLF_load_unique(const char *filepath)
   return i;
 }
 
-void BLF_metrics_attach(int fontid, uchar *mem, int mem_size)
+void BLF_metrics_attach(const int fontid, const uchar *mem, const int mem_size)
 {
   FontBLF *font = blf_get(fontid);
 
@@ -346,15 +346,6 @@ void BLF_aspect(int fontid, float x, float y, float z)
   }
 }
 
-void BLF_matrix(int fontid, const float m[16])
-{
-  FontBLF *font = blf_get(fontid);
-
-  if (font) {
-    memcpy(font->m, m, sizeof(font->m));
-  }
-}
-
 void BLF_position(int fontid, float x, float y, float z)
 {
   FontBLF *font = blf_get(fontid);
@@ -418,17 +409,6 @@ void BLF_size(int fontid, float size)
     blf_font_size(font, size);
   }
 }
-
-#if BLF_BLUR_ENABLE
-void BLF_blur(int fontid, int size)
-{
-  FontBLF *font = blf_get(fontid);
-
-  if (font) {
-    font->blur = size;
-  }
-}
-#endif
 
 void BLF_color4ubv(int fontid, const uchar rgba[4])
 {
@@ -539,15 +519,11 @@ static void blf_draw_gpu__start(const FontBLF *font)
    * in BLF_position (old ui_rasterpos_safe).
    */
 
-  if ((font->flags & (BLF_ROTATION | BLF_MATRIX | BLF_ASPECT)) == 0) {
+  if ((font->flags & (BLF_ROTATION | BLF_ASPECT)) == 0) {
     return; /* glyphs will be translated individually and batched. */
   }
 
   GPU_matrix_push();
-
-  if (font->flags & BLF_MATRIX) {
-    GPU_matrix_mul(font->m);
-  }
 
   GPU_matrix_translate_3f(font->pos[0], font->pos[1], font->pos[2]);
 
@@ -562,18 +538,26 @@ static void blf_draw_gpu__start(const FontBLF *font)
 
 static void blf_draw_gpu__end(const FontBLF *font)
 {
-  if ((font->flags & (BLF_ROTATION | BLF_MATRIX | BLF_ASPECT)) != 0) {
+  if ((font->flags & (BLF_ROTATION | BLF_ASPECT)) != 0) {
     GPU_matrix_pop();
   }
 }
 
-void BLF_draw_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
+void BLF_draw(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
 {
-  FontBLF *font = blf_get(fontid);
-
   BLF_RESULT_CHECK_INIT(r_info);
 
+  if (str_len == 0 || str[0] == '\0') {
+    return;
+  }
+
+  FontBLF *font = blf_get(fontid);
+
   if (font) {
+
+    /* Avoid bgl usage to corrupt BLF drawing. */
+    GPU_bgl_end();
+
     blf_draw_gpu__start(font);
     if (font->flags & BLF_WORD_WRAP) {
       blf_font_draw__wrap(font, str, str_len, r_info);
@@ -583,17 +567,6 @@ void BLF_draw_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r
     }
     blf_draw_gpu__end(font);
   }
-}
-void BLF_draw(int fontid, const char *str, const size_t str_len)
-{
-  if (str_len == 0 || str[0] == '\0') {
-    return;
-  }
-
-  /* Avoid bgl usage to corrupt BLF drawing. */
-  GPU_bgl_end();
-
-  BLF_draw_ex(fontid, str, str_len, nullptr);
 }
 
 int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth, int tab_columns)
@@ -655,6 +628,16 @@ bool BLF_str_offset_to_glyph_bounds(int fontid,
   return false;
 }
 
+int BLF_str_offset_to_cursor(
+    int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return blf_str_offset_to_cursor(font, str, str_len, str_offset, cursor_width);
+  }
+  return 0;
+}
+
 size_t BLF_width_to_strlen(
     int fontid, const char *str, const size_t str_len, float width, float *r_width)
 {
@@ -699,7 +682,7 @@ size_t BLF_width_to_rstrlen(
   return 0;
 }
 
-void BLF_boundbox_ex(
+void BLF_boundbox(
     int fontid, const char *str, const size_t str_len, rcti *r_box, ResultBLF *r_info)
 {
   FontBLF *font = blf_get(fontid);
@@ -716,11 +699,6 @@ void BLF_boundbox_ex(
   }
 }
 
-void BLF_boundbox(int fontid, const char *str, const size_t str_len, rcti *r_box)
-{
-  BLF_boundbox_ex(fontid, str, str_len, r_box, nullptr);
-}
-
 void BLF_width_and_height(
     int fontid, const char *str, const size_t str_len, float *r_width, float *r_height)
 {
@@ -734,7 +712,7 @@ void BLF_width_and_height(
   }
 }
 
-float BLF_width_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
+float BLF_width(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
 {
   FontBLF *font = blf_get(fontid);
 
@@ -745,11 +723,6 @@ float BLF_width_ex(int fontid, const char *str, const size_t str_len, ResultBLF 
   }
 
   return 0.0f;
-}
-
-float BLF_width(int fontid, const char *str, const size_t str_len)
-{
-  return BLF_width_ex(fontid, str, str_len, nullptr);
 }
 
 float BLF_fixed_width(int fontid)
@@ -763,7 +736,7 @@ float BLF_fixed_width(int fontid)
   return 0.0f;
 }
 
-float BLF_height_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
+float BLF_height(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
 {
   FontBLF *font = blf_get(fontid);
 
@@ -774,11 +747,6 @@ float BLF_height_ex(int fontid, const char *str, const size_t str_len, ResultBLF
   }
 
   return 0.0f;
-}
-
-float BLF_height(int fontid, const char *str, const size_t str_len)
-{
-  return BLF_height_ex(fontid, str, str_len, nullptr);
 }
 
 int BLF_height_max(int fontid)
@@ -915,7 +883,7 @@ void blf_draw_buffer__start(FontBLF *font)
 }
 void blf_draw_buffer__end() {}
 
-void BLF_draw_buffer_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
+void BLF_draw_buffer(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
 {
   FontBLF *font = blf_get(fontid);
 
@@ -929,10 +897,6 @@ void BLF_draw_buffer_ex(int fontid, const char *str, const size_t str_len, Resul
     }
     blf_draw_buffer__end();
   }
-}
-void BLF_draw_buffer(int fontid, const char *str, const size_t str_len)
-{
-  BLF_draw_buffer_ex(fontid, str, str_len, nullptr);
 }
 
 blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
@@ -950,7 +914,7 @@ char *BLF_display_name_from_file(const char *filepath)
 {
   /* While listing font directories this function can be called simultaneously from a greater
    * number of threads than we want the FreeType cache to keep open at a time. Therefore open
-   * with own FT_Library object and use FreeType calls directly to avoid any contention. */
+   * with a separate FT_Library object and use FreeType calls directly to avoid any contention. */
   char *name = nullptr;
   FT_Library ft_library;
   if (FT_Init_FreeType(&ft_library) == FT_Err_Ok) {

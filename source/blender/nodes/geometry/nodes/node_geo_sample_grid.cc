@@ -77,7 +77,7 @@ static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
     });
     const eNodeSocketDatatype other_type = eNodeSocketDatatype(params.other_socket().type);
     if (params.node_tree().typeinfo->validate_link(other_type, SOCK_VECTOR)) {
-      params.add_item(IFACE_("Position"), [node_type](LinkSearchOpParams &params) {
+      params.add_item(IFACE_("Position"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("GeometryNodeSampleGrid");
         params.update_and_connect_available_socket(node, "Position");
       });
@@ -247,7 +247,7 @@ static const EnumPropertyItem *data_type_filter_fn(bContext * /*C*/,
 {
   *r_free = true;
   return enum_items_filter(
-      rna_enum_node_socket_type_items, [](const EnumPropertyItem &item) -> bool {
+      rna_enum_node_socket_data_type_items, [](const EnumPropertyItem &item) -> bool {
         return ELEM(item.value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR);
       });
 }
@@ -258,9 +258,9 @@ static void node_rna(StructRNA *srna)
                     "data_type",
                     "Data Type",
                     "Node socket data type",
-                    rna_enum_node_socket_type_items,
+                    rna_enum_node_socket_data_type_items,
                     NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT,
+                    SOCK_FLOAT,
                     data_type_filter_fn);
 
   static const EnumPropertyItem interpolation_mode_items[] = {
