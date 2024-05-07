@@ -1,2 +1,3 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by pull request #121483, Fix #121463: Graph Editor Keyframe jump operator shifts keyframes
+Referenced by commit 734a9dec430a449b6bb83be4afd0d4b170216c40, Fix #121463: Graph Editor Keyframe jump operator shifts keyframes
