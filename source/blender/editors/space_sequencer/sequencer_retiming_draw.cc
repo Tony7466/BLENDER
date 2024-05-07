@@ -239,8 +239,8 @@ static void retime_key_draw(const bContext *C,
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
-  const float key_x = key_x_get(scene, seq, key);
 
+  const float key_x = key_x_get(scene, seq, key);
   const rctf strip_box = strip_box_get(scene, v2d, seq);
   if (!BLI_rctf_isect_x(&strip_box, UI_view2d_view_to_region_x(v2d, key_x))) {
     return; /* Key out of the strip bounds. */

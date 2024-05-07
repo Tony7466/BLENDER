@@ -1137,8 +1137,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one
-   * keymap, therefore both properties can be true at the same time. */
+  /* NOTE: `side_of_frame` and `linked_time` functionality is designed to be shared on one keymap,
+   * therefore both properties can be true at the same time. */
   Sequence *seq_key_test = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
 
