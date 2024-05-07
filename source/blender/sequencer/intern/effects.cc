@@ -2592,7 +2592,7 @@ static void init_text_effect(Sequence *seq)
   data->box_color[3] = 0.7f;
   data->box_margin = 0.01f;
   data->outline_color[3] = 0.7f;
-  data->outline_width = 2.0f;
+  data->outline_width = 0.05f;
 
   STRNCPY(data->text, "Text");
 
@@ -2702,7 +2702,7 @@ static StripEarlyOut early_out_text(const Sequence *seq, float /*fac*/)
   if (data->text[0] == 0 || data->text_size < 1.0f ||
       ((data->color[3] == 0.0f) &&
        (data->shadow_color[3] == 0.0f || (data->flag & SEQ_TEXT_SHADOW) == 0) &&
-       (data->outline_color[3] == 0.0f || data->outline_width < 1.0f ||
+       (data->outline_color[3] == 0.0f || data->outline_width <= 0.0f ||
         (data->flag & SEQ_TEXT_OUTLINE) == 0)))
   {
     return StripEarlyOut::UseInput1;
@@ -2872,9 +2872,11 @@ static void draw_text_outline(const SeqRenderData *context,
                               ColorManagedDisplay *display,
                               int x,
                               int y,
+                              int line_height,
                               ImBuf *out)
 {
-  int outline_width = int(data->outline_width);
+  /* Outline width of 1.0 maps to half of text line height. */
+  const int outline_width = int(line_height * 0.5f * data->outline_width);
   if (outline_width < 1 || data->outline_color[3] <= 0.0f) {
     return;
   }
@@ -2943,7 +2945,7 @@ static void draw_text_outline(const SeqRenderData *context,
 
         /* Fade out / anti-alias the outline over one pixel towards outline distance. */
         float distance = math::distance(float2(x, y), float2(closest_texel.x, closest_texel.y));
-        float alpha = math::clamp(data->outline_width - distance + 1.0f, 0.0f, 1.0f);
+        float alpha = math::clamp(outline_width - distance + 1.0f, 0.0f, 1.0f);
         float4 col1 = color;
         col1 *= alpha;
 
@@ -3066,7 +3068,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
 
   /* Draw text outline. */
   if (data->flag & SEQ_TEXT_OUTLINE) {
-    draw_text_outline(context, data, font, display, x, y, out);
+    draw_text_outline(context, data, font, display, x, y, line_height, out);
   }
 
   /* Draw text itself. */

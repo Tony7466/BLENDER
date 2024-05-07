@@ -2111,7 +2111,7 @@ static bool seq_text_data_update(Sequence *seq, void * /*user_data*/)
   }
   if (data->outline_width == 0.0f) {
     data->outline_color[3] = 0.7f;
-    data->outline_width = 2.0f;
+    data->outline_width = 0.05f;
   }
   return true;
 }
