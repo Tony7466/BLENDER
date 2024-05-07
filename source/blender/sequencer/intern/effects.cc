@@ -2737,13 +2737,22 @@ static void draw_text_shadow(const SeqRenderData *context,
   float offsetx = cosf(data->shadow_angle) * line_height * data->shadow_offset;
   float offsety = sinf(data->shadow_angle) * line_height * data->shadow_offset;
   BLF_position(font, x + offsetx, y - offsety, 0.0f);
-  BLF_buffer_col(font, data->shadow_color);
+  /* If we will blur the text, rasterize at full opacity, white. Will tint
+   * with shadow color when compositing later on. */
+  float white_color[4] = {1, 1, 1, 1};
+  BLF_buffer_col(font, do_blur ? white_color : data->shadow_color);
   BLF_draw_buffer(font, data->text, sizeof(data->text));
 
   if (do_blur) {
     /* Create blur kernel weights. */
     const int half_size = int(blur_amount + 0.5f);
     Array<float> gausstab = make_gaussian_blur_kernel(blur_amount, half_size);
+
+    /* Premultiplied shadow color. */
+    float4 color = data->shadow_color;
+    color.x *= color.w;
+    color.y *= color.w;
+    color.z *= color.w;
 
     /* Horizontal blur: blur tmp_out1 into tmp_out2. */
     threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
@@ -2776,7 +2785,13 @@ static void draw_text_shadow(const SeqRenderData *context,
       const uchar *src_end = tmp_out1->byte_buffer.data + size_t(y_first + y_size) * width * 4;
       uchar *dst = out->byte_buffer.data + size_t(y_first) * width * 4;
       for (; src < src_end; src += 4, dst += 4) {
-        float4 col1 = load_premul_pixel(src);
+        uchar a = src[3];
+        if (a == 0) {
+          /* Fully transparent, leave output pixel as is. */
+          continue;
+        }
+        float4 col1 = color * (a * (1.0f / 255.0f));
+        /* Blend over the output. */
         float mfac = 1.0f - col1.w;
         float4 col2 = load_premul_pixel(dst);
         float4 col = col1 + mfac * col2;
@@ -2906,8 +2921,15 @@ static void draw_text_outline(const SeqRenderData *context,
     step_size /= 2;
   }
 
+  /* Premultiplied outline color. */
+  float4 color = data->outline_color;
+  color.x *= color.w;
+  color.y *= color.w;
+  color.z *= color.w;
+
   /* We have distances to the closest opaque parts of the image now. Composite the
    * outline into the output image. */
+
   threading::parallel_for(IndexRange(size.y), 16, [&](const IndexRange y_range) {
     for (const int y : y_range) {
       size_t index = size_t(y) * size.x;
@@ -2922,12 +2944,7 @@ static void draw_text_outline(const SeqRenderData *context,
         /* Fade out / anti-alias the outline over one pixel towards outline distance. */
         float distance = math::distance(float2(x, y), float2(closest_texel.x, closest_texel.y));
         float alpha = math::clamp(data->outline_width - distance + 1.0f, 0.0f, 1.0f);
-
-        /* Premultiplied outline color. */
-        float4 col1 = data->outline_color;
-        col1.x *= col1.w;
-        col1.y *= col1.w;
-        col1.z *= col1.w;
+        float4 col1 = color;
         col1 *= alpha;
 
         /* Blend over the output. */
