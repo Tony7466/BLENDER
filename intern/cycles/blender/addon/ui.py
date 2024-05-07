@@ -500,7 +500,7 @@ class CYCLES_RENDER_PT_sampling_lights_restir(CyclesButtonsPanel, Panel):
         row = col.row(align=True)
         row.prop(cscene, "restir_unbiased", toggle=True)
         row.prop(cscene, "restir_pairwise", toggle=True)
-        col.prop(cscene, "restir_heuristics")
+        # col.prop(cscene, "restir_heuristics")
 
 
 class CYCLES_RENDER_PT_sampling_lights_restir_initial(CyclesButtonsPanel, Panel):

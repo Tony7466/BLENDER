@@ -125,6 +125,7 @@ NODE_DEFINE(Integrator)
   SOCKET_INT(restir_bsdf_samples, "BSDF", 3);
   SOCKET_INT(restir_spatial_radius, "Radius", 15);
   SOCKET_INT(restir_spatial_neighbors, "Samples", 5);
+  SOCKET_INT(restir_spatial_iterations, "Iterations", 3);
 
   static NodeEnum sampling_pattern_enum;
   sampling_pattern_enum.insert("sobol_burley", SAMPLING_PATTERN_SOBOL_BURLEY);
@@ -339,6 +340,7 @@ void Integrator::device_update(Device *device, DeviceScene *dscene, Scene *scene
   kintegrator->restir_bsdf_samples = restir_bsdf_samples;
   kintegrator->restir_spatial_radius = restir_spatial_radius;
   kintegrator->restir_spatial_neighbors = restir_spatial_neighbors;
+  kintegrator->restir_spatial_iterations = restir_spatial_iterations;
   kintegrator->restir_pairwise_mis = (use_restir >> 2) & 1;
 
   dscene->sample_pattern_lut.clear_modified();

@@ -174,7 +174,7 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
   /* Spatial Resampling. */
   if (device_scene_->data.integrator.use_spatial_resampling) {
     int i = 0;
-    for (; i < 1; i++) {
+    for (; i < device_scene_->data.integrator.restir_spatial_iterations; i++) {
       local_arena.execute(
           [&] { spatial_resampling(image_width, image_height, start_sample, sample_offset, i); });
     }

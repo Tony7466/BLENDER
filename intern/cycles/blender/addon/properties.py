@@ -626,8 +626,8 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
     restir_spatial_iterations: IntProperty(
         name="Iterations",
         description="Number of spatial resampling iterations",
-        min=1, max=1,
-        default=1,
+        min=1, max=5,
+        default=3,
     )
 
     restir_spatial_radius: IntProperty(
