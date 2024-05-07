@@ -339,9 +339,7 @@ class CommandBufferLog : public VKCommandBufferInterface {
     {
       ss << " - attachment(" << to_string(attachment, 1) << ")" << std::endl;
     }
-    for (const VkClearRect &rect :
-         Span<VkClearRect>(p_rects, rect_count))
-    {
+    for (const VkClearRect &rect : Span<VkClearRect>(p_rects, rect_count)) {
       ss << " - rect(" << to_string(rect, 1) << ")" << std::endl;
     }
     ss << ")";

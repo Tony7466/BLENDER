@@ -114,6 +114,11 @@ class VKDevice : public NonCopyable {
   render_graph::VKResourceStateTracker resources;
   VKPipelinePool pipelines;
 
+  struct {
+    PFN_vkCmdBeginRendering vkCmdBeginRendering = nullptr;
+    PFN_vkCmdEndRendering vkCmdEndRendering = nullptr;
+  } extension_functions;
+
   VkPhysicalDevice physical_device_get() const
   {
     return vk_physical_device_;
@@ -191,6 +196,7 @@ class VKDevice : public NonCopyable {
 
   bool is_initialized() const;
   void init(void *ghost_context);
+  void init_extension_functions();
   /**
    * Initialize a dummy buffer that can be bound for missing attributes.
    *

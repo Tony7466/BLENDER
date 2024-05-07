@@ -20,7 +20,7 @@ struct VKBeginRenderingData {
   VkRenderingAttachmentInfo color_attachments[8];
   VkRenderingAttachmentInfo depth_attachment;
   VkRenderingAttachmentInfo stencil_attachment;
-  uint32_t color_attachment_count;
+  //uint32_t color_attachment_count;
   VkRenderingInfoKHR vk_rendering_info;
 };
 
