@@ -219,6 +219,12 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
 
   if (ID_IS_ASSET(id)) {
     if ((flags & LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR) != 0) {
+      const IDTypeInfo *idtype_info = BKE_idtype_get_info_from_id(id);
+      if (idtype_info && idtype_info->asset_type_info &&
+          idtype_info->asset_type_info->on_clear_asset_fn)
+      {
+        idtype_info->asset_type_info->on_clear_asset_fn(id, id->asset_data);
+      }
       BKE_asset_metadata_free(&id->asset_data);
     }
     else {
@@ -572,16 +578,6 @@ bool BKE_lib_id_make_local(Main *bmain, ID *id, const int flags)
   }
 
   BLI_assert((idtype_info->flags & IDTYPE_FLAGS_NO_LIBLINKING) == 0);
-
-  if (ID_IS_ASSET(id)) {
-    if (idtype_info->asset_type_info) {
-      if (flags & LIB_ID_MAKELOCAL_ASSET_DATA_CLEAR) {
-        if (idtype_info->asset_type_info->on_clear_asset_fn) {
-          idtype_info->asset_type_info->on_clear_asset_fn(id, id->asset_data);
-        }
-      }
-    }
-  }
 
   if (idtype_info->make_local != nullptr) {
     idtype_info->make_local(bmain, id, flags);
