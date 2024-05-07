@@ -246,6 +246,8 @@ def bake_action_iter(
         if frame is None or not custom_props:
             return
         for key, value in custom_props.items():
+            if not obj.bl_rna.properties[key].is_animatable:
+                continue
             obj[key] = value
             try:
                 obj.keyframe_insert(f'["{bpy.utils.escape_identifier(key)}"]', frame=frame, group=group_name)
