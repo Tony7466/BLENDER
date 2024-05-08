@@ -800,7 +800,7 @@ bool BKE_node_tree_iter_step(NodeTreeIterStore *ntreeiter, bNodeTree **r_nodetre
 
 #define FOREACH_NODETREE_BEGIN(bmain, _nodetree, _id) \
   { \
-    NodeTreeIterStore _nstore; \
+    blender::bke::NodeTreeIterStore _nstore; \
     bNodeTree *_nodetree; \
     ID *_id; \
     /* avoid compiler warning about unused variables */ \
