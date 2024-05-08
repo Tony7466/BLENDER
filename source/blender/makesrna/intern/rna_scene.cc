@@ -4387,6 +4387,11 @@ static void rna_def_curve_paint_settings(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Absolute Offset", "Apply a fixed offset (don't scale by the radius)");
 
+  prop = RNA_def_property(srna, "use_project_only_selected", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", CURVE_PAINT_FLAG_DEPTH_ONLY_SELECTED);
+  RNA_def_property_ui_text(
+      prop, "Project Onto Selected", "Project the strokes only onto selected objects");
+
   prop = RNA_def_property(srna, "error_threshold", PROP_INT, PROP_PIXEL);
   RNA_def_property_range(prop, 1, 100);
   RNA_def_property_ui_text(prop, "Tolerance", "Allow deviation for a smoother, less precise line");
