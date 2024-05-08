@@ -22,15 +22,14 @@ void main()
   }
 
   ObjectBounds bounds = bounds_buf[index];
-  /* Bounds are not correct as culling is disabled for these. */
-  if (bounds._inner_sphere_radius <= 0.0) {
+  if (!drw_bounds_are_valid(bounds) || bounds._inner_sphere_radius <= 0.0) {
     return;
   }
 
-  IsectBox box = isect_data_setup(bounds.bounding_corners[0].xyz,
-                                  bounds.bounding_corners[1].xyz,
-                                  bounds.bounding_corners[2].xyz,
-                                  bounds.bounding_corners[3].xyz);
+  IsectBox box = isect_box_setup(bounds.bounding_corners[0].xyz,
+                                 bounds.bounding_corners[1].xyz,
+                                 bounds.bounding_corners[2].xyz,
+                                 bounds.bounding_corners[3].xyz);
 
   vec3 local_min = vec3(FLT_MAX);
   vec3 local_max = vec3(-FLT_MAX);

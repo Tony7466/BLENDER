@@ -138,7 +138,7 @@ static void node_shader_init_hair_principled(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeShaderHairPrincipled *data = MEM_cnew<NodeShaderHairPrincipled>(__func__);
 
-  data->model = SHD_PRINCIPLED_HAIR_HUANG;
+  data->model = SHD_PRINCIPLED_HAIR_CHIANG;
   data->parametrization = SHD_PRINCIPLED_HAIR_REFLECTANCE;
 
   node->storage = data;
@@ -198,6 +198,8 @@ static int node_shader_gpu_hair_principled(GPUMaterial *mat,
                                            GPUNodeStack *in,
                                            GPUNodeStack *out)
 {
+  GPU_material_flag_set(mat, GPU_MATFLAG_DIFFUSE | GPU_MATFLAG_GLOSSY);
+
   return GPU_stack_link(mat, node, "node_bsdf_hair_principled", in, out);
 }
 
@@ -215,7 +217,7 @@ void register_node_type_sh_bsdf_hair_principled()
   ntype.declare = file_ns::node_declare;
   ntype.add_ui_poll = object_cycles_shader_nodes_poll;
   ntype.draw_buttons = file_ns::node_shader_buts_principled_hair;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Large);
   ntype.initfunc = file_ns::node_shader_init_hair_principled;
   ntype.updatefunc = file_ns::node_shader_update_hair_principled;
   ntype.gpu_fn = file_ns::node_shader_gpu_hair_principled;

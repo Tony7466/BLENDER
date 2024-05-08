@@ -17,6 +17,12 @@ from bl_ui.properties_grease_pencil_common import (
     GreasePencilLayerDisplayPanel,
 )
 
+from bl_ui.properties_data_grease_pencil import (
+    GreasePencil_LayerMaskPanel,
+    GreasePencil_LayerTransformPanel,
+    GreasPencil_LayerRelationsPanel,
+)
+
 from rna_prop_ui import PropertyPanel
 
 #######################################
@@ -179,8 +185,7 @@ class DOPESHEET_PT_filters(DopesheetFilterPopoverBase, Panel):
         if ds_mode in {'DOPESHEET', 'ACTION', 'GPENCIL'}:
             layout.separator()
             generic_filters_only = ds_mode != 'DOPESHEET'
-            DopesheetFilterPopoverBase.draw_search_filters(context, layout,
-                                                           generic_filters_only=generic_filters_only)
+            DopesheetFilterPopoverBase.draw_search_filters(context, layout, generic_filters_only=generic_filters_only)
 
         if ds_mode == 'DOPESHEET':
             layout.separator()
@@ -240,23 +245,42 @@ class DOPESHEET_HT_editor_buttons:
         # Layer management
         if st.mode == 'GPENCIL':
             ob = context.active_object
-            enable_but = ob is not None and ob.type == 'GPENCIL'
 
-            row = layout.row(align=True)
-            row.enabled = enable_but
-            row.operator("gpencil.layer_add", icon='ADD', text="")
-            row.operator("gpencil.layer_remove", icon='REMOVE', text="")
-            row.menu("GPENCIL_MT_layer_context_menu", icon='DOWNARROW_HLT', text="")
+            if context.preferences.experimental.use_grease_pencil_version3:
+                enable_but = ob is not None and ob.type == 'GREASEPENCIL'
 
-            row = layout.row(align=True)
-            row.enabled = enable_but
-            row.operator("gpencil.layer_move", icon='TRIA_UP', text="").type = 'UP'
-            row.operator("gpencil.layer_move", icon='TRIA_DOWN', text="").type = 'DOWN'
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("grease_pencil.layer_add", icon='ADD', text="")
+                row.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+                row.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-            row = layout.row(align=True)
-            row.enabled = enable_but
-            row.operator("gpencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
-            row.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("anim.channels_move", icon='TRIA_UP', text="").direction = 'UP'
+                row.operator("anim.channels_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("grease_pencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
+                row.operator("grease_pencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
+            else:
+                enable_but = ob is not None and ob.type == 'GPENCIL'
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("gpencil.layer_add", icon='ADD', text="")
+                row.operator("gpencil.layer_remove", icon='REMOVE', text="")
+                row.menu("GPENCIL_MT_layer_context_menu", icon='DOWNARROW_HLT', text="")
+
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("gpencil.layer_move", icon='TRIA_UP', text="").type = 'UP'
+                row.operator("gpencil.layer_move", icon='TRIA_DOWN', text="").type = 'DOWN'
+
+                row = layout.row(align=True)
+                row.enabled = enable_but
+                row.operator("gpencil.layer_isolate", icon='RESTRICT_VIEW_ON', text="").affect_visibility = True
+                row.operator("gpencil.layer_isolate", icon='LOCKED', text="").affect_visibility = False
 
         layout.separator_spacer()
 
@@ -363,11 +387,15 @@ class DOPESHEET_MT_view(Menu):
 
         layout.prop(st, "show_region_ui")
         layout.prop(st, "show_region_hud")
+        layout.prop(st, "show_region_channels")
+        layout.separator()
 
+        layout.operator("action.view_selected")
+        layout.operator("action.view_all")
+        layout.operator("action.view_frame")
         layout.separator()
 
         layout.prop(st.dopesheet, "use_multi_word_filter", text="Multi-Word Match Search")
-
         layout.separator()
 
         layout.prop(st, "use_realtime_update")
@@ -380,31 +408,24 @@ class DOPESHEET_MT_view(Menu):
         layout.prop(st, "show_interpolation")
         layout.prop(st, "show_extremes")
         layout.prop(st, "use_auto_merge_keyframes")
-
         layout.separator()
+
         layout.prop(st, "show_markers")
-
-        layout.separator()
         layout.prop(st, "show_seconds")
         layout.prop(st, "show_locked_time")
-
         layout.separator()
+
         layout.operator("anim.previewrange_set")
         layout.operator("anim.previewrange_clear")
         layout.operator("action.previewrange_set")
-
         layout.separator()
-        layout.operator("action.view_all")
-        layout.operator("action.view_selected")
-        layout.operator("action.view_frame")
 
         # Add this to show key-binding (reverse action in dope-sheet).
-        layout.separator()
         props = layout.operator("wm.context_set_enum", text="Toggle Graph Editor", icon='GRAPH')
         props.data_path = "area.type"
         props.value = 'GRAPH_EDITOR'
-
         layout.separator()
+
         layout.menu("INFO_MT_area")
 
 
@@ -732,7 +753,7 @@ class DOPESHEET_MT_context_menu(Menu):
 
 
 class DOPESHEET_MT_channel_context_menu(Menu):
-    bl_label = "Dope Sheet Channel"
+    bl_label = "Channel"
 
     def draw(self, context):
         layout = self.layout
@@ -819,6 +840,26 @@ class LayersDopeSheetPanel:
         return False
 
 
+class GreasePencilLayersDopeSheetPanel:
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "View"
+
+    @classmethod
+    def poll(cls, context):
+        st = context.space_data
+        ob = context.object
+        if st.mode != 'GPENCIL' or ob is None or ob.type != 'GREASEPENCIL':
+            return False
+
+        grease_pencil = ob.data
+        active_layer = grease_pencil.layers.active
+        if active_layer:
+            return True
+
+        return False
+
+
 class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
     # bl_space_type = 'DOPESHEET_EDITOR'
     # bl_region_type = 'UI'
@@ -841,7 +882,7 @@ class DOPESHEET_PT_gpencil_mode(LayersDopeSheetPanel, Panel):
             row.prop(gpl, "opacity", text="Opacity", slider=True)
 
             row = layout.row(align=True)
-            row.prop(gpl, "use_lights")
+            row.prop(gpl, "use_lights", text="Lights")
 
 
 class DOPESHEET_PT_gpencil_layer_masks(LayersDopeSheetPanel, GreasePencilLayerMasksPanel, Panel):
@@ -874,6 +915,53 @@ class DOPESHEET_PT_gpencil_layer_display(LayersDopeSheetPanel, GreasePencilLayer
     bl_options = {'DEFAULT_CLOSED'}
 
 
+class DOPESHEET_PT_grease_pencil_mode(GreasePencilLayersDopeSheetPanel, Panel):
+    bl_label = "Layer"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        ob = context.object
+        grease_pencil = ob.data
+        active_layer = grease_pencil.layers.active
+
+        if active_layer:
+            row = layout.row(align=True)
+            row.prop(active_layer, "blend_mode", text="Blend")
+
+            row = layout.row(align=True)
+            row.prop(active_layer, "opacity", text="Opacity", slider=True)
+
+            row = layout.row(align=True)
+            row.prop(active_layer, "use_lights", text="Lights")
+
+
+class DOPESHEET_PT_grease_pencil_layer_masks(GreasePencilLayersDopeSheetPanel, GreasePencil_LayerMaskPanel, Panel):
+    bl_label = "Masks"
+    bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
+class DOPESHEET_PT_grease_pencil_layer_transform(
+        GreasePencilLayersDopeSheetPanel,
+        GreasePencil_LayerTransformPanel,
+        Panel):
+    bl_label = "Transform"
+    bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
+class DOPESHEET_PT_grease_pencil_layer_relations(
+        GreasePencilLayersDopeSheetPanel,
+        GreasPencil_LayerRelationsPanel,
+        Panel):
+    bl_label = "Relations"
+    bl_parent_id = "DOPESHEET_PT_grease_pencil_mode"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
 classes = (
     DOPESHEET_HT_header,
     DOPESHEET_PT_proportional_edit,
@@ -900,7 +988,11 @@ classes = (
     DOPESHEET_PT_gpencil_layer_relations,
     DOPESHEET_PT_gpencil_layer_display,
     DOPESHEET_PT_custom_props_action,
-    DOPESHEET_PT_snapping
+    DOPESHEET_PT_snapping,
+    DOPESHEET_PT_grease_pencil_mode,
+    DOPESHEET_PT_grease_pencil_layer_masks,
+    DOPESHEET_PT_grease_pencil_layer_transform,
+    DOPESHEET_PT_grease_pencil_layer_relations,
 )
 
 if __name__ == "__main__":  # only for live edit.

@@ -64,8 +64,9 @@ typedef enum NodeTreeInterfaceSocketFlag {
   NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER = 1 << 3,
   NODE_INTERFACE_SOCKET_COMPACT = 1 << 4,
   NODE_INTERFACE_SOCKET_SINGLE_VALUE_ONLY = 1 << 5,
+  NODE_INTERFACE_SOCKET_LAYER_SELECTION = 1 << 6,
 } NodeTreeInterfaceSocketFlag;
-ENUM_OPERATORS(NodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_SINGLE_VALUE_ONLY);
+ENUM_OPERATORS(NodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_LAYER_SELECTION);
 
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
@@ -78,7 +79,7 @@ typedef struct bNodeTreeInterfaceSocket {
   /* NodeTreeInterfaceSocketFlag */
   int flag;
 
-  /* eAttrDomain */
+  /* AttrDomain */
   int16_t attribute_domain;
   /** GeometryNodeDefaultInputType. */
   int16_t default_input;
@@ -209,7 +210,7 @@ typedef struct bNodeTreeInterfacePanel {
 
   /**
    * Apply a function to every item in the panel, including child panels.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_self: Include the panel itself in the iteration.
@@ -399,7 +400,7 @@ typedef struct bNodeTreeInterface {
 
   /**
    * Apply a function to every item in the interface.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_root: Include the root panel in the iteration.
@@ -411,7 +412,7 @@ typedef struct bNodeTreeInterface {
   }
   /**
    * Apply a function to every item in the interface.
-   * \note: The items are visited in drawing order from top to bottom.
+   * \note The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
    * \param include_root: Include the root panel in the iteration.

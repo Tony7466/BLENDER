@@ -49,12 +49,19 @@ int MetalInfo::get_apple_gpu_core_count(id<MTLDevice> device)
 
 AppleGPUArchitecture MetalInfo::get_apple_gpu_architecture(id<MTLDevice> device)
 {
+  if (MetalInfo::get_device_vendor(device) != METAL_GPU_APPLE) {
+    return NOT_APPLE_GPU;
+  }
+
   const char *device_name = [device.name UTF8String];
   if (strstr(device_name, "M1")) {
     return APPLE_M1;
   }
   else if (strstr(device_name, "M2")) {
     return get_apple_gpu_core_count(device) <= 10 ? APPLE_M2 : APPLE_M2_BIG;
+  }
+  else if (strstr(device_name, "M3")) {
+    return APPLE_M3;
   }
   return APPLE_UNKNOWN;
 }

@@ -6,16 +6,14 @@
  * \ingroup cmpnodes
  */
 
-#include "RNA_access.hh"
-
 #include "BLI_string.h"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_ocio_color_space_conversion_shader.hh"
@@ -84,7 +82,8 @@ class ConvertColorSpaceOperation : public NodeOperation {
     const char *target = node_storage(bnode()).to_color_space;
 
     OCIOColorSpaceConversionShader &ocio_shader =
-        context().cache_manager().ocio_color_space_conversion_shaders.get(source, target);
+        context().cache_manager().ocio_color_space_conversion_shaders.get(
+            context(), source, target);
 
     GPUShader *shader = ocio_shader.bind_shader_and_resources();
 
@@ -160,7 +159,7 @@ void register_node_type_cmp_convert_color_space()
       &ntype, CMP_NODE_CONVERT_COLOR_SPACE, "Convert Colorspace", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::CMP_NODE_CONVERT_COLOR_SPACE_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_convert_colorspace;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = file_ns::node_composit_init_convert_colorspace;
   node_type_storage(
       &ntype, "NodeConvertColorSpace", node_free_standard_storage, node_copy_standard_storage);

@@ -11,7 +11,9 @@
 
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_types_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_trace_screen_lib.glsl)
 
@@ -34,6 +36,16 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
+  uint gbuf_header = texelFetch(gbuf_header_tx, texel_fullres, 0).r;
+  ClosureType closure_type = gbuffer_closure_type_get_by_bin(gbuf_header, closure_index);
+
+  if ((closure_type == CLOSURE_BSDF_TRANSLUCENT_ID) ||
+      (closure_type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID))
+  {
+    /* Planar light-probes cannot trace refraction yet. */
+    return;
+  }
+
   float depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
@@ -45,7 +57,7 @@ void main()
     return;
   }
 
-  ProbePlanarData planar = probe_planar_buf[planar_id];
+  PlanarProbeData planar = probe_planar_buf[planar_id];
 
   /* Tag the ray data so that screen trace will not try to evaluate it and override the result. */
   imageStore(ray_data_img, texel, vec4(ray_data.xyz, -ray_data.w));
@@ -75,11 +87,6 @@ void main()
   if (hit.valid) {
     /* Evaluate radiance at hit-point. */
     radiance = textureLod(planar_radiance_tx, vec3(hit.ss_hit_P.xy, planar_id), 0.0).rgb;
-
-    /* Transmit twice if thickness is set and ray is longer than thickness. */
-    // if (thickness > 0.0 && length(ray_data.xyz) > thickness) {
-    //   ray_radiance.rgb *= color;
-    // }
   }
   else {
     /* Using ray direction as geometric normal to bias the sampling position.
@@ -93,8 +100,7 @@ void main()
     hit.time = 10000.0;
   }
 
-  float luma = max(1e-8, reduce_max(radiance));
-  radiance *= 1.0 - max(0.0, luma - uniform_buf.raytrace.brightness_clamp) / luma;
+  radiance = colorspace_brightness_clamp_max(radiance, uniform_buf.clamp.surface_indirect);
 
   imageStore(ray_time_img, texel, vec4(hit.time));
   imageStore(ray_radiance_img, texel, vec4(radiance, 0.0));

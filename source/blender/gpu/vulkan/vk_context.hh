@@ -12,7 +12,8 @@
 
 #include "GHOST_Types.h"
 
-#include "vk_command_buffer.hh"
+#include "render_graph/vk_render_graph.hh"
+#include "vk_command_buffers.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
@@ -25,15 +26,24 @@ class VKStateManager;
 
 class VKContext : public Context, NonCopyable {
  private:
-  VKCommandBuffer command_buffer_;
+  VKCommandBuffers command_buffers_;
+  VKDescriptorPools descriptor_pools_;
+  VKDescriptorSetTracker descriptor_set_;
 
   VkExtent2D vk_extent_ = {};
   VkFormat swap_chain_format_ = {};
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
+  /* Reusable data. Stored inside context to limit reallocations. */
+  render_graph::VKResourceAccessInfo access_info_ = {};
+
  public:
-  VKContext(void *ghost_window, void *ghost_context);
+  render_graph::VKRenderGraph render_graph;
+
+  VKContext(void *ghost_window,
+            void *ghost_context,
+            render_graph::VKResourceStateTracker &resources);
   virtual ~VKContext();
 
   void activate() override;
@@ -44,15 +54,18 @@ class VKContext : public Context, NonCopyable {
   void flush() override;
   void finish() override;
 
-  void memory_statistics_get(int *total_mem, int *free_mem) override;
+  void memory_statistics_get(int *r_total_mem_kb, int *r_free_mem_kb) override;
 
   void debug_group_begin(const char *, int) override;
   void debug_group_end() override;
-  bool debug_capture_begin() override;
+  bool debug_capture_begin(const char *title) override;
   void debug_capture_end() override;
   void *debug_capture_scope_create(const char *name) override;
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
+
+  void debug_unbind_all_ubo() override;
+  void debug_unbind_all_ssbo() override;
 
   bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);
@@ -60,6 +73,13 @@ class VKContext : public Context, NonCopyable {
   VKFrameBuffer *active_framebuffer_get() const;
 
   void bind_compute_pipeline();
+  render_graph::VKResourceAccessInfo &update_and_get_access_info();
+
+  /**
+   * Update the give shader data with the current state of the context.
+   */
+  void update_pipeline_data(render_graph::VKPipelineData &pipeline_data);
+
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
   void sync_backbuffer();
@@ -69,9 +89,19 @@ class VKContext : public Context, NonCopyable {
     return static_cast<VKContext *>(Context::get());
   }
 
-  VKCommandBuffer &command_buffer_get()
+  VKCommandBuffers &command_buffers_get()
   {
-    return command_buffer_;
+    return command_buffers_;
+  }
+
+  VKDescriptorPools &descriptor_pools_get()
+  {
+    return descriptor_pools_;
+  }
+
+  VKDescriptorSetTracker &descriptor_set_get()
+  {
+    return descriptor_set_;
   }
 
   VKStateManager &state_manager_get() const;

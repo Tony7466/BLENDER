@@ -17,6 +17,11 @@ void StaticCacheManager::reset()
   ocio_color_space_conversion_shaders.reset();
   distortion_grids.reset();
   keying_screens.reset();
+  cached_shaders.reset();
+  bokeh_kernels.reset();
+  cached_images.reset();
+  deriche_gaussian_coefficients.reset();
+  van_vliet_gaussian_coefficients.reset();
 }
 
 }  // namespace blender::realtime_compositor

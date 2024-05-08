@@ -5,7 +5,9 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
+#include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
+#include "NOD_socket.hh"
 
 #include "BLI_resource_scope.hh"
 #include "BLI_set.hh"
@@ -20,14 +22,9 @@ using nodes::OutputFieldDependency;
 using nodes::OutputSocketFieldType;
 using nodes::SocketDeclaration;
 
-static bool is_field_socket_type(eNodeSocketDatatype type)
-{
-  return ELEM(type, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR, SOCK_RGBA, SOCK_ROTATION);
-}
-
 static bool is_field_socket_type(const bNodeSocket &socket)
 {
-  return is_field_socket_type((eNodeSocketDatatype)socket.typeinfo->type);
+  return nodes::socket_type_supports_fields((eNodeSocketDatatype)socket.typeinfo->type);
 }
 
 static InputSocketFieldType get_interface_input_field_type(const bNode &node,
@@ -451,7 +448,8 @@ static void propagate_data_requirements_from_right_to_left(
               continue;
             }
             if (inferencing_interface.inputs[input_socket->index()] ==
-                InputSocketFieldType::Implicit) {
+                InputSocketFieldType::Implicit)
+            {
               if (!input_socket->is_logically_linked()) {
                 any_input_is_field_implicitly = true;
                 break;
@@ -505,10 +503,13 @@ static void determine_group_input_states(
       const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
-      if (!is_field_socket_type(type)) {
+      if (!nodes::socket_type_supports_fields(type)) {
         new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
       }
       else if (group_input->default_input != NODE_INPUT_DEFAULT_VALUE) {
+        new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
+      }
+      else if (is_layer_selection_field(*group_input)) {
         new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
       }
       else if (group_input->flag & NODE_INTERFACE_SOCKET_SINGLE_VALUE_ONLY) {
@@ -579,7 +580,8 @@ static void propagate_field_status_from_left_to_right(
         state.is_single = true;
         if (!input_socket->is_directly_linked()) {
           if (inferencing_interface.inputs[input_socket->index()] ==
-              InputSocketFieldType::Implicit) {
+              InputSocketFieldType::Implicit)
+          {
             state.is_single = false;
           }
         }
@@ -612,7 +614,8 @@ static void propagate_field_status_from_left_to_right(
           case OutputSocketFieldType::PartiallyDependent:
           case OutputSocketFieldType::DependentField: {
             for (const bNodeSocket *input_socket :
-                 gather_input_socket_dependencies(field_dependency, *node)) {
+                 gather_input_socket_dependencies(field_dependency, *node))
+            {
               if (!input_socket->is_available()) {
                 continue;
               }

@@ -73,15 +73,15 @@ static void interpolate_point_attributes(const AttributeAccessor src_attributes,
                                          MutableAttributeAccessor dst_attributes)
 {
   src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != ATTR_DOMAIN_POINT) {
+    if (meta_data.domain != AttrDomain::Point) {
       return true;
     }
     if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
       return true;
     }
-    const bke::GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_POINT);
+    const bke::GAttributeReader src = src_attributes.lookup(id, AttrDomain::Point);
     bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, ATTR_DOMAIN_POINT, meta_data.data_type);
+        id, AttrDomain::Point, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -110,7 +110,7 @@ static void fill_groups(const VArray<T> src, const OffsetIndices<int> groups, Mu
 static void fill_groups_attributes(const AttributeAccessor src_attributes,
                                    const AnonymousAttributePropagationInfo &propagation_info,
                                    const OffsetIndices<int> groups,
-                                   const eAttrDomain domain,
+                                   const AttrDomain domain,
                                    const Set<std::string> &skip,
                                    MutableAttributeAccessor dst_attributes)
 {
@@ -247,7 +247,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
                             const AnonymousAttributePropagationInfo &propagation_info)
 {
   /* To avoid allocation of array to accumulate new verts, use edge offset[index] - index. */
-  Array<int> accumulate_edges(src_mesh.totedge + 1, 0);
+  Array<int> accumulate_edges(src_mesh.edges_num + 1, 0);
   const OffsetIndices<int> edge_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_edges.as_mutable_span().drop_back(1);
     array_utils::copy(count_varray, accumulate_span);
@@ -255,7 +255,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
     return offset_indices::accumulate_counts_to_offsets(accumulate_edges);
   }();
 
-  Array<int> accumulate_corners(src_mesh.totloop + 1);
+  Array<int> accumulate_corners(src_mesh.corners_num + 1);
   const OffsetIndices<int> corner_offset = [&]() {
     MutableSpan<int> accumulate_span = accumulate_corners.as_mutable_span().drop_back(1);
     array_utils::copy(src_mesh.corner_edges(), accumulate_span);
@@ -266,7 +266,7 @@ static Mesh *resample_edges(const Mesh &src_mesh,
     return offset_indices::accumulate_counts_to_offsets(accumulate_corners);
   }();
 
-  const int total_vert = edge_offset.total_size() - src_mesh.totedge + src_mesh.totvert;
+  const int total_vert = edge_offset.total_size() - src_mesh.edges_num + src_mesh.verts_num;
   Mesh *dst_mesh = BKE_mesh_new_nomain(
       total_vert, edge_offset.total_size(), src_mesh.faces_num, corner_offset.total_size());
   BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
@@ -277,16 +277,16 @@ static Mesh *resample_edges(const Mesh &src_mesh,
   interpolate_point_attributes(src_attributes,
                                propagation_info,
                                src_mesh.edges(),
-                               src_mesh.totvert,
+                               src_mesh.verts_num,
                                edge_offset,
                                dst_attributes);
   fill_groups_attributes(src_attributes,
                          propagation_info,
                          edge_offset,
-                         ATTR_DOMAIN_EDGE,
+                         AttrDomain::Edge,
                          {".edge_verts"},
                          dst_attributes);
-  build_edges(src_mesh.edges(), edge_offset, src_mesh.totvert, dst_mesh->edges_for_write());
+  build_edges(src_mesh.edges(), edge_offset, src_mesh.verts_num, dst_mesh->edges_for_write());
   accumulate_face_offsets(src_mesh.faces(), corner_offset, dst_mesh->face_offsets_for_write());
   build_faces(src_mesh.corner_verts(),
               src_mesh.corner_edges(),
@@ -296,11 +296,11 @@ static Mesh *resample_edges(const Mesh &src_mesh,
               edge_offset,
               dst_mesh->corner_verts_for_write(),
               dst_mesh->corner_edges_for_write());
-  bke::copy_attributes(src_attributes, ATTR_DOMAIN_FACE, propagation_info, {}, dst_attributes);
+  bke::copy_attributes(src_attributes, AttrDomain::Face, propagation_info, {}, dst_attributes);
   fill_groups_attributes(src_attributes,
                          propagation_info,
                          corner_offset,
-                         ATTR_DOMAIN_CORNER,
+                         AttrDomain::Corner,
                          {".corner_vert", ".corner_edge"},
                          dst_attributes);
   return dst_mesh;
@@ -337,8 +337,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
     const bke::AttributeAccessor attributes = mesh->attributes();
-    const bke::MeshFieldContext context(*mesh, ATTR_DOMAIN_EDGE);
-    fn::FieldEvaluator evaluator(context, attributes.domain_size(ATTR_DOMAIN_EDGE));
+    const bke::MeshFieldContext context(*mesh, AttrDomain::Edge);
+    fn::FieldEvaluator evaluator(context, attributes.domain_size(AttrDomain::Edge));
     evaluator.add(edge_count_field);
     evaluator.evaluate();
     const VArray<int> count_varray = evaluator.get_evaluated<int>(0);

@@ -58,7 +58,7 @@ static void set_handle_type(bke::CurvesGeometry &curves,
                             const HandleType new_handle_type,
                             const Field<bool> &selection_field)
 {
-  const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_POINT};
+  const bke::CurvesFieldContext field_context{curves, AttrDomain::Point};
   fn::FieldEvaluator evaluator{field_context, curves.points_num()};
   evaluator.set_selection(selection_field);
   evaluator.evaluate();
@@ -72,6 +72,8 @@ static void set_handle_type(bke::CurvesGeometry &curves,
     index_mask::masked_fill<int8_t>(
         curves.handle_types_right_for_write(), new_handle_type, selection);
   }
+
+  curves.tag_topology_changed();
 
   /* Eagerly calculate automatically derived handle positions if necessary. */
   if (ELEM(new_handle_type, BEZIER_HANDLE_AUTO, BEZIER_HANDLE_VECTOR, BEZIER_HANDLE_ALIGN)) {
@@ -108,7 +110,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 
   if (has_curves && !has_bezier) {
-    params.error_message_add(NodeWarningType::Info, TIP_("Input curves do not have Bezier type"));
+    params.error_message_add(NodeWarningType::Info, TIP_("Input curves do not have Bézier type"));
   }
 
   params.set_output("Curve", std::move(geometry_set));

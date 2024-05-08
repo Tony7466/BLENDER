@@ -10,7 +10,7 @@
 
 #include "DNA_userdef_types.h"
 
-#include "BLO_readfile.h"
+#include "BLO_userdef_default.h"
 
 /* clang-format off */
 
@@ -125,10 +125,10 @@ const bTheme U_theme_default = {
       .roundness = 0.2f,
     },
     .wcol_pulldown = {
-      .outline = RGBA(0x3d3d3dff),
-      .inner = RGBA(0x22222266),
-      .inner_sel = RGBA(0x4772b3b3),
-      .item = RGBA(0x727272ff),
+      .outline = RGBA(0x3d3d3d00),
+      .inner = RGBA(0x22222200),
+      .inner_sel = RGBA(0xffffff1a),
+      .item = RGBA(0xffffff8f),
       .text = RGBA(0xd9d9d9ff),
       .text_sel = RGBA(0xffffffff),
       .roundness = 0.2f,
@@ -317,14 +317,16 @@ const bTheme U_theme_default = {
     .vertex_select = RGBA(0xff7a00ff),
     .vertex_bevel = RGBA(0x00a5ffff),
     .edge = RGBA(0x000000ff),
-    .edge_select = RGBA(0xffa000ff),
+    .edge_select = RGBA(0xff9900ff),
+    .edge_mode_select = RGBA(0xffd800ff),
     .edge_seam = RGBA(0xdb2512ff),
     .edge_sharp = RGBA(0x00ffffff),
     .edge_facesel = RGBA(0x4b4b4bff),
     .edge_crease = RGBA(0xcc0099ff),
     .edge_bevel = RGBA(0x00a5ffff),
     .face = RGBA(0xffffff02),
-    .face_select = RGBA(0xffa5522e),
+    .face_select = RGBA(0xffa30033),
+    .face_mode_select = RGBA(0xffb70033),
     .face_retopology = RGBA(0x50c8ff0f),
     .face_back = RGBA(0xff0000b3),
     .face_front = RGBA(0x0000ffb3),
@@ -554,6 +556,8 @@ const bTheme U_theme_default = {
     .keytype_breakdown_select = RGBA(0x54bfedff),
     .keytype_jitter_select = RGBA(0x61c042ff),
     .keytype_movehold_select = RGBA(0xffaf23ff),
+    .keytype_generated = RGBA(0x585858ff),
+    .keytype_generated_select = RGBA(0xa28962ff),
     .keyborder = RGBA(0x000000ff),
     .keyborder_select = RGBA(0x000000ff),
     .vertex_size = 3,
@@ -670,7 +674,7 @@ const bTheme U_theme_default = {
     .meta = RGBA(0x5b4d91ff),
     .text_strip = RGBA(0x824c8fff),
     .color_strip = RGBA(0x8f8f8fff),
-    .active_strip = RGBA(0xd9d9d9ff),
+    .active_strip = RGBA(0xffffffff),
     .selected_strip = RGBA(0xff8f0dff),
     .gp_vertex_size = 3,
     .gp_vertex_select = RGBA(0xff8500ff),
@@ -712,6 +716,10 @@ const bTheme U_theme_default = {
       .header = RGBA(0x3d3d3dff),
       .back = RGBA(0x3d3d3dff),
       .sub_back = RGBA(0x0000001f),
+    },
+    .asset_shelf = {
+      .header_back = RGBA(0x1d1d1dff),
+      .back = RGBA(0x303030ff),
     },
     .grid = RGBA(0x303030ff),
     .wire_edit = RGBA(0xc0c0c0ff),
@@ -771,7 +779,7 @@ const bTheme U_theme_default = {
       .sub_back = RGBA(0x0000001f),
     },
     .shade2 = RGBA(0x4d4d4de6),
-    .hilite = RGBA(0x65a2ffff),
+    .hilite = RGBA(0x71a8ffff),
     .grid = RGBA(0x1d1d1dff),
     .vertex_size = 3,
     .outline_width = 1,
@@ -939,7 +947,7 @@ const bTheme U_theme_default = {
     .console_input = RGBA(0xf2f2f2ff),
     .console_info = RGBA(0x95d600ff),
     .console_error = RGBA(0xff4d84ff),
-    .console_cursor = RGBA(0xff0000ff),
+    .console_cursor = RGBA(0x71a8ffff),
     .console_select = RGBA(0xffffff30),
     .vertex_size = 3,
     .outline_width = 1,

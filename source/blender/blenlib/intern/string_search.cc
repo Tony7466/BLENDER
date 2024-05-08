@@ -12,7 +12,6 @@
 #include "BLI_string_utf8.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 /* Right arrow, keep in sync with #UI_MENU_ARROW_SEP in `UI_interface.hh`. */
 #define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
@@ -343,7 +342,7 @@ static std::optional<float> score_query_against_words(Span<StringRef> query_word
   Array<int, 64> word_match_map(item.normalized_words.size(), unused_word);
 
   /* Start with some high score, because otherwise the final score might become negative. */
-  float total_match_score = 1000;
+  float total_match_score = item.is_deprecated ? 500 : 1000;
 
   for (const int query_word_index : query_words.index_range()) {
     const StringRef query_word = query_words[query_word_index];
@@ -362,7 +361,8 @@ static std::optional<float> score_query_against_words(Span<StringRef> query_word
     {
       /* Try to match against word initials. */
       if (std::optional<InitialsMatch> match = match_word_initials(
-              query_word, item, word_match_map)) {
+              query_word, item, word_match_map))
+      {
         /* If the all matched words are in the main group, give the match a higher priority. */
         bool all_main_group_matches = match->count_main_group_matches(item) ==
                                       match->matched_word_indices.size();
@@ -479,7 +479,7 @@ void extract_normalized_words(StringRef str,
   }
 }
 
-void StringSearchBase::add_impl(const StringRef str, void *user_data, const int weight)
+void StringSearchBase::add_impl(const StringRef str, void *user_data, const float weight)
 {
   Vector<StringRef, 64> words;
   Vector<int, 64> word_group_ids;
@@ -487,7 +487,24 @@ void StringSearchBase::add_impl(const StringRef str, void *user_data, const int 
   const int recent_time = recent_cache_ ?
                               recent_cache_->logical_time_by_str.lookup_default(str, -1) :
                               -1;
-  const int main_group_id = word_group_ids.is_empty() ? 0 : word_group_ids.last();
+  int main_group_id = 0;
+  if (!word_group_ids.is_empty()) {
+    switch (main_words_heuristic_) {
+      case MainWordsHeuristic::FirstGroup: {
+        main_group_id = 0;
+        break;
+      }
+      case MainWordsHeuristic::LastGroup: {
+        main_group_id = word_group_ids.last();
+        break;
+      }
+      case MainWordsHeuristic::All: {
+        main_group_id = 0;
+        word_group_ids.fill(0);
+        break;
+      }
+    }
+  }
 
   int main_group_length = 0;
   for (const int i : words.index_range()) {
@@ -496,6 +513,9 @@ void StringSearchBase::add_impl(const StringRef str, void *user_data, const int 
     }
   }
 
+  /* Not checking for the "D" to avoid problems with upper/lower-case. */
+  const bool is_deprecated = str.find("eprecated") != StringRef::not_found;
+
   items_.append({user_data,
                  allocator_.construct_array_copy(words.as_span()),
                  allocator_.construct_array_copy(word_group_ids.as_span()),
@@ -503,7 +523,8 @@ void StringSearchBase::add_impl(const StringRef str, void *user_data, const int 
                  main_group_length,
                  int(str.size()),
                  weight,
-                 recent_time});
+                 recent_time,
+                 is_deprecated});
 }
 
 Vector<void *> StringSearchBase::query_impl(const StringRef query) const

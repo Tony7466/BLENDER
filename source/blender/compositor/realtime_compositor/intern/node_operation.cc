@@ -12,15 +12,15 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "DNA_node_types.h"
 
 #include "NOD_derived_node_tree.hh"
 #include "NOD_node_declaration.hh"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "COM_context.hh"
 #include "COM_input_descriptor.hh"
@@ -38,8 +38,7 @@ NodeOperation::NodeOperation(Context &context, DNode node) : Operation(context),
 {
   for (const bNodeSocket *output : node->output_sockets()) {
     const ResultType result_type = get_node_socket_result_type(output);
-    const Result result = Result(result_type, texture_pool());
-    populate_result(output->identifier, result);
+    populate_result(output->identifier, context.create_result(result_type));
   }
 
   for (const bNodeSocket *input : node->input_sockets()) {

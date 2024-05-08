@@ -25,6 +25,7 @@ void register_shader_nodes()
   register_node_type_sh_bsdf_hair_principled();
   register_node_type_sh_bsdf_hair();
   register_node_type_sh_bsdf_principled();
+  register_node_type_sh_bsdf_ray_portal();
   register_node_type_sh_bsdf_refraction();
   register_node_type_sh_bsdf_toon();
   register_node_type_sh_bsdf_translucent();
@@ -88,7 +89,6 @@ void register_shader_nodes()
   register_node_type_sh_tex_ies();
   register_node_type_sh_tex_image();
   register_node_type_sh_tex_magic();
-  register_node_type_sh_tex_musgrave();
   register_node_type_sh_tex_noise();
   register_node_type_sh_tex_pointdensity();
   register_node_type_sh_tex_sky();

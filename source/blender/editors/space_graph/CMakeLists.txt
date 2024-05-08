@@ -7,7 +7,6 @@ set(INC
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../windowmanager
@@ -30,12 +29,13 @@ set(SRC
   graph_view.cc
   space_graph.cc
 
-  graph_intern.h
+  graph_intern.hh
 )
 
 set(LIB
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::animrig

@@ -18,8 +18,8 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_node_types.h"
 
-#include "BKE_context.h"
-#include "BKE_lib_id.h"
+#include "BKE_context.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
@@ -108,17 +108,20 @@ class Stabilize2DOperation : public NodeOperation {
       transformation = math::invert(transformation);
     }
 
-    transform(context(), input, output, transformation, get_interpolation());
+    RealizationOptions realization_options = input.get_realization_options();
+    realization_options.interpolation = get_interpolation();
+
+    transform(context(), input, output, transformation, realization_options);
   }
 
   Interpolation get_interpolation()
   {
-    switch (static_cast<CMPNodeStabilizeInterpolation>(bnode().custom1)) {
-      case CMP_NODE_STABILIZE_INTERPOLATION_NEAREST:
+    switch (static_cast<CMPNodeInterpolation>(bnode().custom1)) {
+      case CMP_NODE_INTERPOLATION_NEAREST:
         return Interpolation::Nearest;
-      case CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR:
+      case CMP_NODE_INTERPOLATION_BILINEAR:
         return Interpolation::Bilinear;
-      case CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC:
+      case CMP_NODE_INTERPOLATION_BICUBIC:
         return Interpolation::Bicubic;
     }
 

@@ -58,7 +58,6 @@ set(INC
   ../blenloader
   ../blentranslation
   ../bmesh
-  ../depsgraph
   ../functions
   ../geometry
   ../gpu
@@ -67,7 +66,6 @@ set(INC
   ../modifiers
   ../render
   ../windowmanager
-  ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -92,11 +90,10 @@ set(SRC
   intern/node_socket.cc
   intern/node_socket_declarations.cc
   intern/node_util.cc
-  intern/node_zone_socket_items.cc
   intern/socket_search_link.cc
 
   NOD_common.h
-  NOD_composite.h
+  NOD_composite.hh
   NOD_derived_node_tree.hh
   NOD_geometry.hh
   NOD_geometry_exec.hh
@@ -106,6 +103,7 @@ set(SRC
   NOD_math_functions.hh
   NOD_multi_function.hh
   NOD_node_declaration.hh
+  NOD_node_extra_info.hh
   NOD_register.hh
   NOD_rna_define.hh
   NOD_shader.h
@@ -113,10 +111,10 @@ set(SRC
   NOD_socket_declarations.hh
   NOD_socket_declarations_geometry.hh
   NOD_socket_items.hh
+  NOD_socket_items_ops.hh
   NOD_socket_search_link.hh
   NOD_static_types.h
   NOD_texture.h
-  NOD_zone_socket_items.hh
   intern/node_common.h
   intern/node_exec.hh
   intern/node_util.hh
@@ -125,6 +123,7 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   bf_bmesh
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_functions
   PRIVATE bf::intern::guardedalloc
@@ -133,7 +132,7 @@ set(LIB
   bf_nodes_geometry
   bf_nodes_shader
   bf_nodes_texture
-  extern_fmtlib
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_BULLET)
@@ -184,6 +183,9 @@ if(WITH_GMP)
 endif()
 
 if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )

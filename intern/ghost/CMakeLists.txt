@@ -4,7 +4,6 @@
 
 set(INC
   PUBLIC .
-  ../clog
   ../../source/blender/imbuf
 )
 
@@ -73,7 +72,12 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
 )
+
+if(WITH_INPUT_IME)
+  add_definitions(-DWITH_INPUT_IME)
+endif()
 
 if(WITH_OPENGL_BACKEND)
   list(APPEND INC_SYS
@@ -177,9 +181,6 @@ elseif(WITH_GHOST_SDL)
   endif()
 
 elseif(APPLE AND NOT WITH_GHOST_X11)
-  if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-  endif()
   list(APPEND SRC
     intern/GHOST_DisplayManagerCocoa.mm
     intern/GHOST_SystemCocoa.mm
@@ -346,6 +347,14 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
       add_definitions(-DHAVE_POLL)
     endif()
 
+    if(WITH_GHOST_WAYLAND_LIBDECOR)
+      # See code-comment for `USE_LIBDECOR_CONFIG_COPY_WORKAROUND`.
+      check_symbol_exists(malloc_usable_size "malloc.h" HAVE_MALLOC_USABLE_SIZE)
+      if(HAVE_MALLOC_USABLE_SIZE)
+        add_definitions(-DHAVE_MALLOC_USABLE_SIZE)
+      endif()
+    endif()
+
     list(APPEND SRC
       intern/GHOST_SystemWayland.cc
       intern/GHOST_WindowWayland.cc
@@ -439,6 +448,11 @@ elseif(WITH_GHOST_X11 OR WITH_GHOST_WAYLAND)
     generate_protocol_bindings(
       "${WAYLAND_PROTOCOLS_DIR}/unstable/primary-selection/primary-selection-unstable-v1.xml"
     )
+    if(WITH_INPUT_IME)
+      generate_protocol_bindings(
+        "${WAYLAND_PROTOCOLS_DIR}/unstable/text-input/text-input-unstable-v3.xml"
+      )
+    endif()
 
     unset(INC_DST)
 
@@ -498,8 +512,6 @@ elseif(WIN32)
   )
 
   if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-
     list(APPEND SRC
       intern/GHOST_ImeWin32.cc
 

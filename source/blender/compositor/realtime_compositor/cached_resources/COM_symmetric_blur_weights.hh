@@ -10,12 +10,14 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_cached_resource.hh"
 
 namespace blender::realtime_compositor {
+
+class Context;
 
 /* ------------------------------------------------------------------------------------------------
  * Symmetric Blur Weights Key.
@@ -44,7 +46,7 @@ class SymmetricBlurWeights : public CachedResource {
   GPUTexture *texture_ = nullptr;
 
  public:
-  SymmetricBlurWeights(int type, float2 radius);
+  SymmetricBlurWeights(Context &context, int type, float2 radius);
 
   ~SymmetricBlurWeights();
 
@@ -67,7 +69,7 @@ class SymmetricBlurWeightsContainer : public CachedResourceContainer {
    * in the container, if one exists, return it, otherwise, return a newly created one and add it
    * to the container. In both cases, tag the cached resource as needed to keep it cached for the
    * next evaluation. */
-  SymmetricBlurWeights &get(int type, float2 radius);
+  SymmetricBlurWeights &get(Context &context, int type, float2 radius);
 };
 
 }  // namespace blender::realtime_compositor
