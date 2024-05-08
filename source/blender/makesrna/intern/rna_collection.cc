@@ -703,6 +703,11 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Collection Export Handlers", "Export Handlers configured for the collection");
 
+  prop = RNA_def_property(srna, "active_exporter_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "Active Collection Exporter Index", "Active index in the exporters list");
+
   /* TODO(sergey): Functions to link and unlink collections. */
 
   /* Flags */
