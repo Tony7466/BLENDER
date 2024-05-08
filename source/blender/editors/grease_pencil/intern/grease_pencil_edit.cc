@@ -2848,8 +2848,7 @@ static bool grease_pencil_snap_compute_centroid(const Scene &scene,
     selected_points.foreach_index(GrainSize(4096), [&](const int point_i) {
       const float3 pos_world = math::transform_point(layer_to_world, positions[point_i]);
       r_centroid += pos_world;
-      r_min = math::min(r_min, pos_world);
-      r_max = math::max(r_max, pos_world);
+      math::min_max(pos_world, r_min, r_max);
     });
     num_selected += selected_points.size();
   }
