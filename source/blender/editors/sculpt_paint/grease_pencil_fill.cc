@@ -758,6 +758,7 @@ static rctf get_region_bounds(const ARegion &region)
  * For each stroke, the 2D projected bounding box is calculated and using this data, the total
  * object bounding box (all strokes) is calculated. */
 static rctf get_boundary_bounds(const ARegion &region,
+                                const RegionView3D &rv3d,
                                 const Object &object,
                                 const Object &object_eval,
                                 const VArray<bool> &boundary_layers,
@@ -781,6 +782,7 @@ static rctf get_boundary_bounds(const ARegion &region,
         bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
             &object_eval, object, info.layer_index, info.frame_number);
     const bool only_boundary_strokes = boundary_layers[info.layer_index];
+    const VArray<float> radii = info.drawing.radii();
     const bke::CurvesGeometry &strokes = info.drawing.strokes();
     const bke::AttributeAccessor attributes = strokes.attributes();
     const VArray<int> materials = *attributes.lookup<int>(attr_material_index,
@@ -817,7 +819,10 @@ static rctf get_boundary_bounds(const ARegion &region,
         eV3DProjStatus result = ED_view3d_project_float_global(
             &region, pos_world, pos_view, V3D_PROJ_TEST_NOP);
         if (result == V3D_PROJ_RET_OK) {
-          BLI_rctf_do_minmax_v(&bounds, pos_view);
+          const float pixels = radii[point_i] / ED_view3d_pixel_size(&rv3d, pos_world);
+          rctf point_rect;
+          BLI_rctf_init_pt_radius(&point_rect, pos_view, pixels);
+          BLI_rctf_union(&bounds, &point_rect);
         }
       }
     });
@@ -846,8 +851,12 @@ static auto fit_strokes_to_view(const ViewContext &view_context,
       const Object &object_eval = *DEG_get_evaluated_object(view_context.depsgraph,
                                                             view_context.obact);
       /* Zoom and offset based on bounds, to fit all strokes within the render. */
-      const rctf bounds = get_boundary_bounds(
-          *view_context.region, *view_context.obact, object_eval, boundary_layers, src_drawings);
+      const rctf bounds = get_boundary_bounds(*view_context.region,
+                                              *view_context.rv3d,
+                                              *view_context.obact,
+                                              object_eval,
+                                              boundary_layers,
+                                              src_drawings);
       const rctf region_bounds = get_region_bounds(*view_context.region);
       UNUSED_VARS(bounds, region_bounds);
       const float2 bounds_max = float2(bounds.xmax, bounds.ymax);
