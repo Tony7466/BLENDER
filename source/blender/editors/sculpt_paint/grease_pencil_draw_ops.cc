@@ -699,7 +699,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
   constexpr const ed::greasepencil::FillToolFitMethod fit_method =
       ed::greasepencil::FillToolFitMethod::FitToView;
   /* Debug setting: keep image data blocks for inspection. */
-  constexpr const bool keep_images = false;
+  constexpr const bool keep_images = true;
 
   ARegion &region = *CTX_wm_region(&C);
   /* Perform bounds check. */

@@ -195,25 +195,31 @@ static void convert_flags_to_colors(ImageBufferAccessor &buffer)
   // constexpr const ColorGeometry4b output_helper_color = {255, 0, 127, 255};
   constexpr const ColorGeometry4b output_debug_color = {255, 127, 0, 255};
 
+  auto add_colors = [](const ColorGeometry4b &a, const ColorGeometry4b &b) -> ColorGeometry4b {
+    return ColorGeometry4b(std::min(int(a.r) + int(b.r), 255),
+                           std::min(int(a.g) + int(b.g), 255),
+                           std::min(int(a.b) + int(b.b), 255),
+                           std::min(int(a.a) + int(b.a), 255));
+  };
+
   for (ColorGeometry4b &color : buffer.pixels()) {
+    ColorGeometry4b output_color = ColorGeometry4b(0, 0, 0, 0);
     if (color.r & ColorFlag::Debug) {
-      color = output_debug_color;
+      output_color = add_colors(output_color, output_debug_color);
     }
-    else if (color.r & ColorFlag::Fill) {
-      color = output_fill_color;
+    if (color.r & ColorFlag::Fill) {
+      output_color = add_colors(output_color, output_fill_color);
     }
-    else if (color.r & ColorFlag::Stroke) {
-      color = output_stroke_color;
+    if (color.r & ColorFlag::Stroke) {
+      output_color = add_colors(output_color, output_stroke_color);
     }
-    else if (color.r & ColorFlag::Border) {
-      color = output_border_color;
+    if (color.r & ColorFlag::Border) {
+      output_color = add_colors(output_color, output_border_color);
     }
-    else if (color.r & ColorFlag::Seed) {
-      color = output_seed_color;
+    if (color.r & ColorFlag::Seed) {
+      output_color = add_colors(output_color, output_seed_color);
     }
-    else {
-      color = ColorGeometry4b(0, 0, 0, 0);
-    }
+    color = std::move(output_color);
   }
 }
 
@@ -285,12 +291,6 @@ FillResult flood_fill(ImageBufferAccessor &buffer, const int leak_filter_width =
     else if constexpr (border_mode == FillBorderMode::Ignore) {
       if (get_flag(pixel_value, ColorFlag::Border)) {
         border_contact = true;
-        continue;
-      }
-    }
-    else {
-      if (get_flag(pixel_value, ColorFlag::Border)) {
-        border_contact = true;
       }
     }
 
@@ -356,8 +356,7 @@ static void invert_fill(ImageBufferAccessor &buffer)
 {
   for (ColorGeometry4b &color : buffer.pixels()) {
     const bool is_filled = get_flag(color, ColorFlag::Fill);
-    const bool is_border = get_flag(color, ColorFlag::Border);
-    set_flag(color, ColorFlag::Fill, !is_filled && !is_border);
+    set_flag(color, ColorFlag::Fill, !is_filled);
   }
 }
 
@@ -410,10 +409,10 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
       for (const int x : IndexRange(width).drop_back(1)) {
         const int index_left = buffer.index_from_coord({x, y});
         const int index_right = buffer.index_from_coord({x + 1, y});
-        const bool border_left = get_flag(pixels[index_left], ColorFlag::Border);
         const bool filled_left = get_flag(pixels[index_left], ColorFlag::Fill);
         const bool filled_right = get_flag(pixels[index_right], ColorFlag::Fill);
-        if (!border_left && !filled_left && filled_right) {
+        const bool border_right = get_flag(pixels[index_right], ColorFlag::Border);
+        if (!filled_left && filled_right && !border_right) {
           /* Empty index list indicates uninitialized section. */
           starts.add(index_right, {});
         }
@@ -439,6 +438,10 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
         continue;
       }
       const int neighbor_index = buffer.index_from_coord(neighbor_coord);
+      /* Border pixels are not valid. */
+      if (get_flag(pixels[neighbor_index], ColorFlag::Border)) {
+        continue;
+      }
       if (get_flag(pixels[neighbor_index], ColorFlag::Fill)) {
         iter.index = neighbor_index;
         iter.direction = neighbor_dir;
@@ -481,6 +484,10 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
       }
 
       section.push_back(iter.index);
+    }
+    /* Discard unclosed boundaries. */
+    if (iter.index != start_index) {
+      boundary_starts.remove(start_index);
     }
   }
 
