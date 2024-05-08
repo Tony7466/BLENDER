@@ -295,16 +295,16 @@ void screen_draw_dock_preview(const struct wmWindow * /* win */,
   BLI_rctf_rcti_copy(&dest, &area->totrct);
 
   if (dock_target == DOCKING_RIGHT) {
-    dest.xmin = std::min(dest.xmin + area->winx * 0.5f, dest.xmax - AREAMINX * UI_SCALE_FAC);
+    dest.xmin = std::min(dest.xmin + area->winx * 0.55f, dest.xmax - AREAMINX * UI_SCALE_FAC);
   }
   else if (dock_target == DOCKING_LEFT) {
-    dest.xmax = std::max(dest.xmax - area->winx * 0.5f, dest.xmin + AREAMINX * UI_SCALE_FAC);
+    dest.xmax = std::max(dest.xmax - area->winx * 0.55f, dest.xmin + AREAMINX * UI_SCALE_FAC);
   }
   else if (dock_target == DOCKING_TOP) {
-    dest.ymin = std::min(dest.ymin + area->winy * 0.5f, dest.ymax - HEADERY * UI_SCALE_FAC);
+    dest.ymin = std::min(dest.ymin + area->winy * 0.55f, dest.ymax - HEADERY * UI_SCALE_FAC);
   }
   else if (dock_target == DOCKING_BOTTOM) {
-    dest.ymax = std::max(dest.ymax - area->winy * 0.5f, dest.ymin + HEADERY * UI_SCALE_FAC);
+    dest.ymax = std::max(dest.ymax - area->winy * 0.55f, dest.ymin + HEADERY * UI_SCALE_FAC);
   }
 
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
