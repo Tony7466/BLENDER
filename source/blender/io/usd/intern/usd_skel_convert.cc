@@ -101,6 +101,20 @@ void add_bezt(FCurve *fcu,
   blender::animrig::insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
 }
 
+pxr::GfVec3h get_scale(const pxr::GfMatrix4d& mat)
+{
+  pxr::GfVec3f t;
+  pxr::GfQuatf qrot;
+  pxr::GfVec3h s;
+  static pxr::GfVec3h UNIT_SCALE(1.0);
+  static const double HALF_EPSILON = 1e-2;
+  if (!pxr::UsdSkelDecomposeTransform(mat, &t, &qrot, &s) || pxr::GfIsClose(s, UNIT_SCALE, HALF_EPSILON)) {
+    s = UNIT_SCALE;
+  }
+
+  return s;
+}
+
 /**
  * Import a USD skeleton animation as an action on the given armature object.
  * This assumes bones have already been created on the armature.
@@ -262,16 +276,7 @@ void import_skeleton_curves(Main *bmain,
       joint_local_bind_xforms[i] = bind_xforms[i];
     }
 
-    pxr::GfVec3f t;
-    pxr::GfQuatf qrot;
-    pxr::GfVec3h s;
-    static pxr::GfVec3h UNIT_SCALE(1.0);
-    static const double HALF_EPSILON = 1e-2;
-    if (!pxr::UsdSkelDecomposeTransform(bind_xforms[i], &t, &qrot, &s) || pxr::GfIsClose(s, UNIT_SCALE, HALF_EPSILON)) {
-      bind_xform_scales[i] = UNIT_SCALE;
-      continue;
-    }
-    bind_xform_scales[i] = s;
+    bind_xform_scales[i] = get_scale(bind_xforms[i]);
   }
 
   /* Set the curve samples. */
@@ -303,7 +308,7 @@ void import_skeleton_curves(Main *bmain,
         continue;
       }
 
-      /* Adjust the translation to take the bone bind matrix scale. */
+      /* Adjust the translation by the bone bind matrix scale. */
       t[0] *= bind_xform_scales[i][0];
       t[1] *= bind_xform_scales[i][1];
       t[2] *= bind_xform_scales[i][2];
