@@ -1267,6 +1267,7 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   }
 
   /* Fallback glyph transforms, but only if required and not yet done. */
+
   if (weight != weight_target) {
     blf_glyph_transform_weight(glyph, weight_target - weight, FT_IS_FIXED_WIDTH(glyph_font));
   }
