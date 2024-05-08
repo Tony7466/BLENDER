@@ -663,6 +663,8 @@ typedef struct bNodeTree {
   struct bNodeTreeType *typeinfo;
   /** Runtime type identifier. */
   char idname[64];
+  /** User-defined description of the node tree. */
+  char *description;
 
   /** Grease pencil data. */
   struct bGPdata *gpd;
@@ -1558,6 +1560,10 @@ typedef struct NodeInputBool {
 typedef struct NodeInputInt {
   int integer;
 } NodeInputInt;
+
+typedef struct NodeInputRotation {
+  float rotation_euler[3];
+} NodeInputRotation;
 
 typedef struct NodeInputVector {
   float vector[3];
