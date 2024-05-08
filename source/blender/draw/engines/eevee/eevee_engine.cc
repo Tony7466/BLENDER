@@ -184,11 +184,13 @@ static void eevee_cache_finish(void *vedata)
 
   if (g_data->queued_shaders_count > 0) {
     SNPRINTF(ved->info, RPT_("Compiling Shaders (%d remaining)"), g_data->queued_shaders_count);
+    DRW_viewport_request_redraw();
   }
   else if (g_data->queued_optimise_shaders_count > 0) {
     SNPRINTF(ved->info,
              RPT_("Optimizing Shaders (%d remaining)"),
              g_data->queued_optimise_shaders_count);
+    DRW_viewport_request_redraw();
   }
 }
 
