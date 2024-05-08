@@ -2825,7 +2825,7 @@ static bool grease_pencil_snap_compute_centroid(const Scene &scene,
   int num_selected = 0;
   r_centroid = float3(0.0f);
   r_min = float3(std::numeric_limits<float>::max());
-  r_max = float3(-std::numeric_limits<float>::max());
+  r_max = float3(std::numeric_limits<float>::lowest());
 
   const Vector<DrawingInfo> drawings = retrieve_visible_drawings(scene, grease_pencil, false);
   for (const DrawingInfo &drawing_info : drawings) {
