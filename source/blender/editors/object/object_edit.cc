@@ -1809,6 +1809,7 @@ static int shade_auto_smooth_exec(bContext *C, wmOperator *op)
         if (!smooth_by_angle_nmd) {
           continue;
         }
+        smooth_by_angle_nmd->modifier.flag |= eModifierFlag_PinLast;
         smooth_by_angle_nmd->node_group = node_group;
         id_us_plus(&node_group->id);
         MOD_nodes_update_interface(object, smooth_by_angle_nmd);
