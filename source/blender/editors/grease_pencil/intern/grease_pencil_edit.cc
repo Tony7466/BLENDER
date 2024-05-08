@@ -2772,8 +2772,8 @@ static int grease_pencil_snap_to_cursor_exec(bContext *C, wmOperator *op)
       });
     }
     else {
-      selected_points.foreach_index(GrainSize(4096),
-                                    [&](const int point_i) { positions[point_i] = cursor_layer; });
+      /* Set all selected positions to the cursor location. */
+      index_mask::masked_fill(positions, cursor_layer, selected_points);
     }
 
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
