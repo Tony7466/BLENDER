@@ -429,6 +429,8 @@ struct bNodeTreeType {
 
 /** \} */
 
+namespace blender::bke {
+
 /* -------------------------------------------------------------------- */
 /** \name Generic API, Trees
  * \{ */
@@ -1352,6 +1354,8 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 
 void BKE_node_system_init();
 void BKE_node_system_exit();
+
+}
 
 namespace blender::bke {
 
