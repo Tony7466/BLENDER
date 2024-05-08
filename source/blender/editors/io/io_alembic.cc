@@ -370,7 +370,7 @@ void WM_OT_alembic_export(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna, "uvs", true, "UV Coordinates", "Export UV coordinates");
 
-  RNA_def_boolean(ot->srna, "packuv", true, "Remove duplicate UVs", "");
+  RNA_def_boolean(ot->srna, "packuv", true, "Merge UVs", "");
 
   RNA_def_boolean(ot->srna, "normals", true, "Normals", "Export normals");
 
