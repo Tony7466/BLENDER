@@ -394,7 +394,7 @@ static GreasePencilFrame *rna_Frames_frame_new(ID *id,
     return nullptr;
   }
 
-  grease_pencil.insert_blank_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+  grease_pencil.insert_frame(layer, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, &grease_pencil);
 
   return layer.frame_at(frame_number);
@@ -451,18 +451,33 @@ static PointerRNA rna_Frame_drawing_get(PointerRNA *ptr)
 {
   using namespace blender::bke::greasepencil;
   const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
-  GreasePencilFrame &frame = *static_cast<GreasePencilFrame *>(ptr->data);
-  if (frame.drawing_index == -1) {
+  GreasePencilFrame &this_frame = *static_cast<GreasePencilFrame *>(ptr->data);
+  if (this_frame.drawing_index == -1) {
     return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
   }
-  const GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(frame.drawing_index);
-  if (drawing_base->type != GP_DRAWING) {
-    /* TODO: Get reference drawing. */
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  Layer *this_layer = nullptr;
+  int frame_number = 0;
+  for (const Layer *layer : grease_pencil.layers()) {
+    layer->frames().foreach_item(
+        [&](const FramesMapKey frame_key, const GreasePencilFrame &frame) {
+          if (&frame == &this_frame) {
+            this_layer = const_cast<Layer *>(layer);
+            frame_number = int(frame_key);
+            return;
+          }
+        });
+  }
+  if (this_layer == nullptr) {
     return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
   }
-  const Drawing &drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+
+  const Drawing *drawing = grease_pencil.get_drawing_at(*this_layer, frame_number);
+
   return rna_pointer_inherit_refine(
-      ptr, &RNA_GreasePencilDrawing, static_cast<void *>(const_cast<Drawing *>(&drawing)));
+      ptr, &RNA_GreasePencilDrawing, static_cast<void *>(const_cast<Drawing *>(drawing)));
 }
 
 static int rna_Frame_frame_number_get(PointerRNA *ptr)
