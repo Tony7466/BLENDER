@@ -139,7 +139,7 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
           return true;
         });
 
-    Array<int2> stars_pairs(mesh.verts_num);
+    Array<int2> stars_pairs(mesh.corners_num);
     const Array<int2> corner_pairs = corner_edge_pairs(
         mesh.faces(), edges, corner_edges, corner_verts, mesh.corners_num, mesh.faces_num);
     array_utils::gather(
