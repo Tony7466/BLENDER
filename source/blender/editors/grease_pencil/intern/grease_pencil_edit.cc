@@ -2655,11 +2655,12 @@ static void GREASE_PENCIL_OT_extrude(wmOperatorType *ot)
  */
 static bool grease_pencil_snap_poll(bContext *C)
 {
-  ScrArea *area = CTX_wm_area(C);
-  Object *ob = CTX_data_active_object(C);
+  if (!editable_grease_pencil_poll(C)) {
+    return false;
+  }
 
-  return (ob != nullptr) && (ob->type == OB_GREASE_PENCIL) &&
-         ((area != nullptr) && (area->spacetype == SPACE_VIEW3D));
+  ScrArea *area = CTX_wm_area(C);
+  return (area != nullptr) && (area->spacetype == SPACE_VIEW3D);
 }
 
 static int grease_pencil_snap_to_grid_exec(bContext *C, wmOperator * /*op*/)
