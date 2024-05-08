@@ -7,7 +7,13 @@ from bpy.types import (
     Header,
     Menu,
     Panel,
+    Screen,
 )
+
+from bpy.props import (
+    BoolProperty,
+)
+
 from bl_ui.properties_paint_common import (
     UnifiedPaintPanel,
     brush_basic_texpaint_settings,
@@ -7100,20 +7106,20 @@ class VIEW3D_PT_overlay(Panel):
     bl_label = "Overlays"
     bl_ui_units_x = 13
 
-    def draw(self, _context):
-        layout = self.layout
-        layout.label(text="Viewport Overlays")
-
-
-class VIEW3D_PT_overlay_guides(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Guides"
-
     def draw(self, context):
         layout = self.layout
+        layout.label(text="Viewport Overlays")
+        view3d_overlay_guides(layout, context)
+        view3d_overlay_object(layout, context)
+        view3d_overlay_geometry(layout, context)
+        view3d_overlay_viewer_node(layout, context)
+        view3d_overlay_motion_tracking(layout, context)
 
+
+def view3d_overlay_guides(layout, context):
+    header, panel = layout.panel_prop(context.screen, "show_panel_guides")
+    header.label(text="Guides")
+    if panel:
         view = context.space_data
         scene = context.scene
 
@@ -7121,7 +7127,7 @@ class VIEW3D_PT_overlay_guides(Panel):
         shading = view.shading
         display_all = overlay.show_overlays
 
-        col = layout.column()
+        col = panel.column()
         col.active = display_all
 
         split = col.split()
@@ -7172,21 +7178,17 @@ class VIEW3D_PT_overlay_guides(Panel):
             row.prop(overlay, "show_look_dev")
 
 
-class VIEW3D_PT_overlay_object(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Objects"
-
-    def draw(self, context):
+def view3d_overlay_object(layout, context):
+    header, panel = layout.panel_prop(context.screen, "show_panel_objects")
+    header.label(text="Objects")
+    if panel:
         shading = VIEW3D_PT_shading.get_shading(context)
 
-        layout = self.layout
         view = context.space_data
         overlay = view.overlay
         display_all = overlay.show_overlays
 
-        col = layout.column(align=True)
+        col = panel.column(align=True)
         col.active = display_all
 
         split = col.split()
@@ -7208,24 +7210,20 @@ class VIEW3D_PT_overlay_object(Panel):
         subsub.prop(overlay, "show_object_origins_all", text="Origins (All)")
 
         if shading.type == 'WIREFRAME' or shading.show_xray:
-            layout.separator()
-            layout.prop(overlay, "bone_wire_alpha")
+            panel.separator()
+            panel.prop(overlay, "bone_wire_alpha")
 
 
-class VIEW3D_PT_overlay_geometry(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Geometry"
-
-    def draw(self, context):
-        layout = self.layout
+def view3d_overlay_geometry(layout, context):
+    header, panel = layout.panel_prop(context.screen, "show_panel_geometry")
+    header.label(text="Geometry")
+    if panel:
         view = context.space_data
         overlay = view.overlay
         display_all = overlay.show_overlays
         is_wireframes = view.shading.type == 'WIREFRAME'
 
-        col = layout.column()
+        col = panel.column()
         col.active = display_all
 
         row = col.row(align=True)
@@ -7249,7 +7247,7 @@ class VIEW3D_PT_overlay_geometry(Panel):
             sub.active = overlay.show_fade_inactive
             sub.prop(overlay, "fade_inactive_alpha", text="Fade Inactive Geometry")
 
-        col = layout.column(align=True)
+        col = panel.column(align=True)
         col.active = display_all
 
         col.prop(overlay, "show_face_orientation")
@@ -7257,19 +7255,15 @@ class VIEW3D_PT_overlay_geometry(Panel):
         # sub.prop(overlay, "show_onion_skins")
 
 
-class VIEW3D_PT_overlay_viewer_node(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Viewer Node"
-
-    def draw(self, context):
-        layout = self.layout
+def view3d_overlay_viewer_node(layout, context):
+    header, panel = layout.panel_prop(context.screen, "show_panel_viewer_node")
+    header.label(text="Viewer Node")
+    if panel:
         view = context.space_data
         overlay = view.overlay
         display_all = overlay.show_overlays
 
-        col = layout.column()
+        col = panel.column()
         col.active = display_all
 
         row = col.row(align=True)
@@ -7284,27 +7278,19 @@ class VIEW3D_PT_overlay_viewer_node(Panel):
         row.prop(overlay, "show_viewer_text", text="Attribute Text")
 
 
-class VIEW3D_PT_overlay_motion_tracking(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Motion Tracking"
+def view3d_overlay_motion_tracking(layout, context):
+    header, panel = layout.panel_prop(context.screen, "show_panel_motion_tracking")
 
-    def draw_header(self, context):
-        layout = self.layout
-        view = context.space_data
-        overlay = view.overlay
-        display_all = overlay.show_overlays
-        layout.active = display_all
-        layout.prop(view, "show_reconstruction", text=self.bl_label)
+    view = context.space_data
+    overlay = view.overlay
+    display_all = overlay.show_overlays
 
-    def draw(self, context):
-        layout = self.layout
-        view = context.space_data
-        overlay = view.overlay
-        display_all = overlay.show_overlays
+    header.active = display_all
+    header.prop(view, "show_reconstruction", text="")
+    header.label(text="Motion Tracking")
+    if panel:
 
-        col = layout.column()
+        col = panel.column()
         col.active = display_all
 
         if view.show_reconstruction:
@@ -7317,7 +7303,7 @@ class VIEW3D_PT_overlay_motion_tracking(Panel):
             sub = split.column()
             sub.prop(view, "show_bundle_names", text="Marker Names")
 
-            col = layout.column()
+            col = panel.column()
             col.active = display_all
             col.label(text="Tracks")
             row = col.row(align=True)
@@ -9068,23 +9054,18 @@ class VIEW3D_PT_curves_sculpt_grow_shrink_scaling(Panel):
         layout.prop(brush.curves_sculpt_settings, "minimum_length")
 
 
-class VIEW3D_PT_viewport_debug(Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'HEADER'
-    bl_parent_id = "VIEW3D_PT_overlay"
-    bl_label = "Viewport Debug"
+def view3d_viewport_debug(layout, context):
+    prefs = context.preferences
+    if not prefs.experimental.use_viewport_debug:
+        return
+    header, panel = layout.panel_prop(context.screen, "show_panel_viewport_debug")
+    header.label(text="Viewport Debug")
+    if panel is None:
+        return
+    view = context.space_data
+    overlay = view.overlay
 
-    @classmethod
-    def poll(cls, context):
-        prefs = context.preferences
-        return prefs.experimental.use_viewport_debug
-
-    def draw(self, context):
-        layout = self.layout
-        view = context.space_data
-        overlay = view.overlay
-
-        layout.prop(overlay, "use_debug_freeze_view_culling")
+    panel.prop(overlay, "use_debug_freeze_view_culling")
 
 
 class VIEW3D_AST_sculpt_brushes(BrushAssetShelf, bpy.types.AssetShelf):
@@ -9317,11 +9298,6 @@ classes = (
     VIEW3D_PT_shading_compositor,
     VIEW3D_PT_gizmo_display,
     VIEW3D_PT_overlay,
-    VIEW3D_PT_overlay_guides,
-    VIEW3D_PT_overlay_object,
-    VIEW3D_PT_overlay_geometry,
-    VIEW3D_PT_overlay_viewer_node,
-    VIEW3D_PT_overlay_motion_tracking,
     VIEW3D_PT_overlay_edit_mesh,
     VIEW3D_PT_overlay_edit_mesh_shading,
     VIEW3D_PT_overlay_edit_mesh_measurement,
@@ -9358,10 +9334,15 @@ classes = (
     VIEW3D_PT_curves_sculpt_add_shape,
     VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
-    VIEW3D_PT_viewport_debug,
     VIEW3D_AST_sculpt_brushes,
 )
 
+Screen.show_panel_guides = BoolProperty(name="show_panel_guides", default=True)
+Screen.show_panel_objects = BoolProperty(name="show_panel_objects", default=True)
+Screen.show_panel_geometry = BoolProperty(name="show_panel_geometry", default=True)
+Screen.show_panel_viewer_node = BoolProperty(name="show_panel_viewer_node", default=True)
+Screen.show_panel_motion_tracking = BoolProperty(name="show_panel_motion_tracking", default=True)
+Screen.show_panel_viewport_debug = BoolProperty(name="show_panel_viewport_debug", default=False)
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class
