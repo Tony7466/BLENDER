@@ -120,11 +120,80 @@ class Drawing : public ::GreasePencilDrawing {
   MutableSpan<ColorGeometry4f> vertex_colors_for_write();
 
   /**
+   * Rotation of a texture on the points. Default is zero.
+   */
+  VArray<float> rotations() const;
+  MutableSpan<float> rotations_for_write();
+
+  /**
+   * The time difference between the moment a point was added and the moment the previous point was
+   * added. Written while drawing. Used by the build modifier to 'replay' how the stroke was drawn.
+   */
+  VArray<float> delta_times() const;
+  MutableSpan<float> delta_times_for_write();
+
+  /**
+   * The selection state of the points. Default is true, so when this attribute is not present, it
+   * means that all points are selected.
+   */
+  VArray<bool> point_selections() const;
+  MutableSpan<bool> point_selections_for_write();
+
+  /**
+   * The selection state of the curves. Default is true, so when this attribute is not present, it
+   * means that all curves are selected.
+   */
+  VArray<bool> curve_selections() const;
+  MutableSpan<bool> curve_selections_for_write();
+
+  /**
    * Fill colors of the curves. Default is black and fully transparent. This is mixed on top of the
    * base material fill color.
    */
   VArray<ColorGeometry4f> fill_colors() const;
   MutableSpan<ColorGeometry4f> fill_colors_for_write();
+
+  /**
+   * Shape of the start caption of the curves. Enum of type #GreasePencilStrokeCapType. Default is
+   * #GP_STROKE_CAP_TYPE_ROUND.
+   */
+  VArray<int8_t> start_caps() const;
+  MutableSpan<int8_t> start_caps_for_write();
+
+  /**
+   * Shape of the start caption of the curves. Enum of type #GreasePencilStrokeCapType. Default is
+   * #GP_STROKE_CAP_TYPE_ROUND.
+   */
+  VArray<int8_t> end_caps() const;
+  MutableSpan<int8_t> end_caps_for_write();
+
+  /**
+   * The hardness of the curves. Used to render a soft gradient from the center line of the curve
+   * to the edge. Default is 1.0.
+   */
+  VArray<float> hardnesses() const;
+  MutableSpan<float> hardnesses_for_write();
+
+  /**
+   * The aspect ratio of textures. Used to scale the x and y of textures on vertices. The aspect
+   * ratio is `x / y` where y is clamped to a minimum of 1e-7. Default is 1.0.
+   */
+  VArray<float> aspect_ratios() const;
+  MutableSpan<float> aspect_ratios_for_write();
+
+  /**
+   * The material index of curves. Defines the appearance of the curve when rendered. Default is
+   * zero.
+   */
+  VArray<int> material_indices() const;
+  MutableSpan<int> material_indices_for_write();
+
+  /**
+   * The initial time curves were drawn. The timestamp at which the curve was created. Used by the
+   * build modifier to 'replay' how strokes were drawn.
+   */
+  VArray<float> init_times() const;
+  MutableSpan<float> init_times_for_write();
 
   /**
    * Add a user for this drawing. When a drawing has multiple users, both users are allowed to

@@ -255,7 +255,16 @@ namespace blender::bke::greasepencil {
 static const std::string ATTR_RADIUS = "radius";
 static const std::string ATTR_OPACITY = "opacity";
 static const std::string ATTR_VERTEX_COLOR = "vertex_color";
+static const std::string ATTR_ROTATION = "rotation";
+static const std::string ATTR_DELTA_TIME = "delta_time";
+static const std::string ATTR_SELECTION = ".selection";
 static const std::string ATTR_FILL_COLOR = "fill_color";
+static const std::string ATTR_START_CAP = "start_cap";
+static const std::string ATTR_END_CAP = "end_cap";
+static const std::string ATTR_HARDNESS = "hardness";
+static const std::string ATTR_ASPECT_RATIO = "aspect_ratio";
+static const std::string ATTR_MATERIAL_INDEX = "material_index";
+static const std::string ATTR_INIT_TIME = "init_time";
 
 /* Curves attributes getters */
 static int domain_num(const CurvesGeometry &curves, const AttrDomain domain)
@@ -681,6 +690,54 @@ MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
                                                 ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
+VArray<float> Drawing::rotations() const
+{
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_ROTATION, AttrDomain::Point, 0.0f);
+}
+
+MutableSpan<float> Drawing::rotations_for_write()
+{
+  return get_mutable_attribute<float>(
+      this->strokes_for_write(), AttrDomain::Point, ATTR_ROTATION, 0.0f);
+}
+
+VArray<float> Drawing::delta_times() const
+{
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_DELTA_TIME, AttrDomain::Point, 0.0f);
+}
+
+MutableSpan<float> Drawing::delta_times_for_write()
+{
+  return get_mutable_attribute<float>(
+      this->strokes_for_write(), AttrDomain::Point, ATTR_DELTA_TIME, 0.0f);
+}
+
+VArray<bool> Drawing::point_selections() const
+{
+  return *this->strokes().attributes().lookup_or_default<bool>(
+      ATTR_SELECTION, AttrDomain::Point, true);
+}
+
+MutableSpan<bool> Drawing::point_selections_for_write()
+{
+  return get_mutable_attribute<bool>(
+      this->strokes_for_write(), AttrDomain::Point, ATTR_SELECTION, true);
+}
+
+VArray<bool> Drawing::curve_selections() const
+{
+  return *this->strokes().attributes().lookup_or_default<bool>(
+      ATTR_SELECTION, AttrDomain::Curve, true);
+}
+
+MutableSpan<bool> Drawing::curve_selections_for_write()
+{
+  return get_mutable_attribute<bool>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_SELECTION, true);
+}
+
 VArray<ColorGeometry4f> Drawing::fill_colors() const
 {
   return *this->strokes().attributes().lookup_or_default<ColorGeometry4f>(
@@ -693,6 +750,78 @@ MutableSpan<ColorGeometry4f> Drawing::fill_colors_for_write()
                                                 AttrDomain::Curve,
                                                 ATTR_FILL_COLOR,
                                                 ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+}
+
+VArray<int8_t> Drawing::start_caps() const
+{
+  return *this->strokes().attributes().lookup_or_default<int8_t>(
+      ATTR_START_CAP, AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
+}
+
+MutableSpan<int8_t> Drawing::start_caps_for_write()
+{
+  return get_mutable_attribute<int8_t>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_START_CAP, GP_STROKE_CAP_TYPE_ROUND);
+}
+
+VArray<int8_t> Drawing::end_caps() const
+{
+  return *this->strokes().attributes().lookup_or_default<int8_t>(
+      ATTR_START_CAP, AttrDomain::Curve, GP_STROKE_CAP_TYPE_ROUND);
+}
+
+MutableSpan<int8_t> Drawing::end_caps_for_write()
+{
+  return get_mutable_attribute<int8_t>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_START_CAP, GP_STROKE_CAP_TYPE_ROUND);
+}
+
+VArray<float> Drawing::hardnesses() const
+{
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_HARDNESS, AttrDomain::Curve, 1.0f);
+}
+
+MutableSpan<float> Drawing::hardnesses_for_write()
+{
+  return get_mutable_attribute<float>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_HARDNESS, 1.0f);
+}
+
+VArray<float> Drawing::aspect_ratios() const
+{
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_ASPECT_RATIO, AttrDomain::Curve, 1.0f);
+}
+
+MutableSpan<float> Drawing::aspect_ratios_for_write()
+{
+  return get_mutable_attribute<float>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_ASPECT_RATIO, 1.0f);
+}
+
+VArray<int> Drawing::material_indices() const
+{
+  return *this->strokes().attributes().lookup_or_default<int>(
+      ATTR_MATERIAL_INDEX, AttrDomain::Curve, 0);
+}
+
+MutableSpan<int> Drawing::material_indices_for_write()
+{
+  return get_mutable_attribute<int>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_MATERIAL_INDEX, 0);
+}
+
+VArray<float> Drawing::init_times() const
+{
+  return *this->strokes().attributes().lookup_or_default<float>(
+      ATTR_INIT_TIME, AttrDomain::Curve, 0.0f);
+}
+
+MutableSpan<float> Drawing::init_times_for_write()
+{
+  return get_mutable_attribute<float>(
+      this->strokes_for_write(), AttrDomain::Curve, ATTR_INIT_TIME, 0.0f);
 }
 
 void Drawing::tag_texture_matrices_changed()
