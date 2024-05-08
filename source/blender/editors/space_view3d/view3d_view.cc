@@ -869,7 +869,7 @@ static bool view3d_localview_init(const Depsgraph *depsgraph,
       BKE_view_layer_synced_ensure(scene, view_layer);
       LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
         if (BASE_SELECTED(v3d, base)) {
-          BKE_object_minmax(base->object, min, max);
+          BKE_object_minmax(DEG_get_evaluated_object(depsgraph, base->object), min, max);
           base->local_view_bits |= local_view_bit;
           ok = true;
         }
