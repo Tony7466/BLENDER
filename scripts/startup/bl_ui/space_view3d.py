@@ -7856,7 +7856,6 @@ class VIEW3D_PT_sculpt_snapping(Panel):
         col.label(text="Rotation Increment")
         row = col.row(align=True)
         row.prop(tool_settings, "snap_angle_increment_3d", text="")
-        row.prop(tool_settings, "snap_angle_increment_3d_precision", text="")
 
 
 class VIEW3D_PT_proportional_edit(Panel):
