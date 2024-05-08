@@ -291,7 +291,7 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
 
         for i in range(len(grease_pencil.layers) - 1, -1, -1):
             layer = grease_pencil.layers[i]
-            if layer == grease_pencil.layers.active:
+            if layer == grease_pencil.layers.active_layer:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -316,7 +316,7 @@ class GREASE_PENCIL_MT_layer_active(Menu):
 
         for i in range(len(obd.layers) - 1, -1, -1):
             layer = obd.layers[i]
-            if layer == obd.layers.active:
+            if layer == obd.layers.active_layer:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -468,8 +468,10 @@ class AnnotationDataPanel:
             layer_rows = 5
         else:
             layer_rows = 3
-        col.template_list("GPENCIL_UL_annotation_layer", "", gpd, "layers", gpd.layers, "active_index",
-                          rows=layer_rows, sort_reverse=True, sort_lock=True)
+        col.template_list(
+            "GPENCIL_UL_annotation_layer", "", gpd, "layers", gpd.layers, "active_index",
+            rows=layer_rows, sort_reverse=True, sort_lock=True,
+        )
 
         col = row.column()
 

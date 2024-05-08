@@ -663,6 +663,8 @@ typedef struct bNodeTree {
   struct bNodeTreeType *typeinfo;
   /** Runtime type identifier. */
   char idname[64];
+  /** User-defined description of the node tree. */
+  char *description;
 
   /** Grease pencil data. */
   struct bGPdata *gpd;
@@ -1420,6 +1422,7 @@ typedef struct NodeTrackPosData {
 typedef struct NodeTranslateData {
   char wrap_axis;
   char relative;
+  short interpolation;
 } NodeTranslateData;
 
 typedef struct NodePlaneTrackDeformData {
@@ -1558,6 +1561,10 @@ typedef struct NodeInputInt {
   int integer;
 } NodeInputInt;
 
+typedef struct NodeInputRotation {
+  float rotation_euler[3];
+} NodeInputRotation;
+
 typedef struct NodeInputVector {
   float vector[3];
 } NodeInputVector;
@@ -1657,24 +1664,14 @@ typedef struct NodeEnumItem {
 typedef struct NodeEnumDefinition {
   /* User-defined enum items owned and managed by this node. */
   NodeEnumItem *items_array;
-  int16_t items_num;
-  int16_t active_index;
+  int items_num;
+  int active_index;
   uint32_t next_identifier;
+  char _pad[4];
 
 #ifdef __cplusplus
   blender::Span<NodeEnumItem> items() const;
-  blender::MutableSpan<NodeEnumItem> items_for_write();
-
-  NodeEnumItem *add_item(blender::StringRef name);
-  bool remove_item(NodeEnumItem &item);
-  void clear();
-  bool move_item(int from_index, int to_index);
-
-  const NodeEnumItem *active_item() const;
-  NodeEnumItem *active_item();
-  void active_item_set(NodeEnumItem *item);
-
-  void set_item_name(NodeEnumItem &item, blender::StringRef name);
+  blender::MutableSpan<NodeEnumItem> items();
 #endif
 } NodeEnumDefinition;
 
@@ -2565,12 +2562,13 @@ typedef enum CMPNodeKuwahara {
   CMP_NODE_KUWAHARA_ANISOTROPIC = 1,
 } CMPNodeKuwahara;
 
-/* Stabilize 2D node. Stored in custom1. */
-typedef enum CMPNodeStabilizeInterpolation {
-  CMP_NODE_STABILIZE_INTERPOLATION_NEAREST = 0,
-  CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR = 1,
-  CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC = 2,
-} CMPNodeStabilizeInterpolation;
+/* Stabilize 2D node. Stored in custom1 for Stabilize 2D node and in interpolation for Translate
+ * node. */
+typedef enum CMPNodeInterpolation {
+  CMP_NODE_INTERPOLATION_NEAREST = 0,
+  CMP_NODE_INTERPOLATION_BILINEAR = 1,
+  CMP_NODE_INTERPOLATION_BICUBIC = 2,
+} CMPNodeInterpolation;
 
 /* Stabilize 2D node. Stored in custom2. */
 typedef enum CMPNodeStabilizeInverse {
