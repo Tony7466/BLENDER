@@ -1338,7 +1338,7 @@ typedef struct NodeTexMagic {
 } NodeTexMagic;
 
 typedef struct NodeShaderAttribute {
-  char name[64];
+  char name[256];
   int type;
   char _pad[4];
 } NodeShaderAttribute;
