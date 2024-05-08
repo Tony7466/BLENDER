@@ -92,21 +92,21 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-const EnumPropertyItem rna_enum_node_group_category_items[] = {
-    {int(NodeGroupCategory::None), "NONE", 0, "None", "Default class for new node groups"},
-    {int(NodeGroupCategory::Attribute), "ATTRIBUTE", 0, "Attribute", ""},
-    {int(NodeGroupCategory::Color), "COLOR", 0, "Color", ""},
-    {int(NodeGroupCategory::Converter), "CONVERTER", 0, "Converter", ""},
-    {int(NodeGroupCategory::Distort), "DISTORT", 0, "Distort", ""},
-    {int(NodeGroupCategory::Filter), "FILTER", 0, "Filter", ""},
-    {int(NodeGroupCategory::Geometry), "GEOMETRY", 0, "Geometry", ""},
-    {int(NodeGroupCategory::Input), "INPUT", 0, "Input", ""},
-    {int(NodeGroupCategory::Matte), "MATTE", 0, "Matte", ""},
-    {int(NodeGroupCategory::Output), "OUTPUT", 0, "Output", ""},
-    {int(NodeGroupCategory::Script), "SCRIPT", 0, "Script", ""},
-    {int(NodeGroupCategory::Shader), "SHADER", 0, "Shader", ""},
-    {int(NodeGroupCategory::Texture), "TEXTURE", 0, "Texture", ""},
-    {int(NodeGroupCategory::Vector), "VECTOR", 0, "Vector", ""},
+const EnumPropertyItem rna_enum_node_group_color_tag_items[] = {
+    {int(NodeGroupColorTag::None), "NONE", 0, "None", "Default tag for new node groups"},
+    {int(NodeGroupColorTag::Attribute), "ATTRIBUTE", 0, "Attribute", ""},
+    {int(NodeGroupColorTag::Color), "COLOR", 0, "Color", ""},
+    {int(NodeGroupColorTag::Converter), "CONVERTER", 0, "Converter", ""},
+    {int(NodeGroupColorTag::Distort), "DISTORT", 0, "Distort", ""},
+    {int(NodeGroupColorTag::Filter), "FILTER", 0, "Filter", ""},
+    {int(NodeGroupColorTag::Geometry), "GEOMETRY", 0, "Geometry", ""},
+    {int(NodeGroupColorTag::Input), "INPUT", 0, "Input", ""},
+    {int(NodeGroupColorTag::Matte), "MATTE", 0, "Matte", ""},
+    {int(NodeGroupColorTag::Output), "OUTPUT", 0, "Output", ""},
+    {int(NodeGroupColorTag::Script), "SCRIPT", 0, "Script", ""},
+    {int(NodeGroupColorTag::Shader), "SHADER", 0, "Shader", ""},
+    {int(NodeGroupColorTag::Texture), "TEXTURE", 0, "Texture", ""},
+    {int(NodeGroupColorTag::Vector), "VECTOR", 0, "Vector", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1044,35 +1044,36 @@ static void rna_NodeTree_update_asset(Main *bmain, Scene *scene, PointerRNA *ptr
   blender::bke::node_update_asset_metadata(*reinterpret_cast<bNodeTree *>(ptr->owner_id));
 }
 
-static const EnumPropertyItem *rna_NodeTree_category_itemf(bContext * /*C*/,
-                                                           PointerRNA *ptr,
-                                                           PropertyRNA * /*prop*/,
-                                                           bool *r_free)
+static const EnumPropertyItem *rna_NodeTree_color_tag_itemf(bContext * /*C*/,
+                                                            PointerRNA *ptr,
+                                                            PropertyRNA * /*prop*/,
+                                                            bool *r_free)
 {
   const bNodeTree &ntree = *reinterpret_cast<const bNodeTree *>(ptr->owner_id);
 
   EnumPropertyItem *items = nullptr;
   int items_num = 0;
 
-  for (const EnumPropertyItem *item = rna_enum_node_group_category_items; item->identifier; item++)
+  for (const EnumPropertyItem *item = rna_enum_node_group_color_tag_items; item->identifier;
+       item++)
   {
-    switch (NodeGroupCategory(item->value)) {
-      case NodeGroupCategory::Attribute:
-      case NodeGroupCategory::Geometry: {
+    switch (NodeGroupColorTag(item->value)) {
+      case NodeGroupColorTag::Attribute:
+      case NodeGroupColorTag::Geometry: {
         if (ntree.type == NTREE_GEOMETRY) {
           RNA_enum_item_add(&items, &items_num, item);
         }
         break;
       }
-      case NodeGroupCategory::Shader: {
+      case NodeGroupColorTag::Shader: {
         if (ntree.type == NTREE_SHADER) {
           RNA_enum_item_add(&items, &items_num, item);
         }
         break;
       }
-      case NodeGroupCategory::Distort:
-      case NodeGroupCategory::Filter:
-      case NodeGroupCategory::Matte: {
+      case NodeGroupColorTag::Distort:
+      case NodeGroupColorTag::Filter:
+      case NodeGroupColorTag::Matte: {
         if (ntree.type == NTREE_COMPOSIT) {
           RNA_enum_item_add(&items, &items_num, item);
         }
@@ -10421,11 +10422,11 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_struct_refine_func(srna, "rna_NodeTree_refine");
   RNA_def_struct_register_funcs(srna, "rna_NodeTree_register", "rna_NodeTree_unregister", nullptr);
 
-  prop = RNA_def_property(srna, "category", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_node_group_category_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_NodeTree_category_itemf");
+  prop = RNA_def_property(srna, "color_tag", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_node_group_color_tag_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_NodeTree_color_tag_itemf");
   RNA_def_property_ui_text(
-      prop, "Category", "Category of the node group which influences the header color");
+      prop, "Color Tag", "Color tag of the node group which influences the header color");
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
   prop = RNA_def_property(srna, "view_center", PROP_FLOAT, PROP_XYZ);

@@ -387,10 +387,10 @@ struct bNodeType {
 #define NODE_CLASS_LAYOUT 100
 
 /**
- * Category stored per node group. This also affects the header color of group nodes.
+ * Color tag stored per node group. This affects the header color of group nodes.
  * Note that these values are written to DNA.
  */
-enum class NodeGroupCategory {
+enum class NodeGroupColorTag {
   None = 0,
   Attribute = 1,
   Color = 2,

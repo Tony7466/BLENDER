@@ -86,34 +86,34 @@ int node_group_ui_class(const bNode *node)
   if (!group) {
     return NODE_CLASS_GROUP;
   }
-  switch (NodeGroupCategory(group->category)) {
-    case NodeGroupCategory::None:
+  switch (NodeGroupColorTag(group->color_tag)) {
+    case NodeGroupColorTag::None:
       return NODE_CLASS_GROUP;
-    case NodeGroupCategory::Attribute:
+    case NodeGroupColorTag::Attribute:
       return NODE_CLASS_ATTRIBUTE;
-    case NodeGroupCategory::Color:
+    case NodeGroupColorTag::Color:
       return NODE_CLASS_OP_COLOR;
-    case NodeGroupCategory::Converter:
+    case NodeGroupColorTag::Converter:
       return NODE_CLASS_CONVERTER;
-    case NodeGroupCategory::Distort:
+    case NodeGroupColorTag::Distort:
       return NODE_CLASS_DISTORT;
-    case NodeGroupCategory::Filter:
+    case NodeGroupColorTag::Filter:
       return NODE_CLASS_OP_FILTER;
-    case NodeGroupCategory::Geometry:
+    case NodeGroupColorTag::Geometry:
       return NODE_CLASS_GEOMETRY;
-    case NodeGroupCategory::Input:
+    case NodeGroupColorTag::Input:
       return NODE_CLASS_INPUT;
-    case NodeGroupCategory::Matte:
+    case NodeGroupColorTag::Matte:
       return NODE_CLASS_MATTE;
-    case NodeGroupCategory::Output:
+    case NodeGroupColorTag::Output:
       return NODE_CLASS_OUTPUT;
-    case NodeGroupCategory::Script:
+    case NodeGroupColorTag::Script:
       return NODE_CLASS_SCRIPT;
-    case NodeGroupCategory::Shader:
+    case NodeGroupColorTag::Shader:
       return NODE_CLASS_SHADER;
-    case NodeGroupCategory::Texture:
+    case NodeGroupColorTag::Texture:
       return NODE_CLASS_TEXTURE;
-    case NodeGroupCategory::Vector:
+    case NodeGroupColorTag::Vector:
       return NODE_CLASS_OP_VECTOR;
   }
   return NODE_CLASS_GROUP;

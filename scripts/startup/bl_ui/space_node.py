@@ -985,7 +985,7 @@ class NODE_PT_node_tree_properties(Panel):
         else:
             layout.prop(group, "description", text="Description")
 
-        layout.prop(group, "category")
+        layout.prop(group, "color_tag")
 
         if group.bl_idname == "GeometryNodeTree":
             header, body = layout.panel("group_usage")
@@ -994,7 +994,6 @@ class NODE_PT_node_tree_properties(Panel):
                 col = body.column(align=True)
                 col.prop(group, "is_modifier")
                 col.prop(group, "is_tool")
-
 
 
 # Grease Pencil properties
