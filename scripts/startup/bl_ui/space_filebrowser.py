@@ -679,7 +679,7 @@ class ASSETBROWSER_MT_select(AssetBrowserMenu, Menu):
         layout = self.layout
 
         layout.operator("file.select_all", text="All").action = 'SELECT'
-        layout.operator("file.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("file.select_all", text="None").action = 'DESELECT'
         layout.operator("file.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
