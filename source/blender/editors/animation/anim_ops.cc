@@ -235,7 +235,7 @@ static bool sequencer_skip_for_handle_tweak(const bContext *C, const wmEvent *ev
   Sequence *seq1, *seq2;
   eSeqHandle side;
 
-  ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq1, &seq2, &side);
+  ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co, &seq1, &seq2, &side);
 
   return side != SEQ_HANDLE_NONE;
 }

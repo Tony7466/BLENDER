@@ -987,15 +987,29 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
                                                                const View2D *v2d,
                                                                float mouse_co[2])
 {
-  blender::Vector<Sequence *> strips = sequencer_visible_strips_get(scene, v2d);
+  Editing *ed = SEQ_editing_get(scene);
 
-  strips.remove_if([&](Sequence *seq) {
-    rctf body = strip_clickable_area_get(scene, v2d, seq);
-    if (!BLI_rctf_isect_pt_v(&body, mouse_co)) {
-      return true;
+  blender::Vector<Sequence *> strips;
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
+        v2d->cur.xmax)
+    {
+      continue;
     }
-    return false;
-  });
+    if (max_ii(SEQ_time_right_handle_frame_get(scene, seq),
+               SEQ_time_content_end_frame_get(scene, seq)) < v2d->cur.xmin)
+    {
+      continue;
+    }
+    if (seq->machine != int(mouse_co[1])) {
+      continue;
+    }
+    const rctf body = strip_clickable_area_get(scene, v2d, seq);
+    if (!BLI_rctf_isect_pt_v(&body, mouse_co)) {
+      continue;
+    }
+    strips.append(seq);
+  }
 
   /* It may be better to sort strips, as there can be very small strip in set, that may not be
    * removed by previous conditions. `std::sort` has issues with this container though. */
@@ -1068,12 +1082,12 @@ static bool both_handles_are_selected(const Scene *scene,
   return true;
 }
 
-bool ED_sequencer_handle_selection_refine(const Scene *scene,
-                                          const View2D *v2d,
-                                          float mouse_co[2],
-                                          Sequence **r_seq1,
-                                          Sequence **r_seq2,
-                                          eSeqHandle *r_side)
+bool ED_sequencer_pick_strip_and_side(const Scene *scene,
+                                      const View2D *v2d,
+                                      float mouse_co[2],
+                                      Sequence **r_seq1,
+                                      Sequence **r_seq2,
+                                      eSeqHandle *r_side)
 {
   blender::Vector<Sequence *> strips = mouseover_strips_sorted_get(scene, v2d, mouse_co);
   *r_seq1 = *r_seq2 = nullptr;
@@ -1145,7 +1159,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     seq = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
+    ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
   }
 
   if (RNA_boolean_get(op->ptr, "handles_only") && handle_clicked == SEQ_HANDLE_NONE) {
@@ -2006,7 +2020,7 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
     eSeqHandle handle_clicked = SEQ_HANDLE_NONE;
     Sequence *seq = nullptr;
     Sequence *seq2 = nullptr;
-    ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
+    ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co, &seq, &seq2, &handle_clicked);
 
     if (seq != nullptr) {
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;

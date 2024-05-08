@@ -64,12 +64,12 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  * r_seq2 second strip to be selected.
  * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
  */
-bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
-                                          const View2D *v2d,
-                                          float mouse_co[2],
-                                          struct Sequence **r_seq1,
-                                          struct Sequence **r_seq2,
-                                          eSeqHandle *r_side);
+bool ED_sequencer_pick_strip_and_side(const struct Scene *scene,
+                                      const View2D *v2d,
+                                      float mouse_co[2],
+                                      struct Sequence **r_seq1,
+                                      struct Sequence **r_seq2,
+                                      eSeqHandle *r_side);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,

@@ -647,11 +647,11 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
-static bool mouseover_retiming_key(const Scene *scene,
-                                   const Sequence *seq,
-                                   const View2D *v2d,
-                                   const ScrArea *area,
-                                   float mouse_co_region[2])
+static bool is_mouse_over_retiming_key(const Scene *scene,
+                                       const Sequence *seq,
+                                       const View2D *v2d,
+                                       const ScrArea *area,
+                                       float mouse_co_region[2])
 {
   const SpaceSeq *sseq = static_cast<SpaceSeq *>(area->spacedata.first);
 
@@ -701,14 +701,14 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 
   eSeqHandle side;
   Sequence *seq1, *seq2;
-  ED_sequencer_handle_selection_refine(scene, &region->v2d, mouse_co_view, &seq1, &seq2, &side);
+  ED_sequencer_pick_strip_and_side(scene, &region->v2d, mouse_co_view, &seq1, &seq2, &side);
 
   if (seq1 == nullptr) {
     WM_cursor_set(win, wmcursor);
     return;
   }
 
-  if (mouseover_retiming_key(scene, seq1, &region->v2d, area, mouse_co_region)) {
+  if (is_mouse_over_retiming_key(scene, seq1, &region->v2d, area, mouse_co_region)) {
     WM_cursor_set(win, wmcursor);
     return;
   }
