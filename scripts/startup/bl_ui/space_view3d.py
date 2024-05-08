@@ -8,6 +8,7 @@ from bpy.types import (
     Menu,
     Panel,
     Screen,
+    WindowManager,
 )
 
 from bpy.props import (
@@ -7289,26 +7290,24 @@ def view3d_overlay_motion_tracking(layout, context):
     header.prop(view, "show_reconstruction", text="")
     header.label(text="Motion Tracking")
     if panel:
-
         col = panel.column()
         col.active = display_all
 
-        if view.show_reconstruction:
-            split = col.split()
+        split = col.split()
 
-            sub = split.column(align=True)
-            sub.active = view.show_reconstruction
-            sub.prop(view, "show_camera_path", text="Camera Path")
+        sub = split.column(align=True)
+        sub.active = view.show_reconstruction
+        sub.prop(view, "show_camera_path", text="Camera Path")
 
-            sub = split.column()
-            sub.prop(view, "show_bundle_names", text="Marker Names")
+        sub = split.column()
+        sub.prop(view, "show_bundle_names", text="Marker Names")
 
-            col = panel.column()
-            col.active = display_all
-            col.label(text="Tracks")
-            row = col.row(align=True)
-            row.prop(view, "tracks_display_type", text="")
-            row.prop(view, "tracks_display_size", text="Size")
+        col = panel.column()
+        col.active = display_all
+        col.label(text="Tracks")
+        row = col.row(align=True)
+        row.prop(view, "tracks_display_type", text="")
+        row.prop(view, "tracks_display_size", text="Size")
 
 
 class VIEW3D_PT_overlay_edit_mesh(Panel):
@@ -9341,7 +9340,7 @@ Screen.show_panel_guides = BoolProperty(name="show_panel_guides", default=True)
 Screen.show_panel_objects = BoolProperty(name="show_panel_objects", default=True)
 Screen.show_panel_geometry = BoolProperty(name="show_panel_geometry", default=True)
 Screen.show_panel_viewer_node = BoolProperty(name="show_panel_viewer_node", default=True)
-Screen.show_panel_motion_tracking = BoolProperty(name="show_panel_motion_tracking", default=True)
+Screen.show_panel_motion_tracking = BoolProperty(name="show_panel_motion_tracking", default=False)
 Screen.show_panel_viewport_debug = BoolProperty(name="show_panel_viewport_debug", default=False)
 
 if __name__ == "__main__":  # only for live edit.
