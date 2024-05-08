@@ -24,6 +24,12 @@ enum eSeqHandle {
   SEQ_HANDLE_BOTH,
 };
 
+struct StripSelection {
+  Sequence *seq1;
+  Sequence *seq2;
+  eSeqHandle handle;
+};
+
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
 /**
  * Iterates over a scene's sequences and deselects all of them.
@@ -64,12 +70,9 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  * r_seq2 second strip to be selected.
  * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
  */
-bool ED_sequencer_pick_strip_and_side(const struct Scene *scene,
-                                      const View2D *v2d,
-                                      float mouse_co[2],
-                                      struct Sequence **r_seq1,
-                                      struct Sequence **r_seq2,
-                                      eSeqHandle *r_side);
+StripSelection ED_sequencer_pick_strip_and_side(const struct Scene *scene,
+                                                const View2D *v2d,
+                                                float mouse_co[2]);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,
