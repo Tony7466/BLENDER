@@ -699,7 +699,7 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
     return;
   }
 
-  int side;
+  eSeqHandle side;
   Sequence *seq1, *seq2;
   ED_sequencer_handle_selection_refine(scene, &region->v2d, mouse_co_view, &seq1, &seq2, &side);
 
@@ -724,10 +724,10 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   if (seq1 != nullptr && seq2 != nullptr) {
     wmcursor = WM_CURSOR_BOTH_HANDLES;
   }
-  else if (side == SEQ_SIDE_LEFT) {
+  else if (side == SEQ_HANDLE_LEFT) {
     wmcursor = WM_CURSOR_LEFT_HANDLE;
   }
-  else if (side == SEQ_SIDE_RIGHT) {
+  else if (side == SEQ_HANDLE_RIGHT) {
     wmcursor = WM_CURSOR_RIGHT_HANDLE;
   }
 

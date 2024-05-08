@@ -9,12 +9,20 @@
 #pragma once
 
 #include "BLI_vector_set.hh"
+#include "DNA_sequence_types.h"
 
 struct Scene;
 struct Sequence;
 struct SpaceSeq;
 struct bContext;
 struct View2D;
+
+typedef enum eSeqHandle {
+  SEQ_HANDLE_NONE = 0,
+  SEQ_HANDLE_LEFT = SEQ_LEFTSEL,
+  SEQ_HANDLE_RIGHT = SEQ_RIGHTSEL,
+  SEQ_HANDLE_BOTH,
+} eSeqHandle;
 
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
 /**
@@ -61,7 +69,7 @@ bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
                                           float mouse_co[2],
                                           struct Sequence **r_seq1,
                                           struct Sequence **r_seq2,
-                                          int *r_side);
+                                          eSeqHandle *r_side);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,

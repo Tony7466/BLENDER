@@ -227,18 +227,17 @@ static bool use_sequencer_snapping(bContext *C)
 
 static bool sequencer_skip_for_handle_tweak(const bContext *C, const wmEvent *event)
 {
-  ARegion *region = CTX_wm_region(C);
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   float mouse_co[2];
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &mouse_co[0], &mouse_co[1]);
   Sequence *seq1, *seq2;
-  int side;
+  eSeqHandle side;
 
   ED_sequencer_handle_selection_refine(scene, v2d, mouse_co, &seq1, &seq2, &side);
 
-  return side != SEQ_SIDE_NONE;
+  return side != SEQ_HANDLE_NONE;
 }
 
 /* Modal Operator init */
