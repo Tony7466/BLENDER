@@ -1129,11 +1129,11 @@ static int walkApply(bContext *C, WalkInfo *walk, bool is_confirm)
           /* Clamp the angle limits: it ranges from 90.0f to -90.0f. */
           angle = -asinf(rv3d->viewmat[2][2]);
 
-          if (angle > WALK_TOP_LIMIT && y > 0.0f) {
-            y = 0.0f;
+          if (angle + y > WALK_TOP_LIMIT && y > 0.0f) {
+            y = WALK_TOP_LIMIT - angle;
           }
-          else if (angle < WALK_BOTTOM_LIMIT && y < 0.0f) {
-            y = 0.0f;
+          else if (angle + y < WALK_BOTTOM_LIMIT && y < 0.0f) {
+            y = WALK_BOTTOM_LIMIT - angle;
           }
 
           copy_v3_fl3(upvec, 1.0f, 0.0f, 0.0f);
