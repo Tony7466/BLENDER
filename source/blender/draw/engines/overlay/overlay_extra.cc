@@ -47,7 +47,7 @@
 
 #include "overlay_private.hh"
 
-#include "draw_common.h"
+#include "draw_common_c.hh"
 #include "draw_manager_text.hh"
 
 void OVERLAY_extra_cache_init(OVERLAY_Data *vedata)
@@ -258,7 +258,7 @@ OVERLAY_ExtraCallBuffers *OVERLAY_extra_call_buffer_get(OVERLAY_Data *vedata, Ob
 }
 
 void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
-                                GPUBatch *geom,
+                                blender::gpu::Batch *geom,
                                 const float mat[4][4],
                                 const float color[4])
 {
@@ -268,7 +268,7 @@ void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
 }
 
 void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
-                        GPUBatch *geom,
+                        blender::gpu::Batch *geom,
                         const float mat[4][4],
                         const float color[4])
 {
@@ -756,10 +756,7 @@ void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob)
       DRW_buffer_add_entry(cb->probe_grid, color_p, &instdata);
 
       if (show_influence) {
-        float f = 1.0f - prb->falloff;
-        OVERLAY_empty_shape(cb, ob->object_to_world().ptr(), 1.0 + prb->distinf, OB_CUBE, color_p);
-        OVERLAY_empty_shape(
-            cb, ob->object_to_world().ptr(), 1.0 + prb->distinf * f, OB_CUBE, color_p);
+        OVERLAY_empty_shape(cb, ob->object_to_world().ptr(), 1.0, OB_CUBE, color_p);
       }
 
       /* Data dots */

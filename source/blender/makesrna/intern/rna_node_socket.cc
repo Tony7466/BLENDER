@@ -489,7 +489,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
       {SOCK_DISPLAY_SHAPE_DIAMOND_DOT, "DIAMOND_DOT", 0, "Diamond with inner dot", ""},
       {0, nullptr, 0, nullptr, nullptr}};
 
-  static float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   srna = RNA_def_struct(brna, "NodeSocket", nullptr);
   RNA_def_struct_ui_text(srna, "Node Socket", "Input or output socket of a node");
@@ -674,7 +674,7 @@ static void rna_def_node_socket_standard(BlenderRNA *brna)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  static float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+  static const float default_draw_color[] = {0.0f, 0.0f, 0.0f, 1.0f};
 
   srna = RNA_def_struct(brna, "NodeSocketStandard", "NodeSocket");
   RNA_def_struct_sdna(srna, "bNodeSocket");
@@ -1533,7 +1533,7 @@ struct bNodeSocketStaticTypeInfo {
   const char *label;
 };
 
-/* Note: Socket and interface subtypes could be defined from a single central list,
+/* NOTE: Socket and interface subtypes could be defined from a single central list,
  * but makesrna cannot have a dependency on BKE, so this list would have to live in RNA itself,
  * with BKE etc. accessing the RNA API to get the subtypes info. */
 static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
@@ -1551,6 +1551,10 @@ static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
      SOCK_FLOAT,
      PROP_TIME_ABSOLUTE},
     {"NodeSocketFloatDistance", "NodeTreeInterfaceSocketFloatDistance", SOCK_FLOAT, PROP_DISTANCE},
+    {"NodeSocketFloatWavelength",
+     "NodeTreeInterfaceSocketFloatWavelength",
+     SOCK_FLOAT,
+     PROP_WAVELENGTH},
     {"NodeSocketInt", "NodeTreeInterfaceSocketInt", SOCK_INT, PROP_NONE},
     {"NodeSocketIntUnsigned", "NodeTreeInterfaceSocketIntUnsigned", SOCK_INT, PROP_UNSIGNED},
     {"NodeSocketIntPercentage", "NodeTreeInterfaceSocketIntPercentage", SOCK_INT, PROP_PERCENTAGE},
@@ -1652,7 +1656,7 @@ static void rna_def_node_socket_subtypes(BlenderRNA *brna)
   rna_def_node_socket_virtual(brna, "NodeSocketVirtual");
 }
 
-/* Note: interface items are defined outside this file.
+/* NOTE: interface items are defined outside this file.
  * The subtypes must be defined after the base type, so this function
  * is called from the interface rna file to ensure correct order. */
 void rna_def_node_socket_interface_subtypes(BlenderRNA *brna)

@@ -238,8 +238,10 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_SELECT = (1 << 2),
   GP_LAYER_TREE_NODE_MUTE = (1 << 3),
   GP_LAYER_TREE_NODE_USE_LIGHTS = (1 << 4),
-  GP_LAYER_TREE_NODE_USE_ONION_SKINNING = (1 << 5),
+  GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING = (1 << 5),
   GP_LAYER_TREE_NODE_EXPANDED = (1 << 6),
+  GP_LAYER_TREE_NODE_HIDE_MASKS = (1 << 7),
+  GP_LAYER_TREE_NODE_DISABLE_MASKS_IN_VIEWLAYER = (1 << 8),
 } GreasePencilLayerTreeNodeFlag;
 
 struct GreasePencilLayerTreeGroup;
@@ -292,17 +294,26 @@ typedef struct GreasePencilLayer {
    * List of `GreasePencilLayerMask`.
    */
   ListBase masks;
+  int active_mask_index;
+  char _pad2[4];
   /**
    * Layer parent object. Can be an armature in which case the `parsubstr` is the bone name.
    */
   struct Object *parent;
   char *parsubstr;
   /**
+   * Stores the inverse of the parent during parenting to keep the layer in its position.
+   * Also referred to as the "keep transform" parenting elsewhere.
+   */
+  float parentinv[4][4];
+  /**
    * Layer transform UI settings. These should *not* be used to do any computation.
    * Use the functions is the `bke::greasepencil::Layer` class instead.
    */
   float translation[3], rotation[3], scale[3];
-  char _pad2[4];
+  char _pad3[4];
+  /** Name of the view layer used to filter render output. */
+  char *viewlayername;
   /**
    * Runtime struct pointer.
    */
@@ -347,6 +358,15 @@ typedef enum GreasePencilOnionSkinningMode {
   GP_ONION_SKINNING_MODE_SELECTED = 2,
 } GreasePencilOnionSkinningMode;
 
+typedef enum GreasePencilOnionSkinningFlag {
+  /* Use custom colors (per object-data) for onion skinning. */
+  GP_ONION_SKINNING_USE_CUSTOM_COLORS = (1 << 0),
+  /* Fade the opacity of ghost frames further away from the current frame. */
+  GP_ONION_SKINNING_USE_FADE = (1 << 1),
+  /* Show looping frames in onion skinning. */
+  GP_ONION_SKINNING_SHOW_LOOP = (1 << 2),
+} GreasePencilOnionSkinningFlag;
+
 /**
  * Flag for filtering the onion skinning per keyframe type.
  * #GreasePencilOnionSkinningSettings.filter
@@ -373,15 +393,13 @@ typedef struct GreasePencilOnionSkinningSettings {
    * Opacity for the ghost frames.
    */
   float opacity;
-  /**
-   * Onion skinning mode. See `GreasePencilOnionSkinningMode`.
-   */
+  /* #GreasePencilOnionSkinningMode. */
   int8_t mode;
-  /**
-   * Onion skinning filtering flag. See `GreasePencilOnionSkinningFilter`.
-   */
+  /* #GreasePencilOnionSkinningFlag. */
+  uint8_t flag;
+  /* #GreasePencilOnionSkinningFilter. */
   uint8_t filter;
-  char _pad[2];
+  char _pad[1];
   /**
    * Number of ghost frames shown before.
    */
@@ -432,10 +450,10 @@ typedef struct GreasePencil {
   char _pad2[4];
 
   /**
-   * Pointer to the active layer. Can be NULL.
+   * Pointer to the active node. Can be NULL.
    * This pointer does not own the data.
    */
-  GreasePencilLayer *active_layer;
+  GreasePencilLayerTreeNode *active_node;
 
   /**
    * An array of materials.
@@ -474,6 +492,8 @@ typedef struct GreasePencil {
   /* Layers, layer groups and nodes read/write access. */
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();
+  const blender::bke::greasepencil::Layer *layer(int64_t index) const;
+  blender::bke::greasepencil::Layer *layer(int64_t index);
 
   blender::Span<const blender::bke::greasepencil::LayerGroup *> layer_groups() const;
   blender::Span<blender::bke::greasepencil::LayerGroup *> layer_groups_for_write();
@@ -600,12 +620,23 @@ typedef struct GreasePencil {
    */
   const blender::bke::greasepencil::Drawing *get_drawing_at(
       const blender::bke::greasepencil::Layer &layer, int frame_number) const;
+  blender::bke::greasepencil::Drawing *get_drawing_at(
+      const blender::bke::greasepencil::Layer &layer, int frame_number);
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
    * drawing exists.
    */
   blender::bke::greasepencil::Drawing *get_editable_drawing_at(
       const blender::bke::greasepencil::Layer &layer, int frame_number);
+
+  /**
+   * Returns a drawing on \a layer at the frame this grease pencil was evaluated at or `nullptr` if
+   * no such drawing exists.
+   */
+  const blender::bke::greasepencil::Drawing *get_eval_drawing(
+      const blender::bke::greasepencil::Layer &layer) const;
+  blender::bke::greasepencil::Drawing *get_eval_drawing(
+      const blender::bke::greasepencil::Layer &layer);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max(int frame) const;
   std::optional<blender::Bounds<blender::float3>> bounds_min_max_eval() const;

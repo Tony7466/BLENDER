@@ -450,6 +450,18 @@ bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *
 
 void ED_workspace_status_text(bContext *C, const char *str);
 
+class WorkspaceStatus {
+  WorkSpace *workspace_;
+  wmWindowManager *wm_;
+
+ public:
+  WorkspaceStatus(bContext *C);
+  void item(std::string text, int icon1, int icon2 = 0);
+  void item_bool(std::string text, bool inverted, int icon1, int icon2 = 0);
+  void range(std::string text, int icon1, int icon2);
+  void opmodal(std::string text, const wmOperatorType *ot, int propvalue, bool inverted = false);
+};
+
 void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
 
 /* anim */
@@ -469,9 +481,9 @@ bScreen *ED_screen_animation_playing(const wmWindowManager *wm);
 bScreen *ED_screen_animation_no_scrub(const wmWindowManager *wm);
 
 /* screen keymaps */
-/* called in spacetypes.cc */
+/* called in `spacetypes.cc`. */
 void ED_operatortypes_screen();
-/* called in spacetypes.cc */
+/* called in `spacetypes.cc`. */
 void ED_keymap_screen(wmKeyConfig *keyconf);
 /**
  * Workspace key-maps.
@@ -508,6 +520,7 @@ bool ED_operator_region_gizmo_active(bContext *C);
  */
 bool ED_operator_animview_active(bContext *C);
 bool ED_operator_outliner_active(bContext *C);
+bool ED_operator_region_outliner_active(bContext *C);
 bool ED_operator_outliner_active_no_editobject(bContext *C);
 /**
  * \note Will return true for file spaces in either file or asset browsing mode! See

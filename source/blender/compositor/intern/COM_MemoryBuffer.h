@@ -15,6 +15,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 
+#include <cstdint>
 #include <cstring>
 
 struct ColormanageProcessor;
@@ -90,6 +91,11 @@ class MemoryBuffer {
   int to_positive_y_stride_;
 
  public:
+  /**
+   * \brief construct new temporarily MemoryBuffer for a width and height.
+   */
+  MemoryBuffer(DataType data_type, int width, int height);
+
   /**
    * \brief construct new temporarily MemoryBuffer for an area
    */
@@ -203,8 +209,9 @@ class MemoryBuffer {
   }
 
   /* Equivalent to the GLSL texture() function with bilinear interpolation and extended boundary
-   * conditions. The coordinates are thus expected to have half-pixels offsets. For float buffers,
-   * the green and green channels will be zero and the alpha will be one. */
+   * conditions. The coordinates are thus expected to have half-pixels offsets. A float4 is always
+   * returned regardless of the number of channels of the buffer, the remaining channels will be
+   * initialized with the template float4(0, 0, 0, 1). */
   float4 texture_bilinear_extend(float2 coordinates) const
   {
     const int2 size = int2(get_width(), get_height());
@@ -212,6 +219,21 @@ class MemoryBuffer {
 
     float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
     math::interpolate_bilinear_fl(
+        buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
+    return result;
+  }
+
+  /* Equivalent to the GLSL texture() function with nearest interpolation and extended boundary
+   * conditions. The coordinates are thus expected to have half-pixels offsets. A float4 is always
+   * returned regardless of the number of channels of the buffer, the remaining channels will be
+   * initialized with the template float4(0, 0, 0, 1). */
+  float4 texture_nearest_extend(float2 coordinates) const
+  {
+    const int2 size = int2(get_width(), get_height());
+    const float2 texel_coordinates = coordinates * float2(size);
+
+    float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    math::interpolate_nearest_fl(
         buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
     return result;
   }
@@ -264,6 +286,12 @@ class MemoryBuffer {
                                          get_relative_y(y));
   }
 
+  void read_elem_bicubic_bspline(float x, float y, float *out) const
+  {
+    math::interpolate_cubic_bspline_fl(
+        buffer_, out, this->get_width(), this->get_height(), num_channels_, x, y);
+  }
+
   void read_elem_sampled(float x, float y, PixelSampler sampler, float *out) const
   {
     switch (sampler) {
@@ -271,9 +299,11 @@ class MemoryBuffer {
         read_elem_checked(x, y, out);
         break;
       case PixelSampler::Bilinear:
-      case PixelSampler::Bicubic:
-        /* No bicubic. Current implementation produces fuzzy results. */
         read_elem_bilinear(x, y, out);
+        break;
+      case PixelSampler::Bicubic:
+        /* Using same method as GPU compositor. Final results may still vary. */
+        read_elem_bicubic_bspline(x, y, out);
         break;
     }
   }
@@ -377,7 +407,10 @@ class MemoryBuffer {
    */
   MemoryBuffer *inflate() const;
 
-  inline void wrap_pixel(int &x, int &y, MemoryBufferExtend extend_x, MemoryBufferExtend extend_y)
+  inline void wrap_pixel(int &x,
+                         int &y,
+                         MemoryBufferExtend extend_x,
+                         MemoryBufferExtend extend_y) const
   {
     const int w = get_width();
     const int h = get_height();
@@ -473,10 +506,11 @@ class MemoryBuffer {
   }
 
   inline void read(float *result,
-                   int x,
-                   int y,
+                   float x,
+                   float y,
+                   PixelSampler sampler = PixelSampler::Nearest,
                    MemoryBufferExtend extend_x = MemoryBufferExtend::Clip,
-                   MemoryBufferExtend extend_y = MemoryBufferExtend::Clip)
+                   MemoryBufferExtend extend_y = MemoryBufferExtend::Clip) const
   {
     bool clip_x = (extend_x == MemoryBufferExtend::Clip && (x < rect_.xmin || x >= rect_.xmax));
     bool clip_y = (extend_y == MemoryBufferExtend::Clip && (y < rect_.ymin || y >= rect_.ymax));
@@ -485,12 +519,10 @@ class MemoryBuffer {
       memset(result, 0, num_channels_ * sizeof(float));
     }
     else {
-      int u = x;
-      int v = y;
+      float u = x;
+      float v = y;
       this->wrap_pixel(u, v, extend_x, extend_y);
-      const int offset = get_coords_offset(u, v);
-      float *buffer = &buffer_[offset];
-      memcpy(result, buffer, sizeof(float) * num_channels_);
+      this->read_elem_sampled(u, v, sampler, result);
     }
   }
   void write_pixel(int x, int y, const float color[4]);
@@ -628,9 +660,9 @@ class MemoryBuffer {
 
  private:
   void set_strides();
-  const int buffer_len() const
+  const int64_t buffer_len() const
   {
-    return get_memory_width() * get_memory_height();
+    return int64_t(get_memory_width()) * int64_t(get_memory_height());
   }
 
   void clear_elem(float *out) const

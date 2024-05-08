@@ -21,7 +21,6 @@
 #include "BLI_fileops.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_string.h"
 
@@ -30,6 +29,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
+#include "stl_data.hh"
 #include "stl_import.hh"
 #include "stl_import_ascii_reader.hh"
 #include "stl_import_binary_reader.hh"
@@ -47,7 +47,7 @@ void stl_import_report_error(FILE *file)
   }
 }
 
-void importer_main(bContext *C, const STLImportParams &import_params)
+void importer_main(const bContext *C, const STLImportParams &import_params)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);

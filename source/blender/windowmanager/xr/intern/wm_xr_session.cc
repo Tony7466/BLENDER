@@ -9,7 +9,7 @@
 #include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -34,8 +34,8 @@
 
 #include "GHOST_C-api.h"
 
-#include "GPU_batch.h"
-#include "GPU_viewport.h"
+#include "GPU_batch.hh"
+#include "GPU_viewport.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -639,6 +639,7 @@ static void wm_xr_session_controller_data_update(const XrSessionSettings *settin
   wm_xr_pose_scale_to_mat(&state->nav_pose, state->nav_scale, nav_mat);
 
   LISTBASE_FOREACH_INDEX (wmXrController *, controller, &state->controllers, subaction_idx) {
+    controller->grip_active = ((GHOST_XrPose *)grip_action->states)[subaction_idx].is_active;
     wm_xr_session_controller_pose_calc(&((GHOST_XrPose *)grip_action->states)[subaction_idx],
                                        view_ofs,
                                        base_mat,
@@ -646,6 +647,7 @@ static void wm_xr_session_controller_data_update(const XrSessionSettings *settin
                                        &controller->grip_pose,
                                        controller->grip_mat,
                                        controller->grip_mat_base);
+    controller->aim_active = ((GHOST_XrPose *)aim_action->states)[subaction_idx].is_active;
     wm_xr_session_controller_pose_calc(&((GHOST_XrPose *)aim_action->states)[subaction_idx],
                                        view_ofs,
                                        base_mat,
@@ -1303,7 +1305,7 @@ void wm_xr_session_controller_data_clear(wmXrSessionState *state)
   }
 }
 
-/** \} */ /* XR-Session Actions */
+/** \} */ /* XR-Session Actions. */
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Session Surface
@@ -1501,7 +1503,7 @@ void *wm_xr_session_gpu_binding_context_create()
 
 void wm_xr_session_gpu_binding_context_destroy(GHOST_ContextHandle /*context*/)
 {
-  if (g_xr_surface) { /* Might have been freed already */
+  if (g_xr_surface) { /* Might have been freed already. */
     wm_surface_remove(g_xr_surface);
   }
 
@@ -1522,4 +1524,4 @@ ARegionType *WM_xr_surface_controller_region_type_get()
   return nullptr;
 }
 
-/** \} */ /* XR-Session Surface */
+/** \} */ /* XR-Session Surface. */

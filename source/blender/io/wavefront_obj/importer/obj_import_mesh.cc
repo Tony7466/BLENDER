@@ -8,13 +8,13 @@
 
 #include <iostream>
 
+#include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.hh"
 #include "BKE_deform.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_node_tree_update.hh"
@@ -300,7 +300,7 @@ void MeshFromGeometry::create_uv_verts(Mesh *mesh)
 
   uv_map.finish();
 
-  /* If we have an object without UVs which resides in the same .obj file
+  /* If we have an object without UVs which resides in the same `.obj` file
    * as an object which *does* have UVs we can end up adding a UV layer
    * filled with zeroes.
    * We could maybe check before creating this layer but that would need
