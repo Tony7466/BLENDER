@@ -2800,13 +2800,7 @@ static void draw_text_shadow(const SeqRenderData *context,
     });
     IMB_freeImBuf(tmp_out1);
     IMB_freeImBuf(tmp_out2);
-    BLF_buffer(font,
-               out->float_buffer.data,
-               out->byte_buffer.data,
-               width,
-               height,
-               out->channels,
-               display);
+    BLF_buffer(font, nullptr, out->byte_buffer.data, width, height, out->channels, display);
   }
 }
 
@@ -2957,8 +2951,7 @@ static void draw_text_outline(const SeqRenderData *context,
       }
     }
   });
-  BLF_buffer(
-      font, out->float_buffer.data, out->byte_buffer.data, size.x, size.y, out->channels, display);
+  BLF_buffer(font, nullptr, out->byte_buffer.data, size.x, size.y, out->channels, display);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3009,8 +3002,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   /* use max width to enable newlines only */
   BLF_wordwrap(font, (data->wrap_width != 0.0f) ? data->wrap_width * width : -1);
 
-  BLF_buffer(
-      font, out->float_buffer.data, out->byte_buffer.data, width, height, out->channels, display);
+  BLF_buffer(font, nullptr, out->byte_buffer.data, width, height, out->channels, display);
 
   const int line_height = BLF_height_max(font);
 
