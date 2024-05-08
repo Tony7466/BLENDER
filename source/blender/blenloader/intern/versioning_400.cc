@@ -51,6 +51,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curve.hh"
+#include "BKE_customdata.hh"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
@@ -1998,6 +1999,29 @@ static void versioning_nodes_dynamic_sockets_2(bNodeTree &ntree)
   }
 }
 
+static void convert_grease_pencil_stroke_hardness_to_softness(GreasePencil *grease_pencil)
+{
+  using namespace blender;
+  for (GreasePencilDrawingBase *base : grease_pencil->drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    const int layer_index = CustomData_get_named_layer_index(
+        &drawing.geometry.curve_data, CD_PROP_FLOAT, "hardness");
+    if (layer_index == -1) {
+      continue;
+    }
+    float *data = static_cast<float *>(CustomData_get_layer_named_for_write(
+        &drawing.geometry.curve_data, CD_PROP_FLOAT, "hardness", drawing.geometry.curve_num));
+    for (const int i : IndexRange(drawing.geometry.curve_num)) {
+      data[i] = 1.0f - data[i];
+    }
+    /* Rename the layer. */
+    STRNCPY(drawing.geometry.curve_data.layers[layer_index].name, "softness");
+  }
+}
+
 static void versioning_grease_pencil_stroke_radii_scaling(GreasePencil *grease_pencil)
 {
   using namespace blender;
@@ -3410,6 +3434,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (scene->nodetree) {
         scene->nodetree->flag &= ~NTREE_UNUSED_2;
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 31)) {
+    LISTBASE_FOREACH (GreasePencil *, grease_pencil, &bmain->grease_pencils) {
+      convert_grease_pencil_stroke_hardness_to_softness(grease_pencil);
     }
   }
 
