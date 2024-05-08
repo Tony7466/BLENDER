@@ -130,7 +130,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom2);
-  BLI_assert(grid_type_supported(data_type));
 
   GridFilterOp filter_op = {params};
   bke::GVolumeGrid grid = grids::apply(data_type, filter_op);

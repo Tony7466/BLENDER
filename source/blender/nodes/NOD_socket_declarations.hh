@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "DNA_node_types.h"
 #include "NOD_node_declaration.hh"
 
 #include "RNA_types.hh"
@@ -319,6 +320,8 @@ class MaskGridBuilder;
 
 class MaskGrid : public SocketDeclaration {
  public:
+  static constexpr eNodeSocketDatatype static_socket_type = SOCK_BOOLEAN;
+
   friend MaskGridBuilder;
 
   using Builder = MaskGridBuilder;

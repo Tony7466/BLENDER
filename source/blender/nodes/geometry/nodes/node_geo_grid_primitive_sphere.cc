@@ -113,7 +113,6 @@ static void node_geo_exec(GeoNodeExecParams params)
       math::from_location<float4x4>(-0.5f * (bounds_min + bounds_max));
 
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grid_type_supported(data_type));
 
   bke::GVolumeGrid grid = grids::try_capture_field_as_dense_grid(
       data_type,

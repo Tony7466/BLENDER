@@ -7,6 +7,8 @@
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
+#include "GEO_mesh_boolean.hh"
+
 #include "NOD_rna_define.hh"
 
 #include "RNA_enum_types.hh"
@@ -43,13 +45,13 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = GEO_NODE_BOOLEAN_INTERSECT;
+  node->custom1 = int16_t(geometry::boolean::Operation::Difference);
 }
 
 #ifdef WITH_OPENVDB
 static bke::GVolumeGrid try_combine_grids(GeoNodeExecParams params)
 {
-  const GeometryNodeBooleanOperation operation = GeometryNodeBooleanOperation(
+  const geometry::boolean::Operation operation = geometry::boolean::Operation(
       params.node().custom1);
 
   bke::GVolumeGrid primary_grid = params.extract_input<bke::GVolumeGrid>("Grid");
@@ -71,15 +73,15 @@ static bke::GVolumeGrid try_combine_grids(GeoNodeExecParams params)
           secondary_grid->grid(secondary_tree_token)
               .apply<SupportedVDBGridTypes>([&](const auto &secondary_grid) {
                 switch (operation) {
-                  case GEO_NODE_BOOLEAN_INTERSECT: {
+                  case geometry::boolean::Operation::Intersect: {
                     primary_grid.topologyIntersection(secondary_grid);
                     break;
                   }
-                  case GEO_NODE_BOOLEAN_UNION: {
+                  case geometry::boolean::Operation::Union: {
                     primary_grid.topologyUnion(secondary_grid);
                     break;
                   }
-                  case GEO_NODE_BOOLEAN_DIFFERENCE: {
+                  case geometry::boolean::Operation::Difference: {
                     primary_grid.topologyDifference(secondary_grid);
                     break;
                   }
@@ -105,13 +107,17 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem rna_node_geometry_boolean_method_items[] = {
-      {GEO_NODE_BOOLEAN_INTERSECT,
+      {int16_t(geometry::boolean::Operation::Intersect),
        "INTERSECT",
        0,
        "Intersect",
        "Keep voxels that are active in all grids"},
-      {GEO_NODE_BOOLEAN_UNION, "UNION", 0, "Union", "Activate voxels that are active in any grid"},
-      {GEO_NODE_BOOLEAN_DIFFERENCE,
+      {int16_t(geometry::boolean::Operation::Union),
+       "UNION",
+       0,
+       "Union",
+       "Activate voxels that are active in any grid"},
+      {int16_t(geometry::boolean::Operation::Difference),
        "DIFFERENCE",
        0,
        "Difference",
@@ -125,7 +131,7 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_node_geometry_boolean_method_items,
                     NOD_inline_enum_accessors(custom1),
-                    GEO_NODE_BOOLEAN_INTERSECT);
+                    int16_t(geometry::boolean::Operation::Intersect));
 }
 
 static void node_register()

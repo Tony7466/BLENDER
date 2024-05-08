@@ -54,8 +54,7 @@ struct CaptureGridOp {
     const fn::Field<T> value_field = this->params.extract_input<fn::Field<T>>("Value");
     const T background = this->params.extract_input<T>("Background");
 
-    return grids::try_capture_field_as_grid(
-        data_type, topo_grid, value_field, &background);
+    return grids::try_capture_field_as_grid(data_type, topo_grid, value_field, &background);
   }
 };
 
@@ -63,7 +62,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grid_type_supported(data_type));
 
   CaptureGridOp capture_op = {params};
   bke::GVolumeGrid grid = grids::apply(data_type, capture_op);

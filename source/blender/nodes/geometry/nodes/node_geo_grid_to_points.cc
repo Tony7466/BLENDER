@@ -270,7 +270,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grid_type_supported(data_type));
 
   GridToPointsOp grid_to_points_op = {params};
   grids::apply(data_type, grid_to_points_op);

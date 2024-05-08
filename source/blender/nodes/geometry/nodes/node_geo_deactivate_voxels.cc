@@ -71,7 +71,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  BLI_assert(grid_type_supported(data_type));
 
   DeactivateVoxelsOp deactivate_voxels_op = {params};
   bke::GVolumeGrid grid = grids::apply(data_type, deactivate_voxels_op);
