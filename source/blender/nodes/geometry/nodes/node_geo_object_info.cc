@@ -31,12 +31,12 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Output the entire object as single instance. "
           "This allows instancing non-geometry object types");
-  b.add_output<decl::Vector>("Location");
-  b.add_output<decl::Rotation>("Rotation");
-  b.add_output<decl::Vector>("Scale");
   b.add_output<decl::Matrix>("Transform")
       .description(
           "Transformation matrix containing the location, rotation and scale of the object");
+  b.add_output<decl::Vector>("Location");
+  b.add_output<decl::Rotation>("Rotation");
+  b.add_output<decl::Vector>("Scale");
   b.add_output<decl::Geometry>("Geometry");
 }
 
