@@ -1053,6 +1053,53 @@ static void rna_NodeTree_update_asset(Main *bmain, Scene *scene, PointerRNA *ptr
   blender::bke::node_update_asset_metadata(*reinterpret_cast<bNodeTree *>(ptr->owner_id));
 }
 
+static const EnumPropertyItem *rna_NodeTree_category_itemf(bContext * /*C*/,
+                                                           PointerRNA *ptr,
+                                                           PropertyRNA * /*prop*/,
+                                                           bool *r_free)
+{
+  const bNodeTree &ntree = *reinterpret_cast<const bNodeTree *>(ptr->owner_id);
+
+  EnumPropertyItem *items = nullptr;
+  int items_num = 0;
+
+  for (const EnumPropertyItem *item = rna_enum_node_group_category_items; item->identifier; item++)
+  {
+    switch (NodeGroupCategory(item->value)) {
+      case NodeGroupCategory::Attribute:
+      case NodeGroupCategory::Geometry: {
+        if (ntree.type == NTREE_GEOMETRY) {
+          RNA_enum_item_add(&items, &items_num, item);
+        }
+        break;
+      }
+      case NodeGroupCategory::Shader: {
+        if (ntree.type == NTREE_SHADER) {
+          RNA_enum_item_add(&items, &items_num, item);
+        }
+        break;
+      }
+      case NodeGroupCategory::Distort:
+      case NodeGroupCategory::Filter:
+      case NodeGroupCategory::Matte: {
+        if (ntree.type == NTREE_COMPOSIT) {
+          RNA_enum_item_add(&items, &items_num, item);
+        }
+        break;
+      }
+      default: {
+        RNA_enum_item_add(&items, &items_num, item);
+        break;
+      }
+    }
+  }
+
+  RNA_enum_item_end(&items, &items_num);
+
+  *r_free = true;
+  return items;
+}
+
 static bNode *rna_NodeTree_node_new(bNodeTree *ntree,
                                     bContext *C,
                                     ReportList *reports,
@@ -10385,6 +10432,7 @@ static void rna_def_nodetree(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "category", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_node_group_category_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_NodeTree_category_itemf");
   RNA_def_property_ui_text(
       prop, "Category", "Category of the node group which influences the header color");
   RNA_def_property_update(prop, NC_NODE, nullptr);
