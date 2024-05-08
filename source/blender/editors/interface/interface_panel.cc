@@ -1175,12 +1175,13 @@ void UI_draw_layout_panels_backdrop(const ARegion *region,
     panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
     panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
     BLI_rctf_translate(&panel_blockspace, 0, -layout_panel_y_offset());
-    /* Early break if following panels are below to `block->rect`. */
+
     if (panel_blockspace.ymax <= panel->runtime->block->rect.ymin) {
+      /* Layout panels no longer fits in block rectangle, stop drawing backdrops. */
       break;
     }
-    /* Avoid drawing panels that are above to `block->rect`. */
     if (panel_blockspace.ymin >= panel->runtime->block->rect.ymax) {
+      /* Skip layout panels that scrolled to the top of the block rectangle. */
       continue;
     }
     /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
