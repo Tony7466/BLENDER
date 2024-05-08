@@ -314,6 +314,8 @@ ccl_device_inline void triangle_light_sample_from_intersection(
   ls->shader = sd->shader;
   ls->D = ray_D;
   ls->t = isect->t;
+  ls->u = isect->u;
+  ls->v = isect->v;
   ls->P = ray_P + ray_D * ls->t;
   ls->object = isect->object;
   ls->prim = isect->prim;
