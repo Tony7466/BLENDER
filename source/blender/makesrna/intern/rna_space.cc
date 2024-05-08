@@ -5968,6 +5968,11 @@ static void rna_def_space_sequencer_timeline_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_SHOW_STRIP_RETIMING);
   RNA_def_property_ui_text(prop, "Show Retiming Keys", "Display retiming keys on top of strips");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
+
+  prop = RNA_def_property(srna, "show_rounded_corners", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TIMELINE_ROUNDED_CORNERS);
+  RNA_def_property_ui_text(prop, "Rounded Corners", "TODO Debug Only");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SEQUENCER, nullptr);
 }
 
 static void rna_def_space_sequencer_cache_overlay(BlenderRNA *brna)

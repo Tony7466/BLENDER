@@ -104,6 +104,7 @@ set(SRC
   GPU_select.hh
   GPU_shader.hh
   GPU_shader_builtin.hh
+  GPU_shader_sequencer.hh
   GPU_shader_shared.hh
   GPU_state.hh
   GPU_storage_buffer.hh
@@ -440,6 +441,7 @@ set(MSL_SRC
 )
 
 set(GLSL_SRC
+  GPU_shader_sequencer.hh
   GPU_shader_shared.hh
   shaders/opengl/glsl_shader_defines.glsl
 
@@ -502,6 +504,9 @@ set(GLSL_SRC
   shaders/gpu_shader_text_frag.glsl
   shaders/gpu_shader_keyframe_shape_vert.glsl
   shaders/gpu_shader_keyframe_shape_frag.glsl
+
+  shaders/gpu_shader_sequencer_strips_vert.glsl
+  shaders/gpu_shader_sequencer_strips_frag.glsl
 
   shaders/gpu_shader_codegen_lib.glsl
 
@@ -798,6 +803,7 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/gpu_shader_instance_varying_color_varying_size_info.hh
   shaders/infos/gpu_shader_keyframe_shape_info.hh
   shaders/infos/gpu_shader_line_dashed_uniform_color_info.hh
+  shaders/infos/gpu_shader_sequencer_info.hh
   shaders/infos/gpu_shader_simple_lighting_info.hh
   shaders/infos/gpu_shader_text_info.hh
   shaders/infos/gpu_srgb_to_framebuffer_space_info.hh
