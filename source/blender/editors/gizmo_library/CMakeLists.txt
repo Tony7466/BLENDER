@@ -7,11 +7,9 @@ set(INC
   ../../blenkernel
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/eigen
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -23,7 +21,7 @@ set(INC_SYS
 set(SRC
   gizmo_draw_utils.cc
   gizmo_geometry.h
-  gizmo_library_intern.h
+  gizmo_library_intern.hh
   gizmo_library_presets.cc
   gizmo_library_utils.cc
   geometry/geom_arrow_gizmo.cc
@@ -42,7 +40,9 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

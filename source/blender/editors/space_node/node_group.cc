@@ -22,20 +22,18 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "PIL_time.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_context.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
-#include "BKE_report.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_report.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_node.hh"
@@ -54,7 +52,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 #include "NOD_geometry.hh"
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
@@ -148,31 +146,15 @@ static void remap_pairing(bNodeTree &dst_tree,
                           const Map<int32_t, int32_t> &identifier_map)
 {
   for (bNode *dst_node : nodes) {
-    switch (dst_node->type) {
-      case GEO_NODE_SIMULATION_INPUT: {
-        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-            dst_node->storage);
-        if (data->output_node_id == 0) {
-          continue;
-        }
-
-        data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
-        if (data->output_node_id == 0) {
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
+    if (bke::all_zone_input_node_types().contains(dst_node->type)) {
+      const bke::bNodeZoneType &zone_type = *bke::zone_type_by_node_type(dst_node->type);
+      int &output_node_id = zone_type.get_corresponding_output_id(*dst_node);
+      if (output_node_id == 0) {
+        continue;
       }
-      case GEO_NODE_REPEAT_INPUT: {
-        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
-        if (data->output_node_id == 0) {
-          continue;
-        }
-
-        data->output_node_id = identifier_map.lookup_default(data->output_node_id, 0);
-        if (data->output_node_id == 0) {
-          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
-        }
-        break;
+      output_node_id = identifier_map.lookup_default(output_node_id, 0);
+      if (output_node_id == 0) {
+        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
       }
     }
   }
@@ -225,7 +207,8 @@ void NODE_OT_group_edit(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "exit", false, "Exit", "");
+  PropertyRNA *prop = RNA_def_boolean(ot->srna, "exit", false, "Exit", "");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 /** \} */
@@ -238,13 +221,13 @@ void NODE_OT_group_edit(wmOperatorType *ot)
  * The given paths will be owned by the returned instance.
  * Both pointers are allowed to point to the same string.
  */
-static AnimationBasePathChange *animation_basepath_change_new(const char *src_basepath,
-                                                              const char *dst_basepath)
+static AnimationBasePathChange *animation_basepath_change_new(const StringRef src_basepath,
+                                                              const StringRef dst_basepath)
 {
   AnimationBasePathChange *basepath_change = (AnimationBasePathChange *)MEM_callocN(
       sizeof(*basepath_change), AT);
-  basepath_change->src_basepath = src_basepath;
-  basepath_change->dst_basepath = dst_basepath;
+  basepath_change->src_basepath = BLI_strdupn(src_basepath.data(), src_basepath.size());
+  basepath_change->dst_basepath = BLI_strdupn(dst_basepath.data(), dst_basepath.size());
   return basepath_change;
 }
 
@@ -284,7 +267,7 @@ static void update_nested_node_refs_after_ungroup(bNodeTree &ntree,
 /**
  * \return True if successful.
  */
-static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
+static void node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 {
   ListBase anim_basepaths = {nullptr, nullptr};
   Vector<bNode *> nodes_delayed_free;
@@ -312,10 +295,9 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
     /* Keep track of this node's RNA "base" path (the part of the path identifying the node)
      * if the old node-tree has animation data which potentially covers this node. */
-    const char *old_animation_basepath = nullptr;
+    std::optional<std::string> old_animation_basepath;
     if (wgroup->adt) {
-      PointerRNA ptr;
-      RNA_pointer_create(&wgroup->id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&wgroup->id, &RNA_Node, node);
       old_animation_basepath = RNA_path_from_ID_to_struct(&ptr);
     }
 
@@ -330,11 +312,10 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
     BKE_ntree_update_tag_node_new(ntree, node);
 
     if (wgroup->adt) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
-      const char *new_animation_basepath = RNA_path_from_ID_to_struct(&ptr);
+      PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
+      const std::optional<std::string> new_animation_basepath = RNA_path_from_ID_to_struct(&ptr);
       BLI_addtail(&anim_basepaths,
-                  animation_basepath_change_new(old_animation_basepath, new_animation_basepath));
+                  animation_basepath_change_new(*old_animation_basepath, *new_animation_basepath));
     }
 
     if (!node->parent) {
@@ -433,7 +414,8 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
         /* find internal links to this output */
         for (bNodeLink *tlink = glinks_first->next; tlink != glinks_last->next;
-             tlink = tlink->next) {
+             tlink = tlink->next)
+        {
           /* only use active output node */
           if (tlink->tonode->type == NODE_GROUP_OUTPUT && (tlink->tonode->flag & NODE_DO_OUTPUT)) {
             if (STREQ(tlink->tosock->identifier, identifier)) {
@@ -466,11 +448,9 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
 
   /* delete the group instance and dereference group tree */
   nodeRemoveNode(bmain, ntree, gnode, true);
-
-  return true;
 }
 
-static int node_group_ungroup_exec(bContext *C, wmOperator *op)
+static int node_group_ungroup_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -478,19 +458,23 @@ static int node_group_ungroup_exec(bContext *C, wmOperator *op)
 
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
 
-  bNode *gnode = node_group_get_active(C, node_idname);
-  if (!gnode) {
+  blender::Vector<bNode *> nodes_to_ungroup;
+  LISTBASE_FOREACH (bNode *, node, &snode->edittree->nodes) {
+    if (node->flag & NODE_SELECT) {
+      if (STREQ(node->idname, node_idname)) {
+        if (node->id != nullptr) {
+          nodes_to_ungroup.append(node);
+        }
+      }
+    }
+  }
+  if (nodes_to_ungroup.is_empty()) {
     return OPERATOR_CANCELLED;
   }
-
-  if (gnode->id && node_group_ungroup(bmain, snode->edittree, gnode)) {
-    ED_node_tree_propagate_change(C, CTX_data_main(C), nullptr);
+  for (bNode *node : nodes_to_ungroup) {
+    node_group_ungroup(bmain, snode->edittree, node);
   }
-  else {
-    BKE_report(op->reports, RPT_WARNING, "Cannot ungroup");
-    return OPERATOR_CANCELLED;
-  }
-
+  ED_node_tree_propagate_change(C, CTX_data_main(C), nullptr);
   return OPERATOR_FINISHED;
 }
 
@@ -554,14 +538,9 @@ static bool node_group_separate_selected(
     /* Keep track of this node's RNA "base" path (the part of the path identifying the node)
      * if the old node-tree has animation data which potentially covers this node. */
     if (ngroup.adt) {
-      PointerRNA ptr;
-      char *path;
-
-      RNA_pointer_create(&ngroup.id, &RNA_Node, newnode, &ptr);
-      path = RNA_path_from_ID_to_struct(&ptr);
-
-      if (path) {
-        BLI_addtail(&anim_basepaths, animation_basepath_change_new(path, path));
+      PointerRNA ptr = RNA_pointer_create(&ngroup.id, &RNA_Node, newnode);
+      if (const std::optional<std::string> path = RNA_path_from_ID_to_struct(&ptr)) {
+        BLI_addtail(&anim_basepaths, animation_basepath_change_new(*path, *path));
       }
     }
 
@@ -753,16 +732,17 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
   for (bNode *node : nodes_to_group) {
     const char *disabled_hint = nullptr;
     if (node->typeinfo->poll_instance &&
-        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint)) {
+        !node->typeinfo->poll_instance(node, ngroup, &disabled_hint))
+    {
       if (disabled_hint) {
         BKE_reportf(&reports,
                     RPT_WARNING,
-                    "Can not add node '%s' in a group:\n  %s",
+                    "Cannot add node '%s' in a group:\n  %s",
                     node->name,
                     disabled_hint);
       }
       else {
-        BKE_reportf(&reports, RPT_WARNING, "Can not add node '%s' in a group", node->name);
+        BKE_reportf(&reports, RPT_WARNING, "Cannot add node '%s' in a group", node->name);
       }
       return false;
     }
@@ -791,58 +771,29 @@ static bool node_group_make_test_selected(bNodeTree &ntree,
       return false;
     }
   }
-  /* Check if simulation zone pairs are fully selected.
-   * Simulation input or output nodes can only be grouped together with the paired node.
-   */
-  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeSimulationInput")) {
-    const NodeGeometrySimulationInput &input_data =
-        *static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
-
-    if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
-      const bool input_selected = nodes_to_group.contains(input_node);
-      const bool output_selected = nodes_to_group.contains(output_node);
-      if (input_selected && !output_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add simulation input node '%s' to a group without its paired output '%s'",
-            input_node->name,
-            output_node->name);
-        return false;
-      }
-      if (output_selected && !input_selected) {
-        BKE_reportf(
-            &reports,
-            RPT_WARNING,
-            "Can not add simulation output node '%s' to a group without its paired input '%s'",
-            output_node->name,
-            input_node->name);
-        return false;
-      }
-    }
-  }
-  for (bNode *input_node : ntree.nodes_by_type("GeometryNodeRepeatInput")) {
-    const NodeGeometryRepeatInput &input_data = *static_cast<const NodeGeometryRepeatInput *>(
-        input_node->storage);
-
-    if (bNode *output_node = ntree.node_by_id(input_data.output_node_id)) {
-      const bool input_selected = nodes_to_group.contains(input_node);
-      const bool output_selected = nodes_to_group.contains(output_node);
-      if (input_selected && !output_selected) {
-        BKE_reportf(&reports,
-                    RPT_WARNING,
-                    "Can not add repeat input node '%s' to a group without its paired output '%s'",
-                    input_node->name,
-                    output_node->name);
-        return false;
-      }
-      if (output_selected && !input_selected) {
-        BKE_reportf(&reports,
-                    RPT_WARNING,
-                    "Can not add repeat output node '%s' to a group without its paired input '%s'",
-                    output_node->name,
-                    input_node->name);
-        return false;
+  /* Check if zone pairs are fully selected.
+   * Zone input or output nodes can only be grouped together with the paired node. */
+  for (const bke::bNodeZoneType *zone_type : bke::all_zone_types()) {
+    for (bNode *input_node : ntree.nodes_by_type(zone_type->input_idname)) {
+      if (bNode *output_node = zone_type->get_corresponding_output(ntree, *input_node)) {
+        const bool input_selected = nodes_to_group.contains(input_node);
+        const bool output_selected = nodes_to_group.contains(output_node);
+        if (input_selected && !output_selected) {
+          BKE_reportf(&reports,
+                      RPT_WARNING,
+                      "Cannot add zone input node '%s' to a group without its paired output '%s'",
+                      input_node->name,
+                      output_node->name);
+          return false;
+        }
+        if (output_selected && !input_selected) {
+          BKE_reportf(&reports,
+                      RPT_WARNING,
+                      "Cannot add zone output node '%s' to a group without its paired input '%s'",
+                      output_node->name,
+                      input_node->name);
+          return false;
+        }
       }
     }
   }
@@ -928,7 +879,7 @@ static void update_nested_node_refs_after_moving_nodes_into_group(
     const Map<int32_t, int32_t> &node_identifier_map)
 {
   /* Update nested node references in the parent and child node tree. */
-  RandomNumberGenerator rng(PIL_check_seconds_timer_i() & UINT_MAX);
+  RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
   Vector<bNestedNodeRef> new_nested_node_refs;
   /* Keep all nested node references that were in the group before. */
   for (const bNestedNodeRef &ref : group.nested_node_refs_span()) {
@@ -988,6 +939,9 @@ static void node_group_make_insert_selected(const bContext &C,
   float2 real_min, real_max;
   get_min_max_of_nodes(nodes_to_move, true, real_min, real_max);
 
+  /* If only one node is selected expose all its sockets regardless of links. */
+  const bool expose_visible = nodes_to_move.size() == 1;
+
   /* Reuse an existing output node or create a new one. */
   group.ensure_topology_cache();
   bNode *output_node = [&]() {
@@ -1016,6 +970,12 @@ static void node_group_make_insert_selected(const bContext &C,
     const bNodeTreeInterfaceSocket *interface_socket;
   };
 
+  struct NewInternalLinkInfo {
+    bNode *node;
+    bNodeSocket *socket;
+    const bNodeTreeInterfaceSocket *interface_socket;
+  };
+
   /* Map from single non-selected output sockets to potentially many selected input sockets. */
   Map<bNodeSocket *, InputSocketInfo> input_links;
   Vector<OutputLinkInfo> output_links;
@@ -1023,10 +983,19 @@ static void node_group_make_insert_selected(const bContext &C,
   Set<bNodeLink *> links_to_remove;
   /* Map old to new node identifiers. */
   Map<int32_t, int32_t> node_identifier_map;
+  Vector<NewInternalLinkInfo> new_internal_links;
 
   ntree.ensure_topology_cache();
+  /* Add all outputs first. */
   for (bNode *node : nodes_to_move) {
     for (bNodeSocket *output_socket : node->output_sockets()) {
+      if (!output_socket->is_available() || output_socket->is_hidden()) {
+        for (bNodeLink *link : output_socket->directly_linked_links()) {
+          links_to_remove.add(link);
+        }
+        continue;
+      }
+
       for (bNodeLink *link : output_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1049,8 +1018,25 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
         }
       }
+      if (expose_visible && !output_socket->is_directly_linked()) {
+        bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
+            group, *node, *output_socket);
+        if (io_socket) {
+          new_internal_links.append({node, output_socket, io_socket});
+        }
+      }
     }
+  }
+  /* Now add all inputs. */
+  for (bNode *node : nodes_to_move) {
     for (bNodeSocket *input_socket : node->input_sockets()) {
+      if (!input_socket->is_available() || input_socket->is_hidden()) {
+        for (bNodeLink *link : input_socket->directly_linked_links()) {
+          links_to_remove.add(link);
+        }
+        continue;
+      }
+
       for (bNodeLink *link : input_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1070,40 +1056,14 @@ static void node_group_make_insert_selected(const bContext &C,
         if (!info.interface_socket) {
           info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
-        else {
-          links_to_remove.add(link);
+      }
+      if (expose_visible && !input_socket->is_directly_linked()) {
+        bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
+            group, *node, *input_socket);
+        if (io_socket) {
+          new_internal_links.append({node, input_socket, io_socket});
         }
       }
-    }
-  }
-
-  struct NewInternalLinkInfo {
-    bNode *node;
-    bNodeSocket *socket;
-    const bNodeTreeInterfaceSocket *interface_socket;
-  };
-
-  const bool expose_visible = nodes_to_move.size() == 1;
-  Vector<NewInternalLinkInfo> new_internal_links;
-  if (expose_visible) {
-    for (bNode *node : nodes_to_move) {
-      auto expose_sockets = [&](const Span<bNodeSocket *> sockets) {
-        for (bNodeSocket *socket : sockets) {
-          if (!socket->is_available() || socket->is_hidden()) {
-            continue;
-          }
-          if (socket->is_directly_linked()) {
-            continue;
-          }
-          const bNodeTreeInterfaceSocket *io_socket =
-              bke::node_interface::add_interface_socket_from_node(group, *node, *socket);
-          if (io_socket) {
-            new_internal_links.append({node, socket, io_socket});
-          }
-        }
-      };
-      expose_sockets(node->input_sockets());
-      expose_sockets(node->output_sockets());
     }
   }
 
@@ -1123,10 +1083,9 @@ static void node_group_make_insert_selected(const bContext &C,
   if (ntree.adt) {
     ListBase anim_basepaths = {nullptr, nullptr};
     for (bNode *node : nodes_to_move) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree.id, &RNA_Node, node, &ptr);
-      if (char *path = RNA_path_from_ID_to_struct(&ptr)) {
-        BLI_addtail(&anim_basepaths, animation_basepath_change_new(path, path));
+      PointerRNA ptr = RNA_pointer_create(&ntree.id, &RNA_Node, node);
+      if (const std::optional<std::string> path = RNA_path_from_ID_to_struct(&ptr)) {
+        BLI_addtail(&anim_basepaths, animation_basepath_change_new(*path, *path));
       }
     }
     BKE_animdata_transfer_by_basepath(bmain, &ntree.id, &group.id, &anim_basepaths);
@@ -1347,7 +1306,7 @@ static int node_group_insert_exec(bContext *C, wmOperator *op)
     }
     if (ntreeContainsTree(reinterpret_cast<bNodeTree *>(group->id), ngroup)) {
       BKE_reportf(
-          op->reports, RPT_WARNING, "Can not insert group '%s' in '%s'", group->name, gnode->name);
+          op->reports, RPT_WARNING, "Cannot insert group '%s' in '%s'", group->name, gnode->name);
       return OPERATOR_CANCELLED;
     }
   }

@@ -16,14 +16,14 @@
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
 
-#include "GPU_context.h"
-#include "GPU_framebuffer.h"
+#include "GPU_context.hh"
+#include "GPU_framebuffer.hh"
 
+#include "GPU_batch.hh"
 #include "gpu_backend.hh"
-#include "gpu_batch_private.hh"
 #include "gpu_context_private.hh"
-#include "gpu_matrix_private.h"
-#include "gpu_private.h"
+#include "gpu_matrix_private.hh"
+#include "gpu_private.hh"
 
 #ifdef WITH_OPENGL_BACKEND
 #  include "gl_backend.hh"
@@ -185,7 +185,7 @@ void GPU_context_main_unlock()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name  GPU Begin/end work blocks
+/** \name GPU Begin/end work blocks
  *
  * Used to explicitly define a per-frame block within which GPU work will happen.
  * Used for global autoreleasepool flushing in Metal
@@ -205,13 +205,17 @@ void GPU_render_end()
 {
   GPUBackend *backend = GPUBackend::get();
   BLI_assert(backend);
-  backend->render_end();
+  if (backend) {
+    backend->render_end();
+  }
 }
 void GPU_render_step()
 {
   GPUBackend *backend = GPUBackend::get();
   BLI_assert(backend);
-  backend->render_step();
+  if (backend) {
+    backend->render_step();
+  }
 }
 
 /** \} */

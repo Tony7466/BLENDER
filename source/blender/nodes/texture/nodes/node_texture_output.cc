@@ -8,7 +8,6 @@
 
 #include "BLI_string.h"
 
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
 #include "node_util.hh"
 
@@ -65,7 +64,8 @@ static void unique_name(bNode *node)
   }
   for (; i; i = i->next) {
     if (i == node || i->type != TEX_NODE_OUTPUT ||
-        !STREQ(name, ((TexNodeOutput *)(i->storage))->name)) {
+        !STREQ(name, ((TexNodeOutput *)(i->storage))->name))
+    {
       continue;
     }
 
@@ -140,7 +140,7 @@ void register_node_type_tex_output()
 
   tex_node_type_base(&ntype, TEX_NODE_OUTPUT, "Output", NODE_CLASS_OUTPUT);
   blender::bke::node_type_socket_templates(&ntype, inputs, nullptr);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.initfunc = init;
   node_type_storage(&ntype, "TexNodeOutput", node_free_standard_storage, copy);
   ntype.exec_fn = exec;

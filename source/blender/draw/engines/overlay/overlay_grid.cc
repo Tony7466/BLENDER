@@ -8,12 +8,12 @@
 
 #include "BLI_math_color.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_image.hh"
 #include "ED_view3d.hh"
@@ -158,7 +158,8 @@ void OVERLAY_grid_init(OVERLAY_Data *vedata)
       /* Perspective: If camera is below floor plane, we switch clipping.
        * Orthographic: If eye vector is looking up, we switch clipping. */
       if (((winmat[3][3] == 0.0f) && (campos[2] > 0.0f)) ||
-          ((winmat[3][3] != 0.0f) && (zvec[2] < 0.0f))) {
+          ((winmat[3][3] != 0.0f) && (zvec[2] < 0.0f)))
+      {
         zpos_flag |= CLIP_ZPOS;
         zneg_flag |= CLIP_ZNEG;
       }
@@ -262,7 +263,7 @@ void OVERLAY_grid_cache_init(OVERLAY_Data *ved)
 
   {
     DRWShadingGroup *grp;
-    GPUBatch *geom = DRW_cache_grid_get();
+    blender::gpu::Batch *geom = DRW_cache_grid_get();
 
     GPUShader *sh = OVERLAY_shader_grid();
 

@@ -501,16 +501,18 @@ class WholeCharacterMixin:
     # custom properties
     def doCustomProps(self, ks, bone):
 
-        prop_type_compat = {bpy.types.BoolProperty,
-                            bpy.types.IntProperty,
-                            bpy.types.FloatProperty}
+        prop_type_compat = {
+            bpy.types.BoolProperty,
+            bpy.types.IntProperty,
+            bpy.types.FloatProperty,
+        }
 
         # go over all custom properties for bone
         for prop in bone.keys():
             # for now, just add all of 'em
             prop_rna = type(bone).bl_rna.properties.get(prop, None)
             if prop_rna is None:
-                prop_path = '["%s"]' % bpy.utils.escape_identifier(prop)
+                prop_path = '["{:s}"]'.format(bpy.utils.escape_identifier(prop))
                 try:
                     rna_property = bone.path_resolve(prop_path, False)
                 except ValueError:

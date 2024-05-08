@@ -6,15 +6,13 @@
  * \ingroup cmpnodes
  */
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
 
 #include "node_composite_util.hh"
-
-#include "BKE_colortools.h"
 
 namespace blender::nodes::node_composite_huecorrect_cc {
 
@@ -38,13 +36,14 @@ static void node_composit_init_huecorrect(bNodeTree * /*ntree*/, bNode *node)
 
   CurveMapping *cumapping = (CurveMapping *)node->storage;
 
-  cumapping->preset = CURVE_PRESET_MID9;
+  cumapping->preset = CURVE_PRESET_MID8;
 
   for (int c = 0; c < 3; c++) {
     CurveMap *cuma = &cumapping->cm[c];
     BKE_curvemap_reset(cuma, &cumapping->clipr, cumapping->preset, CURVEMAP_SLOPE_POSITIVE);
   }
-
+  /* use wrapping for all hue correct nodes */
+  cumapping->flag |= CUMA_USE_WRAPPING;
   /* default to showing Saturation */
   cumapping->cur = 1;
 }

@@ -30,7 +30,7 @@ class CAMERA_PT_presets(PresetPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
 
 class CAMERA_PT_safe_areas_presets(PresetPanel, Panel):
@@ -43,7 +43,7 @@ class CAMERA_PT_safe_areas_presets(PresetPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
 
 class DATA_PT_context_camera(CameraButtonsPanel, Panel):
@@ -54,7 +54,7 @@ class DATA_PT_context_camera(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -77,7 +77,7 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -124,7 +124,7 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
                     col.prop(cam, "fisheye_polynomial_k3", text="K3")
                     col.prop(cam, "fisheye_polynomial_k4", text="K4")
 
-            elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}:
+            elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}:
                 if cam.lens_unit == 'MILLIMETERS':
                     col.prop(cam, "lens")
                 elif cam.lens_unit == 'FOV':
@@ -151,13 +151,12 @@ class DATA_PT_camera_stereoscopy(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     @classmethod
     def poll(cls, context):
         render = context.scene.render
-        return (super().poll(context) and render.use_multiview and
-                render.views_format == 'STEREO_3D')
+        return (super().poll(context) and render.use_multiview and render.views_format == 'STEREO_3D')
 
     def draw(self, context):
         layout = self.layout
@@ -205,7 +204,7 @@ class DATA_PT_camera(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw_header_preset(self, _context):
         CAMERA_PT_presets.draw_panel_header(self.layout)
@@ -235,7 +234,7 @@ class DATA_PT_camera(CameraButtonsPanel, Panel):
 class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
     bl_label = "Depth of Field"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
     def draw_header(self, context):
         cam = context.camera
@@ -262,7 +261,7 @@ class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
 class DATA_PT_camera_dof_aperture(CameraButtonsPanel, Panel):
     bl_label = "Aperture"
     bl_parent_id = "DATA_PT_camera_dof"
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -291,7 +290,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw_header(self, context):
         cam = context.camera
@@ -307,7 +306,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
         use_multiview = context.scene.render.use_multiview
 
         col = layout.column()
-        col.operator("view3d.background_image_add", text="Add Image")
+        col.operator("view3d.camera_background_image_add", text="Add Image")
 
         for i, bg in enumerate(cam.background_images):
             layout.active = cam.show_background_images
@@ -331,7 +330,7 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
                 icon='RESTRICT_VIEW_OFF' if bg.show_background_image else 'RESTRICT_VIEW_ON',
             )
 
-            row.operator("view3d.background_image_remove", text="", emboss=False, icon='X').index = i
+            row.operator("view3d.camera_background_image_remove", text="", emboss=False, icon='X').index = i
 
             if bg.show_expanded:
                 row = box.row()
@@ -378,7 +377,9 @@ class DATA_PT_camera_background_image(CameraButtonsPanel, Panel):
 
                 if has_bg:
                     col = box.column()
-                    col.prop(bg, "alpha", slider=True)
+                    if bg.image is not None:
+                        col.prop(bg.image, "use_view_as_render")
+                    col.prop(bg, "alpha")
                     col.row().prop(bg, "display_depth", expand=True)
 
                     col.row().prop(bg, "frame_method", expand=True)
@@ -403,7 +404,7 @@ class DATA_PT_camera_display(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -441,7 +442,7 @@ class DATA_PT_camera_display_composition_guides(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -473,7 +474,7 @@ class DATA_PT_camera_safe_areas(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw_header(self, context):
         cam = context.camera
@@ -508,7 +509,7 @@ class DATA_PT_camera_safe_areas_center_cut(CameraButtonsPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw_header(self, context):
         cam = context.camera
@@ -537,7 +538,7 @@ class DATA_PT_custom_props_camera(CameraButtonsPanel, PropertyPanel, Panel):
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
     _context_path = "object.data"
     _property_type = bpy.types.Camera
 

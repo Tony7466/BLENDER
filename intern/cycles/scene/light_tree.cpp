@@ -108,7 +108,9 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
 
     /* TODO: need a better way to handle this when textures are used. */
     float area = triangle_area(vertices[0], vertices[1], vertices[2]);
-    measure.energy = area * average(shader->emission_estimate);
+    /* Use absolute value of emission_estimate so lights with negative strength are properly
+     * supported in the light tree. */
+    measure.energy = area * average(fabs(shader->emission_estimate));
 
     /* NOTE: the original implementation used the bounding box centroid, but triangle centroid
      * seems to work fine */
@@ -220,7 +222,7 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
 
     /* Use absolute value of energy so lights with negative strength are properly supported in the
      * light tree. */
-    measure.energy = fabsf(average(strength));
+    measure.energy = average(fabs(strength));
 
     light_set_membership = lamp->get_light_set_membership();
   }
@@ -405,6 +407,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
   recursive_build(
       left, root_.get(), num_emissive_triangles, num_local_lights, emitters_.data(), 0, 1);
   task_pool.wait_work();
+
+  if (progress_.get_cancel()) {
+    root_.reset();
+    return nullptr;
+  }
 
   /* All distant lights are grouped to the right child as a leaf node. */
   root_->get_inner().children[right] = create_node(LightTreeMeasure::empty, 1);

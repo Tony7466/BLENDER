@@ -12,11 +12,11 @@
 #include "BLI_math_rotation.h"
 #include "BLI_sys_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
@@ -26,11 +26,11 @@
 
 #  include "MEM_guardedalloc.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
+#  include "BKE_context.hh"
+#  include "BKE_main.hh"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_node.hh"
 #  include "WM_api.hh"
@@ -132,6 +132,13 @@ static void rna_def_light(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
   RNA_def_property_ui_text(prop, "Diffuse Factor", "Diffuse reflection multiplier");
+  RNA_def_property_update(prop, 0, "rna_Light_update");
+
+  prop = RNA_def_property(srna, "transmission_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "transmission_fac");
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.01, 2);
+  RNA_def_property_ui_text(prop, "Transmission Factor", "Transmission light multiplier");
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
   prop = RNA_def_property(srna, "volume_factor", PROP_FLOAT, PROP_FACTOR);
@@ -290,6 +297,25 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
       prop, "Contact Shadow Thickness", "Pixel thickness used to detect occlusion");
   RNA_def_property_update(prop, 0, "rna_Light_update");
 
+  prop = RNA_def_property(srna, "shadow_filter_radius", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 5.0f, 1.0f, 2);
+  RNA_def_property_ui_text(
+      prop, "Shadow Filter Radius", "Blur shadow aliasing using Percentage Closer Filtering");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_Light_update");
+
+  prop = RNA_def_property(srna, "shadow_resolution_scale", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_range(prop, 0.0f, 1.0f, 0.25f, 2);
+  RNA_def_property_ui_text(
+      prop,
+      "Shadow Resolution Scale",
+      "Scale the Shadow Map target resolution, where 1.0 tries to match shadow map and screen "
+      "pixel density. (The scale is applied on top of the scene Simplify Shadow Resolution)");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_Light_update");
+
   if (sun) {
     prop = RNA_def_property(srna, "shadow_cascade_max_distance", PROP_FLOAT, PROP_DISTANCE);
     RNA_def_property_float_sdna(prop, nullptr, "cascade_max_dist");
@@ -320,6 +346,14 @@ static void rna_def_light_shadow(StructRNA *srna, bool sun)
     RNA_def_property_ui_text(
         prop, "Cascade Fade", "How smooth is the transition between each cascade");
     RNA_def_property_update(prop, 0, "rna_Light_update");
+
+    prop = RNA_def_property(srna, "shadow_trace_distance", PROP_FLOAT, PROP_DISTANCE);
+    RNA_def_property_range(prop, 0.0f, FLT_MAX);
+    RNA_def_property_ui_range(prop, 0, 100, 0.1, 3);
+    RNA_def_property_ui_text(prop,
+                             "Shadow Tracing Max Distance",
+                             "Maximum distance a shadow map tracing ray can travel");
+    RNA_def_property_update(prop, 0, "rna_Light_update");
   }
 }
 
@@ -331,6 +365,15 @@ static void rna_def_point_light(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "Light");
   RNA_def_struct_ui_text(srna, "Point Light", "Omnidirectional point Light");
   RNA_def_struct_ui_icon(srna, ICON_LIGHT_POINT);
+
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, "use_soft_falloff", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "mode", LA_USE_SOFT_FALLOFF);
+  RNA_def_property_ui_text(
+      prop,
+      "Soft Falloff",
+      "Apply falloff to avoid sharp edges when the light geometry intersects with other objects");
+  RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 
   rna_def_light_energy(srna, LA_LOCAL);
   rna_def_light_shadow(srna, false);
@@ -427,6 +470,14 @@ static void rna_def_spot_light(BlenderRNA *brna)
       prop,
       "Show Cone",
       "Display transparent cone in 3D view to visualize which objects are contained in it");
+  RNA_def_property_update(prop, 0, "rna_Light_draw_update");
+
+  prop = RNA_def_property(srna, "use_soft_falloff", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "mode", LA_USE_SOFT_FALLOFF);
+  RNA_def_property_ui_text(
+      prop,
+      "Soft Falloff",
+      "Apply falloff to avoid sharp edges when the light geometry intersects with other objects");
   RNA_def_property_update(prop, 0, "rna_Light_draw_update");
 }
 

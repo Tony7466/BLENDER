@@ -21,6 +21,8 @@ __all__ = (
     "refresh_script_paths",
     "app_template_paths",
     "register_class",
+    "register_cli_command",
+    "unregister_cli_command",
     "register_manual_map",
     "unregister_manual_map",
     "register_classes_factory",
@@ -49,9 +51,11 @@ from _bpy import (
     flip_name,
     unescape_identifier,
     register_class,
+    register_cli_command,
     resource_path,
     script_paths as _bpy_script_paths,
     unregister_class,
+    unregister_cli_command,
     user_resource as _user_resource,
     system_resource,
 )
@@ -119,8 +123,7 @@ def _test_import(module_name, loaded_modules):
     if module_name in loaded_modules:
         return None
     if "." in module_name:
-        print("Ignoring '%s', can't import files containing "
-              "multiple periods" % module_name)
+        print("Ignoring '{:s}', can't import files containing multiple periods".format(module_name))
         return None
 
     if use_time:
@@ -135,7 +138,7 @@ def _test_import(module_name, loaded_modules):
         return None
 
     if use_time:
-        print("time %s %.4f" % (module_name, time.time() - t))
+        print("time {:s} {:.4f}".format(module_name, time.time() - t))
 
     loaded_modules.add(mod.__name__)  # should match mod.__name__ too
     return mod
@@ -189,7 +192,7 @@ _global_loaded_modules = []  # store loaded module names for reloading.
 import bpy_types as _bpy_types  # keep for comparisons, never ever reload this.
 
 
-def load_scripts(*, reload_scripts=False, refresh_scripts=False):
+def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True):
     """
     Load scripts and run each modules register function.
 
@@ -199,6 +202,8 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
     :arg refresh_scripts: only load scripts which are not already loaded
        as modules.
     :type refresh_scripts: bool
+    :arg extensions: Loads additional scripts (add-ons & app-templates).
+    :type extensions: bool
     """
     use_time = use_class_register_check = _bpy.app.debug_python
     use_user = not _is_factory_startup
@@ -217,8 +222,8 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
         # to reload. note that they will only actually reload of the
         # modification time changes. This `won't` work for packages so...
         # its not perfect.
-        for module_name in [ext.module for ext in _preferences.addons]:
-            _addon_utils.disable(module_name)
+        for addon_module_name in [ext.module for ext in _preferences.addons]:
+            _addon_utils.disable(addon_module_name)
 
     def register_module_call(mod):
         register = getattr(mod, "register", None)
@@ -229,9 +234,10 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
                 import traceback
                 traceback.print_exc()
         else:
-            print("\nWarning! '%s' has no register function, "
-                  "this is now a requirement for registerable scripts" %
-                  mod.__file__)
+            print(
+                "\nWarning! {!r} has no register function, "
+                "this is now a requirement for registerable scripts".format(mod.__file__)
+            )
 
     def unregister_module_call(mod):
         unregister = getattr(mod, "unregister", None)
@@ -285,6 +291,13 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
 
         del _global_loaded_modules[:]
 
+        # Update key-maps to account for operators no longer existing.
+        # Typically unloading operators would refresh the event system (such as disabling an add-on)
+        # however reloading scripts re-enable all add-ons immediately (which may inspect key-maps).
+        # For this reason it's important to update key-maps which will have been tagged to update.
+        # Without this, add-on register functions accessing key-map properties can crash, see: #111702.
+        _bpy.context.window_manager.keyconfigs.update(keep_properties=True)
+
     from bpy_restrict_state import RestrictBlend
 
     with RestrictBlend():
@@ -299,6 +312,39 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
                         for mod in modules_from_path(path, loaded_modules):
                             test_register(mod)
 
+    if reload_scripts:
+        # Update key-maps for key-map items referencing operators defined in "startup".
+        # Without this, key-map items wont be set properly, see: #113309.
+        _bpy.context.window_manager.keyconfigs.update()
+
+    if extensions:
+        load_scripts_extensions(reload_scripts=reload_scripts)
+
+    if reload_scripts:
+        _bpy.context.window_manager.tag_script_reload()
+
+        import gc
+        print("gc.collect() -> {:d}".format(gc.collect()))
+
+    if use_time:
+        print("Python Script Load Time {:.4f}".format(time.time() - t_main))
+
+    if use_class_register_check:
+        for cls in _bpy.types.bpy_struct.__subclasses__():
+            if getattr(cls, "is_registered", False):
+                for subcls in cls.__subclasses__():
+                    if not subcls.is_registered:
+                        print("Warning, unregistered class: {:s}({:s})".format(subcls.__name__, cls.__name__))
+
+
+def load_scripts_extensions(*, reload_scripts=False):
+    """
+    Load extensions scripts (add-ons and app-templates)
+
+    :arg reload_scripts: Causes all scripts to have their unregister method
+       called before loading.
+    :type reload_scripts: bool
+    """
     # load template (if set)
     if any(_bpy.utils.app_template_paths()):
         import bl_app_template_utils
@@ -308,31 +354,12 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
     # Deal with add-ons separately.
     _initialize_once = getattr(_addon_utils, "_initialize_once", None)
     if _initialize_once is not None:
-        # First time, use fast-path.
+        # first time, use fast-path
         _initialize_once()
         del _addon_utils._initialize_once
     else:
         _addon_utils.reset_all(reload_scripts=reload_scripts)
     del _initialize_once
-
-    if reload_scripts:
-        _bpy.context.window_manager.tag_script_reload()
-
-        import gc
-        print("gc.collect() -> %d" % gc.collect())
-
-    if use_time:
-        print("Python Script Load Time %.4f" % (time.time() - t_main))
-
-    if use_class_register_check:
-        for cls in _bpy.types.bpy_struct.__subclasses__():
-            if getattr(cls, "is_registered", False):
-                for subcls in cls.__subclasses__():
-                    if not subcls.is_registered:
-                        print(
-                            "Warning, unregistered class: %s(%s)" %
-                            (subcls.__name__, cls.__name__)
-                        )
 
 
 def script_path_user():
@@ -470,7 +497,7 @@ def preset_paths(subdir):
     for path in script_paths(subdir="presets", check_all=True):
         directory = _os.path.join(path, subdir)
         if not directory.startswith(path):
-            raise Exception("invalid subdir given %r" % subdir)
+            raise Exception("invalid subdir given {!r}".format(subdir))
         elif _os.path.isdir(directory):
             dirs.append(directory)
 
@@ -565,13 +592,14 @@ def smpte_from_frame(frame, *, fps=None, fps_base=None):
     frame = abs(frame)
 
     return (
-        "%s%02d:%02d:%02d:%02d" % (
+        "{:s}{:02d}:{:02d}:{:02d}:{:02d}".format(
             sign,
             int(frame / (3600 * fps)),          # HH
             int((frame / (60 * fps)) % 60),     # MM
             int((frame / fps) % 60),            # SS
             int(frame % fps),                   # FF
-        ))
+        )
+    )
 
 
 def time_from_frame(frame, *, fps=None, fps_base=None):
@@ -652,17 +680,18 @@ def preset_find(name, preset_path, *, display_name=False, ext=".py"):
 def keyconfig_init():
     # Key configuration initialization and refresh, called from the Blender
     # window manager on startup and refresh.
+    default_config = "Blender"
     active_config = _preferences.keymap.active_keyconfig
 
     # Load the default key configuration.
-    default_filepath = preset_find("Blender", "keyconfig")
-    keyconfig_set(default_filepath)
+    filepath = preset_find(default_config, "keyconfig")
+    keyconfig_set(filepath)
 
-    # Set the active key configuration if different
-    filepath = preset_find(active_config, "keyconfig")
-
-    if filepath and filepath != default_filepath:
-        keyconfig_set(filepath)
+    # Set the active key configuration if different.
+    if default_config != active_config:
+        filepath = preset_find(active_config, "keyconfig")
+        if filepath:
+            keyconfig_set(filepath)
 
 
 def keyconfig_set(filepath, *, report=None):
@@ -672,6 +701,10 @@ def keyconfig_set(filepath, *, report=None):
         print("loading preset:", filepath)
 
     keyconfigs = _bpy.context.window_manager.keyconfigs
+    name = splitext(basename(filepath))[0]
+
+    # Store the old key-configuration case of error, to know if it should be removed or not on failure.
+    kc_old = keyconfigs.get(name)
 
     try:
         error_msg = ""
@@ -680,21 +713,20 @@ def keyconfig_set(filepath, *, report=None):
         import traceback
         error_msg = traceback.format_exc()
 
-    name = splitext(basename(filepath))[0]
     kc_new = keyconfigs.get(name)
 
     if error_msg:
         if report is not None:
             report({'ERROR'}, error_msg)
         print(error_msg)
-        if kc_new is not None:
+        if (kc_new is not None) and (kc_new != kc_old):
             keyconfigs.remove(kc_new)
         return False
 
     # Get name, exception for default keymap to keep backwards compatibility.
     if kc_new is None:
         if report is not None:
-            report({'ERROR'}, "Failed to load keymap %r" % filepath)
+            report({'ERROR'}, "Failed to load keymap {!r}".format(filepath))
         return False
     else:
         keyconfigs.active = kc_new
@@ -705,7 +737,7 @@ def user_resource(resource_type, *, path="", create=False):
     """
     Return a user resource path (normally from the users home directory).
 
-    :arg type: Resource type in ['DATAFILES', 'CONFIG', 'SCRIPTS', 'AUTOSAVE'].
+    :arg type: Resource type in ['DATAFILES', 'CONFIG', 'SCRIPTS', 'EXTENSIONS'].
     :type type: string
     :arg path: Optional subdirectory.
     :type path: string
@@ -730,7 +762,7 @@ def user_resource(resource_type, *, path="", create=False):
                     traceback.print_exc()
                     target_path = ""
             elif not _os.path.isdir(target_path):
-                print("Path %r found but isn't a directory!" % target_path)
+                print("Path {!r} found but isn't a directory!".format(target_path))
                 target_path = ""
 
     return target_path
@@ -822,7 +854,7 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
 
     cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
     if cls is None:
-        raise Exception("Space type %r has no toolbar" % space_type)
+        raise Exception("Space type {!r} has no toolbar".format(space_type))
     tools = cls._tools[context_mode]
 
     # First sanity check
@@ -832,9 +864,9 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
         if item is not None
     }
     if not issubclass(tool_cls, WorkSpaceTool):
-        raise Exception("Expected WorkSpaceTool subclass, not %r" % type(tool_cls))
+        raise Exception("Expected WorkSpaceTool subclass, not {!r}".format(type(tool_cls)))
     if tool_cls.bl_idname in tools_id:
-        raise Exception("Tool %r already exists!" % tool_cls.bl_idname)
+        raise Exception("Tool {!r} already exists!".format(tool_cls.bl_idname))
     del tools_id, WorkSpaceTool
 
     # Convert the class into a ToolDef.
@@ -858,11 +890,7 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
         tool_cls._bl_tool = tool_def
 
         keymap_data = tool_def.keymap
-        if keymap_data is not None:
-            if context_mode is None:
-                context_descr = "All"
-            else:
-                context_descr = context_mode.replace("_", " ").title()
+        if keymap_data is not None and callable(keymap_data[0]):
             from bpy import context
             wm = context.window_manager
             keyconfigs = wm.keyconfigs
@@ -870,7 +898,11 @@ def register_tool(tool_cls, *, after=None, separator=False, group=False):
             # Note that Blender's default tools use the default key-config for both.
             # We need to use the add-ons for 3rd party tools so reloading the key-map doesn't clear them.
             kc = keyconfigs.addon
-            if callable(keymap_data[0]):
+            if kc is not None:
+                if context_mode is None:
+                    context_descr = "All"
+                else:
+                    context_descr = context_mode.replace("_", " ").title()
                 cls._km_action_simple(kc_default, kc, context_descr, tool_def.label, keymap_data)
         return tool_def
 
@@ -934,7 +966,7 @@ def unregister_tool(tool_cls):
     from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
     cls = ToolSelectPanelHelper._tool_class_from_space_type(space_type)
     if cls is None:
-        raise Exception("Space type %r has no toolbar" % space_type)
+        raise Exception("Space type {!r} has no toolbar".format(space_type))
     tools = cls._tools[context_mode]
 
     tool_def = tool_cls._bl_tool
@@ -986,7 +1018,7 @@ def unregister_tool(tool_cls):
                     break
 
     if not changed:
-        raise Exception("Unable to remove %r" % tool_cls)
+        raise Exception("Unable to remove {!r}".format(tool_cls))
     del tool_cls._bl_tool
 
     keymap_data = tool_def.keymap
@@ -995,9 +1027,11 @@ def unregister_tool(tool_cls):
         wm = context.window_manager
         keyconfigs = wm.keyconfigs
         for kc in (keyconfigs.default, keyconfigs.addon):
+            if kc is None:
+                continue
             km = kc.keymaps.get(keymap_data[0])
             if km is None:
-                print("Warning keymap %r not found in %r!" % (keymap_data[0], kc.name))
+                print("Warning keymap {!r} not found in {!r}!".format(keymap_data[0], kc.name))
             else:
                 kc.keymaps.remove(km)
 
@@ -1033,7 +1067,7 @@ def manual_map():
         try:
             prefix, url_manual_mapping = cb()
         except:
-            print("Error calling %r" % cb)
+            print("Error calling {!r}".format(cb))
             import traceback
             traceback.print_exc()
             continue
@@ -1109,7 +1143,7 @@ def make_rna_paths(struct_name, prop_name, enum_name):
         if prop_name:
             src = src_rna = ".".join((struct_name, prop_name))
             if enum_name:
-                src = src_enum = "%s:'%s'" % (src_rna, enum_name)
+                src = src_enum = "{:s}:'{:s}'".format(src_rna, enum_name)
         else:
             src = src_rna = struct_name
     return src, src_rna, src_enum

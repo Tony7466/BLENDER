@@ -43,6 +43,21 @@ ccl_device void make_orthonormals_tangent(const float3 N,
   *a = cross(*b, N);
 }
 
+ccl_device void make_orthonormals_safe_tangent(const float3 N,
+                                               const float3 T,
+                                               ccl_private float3 *a,
+                                               ccl_private float3 *b)
+{
+  *b = safe_normalize(cross(N, T));
+  if (len_squared(*b) < 0.99f) {
+    /* Normalization failed, so fall back to basic orthonormals. */
+    make_orthonormals(N, a, b);
+  }
+  else {
+    *a = cross(*b, N);
+  }
+}
+
 /* sample direction with cosine weighted distributed in hemisphere */
 ccl_device_inline void sample_cos_hemisphere(const float3 N,
                                              float2 rand_in,
@@ -128,10 +143,10 @@ ccl_device_inline float3 sample_uniform_cone(const float3 N,
     float2 xy = sample_uniform_disk(rand);
     const float r2 = len_squared(xy);
 
-    /* Equivalent to `mix(cos_angle, 1.0f, 1.0f - r2)` */
+    /* Equivalent to `mix(cos_angle, 1.0f, 1.0f - r2)`. */
     *cos_theta = 1.0f - r2 * one_minus_cos_angle;
 
-    /* Remap disk radius to cone radius, equivalent to `xy *= sin_theta / sqrt(r2); */
+    /* Remap disk radius to cone radius, equivalent to `xy *= sin_theta / sqrt(r2)`. */
     xy *= safe_sqrtf(one_minus_cos_angle * (2.0f - one_minus_cos_angle * r2));
 
     *pdf = M_1_2PI_F / one_minus_cos_angle;

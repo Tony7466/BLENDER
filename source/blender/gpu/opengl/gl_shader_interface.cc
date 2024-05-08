@@ -15,7 +15,7 @@
 
 #include "gl_shader_interface.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 using namespace blender::gpu::shader;
 namespace blender::gpu {
@@ -221,11 +221,9 @@ GLShaderInterface::GLShaderInterface(GLuint program)
   uniform_len = active_uniform_len;
 
   GLint max_ssbo_name_len = 0, ssbo_len = 0;
-  if (GPU_shader_storage_buffer_objects_support()) {
-    glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
-    glGetProgramInterfaceiv(
-        program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
-  }
+  glGetProgramInterfaceiv(program, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &ssbo_len);
+  glGetProgramInterfaceiv(
+      program, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH, &max_ssbo_name_len);
 
   BLI_assert_msg(ubo_len <= 16, "enabled_ubo_mask_ is uint16_t");
 
@@ -392,6 +390,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
 
   attr_len_ = info.vertex_inputs_.size();
   uniform_len_ = info.push_constants_.size();
+  constant_len_ = info.specialization_constants_.size();
   ubo_len_ = 0;
   ssbo_len_ = 0;
 
@@ -432,7 +431,7 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
 
   BLI_assert_msg(ubo_len_ <= 16, "enabled_ubo_mask_ is uint16_t");
 
-  int input_tot_len = attr_len_ + ubo_len_ + uniform_len_ + ssbo_len_;
+  int input_tot_len = attr_len_ + ubo_len_ + uniform_len_ + ssbo_len_ + constant_len_;
   inputs_ = (ShaderInput *)MEM_callocN(sizeof(ShaderInput) * input_tot_len, __func__);
   ShaderInput *input = inputs_;
 
@@ -528,6 +527,14 @@ GLShaderInterface::GLShaderInterface(GLuint program, const shader::ShaderCreateI
       enabled_ssbo_mask_ |= (1 << input->binding);
       input++;
     }
+  }
+
+  /* Constants */
+  int constant_id = 0;
+  for (const ShaderCreateInfo::SpecializationConstant &constant : info.specialization_constants_) {
+    copy_input_name(input, constant.name, name_buffer_, name_buffer_offset);
+    input->location = constant_id++;
+    input++;
   }
 
   this->sort_inputs();

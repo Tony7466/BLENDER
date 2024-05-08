@@ -8,7 +8,6 @@
 
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
 
 static bNodeSocketTemplate inputs[] = {
@@ -96,7 +95,7 @@ void register_node_type_tex_hue_sat()
 
   tex_node_type_base(&ntype, TEX_NODE_HUE_SAT, "Hue/Saturation/Value", NODE_CLASS_OP_COLOR);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::Middle);
   ntype.exec_fn = exec;
 
   nodeRegisterType(&ntype);

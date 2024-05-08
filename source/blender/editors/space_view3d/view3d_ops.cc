@@ -17,11 +17,10 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
-#include "BKE_blender_copybuffer.h"
-#include "BKE_context.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
+#include "BKE_appdir.hh"
+#include "BKE_blender_copybuffer.hh"
+#include "BKE_context.hh"
+#include "BKE_report.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -33,7 +32,7 @@
 #include "ED_screen.hh"
 #include "ED_transform.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 #include "view3d_navigate.hh"
 
 #ifdef WIN32
@@ -175,8 +174,8 @@ void view3d_operatortypes()
   WM_operatortype_append(VIEW3D_OT_view_roll);
   WM_operatortype_append(VIEW3D_OT_view_pan);
   WM_operatortype_append(VIEW3D_OT_view_persportho);
-  WM_operatortype_append(VIEW3D_OT_background_image_add);
-  WM_operatortype_append(VIEW3D_OT_background_image_remove);
+  WM_operatortype_append(VIEW3D_OT_camera_background_image_add);
+  WM_operatortype_append(VIEW3D_OT_camera_background_image_remove);
   WM_operatortype_append(VIEW3D_OT_drop_world);
   WM_operatortype_append(VIEW3D_OT_view_selected);
   WM_operatortype_append(VIEW3D_OT_view_lock_clear);
@@ -232,10 +231,10 @@ void view3d_operatortypes()
 
 void view3d_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "3D View Generic", SPACE_VIEW3D, 0);
+  WM_keymap_ensure(keyconf, "3D View Generic", SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   /* only for region 3D window */
-  WM_keymap_ensure(keyconf, "3D View", SPACE_VIEW3D, 0);
+  WM_keymap_ensure(keyconf, "3D View", SPACE_VIEW3D, RGN_TYPE_WINDOW);
 
   fly_modal_keymap(keyconf);
   walk_modal_keymap(keyconf);

@@ -17,13 +17,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
 #include "../generic/py_capi_utils.h"
 
-#include "gpu_py.h"
+#include "gpu_py.hh"
 
-#include "gpu_py_buffer.h"
+#include "gpu_py_buffer.hh"
 
 #define PYGPU_BUFFER_PROTOCOL
 #define MAX_DIMENSIONS 64
@@ -64,7 +64,7 @@ static bool pygpu_buffer_pyobj_as_shape(PyObject *shape_obj,
   Py_ssize_t shape_len = 0;
   if (PyLong_Check(shape_obj)) {
     shape_len = 1;
-    if ((r_shape[0] = PyLong_AsLong(shape_obj)) < 1) {
+    if ((r_shape[0] = PyLong_AsSsize_t(shape_obj)) < 1) {
       PyErr_SetString(PyExc_AttributeError, "dimension must be greater than or equal to 1");
       return false;
     }
@@ -92,7 +92,7 @@ static bool pygpu_buffer_pyobj_as_shape(PyObject *shape_obj,
         return false;
       }
 
-      r_shape[i] = PyLong_AsLong(ob);
+      r_shape[i] = PyLong_AsSsize_t(ob);
       Py_DECREF(ob);
 
       if (r_shape[i] < 1) {
@@ -670,6 +670,7 @@ static PyBufferProcs pygpu_buffer__tp_as_buffer = {
 #endif
 
 PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_buffer__tp_doc,
     ".. class:: Buffer(format, dimensions, data)\n"
     "\n"

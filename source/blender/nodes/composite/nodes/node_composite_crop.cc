@@ -16,8 +16,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -96,7 +96,7 @@ class CropOperation : public NodeOperation {
    * same domain as the input image. */
   void execute_alpha_crop()
   {
-    GPUShader *shader = shader_manager().get("compositor_alpha_crop");
+    GPUShader *shader = context().get_shader("compositor_alpha_crop");
     GPU_shader_bind(shader);
 
     int2 lower_bound, upper_bound;
@@ -133,7 +133,7 @@ class CropOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get("compositor_image_crop");
+    GPUShader *shader = context().get_shader("compositor_image_crop");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);

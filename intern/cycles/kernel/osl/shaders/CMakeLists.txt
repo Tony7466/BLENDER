@@ -61,7 +61,6 @@ set(SRC_OSL
   node_mix_float.osl
   node_mix_vector.osl
   node_mix_vector_non_uniform.osl
-  node_musgrave_texture.osl
   node_noise_texture.osl
   node_normal.osl
   node_normal_map.osl
@@ -70,6 +69,7 @@ set(SRC_OSL
   node_output_surface.osl
   node_output_volume.osl
   node_particle_info.osl
+  node_ray_portal_bsdf.osl
   node_refraction_bsdf.osl
   node_rgb_curves.osl
   node_rgb_ramp.osl

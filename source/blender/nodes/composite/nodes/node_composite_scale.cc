@@ -7,16 +7,24 @@
  */
 
 #include "BLI_assert.h"
+#include "BLI_math_angle_types.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
+
+#include "COM_algorithm_transform.hh"
 #include "COM_node_operation.hh"
+#include "COM_utilities.hh"
 
 #include "node_composite_util.hh"
 
@@ -33,12 +41,12 @@ static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
       .default_value(1.0f)
       .min(0.0001f)
       .max(CMP_SCALE_MAX)
-      .compositor_expects_single_value();
+      .compositor_domain_priority(1);
   b.add_input<decl::Float>("Y")
       .default_value(1.0f)
       .min(0.0001f)
       .max(CMP_SCALE_MAX)
-      .compositor_expects_single_value();
+      .compositor_domain_priority(2);
   b.add_output<decl::Color>("Image");
 }
 
@@ -80,14 +88,56 @@ class ScaleOperation : public NodeOperation {
 
   void execute() override
   {
+    if (is_variable_size()) {
+      execute_variable_size();
+    }
+    else {
+      execute_constant_size();
+    }
+  }
+
+  void execute_constant_size()
+  {
     Result &input = get_input("Image");
-    Result &result = get_result("Image");
-    input.pass_through(result);
+    Result &output = get_result("Image");
 
+    const float2 scale = get_scale();
+    const math::AngleRadian rotation = 0.0f;
+    const float2 translation = get_translation();
     const float3x3 transformation = math::from_loc_rot_scale<float3x3>(
-        get_translation(), math::AngleRadian(0.0f), get_scale());
+        translation, rotation, scale);
 
-    result.transform(transformation);
+    transform(context(), input, output, transformation, input.get_realization_options());
+  }
+
+  void execute_variable_size()
+  {
+    GPUShader *shader = context().get_shader("compositor_scale_variable");
+    GPU_shader_bind(shader);
+
+    Result &input = get_input("Image");
+    GPU_texture_filter_mode(input.texture(), true);
+    GPU_texture_extend_mode(input.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input.bind_as_texture(shader, "input_tx");
+
+    Result &x_scale = get_input("X");
+    x_scale.bind_as_texture(shader, "x_scale_tx");
+
+    Result &y_scale = get_input("Y");
+    y_scale.bind_as_texture(shader, "y_scale_tx");
+
+    Result &output = get_result("Image");
+    const Domain domain = compute_domain();
+    output.allocate_texture(domain);
+    output.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    input.unbind_as_texture();
+    x_scale.unbind_as_texture();
+    y_scale.unbind_as_texture();
+    output.unbind_as_image();
+    GPU_shader_unbind();
   }
 
   float2 get_scale()
@@ -131,6 +181,10 @@ class ScaleOperation : public NodeOperation {
 
   float2 get_scale_render_size()
   {
+    if (!context().is_valid_compositing_region()) {
+      return float2(1.0f);
+    }
+
     switch (get_scale_render_size_method()) {
       case CMP_NODE_SCALE_RENDER_SIZE_STRETCH:
         return get_scale_render_size_stretch();
@@ -187,6 +241,16 @@ class ScaleOperation : public NodeOperation {
     /* Translate by the offset factor relative to the new size. */
     const float2 input_size = float2(get_input("Image").domain().size);
     return get_offset() * input_size * get_scale();
+  }
+
+  bool is_variable_size()
+  {
+    /* Only relative scaling can be variable. */
+    if (get_scale_method() != CMP_NODE_SCALE_RELATIVE) {
+      return false;
+    }
+
+    return !get_input("X").is_single_value() || !get_input("Y").is_single_value();
   }
 
   CMPNodeScaleMethod get_scale_method()

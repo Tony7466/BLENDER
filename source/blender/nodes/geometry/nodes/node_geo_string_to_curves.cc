@@ -3,22 +3,22 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_curve_types.h"
-#include "DNA_vfont_types.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_curve_legacy_convert.hh"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
-#include "BKE_vfont.h"
+#include "BKE_vfont.hh"
 
 #include "BLI_bounds.hh"
-#include "BLI_hash.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_task.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -233,7 +233,8 @@ static std::optional<TextLayout> get_text_layout(GeoNodeExecParams &params)
     layout.positions.append(float2(ct.xof, ct.yof) * layout.final_font_size);
 
     if ((info[i].flag & CU_CHINFO_OVERFLOW) && (cu.overflow == CU_OVERFLOW_TRUNCATE)) {
-      const int offset = BLI_str_utf8_offset_from_index(layout.text.c_str(), i + 1);
+      const int offset = BLI_str_utf8_offset_from_index(
+          layout.text.c_str(), layout.text.size(), i + 1);
       layout.truncated_text = layout.text.substr(offset);
       layout.text = layout.text.substr(0, offset);
       break;
@@ -295,6 +296,8 @@ static Map<int, int> create_curve_instances(GeoNodeExecParams &params,
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
     BKE_nurbList_free(&cu.nurb);
 
+    geometry::debug_randomize_curve_order(&curves);
+
     float4x4 size_matrix = math::from_scale<float4x4>(float3(layout.final_font_size));
     curves.transform(size_matrix);
 
@@ -314,8 +317,8 @@ static void add_instances_from_handles(bke::Instances &instances,
                                        const TextLayout &layout)
 {
   instances.resize(layout.positions.size());
-  MutableSpan<int> handles = instances.reference_handles();
-  MutableSpan<float4x4> transforms = instances.transforms();
+  MutableSpan<int> handles = instances.reference_handles_for_write();
+  MutableSpan<float4x4> transforms = instances.transforms_for_write();
 
   threading::parallel_for(IndexRange(layout.positions.size()), 256, [&](IndexRange range) {
     for (const int i : range) {
@@ -335,7 +338,7 @@ static void create_attributes(GeoNodeExecParams &params,
   if (AnonymousAttributeIDPtr line_id = params.get_output_anonymous_attribute_id_if_needed("Line"))
   {
     SpanAttributeWriter<int> line_attribute = attributes.lookup_or_add_for_write_only_span<int>(
-        *line_id, ATTR_DOMAIN_INSTANCE);
+        *line_id, AttrDomain::Instance);
     line_attribute.span.copy_from(layout.line_numbers);
     line_attribute.finish();
   }
@@ -344,7 +347,7 @@ static void create_attributes(GeoNodeExecParams &params,
           "Pivot Point"))
   {
     SpanAttributeWriter<float3> pivot_attribute =
-        attributes.lookup_or_add_for_write_only_span<float3>(*pivot_id, ATTR_DOMAIN_INSTANCE);
+        attributes.lookup_or_add_for_write_only_span<float3>(*pivot_id, AttrDomain::Instance);
 
     for (const int i : layout.char_codes.index_range()) {
       pivot_attribute.span[i] = layout.pivot_points.lookup(layout.char_codes[i]);
@@ -368,7 +371,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Remainder", std::move(layout->truncated_text));
   }
 
-  if (layout->positions.size() == 0) {
+  if (layout->positions.is_empty()) {
     params.set_output("Curve Instances", GeometrySet());
     params.set_default_remaining_outputs();
     return;

@@ -8,8 +8,6 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_context.h"
-
 #include "ED_node.hh" /* own include */
 #include "ED_screen.hh"
 
@@ -77,7 +75,6 @@ void node_operatortypes()
   WM_operatortype_append(NODE_OT_backimage_fit);
   WM_operatortype_append(NODE_OT_backimage_sample);
 
-  WM_operatortype_append(NODE_OT_add_search);
   WM_operatortype_append(NODE_OT_add_group);
   WM_operatortype_append(NODE_OT_add_group_asset);
   WM_operatortype_append(NODE_OT_add_object);
@@ -109,15 +106,22 @@ void node_operatortypes()
 
   WM_operatortype_append(NODE_OT_cryptomatte_layer_add);
   WM_operatortype_append(NODE_OT_cryptomatte_layer_remove);
+
+  NODE_TYPES_BEGIN (ntype) {
+    if (ntype->register_operators) {
+      ntype->register_operators();
+    }
+  }
+  NODE_TYPES_END;
 }
 
 void node_keymap(wmKeyConfig *keyconf)
 {
   /* Entire Editor only ----------------- */
-  WM_keymap_ensure(keyconf, "Node Generic", SPACE_NODE, 0);
+  WM_keymap_ensure(keyconf, "Node Generic", SPACE_NODE, RGN_TYPE_WINDOW);
 
   /* Main Region only ----------------- */
-  WM_keymap_ensure(keyconf, "Node Editor", SPACE_NODE, 0);
+  WM_keymap_ensure(keyconf, "Node Editor", SPACE_NODE, RGN_TYPE_WINDOW);
 
   node_link_modal_keymap(keyconf);
 }

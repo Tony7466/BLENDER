@@ -12,12 +12,13 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
 #include "BKE_mask.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BLT_translation.hh"
+
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_mask_types.h"
 #include "DNA_object_types.h" /* SELECT */
@@ -28,15 +29,17 @@
 
 #include "ED_clip.hh"
 #include "ED_image.hh"
-#include "ED_keyframing.hh"
 #include "ED_mask.hh"
-#include "ED_screen.hh"
 #include "ED_select_utils.hh"
+
+#include "ANIM_keyframing.hh"
+
+#include "UI_interface_icons.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "mask_intern.h" /* own include */
+#include "mask_intern.hh" /* own include */
 
 /******************** create new mask *********************/
 
@@ -134,7 +137,7 @@ static int mask_layer_new_exec(bContext *C, wmOperator *op)
   mask->masklay_act = mask->masklay_tot - 1;
 
   WM_event_add_notifier(C, NC_MASK | NA_EDITED, mask);
-  DEG_id_tag_update(&mask->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mask->id, ID_RECALC_SYNC_TO_EVAL);
 
   return OPERATOR_FINISHED;
 }
@@ -168,7 +171,7 @@ static int mask_layer_remove_exec(bContext *C, wmOperator * /*op*/)
     BKE_mask_layer_remove(mask, mask_layer);
 
     WM_event_add_notifier(C, NC_MASK | NA_EDITED, mask);
-    DEG_id_tag_update(&mask->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&mask->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   return OPERATOR_FINISHED;
@@ -700,7 +703,7 @@ static int slide_point_modal(bContext *C, wmOperator *op, const wmEvent *event)
                    &data->spline->points[0],
                    &data->spline->points[data->spline->tot_point - 1]))
           {
-            SWAP(float, delta[0], delta[1]);
+            std::swap(delta[0], delta[1]);
             delta[1] *= -1;
 
             /* flip last point */
@@ -867,7 +870,7 @@ static int slide_point_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
         /* Don't key sliding feather UW's. */
         if ((data->action == SLIDE_ACTION_FEATHER && data->uw) == false) {
-          if (IS_AUTOKEY_ON(scene)) {
+          if (blender::animrig::is_autokey_on(scene)) {
             ED_mask_layer_shape_auto_key(data->mask_layer, scene->r.cfra);
           }
         }
@@ -1277,7 +1280,7 @@ static int slide_spline_curvature_modal(bContext *C, wmOperator *op, const wmEve
     case RIGHTMOUSE:
       if (event->type == slide_data->event_invoke_type && event->val == KM_RELEASE) {
         /* Don't key sliding feather UW's. */
-        if (IS_AUTOKEY_ON(scene)) {
+        if (blender::animrig::is_autokey_on(scene)) {
           ED_mask_layer_shape_auto_key(slide_data->mask_layer, scene->r.cfra);
         }
 
@@ -1499,6 +1502,20 @@ static int delete_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete selected control points and splines?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return delete_exec(C, op);
+}
+
 void MASK_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -1507,7 +1524,7 @@ void MASK_OT_delete(wmOperatorType *ot)
   ot->idname = "MASK_OT_delete";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = delete_invoke;
   ot->exec = delete_exec;
   ot->poll = ED_maskedit_mask_visible_splines_poll;
 
@@ -1541,7 +1558,7 @@ static int mask_switch_direction_exec(bContext *C, wmOperator * /*op*/)
     }
 
     if (changed_layer) {
-      if (IS_AUTOKEY_ON(scene)) {
+      if (blender::animrig::is_autokey_on(scene)) {
         ED_mask_layer_shape_auto_key(mask_layer, scene->r.cfra);
       }
     }
@@ -1603,7 +1620,7 @@ static int mask_normals_make_consistent_exec(bContext *C, wmOperator * /*op*/)
     }
 
     if (changed_layer) {
-      if (IS_AUTOKEY_ON(scene)) {
+      if (blender::animrig::is_autokey_on(scene)) {
         ED_mask_layer_shape_auto_key(mask_layer, scene->r.cfra);
       }
     }
@@ -1921,7 +1938,7 @@ static int mask_layer_move_exec(bContext *C, wmOperator *op)
   }
 
   WM_event_add_notifier(C, NC_MASK | NA_EDITED, mask);
-  DEG_id_tag_update(&mask->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mask->id, ID_RECALC_SYNC_TO_EVAL);
 
   return OPERATOR_FINISHED;
 }

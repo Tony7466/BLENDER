@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -23,22 +24,21 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_node.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_world.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "BLO_read_write.hh"
 
@@ -80,9 +80,13 @@ static void world_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
-static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void world_copy_data(Main *bmain,
+                            std::optional<Library *> owner_library,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   World *wrld_dst = (World *)id_dst;
   const World *wrld_src = (const World *)id_src;
@@ -93,13 +97,16 @@ static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   if (wrld_src->nodetree) {
     if (is_localized) {
-      wrld_dst->nodetree = ntreeLocalize(wrld_src->nodetree);
+      wrld_dst->nodetree = ntreeLocalize(wrld_src->nodetree, &wrld_dst->id);
     }
     else {
-      BKE_id_copy_ex(
-          bmain, (ID *)wrld_src->nodetree, (ID **)&wrld_dst->nodetree, flag_private_id_data);
+      BKE_id_copy_in_lib(bmain,
+                         owner_library,
+                         &wrld_src->nodetree->id,
+                         &wrld_dst->id,
+                         reinterpret_cast<ID **>(&wrld_dst->nodetree),
+                         flag_private_id_data);
     }
-    wrld_dst->nodetree->owner_id = &wrld_dst->id;
   }
 
   BLI_listbase_clear(&wrld_dst->gpumaterial);
@@ -168,20 +175,21 @@ static void world_blend_read_data(BlendDataReader *reader, ID *id)
 {
   World *wrld = (World *)id;
 
-  BLO_read_data_address(reader, &wrld->preview);
+  BLO_read_struct(reader, PreviewImage, &wrld->preview);
   BKE_previewimg_blend_read(reader, wrld->preview);
   BLI_listbase_clear(&wrld->gpumaterial);
 
-  BLO_read_data_address(reader, &wrld->lightgroup);
+  BLO_read_struct(reader, LightgroupMembership, &wrld->lightgroup);
 }
 
 IDTypeInfo IDType_ID_WO = {
     /*id_code*/ ID_WO,
     /*id_filter*/ FILTER_ID_WO,
+    /*dependencies_id_types*/ FILTER_ID_TE,
     /*main_listbase_index*/ INDEX_ID_WO,
     /*struct_size*/ sizeof(World),
     /*name*/ "World",
-    /*name_plural*/ "worlds",
+    /*name_plural*/ N_("worlds"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_WORLD,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

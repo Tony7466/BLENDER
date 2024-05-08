@@ -382,10 +382,12 @@ ccl_device_inline float mix(float a, float b, float t)
 ccl_device_inline float smoothstep(float edge0, float edge1, float x)
 {
   float result;
-  if (x < edge0)
+  if (x < edge0) {
     result = 0.0f;
-  else if (x >= edge1)
+  }
+  else if (x >= edge1) {
     result = 1.0f;
+  }
   else {
     float t = (x - edge0) / (edge1 - edge0);
     result = (3.0f - 2.0f * t) * (t * t);
@@ -464,10 +466,12 @@ ccl_device_inline float signf(float f)
 
 ccl_device_inline float nonzerof(float f, float eps)
 {
-  if (fabsf(f) < eps)
+  if (fabsf(f) < eps) {
     return signf(f) * eps;
-  else
+  }
+  else {
     return f;
+  }
 }
 
 /* `signum` function testing for zero. Matches GLSL and OSL functions. */
@@ -567,15 +571,29 @@ ccl_device_inline float triangle_area(ccl_private const float3 &v1,
 /* Orthonormal vectors */
 
 ccl_device_inline void make_orthonormals(const float3 N,
-                                         ccl_private float3 *T,
-                                         ccl_private float3 *B)
+                                         ccl_private float3 *a,
+                                         ccl_private float3 *b)
 {
-  /* Duff, Tom, et al. "Building an orthonormal basis, revisited." JCGT 6.1 (2017). */
-  float sign = signf(N.z);
-  float a = -1.0f / (sign + N.z);
-  float b = N.x * N.y * a;
-  *T = make_float3(1.0f + sign * N.x * N.x * a, sign * b, -sign * N.x);
-  *B = make_float3(b, sign + N.y * N.y * a, -N.y);
+#if 0
+  if (fabsf(N.y) >= 0.999f) {
+    *a = make_float3(1, 0, 0);
+    *b = make_float3(0, 0, 1);
+    return;
+  }
+  if (fabsf(N.z) >= 0.999f) {
+    *a = make_float3(1, 0, 0);
+    *b = make_float3(0, 1, 0);
+    return;
+  }
+#endif
+
+  if (N.x != N.y || N.x != N.z)
+    *a = make_float3(N.z - N.y, N.x - N.z, N.y - N.x);  //(1,1,1)x N
+  else
+    *a = make_float3(N.z - N.y, N.x + N.z, -N.y - N.x);  //(-1,1,1)x N
+
+  *a = normalize(*a);
+  *b = cross(N, *a);
 }
 
 /* Color division */
@@ -620,16 +638,18 @@ ccl_device_inline float3 safe_divide_even_color(float3 a, float3 b)
       x = y;
       z = y;
     }
-    else
+    else {
       x = 0.5f * (y + z);
+    }
   }
   else if (b.y == 0.0f) {
     if (b.z == 0.0f) {
       y = x;
       z = x;
     }
-    else
+    else {
       y = 0.5f * (x + z);
+    }
   }
   else if (b.z == 0.0f) {
     z = 0.5f * (x + y);
@@ -708,8 +728,9 @@ ccl_device float compatible_powf(float x, float y)
 
 ccl_device float safe_powf(float a, float b)
 {
-  if (UNLIKELY(a < 0.0f && b != float_to_int(b)))
+  if (UNLIKELY(a < 0.0f && b != float_to_int(b))) {
     return 0.0f;
+  }
 
   return compatible_powf(a, b);
 }
@@ -721,8 +742,9 @@ ccl_device float safe_divide(float a, float b)
 
 ccl_device float safe_logf(float a, float b)
 {
-  if (UNLIKELY(a <= 0.0f || b <= 0.0f))
+  if (UNLIKELY(a <= 0.0f || b <= 0.0f)) {
     return 0.0f;
+  }
 
   return safe_divide(logf(a), logf(b));
 }
@@ -978,7 +1000,7 @@ ccl_device_inline uint32_t reverse_integer_bits(uint32_t x)
   return __brev(x);
 #elif defined(__KERNEL_METAL__)
   return reverse_bits(x);
-#elif defined(__aarch64__) || defined(_M_ARM64)
+#elif defined(__aarch64__) || (defined(_M_ARM64) && !defined(_MSC_VER))
   /* Assume the rbit is always available on 64bit ARM architecture. */
   __asm__("rbit %w0, %w1" : "=r"(x) : "r"(x));
   return x;
@@ -1006,6 +1028,46 @@ ccl_device_inline uint32_t reverse_integer_bits(uint32_t x)
   return __builtin_bswap32(x);
 #  endif
 #endif
+}
+
+/* Check if intervals (first->x, first->y) and (second.x, second.y) intersect, and replace the
+ * first interval with their intersection. */
+ccl_device_inline bool intervals_intersect(ccl_private float2 *first, const float2 second)
+{
+  first->x = fmaxf(first->x, second.x);
+  first->y = fminf(first->y, second.y);
+
+  return first->x < first->y;
+}
+
+/* Solve quadratic equation a*x^2 + b*x + c = 0, adapted from Mitsuba 3
+ * The solution is ordered so that x1 <= x2.
+ * Returns true if at least one solution is found.  */
+ccl_device_inline bool solve_quadratic(
+    const float a, const float b, const float c, ccl_private float &x1, ccl_private float &x2)
+{
+  /* If the equation is linear, the solution is -c/b, but b has to be non-zero. */
+  const bool valid_linear = (a == 0.0f) && (b != 0.0f);
+  x1 = x2 = -c / b;
+
+  const float discriminant = sqr(b) - 4.0f * a * c;
+  /* Allow slightly negative discriminant in case of numerical precision issues. */
+  const bool valid_quadratic = (a != 0.0f) && (discriminant > -1e-5f);
+
+  if (valid_quadratic) {
+    /* Numerically stable version of (-b ± sqrt(discriminant)) / (2 * a), avoiding catastrophic
+     * cancellation when `b` is very close to `sqrt(discriminant)`, by finding the solution of
+     * greater magnitude which does not suffer from loss of precision, then using the identity
+     * x1 * x2 = c / a. */
+    const float temp = -0.5f * (b + copysignf(safe_sqrtf(discriminant), b));
+    const float r1 = temp / a;
+    const float r2 = c / temp;
+
+    x1 = fminf(r1, r2);
+    x2 = fmaxf(r1, r2);
+  }
+
+  return (valid_linear || valid_quadratic);
 }
 
 CCL_NAMESPACE_END

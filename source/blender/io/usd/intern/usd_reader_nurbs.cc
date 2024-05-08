@@ -5,11 +5,12 @@
  *
  * Adapted from the Blender Alembic importer implementation. */
 
-#include "usd_reader_nurbs.h"
+#include "usd_reader_nurbs.hh"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
+#include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_listbase.h"
 
@@ -18,10 +19,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <pxr/base/vt/array.h>
 #include <pxr/base/vt/types.h>
-#include <pxr/base/vt/value.h>
-#include <pxr/usd/sdf/types.h>
 
 #include <pxr/usd/usdGeom/curves.h>
 
@@ -44,7 +42,7 @@ static bool set_knots(const pxr::VtDoubleArray &knots, float *&nu_knots)
 
 namespace blender::io::usd {
 
-void USDNurbsReader::create_object(Main *bmain, const double /* motionSampleTime */)
+void USDNurbsReader::create_object(Main *bmain, const double /*motionSampleTime*/)
 {
   curve_ = BKE_curve_add(bmain, name_.c_str(), OB_CURVES_LEGACY);
 
@@ -168,9 +166,18 @@ void USDNurbsReader::read_curve_sample(Curve *cu, const double motionSampleTime)
   }
 }
 
-Mesh *USDNurbsReader::read_mesh(Mesh * /* existing_mesh */,
+void USDNurbsReader::read_geometry(bke::GeometrySet &geometry_set,
+                                   const USDMeshReadParams params,
+                                   const char **err_str)
+{
+  BLI_assert(geometry_set.has_mesh());
+  Mesh *new_mesh = read_mesh(nullptr, params, err_str);
+  geometry_set.replace_mesh(new_mesh);
+}
+
+Mesh *USDNurbsReader::read_mesh(Mesh * /*existing_mesh*/,
                                 const USDMeshReadParams params,
-                                const char ** /* err_str */)
+                                const char ** /*err_str*/)
 {
   pxr::UsdGeomCurves curve_prim_(prim_);
 

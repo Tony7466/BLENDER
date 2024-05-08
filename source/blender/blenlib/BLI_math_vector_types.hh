@@ -13,6 +13,7 @@
 #include <ostream>
 #include <type_traits>
 
+#include "BLI_unroll.hh"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -41,21 +42,6 @@ template<typename T> struct vec_struct_base<T, 4> {
   T x, y, z, w;
 };
 
-template<class Fn, size_t... I> void unroll_impl(Fn fn, std::index_sequence<I...> /*indices*/)
-{
-  (fn(I), ...);
-}
-
-/**
- * Variadic templates are used to unroll loops manually. This helps GCC avoid branching during math
- * operations and makes the code generation more explicit and predictable. Unrolling should always
- * be worth it because the vector size is expected to be small.
- */
-template<int N, class Fn> void unroll(Fn fn)
-{
-  unroll_impl(fn, std::make_index_sequence<N>());
-}
-
 namespace math {
 
 template<typename T> uint64_t vector_hash(const T &vec)
@@ -83,6 +69,9 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
   BLI_STATIC_ASSERT(alignof(T) <= sizeof(T),
                     "VecBase is not compatible with aligned type for now.");
 
+/* Workaround issue with template BLI_ENABLE_IF((Size == 2)) not working. */
+#define BLI_ENABLE_IF_VEC(_size, _test) int S = _size, BLI_ENABLE_IF((S _test))
+
   static constexpr int type_length = Size;
 
   using base_type = T;
@@ -90,7 +79,7 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
 
   VecBase() = default;
 
-  explicit VecBase(T value)
+  template<BLI_ENABLE_IF_VEC(Size, > 1)> explicit VecBase(T value)
   {
     for (int i = 0; i < Size; i++) {
       (*this)[i] = value;
@@ -102,8 +91,10 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
   {
   }
 
-/* Workaround issue with template BLI_ENABLE_IF((Size == 2)) not working. */
-#define BLI_ENABLE_IF_VEC(_size, _test) int S = _size, BLI_ENABLE_IF((S _test))
+  template<BLI_ENABLE_IF_VEC(Size, == 1)> VecBase(T _x)
+  {
+    (*this)[0] = _x;
+  }
 
   template<BLI_ENABLE_IF_VEC(Size, == 2)> VecBase(T _x, T _y)
   {
@@ -667,6 +658,7 @@ using ushort2 = VecBase<uint16_t, 2>;
 using ushort3 = blender::VecBase<uint16_t, 3>;
 using ushort4 = blender::VecBase<uint16_t, 4>;
 
+using float1 = VecBase<float, 1>;
 using float2 = VecBase<float, 2>;
 using float3 = VecBase<float, 3>;
 using float4 = VecBase<float, 4>;

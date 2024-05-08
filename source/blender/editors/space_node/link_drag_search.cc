@@ -2,31 +2,31 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"
 
-#include "BKE_asset.h"
-#include "BKE_context.h"
-#include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_asset.hh"
+#include "BKE_context.hh"
+#include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
-#include "BKE_screen.h"
+#include "BKE_node_tree_update.hh"
+#include "BKE_screen.hh"
+
+#include "UI_string_search.hh"
 
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "BLT_translation.h"
-
-#include "RNA_access.hh"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.hh"
 #include "ED_node.hh"
@@ -87,16 +87,15 @@ static void add_reroute_node_fn(nodes::LinkSearchOpParams &params)
 static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 {
   /* Add a group input based on the connected socket, and add a new group input node. */
-  const eNodeSocketInOut in_out = eNodeSocketInOut(params.socket.in_out);
-  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
-  SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
-  SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
   bNodeTreeInterfaceSocket *socket_iface = params.node_tree.tree_interface.add_socket(
       params.socket.name,
       params.socket.description,
       params.socket.typeinfo->idname,
-      flag,
+      NODE_INTERFACE_SOCKET_INPUT,
       nullptr);
+  socket_iface->init_from_socket_instance(&params.socket);
+  params.node_tree.tree_interface.active_item_set(&socket_iface->item);
+
   bNode &group_input = params.add_node("NodeGroupInput");
 
   /* This is necessary to create the new sockets in the other input nodes. */
@@ -105,7 +104,8 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   /* Hide the new input in all other group input nodes, to avoid making them taller. */
   for (bNode *node : params.node_tree.all_nodes()) {
     if (node->type == NODE_GROUP_INPUT) {
-      bNodeSocket *new_group_input_socket = nodeFindSocket(node, in_out, socket_iface->identifier);
+      bNodeSocket *new_group_input_socket = nodeFindSocket(
+          node, SOCK_OUT, socket_iface->identifier);
       if (new_group_input_socket) {
         new_group_input_socket->flag |= SOCK_HIDDEN;
       }
@@ -117,7 +117,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, socket_iface->identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, socket_iface->identifier);
   if (socket) {
     /* Unhide the socket for the new input in the new node and make a connection to it. */
     socket->flag &= ~SOCK_HIDDEN;
@@ -142,7 +142,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, interface_socket.identifier);
+  bNodeSocket *socket = nodeFindSocket(&group_input, SOCK_OUT, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
@@ -227,59 +227,23 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
   }
 }
 
-static void gather_search_link_ops_for_asset_library(const bContext &C,
-                                                     const bNodeTree &node_tree,
-                                                     const bNodeSocket &socket,
-                                                     const AssetLibraryReference &library_ref,
-                                                     const bool skip_local,
-                                                     Vector<SocketLinkOperation> &search_link_ops)
-{
-  AssetFilterSettings filter_settings{};
-  filter_settings.id_types = FILTER_ID_NT;
-
-  ED_assetlist_storage_fetch(&library_ref, &C);
-  ED_assetlist_ensure_previews_job(&library_ref, &C);
-  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
-    if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
-      return true;
-    }
-    if (skip_local && asset.is_local_id()) {
-      return true;
-    }
-    search_link_ops_for_asset_metadata(node_tree, socket, asset, search_link_ops);
-    return true;
-  });
-}
-
 static void gather_search_link_ops_for_all_assets(const bContext &C,
                                                   const bNodeTree &node_tree,
                                                   const bNodeSocket &socket,
                                                   Vector<SocketLinkOperation> &search_link_ops)
 {
-  int i;
-  LISTBASE_FOREACH_INDEX (const bUserAssetLibrary *, asset_library, &U.asset_libraries, i) {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = i;
-    library_ref.type = ASSET_LIBRARY_CUSTOM;
-    /* Skip local assets to avoid duplicates when the asset is part of the local file library. */
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, true, search_link_ops);
-  }
+  const AssetLibraryReference library_ref = asset_system::all_library_reference();
+  asset::AssetFilterSettings filter_settings{};
+  filter_settings.id_types = FILTER_ID_NT;
 
-  {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = -1;
-    library_ref.type = ASSET_LIBRARY_ESSENTIALS;
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, true, search_link_ops);
-  }
-  {
-    AssetLibraryReference library_ref{};
-    library_ref.custom_library_index = -1;
-    library_ref.type = ASSET_LIBRARY_LOCAL;
-    gather_search_link_ops_for_asset_library(
-        C, node_tree, socket, library_ref, false, search_link_ops);
-  }
+  asset::list::storage_fetch(&library_ref, &C);
+  asset::list::iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
+    if (!asset::filter_matches_asset(&filter_settings, asset)) {
+      return true;
+    }
+    search_link_ops_for_asset_metadata(node_tree, socket, asset, search_link_ops);
+    return true;
+  });
 }
 
 /**
@@ -335,12 +299,12 @@ static void gather_socket_link_operations(const bContext &C,
           return true;
         }
       }
-      search_link_ops.append(
-          {std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP + interface_socket.name,
-           [interface_socket](nodes::LinkSearchOpParams &params) {
-             add_existing_group_input_fn(params, interface_socket);
-           },
-           weight});
+      search_link_ops.append({std::string(IFACE_("Group Input")) + " " + UI_MENU_ARROW_SEP +
+                                  (interface_socket.name ? interface_socket.name : ""),
+                              [interface_socket](nodes::LinkSearchOpParams &params) {
+                                add_existing_group_input_fn(params, interface_socket);
+                              },
+                              weight});
       weight--;
       return true;
     });
@@ -360,7 +324,8 @@ static void link_drag_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearch<SocketLinkOperation> search;
+  ui::string_search::StringSearch<SocketLinkOperation> search{
+      string_search::MainWordsHeuristic::All};
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
     search.add(op.name, &op, op.weight);
@@ -448,8 +413,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
                               10,
                               UI_searchbox_size_x(),
                               UI_UNIT_Y,
-                              0,
-                              0,
                               "");
   UI_but_func_search_set_sep_string(but, UI_MENU_ARROW_SEP);
   UI_but_func_search_set_listen(but, link_drag_search_listen_fn);
@@ -473,8 +436,6 @@ static uiBlock *create_search_popup_block(bContext *C, ARegion *region, void *ar
            UI_searchbox_size_x(),
            UI_searchbox_size_y(),
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

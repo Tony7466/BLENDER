@@ -10,15 +10,16 @@
 
 #  include "DNA_space_types.h"
 
-#  include "BKE_context.h"
-#  include "BKE_main.h"
-#  include "BKE_report.h"
+#  include "BKE_context.hh"
+#  include "BKE_file_handler.hh"
+#  include "BKE_main.hh"
+#  include "BKE_report.hh"
 
 #  include "BLI_path_util.h"
 #  include "BLI_string.h"
 #  include "BLI_utildefines.h"
 
-#  include "BLT_translation.h"
+#  include "BLT_translation.hh"
 
 #  include "ED_fileselect.hh"
 #  include "ED_outliner.hh"
@@ -34,13 +35,14 @@
 #  include "WM_api.hh"
 #  include "WM_types.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "IO_orientation.h"
-#  include "IO_path_util_types.h"
-#  include "IO_wavefront_obj.h"
+#  include "IO_orientation.hh"
+#  include "IO_path_util_types.hh"
+#  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
+#  include "io_utils.hh"
 
 static const EnumPropertyItem io_obj_export_evaluation_mode[] = {
     {DAG_EVAL_RENDER, "DAG_EVAL_RENDER", 0, "Render", "Export objects as they appear in render"},
@@ -104,12 +106,16 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
   export_params.export_smooth_groups = RNA_boolean_get(op->ptr, "export_smooth_groups");
   export_params.smooth_groups_bitflags = RNA_boolean_get(op->ptr, "smooth_group_bitflags");
 
+  export_params.reports = op->reports;
+
+  RNA_string_get(op->ptr, "collection", export_params.collection);
+
   OBJ_export(C, &export_params);
 
   return OPERATOR_FINISHED;
 }
 
-static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
+static void ui_obj_export_settings(const bContext *C, uiLayout *layout, PointerRNA *imfptr)
 {
   const bool export_animation = RNA_boolean_get(imfptr, "export_animation");
   const bool export_smooth_groups = RNA_boolean_get(imfptr, "export_smooth_groups");
@@ -123,11 +129,18 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
   /* Object Transform options. */
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
-  sub = uiLayoutColumnWithHeading(col, false, IFACE_("Limit to"));
-  uiItemR(
-      sub, imfptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
-  uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
+  if (CTX_wm_space_file(C)) {
+    sub = uiLayoutColumnWithHeading(col, false, IFACE_("Limit to"));
+    uiItemR(
+        sub, imfptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
+  }
+  else {
+    sub = uiLayoutColumn(col, false);
+  }
+
+  uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
   uiItemR(sub, imfptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 
   col = uiLayoutColumn(box, false);
@@ -191,11 +204,9 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(sub, imfptr, "end_frame", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
-static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
+static void wm_obj_export_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
-  ui_obj_export_settings(op->layout, &ptr);
+  ui_obj_export_settings(C, op->layout, op->ptr);
 }
 
 /**
@@ -335,7 +346,7 @@ void WM_OT_obj_export(wmOperatorType *ot)
                   false,
                   "Export Materials with PBR Extensions",
                   "Export MTL library using PBR extensions (roughness, metallic, sheen, "
-                  "clearcoat, anisotropy, transmission)");
+                  "coat, anisotropy, transmission)");
   RNA_def_enum(ot->srna,
                "path_mode",
                io_obj_path_mode,
@@ -381,21 +392,17 @@ void WM_OT_obj_export(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "smooth_group_bitflags", false, "Generate Bitflags for Smooth Groups", "");
 
-  /* Only show .obj or .mtl files by default. */
+  /* Only show `.obj` or `.mtl` files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
-}
 
-static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  WM_event_add_fileselect(C, op);
-  return OPERATOR_RUNNING_MODAL;
+  prop = RNA_def_string(ot->srna, "collection", nullptr, MAX_IDPROP_NAME, "Collection", nullptr);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   OBJImportParams import_params{};
-  RNA_string_get(op->ptr, "filepath", import_params.filepath);
   import_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   import_params.clamp_size = RNA_float_get(op->ptr, "clamp_size");
   import_params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
@@ -404,35 +411,26 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   import_params.use_split_groups = RNA_boolean_get(op->ptr, "use_split_groups");
   import_params.import_vertex_groups = RNA_boolean_get(op->ptr, "import_vertex_groups");
   import_params.validate_meshes = RNA_boolean_get(op->ptr, "validate_meshes");
+  char separator[2] = {};
+  RNA_string_get(op->ptr, "collection_separator", separator);
+  import_params.collection_separator = separator[0];
   import_params.relative_paths = ((U.flag & USER_RELPATHS) != 0);
   import_params.clear_selection = true;
 
-  int files_len = RNA_collection_length(op->ptr, "files");
-  if (files_len) {
-    /* Importing multiple files: loop over them and import one by one. */
-    PointerRNA fileptr;
-    PropertyRNA *prop;
-    char dir_only[FILE_MAX], file_only[FILE_MAX];
+  import_params.reports = op->reports;
 
-    RNA_string_get(op->ptr, "directory", dir_only);
-    prop = RNA_struct_find_property(op->ptr, "files");
-    for (int i = 0; i < files_len; i++) {
-      RNA_property_collection_lookup_int(op->ptr, prop, i, &fileptr);
-      RNA_string_get(&fileptr, "name", file_only);
-      BLI_path_join(import_params.filepath, sizeof(import_params.filepath), dir_only, file_only);
-      import_params.clear_selection = (i == 0);
-      OBJ_import(C, &import_params);
-    }
-  }
-  else if (RNA_struct_property_is_set_ex(op->ptr, "filepath", false)) {
-    /* Importing one file. */
-    RNA_string_get(op->ptr, "filepath", import_params.filepath);
-    OBJ_import(C, &import_params);
-  }
-  else {
+  const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
+
+  if (paths.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No filepath given");
     return OPERATOR_CANCELLED;
   }
+  for (const auto &path : paths) {
+    STRNCPY(import_params.filepath, path.c_str());
+    OBJ_import(C, &import_params);
+    /* Only first import clears selection. */
+    import_params.clear_selection = false;
+  };
 
   Scene *scene = CTX_data_scene(C);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
@@ -466,13 +464,13 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(col, imfptr, "use_split_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "import_vertex_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "collection_separator", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
-  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
   ui_obj_import_settings(op->layout, &ptr);
 }
 
@@ -483,9 +481,9 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->name = "Import Wavefront OBJ";
   ot->description = "Load a Wavefront OBJ scene";
   ot->idname = "WM_OT_obj_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_obj_import_invoke;
+  ot->invoke = blender::ed::io::filesel_drop_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
@@ -539,15 +537,38 @@ void WM_OT_obj_import(wmOperatorType *ot)
                   false,
                   "Vertex Groups",
                   "Import OBJ groups as vertex groups");
-  RNA_def_boolean(ot->srna,
-                  "validate_meshes",
-                  false,
-                  "Validate Meshes",
-                  "Check imported mesh objects for invalid data (slow)");
+  RNA_def_boolean(
+      ot->srna,
+      "validate_meshes",
+      true,
+      "Validate Meshes",
+      "Ensure the data is valid "
+      "(when disabled, data may be imported which causes crashes displaying or editing)");
 
-  /* Only show .obj or .mtl files by default. */
+  RNA_def_string(ot->srna,
+                 "collection_separator",
+                 nullptr,
+                 2,
+                 "Path Separator",
+                 "Character used to separate objects name into hierarchical structure");
+
+  /* Only show `.obj` or `.mtl` files by default. */
   prop = RNA_def_string(ot->srna, "filter_glob", "*.obj;*.mtl", 0, "Extension Filter", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
+
+namespace blender::ed::io {
+void obj_file_handler_add()
+{
+  auto fh = std::make_unique<blender::bke::FileHandlerType>();
+  STRNCPY(fh->idname, "IO_FH_obj");
+  STRNCPY(fh->import_operator, "WM_OT_obj_import");
+  STRNCPY(fh->export_operator, "WM_OT_obj_export");
+  STRNCPY(fh->label, "Wavefront OBJ");
+  STRNCPY(fh->file_extensions_str, ".obj");
+  fh->poll_drop = poll_file_object_drop;
+  bke::file_handler_add(std::move(fh));
+}
+}  // namespace blender::ed::io
 
 #endif /* WITH_IO_WAVEFRONT_OBJ */

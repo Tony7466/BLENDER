@@ -10,9 +10,16 @@
  */
 
 #pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 
 void main()
 {
+  if (gl_InstanceID >= dof_buf.scatter_max_rect) {
+    /* Very unlikely to happen but better avoid out of bound access. */
+    gl_Position = vec4(0.0);
+    return;
+  }
+
   ScatterRect rect = scatter_list_buf[gl_InstanceID];
 
   interp_flat.color_and_coc1 = rect.color_and_coc[0];
@@ -36,7 +43,7 @@ void main()
     interp_noperspective.rect_uv3 = ((uv + quad_offsets[2]) * uv_div) * 0.5 + 0.5;
     interp_noperspective.rect_uv4 = ((uv + quad_offsets[3]) * uv_div) * 0.5 + 0.5;
     /* Only for sampling. */
-    interp_flat.distance_scale *= max_v2(abs(rect.half_extent));
+    interp_flat.distance_scale *= reduce_max(abs(rect.half_extent));
   }
   else {
     interp_flat.distance_scale = 1.0;

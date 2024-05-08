@@ -6,6 +6,8 @@
  * \ingroup draw
  */
 
+#include "DNA_meshdata_types.h"
+
 #include "extract_mesh.hh"
 
 namespace blender::draw {
@@ -24,7 +26,7 @@ static void extract_skin_roots_init(const MeshRenderData &mr,
                                     void *buf,
                                     void * /*tls_data*/)
 {
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
+  gpu::VertBuf *vbo = static_cast<gpu::VertBuf *>(buf);
   /* Exclusively for edit mode. */
   BLI_assert(mr.bm);
 
@@ -71,6 +73,6 @@ constexpr MeshExtract create_extractor_skin_roots()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_skin_roots = create_extractor_skin_roots();
 
-const MeshExtract extract_skin_roots = blender::draw::create_extractor_skin_roots();
+}  // namespace blender::draw

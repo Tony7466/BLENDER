@@ -87,10 +87,10 @@ class HandleTypeFieldInput final : public bke::CurvesFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask &mask) const final
   {
-    if (domain != ATTR_DOMAIN_POINT) {
+    if (domain != AttrDomain::Point) {
       return {};
     }
     Array<bool> selection(mask.min_array_size());
@@ -98,12 +98,12 @@ class HandleTypeFieldInput final : public bke::CurvesFieldInput {
     return VArray<bool>::ForContainer(std::move(selection));
   }
 
-  uint64_t hash() const override
+  uint64_t hash() const final
   {
-    return get_default_hash_2(int(mode_), int(type_));
+    return get_default_hash(int(mode_), int(type_));
   }
 
-  bool is_equal_to(const fn::FieldNode &other) const override
+  bool is_equal_to(const fn::FieldNode &other) const final
   {
     if (const HandleTypeFieldInput *other_handle_selection =
             dynamic_cast<const HandleTypeFieldInput *>(&other))
@@ -113,9 +113,9 @@ class HandleTypeFieldInput final : public bke::CurvesFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const CurvesGeometry & /*curves*/) const
+  std::optional<AttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/) const final
   {
-    return ATTR_DOMAIN_POINT;
+    return AttrDomain::Point;
   }
 };
 
