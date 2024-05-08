@@ -92,15 +92,6 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-#ifndef RNA_RUNTIME
-static const EnumPropertyItem node_quality_items[] = {
-    {NTREE_QUALITY_HIGH, "HIGH", 0, "High", "High quality"},
-    {NTREE_QUALITY_MEDIUM, "MEDIUM", 0, "Medium", "Medium quality"},
-    {NTREE_QUALITY_LOW, "LOW", 0, "Low", "Low quality"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-#endif
-
 static const EnumPropertyItem rna_enum_execution_mode_items[] = {
     {NTREE_EXECUTION_MODE_CPU, "CPU", 0, "CPU", ""},
     {NTREE_EXECUTION_MODE_GPU, "GPU", 0, "GPU", ""},
@@ -4490,6 +4481,18 @@ static void def_fn_input_int(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_fn_input_rotation(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeInputRotation", "storage");
+
+  prop = RNA_def_property(srna, "rotation_euler", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_float_sdna(prop, nullptr, "rotation_euler");
+  RNA_def_property_ui_text(prop, "Rotation", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_fn_input_vector(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -8350,9 +8353,22 @@ static void def_cmp_translate(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem interpolation_items[] = {
+      {CMP_NODE_INTERPOLATION_NEAREST, "Nearest", 0, "Nearest", "Use nearest interpolation"},
+      {CMP_NODE_INTERPOLATION_BILINEAR, "Bilinear", 0, "Bilinear", "Use bilinear interpolation"},
+      {CMP_NODE_INTERPOLATION_BICUBIC, "Bicubic", 0, "Bicubic", "Use bicubic interpolation"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   PropertyRNA *prop;
 
   RNA_def_struct_sdna_from(srna, "NodeTranslateData", "storage");
+
+  prop = RNA_def_property(srna, "interpolation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, NULL, "interpolation");
+  RNA_def_property_enum_items(prop, interpolation_items);
+  RNA_def_property_ui_text(prop, "", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "use_relative", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "relative", 1);
@@ -10347,6 +10363,9 @@ static void rna_def_nodetree(BlenderRNA *brna)
       prop, "", "The current location (offset) of the view for this Node Tree");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
+  prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Description", "Description of the node tree");
+
   /* AnimData */
   rna_def_animdata_common(srna);
 
@@ -10488,23 +10507,6 @@ static void rna_def_composite_nodetree(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_execution_mode_items);
   RNA_def_property_ui_text(prop, "Execution Mode", "Set how compositing is executed");
   RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, "rna_NodeTree_update");
-
-  prop = RNA_def_property(srna, "render_quality", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "render_quality");
-  RNA_def_property_enum_items(prop, node_quality_items);
-  RNA_def_property_ui_text(prop, "Render Quality", "Quality when rendering");
-
-  prop = RNA_def_property(srna, "edit_quality", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "edit_quality");
-  RNA_def_property_enum_items(prop, node_quality_items);
-  RNA_def_property_ui_text(prop, "Edit Quality", "Quality when editing");
-
-  prop = RNA_def_property(srna, "use_two_pass", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_TWO_PASS);
-  RNA_def_property_ui_text(prop,
-                           "Two Pass",
-                           "Use two pass execution during editing: first calculate fast nodes, "
-                           "second pass calculate all nodes");
 
   prop = RNA_def_property(srna, "use_viewer_border", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_VIEWER_BORDER);

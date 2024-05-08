@@ -30,6 +30,9 @@ def setup():
         # Hair
         scene.render.hair_type = 'STRIP'
 
+        # Shadow
+        eevee.shadow_step_count = 16
+
         # Volumetric
         eevee.volumetric_tile_size = '2'
         eevee.volumetric_start = 1.0
@@ -58,6 +61,11 @@ def setup():
                 ob.hide_probe_volume = True
                 ob.hide_probe_sphere = True
                 ob.hide_probe_plane = True
+
+            # Counteract the versioning from legacy EEVEE. Should be changed per file at some point.
+            for mat_slot in ob.material_slots:
+                if mat_slot.material:
+                    mat_slot.material.thickness_mode = 'SPHERE'
 
         # Does not work in edit mode
         if bpy.context.mode == 'OBJECT':

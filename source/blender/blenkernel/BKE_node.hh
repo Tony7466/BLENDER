@@ -236,6 +236,8 @@ struct bNodeType {
 
   /** Optional override for node class, used for drawing node header. */
   int (*ui_class)(const bNode *node);
+  /** Optional dynamic description of what the node group does. */
+  std::string (*ui_description_fn)(const bNode &node);
 
   /** Called when the node is updated in the editor. */
   void (*updatefunc)(bNodeTree *ntree, bNode *node);
@@ -509,8 +511,11 @@ void ntreeSetOutput(bNodeTree *ntree);
 
 /**
  * Returns localized tree for execution in threads.
+ *
+ * \param new_owner_id: the owner ID of the localized nodetree, may be null if unknown or
+ * irrelevant.
  */
-bNodeTree *ntreeLocalize(bNodeTree *ntree);
+bNodeTree *ntreeLocalize(bNodeTree *ntree, ID *new_owner_id);
 
 /**
  * This is only direct data, tree itself should have been written.
@@ -642,7 +647,11 @@ bool nodeIsParentAndChild(const bNode *parent, const bNode *child);
 
 int nodeCountSocketLinks(const bNodeTree *ntree, const bNodeSocket *sock);
 
-void nodeSetSelected(bNode *node, bool select);
+/**
+ * Selects or deselects the node. If the node is deselected, all its sockets are deselected too.
+ * \return True if any selection was changed.
+ */
+bool nodeSetSelected(bNode *node, bool select);
 /**
  * Two active flags, ID nodes have special flag for buttons display.
  */
@@ -1289,6 +1298,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_SDF_GRID_BOOLEAN 2131
 #define GEO_NODE_TOOL_VIEWPORT_TRANSFORM 2132
 #define GEO_NODE_TOOL_MOUSE_POSITION 2133
+#define GEO_NODE_SAMPLE_GRID_INDEX 2134
 
 /** \} */
 
@@ -1333,6 +1343,10 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define FN_NODE_TRANSPOSE_MATRIX 1238
 #define FN_NODE_PROJECT_POINT 1239
 #define FN_NODE_ALIGN_ROTATION_TO_VECTOR 1240
+#define FN_NODE_COMBINE_MATRIX 1241
+#define FN_NODE_SEPARATE_MATRIX 1242
+#define FN_NODE_INPUT_ROTATION 1243
+#define FN_NODE_AXES_TO_ROTATION 1244
 
 /** \} */
 
@@ -1629,10 +1643,10 @@ void node_type_socket_templates(bNodeType *ntype,
 void node_type_size(bNodeType *ntype, int width, int minwidth, int maxwidth);
 
 enum class eNodeSizePreset : int8_t {
-  DEFAULT,
-  SMALL,
-  MIDDLE,
-  LARGE,
+  Default,
+  Small,
+  Middle,
+  Large,
 };
 
 void node_type_size_preset(bNodeType *ntype, eNodeSizePreset size);

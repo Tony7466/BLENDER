@@ -204,18 +204,18 @@ TEST_F(AnimationLayersTest, add_binding_multiple)
 TEST_F(AnimationLayersTest, anim_assign_id)
 {
   /* Assign to the only, 'virgin' Binding, should always work. */
-  Binding &out_cube = anim->binding_add();
-  ASSERT_STREQ(out_cube.name, "XXBinding");
-  ASSERT_TRUE(anim->assign_id(&out_cube, cube->id));
-  EXPECT_EQ(out_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ(out_cube.name, "OBBinding");
-  EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
+  Binding &binding_cube = anim->binding_add();
+  ASSERT_STREQ(binding_cube.name, "XXBinding");
+  ASSERT_TRUE(anim->assign_id(&binding_cube, cube->id));
+  EXPECT_EQ(binding_cube.handle, cube->adt->binding_handle);
+  EXPECT_STREQ(binding_cube.name, "OBBinding");
+  EXPECT_STREQ(binding_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
   /* Assign another ID to the same Binding. */
-  ASSERT_TRUE(anim->assign_id(&out_cube, suzanne->id));
-  EXPECT_STREQ(out_cube.name, "OBBinding");
-  EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
+  ASSERT_TRUE(anim->assign_id(&binding_cube, suzanne->id));
+  EXPECT_STREQ(binding_cube.name, "OBBinding");
+  EXPECT_STREQ(binding_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
   { /* Assign Cube to another animation+binding without unassigning first. */
@@ -253,34 +253,34 @@ TEST_F(AnimationLayersTest, anim_assign_id)
 
   /* Create an ID of another type. This should not be assignable to this binding. */
   ID *mesh = static_cast<ID *>(BKE_id_new_nomain(ID_ME, "Mesh"));
-  EXPECT_FALSE(anim->assign_id(&out_cube, *mesh))
+  EXPECT_FALSE(anim->assign_id(&binding_cube, *mesh))
       << "Mesh should not be animatable by an Object binding";
   BKE_id_free(nullptr, mesh);
 }
 
 TEST_F(AnimationLayersTest, rename_binding)
 {
-  Binding &out_cube = anim->binding_add();
-  ASSERT_TRUE(anim->assign_id(&out_cube, cube->id));
-  EXPECT_EQ(out_cube.handle, cube->adt->binding_handle);
-  EXPECT_STREQ("OBBinding", out_cube.name);
-  EXPECT_STREQ(out_cube.name, cube->adt->binding_name)
+  Binding &binding_cube = anim->binding_add();
+  ASSERT_TRUE(anim->assign_id(&binding_cube, cube->id));
+  EXPECT_EQ(binding_cube.handle, cube->adt->binding_handle);
+  EXPECT_STREQ("OBBinding", binding_cube.name);
+  EXPECT_STREQ(binding_cube.name, cube->adt->binding_name)
       << "The binding name should be copied to the adt";
 
-  anim->binding_name_define(out_cube, "New Binding Name");
-  EXPECT_STREQ("New Binding Name", out_cube.name);
+  anim->binding_name_define(binding_cube, "New Binding Name");
+  EXPECT_STREQ("New Binding Name", binding_cube.name);
   /* At this point the binding name will not have been copied to the cube
    * AnimData. However, I don't want to test for that here, as it's not exactly
    * desirable behavior, but more of a side-effect of the current
    * implementation. */
 
-  anim->binding_name_propagate(*bmain, out_cube);
+  anim->binding_name_propagate(*bmain, binding_cube);
   EXPECT_STREQ("New Binding Name", cube->adt->binding_name);
 
   /* Finally, do another rename, do NOT call the propagate function, then
    * unassign. This should still result in the correct binding name being stored
    * on the ADT. */
-  anim->binding_name_define(out_cube, "Even Newer Name");
+  anim->binding_name_define(binding_cube, "Even Newer Name");
   anim->unassign_id(cube->id);
   EXPECT_STREQ("Even Newer Name", cube->adt->binding_name);
 }
@@ -363,13 +363,13 @@ TEST_F(AnimationLayersTest, find_suitable_binding)
    * matching. */
 
   /* Create a binding with a handle that should be ignored.*/
-  Binding &other_out = anim->binding_add();
-  other_out.handle = 47;
+  Binding &other_binding = anim->binding_add();
+  other_binding.handle = 47;
 
   AnimData *adt = BKE_animdata_ensure_id(&cube->id);
   adt->animation = nullptr;
   /* Configure adt to use the handle of one binding, and the name of the other. */
-  adt->binding_handle = other_out.handle;
+  adt->binding_handle = other_binding.handle;
   STRNCPY_UTF8(adt->binding_name, binding.name);
   EXPECT_EQ(&binding, anim->find_suitable_binding_for(cube->id));
 
@@ -379,7 +379,7 @@ TEST_F(AnimationLayersTest, find_suitable_binding)
    * should take precedence. */
   adt->animation = anim;
   id_us_plus(&anim->id);
-  EXPECT_EQ(&other_out, anim->find_suitable_binding_for(cube->id));
+  EXPECT_EQ(&other_binding, anim->find_suitable_binding_for(cube->id));
 
   /* ===
    * A binding exists, but doesn't match anything in the anim data of the cube. This should fall
@@ -437,10 +437,10 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
 
   const KeyframeSettings settings = get_keyframe_settings(false);
-  FCurve *fcurve_loc_a = key_strip.keyframe_insert(
+  SingleKeyingResult result_loc_a = key_strip.keyframe_insert(
       binding, "location", 0, {1.0f, 47.0f}, settings);
-  ASSERT_NE(nullptr, fcurve_loc_a)
-      << "Expect all the necessary data structures to be created on insertion of a key";
+  ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_a)
+      << "Expected keyframe insertion to be successful";
 
   /* Check the strip was created correctly, with the channels for the binding. */
   ASSERT_EQ(1, key_strip.channelbags().size());
@@ -448,21 +448,25 @@ TEST_F(AnimationLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_EQ(binding.handle, channels->binding_handle);
 
   /* Insert a second key, should insert into the same FCurve as before. */
-  FCurve *fcurve_loc_b = key_strip.keyframe_insert(
+  SingleKeyingResult result_loc_b = key_strip.keyframe_insert(
       binding, "location", 0, {5.0f, 47.1f}, settings);
-  ASSERT_EQ(fcurve_loc_a, fcurve_loc_b)
-      << "Expect same (binding/rna path/array index) tuple to return the same FCurve.";
+  ASSERT_EQ(SingleKeyingResult::SUCCESS, result_loc_b);
+  ASSERT_EQ(1, channels->fcurves().size()) << "Expect insertion with the same (binding/rna "
+                                              "path/array index) tuple to go into the same FCurve";
+  ASSERT_EQ(2, channels->fcurves()[0]->totvert)
+      << "Expect insertion with the same (binding/rna "
+         "path/array index) tuple to go into the same FCurve";
 
-  EXPECT_EQ(2, fcurve_loc_b->totvert);
-  EXPECT_EQ(47.0f, evaluate_fcurve(fcurve_loc_a, 1.0f));
-  EXPECT_EQ(47.1f, evaluate_fcurve(fcurve_loc_a, 5.0f));
+  EXPECT_EQ(47.0f, evaluate_fcurve(channels->fcurves()[0], 1.0f));
+  EXPECT_EQ(47.1f, evaluate_fcurve(channels->fcurves()[0], 5.0f));
 
   /* Insert another key for another property, should create another FCurve. */
-  FCurve *fcurve_rot = key_strip.keyframe_insert(
+  SingleKeyingResult result_rot = key_strip.keyframe_insert(
       binding, "rotation_quaternion", 0, {1.0f, 0.25f}, settings);
-  EXPECT_NE(fcurve_loc_b, fcurve_rot)
-      << "Expected rotation and location curves to be different FCurves.";
-  EXPECT_EQ(2, channels->fcurves().size()) << "Expected a second FCurve to be created.";
+  ASSERT_EQ(SingleKeyingResult::SUCCESS, result_rot);
+  ASSERT_EQ(2, channels->fcurves().size()) << "Expected a second FCurve to be created.";
+  ASSERT_EQ(2, channels->fcurves()[0]->totvert);
+  ASSERT_EQ(1, channels->fcurves()[1]->totvert);
 }
 
 }  // namespace blender::animrig::tests
