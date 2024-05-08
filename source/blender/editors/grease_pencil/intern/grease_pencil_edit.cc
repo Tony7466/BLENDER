@@ -15,7 +15,9 @@
 #include "BLT_translation.hh"
 
 #include "DNA_material_types.h"
+#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_space_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
@@ -2633,6 +2635,382 @@ static void GREASE_PENCIL_OT_extrude(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Snapping Selection to Grid Operator
+ * \{ */
+
+/* Poll callback for snap operators */
+/* NOTE: For now, we only allow these in the 3D view, as other editors do not
+ *       define a cursor or grid-step which can be used.
+ */
+static bool grease_pencil_snap_poll(bContext *C)
+{
+  ScrArea *area = CTX_wm_area(C);
+  Object *ob = CTX_data_active_object(C);
+
+  return (ob != nullptr) && (ob->type == OB_GREASE_PENCIL) &&
+         ((area != nullptr) && (area->spacetype == SPACE_VIEW3D));
+}
+
+static int grease_pencil_snap_to_grid_exec(bContext *C, wmOperator * /*op*/)
+{
+  // bGPdata *gpd = ED_gpencil_data_get_active(C);
+  // ARegion *region = CTX_wm_region(C);
+  // View3D *v3d = CTX_wm_view3d(C);
+  // Scene *scene = CTX_data_scene(C);
+  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  // Object *obact = CTX_data_active_object(C);
+  // const float gridf = ED_view3d_grid_view_scale(scene, v3d, region, nullptr);
+  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+
+  // bool changed = false;
+  // LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+  //   /* only editable and visible layers are considered */
+  //   if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
+  //     bGPDframe *gpf = gpl->actframe;
+  //     float diff_mat[4][4];
+
+  //     /* calculate difference matrix object */
+  //     BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+
+  //     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+  //       /* skip strokes that are invalid for current view */
+  //       if (ED_gpencil_stroke_can_use(C, gps) == false) {
+  //         continue;
+  //       }
+  //       /* check if the color is editable */
+  //       if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
+  //         continue;
+  //       }
+
+  //       if (is_curve_edit) {
+  //         if (gps->editcurve == nullptr) {
+  //           continue;
+  //         }
+  //         float inv_diff_mat[4][4];
+  //         invert_m4_m4_safe(inv_diff_mat, diff_mat);
+
+  //         bGPDcurve *gpc = gps->editcurve;
+  //         for (int i = 0; i < gpc->tot_curve_points; i++) {
+  //           bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
+  //           BezTriple *bezt = &gpc_pt->bezt;
+  //           if (gpc_pt->flag & GP_CURVE_POINT_SELECT) {
+  //             float tmp0[3], tmp1[3], tmp2[3], offset[3];
+  //             mul_v3_m4v3(tmp0, diff_mat, bezt->vec[0]);
+  //             mul_v3_m4v3(tmp1, diff_mat, bezt->vec[1]);
+  //             mul_v3_m4v3(tmp2, diff_mat, bezt->vec[2]);
+
+  //             /* calculate the offset vector */
+  //             offset[0] = gridf * floorf(0.5f + tmp1[0] / gridf) - tmp1[0];
+  //             offset[1] = gridf * floorf(0.5f + tmp1[1] / gridf) - tmp1[1];
+  //             offset[2] = gridf * floorf(0.5f + tmp1[2] / gridf) - tmp1[2];
+
+  //             /* shift bezTriple */
+  //             add_v3_v3(bezt->vec[0], offset);
+  //             add_v3_v3(bezt->vec[1], offset);
+  //             add_v3_v3(bezt->vec[2], offset);
+
+  //             mul_v3_m4v3(tmp0, inv_diff_mat, bezt->vec[0]);
+  //             mul_v3_m4v3(tmp1, inv_diff_mat, bezt->vec[1]);
+  //             mul_v3_m4v3(tmp2, inv_diff_mat, bezt->vec[2]);
+  //             copy_v3_v3(bezt->vec[0], tmp0);
+  //             copy_v3_v3(bezt->vec[1], tmp1);
+  //             copy_v3_v3(bezt->vec[2], tmp2);
+
+  //             changed = true;
+  //           }
+  //         }
+
+  //         if (changed) {
+  //           BKE_gpencil_editcurve_recalculate_handles(gps);
+  //           gps->flag |= GP_STROKE_NEEDS_CURVE_UPDATE;
+  //           BKE_gpencil_stroke_geometry_update(gpd, gps);
+  //         }
+  //       }
+  //       else {
+  //         /* TODO: if entire stroke is selected, offset entire stroke by same amount? */
+  //         for (int i = 0; i < gps->totpoints; i++) {
+  //           bGPDspoint *pt = &gps->points[i];
+  //           /* only if point is selected */
+  //           if (pt->flag & GP_SPOINT_SELECT) {
+  //             /* apply parent transformations */
+  //             float fpt[3];
+  //             mul_v3_m4v3(fpt, diff_mat, &pt->x);
+
+  //             fpt[0] = gridf * floorf(0.5f + fpt[0] / gridf);
+  //             fpt[1] = gridf * floorf(0.5f + fpt[1] / gridf);
+  //             fpt[2] = gridf * floorf(0.5f + fpt[2] / gridf);
+
+  //             /* return data */
+  //             copy_v3_v3(&pt->x, fpt);
+  //             gpencil_world_to_object_space_point(depsgraph, obact, gpl, pt);
+
+  //             changed = true;
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+
+  // if (changed) {
+  //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  //   DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
+  //   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  // }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_snap_to_grid(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Snap Selection to Grid";
+  ot->idname = "GREASE_PENCIL_OT_snap_to_grid";
+  ot->description = "Snap selected points to the nearest grid points";
+
+  /* callbacks */
+  ot->exec = grease_pencil_snap_to_grid_exec;
+  ot->poll = grease_pencil_snap_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Snapping Selection to Cursor Operator
+ * \{ */
+
+static int grease_pencil_snap_to_cursor_exec(bContext *C, wmOperator *op)
+{
+  // bGPdata *gpd = ED_gpencil_data_get_active(C);
+  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+  // Scene *scene = CTX_data_scene(C);
+  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  // Object *obact = CTX_data_active_object(C);
+
+  // const bool use_offset = RNA_boolean_get(op->ptr, "use_offset");
+  // const float *cursor_global = scene->cursor.location;
+
+  // bool changed = false;
+  // if (is_curve_edit) {
+  //   BKE_report(op->reports, RPT_ERROR, "Not implemented!");
+  // }
+  // else {
+  //   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+  //     /* only editable and visible layers are considered */
+  //     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
+  //       bGPDframe *gpf = gpl->actframe;
+  //       float diff_mat[4][4];
+
+  //       /* calculate difference matrix */
+  //       BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+
+  //       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+  //         bGPDspoint *pt;
+  //         int i;
+
+  //         /* skip strokes that are invalid for current view */
+  //         if (ED_gpencil_stroke_can_use(C, gps) == false) {
+  //           continue;
+  //         }
+  //         /* check if the color is editable */
+  //         if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
+  //           continue;
+  //         }
+  //         /* only continue if this stroke is selected (editable doesn't guarantee this)... */
+  //         if ((gps->flag & GP_STROKE_SELECT) == 0) {
+  //           continue;
+  //         }
+
+  //         if (use_offset) {
+  //           float offset[3];
+
+  //           /* compute offset from first point of stroke to cursor */
+  //           /* TODO: Allow using midpoint instead? */
+  //           sub_v3_v3v3(offset, cursor_global, &gps->points->x);
+
+  //           /* apply offset to all points in the stroke */
+  //           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+  //             add_v3_v3(&pt->x, offset);
+  //           }
+
+  //           changed = true;
+  //         }
+  //         else {
+  //           /* affect each selected point */
+  //           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+  //             if (pt->flag & GP_SPOINT_SELECT) {
+  //               copy_v3_v3(&pt->x, cursor_global);
+  //               gpencil_world_to_object_space_point(depsgraph, obact, gpl, pt);
+
+  //               changed = true;
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
+
+  // if (changed) {
+  //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  //   DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
+  //   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  // }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_snap_to_cursor(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Snap Selection to Cursor";
+  ot->idname = "GREASE_PENCIL_OT_snap_to_cursor";
+  ot->description = "Snap selected points/strokes to the cursor";
+
+  /* callbacks */
+  ot->exec = grease_pencil_snap_to_cursor_exec;
+  ot->poll = grease_pencil_snap_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* props */
+  ot->prop = RNA_def_boolean(ot->srna,
+                             "use_offset",
+                             true,
+                             "With Offset",
+                             "Offset the entire stroke instead of selected points only");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Snapping Cursor to Selection Operator
+ * \{ */
+
+// static bool grease_pencil_stroke_points_centroid(Depsgraph *depsgraph,
+//                                                  bContext *C,
+//                                                  Object *obact,
+//                                                  bGPdata *gpd,
+//                                                  float r_centroid[3],
+//                                                  float r_min[3],
+//                                                  float r_max[3],
+//                                                  size_t *count)
+// {
+//   bool changed = false;
+//   /* calculate midpoints from selected points */
+//   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+//     /* only editable and visible layers are considered */
+//     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
+//       bGPDframe *gpf = gpl->actframe;
+//       float diff_mat[4][4];
+
+//       /* calculate difference matrix */
+//       BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+
+//       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
+//         bGPDspoint *pt;
+//         int i;
+
+//         /* skip strokes that are invalid for current view */
+//         if (ED_gpencil_stroke_can_use(C, gps) == false) {
+//           continue;
+//         }
+//         /* check if the color is editable */
+//         if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
+//           continue;
+//         }
+//         /* only continue if this stroke is selected (editable doesn't guarantee this)... */
+//         if ((gps->flag & GP_STROKE_SELECT) == 0) {
+//           continue;
+//         }
+
+//         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
+//           if (pt->flag & GP_SPOINT_SELECT) {
+//             /* apply parent transformations */
+//             float fpt[3];
+//             mul_v3_m4v3(fpt, diff_mat, &pt->x);
+
+//             add_v3_v3(r_centroid, fpt);
+//             minmax_v3v3_v3(r_min, r_max, fpt);
+
+//             (*count)++;
+//           }
+//         }
+
+//         changed = true;
+//       }
+//     }
+//   }
+
+//   return changed;
+// }
+
+static int grease_pencil_snap_cursor_to_sel_exec(bContext *C, wmOperator *op)
+{
+  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  // Object *obact = CTX_data_active_object(C);
+  // bGPdata *gpd = ED_gpencil_data_get_active(C);
+  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+
+  // Scene *scene = CTX_data_scene(C);
+
+  // float *cursor = scene->cursor.location;
+  // float centroid[3] = {0.0f};
+  // float min[3], max[3];
+  // size_t count = 0;
+
+  // INIT_MINMAX(min, max);
+
+  // bool changed = false;
+  // if (is_curve_edit) {
+  //   BKE_report(op->reports, RPT_ERROR, "Not implemented!");
+  // }
+  // else {
+  //   changed = grease_pencil_stroke_points_centroid(
+  //       depsgraph, C, obact, gpd, centroid, min, max, &count);
+  // }
+
+  // if (changed) {
+  //   if (scene->toolsettings->transform_pivot_point == V3D_AROUND_CENTER_BOUNDS) {
+  //     mid_v3_v3v3(cursor, min, max);
+  //   }
+  //   else { /* #V3D_AROUND_CENTER_MEDIAN. */
+  //     zero_v3(cursor);
+  //     if (count) {
+  //       mul_v3_fl(centroid, 1.0f / float(count));
+  //       copy_v3_v3(cursor, centroid);
+  //     }
+  //   }
+
+  //   DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
+  //   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+  // }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_snap_cursor_to_selected(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Snap Cursor to Selected Points";
+  ot->idname = "GREASE_PENCIL_OT_snap_cursor_to_selected";
+  ot->description = "Snap cursor to center of selected points";
+
+  /* callbacks */
+  ot->exec = grease_pencil_snap_cursor_to_sel_exec;
+  ot->poll = grease_pencil_snap_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -2661,4 +3039,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_paste);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_cutter);
   WM_operatortype_append(GREASE_PENCIL_OT_extrude);
+  WM_operatortype_append(GREASE_PENCIL_OT_snap_to_grid);
+  WM_operatortype_append(GREASE_PENCIL_OT_snap_to_cursor);
+  WM_operatortype_append(GREASE_PENCIL_OT_snap_cursor_to_selected);
 }
