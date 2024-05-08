@@ -74,7 +74,7 @@ static PreviewImage *previewimg_deferred_create(const char *filepath, ThumbSourc
 
 PreviewImage *BKE_previewimg_create()
 {
-  PreviewImage *prv = MEM_cnew<PreviewImage>(__func__);
+  PreviewImage *prv = static_cast<PreviewImage *>(MEM_callocN(sizeof(PreviewImage), __func__));
 
   for (int i = 0; i < NUM_ICON_SIZES; i++) {
     prv->flag[i] |= PRV_CHANGED;
