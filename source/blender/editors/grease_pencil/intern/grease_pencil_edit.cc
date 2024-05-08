@@ -7,11 +7,17 @@
  */
 
 #include "BLI_array_utils.hh"
+#include "BLI_assert.h"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
+#include "BLI_utildefines.h"
 #include "BLT_translation.hh"
 
 #include "DNA_material_types.h"
@@ -29,6 +35,8 @@
 #include "BKE_material.h"
 #include "BKE_report.hh"
 
+#include "DNA_view3d_types.h"
+#include "DNA_windowmanager_types.h"
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -38,6 +46,7 @@
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_object.hh"
+#include "ED_view3d.hh"
 
 #include "GEO_join_geometries.hh"
 #include "GEO_reorder.hh"
@@ -45,6 +54,7 @@
 #include "GEO_subdivide_curves.hh"
 
 #include "UI_resources.hh"
+#include <limits>
 
 namespace blender::ed::greasepencil {
 
@@ -2654,110 +2664,43 @@ static bool grease_pencil_snap_poll(bContext *C)
 
 static int grease_pencil_snap_to_grid_exec(bContext *C, wmOperator * /*op*/)
 {
-  // bGPdata *gpd = ED_gpencil_data_get_active(C);
-  // ARegion *region = CTX_wm_region(C);
-  // View3D *v3d = CTX_wm_view3d(C);
-  // Scene *scene = CTX_data_scene(C);
-  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  // Object *obact = CTX_data_active_object(C);
-  // const float gridf = ED_view3d_grid_view_scale(scene, v3d, region, nullptr);
-  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+  using bke::greasepencil::Layer;
 
-  // bool changed = false;
-  // LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-  //   /* only editable and visible layers are considered */
-  //   if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
-  //     bGPDframe *gpf = gpl->actframe;
-  //     float diff_mat[4][4];
+  const Scene &scene = *CTX_data_scene(C);
+  Object &object = *CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  const View3D &v3d = *CTX_wm_view3d(C);
+  const ARegion &region = *CTX_wm_region(C);
+  const float grid_size = ED_view3d_grid_view_scale(&scene, &v3d, &region, nullptr);
 
-  //     /* calculate difference matrix object */
-  //     BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
+  for (const MutableDrawingInfo &drawing_info : drawings) {
+    bke::CurvesGeometry &curves = drawing_info.drawing.strokes_for_write();
+    if (curves.curves_num() == 0) {
+      continue;
+    }
+    if (!ed::curves::has_anything_selected(curves)) {
+      continue;
+    }
 
-  //     LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-  //       /* skip strokes that are invalid for current view */
-  //       if (ED_gpencil_stroke_can_use(C, gps) == false) {
-  //         continue;
-  //       }
-  //       /* check if the color is editable */
-  //       if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
-  //         continue;
-  //       }
+    IndexMaskMemory memory;
+    const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
 
-  //       if (is_curve_edit) {
-  //         if (gps->editcurve == nullptr) {
-  //           continue;
-  //         }
-  //         float inv_diff_mat[4][4];
-  //         invert_m4_m4_safe(inv_diff_mat, diff_mat);
+    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const float4x4 layer_to_world = layer.to_world_space(object);
+    const float4x4 world_to_layer = math::invert(layer_to_world);
 
-  //         bGPDcurve *gpc = gps->editcurve;
-  //         for (int i = 0; i < gpc->tot_curve_points; i++) {
-  //           bGPDcurve_point *gpc_pt = &gpc->curve_points[i];
-  //           BezTriple *bezt = &gpc_pt->bezt;
-  //           if (gpc_pt->flag & GP_CURVE_POINT_SELECT) {
-  //             float tmp0[3], tmp1[3], tmp2[3], offset[3];
-  //             mul_v3_m4v3(tmp0, diff_mat, bezt->vec[0]);
-  //             mul_v3_m4v3(tmp1, diff_mat, bezt->vec[1]);
-  //             mul_v3_m4v3(tmp2, diff_mat, bezt->vec[2]);
+    MutableSpan<float3> positions = curves.positions_for_write();
+    selected_points.foreach_index(GrainSize(4096), [&](const int point_i) {
+      const float3 pos_world = math::transform_point(layer_to_world, positions[point_i]);
+      const float3 pos_snapped = grid_size * math::floor(pos_world / grid_size + 0.5f);
+      positions[point_i] = math::transform_point(world_to_layer, pos_snapped);
+    });
 
-  //             /* calculate the offset vector */
-  //             offset[0] = gridf * floorf(0.5f + tmp1[0] / gridf) - tmp1[0];
-  //             offset[1] = gridf * floorf(0.5f + tmp1[1] / gridf) - tmp1[1];
-  //             offset[2] = gridf * floorf(0.5f + tmp1[2] / gridf) - tmp1[2];
-
-  //             /* shift bezTriple */
-  //             add_v3_v3(bezt->vec[0], offset);
-  //             add_v3_v3(bezt->vec[1], offset);
-  //             add_v3_v3(bezt->vec[2], offset);
-
-  //             mul_v3_m4v3(tmp0, inv_diff_mat, bezt->vec[0]);
-  //             mul_v3_m4v3(tmp1, inv_diff_mat, bezt->vec[1]);
-  //             mul_v3_m4v3(tmp2, inv_diff_mat, bezt->vec[2]);
-  //             copy_v3_v3(bezt->vec[0], tmp0);
-  //             copy_v3_v3(bezt->vec[1], tmp1);
-  //             copy_v3_v3(bezt->vec[2], tmp2);
-
-  //             changed = true;
-  //           }
-  //         }
-
-  //         if (changed) {
-  //           BKE_gpencil_editcurve_recalculate_handles(gps);
-  //           gps->flag |= GP_STROKE_NEEDS_CURVE_UPDATE;
-  //           BKE_gpencil_stroke_geometry_update(gpd, gps);
-  //         }
-  //       }
-  //       else {
-  //         /* TODO: if entire stroke is selected, offset entire stroke by same amount? */
-  //         for (int i = 0; i < gps->totpoints; i++) {
-  //           bGPDspoint *pt = &gps->points[i];
-  //           /* only if point is selected */
-  //           if (pt->flag & GP_SPOINT_SELECT) {
-  //             /* apply parent transformations */
-  //             float fpt[3];
-  //             mul_v3_m4v3(fpt, diff_mat, &pt->x);
-
-  //             fpt[0] = gridf * floorf(0.5f + fpt[0] / gridf);
-  //             fpt[1] = gridf * floorf(0.5f + fpt[1] / gridf);
-  //             fpt[2] = gridf * floorf(0.5f + fpt[2] / gridf);
-
-  //             /* return data */
-  //             copy_v3_v3(&pt->x, fpt);
-  //             gpencil_world_to_object_space_point(depsgraph, obact, gpl, pt);
-
-  //             changed = true;
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // if (changed) {
-  //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  //   DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
-  //   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
-  // }
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(&object.id, ID_RECALC_SYNC_TO_EVAL);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -2785,81 +2728,58 @@ static void GREASE_PENCIL_OT_snap_to_grid(wmOperatorType *ot)
 
 static int grease_pencil_snap_to_cursor_exec(bContext *C, wmOperator *op)
 {
-  // bGPdata *gpd = ED_gpencil_data_get_active(C);
-  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
-  // Scene *scene = CTX_data_scene(C);
-  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  // Object *obact = CTX_data_active_object(C);
+  using bke::greasepencil::Layer;
 
-  // const bool use_offset = RNA_boolean_get(op->ptr, "use_offset");
-  // const float *cursor_global = scene->cursor.location;
+  const Scene &scene = *CTX_data_scene(C);
+  Object &object = *CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  const bool use_offset = RNA_boolean_get(op->ptr, "use_offset");
+  const float3 cursor_world = scene.cursor.location;
 
-  // bool changed = false;
-  // if (is_curve_edit) {
-  //   BKE_report(op->reports, RPT_ERROR, "Not implemented!");
-  // }
-  // else {
-  //   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-  //     /* only editable and visible layers are considered */
-  //     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
-  //       bGPDframe *gpf = gpl->actframe;
-  //       float diff_mat[4][4];
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
+  for (const MutableDrawingInfo &drawing_info : drawings) {
+    bke::CurvesGeometry &curves = drawing_info.drawing.strokes_for_write();
+    if (curves.curves_num() == 0) {
+      continue;
+    }
+    if (!ed::curves::has_anything_selected(curves)) {
+      continue;
+    }
 
-  //       /* calculate difference matrix */
-  //       BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
+    IndexMaskMemory selected_points_memory;
+    const IndexMask selected_points = ed::curves::retrieve_selected_points(curves,
+                                                                           selected_points_memory);
 
-  //       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-  //         bGPDspoint *pt;
-  //         int i;
+    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const float4x4 layer_to_world = layer.to_world_space(object);
+    const float4x4 world_to_layer = math::invert(layer_to_world);
+    const float3 cursor_layer = math::transform_point(world_to_layer, cursor_world);
 
-  //         /* skip strokes that are invalid for current view */
-  //         if (ED_gpencil_stroke_can_use(C, gps) == false) {
-  //           continue;
-  //         }
-  //         /* check if the color is editable */
-  //         if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
-  //           continue;
-  //         }
-  //         /* only continue if this stroke is selected (editable doesn't guarantee this)... */
-  //         if ((gps->flag & GP_STROKE_SELECT) == 0) {
-  //           continue;
-  //         }
+    MutableSpan<float3> positions = curves.positions_for_write();
+    if (use_offset) {
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      IndexMaskMemory selected_curves_memory;
+      const IndexMask selected_curves = ed::curves::retrieve_selected_curves(
+          curves, selected_curves_memory);
 
-  //         if (use_offset) {
-  //           float offset[3];
+      selected_curves.foreach_index(GrainSize(512), [&](const int curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
 
-  //           /* compute offset from first point of stroke to cursor */
-  //           /* TODO: Allow using midpoint instead? */
-  //           sub_v3_v3v3(offset, cursor_global, &gps->points->x);
+        /* Offset from first point of the curve. */
+        const float3 offset = cursor_layer - positions[points.first()];
+        selected_points.slice_content(points).foreach_index(
+            GrainSize(4096), [&](const int point_i) { positions[point_i] += offset; });
+      });
+    }
+    else {
+      selected_points.foreach_index(GrainSize(4096),
+                                    [&](const int point_i) { positions[point_i] = cursor_layer; });
+    }
 
-  //           /* apply offset to all points in the stroke */
-  //           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-  //             add_v3_v3(&pt->x, offset);
-  //           }
-
-  //           changed = true;
-  //         }
-  //         else {
-  //           /* affect each selected point */
-  //           for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-  //             if (pt->flag & GP_SPOINT_SELECT) {
-  //               copy_v3_v3(&pt->x, cursor_global);
-  //               gpencil_world_to_object_space_point(depsgraph, obact, gpl, pt);
-
-  //               changed = true;
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // if (changed) {
-  //   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
-  //   DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
-  //   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
-  // }
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+    DEG_id_tag_update(&object.id, ID_RECALC_SYNC_TO_EVAL);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+  }
 
   return OPERATOR_FINISHED;
 }
@@ -2950,46 +2870,85 @@ static void GREASE_PENCIL_OT_snap_to_cursor(wmOperatorType *ot)
 //   return changed;
 // }
 
+static bool grease_pencil_snap_compute_centroid(const Scene &scene,
+                                                const Object &object,
+                                                const GreasePencil &grease_pencil,
+                                                float3 &r_centroid,
+                                                float3 &r_min,
+                                                float3 &r_max)
+{
+  using bke::greasepencil::Layer;
+
+  int num_selected = 0;
+  r_centroid = float3(0.0f);
+  r_min = float3(std::numeric_limits<float>::max());
+  r_max = float3(-std::numeric_limits<float>::max());
+
+  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(scene, grease_pencil, false);
+  for (const DrawingInfo &drawing_info : drawings) {
+    const bke::CurvesGeometry &curves = drawing_info.drawing.strokes();
+    if (curves.curves_num() == 0) {
+      continue;
+    }
+    if (!ed::curves::has_anything_selected(curves)) {
+      continue;
+    }
+
+    IndexMaskMemory selected_points_memory;
+    const IndexMask selected_points = ed::curves::retrieve_selected_points(curves,
+                                                                           selected_points_memory);
+
+    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const float4x4 layer_to_world = layer.to_world_space(object);
+
+    Span<float3> positions = curves.positions();
+    selected_points.foreach_index(GrainSize(4096), [&](const int point_i) {
+      const float3 pos_world = math::transform_point(layer_to_world, positions[point_i]);
+      r_centroid += pos_world;
+      r_min = math::min(r_min, pos_world);
+      r_max = math::max(r_max, pos_world);
+    });
+    num_selected += selected_points.size();
+  }
+  if (num_selected == 0) {
+    r_min = r_max = float3(0.0f);
+    return false;
+  }
+
+  r_centroid /= num_selected;
+  return true;
+}
+
 static int grease_pencil_snap_cursor_to_sel_exec(bContext *C, wmOperator *op)
 {
-  // Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  // Object *obact = CTX_data_active_object(C);
-  // bGPdata *gpd = ED_gpencil_data_get_active(C);
-  // const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+  Scene &scene = *CTX_data_scene(C);
+  const Object &object = *CTX_data_active_object(C);
+  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  float3 &cursor = reinterpret_cast<float3 &>(scene.cursor.location);
 
-  // Scene *scene = CTX_data_scene(C);
+  float3 centroid, points_min, points_max;
+  if (!grease_pencil_snap_compute_centroid(
+          scene, object, grease_pencil, centroid, points_min, points_max))
+  {
+    return OPERATOR_FINISHED;
+  }
 
-  // float *cursor = scene->cursor.location;
-  // float centroid[3] = {0.0f};
-  // float min[3], max[3];
-  // size_t count = 0;
+  switch (scene.toolsettings->transform_pivot_point) {
+    case V3D_AROUND_CENTER_BOUNDS:
+      cursor = 0.5f * (points_min + points_max);
+      break;
+    case V3D_AROUND_CENTER_MEDIAN:
+    case V3D_AROUND_CURSOR:
+    case V3D_AROUND_LOCAL_ORIGINS:
+    case V3D_AROUND_ACTIVE:
+      cursor = centroid;
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
 
-  // INIT_MINMAX(min, max);
-
-  // bool changed = false;
-  // if (is_curve_edit) {
-  //   BKE_report(op->reports, RPT_ERROR, "Not implemented!");
-  // }
-  // else {
-  //   changed = grease_pencil_stroke_points_centroid(
-  //       depsgraph, C, obact, gpd, centroid, min, max, &count);
-  // }
-
-  // if (changed) {
-  //   if (scene->toolsettings->transform_pivot_point == V3D_AROUND_CENTER_BOUNDS) {
-  //     mid_v3_v3v3(cursor, min, max);
-  //   }
-  //   else { /* #V3D_AROUND_CENTER_MEDIAN. */
-  //     zero_v3(cursor);
-  //     if (count) {
-  //       mul_v3_fl(centroid, 1.0f / float(count));
-  //       copy_v3_v3(cursor, centroid);
-  //     }
-  //   }
-
-  //   DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
-  //   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
-  // }
+  DEG_id_tag_update(&scene.id, ID_RECALC_SYNC_TO_EVAL);
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
   return OPERATOR_FINISHED;
 }
