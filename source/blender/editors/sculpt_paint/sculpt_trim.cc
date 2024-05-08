@@ -647,7 +647,6 @@ static void gesture_end(bContext & /*C*/, gesture::GestureData &gesture_data)
 
   /* Assign a new Face Set ID to the new faces created by the trim operation. */
   const int next_face_set_id = face_set::find_next_available_id(*object);
-  printf("ID: %d\n", next_face_set_id);
   face_set::initialize_none_to_id(mesh, next_face_set_id);
 
   free_geometry(gesture_data);
