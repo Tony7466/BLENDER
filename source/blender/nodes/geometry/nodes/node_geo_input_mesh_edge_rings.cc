@@ -107,7 +107,7 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
     const Span<int2> edges = mesh.edges();
@@ -117,20 +117,20 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
     Array<int> vert_to_edge_offsets;
     Array<int> vert_to_edge_indices;
     const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
-        edges, mesh.totvert, vert_to_edge_offsets, vert_to_edge_indices);
+        edges, mesh.verts_num, vert_to_edge_offsets, vert_to_edge_indices);
 
     Array<int> vert_to_loop_offsets;
     Array<int> vert_to_loop_indices;
-    bke::mesh::build_vert_to_loop_map(
-        corner_verts, mesh.totvert, vert_to_loop_offsets, vert_to_loop_indices);
+    bke::mesh::build_vert_to_corner_map(
+        corner_verts, mesh.verts_num, vert_to_loop_offsets, vert_to_loop_indices);
     const OffsetIndices<int> vert_to_loop_offset(vert_to_loop_offsets);
 
-    Array<int> edge_faces_total(mesh.totedge, 0);
+    Array<int> edge_faces_total(mesh.edges_num, 0);
     array_utils::count_indices(corner_edges, edge_faces_total.as_mutable_span());
 
     IndexMaskMemory memory;
     const IndexMask vert_mask = IndexMask::from_predicate(
-        IndexMask(mesh.totvert), GrainSize(1024), memory, [&](const int vert_index) {
+        IndexMask(mesh.verts_num), GrainSize(1024), memory, [&](const int vert_index) {
           for (const int edge_index : vert_to_edge_map[vert_index]) {
             if (!ELEM(edge_faces_total[edge_index], 0, 1, 2)) {
               return false;
@@ -139,16 +139,16 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
           return true;
         });
 
-    Array<int2> stars_pairs(mesh.totloop);
+    Array<int2> stars_pairs(mesh.verts_num);
     const Array<int2> corner_pairs = corner_edge_pairs(
-        mesh.faces(), edges, corner_edges, corner_verts, mesh.totloop, mesh.faces_num);
+        mesh.faces(), edges, corner_edges, corner_verts, mesh.corners_num, mesh.faces_num);
     array_utils::gather(
         corner_pairs.as_span(), vert_to_loop_indices.as_span(), stars_pairs.as_mutable_span());
 
-    Array<int> star_indices(mesh.totloop);
+    Array<int> star_indices(mesh.corners_num);
     sort_corner_edge_pairs(vert_mask, vert_to_loop_offset, stars_pairs, star_indices);
 
-    AtomicDisjointSet linear_edges(mesh.totedge);
+    AtomicDisjointSet linear_edges(mesh.edges_num);
 
     vert_mask.foreach_index(GrainSize(1024), [&](const int vert_index) {
       for (IndexRange range = vert_to_loop_offset[vert_index]; !range.is_empty();) {
@@ -176,7 +176,7 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
       }
     });
 
-    threading::parallel_for(IndexRange(mesh.totvert), 2048, [&](const IndexRange range) {
+    threading::parallel_for(IndexRange(mesh.verts_num), 2048, [&](const IndexRange range) {
       for (const int vert_index : range) {
         if (vert_to_edge_map[vert_index].size() != 2) {
           continue;
@@ -219,10 +219,10 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
       linear_edges.join(central_edge, loos_edge);
     });
 
-    Array<int> edge_group(mesh.totedge);
+    Array<int> edge_group(mesh.edges_num);
     linear_edges.calc_reduced_ids(edge_group);
     return mesh.attributes().adapt_domain<int>(
-        VArray<int>::ForContainer(std::move(edge_group)), ATTR_DOMAIN_EDGE, domain);
+        VArray<int>::ForContainer(std::move(edge_group)), AttrDomain::Edge, domain);
   }
 
   uint64_t hash() const final
@@ -235,9 +235,9 @@ class EdgesLineGroupFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const EdgesLineGroupFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
-    return ATTR_DOMAIN_EDGE;
+    return AttrDomain::Edge;
   }
 };
 
@@ -249,10 +249,10 @@ class ParallelEdgeGroupFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    AtomicDisjointSet parallel_edges(mesh.totedge);
+    AtomicDisjointSet parallel_edges(mesh.edges_num);
 
     const Span<int> corner_edges = mesh.corner_edges();
     const blender::OffsetIndices<int> faces = mesh.faces();
@@ -274,11 +274,11 @@ class ParallelEdgeGroupFieldInput final : public bke::MeshFieldInput {
       }
     });
 
-    Array<int> edge_group(mesh.totedge);
+    Array<int> edge_group(mesh.edges_num);
     parallel_edges.calc_reduced_ids(edge_group);
 
     return mesh.attributes().adapt_domain<int>(
-        VArray<int>::ForContainer(std::move(edge_group)), ATTR_DOMAIN_EDGE, domain);
+        VArray<int>::ForContainer(std::move(edge_group)), AttrDomain::Edge, domain);
   }
 
   uint64_t hash() const final
@@ -291,9 +291,9 @@ class ParallelEdgeGroupFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const ParallelEdgeGroupFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const final
   {
-    return ATTR_DOMAIN_EDGE;
+    return AttrDomain::Edge;
   }
 };
 
