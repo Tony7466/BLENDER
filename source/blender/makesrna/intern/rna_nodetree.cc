@@ -1065,7 +1065,8 @@ static const EnumPropertyItem *rna_NodeTree_color_tag_itemf(bContext * /*C*/,
         }
         break;
       }
-      case NodeGroupColorTag::Shader: {
+      case NodeGroupColorTag::Shader:
+      case NodeGroupColorTag::Script: {
         if (ntree.type == NTREE_SHADER) {
           RNA_enum_item_add(&items, &items_num, item);
         }
