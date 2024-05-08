@@ -307,18 +307,35 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
       continue;
     }
 
+    valid_neighbors++;
+    shader_data_setup_from_restir(kg, state, &neighbor, render_buffer);
+
+    /* Calculate canonical MIS weight. */
+    if (!canonical.is_empty()) {
+      /* TODO(weizhen): verify if branching has influence on performance on GPU. This branching and
+       * the `neighbor.is_empty()` check is unnecessary, because if `total_weight` is zero then the
+       * sample would not picked by the reservoir regarless of the `mis_weight`. */
+      BsdfEval radiance;
+
+      /* Evaluate current sample from the neighbor shading point. */
+      light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &canonical_ls);
+      radiance_eval(kg, state, &neighbor.sd, &canonical_ls, &radiance, visibility);
+      const float canonical_at_neighbor = luminance(kg, radiance);
+
+      canonical_mis_weight += (1.0f - mis_weight_pairwise(canonical_at_neighbor,
+                                                          canonical_target_function,
+                                                          neighbors));
+    }
+
     if (neighbor.is_empty()) {
       continue;
     }
 
-    shader_data_setup_from_restir(kg, state, &neighbor, render_buffer);
-    valid_neighbors++;
-
     /* Evaluate neighbor sample from the neighbor shading point. */
-    BsdfEval radiance;
     light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &neighbor.reservoir.ls);
-    radiance_eval(kg, state, &neighbor.sd, &neighbor.reservoir.ls, &radiance, visibility);
-    const float neighbor_target_function = luminance(kg, radiance);
+    radiance_eval(
+        kg, state, &neighbor.sd, &neighbor.reservoir.ls, &neighbor.reservoir.radiance, visibility);
+    const float neighbor_target_function = luminance(kg, neighbor.reservoir.radiance);
 
     /* Evaluate neighbor sample from the current shading point. */
     light_sample_from_uv(kg, &current->sd, current->path_flag, &neighbor.reservoir.ls);
@@ -332,19 +349,6 @@ ccl_device_inline bool streaming_samples_pairwise(KernelGlobals kg,
         neighbor_target_function, neighbor_at_canonical, neighbors);
 
     current->add_reservoir(kg, neighbor, rand.z);
-
-    /* Calculate canonical MIS weight. */
-    if (canonical.is_empty()) {
-      continue;
-    }
-
-    /* Evaluate current sample from the neighbor shading point. */
-    light_sample_from_uv(kg, &neighbor.sd, neighbor.path_flag, &canonical_ls);
-    radiance_eval(kg, state, &neighbor.sd, &canonical_ls, &radiance, visibility);
-    const float canonical_at_neighbor = luminance(kg, radiance);
-
-    canonical_mis_weight +=
-        (1.0f - mis_weight_pairwise(canonical_at_neighbor, canonical_target_function, neighbors));
   }
 
   /* Add canonical sample to the reservoir. */
