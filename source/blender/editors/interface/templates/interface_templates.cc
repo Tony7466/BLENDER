@@ -3024,17 +3024,8 @@ static void draw_exporter_item(uiList * /*ui_list*/,
                                int /*index*/,
                                int /*flt_flag*/)
 {
-  using namespace blender;
-  const CollectionExport *data = (CollectionExport *)itemptr->data;
-
-  bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
-  const char *name;
-  if (!fh) {
-    name = IFACE_("Undefined");
-  }
-  else {
-    name = fh->label;
-  }
+  char name[MAX_IDPROP_NAME];
+  RNA_string_get(itemptr, "name", name);
 
   uiLayout *row = uiLayoutRow(layout, false);
   uiItemS(row);
@@ -3072,7 +3063,7 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
                  5,
                  UILST_LAYOUT_DEFAULT,
                  1,
-                 UI_TEMPLATE_LIST_NO_FILTER_OPTIONS);
+                 UI_TEMPLATE_LIST_FLAG_NONE);
 
   uiLayout *col = uiLayoutColumn(row, true);
   uiItemM(col, "COLLECTION_MT_exporter_add", "", ICON_ADD);
