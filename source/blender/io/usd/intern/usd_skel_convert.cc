@@ -101,14 +101,16 @@ void add_bezt(FCurve *fcu,
   blender::animrig::insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
 }
 
-pxr::GfVec3h get_scale(const pxr::GfMatrix4d& mat)
+pxr::GfVec3h get_scale(const pxr::GfMatrix4d &mat)
 {
   pxr::GfVec3f t;
   pxr::GfQuatf qrot;
   pxr::GfVec3h s;
   static pxr::GfVec3h UNIT_SCALE(1.0);
   static const double HALF_EPSILON = 1e-2;
-  if (!pxr::UsdSkelDecomposeTransform(mat, &t, &qrot, &s) || pxr::GfIsClose(s, UNIT_SCALE, HALF_EPSILON)) {
+  if (!pxr::UsdSkelDecomposeTransform(mat, &t, &qrot, &s) ||
+      pxr::GfIsClose(s, UNIT_SCALE, HALF_EPSILON))
+  {
     s = UNIT_SCALE;
   }
 
