@@ -314,8 +314,8 @@ class NODE_MT_select(Menu):
         layout.operator_menu_enum("node.select_lasso", "mode")
 
         layout.separator()
-        layout.operator("node.select_linked_from")
-        layout.operator("node.select_linked_to")
+        layout.operator("node.select_linked_from", text="Linked from")
+        layout.operator("node.select_linked_to", text="Linked to")
 
         layout.separator()
 
