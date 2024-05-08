@@ -978,7 +978,7 @@ class NODE_PT_node_tree_properties(Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.prop(group, "name", text="Name", icon='NODETREE')
+        layout.prop(group, "name", text="Name")
 
         if group.asset_data:
             layout.prop(group.asset_data, "description", text="Description")
