@@ -389,6 +389,9 @@ struct bNodeType {
 /**
  * Color tag stored per node group. This affects the header color of group nodes.
  * Note that these values are written to DNA.
+ *
+ * This is separate from the `NODE_CLASS_*` enum, because those have some additional items and are
+ * not purely color tags. Some classes also have functional effects (e.g. `NODE_CLASS_INPUT`).
  */
 enum class NodeGroupColorTag {
   None = 0,
