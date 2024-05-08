@@ -4498,6 +4498,18 @@ static void def_fn_input_int(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_fn_input_rotation(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeInputRotation", "storage");
+
+  prop = RNA_def_property(srna, "rotation_euler", PROP_FLOAT, PROP_EULER);
+  RNA_def_property_float_sdna(prop, nullptr, "rotation_euler");
+  RNA_def_property_ui_text(prop, "Rotation", "Input value used for unconnected socket");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_fn_input_vector(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -10373,6 +10385,9 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "", "The current location (offset) of the view for this Node Tree");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+
+  prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Description", "Description of the node tree");
 
   /* AnimData */
   rna_def_animdata_common(srna);
