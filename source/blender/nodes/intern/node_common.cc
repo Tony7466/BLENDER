@@ -89,12 +89,32 @@ int node_group_ui_class(const bNode *node)
   switch (NodeGroupCategory(group->category)) {
     case NodeGroupCategory::None:
       return NODE_CLASS_GROUP;
-    case NodeGroupCategory::Input:
-      return NODE_CLASS_INPUT;
+    case NodeGroupCategory::Attribute:
+      return NODE_CLASS_ATTRIBUTE;
+    case NodeGroupCategory::Color:
+      return NODE_CLASS_OP_COLOR;
+    case NodeGroupCategory::Converter:
+      return NODE_CLASS_CONVERTER;
+    case NodeGroupCategory::Distort:
+      return NODE_CLASS_DISTORT;
+    case NodeGroupCategory::Filter:
+      return NODE_CLASS_OP_FILTER;
     case NodeGroupCategory::Geometry:
       return NODE_CLASS_GEOMETRY;
+    case NodeGroupCategory::Input:
+      return NODE_CLASS_INPUT;
+    case NodeGroupCategory::Matte:
+      return NODE_CLASS_MATTE;
+    case NodeGroupCategory::Output:
+      return NODE_CLASS_OUTPUT;
+    case NodeGroupCategory::Script:
+      return NODE_CLASS_SCRIPT;
     case NodeGroupCategory::Shader:
       return NODE_CLASS_SHADER;
+    case NodeGroupCategory::Texture:
+      return NODE_CLASS_TEXTURE;
+    case NodeGroupCategory::Vector:
+      return NODE_CLASS_OP_VECTOR;
   }
   return NODE_CLASS_GROUP;
 }

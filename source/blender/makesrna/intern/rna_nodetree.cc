@@ -94,9 +94,19 @@ const EnumPropertyItem rna_enum_node_socket_data_type_items[] = {
 
 const EnumPropertyItem rna_enum_node_group_category_items[] = {
     {int(NodeGroupCategory::None), "NONE", 0, "None", "Default class for new node groups"},
-    {int(NodeGroupCategory::Input), "INPUT", 0, "Input", ""},
+    {int(NodeGroupCategory::Attribute), "ATTRIBUTE", 0, "Attribute", ""},
+    {int(NodeGroupCategory::Color), "COLOR", 0, "Color", ""},
+    {int(NodeGroupCategory::Converter), "CONVERTER", 0, "Converter", ""},
+    {int(NodeGroupCategory::Distort), "DISTORT", 0, "Distort", ""},
+    {int(NodeGroupCategory::Filter), "FILTER", 0, "Filter", ""},
     {int(NodeGroupCategory::Geometry), "GEOMETRY", 0, "Geometry", ""},
+    {int(NodeGroupCategory::Input), "INPUT", 0, "Input", ""},
+    {int(NodeGroupCategory::Matte), "MATTE", 0, "Matte", ""},
+    {int(NodeGroupCategory::Output), "OUTPUT", 0, "Output", ""},
+    {int(NodeGroupCategory::Script), "SCRIPT", 0, "Script", ""},
     {int(NodeGroupCategory::Shader), "SHADER", 0, "Shader", ""},
+    {int(NodeGroupCategory::Texture), "TEXTURE", 0, "Texture", ""},
+    {int(NodeGroupCategory::Vector), "VECTOR", 0, "Vector", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
