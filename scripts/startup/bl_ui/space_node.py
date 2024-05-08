@@ -893,47 +893,6 @@ class NODE_MT_node_tree_interface_context_menu(Menu):
         layout.operator("node.interface_item_duplicate", icon='DUPLICATE')
 
 
-class NODE_PT_node_tree_properties(Panel):
-    bl_space_type = 'NODE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = "Group"
-    bl_label = "Group"
-
-    @classmethod
-    def poll(cls, context):
-        snode = context.space_data
-        if snode is None:
-            return False
-        group = snode.edit_tree
-        if group is None:
-            return False
-        if group.is_embedded_data:
-            return False
-        return True
-
-    def draw(self, context):
-        layout = self.layout
-        snode = context.space_data
-        group = snode.edit_tree
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-
-        layout.prop(group, "name", text="Name", icon='NODETREE')
-
-        if group.asset_data:
-            layout.prop(group.asset_data, "description", text="Description")
-        else:
-            layout.prop(group, "description", text="Description")
-
-        if group.bl_idname == "GeometryNodeTree":
-            header, body = layout.panel("group_usage")
-            header.label(text="Usage")
-            if body:
-                col = body.column(align=True)
-                col.prop(group, "is_modifier")
-                col.prop(group, "is_tool")
-
-
 class NODE_PT_node_tree_interface(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
@@ -998,6 +957,47 @@ class NODE_PT_node_tree_interface(Panel):
                 layout.prop(active_item, "default_closed", text="Closed by Default")
 
             layout.use_property_split = False
+
+
+class NODE_PT_node_tree_properties(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Group"
+    bl_label = "Group"
+
+    @classmethod
+    def poll(cls, context):
+        snode = context.space_data
+        if snode is None:
+            return False
+        group = snode.edit_tree
+        if group is None:
+            return False
+        if group.is_embedded_data:
+            return False
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        snode = context.space_data
+        group = snode.edit_tree
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        layout.prop(group, "name", text="Name", icon='NODETREE')
+
+        if group.asset_data:
+            layout.prop(group.asset_data, "description", text="Description")
+        else:
+            layout.prop(group, "description", text="Description")
+
+        if group.bl_idname == "GeometryNodeTree":
+            header, body = layout.panel("group_usage")
+            header.label(text="Usage")
+            if body:
+                col = body.column(align=True)
+                col.prop(group, "is_modifier")
+                col.prop(group, "is_tool")
 
 
 # Grease Pencil properties
