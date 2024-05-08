@@ -410,9 +410,10 @@ static FillBoundary build_fill_boundary(const ImageBufferAccessor &buffer)
       for (const int x : IndexRange(width).drop_back(1)) {
         const int index_left = buffer.index_from_coord({x, y});
         const int index_right = buffer.index_from_coord({x + 1, y});
+        const bool border_left = get_flag(pixels[index_left], ColorFlag::Border);
         const bool filled_left = get_flag(pixels[index_left], ColorFlag::Fill);
         const bool filled_right = get_flag(pixels[index_right], ColorFlag::Fill);
-        if (!filled_left && filled_right) {
+        if (!border_left && !filled_left && filled_right) {
           /* Empty index list indicates uninitialized section. */
           starts.add(index_right, {});
         }
