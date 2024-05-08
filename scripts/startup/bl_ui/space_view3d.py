@@ -1807,7 +1807,7 @@ class VIEW3D_MT_select_object(Menu):
         layout = self.layout
 
         layout.operator("object.select_all", text="All").action = 'SELECT'
-        layout.operator("object.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("object.select_all", text="None").action = 'DESELECT'
         layout.operator("object.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -1866,7 +1866,7 @@ class VIEW3D_MT_select_pose(Menu):
         layout = self.layout
 
         layout.operator("pose.select_all", text="All").action = 'SELECT'
-        layout.operator("pose.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("pose.select_all", text="None").action = 'DESELECT'
         layout.operator("pose.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -1901,7 +1901,7 @@ class VIEW3D_MT_select_particle(Menu):
         layout = self.layout
 
         layout.operator("particle.select_all", text="All").action = 'SELECT'
-        layout.operator("particle.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("particle.select_all", text="None").action = 'DESELECT'
         layout.operator("particle.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2009,7 +2009,7 @@ class VIEW3D_MT_select_edit_mesh(Menu):
 
         # primitive
         layout.operator("mesh.select_all", text="All").action = 'SELECT'
-        layout.operator("mesh.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("mesh.select_all", text="None").action = 'DESELECT'
         layout.operator("mesh.select_all", text="Invert").action = 'INVERT'
 
         # gesture
@@ -2054,7 +2054,7 @@ class VIEW3D_MT_select_edit_curve(Menu):
         layout = self.layout
 
         layout.operator("curve.select_all", text="All").action = 'SELECT'
-        layout.operator("curve.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("curve.select_all", text="None").action = 'DESELECT'
         layout.operator("curve.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2093,7 +2093,7 @@ class VIEW3D_MT_select_edit_surface(Menu):
         layout = self.layout
 
         layout.operator("curve.select_all", text="All").action = 'SELECT'
-        layout.operator("curve.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("curve.select_all", text="None").action = 'DESELECT'
         layout.operator("curve.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2163,7 +2163,7 @@ class VIEW3D_MT_select_edit_metaball(Menu):
         layout = self.layout
 
         layout.operator("mball.select_all", text="All").action = 'SELECT'
-        layout.operator("mball.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("mball.select_all", text="None").action = 'DESELECT'
         layout.operator("mball.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2203,7 +2203,7 @@ class VIEW3D_MT_select_edit_lattice(Menu):
         layout = self.layout
 
         layout.operator("lattice.select_all", text="All").action = 'SELECT'
-        layout.operator("lattice.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("lattice.select_all", text="None").action = 'DESELECT'
         layout.operator("lattice.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2234,7 +2234,7 @@ class VIEW3D_MT_select_edit_armature(Menu):
         layout = self.layout
 
         layout.operator("armature.select_all", text="All").action = 'SELECT'
-        layout.operator("armature.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("armature.select_all", text="None").action = 'DESELECT'
         layout.operator("armature.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2284,7 +2284,7 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
         layout = self.layout
 
         layout.operator("grease_pencil.select_all", text="All").action = 'SELECT'
-        layout.operator("grease_pencil.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("grease_pencil.select_all", text="None").action = 'DESELECT'
         layout.operator("grease_pencil.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2351,7 +2351,7 @@ class VIEW3D_MT_select_edit_gpencil(Menu):
         layout = self.layout
 
         layout.operator("gpencil.select_all", text="All").action = 'SELECT'
-        layout.operator("gpencil.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("gpencil.select_all", text="None").action = 'DESELECT'
         layout.operator("gpencil.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2388,7 +2388,7 @@ class VIEW3D_MT_select_paint_mask(Menu):
         layout = self.layout
 
         layout.operator("paint.face_select_all", text="All").action = 'SELECT'
-        layout.operator("paint.face_select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("paint.face_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.face_select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2414,7 +2414,7 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
         layout = self.layout
 
         layout.operator("paint.vert_select_all", text="All").action = 'SELECT'
-        layout.operator("paint.vert_select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("paint.vert_select_all", text="None").action = 'DESELECT'
         layout.operator("paint.vert_select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2462,7 +2462,7 @@ class VIEW3D_MT_select_edit_curves(Menu):
         layout = self.layout
 
         layout.operator("curves.select_all", text="All").action = 'SELECT'
-        layout.operator("curves.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("curves.select_all", text="None").action = 'DESELECT'
         layout.operator("curves.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
@@ -2491,7 +2491,7 @@ class VIEW3D_MT_select_sculpt_curves(Menu):
         layout = self.layout
 
         layout.operator("curves.select_all", text="All").action = 'SELECT'
-        layout.operator("curves.select_all", text="Deselect").action = 'DESELECT'
+        layout.operator("curves.select_all", text="None").action = 'DESELECT'
         layout.operator("curves.select_all", text="Invert").action = 'INVERT'
 
         layout.separator()
