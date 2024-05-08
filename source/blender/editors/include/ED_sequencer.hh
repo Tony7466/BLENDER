@@ -17,12 +17,12 @@ struct SpaceSeq;
 struct bContext;
 struct View2D;
 
-typedef enum eSeqHandle {
+enum eSeqHandle {
   SEQ_HANDLE_NONE = 0,
   SEQ_HANDLE_LEFT = SEQ_LEFTSEL,
   SEQ_HANDLE_RIGHT = SEQ_RIGHTSEL,
   SEQ_HANDLE_BOTH,
-} eSeqHandle;
+};
 
 void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool deselect_all);
 /**
