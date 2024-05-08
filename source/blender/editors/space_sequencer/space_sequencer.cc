@@ -699,16 +699,14 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
     return;
   }
 
-  eSeqHandle side;
-  Sequence *seq1, *seq2;
-  ED_sequencer_pick_strip_and_side(scene, &region->v2d, mouse_co_view, &seq1, &seq2, &side);
+  StripSelection selection = ED_sequencer_pick_strip_and_side(scene, &region->v2d, mouse_co_view);
 
-  if (seq1 == nullptr) {
+  if (selection.seq1 == nullptr) {
     WM_cursor_set(win, wmcursor);
     return;
   }
 
-  if (is_mouse_over_retiming_key(scene, seq1, &region->v2d, area, mouse_co_region)) {
+  if (is_mouse_over_retiming_key(scene, selection.seq1, &region->v2d, area, mouse_co_region)) {
     WM_cursor_set(win, wmcursor);
     return;
   }
@@ -716,18 +714,18 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   const View2D *v2d = &region->v2d;
   const float scale_y = UI_view2d_scale_get_y(v2d);
 
-  if (!ED_sequencer_can_select_handle(scene, seq1, v2d) || scale_y < 16 * U.pixelsize) {
+  if (!ED_sequencer_can_select_handle(scene, selection.seq1, v2d) || scale_y < 16 * U.pixelsize) {
     WM_cursor_set(win, wmcursor);
     return;
   }
 
-  if (seq1 != nullptr && seq2 != nullptr) {
+  if (selection.seq1 != nullptr && selection.seq2 != nullptr) {
     wmcursor = WM_CURSOR_BOTH_HANDLES;
   }
-  else if (side == SEQ_HANDLE_LEFT) {
+  else if (selection.handle == SEQ_HANDLE_LEFT) {
     wmcursor = WM_CURSOR_LEFT_HANDLE;
   }
-  else if (side == SEQ_HANDLE_RIGHT) {
+  else if (selection.handle == SEQ_HANDLE_RIGHT) {
     wmcursor = WM_CURSOR_RIGHT_HANDLE;
   }
 

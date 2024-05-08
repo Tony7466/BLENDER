@@ -1236,13 +1236,14 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Deselect everything */
   if (deselect_all ||
-      (seq && (extend == false && deselect == false && toggle == false) && !already_selected))
+      (selection.seq1 && (extend == false && deselect == false && toggle == false) &&
+       !already_selected))
   {
     changed |= ED_sequencer_deselect_all(scene);
   }
 
   /* Nothing to select, but strips could be deselected. */
-  if (!seq) {
+  if (!selection.seq1) {
     if (changed) {
       sequencer_select_do_updates(C, scene);
     }
@@ -1259,7 +1260,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   }
 
   sequencer_select_do_updates(C, scene);
-  sequencer_select_set_active(scene, seq);
+  sequencer_select_set_active(scene, selection.seq1);
   return OPERATOR_FINISHED;
 }
 

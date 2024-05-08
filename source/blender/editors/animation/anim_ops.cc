@@ -232,12 +232,10 @@ static bool sequencer_skip_for_handle_tweak(const bContext *C, const wmEvent *ev
 
   float mouse_co[2];
   UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &mouse_co[0], &mouse_co[1]);
-  Sequence *seq1, *seq2;
-  eSeqHandle side;
 
-  ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co, &seq1, &seq2, &side);
+  StripSelection selection = ED_sequencer_pick_strip_and_side(scene, v2d, mouse_co);
 
-  return side != SEQ_HANDLE_NONE;
+  return selection.handle != SEQ_HANDLE_NONE;
 }
 
 /* Modal Operator init */
