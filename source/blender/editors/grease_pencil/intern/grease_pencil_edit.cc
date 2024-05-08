@@ -2877,7 +2877,7 @@ static int grease_pencil_snap_cursor_to_sel_exec(bContext *C, wmOperator *op)
 
   switch (scene.toolsettings->transform_pivot_point) {
     case V3D_AROUND_CENTER_BOUNDS:
-      cursor = 0.5f * (points_min + points_max);
+      cursor = math::midpoint(points_min, points_max);
       break;
     case V3D_AROUND_CENTER_MEDIAN:
     case V3D_AROUND_CURSOR:
