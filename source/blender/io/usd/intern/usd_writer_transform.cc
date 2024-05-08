@@ -68,8 +68,8 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   pxr::UsdGeomXformable xform = create_xformable();
 
   if (!xform) {
-	  CLOG_ERROR(&LOG, "USDTransformWriter: couldn't create xformable");
-	  return;
+    CLOG_ERROR(&LOG, "USDTransformWriter: couldn't create xformable");
+    return;
   }
 
   float parent_relative_matrix[4][4];  // The object matrix relative to the parent.
