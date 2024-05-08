@@ -2812,64 +2812,6 @@ static void GREASE_PENCIL_OT_snap_to_cursor(wmOperatorType *ot)
 /** \name Snapping Cursor to Selection Operator
  * \{ */
 
-// static bool grease_pencil_stroke_points_centroid(Depsgraph *depsgraph,
-//                                                  bContext *C,
-//                                                  Object *obact,
-//                                                  bGPdata *gpd,
-//                                                  float r_centroid[3],
-//                                                  float r_min[3],
-//                                                  float r_max[3],
-//                                                  size_t *count)
-// {
-//   bool changed = false;
-//   /* calculate midpoints from selected points */
-//   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-//     /* only editable and visible layers are considered */
-//     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
-//       bGPDframe *gpf = gpl->actframe;
-//       float diff_mat[4][4];
-
-//       /* calculate difference matrix */
-//       BKE_gpencil_layer_transform_matrix_get(depsgraph, obact, gpl, diff_mat);
-
-//       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-//         bGPDspoint *pt;
-//         int i;
-
-//         /* skip strokes that are invalid for current view */
-//         if (ED_gpencil_stroke_can_use(C, gps) == false) {
-//           continue;
-//         }
-//         /* check if the color is editable */
-//         if (ED_gpencil_stroke_material_editable(obact, gpl, gps) == false) {
-//           continue;
-//         }
-//         /* only continue if this stroke is selected (editable doesn't guarantee this)... */
-//         if ((gps->flag & GP_STROKE_SELECT) == 0) {
-//           continue;
-//         }
-
-//         for (i = 0, pt = gps->points; i < gps->totpoints; i++, pt++) {
-//           if (pt->flag & GP_SPOINT_SELECT) {
-//             /* apply parent transformations */
-//             float fpt[3];
-//             mul_v3_m4v3(fpt, diff_mat, &pt->x);
-
-//             add_v3_v3(r_centroid, fpt);
-//             minmax_v3v3_v3(r_min, r_max, fpt);
-
-//             (*count)++;
-//           }
-//         }
-
-//         changed = true;
-//       }
-//     }
-//   }
-
-//   return changed;
-// }
-
 static bool grease_pencil_snap_compute_centroid(const Scene &scene,
                                                 const Object &object,
                                                 const GreasePencil &grease_pencil,
