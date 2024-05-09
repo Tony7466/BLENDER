@@ -39,9 +39,9 @@ Mesh *subdiv_to_mesh(Subdiv *subdiv, const ToMeshSettings *settings, const Mesh 
  * If `is_simple` is false, this will perform a B-Spline interpolation using the edge neighbors,
  * otherwise a linear interpolation will be done base on the edge vertices.
  */
-void mesh_interpolate_position_on_edge(const float (*coarse_positions)[3],
-                                       const blender::int2 *coarse_edges,
-                                       blender::GroupedSpan<int> vert_to_edge_map,
+void mesh_interpolate_position_on_edge(Span<float3> coarse_positions,
+                                       Span<int2> coarse_edges,
+                                       GroupedSpan<int> vert_to_edge_map,
                                        int coarse_edge_index,
                                        bool is_simple,
                                        float u,

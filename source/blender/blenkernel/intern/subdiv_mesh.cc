@@ -955,7 +955,7 @@ static void subdiv_mesh_vertex_loose(const ForeachContext *foreach_context,
 /* Get neighbor edges of the given one.
  * - neighbors[0] is an edge adjacent to edge->v1.
  * - neighbors[1] is an edge adjacent to edge->v2. */
-static void find_edge_neighbors(const int2 *coarse_edges,
+static void find_edge_neighbors(const Span<int2> coarse_edges,
                                 const GroupedSpan<int> vert_to_edge_map,
                                 const int edge_index,
                                 const int2 *neighbors[2])
@@ -993,7 +993,7 @@ static void find_edge_neighbors(const int2 *coarse_edges,
   }
 }
 
-static void points_for_loose_edges_interpolation_get(const float (*coarse_positions)[3],
+static void points_for_loose_edges_interpolation_get(const Span<float3> coarse_positions,
                                                      const int2 &coarse_edge,
                                                      const int2 *neighbors[2],
                                                      float points_r[4][3])
@@ -1029,8 +1029,8 @@ static void points_for_loose_edges_interpolation_get(const float (*coarse_positi
   }
 }
 
-void mesh_interpolate_position_on_edge(const float (*coarse_positions)[3],
-                                       const int2 *coarse_edges,
+void mesh_interpolate_position_on_edge(const Span<float3> coarse_positions,
+                                       const Span<int2> coarse_edges,
                                        const GroupedSpan<int> vert_to_edge_map,
                                        const int coarse_edge_index,
                                        const bool is_simple,
@@ -1093,14 +1093,13 @@ static void subdiv_mesh_vertex_of_loose_edge(const ForeachContext *foreach_conte
     subdiv_mesh_vertex_of_loose_edge_interpolate(ctx, coarse_edge, u, subdiv_vertex_index);
   }
   /* Interpolate coordinate. */
-  mesh_interpolate_position_on_edge(
-      reinterpret_cast<const float(*)[3]>(ctx->coarse_positions.data()),
-      ctx->coarse_edges.data(),
-      ctx->vert_to_edge_map,
-      coarse_edge_index,
-      is_simple,
-      u,
-      ctx->subdiv_positions[subdiv_vertex_index]);
+  mesh_interpolate_position_on_edge(ctx->coarse_positions,
+                                    ctx->coarse_edges,
+                                    ctx->vert_to_edge_map,
+                                    coarse_edge_index,
+                                    is_simple,
+                                    u,
+                                    ctx->subdiv_positions[subdiv_vertex_index]);
 }
 
 /** \} */

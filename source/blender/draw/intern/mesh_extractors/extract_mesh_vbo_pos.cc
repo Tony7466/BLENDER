@@ -137,8 +137,11 @@ static void extract_pos_init_subdiv(const DRWSubdivCache &subdiv_cache,
   const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
 
   /* Initialize the vertex buffer, it was already allocated. */
-  GPU_vertbuf_init_build_on_device(
-      vbo, draw_subdiv_get_pos_nor_format(), subdiv_cache.num_subdiv_loops + loose_geom.loop_len);
+  GPU_vertbuf_init_build_on_device(vbo,
+                                   draw_subdiv_get_pos_nor_format(),
+                                   subdiv_cache.num_subdiv_loops +
+                                       loose_geom.coarse_edge_indices.size() * 2 +
+                                       loose_geom.coarse_vert_indices.size());
 
   if (subdiv_cache.num_subdiv_loops == 0) {
     return;
@@ -221,12 +224,12 @@ static void extract_pos_init_subdiv(const DRWSubdivCache &subdiv_cache,
 }
 
 static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
-                                          const MeshRenderData & /*mr*/,
+                                          const MeshRenderData &mr,
                                           void *buffer,
                                           void * /*data*/)
 {
   const DRWSubdivLooseGeom &loose_geom = subdiv_cache.loose_geom;
-  if (loose_geom.loop_len == 0) {
+  if (mr.loose_verts.is_empty() && mr.loose_edges.is_empty()) {
     return;
   }
 
@@ -243,33 +246,26 @@ static void extract_pos_loose_geom_subdiv(const DRWSubdivCache &subdiv_cache,
   /* Make sure buffer is active for sending loose data. */
   GPU_vertbuf_use(vbo);
 
-  Span<DRWSubdivLooseEdge> loose_edges = draw_subdiv_cache_get_loose_edges(subdiv_cache);
+  const Span<float3> positions = subdiv_cache.loose_geom.vert_positions;
+  const Span<int2> edge_verts = subdiv_cache.loose_geom.edge_loose_verts;
 
   SubdivPosNorLoop edge_data[2];
   memset(edge_data, 0, sizeof(SubdivPosNorLoop) * 2);
-  for (const DRWSubdivLooseEdge &loose_edge : loose_edges) {
-    const DRWSubdivLooseVertex &v1 = loose_geom.verts[loose_edge.loose_subdiv_v1_index];
-    const DRWSubdivLooseVertex &v2 = loose_geom.verts[loose_edge.loose_subdiv_v2_index];
-
-    copy_v3_v3(edge_data[0].pos, v1.co);
-    copy_v3_v3(edge_data[1].pos, v2.co);
-
+  for (const int i : edge_verts.index_range()) {
+    copy_v3_v3(edge_data[0].pos, positions[edge_verts[i][0]]);
+    copy_v3_v3(edge_data[1].pos, positions[edge_verts[i][1]]);
     GPU_vertbuf_update_sub(
         vbo, offset * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop) * 2, &edge_data);
-
     offset += 2;
   }
 
   SubdivPosNorLoop vert_data;
   memset(&vert_data, 0, sizeof(SubdivPosNorLoop));
-  Span<DRWSubdivLooseVertex> loose_verts = draw_subdiv_cache_get_loose_verts(subdiv_cache);
 
-  for (const DRWSubdivLooseVertex &loose_vert : loose_verts) {
-    copy_v3_v3(vert_data.pos, loose_vert.co);
-
+  for (const int i : positions.index_range()) {
+    copy_v3_v3(vert_data.pos, positions[i]);
     GPU_vertbuf_update_sub(
         vbo, offset * sizeof(SubdivPosNorLoop), sizeof(SubdivPosNorLoop), &vert_data);
-
     offset += 1;
   }
 }

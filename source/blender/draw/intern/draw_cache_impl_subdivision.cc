@@ -21,6 +21,7 @@
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_linklist.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
@@ -685,11 +686,8 @@ void draw_subdiv_cache_free(DRWSubdivCache &cache)
     GPU_uniformbuf_free(cache.ubo);
     cache.ubo = nullptr;
   }
-  MEM_SAFE_FREE(cache.loose_geom.edges);
-  MEM_SAFE_FREE(cache.loose_geom.verts);
-  cache.loose_geom.edge_len = 0;
-  cache.loose_geom.vert_len = 0;
-  cache.loose_geom.loop_len = 0;
+  std::destroy_at(&cache.loose_geom);
+  new (&cache.loose_geom) DRWSubdivLooseGeom();
 }
 
 /* Flags used in #DRWSubdivCache.extra_coarse_face_data. The flags are packed in the upper bits of
@@ -2208,17 +2206,15 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
   return true;
 }
 
-void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cache)
+void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, const MeshBufferCache &cache)
 {
-  const int coarse_loose_vert_len = cache->loose_geom.verts.size();
-  const int coarse_loose_edge_len = cache->loose_geom.edges.size();
-
-  if (coarse_loose_vert_len == 0 && coarse_loose_edge_len == 0) {
-    /* Nothing to do. */
+  const Span<int> loose_edges = cache.loose_geom.verts;
+  if (loose_edges.is_empty()) {
     return;
   }
 
-  if (subdiv_cache->loose_geom.edges || subdiv_cache->loose_geom.verts) {
+  DRWSubdivLooseGeom &result = subdiv_cache->loose_geom;
+  if (!result.edge_vert_positions.is_empty()) {
     /* Already processed. */
     return;
   }
@@ -2228,25 +2224,15 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cac
   const int resolution = subdiv_cache->resolution;
   const int resolution_1 = resolution - 1;
   const float inv_resolution_1 = 1.0f / float(resolution_1);
-  const int num_subdiv_vertices_per_coarse_edge = resolution - 2;
+  const int verts_per_coarse_edge = resolution - 1;
+  const int edges_per_coarse_edge = resolution - 2;
+  result.edges_per_coarse_edge = edges_per_coarse_edge;
 
-  const int num_subdivided_edge = coarse_loose_edge_len *
-                                  (num_subdiv_vertices_per_coarse_edge + 1);
+  const int num_subdivided_edge = loose_edges.size() * (edges_per_coarse_edge + 1);
 
-  /* Each edge will store data for its 2 verts, that way we can keep the overall logic simple, here
-   * and in the buffer extractors. Although it duplicates memory (and work), the buffers also store
-   * duplicate values. */
   const int num_subdivided_verts = num_subdivided_edge * 2;
 
-  DRWSubdivLooseEdge *loose_subd_edges = static_cast<DRWSubdivLooseEdge *>(
-      MEM_callocN(sizeof(DRWSubdivLooseEdge) * num_subdivided_edge, "DRWSubdivLooseEdge"));
-
-  DRWSubdivLooseVertex *loose_subd_verts = static_cast<DRWSubdivLooseVertex *>(
-      MEM_callocN(sizeof(DRWSubdivLooseVertex) * (num_subdivided_verts + coarse_loose_vert_len),
-                  "DRWSubdivLooseEdge"));
-
-  int subd_edge_offset = 0;
-  int subd_vert_offset = 0;
+  result.edge_vert_positions.reinitialize(loose_edges.size() * verts_per_coarse_edge);
 
   /* Subdivide each loose coarse edge. */
   const Span<float3> coarse_positions = coarse_mesh->vert_positions();
@@ -2257,72 +2243,31 @@ void DRW_subdivide_loose_geom(DRWSubdivCache *subdiv_cache, MeshBufferCache *cac
   const GroupedSpan<int> vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
       coarse_edges, coarse_mesh->verts_num, vert_to_edge_offsets, vert_to_edge_indices);
 
-  for (int i = 0; i < coarse_loose_edge_len; i++) {
-    const int coarse_edge_index = cache->loose_geom.edges[i];
-    const int2 &coarse_edge = coarse_edges[cache->loose_geom.edges[i]];
+  MutableSpan<int> coarse_verts = result.coarse_vert_indices;
+  for (const int i : loose_edges.index_range()) {
+    const int2 coarse_edge = coarse_edges[loose_edges[i]];
+    MutableSpan<int> edge_coarse_verts = coarse_verts.slice(i * edges_per_coarse_edge,
+                                                            edges_per_coarse_edge);
+    edge_coarse_verts.first() = coarse_edge[0];
+    edge_coarse_verts.slice(IndexRange::from_begin_size(1, edges_per_coarse_edge - 2)).fill(-1);
+    edge_coarse_verts.last() = coarse_edge[1];
+  }
 
-    /* Perform interpolation of each vertex. */
-    for (int i = 0; i < resolution - 1; i++, subd_edge_offset++) {
-      DRWSubdivLooseEdge &subd_edge = loose_subd_edges[subd_edge_offset];
-      subd_edge.coarse_edge_index = coarse_edge_index;
-
-      /* First vert. */
-      DRWSubdivLooseVertex &subd_v1 = loose_subd_verts[subd_vert_offset];
-      subd_v1.coarse_vertex_index = (i == 0) ? coarse_edge[0] : -1u;
-      const float u1 = i * inv_resolution_1;
-      bke::subdiv::mesh_interpolate_position_on_edge(
-          reinterpret_cast<const float(*)[3]>(coarse_positions.data()),
-          coarse_edges.data(),
-          vert_to_edge_map,
-          coarse_edge_index,
-          is_simple,
-          u1,
-          subd_v1.co);
-
-      subd_edge.loose_subdiv_v1_index = subd_vert_offset++;
-
-      /* Second vert. */
-      DRWSubdivLooseVertex &subd_v2 = loose_subd_verts[subd_vert_offset];
-      subd_v2.coarse_vertex_index = ((i + 1) == resolution - 1) ? coarse_edge[1] : -1u;
-      const float u2 = (i + 1) * inv_resolution_1;
-      bke::subdiv::mesh_interpolate_position_on_edge(
-          reinterpret_cast<const float(*)[3]>(coarse_positions.data()),
-          coarse_edges.data(),
-          vert_to_edge_map,
-          coarse_edge_index,
-          is_simple,
-          u2,
-          subd_v2.co);
-
-      subd_edge.loose_subdiv_v2_index = subd_vert_offset++;
+  for (const int i : loose_edges.index_range()) {
+    const int coarse_edge_index = loose_edges[i];
+    const int2 &coarse_edge = coarse_edges[loose_edges[i]];
+    MutableSpan<float3> edge_positions = edge_positions.slice(i * edges_per_coarse_edge,
+                                                              edges_per_coarse_edge);
+    for (const int j : IndexRange(verts_per_coarse_edge)) {
+      bke::subdiv::mesh_interpolate_position_on_edge(coarse_positions,
+                                                     coarse_edges,
+                                                     vert_to_edge_map,
+                                                     coarse_edge_index,
+                                                     is_simple,
+                                                     j * inv_resolution_1,
+                                                     edge_positions[j * 2 + 0]);
     }
   }
-
-  /* Copy the remaining loose_verts. */
-  for (int i = 0; i < coarse_loose_vert_len; i++) {
-    const int coarse_vertex_index = cache->loose_geom.verts[i];
-
-    DRWSubdivLooseVertex &subd_v = loose_subd_verts[subd_vert_offset++];
-    subd_v.coarse_vertex_index = cache->loose_geom.verts[i];
-    copy_v3_v3(subd_v.co, coarse_positions[coarse_vertex_index]);
-  }
-
-  subdiv_cache->loose_geom.edges = loose_subd_edges;
-  subdiv_cache->loose_geom.verts = loose_subd_verts;
-  subdiv_cache->loose_geom.edge_len = num_subdivided_edge;
-  subdiv_cache->loose_geom.vert_len = coarse_loose_vert_len;
-  subdiv_cache->loose_geom.loop_len = num_subdivided_edge * 2 + coarse_loose_vert_len;
-}
-
-Span<DRWSubdivLooseEdge> draw_subdiv_cache_get_loose_edges(const DRWSubdivCache &cache)
-{
-  return {cache.loose_geom.edges, int64_t(cache.loose_geom.edge_len)};
-}
-
-Span<DRWSubdivLooseVertex> draw_subdiv_cache_get_loose_verts(const DRWSubdivCache &cache)
-{
-  return {cache.loose_geom.verts + cache.loose_geom.edge_len * 2,
-          int64_t(cache.loose_geom.vert_len)};
 }
 
 static OpenSubdiv_EvaluatorCache *g_evaluator_cache = nullptr;

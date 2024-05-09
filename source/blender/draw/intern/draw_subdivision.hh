@@ -47,51 +47,23 @@ struct DRWPatchMap {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name DRWSubdivLooseEdge
- *
- * This stores information about a subdivided loose edge.
- * \{ */
-
-struct DRWSubdivLooseEdge {
-  /* The corresponding coarse edge, this is always valid. */
-  int coarse_edge_index;
-  /* Pointers into #DRWSubdivLooseGeom.verts. */
-  int loose_subdiv_v1_index;
-  int loose_subdiv_v2_index;
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name DRWSubdivLooseVertex
- *
- * This stores information about a subdivided loose vertex, that may or may not come from a loose
- * edge.
- * \{ */
-
-struct DRWSubdivLooseVertex {
-  /* The corresponding coarse vertex, or -1 if this vertex is the result
-   * of subdivision. */
-  unsigned int coarse_vertex_index;
-  /* Position and normal of the vertex. */
-  float co[3];
-  float nor[3];
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name DRWSubdivLooseGeom
  *
  * This stores the subdivided vertices and edges of loose geometry from #MeshExtractLooseGeom.
  * \{ */
 
+/* Each edge will store data for its 2 verts, that way we can keep the overall logic simple, here
+ * and in the buffer extractors. Although it duplicates memory (and work), the buffers also store
+ * duplicate values. */
 struct DRWSubdivLooseGeom {
-  DRWSubdivLooseEdge *edges;
-  DRWSubdivLooseVertex *verts;
-  int edge_len;
-  int vert_len;
-  int loop_len;
+
+  /** For every subdivided edge, there are two coarse vertices. */
+  // int verts_per_coarse_edge;
+  /** For every coarse edge, there are `resolution - 1` subdivided edges. */
+  int edges_per_coarse_edge;
+
+  /** Subdivided vertices of loose*/
+  Array<float3> edge_vert_positions;
 };
 
 /** \} */
@@ -301,12 +273,5 @@ void draw_subdiv_build_edituv_stretch_angle_buffer(const DRWSubdivCache &cache,
 
 /** Return the format used for the positions and normals VBO. */
 GPUVertFormat *draw_subdiv_get_pos_nor_format();
-
-/* Helper to access the loose edges. */
-Span<DRWSubdivLooseEdge> draw_subdiv_cache_get_loose_edges(const DRWSubdivCache &cache);
-
-/* Helper to access only the loose vertices, i.e. not the ones attached to loose edges. To access
- * loose vertices of loose edges #draw_subdiv_cache_get_loose_edges should be used. */
-Span<DRWSubdivLooseVertex> draw_subdiv_cache_get_loose_verts(const DRWSubdivCache &cache);
 
 }  // namespace blender::draw
