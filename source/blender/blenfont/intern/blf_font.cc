@@ -589,7 +589,7 @@ static void blf_glyph_draw_buffer(FontBufInfoBLF *buf_info,
     for (int y = ((chy >= 0) ? 0 : -chy); y < height_clip; y++) {
       const int x_start = (chx >= 0) ? 0 : -chx;
       const uchar *a_ptr = g->bitmap + x_start + (yb * g->pitch);
-      const size_t buf_ofs = (size_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
+      const int64_t buf_ofs = (int64_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
       float *fbuf = buf_info->fbuf + buf_ofs;
       for (int x = x_start; x < width_clip; x++, a_ptr++, fbuf += 4) {
         const char a_byte = *a_ptr;
@@ -619,7 +619,7 @@ static void blf_glyph_draw_buffer(FontBufInfoBLF *buf_info,
     for (int y = ((chy >= 0) ? 0 : -chy); y < height_clip; y++) {
       const int x_start = (chx >= 0) ? 0 : -chx;
       const uchar *a_ptr = g->bitmap + x_start + (yb * g->pitch);
-      const size_t buf_ofs = (size_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
+      const int64_t buf_ofs = (int64_t(buf_info->dims[0]) * (pen_y_px + y) + (chx + x_start)) * 4;
       uchar *cbuf = buf_info->cbuf + buf_ofs;
       for (int x = x_start; x < width_clip; x++, a_ptr++, cbuf += 4) {
         const char a_byte = *a_ptr;
