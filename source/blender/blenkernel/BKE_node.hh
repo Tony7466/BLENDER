@@ -1379,10 +1379,6 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 void BKE_node_system_init();
 void BKE_node_system_exit();
 
-}
-
-namespace blender::bke {
-
 bNodeTree *ntreeAddTreeEmbedded(Main *bmain, ID *owner_id, const char *name, const char *idname);
 
 /* Copy/free functions, need to manage ID users. */
