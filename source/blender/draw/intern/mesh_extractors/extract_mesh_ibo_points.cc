@@ -47,21 +47,12 @@ static void fill_loose_points_ibo(const IndexMask &visible,
 static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
 {
   const Span<int> corner_verts = mr.corner_verts;
+  const int max_index = mr.corners_num + mr.loose_edges.size() * 2 + mr.loose_verts.size();
 
   IndexMaskMemory memory;
   const IndexMask visible_verts = calc_mesh_vert_visibility(mr, IndexMask(mr.verts_num), memory);
 
-  const BoundedBitSpan loose_verts_bits = mr.mesh->verts_no_face().is_loose_bits;
-  const IndexMask all_loose_verts = loose_verts_bits.is_empty() ?
-                                        IndexMask() :
-                                        IndexMask::from_bits(
-                                            visible_verts, loose_verts_bits, memory);
-
-  const IndexMask non_loose_verts = all_loose_verts.complement(IndexRange(mr.verts_num), memory);
-  const IndexMask visible_non_loose_verts = calc_mesh_vert_visibility(mr, non_loose_verts, memory);
-
   GPUIndexBufBuilder builder;
-  const int max_index = mr.corners_num + mr.loose_edges.size() * 2 + mr.loose_verts.size();
   GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible_verts.size(), max_index);
   MutableSpan<uint> data = GPU_indexbuf_get_data(&builder);
 
