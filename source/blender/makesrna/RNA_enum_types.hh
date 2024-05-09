@@ -11,13 +11,13 @@
 #include "RNA_types.hh"
 
 struct ID;
-struct bNodeSocketType;
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
 namespace blender::bke {
 struct bNodeTreeType;
 struct bNodeType;
+struct bNodeSocketType;
 struct RuntimeNodeEnumItems;
 }
 
@@ -53,9 +53,9 @@ const EnumPropertyItem *rna_node_tree_type_itemf(void *data,
                                                  bool *r_free);
 
 int rna_node_socket_idname_to_enum(const char *idname);
-bNodeSocketType *rna_node_socket_type_from_enum(int value);
+blender::bke::bNodeSocketType *rna_node_socket_type_from_enum(int value);
 const EnumPropertyItem *rna_node_socket_type_itemf(void *data,
-                                                   bool (*poll)(void *data, bNodeSocketType *),
+                                                   bool (*poll)(void *data, blender::bke::bNodeSocketType *),
                                                    bool *r_free);
 
 const EnumPropertyItem *rna_TransformOrientation_itemf(bContext *C,

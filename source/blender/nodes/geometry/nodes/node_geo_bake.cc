@@ -112,7 +112,7 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 static const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
   const char *socket_idname = bke::nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket_idname);
+  const bke::bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket_idname);
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;

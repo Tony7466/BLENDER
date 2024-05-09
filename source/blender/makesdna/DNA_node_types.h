@@ -42,6 +42,7 @@ class bNodeTreeZone;
 struct bNodeInstanceHash;
 struct bNodeTreeType;
 struct bNodeType;
+struct bNodeSocketType;
 }  // namespace blender::bke
 namespace blender::bke {
 struct RuntimeNodeEnumItems;
@@ -53,6 +54,7 @@ using RuntimeNodeEnumItemsHandle = blender::bke::RuntimeNodeEnumItems;
 using NodeInstanceHashHandle = blender::bke::bNodeInstanceHash;
 using bNodeTreeTypeHandle = blender::bke::bNodeTreeType;
 using bNodeTypeHandle = blender::bke::bNodeType;
+using bNodeSocketTypeHandle = blender::bke::bNodeSocketType;
 #else
 typedef struct bNodeTreeRuntimeHandle bNodeTreeRuntimeHandle;
 typedef struct bNodeRuntimeHandle bNodeRuntimeHandle;
@@ -61,6 +63,7 @@ typedef struct RuntimeNodeEnumItemsHandle RuntimeNodeEnumItemsHandle;
 typedef struct NodeInstanceHashHandle NodeInstanceHashHandle;
 typedef struct bNodeTreeTypeHandle bNodeTreeTypeHandle;
 typedef struct bNodeTypeHandle bNodeTypeHandle;
+typedef struct bNodeSocketTypeHandle bNodeSocketTypeHandle;
 #endif
 
 struct AnimData;
@@ -147,7 +150,7 @@ typedef struct bNodeSocket {
   /** Input/output type. */
   short in_out;
   /** Runtime type information. */
-  struct bNodeSocketType *typeinfo;
+  bNodeSocketTypeHandle *typeinfo;
   /** Runtime type identifier. */
   char idname[64];
 

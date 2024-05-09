@@ -129,6 +129,7 @@ using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 
+namespace blender::bke {
 /**
  * \brief Defines a socket type.
  *
@@ -184,6 +185,8 @@ struct bNodeSocketType {
   /* Default value for this socket type. */
   const void *geometry_nodes_default_cpp_value;
 };
+
+}
 
 using NodeInitExecFunction = void *(*)(bNodeExecContext *context,
                                        bNode *node,
@@ -603,7 +606,7 @@ const char *nodeStaticSocketLabel(int type, int subtype);
     for (; !BLI_ghashIterator_done(__node_socket_type_iter__); \
          BLI_ghashIterator_step(__node_socket_type_iter__)) \
     { \
-      bNodeSocketType *stype = (bNodeSocketType *)BLI_ghashIterator_getValue( \
+      blender::bke::bNodeSocketType *stype = (blender::bke::bNodeSocketType *)BLI_ghashIterator_getValue( \
           __node_socket_type_iter__);
 
 #define NODE_SOCKET_TYPES_END \

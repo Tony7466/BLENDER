@@ -118,7 +118,7 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
 }
 
 static bool geometry_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*treetype*/,
-                                                 bNodeSocketType *socket_type)
+                                                 blender::bke::bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) && ELEM(socket_type->type,
                                                                    SOCK_FLOAT,
@@ -164,7 +164,7 @@ bool is_layer_selection_field(const bNodeTreeInterfaceSocket &socket)
   if (!U.experimental.use_grease_pencil_version3) {
     return false;
   }
-  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
+  const blender::bke::bNodeSocketType *typeinfo = socket.socket_typeinfo();
   BLI_assert(typeinfo != nullptr);
 
   if (typeinfo->type != SOCK_BOOLEAN) {

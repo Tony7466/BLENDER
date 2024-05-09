@@ -35,11 +35,8 @@
 
 #include "UI_resources.hh"
 
-static void texture_get_from_context(const bContext *C,
-                                     blender::bke::bNodeTreeType * /*treetype*/,
-                                     bNodeTree **r_ntree,
-                                     ID **r_id,
-                                     ID **r_from)
+static void texture_get_from_context(
+    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   Scene *scene = CTX_data_scene(C);
@@ -80,9 +77,7 @@ static void texture_get_from_context(const bContext *C,
   }
 }
 
-static void foreach_nodeclass(Scene * /*scene*/,
-                              void *calldata,
-                              blender::bke::bNodeClassCallback func)
+static void foreach_nodeclass(Scene * /*scene*/, void *calldata, blender::bke::bNodeClassCallback func)
 {
   func(calldata, NODE_CLASS_INPUT, N_("Input"));
   func(calldata, NODE_CLASS_OUTPUT, N_("Output"));
@@ -124,7 +119,7 @@ static void update(bNodeTree *ntree)
 }
 
 static bool texture_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*ntreetype*/,
-                                                bNodeSocketType *socket_type)
+                                                blender::bke::bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) &&
          ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
@@ -134,8 +129,7 @@ blender::bke::bNodeTreeType *ntreeType_Texture;
 
 void register_node_tree_type_tex()
 {
-  blender::bke::bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<blender::bke::bNodeTreeType>(
-      "texture node tree type");
+  blender::bke::bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<blender::bke::bNodeTreeType>("texture node tree type");
 
   tt->type = NTREE_TEXTURE;
   STRNCPY(tt->idname, "TextureNodeTree");

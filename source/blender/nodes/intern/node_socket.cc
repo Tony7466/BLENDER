@@ -845,19 +845,19 @@ static void standard_node_socket_interface_from_socket(ID * /*id*/,
   iosock->init_from_socket_instance(sock);
 }
 
-void ED_init_standard_node_socket_type(bNodeSocketType *);
+void ED_init_standard_node_socket_type(bke::bNodeSocketType *);
 
-static bNodeSocketType *make_standard_socket_type(int type, int subtype)
+static bke::bNodeSocketType *make_standard_socket_type(int type, int subtype)
 {
   const char *socket_idname = bke::nodeStaticSocketType(type, subtype);
   const char *interface_idname = bke::nodeStaticSocketInterfaceTypeNew(type, subtype);
   const char *socket_label = bke::nodeStaticSocketLabel(type, subtype);
   const char *socket_subtype_label = blender::bke::nodeSocketSubTypeLabel(subtype);
-  bNodeSocketType *stype;
+  bke::bNodeSocketType *stype;
   StructRNA *srna;
 
-  stype = MEM_cnew<bNodeSocketType>("node socket C type");
-  stype->free_self = (void (*)(bNodeSocketType *stype))MEM_freeN;
+  stype = MEM_cnew<bke::bNodeSocketType>("node socket C type");
+  stype->free_self = (void (*)(bke::bNodeSocketType *stype))MEM_freeN;
   STRNCPY(stype->idname, socket_idname);
   STRNCPY(stype->label, socket_label);
   STRNCPY(stype->subtype_label, socket_subtype_label);
@@ -892,16 +892,16 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   return stype;
 }
 
-void ED_init_node_socket_type_virtual(bNodeSocketType *);
+void ED_init_node_socket_type_virtual(bke::bNodeSocketType *);
 
-static bNodeSocketType *make_socket_type_virtual()
+static bke::bNodeSocketType *make_socket_type_virtual()
 {
   const char *socket_idname = "NodeSocketVirtual";
-  bNodeSocketType *stype;
+  bke::bNodeSocketType *stype;
   StructRNA *srna;
 
-  stype = MEM_cnew<bNodeSocketType>("node socket C type");
-  stype->free_self = (void (*)(bNodeSocketType *stype))MEM_freeN;
+  stype = MEM_cnew<bke::bNodeSocketType>("node socket C type");
+  stype->free_self = (void (*)(bke::bNodeSocketType *stype))MEM_freeN;
   STRNCPY(stype->idname, socket_idname);
 
   /* set the RNA type
@@ -923,9 +923,9 @@ static bNodeSocketType *make_socket_type_virtual()
   return stype;
 }
 
-static bNodeSocketType *make_socket_type_bool()
+static bke::bNodeSocketType *make_socket_type_bool()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_BOOLEAN, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_BOOLEAN, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<bool>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(bool *)r_value = ((bNodeSocketValueBoolean *)socket_value)->value;
@@ -940,9 +940,9 @@ static bNodeSocketType *make_socket_type_bool()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_rotation()
+static bke::bNodeSocketType *make_socket_type_rotation()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_ROTATION, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_ROTATION, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<math::Quaternion>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     const auto &typed_value = *(bNodeSocketValueRotation *)socket_value;
@@ -961,9 +961,9 @@ static bNodeSocketType *make_socket_type_rotation()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_matrix()
+static bke::bNodeSocketType *make_socket_type_matrix()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATRIX, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<float4x4>();
   socktype->get_base_cpp_value = [](const void * /*socket_value*/, void *r_value) {
     *static_cast<float4x4 *>(r_value) = float4x4::identity();
@@ -977,9 +977,9 @@ static bNodeSocketType *make_socket_type_matrix()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
+static bke::bNodeSocketType *make_socket_type_float(PropertySubType subtype)
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_FLOAT, subtype);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_FLOAT, subtype);
   socktype->base_cpp_type = &blender::CPPType::get<float>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(float *)r_value = ((bNodeSocketValueFloat *)socket_value)->value;
@@ -994,9 +994,9 @@ static bNodeSocketType *make_socket_type_float(PropertySubType subtype)
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_int(PropertySubType subtype)
+static bke::bNodeSocketType *make_socket_type_int(PropertySubType subtype)
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_INT, subtype);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_INT, subtype);
   socktype->base_cpp_type = &blender::CPPType::get<int>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(int *)r_value = ((bNodeSocketValueInt *)socket_value)->value;
@@ -1011,9 +1011,9 @@ static bNodeSocketType *make_socket_type_int(PropertySubType subtype)
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
+static bke::bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_VECTOR, subtype);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_VECTOR, subtype);
   socktype->base_cpp_type = &blender::CPPType::get<blender::float3>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(blender::float3 *)r_value = ((bNodeSocketValueVector *)socket_value)->value;
@@ -1028,9 +1028,9 @@ static bNodeSocketType *make_socket_type_vector(PropertySubType subtype)
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_rgba()
+static bke::bNodeSocketType *make_socket_type_rgba()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_RGBA, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_RGBA, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<blender::ColorGeometry4f>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(blender::ColorGeometry4f *)r_value = ((bNodeSocketValueRGBA *)socket_value)->value;
@@ -1045,9 +1045,9 @@ static bNodeSocketType *make_socket_type_rgba()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_string()
+static bke::bNodeSocketType *make_socket_type_string()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_STRING, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_STRING, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<std::string>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     new (r_value) std::string(((bNodeSocketValueString *)socket_value)->value);
@@ -1062,9 +1062,9 @@ static bNodeSocketType *make_socket_type_string()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_menu()
+static bke::bNodeSocketType *make_socket_type_menu()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MENU, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_MENU, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<int>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(int *)r_value = ((bNodeSocketValueMenu *)socket_value)->value;
@@ -1079,9 +1079,9 @@ static bNodeSocketType *make_socket_type_menu()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_object()
+static bke::bNodeSocketType *make_socket_type_object()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_OBJECT, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_OBJECT, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<Object *>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(Object **)r_value = ((bNodeSocketValueObject *)socket_value)->value;
@@ -1091,9 +1091,9 @@ static bNodeSocketType *make_socket_type_object()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_geometry()
+static bke::bNodeSocketType *make_socket_type_geometry()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_GEOMETRY, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_GEOMETRY, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<blender::bke::GeometrySet>();
   socktype->get_base_cpp_value = [](const void * /*socket_value*/, void *r_value) {
     new (r_value) blender::bke::GeometrySet();
@@ -1103,9 +1103,9 @@ static bNodeSocketType *make_socket_type_geometry()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_collection()
+static bke::bNodeSocketType *make_socket_type_collection()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_COLLECTION, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_COLLECTION, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<Collection *>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(Collection **)r_value = ((bNodeSocketValueCollection *)socket_value)->value;
@@ -1115,9 +1115,9 @@ static bNodeSocketType *make_socket_type_collection()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_texture()
+static bke::bNodeSocketType *make_socket_type_texture()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_TEXTURE, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_TEXTURE, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<Tex *>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(Tex **)r_value = ((bNodeSocketValueTexture *)socket_value)->value;
@@ -1127,9 +1127,9 @@ static bNodeSocketType *make_socket_type_texture()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_image()
+static bke::bNodeSocketType *make_socket_type_image()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_IMAGE, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_IMAGE, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<Image *>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(Image **)r_value = ((bNodeSocketValueImage *)socket_value)->value;
@@ -1139,9 +1139,9 @@ static bNodeSocketType *make_socket_type_image()
   return socktype;
 }
 
-static bNodeSocketType *make_socket_type_material()
+static bke::bNodeSocketType *make_socket_type_material()
 {
-  bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATERIAL, PROP_NONE);
+  bke::bNodeSocketType *socktype = make_standard_socket_type(SOCK_MATERIAL, PROP_NONE);
   socktype->base_cpp_type = &blender::CPPType::get<Material *>();
   socktype->get_base_cpp_value = [](const void *socket_value, void *r_value) {
     *(Material **)r_value = ((bNodeSocketValueMaterial *)socket_value)->value;

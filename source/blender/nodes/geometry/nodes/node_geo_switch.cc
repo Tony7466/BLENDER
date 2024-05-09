@@ -105,7 +105,7 @@ class LazyFunctionForSwitchNode : public LazyFunction {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(storage.input_type);
     can_be_field_ = socket_type_supports_fields(data_type);
 
-    const bNodeSocketType *socket_type = nullptr;
+    const bke::bNodeSocketType *socket_type = nullptr;
     for (const bNodeSocket *socket : node.output_sockets()) {
       if (socket->type == data_type) {
         socket_type = socket->typeinfo;

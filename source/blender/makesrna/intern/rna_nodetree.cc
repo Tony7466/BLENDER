@@ -689,10 +689,10 @@ int rna_node_socket_idname_to_enum(const char *idname)
   return result;
 }
 
-bNodeSocketType *rna_node_socket_type_from_enum(int value)
+blender::bke::bNodeSocketType *rna_node_socket_type_from_enum(int value)
 {
   int i = 0;
-  bNodeSocketType *result = nullptr;
+  blender::bke::bNodeSocketType *result = nullptr;
   NODE_SOCKET_TYPES_BEGIN (stype) {
     if (i == value) {
       result = stype;
@@ -705,7 +705,7 @@ bNodeSocketType *rna_node_socket_type_from_enum(int value)
 }
 
 const EnumPropertyItem *rna_node_socket_type_itemf(void *data,
-                                                   bool (*poll)(void *data, bNodeSocketType *),
+                                                   bool (*poll)(void *data, blender::bke::bNodeSocketType *),
                                                    bool *r_free)
 {
   EnumPropertyItem *item = nullptr;
@@ -889,7 +889,7 @@ static void rna_NodeTree_get_from_context(
   RNA_parameter_list_free(&list);
 }
 
-static bool rna_NodeTree_valid_socket_type(blender::bke::bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
+static bool rna_NodeTree_valid_socket_type(blender::bke::bNodeTreeType *ntreetype, blender::bke::bNodeSocketType *socket_type)
 {
   ParameterList list;
   FunctionRNA *func;

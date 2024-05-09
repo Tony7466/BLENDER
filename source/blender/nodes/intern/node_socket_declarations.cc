@@ -64,7 +64,7 @@ static void modify_subtype_except_for_storage(bNodeSocket &socket, int new_subty
 {
   const char *idname = bke::nodeStaticSocketType(socket.type, new_subtype);
   STRNCPY(socket.idname, idname);
-  bNodeSocketType *socktype = bke::nodeSocketTypeFind(idname);
+  bke::bNodeSocketType *socktype = bke::nodeSocketTypeFind(idname);
   socket.typeinfo = socktype;
 }
 

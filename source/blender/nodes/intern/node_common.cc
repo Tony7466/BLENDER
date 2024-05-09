@@ -232,7 +232,7 @@ get_init_socket_fn(const bNodeTreeInterface &interface, const bNodeTreeInterface
     }
     const bNodeTreeInterfaceSocket &io_socket =
         node_interface::get_item_as<bNodeTreeInterfaceSocket>(*io_item);
-    bNodeSocketType *typeinfo = io_socket.socket_typeinfo();
+    blender::bke::bNodeSocketType *typeinfo = io_socket.socket_typeinfo();
     if (typeinfo && typeinfo->interface_init_socket) {
       typeinfo->interface_init_socket(&ntree.id, &io_socket, &node, &socket, data_path);
     }
@@ -248,7 +248,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
 {
   SocketDeclarationPtr dst;
 
-  bNodeSocketType *base_typeinfo = blender::bke::nodeSocketTypeFind(io_socket.socket_type);
+  blender::bke::bNodeSocketType *base_typeinfo = blender::bke::nodeSocketTypeFind(io_socket.socket_type);
   if (base_typeinfo == nullptr) {
     return dst;
   }
@@ -588,7 +588,7 @@ void register_node_type_reroute()
 static void propagate_reroute_type_from_start_socket(
     bNodeSocket *start_socket,
     const MultiValueMap<bNodeSocket *, bNodeLink *> &links_map,
-    Map<bNode *, const bNodeSocketType *> &r_reroute_types)
+    Map<bNode *, const blender::bke::bNodeSocketType *> &r_reroute_types)
 {
   Stack<bNode *> nodes_to_check;
   for (bNodeLink *link : links_map.lookup(start_socket)) {
@@ -599,7 +599,7 @@ static void propagate_reroute_type_from_start_socket(
       nodes_to_check.push(link->fromnode);
     }
   }
-  const bNodeSocketType *current_type = start_socket->typeinfo;
+  const blender::bke::bNodeSocketType *current_type = start_socket->typeinfo;
   while (!nodes_to_check.is_empty()) {
     bNode *reroute_node = nodes_to_check.pop();
     BLI_assert(reroute_node->type == NODE_REROUTE);
@@ -643,7 +643,7 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
   }
 
   /* Will contain the socket type for every linked reroute node. */
-  Map<bNode *, const bNodeSocketType *> reroute_types;
+  Map<bNode *, const blender::bke::bNodeSocketType *> reroute_types;
 
   /* Propagate socket types from left to right. */
   for (bNode *start_node : nodes_linked_with_reroutes) {
@@ -663,7 +663,7 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
   /* Actually update reroute nodes with changed types. */
   for (const auto item : reroute_types.items()) {
     bNode *reroute_node = item.key;
-    const bNodeSocketType *socket_type = item.value;
+    const blender::bke::bNodeSocketType *socket_type = item.value;
     bNodeSocket *input_socket = (bNodeSocket *)reroute_node->inputs.first;
     bNodeSocket *output_socket = (bNodeSocket *)reroute_node->outputs.first;
 

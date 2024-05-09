@@ -178,7 +178,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
       continue;
     }
     const char *socket_idname = IDP_String(socket_property);
-    const bNodeSocketType *socket_type = bke::nodeSocketTypeFind(socket_idname);
+    const bke::bNodeSocketType *socket_type = bke::nodeSocketTypeFind(socket_idname);
     if (socket_type == nullptr) {
       continue;
     }
@@ -292,7 +292,7 @@ static void gather_socket_link_operations(const bContext &C,
       const bNodeTreeInterfaceSocket &interface_socket =
           reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
       {
-        const bNodeSocketType *from_typeinfo = bke::nodeSocketTypeFind(
+        const bke::bNodeSocketType *from_typeinfo = bke::nodeSocketTypeFind(
             interface_socket.socket_type);
         const eNodeSocketDatatype from = from_typeinfo ? eNodeSocketDatatype(from_typeinfo->type) :
                                                          SOCK_CUSTOM;
