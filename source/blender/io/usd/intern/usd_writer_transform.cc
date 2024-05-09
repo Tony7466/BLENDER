@@ -99,12 +99,7 @@ void USDTransformWriter::do_write(HierarchyContext &context)
 
   /* USD Xforms are by default set with an identity transform; only write if necessary. */
   if (!compare_m4m4(parent_relative_matrix, UNIT_M4, 0.000000001f)) {
-    if (!xformOp_) {
-      xformOp_ = xform.AddTransformOp();
-    }
-
-    pxr::GfMatrix4d mat_val(parent_relative_matrix);
-    usd_value_writer_.SetAttribute(xformOp_.GetAttr(), mat_val, get_export_time_code());
+    set_xform_ops(parent_relative_matrix, xform);
   }
 
   if (context.object) {
@@ -125,6 +120,85 @@ bool USDTransformWriter::check_is_animated(const HierarchyContext &context) cons
     return true;
   }
   return BKE_object_moves_in_time(context.object, context.animation_check_include_parent);
+}
+
+void USDTransformWriter::set_xform_ops(float xf_matrix[4][4], pxr::UsdGeomXformable &xf)
+{
+  if (!xf) {
+    return;
+  }
+
+  eUSDXformOpMode xfOpMode = usd_export_context_.export_params.xform_op_mode;
+
+  if (xformOps_.empty()) {
+    switch (xfOpMode) {
+      case USD_XFORM_OP_SRT:
+        xformOps_.push_back(xf.AddTranslateOp());
+        xformOps_.push_back(xf.AddRotateXYZOp());
+        xformOps_.push_back(xf.AddScaleOp());
+
+        break;
+      case USD_XFORM_OP_SOT:
+        xformOps_.push_back(xf.AddTranslateOp());
+        xformOps_.push_back(xf.AddOrientOp());
+        xformOps_.push_back(xf.AddScaleOp());
+        break;
+      case USD_XFORM_OP_MAT:
+        xformOps_.push_back(xf.AddTransformOp());
+        break;
+      default:
+        printf("Warning: unknown XformOp type\n");
+        xformOps_.push_back(xf.AddTransformOp());
+        break;
+    }
+  }
+
+  if (xformOps_.empty()) {
+    /* Shouldn't happen. */
+    return;
+  }
+
+  pxr::UsdTimeCode time_code = get_export_time_code();
+
+  if (xformOps_.size() == 1) {
+    pxr::GfMatrix4d mat_val(xf_matrix);
+    usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), mat_val, time_code);
+  }
+  else if (xformOps_.size() == 3) {
+
+    float loc[3];
+    float quat[4];
+    float scale[3];
+
+    mat4_decompose(loc, quat, scale, xf_matrix);
+
+    if (xfOpMode == USD_XFORM_OP_SRT) {
+      float rot[3];
+      quat_to_eul(rot, quat);
+      rot[0] *= 180.0 / M_PI;
+      rot[1] *= 180.0 / M_PI;
+      rot[2] *= 180.0 / M_PI;
+
+      pxr::GfVec3d loc_val(loc);
+      usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), loc_val, time_code);
+
+      pxr::GfVec3f rot_val(rot);
+      usd_value_writer_.SetAttribute(xformOps_[1].GetAttr(), rot_val, time_code);
+
+      pxr::GfVec3f scale_val(scale);
+      usd_value_writer_.SetAttribute(xformOps_[2].GetAttr(), scale_val, time_code);
+    }
+    else if (xfOpMode == USD_XFORM_OP_SOT) {
+      pxr::GfVec3d loc_val(loc);
+      usd_value_writer_.SetAttribute(xformOps_[0].GetAttr(), loc_val, time_code);
+
+      pxr::GfQuatf quat_val(quat[0], quat[1], quat[2], quat[3]);
+      usd_value_writer_.SetAttribute(xformOps_[1].GetAttr(), quat_val, time_code);
+
+      pxr::GfVec3f scale_val(scale);
+      usd_value_writer_.SetAttribute(xformOps_[2].GetAttr(), scale_val, time_code);
+    }
+  }
 }
 
 }  // namespace blender::io::usd
