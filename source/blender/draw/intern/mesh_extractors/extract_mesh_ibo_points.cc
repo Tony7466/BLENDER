@@ -36,14 +36,6 @@ static IndexMask calc_mesh_vert_visibility(const MeshRenderData &mr,
   return visible;
 }
 
-static void fill_loose_points_ibo(const IndexMask &visible,
-                                  const uint start,
-                                  MutableSpan<uint> data)
-{
-  IndexMaskMemory memory;
-  visible.shift(start, memory).to_indices(data.cast<int32_t>());
-}
-
 static void extract_points_mesh(const MeshRenderData &mr, gpu::IndexBuf &points)
 {
   const Span<int> corner_verts = mr.corner_verts;
@@ -157,7 +149,7 @@ static void extract_points_bm(const MeshRenderData &mr, gpu::IndexBuf &points)
   const uint loose_vert_index_start = mr.corners_num;
   MutableSpan<uint> loose_vert_data = data.take_back(visible_loose_verts.size());
   if (visible_loose_verts.size() == all_loose_verts.size()) {
-    fill_loose_points_ibo(loose_vert_index_start, loose_vert_data);
+    visible.shift(start, memory).to_indices(data.cast<int32_t>());
   }
   else {
     visible_loose_verts.foreach_index(GrainSize(4096), [&](const int i, const int pos) {
