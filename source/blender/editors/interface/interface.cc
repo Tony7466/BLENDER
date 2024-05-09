@@ -1714,9 +1714,6 @@ static bool ui_but_icon_extra_is_visible_bone_eyedropper(uiBut *but)
   if (but->type != UI_BTYPE_SEARCH_MENU) {
     return false;
   }
-  if (but->rnaprop == nullptr) {
-    return false;
-  }
   if (but->editstr != nullptr) {
     return false;
   }
