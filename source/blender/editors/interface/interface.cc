@@ -1711,7 +1711,7 @@ static bool ui_but_icon_extra_is_visible_search_eyedropper(uiBut *but)
 
 static bool ui_but_icon_extra_is_visible_bone_eyedropper(uiBut *but)
 {
-  if (but->type != UI_BTYPE_SEARCH_MENU) {
+  if (but->type != UI_BTYPE_SEARCH_MENU || !(but->flag & UI_BUT_VALUE_CLEAR)) {
     return false;
   }
   if (but->editstr != nullptr) {
