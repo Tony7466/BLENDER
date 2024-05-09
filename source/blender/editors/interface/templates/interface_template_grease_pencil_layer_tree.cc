@@ -296,8 +296,8 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
    std::optional<bool> should_be_active() const override
   {
     if (this->grease_pencil_.active_node->wrap().is_group()) {
-      return reinterpret_cast<GreasePencilLayer *>(&group_) ==
-             reinterpret_cast<GreasePencilLayer *>(&this->grease_pencil_.active_node->wrap().as_group());
+      return reinterpret_cast<LayerGroup *>(&group_) ==
+             reinterpret_cast<LayerGroup *>(&this->grease_pencil_.active_node->wrap().as_group());
     }
     return {};
   }
