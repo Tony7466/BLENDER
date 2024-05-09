@@ -160,7 +160,8 @@ ShadowRayDirectional shadow_ray_generate_directional(
   float clip_far = orderedIntBitsToFloat(light.clip_far);
   /* Assumed to be non-null. */
   float dist_to_near_plane = -lP.z - clip_near;
-  float max_tracing_distance = texel_radius * float(SHADOW_PAGE_RES);
+  /* Trace in a radius that is covered by low resolution page inflation. */
+  float max_tracing_distance = texel_radius * float(SHADOW_PAGE_RES << SHADOW_TILEMAP_LOD);
   float max_tracing_angle = atan(max_tracing_distance / dist_to_near_plane);
   float shadow_angle = min(light_sun_data_get(light).shadow_angle, max_tracing_angle);
 
