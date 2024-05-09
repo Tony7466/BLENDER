@@ -989,6 +989,9 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
 
   blender::Vector<Sequence *> strips;
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    if (seq->machine != int(mouse_co[1])) {
+      continue;
+    }
     if (min_ii(SEQ_time_left_handle_frame_get(scene, seq), SEQ_time_start_frame_get(seq)) >
         v2d->cur.xmax)
     {
@@ -999,7 +1002,7 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
     {
       continue;
     }
-    if (seq->machine != int(mouse_co[1])) {
+    if (!ED_sequencer_can_select_handle(scene, seq, v2d)) {
       continue;
     }
     const rctf body = strip_clickable_area_get(scene, v2d, seq);
@@ -1009,15 +1012,15 @@ static blender::Vector<Sequence *> mouseover_strips_sorted_get(const Scene *scen
     strips.append(seq);
   }
 
-  /* It may be better to sort strips, as there can be very small strip in set, that may not be
-   * removed by previous conditions. `std::sort` has issues with this container though. */
-  if (strips.size() > 1 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
-                               strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
+  BLI_assert(strips.size() <= 2);
+
+  /* Ensure, that `seq1` is left strip and `seq2` right strip. */
+  if (strips.size() == 2 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
+                                strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
   {
     SWAP(Sequence *, strips[0], strips[1]);
   }
 
-  BLI_assert(strips.size() <= 2);
   return strips;
 }
 
@@ -1038,11 +1041,6 @@ static eSeqHandle handle_selection_refine(const Scene *scene,
 {
   rctf body, left, right;
   strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
-
-  if (!ED_sequencer_can_select_handle(scene, seq, v2d)) {
-    return SEQ_HANDLE_NONE;
-  }
-
   if (BLI_rctf_isect_pt_v(&left, mouse_co)) {
     return SEQ_HANDLE_LEFT;
   }
