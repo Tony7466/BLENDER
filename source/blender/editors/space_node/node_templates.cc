@@ -324,7 +324,8 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
          ngroup = (bNodeTree *)ngroup->id.next)
     {
       const char *disabled_hint;
-      if ((ngroup->type != arg->ntree->type) || !bke::nodeGroupPoll(arg->ntree, ngroup, &disabled_hint))
+      if ((ngroup->type != arg->ntree->type) ||
+          !bke::nodeGroupPoll(arg->ntree, ngroup, &disabled_hint))
       {
         continue;
       }
@@ -334,7 +335,8 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
          ngroup = (bNodeTree *)ngroup->id.next)
     {
       const char *disabled_hint;
-      if ((ngroup->type != arg->ntree->type) || !bke::nodeGroupPoll(arg->ntree, ngroup, &disabled_hint))
+      if ((ngroup->type != arg->ntree->type) ||
+          !bke::nodeGroupPoll(arg->ntree, ngroup, &disabled_hint))
       {
         continue;
       }
@@ -607,7 +609,7 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
   uiLayout *split, *column;
   NodeLinkArg *arg = (NodeLinkArg *)but->func_argN;
   bNodeSocket *sock = arg->sock;
-  bNodeTreeType *ntreetype = arg->ntree->typeinfo;
+  bke::bNodeTreeType *ntreetype = arg->ntree->typeinfo;
 
   UI_block_layout_set_current(block, layout);
   split = uiLayoutSplit(layout, 0.0f, false);

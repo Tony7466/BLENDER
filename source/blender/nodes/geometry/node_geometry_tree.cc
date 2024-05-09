@@ -27,10 +27,10 @@
 
 #include "node_common.h"
 
-bNodeTreeType *ntreeType_Geometry;
+blender::bke::bNodeTreeType *ntreeType_Geometry;
 
 static void geometry_node_tree_get_from_context(
-    const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
   if (snode->geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
@@ -112,7 +112,7 @@ static bool geometry_node_tree_validate_link(eNodeSocketDatatype type_a,
   return type_a == type_b;
 }
 
-static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
+static bool geometry_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*treetype*/,
                                                  bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) && ELEM(socket_type->type,
@@ -135,8 +135,8 @@ static bool geometry_node_tree_socket_type_valid(bNodeTreeType * /*treetype*/,
 
 void register_node_tree_type_geo()
 {
-  bNodeTreeType *tt = ntreeType_Geometry = static_cast<bNodeTreeType *>(
-      MEM_callocN(sizeof(bNodeTreeType), "geometry node tree type"));
+  blender::bke::bNodeTreeType *tt = ntreeType_Geometry = static_cast<blender::bke::bNodeTreeType *>(
+      MEM_callocN(sizeof(blender::bke::bNodeTreeType), "geometry node tree type"));
   tt->type = NTREE_GEOMETRY;
   STRNCPY(tt->idname, "GeometryNodeTree");
   STRNCPY(tt->group_idname, "GeometryNodeGroup");

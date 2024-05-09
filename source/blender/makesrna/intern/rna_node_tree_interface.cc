@@ -342,7 +342,7 @@ static void rna_NodeTreeInterfaceSocket_socket_type_set(PointerRNA *ptr, int val
   }
 }
 
-static bool is_socket_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
+static bool is_socket_type_supported(blender::bke::bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
 {
   /* Check if the node tree supports the socket type. */
   if (ntreetype->valid_socket_type && !ntreetype->valid_socket_type(ntreetype, socket_type)) {
@@ -357,7 +357,7 @@ static bool is_socket_type_supported(bNodeTreeType *ntreetype, bNodeSocketType *
   return true;
 }
 
-static bNodeSocketType *find_supported_socket_type(bNodeTreeType *ntree_type)
+static bNodeSocketType *find_supported_socket_type(blender::bke::bNodeTreeType *ntree_type)
 {
   NODE_SOCKET_TYPES_BEGIN (socket_type) {
     if (is_socket_type_supported(ntree_type, socket_type)) {
@@ -371,7 +371,7 @@ static bNodeSocketType *find_supported_socket_type(bNodeTreeType *ntree_type)
 static bool rna_NodeTreeInterfaceSocket_socket_type_poll(void *userdata,
                                                          bNodeSocketType *socket_type)
 {
-  bNodeTreeType *ntreetype = static_cast<bNodeTreeType *>(userdata);
+  blender::bke::bNodeTreeType *ntreetype = static_cast<blender::bke::bNodeTreeType *>(userdata);
   return is_socket_type_supported(ntreetype, socket_type);
 }
 

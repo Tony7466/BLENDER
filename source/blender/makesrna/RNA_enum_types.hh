@@ -12,12 +12,12 @@
 
 struct ID;
 struct bNodeSocketType;
-struct bNodeTreeType;
 struct bNodeType;
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
 namespace blender::bke {
+struct bNodeTreeType;
 struct RuntimeNodeEnumItems;
 }
 
@@ -47,9 +47,9 @@ extern const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[];
 
 /* API calls */
 int rna_node_tree_idname_to_enum(const char *idname);
-bNodeTreeType *rna_node_tree_type_from_enum(int value);
+blender::bke::bNodeTreeType *rna_node_tree_type_from_enum(int value);
 const EnumPropertyItem *rna_node_tree_type_itemf(void *data,
-                                                 bool (*poll)(void *data, bNodeTreeType *),
+                                                 bool (*poll)(void *data, blender::bke::bNodeTreeType *),
                                                  bool *r_free);
 
 int rna_node_socket_idname_to_enum(const char *idname);

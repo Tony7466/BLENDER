@@ -413,6 +413,8 @@ enum class NodeGroupColorTag {
 struct bNodeTreeExec;
 
 using bNodeClassCallback = void (*)(void *calldata, int nclass, const char *name);
+
+namespace blender::bke {
 struct bNodeTreeType {
   int type;        /* type identifier */
   char idname[64]; /* identifier name */
@@ -450,7 +452,7 @@ struct bNodeTreeType {
   /* RNA integration */
   ExtensionRNA rna_ext;
 };
-
+}  // namespace blender::bke
 /** \} */
 
 namespace blender::bke {
@@ -472,7 +474,8 @@ GHashIterator *ntreeTypeGetIterator();
     for (; !BLI_ghashIterator_done(__node_tree_type_iter__); \
          BLI_ghashIterator_step(__node_tree_type_iter__)) \
     { \
-      bNodeTreeType *ntype = (bNodeTreeType *)BLI_ghashIterator_getValue(__node_tree_type_iter__);
+      blender::bke::bNodeTreeType *ntype = (blender::bke::bNodeTreeType *) \
+          BLI_ghashIterator_getValue(__node_tree_type_iter__);
 
 #define NODE_TREE_TYPES_END \
   } \

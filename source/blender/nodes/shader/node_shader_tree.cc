@@ -51,7 +51,7 @@
 using blender::Array;
 using blender::Vector;
 
-static bool shader_tree_poll(const bContext *C, bNodeTreeType * /*treetype*/)
+static bool shader_tree_poll(const bContext *C, blender::bke::bNodeTreeType * /*treetype*/)
 {
   Scene *scene = CTX_data_scene(C);
   const char *engine_id = scene->r.engine;
@@ -63,7 +63,7 @@ static bool shader_tree_poll(const bContext *C, bNodeTreeType * /*treetype*/)
 }
 
 static void shader_get_from_context(
-    const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   Scene *scene = CTX_data_scene(C);
@@ -149,7 +149,7 @@ static bool shader_validate_link(eNodeSocketDatatype from, eNodeSocketDatatype t
   return true;
 }
 
-static bool shader_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
+static bool shader_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*ntreetype*/,
                                                bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) && ELEM(socket_type->type,
@@ -161,11 +161,11 @@ static bool shader_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
                                                                    SOCK_SHADER);
 }
 
-bNodeTreeType *ntreeType_Shader;
+blender::bke::bNodeTreeType *ntreeType_Shader;
 
 void register_node_tree_type_sh()
 {
-  bNodeTreeType *tt = ntreeType_Shader = MEM_cnew<bNodeTreeType>("shader node tree type");
+  blender::bke::bNodeTreeType *tt = ntreeType_Shader = MEM_cnew<blender::bke::bNodeTreeType>("shader node tree type");
 
   tt->type = NTREE_SHADER;
   STRNCPY(tt->idname, "ShaderNodeTree");

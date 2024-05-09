@@ -70,17 +70,17 @@ static void add_reroute_node_fn(nodes::LinkSearchOpParams &params)
   bNode &reroute = params.add_node("NodeReroute");
   if (params.socket.in_out == SOCK_IN) {
     bke::nodeAddLink(&params.node_tree,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.outputs.first),
-                &params.node,
-                &params.socket);
+                     &reroute,
+                     static_cast<bNodeSocket *>(reroute.outputs.first),
+                     &params.node,
+                     &params.socket);
   }
   else {
     bke::nodeAddLink(&params.node_tree,
-                &params.node,
-                &params.socket,
-                &reroute,
-                static_cast<bNodeSocket *>(reroute.inputs.first));
+                     &params.node,
+                     &params.socket,
+                     &reroute,
+                     static_cast<bNodeSocket *>(reroute.inputs.first));
   }
 }
 
@@ -165,7 +165,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
     return;
   }
 
-  const bNodeTreeType &node_tree_type = *node_tree.typeinfo;
+  const bke::bNodeTreeType &node_tree_type = *node_tree.typeinfo;
   const eNodeSocketInOut in_out = socket.in_out == SOCK_OUT ? SOCK_IN : SOCK_OUT;
 
   const IDProperty *sockets = BKE_asset_metadata_idprop_find(
@@ -218,7 +218,8 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
                node, in_out, socket_property->name);
            if (new_node_socket != nullptr) {
              /* Rely on the way #nodeAddLink switches in/out if necessary. */
-             bke::nodeAddLink(&params.node_tree, &params.node, &params.socket, &node, new_node_socket);
+             bke::nodeAddLink(
+                 &params.node_tree, &params.node, &params.socket, &node, new_node_socket);
            }
          },
          weight});
@@ -291,7 +292,8 @@ static void gather_socket_link_operations(const bContext &C,
       const bNodeTreeInterfaceSocket &interface_socket =
           reinterpret_cast<const bNodeTreeInterfaceSocket &>(item);
       {
-        const bNodeSocketType *from_typeinfo = bke::nodeSocketTypeFind(interface_socket.socket_type);
+        const bNodeSocketType *from_typeinfo = bke::nodeSocketTypeFind(
+            interface_socket.socket_type);
         const eNodeSocketDatatype from = from_typeinfo ? eNodeSocketDatatype(from_typeinfo->type) :
                                                          SOCK_CUSTOM;
         const eNodeSocketDatatype to = eNodeSocketDatatype(socket.typeinfo->type);

@@ -37,7 +37,7 @@
 #endif
 
 static void composite_get_from_context(
-    const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   Scene *scene = CTX_data_scene(C);
 
@@ -138,18 +138,18 @@ static void composite_node_add_init(bNodeTree * /*bnodetree*/, bNode *bnode)
   }
 }
 
-static bool composite_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
+static bool composite_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*ntreetype*/,
                                                   bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) &&
          ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
 }
 
-bNodeTreeType *ntreeType_Composite;
+blender::bke::bNodeTreeType *ntreeType_Composite;
 
 void register_node_tree_type_cmp()
 {
-  bNodeTreeType *tt = ntreeType_Composite = MEM_cnew<bNodeTreeType>(__func__);
+  blender::bke::bNodeTreeType *tt = ntreeType_Composite = MEM_cnew<blender::bke::bNodeTreeType>(__func__);
 
   tt->type = NTREE_COMPOSIT;
   STRNCPY(tt->idname, "CompositorNodeTree");

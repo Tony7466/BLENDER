@@ -36,7 +36,7 @@
 #include "UI_resources.hh"
 
 static void texture_get_from_context(
-    const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+    const bContext *C, blender::bke::bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
   Scene *scene = CTX_data_scene(C);
@@ -118,18 +118,18 @@ static void update(bNodeTree *ntree)
   ntree_update_reroute_nodes(ntree);
 }
 
-static bool texture_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
+static bool texture_node_tree_socket_type_valid(blender::bke::bNodeTreeType * /*ntreetype*/,
                                                 bNodeSocketType *socket_type)
 {
   return blender::bke::nodeIsStaticSocketType(socket_type) &&
          ELEM(socket_type->type, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA);
 }
 
-bNodeTreeType *ntreeType_Texture;
+blender::bke::bNodeTreeType *ntreeType_Texture;
 
 void register_node_tree_type_tex()
 {
-  bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<bNodeTreeType>("texture node tree type");
+  blender::bke::bNodeTreeType *tt = ntreeType_Texture = MEM_cnew<blender::bke::bNodeTreeType>("texture node tree type");
 
   tt->type = NTREE_TEXTURE;
   STRNCPY(tt->idname, "TextureNodeTree");

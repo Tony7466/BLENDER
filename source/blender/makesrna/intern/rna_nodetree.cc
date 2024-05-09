@@ -623,10 +623,10 @@ int rna_node_tree_idname_to_enum(const char *idname)
   return result;
 }
 
-bNodeTreeType *rna_node_tree_type_from_enum(int value)
+blender::bke::bNodeTreeType *rna_node_tree_type_from_enum(int value)
 {
   int i = 0;
-  bNodeTreeType *result = nullptr;
+  blender::bke::bNodeTreeType *result = nullptr;
   NODE_TREE_TYPES_BEGIN (nt) {
     if (i == value) {
       result = nt;
@@ -639,7 +639,7 @@ bNodeTreeType *rna_node_tree_type_from_enum(int value)
 }
 
 const EnumPropertyItem *rna_node_tree_type_itemf(void *data,
-                                                 bool (*poll)(void *data, bNodeTreeType *),
+                                                 bool (*poll)(void *data, blender::bke::bNodeTreeType *),
                                                  bool *r_free)
 {
   EnumPropertyItem tmp = {0};
@@ -828,7 +828,7 @@ static StructRNA *rna_NodeTree_refine(PointerRNA *ptr)
   }
 }
 
-static bool rna_NodeTree_poll(const bContext *C, bNodeTreeType *ntreetype)
+static bool rna_NodeTree_poll(const bContext *C, blender::bke::bNodeTreeType *ntreetype)
 {
   ParameterList list;
   FunctionRNA *func;
@@ -865,7 +865,7 @@ static void rna_NodeTree_update_reg(bNodeTree *ntree)
 }
 
 static void rna_NodeTree_get_from_context(
-    const bContext *C, bNodeTreeType *ntreetype, bNodeTree **r_ntree, ID **r_id, ID **r_from)
+    const bContext *C, blender::bke::bNodeTreeType *ntreetype, bNodeTree **r_ntree, ID **r_id, ID **r_from)
 {
   ParameterList list;
   FunctionRNA *func;
@@ -889,7 +889,7 @@ static void rna_NodeTree_get_from_context(
   RNA_parameter_list_free(&list);
 }
 
-static bool rna_NodeTree_valid_socket_type(bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
+static bool rna_NodeTree_valid_socket_type(blender::bke::bNodeTreeType *ntreetype, bNodeSocketType *socket_type)
 {
   ParameterList list;
   FunctionRNA *func;
@@ -913,7 +913,7 @@ static bool rna_NodeTree_valid_socket_type(bNodeTreeType *ntreetype, bNodeSocket
 
 static bool rna_NodeTree_unregister(Main * /*bmain*/, StructRNA *type)
 {
-  bNodeTreeType *nt = static_cast<bNodeTreeType *>(RNA_struct_blender_type_get(type));
+  blender::bke::bNodeTreeType *nt = static_cast<blender::bke::bNodeTreeType *>(RNA_struct_blender_type_get(type));
 
   if (!nt) {
     return false;
@@ -937,12 +937,12 @@ static StructRNA *rna_NodeTree_register(Main *bmain,
                                         StructCallbackFunc call,
                                         StructFreeFunc free)
 {
-  bNodeTreeType *nt, dummy_nt;
+  blender::bke::bNodeTreeType *nt, dummy_nt;
   bNodeTree dummy_ntree;
   bool have_function[4];
 
   /* setup dummy tree & tree type to store static properties in */
-  memset(&dummy_nt, 0, sizeof(bNodeTreeType));
+  memset(&dummy_nt, 0, sizeof(blender::bke::bNodeTreeType));
   memset(&dummy_ntree, 0, sizeof(bNodeTree));
   dummy_ntree.typeinfo = &dummy_nt;
   PointerRNA dummy_ntree_ptr = RNA_pointer_create(nullptr, &RNA_NodeTree, &dummy_ntree);
@@ -983,7 +983,7 @@ static StructRNA *rna_NodeTree_register(Main *bmain,
   }
 
   /* create a new node tree type */
-  nt = static_cast<bNodeTreeType *>(MEM_mallocN(sizeof(bNodeTreeType), "node tree type"));
+  nt = static_cast<blender::bke::bNodeTreeType *>(MEM_mallocN(sizeof(blender::bke::bNodeTreeType), "node tree type"));
   memcpy(nt, &dummy_nt, sizeof(dummy_nt));
 
   nt->type = NTREE_CUSTOM;

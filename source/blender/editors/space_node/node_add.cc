@@ -194,10 +194,10 @@ static int add_reroute_exec(bContext *C, wmOperator *op)
     bNode *reroute = bke::nodeAddStaticNode(C, &ntree, NODE_REROUTE);
 
     bke::nodeAddLink(&ntree,
-                item.value.from_node,
-                item.key,
-                reroute,
-                static_cast<bNodeSocket *>(reroute->inputs.first));
+                     item.value.from_node,
+                     item.key,
+                     reroute,
+                     static_cast<bNodeSocket *>(reroute->inputs.first));
 
     /* Reconnect links from the original output socket to the new reroute. */
     for (bNodeLink *link : cuts.keys()) {
@@ -1057,7 +1057,7 @@ static int new_node_tree_exec(bContext *C, wmOperator *op)
     treename = treename_buf;
   }
   else {
-    const bNodeTreeType *type = bke::ntreeTypeFind(idname);
+    const bke::bNodeTreeType *type = bke::ntreeTypeFind(idname);
     treename = type->ui_name;
   }
 
