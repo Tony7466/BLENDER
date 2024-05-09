@@ -1167,7 +1167,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
                            "the build modifier to 'replay' how the stroke was drawn");
 
   /* Selection state. */
-  prop = RNA_def_property(srna, "strokes_select", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "stroke_selections", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Drawing_stroke_selections_begin",
                                     "rna_iterator_array_next",
@@ -1179,7 +1179,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
                                     nullptr);
   RNA_def_property_struct_type(prop, "BoolAttributeValue");
   RNA_def_property_ui_text(
-      prop, "Strokes Selected", "The selection state of all strokes in the drawing");
+      prop, "Stroke Selections", "The selection state of all strokes in the drawing");
 
   /* Built-in attributes for curve points. */
 
@@ -1277,7 +1277,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
                            "'replay' how the stroke was drawn");
 
   /* Selection state. */
-  prop = RNA_def_property(srna, "points_select", PROP_COLLECTION, PROP_NONE);
+  prop = RNA_def_property(srna, "point_selections", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_funcs(prop,
                                     "rna_Drawing_point_selections_begin",
                                     "rna_iterator_array_next",
@@ -1289,7 +1289,7 @@ static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
                                     nullptr);
   RNA_def_property_struct_type(prop, "BoolAttributeValue");
   RNA_def_property_ui_text(
-      prop, "Stroke Points Selected", "The selection state of all points in the drawing");
+      prop, "Stroke Point Selections", "The selection state of all points in the drawing");
 }
 
 static void rna_def_grease_pencil_frame(BlenderRNA *brna)
