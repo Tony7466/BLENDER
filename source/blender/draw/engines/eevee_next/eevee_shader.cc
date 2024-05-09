@@ -189,6 +189,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_light_culling_tile";
     case LIGHT_CULLING_ZBIN:
       return "eevee_light_culling_zbin";
+    case LIGHT_SHADOW_SETUP:
+      return "eevee_light_shadow_setup";
     case RAY_DENOISE_SPATIAL:
       return "eevee_ray_denoise_spatial";
     case RAY_DENOISE_TEMPORAL:

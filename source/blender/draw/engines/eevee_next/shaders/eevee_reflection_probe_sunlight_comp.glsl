@@ -57,6 +57,7 @@ void main()
     float len;
     vec3 direction = normalize_and_get_length(local_direction[0].xyz / local_direction[0].w, len);
     float sun_angle_cos = 2.0 * len - 1.0;
+    float sun_angle = acos(sun_angle_cos);
 
     mat3x3 tx = transpose(from_up_axis(direction));
     /* Convert to transform. */
@@ -67,7 +68,7 @@ void main()
     /* Compute tangent from cosine.  */
     float sun_angle_tan = sqrt(-1.0 + 1.0 / square(sun_angle_cos));
     /* Clamp value to avoid float imprecision artifacts. */
-    float sun_radius = clamp(sun_angle_tan, 0.001, 1000.0);
+    float sun_radius = clamp(sun_angle_tan, 0.001, 20.0);
 
     /* Convert irradiance to radiance. */
     float shape_power = M_1_PI * (1.0 + 1.0 / square(sun_radius));
@@ -80,8 +81,10 @@ void main()
 
 #if USE_LIGHT_UNION
     sunlight_buf.sun.radius = sun_radius;
+    sunlight_buf.sun.shadow_angle = sun_angle;
 #else
     sunlight_buf.do_not_access_directly.radius_squared = sun_radius;
+    sunlight_buf.do_not_access_directly._pad1 = sun_angle;
 #endif
   }
 }

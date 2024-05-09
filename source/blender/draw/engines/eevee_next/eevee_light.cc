@@ -328,8 +328,6 @@ void LightModule::begin_sync()
     la.r = la.g = la.b = 1.0f;
     la.energy = 1.0f;
     la.sun_angle = 0.0f;
-    /* Disable shadows. */
-    la.mode = 0;
 
     Light &light = light_map_.lookup_or_add_default(world_sunlight_key);
     light.used = true;
@@ -441,6 +439,7 @@ void LightModule::end_sync()
   culling_tile_buf_.resize(total_word_count_);
 
   culling_pass_sync();
+  update_pass_sync();
   debug_pass_sync();
 }
 
@@ -497,6 +496,20 @@ void LightModule::culling_pass_sync()
   }
 }
 
+void LightModule::update_pass_sync()
+{
+  auto &pass = update_ps_;
+  pass.init();
+  pass.shader_set(inst_.shaders.static_shader_get(LIGHT_SHADOW_SETUP));
+  pass.bind_ssbo("light_buf", &culling_light_buf_);
+  pass.bind_ssbo("light_cull_buf", &culling_data_buf_);
+  pass.bind_ssbo("tilemaps_buf", &inst_.shadows.tilemap_pool.tilemaps_data);
+  pass.bind_resources(inst_.uniform_data);
+  /* TODO(fclem): Dispatch for all light. */
+  pass.dispatch(int3(1, 1, 1));
+  pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+}
+
 void LightModule::debug_pass_sync()
 {
   if (inst_.debug_mode == eDebugMode::DEBUG_LIGHT_CULLING) {
@@ -526,6 +539,7 @@ void LightModule::set_view(View &view, const int2 extent)
   culling_data_buf_.push_update();
 
   inst_.manager->submit(culling_ps_, view);
+  inst_.manager->submit(update_ps_);
 }
 
 void LightModule::debug_draw(View &view, GPUFrameBuffer *view_fb)

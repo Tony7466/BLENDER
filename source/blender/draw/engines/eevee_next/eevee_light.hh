@@ -152,6 +152,9 @@ class LightModule {
   /** Total number of words the tile buffer needs to contain for the render resolution. */
   uint total_word_count_ = 0;
 
+  /** Update light on the GPU after culling. Ran for each sample. */
+  PassSimple update_ps_ = {"LightUpdate"};
+
   /** Debug Culling visualization. */
   PassSimple debug_draw_ps_ = {"LightCulling.Debug"};
 
@@ -180,6 +183,7 @@ class LightModule {
 
  private:
   void culling_pass_sync();
+  void update_pass_sync();
   void debug_pass_sync();
 };
 

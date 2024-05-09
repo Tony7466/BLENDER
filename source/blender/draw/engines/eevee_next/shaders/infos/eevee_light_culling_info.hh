@@ -62,6 +62,15 @@ GPU_SHADER_CREATE_INFO(eevee_light_culling_tile)
     .storage_buf(2, Qualifier::WRITE, "uint", "out_light_tile_buf[]")
     .compute_source("eevee_light_culling_tile_comp.glsl");
 
+GPU_SHADER_CREATE_INFO(eevee_light_shadow_setup)
+    .do_static_compilation(true)
+    .additional_info("eevee_shared", "draw_view", "draw_view_culling", "eevee_global_ubo")
+    .local_group_size(CULLING_SELECT_GROUP_SIZE)
+    .storage_buf(0, Qualifier::READ, "LightCullingData", "light_cull_buf")
+    .storage_buf(1, Qualifier::READ_WRITE, "LightData", "light_buf[]")
+    .storage_buf(2, Qualifier::READ_WRITE, "ShadowTileMapData", "tilemaps_buf[]")
+    .compute_source("eevee_light_shadow_setup_comp.glsl");
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

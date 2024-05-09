@@ -28,9 +28,11 @@ void main()
       light.object_to_world = sunlight_buf.object_to_world;
 #if USE_LIGHT_UNION
       light.sun.radius = sunlight_buf.sun.radius;
+      light.sun.shadow_angle = sunlight_buf.sun.shadow_angle;
 #else
       light.do_not_access_directly.radius_squared =
           sunlight_buf.do_not_access_directly.radius_squared;
+      light.do_not_access_directly._pad1 = sunlight_buf.do_not_access_directly._pad1;
 #endif
     }
     /* NOTE: We know the index because sun lights are packed at the start of the input buffer. */
