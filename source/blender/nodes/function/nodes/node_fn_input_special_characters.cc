@@ -52,7 +52,7 @@ static void node_register()
       &ntype, FN_NODE_INPUT_SPECIAL_CHARACTERS, "Special Characters", NODE_CLASS_INPUT);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

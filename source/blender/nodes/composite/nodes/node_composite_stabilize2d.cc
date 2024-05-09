@@ -159,5 +159,5 @@ void register_node_type_cmp_stabilize2d()
   ntype.initfunc_api = file_ns::init;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

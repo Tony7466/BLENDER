@@ -114,7 +114,7 @@ void register_node_type_sh_sepxyz()
   ntype.build_multi_function = file_ns::sh_node_sepxyz_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 
 namespace blender::nodes::node_shader_sepcomb_xyz_cc::comb {
@@ -172,5 +172,5 @@ void register_node_type_sh_combxyz()
   ntype.build_multi_function = file_ns::sh_node_combxyz_build_multi_function;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

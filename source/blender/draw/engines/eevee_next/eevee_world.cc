@@ -23,22 +23,22 @@ namespace blender::eevee {
 
 DefaultWorldNodeTree::DefaultWorldNodeTree()
 {
-  bNodeTree *ntree = ntreeAddTree(nullptr, "World Nodetree", ntreeType_Shader->idname);
-  bNode *background = nodeAddStaticNode(nullptr, ntree, SH_NODE_BACKGROUND);
-  bNode *output = nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_WORLD);
-  bNodeSocket *background_out = nodeFindSocket(background, SOCK_OUT, "Background");
-  bNodeSocket *output_in = nodeFindSocket(output, SOCK_IN, "Surface");
-  nodeAddLink(ntree, background, background_out, output, output_in);
-  nodeSetActive(ntree, output);
+  bNodeTree *ntree = blender::bke::ntreeAddTree(nullptr, "World Nodetree", ntreeType_Shader->idname);
+  bNode *background = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_BACKGROUND);
+  bNode *output = blender::bke::nodeAddStaticNode(nullptr, ntree, SH_NODE_OUTPUT_WORLD);
+  bNodeSocket *background_out = blender::bke::nodeFindSocket(background, SOCK_OUT, "Background");
+  bNodeSocket *output_in = blender::bke::nodeFindSocket(output, SOCK_IN, "Surface");
+  blender::bke::nodeAddLink(ntree, background, background_out, output, output_in);
+  blender::bke::nodeSetActive(ntree, output);
 
   color_socket_ =
-      (bNodeSocketValueRGBA *)nodeFindSocket(background, SOCK_IN, "Color")->default_value;
+      (bNodeSocketValueRGBA *)blender::bke::nodeFindSocket(background, SOCK_IN, "Color")->default_value;
   ntree_ = ntree;
 }
 
 DefaultWorldNodeTree::~DefaultWorldNodeTree()
 {
-  ntreeFreeEmbeddedTree(ntree_);
+  blender::bke::ntreeFreeEmbeddedTree(ntree_);
   MEM_SAFE_FREE(ntree_);
 }
 

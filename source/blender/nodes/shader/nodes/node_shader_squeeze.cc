@@ -40,5 +40,5 @@ void register_node_type_sh_squeeze()
   ntype.declare = file_ns::node_declare;
   ntype.gpu_fn = file_ns::gpu_shader_squeeze;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

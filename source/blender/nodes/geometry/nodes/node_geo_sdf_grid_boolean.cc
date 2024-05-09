@@ -170,7 +170,7 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = search_link_ops_for_volume_grid_node;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

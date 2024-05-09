@@ -97,9 +97,9 @@ void register_node_type_cmp_sunbeams()
   ntype.declare = file_ns::cmp_node_sunbeams_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_sunbeams;
   ntype.initfunc = file_ns::init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeSunBeams", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

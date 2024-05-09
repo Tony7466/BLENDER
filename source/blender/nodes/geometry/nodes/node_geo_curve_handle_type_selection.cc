@@ -139,13 +139,13 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
+  blender::bke::node_type_storage(&ntype,
                     "NodeGeometryCurveSelectHandles",
                     node_free_standard_storage,
                     node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

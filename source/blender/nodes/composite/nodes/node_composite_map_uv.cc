@@ -136,5 +136,5 @@ void register_node_type_cmp_mapuv()
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
   ntype.initfunc = file_ns::node_composit_init_map_uv;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

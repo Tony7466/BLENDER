@@ -65,7 +65,7 @@ static void geometry_node_tree_get_from_context(
 
 static void geometry_node_tree_update(bNodeTree *ntree)
 {
-  ntreeSetOutput(ntree);
+  blender::bke::ntreeSetOutput(ntree);
 
   /* Needed to give correct types to reroutes. */
   ntree_update_reroute_nodes(ntree);
@@ -150,7 +150,7 @@ void register_node_tree_type_geo()
   tt->valid_socket_type = geometry_node_tree_socket_type_valid;
   tt->validate_link = geometry_node_tree_validate_link;
 
-  ntreeTypeAdd(tt);
+  blender::bke::ntreeTypeAdd(tt);
 }
 
 bool is_layer_selection_field(const bNodeTreeInterfaceSocket &socket)

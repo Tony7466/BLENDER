@@ -183,7 +183,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.get_extra_info = node_extra_info;
   node_rna(ntype.rna_ext.srna);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

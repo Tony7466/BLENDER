@@ -168,19 +168,19 @@ static int node_shader_gpu_tex_voronoi(GPUMaterial *mat,
 
 static void node_shader_update_tex_voronoi(bNodeTree *ntree, bNode *node)
 {
-  bNodeSocket *inVectorSock = nodeFindSocket(node, SOCK_IN, "Vector");
-  bNodeSocket *inWSock = nodeFindSocket(node, SOCK_IN, "W");
-  bNodeSocket *inDetailSock = nodeFindSocket(node, SOCK_IN, "Detail");
-  bNodeSocket *inRoughnessSock = nodeFindSocket(node, SOCK_IN, "Roughness");
-  bNodeSocket *inLacunaritySock = nodeFindSocket(node, SOCK_IN, "Lacunarity");
-  bNodeSocket *inSmoothnessSock = nodeFindSocket(node, SOCK_IN, "Smoothness");
-  bNodeSocket *inExponentSock = nodeFindSocket(node, SOCK_IN, "Exponent");
+  bNodeSocket *inVectorSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Vector");
+  bNodeSocket *inWSock = blender::bke::nodeFindSocket(node, SOCK_IN, "W");
+  bNodeSocket *inDetailSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Detail");
+  bNodeSocket *inRoughnessSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Roughness");
+  bNodeSocket *inLacunaritySock = blender::bke::nodeFindSocket(node, SOCK_IN, "Lacunarity");
+  bNodeSocket *inSmoothnessSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Smoothness");
+  bNodeSocket *inExponentSock = blender::bke::nodeFindSocket(node, SOCK_IN, "Exponent");
 
-  bNodeSocket *outDistanceSock = nodeFindSocket(node, SOCK_OUT, "Distance");
-  bNodeSocket *outColorSock = nodeFindSocket(node, SOCK_OUT, "Color");
-  bNodeSocket *outPositionSock = nodeFindSocket(node, SOCK_OUT, "Position");
-  bNodeSocket *outWSock = nodeFindSocket(node, SOCK_OUT, "W");
-  bNodeSocket *outRadiusSock = nodeFindSocket(node, SOCK_OUT, "Radius");
+  bNodeSocket *outDistanceSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Distance");
+  bNodeSocket *outColorSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Color");
+  bNodeSocket *outPositionSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Position");
+  bNodeSocket *outWSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "W");
+  bNodeSocket *outRadiusSock = blender::bke::nodeFindSocket(node, SOCK_OUT, "Radius");
 
   const NodeTexVoronoi &storage = node_storage(*node);
 
@@ -822,11 +822,11 @@ void register_node_type_sh_tex_voronoi()
   ntype.declare = file_ns::sh_node_tex_voronoi_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_tex_voronoi;
   ntype.initfunc = file_ns::node_shader_init_tex_voronoi;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeTexVoronoi", node_free_standard_storage, node_copy_standard_storage);
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_voronoi;
   ntype.updatefunc = file_ns::node_shader_update_tex_voronoi;
   ntype.build_multi_function = file_ns::sh_node_voronoi_build_multi_function;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

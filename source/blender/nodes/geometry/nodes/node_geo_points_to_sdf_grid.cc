@@ -107,7 +107,7 @@ static void node_register()
       &ntype, GEO_NODE_POINTS_TO_SDF_GRID, "Points to SDF Grid", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

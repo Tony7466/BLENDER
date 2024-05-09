@@ -56,5 +56,5 @@ void register_node_type_sh_invert()
   ntype.gpu_fn = file_ns::gpu_shader_invert;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }

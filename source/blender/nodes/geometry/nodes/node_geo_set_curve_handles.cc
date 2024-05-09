@@ -189,12 +189,12 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.minwidth = 100.0f;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
+  blender::bke::node_type_storage(&ntype,
                     "NodeGeometrySetCurveHandlePositions",
                     node_free_standard_storage,
                     node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

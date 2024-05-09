@@ -121,11 +121,11 @@ static void node_register()
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
+  blender::bke::node_type_storage(&ntype,
                     "NodeGeometryInputNamedAttribute",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

@@ -84,7 +84,7 @@ static void node_register()
   ntype.labelfunc = node_label;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

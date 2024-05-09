@@ -177,7 +177,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   bke::node_type_size(&ntype, 170, 100, 700);
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

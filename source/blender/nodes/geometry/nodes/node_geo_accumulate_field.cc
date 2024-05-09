@@ -402,9 +402,9 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeAccumulateField", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

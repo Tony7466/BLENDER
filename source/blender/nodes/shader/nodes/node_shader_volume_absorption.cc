@@ -44,5 +44,5 @@ void register_node_type_sh_volume_absorption()
   ntype.declare = file_ns::node_declare;
   ntype.gpu_fn = file_ns::node_shader_gpu_volume_absorption;
 
-  nodeRegisterType(&ntype);
+  blender::bke::nodeRegisterType(&ntype);
 }
