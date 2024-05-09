@@ -186,7 +186,7 @@ struct bNodeSocketType {
   const void *geometry_nodes_default_cpp_value;
 };
 
-}
+}  // namespace blender::bke
 
 using NodeInitExecFunction = void *(*)(bNodeExecContext *context,
                                        bNode *node,
@@ -198,7 +198,10 @@ using NodeGPUExecFunction = int (*)(
     GPUMaterial *mat, bNode *node, bNodeExecData *execdata, GPUNodeStack *in, GPUNodeStack *out);
 using NodeMaterialXFunction = void (*)(void *data, bNode *node, bNodeSocket *out);
 
+struct bNodeTreeExec;
+
 namespace blender::bke {
+
 /**
  * \brief Defines a node type.
  *
@@ -371,8 +374,6 @@ struct bNodeType {
   ExtensionRNA rna_ext;
 };
 
-}
-
 /** #bNodeType.nclass (for add-menu and themes). */
 #define NODE_CLASS_INPUT 0
 #define NODE_CLASS_OUTPUT 1
@@ -391,8 +392,6 @@ struct bNodeType {
 #define NODE_CLASS_GEOMETRY 41
 #define NODE_CLASS_ATTRIBUTE 42
 #define NODE_CLASS_LAYOUT 100
-
-namespace blender::bke {
 
 /**
  * Color tag stored per node group. This affects the header color of group nodes.
@@ -417,11 +416,6 @@ enum class NodeGroupColorTag {
   Texture = 12,
   Vector = 13,
 };
-}  // namespace blender::bke
-
-struct bNodeTreeExec;
-
-namespace blender::bke {
 
 using bNodeClassCallback = void (*)(void *calldata, int nclass, const char *name);
 
@@ -462,10 +456,8 @@ struct bNodeTreeType {
   /* RNA integration */
   ExtensionRNA rna_ext;
 };
-}  // namespace blender::bke
-/** \} */
 
-namespace blender::bke {
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Generic API, Trees
@@ -580,7 +572,8 @@ GHashIterator *nodeTypeGetIterator();
     GHashIterator *__node_type_iter__ = blender::bke::nodeTypeGetIterator(); \
     for (; !BLI_ghashIterator_done(__node_type_iter__); \
          BLI_ghashIterator_step(__node_type_iter__)) { \
-      blender::bke::bNodeType *ntype = (blender::bke::bNodeType *)BLI_ghashIterator_getValue(__node_type_iter__);
+      blender::bke::bNodeType *ntype = (blender::bke::bNodeType *)BLI_ghashIterator_getValue( \
+          __node_type_iter__);
 
 #define NODE_TYPES_END \
   } \
@@ -606,8 +599,8 @@ const char *nodeStaticSocketLabel(int type, int subtype);
     for (; !BLI_ghashIterator_done(__node_socket_type_iter__); \
          BLI_ghashIterator_step(__node_socket_type_iter__)) \
     { \
-      blender::bke::bNodeSocketType *stype = (blender::bke::bNodeSocketType *)BLI_ghashIterator_getValue( \
-          __node_socket_type_iter__);
+      blender::bke::bNodeSocketType *stype = (blender::bke::bNodeSocketType *) \
+          BLI_ghashIterator_getValue(__node_socket_type_iter__);
 
 #define NODE_SOCKET_TYPES_END \
   } \
