@@ -502,8 +502,13 @@ static void gesture_begin(bContext &C, gesture::GestureData &gesture_data)
   Object *object = gesture_data.vc.obact;
   SculptSession *ss = object->sculpt;
 
-  bke::SpanAttributeWriter face_sets = face_set::ensure_face_sets_mesh(*object);
-  face_sets.finish();
+  switch (BKE_pbvh_type(*ss->pbvh)) {
+    case PBVH_FACES:
+      face_set::ensure_face_sets_mesh(*object).finish();
+      break;
+    default:
+      BLI_assert_unreachable();
+  }
 
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(&C);
   generate_geometry(gesture_data);
