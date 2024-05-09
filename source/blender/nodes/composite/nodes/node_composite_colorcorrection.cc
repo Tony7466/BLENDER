@@ -347,7 +347,7 @@ void register_node_type_cmp_colorcorrection()
 {
   namespace file_ns = blender::nodes::node_composite_colorcorrection_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_COLORCORRECTION, "Color Correction", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_colorcorrection_declare;

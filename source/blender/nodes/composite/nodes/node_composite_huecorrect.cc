@@ -101,7 +101,7 @@ void register_node_type_cmp_huecorrect()
 {
   namespace file_ns = blender::nodes::node_composite_huecorrect_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_HUECORRECT, "Hue Correct", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_huecorrect_declare;

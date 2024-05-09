@@ -115,7 +115,7 @@ void register_node_type_cmp_bilateralblur()
 {
   namespace file_ns = blender::nodes::node_composite_bilateralblur_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_BILATERALBLUR, "Bilateral Blur", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_bilateralblur_declare;

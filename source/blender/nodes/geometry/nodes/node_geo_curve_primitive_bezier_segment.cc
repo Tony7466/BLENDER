@@ -142,7 +142,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_PRIMITIVE_BEZIER_SEGMENT, "Bézier Segment", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;

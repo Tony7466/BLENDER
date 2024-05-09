@@ -128,7 +128,7 @@ void register_node_type_cmp_mapuv()
 {
   namespace file_ns = blender::nodes::node_composite_map_uv_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MAP_UV, "Map UV", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_map_uv_declare;

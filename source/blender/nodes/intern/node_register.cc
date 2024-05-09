@@ -14,7 +14,7 @@
 
 #include "UI_resources.hh"
 
-static bool node_undefined_poll(const bNodeType * /*ntype*/,
+static bool node_undefined_poll(const blender::bke::bNodeType * /*ntype*/,
                                 const bNodeTree * /*nodetree*/,
                                 const char ** /*r_disabled_hint*/)
 {

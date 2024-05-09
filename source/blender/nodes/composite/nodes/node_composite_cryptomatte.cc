@@ -479,7 +479,7 @@ static void node_copy_cryptomatte(bNodeTree * /*dst_ntree*/,
   dest_node->storage = dest_nc;
 }
 
-static bool node_poll_cryptomatte(const bNodeType * /*ntype*/,
+static bool node_poll_cryptomatte(const blender::bke::bNodeType * /*ntype*/,
                                   const bNodeTree *ntree,
                                   const char **r_disabled_hint)
 {
@@ -767,7 +767,7 @@ void register_node_type_cmp_cryptomatte()
 {
   namespace file_ns = blender::nodes::node_composite_cryptomatte_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CRYPTOMATTE, "Cryptomatte", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_cryptomatte_declare;
@@ -863,7 +863,7 @@ void register_node_type_cmp_cryptomatte_legacy()
   namespace legacy_file_ns = blender::nodes::node_composite_legacy_cryptomatte_cc;
   namespace file_ns = blender::nodes::node_composite_cryptomatte_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(
       &ntype, CMP_NODE_CRYPTOMATTE_LEGACY, "Cryptomatte (Legacy)", NODE_CLASS_MATTE);

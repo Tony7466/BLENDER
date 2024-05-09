@@ -41,6 +41,7 @@ class bNodeTreeZones;
 class bNodeTreeZone;
 struct bNodeInstanceHash;
 struct bNodeTreeType;
+struct bNodeType;
 }  // namespace blender::bke
 namespace blender::bke {
 struct RuntimeNodeEnumItems;
@@ -51,6 +52,7 @@ using bNodeSocketRuntimeHandle = blender::bke::bNodeSocketRuntime;
 using RuntimeNodeEnumItemsHandle = blender::bke::RuntimeNodeEnumItems;
 using NodeInstanceHashHandle = blender::bke::bNodeInstanceHash;
 using bNodeTreeTypeHandle = blender::bke::bNodeTreeType;
+using bNodeTypeHandle = blender::bke::bNodeType;
 #else
 typedef struct bNodeTreeRuntimeHandle bNodeTreeRuntimeHandle;
 typedef struct bNodeRuntimeHandle bNodeRuntimeHandle;
@@ -58,6 +60,7 @@ typedef struct bNodeSocketRuntimeHandle bNodeSocketRuntimeHandle;
 typedef struct RuntimeNodeEnumItemsHandle RuntimeNodeEnumItemsHandle;
 typedef struct NodeInstanceHashHandle NodeInstanceHashHandle;
 typedef struct bNodeTreeTypeHandle bNodeTreeTypeHandle;
+typedef struct bNodeTypeHandle bNodeTypeHandle;
 #endif
 
 struct AnimData;
@@ -73,7 +76,6 @@ struct Tex;
 struct bGPdata;
 struct bNodeLink;
 struct bNodePreview;
-struct bNodeType;
 struct bNode;
 struct NodeEnumDefinition;
 
@@ -370,7 +372,7 @@ typedef struct bNode {
   char idname[64];
 
   /** Type information retrieved from the #idname. TODO: Move to runtime data. */
-  struct bNodeType *typeinfo;
+  bNodeTypeHandle *typeinfo;
 
   /**
    * Integer type used for builtin nodes, allowing cheaper lookup and changing ID names with

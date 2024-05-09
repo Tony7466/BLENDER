@@ -244,7 +244,7 @@ static void node_rna(StructRNA *srna)
 
 static void register_node()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SWITCH, "Switch", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;

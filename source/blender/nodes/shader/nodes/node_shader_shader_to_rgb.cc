@@ -31,7 +31,7 @@ void register_node_type_sh_shadertorgb()
 {
   namespace file_ns = blender::nodes::node_shader_shader_to_rgb_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_SHADERTORGB, "Shader to RGB", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;

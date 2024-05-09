@@ -84,7 +84,7 @@ void register_node_type_sh_script()
 {
   namespace file_ns = blender::nodes::node_shader_script_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_SCRIPT, "Script", NODE_CLASS_SCRIPT);
   ntype.draw_buttons = file_ns::node_shader_buts_script;

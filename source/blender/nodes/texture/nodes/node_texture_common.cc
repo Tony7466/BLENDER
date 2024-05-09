@@ -141,7 +141,7 @@ static void group_execute(void *data,
 
 void register_node_type_tex_group()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   /* NOTE: Cannot use #sh_node_type_base for node group, because it would map the node type
    * to the shared #NODE_GROUP integer type id. */

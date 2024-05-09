@@ -68,7 +68,7 @@ static void exec(void *data,
 
 void register_node_type_tex_combine_color()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_COMBINE_COLOR, "Combine Color", NODE_CLASS_OP_COLOR);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

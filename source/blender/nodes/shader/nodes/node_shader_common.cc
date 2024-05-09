@@ -81,7 +81,7 @@ static int gpu_group_execute(
 
 void register_node_type_sh_group()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   /* NOTE: cannot use #sh_node_type_base for node group, because it would map the node type
    * to the shared #NODE_GROUP integer type id. */
@@ -105,7 +105,7 @@ void register_node_type_sh_group()
   blender::bke::nodeRegisterType(&ntype);
 }
 
-void register_node_type_sh_custom_group(bNodeType *ntype)
+void register_node_type_sh_custom_group(blender::bke::bNodeType *ntype)
 {
   /* These methods can be overridden but need a default implementation otherwise. */
   if (ntype->poll == nullptr) {

@@ -94,7 +94,7 @@ static void init(bNodeTree * /*ntree*/, bNode *node)
 
 void register_node_type_tex_image()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_IMAGE, "Image", NODE_CLASS_INPUT);
   blender::bke::node_type_socket_templates(&ntype, nullptr, outputs);

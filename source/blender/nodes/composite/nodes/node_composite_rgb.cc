@@ -52,7 +52,7 @@ void register_node_type_cmp_rgb()
 {
   namespace file_ns = blender::nodes::node_composite_rgb_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_RGB, "RGB", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_rgb_declare;

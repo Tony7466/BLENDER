@@ -329,7 +329,7 @@ static void exec(void *data,
 
 void register_node_type_tex_math()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_MATH, "Math", NODE_CLASS_CONVERTER);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

@@ -157,7 +157,7 @@ void register_node_type_sh_valtorgb()
 {
   namespace file_ns = blender::nodes::node_shader_color_ramp_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_VALTORGB, "Color Ramp", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_valtorgb_declare;

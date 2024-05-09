@@ -43,7 +43,7 @@ void register_node_type_sh_fresnel()
 {
   namespace file_ns = blender::nodes::node_shader_fresnel_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_FRESNEL, "Fresnel", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;

@@ -491,7 +491,7 @@ static void update_direct_frames_childrens(const bNodeTree &ntree)
 static void update_group_output_node(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
-  const bNodeType *node_type = bke::nodeTypeFind("NodeGroupOutput");
+  const bke::bNodeType *node_type = bke::nodeTypeFind("NodeGroupOutput");
   const Span<bNode *> group_output_nodes = tree_runtime.nodes_by_type.lookup(node_type);
   if (group_output_nodes.is_empty()) {
     tree_runtime.group_output_node = nullptr;

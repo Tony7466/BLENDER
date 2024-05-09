@@ -522,7 +522,7 @@ void register_node_type_cmp_image()
 {
   namespace file_ns = blender::nodes::node_composite_image_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_IMAGE, "Image", NODE_CLASS_INPUT);
   ntype.initfunc = file_ns::node_composit_init_image;
@@ -574,7 +574,7 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
   }
 }
 
-static bool node_composit_poll_rlayers(const bNodeType * /*ntype*/,
+static bool node_composit_poll_rlayers(const blender::bke::bNodeType * /*ntype*/,
                                        const bNodeTree *ntree,
                                        const char **r_disabled_hint)
 {
@@ -790,7 +790,7 @@ void register_node_type_cmp_rlayers()
 {
   namespace file_ns = blender::nodes::node_composite_render_layer_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_R_LAYERS, "Render Layers", NODE_CLASS_INPUT);
   blender::bke::node_type_socket_templates(&ntype, nullptr, cmp_node_rlayers_out);

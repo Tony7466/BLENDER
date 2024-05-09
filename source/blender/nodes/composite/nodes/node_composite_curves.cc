@@ -96,7 +96,7 @@ void register_node_type_cmp_curve_time()
 {
   namespace file_ns = blender::nodes::node_composite_time_curves_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_TIME, "Time Curve", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_time_declare;
@@ -190,7 +190,7 @@ void register_node_type_cmp_curve_vec()
 {
   namespace file_ns = blender::nodes::node_composite_vector_curves_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CURVE_VEC, "Vector Curves", NODE_CLASS_OP_VECTOR);
   ntype.declare = file_ns::cmp_node_curve_vec_declare;
@@ -335,7 +335,7 @@ void register_node_type_cmp_curve_rgb()
 {
   namespace file_ns = blender::nodes::node_composite_rgb_curves_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CURVE_RGB, "RGB Curves", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_rgbcurves_declare;

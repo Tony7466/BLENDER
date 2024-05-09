@@ -192,7 +192,7 @@ void register_node_type_cmp_inpaint()
 {
   namespace file_ns = blender::nodes::node_composite_inpaint_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_INPAINT, "Inpaint", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_inpaint_declare;

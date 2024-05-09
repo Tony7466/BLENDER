@@ -97,7 +97,7 @@ void register_node_type_sh_tangent()
 {
   namespace file_ns = blender::nodes::node_shader_tangent_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_TANGENT, "Tangent", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;

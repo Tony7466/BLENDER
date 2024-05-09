@@ -49,7 +49,7 @@ void register_node_type_sh_invert()
 {
   namespace file_ns = blender::nodes::node_shader_invert_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_INVERT, "Invert Color", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::node_declare;

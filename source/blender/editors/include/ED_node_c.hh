@@ -21,8 +21,8 @@ struct bNodeSocketType;
 struct bNodeTree;
 namespace blender::bke {
 struct bNodeTreeType;
-}  // namespace blender::bke
 struct bNodeType;
+}  // namespace blender::bke
 
 enum NodeBorder {
   NODE_TOP = 1,
@@ -66,7 +66,7 @@ void ED_node_set_active_viewer_key(SpaceNode *snode);
 /* `drawnode.cc` */
 
 void ED_node_init_butfuncs();
-void ED_init_custom_node_type(bNodeType *ntype);
+void ED_init_custom_node_type(blender::bke::bNodeType *ntype);
 void ED_init_custom_node_socket_type(bNodeSocketType *stype);
 void ED_init_standard_node_socket_type(bNodeSocketType *stype);
 void ED_init_node_socket_type_virtual(bNodeSocketType *stype);

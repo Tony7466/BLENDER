@@ -91,7 +91,7 @@ static void exec(void *data,
 
 void register_node_type_tex_hue_sat()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_HUE_SAT, "Hue/Saturation/Value", NODE_CLASS_OP_COLOR);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

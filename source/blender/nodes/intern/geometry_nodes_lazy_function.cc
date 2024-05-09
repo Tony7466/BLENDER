@@ -3038,7 +3038,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
   void insert_node_in_graph(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    const bNodeType *node_type = bnode.typeinfo;
+    const bke::bNodeType *node_type = bnode.typeinfo;
     if (node_type == nullptr) {
       return;
     }

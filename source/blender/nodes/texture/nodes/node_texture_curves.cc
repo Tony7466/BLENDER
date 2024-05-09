@@ -52,7 +52,7 @@ static void time_init(bNodeTree * /*ntree*/, bNode *node)
 
 void register_node_type_tex_curve_time()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_CURVE_TIME, "Time", NODE_CLASS_INPUT);
   blender::bke::node_type_socket_templates(&ntype, nullptr, time_outputs);
@@ -102,7 +102,7 @@ static void rgb_init(bNodeTree * /*ntree*/, bNode *node)
 
 void register_node_type_tex_curve_rgb()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_CURVE_RGB, "RGB Curves", NODE_CLASS_OP_COLOR);
   blender::bke::node_type_socket_templates(&ntype, rgb_inputs, rgb_outputs);

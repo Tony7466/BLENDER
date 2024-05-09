@@ -106,7 +106,7 @@ void register_node_type_sh_sepxyz()
 {
   namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc::sep;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_SEPXYZ, "Separate XYZ", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_sepxyz_declare;
@@ -164,7 +164,7 @@ void register_node_type_sh_combxyz()
 {
   namespace file_ns = blender::nodes::node_shader_sepcomb_xyz_cc::comb;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_COMBXYZ, "Combine XYZ", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_combxyz_declare;

@@ -4140,7 +4140,7 @@ static PyObject *pyrna_struct_bl_rna_get_subclass(PyObject *cls, PyObject *args)
     /* If the given idname is an alias, translate it to the proper idname. */
     id = blender::bke::nodeTypeFindAlias(id);
 
-    bNodeType *nt = blender::bke::nodeTypeFind(id);
+    blender::bke::bNodeType *nt = blender::bke::nodeTypeFind(id);
     if (nt) {
       PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_Struct, nt->rna_ext.srna);
       return pyrna_struct_CreatePyObject(&ptr);

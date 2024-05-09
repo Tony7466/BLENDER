@@ -374,7 +374,7 @@ void register_node_type_cmp_keying()
 {
   namespace file_ns = blender::nodes::node_composite_keying_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_KEYING, "Keying", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_keying_declare;

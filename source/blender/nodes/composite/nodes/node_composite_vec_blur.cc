@@ -195,7 +195,7 @@ void register_node_type_cmp_vecblur()
 {
   namespace file_ns = blender::nodes::node_composite_vec_blur_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_VECBLUR, "Vector Blur", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_vec_blur_declare;

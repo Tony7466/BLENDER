@@ -40,7 +40,7 @@ static void exec(void *data,
 
 void register_node_type_tex_at()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_AT, "At", NODE_CLASS_DISTORT);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

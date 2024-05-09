@@ -92,7 +92,7 @@ void register_node_type_cmp_texture()
 {
   namespace file_ns = blender::nodes::node_composite_texture_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_TEXTURE, "Texture", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_texture_declare;

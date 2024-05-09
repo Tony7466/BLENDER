@@ -204,7 +204,7 @@ void register_node_type_cmp_colorbalance()
 {
   namespace file_ns = blender::nodes::node_composite_colorbalance_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_COLORBALANCE, "Color Balance", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_colorbalance_declare;

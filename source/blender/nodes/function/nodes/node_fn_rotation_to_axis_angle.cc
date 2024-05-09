@@ -51,7 +51,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   fn_node_type_base(
       &ntype, FN_NODE_ROTATION_TO_AXIS_ANGLE, "Rotation to Axis Angle", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;

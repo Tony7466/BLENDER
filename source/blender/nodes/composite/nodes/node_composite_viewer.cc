@@ -256,7 +256,7 @@ void register_node_type_cmp_viewer()
 {
   namespace file_ns = blender::nodes::node_composite_viewer_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_VIEWER, "Viewer", NODE_CLASS_OUTPUT);
   ntype.declare = file_ns::cmp_node_viewer_declare;

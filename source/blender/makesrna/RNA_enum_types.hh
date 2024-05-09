@@ -12,12 +12,12 @@
 
 struct ID;
 struct bNodeSocketType;
-struct bNodeType;
 struct PointerRNA;
 struct PropertyRNA;
 struct bContext;
 namespace blender::bke {
 struct bNodeTreeType;
+struct bNodeType;
 struct RuntimeNodeEnumItems;
 }
 

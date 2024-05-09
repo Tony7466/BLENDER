@@ -244,7 +244,7 @@ void register_node_type_cmp_lensdist()
 {
   namespace file_ns = blender::nodes::node_composite_lensdist_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_LENSDIST, "Lens Distortion", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_lensdist_declare;

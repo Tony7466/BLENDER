@@ -23,7 +23,6 @@
 struct bNode;
 struct bNodeSocket;
 struct bNodeTree;
-struct bNodeType;
 
 namespace blender::nodes {
 struct FieldInferencingInterface;
@@ -34,6 +33,7 @@ namespace anonymous_attribute_lifetime {
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
 namespace blender::bke {
+struct bNodeType;
 class bNodeTreeZones;
 }
 namespace blender::bke::anonymous_attribute_inferencing {

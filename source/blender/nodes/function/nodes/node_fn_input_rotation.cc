@@ -44,7 +44,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_INPUT_ROTATION, "Rotation", 0);
   ntype.declare = node_declare;

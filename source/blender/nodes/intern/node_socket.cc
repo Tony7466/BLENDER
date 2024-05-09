@@ -542,7 +542,7 @@ bool socket_type_supports_grids(const eNodeSocketDatatype socket_type)
 
 void node_verify_sockets(bNodeTree *ntree, bNode *node, bool do_id_user)
 {
-  bNodeType *ntype = node->typeinfo;
+  blender::bke::bNodeType *ntype = node->typeinfo;
   if (ntype == nullptr) {
     return;
   }

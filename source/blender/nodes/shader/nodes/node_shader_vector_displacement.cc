@@ -72,7 +72,7 @@ void register_node_type_sh_vector_displacement()
 {
   namespace file_ns = blender::nodes::node_shader_vector_displacement_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(
       &ntype, SH_NODE_VECTOR_DISPLACEMENT, "Vector Displacement", NODE_CLASS_OP_VECTOR);

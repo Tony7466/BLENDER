@@ -286,7 +286,7 @@ void register_node_type_cmp_dilateerode()
 {
   namespace file_ns = blender::nodes::node_composite_dilate_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_DILATEERODE, "Dilate/Erode", NODE_CLASS_OP_FILTER);
   ntype.draw_buttons = file_ns::node_composit_buts_dilateerode;

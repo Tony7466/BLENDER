@@ -99,7 +99,7 @@ void register_node_type_cmp_switch_view()
 {
   namespace file_ns = blender::nodes::node_composite_switchview_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_SWITCH_VIEW, "Switch View", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::node_declare;

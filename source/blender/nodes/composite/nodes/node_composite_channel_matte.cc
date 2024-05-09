@@ -177,7 +177,7 @@ void register_node_type_cmp_channel_matte()
 {
   namespace file_ns = blender::nodes::node_composite_channel_matte_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CHANNEL_MATTE, "Channel Key", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_channel_matte_declare;

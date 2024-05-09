@@ -298,7 +298,7 @@ void register_node_type_cmp_blur()
 {
   namespace file_ns = blender::nodes::node_composite_blur_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_BLUR, "Blur", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_blur_declare;

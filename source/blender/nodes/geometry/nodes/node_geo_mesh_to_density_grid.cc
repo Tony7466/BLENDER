@@ -55,7 +55,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_TO_DENSITY_GRID, "Mesh to Density Grid", NODE_CLASS_GEOMETRY);

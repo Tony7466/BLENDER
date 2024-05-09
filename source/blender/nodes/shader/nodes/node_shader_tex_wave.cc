@@ -316,7 +316,7 @@ void register_node_type_sh_tex_wave()
 {
   namespace file_ns = blender::nodes::node_shader_tex_wave_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_TEX_WAVE, "Wave Texture", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::sh_node_tex_wave_declare;

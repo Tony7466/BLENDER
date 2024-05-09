@@ -56,7 +56,7 @@ void register_node_type_sh_wireframe()
 {
   namespace file_ns = blender::nodes::node_shader_wireframe_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_WIREFRAME, "Wireframe", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;

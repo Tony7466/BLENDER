@@ -9,7 +9,7 @@
 extern blender::bke::bNodeTreeType *ntreeType_Geometry;
 
 void register_node_tree_type_geo();
-void register_node_type_geo_custom_group(bNodeType *ntype);
+void register_node_type_geo_custom_group(blender::bke::bNodeType *ntype);
 
 /**
  * Returns true if the socket is a Named Layer Selection field.

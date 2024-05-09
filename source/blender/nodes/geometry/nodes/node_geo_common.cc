@@ -17,7 +17,7 @@ namespace blender::nodes {
 
 static void register_node_type_geo_group()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   bke::node_type_base_custom(&ntype, "GeometryNodeGroup", "Group", "GROUP", NODE_CLASS_GROUP);
   ntype.type = NODE_GROUP;
@@ -40,7 +40,7 @@ NOD_REGISTER_NODE(register_node_type_geo_group)
 
 }  // namespace blender::nodes
 
-void register_node_type_geo_custom_group(bNodeType *ntype)
+void register_node_type_geo_custom_group(blender::bke::bNodeType *ntype)
 {
   /* These methods can be overridden but need a default implementation otherwise. */
   if (ntype->poll == nullptr) {

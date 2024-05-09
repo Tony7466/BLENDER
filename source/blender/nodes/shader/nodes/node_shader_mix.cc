@@ -609,7 +609,7 @@ void register_node_type_sh_mix()
 {
   namespace file_ns = blender::nodes::node_sh_mix_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   sh_fn_node_type_base(&ntype, SH_NODE_MIX, "Mix", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_mix_declare;
   ntype.ui_class = file_ns::sh_node_mix_ui_class;

@@ -37,7 +37,7 @@ void node_cmp_rlayers_register_pass(bNodeTree *ntree,
                                     eNodeSocketDatatype type);
 const char *node_cmp_rlayers_sock_to_pass(int sock_index);
 
-void register_node_type_cmp_custom_group(bNodeType *ntype);
+void register_node_type_cmp_custom_group(blender::bke::bNodeType *ntype);
 
 void ntreeCompositExecTree(Render *render,
                            Scene *scene,

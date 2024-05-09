@@ -192,7 +192,7 @@ void register_node_type_cmp_color_spill()
 {
   namespace file_ns = blender::nodes::node_composite_color_spill_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_COLOR_SPILL, "Color Spill", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_color_spill_declare;

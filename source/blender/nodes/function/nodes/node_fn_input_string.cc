@@ -59,7 +59,7 @@ static void node_storage_copy(bNodeTree * /*dst_ntree*/, bNode *dest_node, const
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_INPUT_STRING, "String", NODE_CLASS_INPUT);
   ntype.declare = node_declare;

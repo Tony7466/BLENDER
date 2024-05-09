@@ -174,7 +174,7 @@ void register_node_type_cmp_doubleedgemask()
 {
   namespace file_ns = blender::nodes::node_composite_double_edge_mask_cc;
 
-  static bNodeType ntype; /* Allocate a node type data structure. */
+  static blender::bke::bNodeType ntype; /* Allocate a node type data structure. */
 
   cmp_node_type_base(&ntype, CMP_NODE_DOUBLEEDGEMASK, "Double Edge Mask", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_double_edge_mask_declare;

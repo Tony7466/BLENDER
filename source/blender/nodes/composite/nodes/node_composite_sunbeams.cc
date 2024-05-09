@@ -91,7 +91,7 @@ void register_node_type_cmp_sunbeams()
 {
   namespace file_ns = blender::nodes::node_composite_sunbeams_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_SUNBEAMS, "Sun Beams", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_sunbeams_declare;

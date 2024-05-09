@@ -48,7 +48,7 @@ void register_node_type_sh_gamma()
 {
   namespace file_ns = blender::nodes::node_shader_gamma_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_GAMMA, "Gamma", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::node_declare;

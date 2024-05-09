@@ -294,7 +294,7 @@ static void node_buts_frame_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *p
   uiItemR(layout, ptr, "text", DEFAULT_FLAGS, nullptr, ICON_NONE);
 }
 
-static void node_common_set_butfunc(bNodeType *ntype)
+static void node_common_set_butfunc(blender::bke::bNodeType *ntype)
 {
   switch (ntype->type) {
     case NODE_GROUP:
@@ -462,7 +462,7 @@ static void node_buts_output_shader(uiLayout *layout, bContext * /*C*/, PointerR
 }
 
 /* only once called */
-static void node_shader_set_butfunc(bNodeType *ntype)
+static void node_shader_set_butfunc(blender::bke::bNodeType *ntype)
 {
   switch (ntype->type) {
     case SH_NODE_NORMAL:
@@ -807,7 +807,7 @@ static void node_composit_buts_cryptomatte(uiLayout *layout, bContext *C, Pointe
 }
 
 /* only once called */
-static void node_composit_set_butfunc(bNodeType *ntype)
+static void node_composit_set_butfunc(blender::bke::bNodeType *ntype)
 {
   switch (ntype->type) {
     case CMP_NODE_IMAGE:
@@ -1005,7 +1005,7 @@ static void node_texture_buts_combsep_color(uiLayout *layout, bContext * /*C*/, 
 }
 
 /* only once called */
-static void node_texture_set_butfunc(bNodeType *ntype)
+static void node_texture_set_butfunc(blender::bke::bNodeType *ntype)
 {
   if (ntype->type >= TEX_NODE_PROC && ntype->type < TEX_NODE_PROC_MAX) {
     ntype->draw_buttons = node_texture_buts_proc;
@@ -1072,7 +1072,7 @@ static void node_property_update_default(Main *bmain, Scene * /*scene*/, Pointer
   ED_node_tree_propagate_change(nullptr, bmain, ntree);
 }
 
-static void node_socket_template_properties_update(bNodeType *ntype, bNodeSocketTemplate *stemp)
+static void node_socket_template_properties_update(blender::bke::bNodeType *ntype, bNodeSocketTemplate *stemp)
 {
   StructRNA *srna = ntype->rna_ext.srna;
   PropertyRNA *prop = RNA_struct_type_find_property(srna, stemp->identifier);
@@ -1082,7 +1082,7 @@ static void node_socket_template_properties_update(bNodeType *ntype, bNodeSocket
   }
 }
 
-static void node_template_properties_update(bNodeType *ntype)
+static void node_template_properties_update(blender::bke::bNodeType *ntype)
 {
   bNodeSocketTemplate *stemp;
 
@@ -1172,7 +1172,7 @@ void ED_node_init_butfuncs()
   NODE_TYPES_END;
 }
 
-void ED_init_custom_node_type(bNodeType * /*ntype*/) {}
+void ED_init_custom_node_type(blender::bke::bNodeType * /*ntype*/) {}
 
 void ED_init_custom_node_socket_type(bNodeSocketType *stype)
 {

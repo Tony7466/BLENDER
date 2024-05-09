@@ -132,7 +132,7 @@ void register_node_type_cmp_valtorgb()
 {
   namespace file_ns = blender::nodes::node_composite_color_ramp_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_VALTORGB, "Color Ramp", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_valtorgb_declare;
@@ -190,7 +190,7 @@ void register_node_type_cmp_rgbtobw()
 {
   namespace file_ns = blender::nodes::node_composite_rgb_to_bw_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_RGBTOBW, "RGB to BW", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_rgbtobw_declare;

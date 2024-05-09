@@ -77,7 +77,7 @@ void register_node_type_cmp_setalpha()
 {
   namespace file_ns = blender::nodes::node_composite_setalpha_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_SETALPHA, "Set Alpha", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_setalpha_declare;

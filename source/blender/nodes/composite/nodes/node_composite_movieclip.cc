@@ -281,7 +281,7 @@ void register_node_type_cmp_movieclip()
 {
   namespace file_ns = blender::nodes::node_composite_movieclip_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MOVIECLIP, "Movie Clip", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_movieclip_declare;

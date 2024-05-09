@@ -327,7 +327,7 @@ void register_node_type_cmp_planetrackdeform()
 {
   namespace file_ns = blender::nodes::node_composite_planetrackdeform_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_PLANETRACKDEFORM, "Plane Track Deform", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_planetrackdeform_declare;

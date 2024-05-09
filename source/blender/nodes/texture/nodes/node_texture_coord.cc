@@ -32,7 +32,7 @@ static void exec(void *data,
 
 void register_node_type_tex_coord()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_COORD, "Coordinates", NODE_CLASS_INPUT);
   blender::bke::node_type_socket_templates(&ntype, nullptr, outputs);

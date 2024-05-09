@@ -53,7 +53,7 @@ void register_node_type_sh_value()
 {
   namespace file_ns = blender::nodes::node_shader_value_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_VALUE, "Value", NODE_CLASS_INPUT);
   ntype.declare = file_ns::sh_node_value_declare;

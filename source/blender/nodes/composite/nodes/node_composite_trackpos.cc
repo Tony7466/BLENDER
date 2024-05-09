@@ -362,7 +362,7 @@ void register_node_type_cmp_trackpos()
 {
   namespace file_ns = blender::nodes::node_composite_trackpos_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_TRACKPOS, "Track Position", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_trackpos_declare;

@@ -99,7 +99,7 @@ void register_node_type_cmp_antialiasing()
 {
   namespace file_ns = blender::nodes::node_composite_antialiasing_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_ANTIALIASING, "Anti-Aliasing", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_antialiasing_declare;

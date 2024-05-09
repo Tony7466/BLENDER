@@ -304,7 +304,7 @@ struct NodeLinkArg {
   bNode *node;
   bNodeSocket *sock;
 
-  bNodeType *node_type;
+  bke::bNodeType *node_type;
   NodeLinkItem item;
 
   uiLayout *layout;
@@ -456,12 +456,12 @@ static int ui_compatible_sockets(int typeA, int typeB)
 
 static int ui_node_item_name_compare(const void *a, const void *b)
 {
-  const bNodeType *type_a = *(const bNodeType **)a;
-  const bNodeType *type_b = *(const bNodeType **)b;
+  const bke::bNodeType *type_a = *(const bke::bNodeType **)a;
+  const bke::bNodeType *type_b = *(const bke::bNodeType **)b;
   return BLI_strcasecmp_natural(type_a->ui_name, type_b->ui_name);
 }
 
-static bool ui_node_item_special_poll(const bNodeTree * /*ntree*/, const bNodeType *ntype)
+static bool ui_node_item_special_poll(const bNodeTree * /*ntree*/, const bke::bNodeType *ntype)
 {
   if (STREQ(ntype->idname, "ShaderNodeUVAlongStroke")) {
     /* TODO(sergey): Currently we don't have Freestyle nodes edited from
@@ -486,7 +486,7 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
   int first = 1;
 
   /* generate array of node types sorted by UI name */
-  blender::Vector<bNodeType *> sorted_ntypes;
+  blender::Vector<bke::bNodeType *> sorted_ntypes;
 
   NODE_TYPES_BEGIN (ntype) {
     const char *disabled_hint;
@@ -507,11 +507,11 @@ static void ui_node_menu_column(NodeLinkArg *arg, int nclass, const char *cname)
   NODE_TYPES_END;
 
   qsort(
-      sorted_ntypes.data(), sorted_ntypes.size(), sizeof(bNodeType *), ui_node_item_name_compare);
+      sorted_ntypes.data(), sorted_ntypes.size(), sizeof(bke::bNodeType *), ui_node_item_name_compare);
 
   /* generate UI */
   for (int j = 0; j < sorted_ntypes.size(); j++) {
-    bNodeType *ntype = sorted_ntypes[j];
+    bke::bNodeType *ntype = sorted_ntypes[j];
     char name[UI_MAX_NAME_STR];
     const char *cur_node_name = nullptr;
     int num = 0;

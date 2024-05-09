@@ -46,7 +46,7 @@ const bNodeTree &GatherLinkSearchOpParams::node_tree() const
   return node_tree_;
 }
 
-const bNodeType &GatherLinkSearchOpParams::node_type() const
+const bke::bNodeType &GatherLinkSearchOpParams::node_type() const
 {
   return node_type_;
 }
@@ -83,7 +83,7 @@ bNode &LinkSearchOpParams::add_node(StringRef idname)
   return *node;
 }
 
-bNode &LinkSearchOpParams::add_node(const bNodeType &node_type)
+bNode &LinkSearchOpParams::add_node(const bke::bNodeType &node_type)
 {
   return this->add_node(node_type.idname);
 }
@@ -100,7 +100,7 @@ void LinkSearchOpParams::update_and_connect_available_socket(bNode &new_node,
 void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
                                       Span<SocketDeclaration *> declarations)
 {
-  const bNodeType &node_type = params.node_type();
+  const bke::bNodeType &node_type = params.node_type();
 
   const SocketDeclaration *main_socket = nullptr;
   Vector<const SocketDeclaration *> connectable_sockets;
@@ -144,7 +144,7 @@ void search_link_ops_for_declarations(GatherLinkSearchOpParams &params,
 
 void search_link_ops_for_basic_node(GatherLinkSearchOpParams &params)
 {
-  const bNodeType &node_type = params.node_type();
+  const bke::bNodeType &node_type = params.node_type();
   if (!node_type.static_declaration) {
     return;
   }

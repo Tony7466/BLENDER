@@ -175,7 +175,7 @@ void register_node_type_cmp_mix_rgb()
 {
   namespace file_ns = blender::nodes::node_composite_mixrgb_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MIX_RGB, "Mix", NODE_CLASS_OP_COLOR);
   ntype.flag |= NODE_PREVIEW;

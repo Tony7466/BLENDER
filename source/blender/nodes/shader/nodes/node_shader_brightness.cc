@@ -55,7 +55,7 @@ void register_node_type_sh_brightcontrast()
 {
   namespace file_ns = blender::nodes::node_shader_brightness_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_BRIGHTCONTRAST, "Brightness/Contrast", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::node_declare;

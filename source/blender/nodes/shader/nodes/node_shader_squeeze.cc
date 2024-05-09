@@ -33,7 +33,7 @@ void register_node_type_sh_squeeze()
 {
   namespace file_ns = blender::nodes::node_shader_squeeze_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_SQUEEZE, "Squeeze Value (Legacy)", NODE_CLASS_CONVERTER);
   ntype.gather_link_search_ops = nullptr;

@@ -79,7 +79,7 @@ static void exec(void *data,
 
 void register_node_type_tex_rotate()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_ROTATE, "Rotate", NODE_CLASS_DISTORT);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

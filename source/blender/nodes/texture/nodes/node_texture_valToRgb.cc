@@ -47,7 +47,7 @@ static void valtorgb_init(bNodeTree * /*ntree*/, bNode *node)
 
 void register_node_type_tex_valtorgb()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_VALTORGB, "Color Ramp", NODE_CLASS_CONVERTER);
   blender::bke::node_type_socket_templates(&ntype, valtorgb_in, valtorgb_out);
@@ -89,7 +89,7 @@ static void rgbtobw_exec(void *data,
 
 void register_node_type_tex_rgbtobw()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_RGBTOBW, "RGB to BW", NODE_CLASS_CONVERTER);
   blender::bke::node_type_socket_templates(&ntype, rgbtobw_in, rgbtobw_out);

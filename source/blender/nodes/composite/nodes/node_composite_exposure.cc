@@ -51,7 +51,7 @@ void register_node_type_cmp_exposure()
 {
   namespace file_ns = blender::nodes::node_composite_exposure_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_EXPOSURE, "Exposure", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::cmp_node_exposure_declare;

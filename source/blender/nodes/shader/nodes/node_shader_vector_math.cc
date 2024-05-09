@@ -463,7 +463,7 @@ void register_node_type_sh_vect_math()
 {
   namespace file_ns = blender::nodes::node_shader_vector_math_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_fn_node_type_base(&ntype, SH_NODE_VECTOR_MATH, "Vector Math", NODE_CLASS_OP_VECTOR);
   ntype.declare = file_ns::sh_node_vector_math_declare;

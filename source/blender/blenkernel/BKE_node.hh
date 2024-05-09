@@ -195,6 +195,7 @@ using NodeGPUExecFunction = int (*)(
     GPUMaterial *mat, bNode *node, bNodeExecData *execdata, GPUNodeStack *in, GPUNodeStack *out);
 using NodeMaterialXFunction = void (*)(void *data, bNode *node, bNodeSocket *out);
 
+namespace blender::bke {
 /**
  * \brief Defines a node type.
  *
@@ -366,6 +367,8 @@ struct bNodeType {
   /* RNA integration */
   ExtensionRNA rna_ext;
 };
+
+}
 
 /** #bNodeType.nclass (for add-menu and themes). */
 #define NODE_CLASS_INPUT 0
@@ -574,7 +577,7 @@ GHashIterator *nodeTypeGetIterator();
     GHashIterator *__node_type_iter__ = blender::bke::nodeTypeGetIterator(); \
     for (; !BLI_ghashIterator_done(__node_type_iter__); \
          BLI_ghashIterator_step(__node_type_iter__)) { \
-      bNodeType *ntype = (bNodeType *)BLI_ghashIterator_getValue(__node_type_iter__);
+      blender::bke::bNodeType *ntype = (blender::bke::bNodeType *)BLI_ghashIterator_getValue(__node_type_iter__);
 
 #define NODE_TYPES_END \
   } \

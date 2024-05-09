@@ -167,7 +167,7 @@ void register_node_type_sh_normal_map()
 {
   namespace file_ns = blender::nodes::node_shader_normal_map_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_NORMAL_MAP, "Normal Map", NODE_CLASS_OP_VECTOR);
   ntype.declare = file_ns::node_declare;

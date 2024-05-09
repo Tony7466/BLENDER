@@ -28,7 +28,7 @@ void register_node_type_sh_holdout()
 {
   namespace file_ns = blender::nodes::node_shader_holdout_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_HOLDOUT, "Holdout", NODE_CLASS_SHADER);
   ntype.add_ui_poll = object_shader_nodes_poll;

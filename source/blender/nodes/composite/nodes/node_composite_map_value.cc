@@ -112,7 +112,7 @@ void register_node_type_cmp_map_value()
 {
   namespace file_ns = blender::nodes::node_composite_map_value_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MAP_VALUE, "Map Value", NODE_CLASS_OP_VECTOR);
   ntype.declare = file_ns::cmp_node_map_value_declare;

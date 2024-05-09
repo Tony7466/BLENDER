@@ -46,7 +46,7 @@ static void exec(void *data,
 
 void register_node_type_tex_invert()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   tex_node_type_base(&ntype, TEX_NODE_INVERT, "Invert Color", NODE_CLASS_OP_COLOR);
   blender::bke::node_type_socket_templates(&ntype, inputs, outputs);

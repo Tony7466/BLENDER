@@ -48,7 +48,7 @@ void register_node_type_cmp_value()
 {
   namespace file_ns = blender::nodes::node_composite_value_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_VALUE, "Value", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_value_declare;

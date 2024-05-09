@@ -80,7 +80,7 @@ void register_node_type_cmp_sepycca()
 {
   namespace file_ns = blender::nodes::node_composite_separate_ycca_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(
       &ntype, CMP_NODE_SEPYCCA_LEGACY, "Separate YCbCrA (Legacy)", NODE_CLASS_CONVERTER);
@@ -173,7 +173,7 @@ void register_node_type_cmp_combycca()
 {
   namespace file_ns = blender::nodes::node_composite_combine_ycca_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(
       &ntype, CMP_NODE_COMBYCCA_LEGACY, "Combine YCbCrA (Legacy)", NODE_CLASS_CONVERTER);

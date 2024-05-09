@@ -356,7 +356,7 @@ void register_node_type_cmp_defocus()
 {
   namespace file_ns = blender::nodes::node_composite_defocus_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_DEFOCUS, "Defocus", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_defocus_declare;

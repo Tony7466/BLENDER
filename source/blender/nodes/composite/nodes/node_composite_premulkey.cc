@@ -68,7 +68,7 @@ void register_node_type_cmp_premulkey()
 {
   namespace file_ns = blender::nodes::node_composite_premulkey_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_PREMULKEY, "Alpha Convert", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::cmp_node_premulkey_declare;

@@ -100,7 +100,7 @@ void register_node_type_sh_sepcolor()
 {
   namespace file_ns = blender::nodes::node_shader_separate_color_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_SEPARATE_COLOR, "Separate Color", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_sepcolor_declare;
@@ -201,7 +201,7 @@ void register_node_type_sh_combcolor()
 {
   namespace file_ns = blender::nodes::node_shader_combine_color_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_COMBINE_COLOR, "Combine Color", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_combcolor_declare;

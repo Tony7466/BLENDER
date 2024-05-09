@@ -151,8 +151,8 @@ std::string node_group_ui_description(const bNode &node)
 }
 
 bool blender::bke::nodeGroupPoll(const bNodeTree *nodetree,
-                                 const bNodeTree *grouptree,
-                                 const char **r_disabled_hint)
+                   const bNodeTree *grouptree,
+                   const char **r_disabled_hint)
 {
   /* unspecified node group, generally allowed
    * (if anything, should be avoided on operator level)
@@ -546,13 +546,12 @@ static void node_frame_init(bNodeTree * /*ntree*/, bNode *node)
 void register_node_type_frame()
 {
   /* frame type is used for all tree types, needs dynamic allocation */
-  bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
-  ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
+  blender::bke::bNodeType *ntype = MEM_cnew<blender::bke::bNodeType>("frame node type");
+  ntype->free_self = (void (*)(blender::bke::bNodeType *))MEM_freeN;
 
   blender::bke::node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_frame_init;
-  blender::bke::node_type_storage(
-      ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(ntype, 150, 100, 0);
   ntype->flag |= NODE_BACKGROUND;
 
@@ -571,15 +570,14 @@ static void node_reroute_init(bNodeTree *ntree, bNode *node)
    * on each file read via the template verification procedure.
    */
   blender::bke::nodeAddStaticSocket(ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "Input", "Input");
-  blender::bke::nodeAddStaticSocket(
-      ntree, node, SOCK_OUT, SOCK_RGBA, PROP_NONE, "Output", "Output");
+  blender::bke::nodeAddStaticSocket(ntree, node, SOCK_OUT, SOCK_RGBA, PROP_NONE, "Output", "Output");
 }
 
 void register_node_type_reroute()
 {
   /* frame type is used for all tree types, needs dynamic allocation */
-  bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
-  ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
+  blender::bke::bNodeType *ntype = MEM_cnew<blender::bke::bNodeType>("frame node type");
+  ntype->free_self = (void (*)(blender::bke::bNodeType *))MEM_freeN;
 
   blender::bke::node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_reroute_init;
@@ -825,8 +823,8 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
 void register_node_type_group_input()
 {
   /* used for all tree types, needs dynamic allocation */
-  bNodeType *ntype = MEM_cnew<bNodeType>("node type");
-  ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
+  blender::bke::bNodeType *ntype = MEM_cnew<blender::bke::bNodeType>("node type");
+  ntype->free_self = (void (*)(blender::bke::bNodeType *))MEM_freeN;
 
   blender::bke::node_type_base(ntype, NODE_GROUP_INPUT, "Group Input", NODE_CLASS_INTERFACE);
   blender::bke::node_type_size(ntype, 140, 80, 400);
@@ -849,8 +847,8 @@ bNodeSocket *node_group_output_find_socket(bNode *node, const char *identifier)
 void register_node_type_group_output()
 {
   /* used for all tree types, needs dynamic allocation */
-  bNodeType *ntype = MEM_cnew<bNodeType>("node type");
-  ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
+  blender::bke::bNodeType *ntype = MEM_cnew<blender::bke::bNodeType>("node type");
+  ntype->free_self = (void (*)(blender::bke::bNodeType *))MEM_freeN;
 
   blender::bke::node_type_base(ntype, NODE_GROUP_OUTPUT, "Group Output", NODE_CLASS_INTERFACE);
   blender::bke::node_type_size(ntype, 140, 80, 400);
